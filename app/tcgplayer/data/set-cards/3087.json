@@ -1,0 +1,57 @@
+{
+  "count": 3,
+  "total": 3,
+  "result": [
+    {
+      "productID": 275062,
+      "productConditionID": 0,
+      "condition": "Damaged Holofoil",
+      "game": "Pokemon",
+      "isSupplemental": true,
+      "lowPrice": 0,
+      "marketPrice": 6.35,
+      "number": "006/012",
+      "printing": "Holofoil",
+      "productName": "Pikachu - 6/12",
+      "rarity": "Promo",
+      "sales": 0,
+      "set": "McDonald's Promos 2016",
+      "setAbbrv": "MCD16",
+      "type": "Cards"
+    },
+    {
+      "productID": 275062,
+      "productConditionID": 0,
+      "condition": "Heavily Played Holofoil",
+      "game": "Pokemon",
+      "isSupplemental": true,
+      "lowPrice": 0,
+      "marketPrice": 11.32,
+      "number": "006/012",
+      "printing": "Holofoil",
+      "productName": "Pikachu - 6/12",
+      "rarity": "Promo",
+      "sales": 0,
+      "set": "McDonald's Promos 2016",
+      "setAbbrv": "MCD16",
+      "type": "Cards"
+    },
+    {
+      "productID": 275057,
+      "productConditionID": 0,
+      "condition": "Heavily Played Holofoil",
+      "game": "Pokemon",
+      "isSupplemental": true,
+      "lowPrice": 0,
+      "marketPrice": 13.99,
+      "number": "001/012",
+      "printing": "Holofoil",
+      "productName": "Vulpix - 1/12",
+      "rarity": "Promo",
+      "sales": 0,
+      "set": "McDonald's Promos 2016",
+      "setAbbrv": "MCD16",
+      "type": "Cards"
+    }
+  ]
+}

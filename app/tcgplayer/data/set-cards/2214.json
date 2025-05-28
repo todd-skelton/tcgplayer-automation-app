@@ -1,0 +1,57 @@
+{
+  "count": 3,
+  "total": 3,
+  "result": [
+    {
+      "productID": 162272,
+      "productConditionID": 0,
+      "condition": "Lightly Played",
+      "game": "Pokemon",
+      "isSupplemental": false,
+      "lowPrice": 0,
+      "marketPrice": 850,
+      "number": "005/005",
+      "printing": "Normal",
+      "productName": "Pikachu - 5/5",
+      "rarity": "Promo",
+      "sales": 0,
+      "set": "Kids WB Promos",
+      "setAbbrv": "KWBP",
+      "type": "Cards"
+    },
+    {
+      "productID": 162272,
+      "productConditionID": 0,
+      "condition": "Moderately Played",
+      "game": "Pokemon",
+      "isSupplemental": false,
+      "lowPrice": 0,
+      "marketPrice": 800,
+      "number": "005/005",
+      "printing": "Normal",
+      "productName": "Pikachu - 5/5",
+      "rarity": "Promo",
+      "sales": 0,
+      "set": "Kids WB Promos",
+      "setAbbrv": "KWBP",
+      "type": "Cards"
+    },
+    {
+      "productID": 162269,
+      "productConditionID": 0,
+      "condition": "Heavily Played",
+      "game": "Pokemon",
+      "isSupplemental": false,
+      "lowPrice": 225,
+      "marketPrice": 140,
+      "number": "002/005",
+      "printing": "Normal",
+      "productName": "Wurmple - 2/5",
+      "rarity": "Promo",
+      "sales": 0,
+      "set": "Kids WB Promos",
+      "setAbbrv": "KWBP",
+      "type": "Cards"
+    }
+  ]
+}
