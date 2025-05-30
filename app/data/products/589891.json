@@ -1,0 +1,45 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Illustration Rare",
+  "sealed": false,
+  "productName": "Ceruledge - 197/191",
+  "setId": 23651,
+  "setCode": "SV08",
+  "productId": 589891,
+  "setName": "SV08: Surging Sparks",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 8298012,
+      "condition": "Near Mint",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 8298013,
+      "condition": "Lightly Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 8298014,
+      "condition": "Moderately Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 8298015,
+      "condition": "Heavily Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 8298016,
+      "condition": "Damaged",
+      "variant": "Holofoil",
+      "language": "English"
+    }
+  ]
+}

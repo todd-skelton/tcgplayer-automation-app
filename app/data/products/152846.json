@@ -1,0 +1,45 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Common",
+  "sealed": false,
+  "productName": "Great Ball (#21) (Lycanroc Half-Deck)",
+  "setId": 2069,
+  "setCode": "SMK1",
+  "productId": 152846,
+  "setName": "SM Trainer Kit: Lycanroc & Alolan Raichu",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 3545795,
+      "condition": "Near Mint",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 3545796,
+      "condition": "Lightly Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 3545797,
+      "condition": "Moderately Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 3545798,
+      "condition": "Heavily Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 3545799,
+      "condition": "Damaged",
+      "variant": "Normal",
+      "language": "English"
+    }
+  ]
+}

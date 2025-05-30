@@ -1,0 +1,45 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Code Card",
+  "sealed": false,
+  "productName": "Code Card - Crown Zenith Tin [Galarian Articuno]",
+  "setId": 17688,
+  "setCode": "CRZ",
+  "productId": 475636,
+  "setName": "Crown Zenith",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 6914420,
+      "condition": "Near Mint",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 6914421,
+      "condition": "Lightly Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 6914422,
+      "condition": "Moderately Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 6914423,
+      "condition": "Heavily Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 6914424,
+      "condition": "Damaged",
+      "variant": "Normal",
+      "language": "English"
+    }
+  ]
+}

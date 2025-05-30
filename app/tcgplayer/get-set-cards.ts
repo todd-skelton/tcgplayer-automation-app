@@ -1,10 +1,10 @@
-export interface GetSetCardsResponse {
+interface GetSetCardsResponse {
   count: number;
   total: number;
-  result: Card[];
+  result: Result[];
 }
 
-export interface Card {
+interface Result {
   productID: number;
   productConditionID: number;
   condition: string;

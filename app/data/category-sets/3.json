@@ -1,0 +1,1892 @@
+[
+  {
+    "setNameId": 604,
+    "categoryId": 3,
+    "name": "Base Set",
+    "cleanSetName": "Base Set",
+    "abbreviation": "BS",
+    "releaseDate": "1999-01-09T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 605,
+    "categoryId": 3,
+    "name": "Base Set 2",
+    "cleanSetName": "Base Set 2",
+    "abbreviation": "BS2",
+    "releaseDate": "2000-02-24T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 609,
+    "categoryId": 3,
+    "name": "DP Training Kit 1 Blue",
+    "cleanSetName": "DP Training Kit 1 Blue",
+    "abbreviation": "PR",
+    "releaseDate": "2007-09-24T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 610,
+    "categoryId": 3,
+    "name": "DP Training Kit 1 Gold",
+    "cleanSetName": "DP Training Kit 1 Gold",
+    "abbreviation": "PR",
+    "releaseDate": "2007-09-24T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 630,
+    "categoryId": 3,
+    "name": "Fossil",
+    "cleanSetName": "Fossil",
+    "abbreviation": "FO",
+    "releaseDate": "1999-10-10T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 635,
+    "categoryId": 3,
+    "name": "Jungle",
+    "cleanSetName": "Jungle",
+    "abbreviation": "JU",
+    "releaseDate": "1999-06-16T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 648,
+    "categoryId": 3,
+    "name": "Southern Islands",
+    "cleanSetName": "Southern Islands",
+    "abbreviation": "SI",
+    "releaseDate": "2001-07-31T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1367,
+    "categoryId": 3,
+    "name": "Rising Rivals",
+    "cleanSetName": "Rising Rivals",
+    "abbreviation": "RR",
+    "releaseDate": "2009-05-16T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1368,
+    "categoryId": 3,
+    "name": "Mysterious Treasures",
+    "cleanSetName": "Mysterious Treasures",
+    "abbreviation": "MT",
+    "releaseDate": "2007-08-22T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1369,
+    "categoryId": 3,
+    "name": "Stormfront",
+    "cleanSetName": "Stormfront",
+    "abbreviation": "SF",
+    "releaseDate": "2008-11-05T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1370,
+    "categoryId": 3,
+    "name": "Plasma Blast",
+    "cleanSetName": "Plasma Blast",
+    "abbreviation": "PLB",
+    "releaseDate": "2013-08-14T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1372,
+    "categoryId": 3,
+    "name": "Skyridge",
+    "cleanSetName": "Skyridge",
+    "abbreviation": "SK",
+    "releaseDate": "2003-05-12T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1373,
+    "categoryId": 3,
+    "name": "Team Rocket",
+    "cleanSetName": "Team Rocket",
+    "abbreviation": "TR",
+    "releaseDate": "2000-04-24T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1374,
+    "categoryId": 3,
+    "name": "Legendary Collection",
+    "cleanSetName": "Legendary Collection",
+    "abbreviation": "LC",
+    "releaseDate": "2002-05-24T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1375,
+    "categoryId": 3,
+    "name": "Expedition",
+    "cleanSetName": "Expedition",
+    "abbreviation": "EX",
+    "releaseDate": "2002-09-15T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1376,
+    "categoryId": 3,
+    "name": "Dragon",
+    "cleanSetName": "Dragon",
+    "abbreviation": "DR",
+    "releaseDate": "2003-11-24T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1377,
+    "categoryId": 3,
+    "name": "Team Magma vs Team Aqua",
+    "cleanSetName": "Team Magma vs Team Aqua",
+    "abbreviation": "MA",
+    "releaseDate": "2004-03-15T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1378,
+    "categoryId": 3,
+    "name": "Legend Maker",
+    "cleanSetName": "Legend Maker",
+    "abbreviation": "LM",
+    "releaseDate": "2006-02-13T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1379,
+    "categoryId": 3,
+    "name": "Holon Phantoms",
+    "cleanSetName": "Holon Phantoms",
+    "abbreviation": "HP",
+    "releaseDate": "2006-05-03T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1380,
+    "categoryId": 3,
+    "name": "Secret Wonders",
+    "cleanSetName": "Secret Wonders",
+    "abbreviation": "SW",
+    "releaseDate": "2007-11-07T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1381,
+    "categoryId": 3,
+    "name": "Triumphant",
+    "cleanSetName": "Triumphant",
+    "abbreviation": "TM",
+    "releaseDate": "2010-11-03T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1382,
+    "categoryId": 3,
+    "name": "Plasma Freeze",
+    "cleanSetName": "Plasma Freeze",
+    "abbreviation": "PLF",
+    "releaseDate": "2013-05-08T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1383,
+    "categoryId": 3,
+    "name": "Power Keepers",
+    "cleanSetName": "Power Keepers",
+    "abbreviation": "PK",
+    "releaseDate": "2007-02-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1384,
+    "categoryId": 3,
+    "name": "Supreme Victors",
+    "cleanSetName": "Supreme Victors",
+    "abbreviation": "SV",
+    "releaseDate": "2009-08-19T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1385,
+    "categoryId": 3,
+    "name": "Noble Victories",
+    "cleanSetName": "Noble Victories",
+    "abbreviation": "NVI",
+    "releaseDate": "2011-11-16T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1386,
+    "categoryId": 3,
+    "name": "Dark Explorers",
+    "cleanSetName": "Dark Explorers",
+    "abbreviation": "DEX",
+    "releaseDate": "2012-05-09T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1387,
+    "categoryId": 3,
+    "name": "XY Base Set",
+    "cleanSetName": "XY Base Set",
+    "abbreviation": "XY",
+    "releaseDate": "2014-02-05T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1389,
+    "categoryId": 3,
+    "name": "Neo Revelation",
+    "cleanSetName": "Neo Revelation",
+    "abbreviation": "N3",
+    "releaseDate": "2001-09-21T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1390,
+    "categoryId": 3,
+    "name": "Majestic Dawn",
+    "cleanSetName": "Majestic Dawn",
+    "abbreviation": "MD",
+    "releaseDate": "2008-05-21T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1391,
+    "categoryId": 3,
+    "name": "Arceus",
+    "cleanSetName": "Arceus",
+    "abbreviation": "AR",
+    "releaseDate": "2009-11-04T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1392,
+    "categoryId": 3,
+    "name": "Sandstorm",
+    "cleanSetName": "Sandstorm",
+    "abbreviation": "SS",
+    "releaseDate": "2003-09-18T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1393,
+    "categoryId": 3,
+    "name": "Ruby and Sapphire",
+    "cleanSetName": "Ruby and Sapphire",
+    "abbreviation": "RS",
+    "releaseDate": "2003-06-18T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1394,
+    "categoryId": 3,
+    "name": "Dragons Exalted",
+    "cleanSetName": "Dragons Exalted",
+    "abbreviation": "DRX",
+    "releaseDate": "2012-08-15T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1395,
+    "categoryId": 3,
+    "name": "Crystal Guardians",
+    "cleanSetName": "Crystal Guardians",
+    "abbreviation": "CG",
+    "releaseDate": "2006-08-30T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1396,
+    "categoryId": 3,
+    "name": "Neo Genesis",
+    "cleanSetName": "Neo Genesis",
+    "abbreviation": "N1",
+    "releaseDate": "2000-12-16T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1397,
+    "categoryId": 3,
+    "name": "Aquapolis",
+    "cleanSetName": "Aquapolis",
+    "abbreviation": "AQ",
+    "releaseDate": "2003-01-15T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1398,
+    "categoryId": 3,
+    "name": "Unseen Forces",
+    "cleanSetName": "Unseen Forces",
+    "abbreviation": "UF",
+    "releaseDate": "2005-08-22T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1399,
+    "categoryId": 3,
+    "name": "Unleashed",
+    "cleanSetName": "Unleashed",
+    "abbreviation": "UL",
+    "releaseDate": "2010-05-12T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1400,
+    "categoryId": 3,
+    "name": "Black and White",
+    "cleanSetName": "Black and White",
+    "abbreviation": "BLW",
+    "releaseDate": "2011-04-25T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1401,
+    "categoryId": 3,
+    "name": "McDonald's Promos 2011",
+    "cleanSetName": "McDonalds Promos 2011",
+    "abbreviation": "",
+    "releaseDate": "2011-06-17T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1402,
+    "categoryId": 3,
+    "name": "HeartGold SoulSilver",
+    "cleanSetName": "HeartGold SoulSilver",
+    "abbreviation": "HS",
+    "releaseDate": "2010-02-10T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1403,
+    "categoryId": 3,
+    "name": "Undaunted",
+    "cleanSetName": "Undaunted",
+    "abbreviation": "UD",
+    "releaseDate": "2010-08-18T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1404,
+    "categoryId": 3,
+    "name": "Deoxys",
+    "cleanSetName": "Deoxys",
+    "abbreviation": "DX",
+    "releaseDate": "2005-02-14T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1405,
+    "categoryId": 3,
+    "name": "Great Encounters",
+    "cleanSetName": "Great Encounters",
+    "abbreviation": "GE",
+    "releaseDate": "2008-02-13T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1406,
+    "categoryId": 3,
+    "name": "Platinum",
+    "cleanSetName": "Platinum",
+    "abbreviation": "PL",
+    "releaseDate": "2009-02-11T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1407,
+    "categoryId": 3,
+    "name": "Black and White Promos",
+    "cleanSetName": "Black and White Promos",
+    "abbreviation": "PR",
+    "releaseDate": "2011-04-25T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1408,
+    "categoryId": 3,
+    "name": "Boundaries Crossed",
+    "cleanSetName": "Boundaries Crossed",
+    "abbreviation": "BCR",
+    "releaseDate": "2012-11-07T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1409,
+    "categoryId": 3,
+    "name": "Legendary Treasures",
+    "cleanSetName": "Legendary Treasures",
+    "abbreviation": "LTR",
+    "releaseDate": "2013-11-06T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1410,
+    "categoryId": 3,
+    "name": "Emerald",
+    "cleanSetName": "Emerald",
+    "abbreviation": "EM",
+    "releaseDate": "2005-05-09T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1411,
+    "categoryId": 3,
+    "name": "Dragon Frontiers",
+    "cleanSetName": "Dragon Frontiers",
+    "abbreviation": "DF",
+    "releaseDate": "2006-11-08T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1412,
+    "categoryId": 3,
+    "name": "Next Destinies",
+    "cleanSetName": "Next Destinies",
+    "abbreviation": "NXD",
+    "releaseDate": "2012-02-08T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1413,
+    "categoryId": 3,
+    "name": "Plasma Storm",
+    "cleanSetName": "Plasma Storm",
+    "abbreviation": "PLS",
+    "releaseDate": "2013-02-06T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1415,
+    "categoryId": 3,
+    "name": "Call of Legends",
+    "cleanSetName": "Call of Legends",
+    "abbreviation": "CL",
+    "releaseDate": "2011-02-09T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1416,
+    "categoryId": 3,
+    "name": "Hidden Legends",
+    "cleanSetName": "Hidden Legends",
+    "abbreviation": "HL",
+    "releaseDate": "2004-06-14T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1417,
+    "categoryId": 3,
+    "name": "Legends Awakened",
+    "cleanSetName": "Legends Awakened",
+    "abbreviation": "LA",
+    "releaseDate": "2008-08-20T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1418,
+    "categoryId": 3,
+    "name": "WoTC Promo",
+    "cleanSetName": "WoTC Promo",
+    "abbreviation": "PR",
+    "releaseDate": "1999-07-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1419,
+    "categoryId": 3,
+    "name": "FireRed & LeafGreen",
+    "cleanSetName": "FireRed and LeafGreen",
+    "abbreviation": "RG",
+    "releaseDate": "2004-08-30T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1421,
+    "categoryId": 3,
+    "name": "Diamond and Pearl Promos",
+    "cleanSetName": "Diamond and Pearl Promos",
+    "abbreviation": "PR",
+    "releaseDate": "2007-05-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1424,
+    "categoryId": 3,
+    "name": "Emerging Powers",
+    "cleanSetName": "Emerging Powers",
+    "abbreviation": "EPO",
+    "releaseDate": "2011-08-31T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1426,
+    "categoryId": 3,
+    "name": "Dragon Vault",
+    "cleanSetName": "Dragon Vault",
+    "abbreviation": "DRV",
+    "releaseDate": "2012-10-05T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1427,
+    "categoryId": 3,
+    "name": "McDonald's Promos 2012",
+    "cleanSetName": "McDonalds Promos 2012",
+    "abbreviation": "",
+    "releaseDate": "2012-06-15T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1428,
+    "categoryId": 3,
+    "name": "Team Rocket Returns",
+    "cleanSetName": "Team Rocket Returns",
+    "abbreviation": "RR",
+    "releaseDate": "2004-11-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1429,
+    "categoryId": 3,
+    "name": "Delta Species",
+    "cleanSetName": "Delta Species",
+    "abbreviation": "DS",
+    "releaseDate": "2005-10-31T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1430,
+    "categoryId": 3,
+    "name": "Diamond and Pearl",
+    "cleanSetName": "Diamond and Pearl",
+    "abbreviation": "DP",
+    "releaseDate": "2007-05-23T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1433,
+    "categoryId": 3,
+    "name": "Rumble",
+    "cleanSetName": "Rumble",
+    "abbreviation": "RUM",
+    "releaseDate": "2009-11-16T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1434,
+    "categoryId": 3,
+    "name": "Neo Discovery",
+    "cleanSetName": "Neo Discovery",
+    "abbreviation": "N2",
+    "releaseDate": "2001-06-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1440,
+    "categoryId": 3,
+    "name": "Gym Challenge",
+    "cleanSetName": "Gym Challenge",
+    "abbreviation": "G2",
+    "releaseDate": "2000-10-16T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1441,
+    "categoryId": 3,
+    "name": "Gym Heroes",
+    "cleanSetName": "Gym Heroes",
+    "abbreviation": "G1",
+    "releaseDate": "2000-10-14T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1444,
+    "categoryId": 3,
+    "name": "Neo Destiny",
+    "cleanSetName": "Neo Destiny",
+    "abbreviation": "N4",
+    "releaseDate": "2002-02-28T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1451,
+    "categoryId": 3,
+    "name": "XY Promos",
+    "cleanSetName": "XY Promos",
+    "abbreviation": "PR",
+    "releaseDate": "2013-12-16T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1453,
+    "categoryId": 3,
+    "name": "HGSS Promos",
+    "cleanSetName": "HGSS Promos",
+    "abbreviation": "PR",
+    "releaseDate": "2010-02-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1455,
+    "categoryId": 3,
+    "name": "Best of Promos",
+    "cleanSetName": "Best of Promos",
+    "abbreviation": "PR",
+    "releaseDate": "2002-12-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1464,
+    "categoryId": 3,
+    "name": "XY - Flashfire",
+    "cleanSetName": "XY Flashfire",
+    "abbreviation": "FLF",
+    "releaseDate": "2014-05-07T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1465,
+    "categoryId": 3,
+    "name": "Legendary Treasures: Radiant Collection",
+    "cleanSetName": "Legendary Treasures Radiant Collection",
+    "abbreviation": "LTR",
+    "releaseDate": "2013-11-06T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1481,
+    "categoryId": 3,
+    "name": "XY - Furious Fists",
+    "cleanSetName": "XY Furious Fists",
+    "abbreviation": "FFI",
+    "releaseDate": "2014-08-13T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1494,
+    "categoryId": 3,
+    "name": "XY - Phantom Forces",
+    "cleanSetName": "XY Phantom Forces",
+    "abbreviation": "PHF",
+    "releaseDate": "2014-11-05T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1509,
+    "categoryId": 3,
+    "name": "XY - Primal Clash",
+    "cleanSetName": "XY Primal Clash",
+    "abbreviation": "PRC",
+    "releaseDate": "2015-02-04T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1522,
+    "categoryId": 3,
+    "name": "Kalos Starter Set",
+    "cleanSetName": "Kalos Starter Set",
+    "abbreviation": "KSS",
+    "releaseDate": "2013-11-08T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1525,
+    "categoryId": 3,
+    "name": "Double Crisis",
+    "cleanSetName": "Double Crisis",
+    "abbreviation": "DCR",
+    "releaseDate": "2015-03-25T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1528,
+    "categoryId": 3,
+    "name": "Jumbo Cards",
+    "cleanSetName": "Jumbo Cards",
+    "abbreviation": "PR",
+    "releaseDate": "2015-04-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1532,
+    "categoryId": 3,
+    "name": "XY Trainer Kit: Sylveon & Noivern",
+    "cleanSetName": "XY Trainer Kit Sylveon and Noivern",
+    "abbreviation": "PR",
+    "releaseDate": "2014-03-12T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1533,
+    "categoryId": 3,
+    "name": "XY Trainer Kit: Bisharp & Wigglytuff",
+    "cleanSetName": "XY Trainer Kit Bisharp and Wigglytuff",
+    "abbreviation": "PR",
+    "releaseDate": "2014-11-14T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1534,
+    "categoryId": 3,
+    "name": "XY - Roaring Skies",
+    "cleanSetName": "XY Roaring Skies",
+    "abbreviation": "ROS",
+    "releaseDate": "2015-05-06T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1536,
+    "categoryId": 3,
+    "name": "XY Trainer Kit: Latias & Latios",
+    "cleanSetName": "XY Trainer Kit Latias and Latios",
+    "abbreviation": "PR",
+    "releaseDate": "2015-04-29T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1538,
+    "categoryId": 3,
+    "name": "BW Trainer Kit: Excadrill & Zoroark",
+    "cleanSetName": "BW Trainer Kit Excadrill and Zoroark",
+    "abbreviation": "BLW",
+    "releaseDate": "2011-09-05T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1539,
+    "categoryId": 3,
+    "name": "League & Championship Cards",
+    "cleanSetName": "League and Championship Cards",
+    "abbreviation": "PR",
+    "releaseDate": "2016-06-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1540,
+    "categoryId": 3,
+    "name": "HGSS Trainer Kit: Gyarados & Raichu",
+    "cleanSetName": "HGSS Trainer Kit Gyarados and Raichu",
+    "abbreviation": "PR",
+    "releaseDate": "2010-05-12T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1541,
+    "categoryId": 3,
+    "name": "DP Trainer Kit: Manaphy & Lucario",
+    "cleanSetName": "DP Trainer Kit Manaphy and Lucario",
+    "abbreviation": "PR",
+    "releaseDate": "2007-09-03T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1576,
+    "categoryId": 3,
+    "name": "XY - Ancient Origins",
+    "cleanSetName": "XY Ancient Origins",
+    "abbreviation": "AOR",
+    "releaseDate": "2015-08-12T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1661,
+    "categoryId": 3,
+    "name": "XY - BREAKthrough",
+    "cleanSetName": "XY BREAKthrough",
+    "abbreviation": "BKT",
+    "releaseDate": "2015-11-04T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1663,
+    "categoryId": 3,
+    "name": "Base Set (Shadowless)",
+    "cleanSetName": "Base Set Shadowless",
+    "abbreviation": "BSS",
+    "releaseDate": "1999-01-09T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1692,
+    "categoryId": 3,
+    "name": "McDonald's Promos 2014",
+    "cleanSetName": "McDonalds Promos 2014",
+    "abbreviation": "MCD14",
+    "releaseDate": "2014-05-23T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1694,
+    "categoryId": 3,
+    "name": "McDonald's Promos 2015",
+    "cleanSetName": "McDonalds Promos 2015",
+    "abbreviation": "MCD15",
+    "releaseDate": "2015-11-23T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1701,
+    "categoryId": 3,
+    "name": "XY - BREAKpoint",
+    "cleanSetName": "XY BREAKpoint",
+    "abbreviation": "BKP",
+    "releaseDate": "2016-02-03T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1728,
+    "categoryId": 3,
+    "name": "Generations",
+    "cleanSetName": "Generations",
+    "abbreviation": "GEN",
+    "releaseDate": "2016-02-22T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1729,
+    "categoryId": 3,
+    "name": "Generations: Radiant Collection",
+    "cleanSetName": "Generations Radiant Collection",
+    "abbreviation": "GEN",
+    "releaseDate": "2016-02-22T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1780,
+    "categoryId": 3,
+    "name": "XY - Fates Collide",
+    "cleanSetName": "XY Fates Collide",
+    "abbreviation": "FCO",
+    "releaseDate": "2016-05-02T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1796,
+    "categoryId": 3,
+    "name": "XY Trainer Kit: Pikachu Libre & Suicune",
+    "cleanSetName": "XY Trainer Kit Pikachu Libre and Suicune",
+    "abbreviation": "PR",
+    "releaseDate": "2016-04-27T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1815,
+    "categoryId": 3,
+    "name": "XY - Steam Siege",
+    "cleanSetName": "XY Steam Siege",
+    "abbreviation": "STS",
+    "releaseDate": "2016-08-03T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1840,
+    "categoryId": 3,
+    "name": "Deck Exclusives",
+    "cleanSetName": "Deck Exclusives",
+    "abbreviation": "PR",
+    "releaseDate": "2016-09-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1842,
+    "categoryId": 3,
+    "name": "XY - Evolutions",
+    "cleanSetName": "XY Evolutions",
+    "abbreviation": "EVO",
+    "releaseDate": "2016-11-02T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1853,
+    "categoryId": 3,
+    "name": "EX Battle Stadium",
+    "cleanSetName": "EX Battle Stadium",
+    "abbreviation": "BST",
+    "releaseDate": "2004-10-18T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1861,
+    "categoryId": 3,
+    "name": "SM Promos",
+    "cleanSetName": "SM Promos",
+    "abbreviation": "SMP",
+    "releaseDate": "2016-12-14T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1863,
+    "categoryId": 3,
+    "name": "SM Base Set",
+    "cleanSetName": "SM Base Set",
+    "abbreviation": "SM01",
+    "releaseDate": "2017-02-03T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1919,
+    "categoryId": 3,
+    "name": "SM - Guardians Rising",
+    "cleanSetName": "SM Guardians Rising",
+    "abbreviation": "SM02",
+    "releaseDate": "2017-05-05T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 1938,
+    "categoryId": 3,
+    "name": "Alternate Art Promos",
+    "cleanSetName": "Alternate Art Promos",
+    "abbreviation": "PR",
+    "releaseDate": "2017-05-19T00:00:00",
+    "isSupplemental": true,
+    "active": true
+  },
+  {
+    "setNameId": 1957,
+    "categoryId": 3,
+    "name": "SM - Burning Shadows",
+    "cleanSetName": "SM Burning Shadows",
+    "abbreviation": "SM03",
+    "releaseDate": "2017-08-04T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2054,
+    "categoryId": 3,
+    "name": "Shining Legends",
+    "cleanSetName": "Shining Legends",
+    "abbreviation": "SHL",
+    "releaseDate": "2017-10-06T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2069,
+    "categoryId": 3,
+    "name": "SM Trainer Kit: Lycanroc & Alolan Raichu",
+    "cleanSetName": "SM Trainer Kit Lycanroc and Alolan Raichu",
+    "abbreviation": "SMK1",
+    "releaseDate": "2017-04-21T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2071,
+    "categoryId": 3,
+    "name": "SM - Crimson Invasion",
+    "cleanSetName": "SM Crimson Invasion",
+    "abbreviation": "SM04",
+    "releaseDate": "2017-11-03T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2148,
+    "categoryId": 3,
+    "name": "McDonald's Promos 2017",
+    "cleanSetName": "McDonalds Promos 2017",
+    "abbreviation": "MCD17",
+    "releaseDate": "2017-11-07T00:00:00",
+    "isSupplemental": true,
+    "active": true
+  },
+  {
+    "setNameId": 2155,
+    "categoryId": 3,
+    "name": "Countdown Calendar Promos",
+    "cleanSetName": "Countdown Calendar Promos",
+    "abbreviation": "CCP",
+    "releaseDate": "2008-10-01T00:00:00",
+    "isSupplemental": true,
+    "active": true
+  },
+  {
+    "setNameId": 2175,
+    "categoryId": 3,
+    "name": "Burger King Promos",
+    "cleanSetName": "Burger King Promos",
+    "abbreviation": "BKP",
+    "releaseDate": "2009-04-03T00:00:00",
+    "isSupplemental": true,
+    "active": true
+  },
+  {
+    "setNameId": 2178,
+    "categoryId": 3,
+    "name": "SM - Ultra Prism",
+    "cleanSetName": "SM Ultra Prism",
+    "abbreviation": "SM05",
+    "releaseDate": "2018-02-02T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2205,
+    "categoryId": 3,
+    "name": "Pikachu World Collection Promos",
+    "cleanSetName": "Pikachu World Collection Promos",
+    "abbreviation": "PWCP",
+    "releaseDate": "2010-07-08T00:00:00",
+    "isSupplemental": true,
+    "active": true
+  },
+  {
+    "setNameId": 2208,
+    "categoryId": 3,
+    "name": "SM Trainer Kit: Alolan Sandslash & Alolan Ninetales",
+    "cleanSetName": "SM Trainer Kit Alolan Sandslash and Alolan Ninetales",
+    "abbreviation": "SMK2",
+    "releaseDate": "2018-04-06T00:00:00",
+    "isSupplemental": true,
+    "active": true
+  },
+  {
+    "setNameId": 2209,
+    "categoryId": 3,
+    "name": "SM - Forbidden Light",
+    "cleanSetName": "SM Forbidden Light",
+    "abbreviation": "SM06",
+    "releaseDate": "2018-05-04T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2214,
+    "categoryId": 3,
+    "name": "Kids WB Promos",
+    "cleanSetName": "Kids WB Promos",
+    "abbreviation": "KWBP",
+    "releaseDate": "2004-07-02T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2278,
+    "categoryId": 3,
+    "name": "SM - Celestial Storm",
+    "cleanSetName": "SM Celestial Storm",
+    "abbreviation": "CES",
+    "releaseDate": "2018-08-03T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2282,
+    "categoryId": 3,
+    "name": "World Championship Decks",
+    "cleanSetName": "World Championship Decks",
+    "abbreviation": "WCD",
+    "releaseDate": "2018-07-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2289,
+    "categoryId": 3,
+    "name": "Blister Exclusives",
+    "cleanSetName": "Blister Exclusives",
+    "abbreviation": "BLE",
+    "releaseDate": "1998-02-27T00:00:00",
+    "isSupplemental": true,
+    "active": true
+  },
+  {
+    "setNameId": 2295,
+    "categoryId": 3,
+    "name": "Dragon Majesty",
+    "cleanSetName": "Dragon Majesty",
+    "abbreviation": "DRM",
+    "releaseDate": "2018-09-07T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2328,
+    "categoryId": 3,
+    "name": "SM - Lost Thunder",
+    "cleanSetName": "SM Lost Thunder",
+    "abbreviation": "SM8",
+    "releaseDate": "2018-11-02T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2332,
+    "categoryId": 3,
+    "name": "Professor Program Promos",
+    "cleanSetName": "Professor Program Promos",
+    "abbreviation": "PPP",
+    "releaseDate": "2011-01-07T00:00:00",
+    "isSupplemental": true,
+    "active": true
+  },
+  {
+    "setNameId": 2364,
+    "categoryId": 3,
+    "name": "McDonald's Promos 2018",
+    "cleanSetName": "McDonalds Promos 2018",
+    "abbreviation": "MCD18",
+    "releaseDate": "2018-11-02T00:00:00",
+    "isSupplemental": true,
+    "active": true
+  },
+  {
+    "setNameId": 2374,
+    "categoryId": 3,
+    "name": "Miscellaneous Cards & Products",
+    "cleanSetName": "Miscellaneous Cards and Products",
+    "abbreviation": "MCAP",
+    "releaseDate": "2018-11-01T00:00:00",
+    "isSupplemental": true,
+    "active": true
+  },
+  {
+    "setNameId": 2377,
+    "categoryId": 3,
+    "name": "SM - Team Up",
+    "cleanSetName": "SM Team Up",
+    "abbreviation": "SM9",
+    "releaseDate": "2019-02-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2409,
+    "categoryId": 3,
+    "name": "Detective Pikachu",
+    "cleanSetName": "Detective Pikachu",
+    "abbreviation": "DEP",
+    "releaseDate": "2019-04-05T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2420,
+    "categoryId": 3,
+    "name": "SM - Unbroken Bonds",
+    "cleanSetName": "SM Unbroken Bonds",
+    "abbreviation": "SM10",
+    "releaseDate": "2019-05-03T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2464,
+    "categoryId": 3,
+    "name": "SM - Unified Minds",
+    "cleanSetName": "SM Unified Minds",
+    "abbreviation": "SM11",
+    "releaseDate": "2019-08-02T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2480,
+    "categoryId": 3,
+    "name": "Hidden Fates",
+    "cleanSetName": "Hidden Fates",
+    "abbreviation": "HIF",
+    "releaseDate": "2019-08-23T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2534,
+    "categoryId": 3,
+    "name": "SM - Cosmic Eclipse",
+    "cleanSetName": "SM Cosmic Eclipse",
+    "abbreviation": "SM12",
+    "releaseDate": "2019-11-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2545,
+    "categoryId": 3,
+    "name": "SWSH: Sword & Shield Promo Cards",
+    "cleanSetName": "SWSH Sword and Shield Promo Cards",
+    "abbreviation": "SWSD",
+    "releaseDate": "2019-11-15T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2555,
+    "categoryId": 3,
+    "name": "McDonald's Promos 2019",
+    "cleanSetName": "McDonalds Promos 2019",
+    "abbreviation": "MCD19",
+    "releaseDate": "2019-10-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2585,
+    "categoryId": 3,
+    "name": "SWSH01: Sword & Shield Base Set",
+    "cleanSetName": "SWSH01 Sword and Shield Base Set",
+    "abbreviation": "SWSH01",
+    "releaseDate": "2020-02-07T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2594,
+    "categoryId": 3,
+    "name": "Hidden Fates: Shiny Vault",
+    "cleanSetName": "Hidden Fates Shiny Vault",
+    "abbreviation": "HIF:SV",
+    "releaseDate": "2019-08-23T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2626,
+    "categoryId": 3,
+    "name": "SWSH02: Rebel Clash",
+    "cleanSetName": "SWSH02 Rebel Clash",
+    "abbreviation": "SWSH02",
+    "releaseDate": "2020-05-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2675,
+    "categoryId": 3,
+    "name": "SWSH03: Darkness Ablaze",
+    "cleanSetName": "SWSH03 Darkness Ablaze",
+    "abbreviation": "SWSH03",
+    "releaseDate": "2020-08-14T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2685,
+    "categoryId": 3,
+    "name": "Champion's Path",
+    "cleanSetName": "Champions Path",
+    "abbreviation": "CHP",
+    "releaseDate": "2020-09-25T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2686,
+    "categoryId": 3,
+    "name": "Battle Academy",
+    "cleanSetName": "Battle Academy",
+    "abbreviation": "BTA",
+    "releaseDate": "2020-07-31T00:00:00",
+    "isSupplemental": true,
+    "active": true
+  },
+  {
+    "setNameId": 2701,
+    "categoryId": 3,
+    "name": "SWSH04: Vivid Voltage",
+    "cleanSetName": "SWSH04 Vivid Voltage",
+    "abbreviation": "SWSH04",
+    "releaseDate": "2020-11-13T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2754,
+    "categoryId": 3,
+    "name": "Shining Fates",
+    "cleanSetName": "Shining Fates",
+    "abbreviation": "SHF",
+    "releaseDate": "2021-02-19T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2765,
+    "categoryId": 3,
+    "name": "SWSH05: Battle Styles",
+    "cleanSetName": "SWSH05 Battle Styles",
+    "abbreviation": "SWSH05",
+    "releaseDate": "2021-03-19T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2776,
+    "categoryId": 3,
+    "name": "First Partner Pack",
+    "cleanSetName": "First Partner Pack",
+    "abbreviation": "FPP",
+    "releaseDate": "2021-02-26T00:00:00",
+    "isSupplemental": true,
+    "active": true
+  },
+  {
+    "setNameId": 2781,
+    "categoryId": 3,
+    "name": "Shining Fates: Shiny Vault",
+    "cleanSetName": "Shining Fates Shiny Vault",
+    "abbreviation": "SHFSV",
+    "releaseDate": "2021-02-19T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2782,
+    "categoryId": 3,
+    "name": "McDonald's 25th Anniversary Promos",
+    "cleanSetName": "McDonalds 25th Anniversary Promos",
+    "abbreviation": "MCD21",
+    "releaseDate": "2021-02-09T00:00:00",
+    "isSupplemental": true,
+    "active": true
+  },
+  {
+    "setNameId": 2807,
+    "categoryId": 3,
+    "name": "SWSH06: Chilling Reign",
+    "cleanSetName": "SWSH06 Chilling Reign",
+    "abbreviation": "SWSH06",
+    "releaseDate": "2021-06-18T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2848,
+    "categoryId": 3,
+    "name": "SWSH07: Evolving Skies",
+    "cleanSetName": "SWSH07 Evolving Skies",
+    "abbreviation": "SWSH07",
+    "releaseDate": "2021-08-27T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2867,
+    "categoryId": 3,
+    "name": "Celebrations",
+    "cleanSetName": "Celebrations",
+    "abbreviation": "CLB",
+    "releaseDate": "2021-10-08T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2906,
+    "categoryId": 3,
+    "name": "SWSH08: Fusion Strike",
+    "cleanSetName": "SWSH08 Fusion Strike",
+    "abbreviation": "SWSH08",
+    "releaseDate": "2021-11-12T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2931,
+    "categoryId": 3,
+    "name": "Celebrations: Classic Collection",
+    "cleanSetName": "Celebrations Classic Collection",
+    "abbreviation": "CCC",
+    "releaseDate": "2021-10-08T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 2948,
+    "categoryId": 3,
+    "name": "SWSH09: Brilliant Stars",
+    "cleanSetName": "SWSH09 Brilliant Stars",
+    "abbreviation": "SWSH09",
+    "releaseDate": "2022-02-25T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 3020,
+    "categoryId": 3,
+    "name": "SWSH09: Brilliant Stars Trainer Gallery",
+    "cleanSetName": "SWSH09 Brilliant Stars Trainer Gallery",
+    "abbreviation": "SWSH09:TG",
+    "releaseDate": "2022-02-25T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 3040,
+    "categoryId": 3,
+    "name": "SWSH10: Astral Radiance",
+    "cleanSetName": "SWSH10 Astral Radiance",
+    "abbreviation": "SWSH10",
+    "releaseDate": "2022-05-27T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 3051,
+    "categoryId": 3,
+    "name": "Battle Academy 2022",
+    "cleanSetName": "Battle Academy 2022",
+    "abbreviation": "BA22",
+    "releaseDate": "2022-04-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 3064,
+    "categoryId": 3,
+    "name": "Pokemon GO",
+    "cleanSetName": "Pokemon GO",
+    "abbreviation": "PGO",
+    "releaseDate": "2022-07-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 3068,
+    "categoryId": 3,
+    "name": "SWSH10: Astral Radiance Trainer Gallery",
+    "cleanSetName": "SWSH10 Astral Radiance Trainer Gallery",
+    "abbreviation": "SWSH10:TG",
+    "releaseDate": "2022-05-27T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 3087,
+    "categoryId": 3,
+    "name": "McDonald's Promos 2016",
+    "cleanSetName": "McDonalds Promos 2016",
+    "abbreviation": "MCD16",
+    "releaseDate": "2016-08-05T00:00:00",
+    "isSupplemental": true,
+    "active": true
+  },
+  {
+    "setNameId": 3118,
+    "categoryId": 3,
+    "name": "SWSH11: Lost Origin",
+    "cleanSetName": "SWSH11 Lost Origin",
+    "abbreviation": "SWSH11",
+    "releaseDate": "2022-09-09T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 3150,
+    "categoryId": 3,
+    "name": "McDonald's Promos 2022",
+    "cleanSetName": "McDonalds Promos 2022",
+    "abbreviation": "MCD22",
+    "releaseDate": "2022-08-03T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 3170,
+    "categoryId": 3,
+    "name": "SWSH12: Silver Tempest",
+    "cleanSetName": "SWSH12 Silver Tempest",
+    "abbreviation": "SWSH12",
+    "releaseDate": "2022-11-11T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 3172,
+    "categoryId": 3,
+    "name": "SWSH11: Lost Origin Trainer Gallery",
+    "cleanSetName": "SWSH11 Lost Origin Trainer Gallery",
+    "abbreviation": "SWSH11: TG",
+    "releaseDate": "2022-09-09T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 3179,
+    "categoryId": 3,
+    "name": "Trick or Trade BOOster Bundle",
+    "cleanSetName": "Trick or Trade BOOster Bundle",
+    "abbreviation": "TTBB",
+    "releaseDate": "2022-09-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 17674,
+    "categoryId": 3,
+    "name": "SWSH12: Silver Tempest Trainer Gallery",
+    "cleanSetName": "SWSH12 Silver Tempest Trainer Gallery",
+    "abbreviation": "SWSH12: TG",
+    "releaseDate": "2022-11-11T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 17688,
+    "categoryId": 3,
+    "name": "Crown Zenith",
+    "cleanSetName": "Crown Zenith",
+    "abbreviation": "CRZ",
+    "releaseDate": "2023-01-20T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 17689,
+    "categoryId": 3,
+    "name": "Crown Zenith: Galarian Gallery",
+    "cleanSetName": "Crown Zenith Galarian Gallery",
+    "abbreviation": "CRZ:GG",
+    "releaseDate": "2023-01-20T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 22872,
+    "categoryId": 3,
+    "name": "SV: Scarlet & Violet Promo Cards",
+    "cleanSetName": "SV Scarlet and Violet Promo Cards",
+    "abbreviation": "SVP",
+    "releaseDate": "2023-03-31T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 22873,
+    "categoryId": 3,
+    "name": "SV01: Scarlet & Violet Base Set",
+    "cleanSetName": "SV01 Scarlet and Violet Base Set",
+    "abbreviation": "SV1",
+    "releaseDate": "2023-03-31T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 22880,
+    "categoryId": 3,
+    "name": "Prize Pack Series Cards",
+    "cleanSetName": "Prize Pack Series Cards",
+    "abbreviation": "",
+    "releaseDate": "2022-11-30T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23095,
+    "categoryId": 3,
+    "name": "Ash vs Team Rocket Deck Kit (JP Exclusive)",
+    "cleanSetName": "Ash vs Team Rocket Deck Kit JP Exclusive",
+    "abbreviation": "AVTR",
+    "releaseDate": "2017-04-21T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23120,
+    "categoryId": 3,
+    "name": "SV02: Paldea Evolved",
+    "cleanSetName": "SV02 Paldea Evolved",
+    "abbreviation": "PAL",
+    "releaseDate": "2023-06-09T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23228,
+    "categoryId": 3,
+    "name": "SV03: Obsidian Flames",
+    "cleanSetName": "SV03 Obsidian Flames",
+    "abbreviation": "OBF",
+    "releaseDate": "2023-08-11T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23237,
+    "categoryId": 3,
+    "name": "SV: Scarlet & Violet 151",
+    "cleanSetName": "SV Scarlet and Violet 151",
+    "abbreviation": "MEW",
+    "releaseDate": "2023-09-22T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23266,
+    "categoryId": 3,
+    "name": "Trick or Trade BOOster Bundle 2023",
+    "cleanSetName": "Trick or Trade BOOster Bundle 2023",
+    "abbreviation": "TTBB23",
+    "releaseDate": "2023-09-01T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23286,
+    "categoryId": 3,
+    "name": "SV04: Paradox Rift",
+    "cleanSetName": "SV04 Paradox Rift",
+    "abbreviation": "PAR",
+    "releaseDate": "2023-11-03T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23306,
+    "categoryId": 3,
+    "name": "McDonald's Promos 2023",
+    "cleanSetName": "McDonalds Promos 2023",
+    "abbreviation": "M23",
+    "releaseDate": "2023-09-12T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23323,
+    "categoryId": 3,
+    "name": "Trading Card Game Classic",
+    "cleanSetName": "Trading Card Game Classic",
+    "abbreviation": "CL",
+    "releaseDate": "2023-11-17T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23330,
+    "categoryId": 3,
+    "name": "My First Battle",
+    "cleanSetName": "My First Battle",
+    "abbreviation": "",
+    "releaseDate": "2023-09-29T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23353,
+    "categoryId": 3,
+    "name": "SV: Paldean Fates",
+    "cleanSetName": "SV Paldean Fates",
+    "abbreviation": "PAF",
+    "releaseDate": "2024-01-26T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23381,
+    "categoryId": 3,
+    "name": "SV05: Temporal Forces",
+    "cleanSetName": "SV05 Temporal Forces",
+    "abbreviation": "TEF",
+    "releaseDate": "2024-03-22T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23473,
+    "categoryId": 3,
+    "name": "SV06: Twilight Masquerade",
+    "cleanSetName": "SV06 Twilight Masquerade",
+    "abbreviation": "TWM",
+    "releaseDate": "2024-05-24T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23520,
+    "categoryId": 3,
+    "name": "Battle Academy 2024",
+    "cleanSetName": "Battle Academy 2024",
+    "abbreviation": "BA24",
+    "releaseDate": "2024-06-21T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23529,
+    "categoryId": 3,
+    "name": "SV: Shrouded Fable",
+    "cleanSetName": "SV Shrouded Fable",
+    "abbreviation": "SFA",
+    "releaseDate": "2024-08-02T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23537,
+    "categoryId": 3,
+    "name": "SV07: Stellar Crown",
+    "cleanSetName": "SV07 Stellar Crown",
+    "abbreviation": "SV07",
+    "releaseDate": "2024-09-13T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23561,
+    "categoryId": 3,
+    "name": "Trick or Trade BOOster Bundle 2024",
+    "cleanSetName": "Trick or Trade BOOster Bundle 2024",
+    "abbreviation": "TTBB24",
+    "releaseDate": "2024-08-30T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23651,
+    "categoryId": 3,
+    "name": "SV08: Surging Sparks",
+    "cleanSetName": "SV08 Surging Sparks",
+    "abbreviation": "SV08",
+    "releaseDate": "2024-11-08T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 23821,
+    "categoryId": 3,
+    "name": "SV: Prismatic Evolutions",
+    "cleanSetName": "SV Prismatic Evolutions",
+    "abbreviation": "PRE",
+    "releaseDate": "2025-01-17T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 24073,
+    "categoryId": 3,
+    "name": "SV09: Journey Together",
+    "cleanSetName": "SV09 Journey Together",
+    "abbreviation": "",
+    "releaseDate": "2025-03-28T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  },
+  {
+    "setNameId": 24163,
+    "categoryId": 3,
+    "name": "McDonald's Promos 2024",
+    "cleanSetName": "McDonalds Promos 2024",
+    "abbreviation": "M24",
+    "releaseDate": "2025-01-21T00:00:00",
+    "isSupplemental": false,
+    "active": true
+  }
+]

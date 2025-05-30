@@ -1,0 +1,24 @@
+[
+  {
+    "setNameId": 2214,
+    "productID": 162272,
+    "game": "Pokemon",
+    "number": "005/005",
+    "productName": "Pikachu - 5/5",
+    "rarity": "Promo",
+    "set": "Kids WB Promos",
+    "setAbbrv": "KWBP",
+    "type": "Cards"
+  },
+  {
+    "setNameId": 2214,
+    "productID": 162269,
+    "game": "Pokemon",
+    "number": "002/005",
+    "productName": "Wurmple - 2/5",
+    "rarity": "Promo",
+    "set": "Kids WB Promos",
+    "setAbbrv": "KWBP",
+    "type": "Cards"
+  }
+]

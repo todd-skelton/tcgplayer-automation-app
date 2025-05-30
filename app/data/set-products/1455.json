@@ -1,0 +1,167 @@
+[
+  {
+    "setNameId": 1455,
+    "productID": 84616,
+    "game": "Pokemon",
+    "number": "006/009",
+    "productName": "Dark Ivysaur - 6",
+    "rarity": "Promo",
+    "set": "Best of Promos",
+    "setAbbrv": "PR",
+    "type": "Cards"
+  },
+  {
+    "setNameId": 1455,
+    "productID": 107876,
+    "game": "Pokemon",
+    "number": "006/009",
+    "productName": "Dark Ivysaur - 6 [Winner]",
+    "rarity": "Promo",
+    "set": "Best of Promos",
+    "setAbbrv": "PR",
+    "type": "Cards"
+  },
+  {
+    "setNameId": 1455,
+    "productID": 84666,
+    "game": "Pokemon",
+    "number": "007/009",
+    "productName": "Dark Venusaur - 7",
+    "rarity": "Promo",
+    "set": "Best of Promos",
+    "setAbbrv": "PR",
+    "type": "Cards"
+  },
+  {
+    "setNameId": 1455,
+    "productID": 167077,
+    "game": "Pokemon",
+    "number": "007/009",
+    "productName": "Dark Venusaur - 7 [Winner]",
+    "rarity": "Promo",
+    "set": "Best of Promos",
+    "setAbbrv": "PR",
+    "type": "Cards"
+  },
+  {
+    "setNameId": 1455,
+    "productID": 85106,
+    "game": "Pokemon",
+    "number": "001/009",
+    "productName": "Electabuzz - 1",
+    "rarity": "Promo",
+    "set": "Best of Promos",
+    "setAbbrv": "PR",
+    "type": "Cards"
+  },
+  {
+    "setNameId": 1455,
+    "productID": 167078,
+    "game": "Pokemon",
+    "number": "001/009",
+    "productName": "Electabuzz - 1 [Winner]",
+    "rarity": "Promo",
+    "set": "Best of Promos",
+    "setAbbrv": "PR",
+    "type": "Cards"
+  },
+  {
+    "setNameId": 1455,
+    "productID": 86098,
+    "game": "Pokemon",
+    "number": "002/009",
+    "productName": "Hitmonchan - 2",
+    "rarity": "Promo",
+    "set": "Best of Promos",
+    "setAbbrv": "PR",
+    "type": "Cards"
+  },
+  {
+    "setNameId": 1455,
+    "productID": 117599,
+    "game": "Pokemon",
+    "number": "002/009",
+    "productName": "Hitmonchan - 2 [Winner]",
+    "rarity": "Promo",
+    "set": "Best of Promos",
+    "setAbbrv": "PR",
+    "type": "Cards"
+  },
+  {
+    "setNameId": 1455,
+    "productID": 88387,
+    "game": "Pokemon",
+    "number": "003/009",
+    "productName": "Professor Elm - 3",
+    "rarity": "Promo",
+    "set": "Best of Promos",
+    "setAbbrv": "PR",
+    "type": "Cards"
+  },
+  {
+    "setNameId": 1455,
+    "productID": 167079,
+    "game": "Pokemon",
+    "number": "009/009",
+    "productName": "Rocket's Hitmonchan - 9 [Winner]",
+    "rarity": "Promo",
+    "set": "Best of Promos",
+    "setAbbrv": "PR",
+    "type": "Cards"
+  },
+  {
+    "setNameId": 1455,
+    "productID": 167080,
+    "game": "Pokemon",
+    "number": "008/009",
+    "productName": "Rocket's Mewtwo - 8 [Winner]",
+    "rarity": "Promo",
+    "set": "Best of Promos",
+    "setAbbrv": "PR",
+    "type": "Cards"
+  },
+  {
+    "setNameId": 1455,
+    "productID": 88786,
+    "game": "Pokemon",
+    "number": "004/009",
+    "productName": "Rocket's Scizor - 4",
+    "rarity": "Promo",
+    "set": "Best of Promos",
+    "setAbbrv": "PR",
+    "type": "Cards"
+  },
+  {
+    "setNameId": 1455,
+    "productID": 167081,
+    "game": "Pokemon",
+    "number": "004/009",
+    "productName": "Rocket's Scizor - 4 [Winner]",
+    "rarity": "Promo",
+    "set": "Best of Promos",
+    "setAbbrv": "PR",
+    "type": "Cards"
+  },
+  {
+    "setNameId": 1455,
+    "productID": 88793,
+    "game": "Pokemon",
+    "number": "005/009",
+    "productName": "Rocket's Sneasel - 5",
+    "rarity": "Promo",
+    "set": "Best of Promos",
+    "setAbbrv": "PR",
+    "type": "Cards"
+  },
+  {
+    "setNameId": 1455,
+    "productID": 107877,
+    "game": "Pokemon",
+    "number": "005/009",
+    "productName": "Rocket's Sneasel - 5 [Winner]",
+    "rarity": "Promo",
+    "set": "Best of Promos",
+    "setAbbrv": "PR",
+    "type": "Cards"
+  }
+]

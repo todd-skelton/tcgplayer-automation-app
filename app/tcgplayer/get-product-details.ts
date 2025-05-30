@@ -3,7 +3,7 @@ import type { Condition } from "./types/Condition";
 import type { Language } from "./types/Language";
 import type { Variant } from "./types/Variant";
 
-export interface Product {
+interface Result {
   customListings: number;
   shippingCategoryId: number;
   duplicate: boolean;
@@ -39,7 +39,7 @@ export interface Product {
   skus: Sku[];
 }
 
-export interface CustomAttributes {
+interface CustomAttributes {
   description: string;
   attack2: string;
   stage: string;
@@ -60,7 +60,7 @@ export interface CustomAttributes {
   attack4: any;
 }
 
-export interface FormattedAttributes {
+interface FormattedAttributes {
   "Card Number / Rarity": string;
   "Card Type / HP / Stage": string;
   "Attack 1": string;
@@ -82,9 +82,8 @@ export type GetProductDetailsRequestParams = {
 
 export async function getProductDetails({
   id,
-}: GetProductDetailsRequestParams): Promise<Product> {
-  const data = await get<Product>(
+}: GetProductDetailsRequestParams): Promise<Result> {
+  return get<Result>(
     `https://mp-search-api.tcgplayer.com/v2/product/${id}/details`
   );
-  return data;
 }

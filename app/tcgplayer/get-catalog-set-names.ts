@@ -1,9 +1,9 @@
-export interface GetCatalogSetNamesResponse {
+interface GetCatalogSetNamesResponse {
   errors: any[];
-  results: Set[];
+  results: Result[];
 }
 
-export interface Set {
+interface Result {
   setNameId: number;
   categoryId: number;
   name: string;
@@ -23,6 +23,6 @@ import { get } from "~/httpClient";
 export async function getCatalogSetNames({
   categoryId,
 }: GetCatalogSetNamesRequestParams): Promise<GetCatalogSetNamesResponse> {
-  const url = `https://mpapi.tcgplayer.com/v2/Catalog/SetNames?categoryId=${categoryId}`;
+  const url = `https://mpapi.tcgplayer.com/v2/Catalog/SetNames?categoryId=${categoryId}&active=true`;
   return get<GetCatalogSetNamesResponse>(url);
 }
