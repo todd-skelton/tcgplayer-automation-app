@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Common",
+  "sealed": false,
+  "productName": "Mysterious Fossil",
+  "setId": 1379,
+  "setCode": "HP",
+  "productId": 87664,
+  "setName": "Holon Phantoms",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 1193633,
+      "condition": "Near Mint",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1200979,
+      "condition": "Lightly Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1208325,
+      "condition": "Moderately Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1215671,
+      "condition": "Heavily Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1223017,
+      "condition": "Damaged",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 2829609,
+      "condition": "Near Mint",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2829610,
+      "condition": "Lightly Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2829611,
+      "condition": "Moderately Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2829612,
+      "condition": "Heavily Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2829613,
+      "condition": "Damaged",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

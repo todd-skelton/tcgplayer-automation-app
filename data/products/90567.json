@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Uncommon",
+  "sealed": false,
+  "productName": "Whimsicott (11)",
+  "setId": 1424,
+  "setCode": "EPO",
+  "productId": 90567,
+  "setName": "Emerging Powers",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 1196536,
+      "condition": "Near Mint",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1203882,
+      "condition": "Lightly Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1211228,
+      "condition": "Moderately Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1218574,
+      "condition": "Heavily Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1225920,
+      "condition": "Damaged",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1239240,
+      "condition": "Near Mint",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1239241,
+      "condition": "Lightly Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1239242,
+      "condition": "Moderately Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1239243,
+      "condition": "Heavily Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1239244,
+      "condition": "Damaged",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

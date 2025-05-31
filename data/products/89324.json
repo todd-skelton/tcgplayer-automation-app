@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Common",
+  "sealed": false,
+  "productName": "Slowpoke",
+  "setId": 1374,
+  "setCode": "LC",
+  "productId": 89324,
+  "setName": "Legendary Collection",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 1195293,
+      "condition": "Near Mint",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1202639,
+      "condition": "Lightly Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1209985,
+      "condition": "Moderately Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1217331,
+      "condition": "Heavily Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1224677,
+      "condition": "Damaged",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 2895706,
+      "condition": "Near Mint",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2895707,
+      "condition": "Lightly Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2895708,
+      "condition": "Moderately Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2895709,
+      "condition": "Heavily Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2895710,
+      "condition": "Damaged",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

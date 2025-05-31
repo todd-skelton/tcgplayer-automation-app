@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Rare",
+  "sealed": false,
+  "productName": "Lopunny",
+  "setId": 1417,
+  "setCode": "LA",
+  "productId": 86824,
+  "setName": "Legends Awakened",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 1192793,
+      "condition": "Near Mint",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1200139,
+      "condition": "Lightly Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1207485,
+      "condition": "Moderately Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1214831,
+      "condition": "Heavily Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1222177,
+      "condition": "Damaged",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1251724,
+      "condition": "Near Mint",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1251725,
+      "condition": "Lightly Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1251726,
+      "condition": "Moderately Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1251727,
+      "condition": "Heavily Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1251728,
+      "condition": "Damaged",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

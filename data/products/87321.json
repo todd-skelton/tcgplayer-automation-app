@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Common",
+  "sealed": false,
+  "productName": "Meowth",
+  "setId": 1384,
+  "setCode": "SV",
+  "productId": 87321,
+  "setName": "Supreme Victors",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 1193290,
+      "condition": "Near Mint",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1200636,
+      "condition": "Lightly Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1207982,
+      "condition": "Moderately Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1215328,
+      "condition": "Heavily Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1222674,
+      "condition": "Damaged",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 2734393,
+      "condition": "Near Mint",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2734394,
+      "condition": "Lightly Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2734395,
+      "condition": "Moderately Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2734396,
+      "condition": "Heavily Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2734397,
+      "condition": "Damaged",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Common",
+  "sealed": false,
+  "productName": "Machop",
+  "setId": 1444,
+  "setCode": "N4",
+  "productId": 86988,
+  "setName": "Neo Destiny",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 2897512,
+      "condition": "Near Mint",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2897513,
+      "condition": "Lightly Played",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2897514,
+      "condition": "Moderately Played",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2897515,
+      "condition": "Heavily Played",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2897516,
+      "condition": "Damaged",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 1192957,
+      "condition": "Near Mint",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1200303,
+      "condition": "Lightly Played",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1207649,
+      "condition": "Moderately Played",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1214995,
+      "condition": "Heavily Played",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1222341,
+      "condition": "Damaged",
+      "variant": "Unlimited",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Secret Rare",
+  "sealed": false,
+  "productName": "Shining Magikarp",
+  "setId": 1389,
+  "setCode": "N3",
+  "productId": 89166,
+  "setName": "Neo Revelation",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 2899142,
+      "condition": "Near Mint",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2899143,
+      "condition": "Lightly Played",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2899144,
+      "condition": "Moderately Played",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2899145,
+      "condition": "Heavily Played",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2899146,
+      "condition": "Damaged",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2899137,
+      "condition": "Near Mint",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2899138,
+      "condition": "Lightly Played",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2899139,
+      "condition": "Moderately Played",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2899140,
+      "condition": "Heavily Played",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2899141,
+      "condition": "Damaged",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

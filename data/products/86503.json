@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Rare",
+  "sealed": false,
+  "productName": "Koga (106)",
+  "setId": 1440,
+  "setCode": "G2",
+  "productId": 86503,
+  "setName": "Gym Challenge",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 2958607,
+      "condition": "Near Mint",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2958608,
+      "condition": "Lightly Played",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2958609,
+      "condition": "Moderately Played",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2958610,
+      "condition": "Heavily Played",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2958611,
+      "condition": "Damaged",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 1192472,
+      "condition": "Near Mint",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1199818,
+      "condition": "Lightly Played",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1207164,
+      "condition": "Moderately Played",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1214510,
+      "condition": "Heavily Played",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1221856,
+      "condition": "Damaged",
+      "variant": "Unlimited",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

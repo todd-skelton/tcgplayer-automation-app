@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Common",
+  "sealed": false,
+  "productName": "Weedle",
+  "setId": 1434,
+  "setCode": "N2",
+  "productId": 90538,
+  "setName": "Neo Discovery",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 2899819,
+      "condition": "Near Mint",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2899820,
+      "condition": "Lightly Played",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2899821,
+      "condition": "Moderately Played",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2899822,
+      "condition": "Heavily Played",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2899823,
+      "condition": "Damaged",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 1196507,
+      "condition": "Near Mint",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1203853,
+      "condition": "Lightly Played",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1211199,
+      "condition": "Moderately Played",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1218545,
+      "condition": "Heavily Played",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1225891,
+      "condition": "Damaged",
+      "variant": "Unlimited",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Uncommon",
+  "sealed": false,
+  "productName": "Erika's Weepinbell (48)",
+  "setId": 1441,
+  "setCode": "G1",
+  "productId": 85310,
+  "setName": "Gym Heroes",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 2960872,
+      "condition": "Near Mint",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2960873,
+      "condition": "Lightly Played",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2960874,
+      "condition": "Moderately Played",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2960875,
+      "condition": "Heavily Played",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2960876,
+      "condition": "Damaged",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 1191279,
+      "condition": "Near Mint",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1198625,
+      "condition": "Lightly Played",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1205971,
+      "condition": "Moderately Played",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1213317,
+      "condition": "Heavily Played",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1220663,
+      "condition": "Damaged",
+      "variant": "Unlimited",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

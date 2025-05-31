@@ -1,0 +1,106 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Holo Rare",
+  "sealed": false,
+  "productName": "Rapidash",
+  "setId": 1419,
+  "setCode": "RG",
+  "productId": 88581,
+  "setName": "FireRed & LeafGreen",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 1194550,
+      "condition": "Near Mint",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1201896,
+      "condition": "Lightly Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1209242,
+      "condition": "Moderately Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1216588,
+      "condition": "Heavily Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1223934,
+      "condition": "Damaged",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 2873177,
+      "condition": "Near Mint",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2873178,
+      "condition": "Lightly Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2873179,
+      "condition": "Moderately Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2873180,
+      "condition": "Heavily Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2873181,
+      "condition": "Damaged",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2873172,
+      "condition": "Near Mint",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2873173,
+      "condition": "Lightly Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2873174,
+      "condition": "Moderately Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2873175,
+      "condition": "Heavily Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2873176,
+      "condition": "Damaged",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

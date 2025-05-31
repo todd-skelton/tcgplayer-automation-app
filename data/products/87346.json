@@ -1,0 +1,46 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Ultra Rare",
+  "sealed": false,
+  "productName": "Metagross ex",
+  "setId": 1416,
+  "setCode": "HL",
+  "productId": 87346,
+  "setName": "Hidden Legends",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 2875894,
+      "condition": "Near Mint",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2875895,
+      "condition": "Lightly Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2875896,
+      "condition": "Moderately Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2875897,
+      "condition": "Heavily Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2875898,
+      "condition": "Damaged",
+      "variant": "Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

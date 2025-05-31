@@ -1,0 +1,46 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Promo",
+  "sealed": false,
+  "productName": "Kyurem - BW44",
+  "setId": 1407,
+  "setCode": "PR",
+  "productId": 86562,
+  "setName": "Black and White Promos",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 2830039,
+      "condition": "Near Mint",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2830040,
+      "condition": "Lightly Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2830041,
+      "condition": "Moderately Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2830042,
+      "condition": "Heavily Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2830043,
+      "condition": "Damaged",
+      "variant": "Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

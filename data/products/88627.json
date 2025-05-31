@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Holo Rare",
+  "sealed": false,
+  "productName": "Rayquaza",
+  "setId": 1417,
+  "setCode": "LA",
+  "productId": 88627,
+  "setName": "Legends Awakened",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 1257607,
+      "condition": "Near Mint",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1257608,
+      "condition": "Lightly Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1257609,
+      "condition": "Moderately Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1257610,
+      "condition": "Heavily Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1257611,
+      "condition": "Damaged",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1257602,
+      "condition": "Near Mint",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1257603,
+      "condition": "Lightly Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1257604,
+      "condition": "Moderately Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1257605,
+      "condition": "Heavily Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1257606,
+      "condition": "Damaged",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

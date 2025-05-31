@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Holo Rare",
+  "sealed": false,
+  "productName": "Miracle Energy",
+  "setId": 1444,
+  "setCode": "N4",
+  "productId": 87496,
+  "setName": "Neo Destiny",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 5148901,
+      "condition": "Near Mint",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 5148902,
+      "condition": "Lightly Played",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 5148903,
+      "condition": "Moderately Played",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 5148904,
+      "condition": "Heavily Played",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 5148905,
+      "condition": "Damaged",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 5148896,
+      "condition": "Near Mint",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 5148897,
+      "condition": "Lightly Played",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 5148898,
+      "condition": "Moderately Played",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 5148899,
+      "condition": "Heavily Played",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 5148900,
+      "condition": "Damaged",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

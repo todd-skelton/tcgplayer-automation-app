@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Holo Rare",
+  "sealed": false,
+  "productName": "Scizor",
+  "setId": 1403,
+  "setCode": "UD",
+  "productId": 88963,
+  "setName": "Undaunted",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 1242465,
+      "condition": "Near Mint",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1242466,
+      "condition": "Lightly Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1242467,
+      "condition": "Moderately Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1242468,
+      "condition": "Heavily Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1242469,
+      "condition": "Damaged",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1242460,
+      "condition": "Near Mint",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1242461,
+      "condition": "Lightly Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1242462,
+      "condition": "Moderately Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1242463,
+      "condition": "Heavily Played",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1242464,
+      "condition": "Damaged",
+      "variant": "Reverse Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

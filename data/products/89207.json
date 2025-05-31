@@ -1,0 +1,46 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Secret Rare",
+  "sealed": false,
+  "productName": "Sigilyph",
+  "setId": 1382,
+  "setCode": "PLF",
+  "productId": 89207,
+  "setName": "Plasma Freeze",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 1234107,
+      "condition": "Near Mint",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1234108,
+      "condition": "Lightly Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1234109,
+      "condition": "Moderately Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1234110,
+      "condition": "Heavily Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 1234111,
+      "condition": "Damaged",
+      "variant": "Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

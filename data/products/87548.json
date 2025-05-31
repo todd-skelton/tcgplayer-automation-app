@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Common",
+  "sealed": false,
+  "productName": "Misty's Staryu",
+  "setId": 1440,
+  "setCode": "G2",
+  "productId": 87548,
+  "setName": "Gym Challenge",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 2958827,
+      "condition": "Near Mint",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2958828,
+      "condition": "Lightly Played",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2958829,
+      "condition": "Moderately Played",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2958830,
+      "condition": "Heavily Played",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 2958831,
+      "condition": "Damaged",
+      "variant": "1st Edition",
+      "language": "English"
+    },
+    {
+      "sku": 1193517,
+      "condition": "Near Mint",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1200863,
+      "condition": "Lightly Played",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1208209,
+      "condition": "Moderately Played",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1215555,
+      "condition": "Heavily Played",
+      "variant": "Unlimited",
+      "language": "English"
+    },
+    {
+      "sku": 1222901,
+      "condition": "Damaged",
+      "variant": "Unlimited",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

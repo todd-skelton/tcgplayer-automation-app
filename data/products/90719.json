@@ -1,0 +1,46 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Secret Rare",
+  "sealed": false,
+  "productName": "Zapdos (150)",
+  "setId": 1384,
+  "setCode": "SV",
+  "productId": 90719,
+  "setName": "Supreme Victors",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 2734573,
+      "condition": "Near Mint",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2734574,
+      "condition": "Lightly Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2734575,
+      "condition": "Moderately Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2734576,
+      "condition": "Heavily Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2734577,
+      "condition": "Damaged",
+      "variant": "Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

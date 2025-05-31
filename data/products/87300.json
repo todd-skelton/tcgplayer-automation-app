@@ -1,0 +1,46 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Promo",
+  "sealed": false,
+  "productName": "Meloetta - BW68",
+  "setId": 1407,
+  "setCode": "PR",
+  "productId": 87300,
+  "setName": "Black and White Promos",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 1193269,
+      "condition": "Near Mint",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1200615,
+      "condition": "Lightly Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1207961,
+      "condition": "Moderately Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1215307,
+      "condition": "Heavily Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 1222653,
+      "condition": "Damaged",
+      "variant": "Normal",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

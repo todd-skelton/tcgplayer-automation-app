@@ -1,0 +1,46 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Ultra Rare",
+  "sealed": false,
+  "productName": "Magcargo ex",
+  "setId": 1376,
+  "setCode": "DR",
+  "productId": 87019,
+  "setName": "Dragon",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 2876954,
+      "condition": "Near Mint",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2876955,
+      "condition": "Lightly Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2876956,
+      "condition": "Moderately Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2876957,
+      "condition": "Heavily Played",
+      "variant": "Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2876958,
+      "condition": "Damaged",
+      "variant": "Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

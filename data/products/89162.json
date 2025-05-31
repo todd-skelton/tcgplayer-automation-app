@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Secret Rare",
+  "sealed": false,
+  "productName": "Shining Celebi",
+  "setId": 1444,
+  "setCode": "N4",
+  "productId": 89162,
+  "setName": "Neo Destiny",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 2897597,
+      "condition": "Near Mint",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897598,
+      "condition": "Lightly Played",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897599,
+      "condition": "Moderately Played",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897600,
+      "condition": "Heavily Played",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897601,
+      "condition": "Damaged",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897592,
+      "condition": "Near Mint",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897593,
+      "condition": "Lightly Played",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897594,
+      "condition": "Moderately Played",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897595,
+      "condition": "Heavily Played",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897596,
+      "condition": "Damaged",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

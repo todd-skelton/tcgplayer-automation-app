@@ -1,0 +1,46 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Promo",
+  "sealed": false,
+  "productName": "Tropical Beach - BW28 (Worlds 11) [Top 16]",
+  "setId": 1407,
+  "setCode": "PR",
+  "productId": 96870,
+  "setName": "Black and White Promos",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 4688557,
+      "condition": "Near Mint",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 4688558,
+      "condition": "Lightly Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 4688559,
+      "condition": "Moderately Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 4688560,
+      "condition": "Heavily Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 4688561,
+      "condition": "Damaged",
+      "variant": "Normal",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

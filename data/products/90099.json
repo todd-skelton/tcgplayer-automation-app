@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Holo Rare",
+  "sealed": false,
+  "productName": "Typhlosion (18)",
+  "setId": 1396,
+  "setCode": "N1",
+  "productId": 90099,
+  "setName": "Neo Genesis",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 2898687,
+      "condition": "Near Mint",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2898688,
+      "condition": "Lightly Played",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2898689,
+      "condition": "Moderately Played",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2898690,
+      "condition": "Heavily Played",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2898691,
+      "condition": "Damaged",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2898682,
+      "condition": "Near Mint",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2898683,
+      "condition": "Lightly Played",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2898684,
+      "condition": "Moderately Played",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2898685,
+      "condition": "Heavily Played",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2898686,
+      "condition": "Damaged",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

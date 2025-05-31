@@ -1,0 +1,76 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Holo Rare",
+  "sealed": false,
+  "productName": "Light Azumarill",
+  "setId": 1444,
+  "setCode": "N4",
+  "productId": 86735,
+  "setName": "Neo Destiny",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 2897397,
+      "condition": "Near Mint",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897398,
+      "condition": "Lightly Played",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897399,
+      "condition": "Moderately Played",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897400,
+      "condition": "Heavily Played",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897401,
+      "condition": "Damaged",
+      "variant": "1st Edition Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897392,
+      "condition": "Near Mint",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897393,
+      "condition": "Lightly Played",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897394,
+      "condition": "Moderately Played",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897395,
+      "condition": "Heavily Played",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    },
+    {
+      "sku": 2897396,
+      "condition": "Damaged",
+      "variant": "Unlimited Holofoil",
+      "language": "English"
+    }
+  ],
+  "sellerListable": true
+}

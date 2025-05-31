@@ -1,0 +1,45 @@
+{
+  "productTypeName": "Cards",
+  "rarityName": "Promo",
+  "sealed": false,
+  "productName": "Champions Festival - SWSH296 (World Championships 2022)",
+  "setId": 2545,
+  "setCode": "SWSD",
+  "productId": 575154,
+  "setName": "SWSH: Sword & Shield Promo Cards",
+  "productLineId": 3,
+  "productStatusId": 1,
+  "productLineName": "Pokemon",
+  "skus": [
+    {
+      "sku": 8163806,
+      "condition": "Near Mint",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 8163807,
+      "condition": "Lightly Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 8163808,
+      "condition": "Moderately Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 8163809,
+      "condition": "Heavily Played",
+      "variant": "Normal",
+      "language": "English"
+    },
+    {
+      "sku": 8163810,
+      "condition": "Damaged",
+      "variant": "Normal",
+      "language": "English"
+    }
+  ]
+}
