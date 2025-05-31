@@ -15,252 +15,282 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export async function action({ request }: LoaderFunctionArgs) {
-  // Dynamically import Node.js modules to avoid Vite SSR issues
-  const path = await import("path");
-  const fs = await import("fs/promises");
-
-  // Add file write limiter
-  const fileLimit = pLimit(10); // Limit to 10 concurrent file operations
-
   // Only handle fetchAllCategory3Data
   const formData = await request.formData();
   const actionType = formData.get("actionType");
+
   if (actionType === "fetchAllCategory3Data") {
+    // Dynamically import Node.js modules to avoid Vite SSR issues
+    const Datastore = (await import("nedb-promises")).default;
+    const pLimit = (await import("p-limit")).default;
+    const path = await import("path");
+
+    // Setup NeDB databases
+    const dataDir = path.resolve(process.cwd(), "data");
+    const categorySetsDb = Datastore.create({
+      filename: path.join(dataDir, "categorySets.db"),
+      autoload: true,
+    });
+    const setProductsDb = Datastore.create({
+      filename: path.join(dataDir, "setProducts.db"),
+      autoload: true,
+    });
+    const productsDb = Datastore.create({
+      filename: path.join(dataDir, "products.db"),
+      autoload: true,
+    });
+    const skusDb = Datastore.create({
+      filename: path.join(dataDir, "skus.db"),
+      autoload: true,
+    });
+
     try {
-      console.log("[fetchAllCategory3Data] Starting action");
-      // Use sets from data/category-sets/3.json only
+      console.log("[fetchAllCategory3Data] Starting action (NeDB)");
+      // Read sets from categorySetsDb (categoryId = 3)
       const categoryId = 3;
-      const categorySetsDir = path.resolve(process.cwd(), "data/category-sets");
-      const setProductsDir = path.resolve(process.cwd(), "data/set-products");
-      const productsDir = path.resolve(process.cwd(), "data/products");
-      const skusDir = path.resolve(process.cwd(), "data/skus");
-      await Promise.all([
-        fileLimit(() => fs.mkdir(categorySetsDir, { recursive: true })),
-        fileLimit(() => fs.mkdir(setProductsDir, { recursive: true })),
-        fileLimit(() => fs.mkdir(productsDir, { recursive: true })),
-        fileLimit(() => fs.mkdir(skusDir, { recursive: true })),
-      ]);
-      console.log("[fetchAllCategory3Data] Ensured data directories exist");
-      // Read sets from categorySetsDir/categoryId.json
-      const categorySetsFile = path.join(categorySetsDir, `${categoryId}.json`);
-      const sets: CategorySet[] = JSON.parse(
-        await fileLimit(() => fs.readFile(categorySetsFile, "utf-8"))
-      );
+      const sets: CategorySet[] = await categorySetsDb.find({ categoryId });
+      if (!sets.length) {
+        throw new Error(`No sets found in NeDB for categoryId ${categoryId}`);
+      }
       console.log(
-        `[fetchAllCategory3Data] Loaded ${sets.length} sets for category ${categoryId}`
+        `[fetchAllCategory3Data] Loaded ${sets.length} sets for category ${categoryId} (NeDB)`
       );
       let totalSetProducts = 0;
       let totalProducts = 0;
       let totalSkus = 0;
-      const networkLimit = pLimit(5); // Limit to 5 concurrent network requests
+      const networkLimit = pLimit(1); // Limit to 1 concurrent network requests
       await Promise.all(
         sets.map(async (set: CategorySet, setIdx) => {
-          const setId = set.setNameId;
-          const setProductsFile = path.join(setProductsDir, `${setId}.json`);
-          let products: SetProduct[] = [];
           try {
-            await fileLimit(() => fs.access(setProductsFile));
-            products = JSON.parse(
-              await fileLimit(() => fs.readFile(setProductsFile, "utf-8"))
-            );
-            console.log(
-              `[Set ${setIdx + 1}/$${
-                sets.length
-              }] Set products already exist for setId ${setId} ($${
-                products.length
-              } products)`
-            );
-          } catch {
-            // Fetch set cards
-            console.log(
-              `[Set ${setIdx + 1}/$${
-                sets.length
-              }] Fetching set cards for setId ${setId}`
-            );
-            // Limit getSetCards network call
-            const cardsResp = await networkLimit(() => getSetCards({ setId }));
-            const seen = new Set<number>();
-            products = [];
-            if (cardsResp.result) {
-              for (const card of cardsResp.result) {
-                if (seen.has(card.productID)) continue;
-                seen.add(card.productID);
-                products.push({
-                  setNameId: setId,
-                  productID: card.productID,
-                  game: card.game,
-                  number: card.number,
-                  productName: card.productName,
-                  rarity: card.rarity,
-                  set: card.set,
-                  setAbbrv: card.setAbbrv,
-                  type: card.type,
-                });
+            const setId = set.setNameId;
+            // Try to get set-products from NeDB
+            let products: SetProduct[] = await setProductsDb.find({
+              setNameId: setId,
+            });
+            if (products.length) {
+              console.log(
+                `[Set ${setIdx + 1}/$${
+                  sets.length
+                }] Set products already exist for setId ${setId} ($${
+                  products.length
+                } products)`
+              );
+            } else {
+              // Fetch set cards
+              console.log(
+                `[Set ${setIdx + 1}/$${
+                  sets.length
+                }] Fetching set cards for setId ${setId}`
+              );
+              try {
+                // Limit getSetCards network call
+                const cardsResp = await networkLimit(() =>
+                  getSetCards({ setId })
+                );
+                const seen = new Set<number>();
+                products = [];
+                if (cardsResp.result) {
+                  for (const card of cardsResp.result) {
+                    if (seen.has(card.productID)) continue;
+                    seen.add(card.productID);
+                    products.push({
+                      setNameId: setId,
+                      productID: card.productID,
+                      game: card.game,
+                      number: card.number,
+                      productName: card.productName,
+                      rarity: card.rarity,
+                      set: card.set,
+                      setAbbrv: card.setAbbrv,
+                      type: card.type,
+                    });
+                  }
+                }
+                // Insert all set-products into NeDB
+                await Promise.all(
+                  products.map((prod) =>
+                    setProductsDb.update({ productID: prod.productID }, prod, {
+                      upsert: true,
+                    })
+                  )
+                );
+                totalSetProducts++;
+                console.log(
+                  `[Set ${setIdx + 1}/$${sets.length}] Wrote $${
+                    products.length
+                  } set products for setId ${setId} (NeDB)`
+                );
+              } catch (setCardErr) {
+                console.error(
+                  `[Set ${setIdx + 1}/$${
+                    sets.length
+                  }] Error fetching set cards for setId ${setId}:`,
+                  setCardErr
+                );
+                return; // Skip to next set
               }
             }
-            await fileLimit(() =>
-              fs.writeFile(
-                setProductsFile,
-                JSON.stringify(products, null, 2),
-                "utf-8"
-              )
-            );
-            totalSetProducts++;
-            console.log(
-              `[Set ${setIdx + 1}/$${sets.length}] Wrote $${
-                products.length
-              } set products for setId ${setId}`
-            );
-          }
-          // For each product, fetch and save product details and SKUs (skip if exists)
-          await Promise.all(
-            products.map(async (product: SetProduct, prodIdx) => {
-              const productId = product.productID;
-              const productFile = path.join(productsDir, `${productId}.json`);
-              let details: {
-                productTypeName: string;
-                rarityName: string;
-                sealed: boolean;
-                productName: string;
-                setId: number;
-                setCode: string;
-                productId: number;
-                setName: string;
-                productLineId: number;
-                productStatusId: number;
-                productLineName: string;
-                skus: Sku[];
-                sellerListable?: boolean;
-              };
-              let needWrite = false;
-              try {
-                await fileLimit(() => fs.access(productFile));
-                details = JSON.parse(
-                  await fileLimit(() => fs.readFile(productFile, "utf-8"))
-                );
-                // Check if all SKUs exist
-                const skus: Sku[] = details.skus ?? [];
-                const missingSku = await Promise.any(
-                  skus.map(async (sku: Sku) => {
-                    try {
-                      await fileLimit(() =>
-                        fs.access(path.join(skusDir, `${sku.sku}.json`))
-                      );
-                      return false;
-                    } catch {
-                      return true;
+            // For each product, fetch and save product details and SKUs (skip if exists)
+            await Promise.all(
+              products.map(async (product: SetProduct, prodIdx) => {
+                try {
+                  const productId = product.productID;
+                  // Try to get product details from NeDB
+                  let details = (await productsDb.findOne({
+                    productId,
+                  })) as any;
+                  let needWrite = false;
+                  if (details && details.skus) {
+                    // Check if all SKUs exist
+                    const skus: Sku[] = details.skus ?? [];
+                    let missingSku = false;
+                    for (const sku of skus) {
+                      const skuDoc = (await skusDb.findOne({
+                        sku: sku.sku,
+                      })) as any;
+                      if (!skuDoc) {
+                        missingSku = true;
+                        break;
+                      }
                     }
-                  })
-                ).catch(() => false);
-                if (!skus.length || missingSku) {
-                  needWrite = true;
-                  console.log(
+                    if (!skus.length || missingSku) {
+                      needWrite = true;
+                      console.log(
+                        `[Product ${prodIdx + 1}/$${
+                          products.length
+                        }] Product ${productId} missing SKUs or details, will fetch (NeDB)`
+                      );
+                    } else {
+                      // All SKUs exist, skip
+                      return;
+                    }
+                  } else {
+                    needWrite = true;
+                    console.log(
+                      `[Product ${prodIdx + 1}/$${
+                        products.length
+                      }] Product ${productId} details not found, will fetch (NeDB)`
+                    );
+                  }
+                  if (needWrite) {
+                    try {
+                      // Limit getProductDetails network call
+                      const fetched = await networkLimit(() =>
+                        getProductDetails({ id: productId })
+                      );
+                      details = {
+                        productTypeName: fetched.productTypeName,
+                        rarityName: fetched.rarityName,
+                        sealed: fetched.sealed,
+                        productName: fetched.productName,
+                        setId: fetched.setId,
+                        setCode: fetched.setCode,
+                        productId: fetched.productId,
+                        setName: fetched.setName,
+                        productLineId: fetched.productLineId,
+                        productStatusId: fetched.productStatusId,
+                        productLineName: fetched.productLineName,
+                        skus: fetched.skus,
+                        sellerListable: fetched.sellerListable,
+                      };
+                      await productsDb.update(
+                        { productId: details.productId },
+                        details,
+                        { upsert: true }
+                      );
+                      totalProducts++;
+                      console.log(
+                        `[Product ${prodIdx + 1}/$${
+                          products.length
+                        }] Wrote product details for productId ${productId} with $${
+                          details.skus.length
+                        } SKUs (NeDB)`
+                      );
+                      // Save SKUs in parallel
+                      await Promise.all(
+                        (details.skus ?? []).map((sku: Sku, skuIdx: number) =>
+                          skusDb
+                            .update(
+                              { sku: sku.sku },
+                              {
+                                ...sku,
+                                productTypeName: details.productTypeName,
+                                rarityName: details.rarityName,
+                                sealed: details.sealed,
+                                productName: details.productName,
+                                setId: details.setId,
+                                setCode: details.setCode,
+                                productId: details.productId,
+                                setName: details.setName,
+                                sellerListable: details.sellerListable,
+                                productLineId: details.productLineId,
+                                productStatusId: details.productStatusId,
+                                productLineName: details.productLineName,
+                              },
+                              { upsert: true }
+                            )
+                            .then(() => {
+                              totalSkus++;
+                              console.log(
+                                `[SKU ${skuIdx + 1}/$${
+                                  details.skus.length
+                                }] Wrote SKU ${
+                                  sku.sku
+                                } for productId ${productId} (NeDB)`
+                              );
+                            })
+                            .catch((skuErr) => {
+                              console.error(
+                                `[SKU ${skuIdx + 1}/$${
+                                  details.skus.length
+                                }] Error writing SKU ${
+                                  sku.sku
+                                } for productId ${productId} (NeDB):`,
+                                skuErr
+                              );
+                            })
+                        )
+                      );
+                    } catch (prodDetailsErr) {
+                      console.error(
+                        `[Product ${prodIdx + 1}/$${
+                          products.length
+                        }] Error fetching/writing product details for productId ${productId} (NeDB):`,
+                        prodDetailsErr
+                      );
+                    }
+                  }
+                } catch (productErr) {
+                  console.error(
                     `[Product ${prodIdx + 1}/$${
                       products.length
-                    }] Product ${productId} missing SKUs or details, will fetch`
+                    }] Error processing productId ${product.productID} (NeDB):`,
+                    productErr
                   );
-                } else {
-                  // All SKUs exist, skip
-                  return;
                 }
-              } catch {
-                needWrite = true;
-                console.log(
-                  `[Product ${prodIdx + 1}/$${
-                    products.length
-                  }] Product ${productId} details not found, will fetch`
-                );
-              }
-              if (needWrite) {
-                // Limit getProductDetails network call
-                const fetched = await networkLimit(() =>
-                  getProductDetails({ id: productId })
-                );
-                details = {
-                  productTypeName: fetched.productTypeName,
-                  rarityName: fetched.rarityName,
-                  sealed: fetched.sealed,
-                  productName: fetched.productName,
-                  setId: fetched.setId,
-                  setCode: fetched.setCode,
-                  productId: fetched.productId,
-                  setName: fetched.setName,
-                  productLineId: fetched.productLineId,
-                  productStatusId: fetched.productStatusId,
-                  productLineName: fetched.productLineName,
-                  skus: fetched.skus,
-                  sellerListable: fetched.sellerListable,
-                };
-                await fileLimit(() =>
-                  fs.writeFile(
-                    productFile,
-                    JSON.stringify(details, null, 2),
-                    "utf-8"
-                  )
-                );
-                totalProducts++;
-                console.log(
-                  `[Product ${prodIdx + 1}/$${
-                    products.length
-                  }] Wrote product details for productId ${productId} with $${
-                    details.skus.length
-                  } SKUs`
-                );
-                // Save SKUs in parallel
-                await Promise.all(
-                  details.skus.map((sku: Sku, skuIdx) =>
-                    fileLimit(() =>
-                      fs
-                        .writeFile(
-                          path.join(skusDir, `${sku.sku}.json`),
-                          JSON.stringify(
-                            {
-                              ...sku,
-                              productTypeName: details.productTypeName,
-                              rarityName: details.rarityName,
-                              sealed: details.sealed,
-                              productName: details.productName,
-                              setId: details.setId,
-                              setCode: details.setCode,
-                              productId: details.productId,
-                              setName: details.setName,
-                              sellerListable: details.sellerListable,
-                              productLineId: details.productLineId,
-                              productStatusId: details.productStatusId,
-                              productLineName: details.productLineName,
-                            },
-                            null,
-                            2
-                          ),
-                          "utf-8"
-                        )
-                        .then(() => {
-                          totalSkus++;
-                          console.log(
-                            `[SKU ${skuIdx + 1}/$${
-                              details.skus.length
-                            }] Wrote SKU ${sku.sku} for productId ${productId}`
-                          );
-                        })
-                    )
-                  )
-                );
-              }
-            })
-          );
+              })
+            );
+          } catch (setErr) {
+            console.error(
+              `[Set ${setIdx + 1}/$${sets.length}] Error processing setId ${
+                set.setNameId
+              } (NeDB):`,
+              setErr
+            );
+          }
         })
       );
       console.log(
-        `[fetchAllCategory3Data] Done. New set-products: ${totalSetProducts}, new products: ${totalProducts}, new skus: ${totalSkus}`
+        `[fetchAllCategory3Data] Done. New set-products: ${totalSetProducts}, new products: ${totalProducts}, new skus: ${totalSkus} (NeDB)`
       );
       return data(
         {
-          message: `Fetched and verified all sets, products, and skus for category 3 using category-sets. New set-products: ${totalSetProducts}, new products: ${totalProducts}, new skus: ${totalSkus}.`,
+          message: `Fetched and verified all sets, products, and skus for category 3 using NeDB. New set-products: ${totalSetProducts}, new products: ${totalProducts}, new skus: ${totalSkus}.`,
         },
         { status: 200 }
       );
     } catch (error) {
-      console.error("[fetchAllCategory3Data] Error:", error);
+      console.error("[fetchAllCategory3Data] Error (NeDB):", error);
       return data({ error: String(error) }, { status: 500 });
     }
   }
