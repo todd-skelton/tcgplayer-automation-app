@@ -6,6 +6,9 @@ import { type CategorySet } from "~/data-types/categorySet";
 import { getProductDetails } from "~/tcgplayer/get-product-details";
 import type { Sku } from "~/tcgplayer/get-product-details";
 import pLimit from "p-limit";
+import path from "path";
+import Datastore from "nedb-promises";
+import { getCatalogSetNames } from "~/tcgplayer/get-catalog-set-names";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -20,11 +23,7 @@ export async function action({ request }: LoaderFunctionArgs) {
   const actionType = formData.get("actionType");
 
   if (actionType === "fetchAllCategory3Data") {
-    // Dynamically import Node.js modules to avoid Vite SSR issues
-    const Datastore = (await import("nedb-promises")).default;
-    const pLimit = (await import("p-limit")).default;
-    const path = await import("path");
-
+    console.log("[fetchAllCategory3Data] Starting action (NeDB)");
     // Setup NeDB databases
     const dataDir = path.resolve(process.cwd(), "data");
     const categorySetsDb = Datastore.create({
@@ -50,7 +49,30 @@ export async function action({ request }: LoaderFunctionArgs) {
       const categoryId = 3;
       const sets: CategorySet[] = await categorySetsDb.find({ categoryId });
       if (!sets.length) {
-        throw new Error(`No sets found in NeDB for categoryId ${categoryId}`);
+        // If no sets found, fetch from network and insert
+        console.log(
+          `[fetchAllCategory3Data] No sets found in NeDB for categoryId ${categoryId}, calling getCatalogSetNames`
+        );
+        const fetchedSetsResp = await getCatalogSetNames({ categoryId });
+        const fetchedSets = fetchedSetsResp.results;
+        if (!fetchedSets || !fetchedSets.length) {
+          throw new Error(
+            `No sets found from getCatalogSetNames for categoryId ${categoryId}`
+          );
+        }
+        // Insert fetched sets into NeDB
+        await Promise.all(
+          fetchedSets.map((set: CategorySet) =>
+            categorySetsDb.update({ setNameId: set.setNameId }, set, {
+              upsert: true,
+            })
+          )
+        );
+        console.log(
+          `[fetchAllCategory3Data] Inserted ${fetchedSets.length} sets for category ${categoryId} from getCatalogSetNames`
+        );
+        // Re-query from NeDB
+        sets.splice(0, sets.length, ...fetchedSets);
       }
       console.log(
         `[fetchAllCategory3Data] Loaded ${sets.length} sets for category ${categoryId} (NeDB)`
@@ -58,7 +80,7 @@ export async function action({ request }: LoaderFunctionArgs) {
       let totalSetProducts = 0;
       let totalProducts = 0;
       let totalSkus = 0;
-      const networkLimit = pLimit(1); // Limit to 1 concurrent network requests
+      const networkLimit = pLimit(5); // Limit to 1 concurrent network requests
       await Promise.all(
         sets.map(async (set: CategorySet, setIdx) => {
           try {
@@ -84,9 +106,16 @@ export async function action({ request }: LoaderFunctionArgs) {
               );
               try {
                 // Limit getSetCards network call
-                const cardsResp = await networkLimit(() =>
-                  getSetCards({ setId })
-                );
+                const cardsResp = await networkLimit(async () => {
+                  await delay(1000);
+                  console.log(
+                    `[Set ${setIdx + 1}/$${
+                      sets.length
+                    }] Calling getSetCards for setId ${setId}`
+                  );
+                  const resp = await getSetCards({ setId });
+                  return resp;
+                });
                 const seen = new Set<number>();
                 products = [];
                 if (cardsResp.result) {
@@ -131,145 +160,150 @@ export async function action({ request }: LoaderFunctionArgs) {
               }
             }
             // For each product, fetch and save product details and SKUs (skip if exists)
-            await Promise.all(
-              products.map(async (product: SetProduct, prodIdx) => {
-                try {
-                  const productId = product.productID;
-                  // Try to get product details from NeDB
-                  let details = (await productsDb.findOne({
-                    productId,
-                  })) as any;
-                  let needWrite = false;
-                  if (details && details.skus) {
-                    // Check if all SKUs exist
-                    const skus: Sku[] = details.skus ?? [];
-                    let missingSku = false;
-                    for (const sku of skus) {
-                      const skuDoc = (await skusDb.findOne({
-                        sku: sku.sku,
-                      })) as any;
-                      if (!skuDoc) {
-                        missingSku = true;
-                        break;
-                      }
+            for (let prodIdx = 0; prodIdx < products.length; prodIdx++) {
+              const product = products[prodIdx];
+              try {
+                const productId = product.productID;
+                // Try to get product details from NeDB
+                let details = (await productsDb.findOne({
+                  productId,
+                })) as any;
+                let needWrite = false;
+                if (details && details.skus) {
+                  // Check if all SKUs exist
+                  const skus: Sku[] = details.skus ?? [];
+                  let missingSku = false;
+                  for (const sku of skus) {
+                    const skuDoc = (await skusDb.findOne({
+                      sku: sku.sku,
+                    })) as any;
+                    if (!skuDoc) {
+                      missingSku = true;
+                      break;
                     }
-                    if (!skus.length || missingSku) {
-                      needWrite = true;
-                      console.log(
-                        `[Product ${prodIdx + 1}/$${
-                          products.length
-                        }] Product ${productId} missing SKUs or details, will fetch (NeDB)`
-                      );
-                    } else {
-                      // All SKUs exist, skip
-                      return;
-                    }
-                  } else {
+                  }
+                  if (!skus.length || missingSku) {
                     needWrite = true;
                     console.log(
                       `[Product ${prodIdx + 1}/$${
                         products.length
-                      }] Product ${productId} details not found, will fetch (NeDB)`
+                      }] Product ${productId} missing SKUs or details, will fetch (NeDB)`
                     );
+                  } else {
+                    // All SKUs exist, skip
+                    continue;
                   }
-                  if (needWrite) {
-                    try {
-                      // Limit getProductDetails network call
-                      const fetched = await networkLimit(() =>
-                        getProductDetails({ id: productId })
-                      );
-                      details = {
-                        productTypeName: fetched.productTypeName,
-                        rarityName: fetched.rarityName,
-                        sealed: fetched.sealed,
-                        productName: fetched.productName,
-                        setId: fetched.setId,
-                        setCode: fetched.setCode,
-                        productId: fetched.productId,
-                        setName: fetched.setName,
-                        productLineId: fetched.productLineId,
-                        productStatusId: fetched.productStatusId,
-                        productLineName: fetched.productLineName,
-                        skus: fetched.skus,
-                        sellerListable: fetched.sellerListable,
-                      };
-                      await productsDb.update(
-                        { productId: details.productId },
-                        details,
-                        { upsert: true }
-                      );
-                      totalProducts++;
+                } else {
+                  needWrite = true;
+                  console.log(
+                    `[Product ${prodIdx + 1}/$${
+                      products.length
+                    }] Product ${productId} details not found, will fetch (NeDB)`
+                  );
+                }
+                if (needWrite) {
+                  try {
+                    const fetched = await networkLimit(async () => {
+                      await delay(1000);
                       console.log(
                         `[Product ${prodIdx + 1}/$${
                           products.length
-                        }] Wrote product details for productId ${productId} with $${
-                          details.skus.length
-                        } SKUs (NeDB)`
+                        }] Calling getProductDetails for productId ${productId}`
                       );
-                      // Save SKUs in parallel
-                      await Promise.all(
-                        (details.skus ?? []).map((sku: Sku, skuIdx: number) =>
-                          skusDb
-                            .update(
-                              { sku: sku.sku },
-                              {
-                                ...sku,
-                                productTypeName: details.productTypeName,
-                                rarityName: details.rarityName,
-                                sealed: details.sealed,
-                                productName: details.productName,
-                                setId: details.setId,
-                                setCode: details.setCode,
-                                productId: details.productId,
-                                setName: details.setName,
-                                sellerListable: details.sellerListable,
-                                productLineId: details.productLineId,
-                                productStatusId: details.productStatusId,
-                                productLineName: details.productLineName,
-                              },
-                              { upsert: true }
-                            )
-                            .then(() => {
-                              totalSkus++;
-                              console.log(
-                                `[SKU ${skuIdx + 1}/$${
-                                  details.skus.length
-                                }] Wrote SKU ${
-                                  sku.sku
-                                } for productId ${productId} (NeDB)`
-                              );
-                            })
-                            .catch((skuErr) => {
-                              console.error(
-                                `[SKU ${skuIdx + 1}/$${
-                                  details.skus.length
-                                }] Error writing SKU ${
-                                  sku.sku
-                                } for productId ${productId} (NeDB):`,
-                                skuErr
-                              );
-                            })
-                        )
-                      );
-                    } catch (prodDetailsErr) {
-                      console.error(
-                        `[Product ${prodIdx + 1}/$${
-                          products.length
-                        }] Error fetching/writing product details for productId ${productId} (NeDB):`,
-                        prodDetailsErr
-                      );
-                    }
+                      const resp = await getProductDetails({ id: productId });
+                      return resp;
+                    });
+                    details = {
+                      productTypeName: fetched.productTypeName,
+                      rarityName: fetched.rarityName,
+                      sealed: fetched.sealed,
+                      productName: fetched.productName,
+                      setId: fetched.setId,
+                      setCode: fetched.setCode,
+                      productId: fetched.productId,
+                      setName: fetched.setName,
+                      productLineId: fetched.productLineId,
+                      productStatusId: fetched.productStatusId,
+                      productLineName: fetched.productLineName,
+                      skus: fetched.skus,
+                      sellerListable: fetched.sellerListable,
+                    };
+                    await productsDb.update(
+                      { productId: details.productId },
+                      details,
+                      { upsert: true }
+                    );
+                    totalProducts++;
+                    console.log(
+                      `[Product ${prodIdx + 1}/$${
+                        products.length
+                      }] Wrote product details for productId ${productId} with $${
+                        details.skus.length
+                      } SKUs (NeDB)`
+                    );
+                    // Save SKUs in parallel
+                    await Promise.all(
+                      (details.skus ?? []).map((sku: Sku, skuIdx: number) =>
+                        skusDb
+                          .update(
+                            { sku: sku.sku },
+                            {
+                              ...sku,
+                              productTypeName: details.productTypeName,
+                              rarityName: details.rarityName,
+                              sealed: details.sealed,
+                              productName: details.productName,
+                              setId: details.setId,
+                              setCode: details.setCode,
+                              productId: details.productId,
+                              setName: details.setName,
+                              sellerListable: details.sellerListable,
+                              productLineId: details.productLineId,
+                              productStatusId: details.productStatusId,
+                              productLineName: details.productLineName,
+                            },
+                            { upsert: true }
+                          )
+                          .then(() => {
+                            totalSkus++;
+                            console.log(
+                              `[SKU ${skuIdx + 1}/$${
+                                details.skus.length
+                              }] Wrote SKU ${
+                                sku.sku
+                              } for productId ${productId} (NeDB)`
+                            );
+                          })
+                          .catch((skuErr) => {
+                            console.error(
+                              `[SKU ${skuIdx + 1}/$${
+                                details.skus.length
+                              }] Error writing SKU ${
+                                sku.sku
+                              } for productId ${productId} (NeDB):`,
+                              skuErr
+                            );
+                          })
+                      )
+                    );
+                  } catch (prodDetailsErr) {
+                    console.error(
+                      `[Product ${prodIdx + 1}/$${
+                        products.length
+                      }] Error fetching/writing product details for productId ${productId} (NeDB):`,
+                      prodDetailsErr
+                    );
                   }
-                } catch (productErr) {
-                  console.error(
-                    `[Product ${prodIdx + 1}/$${
-                      products.length
-                    }] Error processing productId ${product.productID} (NeDB):`,
-                    productErr
-                  );
                 }
-              })
-            );
+              } catch (productErr) {
+                console.error(
+                  `[Product ${prodIdx + 1}/$${
+                    products.length
+                  }] Error processing productId ${product.productID} (NeDB):`,
+                  productErr
+                );
+              }
+            }
           } catch (setErr) {
             console.error(
               `[Set ${setIdx + 1}/$${sets.length}] Error processing setId ${
@@ -295,6 +329,11 @@ export async function action({ request }: LoaderFunctionArgs) {
     }
   }
   return data({ error: "Unknown action" }, { status: 400 });
+}
+
+// Utility function to delay for a given ms
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export default function Home() {
