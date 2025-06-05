@@ -6,6 +6,9 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
+import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { Box, Paper, Typography, Alert } from "@mui/material";
 
 import type { Route } from "./+types/root";
 
@@ -23,6 +26,14 @@ export const links: Route.LinksFunction = () => [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  // Detect system dark mode
+  const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
+  const theme = createTheme({
+    palette: {
+      mode: prefersDarkMode ? "dark" : "light",
+    },
+  });
+
   return (
     <html lang="en">
       <head>
@@ -32,9 +43,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        {children}
-        <ScrollRestoration />
-        <Scripts />
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          {children}
+          <ScrollRestoration />
+          <Scripts />
+        </ThemeProvider>
       </body>
     </html>
   );
@@ -61,14 +75,35 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
 
   return (
-    <main>
-      <h1>{message}</h1>
-      <p>{details}</p>
-      {stack && (
-        <pre>
-          <code>{stack}</code>
-        </pre>
-      )}
-    </main>
+    <Box
+      sx={{
+        p: 4,
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "60vh",
+      }}
+    >
+      <Paper sx={{ maxWidth: 600, width: "100%", p: 4 }} elevation={4}>
+        <Typography variant="h3" color="error" gutterBottom>
+          {message}
+        </Typography>
+        <Typography variant="body1" gutterBottom>
+          {details}
+        </Typography>
+        {stack && (
+          <Alert
+            severity="info"
+            sx={{
+              mt: 2,
+              whiteSpace: "pre-wrap",
+              fontFamily: "monospace",
+            }}
+          >
+            <code>{stack}</code>
+          </Alert>
+        )}
+      </Paper>
+    </Box>
   );
 }

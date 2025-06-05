@@ -1,6 +1,6 @@
 export type SetProduct = {
   setNameId: number;
-  productID: number;
+  productId: number;
   game: string;
   number: string;
   productName: string;

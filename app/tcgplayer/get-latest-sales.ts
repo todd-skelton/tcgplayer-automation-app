@@ -1,6 +1,7 @@
 import { post } from "~/httpClient";
 import type { Condition } from "./types/Condition";
 import type { Language } from "./types/Language";
+import type { Variant } from "./types/Variant";
 
 export enum ConditionId {
   NearMint = 1,
@@ -19,8 +20,6 @@ export enum LanguageId {
 export enum VariantId {
   Holofoil = 11,
 }
-
-export type Variant = "Holofoil";
 
 export type ListingType = "ListingWithoutPhotos" | "ListingWithPhotos" | "All";
 

@@ -1,14 +1,20 @@
 import type { Route } from "./+types/home";
 import { data, useFetcher, type LoaderFunctionArgs } from "react-router";
-import { getSetCards } from "~/tcgplayer/get-set-cards";
+import { getAllProducts } from "~/tcgplayer/get-search-results";
 import { type SetProduct } from "~/data-types/setProduct";
 import { type CategorySet } from "~/data-types/categorySet";
 import { getProductDetails } from "~/tcgplayer/get-product-details";
-import type { Sku } from "~/tcgplayer/get-product-details";
-import pLimit from "p-limit";
-import path from "path";
-import Datastore from "nedb-promises";
 import { getCatalogSetNames } from "~/tcgplayer/get-catalog-set-names";
+import type { Product } from "~/data-types/product";
+import {
+  categorySetsDb,
+  productsDb,
+  setProductsDb,
+  skusDb,
+} from "~/datastores";
+import type { Sku } from "~/data-types/sku";
+import { processWithConcurrency } from "~/processWithConcurrency";
+import { Button, Box, Typography, Paper, Alert } from "@mui/material";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -24,32 +30,12 @@ export async function action({ request }: LoaderFunctionArgs) {
 
   if (actionType === "fetchAllCategory3Data") {
     console.log("[fetchAllCategory3Data] Starting action (NeDB)");
-    // Setup NeDB databases
-    const dataDir = path.resolve(process.cwd(), "data");
-    const categorySetsDb = Datastore.create({
-      filename: path.join(dataDir, "categorySets.db"),
-      autoload: true,
-    });
-    const setProductsDb = Datastore.create({
-      filename: path.join(dataDir, "setProducts.db"),
-      autoload: true,
-    });
-    const productsDb = Datastore.create({
-      filename: path.join(dataDir, "products.db"),
-      autoload: true,
-    });
-    const skusDb = Datastore.create({
-      filename: path.join(dataDir, "skus.db"),
-      autoload: true,
-    });
-
     try {
-      console.log("[fetchAllCategory3Data] Starting action (NeDB)");
-      // Read sets from categorySetsDb (categoryId = 3)
-      const categoryId = 3;
-      const sets: CategorySet[] = await categorySetsDb.find({ categoryId });
+      // 1. CATEGORY SETS
+      const categoryId = 71;
+      const PRODUCT_LINE = "lorcana-tcg";
+      let sets: CategorySet[] = await categorySetsDb.find({ categoryId });
       if (!sets.length) {
-        // If no sets found, fetch from network and insert
         console.log(
           `[fetchAllCategory3Data] No sets found in NeDB for categoryId ${categoryId}, calling getCatalogSetNames`
         );
@@ -60,7 +46,6 @@ export async function action({ request }: LoaderFunctionArgs) {
             `No sets found from getCatalogSetNames for categoryId ${categoryId}`
           );
         }
-        // Insert fetched sets into NeDB
         await Promise.all(
           fetchedSets.map((set: CategorySet) =>
             categorySetsDb.update({ setNameId: set.setNameId }, set, {
@@ -68,258 +53,185 @@ export async function action({ request }: LoaderFunctionArgs) {
             })
           )
         );
+        sets = fetchedSets;
         console.log(
           `[fetchAllCategory3Data] Inserted ${fetchedSets.length} sets for category ${categoryId} from getCatalogSetNames`
         );
-        // Re-query from NeDB
-        sets.splice(0, sets.length, ...fetchedSets);
       }
       console.log(
         `[fetchAllCategory3Data] Loaded ${sets.length} sets for category ${categoryId} (NeDB)`
       );
-      let totalSetProducts = 0;
-      let totalProducts = 0;
-      let totalSkus = 0;
-      const networkLimit = pLimit(5); // Limit to 1 concurrent network requests
-      await Promise.all(
-        sets.map(async (set: CategorySet, setIdx) => {
+
+      // 2. SET PRODUCTS
+      let allSetProducts: SetProduct[] = [];
+      for (let setIdx = 0; setIdx < sets.length; setIdx++) {
+        const set = sets[setIdx];
+        let products: SetProduct[] = await setProductsDb.find({
+          setNameId: set.setNameId,
+        });
+        if (!products.length) {
           try {
-            const setId = set.setNameId;
-            // Try to get set-products from NeDB
-            let products: SetProduct[] = await setProductsDb.find({
-              setNameId: setId,
+            const productsResp = await getAllProducts({
+              size: 24,
+              filters: {
+                term: {
+                  productLineName: [PRODUCT_LINE],
+                  setName: [set.cleanSetName],
+                },
+              },
+              sort: { field: "product-sorting-name", order: "asc" },
             });
-            if (products.length) {
-              console.log(
-                `[Set ${setIdx + 1}/$${
-                  sets.length
-                }] Set products already exist for setId ${setId} ($${
-                  products.length
-                } products)`
-              );
-            } else {
-              // Fetch set cards
-              console.log(
-                `[Set ${setIdx + 1}/$${
-                  sets.length
-                }] Fetching set cards for setId ${setId}`
-              );
-              try {
-                // Limit getSetCards network call
-                const cardsResp = await networkLimit(async () => {
-                  await delay(1000);
-                  console.log(
-                    `[Set ${setIdx + 1}/$${
-                      sets.length
-                    }] Calling getSetCards for setId ${setId}`
-                  );
-                  const resp = await getSetCards({ setId });
-                  return resp;
-                });
-                const seen = new Set<number>();
-                products = [];
-                if (cardsResp.result) {
-                  for (const card of cardsResp.result) {
-                    if (seen.has(card.productID)) continue;
-                    seen.add(card.productID);
-                    products.push({
-                      setNameId: setId,
-                      productID: card.productID,
-                      game: card.game,
-                      number: card.number,
-                      productName: card.productName,
-                      rarity: card.rarity,
-                      set: card.set,
-                      setAbbrv: card.setAbbrv,
-                      type: card.type,
-                    });
-                  }
-                }
-                // Insert all set-products into NeDB
-                await Promise.all(
-                  products.map((prod) =>
-                    setProductsDb.update({ productID: prod.productID }, prod, {
-                      upsert: true,
-                    })
-                  )
-                );
-                totalSetProducts++;
-                console.log(
-                  `[Set ${setIdx + 1}/$${sets.length}] Wrote $${
-                    products.length
-                  } set products for setId ${setId} (NeDB)`
-                );
-              } catch (setCardErr) {
-                console.error(
-                  `[Set ${setIdx + 1}/$${
-                    sets.length
-                  }] Error fetching set cards for setId ${setId}:`,
-                  setCardErr
-                );
-                return; // Skip to next set
-              }
+            const seen = new Set<number>();
+            products = [];
+            for (const card of productsResp) {
+              if (seen.has(card.productId)) continue;
+              seen.add(card.productId);
+              products.push({
+                setNameId: set.setNameId,
+                productId: card.productId,
+                game: PRODUCT_LINE,
+                number: card.customAttributes?.number ?? "",
+                productName: card.productName,
+                rarity: card.rarityName,
+                set: card.setName,
+                setAbbrv: card.setUrlName,
+                type: card.customAttributes?.cardType?.join(", ") ?? "",
+              });
             }
-            // For each product, fetch and save product details and SKUs (skip if exists)
-            for (let prodIdx = 0; prodIdx < products.length; prodIdx++) {
-              const product = products[prodIdx];
-              try {
-                const productId = product.productID;
-                // Try to get product details from NeDB
-                let details = (await productsDb.findOne({
-                  productId,
-                })) as any;
-                let needWrite = false;
-                if (details && details.skus) {
-                  // Check if all SKUs exist
-                  const skus: Sku[] = details.skus ?? [];
-                  let missingSku = false;
-                  for (const sku of skus) {
-                    const skuDoc = (await skusDb.findOne({
-                      sku: sku.sku,
-                    })) as any;
-                    if (!skuDoc) {
-                      missingSku = true;
-                      break;
-                    }
-                  }
-                  if (!skus.length || missingSku) {
-                    needWrite = true;
-                    console.log(
-                      `[Product ${prodIdx + 1}/$${
-                        products.length
-                      }] Product ${productId} missing SKUs or details, will fetch (NeDB)`
-                    );
-                  } else {
-                    // All SKUs exist, skip
-                    continue;
-                  }
-                } else {
-                  needWrite = true;
-                  console.log(
-                    `[Product ${prodIdx + 1}/$${
-                      products.length
-                    }] Product ${productId} details not found, will fetch (NeDB)`
-                  );
-                }
-                if (needWrite) {
-                  try {
-                    const fetched = await networkLimit(async () => {
-                      await delay(1000);
-                      console.log(
-                        `[Product ${prodIdx + 1}/$${
-                          products.length
-                        }] Calling getProductDetails for productId ${productId}`
-                      );
-                      const resp = await getProductDetails({ id: productId });
-                      return resp;
-                    });
-                    details = {
-                      productTypeName: fetched.productTypeName,
-                      rarityName: fetched.rarityName,
-                      sealed: fetched.sealed,
-                      productName: fetched.productName,
-                      setId: fetched.setId,
-                      setCode: fetched.setCode,
-                      productId: fetched.productId,
-                      setName: fetched.setName,
-                      productLineId: fetched.productLineId,
-                      productStatusId: fetched.productStatusId,
-                      productLineName: fetched.productLineName,
-                      skus: fetched.skus,
-                      sellerListable: fetched.sellerListable,
-                    };
-                    await productsDb.update(
-                      { productId: details.productId },
-                      details,
-                      { upsert: true }
-                    );
-                    totalProducts++;
-                    console.log(
-                      `[Product ${prodIdx + 1}/$${
-                        products.length
-                      }] Wrote product details for productId ${productId} with $${
-                        details.skus.length
-                      } SKUs (NeDB)`
-                    );
-                    // Save SKUs in parallel
-                    await Promise.all(
-                      (details.skus ?? []).map((sku: Sku, skuIdx: number) =>
-                        skusDb
-                          .update(
-                            { sku: sku.sku },
-                            {
-                              ...sku,
-                              productTypeName: details.productTypeName,
-                              rarityName: details.rarityName,
-                              sealed: details.sealed,
-                              productName: details.productName,
-                              setId: details.setId,
-                              setCode: details.setCode,
-                              productId: details.productId,
-                              setName: details.setName,
-                              sellerListable: details.sellerListable,
-                              productLineId: details.productLineId,
-                              productStatusId: details.productStatusId,
-                              productLineName: details.productLineName,
-                            },
-                            { upsert: true }
-                          )
-                          .then(() => {
-                            totalSkus++;
-                            console.log(
-                              `[SKU ${skuIdx + 1}/$${
-                                details.skus.length
-                              }] Wrote SKU ${
-                                sku.sku
-                              } for productId ${productId} (NeDB)`
-                            );
-                          })
-                          .catch((skuErr) => {
-                            console.error(
-                              `[SKU ${skuIdx + 1}/$${
-                                details.skus.length
-                              }] Error writing SKU ${
-                                sku.sku
-                              } for productId ${productId} (NeDB):`,
-                              skuErr
-                            );
-                          })
-                      )
-                    );
-                  } catch (prodDetailsErr) {
-                    console.error(
-                      `[Product ${prodIdx + 1}/$${
-                        products.length
-                      }] Error fetching/writing product details for productId ${productId} (NeDB):`,
-                      prodDetailsErr
-                    );
-                  }
-                }
-              } catch (productErr) {
-                console.error(
-                  `[Product ${prodIdx + 1}/$${
-                    products.length
-                  }] Error processing productId ${product.productID} (NeDB):`,
-                  productErr
-                );
-              }
-            }
-          } catch (setErr) {
+            await Promise.all(
+              products.map((prod) =>
+                setProductsDb.update({ productID: prod.productId }, prod, {
+                  upsert: true,
+                })
+              )
+            );
+            console.log(
+              `[Set ${setIdx + 1}/$${sets.length}] Wrote ${
+                products.length
+              } set products for setId ${set.setNameId} (NeDB)`
+            );
+          } catch (err) {
             console.error(
-              `[Set ${setIdx + 1}/$${sets.length}] Error processing setId ${
-                set.setNameId
-              } (NeDB):`,
-              setErr
+              `[Set ${setIdx + 1}/$${
+                sets.length
+              }] Error fetching set products for setId ${set.setNameId}:`,
+              err
+            );
+            continue;
+          }
+        } else {
+          console.log(
+            `[Set ${setIdx + 1}/$${
+              sets.length
+            }] Set products already exist for setId ${set.setNameId} (${
+              products.length
+            } products)`
+          );
+        }
+        allSetProducts.push(...products);
+      }
+
+      // 3. PRODUCTS
+      let productCount = 0;
+      let totalSkus = 0;
+      const PRODUCT_CONCURRENCY = 100; // Configurable concurrency limit
+      let prodIdx = 0;
+
+      // Await processing of all products with concurrency
+      for await (const _ of processWithConcurrency(
+        allSetProducts,
+        PRODUCT_CONCURRENCY,
+        async (product) => {
+          prodIdx += 1;
+          const productId = product.productId;
+          let details: Product | null = await productsDb.findOne<Product>({
+            productId,
+          });
+          if (!details || !details.skus || !details.skus.length) {
+            try {
+              const fetched = await getProductDetails({ id: productId });
+              details = {
+                productTypeName: fetched.productTypeName,
+                rarityName: fetched.rarityName,
+                sealed: fetched.sealed,
+                productName: fetched.productName,
+                setId: fetched.setId,
+                setCode: fetched.setCode,
+                productId: fetched.productId,
+                setName: fetched.setName,
+                productLineId: fetched.productLineId,
+                productStatusId: fetched.productStatusId,
+                productLineName: fetched.productLineName,
+                skus: fetched.skus,
+              };
+              await productsDb.update(
+                { productId: details.productId },
+                details,
+                {
+                  upsert: true,
+                }
+              );
+              console.log(
+                `[Product ${prodIdx}/$${allSetProducts.length}] Wrote product details for productId ${productId} with ${details.skus.length} SKUs (NeDB)`
+              );
+            } catch (err) {
+              console.error(
+                `[Product ${prodIdx}/$${allSetProducts.length}] Error fetching/writing product details for productId ${productId} (NeDB):`,
+                err
+              );
+              return;
+            }
+          } else {
+            console.log(
+              `[Product ${prodIdx}/$${allSetProducts.length}] Product details already exist for productId ${productId} with ${details.skus.length} SKUs (NeDB)`
             );
           }
-        })
-      );
-      console.log(
-        `[fetchAllCategory3Data] Done. New set-products: ${totalSetProducts}, new products: ${totalProducts}, new skus: ${totalSkus} (NeDB)`
-      );
+          productCount++;
+          // Increment totalSkus by the number of SKUs for this product
+          totalSkus += details.skus.length;
+          console.log(
+            `[Product ${prodIdx}/$${allSetProducts.length}] Processing productId ${productId} (${details.productName}) SKUs: ${details.skus.length})`
+          );
+          const skusToUpsert: Sku[] = details.skus.map((sku) => ({
+            ...sku,
+            productTypeName: details.productTypeName,
+            rarityName: details.rarityName,
+            sealed: details.sealed,
+            productName: details.productName,
+            setId: details.setId,
+            setCode: details.setCode,
+            productId: details.productId,
+            setName: details.setName,
+            productLineId: details.productLineId,
+            productStatusId: details.productStatusId,
+            productLineName: details.productLineName,
+          }));
+          const skuIds = skusToUpsert.map((sku) => sku.sku);
+          const existingSkus = await skusDb.find<Sku>({ sku: { $in: skuIds } });
+          const existingSkuSet = new Set(existingSkus.map((s) => s.sku));
+          const skusToInsert = skusToUpsert.filter(
+            (sku) => !existingSkuSet.has(sku.sku)
+          );
+          if (skusToInsert.length > 0) {
+            try {
+              await skusDb.insert(skusToInsert);
+            } catch (err) {
+              console.error(`Error inserting SKUs:`, err);
+            }
+          }
+          console.log(
+            `[Product ${prodIdx + 1}/$${allSetProducts.length}] Upserted ${
+              skusToUpsert.length
+            } SKUs for productId ${details.productId} (NeDB)`
+          );
+        }
+      )) {
+        // No-op, just ensure all are processed
+      }
+
       return data(
         {
-          message: `Fetched and verified all sets, products, and skus for category 3 using NeDB. New set-products: ${totalSetProducts}, new products: ${totalProducts}, new skus: ${totalSkus}.`,
+          message: `Fetched and verified all sets, products, and skus for category 3 using NeDB. Sets: ${sets.length}, set-products: ${allSetProducts.length}, products: ${productCount}, skus: ${totalSkus}.`,
         },
         { status: 200 }
       );
@@ -331,33 +243,39 @@ export async function action({ request }: LoaderFunctionArgs) {
   return data({ error: "Unknown action" }, { status: 400 });
 }
 
-// Utility function to delay for a given ms
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export default function Home() {
   const allCategory3DataFetcher = useFetcher<typeof action>();
 
   return (
-    <div>
-      <allCategory3DataFetcher.Form method="post">
-        <input type="hidden" name="actionType" value="fetchAllCategory3Data" />
-        <button type="submit">Fetch &amp; Verify All Category 3 Data</button>
-      </allCategory3DataFetcher.Form>
+    <Box sx={{ p: 3 }}>
+      <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
+        <Typography variant="h4" gutterBottom>
+          Fetch & Verify All Category 3 Data
+        </Typography>
+        <allCategory3DataFetcher.Form method="post">
+          <input
+            type="hidden"
+            name="actionType"
+            value="fetchAllCategory3Data"
+          />
+          <Button type="submit" variant="contained" color="primary">
+            Fetch & Verify All Category 3 Data
+          </Button>
+        </allCategory3DataFetcher.Form>
+      </Paper>
       {allCategory3DataFetcher.data &&
       "message" in allCategory3DataFetcher.data ? (
-        <div>
-          <h2>All Category 3 Data Fetch Result</h2>
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Typography variant="h6">All Category 3 Data Fetch Result</Typography>
           <pre>{allCategory3DataFetcher.data.message}</pre>
-        </div>
+        </Paper>
       ) : allCategory3DataFetcher.data &&
         "error" in allCategory3DataFetcher.data ? (
-        <div>
-          <h2>Error</h2>
-          <pre>{allCategory3DataFetcher.data.error}</pre>
-        </div>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <Typography variant="h6">Error</Typography>
+          <pre style={{ margin: 0 }}>{allCategory3DataFetcher.data.error}</pre>
+        </Alert>
       ) : null}
-    </div>
+    </Box>
   );
 }

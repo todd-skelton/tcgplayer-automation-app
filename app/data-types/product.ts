@@ -14,10 +14,10 @@ export type Product = {
   productLineId: number;
   productStatusId: number;
   productLineName: string;
-  skus: Sku[];
+  skus: ProductSku[];
 };
 
-export type Sku = {
+export type ProductSku = {
   sku: number;
   condition: Condition;
   variant: Variant;

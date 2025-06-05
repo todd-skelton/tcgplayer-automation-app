@@ -1,6 +1,7 @@
 import { post } from "~/httpClient";
 import type { Condition } from "./types/Condition";
 import type { Language } from "./types/Language";
+import type { Variant } from "./types/Variant";
 
 export type AggregationType =
   | "listingType"
@@ -43,6 +44,7 @@ export type Term = {
   condition?: Condition[];
   language?: Language[];
   listingType?: ListingType[];
+  printing?: Variant[];
   sellerStatus?: SellerStatus;
   "verified-seller"?: boolean;
 };

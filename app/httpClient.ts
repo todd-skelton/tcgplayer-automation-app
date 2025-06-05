@@ -8,18 +8,65 @@ const axiosClient = axios.create({
   },
 });
 
+// Throttle config
+const REQUEST_DELAY_MS = 1500; // Adjust as needed (e.g., 200ms between requests)
+let lastRequestTime = 0;
+
+async function throttle() {
+  const now = Date.now();
+  const wait = Math.max(0, lastRequestTime + REQUEST_DELAY_MS - now);
+  if (wait > 0) {
+    await new Promise((resolve) => setTimeout(resolve, wait));
+  }
+  lastRequestTime = Date.now();
+}
+
+// Concurrency config
+const MAX_CONCURRENT_REQUESTS = 5;
+let activeRequests = 0;
+const requestQueue: (() => void)[] = [];
+
+async function acquireSlot() {
+  if (activeRequests < MAX_CONCURRENT_REQUESTS) {
+    activeRequests++;
+    return;
+  }
+  await new Promise<void>((resolve) => requestQueue.push(resolve));
+  activeRequests++;
+}
+
+function releaseSlot() {
+  activeRequests--;
+  if (requestQueue.length > 0) {
+    const next = requestQueue.shift();
+    if (next) next();
+  }
+}
+
 export async function get<TResponse, TParams = any>(
   url: string,
   params?: TParams
 ): Promise<TResponse> {
-  const { data } = await axiosClient.get<TResponse>(url, { params });
-  return data;
+  await acquireSlot();
+  try {
+    await throttle();
+    const { data } = await axiosClient.get<TResponse>(url, { params });
+    return data;
+  } finally {
+    releaseSlot();
+  }
 }
 
 export async function post<TResonse, TData = any>(
   url: string,
   data?: TData
 ): Promise<TResonse> {
-  const { data: response } = await axiosClient.post<TResonse>(url, data);
-  return response;
+  await acquireSlot();
+  try {
+    await throttle();
+    const { data: response } = await axiosClient.post<TResonse>(url, data);
+    return response;
+  } finally {
+    releaseSlot();
+  }
 }

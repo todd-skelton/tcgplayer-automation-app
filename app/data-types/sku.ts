@@ -15,7 +15,6 @@ export type Sku = {
   setCode: string;
   productId: number;
   setName: string;
-  sellerListable: boolean;
   productLineId: number;
   productStatusId: number;
   productLineName: string;
