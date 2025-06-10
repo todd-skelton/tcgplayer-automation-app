@@ -4,6 +4,8 @@ import type { Sku } from "./data-types/sku";
 import type { CategorySet } from "./data-types/categorySet";
 import type { SetProduct } from "./data-types/setProduct";
 import type { Product } from "./data-types/product";
+import type { ProductLine } from "./data-types/productLine";
+import type { CategoryFilter } from "./data-types/categoryFilter";
 
 const dataDir = path.resolve(process.cwd(), "data");
 
@@ -27,6 +29,16 @@ export const skusDb: Datastore<Sku> = Datastore.create({
   autoload: true,
 });
 
+export const productLinesDb: Datastore<ProductLine> = Datastore.create({
+  filename: path.join(dataDir, "productLines.db"),
+  autoload: true,
+});
+
+export const categoryFiltersDb: Datastore<CategoryFilter> = Datastore.create({
+  filename: path.join(dataDir, "categoryFilters.db"),
+  autoload: true,
+});
+
 categorySetsDb.ensureIndex({ fieldName: "categoryId" });
 categorySetsDb.ensureIndex({ fieldName: "setNameId", unique: true });
 
@@ -40,3 +52,7 @@ productsDb.ensureIndex({ fieldName: "setId" });
 
 skusDb.ensureIndex({ fieldName: "productId" });
 skusDb.ensureIndex({ fieldName: "sku", unique: true });
+
+productLinesDb.ensureIndex({ fieldName: "productLineId", unique: true });
+
+categoryFiltersDb.ensureIndex({ fieldName: "categoryId", unique: true });

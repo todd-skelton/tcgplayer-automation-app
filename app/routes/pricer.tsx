@@ -1,9 +1,10 @@
 import React, { useEffect } from "react";
 import Papa from "papaparse";
-import { getSuggestedPriceForSku } from "../pricing-algorithm";
 import { useFetcher } from "react-router";
 import { skusDb } from "~/datastores";
 import { Box, Button, Typography, Paper, Alert } from "@mui/material";
+import { getVolumeBasedSuggestedPriceForSku } from "~/algorithms/getVolumeBasedSuggestedPriceForSku";
+import { getSuggestedPriceFromLatestSales } from "~/algorithms/getSuggestedPriceFromLatestSales";
 
 export interface TcgPlayerListing {
   "TCGplayer Id": string;
@@ -46,7 +47,6 @@ export async function action({ request }: { request: Request }) {
   const updatedRows: TcgPlayerListing[] = [];
   for (const [i, row] of rows.entries()) {
     // Initialize columns to ensure they appear in output CSV
-    row["Median Volume"] = row["Median Volume"] || "";
     row["Previous Marketplace Price"] = row["TCG Marketplace Price"] || "";
     row["Error"] = row["Error"] || "";
 
@@ -71,15 +71,18 @@ export async function action({ request }: { request: Request }) {
     }
 
     try {
-      const { price, medianVolume } = await getSuggestedPriceForSku(sku);
-      row["Median Volume"] = medianVolume ? String(medianVolume) : "";
-      if (price) {
-        row["TCG Marketplace Price"] = Number(price).toFixed(2);
+      const latestSalesResult = await getSuggestedPriceFromLatestSales(sku);
+      if (latestSalesResult.suggestedPrice) {
+        row["TCG Marketplace Price"] = Number(
+          latestSalesResult.suggestedPrice
+        ).toFixed(2);
       } else {
-        row["Error"] = "No suggested price";
+        row["Error"] = "No suggested price from latest sales";
       }
       console.log(
-        `Row ${i + 1}: SKU ${skuId} priced at ${row["TCG Marketplace Price"]}`
+        `Row ${i + 1}: SKU ${skuId} priced at ${
+          row["TCG Marketplace Price"]
+        } (Latest Sales: ${row["TCG Latest Sales Price"]})`
       );
       updatedRows.push(row);
     } catch (err: any) {

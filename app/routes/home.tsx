@@ -1,5 +1,10 @@
 import type { Route } from "./+types/home";
-import { data, useFetcher, type LoaderFunctionArgs } from "react-router";
+import {
+  data,
+  useFetcher,
+  type LoaderFunctionArgs,
+  useLoaderData,
+} from "react-router";
 import { getAllProducts } from "~/tcgplayer/get-search-results";
 import { type SetProduct } from "~/data-types/setProduct";
 import { type CategorySet } from "~/data-types/categorySet";
@@ -11,10 +16,26 @@ import {
   productsDb,
   setProductsDb,
   skusDb,
+  productLinesDb,
+  categoryFiltersDb,
 } from "~/datastores";
 import type { Sku } from "~/data-types/sku";
 import { processWithConcurrency } from "~/processWithConcurrency";
-import { Button, Box, Typography, Paper, Alert } from "@mui/material";
+import {
+  Button,
+  Box,
+  Typography,
+  Paper,
+  Alert,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+} from "@mui/material";
+import { getProductLines } from "~/tcgplayer/get-product-lines";
+import { getCategoryFilters } from "~/tcgplayer/get-category-filters";
+import type { ProductLine } from "~/data-types/productLine";
+import { useEffect, useState } from "react";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -24,7 +45,6 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export async function action({ request }: LoaderFunctionArgs) {
-  // Only handle fetchAllCategory3Data
   const formData = await request.formData();
   const actionType = formData.get("actionType");
 
@@ -32,8 +52,15 @@ export async function action({ request }: LoaderFunctionArgs) {
     console.log("[fetchAllCategory3Data] Starting action (NeDB)");
     try {
       // 1. CATEGORY SETS
-      const categoryId = 71;
-      const PRODUCT_LINE = "lorcana-tcg";
+      const categoryId = Number(formData.get("categoryId"));
+      // Find the selected product line to get the url name
+      const selectedProductLine = await productLinesDb.findOne({
+        productLineId: categoryId,
+      });
+      if (!selectedProductLine) {
+        throw new Error(`No product line found for categoryId ${categoryId}`);
+      }
+      const PRODUCT_LINE = selectedProductLine.productLineUrlName;
       let sets: CategorySet[] = await categorySetsDb.find({ categoryId });
       if (!sets.length) {
         console.log(
@@ -240,17 +267,68 @@ export async function action({ request }: LoaderFunctionArgs) {
       return data({ error: String(error) }, { status: 500 });
     }
   }
+
+  if (actionType === "fetchAllProductLines") {
+    try {
+      const productLines = await getProductLines();
+      if (!productLines || !productLines.length) {
+        throw new Error("No product lines returned from API");
+      }
+      await Promise.all(
+        productLines.map(async (pl: ProductLine) => {
+          await productLinesDb.update({ productLineId: pl.productLineId }, pl, {
+            upsert: true,
+          });
+          // Fetch and store category filters for each product line
+          try {
+            const filters = await getCategoryFilters(pl.productLineId);
+            await categoryFiltersDb.update(
+              { categoryId: pl.productLineId },
+              { categoryId: pl.productLineId, ...filters },
+              { upsert: true }
+            );
+          } catch (err) {
+            console.error(
+              `Error fetching/storing category filters for productLineId ${pl.productLineId}:`,
+              err
+            );
+          }
+        })
+      );
+      return data(
+        {
+          message: `Fetched and upserted ${productLines.length} product lines and their category filters.`,
+        },
+        { status: 200 }
+      );
+    } catch (error) {
+      console.error("[fetchAllProductLines] Error:", error);
+      return data({ error: String(error) }, { status: 500 });
+    }
+  }
+
   return data({ error: "Unknown action" }, { status: 400 });
+}
+
+export async function loader() {
+  // Load all product lines from NeDB
+  const productLines = await productLinesDb.find({});
+  return { productLines };
 }
 
 export default function Home() {
   const allCategory3DataFetcher = useFetcher<typeof action>();
+  const allProductLinesFetcher = useFetcher();
+  const { productLines } = useLoaderData() as { productLines: ProductLine[] };
+  const [selectedProductLineId, setSelectedProductLineId] = useState<
+    number | null
+  >(productLines.length > 0 ? productLines[0].productLineId : null);
 
   return (
     <Box sx={{ p: 3 }}>
       <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
         <Typography variant="h4" gutterBottom>
-          Fetch & Verify All Category 3 Data
+          Fetch & Verify All Category Data
         </Typography>
         <allCategory3DataFetcher.Form method="post">
           <input
@@ -258,10 +336,43 @@ export default function Home() {
             name="actionType"
             value="fetchAllCategory3Data"
           />
-          <Button type="submit" variant="contained" color="primary">
-            Fetch & Verify All Category 3 Data
+          <FormControl sx={{ minWidth: 220, marginRight: 2 }}>
+            <InputLabel id="product-line-select-label">Product Line</InputLabel>
+            <Select
+              labelId="product-line-select-label"
+              id="product-line-select"
+              name="categoryId"
+              value={selectedProductLineId ?? ""}
+              label="Product Line"
+              onChange={(e) => setSelectedProductLineId(Number(e.target.value))}
+            >
+              {productLines.map((pl: ProductLine) => (
+                <MenuItem key={pl.productLineId} value={pl.productLineId}>
+                  {pl.productLineName}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            disabled={selectedProductLineId === null}
+          >
+            Fetch & Verify All Category Data
           </Button>
         </allCategory3DataFetcher.Form>
+      </Paper>
+      <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
+        <Typography variant="h4" gutterBottom>
+          Fetch All Product Lines
+        </Typography>
+        <allProductLinesFetcher.Form method="post">
+          <input type="hidden" name="actionType" value="fetchAllProductLines" />
+          <Button type="submit" variant="contained" color="secondary">
+            Fetch All Product Lines
+          </Button>
+        </allProductLinesFetcher.Form>
       </Paper>
       {allCategory3DataFetcher.data &&
       "message" in allCategory3DataFetcher.data ? (
@@ -274,6 +385,19 @@ export default function Home() {
         <Alert severity="error" sx={{ mb: 2 }}>
           <Typography variant="h6">Error</Typography>
           <pre style={{ margin: 0 }}>{allCategory3DataFetcher.data.error}</pre>
+        </Alert>
+      ) : null}
+      {allProductLinesFetcher.data &&
+      "message" in allProductLinesFetcher.data ? (
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Typography variant="h6">Product Lines Fetch Result</Typography>
+          <pre>{allProductLinesFetcher.data.message}</pre>
+        </Paper>
+      ) : allProductLinesFetcher.data &&
+        "error" in allProductLinesFetcher.data ? (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <Typography variant="h6">Error</Typography>
+          <pre style={{ margin: 0 }}>{allProductLinesFetcher.data.error}</pre>
         </Alert>
       ) : null}
     </Box>

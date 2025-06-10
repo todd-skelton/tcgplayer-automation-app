@@ -70,18 +70,26 @@ export async function getLatestSales(
 
 export async function getAllLatestSales(
   params: GetLastSalesRequestParams,
-  body: Omit<GetLastestSalesRequestBody, "offset">
+  body: GetLastestSalesRequestBody,
+  maxSales?: number
 ): Promise<Sale[]> {
   const limit = body.limit ?? 25;
-  let offset = 0;
+  let offset = body.offset ?? 0;
   let allSales: Sale[] = [];
   let hasNext = true;
 
   while (hasNext) {
+    if (maxSales !== undefined && allSales.length >= maxSales) {
+      break;
+    }
     const response = await getLatestSales(params, { ...body, offset, limit });
     allSales = allSales.concat(response.data);
     hasNext = response.nextPage === "Yes";
     offset += limit;
+  }
+
+  if (maxSales !== undefined && allSales.length > maxSales) {
+    allSales = allSales.slice(0, maxSales);
   }
 
   return allSales;
