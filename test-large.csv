@@ -1,0 +1,11 @@
+TCGplayer Id,Product Line,Set Name,Product Name,Title,Number,Rarity,Condition,TCG Market Price,TCG Direct Low,TCG Low Price With Shipping,TCG Low Price,Total Quantity,Add to Quantity,TCG Marketplace Price,Photo URL
+123456,Magic,Test Set,Test Card 1,Test Card 1,1,Common,Near Mint,1.00,0.90,0.95,0.85,5,2,0.88,http://example.com/photo1.jpg
+123457,Magic,Test Set,Test Card 2,Test Card 2,2,Common,Near Mint,1.10,1.00,1.05,0.95,3,1,0.98,http://example.com/photo2.jpg
+123458,Magic,Test Set,Test Card 3,Test Card 3,3,Common,Near Mint,1.20,1.10,1.15,1.05,4,1,1.08,http://example.com/photo3.jpg
+123459,Magic,Test Set,Test Card 4,Test Card 4,4,Uncommon,Near Mint,2.00,1.80,1.85,1.75,2,1,1.78,http://example.com/photo4.jpg
+123460,Magic,Test Set,Test Card 5,Test Card 5,5,Uncommon,Near Mint,2.50,2.20,2.25,2.15,3,2,2.18,http://example.com/photo5.jpg
+123461,Magic,Test Set,Test Card 6,Test Card 6,6,Rare,Near Mint,5.00,4.50,4.75,4.25,1,1,4.30,http://example.com/photo6.jpg
+123462,Magic,Test Set,Test Card 7,Test Card 7,7,Rare,Near Mint,6.00,5.50,5.75,5.25,2,1,5.30,http://example.com/photo7.jpg
+123463,Magic,Test Set,Test Card 8,Test Card 8,8,Mythic,Near Mint,15.00,13.50,14.00,13.00,1,0,13.50,http://example.com/photo8.jpg
+123464,Magic,Test Set,Test Card 9,Test Card 9,9,Common,Near Mint,0.75,0.65,0.70,0.60,10,5,0.63,http://example.com/photo9.jpg
+123465,Magic,Test Set,Test Card 10,Test Card 10,10,Common,Near Mint,0.85,0.75,0.80,0.70,8,3,0.73,http://example.com/photo10.jpg

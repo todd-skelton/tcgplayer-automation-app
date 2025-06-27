@@ -9,7 +9,7 @@ const axiosClient = axios.create({
 });
 
 // Throttle config
-const REQUEST_DELAY_MS = 1500; // Adjust as needed (e.g., 200ms between requests)
+const REQUEST_DELAY_MS = 1500;
 let lastRequestTime = 0;
 
 async function throttle() {

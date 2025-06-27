@@ -1,9 +1,170 @@
 import type { Sku } from "../data-types/sku";
 import { getAllLatestSales, type Sale } from "../tcgplayer/get-latest-sales";
 import { categoryFiltersDb } from "../datastores";
+import { levenbergMarquardt } from "ml-levenberg-marquardt";
+import type { Condition } from "../tcgplayer/types/Condition";
+
+// Define condition ordering for Zipf model (from best to worst condition)
+const CONDITION_ORDER: Condition[] = [
+  "Near Mint",
+  "Lightly Played",
+  "Moderately Played",
+  "Heavily Played",
+  "Damaged",
+];
+
+/**
+ * Fits a Zipf model to individual sale prices by condition using Levenberg-Marquardt optimization
+ * @param sales Array of individual sales with condition and price data
+ * @param targetCondition The condition to normalize prices to
+ * @returns Object with condition multipliers for normalizing prices
+ */
+function fitZipfModelToConditions(
+  sales: Sale[],
+  targetCondition: Condition
+): Map<Condition, number> {
+  const conditionMultipliers = new Map<Condition, number>();
+
+  // Get all individual sales data points for fitting
+  const dataPoints: { x: number; y: number }[] = [];
+
+  sales.forEach((sale) => {
+    const condition = sale.condition as Condition;
+    const price = sale.purchasePrice || 0;
+    const conditionIndex = CONDITION_ORDER.indexOf(condition);
+
+    if (conditionIndex !== -1 && price > 0) {
+      // Zipf model: price = a / (rank^b) where rank starts at 1
+      dataPoints.push({ x: conditionIndex + 1, y: price });
+    }
+  });
+
+  if (dataPoints.length < 3) {
+    // Not enough data points for fitting, use simple condition-based ratios
+    const conditionPrices = calculateConditionPrices(sales);
+    const targetPrice = conditionPrices.get(targetCondition);
+
+    CONDITION_ORDER.forEach((condition) => {
+      const price = conditionPrices.get(condition);
+      if (price && targetPrice && price > 0) {
+        conditionMultipliers.set(condition, targetPrice / price);
+      } else {
+        conditionMultipliers.set(condition, 1.0);
+      }
+    });
+    return conditionMultipliers;
+  }
+
+  try {
+    // Zipf model: f(x) = a / (x^b)
+    const zipfFunction = (parameters: number[]) => (x: number) => {
+      const [a, b] = parameters;
+      return a / Math.pow(x, b);
+    };
+
+    // Use median price of best condition as initial scale parameter
+    const bestConditionPrices = dataPoints
+      .filter((p) => p.x === 1)
+      .map((p) => p.y)
+      .sort((a, b) => a - b);
+
+    const initialScale =
+      bestConditionPrices.length > 0
+        ? bestConditionPrices[Math.floor(bestConditionPrices.length / 2)]
+        : dataPoints[0].y;
+
+    // Initial parameters: [a, b] where a is scale factor, b is exponent
+    const initialParameters = [initialScale, 1.0];
+
+    // Fit the model using all individual sale data points
+    const data = {
+      x: dataPoints.map((p) => p.x),
+      y: dataPoints.map((p) => p.y),
+    };
+
+    const result = levenbergMarquardt(data, zipfFunction, {
+      initialValues: initialParameters,
+    });
+
+    const [a, b] = result.parameterValues;
+
+    // Calculate the predicted price for the target condition
+    const targetConditionIndex = CONDITION_ORDER.indexOf(targetCondition);
+    const targetRank = targetConditionIndex + 1;
+    const targetPredictedPrice = a / Math.pow(targetRank, b);
+
+    // Calculate multipliers for each condition based on the fitted model
+    CONDITION_ORDER.forEach((condition, index) => {
+      const rank = index + 1;
+      const predictedPrice = a / Math.pow(rank, b);
+
+      if (predictedPrice > 0 && targetPredictedPrice > 0) {
+        // Multiplier to convert from this condition to target condition
+        conditionMultipliers.set(
+          condition,
+          targetPredictedPrice / predictedPrice
+        );
+      } else {
+        conditionMultipliers.set(condition, 1.0);
+      }
+    });
+
+    console.log(
+      `Zipf model fitted with parameters: a=${a.toFixed(3)}, b=${b.toFixed(3)}`
+    );
+    console.log(`Using ${dataPoints.length} individual sales data points`);
+  } catch (error) {
+    console.warn(
+      "Zipf model fitting failed, falling back to simple ratios:",
+      error
+    );
+
+    // Fallback to simple condition-based average ratios
+    const conditionPrices = calculateConditionPrices(sales);
+    const targetPrice = conditionPrices.get(targetCondition);
+
+    CONDITION_ORDER.forEach((condition) => {
+      const price = conditionPrices.get(condition);
+      if (price && targetPrice && price > 0) {
+        conditionMultipliers.set(condition, targetPrice / price);
+      } else {
+        conditionMultipliers.set(condition, 1.0);
+      }
+    });
+  }
+
+  return conditionMultipliers;
+}
+
+/**
+ * Calculate average prices by condition from sales data
+ */
+function calculateConditionPrices(sales: Sale[]): Map<Condition, number> {
+  const conditionSums = new Map<Condition, number>();
+  const conditionCounts = new Map<Condition, number>();
+  sales.forEach((sale) => {
+    const condition = sale.condition as Condition;
+    const price = sale.purchasePrice || 0;
+
+    if (price > 0) {
+      conditionSums.set(condition, (conditionSums.get(condition) || 0) + price);
+      conditionCounts.set(condition, (conditionCounts.get(condition) || 0) + 1);
+    }
+  });
+
+  const conditionPrices = new Map<Condition, number>();
+  conditionSums.forEach((sum, condition) => {
+    const count = conditionCounts.get(condition) || 1;
+    conditionPrices.set(condition, sum / count);
+  });
+
+  return conditionPrices;
+}
 
 /**
  * Fetches latest sales for a SKU and computes time-decayed, quantity-weighted suggested prices across percentiles.
+ * If the target condition has fewer than 5 sales, it will fetch sales from all conditions,
+ * fit a Zipf model to normalize prices, and provide a more robust price suggestion.
  * @param sku The SKU object to fetch sales for
  * @param config Optional configuration for halfLifeDays, percentile, etc.
  * @returns Object with suggestedPrice, totalQuantity, saleCount, expectedTimeToSellDays, and percentiles array
@@ -17,6 +178,8 @@ export async function getSuggestedPriceFromLatestSales(
   saleCount: number;
   expectedTimeToSellDays?: number;
   percentiles: PercentileData[];
+  usedCrossConditionAnalysis?: boolean;
+  conditionMultipliers?: Map<Condition, number>;
 }> {
   const { halfLifeDays = 7, percentile = 80 } = config;
 
@@ -48,12 +211,82 @@ export async function getSuggestedPriceFromLatestSales(
     listingType: "ListingWithoutPhotos" as const,
   };
 
-  // Cap to 50 sales
+  // Cap to 50 sales for initial check
   const sales: Sale[] = await getAllLatestSales(
     { id: sku.productId },
     { ...salesOptions },
     50
-  ); // Map to required format
+  );
+
+  // Check if we have fewer than 5 sales for the specific condition
+  if (sales.length < 5) {
+    console.log(
+      `Only ${sales.length} sales found for ${sku.condition}, fetching all conditions for Zipf analysis`
+    );
+
+    // Fetch sales data for all conditions
+    const allConditionsSalesOptions = {
+      conditions: undefined, // Remove condition filter to get all conditions
+      languages: languageId ? [languageId] : undefined,
+      variants: variantId ? [variantId] : undefined,
+      listingType: "ListingWithoutPhotos" as const,
+    };
+
+    const allSales: Sale[] = await getAllLatestSales(
+      { id: sku.productId },
+      allConditionsSalesOptions,
+      100 // Get more sales for cross-condition analysis
+    );
+
+    if (allSales.length < 2) {
+      // Still not enough data, return the original result with limited data
+      const mappedSales = sales.map((s) => ({
+        price: s.purchasePrice || 0,
+        quantity: s.quantity || 1,
+        timestamp: new Date(s.orderDate).getTime(),
+      }));
+
+      const dynamicHalfLife =
+        halfLifeDays || calculateDynamicHalfLife(mappedSales);
+      return {
+        ...getSuggestedPriceFromSales(mappedSales, {
+          halfLifeDays: dynamicHalfLife,
+          percentile,
+        }),
+        usedCrossConditionAnalysis: false,
+      };
+    } // Calculate condition-based pricing using Zipf model on individual sales
+    const zipfMultipliers = fitZipfModelToConditions(allSales, sku.condition);
+    console.log("Zipf multipliers:", Object.fromEntries(zipfMultipliers));
+
+    // Normalize all sales data to the target condition using Zipf multipliers
+    const adjustedSales = allSales.map((sale) => {
+      const condition = sale.condition as Condition;
+      const multiplier = zipfMultipliers.get(condition) || 1;
+      return {
+        price: (sale.purchasePrice || 0) * multiplier,
+        quantity: sale.quantity || 1,
+        timestamp: new Date(sale.orderDate).getTime(),
+      };
+    });
+
+    // Use dynamic half-life if not provided in config
+    const dynamicHalfLife =
+      halfLifeDays || calculateDynamicHalfLife(adjustedSales);
+
+    const result = getSuggestedPriceFromSales(adjustedSales, {
+      halfLifeDays: dynamicHalfLife,
+      percentile,
+    });
+
+    return {
+      ...result,
+      usedCrossConditionAnalysis: true,
+      conditionMultipliers: zipfMultipliers,
+    };
+  }
+
+  // Standard processing for when we have enough sales for the specific condition
   const mappedSales = sales.map((s) => ({
     price: s.purchasePrice || 0,
     quantity: s.quantity || 1,
@@ -63,10 +296,15 @@ export async function getSuggestedPriceFromLatestSales(
   // Use dynamic half-life if not provided in config
   const dynamicHalfLife = halfLifeDays || calculateDynamicHalfLife(mappedSales);
 
-  return getSuggestedPriceFromSales(mappedSales, {
+  const result = getSuggestedPriceFromSales(mappedSales, {
     halfLifeDays: dynamicHalfLife,
     percentile,
   });
+
+  return {
+    ...result,
+    usedCrossConditionAnalysis: false,
+  };
 }
 
 export interface LatestSalesPriceConfig {
@@ -235,64 +473,18 @@ export function getSuggestedPriceFromSales(
   });
 
   const totalQuantity = sales.reduce((sum, s) => sum + (s.quantity || 0), 0);
-
-  // Find the requested percentile for backward compatibility
+  // Calculate the specific percentile requested (can be any value like 65th percentile)
   let suggestedPrice: number | undefined = undefined;
   let expectedTimeToSellDays: number | undefined = undefined;
 
-  if (percentiles.length > 0) {
-    // Find the closest percentile to the requested one
-    const targetPercentile = percentiles.reduce((prev, curr) => {
-      return Math.abs(curr.percentile - percentile) <
-        Math.abs(prev.percentile - percentile)
-        ? curr
-        : prev;
-    });
-
-    // If exact match not found, interpolate
-    if (targetPercentile.percentile !== percentile) {
-      const lowerPercentile = percentiles
-        .filter((p) => p.percentile <= percentile)
-        .pop();
-      const upperPercentile = percentiles.find(
-        (p) => p.percentile >= percentile
-      );
-
-      if (
-        lowerPercentile &&
-        upperPercentile &&
-        lowerPercentile !== upperPercentile
-      ) {
-        const ratio =
-          (percentile - lowerPercentile.percentile) /
-          (upperPercentile.percentile - lowerPercentile.percentile);
-        suggestedPrice =
-          lowerPercentile.price +
-          (upperPercentile.price - lowerPercentile.price) * ratio;
-
-        // Interpolate expected time to sell as well
-        if (
-          lowerPercentile.expectedTimeToSellDays !== undefined &&
-          upperPercentile.expectedTimeToSellDays !== undefined
-        ) {
-          expectedTimeToSellDays =
-            lowerPercentile.expectedTimeToSellDays +
-            (upperPercentile.expectedTimeToSellDays -
-              lowerPercentile.expectedTimeToSellDays) *
-              ratio;
-        } else {
-          expectedTimeToSellDays =
-            lowerPercentile.expectedTimeToSellDays ||
-            upperPercentile.expectedTimeToSellDays;
-        }
-      } else {
-        suggestedPrice = targetPercentile.price;
-        expectedTimeToSellDays = targetPercentile.expectedTimeToSellDays;
-      }
-    } else {
-      suggestedPrice = targetPercentile.price;
-      expectedTimeToSellDays = targetPercentile.expectedTimeToSellDays;
-    }
+  if (sales.length > 0) {
+    const specificPercentileData = calculateSpecificPercentile(
+      sales,
+      percentile,
+      halfLifeDays
+    );
+    suggestedPrice = specificPercentileData.price;
+    expectedTimeToSellDays = specificPercentileData.expectedTimeToSellDays;
   }
 
   return {
@@ -305,9 +497,9 @@ export function getSuggestedPriceFromSales(
 }
 
 /**
- * Calculate dynamic half-life based on sales volume and frequency
- * High volume = shorter half-life (more responsive)
- * Low volume = longer half-life (more stable)
+ * Calculate dynamic half-life based on the time span between first and last sale.
+ * The half-life is set so that the oldest sale has decayed to 1/16 (4 half-lives) of its original weight.
+ * This ensures recent sales are weighted much more heavily than older ones while still considering historical data.
  */
 function calculateDynamicHalfLife(
   sales: { price: number; quantity: number; timestamp: number }[]
@@ -316,37 +508,115 @@ function calculateDynamicHalfLife(
     return 14; // Default to 14 days for items with no sales data
   }
 
-  // Calculate sales metrics
-  const totalQuantity = sales.reduce((sum, s) => sum + (s.quantity || 0), 0);
-  const saleCount = sales.length;
-  const avgQuantityPerSale = totalQuantity / saleCount;
+  if (sales.length === 1) {
+    return 7; // Default to 7 days for single sale
+  }
 
-  // Calculate time span of sales data
+  // Calculate time span between first and last sale
   const timestamps = sales.map((s) => s.timestamp).sort((a, b) => a - b);
   const timeSpanDays =
     (timestamps[timestamps.length - 1] - timestamps[0]) / (24 * 60 * 60 * 1000);
-  const salesFrequency = timeSpanDays > 0 ? saleCount / timeSpanDays : 0;
 
-  // Volume score: combination of total quantity, sale frequency, and average quantity per sale
-  const volumeScore =
-    totalQuantity * 0.4 + salesFrequency * 10 * 0.4 + avgQuantityPerSale * 0.2;
-
-  // Map volume score to half-life (inverse relationship)
-  // High volume (score > 20) -> 3-5 days
-  // Medium volume (score 5-20) -> 5-10 days
-  // Low volume (score < 5) -> 10-21 days
-  let halfLife: number;
-
-  if (volumeScore >= 20) {
-    // High volume: very responsive to recent changes
-    halfLife = Math.max(3, 8 - (volumeScore - 20) * 0.1);
-  } else if (volumeScore >= 5) {
-    // Medium volume: moderately responsive
-    halfLife = 5 + (20 - volumeScore) * 0.33;
-  } else {
-    // Low volume: more stable, longer half-life
-    halfLife = Math.min(21, 10 + (5 - volumeScore) * 2);
+  if (timeSpanDays === 0) {
+    return 7; // Default to 7 days if all sales are on the same day
   }
 
-  return Math.round(halfLife * 10) / 10; // Round to 1 decimal place
+  // Set half-life so that the oldest sale is worth 4 half-lives
+  // After 4 half-lives, weight = 0.5^4 = 1/16 = 6.25% of original
+  const halfLife = timeSpanDays / 4;
+
+  // Apply reasonable bounds: minimum 1 day, maximum 90 days
+  return Math.max(1, Math.min(90, Math.round(halfLife * 10) / 10));
+}
+
+/**
+ * Calculate a specific percentile directly from weighted sales data with interpolation.
+ * @param sales Array of sales, each with price, quantity, and timestamp (ms since epoch)
+ * @param targetPercentile The specific percentile to calculate (e.g., 65 for 65th percentile)
+ * @param halfLifeDays Half-life for time decay in days
+ * @returns Object with price and expectedTimeToSellDays for the specific percentile
+ */
+function calculateSpecificPercentile(
+  sales: { price: number; quantity: number; timestamp: number }[],
+  targetPercentile: number,
+  halfLifeDays: number
+): { price: number; expectedTimeToSellDays?: number } {
+  if (!sales || sales.length === 0) {
+    return { price: 0 };
+  }
+
+  const now = Date.now();
+  const msPerDay = 24 * 60 * 60 * 1000;
+
+  // Calculate weights for each sale (weight = time decay * quantity)
+  const weightedSales = sales.map((sale) => {
+    const ageDays = (now - sale.timestamp) / msPerDay;
+    // Exponential decay: weight = 0.5^(age/halfLife) * quantity
+    const timeWeight = Math.pow(0.5, ageDays / halfLifeDays);
+    const weight = timeWeight * (sale.quantity || 1);
+    return { ...sale, weight };
+  });
+
+  // Sort by price ascending
+  weightedSales.sort((a, b) => a.price - b.price);
+  const totalWeight = weightedSales.reduce((sum, s) => sum + s.weight, 0);
+  if (totalWeight === 0) {
+    return { price: 0 };
+  }
+
+  // Calculate cumulative weights for interpolation
+  let cumulative = 0;
+  const cumulativeData = weightedSales.map((sale) => {
+    cumulative += sale.weight;
+    return {
+      price: sale.price,
+      cumulativeWeight: cumulative,
+      percentile: (cumulative / totalWeight) * 100,
+    };
+  });
+
+  const targetWeight = (targetPercentile / 100) * totalWeight;
+  let price: number;
+
+  if (targetPercentile === 0) {
+    price = cumulativeData[0].price;
+  } else if (targetPercentile === 100) {
+    price = cumulativeData[cumulativeData.length - 1].price;
+  } else {
+    // Find the two data points to interpolate between
+    let lowerIndex = -1;
+    let upperIndex = -1;
+
+    for (let i = 0; i < cumulativeData.length; i++) {
+      if (cumulativeData[i].cumulativeWeight >= targetWeight) {
+        upperIndex = i;
+        lowerIndex = i === 0 ? 0 : i - 1;
+        break;
+      }
+    }
+
+    if (upperIndex === -1) {
+      // Target weight is higher than all data, use highest price
+      price = cumulativeData[cumulativeData.length - 1].price;
+    } else if (lowerIndex === upperIndex) {
+      // Exact match or first data point
+      price = cumulativeData[upperIndex].price;
+    } else {
+      // Interpolate between the two points
+      const lower = cumulativeData[lowerIndex];
+      const upper = cumulativeData[upperIndex];
+      const weightDiff = upper.cumulativeWeight - lower.cumulativeWeight;
+      const targetOffset = targetWeight - lower.cumulativeWeight;
+      const ratio = weightDiff === 0 ? 0 : targetOffset / weightDiff;
+      price = lower.price + (upper.price - lower.price) * ratio;
+    }
+  }
+
+  // Calculate expected time to sell for this percentile price
+  const expectedTimeToSellDays = calculateExpectedTimeToSell(sales, price);
+
+  return {
+    price,
+    expectedTimeToSellDays,
+  };
 }

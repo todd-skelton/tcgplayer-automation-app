@@ -278,7 +278,7 @@ export async function getProducts(
 export async function getAllProducts(
   body: Omit<GetProductsRequestBody, "from">
 ): Promise<Product[]> {
-  const size = body.size ?? 24;
+  const size = body.size ?? 24 > 24 ? 24 : body.size || 24;
   let from = 0;
   let listings: Product[] = [];
   let total = 0;

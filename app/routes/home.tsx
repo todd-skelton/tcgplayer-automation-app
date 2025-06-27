@@ -31,9 +31,11 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  TextField,
 } from "@mui/material";
 import { getProductLines } from "~/tcgplayer/get-product-lines";
 import { getCategoryFilters } from "~/tcgplayer/get-category-filters";
+import { getSetCards } from "~/tcgplayer/get-set-cards";
 import type { ProductLine } from "~/data-types/productLine";
 import { useEffect, useState } from "react";
 
@@ -125,6 +127,142 @@ export async function action({ request }: LoaderFunctionArgs) {
       return data(
         {
           message: `Updated product and skus for productId ${productId}. Products: ${productCount}, skus: ${totalSkus}.`,
+        },
+        { status: 200 }
+      );
+    } catch (error) {
+      return data({ error: String(error) }, { status: 500 });
+    }
+  }
+
+  if (actionType === "fetchSetProductsAndSkus") {
+    try {
+      const setName = formData.get("setName") as string;
+      const productLineName = formData.get("productLineName") as string;
+      if (!setName) {
+        return data({ error: "Missing set name" }, { status: 400 });
+      }
+      if (!productLineName) {
+        return data({ error: "Missing product line name" }, { status: 400 });
+      }
+
+      // First try to find the set in the database
+      const categorySet = await categorySetsDb.findOne({ name: setName });
+      let setProducts: SetProduct[] = [];
+
+      if (categorySet) {
+        // Set exists in database, get existing set products
+        setProducts = await setProductsDb.find({
+          setNameId: categorySet.setNameId,
+        });
+
+        if (!setProducts.length) {
+          // Try to fetch using the set cards endpoint if we have the setNameId
+          try {
+            const setCardsResponse = await getSetCards({
+              setId: categorySet.setNameId,
+            });
+            const seen = new Set<number>();
+            setProducts = [];
+
+            for (const card of setCardsResponse.result) {
+              if (seen.has(card.productID)) continue;
+              seen.add(card.productID);
+              setProducts.push({
+                setNameId: categorySet.setNameId,
+                productId: card.productID,
+                game: card.game,
+                number: card.number,
+                productName: card.productName,
+                rarity: card.rarity,
+                set: card.set,
+                setAbbrv: card.setAbbrv,
+                type: card.type,
+              });
+            }
+
+            // Store set products in database
+            await Promise.all(
+              setProducts.map((prod) =>
+                setProductsDb.update({ productId: prod.productId }, prod, {
+                  upsert: true,
+                })
+              )
+            );
+          } catch (err) {
+            // Fall back to search if set cards API fails
+            console.warn(
+              `Set cards API failed for set ${setName}, falling back to search`
+            );
+          }
+        }
+      }
+
+      // If we don't have set products yet (either set not in DB or set cards API failed),
+      // use the search API to find products by set name
+      if (!setProducts.length) {
+        try {
+          const searchResults = await getAllProducts({
+            size: 1000,
+            filters: {
+              term: {
+                productLineName: [productLineName],
+                setName: [setName],
+              },
+            },
+            sort: { field: "product-sorting-name", order: "asc" },
+          });
+
+          if (!searchResults || !searchResults.length) {
+            return data(
+              {
+                error: `No products found for set "${setName}" in product line "${productLineName}". Please check the set name and product line.`,
+              },
+              { status: 404 }
+            );
+          }
+
+          const seen = new Set<number>();
+          for (const card of searchResults) {
+            if (seen.has(card.productId)) continue;
+            seen.add(card.productId);
+            setProducts.push({
+              setNameId: categorySet?.setNameId || 0, // Use 0 if not in database yet
+              productId: card.productId,
+              game: productLineName,
+              number: card.customAttributes?.number ?? "",
+              productName: card.productName,
+              rarity: card.rarityName,
+              set: card.setName,
+              setAbbrv: card.setUrlName,
+              type: card.customAttributes?.cardType?.join(", ") ?? "",
+            });
+          }
+
+          // Store set products in database for future use
+          await Promise.all(
+            setProducts.map((prod) =>
+              setProductsDb.update({ productId: prod.productId }, prod, {
+                upsert: true,
+              })
+            )
+          );
+        } catch (err) {
+          return data(
+            { error: `Failed to search for products: ${String(err)}` },
+            { status: 500 }
+          );
+        }
+      }
+
+      // Fetch and upsert product details and SKUs
+      const { productCount, totalSkus } = await fetchAndUpsertProductsAndSkus(
+        setProducts
+      );
+
+      return data(
+        {
+          message: `Fetched and verified products and SKUs for set "${setName}" in product line "${productLineName}". Set products: ${setProducts.length}, products: ${productCount}, SKUs: ${totalSkus}.`,
         },
         { status: 200 }
       );
@@ -312,10 +450,16 @@ async function fetchAndUpsertProductsAndSkus(allSetProducts: SetProduct[]) {
 export default function Home() {
   const allCategory3DataFetcher = useFetcher<typeof action>();
   const allProductLinesFetcher = useFetcher();
-  const { productLines } = useLoaderData() as { productLines: ProductLine[] };
+  const setProductsFetcher = useFetcher<typeof action>();
+  const { productLines } = useLoaderData() as {
+    productLines: ProductLine[];
+  };
   const [selectedProductLineId, setSelectedProductLineId] = useState<
     number | null
   >(productLines.length > 0 ? productLines[0].productLineId : null);
+  const [selectedSetName, setSelectedSetName] = useState<string>("");
+  const [selectedProductLineName, setSelectedProductLineName] =
+    useState<string>("");
 
   return (
     <Box sx={{ p: 3 }}>
@@ -390,6 +534,73 @@ export default function Home() {
           </Button>
         </allCategory3DataFetcher.Form>
       </Paper>
+
+      <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
+        <Typography variant="h4" gutterBottom>
+          Fetch Products and SKUs by Set
+        </Typography>
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          Enter a set name and product line to fetch all products and SKUs. This
+          works even for sets not yet in the database.
+        </Typography>
+        <setProductsFetcher.Form method="post">
+          <input
+            type="hidden"
+            name="actionType"
+            value="fetchSetProductsAndSkus"
+          />
+          <Box
+            sx={{
+              display: "flex",
+              gap: 2,
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
+            <TextField
+              label="Set Name"
+              name="setName"
+              value={selectedSetName}
+              onChange={(e) => setSelectedSetName(e.target.value)}
+              required
+              placeholder="e.g., Duskmourn: House of Horror"
+              sx={{ minWidth: 300 }}
+            />
+            <FormControl sx={{ minWidth: 220 }}>
+              <InputLabel id="product-line-select-label-2">
+                Product Line
+              </InputLabel>
+              <Select
+                labelId="product-line-select-label-2"
+                id="product-line-select-2"
+                name="productLineName"
+                value={selectedProductLineName}
+                label="Product Line"
+                onChange={(e) => setSelectedProductLineName(e.target.value)}
+                required
+              >
+                {productLines.map((pl: ProductLine) => (
+                  <MenuItem
+                    key={pl.productLineId}
+                    value={pl.productLineUrlName}
+                  >
+                    {pl.productLineName}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button
+              type="submit"
+              variant="contained"
+              color="success"
+              disabled={!selectedSetName || !selectedProductLineName}
+            >
+              Fetch Set Products & SKUs
+            </Button>
+          </Box>
+        </setProductsFetcher.Form>
+      </Paper>
+
       {allCategory3DataFetcher.data &&
       "message" in allCategory3DataFetcher.data ? (
         <Paper sx={{ p: 2, mb: 2 }}>
@@ -414,6 +625,18 @@ export default function Home() {
         <Alert severity="error" sx={{ mb: 2 }}>
           <Typography variant="h6">Error</Typography>
           <pre style={{ margin: 0 }}>{allProductLinesFetcher.data.error}</pre>
+        </Alert>
+      ) : null}
+
+      {setProductsFetcher.data && "message" in setProductsFetcher.data ? (
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Typography variant="h6">Set Products & SKUs Fetch Result</Typography>
+          <pre>{setProductsFetcher.data.message}</pre>
+        </Paper>
+      ) : setProductsFetcher.data && "error" in setProductsFetcher.data ? (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <Typography variant="h6">Error</Typography>
+          <pre style={{ margin: 0 }}>{setProductsFetcher.data.error}</pre>
         </Alert>
       ) : null}
     </Box>

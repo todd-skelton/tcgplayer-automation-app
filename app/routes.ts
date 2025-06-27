@@ -6,4 +6,8 @@ export default [
     path: "/pricer",
     file: "routes/pricer.tsx",
   },
+  {
+    path: "/api/suggested-price",
+    file: "routes/api.suggested-price.tsx",
+  },
 ] satisfies RouteConfig;
