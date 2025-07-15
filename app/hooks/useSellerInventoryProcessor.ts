@@ -1,8 +1,13 @@
 import { useState, useRef } from "react";
 import type { ProcessingProgress, ProcessingSummary } from "../types/pricing";
 import { SellerInventoryService } from "../services/sellerInventoryService";
-import { convertSellerInventoryToListings } from "../services/inventoryConverter";
+import {
+  convertSellerInventoryToListings,
+  type SellerInventoryItem,
+} from "../services/inventoryConverter";
 import { ListingProcessor } from "../services/listingProcessor";
+import { processWithConcurrency } from "../processWithConcurrency";
+import type { TcgPlayerListing } from "../types/pricing";
 
 export const useSellerInventoryProcessor = () => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -70,6 +75,35 @@ export const useSellerInventoryProcessor = () => {
         return;
       }
 
+      // Step 2.5: Validate and update missing SKUs
+      setProgress({
+        current: 0,
+        total: listings.length,
+        status: "Validating SKUs in database...",
+        processed: 0,
+        skipped: 0,
+        errors: 0,
+      });
+
+      await validateAndUpdateSkus(
+        listings,
+        inventory,
+        (current: number, total: number) => {
+          setProgress({
+            current,
+            total,
+            status: `Validating SKUs... (${current}/${total})`,
+            processed: 0,
+            skipped: 0,
+            errors: 0,
+          });
+        }
+      );
+
+      if (isCancelledRef.current) {
+        return;
+      }
+
       // Step 3: Process listings with pricing algorithm
       setProgress({
         current: 0,
@@ -127,6 +161,79 @@ export const useSellerInventoryProcessor = () => {
       setError(error?.message || "Failed to process seller inventory");
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  /**
+   * Validates that all SKUs exist in the database and updates missing products.
+   *
+   * This function ensures that all SKUs referenced in the seller inventory listings
+   * are available in the local database before processing. It calls a server-side
+   * API to handle all database operations and will:
+   * 1. Extract unique SKU IDs from listings
+   * 2. Extract unique product IDs from inventory items
+   * 3. Call the validate-skus API to handle database operations server-side
+   * 4. Track progress and handle cancellation
+   *
+   * @param listings - Array of TcgPlayerListing objects containing SKU references
+   * @param inventory - Array of SellerInventoryItem objects with product details
+   * @param onProgress - Optional callback to track validation progress
+   */
+  const validateAndUpdateSkus = async (
+    listings: TcgPlayerListing[],
+    inventory: SellerInventoryItem[],
+    onProgress?: (current: number, total: number) => void
+  ) => {
+    // Extract unique SKU IDs from listings
+    const skuIds = Array.from(
+      new Set(
+        listings
+          .map((listing) => Number(listing["TCGplayer Id"]))
+          .filter((skuId) => !isNaN(skuId) && skuId > 0)
+      )
+    );
+
+    if (skuIds.length === 0) {
+      return;
+    }
+
+    onProgress?.(0, skuIds.length);
+
+    // Extract product IDs from inventory items
+    const productIds = Array.from(
+      new Set(inventory.map((item) => item.productId))
+    );
+
+    try {
+      // Call the server-side API to validate and update SKUs
+      const response = await fetch("/api/validate-skus", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          skuIds,
+          productIds,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      // Update progress to complete
+      onProgress?.(skuIds.length, skuIds.length);
+
+      console.log(`SKU validation complete: ${result.message}`);
+    } catch (error) {
+      console.error("Error validating SKUs:", error);
+      throw error;
     }
   };
 

@@ -59,6 +59,28 @@ export async function action({ request }: { request: Request }) {
       customAttributes: product.customAttributes,
     }));
 
+    // Sort inventory by product line, set name, and product name
+    inventory.sort((a, b) => {
+      // First sort by product line name
+      const productLineComparison = (a.productLineName || "").localeCompare(
+        b.productLineName || ""
+      );
+      if (productLineComparison !== 0) {
+        return productLineComparison;
+      }
+
+      // Then sort by set name
+      const setNameComparison = (a.setName || "").localeCompare(
+        b.setName || ""
+      );
+      if (setNameComparison !== 0) {
+        return setNameComparison;
+      }
+
+      // Finally sort by product name
+      return (a.productName || "").localeCompare(b.productName || "");
+    });
+
     return data({
       inventory,
       totalProducts: products.length,

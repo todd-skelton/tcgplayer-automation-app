@@ -22,4 +22,8 @@ export default [
     path: "/api/price-points",
     file: "routes/api.price-points.tsx",
   },
+  {
+    path: "/api/validate-skus",
+    file: "routes/api.validate-skus.tsx",
+  },
 ] satisfies RouteConfig;
