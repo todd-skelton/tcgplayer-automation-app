@@ -39,6 +39,14 @@ export interface ProcessingConfig {
   isCancelled?: () => boolean;
 }
 
+interface PricePointData {
+  marketPrice: number;
+  lowestPrice: number;
+  highestPrice: number;
+  saleCount: number;
+  calculatedAt: string;
+}
+
 interface SummaryData {
   totalQuantity: number;
   totalAddQuantity: number;
@@ -58,7 +66,7 @@ interface SummaryData {
 }
 
 export class ListingProcessor {
-  private marketPriceCache: Map<number, number> = new Map();
+  private pricePointCache: Map<number, PricePointData> = new Map();
 
   private async fetchMarketPrices(skuIds: number[]): Promise<void> {
     try {
@@ -81,7 +89,13 @@ export class ListingProcessor {
       }
 
       data.pricePoints.forEach((pricePoint) => {
-        this.marketPriceCache.set(pricePoint.skuId, pricePoint.marketPrice);
+        this.pricePointCache.set(pricePoint.skuId, {
+          marketPrice: pricePoint.marketPrice,
+          lowestPrice: pricePoint.lowestPrice,
+          highestPrice: pricePoint.highestPrice,
+          saleCount: pricePoint.priceCount,
+          calculatedAt: pricePoint.calculatedAt,
+        });
       });
     } catch (error) {
       console.warn("Failed to fetch market prices:", error);
@@ -89,9 +103,10 @@ export class ListingProcessor {
     }
   }
 
-  private getMarketPrice(skuId: number): number {
-    return this.marketPriceCache.get(skuId) || 0;
+  private getPricePointData(skuId: number): PricePointData | null {
+    return this.pricePointCache.get(skuId) || null;
   }
+
   private initializeSummaryData(percentile: number): SummaryData {
     const summaryData: SummaryData = {
       totalQuantity: 0,
@@ -148,7 +163,8 @@ export class ListingProcessor {
     }
 
     const skuId = Number(row["TCGplayer Id"]);
-    const marketPrice = this.getMarketPrice(skuId);
+    const pricePointData = this.getPricePointData(skuId);
+    const marketPrice = pricePointData?.marketPrice || 0;
 
     // Case 1: No market price available - use suggested price without enforcement
     if (marketPrice === 0) {
@@ -247,17 +263,35 @@ export class ListingProcessor {
     // Update marketplace price
     this.updateMarketplacePrice(row, suggestedPrice);
 
-    // Update TCG Market Price field with SKU-level market price for accuracy
+    // Get all price point data for this SKU in one lookup
     const skuId = Number(row["TCGplayer Id"]);
-    const marketPrice = this.getMarketPrice(skuId);
-    if (marketPrice > 0) {
-      row["TCG Market Price"] = marketPrice.toFixed(2);
+    const pricePointData = this.getPricePointData(skuId);
+
+    if (pricePointData) {
+      // Update all price fields when price data is available
+      if (pricePointData.marketPrice > 0) {
+        row["TCG Market Price"] = pricePointData.marketPrice.toFixed(2);
+      }
+
+      if (pricePointData.lowestPrice > 0) {
+        row["TCG Low Price"] = pricePointData.lowestPrice.toFixed(2);
+        row["Lowest Price"] = pricePointData.lowestPrice.toFixed(2);
+      }
+
+      if (pricePointData.highestPrice > 0) {
+        row["Highest Price"] = pricePointData.highestPrice.toFixed(2);
+      }
+
+      if (pricePointData.saleCount > 0) {
+        row["Sale Count"] = pricePointData.saleCount.toString();
+      }
     }
 
     // Update summary data
     const { totalQty, addQty, combinedQty } = getRowQuantities(row);
     const lowPrice = Number(row["TCG Low Price"]) || 0;
     const marketplacePrice = Number(row["TCG Marketplace Price"]) || 0;
+    const marketPrice = pricePointData?.marketPrice || 0;
 
     summaryData.totals.marketPrice += marketPrice * combinedQty;
     summaryData.totals.lowPrice += lowPrice * combinedQty;
@@ -416,17 +450,46 @@ export class ListingProcessor {
       return true;
     });
 
+    // Check for and remove duplicate SKU IDs
+    const seenSkuIds = new Set<string>();
+    const deduplicatedRows: TcgPlayerListing[] = [];
+    let duplicatesRemoved = 0;
+
+    filteredRows.forEach((row) => {
+      const skuId = row["TCGplayer Id"];
+      if (seenSkuIds.has(skuId)) {
+        console.warn(`Duplicate SKU ID found: ${skuId}. Skipping duplicate.`);
+        duplicatesRemoved++;
+        return;
+      }
+      seenSkuIds.add(skuId);
+      deduplicatedRows.push(row);
+    });
+
+    if (duplicatesRemoved > 0) {
+      config.onProgress?.({
+        current: 0,
+        total: deduplicatedRows.length,
+        status: `Removed ${duplicatesRemoved} duplicate SKU ID${
+          duplicatesRemoved > 1 ? "s" : ""
+        }. Processing ${deduplicatedRows.length} unique items...`,
+        processed: 0,
+        skipped: skipped + duplicatesRemoved,
+        errors: 0,
+      });
+    }
+
     // Fetch market prices for all SKUs before processing
     config.onProgress?.({
       current: 0,
-      total: filteredRows.length,
+      total: deduplicatedRows.length,
       status: "Fetching market prices for SKUs...",
       processed: 0,
-      skipped,
+      skipped: skipped + duplicatesRemoved,
       errors: 0,
     });
 
-    const skuIds = filteredRows
+    const skuIds = deduplicatedRows
       .map((row) => Number(row["TCGplayer Id"]))
       .filter((skuId) => !isNaN(skuId) && skuId > 0);
 
@@ -437,30 +500,32 @@ export class ListingProcessor {
     // Initialize progress
     config.onProgress?.({
       current: 0,
-      total: filteredRows.length,
-      status: `Starting to process ${filteredRows.length} rows (${skipped} skipped)...`,
+      total: deduplicatedRows.length,
+      status: `Starting to process ${deduplicatedRows.length} rows (${
+        skipped + duplicatesRemoved
+      } skipped)...`,
       processed: 0,
-      skipped,
+      skipped: skipped + duplicatesRemoved,
       errors: 0,
     });
 
-    // Process filtered rows serially (one at a time)
+    // Process deduplicated rows serially (one at a time)
     for (
       let rowIndex = 0;
-      rowIndex < filteredRows.length && !config.isCancelled?.();
+      rowIndex < deduplicatedRows.length && !config.isCancelled?.();
       rowIndex++
     ) {
-      const row = filteredRows[rowIndex];
+      const row = deduplicatedRows[rowIndex];
 
       // Update progress before processing
       config.onProgress?.({
         current: rowIndex + 1,
-        total: filteredRows.length,
-        status: `Processing row ${rowIndex + 1}/${filteredRows.length} (${
+        total: deduplicatedRows.length,
+        status: `Processing row ${rowIndex + 1}/${deduplicatedRows.length} (${
           row["Product Name"]
         })...`,
         processed,
-        skipped,
+        skipped: skipped + duplicatesRemoved,
         errors,
       });
 
@@ -494,11 +559,11 @@ export class ListingProcessor {
 
     // Final progress update
     config.onProgress?.({
-      current: filteredRows.length,
-      total: filteredRows.length,
+      current: deduplicatedRows.length,
+      total: deduplicatedRows.length,
       status: "Processing complete!",
       processed,
-      skipped,
+      skipped: skipped + duplicatesRemoved,
       errors,
     });
 
@@ -509,14 +574,14 @@ export class ListingProcessor {
       config.percentile,
       listings.length,
       processed,
-      skipped,
+      skipped + duplicatesRemoved,
       errors,
       summaryData,
       processingTime
     );
 
     return {
-      processedListings: filteredRows,
+      processedListings: deduplicatedRows,
       summary,
     };
   }

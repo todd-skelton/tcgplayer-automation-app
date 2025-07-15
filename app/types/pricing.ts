@@ -12,7 +12,7 @@ export interface TcgPlayerListing {
   "TCG Low Price With Shipping"?: string;
   "TCG Low Price"?: string;
   "Total Quantity": string;
-  "Add to Quantity"?: string;
+  "Add to Quantity": string;
   "TCG Marketplace Price": string;
   "Photo URL"?: string;
   "Previous Marketplace Price"?: string;

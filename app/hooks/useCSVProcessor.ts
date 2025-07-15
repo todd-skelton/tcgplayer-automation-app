@@ -11,6 +11,7 @@ export const useCSVProcessor = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState<ProcessingProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [summary, setSummary] = useState<ProcessingSummary | null>(null);
   const isCancelledRef = useRef(false);
 
@@ -20,6 +21,7 @@ export const useCSVProcessor = () => {
     setIsProcessing(true);
     isCancelledRef.current = false;
     setError(null);
+    setWarning(null);
     setSummary(null);
 
     try {
@@ -41,7 +43,22 @@ export const useCSVProcessor = () => {
           rows,
           {
             percentile,
-            onProgress: setProgress,
+            onProgress: (progressData) => {
+              // Check if this is a duplicate removal message
+              if (progressData.status.includes("duplicate")) {
+                const match = progressData.status.match(
+                  /Removed (\d+) duplicate/
+                );
+                if (match) {
+                  const duplicateCount = parseInt(match[1]);
+                  const warningMessage = `Found and removed ${duplicateCount} duplicate SKU ID${
+                    duplicateCount > 1 ? "s" : ""
+                  } from CSV. Only the first occurrence of each SKU was processed.`;
+                  setWarning(warningMessage);
+                }
+              }
+              setProgress(progressData);
+            },
             isCancelled: () => isCancelledRef.current,
           },
           file.name
@@ -70,6 +87,7 @@ export const useCSVProcessor = () => {
     isCancelledRef.current = true;
     setIsProcessing(false);
     setProgress(null);
+    setWarning(null);
     setSummary(null);
   };
 
@@ -77,6 +95,7 @@ export const useCSVProcessor = () => {
     isProcessing,
     progress,
     error,
+    warning,
     summary,
     processCSV,
     handleCancel,

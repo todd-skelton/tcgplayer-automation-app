@@ -12,6 +12,7 @@ export default function PricerRoute() {
     isProcessing,
     progress,
     error,
+    warning,
     summary,
     processCSV,
     handleCancel,
@@ -46,6 +47,13 @@ export default function PricerRoute() {
 
       {/* Progress indicator */}
       {progress && <ProgressIndicator progress={progress} />}
+
+      {/* Warning display */}
+      {warning && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          <Typography>{warning}</Typography>
+        </Alert>
+      )}
 
       {/* Error display */}
       {error && (

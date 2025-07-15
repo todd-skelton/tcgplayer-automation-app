@@ -116,37 +116,57 @@ export const ProcessingSummaryComponent: React.FC<
             <TableRow>
               <TableCell>Market Price</TableCell>
               <TableCell align="right">
-                ${summary.totals.marketPrice.toFixed(2)}
+                {summary.totals.marketPrice.toLocaleString("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                })}
               </TableCell>
               <TableCell align="right">
-                $
-                {(summary.totals.marketPrice / combinedQuantity || 0).toFixed(
-                  2
-                )}
+                {(
+                  summary.totals.marketPrice / combinedQuantity || 0
+                ).toLocaleString("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                })}
               </TableCell>
             </TableRow>
             <TableRow>
               <TableCell>Low Price</TableCell>
               <TableCell align="right">
-                ${summary.totals.lowPrice.toFixed(2)}
+                {summary.totals.lowPrice.toLocaleString("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                })}
               </TableCell>
               <TableCell align="right">
-                ${(summary.totals.lowPrice / combinedQuantity || 0).toFixed(2)}
+                {(
+                  summary.totals.lowPrice / combinedQuantity || 0
+                ).toLocaleString("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                })}
               </TableCell>
             </TableRow>
             <TableRow>
               <TableCell>
-                <strong>Suggested Price</strong>
-              </TableCell>
-              <TableCell align="right">
-                <strong>${summary.totals.marketplacePrice.toFixed(2)}</strong>
+                <strong>Marketplace Price</strong>
               </TableCell>
               <TableCell align="right">
                 <strong>
-                  $
+                  {summary.totals.marketplacePrice.toLocaleString("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  })}
+                </strong>
+              </TableCell>
+              <TableCell align="right">
+                <strong>
                   {(
                     summary.totals.marketplacePrice / combinedQuantity || 0
-                  ).toFixed(2)}
+                  ).toLocaleString("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  })}
                 </strong>
               </TableCell>
             </TableRow>
@@ -221,9 +241,17 @@ export const ProcessingSummaryComponent: React.FC<
                       </TableCell>
                       <TableCell align="right">
                         {isCurrentPercentile ? (
-                          <strong>${totalValue.toFixed(2)}</strong>
+                          <strong>
+                            {totalValue.toLocaleString("en-US", {
+                              style: "currency",
+                              currency: "USD",
+                            })}
+                          </strong>
                         ) : (
-                          `$${totalValue.toFixed(2)}`
+                          totalValue.toLocaleString("en-US", {
+                            style: "currency",
+                            currency: "USD",
+                          })
                         )}
                       </TableCell>
                       <TableCell

@@ -13,6 +13,7 @@ export const useSellerInventoryProcessor = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState<ProcessingProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [summary, setSummary] = useState<ProcessingSummary | null>(null);
   const isCancelledRef = useRef(false);
 
@@ -26,6 +27,7 @@ export const useSellerInventoryProcessor = () => {
     setIsProcessing(true);
     isCancelledRef.current = false;
     setError(null);
+    setWarning(null);
     setSummary(null);
 
     try {
@@ -69,7 +71,27 @@ export const useSellerInventoryProcessor = () => {
         errors: 0,
       });
 
-      const listings = convertSellerInventoryToListings(inventory);
+      const result = convertSellerInventoryToListings(inventory);
+      const listings = result.listings;
+
+      // Report duplicates if any were found
+      if (result.duplicatesFound > 0) {
+        const warningMessage = `Found and removed ${
+          result.duplicatesFound
+        } duplicate SKU ID${
+          result.duplicatesFound > 1 ? "s" : ""
+        } during conversion. Only the first occurrence of each SKU was processed.`;
+        console.warn(warningMessage);
+        setWarning(warningMessage);
+        setProgress({
+          current: inventory.length,
+          total: inventory.length,
+          status: `Conversion complete - removed ${result.duplicatesFound} duplicates`,
+          processed: 0,
+          skipped: 0,
+          errors: 0,
+        });
+      }
 
       if (isCancelledRef.current) {
         return;
@@ -241,6 +263,7 @@ export const useSellerInventoryProcessor = () => {
     isCancelledRef.current = true;
     setIsProcessing(false);
     setProgress(null);
+    setWarning(null);
     setSummary(null);
   };
 
@@ -248,6 +271,7 @@ export const useSellerInventoryProcessor = () => {
     isProcessing,
     progress,
     error,
+    warning,
     summary,
     processSellerInventory,
     handleCancel,

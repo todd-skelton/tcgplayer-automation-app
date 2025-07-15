@@ -28,6 +28,17 @@ export const initializeRowColumns = (row: TcgPlayerListing): void => {
   row["Suggested Price"] = "";
   row["Expected Days to Sell"] = "";
   row["Error"] = "";
+
+  // Initialize price fields if not already set
+  if (!row["Lowest Price"]) {
+    row["Lowest Price"] = "";
+  }
+  if (!row["Highest Price"]) {
+    row["Highest Price"] = "";
+  }
+  if (!row["Sale Count"]) {
+    row["Sale Count"] = "";
+  }
 };
 
 export const getRowQuantities = (row: TcgPlayerListing) => {

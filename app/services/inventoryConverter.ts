@@ -26,7 +26,11 @@ export function convertProductToListing(
     Rarity: product.rarityName,
     "Listing Condition": listing.condition,
     "Listing Printing": listing.printing,
+    "Lowest Price": "",
+    "Highest Price": "",
+    "Sale Count": "",
     "TCG Market Price": "",
+    "Add to Quantity": "0",
     "Total Quantity": listing.quantity.toString(),
     "TCG Marketplace Price": listing.price.toString(),
   };
@@ -34,8 +38,10 @@ export function convertProductToListing(
 
 export function convertSellerInventoryToListings(
   inventory: SellerInventoryItem[]
-): TcgPlayerListing[] {
+): { listings: TcgPlayerListing[]; duplicatesFound: number } {
   const listings: TcgPlayerListing[] = [];
+  const seenSkuIds = new Set<string>();
+  let duplicatesFound = 0;
 
   inventory.forEach((item) => {
     // Filter out custom listings (those with customListingId)
@@ -45,6 +51,19 @@ export function convertSellerInventoryToListings(
     );
 
     regularListings.forEach((listing) => {
+      const skuId = listing.productConditionId.toString();
+
+      // Check for duplicate SKU IDs
+      if (seenSkuIds.has(skuId)) {
+        console.warn(
+          `Duplicate SKU ID found: ${skuId}. Skipping duplicate listing.`
+        );
+        duplicatesFound++;
+        return;
+      }
+
+      seenSkuIds.add(skuId);
+
       const tcgListing = convertProductToListing(
         {
           productId: item.productId,
@@ -62,5 +81,5 @@ export function convertSellerInventoryToListings(
     });
   });
 
-  return listings;
+  return { listings, duplicatesFound };
 }
