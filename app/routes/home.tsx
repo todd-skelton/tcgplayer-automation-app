@@ -4,6 +4,7 @@ import {
   useFetcher,
   type LoaderFunctionArgs,
   useLoaderData,
+  Link,
 } from "react-router";
 import { getAllProducts } from "~/tcgplayer/get-search-results";
 import { type SetProduct } from "~/data-types/setProduct";
@@ -32,6 +33,7 @@ import {
   FormControl,
   InputLabel,
   TextField,
+  Stack,
 } from "@mui/material";
 import { getProductLines } from "~/tcgplayer/get-product-lines";
 import { getCategoryFilters } from "~/tcgplayer/get-category-filters";
@@ -463,6 +465,36 @@ export default function Home() {
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Navigation Links */}
+      <Paper sx={{ p: 2, mb: 3 }} elevation={2}>
+        <Typography variant="h5" gutterBottom>
+          TCGPlayer Automation Tools
+        </Typography>
+        <Stack direction="row" spacing={2}>
+          <Button
+            component={Link}
+            to="/pricer"
+            variant="contained"
+            color="primary"
+          >
+            CSV Pricer
+          </Button>
+          <Button
+            component={Link}
+            to="/seller-pricer"
+            variant="contained"
+            color="secondary"
+          >
+            Seller Inventory Pricer
+          </Button>
+        </Stack>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+          Use the CSV Pricer to upload and price TCGPlayer CSV files, or the
+          Seller Inventory Pricer to fetch and price all listings for a specific
+          seller.
+        </Typography>
+      </Paper>
+
       <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
         <Typography variant="h4" gutterBottom>
           Fetch & Verify All Category Data

@@ -46,6 +46,7 @@ export interface Filters2 {
 export interface Term2 {
   sellerStatus: string;
   channelId: number;
+  sellerKey?: string[];
 }
 
 export interface Range2 {
@@ -200,6 +201,7 @@ export interface Product {
   productLineName: string;
   maxFulfillableQuantity: number;
   lowestPrice?: number;
+  lowestPriceWithShipping?: number;
 }
 
 export interface Listing {

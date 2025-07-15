@@ -156,110 +156,119 @@ export const ProcessingSummaryComponent: React.FC<
     </Card>
   );
 
-  const renderPercentileAnalysis = () => (
-    <Card>
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Percentile Analysis
-        </Typography>
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Percentile</TableCell>
-                <TableCell align="right">Total Value</TableCell>
-                <TableCell align="right">% Difference from Market</TableCell>
-                <TableCell align="right">Median Days to Sell</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {PERCENTILES.map((p) => {
-                const percentileKey = `${p}th`;
-                const totalValue =
-                  summary.totals.percentiles[percentileKey] || 0;
+  const renderPercentileAnalysis = () => {
+    // Create a combined list of percentiles including the selected one if it's not in the standard list
+    const allPercentiles = [...PERCENTILES];
+    if (!PERCENTILES.includes(summary.percentileUsed)) {
+      allPercentiles.push(summary.percentileUsed);
+      allPercentiles.sort((a, b) => a - b);
+    }
 
-                // Calculate percentage difference from market (only for rows with market values)
-                const percentileValueWithMarket =
-                  summary.totalsWithMarket.percentiles[percentileKey] || 0;
-                const marketValueWithMarket =
-                  summary.totalsWithMarket.marketPrice || 0;
-                const percentDiffFromMarket =
-                  marketValueWithMarket > 0
-                    ? ((percentileValueWithMarket - marketValueWithMarket) /
-                        marketValueWithMarket) *
-                      100
-                    : 0;
+    return (
+      <Card>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Percentile Analysis
+          </Typography>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Percentile</TableCell>
+                  <TableCell align="right">Total Value</TableCell>
+                  <TableCell align="right">% Difference from Market</TableCell>
+                  <TableCell align="right">Median Days to Sell</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {allPercentiles.map((p) => {
+                  const percentileKey = `${p}th`;
+                  const totalValue =
+                    summary.totals.percentiles[percentileKey] || 0;
 
-                const medianDays =
-                  summary.medianDaysToSell.percentiles[percentileKey] || 0;
+                  // Calculate percentage difference from market (only for rows with market values)
+                  const percentileValueWithMarket =
+                    summary.totalsWithMarket.percentiles[percentileKey] || 0;
+                  const marketValueWithMarket =
+                    summary.totalsWithMarket.marketPrice || 0;
+                  const percentDiffFromMarket =
+                    marketValueWithMarket > 0
+                      ? ((percentileValueWithMarket - marketValueWithMarket) /
+                          marketValueWithMarket) *
+                        100
+                      : 0;
 
-                const isCurrentPercentile = p === summary.percentileUsed;
+                  const medianDays =
+                    summary.medianDaysToSell.percentiles[percentileKey] || 0;
 
-                return (
-                  <TableRow
-                    key={p}
-                    sx={
-                      isCurrentPercentile
-                        ? { backgroundColor: "action.hover" }
-                        : {}
-                    }
-                  >
-                    <TableCell>
-                      {isCurrentPercentile ? (
-                        <strong>{p}th (Current)</strong>
-                      ) : (
-                        `${p}th`
-                      )}
-                    </TableCell>
-                    <TableCell align="right">
-                      {isCurrentPercentile ? (
-                        <strong>${totalValue.toFixed(2)}</strong>
-                      ) : (
-                        `$${totalValue.toFixed(2)}`
-                      )}
-                    </TableCell>
-                    <TableCell
-                      align="right"
-                      sx={{
-                        color:
-                          percentDiffFromMarket > 0
-                            ? "success.main"
-                            : percentDiffFromMarket < 0
-                            ? "error.main"
-                            : "text.primary",
-                      }}
+                  const isCurrentPercentile = p === summary.percentileUsed;
+
+                  return (
+                    <TableRow
+                      key={p}
+                      sx={
+                        isCurrentPercentile
+                          ? { backgroundColor: "action.hover" }
+                          : {}
+                      }
                     >
-                      {isCurrentPercentile ? (
-                        <strong>
-                          {percentDiffFromMarket >= 0 ? "+" : ""}
-                          {percentDiffFromMarket.toFixed(1)}%
-                        </strong>
-                      ) : (
-                        `${
-                          percentDiffFromMarket >= 0 ? "+" : ""
-                        }${percentDiffFromMarket.toFixed(1)}%`
-                      )}
-                    </TableCell>
-                    <TableCell align="right">
-                      {medianDays > 0 ? (
-                        isCurrentPercentile ? (
-                          <strong>{medianDays.toFixed(1)} days</strong>
+                      <TableCell>
+                        {isCurrentPercentile ? (
+                          <strong>{p}th (Current)</strong>
                         ) : (
-                          `${medianDays.toFixed(1)} days`
-                        )
-                      ) : (
-                        "N/A"
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </CardContent>
-    </Card>
-  );
+                          `${p}th`
+                        )}
+                      </TableCell>
+                      <TableCell align="right">
+                        {isCurrentPercentile ? (
+                          <strong>${totalValue.toFixed(2)}</strong>
+                        ) : (
+                          `$${totalValue.toFixed(2)}`
+                        )}
+                      </TableCell>
+                      <TableCell
+                        align="right"
+                        sx={{
+                          color:
+                            percentDiffFromMarket > 0
+                              ? "success.main"
+                              : percentDiffFromMarket < 0
+                              ? "error.main"
+                              : "text.primary",
+                        }}
+                      >
+                        {isCurrentPercentile ? (
+                          <strong>
+                            {percentDiffFromMarket >= 0 ? "+" : ""}
+                            {percentDiffFromMarket.toFixed(1)}%
+                          </strong>
+                        ) : (
+                          `${
+                            percentDiffFromMarket >= 0 ? "+" : ""
+                          }${percentDiffFromMarket.toFixed(1)}%`
+                        )}
+                      </TableCell>
+                      <TableCell align="right">
+                        {medianDays > 0 ? (
+                          isCurrentPercentile ? (
+                            <strong>{medianDays.toFixed(1)} days</strong>
+                          ) : (
+                            `${medianDays.toFixed(1)} days`
+                          )
+                        ) : (
+                          "N/A"
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
+    );
+  };
 
   const renderTimeToSellSummary = () => (
     <Card sx={{ maxWidth: 500 }}>
@@ -339,10 +348,14 @@ export const ProcessingSummaryComponent: React.FC<
     <Box sx={{ p: 2, bgcolor: "grey.50", borderRadius: 1 }}>
       <Typography variant="body2" color="text.secondary">
         💡 <strong>Next steps:</strong> Your priced CSV file has been
-        automatically downloaded with updated marketplace prices and percentile
-        data. The CSV now includes all percentile columns (0th through 100th)
-        and expected days to sell for each percentile. You can import this back
-        into your inventory management system.
+        automatically downloaded with updated marketplace prices and expected
+        days to sell based on your selected {summary.percentileUsed}th
+        percentile. The file contains essential pricing data including the
+        calculated suggested price and timing estimates. Detailed percentile
+        analysis and comparative days-to-sell metrics are shown above in this
+        summary but additional percentile columns are not included in the CSV to
+        keep the output file focused. You can import this file back into your
+        inventory management system.
       </Typography>
     </Box>
   );

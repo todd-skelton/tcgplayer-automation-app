@@ -1,5 +1,5 @@
 import type { TcgPlayerListing } from "../types/pricing";
-import { PRICING_CONSTANTS, PERCENTILES } from "../constants/pricing";
+import { PRICING_CONSTANTS } from "../constants/pricing";
 import Papa from "papaparse";
 
 export const calculateMedian = (values: number[]): number => {
@@ -25,15 +25,9 @@ export const shouldSkipRow = (row: TcgPlayerListing): boolean => {
 
 export const initializeRowColumns = (row: TcgPlayerListing): void => {
   row["Previous Marketplace Price"] = row["TCG Marketplace Price"] || "";
+  row["Suggested Price"] = "";
   row["Expected Days to Sell"] = "";
   row["Error"] = "";
-  row["Suggested Price"] = "";
-
-  // Initialize percentile columns
-  PERCENTILES.forEach((p) => {
-    row[`Price ${p}th Percentile`] = "";
-    row[`Days to Sell ${p}th Percentile`] = "";
-  });
 };
 
 export const getRowQuantities = (row: TcgPlayerListing) => {

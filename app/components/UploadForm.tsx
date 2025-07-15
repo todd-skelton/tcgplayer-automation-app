@@ -47,7 +47,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
             min: PRICING_CONSTANTS.MIN_PERCENTILE,
             max: PRICING_CONSTANTS.MAX_PERCENTILE,
           }}
-          helperText={`Percentile for suggested price calculation (${PRICING_CONSTANTS.MIN_PERCENTILE}-${PRICING_CONSTANTS.MAX_PERCENTILE})`}
+          helperText={`Percentile for suggested price calculation (${PRICING_CONSTANTS.MIN_PERCENTILE}-${PRICING_CONSTANTS.MAX_PERCENTILE}). Examples: 65, 75, 80`}
           disabled={isProcessing}
         />
         <Box sx={{ display: "flex", gap: 2 }}>

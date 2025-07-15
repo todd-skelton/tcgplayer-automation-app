@@ -74,7 +74,7 @@ function fitZipfModelToConditions(
         : dataPoints[0].y;
 
     // Initial parameters: [a, b] where a is scale factor, b is exponent
-    const initialParameters = [initialScale, 1.0];
+    const initialParameters = [initialScale, 0];
 
     // Fit the model using all individual sale data points
     const data = {
@@ -84,6 +84,7 @@ function fitZipfModelToConditions(
 
     const result = levenbergMarquardt(data, zipfFunction, {
       initialValues: initialParameters,
+      minValues: [0, 0],
     });
 
     const [a, b] = result.parameterValues;
@@ -320,18 +321,22 @@ export interface PercentileData {
 
 /**
  * Calculate time-decay-weighted percentiles from an array of sales with interpolation.
- * Returns percentiles from 0 to 100 in 10s intervals with interpolated prices between actual data points.
  * @param sales Array of sales, each with a price, quantity, and a timestamp (ms since epoch)
  * @param options.halfLifeDays Half-life for time decay in days (default 7)
+ * @param options.percentiles Array of percentiles to calculate (default: [0,10,20,...,100])
  * @returns Array of percentile data with prices and expected time to sell, or empty array if no sales
  */
 export function getTimeDecayedPercentileWeightedSuggestedPrice(
   sales: { price: number; quantity: number; timestamp: number }[],
-  options: { halfLifeDays?: number } = {}
+  options: { halfLifeDays?: number; percentiles?: number[] } = {}
 ): PercentileData[] {
   if (!sales || sales.length === 0) return [];
 
   const halfLifeDays = options.halfLifeDays ?? 7;
+  const requestedPercentiles = options.percentiles ?? [
+    0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
+  ];
+
   const now = Date.now();
   const msPerDay = 24 * 60 * 60 * 1000;
 
@@ -362,8 +367,8 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
 
   const percentiles: PercentileData[] = [];
 
-  // Generate percentiles from 0 to 100 in 10s intervals
-  for (let p = 0; p <= 100; p += 10) {
+  // Generate percentiles for each requested percentile
+  for (const p of requestedPercentiles) {
     const targetWeight = (p / 100) * totalWeight;
     let price: number;
 
@@ -468,23 +473,36 @@ export function getSuggestedPriceFromSales(
   // Use dynamic half-life if not provided
   const halfLifeDays = options.halfLifeDays || calculateDynamicHalfLife(sales);
 
+  // Create percentiles array that includes the custom percentile
+  const standardPercentiles = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  const percentilesToCalculate = [...standardPercentiles];
+
+  // Add custom percentile if it's not already in the standard set
+  if (!standardPercentiles.includes(percentile)) {
+    percentilesToCalculate.push(percentile);
+    percentilesToCalculate.sort((a, b) => a - b); // Keep sorted
+  }
+
   const percentiles = getTimeDecayedPercentileWeightedSuggestedPrice(sales, {
     halfLifeDays,
+    percentiles: percentilesToCalculate,
   });
 
   const totalQuantity = sales.reduce((sum, s) => sum + (s.quantity || 0), 0);
-  // Calculate the specific percentile requested (can be any value like 65th percentile)
+
+  // Find the suggested price from the calculated percentiles
   let suggestedPrice: number | undefined = undefined;
   let expectedTimeToSellDays: number | undefined = undefined;
 
   if (sales.length > 0) {
-    const specificPercentileData = calculateSpecificPercentile(
-      sales,
-      percentile,
-      halfLifeDays
+    // Find the percentile data for our target percentile
+    const targetPercentileData = percentiles.find(
+      (p) => p.percentile === percentile
     );
-    suggestedPrice = specificPercentileData.price;
-    expectedTimeToSellDays = specificPercentileData.expectedTimeToSellDays;
+    if (targetPercentileData) {
+      suggestedPrice = targetPercentileData.price;
+      expectedTimeToSellDays = targetPercentileData.expectedTimeToSellDays;
+    }
   }
 
   return {
@@ -527,96 +545,4 @@ function calculateDynamicHalfLife(
 
   // Apply reasonable bounds: minimum 1 day, maximum 90 days
   return Math.max(1, Math.min(90, Math.round(halfLife * 10) / 10));
-}
-
-/**
- * Calculate a specific percentile directly from weighted sales data with interpolation.
- * @param sales Array of sales, each with price, quantity, and timestamp (ms since epoch)
- * @param targetPercentile The specific percentile to calculate (e.g., 65 for 65th percentile)
- * @param halfLifeDays Half-life for time decay in days
- * @returns Object with price and expectedTimeToSellDays for the specific percentile
- */
-function calculateSpecificPercentile(
-  sales: { price: number; quantity: number; timestamp: number }[],
-  targetPercentile: number,
-  halfLifeDays: number
-): { price: number; expectedTimeToSellDays?: number } {
-  if (!sales || sales.length === 0) {
-    return { price: 0 };
-  }
-
-  const now = Date.now();
-  const msPerDay = 24 * 60 * 60 * 1000;
-
-  // Calculate weights for each sale (weight = time decay * quantity)
-  const weightedSales = sales.map((sale) => {
-    const ageDays = (now - sale.timestamp) / msPerDay;
-    // Exponential decay: weight = 0.5^(age/halfLife) * quantity
-    const timeWeight = Math.pow(0.5, ageDays / halfLifeDays);
-    const weight = timeWeight * (sale.quantity || 1);
-    return { ...sale, weight };
-  });
-
-  // Sort by price ascending
-  weightedSales.sort((a, b) => a.price - b.price);
-  const totalWeight = weightedSales.reduce((sum, s) => sum + s.weight, 0);
-  if (totalWeight === 0) {
-    return { price: 0 };
-  }
-
-  // Calculate cumulative weights for interpolation
-  let cumulative = 0;
-  const cumulativeData = weightedSales.map((sale) => {
-    cumulative += sale.weight;
-    return {
-      price: sale.price,
-      cumulativeWeight: cumulative,
-      percentile: (cumulative / totalWeight) * 100,
-    };
-  });
-
-  const targetWeight = (targetPercentile / 100) * totalWeight;
-  let price: number;
-
-  if (targetPercentile === 0) {
-    price = cumulativeData[0].price;
-  } else if (targetPercentile === 100) {
-    price = cumulativeData[cumulativeData.length - 1].price;
-  } else {
-    // Find the two data points to interpolate between
-    let lowerIndex = -1;
-    let upperIndex = -1;
-
-    for (let i = 0; i < cumulativeData.length; i++) {
-      if (cumulativeData[i].cumulativeWeight >= targetWeight) {
-        upperIndex = i;
-        lowerIndex = i === 0 ? 0 : i - 1;
-        break;
-      }
-    }
-
-    if (upperIndex === -1) {
-      // Target weight is higher than all data, use highest price
-      price = cumulativeData[cumulativeData.length - 1].price;
-    } else if (lowerIndex === upperIndex) {
-      // Exact match or first data point
-      price = cumulativeData[upperIndex].price;
-    } else {
-      // Interpolate between the two points
-      const lower = cumulativeData[lowerIndex];
-      const upper = cumulativeData[upperIndex];
-      const weightDiff = upper.cumulativeWeight - lower.cumulativeWeight;
-      const targetOffset = targetWeight - lower.cumulativeWeight;
-      const ratio = weightDiff === 0 ? 0 : targetOffset / weightDiff;
-      price = lower.price + (upper.price - lower.price) * ratio;
-    }
-  }
-
-  // Calculate expected time to sell for this percentile price
-  const expectedTimeToSellDays = calculateExpectedTimeToSell(sales, price);
-
-  return {
-    price,
-    expectedTimeToSellDays,
-  };
 }

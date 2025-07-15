@@ -9,7 +9,17 @@ interface ProgressIndicatorProps {
 export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   progress,
 }) => {
-  const progressPercentage = (progress.current / progress.total) * 100;
+  const progressPercentage =
+    progress.total > 0 ? (progress.current / progress.total) * 100 : 0;
+
+  // Determine appropriate label based on context
+  const getProgressLabel = () => {
+    if (progress.total === 0) {
+      return "Initializing...";
+    }
+
+    return `${progress.current} of ${progress.total} items`;
+  };
 
   return (
     <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
@@ -19,7 +29,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
 
       <Box sx={{ mb: 2 }}>
         <LinearProgress
-          variant="determinate"
+          variant={progress.total === 0 ? "indeterminate" : "determinate"}
           value={progressPercentage}
           sx={{ height: 8, borderRadius: 4 }}
         />
@@ -27,11 +37,13 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
 
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
         <Typography variant="body2" color="text.secondary">
-          {progress.current} of {progress.total} rows
+          {getProgressLabel()}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {Math.round(progressPercentage)}%
-        </Typography>
+        {progress.total > 0 && (
+          <Typography variant="body2" color="text.secondary">
+            {Math.round(progressPercentage)}%
+          </Typography>
+        )}
       </Box>
 
       <Typography variant="body2" sx={{ mb: 2 }}>
