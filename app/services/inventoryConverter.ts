@@ -19,23 +19,16 @@ export function convertProductToListing(
   listing: Listing
 ): TcgPlayerListing {
   return {
-    "TCGplayer Id": listing.productConditionId.toString(), // This is the SKU (product + condition combination)
+    "TCGplayer Id": listing.productConditionId.toString(),
     "Product Line": product.productLineName,
     "Set Name": product.setName,
     "Product Name": product.productName,
-    Title: listing.customData?.title || "",
-    Number: product.customAttributes?.number || "",
     Rarity: product.rarityName,
-    Condition: listing.condition,
-    "TCG Market Price": "", // SKU-level market price will be fetched separately by ListingProcessor
-    "TCG Direct Low": "",
-    "TCG Low Price With Shipping":
-      product.lowestPriceWithShipping?.toString() || "",
-    "TCG Low Price": product.lowestPrice?.toString() || "",
+    "Listing Condition": listing.condition,
+    "Listing Printing": listing.printing,
+    "TCG Market Price": "",
     "Total Quantity": listing.quantity.toString(),
-    "Add to Quantity": "0",
     "TCG Marketplace Price": listing.price.toString(),
-    "Photo URL": "",
   };
 }
 

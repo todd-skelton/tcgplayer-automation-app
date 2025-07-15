@@ -344,22 +344,6 @@ export const ProcessingSummaryComponent: React.FC<
     </>
   );
 
-  const renderNextSteps = () => (
-    <Box sx={{ p: 2, bgcolor: "grey.50", borderRadius: 1 }}>
-      <Typography variant="body2" color="text.secondary">
-        💡 <strong>Next steps:</strong> Your priced CSV file has been
-        automatically downloaded with updated marketplace prices and expected
-        days to sell based on your selected {summary.percentileUsed}th
-        percentile. The file contains essential pricing data including the
-        calculated suggested price and timing estimates. Detailed percentile
-        analysis and comparative days-to-sell metrics are shown above in this
-        summary but additional percentile columns are not included in the CSV to
-        keep the output file focused. You can import this file back into your
-        inventory management system.
-      </Typography>
-    </Box>
-  );
-
   return (
     <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
       <Typography variant="h5" gutterBottom>
@@ -400,7 +384,6 @@ export const ProcessingSummaryComponent: React.FC<
 
         {/* Alerts and Next Steps */}
         {renderAlerts()}
-        {renderNextSteps()}
       </Box>
     </Paper>
   );

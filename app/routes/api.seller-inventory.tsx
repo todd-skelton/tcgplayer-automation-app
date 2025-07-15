@@ -40,10 +40,6 @@ export async function action({ request }: { request: Request }) {
           },
         },
       },
-      sort: {
-        field: "product-sorting-name",
-        order: "asc",
-      },
     };
 
     // Fetch all products for the seller
