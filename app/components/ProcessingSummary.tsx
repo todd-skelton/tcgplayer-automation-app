@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import type { ProcessingSummary } from "../types/pricing";
 import { PERCENTILES, PRICING_CONSTANTS } from "../constants/pricing";
+import { formatProcessingTime } from "../utils/timeFormatting";
 
 interface ProcessingSummaryComponentProps {
   summary: ProcessingSummary;
@@ -387,7 +388,7 @@ export const ProcessingSummaryComponent: React.FC<
           {summary.percentileUsed}th percentile
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Processing time: {(summary.processingTime / 1000).toFixed(1)} seconds
+          Processing time: {formatProcessingTime(summary.processingTime)}
         </Typography>
       </Box>
 
