@@ -274,7 +274,6 @@ export class ListingProcessor {
       }
 
       if (pricePointData.lowestPrice > 0) {
-        row["TCG Low Price"] = pricePointData.lowestPrice.toFixed(2);
         row["Lowest Price"] = pricePointData.lowestPrice.toFixed(2);
       }
 
@@ -289,7 +288,8 @@ export class ListingProcessor {
 
     // Update summary data
     const { totalQty, addQty, combinedQty } = getRowQuantities(row);
-    const lowPrice = Number(row["TCG Low Price"]) || 0;
+    const lowPrice =
+      Number(row["TCG Low Price"]) || Number(row["Lowest Price"]) || 0;
     const marketplacePrice = Number(row["TCG Marketplace Price"]) || 0;
     const marketPrice = pricePointData?.marketPrice || 0;
 
