@@ -70,51 +70,12 @@ export async function action({ request }: { request: Request }) {
       percentile,
     });
 
-    // Apply minimum price bounds if we have a suggested price
-    let finalSuggestedPrice = algorithmResult.suggestedPrice;
-    let errorMessage = "";
-
-    if (
-      algorithmResult.suggestedPrice !== null &&
-      algorithmResult.suggestedPrice !== undefined
-    ) {
-      try {
-        // Get price points for market price data
-        const pricePoints = await getPricePoints({ skuIds: [skuId] });
-        const pricePoint = pricePoints.length > 0 ? pricePoints[0] : null;
-
-        // Apply minimum price bounds
-        const { marketplacePrice, errorMessage: boundsErrorMessage } =
-          calculateMarketplacePrice(
-            algorithmResult.suggestedPrice,
-            pricePoint
-              ? {
-                  marketPrice: pricePoint.marketPrice,
-                  lowestPrice: pricePoint.lowestPrice,
-                  highestPrice: pricePoint.highestPrice,
-                  calculatedAt: pricePoint.calculatedAt,
-                }
-              : null
-          );
-
-        // Update the suggested price with the bounded price
-        finalSuggestedPrice = marketplacePrice;
-        errorMessage = boundsErrorMessage;
-      } catch (pricePointError) {
-        // If we can't get price points, proceed without bounds checking
-        console.warn(
-          `Could not get price points for SKU ${skuId}:`,
-          pricePointError
-        );
-      }
-    }
-
-    // Return result in SuggestedPriceResult format
+    // Return the original algorithm result without applying bounds here
+    // The bounds will be applied in the pricing pipeline (purePricingService.ts)
     const result = {
-      suggestedPrice: finalSuggestedPrice,
+      suggestedPrice: algorithmResult.suggestedPrice,
       expectedTimeToSellDays: algorithmResult.expectedTimeToSellDays,
       percentiles: algorithmResult.percentiles,
-      ...(errorMessage && { error: errorMessage }),
     };
 
     return result;
