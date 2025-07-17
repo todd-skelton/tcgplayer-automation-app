@@ -3,7 +3,6 @@ import { productsDb } from "~/datastores";
 import { data } from "react-router";
 import type { Product } from "~/data-types/product";
 import { calculateMarketplacePrice } from "~/services/pricingService";
-import { getPricePoints } from "~/tcgplayer/get-price-points";
 
 // Simple API endpoint to get suggested price for a single product
 export async function action({ request }: { request: Request }) {

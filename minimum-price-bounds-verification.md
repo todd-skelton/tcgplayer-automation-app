@@ -25,11 +25,27 @@ Added minimum price bounds checking to the pricing pipeline. **Note: The API end
 
 ## Root Cause
 
-**The issue was in the API endpoint applying bounds twice:**
+**The issue was that price points were being fetched on the client-side with CORS restrictions:**
 
-1. **API Endpoint**: Was applying `calculateMarketplacePrice` and returning the bounded price as `suggestedPrice`
-2. **Pricing Pipeline**: Was expecting the original algorithm price but receiving the already-bounded price
-3. **Result**: When bounds were applied, the original algorithm price was lost, leading to empty values in CSV
+1. **CORS Issue**: Direct calls to `getPricePoints` from client-side code failed due to CORS restrictions
+2. **Architecture Problem**: Services used on both client and server needed different API call strategies
+3. **Data Flow Problem**: Bounds checking couldn't work without price point data
+
+## Solution
+
+**Ensured all external API calls go through server-side endpoints:**
+
+1. **Client-Side Services**: All `DataEnrichmentService` methods now use `/api/price-points` endpoint
+2. **Server-Side Endpoint**: `/api/price-points` calls `getPricePoints()` directly without CORS issues
+3. **Batch Processing**: Single API call fetches all price points for all SKUs at once
+4. **Consistent Architecture**: Both pricing and display enrichment use the same server-side pattern
+
+### Architecture Flow:
+
+```
+OLD: Client → Direct getPricePoints() → External API (FAILED due to CORS)
+NEW: Client → /api/price-points → Server → getPricePoints() → External API (SUCCESS)
+```
 
 ## CSV Output Fix
 
@@ -83,10 +99,37 @@ To verify the fix is working:
 2. **Process Inventory**: Run inventory processing and look for items with the error message indicating minimum price was applied
 3. **Monitor Logs**: Look for console warnings about price points not being available (fallback behavior)
 
-## Files Modified
+## Technical Implementation
 
-- `app/routes/api.suggested-price.tsx` - **REMOVED** bounds checking from API endpoint to preserve original price
-- `app/services/purePricingService.ts` - **APPLIES** bounds checking in pricing pipeline with proper data separation
+### Files Modified:
+
+1. **`dataEnrichmentService.ts`**:
+
+   - `fetchPricePointsForPricing()`: Uses `/api/price-points` endpoint for client-side compatibility
+   - `fetchMarketData()`: Uses `/api/price-points` endpoint for display enrichment
+   - Both methods work consistently whether called from client or server
+
+2. **`pricingPipelineService.ts`**:
+
+   - Pre-pricing enrichment step calls `fetchPricePointsForPricing()`
+   - Passes price points map to pricing service for bounds checking
+
+3. **`purePricingService.ts`**:
+
+   - Modified to accept `pricePointsMap` parameter from enrichment
+   - Uses provided price points for bounds checking (no direct API calls)
+   - Maintains separation of suggested vs marketplace prices
+
+4. **`routes/api.price-points.tsx`**:
+   - Server-side endpoint that calls `getPricePoints()` directly
+   - Handles batch requests from client-side services
+   - No CORS issues since it runs on the server
+
+### Key Functions:
+
+- **Bounds Logic**: `calculateMarketplacePrice()` applies MIN_PRICE_MULTIPLIER and MIN_PRICE_CONSTANT
+- **Error Messages**: When bounds applied, error message preserved in pricing result
+- **Data Separation**: Suggested price = algorithm result, Marketplace price = bounded result
 
 ## Verification Steps
 

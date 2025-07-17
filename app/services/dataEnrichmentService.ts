@@ -1,6 +1,7 @@
 import type { PricedSku } from "../types/pricing";
 import type { PricedPricing } from "./purePricingService";
 import { createDisplayName } from "../utils/displayNameUtils";
+import { getPricePoints, type PricePoint } from "../tcgplayer/get-price-points";
 
 export interface ProductDisplayInfo {
   sku: number;
@@ -26,6 +27,72 @@ export interface MarketDisplayInfo {
 export class DataEnrichmentService {
   private productDetailCache: Map<number, ProductDisplayInfo> = new Map();
   private marketDataCache: Map<number, MarketDisplayInfo> = new Map();
+
+  /**
+   * Fetches price points for SKUs before pricing - uses API endpoint for client-side compatibility
+   */
+  async fetchPricePointsForPricing(
+    skuIds: number[],
+    onProgress?: (current: number, total: number, status: string) => void
+  ): Promise<Map<number, PricePoint>> {
+    const result = new Map<number, PricePoint>();
+
+    if (skuIds.length === 0) {
+      return result;
+    }
+
+    onProgress?.(
+      0,
+      skuIds.length,
+      "Fetching price points for bounds checking..."
+    );
+
+    try {
+      // Use API endpoint instead of calling getPricePoints directly
+      const requestBody = { skuIds };
+      const response = await fetch("/api/price-points", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        console.warn(`Failed to fetch price points: ${response.status}`);
+        return result;
+      }
+
+      const data = await response.json();
+
+      if (data.pricePoints && Array.isArray(data.pricePoints)) {
+        // Map price points by SKU ID for easy lookup
+        data.pricePoints.forEach((pricePoint: any) => {
+          result.set(pricePoint.skuId || pricePoint.sku, {
+            skuId: pricePoint.skuId || pricePoint.sku,
+            marketPrice: pricePoint.marketPrice,
+            lowestPrice: pricePoint.lowestPrice,
+            highestPrice: pricePoint.highestPrice,
+            priceCount: pricePoint.priceCount,
+            calculatedAt: pricePoint.calculatedAt,
+          });
+        });
+      }
+
+      onProgress?.(
+        skuIds.length,
+        skuIds.length,
+        "Price points fetched successfully!"
+      );
+
+      console.log(
+        `Fetched ${result.size} price points for ${skuIds.length} SKUs`
+      );
+    } catch (error) {
+      console.warn("Failed to fetch price points:", error);
+      // Continue without price points - bounds checking will be skipped
+    }
+
+    return result;
+  }
 
   /**
    * Enriches pricing data with all supplementary information
@@ -200,8 +267,7 @@ export class DataEnrichmentService {
   }
 
   /**
-   * Fetches market data for display purposes
-   * This is a placeholder - implement based on your market data API
+   * Fetches market data for display purposes - calls API endpoint for client-side usage
    */
   private async fetchMarketData(
     skuIds: number[]
@@ -232,7 +298,7 @@ export class DataEnrichmentService {
     }
 
     try {
-      // Batch fetch market data
+      // Call the API endpoint (server-side) instead of getPricePoints directly
       const requestBody = { skuIds: uncachedSkuIds };
       console.log(
         "DataEnrichmentService: Sending request to /api/price-points with body:",
@@ -263,7 +329,7 @@ export class DataEnrichmentService {
             sku: pricePoint.skuId || pricePoint.sku,
             lowestSalePrice: pricePoint.lowestPrice,
             highestSalePrice: pricePoint.highestPrice,
-            saleCount: pricePoint.priceCount || pricePoint.saleCount,
+            saleCount: pricePoint.priceCount || pricePoint.saleCount || 0,
             tcgMarketPrice: pricePoint.marketPrice,
           };
 

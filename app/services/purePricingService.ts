@@ -8,7 +8,7 @@ import {
   calculateMarketplacePrice,
   type PricePointData,
 } from "./pricingService";
-import { getPricePoints } from "../tcgplayer/get-price-points";
+import type { PricePoint } from "../tcgplayer/get-price-points";
 
 export interface PricedPricing {
   sku: number;
@@ -43,6 +43,7 @@ export class PurePricingService {
   async calculatePrices(
     skus: PricerSku[],
     config: PricingConfig,
+    pricePointsMap: Map<number, PricePoint> = new Map(),
     source: string = "pricing"
   ): Promise<PurePricingResult> {
     const startTime = Date.now();
@@ -96,7 +97,11 @@ export class PurePricingService {
         );
 
         // Create PricedPricing from result
-        const pricedItem = await this.createPricedItem(pricerSku, result);
+        const pricedItem = await this.createPricedItem(
+          pricerSku,
+          result,
+          pricePointsMap
+        );
 
         if (pricedItem.errors && pricedItem.errors.length > 0) {
           errors++;
@@ -152,38 +157,6 @@ export class PurePricingService {
     // Calculate aggregated percentiles
     const aggregatedPercentiles =
       this.calculateAggregatedPercentiles(allPercentileData);
-
-    // Debug logging to understand the percentile issue
-    console.log("=== PERCENTILE DEBUG INFO ===");
-    console.log("Total SKUs processed:", processed);
-    console.log("All percentile data entries:", allPercentileData.length);
-    console.log(
-      "Sample percentile data (first 5):",
-      allPercentileData.slice(0, 5)
-    );
-    console.log(
-      "Aggregated percentile TOTAL VALUES:",
-      aggregatedPercentiles.marketPrice
-    );
-    console.log("Sample percentile breakdown for first SKU:");
-    if (allPercentileData.length > 0) {
-      const firstSku = allPercentileData[0];
-      const relatedPercentiles = allPercentileData.filter(
-        (p) =>
-          p.quantity === firstSku.quantity && allPercentileData.indexOf(p) < 11 // First 11 percentiles (0-100th)
-      );
-      console.log("Percentiles for first SKU:", relatedPercentiles);
-    }
-    console.log(
-      "Sample priced items (first 2):",
-      pricedItems.slice(0, 2).map((item) => ({
-        sku: item.sku,
-        quantity: item.quantity,
-        addToQuantity: item.addToQuantity,
-        suggestedPrice: item.suggestedPrice,
-      }))
-    );
-    console.log("==============================");
 
     return {
       pricedItems,
@@ -255,7 +228,8 @@ export class PurePricingService {
 
   private async createPricedItem(
     pricerSku: PricerSku,
-    result: any
+    result: any,
+    pricePointsMap: Map<number, PricePoint> = new Map()
   ): Promise<PricedPricing> {
     const pricedItem: PricedPricing = {
       sku: pricerSku.sku,
@@ -276,38 +250,28 @@ export class PurePricingService {
       // Always set the original suggested price from the algorithm
       pricedItem.suggestedPrice = result.suggestedPrice;
 
-      try {
-        // Get price points for market price data to apply bounds
-        const pricePoints = await getPricePoints({ skuIds: [pricerSku.sku] });
-        const pricePoint = pricePoints.length > 0 ? pricePoints[0] : null;
+      // Get price point from the provided map (no API call needed)
+      const pricePoint = pricePointsMap.get(pricerSku.sku) || null;
 
-        // Apply minimum price bounds
-        const { marketplacePrice, errorMessage } = calculateMarketplacePrice(
-          result.suggestedPrice,
-          pricePoint
-            ? {
-                marketPrice: pricePoint.marketPrice,
-                lowestPrice: pricePoint.lowestPrice,
-                highestPrice: pricePoint.highestPrice,
-                calculatedAt: pricePoint.calculatedAt,
-              }
-            : null
-        );
+      // Apply minimum price bounds
+      const { marketplacePrice, errorMessage } = calculateMarketplacePrice(
+        result.suggestedPrice,
+        pricePoint
+          ? {
+              marketPrice: pricePoint.marketPrice,
+              lowestPrice: pricePoint.lowestPrice,
+              highestPrice: pricePoint.highestPrice,
+              calculatedAt: pricePoint.calculatedAt,
+            }
+          : null
+      );
 
-        // Set the bounded price as the marketplace price
-        pricedItem.price = marketplacePrice;
+      // Set the bounded price as the marketplace price
+      pricedItem.price = marketplacePrice;
 
-        // Add error message if minimum price was applied
-        if (errorMessage) {
-          pricedItem.errors?.push(errorMessage);
-        }
-      } catch (pricePointError) {
-        // If we can't get price points, use the original suggested price as marketplace price
-        console.warn(
-          `Could not get price points for SKU ${pricerSku.sku}:`,
-          pricePointError
-        );
-        pricedItem.price = result.suggestedPrice;
+      // Add error message if minimum price was applied
+      if (errorMessage) {
+        pricedItem.errors?.push(errorMessage);
       }
     }
 

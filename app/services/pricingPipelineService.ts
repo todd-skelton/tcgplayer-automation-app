@@ -90,10 +90,32 @@ export class PricingPipelineService {
         throw new Error("Processing cancelled by user");
       }
 
-      // Step 4: Execute core pricing (fast, no enrichment)
+      // Step 3.5: Fetch price points for bounds checking (server-side only)
+      const skuIds = pricerSkus.map((sku) => sku.sku);
+      const pricePointsMap =
+        await this.enrichmentService.fetchPricePointsForPricing(
+          skuIds,
+          (current, total, status) => {
+            config.onProgress?.({
+              current,
+              total,
+              status,
+              processed: 0,
+              skipped: 0,
+              errors: 0,
+            });
+          }
+        );
+
+      if (config.isCancelled?.()) {
+        throw new Error("Processing cancelled by user");
+      }
+
+      // Step 4: Execute core pricing with price points (fast, no additional enrichment)
       const pricingResult = await this.purePricingService.calculatePrices(
         pricerSkus,
         config,
+        pricePointsMap,
         config.source
       );
 
