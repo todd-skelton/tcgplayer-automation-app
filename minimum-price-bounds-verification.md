@@ -14,11 +14,37 @@ Added minimum price bounds checking to both the API endpoint and the pricing pip
 - Applies `calculateMarketplacePrice` function to enforce minimum bounds
 - Returns bounded price and includes error message if minimum was applied
 
-### 2. Pricing Pipeline (`purePricingService.ts`)
+### 2. Pricing Pipeline (`purePricingService.ts`) - **KEY FIX**
 
 - Modified `createPricedItem` method to apply minimum price bounds
+- **CRITICAL**: Fixed data flow to properly separate original suggested price from bounded marketplace price:
+  - `pricedItem.suggestedPrice` = original algorithm price (appears in "Suggested Price" CSV column)
+  - `pricedItem.price` = bounded minimum price (appears in "TCG Marketplace Price" CSV column)
 - Fetches price points for each SKU during processing
 - Uses the same `calculateMarketplacePrice` logic for consistency
+
+## CSV Output Fix
+
+**The main issue was that when minimum bounds were applied, both "Suggested Price" and "TCG Marketplace Price" columns were empty in the CSV.**
+
+### Before Fix:
+
+```csv
+TCGplayer Id,TCG Marketplace Price,Suggested Price,Error
+2998629,,,"Suggested price below minimum. Using minimum price."
+```
+
+### After Fix:
+
+```csv
+TCGplayer Id,TCG Marketplace Price,Suggested Price,Error
+2998629,30.94,28.50,"Suggested price below minimum. Using minimum price."
+```
+
+Where:
+
+- **Suggested Price (28.50)** = Original price from pricing algorithm
+- **TCG Marketplace Price (30.94)** = Bounded minimum price that will actually be used
 
 ## Minimum Price Calculation
 

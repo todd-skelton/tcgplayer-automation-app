@@ -273,6 +273,9 @@ export class PurePricingService {
 
     // Set pricing data with minimum price bounds
     if (result.suggestedPrice !== null && result.suggestedPrice !== undefined) {
+      // Always set the original suggested price from the algorithm
+      pricedItem.suggestedPrice = result.suggestedPrice;
+
       try {
         // Get price points for market price data to apply bounds
         const pricePoints = await getPricePoints({ skuIds: [pricerSku.sku] });
@@ -291,20 +294,19 @@ export class PurePricingService {
             : null
         );
 
-        pricedItem.suggestedPrice = marketplacePrice;
-        pricedItem.price = marketplacePrice; // Set as current price
+        // Set the bounded price as the marketplace price
+        pricedItem.price = marketplacePrice;
 
         // Add error message if minimum price was applied
         if (errorMessage) {
           pricedItem.errors?.push(errorMessage);
         }
       } catch (pricePointError) {
-        // If we can't get price points, use the original suggested price
+        // If we can't get price points, use the original suggested price as marketplace price
         console.warn(
           `Could not get price points for SKU ${pricerSku.sku}:`,
           pricePointError
         );
-        pricedItem.suggestedPrice = result.suggestedPrice;
         pricedItem.price = result.suggestedPrice;
       }
     }
