@@ -19,15 +19,27 @@ export class SellerInventoryDataSource
 {
   public inventoryService = new SellerInventoryService();
   private converter = new SellerInventoryToPricerSkuConverter();
+  private cachedInventory: SellerInventoryItem[] | null = null;
+  private cachedSellerKey: string | null = null;
 
   async fetchData(
     params: SellerInventoryDataSourceParams
   ): Promise<SellerInventoryItem[]> {
-    return await this.inventoryService.fetchSellerInventory({
+    // Return cached data if available and for the same seller
+    if (this.cachedInventory && this.cachedSellerKey === params.sellerKey) {
+      return this.cachedInventory;
+    }
+
+    // Fetch new data and cache it
+    const inventory = await this.inventoryService.fetchSellerInventory({
       sellerKey: params.sellerKey,
       onProgress: () => {}, // Will be handled by the pipeline
       isCancelled: () => false, // Will be handled by the pipeline
     });
+
+    this.cachedInventory = inventory;
+    this.cachedSellerKey = params.sellerKey;
+    return inventory;
   }
 
   async validateData(
@@ -106,5 +118,24 @@ export class SellerInventoryDataSource
       console.error("Error validating SKUs:", error);
       throw error;
     }
+  }
+
+  /**
+   * Manually set cached inventory data. Used to avoid refetching when data is already available.
+   */
+  setCachedInventory(
+    inventory: SellerInventoryItem[],
+    sellerKey: string
+  ): void {
+    this.cachedInventory = inventory;
+    this.cachedSellerKey = sellerKey;
+  }
+
+  /**
+   * Clear cached inventory data. Should be called when starting fresh processing.
+   */
+  clearCache(): void {
+    this.cachedInventory = null;
+    this.cachedSellerKey = null;
   }
 }

@@ -16,6 +16,9 @@ export const useSellerInventoryPipelineProcessor = () => {
     baseProcessor.startProcessing();
 
     try {
+      // Clear any cached data to ensure fresh fetch
+      sellerDataSource.current.clearCache();
+
       // First, fetch and validate the SKUs (this is seller-specific logic)
       baseProcessor.setProgress({
         current: 0,
@@ -46,6 +49,9 @@ export const useSellerInventoryPipelineProcessor = () => {
       if (baseProcessor.isCancelledRef.current) {
         return;
       }
+
+      // Cache the fetched inventory so the pipeline doesn't fetch it again
+      sellerDataSource.current.setCachedInventory(inventory, sellerKey);
 
       // Convert to PricerSku format for validation
       const pricerSkus = await sellerDataSource.current.convertToPricerSku(
@@ -89,6 +95,7 @@ export const useSellerInventoryPipelineProcessor = () => {
       }
 
       // Now execute the standardized pricing pipeline
+      // The pipeline will use the cached inventory data instead of fetching again
       const result = await pipelineService.current.executePipeline(
         sellerDataSource.current,
         { sellerKey },
