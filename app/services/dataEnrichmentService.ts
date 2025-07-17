@@ -100,6 +100,24 @@ export class DataEnrichmentService {
   async enrichForDisplay(
     pricedItems: PricedPricing[],
     onProgress?: (current: number, total: number, status: string) => void
+  ): Promise<PricedSku[]>;
+
+  /**
+   * Enriches pricing data with all supplementary information, using pre-fetched price points
+   */
+  async enrichForDisplay(
+    pricedItems: PricedPricing[],
+    onProgress?: (current: number, total: number, status: string) => void,
+    pricePointsMap?: Map<number, PricePoint>
+  ): Promise<PricedSku[]>;
+
+  /**
+   * Enriches pricing data with all supplementary information
+   */
+  async enrichForDisplay(
+    pricedItems: PricedPricing[],
+    onProgress?: (current: number, total: number, status: string) => void,
+    pricePointsMap?: Map<number, PricePoint>
   ): Promise<PricedSku[]> {
     const skuIds = pricedItems.map((item) => item.sku);
 
@@ -107,10 +125,28 @@ export class DataEnrichmentService {
 
     onProgress?.(0, skuIds.length, "Fetching product details...");
 
+    // If price points are provided, skip fetching market data and use the provided data
+    let marketDataPromise: Promise<Map<number, MarketDisplayInfo>>;
+
+    if (pricePointsMap && pricePointsMap.size > 0) {
+      console.log(
+        "DataEnrichmentService: Using pre-fetched price points, skipping market data fetch"
+      );
+      // Convert price points to market display info
+      marketDataPromise = Promise.resolve(
+        this.convertPricePointsToMarketData(pricePointsMap, skuIds)
+      );
+    } else {
+      console.log(
+        "DataEnrichmentService: No pre-fetched price points, fetching market data"
+      );
+      marketDataPromise = this.fetchMarketData(skuIds);
+    }
+
     // Fetch product details in parallel with market data
     const [productDetails, marketData] = await Promise.all([
       this.fetchProductDetails(skuIds, onProgress),
-      this.fetchMarketData(skuIds),
+      marketDataPromise,
     ]);
 
     console.log(
@@ -371,6 +407,54 @@ export class DataEnrichmentService {
     });
 
     console.log("DataEnrichmentService: Final market data result:", result);
+    return result;
+  }
+
+  /**
+   * Converts pre-fetched price points to market display info format
+   */
+  private convertPricePointsToMarketData(
+    pricePointsMap: Map<number, PricePoint>,
+    skuIds: number[]
+  ): Map<number, MarketDisplayInfo> {
+    const result = new Map<number, MarketDisplayInfo>();
+
+    skuIds.forEach((skuId) => {
+      // Check cache first
+      const cached = this.marketDataCache.get(skuId);
+      if (cached) {
+        result.set(skuId, cached);
+        return;
+      }
+
+      // Convert from price point if available
+      const pricePoint = pricePointsMap.get(skuId);
+      if (pricePoint) {
+        const marketInfo: MarketDisplayInfo = {
+          sku: pricePoint.skuId,
+          lowestSalePrice: pricePoint.lowestPrice,
+          highestSalePrice: pricePoint.highestPrice,
+          saleCount: pricePoint.priceCount || 0,
+          tcgMarketPrice: pricePoint.marketPrice,
+        };
+
+        // Cache the result
+        this.marketDataCache.set(skuId, marketInfo);
+        result.set(skuId, marketInfo);
+
+        console.log(
+          `DataEnrichmentService: Converted price point for SKU ${skuId}:`,
+          pricePoint,
+          "→",
+          marketInfo
+        );
+      }
+    });
+
+    console.log(
+      "DataEnrichmentService: Converted price points to market data:",
+      result
+    );
     return result;
   }
 

@@ -147,7 +147,8 @@ export class PricingPipelineService {
               skipped: pricingResult.stats.skipped,
               errors: pricingResult.stats.errors,
             });
-          }
+          },
+          pricePointsMap // Pass the already-fetched price points to avoid redundant API calls
         );
       } else {
         // Convert pricing data to PricedSku format without enrichment

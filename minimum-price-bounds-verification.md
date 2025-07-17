@@ -143,3 +143,37 @@ The fix is now complete. When you process seller inventory, you should see:
 ## Next Steps
 
 Re-run your seller inventory processing to verify the fix. The CSV output should now show both prices when minimum bounds are applied, eliminating the empty price fields issue.
+
+## Performance Optimization
+
+**Eliminated redundant API calls by reusing price points data:**
+
+### Before Optimization:
+
+The pricing pipeline was making **two separate calls** to `getPricePoints()` for the same SKUs:
+
+1. **Step 3.5**: `fetchPricePointsForPricing()` - for bounds checking during pricing
+2. **Step 5**: `enrichForDisplay()` → `fetchMarketData()` - for display enrichment
+
+This resulted in duplicate network requests to the external TCGplayer API.
+
+### After Optimization:
+
+The pricing pipeline now makes **only one call** to `getPricePoints()`:
+
+1. **Step 3.5**: `fetchPricePointsForPricing()` - fetches price points once
+2. **Step 5**: `enrichForDisplay()` - reuses the already-fetched price points
+
+### Implementation:
+
+- Added overloaded `enrichForDisplay()` method that accepts pre-fetched price points
+- Added `convertPricePointsToMarketData()` helper to convert price points to market display format
+- Modified pricing pipeline to pass price points from step 3.5 to step 5
+- Maintains caching behavior for subsequent requests
+
+### Performance Impact:
+
+- **50% reduction** in external API calls during pricing operations
+- Faster processing times, especially for large inventories
+- Reduced load on external TCGplayer API
+- Consistent data between pricing and display (no timing discrepancies)
