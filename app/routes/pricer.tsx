@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Typography, Paper, Alert } from "@mui/material";
-import { useCSVProcessor } from "../hooks/useCSVProcessor";
+import { useCSVPipelineProcessor } from "../hooks/useCSVPipelineProcessor";
 import {
   UploadForm,
   ProgressIndicator,
@@ -17,7 +17,7 @@ export default function PricerRoute() {
     processCSV,
     handleCancel,
     setError,
-  } = useCSVProcessor();
+  } = useCSVPipelineProcessor();
 
   const handleSubmit = async (file: File, percentile: number) => {
     if (!file) {

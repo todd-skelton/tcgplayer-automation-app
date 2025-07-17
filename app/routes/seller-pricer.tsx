@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Typography, Paper, Alert } from "@mui/material";
-import { useSellerInventoryProcessor } from "../hooks/useSellerInventoryProcessor";
+import { useSellerInventoryPipelineProcessor } from "../hooks/useSellerInventoryPipelineProcessor";
 import {
   SellerForm,
   ProgressIndicator,
@@ -17,7 +17,7 @@ export default function SellerInventoryPricerRoute() {
     processSellerInventory,
     handleCancel,
     setError,
-  } = useSellerInventoryProcessor();
+  } = useSellerInventoryPipelineProcessor();
 
   const handleSubmit = async (sellerKey: string, percentile: number) => {
     if (!sellerKey.trim()) {

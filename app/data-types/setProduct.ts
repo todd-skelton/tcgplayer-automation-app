@@ -8,4 +8,5 @@ export type SetProduct = {
   set: string;
   setAbbrv: string;
   type: string;
+  displayName?: string; // Optional display name with card number
 };

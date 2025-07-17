@@ -4,4 +4,15 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   plugins: [reactRouter(), tsconfigPaths()],
+  ssr: {
+    noExternal: ["@mui/x-data-grid"],
+  },
+  optimizeDeps: {
+    include: ["@mui/x-data-grid"],
+  },
+  css: {
+    modules: {
+      localsConvention: "camelCase",
+    },
+  },
 });

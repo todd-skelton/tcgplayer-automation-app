@@ -1,4 +1,51 @@
 import type { SuggestedPriceResult } from "../types/pricing";
+import { PRICING_CONSTANTS } from "../constants/pricing";
+
+export interface PriceCalculationResult {
+  marketplacePrice: number;
+  errorMessage: string;
+}
+
+export interface PricePointData {
+  marketPrice?: number;
+  lowestPrice?: number;
+  highestPrice?: number;
+  saleCount?: number;
+  calculatedAt?: string;
+}
+
+/**
+ * Calculates the marketplace price with bounds checking and error handling
+ * This function ensures consistent pricing logic across all processors
+ */
+export const calculateMarketplacePrice = (
+  suggestedPrice: number,
+  pricePoint: PricePointData | null
+): PriceCalculationResult => {
+  const marketPrice = pricePoint?.marketPrice || 0;
+  let marketplacePrice = suggestedPrice;
+  let errorMessage = "";
+
+  // Case 1: No market price available
+  if (marketPrice === 0 && suggestedPrice > 0) {
+    errorMessage = "No market price available. Using suggested price directly.";
+    return { marketplacePrice, errorMessage };
+  }
+
+  // Case 2: Market price available - enforce lower bound only
+  if (marketPrice > 0 && suggestedPrice > 0) {
+    const lowerBound =
+      marketPrice * PRICING_CONSTANTS.MIN_PRICE_MULTIPLIER -
+      PRICING_CONSTANTS.MIN_PRICE_CONSTANT;
+
+    if (suggestedPrice < lowerBound) {
+      marketplacePrice = lowerBound;
+      errorMessage = "Suggested price below minimum. Using minimum price.";
+    }
+  }
+
+  return { marketplacePrice, errorMessage };
+};
 
 export const getSuggestedPrice = async (
   tcgplayerId: string,

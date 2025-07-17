@@ -6,6 +6,7 @@ import type { SetProduct } from "./data-types/setProduct";
 import type { Product } from "./data-types/product";
 import type { ProductLine } from "./data-types/productLine";
 import type { CategoryFilter } from "./data-types/categoryFilter";
+import type { PendingInventoryEntry } from "./data-types/pendingInventory";
 
 const dataDir = path.resolve(process.cwd(), "data");
 
@@ -39,6 +40,12 @@ export const categoryFiltersDb: Datastore<CategoryFilter> = Datastore.create({
   autoload: true,
 });
 
+export const pendingInventoryDb: Datastore<PendingInventoryEntry> =
+  Datastore.create({
+    filename: path.join(dataDir, "pendingInventory.db"),
+    autoload: true,
+  });
+
 categorySetsDb.ensureIndex({ fieldName: "categoryId" });
 categorySetsDb.ensureIndex({ fieldName: "setNameId", unique: true });
 
@@ -56,3 +63,6 @@ skusDb.ensureIndex({ fieldName: "sku", unique: true });
 productLinesDb.ensureIndex({ fieldName: "productLineId", unique: true });
 
 categoryFiltersDb.ensureIndex({ fieldName: "categoryId", unique: true });
+
+pendingInventoryDb.ensureIndex({ fieldName: "sku" });
+pendingInventoryDb.ensureIndex({ fieldName: "createdAt" });

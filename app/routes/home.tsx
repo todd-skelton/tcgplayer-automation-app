@@ -61,10 +61,12 @@ export async function action({ request }: LoaderFunctionArgs) {
       );
       // 2. SET PRODUCTS
       const allSetProducts = await fetchAndUpsertSetProducts(sets, productLine);
+
       // 3. PRODUCTS
       const { productCount, totalSkus } = await fetchAndUpsertProductsAndSkus(
         allSetProducts
       );
+
       return data(
         {
           message: `Fetched and verified all sets, products, and skus for category 3 using NeDB. Sets: ${sets.length}, set-products: ${allSetProducts.length}, products: ${productCount}, skus: ${totalSkus}.`,
@@ -285,7 +287,7 @@ export async function loader() {
 // --- Refactored helpers for category, set, and product level processing ---
 
 /**
- * Fetches and upserts all sets for a given categoryId. Returns the sets.
+ * Fetches and upserts all sets for a given categoryId. Always calls the API to verify all sets are in the database.
  */
 async function fetchAndUpsertCategorySets(categoryId: number) {
   // Find the selected product line to get the url name
@@ -295,25 +297,43 @@ async function fetchAndUpsertCategorySets(categoryId: number) {
   if (!selectedProductLine) {
     throw new Error(`No product line found for categoryId ${categoryId}`);
   }
-  let sets: CategorySet[] = await categorySetsDb.find({ categoryId });
-  if (!sets.length) {
-    const fetchedSetsResp = await getCatalogSetNames({ categoryId });
-    const fetchedSets = fetchedSetsResp.results;
-    if (!fetchedSets || !fetchedSets.length) {
-      throw new Error(
-        `No sets found from getCatalogSetNames for categoryId ${categoryId}`
-      );
-    }
-    await Promise.all(
-      fetchedSets.map((set: CategorySet) =>
-        categorySetsDb.update({ setNameId: set.setNameId }, set, {
-          upsert: true,
-        })
-      )
+
+  // Always fetch from API to ensure we have the latest sets
+  const fetchedSetsResp = await getCatalogSetNames({ categoryId });
+  const fetchedSets = fetchedSetsResp.results;
+  if (!fetchedSets || !fetchedSets.length) {
+    throw new Error(
+      `No sets found from getCatalogSetNames for categoryId ${categoryId}`
     );
-    sets = fetchedSets;
   }
-  return { sets, productLine: selectedProductLine.productLineUrlName };
+
+  // Get existing sets from database
+  const existingSets = await categorySetsDb.find({ categoryId });
+  const existingSetIds = new Set(existingSets.map((set) => set.setNameId));
+
+  // Identify missing sets that need to be inserted
+  const missingSets = fetchedSets.filter(
+    (set) => !existingSetIds.has(set.setNameId)
+  );
+
+  // Upsert all fetched sets (will update existing and insert missing)
+  await Promise.all(
+    fetchedSets.map((set: CategorySet) =>
+      categorySetsDb.update({ setNameId: set.setNameId }, set, {
+        upsert: true,
+      })
+    )
+  );
+
+  // Log information about what was found/updated
+  console.log(
+    `Category ${categoryId}: Found ${fetchedSets.length} total sets, ${missingSets.length} were missing from database`
+  );
+
+  return {
+    sets: fetchedSets,
+    productLine: selectedProductLine.productLineUrlName,
+  };
 }
 
 /**
@@ -487,11 +507,29 @@ export default function Home() {
           >
             Seller Inventory Pricer
           </Button>
+          <Button
+            component={Link}
+            to="/inventory-manager"
+            variant="contained"
+            color="success"
+          >
+            Inventory Manager
+          </Button>
+          <Button
+            component={Link}
+            to="/pending-inventory-pricer"
+            variant="contained"
+            color="info"
+          >
+            Pending Inventory Pricer
+          </Button>
         </Stack>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-          Use the CSV Pricer to upload and price TCGPlayer CSV files, or the
-          Seller Inventory Pricer to fetch and price all listings for a specific
-          seller.
+          Use the CSV Pricer to upload and price TCGPlayer CSV files, the Seller
+          Inventory Pricer to fetch and price all listings for a specific
+          seller, the Inventory Manager to add new inventory items, or the
+          Pending Inventory Pricer to process all pending inventory and generate
+          pricing.
         </Typography>
       </Paper>
 

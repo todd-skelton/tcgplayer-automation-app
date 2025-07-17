@@ -24,11 +24,11 @@ export const shouldSkipRow = (row: TcgPlayerListing): boolean => {
 };
 
 export const initializeRowColumns = (row: TcgPlayerListing): void => {
-  row["Previous Marketplace Price"] = row["TCG Marketplace Price"] || "";
+  row["Previous Price"] = row["TCG Marketplace Price"] || "";
   row["Suggested Price"] = "";
   row["Expected Days to Sell"] = "";
-  row["Lowest Price"] = "";
-  row["Highest Price"] = "";
+  row["Lowest Sale Price"] = "";
+  row["Highest Sale Price"] = "";
   row["Sale Count"] = "";
   row["Error"] = "";
 };

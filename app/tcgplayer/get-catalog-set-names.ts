@@ -23,6 +23,6 @@ import { get } from "~/httpClient";
 export async function getCatalogSetNames({
   categoryId,
 }: GetCatalogSetNamesRequestParams): Promise<GetCatalogSetNamesResponse> {
-  const url = `https://mpapi.tcgplayer.com/v2/Catalog/SetNames?categoryId=${categoryId}&active=true`;
+  const url = `https://mpapi.tcgplayer.com/v2/Catalog/SetNames?categoryId=${categoryId}`;
   return get<GetCatalogSetNamesResponse>(url);
 }
