@@ -220,7 +220,7 @@ export const ProcessingSummaryComponent: React.FC<
                       : 0;
 
                   const medianDays =
-                    summary.medianDaysToSell.percentiles[percentileKey] || 0;
+                    summary.medianDaysToSell.percentiles[percentileKey];
 
                   const isCurrentPercentile = p === summary.percentileUsed;
 
@@ -278,9 +278,9 @@ export const ProcessingSummaryComponent: React.FC<
                         )}
                       </TableCell>
                       <TableCell align="right">
-                        {medianDays > 0 ? (
+                        {medianDays !== undefined ? (
                           isCurrentPercentile ? (
-                            <strong>{medianDays.toFixed(1)} days</strong>
+                            <strong>{`${medianDays.toFixed(1)} days`}</strong>
                           ) : (
                             `${medianDays.toFixed(1)} days`
                           )
@@ -310,11 +310,9 @@ export const ProcessingSummaryComponent: React.FC<
             <TableRow>
               <TableCell>Median Expected Days to Sell</TableCell>
               <TableCell align="right">
-                {summary.medianDaysToSell.expectedDaysToSell > 0
-                  ? `${summary.medianDaysToSell.expectedDaysToSell.toFixed(
-                      1
-                    )} days`
-                  : "N/A"}
+                {`${summary.medianDaysToSell.expectedDaysToSell.toFixed(
+                  1
+                )} days`}
               </TableCell>
             </TableRow>
           </TableBody>

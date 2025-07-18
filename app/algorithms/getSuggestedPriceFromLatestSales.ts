@@ -431,8 +431,14 @@ function calculateExpectedTimeToSell(
     .filter((s) => s.price >= targetPrice)
     .sort((a, b) => a.timestamp - b.timestamp);
 
-  if (relevantSales.length < 2) {
+  if (relevantSales.length === 0) {
     return Infinity;
+  }
+
+  if (relevantSales.length === 1) {
+    // For a single sale (e.g., 100th percentile), use 90 days as a reasonable estimate
+    // This represents the maximum sales window timeframe
+    return 90;
   }
 
   // Calculate intervals in days between relevant sales
