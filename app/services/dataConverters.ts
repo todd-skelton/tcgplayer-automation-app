@@ -79,12 +79,13 @@ export class PricedSkuToTcgPlayerListingConverter
 
 /**
  * Converts seller inventory to PricerSku format
+ * Deduplicates SKUs to prevent processing the same item multiple times
  */
 export class SellerInventoryToPricerSkuConverter
   implements InputConverter<SellerInventoryItem>
 {
   convertToPricerSkus(inventory: SellerInventoryItem[]): PricerSku[] {
-    const pricerSkus: PricerSku[] = [];
+    const skuMap = new Map<number, PricerSku>();
 
     inventory.forEach((item) => {
       // Filter out custom listings (those with customListingId)
@@ -96,7 +97,7 @@ export class SellerInventoryToPricerSkuConverter
       regularListings.forEach((listing: Listing) => {
         const skuId = listing.productConditionId;
         if (skuId && skuId > 0) {
-          pricerSkus.push({
+          skuMap.set(skuId, {
             sku: skuId,
             quantity: listing.quantity || 0,
             addToQuantity: 0, // Seller inventory doesn't typically have add quantity
@@ -106,7 +107,7 @@ export class SellerInventoryToPricerSkuConverter
       });
     });
 
-    return pricerSkus;
+    return Array.from(skuMap.values());
   }
 }
 
