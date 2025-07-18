@@ -1,6 +1,7 @@
 import type { PricerSku, PricedSku, TcgPlayerListing } from "../types/pricing";
 import type { Listing } from "../tcgplayer/get-search-results";
 import type { SellerInventoryItem } from "../services/inventoryConverter";
+import type { PendingInventoryEntry } from "../data-types/pendingInventory";
 
 /**
  * Base interface for converters that transform input data to PricerSku format
@@ -99,7 +100,7 @@ export class SellerInventoryToPricerSkuConverter
         if (skuId && skuId > 0) {
           skuMap.set(skuId, {
             sku: skuId,
-            quantity: listing.quantity || 0,
+            quantity: listing.quantity,
             addToQuantity: 0, // Seller inventory doesn't typically have add quantity
             currentPrice: listing.price || undefined,
           });
@@ -115,17 +116,15 @@ export class SellerInventoryToPricerSkuConverter
  * Converts pending inventory to PricerSku format
  */
 export class PendingInventoryToPricerSkuConverter
-  implements InputConverter<any>
+  implements InputConverter<PendingInventoryEntry>
 {
-  convertToPricerSkus(pendingInventory: any[]): PricerSku[] {
+  convertToPricerSkus(pendingInventory: PendingInventoryEntry[]): PricerSku[] {
     return pendingInventory
       .filter((item) => item.sku && item.sku > 0)
       .map((item): PricerSku => {
         return {
           sku: item.sku,
-          quantity: item.quantity || 0,
-          addToQuantity: 0, // Pending inventory is usually for existing items
-          currentPrice: undefined, // Pending inventory doesn't have current prices
+          addToQuantity: item.quantity,
         };
       });
   }
