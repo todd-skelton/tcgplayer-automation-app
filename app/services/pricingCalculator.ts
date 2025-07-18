@@ -194,7 +194,6 @@ export class PricingCalculator {
     // This represents the total value if all inventory was priced at this percentile
     Object.entries(percentileGroups).forEach(([percentile, items]) => {
       let totalValue = 0;
-      let totalWeightedDays = 0;
       let totalQuantity = 0;
 
       items.forEach((item) => {
@@ -202,18 +201,28 @@ export class PricingCalculator {
         // Calculate total value: price * quantity for each SKU at this percentile
         totalValue += item.price * quantity;
         totalQuantity += quantity;
-
-        if (item.expectedTimeToSellDays !== undefined) {
-          totalWeightedDays += item.expectedTimeToSellDays * quantity;
-        }
       });
 
       // Store total value (not average price)
       aggregated.marketPrice[`${percentile}th`] = totalValue;
 
       if (totalQuantity > 0) {
-        aggregated.expectedDaysToSell[`${percentile}th`] =
-          totalWeightedDays / totalQuantity;
+        // Calculate median days to sell, including Infinity values
+        const allValues = items
+          .filter((item) => item.expectedTimeToSellDays !== undefined)
+          .map((item) => item.expectedTimeToSellDays!)
+          .sort((a, b) => a - b);
+
+        if (allValues.length > 0) {
+          // Calculate median
+          const midIndex = Math.floor(allValues.length / 2);
+          const median =
+            allValues.length % 2 === 0
+              ? (allValues[midIndex - 1] + allValues[midIndex]) / 2
+              : allValues[midIndex];
+
+          aggregated.expectedDaysToSell[`${percentile}th`] = median;
+        }
       }
     });
 
