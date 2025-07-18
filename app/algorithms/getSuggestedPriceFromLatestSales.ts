@@ -431,8 +431,8 @@ function calculateExpectedTimeToSell(
     .filter((s) => s.price >= targetPrice)
     .sort((a, b) => a.timestamp - b.timestamp);
 
-  if (relevantSales.length <= 1) {
-    return undefined;
+  if (relevantSales.length < 2) {
+    return Infinity;
   }
 
   // Calculate intervals in days between relevant sales
