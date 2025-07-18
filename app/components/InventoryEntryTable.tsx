@@ -269,6 +269,35 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
         []
       );
 
+      // Handle spacebar key press to cycle through SKUs
+      const handleSkuCycle = useCallback(
+        (
+          event: React.KeyboardEvent,
+          groupKey: string,
+          availableSkus: SkuWithDisplayInfo[]
+        ) => {
+          if (event.key === " ") {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const currentSelectedSku = selectedSkus[groupKey];
+            const currentIndex = availableSkus.findIndex(
+              (sku) => sku.sku === currentSelectedSku
+            );
+
+            // Cycle to next SKU, or wrap to first if at the end
+            const nextIndex =
+              currentIndex < availableSkus.length - 1 ? currentIndex + 1 : 0;
+            const nextSku = availableSkus[nextIndex];
+
+            if (nextSku) {
+              handleSkuSelection(groupKey, nextSku.sku);
+            }
+          }
+        },
+        [selectedSkus, handleSkuSelection]
+      );
+
       // Custom toolbar component for the Data Grid
       const CustomToolbar = () => {
         return (
@@ -378,6 +407,9 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                 <Button
                   size="small"
                   onClick={() => handleQuickAdd(params.row.groupKey, 1)}
+                  onKeyDown={(e) =>
+                    handleSkuCycle(e, params.row.groupKey, params.row.skus)
+                  }
                   color="primary"
                   variant="outlined"
                   disabled={!selectedSku}
