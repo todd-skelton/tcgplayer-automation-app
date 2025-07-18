@@ -107,20 +107,21 @@ export class PurePricingService {
           errors++;
         } else {
           processed++;
+        }
 
-          // Collect percentile data for aggregation if available
-          if (result.percentiles && Array.isArray(result.percentiles)) {
-            const quantity =
-              (pricerSku.quantity || 0) + (pricerSku.addToQuantity || 0);
-            result.percentiles.forEach((p) => {
-              allPercentileData.push({
-                percentile: p.percentile,
-                price: p.price,
-                expectedTimeToSellDays: p.expectedTimeToSellDays,
-                quantity,
-              });
+        // Collect percentile data for aggregation if available
+        // Include all SKUs that have percentile data, regardless of errors
+        if (result.percentiles && Array.isArray(result.percentiles)) {
+          const quantity =
+            (pricerSku.quantity || 0) + (pricerSku.addToQuantity || 0);
+          result.percentiles.forEach((p) => {
+            allPercentileData.push({
+              percentile: p.percentile,
+              price: p.price,
+              expectedTimeToSellDays: p.expectedTimeToSellDays,
+              quantity,
             });
-          }
+          });
         }
 
         pricedItems.push(pricedItem);

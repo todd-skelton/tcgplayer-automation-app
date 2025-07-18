@@ -1,4 +1,10 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import {
   TextField,
   Button,
@@ -77,6 +83,33 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
         [groupKey: string]: number;
       }>({});
       const [productNameFilter, setProductNameFilter] = useState<string>("");
+      const [submittedProductNameFilter, setSubmittedProductNameFilter] =
+        useState<string>("");
+      const searchInputRef = useRef<HTMLInputElement>(null);
+      const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
+      const firstPlusButtonRef = useRef<HTMLButtonElement>(null);
+
+      // Handle search submission
+      const handleSearchSubmit = useCallback(() => {
+        setSubmittedProductNameFilter(productNameFilter);
+        // Focus the first + button after search is submitted
+        setTimeout(() => {
+          if (firstPlusButtonRef.current) {
+            firstPlusButtonRef.current.focus();
+          }
+        }, 100);
+      }, [productNameFilter]);
+
+      // Handle Enter key press in search input
+      const handleSearchKeyPress = useCallback(
+        (event: React.KeyboardEvent) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            handleSearchSubmit();
+          }
+        },
+        [handleSearchSubmit]
+      );
 
       // Filter SKUs based on sealed filter
       const filteredSkus = useMemo(() => {
@@ -146,15 +179,15 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
         });
 
         // Apply product name filter
-        if (productNameFilter.trim()) {
-          const filterLower = productNameFilter.toLowerCase().trim();
+        if (submittedProductNameFilter.trim()) {
+          const filterLower = submittedProductNameFilter.toLowerCase().trim();
           return sortedGroups.filter((group) =>
             group.displayName.toLowerCase().includes(filterLower)
           );
         }
 
         return sortedGroups;
-      }, [filteredSkus, productNameFilter]);
+      }, [filteredSkus, submittedProductNameFilter]);
 
       // Create DataGrid rows from grouped SKUs - one row per product group
       const dataGridRows: GridRowsProp<DataGridRow> = useMemo(() => {
@@ -214,6 +247,14 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
             [selectedSku]: newQty.toString(),
           }));
           onUpdateQuantity(selectedSku, newQty);
+
+          // Return focus to search input for next search
+          setTimeout(() => {
+            if (searchInputRef.current) {
+              searchInputRef.current.focus();
+              searchInputRef.current.select();
+            }
+          }, 0);
         },
         [selectedSkus, pendingInventory, onUpdateQuantity]
       );
@@ -305,6 +346,10 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
             const displayValue =
               quantities[selectedSku] ?? currentQty.toString();
 
+            // Check if this is the first row to add ref for auto-focus
+            const isFirstRow =
+              params.api.getRowIndexRelativeToVisibleRows(params.id) === 0;
+
             return (
               <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
                 <Button
@@ -314,6 +359,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                   variant="outlined"
                   disabled={!selectedSku || currentQty <= 0}
                   sx={{ minWidth: "32px", padding: "4px" }}
+                  tabIndex={-1}
                 >
                   -
                 </Button>
@@ -336,6 +382,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                   variant="outlined"
                   disabled={!selectedSku}
                   sx={{ minWidth: "32px", padding: "4px" }}
+                  ref={isFirstRow ? firstPlusButtonRef : undefined}
                 >
                   +
                 </Button>
@@ -447,13 +494,32 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
           {/* Product Name Search Filter */}
           <Box sx={{ mb: 2 }}>
             <TextField
-              label="Search Product Names"
+              label={`Search Product Names (Press Enter to search)${
+                productNameFilter &&
+                productNameFilter !== submittedProductNameFilter
+                  ? " - Press Enter!"
+                  : ""
+              }`}
               variant="outlined"
               size="small"
               value={productNameFilter}
               onChange={(e) => setProductNameFilter(e.target.value)}
-              placeholder="Type to filter products..."
-              sx={{ width: 400 }}
+              onKeyPress={handleSearchKeyPress}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+              placeholder="Type to filter products and press Enter..."
+              sx={{
+                width: 400,
+                "& .MuiInputLabel-root": {
+                  color:
+                    productNameFilter &&
+                    productNameFilter !== submittedProductNameFilter
+                      ? "primary.main"
+                      : undefined,
+                },
+              }}
+              inputRef={searchInputRef}
+              autoComplete="off"
               InputProps={{
                 startAdornment: (
                   <Box sx={{ mr: 1, color: "text.secondary" }}>🔍</Box>
@@ -463,13 +529,28 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
             {productNameFilter && (
               <Button
                 size="small"
-                onClick={() => setProductNameFilter("")}
+                onClick={() => {
+                  setProductNameFilter("");
+                  setSubmittedProductNameFilter("");
+                }}
                 sx={{ ml: 1 }}
                 variant="outlined"
               >
                 Clear
               </Button>
             )}
+            {productNameFilter &&
+              productNameFilter !== submittedProductNameFilter && (
+                <Button
+                  size="small"
+                  onClick={handleSearchSubmit}
+                  sx={{ ml: 1 }}
+                  variant="contained"
+                  color="primary"
+                >
+                  Search
+                </Button>
+              )}
           </Box>
 
           <Box sx={{ mb: 2, display: "flex", gap: 1, alignItems: "center" }}>
@@ -486,13 +567,16 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                 size="small"
               />
             )}
-            {productNameFilter && (
+            {submittedProductNameFilter && (
               <Chip
-                label={`Filtered by: "${productNameFilter}"`}
+                label={`Filtered by: "${submittedProductNameFilter}"`}
                 color="primary"
                 variant="outlined"
                 size="small"
-                onDelete={() => setProductNameFilter("")}
+                onDelete={() => {
+                  setProductNameFilter("");
+                  setSubmittedProductNameFilter("");
+                }}
               />
             )}
           </Box>
