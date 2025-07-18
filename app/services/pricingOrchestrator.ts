@@ -197,9 +197,34 @@ export class PricingOrchestrator {
             sku.price === undefined || sku.price === null || sku.price <= 0
         );
 
+        // Sort successfully priced items by product line, set name, then product
+        const sortedSuccessfullyPriced = [...successfullyPriced].sort(
+          (a, b) => {
+            // First sort by product line
+            const productLineA = a.productLine || "";
+            const productLineB = b.productLine || "";
+            if (productLineA !== productLineB) {
+              return productLineA.localeCompare(productLineB);
+            }
+
+            // Then sort by set name
+            const setNameA = a.setName || "";
+            const setNameB = b.setName || "";
+            if (setNameA !== setNameB) {
+              return setNameA.localeCompare(setNameB);
+            }
+
+            // Finally sort by product name
+            const productNameA = a.productName || "";
+            const productNameB = b.productName || "";
+            return productNameA.localeCompare(productNameB);
+          }
+        );
+
         // Export main file with successfully priced items
-        const csvData =
-          this.outputConverter.convertFromPricedSkus(successfullyPriced);
+        const csvData = this.outputConverter.convertFromPricedSkus(
+          sortedSuccessfullyPriced
+        );
         const filename =
           config.filename || `priced-${config.source}-${Date.now()}.csv`;
         downloadCSV(csvData, filename);
@@ -207,8 +232,30 @@ export class PricingOrchestrator {
         // Export failed items to separate file for manual review
         let manualReviewFile: string | undefined;
         if (failedPricing.length > 0) {
+          // Sort failed items as well
+          const sortedFailedPricing = [...failedPricing].sort((a, b) => {
+            // First sort by product line
+            const productLineA = a.productLine || "";
+            const productLineB = b.productLine || "";
+            if (productLineA !== productLineB) {
+              return productLineA.localeCompare(productLineB);
+            }
+
+            // Then sort by set name
+            const setNameA = a.setName || "";
+            const setNameB = b.setName || "";
+            if (setNameA !== setNameB) {
+              return setNameA.localeCompare(setNameB);
+            }
+
+            // Finally sort by product name
+            const productNameA = a.productName || "";
+            const productNameB = b.productName || "";
+            return productNameA.localeCompare(productNameB);
+          });
+
           const failedCsvData =
-            this.outputConverter.convertFromPricedSkus(failedPricing);
+            this.outputConverter.convertFromPricedSkus(sortedFailedPricing);
           manualReviewFile = config.filename
             ? config.filename.replace(".csv", "-manual-review.csv")
             : `priced-${config.source}-${Date.now()}-manual-review.csv`;
@@ -218,7 +265,7 @@ export class PricingOrchestrator {
         exportInfo = {
           mainFile: filename,
           manualReviewFile,
-          successfulCount: successfullyPriced.length,
+          successfulCount: sortedSuccessfullyPriced.length,
           failedCount: failedPricing.length,
         };
       }
