@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Typography,
@@ -13,7 +13,10 @@ import {
 } from "@mui/material";
 import { Link } from "react-router";
 import { useInventoryProcessor } from "../hooks/useInventoryProcessor";
-import { InventoryFilters } from "../components/InventoryFilters";
+import {
+  InventoryFilters,
+  type InventoryFiltersRef,
+} from "../components/InventoryFilters";
 import { InventoryEntryTable } from "../components/InventoryEntryTable";
 
 export default function InventoryManagerRoute() {
@@ -35,6 +38,7 @@ export default function InventoryManagerRoute() {
   } = useInventoryProcessor();
 
   const [clearDialogOpen, setClearDialogOpen] = React.useState(false);
+  const filtersRef = useRef<InventoryFiltersRef>(null);
 
   useEffect(() => {
     loadProductLines();
@@ -62,6 +66,25 @@ export default function InventoryManagerRoute() {
     return pendingInventory.reduce((sum, entry) => sum + entry.quantity, 0);
   };
 
+  // Handle global keyboard shortcuts for set navigation
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (event.key === "PageUp" && filtersRef.current) {
+      event.preventDefault();
+      filtersRef.current.navigateSet("previous");
+    } else if (event.key === "PageDown" && filtersRef.current) {
+      event.preventDefault();
+      filtersRef.current.navigateSet("next");
+    }
+  }, []);
+
+  // Add global keyboard listener
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleKeyDown]);
+
   return (
     <Box>
       {/* Header and Filters - constrained width */}
@@ -75,6 +98,7 @@ export default function InventoryManagerRoute() {
             Filter Products
           </Typography>
           <InventoryFilters
+            ref={filtersRef}
             productLines={productLines}
             sets={sets}
             selectedProductLineId={selectedProductLineId}
