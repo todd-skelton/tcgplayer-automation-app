@@ -10,7 +10,7 @@ import type { Sku } from "../data-types/sku";
 import type { TcgPlayerListing, PricerSku } from "../types/pricing";
 import { useProcessorBase } from "./useProcessorBase";
 import { downloadCSV } from "../utils/csvProcessing";
-import { PurePricingService } from "../services/purePricingService";
+import { PricingCalculator } from "../services/pricingCalculator";
 import { DataEnrichmentService } from "../services/dataEnrichmentService";
 import { PricedSkuToTcgPlayerListingConverter } from "../services/dataConverters";
 
@@ -265,19 +265,18 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
         }
 
         // Use the new modular pricing architecture
-        const pricingService = new PurePricingService();
+        const pricingCalculator = new PricingCalculator();
         const enrichmentService = new DataEnrichmentService();
 
         // First, calculate prices (fast)
-        const pricingResult = await pricingService.calculatePrices(
+        const pricingResult = await pricingCalculator.calculatePrices(
           pricerSkus,
           {
             percentile,
             onProgress: (progress: any) => {
               baseProcessor.setProgress(progress);
             },
-          },
-          `inventory-${Date.now()}`
+          }
         );
 
         // Then enrich with product details for display

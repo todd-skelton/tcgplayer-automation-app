@@ -1,14 +1,14 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useProcessorBase } from "./useProcessorBase";
-import { PricingPipelineService } from "../services/pricingPipelineService";
+import { PricingOrchestrator } from "../services/pricingOrchestrator";
 import { PendingInventoryDataSource } from "../services/pendingInventoryDataSource";
-import type { PipelineResult } from "../services/pricingPipelineService";
+import type { PipelineResult } from "../services/pricingOrchestrator";
 
 export const usePendingInventoryPipelineProcessor = () => {
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [success, setSuccess] = useState<string | null>(null);
   const baseProcessor = useProcessorBase();
-  const pipelineService = useRef(new PricingPipelineService());
+  const pricingOrchestrator = useRef(new PricingOrchestrator());
   const pendingDataSource = useRef(new PendingInventoryDataSource());
 
   // Load pending inventory count
@@ -47,7 +47,7 @@ export const usePendingInventoryPipelineProcessor = () => {
 
       try {
         // Execute the standardized pricing pipeline
-        const result = await pipelineService.current.executePipeline(
+        const result = await pricingOrchestrator.current.executePipeline(
           pendingDataSource.current,
           {},
           {

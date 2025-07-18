@@ -1,12 +1,10 @@
 import type {
-  PricerSku,
   PricedSku,
   PricingConfig,
-  TcgPlayerListing,
   ProcessingSummary,
 } from "../types/pricing";
 import type { DataSourceService } from "./dataSourceInterfaces";
-import { PurePricingService, type PricedPricing } from "./purePricingService";
+import { PricingCalculator } from "./pricingCalculator";
 import { DataEnrichmentService } from "./dataEnrichmentService";
 import { PricedSkuToTcgPlayerListingConverter } from "./dataConverters";
 import { downloadCSV } from "../utils/csvProcessing";
@@ -26,8 +24,8 @@ export interface PipelineConfig extends PricingConfig {
 /**
  * Orchestrates the complete pricing pipeline with proper separation of concerns
  */
-export class PricingPipelineService {
-  private purePricingService = new PurePricingService();
+export class PricingOrchestrator {
+  private pricingCalculator = new PricingCalculator();
   private enrichmentService = new DataEnrichmentService();
   private outputConverter = new PricedSkuToTcgPlayerListingConverter();
 
@@ -112,7 +110,7 @@ export class PricingPipelineService {
       }
 
       // Step 4: Execute core pricing with price points (fast, no additional enrichment)
-      const pricingResult = await this.purePricingService.calculatePrices(
+      const pricingResult = await this.pricingCalculator.calculatePrices(
         pricerSkus,
         config,
         pricePointsMap,

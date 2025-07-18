@@ -1,5 +1,5 @@
 import type { PricedSku } from "../types/pricing";
-import type { PricedPricing } from "./purePricingService";
+import type { PricingResult } from "./pricingCalculator";
 import { createDisplayName } from "../utils/displayNameUtils";
 import { getPricePoints, type PricePoint } from "../tcgplayer/get-price-points";
 
@@ -98,7 +98,7 @@ export class DataEnrichmentService {
    * Enriches pricing data with all supplementary information
    */
   async enrichForDisplay(
-    pricedItems: PricedPricing[],
+    pricedItems: PricingResult[],
     onProgress?: (current: number, total: number, status: string) => void
   ): Promise<PricedSku[]>;
 
@@ -106,7 +106,7 @@ export class DataEnrichmentService {
    * Enriches pricing data with all supplementary information, using pre-fetched price points
    */
   async enrichForDisplay(
-    pricedItems: PricedPricing[],
+    pricedItems: PricingResult[],
     onProgress?: (current: number, total: number, status: string) => void,
     pricePointsMap?: Map<number, PricePoint>
   ): Promise<PricedSku[]>;
@@ -115,7 +115,7 @@ export class DataEnrichmentService {
    * Enriches pricing data with all supplementary information
    */
   async enrichForDisplay(
-    pricedItems: PricedPricing[],
+    pricedItems: PricingResult[],
     onProgress?: (current: number, total: number, status: string) => void,
     pricePointsMap?: Map<number, PricePoint>
   ): Promise<PricedSku[]> {

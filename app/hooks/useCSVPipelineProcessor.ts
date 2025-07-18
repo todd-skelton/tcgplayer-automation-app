@@ -1,13 +1,13 @@
 import { useState, useRef } from "react";
 import { useProcessorBase } from "./useProcessorBase";
-import { PricingPipelineService } from "../services/pricingPipelineService";
+import { PricingOrchestrator } from "../services/pricingOrchestrator";
 import { CSVDataSource } from "../services/csvDataSource";
-import type { PipelineResult } from "../services/pricingPipelineService";
+import type { PipelineResult } from "../services/pricingOrchestrator";
 
 export const useCSVPipelineProcessor = () => {
   const [warning, setWarning] = useState<string | null>(null);
   const baseProcessor = useProcessorBase();
-  const pipelineService = useRef(new PricingPipelineService());
+  const pricingOrchestrator = useRef(new PricingOrchestrator());
   const csvDataSource = useRef(new CSVDataSource());
 
   const processCSV = async (
@@ -19,7 +19,7 @@ export const useCSVPipelineProcessor = () => {
 
     try {
       // Execute the standardized pricing pipeline
-      const result = await pipelineService.current.executePipeline(
+      const result = await pricingOrchestrator.current.executePipeline(
         csvDataSource.current,
         { file },
         {

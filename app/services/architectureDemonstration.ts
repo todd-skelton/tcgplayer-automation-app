@@ -5,9 +5,9 @@
  * better separation of concerns and increased modularity.
  */
 
-import { PurePricingService } from "./purePricingService";
+import { PricingCalculator } from "./pricingCalculator";
 import { DataEnrichmentService } from "./dataEnrichmentService";
-import { PricingPipelineService } from "./pricingPipelineService";
+import { PricingOrchestrator } from "./pricingOrchestrator";
 import { CSVDataSource } from "./csvDataSource";
 import { SellerInventoryDataSource } from "./sellerInventoryDataSource";
 import { PendingInventoryDataSource } from "./pendingInventoryDataSource";
@@ -17,7 +17,7 @@ import { PendingInventoryDataSource } from "./pendingInventoryDataSource";
  * Use case: Quick price calculations for large datasets
  */
 export const fastPricingExample = async () => {
-  const pricingService = new PurePricingService();
+  const pricingCalculator = new PricingCalculator();
 
   const skus = [
     { sku: 12345, quantity: 4, currentPrice: 10.5 },
@@ -25,7 +25,7 @@ export const fastPricingExample = async () => {
   ];
 
   // This runs FAST - only calculates prices, no extra data fetching
-  const result = await pricingService.calculatePrices(skus, {
+  const result = await pricingCalculator.calculatePrices(skus, {
     percentile: 75,
     onProgress: (progress) => console.log(`Pricing: ${progress.status}`),
   });
@@ -40,13 +40,13 @@ export const fastPricingExample = async () => {
  * Use case: Display pricing data with only needed supplementary info
  */
 export const selectiveEnrichmentExample = async () => {
-  const pricingService = new PurePricingService();
+  const pricingCalculator = new PricingCalculator();
   const enrichmentService = new DataEnrichmentService();
 
   const skus = [{ sku: 12345, quantity: 4 }];
 
   // Fast pricing first
-  const pricingResult = await pricingService.calculatePrices(skus, {
+  const pricingResult = await pricingCalculator.calculatePrices(skus, {
     percentile: 50,
   });
 
@@ -64,14 +64,14 @@ export const selectiveEnrichmentExample = async () => {
  * Use case: Custom processing workflow
  */
 export const customPipelineExample = async () => {
-  const pipelineService = new PricingPipelineService();
+  const pricingOrchestrator = new PricingOrchestrator();
   const csvDataSource = new CSVDataSource();
 
   // Mock file
   const mockFile = new File(["mock csv content"], "test.csv");
 
   // Custom pipeline: pricing only, no enrichment, no export
-  const result = await pipelineService.executePipeline(
+  const result = await pricingOrchestrator.executePipeline(
     csvDataSource,
     { file: mockFile },
     {
@@ -94,13 +94,13 @@ export const customPipelineExample = async () => {
  * Use case: Different data sources, same processing pipeline
  */
 export const composableSourcesExample = async () => {
-  const pipelineService = new PricingPipelineService();
+  const pricingOrchestrator = new PricingOrchestrator();
 
   // Process CSV data
   const csvSource = new CSVDataSource();
   const csvFile = new File(["csv content"], "inventory.csv");
 
-  const csvResult = await pipelineService.executePipeline(
+  const csvResult = await pricingOrchestrator.executePipeline(
     csvSource,
     { file: csvFile },
     {
@@ -112,7 +112,7 @@ export const composableSourcesExample = async () => {
   // Process seller inventory with same pipeline
   const sellerSource = new SellerInventoryDataSource();
 
-  const sellerResult = await pipelineService.executePipeline(
+  const sellerResult = await pricingOrchestrator.executePipeline(
     sellerSource,
     { sellerKey: "ABC123" },
     {
@@ -124,7 +124,7 @@ export const composableSourcesExample = async () => {
   // Process pending inventory with same pipeline
   const pendingSource = new PendingInventoryDataSource();
 
-  const pendingResult = await pipelineService.executePipeline(
+  const pendingResult = await pricingOrchestrator.executePipeline(
     pendingSource,
     {},
     {
@@ -141,13 +141,13 @@ export const composableSourcesExample = async () => {
  * Use case: Process pricing and fetch supplementary data simultaneously
  */
 export const parallelProcessingExample = async () => {
-  const pricingService = new PurePricingService();
+  const pricingCalculator = new PricingCalculator();
   const enrichmentService = new DataEnrichmentService();
 
   const skus = [{ sku: 12345, quantity: 4 }];
 
   // Start pricing calculation
-  const pricingPromise = pricingService.calculatePrices(skus, {
+  const pricingPromise = pricingCalculator.calculatePrices(skus, {
     percentile: 50,
   });
 
@@ -170,10 +170,10 @@ export const parallelProcessingExample = async () => {
  * BENEFITS SUMMARY:
  *
  * 1. SEPARATION OF CONCERNS:
- *    - PurePricingService: Only calculates prices
+ *    - PricingCalculator: Only calculates prices
  *    - DataEnrichmentService: Only handles supplementary data
  *    - DataSources: Only handle data fetching and conversion
- *    - Pipeline: Only orchestrates the workflow
+ *    - PricingOrchestrator: Only orchestrates the workflow
  *
  * 2. PERFORMANCE:
  *    - Core pricing runs without waiting for product details

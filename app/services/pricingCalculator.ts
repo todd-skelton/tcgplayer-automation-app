@@ -1,16 +1,9 @@
-import type {
-  PricerSku,
-  PricingConfig,
-  ProcessingProgress,
-} from "../types/pricing";
+import type { PricerSku, PricingConfig } from "../types/pricing";
 import { getSuggestedPrice } from "./pricingService";
-import {
-  calculateMarketplacePrice,
-  type PricePointData,
-} from "./pricingService";
+import { calculateMarketplacePrice } from "./pricingService";
 import type { PricePoint } from "../tcgplayer/get-price-points";
 
-export interface PricedPricing {
+export interface PricingResult {
   sku: number;
   quantity?: number;
   addToQuantity?: number;
@@ -21,8 +14,8 @@ export interface PricedPricing {
   errors?: string[];
 }
 
-export interface PurePricingResult {
-  pricedItems: PricedPricing[];
+export interface PricingCalculationResult {
+  pricedItems: PricingResult[];
   stats: {
     processed: number;
     skipped: number;
@@ -36,22 +29,22 @@ export interface PurePricingResult {
 }
 
 /**
- * Pure pricing service that only handles price calculation.
+ * Core pricing calculator that only handles price calculation.
  * No data enrichment, no file operations, no UI concerns.
  */
-export class PurePricingService {
+export class PricingCalculator {
   async calculatePrices(
     skus: PricerSku[],
     config: PricingConfig,
     pricePointsMap: Map<number, PricePoint> = new Map(),
     source: string = "pricing"
-  ): Promise<PurePricingResult> {
+  ): Promise<PricingCalculationResult> {
     const startTime = Date.now();
     let processed = 0;
     let skipped = 0;
     let errors = 0;
 
-    const pricedItems: PricedPricing[] = [];
+    const pricedItems: PricingResult[] = [];
     const allPercentileData: Array<{
       percentile: number;
       price: number;
@@ -96,7 +89,7 @@ export class PurePricingService {
           config.percentile
         );
 
-        // Create PricedPricing from result
+        // Create pricing result from suggested price result
         const pricedItem = await this.createPricedItem(
           pricerSku,
           result,
@@ -126,7 +119,7 @@ export class PurePricingService {
 
         pricedItems.push(pricedItem);
       } catch (error: any) {
-        const errorItem: PricedPricing = {
+        const errorItem: PricingResult = {
           sku: pricerSku.sku,
           quantity: pricerSku.quantity,
           addToQuantity: pricerSku.addToQuantity,
@@ -231,8 +224,8 @@ export class PurePricingService {
     pricerSku: PricerSku,
     result: any,
     pricePointsMap: Map<number, PricePoint> = new Map()
-  ): Promise<PricedPricing> {
-    const pricedItem: PricedPricing = {
+  ): Promise<PricingResult> {
+    const pricedItem: PricingResult = {
       sku: pricerSku.sku,
       quantity: pricerSku.quantity,
       addToQuantity: pricerSku.addToQuantity,

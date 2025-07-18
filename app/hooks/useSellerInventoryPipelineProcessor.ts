@@ -1,12 +1,12 @@
 import { useRef } from "react";
 import { useProcessorBase } from "./useProcessorBase";
-import { PricingPipelineService } from "../services/pricingPipelineService";
+import { PricingOrchestrator } from "../services/pricingOrchestrator";
 import { SellerInventoryDataSource } from "../services/sellerInventoryDataSource";
-import type { PipelineResult } from "../services/pricingPipelineService";
+import type { PipelineResult } from "../services/pricingOrchestrator";
 
 export const useSellerInventoryPipelineProcessor = () => {
   const baseProcessor = useProcessorBase();
-  const pipelineService = useRef(new PricingPipelineService());
+  const pricingOrchestrator = useRef(new PricingOrchestrator());
   const sellerDataSource = useRef(new SellerInventoryDataSource());
 
   const processSellerInventory = async (
@@ -96,7 +96,7 @@ export const useSellerInventoryPipelineProcessor = () => {
 
       // Now execute the standardized pricing pipeline
       // The pipeline will use the cached inventory data instead of fetching again
-      const result = await pipelineService.current.executePipeline(
+      const result = await pricingOrchestrator.current.executePipeline(
         sellerDataSource.current,
         { sellerKey },
         {
