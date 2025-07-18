@@ -12,6 +12,12 @@ import { downloadCSV } from "../utils/csvProcessing";
 export interface PipelineResult {
   pricedSkus: PricedSku[];
   summary: ProcessingSummary;
+  exportInfo?: {
+    mainFile: string;
+    manualReviewFile?: string;
+    successfulCount: number;
+    failedCount: number;
+  };
 }
 
 export interface PipelineConfig extends PricingConfig {
@@ -170,6 +176,7 @@ export class PricingOrchestrator {
       }
 
       // Step 6: Export results (optional)
+      let exportInfo: PipelineResult["exportInfo"];
       if (config.enableExport !== false) {
         config.onProgress?.({
           current: finalPricedSkus.length,
@@ -180,11 +187,40 @@ export class PricingOrchestrator {
           errors: pricingResult.stats.errors,
         });
 
+        // Split results into successfully priced and failed items
+        const successfullyPriced = finalPricedSkus.filter(
+          (sku) =>
+            sku.price !== undefined && sku.price !== null && sku.price > 0
+        );
+        const failedPricing = finalPricedSkus.filter(
+          (sku) =>
+            sku.price === undefined || sku.price === null || sku.price <= 0
+        );
+
+        // Export main file with successfully priced items
         const csvData =
-          this.outputConverter.convertFromPricedSkus(finalPricedSkus);
+          this.outputConverter.convertFromPricedSkus(successfullyPriced);
         const filename =
           config.filename || `priced-${config.source}-${Date.now()}.csv`;
         downloadCSV(csvData, filename);
+
+        // Export failed items to separate file for manual review
+        let manualReviewFile: string | undefined;
+        if (failedPricing.length > 0) {
+          const failedCsvData =
+            this.outputConverter.convertFromPricedSkus(failedPricing);
+          manualReviewFile = config.filename
+            ? config.filename.replace(".csv", "-manual-review.csv")
+            : `priced-${config.source}-${Date.now()}-manual-review.csv`;
+          downloadCSV(failedCsvData, manualReviewFile);
+        }
+
+        exportInfo = {
+          mainFile: filename,
+          manualReviewFile,
+          successfulCount: successfullyPriced.length,
+          failedCount: failedPricing.length,
+        };
       }
 
       // Create summary
@@ -202,6 +238,7 @@ export class PricingOrchestrator {
       return {
         pricedSkus: finalPricedSkus,
         summary,
+        exportInfo,
       };
     } catch (error: any) {
       if (error.message === "Processing cancelled by user") {

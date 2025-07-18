@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import type { ProcessingProgress, ProcessingSummary } from "../types/pricing";
+import type { PipelineResult } from "../services/pricingOrchestrator";
 
 export interface ProcessorBaseState {
   isProcessing: boolean;
@@ -8,6 +9,7 @@ export interface ProcessorBaseState {
   warning: string | null;
   success: string | null;
   summary: ProcessingSummary | null;
+  exportInfo: PipelineResult["exportInfo"] | null;
 }
 
 export const useProcessorBase = () => {
@@ -17,6 +19,9 @@ export const useProcessorBase = () => {
   const [warning, setWarning] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [summary, setSummary] = useState<ProcessingSummary | null>(null);
+  const [exportInfo, setExportInfo] = useState<
+    PipelineResult["exportInfo"] | null
+  >(null);
   const isCancelledRef = useRef(false);
 
   const handleCancel = () => {
@@ -25,6 +30,7 @@ export const useProcessorBase = () => {
     setProgress(null);
     setWarning(null);
     setSummary(null);
+    setExportInfo(null);
   };
 
   const resetState = () => {
@@ -32,6 +38,7 @@ export const useProcessorBase = () => {
     setWarning(null);
     setSuccess(null);
     setSummary(null);
+    setExportInfo(null);
     isCancelledRef.current = false;
   };
 
@@ -52,6 +59,7 @@ export const useProcessorBase = () => {
     warning,
     success,
     summary,
+    exportInfo,
     isCancelledRef,
 
     // State setters
@@ -61,6 +69,7 @@ export const useProcessorBase = () => {
     setWarning,
     setSuccess,
     setSummary,
+    setExportInfo,
 
     // Actions
     handleCancel,

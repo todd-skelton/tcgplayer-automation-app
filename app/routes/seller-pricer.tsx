@@ -14,6 +14,7 @@ export default function SellerInventoryPricerRoute() {
     error,
     warning,
     summary,
+    exportInfo,
     processSellerInventory,
     handleCancel,
     setError,
@@ -59,6 +60,25 @@ export default function SellerInventoryPricerRoute() {
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           <Typography>{error}</Typography>
+        </Alert>
+      )}
+
+      {/* Export information */}
+      {exportInfo && exportInfo.failedCount > 0 && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="body2">
+            <strong>Export Complete:</strong> {exportInfo.successfulCount} items
+            exported to main file.
+            {exportInfo.failedCount > 0 && (
+              <>
+                <br />
+                <strong>{exportInfo.failedCount} items</strong> could not be
+                priced (no sales data available) and have been exported to{" "}
+                <strong>{exportInfo.manualReviewFile}</strong> for manual
+                review.
+              </>
+            )}
+          </Typography>
         </Alert>
       )}
 

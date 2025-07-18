@@ -71,6 +71,7 @@ export const usePendingInventoryPipelineProcessor = () => {
         await loadPendingCount(); // Reload count
 
         baseProcessor.setSummary(result.summary);
+        baseProcessor.setExportInfo(result.exportInfo);
         setSuccess("Pending inventory processed and cleared successfully");
 
         // Clear success message after 5 seconds
@@ -100,6 +101,7 @@ export const usePendingInventoryPipelineProcessor = () => {
     warning: baseProcessor.warning,
     success,
     summary: baseProcessor.summary,
+    exportInfo: baseProcessor.exportInfo,
     handleCancel: baseProcessor.handleCancel,
     setError: baseProcessor.setError,
     pendingCount,

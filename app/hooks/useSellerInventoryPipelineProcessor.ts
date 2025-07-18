@@ -116,6 +116,7 @@ export const useSellerInventoryPipelineProcessor = () => {
       );
 
       baseProcessor.setSummary(result.summary);
+      baseProcessor.setExportInfo(result.exportInfo);
       return result;
     } catch (error: any) {
       if (error.message === "Processing cancelled by user") {
@@ -137,6 +138,7 @@ export const useSellerInventoryPipelineProcessor = () => {
     error: baseProcessor.error,
     warning: baseProcessor.warning,
     summary: baseProcessor.summary,
+    exportInfo: baseProcessor.exportInfo,
     processSellerInventory,
     handleCancel: baseProcessor.handleCancel,
     setError: baseProcessor.setError,

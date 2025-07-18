@@ -39,6 +39,7 @@ export const useCSVPipelineProcessor = () => {
       );
 
       baseProcessor.setSummary(result.summary);
+      baseProcessor.setExportInfo(result.exportInfo);
       return result;
     } catch (error: any) {
       if (error.message === "Processing cancelled by user") {
@@ -63,6 +64,7 @@ export const useCSVPipelineProcessor = () => {
     error: baseProcessor.error,
     warning,
     summary: baseProcessor.summary,
+    exportInfo: baseProcessor.exportInfo,
     processCSV,
     handleCancel,
     setError: baseProcessor.setError,
