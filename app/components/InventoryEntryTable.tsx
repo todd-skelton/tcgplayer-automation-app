@@ -236,7 +236,11 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
       );
 
       const handleQuickAdd = useCallback(
-        (groupKey: string, amount: number) => {
+        (
+          groupKey: string,
+          amount: number,
+          returnFocusToSearch: boolean = true
+        ) => {
           const selectedSku = selectedSkus[groupKey];
           if (!selectedSku) return;
 
@@ -248,13 +252,15 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
           }));
           onUpdateQuantity(selectedSku, newQty);
 
-          // Return focus to search input for next search
-          setTimeout(() => {
-            if (searchInputRef.current) {
-              searchInputRef.current.focus();
-              searchInputRef.current.select();
-            }
-          }, 0);
+          // Only return focus to search input if explicitly requested (for mouse clicks)
+          if (returnFocusToSearch) {
+            setTimeout(() => {
+              if (searchInputRef.current) {
+                searchInputRef.current.focus();
+                searchInputRef.current.select();
+              }
+            }, 0);
+          }
         },
         [selectedSkus, pendingInventory, onUpdateQuantity]
       );
@@ -269,20 +275,23 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
         []
       );
 
-      // Handle spacebar key press to cycle through SKUs
-      const handleSkuCycle = useCallback(
+      // Handle keyboard shortcuts for plus button
+      const handlePlusButtonKeyDown = useCallback(
         (
           event: React.KeyboardEvent,
           groupKey: string,
           availableSkus: SkuWithDisplayInfo[]
         ) => {
-          if (event.key === " ") {
+          const selectedSku = selectedSkus[groupKey];
+          if (!selectedSku) return;
+
+          // Handle spacebar and period to cycle through SKUs
+          if (event.key === " " || event.key === ".") {
             event.preventDefault();
             event.stopPropagation();
 
-            const currentSelectedSku = selectedSkus[groupKey];
             const currentIndex = availableSkus.findIndex(
-              (sku) => sku.sku === currentSelectedSku
+              (sku) => sku.sku === selectedSku
             );
 
             // Cycle to next SKU, or wrap to first if at the end
@@ -294,8 +303,64 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
               handleSkuSelection(groupKey, nextSku.sku);
             }
           }
+          // Handle + key to increment quantity
+          else if (event.key === "+" || event.key === "=") {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const currentQty = getPendingQuantity(
+              pendingInventory,
+              selectedSku
+            );
+            const newQty = currentQty + 1;
+            setQuantities((prev) => ({
+              ...prev,
+              [selectedSku]: newQty.toString(),
+            }));
+            onUpdateQuantity(selectedSku, newQty);
+          }
+          // Handle Enter key to increment quantity and return focus to search
+          else if (event.key === "Enter") {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const currentQty = getPendingQuantity(
+              pendingInventory,
+              selectedSku
+            );
+            const newQty = currentQty + 1;
+            setQuantities((prev) => ({
+              ...prev,
+              [selectedSku]: newQty.toString(),
+            }));
+            onUpdateQuantity(selectedSku, newQty);
+
+            // Return focus to search input after Enter
+            setTimeout(() => {
+              if (searchInputRef.current) {
+                searchInputRef.current.focus();
+                searchInputRef.current.select();
+              }
+            }, 0);
+          }
+          // Handle - key to decrement quantity
+          else if (event.key === "-" || event.key === "_") {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const currentQty = getPendingQuantity(
+              pendingInventory,
+              selectedSku
+            );
+            const newQty = Math.max(0, currentQty - 1);
+            setQuantities((prev) => ({
+              ...prev,
+              [selectedSku]: newQty.toString(),
+            }));
+            onUpdateQuantity(selectedSku, newQty);
+          }
         },
-        [selectedSkus, handleSkuSelection]
+        [selectedSkus, handleSkuSelection, pendingInventory, onUpdateQuantity]
       );
 
       // Custom toolbar component for the Data Grid
@@ -408,7 +473,11 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                   size="small"
                   onClick={() => handleQuickAdd(params.row.groupKey, 1)}
                   onKeyDown={(e) =>
-                    handleSkuCycle(e, params.row.groupKey, params.row.skus)
+                    handlePlusButtonKeyDown(
+                      e,
+                      params.row.groupKey,
+                      params.row.skus
+                    )
                   }
                   color="primary"
                   variant="outlined"
