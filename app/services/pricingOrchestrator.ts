@@ -54,6 +54,7 @@ export class PricingOrchestrator {
         processed: 0,
         skipped: 0,
         errors: 0,
+        warnings: 0,
       });
 
       const rawData = await dataSource.fetchData(sourceParams);
@@ -70,6 +71,7 @@ export class PricingOrchestrator {
         processed: 0,
         skipped: 0,
         errors: 0,
+        warnings: 0,
       });
 
       const validatedData = await dataSource.validateData(rawData);
@@ -86,6 +88,7 @@ export class PricingOrchestrator {
         processed: 0,
         skipped: 0,
         errors: 0,
+        warnings: 0,
       });
 
       const pricerSkus = await dataSource.convertToPricerSku(validatedData);
@@ -107,6 +110,7 @@ export class PricingOrchestrator {
               processed: 0,
               skipped: 0,
               errors: 0,
+              warnings: 0,
             });
           }
         );
@@ -138,6 +142,7 @@ export class PricingOrchestrator {
           processed: pricingResult.stats.processed,
           skipped: pricingResult.stats.skipped,
           errors: pricingResult.stats.errors,
+          warnings: pricingResult.stats.warnings,
         });
 
         finalPricedSkus = await this.enrichmentService.enrichForDisplay(
@@ -150,6 +155,7 @@ export class PricingOrchestrator {
               processed: pricingResult.stats.processed,
               skipped: pricingResult.stats.skipped,
               errors: pricingResult.stats.errors,
+              warnings: pricingResult.stats.warnings,
             });
           },
           pricePointsMap // Pass the already-fetched price points to avoid redundant API calls
@@ -185,16 +191,24 @@ export class PricingOrchestrator {
           processed: pricingResult.stats.processed,
           skipped: pricingResult.stats.skipped,
           errors: pricingResult.stats.errors,
+          warnings: pricingResult.stats.warnings,
         });
 
         // Split results into successfully priced and failed items
+        // Only items with actual errors (not just warnings) go to manual review
         const successfullyPriced = finalPricedSkus.filter(
           (sku) =>
-            sku.price !== undefined && sku.price !== null && sku.price > 0
+            sku.price !== undefined &&
+            sku.price !== null &&
+            sku.price > 0 &&
+            (!sku.errors || sku.errors.length === 0)
         );
         const failedPricing = finalPricedSkus.filter(
           (sku) =>
-            sku.price === undefined || sku.price === null || sku.price <= 0
+            sku.price === undefined ||
+            sku.price === null ||
+            sku.price <= 0 ||
+            (sku.errors && sku.errors.length > 0)
         );
 
         // Sort successfully priced items by product line, set name, then product
@@ -300,7 +314,12 @@ export class PricingOrchestrator {
     source: string,
     percentile: number,
     totalRows: number,
-    stats: { processed: number; skipped: number; errors: number },
+    stats: {
+      processed: number;
+      skipped: number;
+      errors: number;
+      warnings: number;
+    },
     pricedSkus: PricedSku[],
     processingTime: number,
     aggregatedPercentiles: {
@@ -340,6 +359,7 @@ export class PricingOrchestrator {
       processedRows: stats.processed,
       skippedRows: stats.skipped,
       errorRows: stats.errors,
+      warningRows: stats.warnings,
       successRate,
       processingTime,
       fileName: source,

@@ -16,6 +16,7 @@ export interface TcgPlayerListing {
   "Suggested Price": string;
   "Expected Days to Sell": string;
   Error: string;
+  Warning: string;
 }
 
 export interface ProcessingProgress {
@@ -25,6 +26,7 @@ export interface ProcessingProgress {
   processed: number;
   skipped: number;
   errors: number;
+  warnings?: number;
 }
 
 export interface ProcessingSummary {
@@ -32,6 +34,7 @@ export interface ProcessingSummary {
   processedRows: number;
   skippedRows: number;
   errorRows: number;
+  warningRows?: number;
   successRate: number;
   processingTime: number;
   fileName: string;
@@ -98,4 +101,5 @@ export type PricedSku = {
   expectedDaysToSell?: number;
   suggestedPrice?: number;
   errors?: string[];
+  warnings?: string[];
 };

@@ -171,6 +171,7 @@ export class DataEnrichmentService {
         price: pricedItem.price,
         expectedDaysToSell: pricedItem.expectedDaysToSell,
         errors: pricedItem.errors,
+        warnings: pricedItem.warnings,
 
         // Product details
         productLine: productInfo?.productLine,

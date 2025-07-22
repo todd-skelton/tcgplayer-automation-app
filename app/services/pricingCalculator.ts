@@ -12,6 +12,7 @@ export interface PricingResult {
   price?: number;
   expectedDaysToSell?: number;
   errors?: string[];
+  warnings?: string[];
 }
 
 export interface PricingCalculationResult {
@@ -20,6 +21,7 @@ export interface PricingCalculationResult {
     processed: number;
     skipped: number;
     errors: number;
+    warnings: number;
     processingTime: number;
   };
   aggregatedPercentiles: {
@@ -43,6 +45,7 @@ export class PricingCalculator {
     let processed = 0;
     let skipped = 0;
     let errors = 0;
+    let warnings = 0;
 
     const pricedItems: PricingResult[] = [];
     const allPercentileData: Array<{
@@ -60,6 +63,7 @@ export class PricingCalculator {
       processed: 0,
       skipped: 0,
       errors: 0,
+      warnings: 0,
     });
 
     // Process each SKU
@@ -74,6 +78,7 @@ export class PricingCalculator {
         processed,
         skipped,
         errors,
+        warnings,
       });
 
       try {
@@ -96,8 +101,12 @@ export class PricingCalculator {
           pricePointsMap
         );
 
+        // Track errors vs warnings vs success
         if (pricedItem.errors && pricedItem.errors.length > 0) {
           errors++;
+        } else if (pricedItem.warnings && pricedItem.warnings.length > 0) {
+          warnings++;
+          processed++; // Items with warnings are still successfully processed
         } else {
           processed++;
         }
@@ -144,6 +153,7 @@ export class PricingCalculator {
       processed,
       skipped,
       errors,
+      warnings,
     });
 
     const processingTime = Date.now() - startTime;
@@ -158,6 +168,7 @@ export class PricingCalculator {
         processed,
         skipped,
         errors,
+        warnings,
         processingTime,
       },
       aggregatedPercentiles,
@@ -240,6 +251,7 @@ export class PricingCalculator {
       addToQuantity: pricerSku.addToQuantity,
       previousPrice: pricerSku.currentPrice,
       errors: [],
+      warnings: [],
     };
 
     // Handle errors
@@ -257,22 +269,28 @@ export class PricingCalculator {
       const pricePoint = pricePointsMap.get(pricerSku.sku) || null;
 
       // Apply minimum price bounds
-      const { marketplacePrice, errorMessage } = calculateMarketplacePrice(
-        result.suggestedPrice,
-        pricePoint
-          ? {
-              marketPrice: pricePoint.marketPrice,
-              lowestPrice: pricePoint.lowestPrice,
-              highestPrice: pricePoint.highestPrice,
-              calculatedAt: pricePoint.calculatedAt,
-            }
-          : null
-      );
+      const { marketplacePrice, warningMessage, errorMessage } =
+        calculateMarketplacePrice(
+          result.suggestedPrice,
+          pricePoint
+            ? {
+                marketPrice: pricePoint.marketPrice,
+                lowestPrice: pricePoint.lowestPrice,
+                highestPrice: pricePoint.highestPrice,
+                calculatedAt: pricePoint.calculatedAt,
+              }
+            : null
+        );
 
       // Set the bounded price as the marketplace price
       pricedItem.price = marketplacePrice;
 
-      // Add error message if minimum price was applied
+      // Add warning message if minimum price was applied (this is just a warning, not an error)
+      if (warningMessage) {
+        pricedItem.warnings?.push(warningMessage);
+      }
+
+      // Add error message for actual pricing failures
       if (errorMessage) {
         pricedItem.errors?.push(errorMessage);
       }

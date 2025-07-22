@@ -73,6 +73,7 @@ export class PricedSkuToTcgPlayerListingConverter
         "Suggested Price": pricedSku.suggestedPrice?.toFixed(2) || "",
         "Expected Days to Sell": pricedSku.expectedDaysToSell?.toString() || "",
         Error: pricedSku.errors?.join("; ") || "",
+        Warning: pricedSku.warnings?.join("; ") || "",
       };
     });
   }

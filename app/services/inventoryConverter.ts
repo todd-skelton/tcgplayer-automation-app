@@ -35,6 +35,7 @@ export function convertProductToListing(
     "Previous Price": "",
     "Suggested Price": "",
     "Expected Days to Sell": "",
+    Warning: "",
     Error: "",
   };
 }

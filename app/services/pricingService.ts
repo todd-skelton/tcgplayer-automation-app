@@ -3,7 +3,8 @@ import { PRICING_CONSTANTS } from "../constants/pricing";
 
 export interface PriceCalculationResult {
   marketplacePrice: number;
-  errorMessage: string;
+  warningMessage?: string;
+  errorMessage?: string;
 }
 
 export interface PricePointData {
@@ -24,12 +25,14 @@ export const calculateMarketplacePrice = (
 ): PriceCalculationResult => {
   const marketPrice = pricePoint?.marketPrice || 0;
   let marketplacePrice = suggestedPrice;
+  let warningMessage = "";
   let errorMessage = "";
 
   // Case 1: No market price available
   if (marketPrice === 0 && suggestedPrice > 0) {
-    errorMessage = "No market price available. Using suggested price directly.";
-    return { marketplacePrice, errorMessage };
+    warningMessage =
+      "No market price available. Using suggested price directly.";
+    return { marketplacePrice, warningMessage, errorMessage };
   }
 
   // Case 2: Market price available - enforce lower bound only
@@ -40,11 +43,11 @@ export const calculateMarketplacePrice = (
 
     if (suggestedPrice < lowerBound) {
       marketplacePrice = lowerBound;
-      errorMessage = "Suggested price below minimum. Using minimum price.";
+      warningMessage = "Suggested price below minimum. Using minimum price.";
     }
   }
 
-  return { marketplacePrice, errorMessage };
+  return { marketplacePrice, warningMessage, errorMessage };
 };
 
 export const getSuggestedPrice = async (
