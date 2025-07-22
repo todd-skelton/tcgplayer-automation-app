@@ -179,8 +179,8 @@ export async function getSuggestedPriceFromLatestSales(
   suggestedPrice?: number;
   totalQuantity: number;
   saleCount: number;
-  demandOnlyTimeToSellMs?: number; // Historical sales intervals (demand only)
-  estimatedTimeToSellMs?: number; // Supply-adjusted time (supply + demand)
+  historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
+  estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
   percentiles: PercentileData[];
   usedCrossConditionAnalysis?: boolean;
   conditionMultipliers?: Map<Condition, number>;
@@ -379,8 +379,8 @@ export interface LatestSalesPriceConfig {
 export interface PercentileData {
   percentile: number;
   price: number;
-  demandOnlyTimeToSellMs?: number; // Historical sales intervals (demand only)
-  estimatedTimeToSellMs?: number; // Supply-adjusted time (supply + demand)
+  historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
+  estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
 }
 
 /**
@@ -480,8 +480,11 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
       }
     }
 
-    // Calculate demand-only time to sell (historical sales intervals)
-    const demandOnlyTimeToSellMs = calculateExpectedTimeToSellMs(sales, price);
+    // Calculate historical sales velocity (historical sales intervals)
+    const historicalSalesVelocityMs = calculateExpectedTimeToSellMs(
+      sales,
+      price
+    );
 
     // Calculate supply-adjusted time to sell (if listings are provided)
     let estimatedTimeToSellMs: number | undefined;
@@ -510,7 +513,7 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
     percentiles.push({
       percentile: p,
       price,
-      demandOnlyTimeToSellMs,
+      historicalSalesVelocityMs,
       estimatedTimeToSellMs,
     });
   }
@@ -586,8 +589,8 @@ export function getSuggestedPriceFromSales(
   suggestedPrice?: number;
   totalQuantity: number;
   saleCount: number;
-  demandOnlyTimeToSellMs?: number; // Historical sales intervals (demand only)
-  estimatedTimeToSellMs?: number; // Supply-adjusted time (supply + demand)
+  historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
+  estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
   percentiles: PercentileData[];
 } {
   const { percentile = 80, listings, supplyAnalysisConfig } = options;
@@ -616,7 +619,7 @@ export function getSuggestedPriceFromSales(
 
   // Find the suggested price from the calculated percentiles
   let suggestedPrice: number | undefined = undefined;
-  let demandOnlyTimeToSellMs: number | undefined = undefined;
+  let historicalSalesVelocityMs: number | undefined = undefined;
   let estimatedTimeToSellMs: number | undefined = undefined;
 
   if (sales.length > 0) {
@@ -626,7 +629,8 @@ export function getSuggestedPriceFromSales(
     );
     if (targetPercentileData) {
       suggestedPrice = targetPercentileData.price;
-      demandOnlyTimeToSellMs = targetPercentileData.demandOnlyTimeToSellMs;
+      historicalSalesVelocityMs =
+        targetPercentileData.historicalSalesVelocityMs;
       estimatedTimeToSellMs = targetPercentileData.estimatedTimeToSellMs;
     }
   }
@@ -635,7 +639,7 @@ export function getSuggestedPriceFromSales(
     suggestedPrice,
     totalQuantity,
     saleCount: sales.length,
-    demandOnlyTimeToSellMs,
+    historicalSalesVelocityMs,
     estimatedTimeToSellMs,
     percentiles,
   };

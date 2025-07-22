@@ -80,7 +80,7 @@ export async function action({ request }: { request: Request }) {
     // The bounds will be applied in the pricing pipeline (purePricingService.ts)
     const result = {
       suggestedPrice: algorithmResult.suggestedPrice,
-      demandOnlyTimeToSellMs: algorithmResult.demandOnlyTimeToSellMs,
+      historicalSalesVelocityMs: algorithmResult.historicalSalesVelocityMs,
       estimatedTimeToSellMs: algorithmResult.estimatedTimeToSellMs,
       percentiles: algorithmResult.percentiles,
     };

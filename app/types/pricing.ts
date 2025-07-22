@@ -53,23 +53,23 @@ export interface ProcessingSummary {
     quantityWithMarket: number;
   };
   medianDaysToSell: {
-    demandOnlyDaysToSell: number; // Based on historical sales intervals (demand only)
-    estimatedDaysToSell?: number; // Supply-adjusted time (supply + demand) - optional
-    percentiles: { [key: string]: number }; // Uses demand-only by default
-    supplyAdjustedPercentiles?: { [key: string]: number }; // Supply-adjusted percentiles if available
+    historicalSalesVelocity: number; // Based on historical sales intervals (sales velocity only)
+    estimatedTimeToSell?: number; // Market-adjusted time (velocity + current competition) - optional
+    percentiles: { [key: string]: number }; // Uses historical sales velocity by default
+    marketAdjustedPercentiles?: { [key: string]: number }; // Market-adjusted percentiles if available
   };
 }
 
 export interface SuggestedPriceResult {
   error?: string;
   suggestedPrice: number | null;
-  demandOnlyTimeToSellMs?: number; // Historical sales intervals (demand only)
-  estimatedTimeToSellMs?: number; // Supply-adjusted time (supply + demand)
+  historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
+  estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
   percentiles?: Array<{
     percentile: number;
     price: number;
-    demandOnlyTimeToSellMs?: number; // Historical sales intervals (demand only)
-    estimatedTimeToSellMs?: number; // Supply-adjusted time (supply + demand)
+    historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
+    estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
   }>;
 }
 

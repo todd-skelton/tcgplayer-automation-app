@@ -323,8 +323,9 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
             quantityWithMarket: 0,
           },
           medianDaysToSell: {
-            expectedDaysToSell: 0,
-            percentiles: {},
+            historicalSalesVelocity: 0,
+            estimatedTimeToSell: 0,
+            percentiles: {} as { [key: string]: number },
           },
         };
 

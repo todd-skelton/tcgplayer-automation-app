@@ -245,8 +245,8 @@ export const ProcessingSummaryComponent: React.FC<
 
                   const medianDays =
                     summary.medianDaysToSell.percentiles[percentileKey];
-                  const supplyAdjustedDays =
-                    summary.medianDaysToSell.supplyAdjustedPercentiles?.[
+                  const marketAdjustedDays =
+                    summary.medianDaysToSell.marketAdjustedPercentiles?.[
                       percentileKey
                     ];
 
@@ -317,13 +317,13 @@ export const ProcessingSummaryComponent: React.FC<
                         )}
                       </TableCell>
                       <TableCell align="right">
-                        {supplyAdjustedDays !== undefined ? (
+                        {marketAdjustedDays !== undefined ? (
                           isCurrentPercentile ? (
-                            <strong>{`${supplyAdjustedDays.toFixed(
+                            <strong>{`${marketAdjustedDays.toFixed(
                               1
                             )} days`}</strong>
                           ) : (
-                            `${supplyAdjustedDays.toFixed(1)} days`
+                            `${marketAdjustedDays.toFixed(1)} days`
                           )
                         ) : (
                           <Typography variant="body2" color="text.disabled">
@@ -353,12 +353,12 @@ export const ProcessingSummaryComponent: React.FC<
             <TableRow>
               <TableCell>Median Days to Sell (Demand Only)</TableCell>
               <TableCell align="right">
-                {`${summary.medianDaysToSell.demandOnlyDaysToSell.toFixed(
+                {`${summary.medianDaysToSell.historicalSalesVelocity.toFixed(
                   1
                 )} days`}
               </TableCell>
             </TableRow>
-            {summary.medianDaysToSell.estimatedDaysToSell !== undefined && (
+            {summary.medianDaysToSell.estimatedTimeToSell !== undefined && (
               <TableRow>
                 <TableCell>
                   <Box>
@@ -373,7 +373,7 @@ export const ProcessingSummaryComponent: React.FC<
                   </Box>
                 </TableCell>
                 <TableCell align="right">
-                  {`${summary.medianDaysToSell.estimatedDaysToSell.toFixed(
+                  {`${summary.medianDaysToSell.estimatedTimeToSell.toFixed(
                     1
                   )} days`}
                 </TableCell>

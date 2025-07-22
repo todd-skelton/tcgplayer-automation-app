@@ -27,8 +27,8 @@ export interface PricingCalculationResult {
   };
   aggregatedPercentiles: {
     marketPrice: { [key: string]: number };
-    demandOnlyDaysToSell: { [key: string]: number };
-    estimatedDaysToSell: { [key: string]: number };
+    historicalSalesVelocity: { [key: string]: number };
+    estimatedTimeToSell: { [key: string]: number };
   };
 }
 
@@ -54,8 +54,8 @@ export class PricingCalculator {
     const allPercentileData: Array<{
       percentile: number;
       price: number;
-      demandOnlyTimeToSellMs?: number; // Historical sales intervals (demand only)
-      estimatedTimeToSellMs?: number; // Supply-adjusted time (supply + demand)
+      historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
+      estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
       quantity: number;
     }> = [];
 
@@ -132,7 +132,7 @@ export class PricingCalculator {
             allPercentileData.push({
               percentile: p.percentile,
               price: p.price,
-              demandOnlyTimeToSellMs: p.demandOnlyTimeToSellMs,
+              historicalSalesVelocityMs: p.historicalSalesVelocityMs,
               estimatedTimeToSellMs: p.estimatedTimeToSellMs,
               quantity,
             });
@@ -192,19 +192,19 @@ export class PricingCalculator {
     percentileData: Array<{
       percentile: number;
       price: number;
-      demandOnlyTimeToSellMs?: number; // Historical sales intervals (demand only)
-      estimatedTimeToSellMs?: number; // Supply-adjusted time (supply + demand)
+      historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
+      estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
       quantity: number;
     }>
   ): {
     marketPrice: { [key: string]: number };
-    demandOnlyDaysToSell: { [key: string]: number };
-    estimatedDaysToSell: { [key: string]: number };
+    historicalSalesVelocity: { [key: string]: number };
+    estimatedTimeToSell: { [key: string]: number };
   } {
     const aggregated = {
       marketPrice: {} as { [key: string]: number },
-      demandOnlyDaysToSell: {} as { [key: string]: number },
-      estimatedDaysToSell: {} as { [key: string]: number },
+      historicalSalesVelocity: {} as { [key: string]: number },
+      estimatedTimeToSell: {} as { [key: string]: number },
     };
 
     // Group by percentile
@@ -234,28 +234,29 @@ export class PricingCalculator {
       aggregated.marketPrice[`${percentile}th`] = totalValue;
 
       if (totalQuantity > 0) {
-        // Calculate median demand-only days to sell
-        const demandOnlyValues = items
+        // Calculate median historical sales velocity
+        const historicalVelocityValues = items
           .map((item) => {
-            const timeMs = item.demandOnlyTimeToSellMs;
+            const timeMs = item.historicalSalesVelocityMs;
             return timeMs ? timeMs / (24 * 60 * 60 * 1000) : undefined; // Convert ms to days
           })
           .filter((value): value is number => value !== undefined)
           .sort((a, b) => a - b);
 
-        if (demandOnlyValues.length > 0) {
-          const midIndex = Math.floor(demandOnlyValues.length / 2);
+        if (historicalVelocityValues.length > 0) {
+          const midIndex = Math.floor(historicalVelocityValues.length / 2);
           const median =
-            demandOnlyValues.length % 2 === 0
-              ? (demandOnlyValues[midIndex - 1] + demandOnlyValues[midIndex]) /
+            historicalVelocityValues.length % 2 === 0
+              ? (historicalVelocityValues[midIndex - 1] +
+                  historicalVelocityValues[midIndex]) /
                 2
-              : demandOnlyValues[midIndex];
+              : historicalVelocityValues[midIndex];
 
-          aggregated.demandOnlyDaysToSell[`${percentile}th`] = median;
+          aggregated.historicalSalesVelocity[`${percentile}th`] = median;
         }
 
-        // Calculate median supply-adjusted days to sell (if available)
-        const supplyAdjustedValues = items
+        // Calculate median market-adjusted time to sell (if available)
+        const marketAdjustedValues = items
           .map((item) => {
             const timeMs = item.estimatedTimeToSellMs;
             return timeMs ? timeMs / (24 * 60 * 60 * 1000) : undefined; // Convert ms to days
@@ -263,16 +264,16 @@ export class PricingCalculator {
           .filter((value): value is number => value !== undefined)
           .sort((a, b) => a - b);
 
-        if (supplyAdjustedValues.length > 0) {
-          const midIndex = Math.floor(supplyAdjustedValues.length / 2);
+        if (marketAdjustedValues.length > 0) {
+          const midIndex = Math.floor(marketAdjustedValues.length / 2);
           const median =
-            supplyAdjustedValues.length % 2 === 0
-              ? (supplyAdjustedValues[midIndex - 1] +
-                  supplyAdjustedValues[midIndex]) /
+            marketAdjustedValues.length % 2 === 0
+              ? (marketAdjustedValues[midIndex - 1] +
+                  marketAdjustedValues[midIndex]) /
                 2
-              : supplyAdjustedValues[midIndex];
+              : marketAdjustedValues[midIndex];
 
-          aggregated.estimatedDaysToSell[`${percentile}th`] = median;
+          aggregated.estimatedTimeToSell[`${percentile}th`] = median;
         }
       }
     });
@@ -340,9 +341,9 @@ export class PricingCalculator {
     if (result.estimatedTimeToSellMs) {
       pricedItem.expectedDaysToSell =
         result.estimatedTimeToSellMs / (24 * 60 * 60 * 1000);
-    } else if (result.demandOnlyTimeToSellMs) {
+    } else if (result.historicalSalesVelocityMs) {
       pricedItem.expectedDaysToSell =
-        result.demandOnlyTimeToSellMs / (24 * 60 * 60 * 1000);
+        result.historicalSalesVelocityMs / (24 * 60 * 60 * 1000);
     }
 
     return pricedItem;
