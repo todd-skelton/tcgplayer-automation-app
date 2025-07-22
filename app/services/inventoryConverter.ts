@@ -34,7 +34,8 @@ export function convertProductToListing(
     "TCG Marketplace Price": listing.price.toString(),
     "Previous Price": "",
     "Suggested Price": "",
-    "Expected Days to Sell": "",
+    "Historical Sales Velocity (Days)": "",
+    "Estimated Time to Sell (Days)": "",
     Warning: "",
     Error: "",
   };

@@ -26,7 +26,8 @@ export const shouldSkipRow = (row: TcgPlayerListing): boolean => {
 export const initializeRowColumns = (row: TcgPlayerListing): void => {
   row["Previous Price"] = row["TCG Marketplace Price"] || "";
   row["Suggested Price"] = "";
-  row["Expected Days to Sell"] = "";
+  row["Historical Sales Velocity (Days)"] = "";
+  row["Estimated Time to Sell (Days)"] = "";
   row["Lowest Sale Price"] = "";
   row["Highest Sale Price"] = "";
   row["Sale Count"] = "";

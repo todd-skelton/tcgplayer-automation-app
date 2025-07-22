@@ -71,7 +71,10 @@ export class PricedSkuToTcgPlayerListingConverter
         "TCG Marketplace Price": pricedSku.price?.toFixed(2) || "",
         "Previous Price": pricedSku.previousPrice?.toFixed(2) || "",
         "Suggested Price": pricedSku.suggestedPrice?.toFixed(2) || "",
-        "Expected Days to Sell": pricedSku.expectedDaysToSell?.toString() || "",
+        "Historical Sales Velocity (Days)":
+          pricedSku.historicalSalesVelocityDays?.toString() || "",
+        "Estimated Time to Sell (Days)":
+          pricedSku.estimatedTimeToSellDays?.toString() || "",
         Error: pricedSku.errors?.join("; ") || "",
         Warning: pricedSku.warnings?.join("; ") || "",
       };

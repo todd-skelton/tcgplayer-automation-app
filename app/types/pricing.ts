@@ -14,7 +14,8 @@ export interface TcgPlayerListing {
   "TCG Marketplace Price": string;
   "Previous Price": string;
   "Suggested Price": string;
-  "Expected Days to Sell": string;
+  "Historical Sales Velocity (Days)": string; // Historical sales velocity
+  "Estimated Time to Sell (Days)": string; // Market-adjusted time to sell
   Error: string;
   Warning: string;
 }
@@ -108,7 +109,8 @@ export type PricedSku = {
   addToQuantity?: number;
   price?: number;
   previousPrice?: number;
-  expectedDaysToSell?: number;
+  historicalSalesVelocityDays?: number; // Historical sales velocity in days
+  estimatedTimeToSellDays?: number; // Market-adjusted time to sell in days
   suggestedPrice?: number;
   errors?: string[];
   warnings?: string[];

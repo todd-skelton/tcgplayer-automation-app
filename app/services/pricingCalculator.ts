@@ -11,7 +11,8 @@ export interface PricingResult {
   previousPrice?: number;
   suggestedPrice?: number;
   price?: number;
-  expectedDaysToSell?: number;
+  historicalSalesVelocityDays?: number; // Historical sales velocity in days
+  estimatedTimeToSellDays?: number; // Market-adjusted time to sell in days
   errors?: string[];
   warnings?: string[];
 }
@@ -337,13 +338,15 @@ export class PricingCalculator {
       }
     }
 
-    // Add time to sell data (convert from milliseconds to days for backward compatibility)
-    if (result.estimatedTimeToSellMs) {
-      pricedItem.expectedDaysToSell =
-        result.estimatedTimeToSellMs / (24 * 60 * 60 * 1000);
-    } else if (result.historicalSalesVelocityMs) {
-      pricedItem.expectedDaysToSell =
+    // Add time to sell data (convert from milliseconds to days)
+    if (result.historicalSalesVelocityMs) {
+      pricedItem.historicalSalesVelocityDays =
         result.historicalSalesVelocityMs / (24 * 60 * 60 * 1000);
+    }
+
+    if (result.estimatedTimeToSellMs) {
+      pricedItem.estimatedTimeToSellDays =
+        result.estimatedTimeToSellMs / (24 * 60 * 60 * 1000);
     }
 
     return pricedItem;
