@@ -199,7 +199,7 @@ export class DataEnrichmentService {
   /**
    * Fetches product details for display purposes only
    */
-  private async fetchProductDetails(
+  async fetchProductDetails(
     skuIds: number[],
     onProgress?: (current: number, total: number, status: string) => void
   ): Promise<Map<number, ProductDisplayInfo>> {

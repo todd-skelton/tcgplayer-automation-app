@@ -2,6 +2,7 @@ import type { PricerSku, PricingConfig } from "../types/pricing";
 import { getSuggestedPrice } from "./pricingService";
 import { calculateMarketplacePrice } from "./pricingService";
 import type { PricePoint } from "../tcgplayer/get-price-points";
+import type { ProductDisplayInfo } from "./dataEnrichmentService";
 
 export interface PricingResult {
   sku: number;
@@ -39,7 +40,8 @@ export class PricingCalculator {
     skus: PricerSku[],
     config: PricingConfig,
     pricePointsMap: Map<number, PricePoint> = new Map(),
-    source: string = "pricing"
+    source: string = "pricing",
+    productDisplayMap?: Map<number, ProductDisplayInfo>
   ): Promise<PricingCalculationResult> {
     const startTime = Date.now();
     let processed = 0;
@@ -70,11 +72,17 @@ export class PricingCalculator {
     for (let i = 0; i < skus.length && !config.isCancelled?.(); i++) {
       const pricerSku = skus[i];
 
+      // Get display name if available
+      const productInfo = productDisplayMap?.get(pricerSku.sku);
+      const displayName = productInfo?.productName
+        ? `${productInfo.productName} (${pricerSku.sku})`
+        : `SKU ${pricerSku.sku}`;
+
       // Update progress
       config.onProgress?.({
         current: i + 1,
         total: skus.length,
-        status: `Processing SKU ${i + 1}/${skus.length} (${pricerSku.sku})...`,
+        status: `Processing ${i + 1}/${skus.length}: ${displayName}...`,
         processed,
         skipped,
         errors,

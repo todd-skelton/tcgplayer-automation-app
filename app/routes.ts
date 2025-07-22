@@ -19,6 +19,10 @@ export default [
     file: "routes/pending-inventory-pricer.tsx",
   },
   {
+    path: "/configuration",
+    file: "routes/configuration.tsx",
+  },
+  {
     path: "/api/suggested-price",
     file: "routes/api.suggested-price.tsx",
   },

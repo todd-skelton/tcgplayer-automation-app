@@ -5,6 +5,7 @@ import {
   UploadForm,
   ProgressIndicator,
   ProcessingSummaryComponent,
+  QuickSettings,
 } from "../components";
 
 export default function PricerRoute() {
@@ -36,9 +37,17 @@ export default function PricerRoute() {
       </Typography>
 
       <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
-        <Typography variant="h6" gutterBottom>
-          Upload CSV File
-        </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            mb: 3,
+          }}
+        >
+          <Typography variant="h6">Upload CSV File</Typography>
+          <QuickSettings compact />
+        </Box>
         <UploadForm
           onSubmit={handleSubmit}
           isProcessing={isProcessing}

@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Button, TextField } from "@mui/material";
-import { PRICING_CONSTANTS, FILE_CONFIG } from "../constants/pricing";
+import { useConfiguration } from "../hooks/useConfiguration";
 
 interface UploadFormProps {
   onSubmit: (file: File, percentile: number) => void;
@@ -13,6 +13,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
   isProcessing,
   onCancel,
 }) => {
+  const { config, updateFormDefaults } = useConfiguration();
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
@@ -24,7 +25,11 @@ export const UploadForm: React.FC<UploadFormProps> = ({
     }
 
     const percentile =
-      parseInt(percentileValue, 10) || PRICING_CONSTANTS.DEFAULT_PERCENTILE;
+      parseInt(percentileValue, 10) || config.pricing.defaultPercentile;
+
+    // Save percentile as form default for next time
+    updateFormDefaults({ percentile });
+
     onSubmit(file, percentile);
   };
 
@@ -35,19 +40,19 @@ export const UploadForm: React.FC<UploadFormProps> = ({
           type="file"
           name="csv"
           required
-          inputProps={{ accept: FILE_CONFIG.ACCEPT }}
+          inputProps={{ accept: config.file.accept }}
           disabled={isProcessing}
         />
         <TextField
           label="Price Percentile"
           name="percentile"
           type="number"
-          defaultValue={PRICING_CONSTANTS.DEFAULT_PERCENTILE}
+          defaultValue={config.formDefaults.percentile}
           inputProps={{
-            min: PRICING_CONSTANTS.MIN_PERCENTILE,
-            max: PRICING_CONSTANTS.MAX_PERCENTILE,
+            min: config.pricing.minPercentile,
+            max: config.pricing.maxPercentile,
           }}
-          helperText={`Percentile for suggested price calculation (${PRICING_CONSTANTS.MIN_PERCENTILE}-${PRICING_CONSTANTS.MAX_PERCENTILE}). Examples: 65, 75, 80`}
+          helperText={`Percentile for suggested price calculation (${config.pricing.minPercentile}-${config.pricing.maxPercentile}). Examples: 65, 75, 80`}
           disabled={isProcessing}
         />
         <Box sx={{ display: "flex", gap: 2 }}>

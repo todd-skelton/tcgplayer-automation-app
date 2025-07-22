@@ -490,7 +490,7 @@ export default function Home() {
         <Typography variant="h5" gutterBottom>
           TCGPlayer Automation Tools
         </Typography>
-        <Stack direction="row" spacing={2}>
+        <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
           <Button
             component={Link}
             to="/pricer"
@@ -522,6 +522,16 @@ export default function Home() {
             color="info"
           >
             Pending Inventory Pricer
+          </Button>
+        </Stack>
+        <Stack direction="row" spacing={2}>
+          <Button
+            component={Link}
+            to="/configuration"
+            variant="outlined"
+            color="primary"
+          >
+            ⚙️ Configuration
           </Button>
         </Stack>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>

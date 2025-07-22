@@ -8,10 +8,11 @@ import {
   TextField,
 } from "@mui/material";
 import { ProgressIndicator, ProcessingSummaryComponent } from "../components";
-import { PRICING_CONSTANTS } from "../constants/pricing";
+import { useConfiguration } from "../hooks/useConfiguration";
 import { usePendingInventoryPipelineProcessor } from "~/hooks/usePendingInventoryPipelineProcessor";
 
 export default function PendingInventoryPricerRoute() {
+  const { config, updateFormDefaults } = useConfiguration();
   const {
     isProcessing,
     progress,
@@ -28,7 +29,7 @@ export default function PendingInventoryPricerRoute() {
   } = usePendingInventoryPipelineProcessor();
 
   const [percentile, setPercentile] = React.useState<number>(
-    PRICING_CONSTANTS.DEFAULT_PERCENTILE
+    config.formDefaults.percentile
   );
 
   const handleSubmit = async () => {
@@ -39,14 +40,17 @@ export default function PendingInventoryPricerRoute() {
 
     // Validate percentile range
     if (
-      percentile < PRICING_CONSTANTS.MIN_PERCENTILE ||
-      percentile > PRICING_CONSTANTS.MAX_PERCENTILE
+      percentile < config.pricing.minPercentile ||
+      percentile > config.pricing.maxPercentile
     ) {
       setError(
-        `Percentile must be between ${PRICING_CONSTANTS.MIN_PERCENTILE} and ${PRICING_CONSTANTS.MAX_PERCENTILE}`
+        `Percentile must be between ${config.pricing.minPercentile} and ${config.pricing.maxPercentile}`
       );
       return;
     }
+
+    // Save percentile as form default for next time
+    updateFormDefaults({ percentile });
 
     await processPendingInventory(percentile);
   };
@@ -94,10 +98,10 @@ export default function PendingInventoryPricerRoute() {
                 sx={{ minWidth: 150 }}
                 disabled={isProcessing}
                 inputProps={{
-                  min: PRICING_CONSTANTS.MIN_PERCENTILE,
-                  max: PRICING_CONSTANTS.MAX_PERCENTILE,
+                  min: config.pricing.minPercentile,
+                  max: config.pricing.maxPercentile,
                 }}
-                helperText={`${PRICING_CONSTANTS.MIN_PERCENTILE}-${PRICING_CONSTANTS.MAX_PERCENTILE}`}
+                helperText={`${config.pricing.minPercentile}-${config.pricing.maxPercentile}`}
               />
               <Button
                 variant="contained"
@@ -105,8 +109,8 @@ export default function PendingInventoryPricerRoute() {
                 onClick={handleSubmit}
                 disabled={
                   isProcessing ||
-                  percentile < PRICING_CONSTANTS.MIN_PERCENTILE ||
-                  percentile > PRICING_CONSTANTS.MAX_PERCENTILE ||
+                  percentile < config.pricing.minPercentile ||
+                  percentile > config.pricing.maxPercentile ||
                   pendingCount === 0
                 }
               >

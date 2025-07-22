@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Box, TextField, Button, Stack, Typography } from "@mui/material";
-import { PRICING_CONSTANTS } from "../constants/pricing";
+import { useConfiguration } from "../hooks/useConfiguration";
 
 interface SellerFormProps {
   onSubmit: (sellerKey: string, percentile: number) => Promise<void>;
@@ -13,9 +13,11 @@ export function SellerForm({
   isProcessing,
   onCancel,
 }: SellerFormProps) {
-  const [sellerKey, setSellerKey] = useState("");
+  const { config, updateFormDefaults } = useConfiguration();
+
+  const [sellerKey, setSellerKey] = useState(config.formDefaults.sellerKey);
   const [percentile, setPercentile] = useState<number>(
-    PRICING_CONSTANTS.DEFAULT_PERCENTILE
+    config.formDefaults.percentile
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -28,11 +30,14 @@ export function SellerForm({
 
     // Validate percentile range
     if (
-      percentile < PRICING_CONSTANTS.MIN_PERCENTILE ||
-      percentile > PRICING_CONSTANTS.MAX_PERCENTILE
+      percentile < config.pricing.minPercentile ||
+      percentile > config.pricing.maxPercentile
     ) {
       return;
     }
+
+    // Save form defaults for next time
+    updateFormDefaults({ sellerKey: sellerKey.trim(), percentile });
 
     setIsSubmitting(true);
     try {
@@ -76,10 +81,10 @@ export function SellerForm({
           fullWidth
           disabled={isProcessing}
           inputProps={{
-            min: PRICING_CONSTANTS.MIN_PERCENTILE,
-            max: PRICING_CONSTANTS.MAX_PERCENTILE,
+            min: config.pricing.minPercentile,
+            max: config.pricing.maxPercentile,
           }}
-          helperText={`Percentile for suggested price calculation (${PRICING_CONSTANTS.MIN_PERCENTILE}-${PRICING_CONSTANTS.MAX_PERCENTILE}). Examples: 65, 75, 80`}
+          helperText={`Percentile for suggested price calculation (${config.pricing.minPercentile}-${config.pricing.maxPercentile}). Examples: 65, 75, 80`}
         />
 
         <Box sx={{ display: "flex", gap: 2 }}>
@@ -91,8 +96,8 @@ export function SellerForm({
               disabled={
                 !sellerKey.trim() ||
                 isSubmitting ||
-                percentile < PRICING_CONSTANTS.MIN_PERCENTILE ||
-                percentile > PRICING_CONSTANTS.MAX_PERCENTILE
+                percentile < config.pricing.minPercentile ||
+                percentile > config.pricing.maxPercentile
               }
             >
               {isSubmitting ? "Starting..." : "Process Seller Inventory"}

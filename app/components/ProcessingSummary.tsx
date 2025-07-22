@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@mui/material";
 import type { ProcessingSummary } from "../types/pricing";
-import { PERCENTILES, PRICING_CONSTANTS } from "../constants/pricing";
+import { useConfiguration } from "../hooks/useConfiguration";
 import { formatProcessingTime } from "../utils/timeFormatting";
 
 interface ProcessingSummaryComponentProps {
@@ -25,6 +25,7 @@ interface ProcessingSummaryComponentProps {
 export const ProcessingSummaryComponent: React.FC<
   ProcessingSummaryComponentProps
 > = ({ summary }) => {
+  const { percentiles, config } = useConfiguration();
   const combinedQuantity = summary.totalQuantity + summary.totalAddQuantity;
 
   const renderRecordStatistics = () => (
@@ -179,8 +180,8 @@ export const ProcessingSummaryComponent: React.FC<
 
   const renderPercentileAnalysis = () => {
     // Create a combined list of percentiles including the selected one if it's not in the standard list
-    const allPercentiles = [...PERCENTILES];
-    if (!PERCENTILES.includes(summary.percentileUsed)) {
+    const allPercentiles = [...percentiles];
+    if (!percentiles.includes(summary.percentileUsed)) {
       allPercentiles.push(summary.percentileUsed);
       allPercentiles.sort((a, b) => a - b);
     }
@@ -347,7 +348,7 @@ export const ProcessingSummaryComponent: React.FC<
 
   const renderAlerts = () => (
     <>
-      {summary.successRate < PRICING_CONSTANTS.SUCCESS_RATE_THRESHOLD.LOW && (
+      {summary.successRate < config.pricing.successRateThreshold.low && (
         <Alert severity="warning">
           <Typography variant="body2">
             <strong>Low success rate detected.</strong> Common issues include
@@ -358,7 +359,7 @@ export const ProcessingSummaryComponent: React.FC<
         </Alert>
       )}
 
-      {summary.successRate >= PRICING_CONSTANTS.SUCCESS_RATE_THRESHOLD.HIGH && (
+      {summary.successRate >= config.pricing.successRateThreshold.high && (
         <Alert severity="success">
           <Typography variant="body2">
             <strong>Excellent processing results!</strong>{" "}

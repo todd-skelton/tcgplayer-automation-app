@@ -119,12 +119,49 @@ export class PricingOrchestrator {
         throw new Error("Processing cancelled by user");
       }
 
-      // Step 4: Execute core pricing with price points (fast, no additional enrichment)
+      // Step 3.6: Pre-enrich for display purposes if enrichment is enabled
+      let productDisplayMap:
+        | Map<number, import("./dataEnrichmentService").ProductDisplayInfo>
+        | undefined;
+      if (config.enableEnrichment !== false) {
+        config.onProgress?.({
+          current: 0,
+          total: skuIds.length,
+          status: "Fetching product details for display...",
+          processed: 0,
+          skipped: 0,
+          errors: 0,
+          warnings: 0,
+        });
+
+        // Fetch just the product details needed for display names
+        productDisplayMap = await this.enrichmentService.fetchProductDetails(
+          skuIds,
+          (current: number, total: number, status: string) => {
+            config.onProgress?.({
+              current,
+              total,
+              status,
+              processed: 0,
+              skipped: 0,
+              errors: 0,
+              warnings: 0,
+            });
+          }
+        );
+
+        if (config.isCancelled?.()) {
+          throw new Error("Processing cancelled by user");
+        }
+      }
+
+      // Step 4: Execute core pricing with price points and display info
       const pricingResult = await this.pricingCalculator.calculatePrices(
         pricerSkus,
         config,
         pricePointsMap,
-        config.source
+        config.source,
+        productDisplayMap
       );
 
       if (config.isCancelled?.()) {
