@@ -365,7 +365,8 @@ export class PricingOrchestrator {
     processingTime: number,
     aggregatedPercentiles: {
       marketPrice: { [key: string]: number };
-      expectedDaysToSell: { [key: string]: number };
+      demandOnlyDaysToSell: { [key: string]: number };
+      estimatedDaysToSell: { [key: string]: number };
     }
   ): ProcessingSummary {
     // Calculate totals from priced SKUs
@@ -419,8 +420,16 @@ export class PricingOrchestrator {
         quantityWithMarket: totalQuantity + totalAddQuantity,
       },
       medianDaysToSell: {
-        expectedDaysToSell: 0,
-        percentiles: aggregatedPercentiles.expectedDaysToSell,
+        demandOnlyDaysToSell: 0, // This should be calculated from the aggregated data
+        estimatedDaysToSell:
+          Object.keys(aggregatedPercentiles.estimatedDaysToSell).length > 0
+            ? 0
+            : undefined,
+        percentiles: aggregatedPercentiles.demandOnlyDaysToSell,
+        supplyAdjustedPercentiles:
+          Object.keys(aggregatedPercentiles.estimatedDaysToSell).length > 0
+            ? aggregatedPercentiles.estimatedDaysToSell
+            : undefined,
       },
     };
   }

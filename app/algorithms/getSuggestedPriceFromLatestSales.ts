@@ -170,7 +170,7 @@ function calculateConditionPrices(sales: Sale[]): Map<Condition, number> {
  * fit a Zipf model to normalize prices, and provide a more robust price suggestion.
  * @param sku The SKU object to fetch sales for
  * @param config Optional configuration for halfLifeDays, percentile, etc.
- * @returns Object with suggestedPrice, totalQuantity, saleCount, expectedTimeToSellDays, and percentiles array
+ * @returns Object with suggestedPrice, totalQuantity, saleCount, time estimates in milliseconds, and percentiles array
  */
 export async function getSuggestedPriceFromLatestSales(
   sku: Sku,
@@ -179,7 +179,8 @@ export async function getSuggestedPriceFromLatestSales(
   suggestedPrice?: number;
   totalQuantity: number;
   saleCount: number;
-  expectedTimeToSellDays?: number;
+  demandOnlyTimeToSellMs?: number; // Historical sales intervals (demand only)
+  estimatedTimeToSellMs?: number; // Supply-adjusted time (supply + demand)
   percentiles: PercentileData[];
   usedCrossConditionAnalysis?: boolean;
   conditionMultipliers?: Map<Condition, number>;
@@ -281,9 +282,21 @@ export async function getSuggestedPriceFromLatestSales(
     let listings: ListingData[] = [];
     if (config.enableSupplyAnalysis && !config.listings) {
       const supplyAnalysisService = new SupplyAnalysisService();
+
+      // Optimization: Calculate max sales price to filter listings
+      const maxSalesPrice =
+        adjustedSales.length > 0
+          ? Math.max(...adjustedSales.map((s) => s.price))
+          : undefined;
+
+      const optimizedConfig = {
+        ...config.supplyAnalysisConfig,
+        maxSalesPrice,
+      };
+
       listings = await supplyAnalysisService.fetchListingsForSku(
         sku,
-        config.supplyAnalysisConfig
+        optimizedConfig
       );
     } else if (config.listings) {
       listings = config.listings;
@@ -318,9 +331,21 @@ export async function getSuggestedPriceFromLatestSales(
   if (config.enableSupplyAnalysis && !config.listings) {
     // Fetch listings if supply analysis is enabled but no pre-fetched listings provided
     const supplyAnalysisService = new SupplyAnalysisService();
+
+    // Optimization: Calculate max sales price to filter listings
+    const maxSalesPrice =
+      mappedSales.length > 0
+        ? Math.max(...mappedSales.map((s) => s.price))
+        : undefined;
+
+    const optimizedConfig = {
+      ...config.supplyAnalysisConfig,
+      maxSalesPrice,
+    };
+
     listings = await supplyAnalysisService.fetchListingsForSku(
       sku,
-      config.supplyAnalysisConfig
+      optimizedConfig
     );
   } else if (config.listings) {
     listings = config.listings;
@@ -354,7 +379,8 @@ export interface LatestSalesPriceConfig {
 export interface PercentileData {
   percentile: number;
   price: number;
-  expectedTimeToSellDays?: number;
+  demandOnlyTimeToSellMs?: number; // Historical sales intervals (demand only)
+  estimatedTimeToSellMs?: number; // Supply-adjusted time (supply + demand)
 }
 
 /**
@@ -454,9 +480,11 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
       }
     }
 
-    // Calculate expected time to sell for this percentile price
-    let expectedTimeToSellDays: number | undefined;
+    // Calculate demand-only time to sell (historical sales intervals)
+    const demandOnlyTimeToSellMs = calculateExpectedTimeToSellMs(sales, price);
 
+    // Calculate supply-adjusted time to sell (if listings are provided)
+    let estimatedTimeToSellMs: number | undefined;
     if (listings && listings.length > 0) {
       // Use supply-adjusted time to sell calculation
       const supplyAnalysisService = new SupplyAnalysisService();
@@ -466,22 +494,24 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
         timestamp: s.timestamp,
       }));
 
-      expectedTimeToSellDays =
+      const supplyAdjustedDays =
         supplyAnalysisService.calculateSupplyAdjustedTimeToSell(
           salesVelocityData,
           listings,
           price,
           supplyAnalysisConfig || {}
         );
-    } else {
-      // Use historical time to sell calculation
-      expectedTimeToSellDays = calculateExpectedTimeToSell(sales, price);
+
+      estimatedTimeToSellMs = supplyAdjustedDays
+        ? daysToMilliseconds(supplyAdjustedDays)
+        : undefined;
     }
 
     percentiles.push({
       percentile: p,
       price,
-      expectedTimeToSellDays,
+      demandOnlyTimeToSellMs,
+      estimatedTimeToSellMs,
     });
   }
 
@@ -489,9 +519,17 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
 }
 
 /**
- * Calculate expected time to sell based on historical sales at or above a given price
+ * Convert days to milliseconds
  */
-function calculateExpectedTimeToSell(
+function daysToMilliseconds(days: number): number {
+  return days * 24 * 60 * 60 * 1000;
+}
+
+/**
+ * Calculate expected time to sell based on historical sales at or above a given price
+ * Returns time in milliseconds
+ */
+function calculateExpectedTimeToSellMs(
   sales: { price: number; quantity: number; timestamp: number }[],
   targetPrice: number
 ): number | undefined {
@@ -501,22 +539,18 @@ function calculateExpectedTimeToSell(
     .sort((a, b) => a.timestamp - b.timestamp);
 
   if (relevantSales.length === 0) {
-    return Infinity;
+    return undefined; // Return undefined instead of Infinity for better handling
   }
 
   if (relevantSales.length === 1) {
     // For a single sale (e.g., 100th percentile), use 90 days as a reasonable estimate
-    // This represents the maximum sales window timeframe
-    return 90;
+    return daysToMilliseconds(90);
   }
 
-  // Calculate intervals in days between relevant sales
+  // Calculate intervals in milliseconds between relevant sales
   const intervals = [];
   for (let i = 1; i < relevantSales.length; i++) {
-    intervals.push(
-      (relevantSales[i].timestamp - relevantSales[i - 1].timestamp) /
-        (1000 * 60 * 60 * 24)
-    );
+    intervals.push(relevantSales[i].timestamp - relevantSales[i - 1].timestamp);
   }
 
   // Use median interval as expected time to sell
@@ -527,6 +561,9 @@ function calculateExpectedTimeToSell(
     : (intervals[mid - 1] + intervals[mid]) / 2;
 }
 
+/**
+ * Calculate expected time to sell based on historical sales at or above a given price
+ */
 /**
  * Orchestrates the calculation of time-decayed, quantity-weighted percentile prices from sales data.
  * @param sales Array of sales, each with price, quantity, and timestamp (ms since epoch)
@@ -549,7 +586,8 @@ export function getSuggestedPriceFromSales(
   suggestedPrice?: number;
   totalQuantity: number;
   saleCount: number;
-  expectedTimeToSellDays?: number;
+  demandOnlyTimeToSellMs?: number; // Historical sales intervals (demand only)
+  estimatedTimeToSellMs?: number; // Supply-adjusted time (supply + demand)
   percentiles: PercentileData[];
 } {
   const { percentile = 80, listings, supplyAnalysisConfig } = options;
@@ -578,7 +616,8 @@ export function getSuggestedPriceFromSales(
 
   // Find the suggested price from the calculated percentiles
   let suggestedPrice: number | undefined = undefined;
-  let expectedTimeToSellDays: number | undefined = undefined;
+  let demandOnlyTimeToSellMs: number | undefined = undefined;
+  let estimatedTimeToSellMs: number | undefined = undefined;
 
   if (sales.length > 0) {
     // Find the percentile data for our target percentile
@@ -587,7 +626,8 @@ export function getSuggestedPriceFromSales(
     );
     if (targetPercentileData) {
       suggestedPrice = targetPercentileData.price;
-      expectedTimeToSellDays = targetPercentileData.expectedTimeToSellDays;
+      demandOnlyTimeToSellMs = targetPercentileData.demandOnlyTimeToSellMs;
+      estimatedTimeToSellMs = targetPercentileData.estimatedTimeToSellMs;
     }
   }
 
@@ -595,7 +635,8 @@ export function getSuggestedPriceFromSales(
     suggestedPrice,
     totalQuantity,
     saleCount: sales.length,
-    expectedTimeToSellDays,
+    demandOnlyTimeToSellMs,
+    estimatedTimeToSellMs,
     percentiles,
   };
 }

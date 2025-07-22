@@ -1,5 +1,5 @@
 import type { Sku } from "../data-types/sku";
-import { getListings } from "../tcgplayer/get-listings";
+import { getListings, getAllListings } from "../tcgplayer/get-listings";
 
 export interface ListingData {
   price: number;
@@ -14,6 +14,7 @@ export interface SupplyAnalysisConfig {
   confidenceWeight?: number; // 0-1, how much to weight supply vs historical (default 0.7)
   maxListingsPerSku?: number; // Performance limit (default 200)
   includeUnverifiedSellers?: boolean; // Include unverified sellers in analysis (default false)
+  maxSalesPrice?: number; // Optional: filter listings to prices up to this maximum (optimization)
 }
 
 export interface SalesVelocityData {
@@ -34,70 +35,68 @@ export interface SupplyQueueAnalysis {
  */
 export class SupplyAnalysisService {
   /**
-   * Fetch all listings for a SKU with pagination
+   * Fetch all listings for a SKU with pagination and optional price range optimization
+   *
+   * Performance optimization: When maxSalesPrice is provided, the getAllListings function
+   * will filter results and terminate early when listings exceed that price, reducing
+   * unnecessary API calls for irrelevant high-priced listings.
    */
   async fetchListingsForSku(
     sku: Sku,
     config: SupplyAnalysisConfig = {}
   ): Promise<ListingData[]> {
-    const { maxListingsPerSku = 200, includeUnverifiedSellers = false } =
-      config;
-
-    let listings: ListingData[] = [];
-    let from = 0;
-    const pageSize = 50;
-    let morePages = true;
-    let totalResults = 0;
+    const {
+      maxListingsPerSku = 200,
+      includeUnverifiedSellers = false,
+      maxSalesPrice,
+    } = config;
 
     try {
-      while (morePages && listings.length < maxListingsPerSku) {
-        const { results } = await getListings(
-          { id: sku.productId },
-          {
-            filters: {
-              term: {
-                listingType: ["standard"],
-                condition: [sku.condition],
-                language: [sku.language],
-                printing: [sku.variant],
-                "verified-seller": includeUnverifiedSellers ? undefined : true,
-              },
-            },
-            from,
-            size: Math.min(pageSize, maxListingsPerSku - listings.length),
-            sort: { field: "price+shipping", order: "asc" },
-          }
+      if (maxSalesPrice !== undefined && maxSalesPrice > 0) {
+        console.log(
+          `Supply analysis optimization: Fetching listings for SKU ${
+            sku.sku
+          } with price limit ≤ $${maxSalesPrice.toFixed(2)}`
         );
-
-        if (!results || results.length === 0) break;
-        const page = results[0];
-        if (!page || !page.results || page.results.length === 0) break;
-
-        // Convert to standardized format
-        const pageListings: ListingData[] = page.results.map(
-          (listing: any) => ({
-            price: listing.price || 0,
-            shippingCost: listing.sellerShippingPrice || 0,
-            quantity: listing.quantity || 0,
-            sellerId: listing.sellerId || 0,
-            isVerified: listing.isVerifiedSeller || false,
-            listingId: listing.listingId || 0,
-          })
-        );
-
-        listings = listings.concat(pageListings);
-        totalResults = page.totalResults;
-        from += pageSize;
-        morePages =
-          listings.length < totalResults && listings.length < maxListingsPerSku;
       }
+
+      // Use getAllListings with maxPrice optimization
+      const allListings = await getAllListings(
+        { id: sku.productId },
+        {
+          filters: {
+            term: {
+              listingType: ["standard"],
+              condition: [sku.condition],
+              language: [sku.language],
+              printing: [sku.variant],
+              "verified-seller": includeUnverifiedSellers ? undefined : true,
+            },
+          },
+          size: 50, // Keep reasonable page size
+          sort: { field: "price+shipping", order: "asc" },
+        },
+        maxSalesPrice // This will cause early termination when price exceeds this value
+      );
+
+      // Limit to maxListingsPerSku and convert to standardized format
+      const limitedListings = allListings.slice(0, maxListingsPerSku);
+
+      const listings: ListingData[] = limitedListings.map((listing: any) => ({
+        price: listing.price || 0,
+        shippingCost: listing.sellerShippingPrice || 0,
+        quantity: listing.quantity || 0,
+        sellerId: listing.sellerId || 0,
+        isVerified: listing.isVerifiedSeller || false,
+        listingId: listing.listingId || 0,
+      }));
+
+      return listings;
     } catch (error) {
       console.warn(`Failed to fetch listings for SKU ${sku.sku}:`, error);
       // Return empty array to gracefully degrade to historical method
       return [];
     }
-
-    return listings;
   }
 
   /**

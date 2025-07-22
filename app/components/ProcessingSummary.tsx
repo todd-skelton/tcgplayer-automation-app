@@ -199,7 +199,30 @@ export const ProcessingSummaryComponent: React.FC<
                   <TableCell>Percentile</TableCell>
                   <TableCell align="right">Total Value</TableCell>
                   <TableCell align="right">% Difference from Market</TableCell>
-                  <TableCell align="right">Median Days to Sell</TableCell>
+                  <TableCell align="right">
+                    <Box>
+                      Demand-Only Time
+                      <Typography
+                        variant="caption"
+                        display="block"
+                        color="text.secondary"
+                      >
+                        Historical sales velocity
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell align="right">
+                    <Box>
+                      Supply-Adjusted Time
+                      <Typography
+                        variant="caption"
+                        display="block"
+                        color="text.secondary"
+                      >
+                        With market competition
+                      </Typography>
+                    </Box>
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -222,6 +245,10 @@ export const ProcessingSummaryComponent: React.FC<
 
                   const medianDays =
                     summary.medianDaysToSell.percentiles[percentileKey];
+                  const supplyAdjustedDays =
+                    summary.medianDaysToSell.supplyAdjustedPercentiles?.[
+                      percentileKey
+                    ];
 
                   const isCurrentPercentile = p === summary.percentileUsed;
 
@@ -289,6 +316,21 @@ export const ProcessingSummaryComponent: React.FC<
                           "N/A"
                         )}
                       </TableCell>
+                      <TableCell align="right">
+                        {supplyAdjustedDays !== undefined ? (
+                          isCurrentPercentile ? (
+                            <strong>{`${supplyAdjustedDays.toFixed(
+                              1
+                            )} days`}</strong>
+                          ) : (
+                            `${supplyAdjustedDays.toFixed(1)} days`
+                          )
+                        ) : (
+                          <Typography variant="body2" color="text.disabled">
+                            Not available
+                          </Typography>
+                        )}
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -309,13 +351,34 @@ export const ProcessingSummaryComponent: React.FC<
         <Table size="small">
           <TableBody>
             <TableRow>
-              <TableCell>Median Expected Days to Sell</TableCell>
+              <TableCell>Median Days to Sell (Demand Only)</TableCell>
               <TableCell align="right">
-                {`${summary.medianDaysToSell.expectedDaysToSell.toFixed(
+                {`${summary.medianDaysToSell.demandOnlyDaysToSell.toFixed(
                   1
                 )} days`}
               </TableCell>
             </TableRow>
+            {summary.medianDaysToSell.estimatedDaysToSell !== undefined && (
+              <TableRow>
+                <TableCell>
+                  <Box>
+                    Estimated Days to Sell (Supply-Adjusted)
+                    <Typography
+                      variant="caption"
+                      display="block"
+                      color="text.secondary"
+                    >
+                      Considers current market competition
+                    </Typography>
+                  </Box>
+                </TableCell>
+                <TableCell align="right">
+                  {`${summary.medianDaysToSell.estimatedDaysToSell.toFixed(
+                    1
+                  )} days`}
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>

@@ -53,19 +53,23 @@ export interface ProcessingSummary {
     quantityWithMarket: number;
   };
   medianDaysToSell: {
-    expectedDaysToSell: number;
-    percentiles: { [key: string]: number };
+    demandOnlyDaysToSell: number; // Based on historical sales intervals (demand only)
+    estimatedDaysToSell?: number; // Supply-adjusted time (supply + demand) - optional
+    percentiles: { [key: string]: number }; // Uses demand-only by default
+    supplyAdjustedPercentiles?: { [key: string]: number }; // Supply-adjusted percentiles if available
   };
 }
 
 export interface SuggestedPriceResult {
   error?: string;
   suggestedPrice: number | null;
-  expectedTimeToSellDays?: number;
+  demandOnlyTimeToSellMs?: number; // Historical sales intervals (demand only)
+  estimatedTimeToSellMs?: number; // Supply-adjusted time (supply + demand)
   percentiles?: Array<{
     percentile: number;
     price: number;
-    expectedTimeToSellDays?: number;
+    demandOnlyTimeToSellMs?: number; // Historical sales intervals (demand only)
+    estimatedTimeToSellMs?: number; // Supply-adjusted time (supply + demand)
   }>;
 }
 

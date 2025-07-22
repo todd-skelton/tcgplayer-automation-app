@@ -155,7 +155,8 @@ export async function getListings(
 
 export async function getAllListings(
   params: GetListingsRequestParams,
-  body: Omit<GetListingsRequestBody, "from">
+  body: Omit<GetListingsRequestBody, "from">,
+  maxPrice?: number
 ): Promise<Listing[]> {
   const size = body.size ?? 50;
   let from = 0;
@@ -166,9 +167,29 @@ export async function getAllListings(
     const { results } = await getListings(params, { ...body, from, size });
     const page = results[0];
     if (from === 0) total = page.totalResults;
-    listings.push(...page.results);
+
+    // Filter out listings above maxPrice if specified
+    const pageListings =
+      maxPrice !== undefined
+        ? page.results.filter(
+            (listing) => listing.price + listing.sellerShippingPrice <= maxPrice
+          )
+        : page.results;
+
+    listings.push(...pageListings);
     from += size;
-  } while (listings.length < total);
+
+    // Early termination: if we got fewer filtered results than expected and we have a maxPrice,
+    // it means we've hit listings above our price threshold
+    if (maxPrice !== undefined && pageListings.length < page.results.length) {
+      console.log(
+        `getAllListings: Early termination at price threshold $${maxPrice.toFixed(
+          2
+        )} after ${listings.length} listings`
+      );
+      break;
+    }
+  } while (listings.length < total && from < total);
 
   return listings;
 }

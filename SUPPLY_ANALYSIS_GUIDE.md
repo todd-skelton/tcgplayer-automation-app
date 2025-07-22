@@ -83,6 +83,14 @@ const result = await getSuggestedPriceFromLatestSales(sku, {
 - Higher values = more accurate but slower
 - Lower values = faster but potentially less accurate
 - Listings are fetched in price order (lowest first)
+- **Optimization**: Listing fetching terminates early when prices exceed the maximum historical sales price
+
+### `supplyAnalysisConfig.maxSalesPrice` (number, optional)
+
+- **Automatically calculated**: Maximum price from historical sales data
+- **Purpose**: Enables early termination of listing fetches when prices exceed this maximum
+- **Benefits**: Reduces API calls by stopping pagination when irrelevant high-priced listings are encountered
+- **Note**: This is set automatically by the algorithm and typically doesn't need manual configuration
 
 ### `supplyAnalysisConfig.includeUnverifiedSellers` (boolean, default: false)
 
@@ -121,6 +129,17 @@ const result = await getSuggestedPriceFromLatestSales(sku, {
 - **Processing Time**: Listings analysis adds computational overhead
 - **Rate Limits**: Be mindful of TCGPlayer API rate limits when processing many SKUs
 - **Memory Usage**: Listings data is cached during processing
+
+### Automatic Performance Optimizations
+
+The system includes several built-in optimizations:
+
+1. **Early Termination**: Listing fetches terminate early when encountering prices above the maximum historical sales price
+2. **Client-side Filtering**: Irrelevant high-priced listings are filtered out after each API response
+3. **Relevance-Based Fetching**: Only listings relevant to time-to-sell calculations are processed
+4. **Paginated Fetching**: Large listing sets are fetched in pages to manage memory usage
+
+These optimizations can significantly reduce the number of irrelevant listings processed and API calls made, improving both speed and reducing network usage.
 
 ## Example Usage Scenarios
 
