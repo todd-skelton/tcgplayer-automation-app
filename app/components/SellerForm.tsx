@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, TextField, Button, Stack, Typography } from "@mui/material";
 import { useConfiguration } from "../hooks/useConfiguration";
 
@@ -20,6 +20,12 @@ export function SellerForm({
     config.formDefaults.percentile
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Update form state when config changes (after localStorage loads)
+  useEffect(() => {
+    setSellerKey(config.formDefaults.sellerKey);
+    setPercentile(config.formDefaults.percentile);
+  }, [config.formDefaults.sellerKey, config.formDefaults.percentile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -4,17 +4,34 @@ export function useLocalStorageState<T>(
   key: string,
   defaultValue: T
 ): [T, React.Dispatch<React.SetStateAction<T>>] {
-  // Initialize state directly from localStorage or with a default value
-  const [state, setState] = useState<T>(() => {
-    if (typeof window === "undefined") return defaultValue; // Avoid SSR issues
-    const storedValue = localStorage?.getItem(key);
-    return storedValue ? JSON.parse(storedValue) : defaultValue;
-  });
+  // Initialize state with default value to prevent SSR mismatch
+  const [state, setState] = useState<T>(defaultValue);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // On client-side mount, read from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedValue = localStorage?.getItem(key);
+      if (storedValue) {
+        try {
+          setState(JSON.parse(storedValue));
+        } catch (error) {
+          console.warn(
+            `Failed to parse localStorage value for key "${key}":`,
+            error
+          );
+        }
+      }
+      setIsHydrated(true);
+    }
+  }, [key]);
 
   // Watch for changes in state and save to localStorage
   useEffect(() => {
-    localStorage.setItem(key, JSON.stringify(state));
-  }, [key, state]);
+    if (isHydrated && typeof window !== "undefined") {
+      localStorage.setItem(key, JSON.stringify(state));
+    }
+  }, [key, state, isHydrated]);
 
   return [state, setState];
 }
