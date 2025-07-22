@@ -2,7 +2,7 @@ import React from "react";
 import { Chip, Box, Typography, Tooltip, IconButton } from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { Link } from "react-router";
-import { useConfiguration } from "../hooks/useConfiguration";
+import { usePricingConfig, useFormDefaults } from "../hooks/useConfiguration";
 
 interface QuickSettingsProps {
   showTitle?: boolean;
@@ -13,14 +13,15 @@ export const QuickSettings: React.FC<QuickSettingsProps> = ({
   showTitle = true,
   compact = false,
 }) => {
-  const { config } = useConfiguration();
+  const pricingConfig = usePricingConfig();
+  const formDefaults = useFormDefaults();
 
   if (compact) {
     return (
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         <Chip
           size="small"
-          label={`Default: ${config.formDefaults.percentile}%`}
+          label={`Default: ${formDefaults.config.percentile}%`}
           variant="outlined"
         />
         <Tooltip title="Configuration Settings">
@@ -49,19 +50,19 @@ export const QuickSettings: React.FC<QuickSettingsProps> = ({
       >
         <Chip
           size="small"
-          label={`Default Percentile: ${config.formDefaults.percentile}%`}
+          label={`Default Percentile: ${formDefaults.config.percentile}%`}
           color="primary"
           variant="outlined"
         />
         <Chip
           size="small"
-          label={`Range: ${config.pricing.minPercentile}-${config.pricing.maxPercentile}%`}
+          label={`Range: ${pricingConfig.config.minPercentile}-${pricingConfig.config.maxPercentile}%`}
           variant="outlined"
         />
-        {config.formDefaults.sellerKey && (
+        {formDefaults.config.sellerKey && (
           <Chip
             size="small"
-            label={`Seller: ${config.formDefaults.sellerKey}`}
+            label={`Seller: ${formDefaults.config.sellerKey}`}
             color="secondary"
             variant="outlined"
           />

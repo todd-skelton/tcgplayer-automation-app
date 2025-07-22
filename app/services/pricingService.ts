@@ -52,7 +52,13 @@ export const calculateMarketplacePrice = (
 
 export const getSuggestedPrice = async (
   tcgplayerId: string,
-  percentile: number
+  percentile: number,
+  enableSupplyAnalysis?: boolean,
+  supplyAnalysisConfig?: {
+    confidenceWeight?: number;
+    maxListingsPerSku?: number;
+    includeUnverifiedSellers?: boolean;
+  }
 ): Promise<SuggestedPriceResult> => {
   try {
     const response = await fetch("/api/suggested-price", {
@@ -60,7 +66,12 @@ export const getSuggestedPrice = async (
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ tcgplayerId, percentile }),
+      body: JSON.stringify({
+        tcgplayerId,
+        percentile,
+        enableSupplyAnalysis,
+        supplyAnalysisConfig,
+      }),
     });
 
     if (!response.ok) {

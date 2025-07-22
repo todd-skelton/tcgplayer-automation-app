@@ -99,7 +99,9 @@ export class PricingCalculator {
         // Get suggested price for this SKU
         const result = await getSuggestedPrice(
           pricerSku.sku.toString(),
-          config.percentile
+          config.percentile,
+          config.enableSupplyAnalysis,
+          config.supplyAnalysisConfig
         );
 
         // Create pricing result from suggested price result

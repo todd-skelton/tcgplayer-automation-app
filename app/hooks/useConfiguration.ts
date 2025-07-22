@@ -16,6 +16,13 @@ export interface PricingConfig {
   };
 }
 
+export interface SupplyAnalysisConfig {
+  enableSupplyAnalysis: boolean;
+  confidenceWeight: number;
+  maxListingsPerSku: number;
+  includeUnverifiedSellers: boolean;
+}
+
 export interface FileConfig {
   accept: string;
   outputPrefix: string;
@@ -27,116 +34,200 @@ export interface FormDefaults {
   sellerKey: string;
 }
 
-export interface AppConfiguration {
-  pricing: PricingConfig;
-  file: FileConfig;
-  formDefaults: FormDefaults;
-}
-
-// Default configuration based on existing constants
-const DEFAULT_CONFIG: AppConfiguration = {
-  pricing: {
-    defaultPercentile: PRICING_CONSTANTS.DEFAULT_PERCENTILE,
-    percentileStep: PRICING_CONSTANTS.PERCENTILE_STEP,
-    minPercentile: PRICING_CONSTANTS.MIN_PERCENTILE,
-    maxPercentile: PRICING_CONSTANTS.MAX_PERCENTILE,
-    skipPrefix: PRICING_CONSTANTS.SKIP_PREFIX,
-    minPriceMultiplier: PRICING_CONSTANTS.MIN_PRICE_MULTIPLIER,
-    minPriceConstant: PRICING_CONSTANTS.MIN_PRICE_CONSTANT,
-    successRateThreshold: {
-      low: PRICING_CONSTANTS.SUCCESS_RATE_THRESHOLD.LOW,
-      high: PRICING_CONSTANTS.SUCCESS_RATE_THRESHOLD.HIGH,
-    },
-  },
-  file: {
-    accept: FILE_CONFIG.ACCEPT,
-    outputPrefix: FILE_CONFIG.OUTPUT_PREFIX,
-    mimeType: FILE_CONFIG.MIME_TYPE,
-  },
-  formDefaults: {
-    percentile: PRICING_CONSTANTS.DEFAULT_PERCENTILE,
-    sellerKey: "",
+// Default configurations
+const DEFAULT_PRICING_CONFIG: PricingConfig = {
+  defaultPercentile: PRICING_CONSTANTS.DEFAULT_PERCENTILE,
+  percentileStep: PRICING_CONSTANTS.PERCENTILE_STEP,
+  minPercentile: PRICING_CONSTANTS.MIN_PERCENTILE,
+  maxPercentile: PRICING_CONSTANTS.MAX_PERCENTILE,
+  skipPrefix: PRICING_CONSTANTS.SKIP_PREFIX,
+  minPriceMultiplier: PRICING_CONSTANTS.MIN_PRICE_MULTIPLIER,
+  minPriceConstant: PRICING_CONSTANTS.MIN_PRICE_CONSTANT,
+  successRateThreshold: {
+    low: PRICING_CONSTANTS.SUCCESS_RATE_THRESHOLD.LOW,
+    high: PRICING_CONSTANTS.SUCCESS_RATE_THRESHOLD.HIGH,
   },
 };
 
-export function useConfiguration() {
-  const [config, setConfig] = useLocalStorageState<AppConfiguration>(
-    "tcgplayer-automation-config",
-    DEFAULT_CONFIG
+const DEFAULT_SUPPLY_ANALYSIS_CONFIG: SupplyAnalysisConfig = {
+  enableSupplyAnalysis: false, // Disabled by default due to network overhead
+  confidenceWeight: 0.7, // 70% supply-adjusted, 30% historical
+  maxListingsPerSku: 200, // Reasonable limit for performance
+  includeUnverifiedSellers: false, // Quality over quantity
+};
+
+const DEFAULT_FILE_CONFIG: FileConfig = {
+  accept: FILE_CONFIG.ACCEPT,
+  outputPrefix: FILE_CONFIG.OUTPUT_PREFIX,
+  mimeType: FILE_CONFIG.MIME_TYPE,
+};
+
+const DEFAULT_FORM_DEFAULTS: FormDefaults = {
+  percentile: PRICING_CONSTANTS.DEFAULT_PERCENTILE,
+  sellerKey: "",
+};
+
+// Individual configuration hooks
+export function usePricingConfig() {
+  const [config, setConfig] = useLocalStorageState<PricingConfig>(
+    "tcgplayer-pricing-config",
+    DEFAULT_PRICING_CONFIG
   );
 
-  // Helper functions for updating specific parts of the configuration
-  const updatePricingConfig = (updates: Partial<PricingConfig>) => {
-    setConfig((prev) => ({
-      ...prev,
-      pricing: { ...prev.pricing, ...updates },
-    }));
+  const updateConfig = (updates: Partial<PricingConfig>) => {
+    setConfig((prev) => ({ ...prev, ...updates }));
   };
 
-  const updateFileConfig = (updates: Partial<FileConfig>) => {
-    setConfig((prev) => ({
-      ...prev,
-      file: { ...prev.file, ...updates },
-    }));
-  };
-
-  const updateFormDefaults = (updates: Partial<FormDefaults>) => {
-    setConfig((prev) => ({
-      ...prev,
-      formDefaults: { ...prev.formDefaults, ...updates },
-    }));
-  };
-
-  // Reset to defaults
   const resetToDefaults = () => {
-    setConfig(DEFAULT_CONFIG);
+    setConfig(DEFAULT_PRICING_CONFIG);
   };
 
   // Computed values
   const percentiles = Array.from(
     {
       length: Math.floor(
-        (config.pricing.maxPercentile - config.pricing.minPercentile) /
-          config.pricing.percentileStep +
+        (config.maxPercentile - config.minPercentile) / config.percentileStep +
           1
       ),
     },
-    (_, i) => config.pricing.minPercentile + i * config.pricing.percentileStep
+    (_, i) => config.minPercentile + i * config.percentileStep
   );
 
   return {
     config,
     setConfig,
-    updatePricingConfig,
-    updateFileConfig,
-    updateFormDefaults,
+    updateConfig,
     resetToDefaults,
     percentiles,
-    // Backward compatibility helpers
-    PRICING_CONSTANTS: config.pricing,
-    FILE_CONFIG: config.file,
+    // Backward compatibility
+    PRICING_CONSTANTS: config,
   };
 }
 
-// Hook for just form defaults (lighter weight)
-export function useFormDefaults() {
-  const [formDefaults, setFormDefaults] = useLocalStorageState<FormDefaults>(
-    "tcgplayer-form-defaults",
-    DEFAULT_CONFIG.formDefaults
+export function useSupplyAnalysisConfig() {
+  const [config, setConfig] = useLocalStorageState<SupplyAnalysisConfig>(
+    "tcgplayer-supply-analysis-config",
+    DEFAULT_SUPPLY_ANALYSIS_CONFIG
   );
 
-  const updatePercentile = (percentile: number) => {
-    setFormDefaults((prev) => ({ ...prev, percentile }));
+  const updateConfig = (updates: Partial<SupplyAnalysisConfig>) => {
+    setConfig((prev) => ({ ...prev, ...updates }));
   };
 
-  const updateSellerKey = (sellerKey: string) => {
-    setFormDefaults((prev) => ({ ...prev, sellerKey }));
+  const resetToDefaults = () => {
+    setConfig(DEFAULT_SUPPLY_ANALYSIS_CONFIG);
   };
 
   return {
-    formDefaults,
-    setFormDefaults,
+    config,
+    setConfig,
+    updateConfig,
+    resetToDefaults,
+  };
+}
+
+export function useFileConfig() {
+  const [config, setConfig] = useLocalStorageState<FileConfig>(
+    "tcgplayer-file-config",
+    DEFAULT_FILE_CONFIG
+  );
+
+  const updateConfig = (updates: Partial<FileConfig>) => {
+    setConfig((prev) => ({ ...prev, ...updates }));
+  };
+
+  const resetToDefaults = () => {
+    setConfig(DEFAULT_FILE_CONFIG);
+  };
+
+  return {
+    config,
+    setConfig,
+    updateConfig,
+    resetToDefaults,
+    // Backward compatibility
+    FILE_CONFIG: config,
+  };
+}
+
+export function useFormDefaults() {
+  const [config, setConfig] = useLocalStorageState<FormDefaults>(
+    "tcgplayer-form-defaults",
+    DEFAULT_FORM_DEFAULTS
+  );
+
+  const updateConfig = (updates: Partial<FormDefaults>) => {
+    setConfig((prev) => ({ ...prev, ...updates }));
+  };
+
+  const updatePercentile = (percentile: number) => {
+    setConfig((prev) => ({ ...prev, percentile }));
+  };
+
+  const updateSellerKey = (sellerKey: string) => {
+    setConfig((prev) => ({ ...prev, sellerKey }));
+  };
+
+  const resetToDefaults = () => {
+    setConfig(DEFAULT_FORM_DEFAULTS);
+  };
+
+  return {
+    config,
+    setConfig,
+    updateConfig,
     updatePercentile,
     updateSellerKey,
+    resetToDefaults,
+    // For backward compatibility as formDefaults
+    formDefaults: config,
+    setFormDefaults: setConfig,
+  };
+}
+
+// Composite hook for the configuration page (when all configs are needed together)
+export function useConfiguration() {
+  const pricingConfig = usePricingConfig();
+  const supplyAnalysisConfig = useSupplyAnalysisConfig();
+  const fileConfig = useFileConfig();
+  const formDefaults = useFormDefaults();
+
+  const resetAllToDefaults = () => {
+    pricingConfig.resetToDefaults();
+    supplyAnalysisConfig.resetToDefaults();
+    fileConfig.resetToDefaults();
+    formDefaults.resetToDefaults();
+  };
+
+  return {
+    // Individual configs
+    pricing: pricingConfig,
+    supplyAnalysis: supplyAnalysisConfig,
+    file: fileConfig,
+    formDefaults: formDefaults,
+
+    // Combined config object for backward compatibility
+    config: {
+      pricing: pricingConfig.config,
+      supplyAnalysis: supplyAnalysisConfig.config,
+      file: fileConfig.config,
+      formDefaults: formDefaults.config,
+    },
+
+    // Individual update functions (for backward compatibility)
+    updatePricingConfig: pricingConfig.updateConfig,
+    updateSupplyAnalysisConfig: supplyAnalysisConfig.updateConfig,
+    updateFileConfig: fileConfig.updateConfig,
+    updateFormDefaults: formDefaults.updateConfig,
+
+    // Reset all configurations
+    resetToDefaults: resetAllToDefaults,
+
+    // Computed values
+    percentiles: pricingConfig.percentiles,
+
+    // Backward compatibility helpers
+    PRICING_CONSTANTS: pricingConfig.config,
+    FILE_CONFIG: fileConfig.config,
   };
 }

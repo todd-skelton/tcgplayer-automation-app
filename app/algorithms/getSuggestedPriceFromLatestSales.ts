@@ -3,6 +3,8 @@ import { getAllLatestSales, type Sale } from "../tcgplayer/get-latest-sales";
 import { categoryFiltersDb } from "../datastores";
 import { levenbergMarquardt } from "ml-levenberg-marquardt";
 import type { Condition } from "../tcgplayer/types/Condition";
+import type { ListingData } from "../services/supplyAnalysisService";
+import { SupplyAnalysisService } from "../services/supplyAnalysisService";
 
 // Define condition ordering for Zipf model (from best to worst condition)
 const CONDITION_ORDER: Condition[] = [
@@ -275,9 +277,23 @@ export async function getSuggestedPriceFromLatestSales(
     const dynamicHalfLife =
       halfLifeDays || calculateDynamicHalfLife(adjustedSales);
 
+    // Handle supply analysis for cross-condition analysis as well
+    let listings: ListingData[] = [];
+    if (config.enableSupplyAnalysis && !config.listings) {
+      const supplyAnalysisService = new SupplyAnalysisService();
+      listings = await supplyAnalysisService.fetchListingsForSku(
+        sku,
+        config.supplyAnalysisConfig
+      );
+    } else if (config.listings) {
+      listings = config.listings;
+    }
+
     const result = getSuggestedPriceFromSales(adjustedSales, {
       halfLifeDays: dynamicHalfLife,
       percentile,
+      listings: config.enableSupplyAnalysis ? listings : undefined,
+      supplyAnalysisConfig: config.supplyAnalysisConfig,
     });
 
     return {
@@ -297,9 +313,24 @@ export async function getSuggestedPriceFromLatestSales(
   // Use dynamic half-life if not provided in config
   const dynamicHalfLife = halfLifeDays || calculateDynamicHalfLife(mappedSales);
 
+  // Handle supply analysis if enabled
+  let listings: ListingData[] = [];
+  if (config.enableSupplyAnalysis && !config.listings) {
+    // Fetch listings if supply analysis is enabled but no pre-fetched listings provided
+    const supplyAnalysisService = new SupplyAnalysisService();
+    listings = await supplyAnalysisService.fetchListingsForSku(
+      sku,
+      config.supplyAnalysisConfig
+    );
+  } else if (config.listings) {
+    listings = config.listings;
+  }
+
   const result = getSuggestedPriceFromSales(mappedSales, {
     halfLifeDays: dynamicHalfLife,
     percentile,
+    listings: config.enableSupplyAnalysis ? listings : undefined,
+    supplyAnalysisConfig: config.supplyAnalysisConfig,
   });
 
   return {
@@ -311,6 +342,13 @@ export async function getSuggestedPriceFromLatestSales(
 export interface LatestSalesPriceConfig {
   halfLifeDays?: number; // for time decay
   percentile?: number; // for percentile selection
+  enableSupplyAnalysis?: boolean; // Enable supply-adjusted time to sell calculations
+  supplyAnalysisConfig?: {
+    confidenceWeight?: number; // 0-1, how much to weight supply vs historical (default 0.7)
+    maxListingsPerSku?: number; // Performance limit (default 200)
+    includeUnverifiedSellers?: boolean; // Include unverified sellers in analysis (default false)
+  };
+  listings?: ListingData[]; // Pre-fetched listings data (optional)
 }
 
 export interface PercentileData {
@@ -328,7 +366,16 @@ export interface PercentileData {
  */
 export function getTimeDecayedPercentileWeightedSuggestedPrice(
   sales: { price: number; quantity: number; timestamp: number }[],
-  options: { halfLifeDays?: number; percentiles?: number[] } = {}
+  options: {
+    halfLifeDays?: number;
+    percentiles?: number[];
+    listings?: ListingData[];
+    supplyAnalysisConfig?: {
+      confidenceWeight?: number;
+      maxListingsPerSku?: number;
+      includeUnverifiedSellers?: boolean;
+    };
+  } = {}
 ): PercentileData[] {
   if (!sales || sales.length === 0) return [];
 
@@ -336,6 +383,7 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
   const requestedPercentiles = options.percentiles ?? [
     0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
   ];
+  const { listings, supplyAnalysisConfig } = options;
 
   const now = Date.now();
   const msPerDay = 24 * 60 * 60 * 1000;
@@ -407,7 +455,28 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
     }
 
     // Calculate expected time to sell for this percentile price
-    const expectedTimeToSellDays = calculateExpectedTimeToSell(sales, price);
+    let expectedTimeToSellDays: number | undefined;
+
+    if (listings && listings.length > 0) {
+      // Use supply-adjusted time to sell calculation
+      const supplyAnalysisService = new SupplyAnalysisService();
+      const salesVelocityData = sales.map((s) => ({
+        price: s.price,
+        quantity: s.quantity,
+        timestamp: s.timestamp,
+      }));
+
+      expectedTimeToSellDays =
+        supplyAnalysisService.calculateSupplyAdjustedTimeToSell(
+          salesVelocityData,
+          listings,
+          price,
+          supplyAnalysisConfig || {}
+        );
+    } else {
+      // Use historical time to sell calculation
+      expectedTimeToSellDays = calculateExpectedTimeToSell(sales, price);
+    }
 
     percentiles.push({
       percentile: p,
@@ -466,7 +535,16 @@ function calculateExpectedTimeToSell(
  */
 export function getSuggestedPriceFromSales(
   sales: { price: number; quantity: number; timestamp: number }[],
-  options: { percentile?: number; halfLifeDays?: number } = {}
+  options: {
+    percentile?: number;
+    halfLifeDays?: number;
+    listings?: ListingData[];
+    supplyAnalysisConfig?: {
+      confidenceWeight?: number;
+      maxListingsPerSku?: number;
+      includeUnverifiedSellers?: boolean;
+    };
+  } = {}
 ): {
   suggestedPrice?: number;
   totalQuantity: number;
@@ -474,7 +552,7 @@ export function getSuggestedPriceFromSales(
   expectedTimeToSellDays?: number;
   percentiles: PercentileData[];
 } {
-  const { percentile = 80 } = options;
+  const { percentile = 80, listings, supplyAnalysisConfig } = options;
 
   // Use dynamic half-life if not provided
   const halfLifeDays = options.halfLifeDays || calculateDynamicHalfLife(sales);
@@ -492,6 +570,8 @@ export function getSuggestedPriceFromSales(
   const percentiles = getTimeDecayedPercentileWeightedSuggestedPrice(sales, {
     halfLifeDays,
     percentiles: percentilesToCalculate,
+    listings,
+    supplyAnalysisConfig,
   });
 
   const totalQuantity = sales.reduce((sum, s) => sum + (s.quantity || 0), 0);

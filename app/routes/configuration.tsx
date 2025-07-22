@@ -10,6 +10,8 @@ import {
   Divider,
   FormControl,
   FormLabel,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import { useConfiguration } from "../hooks/useConfiguration";
 
@@ -17,6 +19,7 @@ export default function ConfigurationRoute() {
   const {
     config,
     updatePricingConfig,
+    updateSupplyAnalysisConfig,
     updateFileConfig,
     updateFormDefaults,
     resetToDefaults,
@@ -32,6 +35,20 @@ export default function ConfigurationRoute() {
           ? Number(event.target.value)
           : event.target.value;
       updatePricingConfig({ [field]: value });
+      setSuccessMessage("Configuration updated");
+      setTimeout(() => setSuccessMessage(""), 2000);
+    };
+
+  const handleSupplyAnalysisConfigChange =
+    (field: keyof typeof config.supplyAnalysis) =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const value =
+        event.target.type === "number"
+          ? Number(event.target.value)
+          : event.target.type === "checkbox"
+          ? event.target.checked
+          : event.target.value;
+      updateSupplyAnalysisConfig({ [field]: value });
       setSuccessMessage("Configuration updated");
       setTimeout(() => setSuccessMessage(""), 2000);
     };
@@ -52,6 +69,20 @@ export default function ConfigurationRoute() {
           ? Number(event.target.value)
           : event.target.value;
       updateFormDefaults({ [field]: value });
+      setSuccessMessage("Configuration updated");
+      setTimeout(() => setSuccessMessage(""), 2000);
+    };
+
+  const handleSuccessRateThresholdChange =
+    (field: keyof typeof config.pricing.successRateThreshold) =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const value = Number(event.target.value);
+      updatePricingConfig({
+        successRateThreshold: {
+          ...config.pricing.successRateThreshold,
+          [field]: value,
+        },
+      });
       setSuccessMessage("Configuration updated");
       setTimeout(() => setSuccessMessage(""), 2000);
     };
@@ -190,6 +221,87 @@ export default function ConfigurationRoute() {
               />
             </Box>
           </FormControl>
+        </Stack>
+      </Paper>
+
+      {/* Supply Analysis Configuration */}
+      <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
+        <Typography variant="h6" gutterBottom>
+          Supply Analysis Configuration
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Configure supply-adjusted time-to-sell calculations. When enabled,
+          this feature fetches current market listings to provide more accurate
+          time-to-sell estimates by considering market supply alongside
+          historical sales data.
+          <br />
+          <strong>Note:</strong> Enabling this feature significantly increases
+          network calls (1 listing API call per SKU).
+        </Typography>
+
+        <Stack spacing={3}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={config.supplyAnalysis.enableSupplyAnalysis}
+                onChange={handleSupplyAnalysisConfigChange(
+                  "enableSupplyAnalysis"
+                )}
+              />
+            }
+            label="Enable Supply Analysis"
+            sx={{ mb: 1 }}
+          />
+
+          {config.supplyAnalysis.enableSupplyAnalysis && (
+            <>
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Supply analysis is enabled. This will increase processing time
+                and network usage but provides more accurate time-to-sell
+                estimates by analyzing current market supply.
+              </Alert>
+
+              <TextField
+                label="Confidence Weight"
+                type="number"
+                value={config.supplyAnalysis.confidenceWeight}
+                onChange={handleSupplyAnalysisConfigChange("confidenceWeight")}
+                inputProps={{ min: 0, max: 1, step: 0.1 }}
+                helperText="How much to weight supply vs historical data (0.0 = pure historical, 1.0 = pure supply-based, 0.7 recommended)"
+              />
+
+              <TextField
+                label="Max Listings Per SKU"
+                type="number"
+                value={config.supplyAnalysis.maxListingsPerSku}
+                onChange={handleSupplyAnalysisConfigChange("maxListingsPerSku")}
+                inputProps={{ min: 50, max: 500, step: 50 }}
+                helperText="Maximum number of listings to fetch per SKU (higher = more accurate but slower)"
+              />
+
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={config.supplyAnalysis.includeUnverifiedSellers}
+                    onChange={handleSupplyAnalysisConfigChange(
+                      "includeUnverifiedSellers"
+                    )}
+                  />
+                }
+                label="Include Unverified Sellers"
+                sx={{ mt: 1 }}
+              />
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ ml: 4, mt: -1 }}
+              >
+                When enabled, includes listings from all sellers in the
+                analysis. When disabled, only verified sellers are considered
+                (recommended for quality).
+              </Typography>
+            </>
+          )}
         </Stack>
       </Paper>
 

@@ -7,6 +7,7 @@ import type { DataSourceService } from "./dataSourceInterfaces";
 import { PricingCalculator } from "./pricingCalculator";
 import { DataEnrichmentService } from "./dataEnrichmentService";
 import { PricedSkuToTcgPlayerListingConverter } from "./dataConverters";
+import { SupplyAnalysisService } from "./supplyAnalysisService";
 import { downloadCSV } from "../utils/csvProcessing";
 
 export interface PipelineResult {
@@ -25,6 +26,7 @@ export interface PipelineConfig extends PricingConfig {
   enableEnrichment?: boolean;
   enableExport?: boolean;
   filename?: string;
+  enableSupplyAnalysis?: boolean; // Override for pipeline-specific supply analysis
 }
 
 /**
@@ -34,6 +36,7 @@ export class PricingOrchestrator {
   private pricingCalculator = new PricingCalculator();
   private enrichmentService = new DataEnrichmentService();
   private outputConverter = new PricedSkuToTcgPlayerListingConverter();
+  private supplyAnalysisService = new SupplyAnalysisService();
 
   /**
    * Execute the complete pricing pipeline
@@ -156,6 +159,7 @@ export class PricingOrchestrator {
       }
 
       // Step 4: Execute core pricing with price points and display info
+      // Supply analysis (if enabled) will be handled at the individual SKU level in getSuggestedPrice calls
       const pricingResult = await this.pricingCalculator.calculatePrices(
         pricerSkus,
         config,

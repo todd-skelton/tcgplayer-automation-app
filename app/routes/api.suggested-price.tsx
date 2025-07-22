@@ -12,7 +12,12 @@ export async function action({ request }: { request: Request }) {
 
   try {
     const body = await request.json();
-    const { tcgplayerId, percentile = 65 } = body;
+    const {
+      tcgplayerId,
+      percentile = 65,
+      enableSupplyAnalysis = false,
+      supplyAnalysisConfig = {},
+    } = body;
 
     if (!tcgplayerId) {
       return data({ error: "TCGplayer ID is required" }, { status: 400 });
@@ -67,6 +72,8 @@ export async function action({ request }: { request: Request }) {
     // Get suggested price from the algorithm
     const algorithmResult = await getSuggestedPriceFromLatestSales(sku, {
       percentile,
+      enableSupplyAnalysis,
+      supplyAnalysisConfig,
     });
 
     // Return the original algorithm result without applying bounds here
