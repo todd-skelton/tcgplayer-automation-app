@@ -179,7 +179,7 @@ export class SupplyAnalysisService {
         timeMs:
           historicalSalesVelocityMs ||
           this.calculateHistoricalTimeToSellMs(sales, targetPrice),
-        listingsCount: listings.length,
+        listingsCount: queueAnalysis.competitorCount,
       };
     }
 
@@ -192,7 +192,7 @@ export class SupplyAnalysisService {
 
     return {
       timeMs,
-      listingsCount: listings.length,
+      listingsCount: queueAnalysis.competitorCount,
     };
   }
 
