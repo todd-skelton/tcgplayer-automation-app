@@ -659,31 +659,26 @@ export function getSuggestedPriceFromSales(
  * Calculate dynamic half-life based on the time span between first and last sale.
  * The half-life is set so that the oldest sale has decayed to 1/16 (4 half-lives) of its original weight.
  * This ensures recent sales are weighted much more heavily than older ones while still considering historical data.
+ * @returns Half-life in days
  */
 function calculateDynamicHalfLife(
   sales: { price: number; quantity: number; timestamp: number }[]
 ): number {
-  if (!sales || sales.length === 0) {
-    return 14; // Default to 14 days for items with no sales data
+  if (sales.length <= 1) {
+    return Infinity; // Default to Infinity if not enough sales
   }
 
-  if (sales.length === 1) {
-    return 7; // Default to 7 days for single sale
-  }
-
-  // Calculate time span between first and last sale
+  const msPerDay = 24 * 60 * 60 * 1000;
   const timestamps = sales.map((s) => s.timestamp).sort((a, b) => a - b);
-  const timeSpanDays =
-    (timestamps[timestamps.length - 1] - timestamps[0]) / (24 * 60 * 60 * 1000);
+  const timeSpanMs = timestamps[timestamps.length - 1] - timestamps[0];
+  const avgIntervalMs = timeSpanMs / (sales.length - 1);
 
-  if (timeSpanDays === 0) {
-    return 7; // Default to 7 days if all sales are on the same day
-  }
+  // Half-life as a multiple of the average interval
+  // (20x is a good starting point to avoid overreacting to single sales)
+  let halfLifeMs = avgIntervalMs * 20;
 
-  // Set half-life so that the oldest sale is worth 4 half-lives
-  // After 4 half-lives, weight = 0.5^4 = 1/16 = 6.25% of original
-  const halfLife = timeSpanDays / 4;
+  const minHalfLifeMs = msPerDay;
 
-  // Apply reasonable bounds: minimum 1 day, maximum 90 days
-  return Math.max(1, Math.min(90, Math.round(halfLife * 10) / 10));
+  // Convert from milliseconds to days before returning
+  return Math.max(minHalfLifeMs, Math.round(halfLifeMs)) / msPerDay;
 }

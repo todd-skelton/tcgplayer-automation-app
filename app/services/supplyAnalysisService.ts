@@ -131,21 +131,21 @@ export class SupplyAnalysisService {
   calculateSalesVelocity(
     sales: SalesVelocityData[],
     targetPrice: number
-  ): number {
+  ): number | undefined {
     const relevantSales = sales.filter((s) => s.price >= targetPrice);
 
     if (relevantSales.length === 0) {
-      return 0.1; // Very low velocity if no relevant sales
+      return undefined; // No relevant sales data available
     }
 
     const totalQuantity = relevantSales.reduce((sum, s) => sum + s.quantity, 0);
-    const timeSpan = this.getTimeSpanInDays(relevantSales);
+    const timeSpanMs = this.getTimeSpanInMs(relevantSales);
 
-    if (timeSpan <= 0) {
-      return totalQuantity; // All sales happened on same day
+    if (timeSpanMs === 0) {
+      return Infinity; // All sales happened at same time = infinite velocity
     }
 
-    return totalQuantity / timeSpan; // units per day
+    return totalQuantity / timeSpanMs; // units per millisecond
   }
 
   /**
@@ -158,11 +158,10 @@ export class SupplyAnalysisService {
     historicalSalesVelocityMs?: number
   ): { timeMs: number | undefined; listingsCount: number } {
     if (listings.length === 0) {
-      // Fall back to historical method if no listings available
+      // If no listings available, your listing would be the only one,
+      // so use historical sales velocity as the expected time to sell
       return {
-        timeMs:
-          historicalSalesVelocityMs ||
-          this.calculateHistoricalTimeToSellMs(sales, targetPrice),
+        timeMs: historicalSalesVelocityMs,
         listingsCount: 0,
       };
     }
@@ -170,25 +169,24 @@ export class SupplyAnalysisService {
     // Step 1: Analyze current supply queue
     const queueAnalysis = this.analyzeSupplyQueue(listings, targetPrice);
 
-    // Step 2: Calculate sales velocity (units per day)
+    // Step 2: Calculate sales velocity (units per millisecond)
     const salesVelocity = this.calculateSalesVelocity(sales, targetPrice);
 
-    if (salesVelocity <= 0) {
-      // Fall back to historical method if no sales velocity
+    if (salesVelocity === undefined || salesVelocity <= 0) {
+      // If there's no sales velocity at this price point, we don't have enough
+      // information to make a reasonable estimate. Return undefined.
       return {
-        timeMs:
-          historicalSalesVelocityMs ||
-          this.calculateHistoricalTimeToSellMs(sales, targetPrice),
+        timeMs: undefined,
         listingsCount: queueAnalysis.competitorCount,
       };
     }
 
-    // Step 3: Calculate pure supply-adjusted time in days
-    const supplyAdjustedDays = queueAnalysis.queuePosition / salesVelocity;
-
-    // Apply reasonable bounds (1 day to 1 year) and convert to milliseconds
-    const boundedDays = Math.max(1, Math.min(365, supplyAdjustedDays));
-    const timeMs = boundedDays * 24 * 60 * 60 * 1000; // Convert days to milliseconds
+    // Step 3: Calculate supply-adjusted time in milliseconds
+    // If sales velocity is Infinity, time to sell is 0 (instant)
+    const timeMs =
+      salesVelocity === Infinity
+        ? 0
+        : queueAnalysis.queuePosition / salesVelocity;
 
     return {
       timeMs,
@@ -197,51 +195,13 @@ export class SupplyAnalysisService {
   }
 
   /**
-   * Calculate historical time to sell in milliseconds
+   * Get time span in milliseconds between first and last sale
    */
-  private calculateHistoricalTimeToSellMs(
-    sales: SalesVelocityData[],
-    targetPrice: number
-  ): number | undefined {
-    const relevantSales = sales
-      .filter((s) => s.price >= targetPrice)
-      .sort((a, b) => a.timestamp - b.timestamp);
-
-    if (relevantSales.length === 0) {
-      return undefined;
-    }
-
-    if (relevantSales.length === 1) {
-      return 90 * 24 * 60 * 60 * 1000; // 90 days in milliseconds
-    }
-
-    // Calculate intervals between sales in milliseconds
-    const intervals = [];
-    for (let i = 1; i < relevantSales.length; i++) {
-      intervals.push(
-        relevantSales[i].timestamp - relevantSales[i - 1].timestamp
-      );
-    }
-
-    // Return median interval in milliseconds
-    intervals.sort((a, b) => a - b);
-    const mid = Math.floor(intervals.length / 2);
-    return intervals.length % 2 !== 0
-      ? intervals[mid]
-      : (intervals[mid - 1] + intervals[mid]) / 2;
-  }
-
-  /**
-   * Get time span in days between first and last sale
-   */
-  private getTimeSpanInDays(sales: SalesVelocityData[]): number {
+  private getTimeSpanInMs(sales: SalesVelocityData[]): number {
     if (sales.length <= 1) return 0;
 
     const timestamps = sales.map((s) => s.timestamp).sort((a, b) => a - b);
-    return (
-      (timestamps[timestamps.length - 1] - timestamps[0]) /
-      (24 * 60 * 60 * 1000)
-    );
+    return timestamps[timestamps.length - 1] - timestamps[0];
   }
 
   /**
