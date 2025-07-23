@@ -177,6 +177,7 @@ export async function getSuggestedPriceFromLatestSales(
   historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
   estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
   salesCount?: number; // Number of sales used for the selected percentile historical calculation
+  listingsCount?: number; // Number of listings used for the selected percentile estimated calculation
   percentiles: PercentileData[];
   usedCrossConditionAnalysis?: boolean;
   conditionMultipliers?: Map<Condition, number>;
@@ -372,6 +373,7 @@ export interface PercentileData {
   historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
   estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
   salesCount?: number; // Number of sales used for the historical calculation
+  listingsCount?: number; // Number of listings used for the estimated calculation
 }
 
 /**
@@ -477,6 +479,7 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
 
     // Calculate supply-adjusted time to sell (if listings are provided)
     let estimatedTimeToSellMs: number | undefined;
+    let listingsCount = 0;
     if (listings && listings.length > 0) {
       // Use supply-adjusted time to sell calculation
       const supplyAnalysisService = new SupplyAnalysisService();
@@ -486,7 +489,7 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
         timestamp: s.timestamp,
       }));
 
-      const supplyAdjustedMs =
+      const supplyResult =
         supplyAnalysisService.calculateSupplyAdjustedTimeToSell(
           salesVelocityData,
           listings,
@@ -494,7 +497,8 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
           historicalSalesVelocityMs
         );
 
-      estimatedTimeToSellMs = supplyAdjustedMs;
+      estimatedTimeToSellMs = supplyResult.timeMs;
+      listingsCount = supplyResult.listingsCount;
     } else {
       // No listings available for estimated time to sell calculation
     }
@@ -510,6 +514,7 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
       historicalSalesVelocityMs,
       estimatedTimeToSellMs,
       salesCount,
+      listingsCount,
     });
   }
 
@@ -589,6 +594,7 @@ export function getSuggestedPriceFromSales(
   historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
   estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
   salesCount?: number; // Number of sales used for the selected percentile historical calculation
+  listingsCount?: number; // Number of listings used for the selected percentile estimated calculation
   percentiles: PercentileData[];
 } {
   const { percentile = 80, listings, supplyAnalysisConfig } = options;
@@ -620,6 +626,7 @@ export function getSuggestedPriceFromSales(
   let historicalSalesVelocityMs: number | undefined = undefined;
   let estimatedTimeToSellMs: number | undefined = undefined;
   let selectedSalesCount: number | undefined = undefined;
+  let selectedListingsCount: number | undefined = undefined;
 
   if (sales.length > 0) {
     // Find the percentile data for our target percentile
@@ -632,6 +639,7 @@ export function getSuggestedPriceFromSales(
         targetPercentileData.historicalSalesVelocityMs;
       estimatedTimeToSellMs = targetPercentileData.estimatedTimeToSellMs;
       selectedSalesCount = targetPercentileData.salesCount;
+      selectedListingsCount = targetPercentileData.listingsCount;
     }
   }
 
@@ -642,6 +650,7 @@ export function getSuggestedPriceFromSales(
     historicalSalesVelocityMs,
     estimatedTimeToSellMs,
     salesCount: selectedSalesCount,
+    listingsCount: selectedListingsCount,
     percentiles,
   };
 }

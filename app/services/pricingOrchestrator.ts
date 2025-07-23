@@ -219,6 +219,7 @@ export class PricingOrchestrator {
           historicalSalesVelocityDays: item.historicalSalesVelocityDays,
           estimatedTimeToSellDays: item.estimatedTimeToSellDays,
           salesCountForHistorical: item.salesCountForHistorical,
+          listingsCountForEstimated: item.listingsCountForEstimated,
         }));
       }
 

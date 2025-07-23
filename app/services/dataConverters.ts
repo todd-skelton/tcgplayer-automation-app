@@ -77,6 +77,8 @@ export class PricedSkuToTcgPlayerListingConverter
           pricedSku.estimatedTimeToSellDays?.toString() || "",
         "Sales Count for Historical Calculation":
           pricedSku.salesCountForHistorical?.toString() || "",
+        "Listings Count for Estimated Calculation":
+          pricedSku.listingsCountForEstimated?.toString() || "",
         Error: pricedSku.errors?.join("; ") || "",
         Warning: pricedSku.warnings?.join("; ") || "",
       };

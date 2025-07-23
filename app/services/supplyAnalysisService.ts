@@ -149,20 +149,22 @@ export class SupplyAnalysisService {
   }
 
   /**
-   * Calculate supply-adjusted time to sell
+   * Calculate supply-adjusted time to sell with listings count
    */
   calculateSupplyAdjustedTimeToSell(
     sales: SalesVelocityData[],
     listings: ListingData[],
     targetPrice: number,
     historicalSalesVelocityMs?: number
-  ): number | undefined {
+  ): { timeMs: number | undefined; listingsCount: number } {
     if (listings.length === 0) {
       // Fall back to historical method if no listings available
-      return (
-        historicalSalesVelocityMs ||
-        this.calculateHistoricalTimeToSellMs(sales, targetPrice)
-      );
+      return {
+        timeMs:
+          historicalSalesVelocityMs ||
+          this.calculateHistoricalTimeToSellMs(sales, targetPrice),
+        listingsCount: 0,
+      };
     }
 
     // Step 1: Analyze current supply queue
@@ -173,10 +175,12 @@ export class SupplyAnalysisService {
 
     if (salesVelocity <= 0) {
       // Fall back to historical method if no sales velocity
-      return (
-        historicalSalesVelocityMs ||
-        this.calculateHistoricalTimeToSellMs(sales, targetPrice)
-      );
+      return {
+        timeMs:
+          historicalSalesVelocityMs ||
+          this.calculateHistoricalTimeToSellMs(sales, targetPrice),
+        listingsCount: listings.length,
+      };
     }
 
     // Step 3: Calculate pure supply-adjusted time in days
@@ -184,7 +188,12 @@ export class SupplyAnalysisService {
 
     // Apply reasonable bounds (1 day to 1 year) and convert to milliseconds
     const boundedDays = Math.max(1, Math.min(365, supplyAdjustedDays));
-    return boundedDays * 24 * 60 * 60 * 1000; // Convert days to milliseconds
+    const timeMs = boundedDays * 24 * 60 * 60 * 1000; // Convert days to milliseconds
+
+    return {
+      timeMs,
+      listingsCount: listings.length,
+    };
   }
 
   /**

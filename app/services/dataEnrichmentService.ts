@@ -172,6 +172,7 @@ export class DataEnrichmentService {
         historicalSalesVelocityDays: pricedItem.historicalSalesVelocityDays,
         estimatedTimeToSellDays: pricedItem.estimatedTimeToSellDays,
         salesCountForHistorical: pricedItem.salesCountForHistorical,
+        listingsCountForEstimated: pricedItem.listingsCountForEstimated,
         errors: pricedItem.errors,
         warnings: pricedItem.warnings,
 

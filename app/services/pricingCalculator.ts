@@ -14,6 +14,7 @@ export interface PricingResult {
   historicalSalesVelocityDays?: number; // Historical sales velocity in days
   estimatedTimeToSellDays?: number; // Market-adjusted time to sell in days
   salesCountForHistorical?: number; // Number of sales used for historical calculation
+  listingsCountForEstimated?: number; // Number of listings used for estimated calculation
   errors?: string[];
   warnings?: string[];
 }
@@ -356,6 +357,11 @@ export class PricingCalculator {
     // Add sales count for historical calculation
     if (result.salesCount !== undefined) {
       pricedItem.salesCountForHistorical = result.salesCount;
+    }
+
+    // Add listings count for estimated calculation
+    if (result.listingsCount !== undefined) {
+      pricedItem.listingsCountForEstimated = result.listingsCount;
     }
 
     return pricedItem;
