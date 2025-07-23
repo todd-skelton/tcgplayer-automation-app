@@ -36,6 +36,7 @@ export function convertProductToListing(
     "Suggested Price": "",
     "Historical Sales Velocity (Days)": "",
     "Estimated Time to Sell (Days)": "",
+    "Sales Count for Historical Calculation": "",
     Warning: "",
     Error: "",
   };

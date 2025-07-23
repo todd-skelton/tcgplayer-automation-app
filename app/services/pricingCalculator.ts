@@ -58,6 +58,7 @@ export class PricingCalculator {
       price: number;
       historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
       estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
+      salesCount?: number; // Number of sales used for historical calculation
       quantity: number;
     }> = [];
 
