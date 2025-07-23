@@ -16,6 +16,7 @@ export interface TcgPlayerListing {
   "Suggested Price": string;
   "Historical Sales Velocity (Days)": string; // Historical sales velocity
   "Estimated Time to Sell (Days)": string; // Market-adjusted time to sell
+  "Sales Count for Historical Calculation": string; // Number of sales used for historical calculation
   Error: string;
   Warning: string;
 }
@@ -66,11 +67,13 @@ export interface SuggestedPriceResult {
   suggestedPrice: number | null;
   historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
   estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
+  salesCount?: number; // Number of sales used for the selected percentile historical calculation
   percentiles?: Array<{
     percentile: number;
     price: number;
     historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
     estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
+    salesCount?: number; // Number of sales used for this percentile historical calculation
   }>;
 }
 
@@ -110,6 +113,7 @@ export type PricedSku = {
   previousPrice?: number;
   historicalSalesVelocityDays?: number; // Historical sales velocity in days
   estimatedTimeToSellDays?: number; // Market-adjusted time to sell in days
+  salesCountForHistorical?: number; // Number of sales used for historical calculation
   suggestedPrice?: number;
   errors?: string[];
   warnings?: string[];

@@ -82,6 +82,7 @@ export async function action({ request }: { request: Request }) {
       suggestedPrice: algorithmResult.suggestedPrice,
       historicalSalesVelocityMs: algorithmResult.historicalSalesVelocityMs,
       estimatedTimeToSellMs: algorithmResult.estimatedTimeToSellMs || null,
+      salesCount: algorithmResult.salesCount,
       percentiles: algorithmResult.percentiles,
     };
 

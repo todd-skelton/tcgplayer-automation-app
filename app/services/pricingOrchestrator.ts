@@ -215,6 +215,10 @@ export class PricingOrchestrator {
           highestSalePrice: undefined,
           saleCount: undefined,
           tcgMarketPrice: undefined,
+          // Include time-related fields from pricing result
+          historicalSalesVelocityDays: item.historicalSalesVelocityDays,
+          estimatedTimeToSellDays: item.estimatedTimeToSellDays,
+          salesCountForHistorical: item.salesCountForHistorical,
         }));
       }
 

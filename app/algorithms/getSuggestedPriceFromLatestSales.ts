@@ -176,6 +176,7 @@ export async function getSuggestedPriceFromLatestSales(
   saleCount: number;
   historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
   estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
+  salesCount?: number; // Number of sales used for the selected percentile historical calculation
   percentiles: PercentileData[];
   usedCrossConditionAnalysis?: boolean;
   conditionMultipliers?: Map<Condition, number>;
@@ -370,6 +371,7 @@ export interface PercentileData {
   price: number;
   historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
   estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
+  salesCount?: number; // Number of sales used for the historical calculation
 }
 
 /**
@@ -469,10 +471,9 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
     }
 
     // Calculate historical sales velocity (historical sales intervals)
-    const historicalSalesVelocityMs = calculateExpectedTimeToSellMs(
-      sales,
-      price
-    );
+    const historicalResult = calculateExpectedTimeToSellMs(sales, price);
+    const historicalSalesVelocityMs = historicalResult.timeMs;
+    const salesCount = historicalResult.salesCount;
 
     // Calculate supply-adjusted time to sell (if listings are provided)
     let estimatedTimeToSellMs: number | undefined;
@@ -508,6 +509,7 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
       price,
       historicalSalesVelocityMs,
       estimatedTimeToSellMs,
+      salesCount,
     });
   }
 
@@ -523,24 +525,24 @@ function daysToMilliseconds(days: number): number {
 
 /**
  * Calculate expected time to sell based on historical sales at or above a given price
- * Returns time in milliseconds
+ * Returns time in milliseconds and the number of relevant sales
  */
 function calculateExpectedTimeToSellMs(
   sales: { price: number; quantity: number; timestamp: number }[],
   targetPrice: number
-): number | undefined {
+): { timeMs: number | undefined; salesCount: number } {
   // Filter sales at or above the target price
   const relevantSales = sales
     .filter((s) => s.price >= targetPrice)
     .sort((a, b) => a.timestamp - b.timestamp);
 
   if (relevantSales.length === 0) {
-    return undefined; // Return undefined instead of Infinity for better handling
+    return { timeMs: undefined, salesCount: 0 };
   }
 
   if (relevantSales.length === 1) {
     // For a single sale (e.g., 100th percentile), use 90 days as a reasonable estimate
-    return daysToMilliseconds(90);
+    return { timeMs: daysToMilliseconds(90), salesCount: 1 };
   }
 
   // Calculate intervals in milliseconds between relevant sales
@@ -552,9 +554,12 @@ function calculateExpectedTimeToSellMs(
   // Use median interval as expected time to sell
   intervals.sort((a, b) => a - b);
   const mid = Math.floor(intervals.length / 2);
-  return intervals.length % 2 !== 0
-    ? intervals[mid]
-    : (intervals[mid - 1] + intervals[mid]) / 2;
+  const timeMs =
+    intervals.length % 2 !== 0
+      ? intervals[mid]
+      : (intervals[mid - 1] + intervals[mid]) / 2;
+
+  return { timeMs, salesCount: relevantSales.length };
 }
 
 /**
@@ -583,6 +588,7 @@ export function getSuggestedPriceFromSales(
   saleCount: number;
   historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
   estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
+  salesCount?: number; // Number of sales used for the selected percentile historical calculation
   percentiles: PercentileData[];
 } {
   const { percentile = 80, listings, supplyAnalysisConfig } = options;
@@ -613,6 +619,7 @@ export function getSuggestedPriceFromSales(
   let suggestedPrice: number | undefined = undefined;
   let historicalSalesVelocityMs: number | undefined = undefined;
   let estimatedTimeToSellMs: number | undefined = undefined;
+  let selectedSalesCount: number | undefined = undefined;
 
   if (sales.length > 0) {
     // Find the percentile data for our target percentile
@@ -624,6 +631,7 @@ export function getSuggestedPriceFromSales(
       historicalSalesVelocityMs =
         targetPercentileData.historicalSalesVelocityMs;
       estimatedTimeToSellMs = targetPercentileData.estimatedTimeToSellMs;
+      selectedSalesCount = targetPercentileData.salesCount;
     }
   }
 
@@ -633,6 +641,7 @@ export function getSuggestedPriceFromSales(
     saleCount: sales.length,
     historicalSalesVelocityMs,
     estimatedTimeToSellMs,
+    salesCount: selectedSalesCount,
     percentiles,
   };
 }

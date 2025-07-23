@@ -169,7 +169,9 @@ export class DataEnrichmentService {
         previousPrice: pricedItem.previousPrice,
         suggestedPrice: pricedItem.suggestedPrice,
         price: pricedItem.price,
-        expectedDaysToSell: pricedItem.expectedDaysToSell,
+        historicalSalesVelocityDays: pricedItem.historicalSalesVelocityDays,
+        estimatedTimeToSellDays: pricedItem.estimatedTimeToSellDays,
+        salesCountForHistorical: pricedItem.salesCountForHistorical,
         errors: pricedItem.errors,
         warnings: pricedItem.warnings,
 

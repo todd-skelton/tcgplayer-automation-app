@@ -13,6 +13,7 @@ export interface PricingResult {
   price?: number;
   historicalSalesVelocityDays?: number; // Historical sales velocity in days
   estimatedTimeToSellDays?: number; // Market-adjusted time to sell in days
+  salesCountForHistorical?: number; // Number of sales used for historical calculation
   errors?: string[];
   warnings?: string[];
 }
@@ -135,6 +136,7 @@ export class PricingCalculator {
               price: p.price,
               historicalSalesVelocityMs: p.historicalSalesVelocityMs,
               estimatedTimeToSellMs: p.estimatedTimeToSellMs,
+              salesCount: p.salesCount,
               quantity,
             });
           });
@@ -195,6 +197,7 @@ export class PricingCalculator {
       price: number;
       historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
       estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
+      salesCount?: number; // Number of sales used for historical calculation
       quantity: number;
     }>
   ): {
@@ -347,6 +350,11 @@ export class PricingCalculator {
     if (result.estimatedTimeToSellMs) {
       pricedItem.estimatedTimeToSellDays =
         result.estimatedTimeToSellMs / (24 * 60 * 60 * 1000);
+    }
+
+    // Add sales count for historical calculation
+    if (result.salesCount !== undefined) {
+      pricedItem.salesCountForHistorical = result.salesCount;
     }
 
     return pricedItem;
