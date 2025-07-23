@@ -230,7 +230,7 @@ export default function ConfigurationRoute() {
           Supply Analysis Configuration
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Configure supply-adjusted time-to-sell calculations. When enabled,
+          Configure market-adjusted time-to-sell calculations. When enabled,
           this feature fetches current market listings to provide more accurate
           time-to-sell estimates by considering market supply alongside
           historical sales data.
@@ -260,15 +260,6 @@ export default function ConfigurationRoute() {
                 and network usage but provides more accurate time-to-sell
                 estimates by analyzing current market supply.
               </Alert>
-
-              <TextField
-                label="Confidence Weight"
-                type="number"
-                value={config.supplyAnalysis.confidenceWeight}
-                onChange={handleSupplyAnalysisConfigChange("confidenceWeight")}
-                inputProps={{ min: 0, max: 1, step: 0.1 }}
-                helperText="How much to weight supply vs historical data (0.0 = pure historical, 1.0 = pure supply-based, 0.7 recommended)"
-              />
 
               <TextField
                 label="Max Listings Per SKU"

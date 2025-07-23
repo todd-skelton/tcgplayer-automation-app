@@ -111,11 +111,6 @@ function fitZipfModelToConditions(
         conditionMultipliers.set(condition, 1.0);
       }
     });
-
-    console.log(
-      `Zipf model fitted with parameters: a=${a.toFixed(3)}, b=${b.toFixed(3)}`
-    );
-    console.log(`Using ${dataPoints.length} individual sales data points`);
   } catch (error) {
     console.warn(
       "Zipf model fitting failed, falling back to simple ratios:",
@@ -224,10 +219,6 @@ export async function getSuggestedPriceFromLatestSales(
 
   // Check if we have fewer than 5 sales for the specific condition
   if (sales.length < 5) {
-    console.log(
-      `Only ${sales.length} sales found for ${sku.condition}, fetching all conditions for Zipf analysis`
-    );
-
     // Fetch sales data for all conditions
     const allConditionsSalesOptions = {
       conditions: undefined, // Remove condition filter to get all conditions
@@ -261,7 +252,6 @@ export async function getSuggestedPriceFromLatestSales(
       };
     } // Calculate condition-based pricing using Zipf model on individual sales
     const zipfMultipliers = fitZipfModelToConditions(allSales, sku.condition);
-    console.log("Zipf multipliers:", Object.fromEntries(zipfMultipliers));
 
     // Normalize all sales data to the target condition using Zipf multipliers
     const adjustedSales = allSales.map((sale) => {
@@ -367,9 +357,8 @@ export async function getSuggestedPriceFromLatestSales(
 export interface LatestSalesPriceConfig {
   halfLifeDays?: number; // for time decay
   percentile?: number; // for percentile selection
-  enableSupplyAnalysis?: boolean; // Enable supply-adjusted time to sell calculations
+  enableSupplyAnalysis?: boolean; // Enable market-adjusted time to sell calculations
   supplyAnalysisConfig?: {
-    confidenceWeight?: number; // 0-1, how much to weight supply vs historical (default 0.7)
     maxListingsPerSku?: number; // Performance limit (default 200)
     includeUnverifiedSellers?: boolean; // Include unverified sellers in analysis (default false)
   };
@@ -397,7 +386,6 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
     percentiles?: number[];
     listings?: ListingData[];
     supplyAnalysisConfig?: {
-      confidenceWeight?: number;
       maxListingsPerSku?: number;
       includeUnverifiedSellers?: boolean;
     };
@@ -497,17 +485,22 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
         timestamp: s.timestamp,
       }));
 
-      const supplyAdjustedDays =
+      const supplyAdjustedMs =
         supplyAnalysisService.calculateSupplyAdjustedTimeToSell(
           salesVelocityData,
           listings,
           price,
-          supplyAnalysisConfig || {}
+          historicalSalesVelocityMs
         );
 
-      estimatedTimeToSellMs = supplyAdjustedDays
-        ? daysToMilliseconds(supplyAdjustedDays)
-        : undefined;
+      estimatedTimeToSellMs = supplyAdjustedMs;
+    } else {
+      // No listings available for estimated time to sell calculation
+    }
+
+    // If supply analysis didn't provide a value, fall back to historical sales velocity
+    if (estimatedTimeToSellMs === undefined) {
+      estimatedTimeToSellMs = historicalSalesVelocityMs;
     }
 
     percentiles.push({
@@ -580,7 +573,6 @@ export function getSuggestedPriceFromSales(
     halfLifeDays?: number;
     listings?: ListingData[];
     supplyAnalysisConfig?: {
-      confidenceWeight?: number;
       maxListingsPerSku?: number;
       includeUnverifiedSellers?: boolean;
     };

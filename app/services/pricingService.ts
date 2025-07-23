@@ -55,7 +55,6 @@ export const getSuggestedPrice = async (
   percentile: number,
   enableSupplyAnalysis?: boolean,
   supplyAnalysisConfig?: {
-    confidenceWeight?: number;
     maxListingsPerSku?: number;
     includeUnverifiedSellers?: boolean;
   }

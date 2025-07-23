@@ -81,7 +81,7 @@ export async function action({ request }: { request: Request }) {
     const result = {
       suggestedPrice: algorithmResult.suggestedPrice,
       historicalSalesVelocityMs: algorithmResult.historicalSalesVelocityMs,
-      estimatedTimeToSellMs: algorithmResult.estimatedTimeToSellMs,
+      estimatedTimeToSellMs: algorithmResult.estimatedTimeToSellMs || null,
       percentiles: algorithmResult.percentiles,
     };
 

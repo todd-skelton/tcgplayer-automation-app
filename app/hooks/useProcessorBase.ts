@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import type { ProcessingProgress, ProcessingSummary } from "../types/pricing";
 import type { PipelineResult } from "../services/pricingOrchestrator";
+import { useSupplyAnalysisConfig } from "./useConfiguration";
 
 export interface ProcessorBaseState {
   isProcessing: boolean;
@@ -23,6 +24,9 @@ export const useProcessorBase = () => {
     PipelineResult["exportInfo"] | null
   >(null);
   const isCancelledRef = useRef(false);
+
+  // Supply analysis configuration from localStorage
+  const { config: supplyAnalysisConfig } = useSupplyAnalysisConfig();
 
   const handleCancel = () => {
     isCancelledRef.current = true;
@@ -61,6 +65,9 @@ export const useProcessorBase = () => {
     summary,
     exportInfo,
     isCancelledRef,
+
+    // Configuration
+    supplyAnalysisConfig,
 
     // State setters
     setIsProcessing,

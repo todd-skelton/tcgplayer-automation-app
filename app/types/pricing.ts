@@ -79,9 +79,8 @@ export interface PricingConfig {
   onProgress?: (progress: ProcessingProgress) => void;
   onError?: (error: string) => void;
   isCancelled?: () => boolean;
-  enableSupplyAnalysis?: boolean; // Enable supply-adjusted time to sell calculations
+  enableSupplyAnalysis?: boolean; // Enable market-adjusted time to sell calculations
   supplyAnalysisConfig?: {
-    confidenceWeight?: number; // 0-1, how much to weight supply vs historical (default 0.7)
     maxListingsPerSku?: number; // Performance limit (default 200)
     includeUnverifiedSellers?: boolean; // Include unverified sellers in analysis (default false)
   };

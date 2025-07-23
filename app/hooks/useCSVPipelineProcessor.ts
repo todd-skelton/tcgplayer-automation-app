@@ -24,6 +24,14 @@ export const useCSVPipelineProcessor = () => {
         { file },
         {
           percentile,
+          enableSupplyAnalysis:
+            baseProcessor.supplyAnalysisConfig.enableSupplyAnalysis,
+          supplyAnalysisConfig: {
+            maxListingsPerSku:
+              baseProcessor.supplyAnalysisConfig.maxListingsPerSku,
+            includeUnverifiedSellers:
+              baseProcessor.supplyAnalysisConfig.includeUnverifiedSellers,
+          },
           source: file.name,
           filename: `priced-${Date.now()}.csv`,
           enableEnrichment: true,

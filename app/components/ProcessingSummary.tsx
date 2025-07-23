@@ -201,25 +201,25 @@ export const ProcessingSummaryComponent: React.FC<
                   <TableCell align="right">% Difference from Market</TableCell>
                   <TableCell align="right">
                     <Box>
-                      Demand-Only Time
+                      Historical Sales Velocity
                       <Typography
                         variant="caption"
                         display="block"
                         color="text.secondary"
                       >
-                        Historical sales velocity
+                        Based on sales history
                       </Typography>
                     </Box>
                   </TableCell>
                   <TableCell align="right">
                     <Box>
-                      Supply-Adjusted Time
+                      Estimated Time to Sell
                       <Typography
                         variant="caption"
                         display="block"
                         color="text.secondary"
                       >
-                        With market competition
+                        Market-adjusted with competition
                       </Typography>
                     </Box>
                   </TableCell>
@@ -351,7 +351,7 @@ export const ProcessingSummaryComponent: React.FC<
         <Table size="small">
           <TableBody>
             <TableRow>
-              <TableCell>Median Days to Sell (Demand Only)</TableCell>
+              <TableCell>Historical Sales Velocity (Days)</TableCell>
               <TableCell align="right">
                 {`${summary.medianDaysToSell.historicalSalesVelocity.toFixed(
                   1
@@ -362,7 +362,7 @@ export const ProcessingSummaryComponent: React.FC<
               <TableRow>
                 <TableCell>
                   <Box>
-                    Estimated Days to Sell (Supply-Adjusted)
+                    Estimated Time to Sell (Market-Adjusted)
                     <Typography
                       variant="caption"
                       display="block"

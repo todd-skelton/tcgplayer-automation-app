@@ -273,6 +273,14 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
           pricerSkus,
           {
             percentile,
+            enableSupplyAnalysis:
+              baseProcessor.supplyAnalysisConfig.enableSupplyAnalysis,
+            supplyAnalysisConfig: {
+              maxListingsPerSku:
+                baseProcessor.supplyAnalysisConfig.maxListingsPerSku,
+              includeUnverifiedSellers:
+                baseProcessor.supplyAnalysisConfig.includeUnverifiedSellers,
+            },
             onProgress: (progress: any) => {
               baseProcessor.setProgress(progress);
             },

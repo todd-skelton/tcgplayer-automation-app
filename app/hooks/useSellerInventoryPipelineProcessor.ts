@@ -101,6 +101,14 @@ export const useSellerInventoryPipelineProcessor = () => {
         { sellerKey },
         {
           percentile,
+          enableSupplyAnalysis:
+            baseProcessor.supplyAnalysisConfig.enableSupplyAnalysis,
+          supplyAnalysisConfig: {
+            maxListingsPerSku:
+              baseProcessor.supplyAnalysisConfig.maxListingsPerSku,
+            includeUnverifiedSellers:
+              baseProcessor.supplyAnalysisConfig.includeUnverifiedSellers,
+          },
           source: `seller-${sellerKey}`,
           filename: `priced-seller-${sellerKey}-${Date.now()}.csv`,
           enableEnrichment: true,

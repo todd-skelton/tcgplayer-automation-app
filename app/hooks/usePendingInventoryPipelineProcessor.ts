@@ -52,6 +52,14 @@ export const usePendingInventoryPipelineProcessor = () => {
           {},
           {
             percentile,
+            enableSupplyAnalysis:
+              baseProcessor.supplyAnalysisConfig.enableSupplyAnalysis,
+            supplyAnalysisConfig: {
+              maxListingsPerSku:
+                baseProcessor.supplyAnalysisConfig.maxListingsPerSku,
+              includeUnverifiedSellers:
+                baseProcessor.supplyAnalysisConfig.includeUnverifiedSellers,
+            },
             source: "pending-inventory",
             filename: `priced-pending-inventory-${Date.now()}.csv`,
             enableEnrichment: true,

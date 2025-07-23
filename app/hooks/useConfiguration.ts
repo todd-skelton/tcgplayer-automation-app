@@ -18,7 +18,6 @@ export interface PricingConfig {
 
 export interface SupplyAnalysisConfig {
   enableSupplyAnalysis: boolean;
-  confidenceWeight: number;
   maxListingsPerSku: number;
   includeUnverifiedSellers: boolean;
 }
@@ -51,7 +50,6 @@ const DEFAULT_PRICING_CONFIG: PricingConfig = {
 
 const DEFAULT_SUPPLY_ANALYSIS_CONFIG: SupplyAnalysisConfig = {
   enableSupplyAnalysis: false, // Disabled by default due to network overhead
-  confidenceWeight: 0.7, // 70% supply-adjusted, 30% historical
   maxListingsPerSku: 200, // Reasonable limit for performance
   includeUnverifiedSellers: false, // Quality over quantity
 };
