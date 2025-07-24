@@ -161,8 +161,7 @@ function calculateConditionPrices(sales: Sale[]): Map<Condition, number> {
 
 /**
  * Fetches latest sales for a SKU and computes time-decayed, quantity-weighted suggested prices across percentiles.
- * If the target condition has fewer than 5 sales, it will fetch sales from all conditions,
- * fit a Zipf model to normalize prices, and provide a more robust price suggestion.
+ * Always fetches sales from all conditions and uses a Zipf model to normalize prices to the target condition.
  * @param sku The SKU object to fetch sales for
  * @param config Optional configuration for halfLifeDays, percentile, etc.
  * @returns Object with suggestedPrice, totalQuantity, saleCount, time estimates in milliseconds, and percentiles array
@@ -195,9 +194,6 @@ export async function getSuggestedPriceFromLatestSales(
   }
 
   // Map string values to IDs for salesOptions using category filter
-  const conditionId = categoryFilter.conditions.find(
-    (c) => c.name === sku.condition
-  )?.id;
   const languageId = categoryFilter.languages.find(
     (l) => l.name === sku.language
   )?.id;
@@ -205,129 +201,59 @@ export async function getSuggestedPriceFromLatestSales(
     (v) => v.name === sku.variant
   )?.id;
 
+  // Fetch sales data for all conditions to enable Zipf model normalization
   const salesOptions = {
-    conditions: conditionId ? [conditionId] : undefined,
-    languages: languageId ? [languageId] : undefined,
-    variants: variantId ? [variantId] : undefined,
+    conditions: [], // Always fetch all conditions
+    languages: languageId ? [languageId] : [],
+    variants: variantId ? [variantId] : [],
     listingType: "ListingWithoutPhotos" as const,
   };
 
-  // Cap to 50 sales for initial check
-  const sales: Sale[] = await getAllLatestSales(
+  // Fetch up to 100 sales for all conditions
+  const allSales: Sale[] = await getAllLatestSales(
     { id: sku.productId },
-    { ...salesOptions },
-    50
+    salesOptions,
+    100
   );
 
-  // Check if we have fewer than 5 sales for the specific condition
-  if (sales.length < 5) {
-    // Fetch sales data for all conditions
-    const allConditionsSalesOptions = {
-      conditions: undefined, // Remove condition filter to get all conditions
-      languages: languageId ? [languageId] : undefined,
-      variants: variantId ? [variantId] : undefined,
-      listingType: "ListingWithoutPhotos" as const,
-    };
-
-    const allSales: Sale[] = await getAllLatestSales(
-      { id: sku.productId },
-      allConditionsSalesOptions,
-      100 // Get more sales for cross-condition analysis
-    );
-
-    if (allSales.length < 2) {
-      // Still not enough data, return the original result with limited data
-      const mappedSales = sales.map((s) => ({
-        price: s.purchasePrice || 0,
-        quantity: s.quantity || 1,
-        timestamp: new Date(s.orderDate).getTime(),
-      }));
-
-      const dynamicHalfLife =
-        halfLifeDays || calculateDynamicHalfLife(mappedSales);
-      return {
-        ...getSuggestedPriceFromSales(mappedSales, {
-          halfLifeDays: dynamicHalfLife,
-          percentile,
-        }),
-        usedCrossConditionAnalysis: false,
-      };
-    } // Calculate condition-based pricing using Zipf model on individual sales
-    const zipfMultipliers = fitZipfModelToConditions(allSales, sku.condition);
-
-    // Normalize all sales data to the target condition using Zipf multipliers
-    const adjustedSales = allSales.map((sale) => {
-      const condition = sale.condition as Condition;
-      const multiplier = zipfMultipliers.get(condition) || 1;
-      return {
-        price: (sale.purchasePrice || 0) * multiplier,
-        quantity: sale.quantity || 1,
-        timestamp: new Date(sale.orderDate).getTime(),
-      };
-    });
-
-    // Use dynamic half-life if not provided in config
-    const dynamicHalfLife =
-      halfLifeDays || calculateDynamicHalfLife(adjustedSales);
-
-    // Handle supply analysis for cross-condition analysis as well
-    let listings: ListingData[] = [];
-    if (config.enableSupplyAnalysis && !config.listings) {
-      const supplyAnalysisService = new SupplyAnalysisService();
-
-      // Optimization: Calculate max sales price to filter listings
-      const maxSalesPrice =
-        adjustedSales.length > 0
-          ? Math.max(...adjustedSales.map((s) => s.price))
-          : undefined;
-
-      const optimizedConfig = {
-        ...config.supplyAnalysisConfig,
-        maxSalesPrice,
-      };
-
-      listings = await supplyAnalysisService.fetchListingsForSku(
-        sku,
-        optimizedConfig
-      );
-    } else if (config.listings) {
-      listings = config.listings;
-    }
-
-    const result = getSuggestedPriceFromSales(adjustedSales, {
-      halfLifeDays: dynamicHalfLife,
-      percentile,
-      listings: config.enableSupplyAnalysis ? listings : undefined,
-      supplyAnalysisConfig: config.supplyAnalysisConfig,
-    });
-
+  if (allSales.length < 2) {
+    // Not enough data for any meaningful analysis
     return {
-      ...result,
-      usedCrossConditionAnalysis: true,
-      conditionMultipliers: zipfMultipliers,
+      suggestedPrice: undefined,
+      totalQuantity: 0,
+      saleCount: 0,
+      percentiles: [],
+      usedCrossConditionAnalysis: false,
     };
   }
 
-  // Standard processing for when we have enough sales for the specific condition
-  const mappedSales = sales.map((s) => ({
-    price: s.purchasePrice || 0,
-    quantity: s.quantity || 1,
-    timestamp: new Date(s.orderDate).getTime(),
-  }));
+  // Calculate condition-based pricing using Zipf model on individual sales
+  const zipfMultipliers = fitZipfModelToConditions(allSales, sku.condition);
+
+  // Normalize all sales data to the target condition using Zipf multipliers
+  const adjustedSales = allSales.map((sale) => {
+    const condition = sale.condition as Condition;
+    const multiplier = zipfMultipliers.get(condition) || 1;
+    return {
+      price: (sale.purchasePrice || 0) * multiplier,
+      quantity: sale.quantity || 1,
+      timestamp: new Date(sale.orderDate).getTime(),
+    };
+  });
 
   // Use dynamic half-life if not provided in config
-  const dynamicHalfLife = halfLifeDays || calculateDynamicHalfLife(mappedSales);
+  const dynamicHalfLife =
+    halfLifeDays || calculateDynamicHalfLife(adjustedSales);
 
-  // Handle supply analysis if enabled
+  // Handle supply analysis
   let listings: ListingData[] = [];
   if (config.enableSupplyAnalysis && !config.listings) {
-    // Fetch listings if supply analysis is enabled but no pre-fetched listings provided
     const supplyAnalysisService = new SupplyAnalysisService();
 
     // Optimization: Calculate max sales price to filter listings
     const maxSalesPrice =
-      mappedSales.length > 0
-        ? Math.max(...mappedSales.map((s) => s.price))
+      adjustedSales.length > 0
+        ? Math.max(...adjustedSales.map((s) => s.price))
         : undefined;
 
     const optimizedConfig = {
@@ -343,7 +269,7 @@ export async function getSuggestedPriceFromLatestSales(
     listings = config.listings;
   }
 
-  const result = getSuggestedPriceFromSales(mappedSales, {
+  const result = getSuggestedPriceFromSales(adjustedSales, {
     halfLifeDays: dynamicHalfLife,
     percentile,
     listings: config.enableSupplyAnalysis ? listings : undefined,
@@ -352,7 +278,8 @@ export async function getSuggestedPriceFromLatestSales(
 
   return {
     ...result,
-    usedCrossConditionAnalysis: false,
+    usedCrossConditionAnalysis: true,
+    conditionMultipliers: zipfMultipliers,
   };
 }
 
@@ -380,7 +307,7 @@ export interface PercentileData {
  * Calculate time-decay-weighted percentiles from an array of sales with interpolation.
  * @param sales Array of sales, each with a price, quantity, and a timestamp (ms since epoch)
  * @param options.halfLifeDays Half-life for time decay in days (default 7)
- * @param options.percentiles Array of percentiles to calculate (default: [0,10,20,...,100])
+ * @param options.percentiles Array of percentiles to calculate (default: [10,20,30,40,50,60,70,80,90])
  * @returns Array of percentile data with prices and expected time to sell, or empty array if no sales
  */
 export function getTimeDecayedPercentileWeightedSuggestedPrice(
@@ -399,7 +326,7 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
 
   const halfLifeDays = options.halfLifeDays ?? 7;
   const requestedPercentiles = options.percentiles ?? [
-    0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
+    10, 20, 30, 40, 50, 60, 70, 80, 90,
   ];
   const { listings, supplyAnalysisConfig } = options;
 
@@ -474,7 +401,9 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
 
     // Calculate historical sales velocity (historical sales intervals)
     const historicalResult = calculateExpectedTimeToSellMs(sales, price);
-    const historicalSalesVelocityMs = historicalResult.timeMs;
+    const historicalSalesVelocityMs = historicalResult.timeMs
+      ? Math.round(historicalResult.timeMs)
+      : undefined;
     const salesCount = historicalResult.salesCount;
 
     // Calculate supply-adjusted time to sell (if listings are provided)
@@ -497,7 +426,9 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
           historicalSalesVelocityMs
         );
 
-      estimatedTimeToSellMs = supplyResult.timeMs;
+      estimatedTimeToSellMs = supplyResult.timeMs
+        ? Math.round(supplyResult.timeMs)
+        : undefined;
       listingsCount = supplyResult.listingsCount;
     } else {
       // No listings available for estimated time to sell calculation
@@ -564,7 +495,7 @@ function calculateExpectedTimeToSellMs(
       ? intervals[mid]
       : (intervals[mid - 1] + intervals[mid]) / 2;
 
-  return { timeMs, salesCount: relevantSales.length };
+  return { timeMs: Math.round(timeMs), salesCount: relevantSales.length };
 }
 
 /**
@@ -603,7 +534,7 @@ export function getSuggestedPriceFromSales(
   const halfLifeDays = options.halfLifeDays || calculateDynamicHalfLife(sales);
 
   // Create percentiles array that includes the custom percentile
-  const standardPercentiles = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  const standardPercentiles = [10, 20, 30, 40, 50, 60, 70, 80, 90];
   const percentilesToCalculate = [...standardPercentiles];
 
   // Add custom percentile if it's not already in the standard set
@@ -674,8 +605,8 @@ function calculateDynamicHalfLife(
   const avgIntervalMs = timeSpanMs / (sales.length - 1);
 
   // Half-life as a multiple of the average interval
-  // (20x is a good starting point to avoid overreacting to single sales)
-  let halfLifeMs = avgIntervalMs * 20;
+  // (24x is a good starting point to avoid overreacting to single sales)
+  let halfLifeMs = avgIntervalMs * 24;
 
   const minHalfLifeMs = msPerDay;
 

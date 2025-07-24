@@ -5,11 +5,13 @@ const axiosClient = axios.create({
   headers: {
     "User-Agent":
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    Cookie:
+      "TCGAuthTicket_Production=105C6C922FA5F34C21888359FA528C0B2A26C5231C7A4C0C93C118FCC24783B7860A4343216E3A8244EA0499BBFF5F1AF79E4D1F74B0F00D1AE4E3A753C473BE626FF940AF246768D9EA84A982CCA724DF51984CFB7B0FFAE8E8AB03F394B27371C20F59DF8933F0EDCAAB70B1A7456C65AC870C;",
   },
 });
 
 // Throttle config
-const REQUEST_DELAY_MS = 1500;
+const REQUEST_DELAY_MS = 1000;
 let lastRequestTime = 0;
 
 async function throttle() {
@@ -50,6 +52,7 @@ export async function get<TResponse, TParams = any>(
   await acquireSlot();
   try {
     await throttle();
+    console.log(`[HTTP GET] ${url}`, params ? { params } : "");
     const { data } = await axiosClient.get<TResponse>(url, { params });
     return data;
   } finally {
@@ -64,6 +67,7 @@ export async function post<TResonse, TData = any>(
   await acquireSlot();
   try {
     await throttle();
+    console.log(`[HTTP POST] ${url}`, data ? { data } : "");
     const { data: response } = await axiosClient.post<TResonse>(url, data);
     return response;
   } finally {

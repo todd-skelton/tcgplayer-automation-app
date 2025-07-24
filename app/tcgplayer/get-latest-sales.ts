@@ -73,23 +73,34 @@ export async function getAllLatestSales(
   body: GetLastestSalesRequestBody,
   maxSales?: number
 ): Promise<Sale[]> {
-  const limit = body.limit ?? 25;
+  const baseLimit = body.limit ?? 25;
   let offset = body.offset ?? 0;
-  let allSales: Sale[] = [];
-  let hasNext = true;
+  const allSales: Sale[] = [];
 
-  while (hasNext) {
-    if (maxSales !== undefined && allSales.length >= maxSales) {
-      break;
-    }
-    const response = await getLatestSales(params, { ...body, offset, limit });
-    allSales = allSales.concat(response.data);
-    hasNext = response.nextPage === "Yes";
-    offset += limit;
-  }
+  while (maxSales === undefined || allSales.length < maxSales) {
+    // Calculate how many more sales we need
+    const remainingSales = maxSales ? maxSales - allSales.length : Infinity;
+    const currentLimit = maxSales
+      ? Math.min(baseLimit, remainingSales)
+      : baseLimit;
 
-  if (maxSales !== undefined && allSales.length > maxSales) {
-    allSales = allSales.slice(0, maxSales);
+    if (maxSales && remainingSales <= 0) break;
+
+    const response = await getLatestSales(params, {
+      ...body,
+      offset,
+      limit: currentLimit,
+    });
+
+    allSales.push(...response.data);
+
+    // Break if no more pages
+    if (response.nextPage !== "Yes") break;
+
+    // Break if we have enough sales
+    if (maxSales && allSales.length >= maxSales) break;
+
+    offset += currentLimit;
   }
 
   return allSales;
