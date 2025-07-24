@@ -29,7 +29,7 @@ export interface ProcessingProgress {
   processed: number;
   skipped: number;
   errors: number;
-  warnings?: number;
+  warnings: number;
 }
 
 export interface ProcessingSummary {

@@ -58,6 +58,11 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
         />
         <Chip
           label={`Skipped: ${progress.skipped}`}
+          color="info"
+          size="small"
+        />
+        <Chip
+          label={`Warnings: ${progress.warnings}`}
           color="warning"
           size="small"
         />

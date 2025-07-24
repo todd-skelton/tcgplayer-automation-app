@@ -179,9 +179,15 @@ export const ProcessingSummaryComponent: React.FC<
   );
 
   const renderPercentileAnalysis = () => {
-    // Create a combined list of percentiles including the selected one if it's not in the standard list
-    const allPercentiles = [...percentiles];
-    if (!percentiles.includes(summary.percentileUsed)) {
+    // Get percentiles that actually have data from the summary
+    const dataPercentiles = Object.keys(summary.totals.percentiles)
+      .map((key) => parseInt(key.replace("th", "")))
+      .filter((p) => !isNaN(p))
+      .sort((a, b) => a - b);
+
+    // Create a combined list including the selected percentile if it's not already present
+    const allPercentiles = [...dataPercentiles];
+    if (!dataPercentiles.includes(summary.percentileUsed)) {
       allPercentiles.push(summary.percentileUsed);
       allPercentiles.sort((a, b) => a - b);
     }
