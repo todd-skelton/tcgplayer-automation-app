@@ -37,7 +37,7 @@ export interface ProcessingSummary {
   processedRows: number;
   skippedRows: number;
   errorRows: number;
-  warningRows?: number;
+  warningRows: number;
   successRate: number;
   processingTime: number;
   fileName: string;

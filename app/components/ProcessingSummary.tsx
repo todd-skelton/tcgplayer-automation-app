@@ -348,49 +348,6 @@ export const ProcessingSummaryComponent: React.FC<
     );
   };
 
-  const renderTimeToSellSummary = () => (
-    <Card sx={{ maxWidth: 500 }}>
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Time to Sell Summary
-        </Typography>
-        <Table size="small">
-          <TableBody>
-            <TableRow>
-              <TableCell>Historical Sales Velocity (Days)</TableCell>
-              <TableCell align="right">
-                {`${summary.medianDaysToSell.historicalSalesVelocity.toFixed(
-                  1
-                )} days`}
-              </TableCell>
-            </TableRow>
-            {summary.medianDaysToSell.estimatedTimeToSell !== undefined && (
-              <TableRow>
-                <TableCell>
-                  <Box>
-                    Estimated Time to Sell (Market-Adjusted)
-                    <Typography
-                      variant="caption"
-                      display="block"
-                      color="text.secondary"
-                    >
-                      Considers current market competition
-                    </Typography>
-                  </Box>
-                </TableCell>
-                <TableCell align="right">
-                  {`${summary.medianDaysToSell.estimatedTimeToSell.toFixed(
-                    1
-                  )} days`}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  );
-
   const renderStatusChips = () => (
     <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
       <Chip
@@ -472,9 +429,6 @@ export const ProcessingSummaryComponent: React.FC<
 
         {/* Percentile Analysis */}
         {renderPercentileAnalysis()}
-
-        {/* Expected Days to Sell Summary */}
-        {renderTimeToSellSummary()}
 
         {/* Status Chips */}
         {renderStatusChips()}
