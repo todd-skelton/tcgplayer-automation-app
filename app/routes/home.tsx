@@ -34,10 +34,11 @@ import {
   InputLabel,
   TextField,
   Stack,
+  Checkbox,
+  FormControlLabel,
 } from "@mui/material";
 import { getProductLines } from "~/tcgplayer/get-product-lines";
 import { getCategoryFilters } from "~/tcgplayer/get-category-filters";
-import { getSetCards } from "~/tcgplayer/get-set-cards";
 import type { ProductLine } from "~/data-types/productLine";
 import { useEffect, useState } from "react";
 
@@ -143,6 +144,7 @@ export async function action({ request }: LoaderFunctionArgs) {
     try {
       const setName = formData.get("setName") as string;
       const productLineName = formData.get("productLineName") as string;
+      const deleteExisting = formData.get("deleteExistingSet") === "on";
       if (!setName) {
         return data({ error: "Missing set name" }, { status: 400 });
       }
@@ -150,113 +152,145 @@ export async function action({ request }: LoaderFunctionArgs) {
         return data({ error: "Missing product line name" }, { status: 400 });
       }
 
-      // First try to find the set in the database
-      const categorySet = await categorySetsDb.findOne({ name: setName });
-      let setProducts: SetProduct[] = [];
+      console.log(deleteExisting, formData.get("deleteExistingSet"));
 
-      if (categorySet) {
-        // Set exists in database, get existing set products
-        setProducts = await setProductsDb.find({
-          setNameId: categorySet.setNameId,
+      // If delete option is selected, remove existing data first
+      if (deleteExisting) {
+        // First find the product line to get the categoryId
+        const productLineForDelete = await productLinesDb.findOne({
+          productLineUrlName: productLineName,
         });
 
-        if (!setProducts.length) {
-          // Try to fetch using the set cards endpoint if we have the setNameId
-          try {
-            const setCardsResponse = await getSetCards({
-              setId: categorySet.setNameId,
-            });
-            const seen = new Set<number>();
-            setProducts = [];
+        if (!productLineForDelete) {
+          return data(
+            { error: `Product line not found: ${productLineName}` },
+            { status: 400 }
+          );
+        }
 
-            for (const card of setCardsResponse.result) {
-              if (seen.has(card.productID)) continue;
-              seen.add(card.productID);
-              setProducts.push({
-                setNameId: categorySet.setNameId,
-                productId: card.productID,
-                game: card.game,
-                number: card.number,
-                productName: card.productName,
-                rarity: card.rarity,
-                set: card.set,
-                setAbbrv: card.setAbbrv,
-                type: card.type,
-              });
-            }
+        // Find the set in the database using categoryId and set name
+        const categorySet = await categorySetsDb.findOne({
+          categoryId: productLineForDelete.productLineId,
+          urlName: setName,
+        });
 
-            // Store set products in database
-            await Promise.all(
-              setProducts.map((prod) =>
-                setProductsDb.update({ productId: prod.productId }, prod, {
-                  upsert: true,
-                })
-              )
-            );
-          } catch (err) {
-            // Fall back to search if set cards API fails
-            console.warn(
-              `Set cards API failed for set ${setName}, falling back to search`
-            );
-          }
+        if (categorySet) {
+          // Delete set products, products, and SKUs associated with this set
+          await setProductsDb.remove(
+            { setNameId: categorySet.setNameId },
+            { multi: true }
+          );
+          await productsDb.remove(
+            { setId: categorySet.setNameId },
+            { multi: true }
+          );
+          await skusDb.remove(
+            { setId: categorySet.setNameId },
+            { multi: true }
+          );
         }
       }
 
-      // If we don't have set products yet (either set not in DB or set cards API failed),
-      // use the search API to find products by set name
-      if (!setProducts.length) {
+      // Find the product line to get the categoryId for proper set lookup
+      const productLine = await productLinesDb.findOne({
+        productLineUrlName: productLineName,
+      });
+
+      if (!productLine) {
+        return data(
+          { error: `Product line not found: ${productLineName}` },
+          { status: 400 }
+        );
+      }
+
+      // First try to find the set in the database using categoryId and urlName only
+      let categorySet = await categorySetsDb.findOne({
+        categoryId: productLine.productLineId,
+        urlName: setName,
+      });
+
+      // If not found in database, try to fetch and store the set data first
+      if (!categorySet) {
         try {
-          const searchResults = await getAllProducts({
-            size: 1000,
-            filters: {
-              term: {
-                productLineName: [productLineName],
-                setName: [setName],
-              },
-            },
-            sort: { field: "product-sorting-name", order: "asc" },
-          });
-
-          if (!searchResults || !searchResults.length) {
-            return data(
-              {
-                error: `No products found for set "${setName}" in product line "${productLineName}". Please check the set name and product line.`,
-              },
-              { status: 404 }
-            );
-          }
-
-          const seen = new Set<number>();
-          for (const card of searchResults) {
-            if (seen.has(card.productId)) continue;
-            seen.add(card.productId);
-            setProducts.push({
-              setNameId: categorySet?.setNameId || 0, // Use 0 if not in database yet
-              productId: card.productId,
-              game: productLineName,
-              number: card.customAttributes?.number ?? "",
-              productName: card.productName,
-              rarity: card.rarityName,
-              set: card.setName,
-              setAbbrv: card.setUrlName,
-              type: card.customAttributes?.cardType?.join(", ") ?? "",
-            });
-          }
-
-          // Store set products in database for future use
-          await Promise.all(
-            setProducts.map((prod) =>
-              setProductsDb.update({ productId: prod.productId }, prod, {
-                upsert: true,
-              })
-            )
+          const { sets } = await fetchAndUpsertCategorySets(
+            productLine.productLineId
           );
+          // Try to find the set again after fetching
+          categorySet = await categorySetsDb.findOne({
+            categoryId: productLine.productLineId,
+            urlName: setName,
+          });
         } catch (err) {
-          return data(
-            { error: `Failed to search for products: ${String(err)}` },
-            { status: 500 }
+          console.warn(
+            `Could not fetch sets for category ${productLine.productLineId}:`,
+            err
           );
         }
+      }
+
+      let setProducts: SetProduct[] = [];
+
+      // Always fetch from API to ensure we have the latest products and any changes
+      try {
+        const searchResults = await getAllProducts({
+          size: 1000,
+          filters: {
+            term: {
+              productLineName: [productLineName],
+              setName: [setName],
+            },
+          },
+          sort: { field: "product-sorting-name", order: "asc" },
+        });
+
+        if (!searchResults || !searchResults.length) {
+          return data(
+            {
+              error: `No products found for set "${setName}" in product line "${productLineName}". Please check the set name and product line.`,
+            },
+            { status: 404 }
+          );
+        }
+
+        const seen = new Set<number>();
+        for (const card of searchResults) {
+          if (seen.has(card.productId)) continue;
+          seen.add(card.productId);
+          setProducts.push({
+            setNameId: categorySet?.setNameId || 0, // This should now have the correct value
+            productId: card.productId,
+            game: productLineName,
+            number: card.customAttributes?.number ?? "",
+            productName: card.productName,
+            rarity: card.rarityName,
+            set: card.setName,
+            setAbbrv: card.setUrlName,
+            type: card.customAttributes?.cardType?.join(", ") ?? "",
+          });
+        }
+
+        // Log warning if setNameId is still 0
+        if (setProducts.length > 0 && setProducts[0].setNameId === 0) {
+          console.warn(
+            `Warning: setNameId is 0 for set "${setName}" in product line "${productLineName}". CategorySet found:`,
+            categorySet
+          );
+        }
+
+        // Always update/store set products in database to capture any changes
+        await Promise.all(
+          setProducts.map((prod) =>
+            setProductsDb.update({ productId: prod.productId }, prod, {
+              upsert: true,
+            })
+          )
+        );
+      } catch (err) {
+        console.error(`[API] Failed to search for products:`, err);
+        return data(
+          { error: `Failed to search for products: ${String(err)}` },
+          { status: 500 }
+        );
       }
 
       // Fetch and upsert product details and SKUs
@@ -290,6 +324,10 @@ export async function loader() {
  * Fetches and upserts all sets for a given categoryId. Always calls the API to verify all sets are in the database.
  */
 async function fetchAndUpsertCategorySets(categoryId: number) {
+  console.log(
+    `[fetchAndUpsertCategorySets] Starting for categoryId: ${categoryId}`
+  );
+
   // Find the selected product line to get the url name
   const selectedProductLine = await productLinesDb.findOne({
     productLineId: categoryId,
@@ -298,7 +336,12 @@ async function fetchAndUpsertCategorySets(categoryId: number) {
     throw new Error(`No product line found for categoryId ${categoryId}`);
   }
 
+  console.log(
+    `[fetchAndUpsertCategorySets] Found product line: ${selectedProductLine.productLineName}`
+  );
+
   // Always fetch from API to ensure we have the latest sets
+  console.log(`[fetchAndUpsertCategorySets] Calling getCatalogSetNames API...`);
   const fetchedSetsResp = await getCatalogSetNames({ categoryId });
   const fetchedSets = fetchedSetsResp.results;
   if (!fetchedSets || !fetchedSets.length) {
@@ -307,7 +350,14 @@ async function fetchAndUpsertCategorySets(categoryId: number) {
     );
   }
 
+  console.log(
+    `[fetchAndUpsertCategorySets] API returned ${fetchedSets.length} sets`
+  );
+
   // Get existing sets from database
+  console.log(
+    `[fetchAndUpsertCategorySets] Querying existing sets from database...`
+  );
   const existingSets = await categorySetsDb.find({ categoryId });
   const existingSetIds = new Set(existingSets.map((set) => set.setNameId));
 
@@ -316,7 +366,14 @@ async function fetchAndUpsertCategorySets(categoryId: number) {
     (set) => !existingSetIds.has(set.setNameId)
   );
 
+  console.log(
+    `[fetchAndUpsertCategorySets] Found ${existingSets.length} existing sets, ${missingSets.length} missing sets`
+  );
+
   // Upsert all fetched sets (will update existing and insert missing)
+  console.log(
+    `[fetchAndUpsertCategorySets] Upserting ${fetchedSets.length} sets...`
+  );
   await Promise.all(
     fetchedSets.map((set: CategorySet) =>
       categorySetsDb.update({ setNameId: set.setNameId }, set, {
@@ -330,6 +387,7 @@ async function fetchAndUpsertCategorySets(categoryId: number) {
     `Category ${categoryId}: Found ${fetchedSets.length} total sets, ${missingSets.length} were missing from database`
   );
 
+  console.log(`[fetchAndUpsertCategorySets] Completed successfully`);
   return {
     sets: fetchedSets,
     productLine: selectedProductLine.productLineUrlName,
@@ -398,75 +456,111 @@ async function fetchAndUpsertSetProducts(
  * Fetches and upserts product details and SKUs for a list of set products. Returns product and SKU counts.
  */
 async function fetchAndUpsertProductsAndSkus(allSetProducts: SetProduct[]) {
+  console.log(
+    `[fetchAndUpsertProductsAndSkus] Starting with ${allSetProducts.length} products`
+  );
   let productCount = 0;
   let totalSkus = 0;
-  const PRODUCT_CONCURRENCY = 100;
+  const PRODUCT_CONCURRENCY = 5;
   let prodIdx = 0;
-  for await (const _ of processWithConcurrency(
-    allSetProducts,
-    PRODUCT_CONCURRENCY,
-    async (product) => {
-      prodIdx += 1;
-      const productId = product.productId;
-      let details: Product | null = await productsDb.findOne<Product>({
-        productId,
-      });
-      if (!details || !details.skus || !details.skus.length) {
-        try {
-          const fetched = await getProductDetails({ id: productId });
-          details = {
-            productTypeName: fetched.productTypeName,
-            rarityName: fetched.rarityName,
-            sealed: fetched.sealed,
-            productName: fetched.productName,
-            setId: fetched.setId,
-            setCode: fetched.setCode,
-            productId: fetched.productId,
-            setName: fetched.setName,
-            productLineId: fetched.productLineId,
-            productStatusId: fetched.productStatusId,
-            productLineName: fetched.productLineName,
-            skus: fetched.skus,
-          };
-          await productsDb.update({ productId: details.productId }, details, {
-            upsert: true,
-          });
-        } catch (err) {
-          return;
+
+  try {
+    for await (const _ of processWithConcurrency(
+      allSetProducts,
+      PRODUCT_CONCURRENCY,
+      async (product) => {
+        prodIdx += 1;
+        if (prodIdx % 10 === 0) {
+          console.log(
+            `[fetchAndUpsertProductsAndSkus] Processing product ${prodIdx}/${allSetProducts.length}`
+          );
+        }
+
+        const productId = product.productId;
+        let details: Product | null = await productsDb.findOne<Product>({
+          productId,
+        });
+
+        if (!details || !details.skus || !details.skus.length) {
+          try {
+            const fetched = await getProductDetails({ id: productId });
+            details = {
+              productTypeName: fetched.productTypeName,
+              rarityName: fetched.rarityName,
+              sealed: fetched.sealed,
+              productName: fetched.productName,
+              setId: fetched.setId,
+              setCode: fetched.setCode,
+              productId: fetched.productId,
+              setName: fetched.setName,
+              productLineId: fetched.productLineId,
+              productStatusId: fetched.productStatusId,
+              productLineName: fetched.productLineName,
+              skus: fetched.skus,
+            };
+            await productsDb.update({ productId: details.productId }, details, {
+              upsert: true,
+            });
+          } catch (err) {
+            console.warn(
+              `[fetchAndUpsertProductsAndSkus] Failed to fetch product ${productId}:`,
+              err
+            );
+            return;
+          }
+        }
+
+        productCount++;
+        totalSkus += details.skus.length;
+
+        const skusToUpsert: Sku[] = details.skus.map((sku) => ({
+          ...sku,
+          productTypeName: details.productTypeName,
+          rarityName: details.rarityName,
+          sealed: details.sealed,
+          productName: details.productName,
+          setId: details.setId,
+          setCode: details.setCode,
+          productId: details.productId,
+          setName: details.setName,
+          productLineId: details.productLineId,
+          productStatusId: details.productStatusId,
+          productLineName: details.productLineName,
+        }));
+
+        const skuIds = skusToUpsert.map((sku) => sku.sku);
+        const existingSkus = await skusDb.find<Sku>({ sku: { $in: skuIds } });
+        const existingSkuSet = new Set(existingSkus.map((s) => s.sku));
+        const skusToInsert = skusToUpsert.filter(
+          (sku) => !existingSkuSet.has(sku.sku)
+        );
+
+        if (skusToInsert.length > 0) {
+          try {
+            await skusDb.insert(skusToInsert);
+          } catch (err) {
+            console.warn(
+              `[fetchAndUpsertProductsAndSkus] Failed to insert SKUs for product ${productId}:`,
+              err
+            );
+          }
         }
       }
-      productCount++;
-      totalSkus += details.skus.length;
-      const skusToUpsert: Sku[] = details.skus.map((sku) => ({
-        ...sku,
-        productTypeName: details.productTypeName,
-        rarityName: details.rarityName,
-        sealed: details.sealed,
-        productName: details.productName,
-        setId: details.setId,
-        setCode: details.setCode,
-        productId: details.productId,
-        setName: details.setName,
-        productLineId: details.productLineId,
-        productStatusId: details.productStatusId,
-        productLineName: details.productLineName,
-      }));
-      const skuIds = skusToUpsert.map((sku) => sku.sku);
-      const existingSkus = await skusDb.find<Sku>({ sku: { $in: skuIds } });
-      const existingSkuSet = new Set(existingSkus.map((s) => s.sku));
-      const skusToInsert = skusToUpsert.filter(
-        (sku) => !existingSkuSet.has(sku.sku)
-      );
-      if (skusToInsert.length > 0) {
-        try {
-          await skusDb.insert(skusToInsert);
-        } catch (err) {}
-      }
+    )) {
+      // No-op
     }
-  )) {
-    // No-op
+
+    console.log(
+      `[fetchAndUpsertProductsAndSkus] Completed successfully. Products: ${productCount}, SKUs: ${totalSkus}`
+    );
+    return { productCount, totalSkus };
+  } catch (error) {
+    console.error(
+      `[fetchAndUpsertProductsAndSkus] Error during processing:`,
+      error
+    );
+    throw error;
   }
-  return { productCount, totalSkus };
 }
 
 export default function Home() {
@@ -482,6 +576,7 @@ export default function Home() {
   const [selectedSetName, setSelectedSetName] = useState<string>("");
   const [selectedProductLineName, setSelectedProductLineName] =
     useState<string>("");
+  const [deleteExistingSet, setDeleteExistingSet] = useState<boolean>(false);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -677,6 +772,18 @@ export default function Home() {
             >
               Fetch Set Products & SKUs
             </Button>
+          </Box>
+          <Box sx={{ mt: 2 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  name="deleteExistingSet"
+                  checked={deleteExistingSet}
+                  onChange={(e) => setDeleteExistingSet(e.target.checked)}
+                />
+              }
+              label="Delete existing set data and refetch (force refresh)"
+            />
           </Box>
         </setProductsFetcher.Form>
       </Paper>

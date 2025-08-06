@@ -48,6 +48,7 @@ export const pendingInventoryDb: Datastore<PendingInventoryEntry> =
 
 categorySetsDb.ensureIndex({ fieldName: "categoryId" });
 categorySetsDb.ensureIndex({ fieldName: "setNameId", unique: true });
+categorySetsDb.ensureIndex({ fieldName: "urlName" });
 
 setProductsDb.ensureIndex({ fieldName: "setId" });
 setProductsDb.ensureIndex({ fieldName: "productId", unique: true });
@@ -59,6 +60,7 @@ productsDb.ensureIndex({ fieldName: "setId" });
 
 skusDb.ensureIndex({ fieldName: "productId" });
 skusDb.ensureIndex({ fieldName: "sku", unique: true });
+skusDb.ensureIndex({ fieldName: "setId" });
 
 productLinesDb.ensureIndex({ fieldName: "productLineId", unique: true });
 

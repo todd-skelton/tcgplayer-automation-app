@@ -11,16 +11,33 @@ const axiosClient = axios.create({
 });
 
 // Throttle config
-const REQUEST_DELAY_MS = 1000;
+const REQUEST_DELAY_MS = 1500;
+const RATE_LIMIT_COOLDOWN_MS = 60000; // 60 seconds
 let lastRequestTime = 0;
+let rateLimitedUntil = 0;
 
 async function throttle() {
   const now = Date.now();
+
+  // Check if we're still in cooldown period
+  if (rateLimitedUntil > now) {
+    const waitTime = rateLimitedUntil - now;
+    console.log(
+      `[HTTP] Rate limited, waiting ${Math.ceil(waitTime / 1000)}s...`
+    );
+    await new Promise((resolve) => setTimeout(resolve, waitTime));
+  }
+
   const wait = Math.max(0, lastRequestTime + REQUEST_DELAY_MS - now);
   if (wait > 0) {
     await new Promise((resolve) => setTimeout(resolve, wait));
   }
   lastRequestTime = Date.now();
+}
+
+function handleRateLimit() {
+  rateLimitedUntil = Date.now() + RATE_LIMIT_COOLDOWN_MS;
+  console.log(`[HTTP] 403 detected, entering 60s cooldown period`);
 }
 
 // Concurrency config
@@ -55,6 +72,12 @@ export async function get<TResponse, TParams = any>(
     console.log(`[HTTP GET] ${url}`, params ? { params } : "");
     const { data } = await axiosClient.get<TResponse>(url, { params });
     return data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 403) {
+      handleRateLimit();
+      throw error;
+    }
+    throw error;
   } finally {
     releaseSlot();
   }
@@ -70,6 +93,12 @@ export async function post<TResonse, TData = any>(
     console.log(`[HTTP POST] ${url}`, data ? { data } : "");
     const { data: response } = await axiosClient.post<TResonse>(url, data);
     return response;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 403) {
+      handleRateLimit();
+      throw error;
+    }
+    throw error;
   } finally {
     releaseSlot();
   }

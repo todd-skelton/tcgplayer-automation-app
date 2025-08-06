@@ -2,11 +2,11 @@
   "name": "tcgplayer-automation-app",
   "private": true,
   "type": "module",
-  "scripts": {
-    "build": "react-router build",
-    "dev": "react-router dev",
-    "start": "react-router-serve ./build/server/index.js",
-    "typecheck": "react-router typegen && tsc"
+   "scripts": {
+    "build": "cross-env NODE_OPTIONS=\"--max-old-space-size=16384\" react-router build",
+    "dev": "cross-env NODE_OPTIONS=\"--max-old-space-size=16384\" react-router dev",
+    "start": "cross-env NODE_OPTIONS=\"--max-old-space-size=16384\" react-router-serve ./build/server/index.js",
+    "typecheck": "cross-env NODE_OPTIONS=\"--max-old-space-size=16384\" react-router typegen && cross-env NODE_OPTIONS=\"--max-old-space-size=16384\" tsc"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -34,6 +34,7 @@
     "@types/papaparse": "^5.3.16",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
+    "cross-env": "^10.0.0",
     "typescript": "^5.8.3",
     "vite": "^6.3.3",
     "vite-tsconfig-paths": "^5.1.4"
