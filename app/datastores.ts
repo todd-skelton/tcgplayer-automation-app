@@ -1,12 +1,12 @@
 import Datastore from "nedb-promises";
 import path from "path";
-import type { Sku } from "./data-types/sku";
-import type { CategorySet } from "./data-types/categorySet";
-import type { SetProduct } from "./data-types/setProduct";
-import type { Product } from "./data-types/product";
-import type { ProductLine } from "./data-types/productLine";
-import type { CategoryFilter } from "./data-types/categoryFilter";
-import type { PendingInventoryEntry } from "./data-types/pendingInventory";
+import type { Sku } from "./shared/data-types/sku";
+import type { CategorySet } from "./shared/data-types/categorySet";
+import type { SetProduct } from "./shared/data-types/setProduct";
+import type { Product } from "./features/inventory-management/types/product";
+import type { ProductLine } from "./shared/data-types/productLine";
+import type { CategoryFilter } from "./shared/data-types/categoryFilter";
+import type { PendingInventoryEntry } from "./features/pending-inventory/types/pendingInventory";
 
 const dataDir = path.resolve(process.cwd(), "data");
 

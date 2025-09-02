@@ -6,12 +6,12 @@ import {
   useLoaderData,
   Link,
 } from "react-router";
-import { getAllProducts } from "~/tcgplayer/get-search-results";
-import { type SetProduct } from "~/data-types/setProduct";
-import { type CategorySet } from "~/data-types/categorySet";
-import { getProductDetails } from "~/tcgplayer/get-product-details";
-import { getCatalogSetNames } from "~/tcgplayer/get-catalog-set-names";
-import type { Product } from "~/data-types/product";
+import { getAllProducts } from "../integrations/tcgplayer/client/get-search-results";
+import { type SetProduct } from "../shared/data-types/setProduct";
+import { type CategorySet } from "../shared/data-types/categorySet";
+import { getProductDetails } from "../integrations/tcgplayer/client/get-product-details";
+import { getCatalogSetNames } from "../integrations/tcgplayer/client/get-catalog-set-names";
+import type { Product } from "../features/inventory-management/types/product";
 import {
   categorySetsDb,
   productsDb,
@@ -19,9 +19,9 @@ import {
   skusDb,
   productLinesDb,
   categoryFiltersDb,
-} from "~/datastores";
-import type { Sku } from "~/data-types/sku";
-import { processWithConcurrency } from "~/processWithConcurrency";
+} from "../datastores";
+import type { Sku } from "../shared/data-types/sku";
+import { processWithConcurrency } from "../core/processWithConcurrency";
 import {
   Button,
   Box,
@@ -37,9 +37,9 @@ import {
   Checkbox,
   FormControlLabel,
 } from "@mui/material";
-import { getProductLines } from "~/tcgplayer/get-product-lines";
-import { getCategoryFilters } from "~/tcgplayer/get-category-filters";
-import type { ProductLine } from "~/data-types/productLine";
+import { getProductLines } from "../integrations/tcgplayer/client/get-product-lines";
+import { getCategoryFilters } from "../integrations/tcgplayer/client/get-category-filters";
+import type { ProductLine } from "../shared/data-types/productLine";
 import { useEffect, useState } from "react";
 
 export function meta({}: Route.MetaArgs) {
