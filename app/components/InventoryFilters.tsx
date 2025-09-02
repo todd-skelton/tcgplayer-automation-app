@@ -54,10 +54,22 @@ export const InventoryFilters = forwardRef<
       a.productLineName.localeCompare(b.productLineName)
     );
 
-    // Filter out inactive sets and sort alphabetically
+    // Filter out inactive sets and sort by release date descending (newest first)
     const sortedSets = [...sets]
       .filter((set) => !set.name.startsWith("[Inactive"))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => {
+        // Handle sets without release dates - put them at the end
+        if (!a.releaseDate && !b.releaseDate) {
+          return a.name.localeCompare(b.name);
+        }
+        if (!a.releaseDate) return 1;
+        if (!b.releaseDate) return -1;
+
+        // Sort by release date descending (newest first)
+        const dateA = new Date(a.releaseDate);
+        const dateB = new Date(b.releaseDate);
+        return dateB.getTime() - dateA.getTime();
+      });
 
     // Find selected values for autocomplete
     const selectedProductLine =
@@ -124,7 +136,12 @@ export const InventoryFilters = forwardRef<
 
         <Autocomplete
           options={sortedSets}
-          getOptionLabel={(option) => option.name}
+          getOptionLabel={(option) => {
+            const releaseDate = option.releaseDate
+              ? ` (${new Date(option.releaseDate).toLocaleDateString()})`
+              : "";
+            return `${option.name}${releaseDate}`;
+          }}
           value={selectedSet}
           onChange={(_, newValue) => {
             if (newValue) {

@@ -27,7 +27,6 @@ export interface PipelineResult {
 
 export interface PipelineConfig extends PricingConfig {
   source: string;
-  filename?: string;
   enableEnrichment?: boolean;
   enableExport?: boolean;
   onProgress?: (progress: {
@@ -195,81 +194,14 @@ export class PricingOrchestrator {
           warnings: pricingResult.stats.warnings,
         });
 
-        // Separate successful from failed pricing (matching old logic)
-        const successfullyPriced = enrichedSkus.filter(
-          (sku) =>
-            sku.price !== undefined &&
-            sku.price !== null &&
-            sku.price > 0 &&
-            (!sku.errors || sku.errors.length === 0)
-        );
-        const failedPricing = enrichedSkus.filter(
-          (sku) =>
-            sku.price === undefined ||
-            sku.price === null ||
-            sku.price <= 0 ||
-            (sku.errors && sku.errors.length > 0)
-        );
-
-        // Sort both lists by product line, set name, then product name
-        const sortedSuccessfullyPriced = [...successfullyPriced].sort(
-          (a, b) => {
-            const aProductLine = a.productLine || "";
-            const bProductLine = b.productLine || "";
-            if (aProductLine !== bProductLine) {
-              return aProductLine.localeCompare(bProductLine);
-            }
-            const aSetName = a.setName || "";
-            const bSetName = b.setName || "";
-            if (aSetName !== bSetName) {
-              return aSetName.localeCompare(bSetName);
-            }
-            const aProductName = a.productName || "";
-            const bProductName = b.productName || "";
-            return aProductName.localeCompare(bProductName);
-          }
-        );
-
-        const sortedFailedPricing = [...failedPricing].sort((a, b) => {
-          const aProductLine = a.productLine || "";
-          const bProductLine = b.productLine || "";
-          if (aProductLine !== bProductLine) {
-            return aProductLine.localeCompare(bProductLine);
-          }
-          const aSetName = a.setName || "";
-          const bSetName = b.setName || "";
-          if (aSetName !== bSetName) {
-            return aSetName.localeCompare(bSetName);
-          }
-          const aProductName = a.productName || "";
-          const bProductName = b.productName || "";
-          return aProductName.localeCompare(bProductName);
-        });
-
-        // Export main file with successfully priced items
-        const csvData = this.outputConverter.convertFromPricedSkus(
-          sortedSuccessfullyPriced
-        );
-        const filename =
-          config.filename || `priced-${config.source}-${Date.now()}.csv`;
-        downloadCSV(csvData, filename);
-
-        // Export manual review file with failed pricing items
-        let manualReviewFile: string | undefined;
-        if (sortedFailedPricing.length > 0) {
-          const failedCsvData =
-            this.outputConverter.convertFromPricedSkus(sortedFailedPricing);
-          manualReviewFile = config.filename
-            ? config.filename.replace(".csv", "-manual-review.csv")
-            : `priced-${config.source}-${Date.now()}-manual-review.csv`;
-          downloadCSV(failedCsvData, manualReviewFile);
-        }
+        const exportData =
+          this.outputConverter.convertFromPricedSkus(enrichedSkus);
+        downloadCSV(exportData, "pricing-results");
 
         exportInfo = {
-          mainFile: filename,
-          manualReviewFile,
-          successfulCount: sortedSuccessfullyPriced.length,
-          failedCount: sortedFailedPricing.length,
+          mainFile: "pricing-results.csv",
+          successfulCount: exportData.length,
+          failedCount: 0,
         };
       }
 
@@ -296,41 +228,28 @@ export class PricingOrchestrator {
           0
         ),
         totals: {
-          marketPrice: enrichedSkus.reduce((sum: number, sku: PricedSku) => {
-            const combinedQty = (sku.quantity || 0) + (sku.addToQuantity || 0);
-            return sum + (sku.tcgMarketPrice || 0) * combinedQty;
-          }, 0),
-          lowPrice: enrichedSkus.reduce((sum: number, sku: PricedSku) => {
-            const combinedQty = (sku.quantity || 0) + (sku.addToQuantity || 0);
-            return sum + (sku.lowestSalePrice || 0) * combinedQty;
-          }, 0),
+          marketPrice: enrichedSkus.reduce(
+            (sum: number, sku: PricedSku) => sum + (sku.tcgMarketPrice || 0),
+            0
+          ),
+          lowPrice: enrichedSkus.reduce(
+            (sum: number, sku: PricedSku) => sum + (sku.lowestSalePrice || 0),
+            0
+          ),
           marketplacePrice: enrichedSkus.reduce(
-            (sum: number, sku: PricedSku) => {
-              const combinedQty =
-                (sku.quantity || 0) + (sku.addToQuantity || 0);
-              return sum + (sku.price || 0) * combinedQty;
-            },
+            (sum: number, sku: PricedSku) => sum + (sku.price || 0),
             0
           ),
           percentiles: pricingResult.aggregatedPercentiles.marketPrice,
         },
         totalsWithMarket: {
-          marketPrice: enrichedSkus.reduce((sum: number, sku: PricedSku) => {
-            if (sku.tcgMarketPrice) {
-              const combinedQty =
-                (sku.quantity || 0) + (sku.addToQuantity || 0);
-              return sum + (sku.tcgMarketPrice || 0) * combinedQty;
-            }
-            return sum;
-          }, 0),
+          marketPrice: enrichedSkus.reduce(
+            (sum: number, sku: PricedSku) => sum + (sku.tcgMarketPrice || 0),
+            0
+          ),
           percentiles: pricingResult.aggregatedPercentiles.marketPrice,
-          quantityWithMarket: enrichedSkus
-            .filter((sku) => sku.tcgMarketPrice)
-            .reduce(
-              (sum: number, sku: PricedSku) =>
-                sum + (sku.quantity || 0) + (sku.addToQuantity || 0),
-              0
-            ),
+          quantityWithMarket: enrichedSkus.filter((sku) => sku.tcgMarketPrice)
+            .length,
         },
         medianDaysToSell: {
           historicalSalesVelocity: 0,

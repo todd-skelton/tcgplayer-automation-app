@@ -82,6 +82,7 @@ export interface SuggestedPriceResult {
 
 export interface PricingConfig {
   percentile: number;
+  halfLifeDays?: number; // For time decay in pricing algorithms
   onProgress?: (progress: ProcessingProgress) => void;
   onError?: (error: string) => void;
   isCancelled?: () => boolean;
@@ -90,6 +91,8 @@ export interface PricingConfig {
     maxListingsPerSku?: number; // Performance limit (default 200)
     includeUnverifiedSellers?: boolean; // Include unverified sellers in analysis (default false)
   };
+  // Migration control flags
+  usePurePipeline?: boolean; // Feature flag to use new pure pipeline
 }
 
 export type PricerSku = {

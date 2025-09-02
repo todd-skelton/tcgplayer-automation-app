@@ -6,9 +6,16 @@ export default defineConfig({
   plugins: [reactRouter(), tsconfigPaths()],
   ssr: {
     noExternal: ["@mui/x-data-grid"],
+    external: ["nedb-promises", "@seald-io/nedb", "path", "fs", "os"],
   },
   optimizeDeps: {
     include: ["@mui/x-data-grid"],
+    exclude: ["nedb-promises", "@seald-io/nedb"],
+  },
+  build: {
+    rollupOptions: {
+      external: ["nedb-promises", "@seald-io/nedb", "path", "fs", "os"],
+    },
   },
   css: {
     modules: {

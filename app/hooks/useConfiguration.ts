@@ -49,7 +49,7 @@ const DEFAULT_PRICING_CONFIG: PricingConfig = {
 };
 
 const DEFAULT_SUPPLY_ANALYSIS_CONFIG: SupplyAnalysisConfig = {
-  enableSupplyAnalysis: false, // Disabled by default due to network overhead
+  enableSupplyAnalysis: true, // Enabled by default for accurate time-to-sell estimates
   maxListingsPerSku: 200, // Reasonable limit for performance
   includeUnverifiedSellers: false, // Quality over quantity
 };
