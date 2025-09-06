@@ -20,8 +20,22 @@ export const fastPricingExample = async () => {
   const pricingCalculator = new PricingCalculator();
 
   const skus = [
-    { sku: 12345, quantity: 4, currentPrice: 10.5 },
-    { sku: 67890, quantity: 2, currentPrice: 25.0 },
+    {
+      sku: 12345,
+      quantity: 4,
+      currentPrice: 10.5,
+      productLineId: 1,
+      setId: 101,
+      productId: 1001,
+    },
+    {
+      sku: 67890,
+      quantity: 2,
+      currentPrice: 25.0,
+      productLineId: 2,
+      setId: 201,
+      productId: 2001,
+    },
   ];
 
   // This runs FAST - only calculates prices, no extra data fetching
@@ -43,7 +57,9 @@ export const selectiveEnrichmentExample = async () => {
   const pricingCalculator = new PricingCalculator();
   const enrichmentService = new DataEnrichmentService();
 
-  const skus = [{ sku: 12345, quantity: 4 }];
+  const skus = [
+    { sku: 12345, quantity: 4, productLineId: 1, setId: 101, productId: 1001 },
+  ];
 
   // Fast pricing first
   const pricingResult = await pricingCalculator.calculatePrices(skus, {
@@ -144,7 +160,9 @@ export const parallelProcessingExample = async () => {
   const pricingCalculator = new PricingCalculator();
   const enrichmentService = new DataEnrichmentService();
 
-  const skus = [{ sku: 12345, quantity: 4 }];
+  const skus = [
+    { sku: 12345, quantity: 4, productLineId: 1, setId: 101, productId: 1001 },
+  ];
 
   // Start pricing calculation
   const pricingPromise = pricingCalculator.calculatePrices(skus, {

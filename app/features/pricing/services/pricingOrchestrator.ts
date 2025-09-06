@@ -179,7 +179,10 @@ export class PricingOrchestrator {
             errors: pricingResult.stats.errors,
             warnings: pricingResult.stats.warnings,
           });
-        }
+        },
+        pricePointsMap,
+        undefined, // productLineIdHints will be extracted from originalPricerSkus
+        validSkus // Pass original PricerSku data for productLineId hints
       );
 
       // Step 6: Generate export files if requested

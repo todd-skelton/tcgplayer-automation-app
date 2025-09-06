@@ -52,7 +52,7 @@ export class SellerInventoryDataSource
   async convertToPricerSku(
     inventory: SellerInventoryItem[]
   ): Promise<PricerSku[]> {
-    return this.converter.convertToPricerSkus(inventory);
+    return await this.converter.convertToPricerSkus(inventory);
   }
 
   /**
@@ -78,10 +78,26 @@ export class SellerInventoryDataSource
 
     config?.onProgress?.(0, skuIds.length, "Validating SKUs...");
 
-    // Extract product IDs from inventory items
-    const productIds = Array.from(
-      new Set(inventory.map((item) => item.productId))
-    );
+    // Build the structured productLineSkus object required by the new API
+    const productLineSkus: Record<string, Record<string, number[]>> = {};
+
+    // Group SKUs by product line and product ID
+    for (const pricerSku of pricerSkus) {
+      const productLineId = pricerSku.productLineId.toString();
+      const productId = pricerSku.productId.toString();
+
+      if (!productLineSkus[productLineId]) {
+        productLineSkus[productLineId] = {};
+      }
+
+      if (!productLineSkus[productLineId][productId]) {
+        productLineSkus[productLineId][productId] = [];
+      }
+
+      if (!productLineSkus[productLineId][productId].includes(pricerSku.sku)) {
+        productLineSkus[productLineId][productId].push(pricerSku.sku);
+      }
+    }
 
     try {
       // Call the server-side API to validate and update SKUs
@@ -91,8 +107,7 @@ export class SellerInventoryDataSource
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          skuIds,
-          productIds,
+          productLineSkus,
         }),
       });
 

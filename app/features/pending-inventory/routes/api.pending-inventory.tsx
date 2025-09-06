@@ -1,8 +1,8 @@
 import { data } from "react-router";
-import { pendingInventoryDb } from "../../../datastores";
 
 export async function loader() {
   try {
+    const { pendingInventoryDb } = await import("../../../datastores");
     const pendingInventory = await pendingInventoryDb.find({});
     return data(pendingInventory, { status: 200 });
   } catch (error) {
@@ -12,8 +12,9 @@ export async function loader() {
 
 export async function action({ request }: { request: Request }) {
   try {
+    const { pendingInventoryDb } = await import("../../../datastores");
     const formData = await request.json();
-    const { method, sku, quantity } = formData;
+    const { method, sku, quantity, productLineId, setId, productId } = formData;
 
     if (method === "DELETE") {
       // Clear all pending inventory
@@ -33,6 +34,14 @@ export async function action({ request }: { request: Request }) {
         );
       }
 
+      // Require all metadata to be provided - no cross-shard lookups
+      if (!productLineId || !setId || !productId) {
+        return data(
+          { error: "productLineId, setId, and productId are required" },
+          { status: 400 }
+        );
+      }
+
       if (quantity <= 0) {
         // Remove the entry if quantity is 0 or negative
         await pendingInventoryDb.remove({ sku }, { multi: false });
@@ -41,26 +50,53 @@ export async function action({ request }: { request: Request }) {
           { status: 200 }
         );
       } else {
-        // Update or insert the entry
-        const existing = await pendingInventoryDb.findOne({ sku });
-        if (existing) {
-          await pendingInventoryDb.update(
+        // Use upsert to update existing or insert new entry atomically
+        const now = new Date();
+        try {
+          // Try to update existing entry first
+          const updateResult = await pendingInventoryDb.update(
             { sku },
             {
               $set: {
                 quantity,
-                updatedAt: new Date(),
+                updatedAt: now,
               },
             }
           );
-        } else {
-          await pendingInventoryDb.insert({
-            sku,
-            quantity,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          });
+
+          // If no document was updated, insert a new one
+          if (updateResult === 0) {
+            await pendingInventoryDb.insert({
+              sku,
+              quantity,
+              productLineId,
+              setId,
+              productId,
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
+        } catch (error) {
+          // Handle unique constraint violation gracefully
+          if (
+            String(error).includes("unique") ||
+            String(error).includes("duplicate")
+          ) {
+            // If we get a duplicate key error on insert, try to update the existing record
+            await pendingInventoryDb.update(
+              { sku },
+              {
+                $set: {
+                  quantity,
+                  updatedAt: now,
+                },
+              }
+            );
+          } else {
+            throw error;
+          }
         }
+
         return data({ message: "Pending inventory updated" }, { status: 200 });
       }
     }

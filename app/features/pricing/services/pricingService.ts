@@ -57,7 +57,8 @@ export const getSuggestedPrice = async (
   supplyAnalysisConfig?: {
     maxListingsPerSku?: number;
     includeUnverifiedSellers?: boolean;
-  }
+  },
+  productLineId?: number
 ): Promise<SuggestedPriceResult> => {
   try {
     const response = await fetch("/api/suggested-price", {
@@ -70,6 +71,7 @@ export const getSuggestedPrice = async (
         percentile,
         enableSupplyAnalysis,
         supplyAnalysisConfig,
+        productLineId,
       }),
     });
 

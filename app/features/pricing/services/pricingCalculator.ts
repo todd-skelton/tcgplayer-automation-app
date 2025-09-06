@@ -103,11 +103,13 @@ export class PricingCalculator {
         }
 
         // Get suggested price for this SKU
+        // Use productLineId hint from PricerSku if available for better performance
         const result = await getSuggestedPrice(
           pricerSku.sku.toString(),
           config.percentile,
           config.enableSupplyAnalysis,
-          config.supplyAnalysisConfig
+          config.supplyAnalysisConfig,
+          pricerSku.productLineId
         );
 
         // Create pricing result from suggested price result

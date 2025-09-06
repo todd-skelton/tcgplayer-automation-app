@@ -3,7 +3,6 @@ import {
   getAllLatestSales,
   type Sale,
 } from "../../../integrations/tcgplayer/client/get-latest-sales";
-import { categoryFiltersDb } from "../../../datastores";
 import { levenbergMarquardt } from "ml-levenberg-marquardt";
 import type { Condition } from "../../../integrations/tcgplayer/types/Condition";
 import type { ListingData } from "../services/supplyAnalysisService";
@@ -186,6 +185,9 @@ export async function getSuggestedPriceFromLatestSales(
 }> {
   const { halfLifeDays = 7, percentile = 80 } = config;
 
+  // Dynamic import of datastores for server-side only
+  const { categoryFiltersDb } = await import("../../../datastores");
+
   // Fetch category filter for this SKU's productLineId (which is used as categoryId)
   const categoryFilter = await categoryFiltersDb.findOne({
     categoryId: sku.productLineId,
@@ -198,10 +200,10 @@ export async function getSuggestedPriceFromLatestSales(
 
   // Map string values to IDs for salesOptions using category filter
   const languageId = categoryFilter.languages.find(
-    (l) => l.name === sku.language
+    (l: any) => l.name === sku.language
   )?.id;
   const variantId = categoryFilter.variants.find(
-    (v) => v.name === sku.variant
+    (v: any) => v.name === sku.variant
   )?.id;
 
   // Fetch sales data for all conditions to enable Zipf model normalization

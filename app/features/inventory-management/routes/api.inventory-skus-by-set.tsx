@@ -13,14 +13,22 @@ export async function loader({ request }: { request: Request }) {
   try {
     const url = new URL(request.url);
     const setId = url.searchParams.get("setId");
+    const productLineId = url.searchParams.get("productLineId");
 
     if (!setId) {
       return data({ error: "setId is required" }, { status: 400 });
     }
 
+    // Build query - include productLineId for efficient sharded lookup if available
+    const productQuery: any = { setId: Number(setId) };
+    if (productLineId) {
+      productQuery.productLineId = Number(productLineId);
+    }
+
     // Get all products for the set and set products for card numbers
+    // Using productLineId makes this query much more efficient with sharded datastores
     const [products, setProducts] = await Promise.all([
-      productsDb.find<Product>({ setId: Number(setId) }),
+      productsDb.find<Product>(productQuery),
       setProductsDb.find<SetProduct>({ setNameId: Number(setId) }),
     ]);
 

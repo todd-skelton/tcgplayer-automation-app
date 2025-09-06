@@ -69,7 +69,11 @@ type ProductGroup = {
 interface InventoryEntryTableProps {
   skus: SkuWithDisplayInfo[];
   pendingInventory: PendingInventoryEntry[];
-  onUpdateQuantity: (sku: number, quantity: number) => void;
+  onUpdateQuantity: (
+    sku: number,
+    quantity: number,
+    metadata: { productLineId: number; setId: number; productId: number }
+  ) => void;
   sealedFilter?: "all" | "sealed" | "unsealed";
 }
 
@@ -224,15 +228,37 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
         []
       );
 
+      // Helper function to get metadata for a SKU
+      const getSkuMetadata = useCallback(
+        (sku: number) => {
+          const skuData = skus.find((s) => s.sku === sku);
+          if (!skuData) {
+            throw new Error(`SKU ${sku} not found in available skus`);
+          }
+          return {
+            productLineId: skuData.productLineId,
+            setId: skuData.setId,
+            productId: skuData.productId,
+          };
+        },
+        [skus]
+      );
+
       // Memoize callback functions to prevent unnecessary re-renders
       const handleQuantityChange = useCallback(
         (sku: number, value: string) => {
           setQuantities((prev) => ({ ...prev, [sku]: value }));
 
           const numValue = parseInt(value) || 0;
-          onUpdateQuantity(sku, numValue);
+
+          try {
+            const metadata = getSkuMetadata(sku);
+            onUpdateQuantity(sku, numValue, metadata);
+          } catch (error) {
+            console.error("Failed to get SKU metadata:", error);
+          }
         },
-        [onUpdateQuantity]
+        [onUpdateQuantity, getSkuMetadata]
       );
 
       const handleQuickAdd = useCallback(
@@ -250,7 +276,12 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
             ...prev,
             [selectedSku]: newQty.toString(),
           }));
-          onUpdateQuantity(selectedSku, newQty);
+          try {
+            const metadata = getSkuMetadata(selectedSku);
+            onUpdateQuantity(selectedSku, newQty, metadata);
+          } catch (error) {
+            console.error("Failed to get SKU metadata:", error);
+          }
 
           // Only return focus to search input if explicitly requested (for mouse clicks)
           if (returnFocusToSearch) {
@@ -262,7 +293,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
             }, 0);
           }
         },
-        [selectedSkus, pendingInventory, onUpdateQuantity]
+        [selectedSkus, pendingInventory, onUpdateQuantity, getSkuMetadata]
       );
 
       const handleSkuSelection = useCallback(
@@ -317,7 +348,12 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
               ...prev,
               [selectedSku]: newQty.toString(),
             }));
-            onUpdateQuantity(selectedSku, newQty);
+            try {
+              const metadata = getSkuMetadata(selectedSku);
+              onUpdateQuantity(selectedSku, newQty, metadata);
+            } catch (error) {
+              console.error("Failed to get SKU metadata:", error);
+            }
           }
           // Handle Enter key to increment quantity and return focus to search
           else if (event.key === "Enter") {
@@ -333,7 +369,12 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
               ...prev,
               [selectedSku]: newQty.toString(),
             }));
-            onUpdateQuantity(selectedSku, newQty);
+            try {
+              const metadata = getSkuMetadata(selectedSku);
+              onUpdateQuantity(selectedSku, newQty, metadata);
+            } catch (error) {
+              console.error("Failed to get SKU metadata:", error);
+            }
 
             // Return focus to search input after Enter
             setTimeout(() => {
@@ -357,10 +398,21 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
               ...prev,
               [selectedSku]: newQty.toString(),
             }));
-            onUpdateQuantity(selectedSku, newQty);
+            try {
+              const metadata = getSkuMetadata(selectedSku);
+              onUpdateQuantity(selectedSku, newQty, metadata);
+            } catch (error) {
+              console.error("Failed to get SKU metadata:", error);
+            }
           }
         },
-        [selectedSkus, handleSkuSelection, pendingInventory, onUpdateQuantity]
+        [
+          selectedSkus,
+          handleSkuSelection,
+          pendingInventory,
+          onUpdateQuantity,
+          getSkuMetadata,
+        ]
       );
 
       // Custom toolbar component for the Data Grid

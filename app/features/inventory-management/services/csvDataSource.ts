@@ -38,6 +38,6 @@ export class CSVDataSource implements DataSourceService<TcgPlayerListing> {
   }
 
   async convertToPricerSku(listings: TcgPlayerListing[]): Promise<PricerSku[]> {
-    return this.converter.convertToPricerSkus(listings);
+    return await this.converter.convertToPricerSkus(listings);
   }
 }

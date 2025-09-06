@@ -48,7 +48,11 @@ export interface InventoryProcessorReturn extends InventoryProcessorState {
   loadSkus: (setId: number) => Promise<void>;
   loadCurrentInventory: () => Promise<void>;
   loadPendingInventory: () => Promise<void>;
-  updatePendingInventory: (skuId: number, quantity: number) => void;
+  updatePendingInventory: (
+    sku: number,
+    quantity: number,
+    metadata: { productLineId: number; setId: number; productId: number }
+  ) => void;
   clearPendingInventory: () => void;
   toggleSealedFilter: (sealedFilter: "all" | "sealed" | "unsealed") => void;
   processInventory: () => Promise<void>;
@@ -104,8 +108,9 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     async (setId: number) => {
       try {
         // Load SKUs for the selected set
+        // Include productLineId for efficient sharded query
         const skusResponse = await fetch(
-          `/api/inventory/skus-by-set?setId=${setId}`
+          `/api/inventory/skus-by-set?setId=${setId}&productLineId=${state.selectedProductLineId}`
         );
 
         if (!skusResponse.ok) throw new Error("Failed to load SKUs");
@@ -121,7 +126,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
         baseProcessor.setError(`Failed to load SKUs: ${error}`);
       }
     },
-    [] // Remove setError dependency
+    [state.selectedProductLineId] // Add selectedProductLineId as dependency
   );
 
   const loadCurrentInventory = useCallback(async () => {
@@ -147,12 +152,23 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
   }, []);
 
   const updatePendingInventory = useCallback(
-    async (sku: number, quantity: number) => {
+    async (
+      sku: number,
+      quantity: number,
+      metadata: { productLineId: number; setId: number; productId: number }
+    ) => {
       try {
         const response = await fetch("/api/pending-inventory", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ method: "PUT", sku, quantity }),
+          body: JSON.stringify({
+            method: "PUT",
+            sku,
+            quantity,
+            productLineId: metadata.productLineId,
+            setId: metadata.setId,
+            productId: metadata.productId,
+          }),
         });
 
         if (!response.ok) throw new Error("Failed to update pending inventory");
@@ -194,7 +210,10 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
       try {
         // Convert pending inventory to PricerSku format
         const pricerSkus: PricerSku[] = [];
-        const skusNotFound: number[] = [];
+        const skusNotFoundByProductLine: Map<
+          number,
+          { skus: number[]; entries: PendingInventoryEntry[] }
+        > = new Map();
 
         for (const pendingEntry of state.pendingInventory) {
           const sku = pendingEntry.sku;
@@ -206,15 +225,27 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
               sku,
               quantity: 0, // Existing quantity (always 0 for new inventory)
               addToQuantity: quantity,
+              productLineId: pendingEntry.productLineId,
+              setId: pendingEntry.setId,
+              productId: pendingEntry.productId,
             });
           } else {
-            // SKU data not found in current state, need to fetch it
-            skusNotFound.push(sku);
+            // SKU data not found in current state, group by product line for efficient fetching
+            const productLineId = pendingEntry.productLineId;
+            if (!skusNotFoundByProductLine.has(productLineId)) {
+              skusNotFoundByProductLine.set(productLineId, {
+                skus: [],
+                entries: [],
+              });
+            }
+            const group = skusNotFoundByProductLine.get(productLineId)!;
+            group.skus.push(sku);
+            group.entries.push(pendingEntry);
           }
         }
 
-        // If we have SKUs that aren't in the current state, fetch their data
-        if (skusNotFound.length > 0) {
+        // If we have SKUs that aren't in the current state, fetch their data grouped by product line
+        if (skusNotFoundByProductLine.size > 0) {
           baseProcessor.setProgress({
             current: 0,
             total: state.pendingInventory.length,
@@ -226,10 +257,17 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
           });
 
           try {
+            // Create the productLineSkus object structure for the API
+            const productLineSkus: { [key: string]: number[] } = {};
+            for (const [productLineId, group] of skusNotFoundByProductLine) {
+              productLineSkus[productLineId.toString()] = group.skus;
+            }
+
+            // Make a single API call with all grouped SKUs
             const skuResponse = await fetch("/api/inventory/skus", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ skuIds: skusNotFound }),
+              body: JSON.stringify({ productLineSkus }),
             });
 
             if (skuResponse.ok) {
@@ -245,6 +283,9 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
                     sku: skuData.sku,
                     quantity: 0,
                     addToQuantity: pendingEntry.quantity,
+                    productLineId: pendingEntry.productLineId,
+                    setId: pendingEntry.setId,
+                    productId: pendingEntry.productId,
                   });
                 }
               }

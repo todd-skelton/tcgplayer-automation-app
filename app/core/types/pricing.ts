@@ -98,6 +98,10 @@ export type PricerSku = {
   quantity?: number;
   addToQuantity?: number;
   currentPrice?: number;
+  // Performance optimization metadata - required for optimal processing
+  productLineId: number;
+  setId: number;
+  productId: number;
 };
 
 export type PricedSku = {

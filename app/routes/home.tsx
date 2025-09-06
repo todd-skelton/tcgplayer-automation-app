@@ -12,14 +12,6 @@ import { type CategorySet } from "../shared/data-types/categorySet";
 import { getProductDetails } from "../integrations/tcgplayer/client/get-product-details";
 import { getCatalogSetNames } from "../integrations/tcgplayer/client/get-catalog-set-names";
 import type { Product } from "../features/inventory-management/types/product";
-import {
-  categorySetsDb,
-  productsDb,
-  setProductsDb,
-  skusDb,
-  productLinesDb,
-  categoryFiltersDb,
-} from "../datastores";
 import type { Sku } from "../shared/data-types/sku";
 import { processWithConcurrency } from "../core/processWithConcurrency";
 import {
@@ -50,6 +42,18 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export async function action({ request }: LoaderFunctionArgs) {
+  // Dynamic import of datastores for server-side only
+  const {
+    categorySetsDb,
+    getProductsDbShard,
+    setProductsDb,
+    getSkusDbShard,
+    productLinesDb,
+    categoryFiltersDb,
+    productsDb,
+    skusDb,
+  } = await import("../datastores");
+
   const formData = await request.formData();
   const actionType = formData.get("actionType");
 
@@ -65,7 +69,8 @@ export async function action({ request }: LoaderFunctionArgs) {
 
       // 3. PRODUCTS
       const { productCount, totalSkus } = await fetchAndUpsertProductsAndSkus(
-        allSetProducts
+        allSetProducts,
+        productLine.productLineId
       );
 
       return data(
@@ -121,17 +126,45 @@ export async function action({ request }: LoaderFunctionArgs) {
   if (actionType === "updateProductAndSkus") {
     try {
       const productId = Number(formData.get("productId"));
+      const productLineId = formData.get("productLineId")
+        ? Number(formData.get("productLineId"))
+        : null;
+
       if (!productId) {
         return data({ error: "Missing or invalid productId" }, { status: 400 });
       }
+
+      if (!productLineId) {
+        return data(
+          { error: "Product Line ID is required for optimized performance" },
+          { status: 400 }
+        );
+      }
+
+      // ✅ Efficient: Use shard-targeted query with required productLineId
+      const existingProduct = await getProductsDbShard(productLineId).findOne({
+        productId,
+        productLineId,
+      });
+
+      if (!existingProduct) {
+        return data(
+          {
+            error: `Product with ID ${productId} not found in product line ${productLineId}`,
+          },
+          { status: 404 }
+        );
+      }
+
       // Use the same logic as fetchAndUpsertProductsAndSkus but for a single product
       const dummySetProduct = { productId } as SetProduct;
-      const { productCount, totalSkus } = await fetchAndUpsertProductsAndSkus([
-        dummySetProduct,
-      ]);
+      const { productCount, totalSkus } = await fetchAndUpsertProductsAndSkus(
+        [dummySetProduct],
+        existingProduct.productLineId
+      );
       return data(
         {
-          message: `Updated product and skus for productId ${productId}. Products: ${productCount}, skus: ${totalSkus}.`,
+          message: `Updated product and skus for productId ${productId}. Products: ${productCount}, skus: ${totalSkus}. (Optimized with product line targeting)`,
         },
         { status: 200 }
       );
@@ -175,17 +208,31 @@ export async function action({ request }: LoaderFunctionArgs) {
         });
 
         if (categorySet) {
+          // Get the sharded datastores for this product line
+          const productsDbShard = getProductsDbShard(
+            productLineForDelete.productLineId
+          );
+          const skusDbShard = getSkusDbShard(
+            productLineForDelete.productLineId
+          );
+
           // Delete set products, products, and SKUs associated with this set
           await setProductsDb.remove(
             { setNameId: categorySet.setNameId },
             { multi: true }
           );
-          await productsDb.remove(
-            { setId: categorySet.setNameId },
+          await productsDbShard.remove(
+            {
+              setId: categorySet.setNameId,
+              productLineId: productLineForDelete.productLineId,
+            },
             { multi: true }
           );
-          await skusDb.remove(
-            { setId: categorySet.setNameId },
+          await skusDbShard.remove(
+            {
+              setId: categorySet.setNameId,
+              productLineId: productLineForDelete.productLineId,
+            },
             { multi: true }
           );
         }
@@ -295,7 +342,8 @@ export async function action({ request }: LoaderFunctionArgs) {
 
       // Fetch and upsert product details and SKUs
       const { productCount, totalSkus } = await fetchAndUpsertProductsAndSkus(
-        setProducts
+        setProducts,
+        productLine.productLineId
       );
 
       return data(
@@ -313,6 +361,9 @@ export async function action({ request }: LoaderFunctionArgs) {
 }
 
 export async function loader() {
+  // Dynamic import of datastores for server-side only
+  const { productLinesDb } = await import("../datastores");
+
   // Load all product lines from NeDB
   const productLines = await productLinesDb.find({});
   return { productLines };
@@ -324,6 +375,9 @@ export async function loader() {
  * Fetches and upserts all sets for a given categoryId. Always calls the API to verify all sets are in the database.
  */
 async function fetchAndUpsertCategorySets(categoryId: number) {
+  // Dynamic import of datastores for server-side only
+  const { productLinesDb, categorySetsDb } = await import("../datastores");
+
   console.log(
     `[fetchAndUpsertCategorySets] Starting for categoryId: ${categoryId}`
   );
@@ -390,7 +444,7 @@ async function fetchAndUpsertCategorySets(categoryId: number) {
   console.log(`[fetchAndUpsertCategorySets] Completed successfully`);
   return {
     sets: fetchedSets,
-    productLine: selectedProductLine.productLineUrlName,
+    productLine: selectedProductLine,
   };
 }
 
@@ -399,8 +453,11 @@ async function fetchAndUpsertCategorySets(categoryId: number) {
  */
 async function fetchAndUpsertSetProducts(
   sets: CategorySet[],
-  productLine: string
+  productLine: ProductLine
 ) {
+  // Dynamic import of datastores for server-side only
+  const { setProductsDb } = await import("../datastores");
+
   let allSetProducts: SetProduct[] = [];
   for (let setIdx = 0; setIdx < sets.length; setIdx++) {
     const set = sets[setIdx];
@@ -413,7 +470,7 @@ async function fetchAndUpsertSetProducts(
           size: 24,
           filters: {
             term: {
-              productLineName: [productLine],
+              productLineName: [productLine.productLineName],
               setName: [set.cleanSetName],
             },
           },
@@ -427,7 +484,7 @@ async function fetchAndUpsertSetProducts(
           products.push({
             setNameId: set.setNameId,
             productId: card.productId,
-            game: productLine,
+            game: productLine.productLineName,
             number: card.customAttributes?.number ?? "",
             productName: card.productName,
             rarity: card.rarityName,
@@ -455,14 +512,24 @@ async function fetchAndUpsertSetProducts(
 /**
  * Fetches and upserts product details and SKUs for a list of set products. Returns product and SKU counts.
  */
-async function fetchAndUpsertProductsAndSkus(allSetProducts: SetProduct[]) {
+async function fetchAndUpsertProductsAndSkus(
+  allSetProducts: SetProduct[],
+  productLineId: number
+) {
+  // Dynamic import of datastores for server-side only
+  const { getProductsDbShard, getSkusDbShard } = await import("../datastores");
+
   console.log(
-    `[fetchAndUpsertProductsAndSkus] Starting with ${allSetProducts.length} products`
+    `[fetchAndUpsertProductsAndSkus] Starting with ${allSetProducts.length} products for productLineId: ${productLineId}`
   );
   let productCount = 0;
   let totalSkus = 0;
   const PRODUCT_CONCURRENCY = 5;
   let prodIdx = 0;
+
+  // Get the specific shards for this product line (will be created if they don't exist)
+  const productsDbShard = getProductsDbShard(productLineId);
+  const skusDbShard = getSkusDbShard(productLineId);
 
   try {
     for await (const _ of processWithConcurrency(
@@ -477,8 +544,9 @@ async function fetchAndUpsertProductsAndSkus(allSetProducts: SetProduct[]) {
         }
 
         const productId = product.productId;
-        let details: Product | null = await productsDb.findOne<Product>({
+        let details: Product | null = await productsDbShard.findOne<Product>({
           productId,
+          productLineId,
         });
 
         if (!details || !details.skus || !details.skus.length) {
@@ -498,9 +566,14 @@ async function fetchAndUpsertProductsAndSkus(allSetProducts: SetProduct[]) {
               productLineName: fetched.productLineName,
               skus: fetched.skus,
             };
-            await productsDb.update({ productId: details.productId }, details, {
-              upsert: true,
-            });
+            await productsDbShard.update(
+              {
+                productId: details.productId,
+                productLineId: details.productLineId,
+              },
+              details,
+              { upsert: true }
+            );
           } catch (err) {
             console.warn(
               `[fetchAndUpsertProductsAndSkus] Failed to fetch product ${productId}:`,
@@ -529,7 +602,10 @@ async function fetchAndUpsertProductsAndSkus(allSetProducts: SetProduct[]) {
         }));
 
         const skuIds = skusToUpsert.map((sku) => sku.sku);
-        const existingSkus = await skusDb.find<Sku>({ sku: { $in: skuIds } });
+        const existingSkus = await skusDbShard.find<Sku>({
+          sku: { $in: skuIds },
+          productLineId: details.productLineId,
+        });
         const existingSkuSet = new Set(existingSkus.map((s) => s.sku));
         const skusToInsert = skusToUpsert.filter(
           (sku) => !existingSkuSet.has(sku.sku)
@@ -537,7 +613,7 @@ async function fetchAndUpsertProductsAndSkus(allSetProducts: SetProduct[]) {
 
         if (skusToInsert.length > 0) {
           try {
-            await skusDb.insert(skusToInsert);
+            await skusDbShard.insert(skusToInsert);
           } catch (err) {
             console.warn(
               `[fetchAndUpsertProductsAndSkus] Failed to insert SKUs for product ${productId}:`,
@@ -577,6 +653,11 @@ export default function Home() {
   const [selectedProductLineName, setSelectedProductLineName] =
     useState<string>("");
   const [deleteExistingSet, setDeleteExistingSet] = useState<boolean>(false);
+
+  // State for the Update Product form
+  const [updateProductLineId, setUpdateProductLineId] = useState<number | null>(
+    productLines.length > 0 ? productLines[0].productLineId : null
+  );
 
   return (
     <Box sx={{ p: 3 }}>
@@ -692,21 +773,55 @@ export default function Home() {
         </Typography>
         <allCategory3DataFetcher.Form method="post">
           <input type="hidden" name="actionType" value="updateProductAndSkus" />
-          <FormControl sx={{ minWidth: 220, marginRight: 2 }}>
-            <InputLabel id="product-id-input-label">Product ID</InputLabel>
-            <input
-              id="product-id-input"
-              name="productId"
-              type="number"
-              min="1"
-              required
-              style={{ padding: 8, fontSize: 16, width: 200 }}
-              placeholder="Enter Product ID"
-            />
-          </FormControl>
-          <Button type="submit" variant="contained" color="info">
-            Update Product & SKUs
-          </Button>
+          <input
+            type="hidden"
+            name="productLineId"
+            value={updateProductLineId?.toString() || ""}
+          />
+          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+            <FormControl sx={{ minWidth: 200 }} required>
+              <InputLabel id="update-product-line-label">
+                Product Line *
+              </InputLabel>
+              <Select
+                labelId="update-product-line-label"
+                value={updateProductLineId || ""}
+                label="Product Line *"
+                onChange={(e) =>
+                  setUpdateProductLineId(
+                    e.target.value ? Number(e.target.value) : null
+                  )
+                }
+                required
+              >
+                {productLines.map((line) => (
+                  <MenuItem key={line.productLineId} value={line.productLineId}>
+                    {line.productLineName}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl sx={{ minWidth: 220 }}>
+              <InputLabel id="product-id-input-label">Product ID</InputLabel>
+              <input
+                id="product-id-input"
+                name="productId"
+                type="number"
+                min="1"
+                required
+                style={{ padding: 8, fontSize: 16, width: 200 }}
+                placeholder="Enter Product ID"
+              />
+            </FormControl>
+            <Button
+              type="submit"
+              variant="contained"
+              color="info"
+              disabled={!updateProductLineId}
+            >
+              Update Product & SKUs
+            </Button>
+          </Box>
         </allCategory3DataFetcher.Form>
       </Paper>
 

@@ -1,7 +1,8 @@
 import { getSuggestedPriceFromLatestSales } from "../algorithms/getSuggestedPriceFromLatestSales";
-import { productsDb } from "../../../datastores";
+import { productsDb, skusDb } from "../../../datastores";
 import { data } from "react-router";
 import type { Product } from "../../inventory-management/types/product";
+import type { Sku } from "../../../shared/data-types/sku";
 import { calculateMarketplacePrice } from "../services/pricingService";
 
 // Simple API endpoint to get suggested price for a single product
@@ -14,6 +15,7 @@ export async function action({ request }: { request: Request }) {
     const body = await request.json();
     const {
       tcgplayerId,
+      productLineId,
       percentile = 65,
       enableSupplyAnalysis = false,
       supplyAnalysisConfig = {},
@@ -23,51 +25,42 @@ export async function action({ request }: { request: Request }) {
       return data({ error: "TCGplayer ID is required" }, { status: 400 });
     }
 
-    // Look up the SKU by finding the product that contains this SKU
-    const skuId = Number(tcgplayerId);
+    if (!productLineId) {
+      return data({ error: "Product line ID is required" }, { status: 400 });
+    }
 
-    // Find the product that contains this SKU instead of querying SKU database directly
+    // Look up the SKU directly from the SKU database using shard-targeted query
+    const skuId = Number(tcgplayerId);
+    const sku = await skusDb.findOne<Sku>({
+      sku: skuId,
+      productLineId: Number(productLineId),
+    });
+
+    if (!sku) {
+      return data(
+        {
+          error: `SKU ${skuId} not found`,
+          suggestedPrice: null,
+        },
+        { status: 404 }
+      );
+    }
+
+    // Now we can find the product efficiently using the productLineId from the SKU
     const product = await productsDb.findOne<Product>({
-      "skus.sku": skuId,
+      productId: sku.productId,
+      productLineId: sku.productLineId,
     });
 
     if (!product) {
       return data(
         {
-          error: `SKU ${skuId} not found in any product`,
+          error: `Product ${sku.productId} not found for SKU ${skuId}`,
           suggestedPrice: null,
         },
         { status: 404 }
       );
     }
-
-    // Find the specific SKU within the product
-    const productSku = product.skus.find((sku) => sku.sku === skuId);
-    if (!productSku) {
-      return data(
-        {
-          error: `SKU ${skuId} not found in product ${product.productId}`,
-          suggestedPrice: null,
-        },
-        { status: 404 }
-      );
-    }
-
-    // Convert ProductSku to full Sku format
-    const sku = {
-      ...productSku,
-      productTypeName: product.productTypeName,
-      rarityName: product.rarityName,
-      sealed: product.sealed,
-      productName: product.productName,
-      setId: product.setId,
-      setCode: product.setCode,
-      productId: product.productId,
-      setName: product.setName,
-      productLineId: product.productLineId,
-      productStatusId: product.productStatusId,
-      productLineName: product.productLineName,
-    };
 
     // Get suggested price from the algorithm
     const algorithmResult = await getSuggestedPriceFromLatestSales(sku, {

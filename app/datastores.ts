@@ -7,6 +7,10 @@ import type { Product } from "./features/inventory-management/types/product";
 import type { ProductLine } from "./shared/data-types/productLine";
 import type { CategoryFilter } from "./shared/data-types/categoryFilter";
 import type { PendingInventoryEntry } from "./features/pending-inventory/types/pendingInventory";
+import {
+  shardedProductsDb,
+  shardedSkusDb,
+} from "./core/datastores/ShardedDatastoreManager";
 
 const dataDir = path.resolve(process.cwd(), "data");
 
@@ -20,15 +24,18 @@ export const setProductsDb: Datastore<SetProduct> = Datastore.create({
   autoload: true,
 });
 
-export const productsDb: Datastore<Product> = Datastore.create({
-  filename: path.join(dataDir, "products.db"),
-  autoload: true,
-});
+// Use sharded datastores for products and skus to improve performance
+// These functions require a productLineId (shard key) to be passed
+export const getProductsDbShard = (productLineId: number) =>
+  shardedProductsDb.getShard(productLineId);
 
-export const skusDb: Datastore<Sku> = Datastore.create({
-  filename: path.join(dataDir, "skus.db"),
-  autoload: true,
-});
+export const getSkusDbShard = (productLineId: number) =>
+  shardedSkusDb.getShard(productLineId);
+
+// Legacy exports for backward compatibility - will be removed after migration
+// These will throw errors if queries don't include productLineId
+export const productsDb = shardedProductsDb;
+export const skusDb = shardedSkusDb;
 
 export const productLinesDb: Datastore<ProductLine> = Datastore.create({
   filename: path.join(dataDir, "productLines.db"),
@@ -54,17 +61,15 @@ setProductsDb.ensureIndex({ fieldName: "setId" });
 setProductsDb.ensureIndex({ fieldName: "productId", unique: true });
 setProductsDb.ensureIndex({ fieldName: "categoryId" });
 
-productsDb.ensureIndex({ fieldName: "productId", unique: true });
-productsDb.ensureIndex({ fieldName: "categoryId" });
-productsDb.ensureIndex({ fieldName: "setId" });
-
-skusDb.ensureIndex({ fieldName: "productId" });
-skusDb.ensureIndex({ fieldName: "sku", unique: true });
-skusDb.ensureIndex({ fieldName: "setId" });
+// Indexes for sharded datastores are managed by the ShardedDatastoreManager
+// No need to explicitly call ensureIndex here as it's handled during shard creation
 
 productLinesDb.ensureIndex({ fieldName: "productLineId", unique: true });
 
 categoryFiltersDb.ensureIndex({ fieldName: "categoryId", unique: true });
 
-pendingInventoryDb.ensureIndex({ fieldName: "sku" });
+pendingInventoryDb.ensureIndex({ fieldName: "sku", unique: true });
 pendingInventoryDb.ensureIndex({ fieldName: "createdAt" });
+pendingInventoryDb.ensureIndex({ fieldName: "productLineId" });
+pendingInventoryDb.ensureIndex({ fieldName: "setId" });
+pendingInventoryDb.ensureIndex({ fieldName: "productId" });

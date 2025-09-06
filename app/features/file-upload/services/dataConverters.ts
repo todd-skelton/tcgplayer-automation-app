@@ -11,7 +11,7 @@ import type { PendingInventoryEntry } from "../../pending-inventory/types/pendin
  * Base interface for converters that transform input data to PricerSku format
  */
 export interface InputConverter<TInput> {
-  convertToPricerSkus(input: TInput[]): PricerSku[];
+  convertToPricerSkus(input: TInput[]): PricerSku[] | Promise<PricerSku[]>;
 }
 
 /**
@@ -23,31 +23,33 @@ export interface OutputConverter<TOutput> {
 
 /**
  * Converts CSV TcgPlayerListing data to PricerSku format
+ * Enhanced version that looks up missing performance metadata
  */
 export class CsvToPricerSkuConverter
   implements InputConverter<TcgPlayerListing>
 {
-  convertToPricerSkus(listings: TcgPlayerListing[]): PricerSku[] {
-    return listings
-      .filter((listing) => {
-        // Skip invalid SKUs
-        const skuId = Number(listing["TCGplayer Id"]);
-        return !isNaN(skuId) && skuId > 0;
-      })
-      .map((listing): PricerSku => {
-        const skuId = Number(listing["TCGplayer Id"]);
-        const quantity = Number(listing["Total Quantity"]) || 0;
-        const addToQuantity = Number(listing["Add to Quantity"]) || 0;
-        const currentPrice =
-          Number(listing["TCG Marketplace Price"]) || undefined;
+  async convertToPricerSkus(
+    listings: TcgPlayerListing[]
+  ): Promise<PricerSku[]> {
+    // Use server-side API to avoid client-side database imports
+    const response = await fetch("/api/convert-to-pricer-sku", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        listings: listings,
+        type: "csv",
+      }),
+    });
 
-        return {
-          sku: skuId,
-          quantity: quantity > 0 ? quantity : undefined,
-          addToQuantity: addToQuantity > 0 ? addToQuantity : undefined,
-          currentPrice,
-        };
-      });
+    if (!response.ok) {
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Unknown error" }));
+      throw new Error(errorData.error || "Failed to convert CSV to PricerSku");
+    }
+
+    const result = await response.json();
+    return result.pricerSkus;
   }
 }
 
@@ -92,35 +94,37 @@ export class PricedSkuToTcgPlayerListingConverter
 
 /**
  * Converts seller inventory to PricerSku format
+ * Enhanced version that looks up missing performance metadata
  * Deduplicates SKUs to prevent processing the same item multiple times
+ * Uses product line information to avoid cross-shard searching
  */
 export class SellerInventoryToPricerSkuConverter
   implements InputConverter<SellerInventoryItem>
 {
-  convertToPricerSkus(inventory: SellerInventoryItem[]): PricerSku[] {
-    const skuMap = new Map<number, PricerSku>();
-
-    inventory.forEach((item) => {
-      // Filter out custom listings (those with customListingId)
-      const regularListings =
-        item.listings?.filter(
-          (listing: Listing) => !listing.customData?.customListingId
-        ) || [];
-
-      regularListings.forEach((listing: Listing) => {
-        const skuId = listing.productConditionId;
-        if (skuId && skuId > 0) {
-          skuMap.set(skuId, {
-            sku: skuId,
-            quantity: listing.quantity,
-            addToQuantity: 0, // Seller inventory doesn't typically have add quantity
-            currentPrice: listing.price || undefined,
-          });
-        }
-      });
+  async convertToPricerSkus(
+    inventory: SellerInventoryItem[]
+  ): Promise<PricerSku[]> {
+    // Use server-side API to avoid client-side database imports
+    const response = await fetch("/api/convert-to-pricer-sku", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        listings: inventory,
+        type: "seller-inventory",
+      }),
     });
 
-    return Array.from(skuMap.values());
+    if (!response.ok) {
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Unknown error" }));
+      throw new Error(
+        errorData.error || "Failed to convert seller inventory to PricerSku"
+      );
+    }
+
+    const result = await response.json();
+    return result.pricerSkus;
   }
 }
 
@@ -137,6 +141,10 @@ export class PendingInventoryToPricerSkuConverter
         return {
           sku: item.sku,
           addToQuantity: item.quantity,
+          // Performance metadata is now always available
+          productLineId: item.productLineId,
+          setId: item.setId,
+          productId: item.productId,
         };
       });
   }

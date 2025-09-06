@@ -39,6 +39,10 @@ export default [
     file: "features/pricing/routes/api.validate-skus.tsx",
   },
   {
+    path: "/api/convert-to-pricer-sku",
+    file: "features/file-upload/routes/api.convert-to-pricer-sku.tsx",
+  },
+  {
     path: "/api/inventory/product-lines",
     file: "features/inventory-management/routes/api.inventory-product-lines.tsx",
   },
@@ -47,7 +51,7 @@ export default [
     file: "features/inventory-management/routes/api.inventory-sets.tsx",
   },
   {
-    path: "/api/inventory-skus",
+    path: "/api/inventory/skus",
     file: "features/inventory-management/routes/api.inventory-skus.tsx",
   },
   {

@@ -1,4 +1,4 @@
-import type { PricedSku } from "../../core/types/pricing";
+import type { PricedSku, PricerSku } from "../../core/types/pricing";
 import type { PricingResult } from "../../features/pricing/services/pricingCalculator";
 import { createDisplayName } from "../../core/utils/displayNameUtils";
 import {
@@ -111,7 +111,9 @@ export class DataEnrichmentService {
   async enrichForDisplay(
     pricedItems: PricingResult[],
     onProgress?: (current: number, total: number, status: string) => void,
-    pricePointsMap?: Map<number, PricePoint>
+    pricePointsMap?: Map<number, PricePoint>,
+    productLineIdHints?: number[],
+    originalPricerSkus?: PricerSku[]
   ): Promise<PricedSku[]>;
 
   /**
@@ -120,11 +122,31 @@ export class DataEnrichmentService {
   async enrichForDisplay(
     pricedItems: PricingResult[],
     onProgress?: (current: number, total: number, status: string) => void,
-    pricePointsMap?: Map<number, PricePoint>
+    pricePointsMap?: Map<number, PricePoint>,
+    productLineIdHints?: number[],
+    originalPricerSkus?: PricerSku[]
   ): Promise<PricedSku[]> {
     const skuIds = pricedItems.map((item) => item.sku);
 
     console.log("DataEnrichmentService: Starting enrichment for SKUs:", skuIds);
+
+    // Extract productLineId hints from original PricerSku data if available
+    let finalProductLineIdHints = productLineIdHints;
+    if (!finalProductLineIdHints && originalPricerSkus) {
+      finalProductLineIdHints = Array.from(
+        new Set(
+          originalPricerSkus
+            .filter((sku) => sku.productLineId !== undefined)
+            .map((sku) => sku.productLineId!)
+        )
+      );
+      if (finalProductLineIdHints.length > 0) {
+        console.log(
+          "DataEnrichmentService: Extracted productLineId hints from PricerSku data:",
+          finalProductLineIdHints
+        );
+      }
+    }
 
     onProgress?.(0, skuIds.length, "Fetching product details...");
 
@@ -148,7 +170,12 @@ export class DataEnrichmentService {
 
     // Fetch product details in parallel with market data
     const [productDetails, marketData] = await Promise.all([
-      this.fetchProductDetails(skuIds, onProgress),
+      this.fetchProductDetails(
+        skuIds,
+        onProgress,
+        finalProductLineIdHints,
+        originalPricerSkus
+      ),
       marketDataPromise,
     ]);
 
@@ -207,7 +234,9 @@ export class DataEnrichmentService {
    */
   async fetchProductDetails(
     skuIds: number[],
-    onProgress?: (current: number, total: number, status: string) => void
+    onProgress?: (current: number, total: number, status: string) => void,
+    productLineIdHints?: number[],
+    originalPricerSkus?: PricerSku[]
   ): Promise<Map<number, ProductDisplayInfo>> {
     const result = new Map<number, ProductDisplayInfo>();
 
@@ -231,11 +260,71 @@ export class DataEnrichmentService {
     }
 
     try {
-      // Batch fetch uncached items
-      const url = `/api/inventory-skus?skuIds=${uncachedSkuIds.join(",")}`;
-      console.log("fetchProductDetails: Fetching from URL:", url);
+      // Create the productLineSkus object structure for the new API
+      const productLineSkus: { [key: string]: number[] } = {};
 
-      const response = await fetch(url);
+      // Try to map SKUs to product lines using originalPricerSkus if available
+      if (originalPricerSkus && originalPricerSkus.length > 0) {
+        const skuToProductLineMap = new Map<number, number>();
+        originalPricerSkus.forEach((pricerSku) => {
+          if (pricerSku.productLineId) {
+            skuToProductLineMap.set(pricerSku.sku, pricerSku.productLineId);
+          }
+        });
+
+        // Group uncached SKUs by their product lines
+        uncachedSkuIds.forEach((skuId) => {
+          const productLineId = skuToProductLineMap.get(skuId);
+          if (productLineId) {
+            const key = productLineId.toString();
+            if (!productLineSkus[key]) {
+              productLineSkus[key] = [];
+            }
+            productLineSkus[key].push(skuId);
+          } else if (productLineIdHints && productLineIdHints.length === 1) {
+            // If we don't have specific mapping but only one product line hint, use it
+            const key = productLineIdHints[0].toString();
+            if (!productLineSkus[key]) {
+              productLineSkus[key] = [];
+            }
+            productLineSkus[key].push(skuId);
+          }
+        });
+      } else if (productLineIdHints && productLineIdHints.length === 1) {
+        // Fallback: if we have exactly one product line hint, assume all SKUs belong to it
+        const key = productLineIdHints[0].toString();
+        productLineSkus[key] = uncachedSkuIds;
+      }
+
+      // Check if we successfully grouped all SKUs
+      const groupedSkuCount = Object.values(productLineSkus).reduce(
+        (sum, skus) => sum + skus.length,
+        0
+      );
+      if (groupedSkuCount < uncachedSkuIds.length) {
+        console.warn(
+          `fetchProductDetails: Could not map all SKUs to product lines. Mapped: ${groupedSkuCount}, Total: ${uncachedSkuIds.length}. Some SKUs may not be fetched.`
+        );
+      }
+
+      if (Object.keys(productLineSkus).length === 0) {
+        console.warn(
+          "fetchProductDetails: No SKUs could be mapped to product lines. Cannot fetch product details."
+        );
+        return result;
+      }
+
+      console.log(
+        "fetchProductDetails: Grouped SKUs by product line:",
+        productLineSkus
+      );
+
+      const response = await fetch("/api/inventory/skus", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productLineSkus }),
+      });
+
       console.log("fetchProductDetails: Response status:", response.status);
 
       if (!response.ok) {
@@ -246,20 +335,20 @@ export class DataEnrichmentService {
       const data = await response.json();
       console.log("fetchProductDetails: Response data:", data);
 
-      if (data.skus && Array.isArray(data.skus)) {
+      if (Array.isArray(data)) {
         console.log(
           "fetchProductDetails: Processing SKUs array with length:",
-          data.skus.length
+          data.length
         );
-        data.skus.forEach((skuData: any, index: number) => {
+        data.forEach((skuData: any, index: number) => {
           console.log(
             `fetchProductDetails: Processing SKU ${index + 1}:`,
             skuData
           );
           onProgress?.(
             index + 1,
-            data.skus.length,
-            `Loading product details... (${index + 1}/${data.skus.length})`
+            data.length,
+            `Loading product details... (${index + 1}/${data.length})`
           );
 
           const productInfo: ProductDisplayInfo = {
@@ -287,7 +376,7 @@ export class DataEnrichmentService {
           result.set(productInfo.sku, productInfo);
         });
       } else {
-        console.log("fetchProductDetails: No skus array found or not an array");
+        console.log("fetchProductDetails: Response is not an array");
       }
     } catch (error) {
       console.error("Failed to fetch product details:", error);
