@@ -28,6 +28,7 @@ import type { PendingInventoryEntry } from "../../pending-inventory/types/pendin
 import type { Condition } from "../../../integrations/tcgplayer/types/Condition";
 import { getConditionColor } from "../../../core/utils/conditionColors";
 import { createDisplayName } from "../../../core/utils/displayNameUtils";
+import { matchesNumberField } from "../../../core/utils/numberFieldMatching";
 
 // Extended interface for SKUs with display information
 interface SkuWithDisplayInfo extends Sku {
@@ -61,6 +62,7 @@ type ProductGroup = {
   productId: number;
   productName: string;
   displayName: string; // Enhanced name with card number for display
+  cardNumber?: string | null; // Card number for enhanced filtering
   variant: string;
   language: string;
   skus: SkuWithDisplayInfo[];
@@ -147,6 +149,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
               productId: sku.productId,
               productName: sku.productName,
               displayName: displayName,
+              cardNumber: sku.cardNumber,
               variant: sku.variant,
               language: sku.language,
               skus: [],
@@ -185,6 +188,18 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
         // Apply product name filter
         if (submittedProductNameFilter.trim()) {
           const filterLower = submittedProductNameFilter.toLowerCase().trim();
+
+          // Phase 1: Try enhanced number field matching first
+          const numberMatches = sortedGroups.filter((group) =>
+            matchesNumberField(submittedProductNameFilter, group.cardNumber)
+          );
+
+          // If we found matches using number field matching, return those only
+          if (numberMatches.length > 0) {
+            return numberMatches;
+          }
+
+          // Phase 2: Fallback to display name search if no number matches found
           return sortedGroups.filter((group) =>
             group.displayName.toLowerCase().includes(filterLower)
           );
