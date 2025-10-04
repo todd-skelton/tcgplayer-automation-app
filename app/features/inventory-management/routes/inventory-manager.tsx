@@ -28,6 +28,7 @@ export default function InventoryManagerRoute() {
     selectedProductLineId,
     selectedSetId,
     sealedFilter,
+    selectedLanguages,
     loadProductLines,
     loadSets,
     loadSkus,
@@ -35,6 +36,9 @@ export default function InventoryManagerRoute() {
     updatePendingInventory,
     clearPendingInventory,
     toggleSealedFilter,
+    setSelectedLanguages,
+    getFilteredSkus,
+    getAvailableLanguages,
   } = useInventoryProcessor();
 
   const [clearDialogOpen, setClearDialogOpen] = React.useState(false);
@@ -104,9 +108,11 @@ export default function InventoryManagerRoute() {
             selectedProductLineId={selectedProductLineId}
             selectedSetId={selectedSetId}
             sealedFilter={sealedFilter}
+            selectedLanguages={selectedLanguages}
             onProductLineChange={handleProductLineChange}
             onSetChange={handleSetChange}
             onSealedFilterChange={toggleSealedFilter}
+            onLanguagesChange={setSelectedLanguages}
           />
         </Paper>
       </Box>
@@ -149,7 +155,7 @@ export default function InventoryManagerRoute() {
           </Box>
 
           <InventoryEntryTable
-            skus={skus}
+            skus={getFilteredSkus()}
             pendingInventory={pendingInventory}
             onUpdateQuantity={updatePendingInventory}
             sealedFilter={sealedFilter}

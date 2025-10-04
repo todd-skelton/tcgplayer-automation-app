@@ -20,6 +20,7 @@ export type InventoryFilter = {
   condition?: string;
   variant?: string;
   language?: string;
+  languages?: string[]; // Support multiple language filtering
 };
 
 export type InventoryFormData = {

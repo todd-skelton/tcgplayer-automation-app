@@ -28,6 +28,7 @@ export interface InventoryProcessorState {
   selectedProductLineId: number | null;
   selectedSetId: number | null;
   sealedFilter: "all" | "sealed" | "unsealed";
+  selectedLanguages: string[];
 }
 
 export interface InventoryProcessorReturn extends InventoryProcessorState {
@@ -55,6 +56,9 @@ export interface InventoryProcessorReturn extends InventoryProcessorState {
   ) => void;
   clearPendingInventory: () => void;
   toggleSealedFilter: (sealedFilter: "all" | "sealed" | "unsealed") => void;
+  setSelectedLanguages: (languages: string[]) => void;
+  getFilteredSkus: () => SkuWithDisplayInfo[];
+  getAvailableLanguages: () => string[];
   processInventory: () => Promise<void>;
 }
 
@@ -69,6 +73,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     selectedProductLineId: null,
     selectedSetId: null,
     sealedFilter: "all",
+    selectedLanguages: [],
   });
 
   const loadProductLines = useCallback(async () => {
@@ -414,6 +419,40 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     []
   );
 
+  const setSelectedLanguages = useCallback((languages: string[]) => {
+    setState((prev) => ({ ...prev, selectedLanguages: languages }));
+  }, []);
+
+  const getFilteredSkus = useCallback((): SkuWithDisplayInfo[] => {
+    let filtered = state.skus;
+
+    // Apply sealed filter
+    if (state.sealedFilter === "sealed") {
+      filtered = filtered.filter((sku) => sku.sealed);
+    } else if (state.sealedFilter === "unsealed") {
+      filtered = filtered.filter((sku) => !sku.sealed);
+    }
+
+    // Apply language filter
+    if (state.selectedLanguages.length > 0) {
+      filtered = filtered.filter((sku) =>
+        state.selectedLanguages.includes(sku.language)
+      );
+    }
+
+    return filtered;
+  }, [state.skus, state.sealedFilter, state.selectedLanguages]);
+
+  const getAvailableLanguages = useCallback((): string[] => {
+    const languages = new Set<string>();
+    state.skus.forEach((sku) => {
+      if (sku.language) {
+        languages.add(sku.language);
+      }
+    });
+    return Array.from(languages).sort();
+  }, [state.skus]);
+
   return {
     // Ensure arrays are always defined
     productLines: state.productLines || [],
@@ -424,6 +463,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     selectedProductLineId: state.selectedProductLineId,
     selectedSetId: state.selectedSetId,
     sealedFilter: state.sealedFilter,
+    selectedLanguages: state.selectedLanguages || [],
     ...baseProcessor,
     setError: baseProcessor.setError,
     setWarning: baseProcessor.setWarning,
@@ -436,6 +476,9 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     updatePendingInventory,
     clearPendingInventory,
     toggleSealedFilter,
+    setSelectedLanguages,
+    getFilteredSkus,
+    getAvailableLanguages,
     processInventory,
   };
 };

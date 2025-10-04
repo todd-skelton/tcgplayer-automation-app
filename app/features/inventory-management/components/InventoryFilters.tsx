@@ -12,9 +12,25 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Chip,
 } from "@mui/material";
 import type { ProductLine } from "../../../shared/data-types/productLine";
 import type { CategorySet } from "../../../shared/data-types/categorySet";
+
+// Available languages based on database analysis
+const AVAILABLE_LANGUAGES = [
+  "English",
+  "Japanese",
+  "French",
+  "German",
+  "Spanish",
+  "Italian",
+  "Chinese (S)",
+  "Portuguese",
+  "Chinese (T)",
+  "Russian",
+  "Korean",
+];
 
 interface InventoryFiltersProps {
   productLines: ProductLine[];
@@ -22,9 +38,11 @@ interface InventoryFiltersProps {
   selectedProductLineId: number | null;
   selectedSetId: number | null;
   sealedFilter: "all" | "sealed" | "unsealed";
+  selectedLanguages: string[];
   onProductLineChange: (productLineId: number) => void;
   onSetChange: (setId: number) => void;
   onSealedFilterChange: (sealedFilter: "all" | "sealed" | "unsealed") => void;
+  onLanguagesChange: (languages: string[]) => void;
 }
 
 // Ref interface for imperative methods
@@ -43,9 +61,11 @@ export const InventoryFilters = forwardRef<
       selectedProductLineId,
       selectedSetId,
       sealedFilter,
+      selectedLanguages,
       onProductLineChange,
       onSetChange,
       onSealedFilterChange,
+      onLanguagesChange,
     },
     ref
   ) => {
@@ -116,59 +136,102 @@ export const InventoryFilters = forwardRef<
     );
 
     return (
-      <Box
-        sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 3, width: "100%" }}
-      >
-        <Autocomplete
-          options={sortedProductLines}
-          getOptionLabel={(option) => option.productLineName}
-          value={selectedProductLine}
-          onChange={(_, newValue) => {
-            if (newValue) {
-              onProductLineChange(newValue.productLineId);
-            }
+      <Box sx={{ width: "100%" }}>
+        {/* First row: Product Line, Product Type, and Languages */}
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            flexWrap: "wrap",
+            mb: 2,
+            width: "100%",
           }}
-          sx={{ minWidth: 200, flex: 1 }}
-          renderInput={(params) => (
-            <TextField {...params} label="Product Line" />
-          )}
-        />
+        >
+          <Autocomplete
+            options={sortedProductLines}
+            getOptionLabel={(option) => option.productLineName}
+            value={selectedProductLine}
+            onChange={(_, newValue) => {
+              if (newValue) {
+                onProductLineChange(newValue.productLineId);
+              }
+            }}
+            sx={{ minWidth: 200, flex: 1 }}
+            renderInput={(params) => (
+              <TextField {...params} label="Product Line" />
+            )}
+          />
 
-        <Autocomplete
-          options={sortedSets}
-          getOptionLabel={(option) => {
-            const releaseDate = option.releaseDate
-              ? ` (${new Date(option.releaseDate).toLocaleDateString()})`
-              : "";
-            return `${option.name}${releaseDate}`;
-          }}
-          value={selectedSet}
-          onChange={(_, newValue) => {
-            if (newValue) {
-              onSetChange(newValue.setNameId);
-            }
-          }}
-          disabled={!selectedProductLineId}
-          sx={{ minWidth: 200, flex: 1 }}
-          renderInput={(params) => <TextField {...params} label="Set" />}
-        />
+          <FormControl sx={{ minWidth: 150, flex: 1 }}>
+            <InputLabel>Product Type</InputLabel>
+            <Select
+              value={sealedFilter}
+              label="Product Type"
+              onChange={(e) =>
+                onSealedFilterChange(
+                  e.target.value as "all" | "sealed" | "unsealed"
+                )
+              }
+            >
+              <MenuItem value="all">All Products</MenuItem>
+              <MenuItem value="sealed">Sealed Only</MenuItem>
+              <MenuItem value="unsealed">Unsealed Only</MenuItem>
+            </Select>
+          </FormControl>
 
-        <FormControl sx={{ minWidth: 150, flex: 1 }}>
-          <InputLabel>Product Type</InputLabel>
-          <Select
-            value={sealedFilter}
-            label="Product Type"
-            onChange={(e) =>
-              onSealedFilterChange(
-                e.target.value as "all" | "sealed" | "unsealed"
-              )
+          <Autocomplete
+            multiple
+            options={AVAILABLE_LANGUAGES}
+            value={selectedLanguages}
+            onChange={(_, newValue) => {
+              onLanguagesChange(newValue);
+            }}
+            sx={{ minWidth: 250, flex: 1 }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Languages"
+                placeholder="All Languages"
+              />
+            )}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip
+                  variant="outlined"
+                  label={option}
+                  size="small"
+                  {...getTagProps({ index })}
+                  key={option}
+                />
+              ))
             }
-          >
-            <MenuItem value="all">All Products</MenuItem>
-            <MenuItem value="sealed">Sealed Only</MenuItem>
-            <MenuItem value="unsealed">Unsealed Only</MenuItem>
-          </Select>
-        </FormControl>
+            getOptionLabel={(option) => option}
+            limitTags={3}
+            getLimitTagsText={(more) => `+${more} more`}
+          />
+        </Box>
+
+        {/* Second row: Set with full width */}
+        <Box sx={{ width: "100%" }}>
+          <Autocomplete
+            options={sortedSets}
+            getOptionLabel={(option) => {
+              const releaseDate = option.releaseDate
+                ? ` (${new Date(option.releaseDate).toLocaleDateString()})`
+                : "";
+              return `${option.name}${releaseDate}`;
+            }}
+            value={selectedSet}
+            onChange={(_, newValue) => {
+              if (newValue) {
+                onSetChange(newValue.setNameId);
+              }
+            }}
+            disabled={!selectedProductLineId}
+            sx={{ width: "100%" }}
+            renderInput={(params) => <TextField {...params} label="Set" />}
+          />
+        </Box>
       </Box>
     );
   }
