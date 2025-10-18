@@ -1,5 +1,41 @@
+# React Router build cache
 .react-router
+
+# Build artifacts (will be built in container)
 build
+
+# Node.js
 node_modules
+npm-debug.log
+yarn-error.log
+
+# Data and logs (mounted as volumes)
 data
+logs
+
+# Development files
+.env.local
+.env.development
+*.log
+
+# Documentation
+docs/
 README.md
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker files
+docker-compose*.yml
+.dockerignore

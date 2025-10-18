@@ -7,7 +7,17 @@
     "dev": "cross-env NODE_OPTIONS=\"--max-old-space-size=16384\" react-router dev",
     "start": "cross-env NODE_OPTIONS=\"--max-old-space-size=16384\" react-router-serve ./build/server/index.js",
     "typecheck": "cross-env NODE_OPTIONS=\"--max-old-space-size=16384\" react-router typegen && cross-env NODE_OPTIONS=\"--max-old-space-size=16384\" tsc",
-    "shard:stats": "cross-env NODE_OPTIONS=\"--max-old-space-size=32768\" tsx scripts/shard-stats.ts"
+    "shard:stats": "cross-env NODE_OPTIONS=\"--max-old-space-size=32768\" tsx scripts/shard-stats.ts",
+    "prod:check": "scripts\\check-docker.bat",
+    "prod:deploy": "scripts\\deploy-production.bat",
+    "prod:update": "scripts\\update-production.bat",
+    "prod:start": "scripts\\production-manager.bat start",
+    "prod:stop": "scripts\\production-manager.bat stop",
+    "prod:restart": "scripts\\production-manager.bat restart",
+    "prod:logs": "scripts\\production-manager.bat logs",
+    "prod:status": "scripts\\production-manager.bat status",
+    "prod:shell": "scripts\\production-manager.bat shell",
+    "prod:clean": "scripts\\production-manager.bat clean"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
