@@ -216,10 +216,13 @@ export const InventoryFilters = forwardRef<
           <Autocomplete
             options={sortedSets}
             getOptionLabel={(option) => {
-              const releaseDate = option.releaseDate
-                ? ` (${new Date(option.releaseDate).toLocaleDateString()})`
+              const abbreviation = option.abbreviation
+                ? `${option.abbreviation} - `
                 : "";
-              return `${option.name}${releaseDate}`;
+              const releaseDate = option.releaseDate
+                ? ` - ${new Date(option.releaseDate).toLocaleDateString()}`
+                : "";
+              return `${abbreviation}${option.name}${releaseDate}`;
             }}
             value={selectedSet}
             onChange={(_, newValue) => {
