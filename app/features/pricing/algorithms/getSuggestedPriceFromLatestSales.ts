@@ -162,7 +162,8 @@ function calculateConditionPrices(sales: Sale[]): Map<Condition, number> {
 }
 
 /**
- * Fetches latest sales for a SKU and computes time-decayed, quantity-weighted suggested prices across percentiles.
+ * Fetches latest sales for a SKU and computes time-decayed suggested prices across percentiles.
+ * Ignores sale quantity to focus on individual willingness to pay rather than bulk purchases.
  * Always fetches sales from all conditions and uses a Zipf model to normalize prices to the target condition.
  * @param sku The SKU object to fetch sales for
  * @param config Optional configuration for halfLifeDays, percentile, etc.
@@ -310,6 +311,7 @@ export interface PercentileData {
 
 /**
  * Calculate time-decay-weighted percentiles from an array of sales with interpolation.
+ * Ignores sale quantity to focus on individual willingness to pay rather than bulk purchases.
  * @param sales Array of sales, each with a price, quantity, and a timestamp (ms since epoch)
  * @param options.halfLifeDays Half-life for time decay in days (default 7)
  * @param options.percentiles Array of percentiles to calculate (default: [10,20,30,40,50,60,70,80,90])
@@ -338,12 +340,13 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
   const now = Date.now();
   const msPerDay = 24 * 60 * 60 * 1000;
 
-  // Calculate weights for each sale (weight = time decay * quantity)
+  // Calculate weights for each sale (weight = time decay only, ignoring quantity)
+  // This ensures pricing reflects what individuals are willing to pay, not bulk purchases
   const weightedSales = sales.map((sale) => {
     const ageDays = (now - sale.timestamp) / msPerDay;
-    // Exponential decay: weight = 0.5^(age/halfLife) * quantity
+    // Exponential decay: weight = 0.5^(age/halfLife)
     const timeWeight = Math.pow(0.5, ageDays / halfLifeDays);
-    const weight = timeWeight * (sale.quantity || 1);
+    const weight = timeWeight; // Quantity is intentionally ignored
     return { ...sale, weight };
   });
 
@@ -507,7 +510,8 @@ function calculateExpectedTimeToSellMs(
  * Calculate expected time to sell based on historical sales at or above a given price
  */
 /**
- * Orchestrates the calculation of time-decayed, quantity-weighted percentile prices from sales data.
+ * Orchestrates the calculation of time-decayed percentile prices from sales data.
+ * Ignores sale quantity to focus on individual willingness to pay rather than bulk purchases.
  * @param sales Array of sales, each with price, quantity, and timestamp (ms since epoch)
  * @param options Optional: percentile (0-100, used for backward compatibility), halfLifeDays (default 7)
  * @returns Object with percentile data, suggestedPrice (from specified percentile), and input summary
