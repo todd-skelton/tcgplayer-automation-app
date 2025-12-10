@@ -15,7 +15,13 @@ import {
   Select,
   MenuItem,
   FormControl,
+  Dialog,
+  DialogContent,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import ImageIcon from "@mui/icons-material/Image";
 import {
   type GridColDef,
   type GridRowsProp,
@@ -94,6 +100,10 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
       const searchInputRef = useRef<HTMLInputElement>(null);
       const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
       const firstPlusButtonRef = useRef<HTMLButtonElement>(null);
+      const [imageDialogOpen, setImageDialogOpen] = useState<boolean>(false);
+      const [selectedProductId, setSelectedProductId] = useState<number | null>(
+        null
+      );
 
       // Handle search submission
       const handleSearchSubmit = useCallback(() => {
@@ -445,8 +455,62 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
         return pendingInventory.reduce((sum, entry) => sum + entry.quantity, 0);
       }, [pendingInventory]);
 
+      // Helper function to get TCGPlayer image URL
+      const getTcgPlayerImageUrl = useCallback(
+        (productId: number, size: string = "200x200") => {
+          return `https://tcgplayer-cdn.tcgplayer.com/product/${productId}_in_${size}.jpg`;
+        },
+        []
+      );
+
+      // Handle thumbnail click to open full image
+      const handleThumbnailClick = useCallback((productId: number) => {
+        setSelectedProductId(productId);
+        setImageDialogOpen(true);
+      }, []);
+
+      // Handle closing image dialog
+      const handleCloseImageDialog = useCallback(() => {
+        setImageDialogOpen(false);
+        setSelectedProductId(null);
+      }, []);
+
       // Define DataGrid columns
       const columns: GridColDef<DataGridRow>[] = [
+        {
+          field: "image",
+          headerName: "Image",
+          width: 60,
+          sortable: false,
+          filterable: false,
+          renderCell: (params) => {
+            return (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: "100%",
+                }}
+              >
+                <Tooltip title="View product image">
+                  <IconButton
+                    size="small"
+                    onClick={() => handleThumbnailClick(params.row.productId)}
+                    sx={{
+                      color: "primary.main",
+                      "&:hover": {
+                        color: "primary.dark",
+                      },
+                    }}
+                  >
+                    <ImageIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            );
+          },
+        },
         {
           field: "skuSelector",
           headerName: "SKU Selection",
@@ -786,6 +850,58 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
               getRowHeight={() => "auto"}
             />
           </Box>
+
+          {/* Image Dialog for Full Size View */}
+          <Dialog
+            open={imageDialogOpen}
+            onClose={handleCloseImageDialog}
+            maxWidth="md"
+            fullWidth
+          >
+            <DialogContent
+              sx={{
+                position: "relative",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                p: 3,
+                backgroundColor: "#f5f5f5",
+              }}
+            >
+              <IconButton
+                onClick={handleCloseImageDialog}
+                sx={{
+                  position: "absolute",
+                  right: 8,
+                  top: 8,
+                  color: "grey.500",
+                  backgroundColor: "white",
+                  "&:hover": {
+                    backgroundColor: "grey.100",
+                  },
+                }}
+              >
+                <CloseIcon />
+              </IconButton>
+              {selectedProductId && (
+                <img
+                  src={getTcgPlayerImageUrl(selectedProductId, "400x400")}
+                  alt="Product"
+                  style={{
+                    maxWidth: "100%",
+                    maxHeight: "70vh",
+                    objectFit: "contain",
+                  }}
+                  onError={(e) => {
+                    e.currentTarget.src = getTcgPlayerImageUrl(
+                      selectedProductId,
+                      "200x200"
+                    );
+                  }}
+                />
+              )}
+            </DialogContent>
+          </Dialog>
         </Box>
       );
     }
