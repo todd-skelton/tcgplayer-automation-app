@@ -1,21 +1,32 @@
 import axios from "axios";
+import { getHttpConfig } from "./config/httpConfig";
+
+// Get config from local storage
+const getConfig = () => getHttpConfig();
 
 const axiosClient = axios.create({
   headers: {
-    "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-    Cookie:
-      "TCGAuthTicket_Production=105C6C922FA5F34C21888359FA528C0B2A26C5231C7A4C0C93C118FCC24783B7860A4343216E3A8244EA0499BBFF5F1AF79E4D1F74B0F00D1AE4E3A753C473BE626FF940AF246768D9EA84A982CCA724DF51984CFB7B0FFAE8E8AB03F394B27371C20F59DF8933F0EDCAAB70B1A7456C65AC870C;",
+    "User-Agent": "",
+    Cookie: "",
   },
 });
 
+// Update headers with current config before each request
+axiosClient.interceptors.request.use((config) => {
+  const httpConfig = getConfig();
+  config.headers["User-Agent"] = httpConfig.userAgent;
+  if (httpConfig.tcgAuthCookie) {
+    config.headers.Cookie = `TCGAuthTicket_Production=${httpConfig.tcgAuthCookie};`;
+  }
+  return config;
+});
+
 // Throttle config
-const REQUEST_DELAY_MS = 1500;
-const RATE_LIMIT_COOLDOWN_MS = 60000; // 60 seconds
 let lastRequestTime = 0;
 let rateLimitedUntil = 0;
 
 async function throttle() {
+  const httpConfig = getConfig();
   const now = Date.now();
 
   // Check if we're still in cooldown period
@@ -27,7 +38,7 @@ async function throttle() {
     await new Promise((resolve) => setTimeout(resolve, waitTime));
   }
 
-  const wait = Math.max(0, lastRequestTime + REQUEST_DELAY_MS - now);
+  const wait = Math.max(0, lastRequestTime + httpConfig.requestDelayMs - now);
   if (wait > 0) {
     await new Promise((resolve) => setTimeout(resolve, wait));
   }
@@ -35,17 +46,22 @@ async function throttle() {
 }
 
 function handleRateLimit() {
-  rateLimitedUntil = Date.now() + RATE_LIMIT_COOLDOWN_MS;
-  console.log(`[HTTP] 403 detected, entering 60s cooldown period`);
+  const httpConfig = getConfig();
+  rateLimitedUntil = Date.now() + httpConfig.rateLimitCooldownMs;
+  console.log(
+    `[HTTP] 403 detected, entering ${Math.ceil(
+      httpConfig.rateLimitCooldownMs / 1000
+    )}s cooldown period`
+  );
 }
 
 // Concurrency config
-const MAX_CONCURRENT_REQUESTS = 5;
 let activeRequests = 0;
 const requestQueue: (() => void)[] = [];
 
 async function acquireSlot() {
-  if (activeRequests < MAX_CONCURRENT_REQUESTS) {
+  const httpConfig = getConfig();
+  if (activeRequests < httpConfig.maxConcurrentRequests) {
     activeRequests++;
     return;
   }

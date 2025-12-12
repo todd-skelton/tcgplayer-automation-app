@@ -711,18 +711,6 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
 
       return (
         <Box>
-          {pendingInventory.length > 0 && (
-            <Box sx={{ mb: 2 }}>
-              <Chip
-                label={`${getTotalPendingItems()} items pending across ${
-                  pendingInventory.length
-                } SKUs`}
-                color="primary"
-                variant="outlined"
-              />
-            </Box>
-          )}
-
           {/* Product Name Search Filter */}
           <Box sx={{ mb: 2 }}>
             <TextField

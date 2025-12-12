@@ -33,6 +33,7 @@ import { getProductLines } from "../integrations/tcgplayer/client/get-product-li
 import { getCategoryFilters } from "../integrations/tcgplayer/client/get-category-filters";
 import type { ProductLine } from "../shared/data-types/productLine";
 import { useEffect, useState } from "react";
+import { useHttpConfig } from "../core/config/httpConfig";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -643,6 +644,7 @@ export default function Home() {
   const allCategory3DataFetcher = useFetcher<typeof action>();
   const allProductLinesFetcher = useFetcher();
   const setProductsFetcher = useFetcher<typeof action>();
+  const httpConfig = useHttpConfig();
   const { productLines } = useLoaderData() as {
     productLines: ProductLine[];
   };
@@ -661,6 +663,24 @@ export default function Home() {
 
   return (
     <Box sx={{ p: 3 }}>
+      {!httpConfig.config.tcgAuthCookie && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          <Typography variant="body1" gutterBottom>
+            <strong>Authentication Required!</strong> You need to configure your
+            TCGPlayer authentication cookie before using any API features.
+          </Typography>
+          <Button
+            component={Link}
+            to="/http-configuration"
+            variant="contained"
+            size="small"
+            sx={{ mt: 1 }}
+          >
+            Configure Now
+          </Button>
+        </Alert>
+      )}
+
       {/* Navigation Links */}
       <Paper sx={{ p: 2, mb: 3 }} elevation={2}>
         <Typography variant="h5" gutterBottom>
@@ -708,6 +728,14 @@ export default function Home() {
             color="primary"
           >
             ⚙️ Configuration
+          </Button>
+          <Button
+            component={Link}
+            to="/http-configuration"
+            variant="outlined"
+            color="primary"
+          >
+            🔐 HTTP Configuration
           </Button>
         </Stack>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>

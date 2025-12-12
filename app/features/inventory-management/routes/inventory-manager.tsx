@@ -131,7 +131,8 @@ export default function InventoryManagerRoute() {
             {pendingInventory.length > 0 && (
               <Stack direction="row" spacing={2} alignItems="center">
                 <Typography variant="body2" color="primary">
-                  {getPendingTotal()} items pending
+                  {getPendingTotal()} items pending across{" "}
+                  {pendingInventory.length} SKUs
                 </Typography>
                 <Button
                   component={Link}

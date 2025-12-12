@@ -23,6 +23,10 @@ export default [
     file: "features/pricing/routes/configuration.tsx",
   },
   {
+    path: "/http-configuration",
+    file: "routes/http-configuration.tsx",
+  },
+  {
     path: "/api/suggested-price",
     file: "features/pricing/routes/api.suggested-price.tsx",
   },

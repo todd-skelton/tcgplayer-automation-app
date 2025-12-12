@@ -12,7 +12,9 @@ import {
   FormControlLabel,
   Switch,
 } from "@mui/material";
+import { Link } from "react-router";
 import { useConfiguration } from "../hooks/useConfiguration";
+import { useHttpConfig } from "~/core/config/httpConfig";
 
 export default function ConfigurationRoute() {
   const {
@@ -23,6 +25,7 @@ export default function ConfigurationRoute() {
     updateFormDefaults,
     resetToDefaults,
   } = useConfiguration();
+  const httpConfig = useHttpConfig();
   const [showResetConfirm, setShowResetConfirm] = React.useState(false);
   const [successMessage, setSuccessMessage] = React.useState<string>("");
 
@@ -107,6 +110,24 @@ export default function ConfigurationRoute() {
         Customize default values and pricing parameters. Changes are
         automatically saved to local storage.
       </Typography>
+
+      {!httpConfig.config.tcgAuthCookie && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          <Typography variant="body2" gutterBottom>
+            <strong>Authentication Required:</strong> You haven't configured
+            your TCGPlayer auth cookie yet.
+          </Typography>
+          <Button
+            component={Link}
+            to="/http-configuration"
+            variant="outlined"
+            size="small"
+            sx={{ mt: 1 }}
+          >
+            Configure HTTP Settings
+          </Button>
+        </Alert>
+      )}
 
       {successMessage && (
         <Alert severity="success" sx={{ mb: 3 }}>
