@@ -1,23 +1,23 @@
 import axios from "axios";
-import { getHttpConfig } from "./config/httpConfig";
-
-// Get config from local storage
-const getConfig = () => getHttpConfig();
+import { getHttpConfig, type HttpConfig } from "./config/httpConfig";
 
 const axiosClient = axios.create({
+  withCredentials: true,
   headers: {
-    "User-Agent": "",
-    Cookie: "",
+    "Cache-Control": "no-cache",
+    "Content-Type": "application/json",
   },
 });
 
 // Update headers with current config before each request
-axiosClient.interceptors.request.use((config) => {
-  const httpConfig = getConfig();
+axiosClient.interceptors.request.use(async (config) => {
+  const httpConfig = await getHttpConfig();
   config.headers["User-Agent"] = httpConfig.userAgent;
-  if (httpConfig.tcgAuthCookie) {
-    config.headers.Cookie = `TCGAuthTicket_Production=${httpConfig.tcgAuthCookie};`;
-  }
+  httpConfig.tcgAuthCookie &&
+    (config.headers[
+      "Cookie"
+    ] = `TCGAuthTicket_Production=${httpConfig.tcgAuthCookie};`);
+  console.log(httpConfig, config);
   return config;
 });
 
@@ -26,7 +26,7 @@ let lastRequestTime = 0;
 let rateLimitedUntil = 0;
 
 async function throttle() {
-  const httpConfig = getConfig();
+  const httpConfig = await getHttpConfig();
   const now = Date.now();
 
   // Check if we're still in cooldown period
@@ -45,8 +45,8 @@ async function throttle() {
   lastRequestTime = Date.now();
 }
 
-function handleRateLimit() {
-  const httpConfig = getConfig();
+async function handleRateLimit() {
+  const httpConfig = await getHttpConfig();
   rateLimitedUntil = Date.now() + httpConfig.rateLimitCooldownMs;
   console.log(
     `[HTTP] 403 detected, entering ${Math.ceil(
@@ -60,7 +60,7 @@ let activeRequests = 0;
 const requestQueue: (() => void)[] = [];
 
 async function acquireSlot() {
-  const httpConfig = getConfig();
+  const httpConfig = await getHttpConfig();
   if (activeRequests < httpConfig.maxConcurrentRequests) {
     activeRequests++;
     return;

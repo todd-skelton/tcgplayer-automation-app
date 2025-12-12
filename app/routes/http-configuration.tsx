@@ -11,32 +11,97 @@ import {
   InputAdornment,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import { useHttpConfig } from "~/core/config/httpConfig";
+import {
+  type HttpConfig,
+  saveHttpConfig,
+  getHttpConfig,
+  DEFAULT_HTTP_CONFIG,
+} from "~/core/config/httpConfig";
+import {
+  data,
+  useLoaderData,
+  useFetcher,
+  type LoaderFunctionArgs,
+} from "react-router";
+
+export async function loader() {
+  const config = await getHttpConfig();
+  return data({ config });
+}
+
+export async function action({ request }: LoaderFunctionArgs) {
+  const formData = await request.formData();
+  const actionType = formData.get("actionType");
+
+  if (actionType === "update") {
+    const config: HttpConfig = {
+      tcgAuthCookie: formData.get("tcgAuthCookie") as string,
+      userAgent: formData.get("userAgent") as string,
+      requestDelayMs: Number(formData.get("requestDelayMs")),
+      rateLimitCooldownMs: Number(formData.get("rateLimitCooldownMs")),
+      maxConcurrentRequests: Number(formData.get("maxConcurrentRequests")),
+    };
+
+    await saveHttpConfig(config);
+    return data({ success: true, message: "Configuration saved" });
+  }
+
+  if (actionType === "reset") {
+    await saveHttpConfig(DEFAULT_HTTP_CONFIG);
+    return data({ success: true, message: "Configuration reset to defaults" });
+  }
+
+  return data({ success: false, message: "Unknown action" }, { status: 400 });
+}
 
 export default function HttpConfigurationRoute() {
-  const { config, updateConfig, resetToDefaults } = useHttpConfig();
+  const { config: initialConfig } = useLoaderData<typeof loader>();
+  const fetcher = useFetcher<typeof action>();
+  const [config, setConfig] = React.useState(initialConfig);
   const [showCookie, setShowCookie] = React.useState(false);
-  const [successMessage, setSuccessMessage] = React.useState<string>("");
   const [showResetConfirm, setShowResetConfirm] = React.useState(false);
 
+  // Update local state when fetcher completes
+  React.useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data?.success) {
+      // Reload to get fresh data
+      window.location.reload();
+    }
+  }, [fetcher.state, fetcher.data]);
+
   const handleConfigChange =
-    (field: keyof typeof config) =>
+    (field: keyof HttpConfig) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const value =
         event.target.type === "number"
           ? Number(event.target.value)
           : event.target.value;
-      updateConfig({ [field]: value });
-      setSuccessMessage("Configuration updated");
-      setTimeout(() => setSuccessMessage(""), 2000);
+      setConfig((prev) => ({ ...prev, [field]: value }));
     };
+
+  const handleSave = () => {
+    const formData = new FormData();
+    formData.append("actionType", "update");
+    formData.append("tcgAuthCookie", config.tcgAuthCookie);
+    formData.append("userAgent", config.userAgent);
+    formData.append("requestDelayMs", config.requestDelayMs.toString());
+    formData.append(
+      "rateLimitCooldownMs",
+      config.rateLimitCooldownMs.toString()
+    );
+    formData.append(
+      "maxConcurrentRequests",
+      config.maxConcurrentRequests.toString()
+    );
+    fetcher.submit(formData, { method: "post" });
+  };
 
   const handleReset = () => {
     if (showResetConfirm) {
-      resetToDefaults();
+      const formData = new FormData();
+      formData.append("actionType", "reset");
+      fetcher.submit(formData, { method: "post" });
       setShowResetConfirm(false);
-      setSuccessMessage("Configuration reset to defaults");
-      setTimeout(() => setSuccessMessage(""), 3000);
     } else {
       setShowResetConfirm(true);
       setTimeout(() => setShowResetConfirm(false), 5000);
@@ -50,12 +115,18 @@ export default function HttpConfigurationRoute() {
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
         Configure HTTP client settings for TCGPlayer API requests. Changes are
-        automatically saved to local storage.
+        saved to the database.
       </Typography>
 
-      {successMessage && (
+      {fetcher.data?.success && (
         <Alert severity="success" sx={{ mb: 3 }}>
-          {successMessage}
+          {fetcher.data.message}
+        </Alert>
+      )}
+
+      {fetcher.data && !fetcher.data.success && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {fetcher.data.message}
         </Alert>
       )}
 
@@ -135,6 +206,17 @@ export default function HttpConfigurationRoute() {
             helperText="Maximum number of simultaneous HTTP requests"
           />
         </Stack>
+        <Box sx={{ mt: 3 }}>
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={fetcher.state === "submitting"}
+          >
+            {fetcher.state === "submitting"
+              ? "Saving..."
+              : "Save Configuration"}
+          </Button>
+        </Box>
       </Paper>
 
       {/* Reset Configuration */}

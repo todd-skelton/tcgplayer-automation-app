@@ -30,6 +30,15 @@ export interface ProcessingProgress {
   skipped: number;
   errors: number;
   warnings: number;
+  // Hierarchical progress support
+  phase?: string; // Current phase name (e.g., "Fetching Price Data")
+  subProgress?: {
+    // Sub-progress for current phase
+    current: number;
+    total: number;
+    status: string;
+  };
+  phaseStartTime?: number; // Timestamp when phase started (for elapsed time)
 }
 
 export interface ProcessingSummary {

@@ -33,7 +33,6 @@ import { getProductLines } from "../integrations/tcgplayer/client/get-product-li
 import { getCategoryFilters } from "../integrations/tcgplayer/client/get-category-filters";
 import type { ProductLine } from "../shared/data-types/productLine";
 import { useEffect, useState } from "react";
-import { useHttpConfig } from "../core/config/httpConfig";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -56,6 +55,7 @@ export async function action({ request }: LoaderFunctionArgs) {
   } = await import("../datastores");
 
   const formData = await request.formData();
+
   const actionType = formData.get("actionType");
 
   if (actionType === "fetchAllCategory3Data") {
@@ -364,10 +364,16 @@ export async function action({ request }: LoaderFunctionArgs) {
 export async function loader() {
   // Dynamic import of datastores for server-side only
   const { productLinesDb } = await import("../datastores");
+  const { getHttpConfig } = await import("../core/config/httpConfig");
 
   // Load all product lines from NeDB
   const productLines = await productLinesDb.find({});
-  return { productLines };
+  const httpConfig = await getHttpConfig();
+
+  return {
+    productLines,
+    hasAuthCookie: !!httpConfig.tcgAuthCookie,
+  };
 }
 
 // --- Refactored helpers for category, set, and product level processing ---
@@ -644,9 +650,9 @@ export default function Home() {
   const allCategory3DataFetcher = useFetcher<typeof action>();
   const allProductLinesFetcher = useFetcher();
   const setProductsFetcher = useFetcher<typeof action>();
-  const httpConfig = useHttpConfig();
-  const { productLines } = useLoaderData() as {
+  const { productLines, hasAuthCookie } = useLoaderData() as {
     productLines: ProductLine[];
+    hasAuthCookie: boolean;
   };
   const [selectedProductLineId, setSelectedProductLineId] = useState<
     number | null
@@ -663,7 +669,7 @@ export default function Home() {
 
   return (
     <Box sx={{ p: 3 }}>
-      {!httpConfig.config.tcgAuthCookie && (
+      {!hasAuthCookie && (
         <Alert severity="error" sx={{ mb: 3 }}>
           <Typography variant="body1" gutterBottom>
             <strong>Authentication Required!</strong> You need to configure your

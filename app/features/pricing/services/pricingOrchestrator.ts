@@ -4,6 +4,7 @@ import type {
   ProcessingSummary,
   PricerSku,
   TcgPlayerListing,
+  ProcessingProgress,
 } from "../../../core/types/pricing";
 import type { DataSourceService } from "../../../shared/services/dataSourceInterfaces";
 import {
@@ -30,15 +31,7 @@ export interface PipelineConfig extends PricingConfig {
   filename?: string;
   enableEnrichment?: boolean;
   enableExport?: boolean;
-  onProgress?: (progress: {
-    current: number;
-    total: number;
-    status: string;
-    processed: number;
-    skipped: number;
-    errors: number;
-    warnings: number;
-  }) => void;
+  onProgress?: (progress: ProcessingProgress) => void;
   isCancelled?: () => boolean;
 }
 
@@ -64,14 +57,17 @@ export class PricingOrchestrator {
 
     try {
       // Step 1: Source and validate data
+      const phaseStartTime = Date.now();
       config.onProgress?.({
         current: 0,
-        total: 0,
+        total: 6,
         status: "Fetching and validating data...",
         processed: 0,
         skipped: 0,
         errors: 0,
         warnings: 0,
+        phase: "Data Validation",
+        phaseStartTime,
       });
 
       const rawData = await dataSource.fetchData(sourceParams);
@@ -112,10 +108,13 @@ export class PricingOrchestrator {
         skipped: sourceSkus.length - validSkus.length,
         errors: 0,
         warnings: 0,
+        phase: "Preparing Price Data",
+        phaseStartTime: Date.now(),
       });
 
       // Step 3: Fetch price points for pricing
       const skuIds = validSkus.map((sku) => sku.sku);
+      const step3StartTime = Date.now();
       const pricePointsMap =
         await this.enrichmentService.fetchPricePointsForPricing(
           skuIds,
@@ -123,11 +122,18 @@ export class PricingOrchestrator {
             config.onProgress?.({
               current: 3,
               total: 6,
-              status,
-              processed: current,
+              status: "Fetching price points...",
+              processed: 0,
               skipped: sourceSkus.length - validSkus.length,
               errors: 0,
               warnings: 0,
+              phase: "Fetching Price Data",
+              subProgress: {
+                current,
+                total,
+                status,
+              },
+              phaseStartTime: step3StartTime,
             });
           }
         );
@@ -135,6 +141,7 @@ export class PricingOrchestrator {
       if (config.isCancelled?.())
         throw new Error("Processing cancelled by user");
 
+      const step4StartTime = Date.now();
       config.onProgress?.({
         current: 4,
         total: 6,
@@ -143,12 +150,36 @@ export class PricingOrchestrator {
         skipped: sourceSkus.length - validSkus.length,
         errors: 0,
         warnings: 0,
+        phase: "Calculating Prices",
+        phaseStartTime: step4StartTime,
       });
 
       // Step 4: Execute core pricing calculations
+      // Wrap the config to capture sub-progress from pricing calculator
+      const wrappedConfig = {
+        ...config,
+        onProgress: (progress: any) => {
+          config.onProgress?.({
+            current: 4,
+            total: 6,
+            status: "Calculating pricing...",
+            processed: progress.processed,
+            skipped: sourceSkus.length - validSkus.length,
+            errors: progress.errors,
+            warnings: progress.warnings,
+            phase: "Calculating Prices",
+            subProgress: {
+              current: progress.current,
+              total: progress.total,
+              status: progress.status,
+            },
+            phaseStartTime: step4StartTime,
+          });
+        },
+      };
       const pricingResult = await this.pricingCalculator.calculatePrices(
         validSkus,
-        config,
+        wrappedConfig,
         pricePointsMap,
         config.source
       );
@@ -156,6 +187,7 @@ export class PricingOrchestrator {
       if (config.isCancelled?.())
         throw new Error("Processing cancelled by user");
 
+      const step5StartTime = Date.now();
       config.onProgress?.({
         current: 5,
         total: 6,
@@ -164,6 +196,8 @@ export class PricingOrchestrator {
         skipped: sourceSkus.length - validSkus.length,
         errors: pricingResult.stats.errors,
         warnings: pricingResult.stats.warnings,
+        phase: "Enriching Display Data",
+        phaseStartTime: step5StartTime,
       });
 
       // Step 5: Enrich for display
@@ -173,11 +207,18 @@ export class PricingOrchestrator {
           config.onProgress?.({
             current: 5,
             total: 6,
-            status,
-            processed: current,
+            status: "Enriching display data...",
+            processed: pricingResult.stats.processed,
             skipped: sourceSkus.length - validSkus.length,
             errors: pricingResult.stats.errors,
             warnings: pricingResult.stats.warnings,
+            phase: "Enriching Display Data",
+            subProgress: {
+              current,
+              total,
+              status,
+            },
+            phaseStartTime: step5StartTime,
           });
         },
         pricePointsMap,
@@ -196,6 +237,8 @@ export class PricingOrchestrator {
           skipped: sourceSkus.length - validSkus.length,
           errors: pricingResult.stats.errors,
           warnings: pricingResult.stats.warnings,
+          phase: "Exporting",
+          phaseStartTime: Date.now(),
         });
 
         // Separate successful from failed pricing (matching old logic)
@@ -352,6 +395,7 @@ export class PricingOrchestrator {
         skipped: sourceSkus.length - validSkus.length,
         errors: pricingResult.stats.errors,
         warnings: pricingResult.stats.warnings,
+        phase: "Complete",
       });
 
       return {

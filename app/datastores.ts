@@ -7,6 +7,7 @@ import type { Product } from "./features/inventory-management/types/product";
 import type { ProductLine } from "./shared/data-types/productLine";
 import type { CategoryFilter } from "./shared/data-types/categoryFilter";
 import type { PendingInventoryEntry } from "./features/pending-inventory/types/pendingInventory";
+import type { HttpConfig } from "./core/config/httpConfig";
 import {
   shardedProductsDb,
   shardedSkusDb,
@@ -50,6 +51,12 @@ export const categoryFiltersDb: Datastore<CategoryFilter> = Datastore.create({
 export const pendingInventoryDb: Datastore<PendingInventoryEntry> =
   Datastore.create({
     filename: path.join(dataDir, "pendingInventory.db"),
+    autoload: true,
+  });
+
+export const httpConfigDb: Datastore<HttpConfig & { _id?: string }> =
+  Datastore.create({
+    filename: path.join(dataDir, "httpConfig.db"),
     autoload: true,
   });
 
