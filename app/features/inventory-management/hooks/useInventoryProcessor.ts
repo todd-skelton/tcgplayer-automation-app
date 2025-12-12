@@ -46,7 +46,7 @@ export interface InventoryProcessorReturn extends InventoryProcessorState {
   setSuccess: (success: string | null) => void;
   loadProductLines: () => Promise<void>;
   loadSets: (productLineId: number) => Promise<void>;
-  loadSkus: (setId: number) => Promise<void>;
+  loadSkus: (setId: number, productLineId: number) => Promise<void>;
   loadCurrentInventory: () => Promise<void>;
   loadPendingInventory: () => Promise<void>;
   updatePendingInventory: (
@@ -72,20 +72,31 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     pendingInventory: [],
     selectedProductLineId: null,
     selectedSetId: null,
-    sealedFilter: "all",
+    sealedFilter: "unsealed", // Default to Unsealed
     selectedLanguages: [],
   });
 
-  const loadProductLines = useCallback(async () => {
+  const loadSkus = useCallback(async (setId: number, productLineId: number) => {
     try {
-      const response = await fetch("/api/inventory/product-lines");
-      if (!response.ok) throw new Error("Failed to load product lines");
-      const productLines = await response.json();
-      setState((prev) => ({ ...prev, productLines }));
+      // Load SKUs for the selected set
+      // Include productLineId for efficient sharded query
+      const skusResponse = await fetch(
+        `/api/inventory/skus-by-set?setId=${setId}&productLineId=${productLineId}`
+      );
+
+      if (!skusResponse.ok) throw new Error("Failed to load SKUs");
+
+      const skus = await skusResponse.json();
+
+      setState((prev) => ({
+        ...prev,
+        skus,
+        selectedSetId: setId,
+      }));
     } catch (error) {
-      baseProcessor.setError(`Failed to load product lines: ${error}`);
+      baseProcessor.setError(`Failed to load SKUs: ${error}`);
     }
-  }, []); // Remove setError dependency
+  }, []);
 
   const loadSets = useCallback(
     async (productLineId: number) => {
@@ -95,44 +106,56 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
         );
         if (!response.ok) throw new Error("Failed to load sets");
         const sets = await response.json();
+
+        // Filter out inactive sets and sort by release date descending
+        const activeSets = sets
+          .filter((set: CategorySet) => !set.name.startsWith("[Inactive"))
+          .sort((a: CategorySet, b: CategorySet) => {
+            if (!a.releaseDate && !b.releaseDate) return 0;
+            if (!a.releaseDate) return 1;
+            if (!b.releaseDate) return -1;
+            return (
+              new Date(b.releaseDate).getTime() -
+              new Date(a.releaseDate).getTime()
+            );
+          });
+
+        // Auto-select the latest set (first one after sorting)
+        const latestSet = activeSets.length > 0 ? activeSets[0] : null;
+
         setState((prev) => ({
           ...prev,
           sets,
           selectedProductLineId: productLineId,
-          selectedSetId: null,
+          selectedSetId: latestSet?.setNameId || null,
           skus: [],
         }));
+
+        // Auto-load SKUs for the latest set
+        if (latestSet) {
+          loadSkus(latestSet.setNameId, productLineId);
+        }
       } catch (error) {
         baseProcessor.setError(`Failed to load sets: ${error}`);
       }
     },
-    [] // Remove setError dependency
+    [loadSkus]
   );
 
-  const loadSkus = useCallback(
-    async (setId: number) => {
-      try {
-        // Load SKUs for the selected set
-        // Include productLineId for efficient sharded query
-        const skusResponse = await fetch(
-          `/api/inventory/skus-by-set?setId=${setId}&productLineId=${state.selectedProductLineId}`
-        );
+  const loadProductLines = useCallback(async () => {
+    try {
+      const response = await fetch("/api/inventory/product-lines");
+      if (!response.ok) throw new Error("Failed to load product lines");
+      const productLines = await response.json();
 
-        if (!skusResponse.ok) throw new Error("Failed to load SKUs");
+      setState((prev) => ({ ...prev, productLines }));
 
-        const skus = await skusResponse.json();
-
-        setState((prev) => ({
-          ...prev,
-          skus,
-          selectedSetId: setId,
-        }));
-      } catch (error) {
-        baseProcessor.setError(`Failed to load SKUs: ${error}`);
-      }
-    },
-    [state.selectedProductLineId] // Add selectedProductLineId as dependency
-  );
+      // Auto-select Pokemon (product line 3) and load its sets
+      loadSets(3);
+    } catch (error) {
+      baseProcessor.setError(`Failed to load product lines: ${error}`);
+    }
+  }, [loadSets]);
 
   const loadCurrentInventory = useCallback(async () => {
     try {

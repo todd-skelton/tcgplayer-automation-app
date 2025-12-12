@@ -54,7 +54,9 @@ export default function InventoryManagerRoute() {
   };
 
   const handleSetChange = (setId: number) => {
-    loadSkus(setId);
+    if (selectedProductLineId) {
+      loadSkus(setId, selectedProductLineId);
+    }
   };
 
   const handleClearPendingInventory = () => {
