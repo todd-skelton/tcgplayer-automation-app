@@ -1,7 +1,7 @@
 import type {
   Product,
   Listing,
-} from "../../../integrations/tcgplayer/client/get-search-results";
+} from "../../../integrations/tcgplayer/client/get-search-results.server";
 import type { TcgPlayerListing } from "../../../core/types/pricing";
 
 export interface SellerInventoryItem {

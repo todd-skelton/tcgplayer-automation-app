@@ -1,7 +1,7 @@
 import type { PricerSku, PricingConfig } from "../../../core/types/pricing";
 import { getSuggestedPrice } from "./pricingService";
 import { calculateMarketplacePrice } from "./pricingService";
-import type { PricePoint } from "../../../integrations/tcgplayer/client/get-price-points";
+import type { PricePoint } from "../../../integrations/tcgplayer/client/get-price-points.server";
 import type { ProductDisplayInfo } from "../../../shared/services/dataEnrichmentService";
 
 export interface PricingResult {

@@ -11,18 +11,18 @@ import {
   InputAdornment,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import {
-  type HttpConfig,
-  saveHttpConfig,
-  getHttpConfig,
-  DEFAULT_HTTP_CONFIG,
-} from "~/core/config/httpConfig";
+import type { HttpConfig } from "~/core/config/httpConfig.server";
 import {
   data,
   useLoaderData,
   useFetcher,
   type LoaderFunctionArgs,
 } from "react-router";
+import {
+  getHttpConfig,
+  saveHttpConfig,
+  DEFAULT_HTTP_CONFIG,
+} from "~/core/config/httpConfig.server";
 
 export async function loader() {
   const config = await getHttpConfig();

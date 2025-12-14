@@ -1,6 +1,6 @@
 import type { Sku } from "../../../shared/data-types/sku";
-import { getPriceHistory } from "../../../integrations/tcgplayer/client/get-price-history";
-import { getListings } from "../../../integrations/tcgplayer/client/get-listings";
+import { getPriceHistory } from "../../../integrations/tcgplayer/client/get-price-history.server";
+import { getListings } from "../../../integrations/tcgplayer/client/get-listings.server";
 
 /**
  * Suggest a price for a given SKU using a rolling window algorithm:

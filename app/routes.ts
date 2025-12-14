@@ -32,42 +32,38 @@ export default [
   },
   {
     path: "/api/seller-inventory",
-    file: "features/seller-management/routes/api.seller-inventory.tsx",
+    file: "features/seller-management/routes/api.seller-inventory.ts",
   },
   {
     path: "/api/price-points",
-    file: "features/pricing/routes/api.price-points.tsx",
+    file: "features/pricing/routes/api.price-points.ts",
   },
   {
     path: "/api/validate-skus",
-    file: "features/pricing/routes/api.validate-skus.tsx",
+    file: "features/pricing/routes/api.validate-skus.ts",
   },
   {
     path: "/api/convert-to-pricer-sku",
-    file: "features/file-upload/routes/api.convert-to-pricer-sku.tsx",
+    file: "features/file-upload/routes/api.convert-to-pricer-sku.ts",
   },
   {
     path: "/api/inventory/product-lines",
-    file: "features/inventory-management/routes/api.inventory-product-lines.tsx",
+    file: "features/inventory-management/routes/api.inventory-product-lines.ts",
   },
   {
     path: "/api/inventory/sets",
-    file: "features/inventory-management/routes/api.inventory-sets.tsx",
+    file: "features/inventory-management/routes/api.inventory-sets.ts",
   },
   {
     path: "/api/inventory/skus",
-    file: "features/inventory-management/routes/api.inventory-skus.tsx",
+    file: "features/inventory-management/routes/api.inventory-skus.ts",
   },
   {
     path: "/api/inventory/skus-by-set",
-    file: "features/inventory-management/routes/api.inventory-skus-by-set.tsx",
-  },
-  {
-    path: "/api/inventory/current",
-    file: "features/inventory-management/routes/api.inventory-current.tsx",
+    file: "features/inventory-management/routes/api.inventory-skus-by-set.ts",
   },
   {
     path: "/api/pending-inventory",
-    file: "features/pending-inventory/routes/api.pending-inventory.tsx",
+    file: "features/pending-inventory/routes/api.pending-inventory.ts",
   },
 ] satisfies RouteConfig;

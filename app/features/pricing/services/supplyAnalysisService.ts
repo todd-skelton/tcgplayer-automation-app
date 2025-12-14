@@ -2,7 +2,7 @@ import type { Sku } from "../../../shared/data-types/sku";
 import {
   getListings,
   getAllListings,
-} from "../../../integrations/tcgplayer/client/get-listings";
+} from "../../../integrations/tcgplayer/client/get-listings.server";
 
 export interface ListingData {
   price: number;

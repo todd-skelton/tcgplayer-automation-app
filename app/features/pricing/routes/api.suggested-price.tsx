@@ -1,9 +1,9 @@
 import { getSuggestedPriceFromLatestSales } from "../algorithms/getSuggestedPriceFromLatestSales";
-import { productsDb, skusDb } from "../../../datastores";
 import { data } from "react-router";
 import type { Product } from "../../inventory-management/types/product";
 import type { Sku } from "../../../shared/data-types/sku";
 import { calculateMarketplacePrice } from "../services/pricingService";
+import { skusDb, productsDb } from "~/datastores.server";
 
 // Simple API endpoint to get suggested price for a single product
 export async function action({ request }: { request: Request }) {

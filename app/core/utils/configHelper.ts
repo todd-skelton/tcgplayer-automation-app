@@ -1,4 +1,5 @@
 import type { HttpConfig } from "../config/httpConfig";
+import { setRequestConfig } from "../httpClient";
 
 /**
  * Gets HTTP config from localStorage for including in client-side API requests
@@ -27,7 +28,6 @@ export async function applyHttpConfigFromRequest(request: Request) {
     if (request.method === "POST") {
       const body = await request.json();
       if (body.httpConfig) {
-        const { setRequestConfig } = await import("../httpClient");
         setRequestConfig(body.httpConfig as HttpConfig);
         return body; // Return body so caller doesn't need to parse again
       }
@@ -39,7 +39,6 @@ export async function applyHttpConfigFromRequest(request: Request) {
     const httpConfigJson = url.searchParams.get("httpConfig");
     if (httpConfigJson) {
       const httpConfig = JSON.parse(httpConfigJson);
-      const { setRequestConfig } = await import("../httpClient");
       setRequestConfig(httpConfig);
     }
     return null;
@@ -57,7 +56,6 @@ export async function applyHttpConfigFromFormData(formData: FormData) {
     const httpConfigJson = formData.get("httpConfig");
     if (httpConfigJson) {
       const httpConfig = JSON.parse(httpConfigJson as string);
-      const { setRequestConfig } = await import("../httpClient");
       setRequestConfig(httpConfig as HttpConfig);
     }
   } catch (error) {

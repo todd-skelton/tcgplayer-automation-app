@@ -3,7 +3,7 @@ import type {
   PricedSku,
   TcgPlayerListing,
 } from "../../../core/types/pricing";
-import type { Listing } from "../../../integrations/tcgplayer/client/get-search-results";
+import type { Listing } from "../../../integrations/tcgplayer/client/get-search-results.server";
 import type { SellerInventoryItem } from "../../inventory-management/services/inventoryConverter";
 import type { PendingInventoryEntry } from "../../pending-inventory/types/pendingInventory";
 

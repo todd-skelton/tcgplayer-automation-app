@@ -2,11 +2,12 @@ import type { Sku } from "../../../shared/data-types/sku";
 import {
   getAllLatestSales,
   type Sale,
-} from "../../../integrations/tcgplayer/client/get-latest-sales";
+} from "../../../integrations/tcgplayer/client/get-latest-sales.server";
 import { levenbergMarquardt } from "ml-levenberg-marquardt";
 import type { Condition } from "../../../integrations/tcgplayer/types/Condition";
 import type { ListingData } from "../services/supplyAnalysisService";
 import { SupplyAnalysisService } from "../services/supplyAnalysisService";
+import { categoryFiltersDb } from "../../../datastores.server";
 
 // Define condition ordering for Zipf model (from best to worst condition)
 const CONDITION_ORDER: Condition[] = [
@@ -185,9 +186,6 @@ export async function getSuggestedPriceFromLatestSales(
   conditionMultipliers?: Map<Condition, number>;
 }> {
   const { halfLifeDays = 7, percentile = 80 } = config;
-
-  // Dynamic import of datastores for server-side only
-  const { categoryFiltersDb } = await import("../../../datastores");
 
   // Fetch category filter for this SKU's productLineId (which is used as categoryId)
   const categoryFilter = await categoryFiltersDb.findOne({
@@ -469,7 +467,7 @@ function daysToMilliseconds(days: number): number {
 
 /**
  * Calculate expected time to sell based on historical sales at or above a given price
- * Returns time in milliseconds and the number of relevant sales
+ * Returns time in milliseconds and the total number of sales considered
  */
 function calculateExpectedTimeToSellMs(
   sales: { price: number; quantity: number; timestamp: number }[],
@@ -481,12 +479,12 @@ function calculateExpectedTimeToSellMs(
     .sort((a, b) => a.timestamp - b.timestamp);
 
   if (relevantSales.length === 0) {
-    return { timeMs: undefined, salesCount: 0 };
+    return { timeMs: undefined, salesCount: sales.length };
   }
 
   if (relevantSales.length === 1) {
     // For a single sale (e.g., 100th percentile), use 90 days as a reasonable estimate
-    return { timeMs: daysToMilliseconds(90), salesCount: 1 };
+    return { timeMs: daysToMilliseconds(90), salesCount: sales.length };
   }
 
   // Calculate intervals in milliseconds between relevant sales
@@ -503,7 +501,7 @@ function calculateExpectedTimeToSellMs(
       ? intervals[mid]
       : (intervals[mid - 1] + intervals[mid]) / 2;
 
-  return { timeMs: Math.round(timeMs), salesCount: relevantSales.length };
+  return { timeMs: Math.round(timeMs), salesCount: sales.length };
 }
 
 /**

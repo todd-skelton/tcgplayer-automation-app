@@ -1,10 +1,7 @@
 import type { PricedSku, PricerSku } from "../../core/types/pricing";
 import type { PricingResult } from "../../features/pricing/services/pricingCalculator";
 import { createDisplayName } from "../../core/utils/displayNameUtils";
-import {
-  getPricePoints,
-  type PricePoint,
-} from "../../integrations/tcgplayer/client/get-price-points";
+import type { PricePoint } from "../../integrations/tcgplayer/client/get-price-points.server";
 
 export interface ProductDisplayInfo {
   sku: number;

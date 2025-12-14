@@ -1,19 +1,13 @@
-import type { Route } from "./+types/home";
 import {
   data,
   useFetcher,
   type LoaderFunctionArgs,
   useLoaderData,
   Link,
+  type MetaFunction,
 } from "react-router";
-import { getAllProducts } from "../integrations/tcgplayer/client/get-search-results";
-import { type SetProduct } from "../shared/data-types/setProduct";
-import { type CategorySet } from "../shared/data-types/categorySet";
-import { getProductDetails } from "../integrations/tcgplayer/client/get-product-details";
-import { getCatalogSetNames } from "../integrations/tcgplayer/client/get-catalog-set-names";
-import type { Product } from "../features/inventory-management/types/product";
-import type { Sku } from "../shared/data-types/sku";
-import { processWithConcurrency } from "../core/processWithConcurrency";
+import type { ProductLine } from "../shared/data-types/productLine";
+import type { SetProduct } from "../shared/data-types/setProduct";
 import {
   Button,
   Box,
@@ -29,31 +23,31 @@ import {
   Checkbox,
   FormControlLabel,
 } from "@mui/material";
-import { getProductLines } from "../integrations/tcgplayer/client/get-product-lines";
-import { getCategoryFilters } from "../integrations/tcgplayer/client/get-category-filters";
-import type { ProductLine } from "../shared/data-types/productLine";
 import { useEffect, useState } from "react";
+import { getHttpConfig } from "../core/config/httpConfig.server";
+import {
+  productLinesDb,
+  categorySetsDb,
+  setProductsDb,
+  getProductsDbShard,
+  getSkusDbShard,
+} from "../datastores.server";
+import {
+  fetchAndUpsertCategorySets,
+  fetchAndUpsertSetProducts,
+  fetchAndUpsertProductsAndSkus,
+  fetchAllProductLines,
+} from "./home.server";
+import { getAllProducts } from "../integrations/tcgplayer/client/get-search-results.server";
 
-export function meta({}: Route.MetaArgs) {
+export const meta: MetaFunction = () => {
   return [
     { title: "New React Router App" },
     { name: "description", content: "Welcome to React Router!" },
   ];
-}
+};
 
 export async function action({ request }: LoaderFunctionArgs) {
-  // Dynamic import of datastores for server-side only
-  const {
-    categorySetsDb,
-    getProductsDbShard,
-    setProductsDb,
-    getSkusDbShard,
-    productLinesDb,
-    categoryFiltersDb,
-    productsDb,
-    skusDb,
-  } = await import("../datastores");
-
   const formData = await request.formData();
 
   const actionType = formData.get("actionType");
@@ -87,31 +81,7 @@ export async function action({ request }: LoaderFunctionArgs) {
 
   if (actionType === "fetchAllProductLines") {
     try {
-      const productLines = await getProductLines();
-      if (!productLines || !productLines.length) {
-        throw new Error("No product lines returned from API");
-      }
-      await Promise.all(
-        productLines.map(async (pl: ProductLine) => {
-          await productLinesDb.update({ productLineId: pl.productLineId }, pl, {
-            upsert: true,
-          });
-          // Fetch and store category filters for each product line
-          try {
-            const filters = await getCategoryFilters(pl.productLineId);
-            await categoryFiltersDb.update(
-              { categoryId: pl.productLineId },
-              { categoryId: pl.productLineId, ...filters },
-              { upsert: true }
-            );
-          } catch (err) {
-            console.error(
-              `Error fetching/storing category filters for productLineId ${pl.productLineId}:`,
-              err
-            );
-          }
-        })
-      );
+      const productLines = await fetchAllProductLines();
       return data(
         {
           message: `Fetched and upserted ${productLines.length} product lines and their category filters.`,
@@ -362,10 +332,6 @@ export async function action({ request }: LoaderFunctionArgs) {
 }
 
 export async function loader() {
-  // Dynamic import of datastores for server-side only
-  const { productLinesDb } = await import("../datastores");
-  const { getHttpConfig } = await import("../core/config/httpConfig");
-
   // Load all product lines from NeDB
   const productLines = await productLinesDb.find({});
   const httpConfig = await getHttpConfig();
@@ -374,276 +340,6 @@ export async function loader() {
     productLines,
     hasAuthCookie: !!httpConfig.tcgAuthCookie,
   };
-}
-
-// --- Refactored helpers for category, set, and product level processing ---
-
-/**
- * Fetches and upserts all sets for a given categoryId. Always calls the API to verify all sets are in the database.
- */
-async function fetchAndUpsertCategorySets(categoryId: number) {
-  // Dynamic import of datastores for server-side only
-  const { productLinesDb, categorySetsDb } = await import("../datastores");
-
-  console.log(
-    `[fetchAndUpsertCategorySets] Starting for categoryId: ${categoryId}`
-  );
-
-  // Find the selected product line to get the url name
-  const selectedProductLine = await productLinesDb.findOne({
-    productLineId: categoryId,
-  });
-  if (!selectedProductLine) {
-    throw new Error(`No product line found for categoryId ${categoryId}`);
-  }
-
-  console.log(
-    `[fetchAndUpsertCategorySets] Found product line: ${selectedProductLine.productLineName}`
-  );
-
-  // Always fetch from API to ensure we have the latest sets
-  console.log(`[fetchAndUpsertCategorySets] Calling getCatalogSetNames API...`);
-  const fetchedSetsResp = await getCatalogSetNames({ categoryId });
-  const fetchedSets = fetchedSetsResp.results;
-  if (!fetchedSets || !fetchedSets.length) {
-    throw new Error(
-      `No sets found from getCatalogSetNames for categoryId ${categoryId}`
-    );
-  }
-
-  console.log(
-    `[fetchAndUpsertCategorySets] API returned ${fetchedSets.length} sets`
-  );
-
-  // Get existing sets from database
-  console.log(
-    `[fetchAndUpsertCategorySets] Querying existing sets from database...`
-  );
-  const existingSets = await categorySetsDb.find({ categoryId });
-  const existingSetIds = new Set(existingSets.map((set) => set.setNameId));
-
-  // Identify missing sets that need to be inserted
-  const missingSets = fetchedSets.filter(
-    (set) => !existingSetIds.has(set.setNameId)
-  );
-
-  console.log(
-    `[fetchAndUpsertCategorySets] Found ${existingSets.length} existing sets, ${missingSets.length} missing sets`
-  );
-
-  // Upsert all fetched sets (will update existing and insert missing)
-  console.log(
-    `[fetchAndUpsertCategorySets] Upserting ${fetchedSets.length} sets...`
-  );
-  await Promise.all(
-    fetchedSets.map((set: CategorySet) =>
-      categorySetsDb.update({ setNameId: set.setNameId }, set, {
-        upsert: true,
-      })
-    )
-  );
-
-  // Log information about what was found/updated
-  console.log(
-    `Category ${categoryId}: Found ${fetchedSets.length} total sets, ${missingSets.length} were missing from database`
-  );
-
-  console.log(`[fetchAndUpsertCategorySets] Completed successfully`);
-  return {
-    sets: fetchedSets,
-    productLine: selectedProductLine,
-  };
-}
-
-/**
- * Fetches and upserts all set products for a list of sets and a product line name. Returns all set products.
- */
-async function fetchAndUpsertSetProducts(
-  sets: CategorySet[],
-  productLine: ProductLine
-) {
-  // Dynamic import of datastores for server-side only
-  const { setProductsDb } = await import("../datastores");
-
-  let allSetProducts: SetProduct[] = [];
-  for (let setIdx = 0; setIdx < sets.length; setIdx++) {
-    const set = sets[setIdx];
-    let products: SetProduct[] = await setProductsDb.find({
-      setNameId: set.setNameId,
-    });
-    if (!products.length) {
-      try {
-        const productsResp = await getAllProducts({
-          size: 24,
-          filters: {
-            term: {
-              productLineName: [productLine.productLineName],
-              setName: [set.cleanSetName],
-            },
-          },
-          sort: { field: "product-sorting-name", order: "asc" },
-        });
-        const seen = new Set<number>();
-        products = [];
-        for (const card of productsResp) {
-          if (seen.has(card.productId)) continue;
-          seen.add(card.productId);
-          products.push({
-            setNameId: set.setNameId,
-            productId: card.productId,
-            game: productLine.productLineName,
-            number: card.customAttributes?.number ?? "",
-            productName: card.productName,
-            rarity: card.rarityName,
-            set: card.setName,
-            setAbbrv: card.setUrlName,
-            type: card.customAttributes?.cardType?.join(", ") ?? "",
-          });
-        }
-        await Promise.all(
-          products.map((prod) =>
-            setProductsDb.update({ productID: prod.productId }, prod, {
-              upsert: true,
-            })
-          )
-        );
-      } catch (err) {
-        continue;
-      }
-    }
-    allSetProducts.push(...products);
-  }
-  return allSetProducts;
-}
-
-/**
- * Fetches and upserts product details and SKUs for a list of set products. Returns product and SKU counts.
- */
-async function fetchAndUpsertProductsAndSkus(
-  allSetProducts: SetProduct[],
-  productLineId: number
-) {
-  // Dynamic import of datastores for server-side only
-  const { getProductsDbShard, getSkusDbShard } = await import("../datastores");
-
-  console.log(
-    `[fetchAndUpsertProductsAndSkus] Starting with ${allSetProducts.length} products for productLineId: ${productLineId}`
-  );
-  let productCount = 0;
-  let totalSkus = 0;
-  const PRODUCT_CONCURRENCY = 5;
-  let prodIdx = 0;
-
-  // Get the specific shards for this product line (will be created if they don't exist)
-  const productsDbShard = getProductsDbShard(productLineId);
-  const skusDbShard = getSkusDbShard(productLineId);
-
-  try {
-    for await (const _ of processWithConcurrency(
-      allSetProducts,
-      PRODUCT_CONCURRENCY,
-      async (product) => {
-        prodIdx += 1;
-        if (prodIdx % 10 === 0) {
-          console.log(
-            `[fetchAndUpsertProductsAndSkus] Processing product ${prodIdx}/${allSetProducts.length}`
-          );
-        }
-
-        const productId = product.productId;
-        let details: Product | null = await productsDbShard.findOne<Product>({
-          productId,
-          productLineId,
-        });
-
-        if (!details || !details.skus || !details.skus.length) {
-          try {
-            const fetched = await getProductDetails({ id: productId });
-            details = {
-              productTypeName: fetched.productTypeName,
-              rarityName: fetched.rarityName,
-              sealed: fetched.sealed,
-              productName: fetched.productName,
-              setId: fetched.setId,
-              setCode: fetched.setCode,
-              productId: fetched.productId,
-              setName: fetched.setName,
-              productLineId: fetched.productLineId,
-              productStatusId: fetched.productStatusId,
-              productLineName: fetched.productLineName,
-              skus: fetched.skus,
-            };
-            await productsDbShard.update(
-              {
-                productId: details.productId,
-                productLineId: details.productLineId,
-              },
-              details,
-              { upsert: true }
-            );
-          } catch (err) {
-            console.warn(
-              `[fetchAndUpsertProductsAndSkus] Failed to fetch product ${productId}:`,
-              err
-            );
-            return;
-          }
-        }
-
-        productCount++;
-        totalSkus += details.skus.length;
-
-        const skusToUpsert: Sku[] = details.skus.map((sku) => ({
-          ...sku,
-          productTypeName: details.productTypeName,
-          rarityName: details.rarityName,
-          sealed: details.sealed,
-          productName: details.productName,
-          setId: details.setId,
-          setCode: details.setCode,
-          productId: details.productId,
-          setName: details.setName,
-          productLineId: details.productLineId,
-          productStatusId: details.productStatusId,
-          productLineName: details.productLineName,
-        }));
-
-        const skuIds = skusToUpsert.map((sku) => sku.sku);
-        const existingSkus = await skusDbShard.find<Sku>({
-          sku: { $in: skuIds },
-          productLineId: details.productLineId,
-        });
-        const existingSkuSet = new Set(existingSkus.map((s) => s.sku));
-        const skusToInsert = skusToUpsert.filter(
-          (sku) => !existingSkuSet.has(sku.sku)
-        );
-
-        if (skusToInsert.length > 0) {
-          try {
-            await skusDbShard.insert(skusToInsert);
-          } catch (err) {
-            console.warn(
-              `[fetchAndUpsertProductsAndSkus] Failed to insert SKUs for product ${productId}:`,
-              err
-            );
-          }
-        }
-      }
-    )) {
-      // No-op
-    }
-
-    console.log(
-      `[fetchAndUpsertProductsAndSkus] Completed successfully. Products: ${productCount}, SKUs: ${totalSkus}`
-    );
-    return { productCount, totalSkus };
-  } catch (error) {
-    console.error(
-      `[fetchAndUpsertProductsAndSkus] Error during processing:`,
-      error
-    );
-    throw error;
-  }
 }
 
 export default function Home() {
