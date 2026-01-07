@@ -18,6 +18,13 @@ const CONDITION_ORDER: Condition[] = [
   "Damaged",
 ];
 
+// Return sale price, including shipping when the base price meets the $5 threshold
+function getEffectiveSalePrice(sale: Sale): number {
+  const basePrice = sale.purchasePrice ?? 0;
+  const shippingPrice = sale.shippingPrice ?? 0;
+  return basePrice >= 5 ? basePrice + shippingPrice : basePrice;
+}
+
 /**
  * Fits a Zipf model to individual sale prices by condition using Levenberg-Marquardt optimization
  * @param sales Array of individual sales with condition and price data
@@ -35,7 +42,7 @@ function fitZipfModelToConditions(
 
   sales.forEach((sale) => {
     const condition = sale.condition as Condition;
-    const price = sale.purchasePrice || 0;
+    const price = getEffectiveSalePrice(sale);
     const conditionIndex = CONDITION_ORDER.indexOf(condition);
 
     if (conditionIndex !== -1 && price > 0) {
@@ -145,7 +152,7 @@ function calculateConditionPrices(sales: Sale[]): Map<Condition, number> {
   const conditionCounts = new Map<Condition, number>();
   sales.forEach((sale) => {
     const condition = sale.condition as Condition;
-    const price = sale.purchasePrice || 0;
+    const price = getEffectiveSalePrice(sale);
 
     if (price > 0) {
       conditionSums.set(condition, (conditionSums.get(condition) || 0) + price);
@@ -238,8 +245,9 @@ export async function getSuggestedPriceFromLatestSales(
   const adjustedSales = allSales.map((sale) => {
     const condition = sale.condition as Condition;
     const multiplier = zipfMultipliers.get(condition) || 1;
+    const basePrice = getEffectiveSalePrice(sale);
     return {
-      price: (sale.purchasePrice || 0) * multiplier,
+      price: basePrice * multiplier,
       quantity: sale.quantity || 1,
       timestamp: new Date(sale.orderDate).getTime(),
     };
@@ -415,6 +423,7 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
     // Calculate supply-adjusted time to sell (if listings are provided)
     let estimatedTimeToSellMs: number | undefined;
     let listingsCount = 0;
+
     if (listings && listings.length > 0) {
       // Use supply-adjusted time to sell calculation
       const supplyAnalysisService = new SupplyAnalysisService();
