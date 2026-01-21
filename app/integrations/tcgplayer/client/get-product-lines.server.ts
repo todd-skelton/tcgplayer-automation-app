@@ -1,4 +1,4 @@
-import { get } from "../../../core/httpClient.server";
+import { mpSearchApi } from "../../../core/clients";
 
 export interface ProductLine {
   productLineId: number;
@@ -8,7 +8,5 @@ export interface ProductLine {
 }
 
 export async function getProductLines(): Promise<ProductLine[]> {
-  return get<ProductLine[]>(
-    "https://mp-search-api.tcgplayer.com/v1/search/productLines"
-  );
+  return mpSearchApi.get<ProductLine[]>("/v1/search/productLines");
 }

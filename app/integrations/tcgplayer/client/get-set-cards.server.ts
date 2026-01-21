@@ -26,11 +26,14 @@ export type GetSetCardsRequestParams = {
   setId: number;
   rows?: number;
 };
-import { get } from "../../../core/httpClient.server";
+
+import { infiniteApi } from "../../../core/clients";
+
 export async function getSetCards({
   setId,
   rows = 5000,
 }: GetSetCardsRequestParams): Promise<GetSetCardsResponse> {
-  const url = `https://infinite-api.tcgplayer.com/priceguide/set/${setId}/cards/?rows=${rows}`;
-  return get<GetSetCardsResponse>(url);
+  return infiniteApi.get<GetSetCardsResponse>(
+    `/priceguide/set/${setId}/cards/?rows=${rows}`,
+  );
 }

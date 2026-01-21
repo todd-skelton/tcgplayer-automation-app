@@ -1,4 +1,4 @@
-import { get } from "../../../core/httpClient.server";
+import { infiniteApi } from "../../../core/clients";
 
 export type Range = "annual" | "semiannual" | "quarter" | "month";
 
@@ -42,6 +42,7 @@ export async function getPriceHistory({
   id,
   range,
 }: GetPriceHistoryRequestParams): Promise<GetPriceHistoryResponse> {
-  const url = `https://infinite-api.tcgplayer.com/price/history/${id}/detailed?range=${range}`;
-  return get<GetPriceHistoryResponse>(url);
+  return infiniteApi.get<GetPriceHistoryResponse>(
+    `/price/history/${id}/detailed?range=${range}`,
+  );
 }

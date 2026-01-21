@@ -1,4 +1,4 @@
-import { post } from "../../../core/httpClient.server";
+import { mpApi } from "../../../core/clients";
 import type { Condition } from "../types/Condition";
 import type { Language } from "../types/Language";
 import type { Variant } from "../types/Variant";
@@ -59,11 +59,11 @@ export type GetLatestSalesResponse = {
 
 export async function getLatestSales(
   { id }: GetLastSalesRequestParams,
-  body: GetLastestSalesRequestBody
+  body: GetLastestSalesRequestBody,
 ): Promise<GetLatestSalesResponse> {
-  const data = await post<GetLatestSalesResponse>(
-    `https://mpapi.tcgplayer.com/v2/product/${id}/latestsales`,
-    body
+  const data = await mpApi.post<GetLatestSalesResponse>(
+    `/v2/product/${id}/latestsales`,
+    body,
   );
   return data;
 }
@@ -71,7 +71,7 @@ export async function getLatestSales(
 export async function getAllLatestSales(
   params: GetLastSalesRequestParams,
   body: GetLastestSalesRequestBody,
-  maxSales?: number
+  maxSales?: number,
 ): Promise<Sale[]> {
   const baseLimit = body.limit ?? 25;
   let offset = body.offset ?? 0;

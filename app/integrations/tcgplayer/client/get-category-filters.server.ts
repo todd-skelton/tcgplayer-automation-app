@@ -1,4 +1,4 @@
-import { get } from "../../../core/httpClient.server";
+import { mpSearchApi } from "../../../core/clients";
 
 export interface CategoryFilterVariant {
   id: number;
@@ -25,9 +25,9 @@ export interface CategoryFiltersResponse {
 }
 
 export async function getCategoryFilters(
-  categoryId: number
+  categoryId: number,
 ): Promise<CategoryFiltersResponse> {
-  return get<CategoryFiltersResponse>(
-    `https://mp-search-api.tcgplayer.com/v1/product/categoryfilters?categoryId=${categoryId}`
+  return mpSearchApi.get<CategoryFiltersResponse>(
+    `/v1/product/categoryfilters?categoryId=${categoryId}`,
   );
 }

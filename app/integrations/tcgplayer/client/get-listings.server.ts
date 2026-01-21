@@ -1,4 +1,4 @@
-import { post } from "../../../core/httpClient.server";
+import { mpSearchApi } from "../../../core/clients";
 import type { Condition } from "../types/Condition";
 import type { Language } from "../types/Language";
 import type { Variant } from "../types/Variant";
@@ -144,11 +144,11 @@ export interface CustomData {
 
 export async function getListings(
   { id }: GetListingsRequestParams,
-  body: GetListingsRequestBody
+  body: GetListingsRequestBody,
 ): Promise<GetListingsResponse> {
-  const data = await post<GetListingsResponse>(
-    `https://mp-search-api.tcgplayer.com/v1/product/${id}/listings`,
-    body
+  const data = await mpSearchApi.post<GetListingsResponse>(
+    `/v1/product/${id}/listings`,
+    body,
   );
   return data;
 }
@@ -156,7 +156,7 @@ export async function getListings(
 export async function getAllListings(
   params: GetListingsRequestParams,
   body: Omit<GetListingsRequestBody, "from">,
-  maxPrice?: number
+  maxPrice?: number,
 ): Promise<Listing[]> {
   const size = body.size ?? 50;
   let from = 0;
@@ -172,7 +172,8 @@ export async function getAllListings(
     const pageListings =
       maxPrice !== undefined
         ? page.results.filter(
-            (listing) => listing.price + listing.sellerShippingPrice <= maxPrice
+            (listing) =>
+              listing.price + listing.sellerShippingPrice <= maxPrice,
           )
         : page.results;
 
@@ -184,8 +185,8 @@ export async function getAllListings(
     if (maxPrice !== undefined && pageListings.length < page.results.length) {
       console.log(
         `getAllListings: Early termination at price threshold $${maxPrice.toFixed(
-          2
-        )} after ${listings.length} listings`
+          2,
+        )} after ${listings.length} listings`,
       );
       break;
     }

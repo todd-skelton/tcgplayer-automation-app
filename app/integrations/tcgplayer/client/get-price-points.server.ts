@@ -1,4 +1,4 @@
-import { post } from "../../../core/httpClient.server";
+import { mpGateway } from "../../../core/clients";
 
 export interface GetPricePointsRequestBody {
   skuIds: number[];
@@ -14,10 +14,10 @@ export interface PricePoint {
 }
 
 export async function getPricePoints(
-  requestBody: GetPricePointsRequestBody
+  requestBody: GetPricePointsRequestBody,
 ): Promise<PricePoint[]> {
-  return post<PricePoint[]>(
-    "https://mpgateway.tcgplayer.com/v1/pricepoints/marketprice/skus/search",
-    requestBody
+  return mpGateway.post<PricePoint[]>(
+    "/v1/pricepoints/marketprice/skus/search",
+    requestBody,
   );
 }

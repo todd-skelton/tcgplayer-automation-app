@@ -19,10 +19,12 @@ export interface GetCatalogSetNamesRequestParams {
   categoryId: number;
 }
 
-import { get } from "../../../core/httpClient.server";
+import { mpApi } from "../../../core/clients";
+
 export async function getCatalogSetNames({
   categoryId,
 }: GetCatalogSetNamesRequestParams): Promise<GetCatalogSetNamesResponse> {
-  const url = `https://mpapi.tcgplayer.com/v2/Catalog/SetNames?categoryId=${categoryId}`;
-  return get<GetCatalogSetNamesResponse>(url);
+  return mpApi.get<GetCatalogSetNamesResponse>(
+    `/v2/Catalog/SetNames?categoryId=${categoryId}`,
+  );
 }

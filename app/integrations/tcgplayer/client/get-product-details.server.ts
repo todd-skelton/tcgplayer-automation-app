@@ -1,4 +1,4 @@
-import { get } from "../../../core/httpClient.server";
+import { mpSearchApi } from "../../../core/clients";
 import type { Condition } from "../types/Condition";
 import type { Language } from "../types/Language";
 import type { Variant } from "../types/Variant";
@@ -83,7 +83,5 @@ export type GetProductDetailsRequestParams = {
 export async function getProductDetails({
   id,
 }: GetProductDetailsRequestParams): Promise<Result> {
-  return get<Result>(
-    `https://mp-search-api.tcgplayer.com/v2/product/${id}/details`
-  );
+  return mpSearchApi.get<Result>(`/v2/product/${id}/details`);
 }

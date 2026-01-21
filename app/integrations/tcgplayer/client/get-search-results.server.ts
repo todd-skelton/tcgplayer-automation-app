@@ -1,4 +1,4 @@
-import { post } from "../../../core/httpClient.server";
+import { mpSearchApi } from "../../../core/clients";
 
 export interface GetProductsRequestBody {
   algorithm?: string;
@@ -268,17 +268,17 @@ export interface CustomAttributes {
 export interface DidYouMean {}
 
 export async function getProducts(
-  body: GetProductsRequestBody
+  body: GetProductsRequestBody,
 ): Promise<GetProductsResponse> {
-  const data = await post<GetProductsResponse>(
-    `https://mp-search-api.tcgplayer.com/v1/search/request`,
-    body
+  const data = await mpSearchApi.post<GetProductsResponse>(
+    `/v1/search/request`,
+    body,
   );
   return data;
 }
 
 export async function getAllProducts(
-  body: Omit<GetProductsRequestBody, "from">
+  body: Omit<GetProductsRequestBody, "from">,
 ): Promise<Product[]> {
   const size = (body.size ?? 24) > 24 ? 24 : body.size || 24;
   let from = 0;

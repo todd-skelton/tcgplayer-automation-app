@@ -9,20 +9,29 @@ import {
   Button,
   IconButton,
   InputAdornment,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Divider,
 } from "@mui/material";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
-import type { HttpConfig } from "~/core/config/httpConfig.server";
+import { Visibility, VisibilityOff, ExpandMore } from "@mui/icons-material";
+// Import types and UI constants from shared module (client-safe)
+import {
+  type HttpConfig,
+  type DomainRateLimitConfig,
+  type DomainKey,
+  DOMAIN_KEYS,
+  DEFAULT_HTTP_CONFIG,
+  DOMAIN_DISPLAY_NAMES,
+} from "~/core/config/httpConfig.shared";
 import {
   data,
   useLoaderData,
   useFetcher,
   type LoaderFunctionArgs,
 } from "react-router";
-import {
-  getHttpConfig,
-  saveHttpConfig,
-  DEFAULT_HTTP_CONFIG,
-} from "~/core/config/httpConfig.server";
+// Import server-only functions (will be tree-shaken from client bundle)
+import { getHttpConfig, saveHttpConfig } from "~/core/config/httpConfig.server";
 
 export async function loader() {
   const config = await getHttpConfig();
@@ -34,12 +43,24 @@ export async function action({ request }: LoaderFunctionArgs) {
   const actionType = formData.get("actionType");
 
   if (actionType === "update") {
+    // Parse domain configs from form data
+    const domainConfigs: Record<string, DomainRateLimitConfig> = {};
+    for (const domainKey of Object.values(DOMAIN_KEYS)) {
+      domainConfigs[domainKey] = {
+        requestDelayMs:
+          Number(formData.get(`${domainKey}_requestDelayMs`)) || 1500,
+        rateLimitCooldownMs:
+          Number(formData.get(`${domainKey}_rateLimitCooldownMs`)) || 60000,
+        maxConcurrentRequests:
+          Number(formData.get(`${domainKey}_maxConcurrentRequests`)) || 5,
+      };
+    }
+
     const config: HttpConfig = {
       tcgAuthCookie: formData.get("tcgAuthCookie") as string,
       userAgent: formData.get("userAgent") as string,
-      requestDelayMs: Number(formData.get("requestDelayMs")),
-      rateLimitCooldownMs: Number(formData.get("rateLimitCooldownMs")),
-      maxConcurrentRequests: Number(formData.get("maxConcurrentRequests")),
+      // Per-domain configs
+      domainConfigs: domainConfigs as HttpConfig["domainConfigs"],
     };
 
     await saveHttpConfig(config);
@@ -79,20 +100,45 @@ export default function HttpConfigurationRoute() {
       setConfig((prev) => ({ ...prev, [field]: value }));
     };
 
+  const handleDomainConfigChange =
+    (domainKey: DomainKey, field: keyof DomainRateLimitConfig) =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const value = Number(event.target.value);
+      setConfig((prev) => ({
+        ...prev,
+        domainConfigs: {
+          ...prev.domainConfigs,
+          [domainKey]: {
+            ...prev.domainConfigs[domainKey],
+            [field]: value,
+          },
+        },
+      }));
+    };
+
   const handleSave = () => {
     const formData = new FormData();
     formData.append("actionType", "update");
     formData.append("tcgAuthCookie", config.tcgAuthCookie);
     formData.append("userAgent", config.userAgent);
-    formData.append("requestDelayMs", config.requestDelayMs.toString());
-    formData.append(
-      "rateLimitCooldownMs",
-      config.rateLimitCooldownMs.toString()
-    );
-    formData.append(
-      "maxConcurrentRequests",
-      config.maxConcurrentRequests.toString()
-    );
+
+    // Add per-domain configs
+    for (const domainKey of Object.values(DOMAIN_KEYS)) {
+      const domainConfig = config.domainConfigs[domainKey];
+      formData.append(
+        `${domainKey}_requestDelayMs`,
+        domainConfig.requestDelayMs.toString(),
+      );
+      formData.append(
+        `${domainKey}_rateLimitCooldownMs`,
+        domainConfig.rateLimitCooldownMs.toString(),
+      );
+      formData.append(
+        `${domainKey}_maxConcurrentRequests`,
+        domainConfig.maxConcurrentRequests.toString(),
+      );
+    }
+
     fetcher.submit(formData, { method: "post" });
   };
 
@@ -181,31 +227,73 @@ export default function HttpConfigurationRoute() {
             helperText="Browser user agent string"
             fullWidth
           />
-          <TextField
-            label="Request Delay (ms)"
-            type="number"
-            value={config.requestDelayMs}
-            onChange={handleConfigChange("requestDelayMs")}
-            inputProps={{ min: 0, step: 100 }}
-            helperText="Delay between consecutive requests to avoid rate limiting"
-          />
-          <TextField
-            label="Rate Limit Cooldown (ms)"
-            type="number"
-            value={config.rateLimitCooldownMs}
-            onChange={handleConfigChange("rateLimitCooldownMs")}
-            inputProps={{ min: 0, step: 1000 }}
-            helperText="Cooldown period after receiving a 403 rate limit response"
-          />
-          <TextField
-            label="Max Concurrent Requests"
-            type="number"
-            value={config.maxConcurrentRequests}
-            onChange={handleConfigChange("maxConcurrentRequests")}
-            inputProps={{ min: 1, max: 10 }}
-            helperText="Maximum number of simultaneous HTTP requests"
-          />
         </Stack>
+      </Paper>
+
+      {/* Domain Rate Limits */}
+      <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
+        <Typography variant="h6" gutterBottom>
+          Domain Rate Limits
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Configure rate limiting settings for each TCGPlayer API domain. Each
+          domain has its own isolated rate limiter, so hitting a rate limit on
+          one domain won't affect requests to other domains.
+        </Typography>
+
+        {Object.values(DOMAIN_KEYS).map((domainKey) => (
+          <Accordion key={domainKey} defaultExpanded={false}>
+            <AccordionSummary expandIcon={<ExpandMore />}>
+              <Typography fontWeight="medium">
+                {DOMAIN_DISPLAY_NAMES[domainKey]}
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Stack spacing={2}>
+                <TextField
+                  label="Request Delay (ms)"
+                  type="number"
+                  value={config.domainConfigs[domainKey].requestDelayMs}
+                  onChange={handleDomainConfigChange(
+                    domainKey,
+                    "requestDelayMs",
+                  )}
+                  inputProps={{ min: 0, step: 100 }}
+                  helperText="Delay between consecutive requests"
+                  size="small"
+                  fullWidth
+                />
+                <TextField
+                  label="Rate Limit Cooldown (ms)"
+                  type="number"
+                  value={config.domainConfigs[domainKey].rateLimitCooldownMs}
+                  onChange={handleDomainConfigChange(
+                    domainKey,
+                    "rateLimitCooldownMs",
+                  )}
+                  inputProps={{ min: 0, step: 1000 }}
+                  helperText="Cooldown after 403/429 response"
+                  size="small"
+                  fullWidth
+                />
+                <TextField
+                  label="Max Concurrent Requests"
+                  type="number"
+                  value={config.domainConfigs[domainKey].maxConcurrentRequests}
+                  onChange={handleDomainConfigChange(
+                    domainKey,
+                    "maxConcurrentRequests",
+                  )}
+                  inputProps={{ min: 1, max: 10 }}
+                  helperText="Maximum simultaneous requests to this domain"
+                  size="small"
+                  fullWidth
+                />
+              </Stack>
+            </AccordionDetails>
+          </Accordion>
+        ))}
+
         <Box sx={{ mt: 3 }}>
           <Button
             variant="contained"
