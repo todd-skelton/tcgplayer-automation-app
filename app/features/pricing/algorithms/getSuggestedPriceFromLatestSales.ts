@@ -18,11 +18,17 @@ const CONDITION_ORDER: Condition[] = [
   "Damaged",
 ];
 
-// Return sale price, including shipping when the base price meets the $5 threshold
+// Return sale price per unit, including shipping when the base price meets the $5 threshold
 function getEffectiveSalePrice(sale: Sale): number {
   const basePrice = sale.purchasePrice ?? 0;
   const shippingPrice = sale.shippingPrice ?? 0;
-  return basePrice >= 5 ? basePrice + shippingPrice : basePrice;
+  const quantity = sale.quantity ?? 1;
+
+  // Calculate total order value (with shipping if base price >= $5)
+  const totalPrice = basePrice >= 5 ? basePrice + shippingPrice : basePrice;
+
+  // Return per-unit price
+  return totalPrice / quantity;
 }
 
 /**
@@ -33,7 +39,7 @@ function getEffectiveSalePrice(sale: Sale): number {
  */
 function fitZipfModelToConditions(
   sales: Sale[],
-  targetCondition: Condition
+  targetCondition: Condition,
 ): Map<Condition, number> {
   const conditionMultipliers = new Map<Condition, number>();
 
@@ -115,7 +121,7 @@ function fitZipfModelToConditions(
         // Multiplier to convert from this condition to target condition
         conditionMultipliers.set(
           condition,
-          targetPredictedPrice / predictedPrice
+          targetPredictedPrice / predictedPrice,
         );
       } else {
         conditionMultipliers.set(condition, 1.0);
@@ -124,7 +130,7 @@ function fitZipfModelToConditions(
   } catch (error) {
     console.warn(
       "Zipf model fitting failed, falling back to simple ratios:",
-      error
+      error,
     );
 
     // Fallback to simple condition-based average ratios
@@ -179,7 +185,7 @@ function calculateConditionPrices(sales: Sale[]): Map<Condition, number> {
  */
 export async function getSuggestedPriceFromLatestSales(
   sku: Sku,
-  config: LatestSalesPriceConfig = {}
+  config: LatestSalesPriceConfig = {},
 ): Promise<{
   suggestedPrice?: number;
   totalQuantity: number;
@@ -200,16 +206,16 @@ export async function getSuggestedPriceFromLatestSales(
   });
   if (!categoryFilter) {
     throw new Error(
-      `No category filter found for categoryId (productLineId) ${sku.productLineId}`
+      `No category filter found for categoryId (productLineId) ${sku.productLineId}`,
     );
   }
 
   // Map string values to IDs for salesOptions using category filter
   const languageId = categoryFilter.languages.find(
-    (l: any) => l.name === sku.language
+    (l: any) => l.name === sku.language,
   )?.id;
   const variantId = categoryFilter.variants.find(
-    (v: any) => v.name === sku.variant
+    (v: any) => v.name === sku.variant,
   )?.id;
 
   // Fetch sales data for all conditions to enable Zipf model normalization
@@ -224,7 +230,7 @@ export async function getSuggestedPriceFromLatestSales(
   const allSales: Sale[] = await getAllLatestSales(
     { id: sku.productId },
     salesOptions,
-    100
+    100,
   );
 
   if (allSales.length < 2) {
@@ -238,13 +244,24 @@ export async function getSuggestedPriceFromLatestSales(
     };
   }
 
-  // Calculate condition-based pricing using Zipf model on individual sales
-  const zipfMultipliers = fitZipfModelToConditions(allSales, sku.condition);
+  // Skip Zipf model for sealed products ("Unopened" condition) - condition grading doesn't apply
+  const isSealed = sku.condition === "Unopened";
 
-  // Normalize all sales data to the target condition using Zipf multipliers
-  const adjustedSales = allSales.map((sale) => {
+  // Calculate condition-based pricing using Zipf model on individual sales (skip for sealed products)
+  const zipfMultipliers = isSealed
+    ? new Map<Condition, number>()
+    : fitZipfModelToConditions(allSales, sku.condition);
+
+  // For sealed products, only use sales of the same condition (no normalization)
+  // For other conditions, normalize all sales data to the target condition using Zipf multipliers
+  const salesToProcess = isSealed
+    ? allSales.filter((sale) => sale.condition === "Unopened")
+    : allSales;
+
+  const adjustedSales = salesToProcess.map((sale) => {
     const condition = sale.condition as Condition;
-    const multiplier = zipfMultipliers.get(condition) || 1;
+    // For sealed products, don't apply any condition multiplier
+    const multiplier = isSealed ? 1 : zipfMultipliers.get(condition) || 1;
     const basePrice = getEffectiveSalePrice(sale);
     return {
       price: basePrice * multiplier,
@@ -275,7 +292,7 @@ export async function getSuggestedPriceFromLatestSales(
 
     listings = await supplyAnalysisService.fetchListingsForSku(
       sku,
-      optimizedConfig
+      optimizedConfig,
     );
   } else if (config.listings) {
     listings = config.listings;
@@ -290,8 +307,9 @@ export async function getSuggestedPriceFromLatestSales(
 
   return {
     ...result,
-    usedCrossConditionAnalysis: true,
-    conditionMultipliers: zipfMultipliers,
+    // Sealed products don't use cross-condition analysis since they only have "Unopened" condition
+    usedCrossConditionAnalysis: !isSealed,
+    conditionMultipliers: isSealed ? undefined : zipfMultipliers,
   };
 }
 
@@ -333,7 +351,7 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
       maxListingsPerSku?: number;
       includeUnverifiedSellers?: boolean;
     };
-  } = {}
+  } = {},
 ): PercentileData[] {
   if (!sales || sales.length === 0) return [];
 
@@ -438,7 +456,7 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
           salesVelocityData,
           listings,
           price,
-          historicalSalesVelocityMs
+          historicalSalesVelocityMs,
         );
 
       estimatedTimeToSellMs = supplyResult.timeMs
@@ -480,7 +498,7 @@ function daysToMilliseconds(days: number): number {
  */
 function calculateExpectedTimeToSellMs(
   sales: { price: number; quantity: number; timestamp: number }[],
-  targetPrice: number
+  targetPrice: number,
 ): { timeMs: number | undefined; salesCount: number } {
   // Filter sales at or above the target price
   const relevantSales = sales
@@ -533,7 +551,7 @@ export function getSuggestedPriceFromSales(
       maxListingsPerSku?: number;
       includeUnverifiedSellers?: boolean;
     };
-  } = {}
+  } = {},
 ): {
   suggestedPrice?: number;
   totalQuantity: number;
@@ -578,7 +596,7 @@ export function getSuggestedPriceFromSales(
   if (sales.length > 0) {
     // Find the percentile data for our target percentile
     const targetPercentileData = percentiles.find(
-      (p) => p.percentile === percentile
+      (p) => p.percentile === percentile,
     );
     if (targetPercentileData) {
       suggestedPrice = targetPercentileData.price;
@@ -609,7 +627,7 @@ export function getSuggestedPriceFromSales(
  * @returns Half-life in days
  */
 function calculateDynamicHalfLife(
-  sales: { price: number; quantity: number; timestamp: number }[]
+  sales: { price: number; quantity: number; timestamp: number }[],
 ): number {
   if (sales.length <= 1) {
     return Infinity; // Default to Infinity if not enough sales

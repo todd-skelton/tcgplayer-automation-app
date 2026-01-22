@@ -3,4 +3,5 @@ export type Condition =
   | "Lightly Played"
   | "Moderately Played"
   | "Heavily Played"
-  | "Damaged";
+  | "Damaged"
+  | "Unopened";
