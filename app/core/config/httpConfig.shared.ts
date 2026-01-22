@@ -33,6 +33,14 @@ export interface DomainRateLimitConfig {
   requestDelayMs: number;
   rateLimitCooldownMs: number;
   maxConcurrentRequests: number;
+  /** Enable adaptive rate limiting (AIMD algorithm) */
+  adaptiveEnabled: boolean;
+  /** Minimum delay when adaptive is enabled */
+  minRequestDelayMs: number;
+  /** Maximum delay when adaptive is enabled */
+  maxRequestDelayMs: number;
+  /** Runtime-learned minimum delay (ratchets upward on rate limits) */
+  learnedMinDelayMs: number;
 }
 
 export type DomainConfigs = Record<DomainKey, DomainRateLimitConfig>;
@@ -40,24 +48,40 @@ export type DomainConfigs = Record<DomainKey, DomainRateLimitConfig>;
 // Default rate limits per domain - can be tuned based on observed API behavior
 export const DEFAULT_DOMAIN_CONFIGS: DomainConfigs = {
   [DOMAIN_KEYS.MP_SEARCH_API]: {
-    requestDelayMs: 1500,
-    rateLimitCooldownMs: 60000,
+    requestDelayMs: 0,
+    rateLimitCooldownMs: 10000,
     maxConcurrentRequests: 5,
+    adaptiveEnabled: true,
+    minRequestDelayMs: 0,
+    maxRequestDelayMs: 10000,
+    learnedMinDelayMs: 0,
   },
   [DOMAIN_KEYS.MPAPI]: {
-    requestDelayMs: 1500,
-    rateLimitCooldownMs: 60000,
+    requestDelayMs: 0,
+    rateLimitCooldownMs: 10000,
     maxConcurrentRequests: 5,
+    adaptiveEnabled: true,
+    minRequestDelayMs: 0,
+    maxRequestDelayMs: 10000,
+    learnedMinDelayMs: 0,
   },
   [DOMAIN_KEYS.INFINITE_API]: {
-    requestDelayMs: 1500,
-    rateLimitCooldownMs: 60000,
+    requestDelayMs: 0,
+    rateLimitCooldownMs: 10000,
     maxConcurrentRequests: 5,
+    adaptiveEnabled: true,
+    minRequestDelayMs: 0,
+    maxRequestDelayMs: 10000,
+    learnedMinDelayMs: 0,
   },
   [DOMAIN_KEYS.MP_GATEWAY]: {
-    requestDelayMs: 1500,
-    rateLimitCooldownMs: 60000,
+    requestDelayMs: 0,
+    rateLimitCooldownMs: 10000,
     maxConcurrentRequests: 5,
+    adaptiveEnabled: true,
+    minRequestDelayMs: 0,
+    maxRequestDelayMs: 10000,
+    learnedMinDelayMs: 0,
   },
 };
 
@@ -65,11 +89,32 @@ export const DEFAULT_DOMAIN_CONFIGS: DomainConfigs = {
 // Main HTTP Configuration
 // ============================================================================
 
+/** Global settings for the adaptive rate limiting algorithm */
+export interface AdaptiveConfig {
+  /** Multiplier applied to delay on rate limit (e.g., 2.0 = double) */
+  increaseMultiplier: number;
+  /** Amount (ms) to raise the learned floor on rate limit */
+  floorStepMs: number;
+  /** Amount (ms) to decrease delay after success streak */
+  decreaseAmountMs: number;
+  /** Number of consecutive successes before decreasing delay */
+  successThreshold: number;
+}
+
+export const DEFAULT_ADAPTIVE_CONFIG: AdaptiveConfig = {
+  increaseMultiplier: 2.0,
+  floorStepMs: 100,
+  decreaseAmountMs: 100,
+  successThreshold: 10,
+};
+
 export interface HttpConfig {
   tcgAuthCookie: string;
   userAgent: string;
   /** Per-domain rate limit configurations */
   domainConfigs: DomainConfigs;
+  /** Global adaptive rate limiting algorithm settings */
+  adaptiveConfig: AdaptiveConfig;
 }
 
 export const DEFAULT_HTTP_CONFIG: HttpConfig = {
@@ -77,6 +122,7 @@ export const DEFAULT_HTTP_CONFIG: HttpConfig = {
   userAgent:
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
   domainConfigs: DEFAULT_DOMAIN_CONFIGS,
+  adaptiveConfig: DEFAULT_ADAPTIVE_CONFIG,
 };
 
 // Human-readable domain names for display in UI

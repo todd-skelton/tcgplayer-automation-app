@@ -13,6 +13,9 @@ import {
   AccordionSummary,
   AccordionDetails,
   Divider,
+  FormControlLabel,
+  Switch,
+  Chip,
 } from "@mui/material";
 import { Visibility, VisibilityOff, ExpandMore } from "@mui/icons-material";
 // Import types and UI constants from shared module (client-safe)
@@ -20,6 +23,7 @@ import {
   type HttpConfig,
   type DomainRateLimitConfig,
   type DomainKey,
+  type AdaptiveConfig,
   DOMAIN_KEYS,
   DEFAULT_HTTP_CONFIG,
   DOMAIN_DISPLAY_NAMES,
@@ -53,6 +57,14 @@ export async function action({ request }: LoaderFunctionArgs) {
           Number(formData.get(`${domainKey}_rateLimitCooldownMs`)) || 60000,
         maxConcurrentRequests:
           Number(formData.get(`${domainKey}_maxConcurrentRequests`)) || 5,
+        adaptiveEnabled:
+          formData.get(`${domainKey}_adaptiveEnabled`) === "true",
+        minRequestDelayMs:
+          Number(formData.get(`${domainKey}_minRequestDelayMs`)) || 200,
+        maxRequestDelayMs:
+          Number(formData.get(`${domainKey}_maxRequestDelayMs`)) || 10000,
+        learnedMinDelayMs:
+          Number(formData.get(`${domainKey}_learnedMinDelayMs`)) || 200,
       };
     }
 
@@ -61,6 +73,16 @@ export async function action({ request }: LoaderFunctionArgs) {
       userAgent: formData.get("userAgent") as string,
       // Per-domain configs
       domainConfigs: domainConfigs as HttpConfig["domainConfigs"],
+      // Global adaptive algorithm settings
+      adaptiveConfig: {
+        increaseMultiplier:
+          Number(formData.get("adaptive_increaseMultiplier")) || 2.0,
+        floorStepMs: Number(formData.get("adaptive_floorStepMs")) || 100,
+        decreaseAmountMs:
+          Number(formData.get("adaptive_decreaseAmountMs")) || 100,
+        successThreshold:
+          Number(formData.get("adaptive_successThreshold")) || 10,
+      },
     };
 
     await saveHttpConfig(config);
@@ -103,7 +125,10 @@ export default function HttpConfigurationRoute() {
   const handleDomainConfigChange =
     (domainKey: DomainKey, field: keyof DomainRateLimitConfig) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      const value = Number(event.target.value);
+      const value =
+        event.target.type === "checkbox"
+          ? event.target.checked
+          : Number(event.target.value);
       setConfig((prev) => ({
         ...prev,
         domainConfigs: {
@@ -112,6 +137,19 @@ export default function HttpConfigurationRoute() {
             ...prev.domainConfigs[domainKey],
             [field]: value,
           },
+        },
+      }));
+    };
+
+  const handleAdaptiveConfigChange =
+    (field: keyof AdaptiveConfig) =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const value = Number(event.target.value);
+      setConfig((prev) => ({
+        ...prev,
+        adaptiveConfig: {
+          ...prev.adaptiveConfig,
+          [field]: value,
         },
       }));
     };
@@ -137,7 +175,41 @@ export default function HttpConfigurationRoute() {
         `${domainKey}_maxConcurrentRequests`,
         domainConfig.maxConcurrentRequests.toString(),
       );
+      formData.append(
+        `${domainKey}_adaptiveEnabled`,
+        domainConfig.adaptiveEnabled.toString(),
+      );
+      formData.append(
+        `${domainKey}_minRequestDelayMs`,
+        domainConfig.minRequestDelayMs.toString(),
+      );
+      formData.append(
+        `${domainKey}_maxRequestDelayMs`,
+        domainConfig.maxRequestDelayMs.toString(),
+      );
+      formData.append(
+        `${domainKey}_learnedMinDelayMs`,
+        domainConfig.learnedMinDelayMs.toString(),
+      );
     }
+
+    // Add global adaptive config
+    formData.append(
+      "adaptive_increaseMultiplier",
+      config.adaptiveConfig.increaseMultiplier.toString(),
+    );
+    formData.append(
+      "adaptive_floorStepMs",
+      config.adaptiveConfig.floorStepMs.toString(),
+    );
+    formData.append(
+      "adaptive_decreaseAmountMs",
+      config.adaptiveConfig.decreaseAmountMs.toString(),
+    );
+    formData.append(
+      "adaptive_successThreshold",
+      config.adaptiveConfig.successThreshold.toString(),
+    );
 
     fetcher.submit(formData, { method: "post" });
   };
@@ -230,6 +302,60 @@ export default function HttpConfigurationRoute() {
         </Stack>
       </Paper>
 
+      {/* Adaptive Algorithm Settings */}
+      <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
+        <Typography variant="h6" gutterBottom>
+          Adaptive Algorithm Settings
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Configure the AIMD (Additive Increase, Multiplicative Decrease)
+          algorithm used for adaptive rate limiting. These settings apply
+          globally to all domains with adaptive mode enabled.
+        </Typography>
+        <Stack spacing={2}>
+          <TextField
+            label="Increase Multiplier"
+            type="number"
+            value={config.adaptiveConfig.increaseMultiplier}
+            onChange={handleAdaptiveConfigChange("increaseMultiplier")}
+            inputProps={{ min: 1.1, max: 5, step: 0.1 }}
+            helperText="Multiply delay by this factor on rate limit (e.g., 2.0 = double)"
+            size="small"
+            fullWidth
+          />
+          <TextField
+            label="Floor Step (ms)"
+            type="number"
+            value={config.adaptiveConfig.floorStepMs}
+            onChange={handleAdaptiveConfigChange("floorStepMs")}
+            inputProps={{ min: 10, step: 10 }}
+            helperText="Amount to raise the learned floor on each rate limit"
+            size="small"
+            fullWidth
+          />
+          <TextField
+            label="Decrease Amount (ms)"
+            type="number"
+            value={config.adaptiveConfig.decreaseAmountMs}
+            onChange={handleAdaptiveConfigChange("decreaseAmountMs")}
+            inputProps={{ min: 10, step: 10 }}
+            helperText="Amount to decrease delay after a success streak"
+            size="small"
+            fullWidth
+          />
+          <TextField
+            label="Success Threshold"
+            type="number"
+            value={config.adaptiveConfig.successThreshold}
+            onChange={handleAdaptiveConfigChange("successThreshold")}
+            inputProps={{ min: 1, step: 1 }}
+            helperText="Number of consecutive successes before decreasing delay"
+            size="small"
+            fullWidth
+          />
+        </Stack>
+      </Paper>
+
       {/* Domain Rate Limits */}
       <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
         <Typography variant="h6" gutterBottom>
@@ -244,12 +370,41 @@ export default function HttpConfigurationRoute() {
         {Object.values(DOMAIN_KEYS).map((domainKey) => (
           <Accordion key={domainKey} defaultExpanded={false}>
             <AccordionSummary expandIcon={<ExpandMore />}>
-              <Typography fontWeight="medium">
-                {DOMAIN_DISPLAY_NAMES[domainKey]}
-              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography fontWeight="medium">
+                  {DOMAIN_DISPLAY_NAMES[domainKey]}
+                </Typography>
+                {config.domainConfigs[domainKey].adaptiveEnabled && (
+                  <Chip label="Adaptive" size="small" color="primary" />
+                )}
+              </Box>
             </AccordionSummary>
             <AccordionDetails>
               <Stack spacing={2}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={config.domainConfigs[domainKey].adaptiveEnabled}
+                      onChange={handleDomainConfigChange(
+                        domainKey,
+                        "adaptiveEnabled",
+                      )}
+                    />
+                  }
+                  label="Enable Adaptive Rate Limiting"
+                />
+                {config.domainConfigs[domainKey].adaptiveEnabled && (
+                  <Alert severity="info" sx={{ mb: 1 }}>
+                    Adaptive mode uses AIMD algorithm: delay is multiplied by{" "}
+                    {config.adaptiveConfig.increaseMultiplier}× on rate limit
+                    (403/429), decreases by{" "}
+                    {config.adaptiveConfig.decreaseAmountMs}
+                    ms after {config.adaptiveConfig.successThreshold}{" "}
+                    consecutive successes. The learned floor ratchets up by{" "}
+                    {config.adaptiveConfig.floorStepMs}ms to prevent
+                    oscillation.
+                  </Alert>
+                )}
                 <TextField
                   label="Request Delay (ms)"
                   type="number"
@@ -259,7 +414,11 @@ export default function HttpConfigurationRoute() {
                     "requestDelayMs",
                   )}
                   inputProps={{ min: 0, step: 100 }}
-                  helperText="Delay between consecutive requests"
+                  helperText={
+                    config.domainConfigs[domainKey].adaptiveEnabled
+                      ? "Current delay (auto-adjusted when adaptive is enabled)"
+                      : "Delay between consecutive requests"
+                  }
                   size="small"
                   fullWidth
                 />
@@ -289,6 +448,53 @@ export default function HttpConfigurationRoute() {
                   size="small"
                   fullWidth
                 />
+                {config.domainConfigs[domainKey].adaptiveEnabled && (
+                  <>
+                    <Divider />
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Adaptive Bounds
+                    </Typography>
+                    <TextField
+                      label="Min Request Delay (ms)"
+                      type="number"
+                      value={config.domainConfigs[domainKey].minRequestDelayMs}
+                      onChange={handleDomainConfigChange(
+                        domainKey,
+                        "minRequestDelayMs",
+                      )}
+                      inputProps={{ min: 0, step: 50 }}
+                      helperText="Absolute minimum delay (starting point for probing)"
+                      size="small"
+                      fullWidth
+                    />
+                    <TextField
+                      label="Max Request Delay (ms)"
+                      type="number"
+                      value={config.domainConfigs[domainKey].maxRequestDelayMs}
+                      onChange={handleDomainConfigChange(
+                        domainKey,
+                        "maxRequestDelayMs",
+                      )}
+                      inputProps={{ min: 1000, step: 1000 }}
+                      helperText="Maximum delay cap"
+                      size="small"
+                      fullWidth
+                    />
+                    <TextField
+                      label="Learned Min Delay (ms)"
+                      type="number"
+                      value={config.domainConfigs[domainKey].learnedMinDelayMs}
+                      onChange={handleDomainConfigChange(
+                        domainKey,
+                        "learnedMinDelayMs",
+                      )}
+                      inputProps={{ min: 0, step: 100 }}
+                      helperText="Runtime-learned floor (ratchets up on rate limits, reset by setting to Min Request Delay)"
+                      size="small"
+                      fullWidth
+                    />
+                  </>
+                )}
               </Stack>
             </AccordionDetails>
           </Accordion>
