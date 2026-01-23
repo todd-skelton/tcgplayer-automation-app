@@ -14,6 +14,7 @@ import {
   getSkusDbShard,
   productLinesDb,
   categoryFiltersDb,
+  pendingInventoryDb,
 } from "../datastores.server";
 import { getCategoryFilters } from "../integrations/tcgplayer/client/get-category-filters.server";
 import { getProductLines } from "../integrations/tcgplayer/client/get-product-lines.server";
@@ -23,7 +24,7 @@ import { getProductLines } from "../integrations/tcgplayer/client/get-product-li
  */
 export async function fetchAndUpsertCategorySets(categoryId: number) {
   console.log(
-    `[fetchAndUpsertCategorySets] Starting for categoryId: ${categoryId}`
+    `[fetchAndUpsertCategorySets] Starting for categoryId: ${categoryId}`,
   );
 
   // Find the selected product line to get the url name
@@ -35,7 +36,7 @@ export async function fetchAndUpsertCategorySets(categoryId: number) {
   }
 
   console.log(
-    `[fetchAndUpsertCategorySets] Found product line: ${selectedProductLine.productLineName}`
+    `[fetchAndUpsertCategorySets] Found product line: ${selectedProductLine.productLineName}`,
   );
 
   // Always fetch from API to ensure we have the latest sets
@@ -44,45 +45,45 @@ export async function fetchAndUpsertCategorySets(categoryId: number) {
   const fetchedSets = fetchedSetsResp.results;
   if (!fetchedSets || !fetchedSets.length) {
     throw new Error(
-      `No sets found from getCatalogSetNames for categoryId ${categoryId}`
+      `No sets found from getCatalogSetNames for categoryId ${categoryId}`,
     );
   }
 
   console.log(
-    `[fetchAndUpsertCategorySets] API returned ${fetchedSets.length} sets`
+    `[fetchAndUpsertCategorySets] API returned ${fetchedSets.length} sets`,
   );
 
   // Get existing sets from database
   console.log(
-    `[fetchAndUpsertCategorySets] Querying existing sets from database...`
+    `[fetchAndUpsertCategorySets] Querying existing sets from database...`,
   );
   const existingSets = await categorySetsDb.find({ categoryId });
   const existingSetIds = new Set(existingSets.map((set) => set.setNameId));
 
   // Identify missing sets that need to be inserted
   const missingSets = fetchedSets.filter(
-    (set) => !existingSetIds.has(set.setNameId)
+    (set) => !existingSetIds.has(set.setNameId),
   );
 
   console.log(
-    `[fetchAndUpsertCategorySets] Found ${existingSets.length} existing sets, ${missingSets.length} missing sets`
+    `[fetchAndUpsertCategorySets] Found ${existingSets.length} existing sets, ${missingSets.length} missing sets`,
   );
 
   // Upsert all fetched sets (will update existing and insert missing)
   console.log(
-    `[fetchAndUpsertCategorySets] Upserting ${fetchedSets.length} sets...`
+    `[fetchAndUpsertCategorySets] Upserting ${fetchedSets.length} sets...`,
   );
   await Promise.all(
     fetchedSets.map((set: CategorySet) =>
       categorySetsDb.update({ setNameId: set.setNameId }, set, {
         upsert: true,
-      })
-    )
+      }),
+    ),
   );
 
   // Log information about what was found/updated
   console.log(
-    `Category ${categoryId}: Found ${fetchedSets.length} total sets, ${missingSets.length} were missing from database`
+    `Category ${categoryId}: Found ${fetchedSets.length} total sets, ${missingSets.length} were missing from database`,
   );
 
   console.log(`[fetchAndUpsertCategorySets] Completed successfully`);
@@ -97,7 +98,7 @@ export async function fetchAndUpsertCategorySets(categoryId: number) {
  */
 export async function fetchAndUpsertSetProducts(
   sets: CategorySet[],
-  productLine: ProductLine
+  productLine: ProductLine,
 ) {
   let allSetProducts: SetProduct[] = [];
   for (let setIdx = 0; setIdx < sets.length; setIdx++) {
@@ -138,8 +139,8 @@ export async function fetchAndUpsertSetProducts(
           products.map((prod) =>
             setProductsDb.update({ productID: prod.productId }, prod, {
               upsert: true,
-            })
-          )
+            }),
+          ),
         );
       } catch (err) {
         continue;
@@ -152,16 +153,30 @@ export async function fetchAndUpsertSetProducts(
 
 /**
  * Fetches and upserts product details and SKUs for a list of set products. Returns product and SKU counts.
+ * Also handles product reclassification by detecting set changes and updating all related records.
+ *
+ * @param allSetProducts - List of set products to process
+ * @param productLineId - The product line ID for shard targeting
+ * @param forceRefresh - If true, always fetches fresh data from API (used for single product updates)
  */
 export async function fetchAndUpsertProductsAndSkus(
   allSetProducts: SetProduct[],
-  productLineId: number
+  productLineId: number,
+  forceRefresh: boolean = false,
 ) {
   console.log(
-    `[fetchAndUpsertProductsAndSkus] Starting with ${allSetProducts.length} products for productLineId: ${productLineId}`
+    `[fetchAndUpsertProductsAndSkus] Starting with ${
+      allSetProducts.length
+    } products for productLineId: ${productLineId}${
+      forceRefresh ? " (force refresh)" : ""
+    }`,
   );
   let productCount = 0;
   let totalSkus = 0;
+  let setChanges = 0;
+  let skusUpdated = 0;
+  let setProductsUpdated = 0;
+  let pendingInventoryUpdated = 0;
   const PRODUCT_CONCURRENCY = 5;
   let prodIdx = 0;
 
@@ -177,17 +192,22 @@ export async function fetchAndUpsertProductsAndSkus(
         prodIdx += 1;
         if (prodIdx % 10 === 0) {
           console.log(
-            `[fetchAndUpsertProductsAndSkus] Processing product ${prodIdx}/${allSetProducts.length}`
+            `[fetchAndUpsertProductsAndSkus] Processing product ${prodIdx}/${allSetProducts.length}`,
           );
         }
 
         const productId = product.productId;
-        let details: Product | null = await productsDbShard.findOne<Product>({
+
+        // Get existing product to compare for set changes
+        const existingProduct = await productsDbShard.findOne<Product>({
           productId,
           productLineId,
         });
 
-        if (!details || !details.skus || !details.skus.length) {
+        let details: Product | null = existingProduct;
+
+        // Fetch fresh data if forceRefresh is true, or if we don't have complete data
+        if (forceRefresh || !details || !details.skus || !details.skus.length) {
           try {
             const fetched = await getProductDetails({ id: productId });
             details = {
@@ -204,18 +224,126 @@ export async function fetchAndUpsertProductsAndSkus(
               productLineName: fetched.productLineName,
               skus: fetched.skus,
             };
+
+            // Detect set change: product has moved from one set to another
+            const hasSetChanged =
+              existingProduct && existingProduct.setId !== details.setId;
+
+            if (hasSetChanged) {
+              setChanges++;
+              console.log(
+                `[fetchAndUpsertProductsAndSkus] SET CHANGE DETECTED for product ${productId}: ` +
+                  `"${existingProduct.setName}" (${existingProduct.setId}) → "${details.setName}" (${details.setId})`,
+              );
+
+              // Update all existing SKUs with new set information
+              const skuUpdateResult = await skusDbShard.update(
+                { productId, productLineId },
+                {
+                  $set: {
+                    setId: details.setId,
+                    setCode: details.setCode,
+                    setName: details.setName,
+                  },
+                },
+                { multi: true },
+              );
+              skusUpdated += skuUpdateResult;
+              console.log(
+                `[fetchAndUpsertProductsAndSkus] Updated ${skuUpdateResult} SKUs with new set information`,
+              );
+
+              // Update SetProduct record with new set information
+              // Find the new set to get setNameId and abbreviation
+              const newCategorySet = await categorySetsDb.findOne({
+                categoryId: productLineId,
+                setNameId: details.setId,
+              });
+
+              // Get the existing SetProduct to preserve other fields
+              const existingSetProduct = await setProductsDb.findOne({
+                productId,
+              });
+
+              if (existingSetProduct) {
+                // Update existing SetProduct with new set information using full replacement
+                const updatedSetProduct: SetProduct = {
+                  ...existingSetProduct,
+                  setNameId: details.setId,
+                  set: details.setName,
+                  setAbbrv: newCategorySet?.abbreviation ?? details.setCode,
+                };
+
+                const setProductUpdateResult = await setProductsDb.update(
+                  { productId },
+                  updatedSetProduct,
+                  { multi: false },
+                );
+                if (setProductUpdateResult) {
+                  setProductsUpdated++;
+                  console.log(
+                    `[fetchAndUpsertProductsAndSkus] Updated SetProduct for product ${productId}: ` +
+                      `setNameId ${existingSetProduct.setNameId} → ${details.setId}`,
+                  );
+                } else {
+                  console.warn(
+                    `[fetchAndUpsertProductsAndSkus] SetProduct update returned 0 for product ${productId}`,
+                  );
+                }
+              } else {
+                console.warn(
+                  `[fetchAndUpsertProductsAndSkus] No existing SetProduct found for product ${productId}, cannot update set association`,
+                );
+              }
+
+              // Update PendingInventory entries with new setId
+              const pendingUpdateResult = await pendingInventoryDb.update(
+                { productId, productLineId },
+                { $set: { setId: details.setId } },
+                { multi: true },
+              );
+              pendingInventoryUpdated += pendingUpdateResult;
+              if (pendingUpdateResult > 0) {
+                console.log(
+                  `[fetchAndUpsertProductsAndSkus] Updated ${pendingUpdateResult} PendingInventory entries with new setId`,
+                );
+              }
+            }
+
+            // Upsert the product with fresh data
+            // Query by productId only (unique index) to ensure we find and update the existing record
+            const updateDoc: Record<string, any> = {
+              productTypeName: details.productTypeName,
+              rarityName: details.rarityName,
+              sealed: details.sealed,
+              productName: details.productName,
+              setId: details.setId,
+              setCode: details.setCode,
+              productId: details.productId,
+              setName: details.setName,
+              productLineId: details.productLineId,
+              productStatusId: details.productStatusId,
+              productLineName: details.productLineName,
+              skus: details.skus,
+            };
+
+            // Preserve the _id if updating existing document to avoid creating duplicates
+            if (existingProduct && (existingProduct as any)._id) {
+              updateDoc._id = (existingProduct as any)._id;
+            }
+
             await productsDbShard.update(
               {
                 productId: details.productId,
-                productLineId: details.productLineId,
+                productLineId, // Use the original productLineId for shard targeting
               },
-              details,
-              { upsert: true }
+              updateDoc,
+              { upsert: true },
             );
           } catch (err) {
             console.warn(
               `[fetchAndUpsertProductsAndSkus] Failed to fetch product ${productId}:`,
-              err
+              err,
             );
             return;
           }
@@ -246,7 +374,7 @@ export async function fetchAndUpsertProductsAndSkus(
         });
         const existingSkuSet = new Set(existingSkus.map((s) => s.sku));
         const skusToInsert = skusToUpsert.filter(
-          (sku) => !existingSkuSet.has(sku.sku)
+          (sku) => !existingSkuSet.has(sku.sku),
         );
 
         if (skusToInsert.length > 0) {
@@ -255,23 +383,42 @@ export async function fetchAndUpsertProductsAndSkus(
           } catch (err) {
             console.warn(
               `[fetchAndUpsertProductsAndSkus] Failed to insert SKUs for product ${productId}:`,
-              err
+              err,
             );
           }
         }
-      }
+      },
     )) {
       // No-op
     }
 
-    console.log(
-      `[fetchAndUpsertProductsAndSkus] Completed successfully. Products: ${productCount}, SKUs: ${totalSkus}`
-    );
-    return { productCount, totalSkus };
+    const summary = {
+      productCount,
+      totalSkus,
+      setChanges,
+      skusUpdated,
+      setProductsUpdated,
+      pendingInventoryUpdated,
+    };
+
+    if (setChanges > 0) {
+      console.log(
+        `[fetchAndUpsertProductsAndSkus] Completed with set corrections. ` +
+          `Products: ${productCount}, SKUs: ${totalSkus}, ` +
+          `Set changes: ${setChanges}, SKUs updated: ${skusUpdated}, ` +
+          `SetProducts updated: ${setProductsUpdated}, PendingInventory updated: ${pendingInventoryUpdated}`,
+      );
+    } else {
+      console.log(
+        `[fetchAndUpsertProductsAndSkus] Completed successfully. Products: ${productCount}, SKUs: ${totalSkus}`,
+      );
+    }
+
+    return summary;
   } catch (error) {
     console.error(
       `[fetchAndUpsertProductsAndSkus] Error during processing:`,
-      error
+      error,
     );
     throw error;
   }
@@ -294,16 +441,16 @@ export async function fetchAllProductLines() {
           await categoryFiltersDb.update(
             { categoryId: pl.productLineId },
             { categoryId: pl.productLineId, ...filters },
-            { upsert: true }
+            { upsert: true },
           );
         }
       } catch (error) {
         console.warn(
           `Failed to fetch category filters for product line ${pl.productLineId}:`,
-          error
+          error,
         );
       }
-    })
+    }),
   );
   return productLines;
 }

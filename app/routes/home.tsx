@@ -57,7 +57,7 @@ export async function action({ request }: LoaderFunctionArgs) {
       const categoryId = Number(formData.get("categoryId"));
       // 1. CATEGORY SETS
       const { sets, productLine } = await fetchAndUpsertCategorySets(
-        categoryId
+        categoryId,
       );
       // 2. SET PRODUCTS
       const allSetProducts = await fetchAndUpsertSetProducts(sets, productLine);
@@ -65,14 +65,14 @@ export async function action({ request }: LoaderFunctionArgs) {
       // 3. PRODUCTS
       const { productCount, totalSkus } = await fetchAndUpsertProductsAndSkus(
         allSetProducts,
-        productLine.productLineId
+        productLine.productLineId,
       );
 
       return data(
         {
           message: `Fetched and verified all sets, products, and skus for category 3 using NeDB. Sets: ${sets.length}, set-products: ${allSetProducts.length}, products: ${productCount}, skus: ${totalSkus}.`,
         },
-        { status: 200 }
+        { status: 200 },
       );
     } catch (error) {
       return data({ error: String(error) }, { status: 500 });
@@ -86,7 +86,7 @@ export async function action({ request }: LoaderFunctionArgs) {
         {
           message: `Fetched and upserted ${productLines.length} product lines and their category filters.`,
         },
-        { status: 200 }
+        { status: 200 },
       );
     } catch (error) {
       console.error("[fetchAllProductLines] Error:", error);
@@ -108,7 +108,7 @@ export async function action({ request }: LoaderFunctionArgs) {
       if (!productLineId) {
         return data(
           { error: "Product Line ID is required for optimized performance" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -123,22 +123,26 @@ export async function action({ request }: LoaderFunctionArgs) {
           {
             error: `Product with ID ${productId} not found in product line ${productLineId}`,
           },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
       // Use the same logic as fetchAndUpsertProductsAndSkus but for a single product
+      // Force refresh to detect and fix set reclassifications
       const dummySetProduct = { productId } as SetProduct;
-      const { productCount, totalSkus } = await fetchAndUpsertProductsAndSkus(
+      const result = await fetchAndUpsertProductsAndSkus(
         [dummySetProduct],
-        existingProduct.productLineId
+        existingProduct.productLineId,
+        true, // forceRefresh: always fetch fresh data to detect set changes
       );
-      return data(
-        {
-          message: `Updated product and skus for productId ${productId}. Products: ${productCount}, skus: ${totalSkus}. (Optimized with product line targeting)`,
-        },
-        { status: 200 }
-      );
+
+      // Build response message including set correction details if applicable
+      let message = `Updated product and skus for productId ${productId}. Products: ${result.productCount}, skus: ${result.totalSkus}.`;
+      if (result.setChanges > 0) {
+        message += ` Set reclassification detected and corrected: ${result.skusUpdated} SKUs updated, ${result.setProductsUpdated} SetProducts updated, ${result.pendingInventoryUpdated} PendingInventory entries updated.`;
+      }
+
+      return data({ message }, { status: 200 });
     } catch (error) {
       return data({ error: String(error) }, { status: 500 });
     }
@@ -168,7 +172,7 @@ export async function action({ request }: LoaderFunctionArgs) {
         if (!productLineForDelete) {
           return data(
             { error: `Product line not found: ${productLineName}` },
-            { status: 400 }
+            { status: 400 },
           );
         }
 
@@ -181,30 +185,30 @@ export async function action({ request }: LoaderFunctionArgs) {
         if (categorySet) {
           // Get the sharded datastores for this product line
           const productsDbShard = getProductsDbShard(
-            productLineForDelete.productLineId
+            productLineForDelete.productLineId,
           );
           const skusDbShard = getSkusDbShard(
-            productLineForDelete.productLineId
+            productLineForDelete.productLineId,
           );
 
           // Delete set products, products, and SKUs associated with this set
           await setProductsDb.remove(
             { setNameId: categorySet.setNameId },
-            { multi: true }
+            { multi: true },
           );
           await productsDbShard.remove(
             {
               setId: categorySet.setNameId,
               productLineId: productLineForDelete.productLineId,
             },
-            { multi: true }
+            { multi: true },
           );
           await skusDbShard.remove(
             {
               setId: categorySet.setNameId,
               productLineId: productLineForDelete.productLineId,
             },
-            { multi: true }
+            { multi: true },
           );
         }
       }
@@ -217,7 +221,7 @@ export async function action({ request }: LoaderFunctionArgs) {
       if (!productLine) {
         return data(
           { error: `Product line not found: ${productLineName}` },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -231,7 +235,7 @@ export async function action({ request }: LoaderFunctionArgs) {
       if (!categorySet) {
         try {
           const { sets } = await fetchAndUpsertCategorySets(
-            productLine.productLineId
+            productLine.productLineId,
           );
           // Try to find the set again after fetching
           categorySet = await categorySetsDb.findOne({
@@ -241,7 +245,7 @@ export async function action({ request }: LoaderFunctionArgs) {
         } catch (err) {
           console.warn(
             `Could not fetch sets for category ${productLine.productLineId}:`,
-            err
+            err,
           );
         }
       }
@@ -266,7 +270,7 @@ export async function action({ request }: LoaderFunctionArgs) {
             {
               error: `No products found for set "${setName}" in product line "${productLineName}". Please check the set name and product line.`,
             },
-            { status: 404 }
+            { status: 404 },
           );
         }
 
@@ -291,7 +295,7 @@ export async function action({ request }: LoaderFunctionArgs) {
         if (setProducts.length > 0 && setProducts[0].setNameId === 0) {
           console.warn(
             `Warning: setNameId is 0 for set "${setName}" in product line "${productLineName}". CategorySet found:`,
-            categorySet
+            categorySet,
           );
         }
 
@@ -300,28 +304,28 @@ export async function action({ request }: LoaderFunctionArgs) {
           setProducts.map((prod) =>
             setProductsDb.update({ productId: prod.productId }, prod, {
               upsert: true,
-            })
-          )
+            }),
+          ),
         );
       } catch (err) {
         console.error(`[API] Failed to search for products:`, err);
         return data(
           { error: `Failed to search for products: ${String(err)}` },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
       // Fetch and upsert product details and SKUs
       const { productCount, totalSkus } = await fetchAndUpsertProductsAndSkus(
         setProducts,
-        productLine.productLineId
+        productLine.productLineId,
       );
 
       return data(
         {
           message: `Fetched and verified products and SKUs for set "${setName}" in product line "${productLineName}". Set products: ${setProducts.length}, products: ${productCount}, SKUs: ${totalSkus}.`,
         },
-        { status: 200 }
+        { status: 200 },
       );
     } catch (error) {
       return data({ error: String(error) }, { status: 500 });
@@ -360,7 +364,7 @@ export default function Home() {
 
   // State for the Update Product form
   const [updateProductLineId, setUpdateProductLineId] = useState<number | null>(
-    productLines.length > 0 ? productLines[0].productLineId : null
+    productLines.length > 0 ? productLines[0].productLineId : null,
   );
 
   return (
@@ -519,7 +523,7 @@ export default function Home() {
                 label="Product Line *"
                 onChange={(e) =>
                   setUpdateProductLineId(
-                    e.target.value ? Number(e.target.value) : null
+                    e.target.value ? Number(e.target.value) : null,
                   )
                 }
                 required
