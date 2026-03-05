@@ -18,7 +18,7 @@ export const usePendingInventoryPipelineProcessor = () => {
       setPendingCount(count);
     } catch (error) {
       baseProcessor.setError(
-        `Failed to load pending inventory count: ${error}`
+        `Failed to load pending inventory count: ${error}`,
       );
     }
   }, [baseProcessor.setError]);
@@ -60,6 +60,7 @@ export const usePendingInventoryPipelineProcessor = () => {
               includeUnverifiedSellers:
                 baseProcessor.supplyAnalysisConfig.includeUnverifiedSellers,
             },
+            productLinePricingConfig: baseProcessor.productLinePricingConfig,
             source: "pending-inventory",
             filename: `priced-pending-inventory-${Date.now()}.csv`,
             enableEnrichment: true,
@@ -71,7 +72,7 @@ export const usePendingInventoryPipelineProcessor = () => {
               baseProcessor.setError(error);
             },
             isCancelled: () => baseProcessor.isCancelledRef.current,
-          }
+          },
         );
 
         // Clear pending inventory after successful processing
@@ -92,14 +93,14 @@ export const usePendingInventoryPipelineProcessor = () => {
           return;
         }
         baseProcessor.setError(
-          error?.message || "Failed to process pending inventory"
+          error?.message || "Failed to process pending inventory",
         );
         throw error;
       } finally {
         baseProcessor.finishProcessing();
       }
     },
-    [baseProcessor, clearPendingInventory, loadPendingCount]
+    [baseProcessor, clearPendingInventory, loadPendingCount],
   );
 
   return {

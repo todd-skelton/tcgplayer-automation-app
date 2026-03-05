@@ -14,6 +14,7 @@ export interface TcgPlayerListing {
   "TCG Marketplace Price": string;
   "Previous Price": string;
   "Suggested Price": string;
+  "Percentile Used": string; // The percentile used for this SKU's pricing
   "Historical Sales Velocity (Days)": string; // Historical sales velocity
   "Estimated Time to Sell (Days)": string; // Market-adjusted time to sell
   "Sales Count for Historical Calculation": string; // Number of sales used for historical calculation
@@ -70,6 +71,15 @@ export interface ProcessingSummary {
     percentiles: { [key: string]: number }; // Uses historical sales velocity by default
     marketAdjustedPercentiles?: { [key: string]: number }; // Market-adjusted percentiles if available
   };
+  // Per-product-line breakdown when using product line pricing
+  productLineBreakdown?: {
+    [productLineName: string]: {
+      count: number;
+      percentileUsed: number;
+      skipped: boolean;
+      totalValue: number;
+    };
+  };
 }
 
 export interface SuggestedPriceResult {
@@ -99,6 +109,11 @@ export interface PricingConfig {
   supplyAnalysisConfig?: {
     maxListingsPerSku?: number; // Performance limit (default 200)
     includeUnverifiedSellers?: boolean; // Include unverified sellers in analysis (default false)
+  };
+  // Per-product-line pricing configuration
+  productLinePricingConfig?: {
+    productLineSettings: Record<number, { percentile: number; skip: boolean }>;
+    defaultPercentile: number;
   };
 }
 
@@ -133,6 +148,7 @@ export type PricedSku = {
   salesCountForHistorical?: number; // Number of sales used for historical calculation
   listingsCountForEstimated?: number; // Number of listings used for estimated calculation
   suggestedPrice?: number;
+  percentileUsed?: number; // The percentile used for this SKU's pricing
   errors?: string[];
   warnings?: string[];
 };

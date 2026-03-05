@@ -11,10 +11,21 @@ import {
   FormLabel,
   FormControlLabel,
   Switch,
+  Autocomplete,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  Checkbox,
 } from "@mui/material";
-import { Link, data, useLoaderData } from "react-router";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { Link, data, useLoaderData, useFetcher } from "react-router";
 import { useConfiguration } from "../hooks/useConfiguration";
 import { getHttpConfig } from "~/core/config/httpConfig.server";
+import type { ProductLine } from "~/shared/data-types/productLine";
 
 export async function loader() {
   const httpConfig = await getHttpConfig();
@@ -29,10 +40,82 @@ export default function ConfigurationRoute() {
     updateFileConfig,
     updateFormDefaults,
     resetToDefaults,
+    productLinePricing,
   } = useConfiguration();
   const { httpConfig } = useLoaderData<typeof loader>();
   const [showResetConfirm, setShowResetConfirm] = React.useState(false);
   const [successMessage, setSuccessMessage] = React.useState<string>("");
+
+  // Product line fetching and state
+  const productLinesFetcher = useFetcher<ProductLine[]>();
+  const [selectedProductLine, setSelectedProductLine] =
+    React.useState<ProductLine | null>(null);
+  const [newPercentile, setNewPercentile] = React.useState<number>(
+    config.pricing.defaultPercentile,
+  );
+  const [newSkip, setNewSkip] = React.useState<boolean>(false);
+
+  // Fetch product lines on mount
+  React.useEffect(() => {
+    if (productLinesFetcher.state === "idle" && !productLinesFetcher.data) {
+      productLinesFetcher.load("/api/inventory/product-lines");
+    }
+  }, [productLinesFetcher]);
+
+  const productLines = productLinesFetcher.data || [];
+  const sortedProductLines = [...productLines].sort((a, b) =>
+    a.productLineName.localeCompare(b.productLineName),
+  );
+
+  // Get product line name by ID (for display in table)
+  const getProductLineName = (productLineId: number): string => {
+    const pl = productLines.find((p) => p.productLineId === productLineId);
+    return pl?.productLineName || `Product Line ${productLineId}`;
+  };
+
+  // Get configured product line IDs
+  const configuredProductLineIds = Object.keys(
+    config.productLinePricing.productLineSettings,
+  ).map(Number);
+
+  // Filter out already-configured product lines from selector
+  const availableProductLines = sortedProductLines.filter(
+    (pl) => !configuredProductLineIds.includes(pl.productLineId),
+  );
+
+  const handleAddProductLineSetting = () => {
+    if (!selectedProductLine) return;
+
+    productLinePricing.setProductLineSettings(
+      selectedProductLine.productLineId,
+      {
+        percentile: newPercentile,
+        skip: newSkip,
+      },
+    );
+
+    // Reset form
+    setSelectedProductLine(null);
+    setNewPercentile(config.pricing.defaultPercentile);
+    setNewSkip(false);
+    setSuccessMessage("Product line pricing added");
+    setTimeout(() => setSuccessMessage(""), 2000);
+  };
+
+  const handleRemoveProductLineSetting = (productLineId: number) => {
+    productLinePricing.removeProductLineSettings(productLineId);
+    setSuccessMessage("Product line pricing removed");
+    setTimeout(() => setSuccessMessage(""), 2000);
+  };
+
+  const handleDefaultPercentileChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const value = Number(event.target.value);
+    productLinePricing.setDefaultPercentile(value);
+    setSuccessMessage("Default percentile updated");
+    setTimeout(() => setSuccessMessage(""), 2000);
+  };
 
   const handlePricingConfigChange =
     (field: keyof typeof config.pricing) =>
@@ -249,6 +332,153 @@ export default function ConfigurationRoute() {
         </Stack>
       </Paper>
 
+      {/* Product Line Pricing Configuration */}
+      <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
+        <Typography variant="h6" gutterBottom>
+          Product Line Pricing
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Configure different percentiles for specific product lines. You can
+          also skip product lines entirely. Non-configured product lines will
+          use the default percentile below.
+        </Typography>
+
+        <Stack spacing={3}>
+          <TextField
+            label="Default Percentile for Non-Configured Lines"
+            type="number"
+            value={config.productLinePricing.defaultPercentile}
+            onChange={handleDefaultPercentileChange}
+            inputProps={{
+              min: config.pricing.minPercentile,
+              max: config.pricing.maxPercentile,
+            }}
+            helperText="Percentile used for product lines not explicitly configured below"
+          />
+
+          {/* Add new product line setting */}
+          <Box
+            sx={{
+              p: 2,
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 1,
+            }}
+          >
+            <Typography variant="subtitle2" gutterBottom>
+              Add Product Line Configuration
+            </Typography>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={2}
+              alignItems="flex-start"
+            >
+              <Autocomplete
+                options={availableProductLines}
+                getOptionLabel={(option) => option.productLineName}
+                value={selectedProductLine}
+                onChange={(_, newValue) => setSelectedProductLine(newValue)}
+                sx={{ minWidth: 250, flex: 1 }}
+                loading={productLinesFetcher.state === "loading"}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Select Product Line"
+                    placeholder="Search product lines..."
+                    size="small"
+                  />
+                )}
+              />
+              <TextField
+                label="Percentile"
+                type="number"
+                value={newPercentile}
+                onChange={(e) => setNewPercentile(Number(e.target.value))}
+                inputProps={{
+                  min: config.pricing.minPercentile,
+                  max: config.pricing.maxPercentile,
+                }}
+                size="small"
+                sx={{ width: 120 }}
+                disabled={newSkip}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={newSkip}
+                    onChange={(e) => setNewSkip(e.target.checked)}
+                    size="small"
+                  />
+                }
+                label="Skip"
+              />
+              <Button
+                variant="contained"
+                onClick={handleAddProductLineSetting}
+                disabled={!selectedProductLine}
+                size="small"
+              >
+                Add
+              </Button>
+            </Stack>
+          </Box>
+
+          {/* Configured product lines table */}
+          {configuredProductLineIds.length > 0 ? (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Product Line</TableCell>
+                    <TableCell align="center">Percentile</TableCell>
+                    <TableCell align="center">Skip</TableCell>
+                    <TableCell align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {configuredProductLineIds.map((productLineId) => {
+                    const settings =
+                      config.productLinePricing.productLineSettings[
+                        productLineId
+                      ];
+                    return (
+                      <TableRow key={productLineId}>
+                        <TableCell>
+                          {getProductLineName(productLineId)}
+                        </TableCell>
+                        <TableCell align="center">
+                          {settings.skip ? "—" : settings.percentile}
+                        </TableCell>
+                        <TableCell align="center">
+                          {settings.skip ? "Yes" : "No"}
+                        </TableCell>
+                        <TableCell align="right">
+                          <IconButton
+                            size="small"
+                            onClick={() =>
+                              handleRemoveProductLineSetting(productLineId)
+                            }
+                            color="error"
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Alert severity="info">
+              No product lines configured. All product lines will use the
+              default percentile ({config.productLinePricing.defaultPercentile}
+              ).
+            </Alert>
+          )}
+        </Stack>
+      </Paper>
+
       {/* Supply Analysis Configuration */}
       <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
         <Typography variant="h6" gutterBottom>
@@ -270,7 +500,7 @@ export default function ConfigurationRoute() {
               <Switch
                 checked={config.supplyAnalysis.enableSupplyAnalysis}
                 onChange={handleSupplyAnalysisConfigChange(
-                  "enableSupplyAnalysis"
+                  "enableSupplyAnalysis",
                 )}
               />
             }
@@ -300,7 +530,7 @@ export default function ConfigurationRoute() {
                   <Switch
                     checked={config.supplyAnalysis.includeUnverifiedSellers}
                     onChange={handleSupplyAnalysisConfigChange(
-                      "includeUnverifiedSellers"
+                      "includeUnverifiedSellers",
                     )}
                   />
                 }

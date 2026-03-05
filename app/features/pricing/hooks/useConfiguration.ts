@@ -36,6 +36,19 @@ export interface FormDefaults {
   sellerKey: string;
 }
 
+// Product line-specific pricing settings
+export interface ProductLineSettings {
+  percentile: number;
+  skip: boolean;
+}
+
+export interface ProductLinePricingConfig {
+  // Per-product-line settings keyed by productLineId
+  productLineSettings: Record<number, ProductLineSettings>;
+  // Default percentile for non-configured product lines
+  defaultPercentile: number;
+}
+
 // Default configurations
 const DEFAULT_PRICING_CONFIG: PricingConfig = {
   defaultPercentile: PRICING_CONSTANTS.DEFAULT_PERCENTILE,
@@ -68,11 +81,16 @@ const DEFAULT_FORM_DEFAULTS: FormDefaults = {
   sellerKey: "",
 };
 
+const DEFAULT_PRODUCT_LINE_PRICING_CONFIG: ProductLinePricingConfig = {
+  productLineSettings: {},
+  defaultPercentile: PRICING_CONSTANTS.DEFAULT_PERCENTILE,
+};
+
 // Individual configuration hooks
 export function usePricingConfig() {
   const [config, setConfig] = useLocalStorageState<PricingConfig>(
     "tcgplayer-pricing-config",
-    DEFAULT_PRICING_CONFIG
+    DEFAULT_PRICING_CONFIG,
   );
 
   const updateConfig = (updates: Partial<PricingConfig>) => {
@@ -88,10 +106,10 @@ export function usePricingConfig() {
     {
       length: Math.floor(
         (config.maxPercentile - config.minPercentile) / config.percentileStep +
-          1
+          1,
       ),
     },
-    (_, i) => config.minPercentile + i * config.percentileStep
+    (_, i) => config.minPercentile + i * config.percentileStep,
   );
 
   return {
@@ -108,7 +126,7 @@ export function usePricingConfig() {
 export function useSupplyAnalysisConfig() {
   const [config, setConfig] = useLocalStorageState<SupplyAnalysisConfig>(
     "tcgplayer-supply-analysis-config",
-    DEFAULT_SUPPLY_ANALYSIS_CONFIG
+    DEFAULT_SUPPLY_ANALYSIS_CONFIG,
   );
 
   const updateConfig = (updates: Partial<SupplyAnalysisConfig>) => {
@@ -130,7 +148,7 @@ export function useSupplyAnalysisConfig() {
 export function useFileConfig() {
   const [config, setConfig] = useLocalStorageState<FileConfig>(
     "tcgplayer-file-config",
-    DEFAULT_FILE_CONFIG
+    DEFAULT_FILE_CONFIG,
   );
 
   const updateConfig = (updates: Partial<FileConfig>) => {
@@ -154,7 +172,7 @@ export function useFileConfig() {
 export function useFormDefaults() {
   const [config, setConfig] = useLocalStorageState<FormDefaults>(
     "tcgplayer-form-defaults",
-    DEFAULT_FORM_DEFAULTS
+    DEFAULT_FORM_DEFAULTS,
   );
 
   const updateConfig = (updates: Partial<FormDefaults>) => {
@@ -186,18 +204,89 @@ export function useFormDefaults() {
   };
 }
 
+export function useProductLinePricingConfig() {
+  const [config, setConfig] = useLocalStorageState<ProductLinePricingConfig>(
+    "tcgplayer-product-line-pricing-config",
+    DEFAULT_PRODUCT_LINE_PRICING_CONFIG,
+  );
+
+  const updateConfig = (updates: Partial<ProductLinePricingConfig>) => {
+    setConfig((prev) => ({ ...prev, ...updates }));
+  };
+
+  const setProductLineSettings = (
+    productLineId: number,
+    settings: ProductLineSettings,
+  ) => {
+    setConfig((prev) => ({
+      ...prev,
+      productLineSettings: {
+        ...prev.productLineSettings,
+        [productLineId]: settings,
+      },
+    }));
+  };
+
+  const removeProductLineSettings = (productLineId: number) => {
+    setConfig((prev) => {
+      const { [productLineId]: _, ...rest } = prev.productLineSettings;
+      return {
+        ...prev,
+        productLineSettings: rest,
+      };
+    });
+  };
+
+  const setDefaultPercentile = (percentile: number) => {
+    setConfig((prev) => ({ ...prev, defaultPercentile: percentile }));
+  };
+
+  const resetToDefaults = () => {
+    setConfig(DEFAULT_PRODUCT_LINE_PRICING_CONFIG);
+  };
+
+  // Helper to get effective percentile for a product line
+  const getEffectivePercentile = (productLineId: number): number => {
+    const settings = config.productLineSettings[productLineId];
+    if (settings && !settings.skip) {
+      return settings.percentile;
+    }
+    return config.defaultPercentile;
+  };
+
+  // Helper to check if a product line should be skipped
+  const shouldSkipProductLine = (productLineId: number): boolean => {
+    const settings = config.productLineSettings[productLineId];
+    return settings?.skip ?? false;
+  };
+
+  return {
+    config,
+    setConfig,
+    updateConfig,
+    setProductLineSettings,
+    removeProductLineSettings,
+    setDefaultPercentile,
+    resetToDefaults,
+    getEffectivePercentile,
+    shouldSkipProductLine,
+  };
+}
+
 // Composite hook for the configuration page (when all configs are needed together)
 export function useConfiguration() {
   const pricingConfig = usePricingConfig();
   const supplyAnalysisConfig = useSupplyAnalysisConfig();
   const fileConfig = useFileConfig();
   const formDefaults = useFormDefaults();
+  const productLinePricingConfig = useProductLinePricingConfig();
 
   const resetAllToDefaults = () => {
     pricingConfig.resetToDefaults();
     supplyAnalysisConfig.resetToDefaults();
     fileConfig.resetToDefaults();
     formDefaults.resetToDefaults();
+    productLinePricingConfig.resetToDefaults();
   };
 
   return {
@@ -206,6 +295,7 @@ export function useConfiguration() {
     supplyAnalysis: supplyAnalysisConfig,
     file: fileConfig,
     formDefaults: formDefaults,
+    productLinePricing: productLinePricingConfig,
 
     // Combined config object for backward compatibility
     config: {
@@ -213,6 +303,7 @@ export function useConfiguration() {
       supplyAnalysis: supplyAnalysisConfig.config,
       file: fileConfig.config,
       formDefaults: formDefaults.config,
+      productLinePricing: productLinePricingConfig.config,
     },
 
     // Individual update functions (for backward compatibility)
@@ -220,6 +311,7 @@ export function useConfiguration() {
     updateSupplyAnalysisConfig: supplyAnalysisConfig.updateConfig,
     updateFileConfig: fileConfig.updateConfig,
     updateFormDefaults: formDefaults.updateConfig,
+    updateProductLinePricingConfig: productLinePricingConfig.updateConfig,
 
     // Reset all configurations
     resetToDefaults: resetAllToDefaults,

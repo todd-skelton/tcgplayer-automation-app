@@ -11,7 +11,7 @@ export async function action({ request }: { request: Request }) {
 
   try {
     const body = await request.json();
-    const { sellerKey } = body;
+    const { sellerKey, excludeProductLineIds } = body;
 
     if (!sellerKey) {
       return data({ error: "Seller key is required" }, { status: 400 });
@@ -43,7 +43,25 @@ export async function action({ request }: { request: Request }) {
     };
 
     // Fetch all products for the seller
-    const products = await getAllProducts(searchRequest);
+    let products = await getAllProducts(searchRequest);
+
+    // Filter out excluded product lines if specified
+    if (
+      excludeProductLineIds &&
+      Array.isArray(excludeProductLineIds) &&
+      excludeProductLineIds.length > 0
+    ) {
+      const excludeSet = new Set(excludeProductLineIds);
+      const originalCount = products.length;
+      products = products.filter(
+        (product) => !excludeSet.has(product.productLineId),
+      );
+      console.log(
+        `Filtered out ${
+          originalCount - products.length
+        } products from excluded product lines`,
+      );
+    }
 
     // Convert products to seller inventory format
     const inventory = products.map((product) => ({
@@ -63,7 +81,7 @@ export async function action({ request }: { request: Request }) {
     inventory.sort((a, b) => {
       // First sort by product line name
       const productLineComparison = (a.productLineName || "").localeCompare(
-        b.productLineName || ""
+        b.productLineName || "",
       );
       if (productLineComparison !== 0) {
         return productLineComparison;
@@ -71,7 +89,7 @@ export async function action({ request }: { request: Request }) {
 
       // Then sort by set name
       const setNameComparison = (a.setName || "").localeCompare(
-        b.setName || ""
+        b.setName || "",
       );
       if (setNameComparison !== 0) {
         return setNameComparison;
@@ -94,7 +112,7 @@ export async function action({ request }: { request: Request }) {
         inventory: [],
         totalProducts: 0,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

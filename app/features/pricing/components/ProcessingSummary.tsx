@@ -326,7 +326,7 @@ export const ProcessingSummaryComponent: React.FC<
                         {marketAdjustedDays !== undefined ? (
                           isCurrentPercentile ? (
                             <strong>{`${marketAdjustedDays.toFixed(
-                              1
+                              1,
                             )} days`}</strong>
                           ) : (
                             `${marketAdjustedDays.toFixed(1)} days`
@@ -372,6 +372,80 @@ export const ProcessingSummaryComponent: React.FC<
     </Box>
   );
 
+  const renderProductLineBreakdown = () => {
+    if (!summary.productLineBreakdown) {
+      return null;
+    }
+
+    const productLines = Object.entries(summary.productLineBreakdown).sort(
+      ([a], [b]) => a.localeCompare(b),
+    );
+
+    if (productLines.length === 0) {
+      return null;
+    }
+
+    return (
+      <Card>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Product Line Breakdown
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Pricing breakdown by product line showing the percentile used for
+            each.
+          </Typography>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Product Line</TableCell>
+                  <TableCell align="center">Items</TableCell>
+                  <TableCell align="center">Percentile</TableCell>
+                  <TableCell align="right">Total Value</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {productLines.map(([productLineName, data]) => (
+                  <TableRow
+                    key={productLineName}
+                    sx={data.skipped ? { opacity: 0.6 } : {}}
+                  >
+                    <TableCell>
+                      {productLineName}
+                      {data.skipped && (
+                        <Chip
+                          label="Skipped"
+                          size="small"
+                          color="warning"
+                          sx={{ ml: 1 }}
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell align="center">
+                      {data.count.toLocaleString()}
+                    </TableCell>
+                    <TableCell align="center">
+                      {data.skipped ? "—" : `${data.percentileUsed}th`}
+                    </TableCell>
+                    <TableCell align="right">
+                      {data.skipped
+                        ? "—"
+                        : data.totalValue.toLocaleString("en-US", {
+                            style: "currency",
+                            currency: "USD",
+                          })}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
+    );
+  };
+
   const renderAlerts = () => (
     <>
       {summary.successRate < config.pricing.successRateThreshold.low && (
@@ -409,8 +483,10 @@ export const ProcessingSummaryComponent: React.FC<
           <strong>File:</strong> {summary.fileName}
         </Typography>
         <Typography variant="body2" color="text.secondary" gutterBottom>
-          Processed on {new Date().toLocaleString()} using{" "}
-          {summary.percentileUsed}th percentile
+          Processed on {new Date().toLocaleString()}
+          {summary.productLineBreakdown
+            ? " using configured percentiles per product line"
+            : ` using ${summary.percentileUsed}th percentile`}
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Processing time: {formatProcessingTime(summary.processingTime)}
@@ -423,6 +499,9 @@ export const ProcessingSummaryComponent: React.FC<
           {renderRecordStatistics()}
           {renderQuantitySummary()}
         </Box>
+
+        {/* Product Line Breakdown (if using per-line config) */}
+        {renderProductLineBreakdown()}
 
         {/* Price Totals */}
         {renderPriceTotals()}

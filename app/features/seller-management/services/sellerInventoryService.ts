@@ -2,6 +2,7 @@ import type { SellerInventoryItem } from "../../inventory-management/services/in
 
 export interface SellerInventoryConfig {
   sellerKey: string;
+  excludeProductLineIds?: number[]; // Product line IDs to exclude from the search
   onProgress?: (current: number, total: number, status: string) => void;
   isCancelled?: () => boolean;
 }
@@ -15,9 +16,10 @@ export interface SellerInventoryResponse {
 
 export class SellerInventoryService {
   async fetchSellerInventory(
-    config: SellerInventoryConfig
+    config: SellerInventoryConfig,
   ): Promise<SellerInventoryItem[]> {
-    const { sellerKey, onProgress, isCancelled } = config;
+    const { sellerKey, excludeProductLineIds, onProgress, isCancelled } =
+      config;
 
     onProgress?.(0, 1, "Fetching seller inventory...");
 
@@ -27,7 +29,10 @@ export class SellerInventoryService {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ sellerKey }),
+        body: JSON.stringify({
+          sellerKey,
+          excludeProductLineIds,
+        }),
       });
 
       if (!response.ok) {

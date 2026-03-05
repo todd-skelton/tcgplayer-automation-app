@@ -33,7 +33,7 @@ export class DataEnrichmentService {
    */
   async fetchPricePointsForPricing(
     skuIds: number[],
-    onProgress?: (current: number, total: number, status: string) => void
+    onProgress?: (current: number, total: number, status: string) => void,
   ): Promise<Map<number, PricePoint>> {
     const result = new Map<number, PricePoint>();
 
@@ -44,7 +44,7 @@ export class DataEnrichmentService {
     onProgress?.(
       0,
       skuIds.length,
-      "Fetching price points for bounds checking..."
+      "Fetching price points for bounds checking...",
     );
 
     try {
@@ -80,11 +80,11 @@ export class DataEnrichmentService {
       onProgress?.(
         skuIds.length,
         skuIds.length,
-        "Price points fetched successfully!"
+        "Price points fetched successfully!",
       );
 
       console.log(
-        `Fetched ${result.size} price points for ${skuIds.length} SKUs`
+        `Fetched ${result.size} price points for ${skuIds.length} SKUs`,
       );
     } catch (error) {
       console.warn("Failed to fetch price points:", error);
@@ -99,7 +99,7 @@ export class DataEnrichmentService {
    */
   async enrichForDisplay(
     pricedItems: PricingResult[],
-    onProgress?: (current: number, total: number, status: string) => void
+    onProgress?: (current: number, total: number, status: string) => void,
   ): Promise<PricedSku[]>;
 
   /**
@@ -110,7 +110,7 @@ export class DataEnrichmentService {
     onProgress?: (current: number, total: number, status: string) => void,
     pricePointsMap?: Map<number, PricePoint>,
     productLineIdHints?: number[],
-    originalPricerSkus?: PricerSku[]
+    originalPricerSkus?: PricerSku[],
   ): Promise<PricedSku[]>;
 
   /**
@@ -121,7 +121,7 @@ export class DataEnrichmentService {
     onProgress?: (current: number, total: number, status: string) => void,
     pricePointsMap?: Map<number, PricePoint>,
     productLineIdHints?: number[],
-    originalPricerSkus?: PricerSku[]
+    originalPricerSkus?: PricerSku[],
   ): Promise<PricedSku[]> {
     const skuIds = pricedItems.map((item) => item.sku);
 
@@ -134,13 +134,13 @@ export class DataEnrichmentService {
         new Set(
           originalPricerSkus
             .filter((sku) => sku.productLineId !== undefined)
-            .map((sku) => sku.productLineId!)
-        )
+            .map((sku) => sku.productLineId!),
+        ),
       );
       if (finalProductLineIdHints.length > 0) {
         console.log(
           "DataEnrichmentService: Extracted productLineId hints from PricerSku data:",
-          finalProductLineIdHints
+          finalProductLineIdHints,
         );
       }
     }
@@ -152,15 +152,15 @@ export class DataEnrichmentService {
 
     if (pricePointsMap && pricePointsMap.size > 0) {
       console.log(
-        "DataEnrichmentService: Using pre-fetched price points, skipping market data fetch"
+        "DataEnrichmentService: Using pre-fetched price points, skipping market data fetch",
       );
       // Convert price points to market display info
       marketDataPromise = Promise.resolve(
-        this.convertPricePointsToMarketData(pricePointsMap, skuIds)
+        this.convertPricePointsToMarketData(pricePointsMap, skuIds),
       );
     } else {
       console.log(
-        "DataEnrichmentService: No pre-fetched price points, fetching market data"
+        "DataEnrichmentService: No pre-fetched price points, fetching market data",
       );
       marketDataPromise = this.fetchMarketData(skuIds);
     }
@@ -171,14 +171,14 @@ export class DataEnrichmentService {
         skuIds,
         onProgress,
         finalProductLineIdHints,
-        originalPricerSkus
+        originalPricerSkus,
       ),
       marketDataPromise,
     ]);
 
     console.log(
       "DataEnrichmentService: Product details received:",
-      productDetails
+      productDetails,
     );
     console.log("DataEnrichmentService: Market data received:", marketData);
 
@@ -200,6 +200,7 @@ export class DataEnrichmentService {
         estimatedTimeToSellDays: pricedItem.estimatedTimeToSellDays,
         salesCountForHistorical: pricedItem.salesCountForHistorical,
         listingsCountForEstimated: pricedItem.listingsCountForEstimated,
+        percentileUsed: pricedItem.percentileUsed,
         errors: pricedItem.errors,
         warnings: pricedItem.warnings,
 
@@ -219,7 +220,7 @@ export class DataEnrichmentService {
 
       console.log(
         `DataEnrichmentService: Enriched SKU ${pricedItem.sku}:`,
-        enrichedSku
+        enrichedSku,
       );
 
       return enrichedSku;
@@ -233,7 +234,7 @@ export class DataEnrichmentService {
     skuIds: number[],
     onProgress?: (current: number, total: number, status: string) => void,
     productLineIdHints?: number[],
-    originalPricerSkus?: PricerSku[]
+    originalPricerSkus?: PricerSku[],
   ): Promise<Map<number, ProductDisplayInfo>> {
     const result = new Map<number, ProductDisplayInfo>();
 
@@ -241,7 +242,7 @@ export class DataEnrichmentService {
 
     // Filter out cached items
     const uncachedSkuIds = skuIds.filter(
-      (id) => !this.productDetailCache.has(id)
+      (id) => !this.productDetailCache.has(id),
     );
 
     console.log("fetchProductDetails: Uncached SKU IDs:", uncachedSkuIds);
@@ -296,24 +297,24 @@ export class DataEnrichmentService {
       // Check if we successfully grouped all SKUs
       const groupedSkuCount = Object.values(productLineSkus).reduce(
         (sum, skus) => sum + skus.length,
-        0
+        0,
       );
       if (groupedSkuCount < uncachedSkuIds.length) {
         console.warn(
-          `fetchProductDetails: Could not map all SKUs to product lines. Mapped: ${groupedSkuCount}, Total: ${uncachedSkuIds.length}. Some SKUs may not be fetched.`
+          `fetchProductDetails: Could not map all SKUs to product lines. Mapped: ${groupedSkuCount}, Total: ${uncachedSkuIds.length}. Some SKUs may not be fetched.`,
         );
       }
 
       if (Object.keys(productLineSkus).length === 0) {
         console.warn(
-          "fetchProductDetails: No SKUs could be mapped to product lines. Cannot fetch product details."
+          "fetchProductDetails: No SKUs could be mapped to product lines. Cannot fetch product details.",
         );
         return result;
       }
 
       console.log(
         "fetchProductDetails: Grouped SKUs by product line:",
-        productLineSkus
+        productLineSkus,
       );
 
       const response = await fetch("/api/inventory/skus", {
@@ -335,17 +336,17 @@ export class DataEnrichmentService {
       if (Array.isArray(data)) {
         console.log(
           "fetchProductDetails: Processing SKUs array with length:",
-          data.length
+          data.length,
         );
         data.forEach((skuData: any, index: number) => {
           console.log(
             `fetchProductDetails: Processing SKU ${index + 1}:`,
-            skuData
+            skuData,
           );
           onProgress?.(
             index + 1,
             data.length,
-            `Loading product details... (${index + 1}/${data.length})`
+            `Loading product details... (${index + 1}/${data.length})`,
           );
 
           const productInfo: ProductDisplayInfo = {
@@ -357,7 +358,7 @@ export class DataEnrichmentService {
               skuData.cardNumber,
               skuData.rarityName,
               skuData.variant,
-              skuData.language
+              skuData.language,
             ),
             condition: skuData.condition,
             variant: skuData.variant,
@@ -365,7 +366,7 @@ export class DataEnrichmentService {
 
           console.log(
             `fetchProductDetails: Created product info for SKU ${skuData.sku}:`,
-            productInfo
+            productInfo,
           );
 
           // Cache the result
@@ -379,7 +380,7 @@ export class DataEnrichmentService {
       console.error("Failed to fetch product details:", error);
       console.error(
         "Error details:",
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.message : String(error),
       );
     }
 
@@ -399,13 +400,13 @@ export class DataEnrichmentService {
    * Fetches market data for display purposes - calls API endpoint for client-side usage
    */
   private async fetchMarketData(
-    skuIds: number[]
+    skuIds: number[],
   ): Promise<Map<number, MarketDisplayInfo>> {
     const result = new Map<number, MarketDisplayInfo>();
 
     console.log(
       "DataEnrichmentService: Starting fetchMarketData for SKUs:",
-      skuIds
+      skuIds,
     );
 
     // Filter out cached items
@@ -421,7 +422,7 @@ export class DataEnrichmentService {
       });
       console.log(
         "DataEnrichmentService: All market data cached, returning:",
-        result
+        result,
       );
       return result;
     }
@@ -431,7 +432,7 @@ export class DataEnrichmentService {
       const requestBody = { skuIds: uncachedSkuIds };
       console.log(
         "DataEnrichmentService: Sending request to /api/price-points with body:",
-        requestBody
+        requestBody,
       );
 
       const response = await fetch("/api/price-points", {
@@ -466,7 +467,7 @@ export class DataEnrichmentService {
             `DataEnrichmentService: Processing price point for SKU ${marketInfo.sku}:`,
             pricePoint,
             "→",
-            marketInfo
+            marketInfo,
           );
 
           // Cache the result
@@ -476,18 +477,18 @@ export class DataEnrichmentService {
       } else {
         console.log(
           "DataEnrichmentService: No pricePoints array found in response:",
-          data
+          data,
         );
         console.log(
           "DataEnrichmentService: Response keys:",
-          Object.keys(data || {})
+          Object.keys(data || {}),
         );
       }
     } catch (error) {
       console.warn("Failed to fetch market data:", error);
       console.error(
         "Error details:",
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.message : String(error),
       );
     }
 
@@ -508,7 +509,7 @@ export class DataEnrichmentService {
    */
   private convertPricePointsToMarketData(
     pricePointsMap: Map<number, PricePoint>,
-    skuIds: number[]
+    skuIds: number[],
   ): Map<number, MarketDisplayInfo> {
     const result = new Map<number, MarketDisplayInfo>();
 
@@ -539,14 +540,14 @@ export class DataEnrichmentService {
           `DataEnrichmentService: Converted price point for SKU ${skuId}:`,
           pricePoint,
           "→",
-          marketInfo
+          marketInfo,
         );
       }
     });
 
     console.log(
       "DataEnrichmentService: Converted price points to market data:",
-      result
+      result,
     );
     return result;
   }

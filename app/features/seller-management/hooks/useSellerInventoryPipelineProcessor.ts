@@ -11,7 +11,7 @@ export const useSellerInventoryPipelineProcessor = () => {
 
   const processSellerInventory = async (
     sellerKey: string,
-    percentile: number
+    percentile: number,
   ): Promise<PipelineResult | undefined> => {
     baseProcessor.startProcessing();
 
@@ -19,11 +19,26 @@ export const useSellerInventoryPipelineProcessor = () => {
       // Clear any cached data to ensure fresh fetch
       sellerDataSource.current.clearCache();
 
+      // Extract product line IDs that should be skipped from the pricing config
+      const skippedProductLineIds: number[] = [];
+      if (baseProcessor.productLinePricingConfig?.productLineSettings) {
+        for (const [productLineIdStr, settings] of Object.entries(
+          baseProcessor.productLinePricingConfig.productLineSettings,
+        )) {
+          if (settings.skip) {
+            skippedProductLineIds.push(parseInt(productLineIdStr));
+          }
+        }
+      }
+
       // First, fetch and validate the SKUs (this is seller-specific logic)
       baseProcessor.setProgress({
         current: 0,
         total: 0,
-        status: "Fetching seller inventory...",
+        status:
+          skippedProductLineIds.length > 0
+            ? `Fetching seller inventory (excluding ${skippedProductLineIds.length} product lines)...`
+            : "Fetching seller inventory...",
         processed: 0,
         skipped: 0,
         errors: 0,
@@ -31,9 +46,14 @@ export const useSellerInventoryPipelineProcessor = () => {
       });
 
       // First, fetch seller inventory with progress tracking
+      // Pass excluded product line IDs to filter at the API level
       const inventory =
         await sellerDataSource.current.inventoryService.fetchSellerInventory({
           sellerKey,
+          excludeProductLineIds:
+            skippedProductLineIds.length > 0
+              ? skippedProductLineIds
+              : undefined,
           onProgress: (current, total, status) => {
             baseProcessor.setProgress({
               current: 0,
@@ -57,7 +77,7 @@ export const useSellerInventoryPipelineProcessor = () => {
 
       // Convert to PricerSku format for validation
       const pricerSkus = await sellerDataSource.current.convertToPricerSku(
-        inventory
+        inventory,
       );
 
       if (baseProcessor.isCancelledRef.current) {
@@ -91,7 +111,7 @@ export const useSellerInventoryPipelineProcessor = () => {
             });
           },
           isCancelled: () => baseProcessor.isCancelledRef.current,
-        }
+        },
       );
 
       if (baseProcessor.isCancelledRef.current) {
@@ -113,6 +133,7 @@ export const useSellerInventoryPipelineProcessor = () => {
             includeUnverifiedSellers:
               baseProcessor.supplyAnalysisConfig.includeUnverifiedSellers,
           },
+          productLinePricingConfig: baseProcessor.productLinePricingConfig,
           source: `seller-${sellerKey}`,
           filename: `priced-seller-${sellerKey}-${Date.now()}.csv`,
           enableEnrichment: true,
@@ -124,7 +145,7 @@ export const useSellerInventoryPipelineProcessor = () => {
             baseProcessor.setError(error);
           },
           isCancelled: () => baseProcessor.isCancelledRef.current,
-        }
+        },
       );
 
       baseProcessor.setSummary(result.summary);
@@ -136,7 +157,7 @@ export const useSellerInventoryPipelineProcessor = () => {
         throw error;
       }
       baseProcessor.setError(
-        error?.message || "Failed to process seller inventory"
+        error?.message || "Failed to process seller inventory",
       );
       throw error;
     } finally {

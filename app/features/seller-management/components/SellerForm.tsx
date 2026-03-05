@@ -1,6 +1,23 @@
 import React, { useState, useEffect } from "react";
-import { Box, TextField, Button, Stack, Typography } from "@mui/material";
+import {
+  Box,
+  TextField,
+  Button,
+  Stack,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
+  Alert,
+} from "@mui/material";
+import { Link, useFetcher } from "react-router";
 import { useConfiguration } from "../../pricing/hooks/useConfiguration";
+import type { ProductLine } from "~/shared/data-types/productLine";
 
 interface SellerFormProps {
   onSubmit: (sellerKey: string, percentile: number) => Promise<void>;
@@ -16,16 +33,34 @@ export function SellerForm({
   const { config, updateFormDefaults } = useConfiguration();
 
   const [sellerKey, setSellerKey] = useState(config.formDefaults.sellerKey);
-  const [percentile, setPercentile] = useState<number>(
-    config.formDefaults.percentile
-  );
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch product lines for display names
+  const productLinesFetcher = useFetcher<ProductLine[]>();
+
+  useEffect(() => {
+    if (productLinesFetcher.state === "idle" && !productLinesFetcher.data) {
+      productLinesFetcher.load("/api/inventory/product-lines");
+    }
+  }, [productLinesFetcher]);
+
+  const productLines = productLinesFetcher.data || [];
+
+  // Get product line name by ID
+  const getProductLineName = (productLineId: number): string => {
+    const pl = productLines.find((p) => p.productLineId === productLineId);
+    return pl?.productLineName || `Product Line ${productLineId}`;
+  };
+
+  // Get configured product line IDs
+  const configuredProductLineIds = Object.keys(
+    config.productLinePricing.productLineSettings,
+  ).map(Number);
 
   // Update form state when config changes (after localStorage loads)
   useEffect(() => {
     setSellerKey(config.formDefaults.sellerKey);
-    setPercentile(config.formDefaults.percentile);
-  }, [config.formDefaults.sellerKey, config.formDefaults.percentile]);
+  }, [config.formDefaults.sellerKey]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,20 +69,16 @@ export function SellerForm({
       return;
     }
 
-    // Validate percentile range
-    if (
-      percentile < config.pricing.minPercentile ||
-      percentile > config.pricing.maxPercentile
-    ) {
-      return;
-    }
-
     // Save form defaults for next time
-    updateFormDefaults({ sellerKey: sellerKey.trim(), percentile });
+    updateFormDefaults({ sellerKey: sellerKey.trim() });
 
     setIsSubmitting(true);
     try {
-      await onSubmit(sellerKey.trim(), percentile);
+      // Pass the default percentile - per-product-line config is handled in the pipeline
+      await onSubmit(
+        sellerKey.trim(),
+        config.productLinePricing.defaultPercentile,
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -78,20 +109,90 @@ export function SellerForm({
           helperText="The unique identifier for the seller whose inventory you want to price"
         />
 
-        <TextField
-          label="Percentile"
-          type="number"
-          value={percentile}
-          onChange={(e) => setPercentile(Number(e.target.value))}
-          placeholder="Enter percentile (0-100)"
-          fullWidth
-          disabled={isProcessing}
-          inputProps={{
-            min: config.pricing.minPercentile,
-            max: config.pricing.maxPercentile,
-          }}
-          helperText={`Percentile for suggested price calculation (${config.pricing.minPercentile}-${config.pricing.maxPercentile}). Examples: 65, 75, 80`}
-        />
+        {/* Product Line Pricing Summary */}
+        <Paper variant="outlined" sx={{ p: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 1,
+            }}
+          >
+            <Typography variant="subtitle2">Pricing Configuration</Typography>
+            <Button
+              component={Link}
+              to="/configuration"
+              size="small"
+              variant="text"
+            >
+              Edit Settings
+            </Button>
+          </Box>
+
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Default percentile:{" "}
+            <Chip
+              label={`${config.productLinePricing.defaultPercentile}%`}
+              size="small"
+              color="primary"
+              variant="outlined"
+            />
+          </Typography>
+
+          {configuredProductLineIds.length > 0 ? (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Product Line</TableCell>
+                    <TableCell align="center">Percentile</TableCell>
+                    <TableCell align="center">Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {configuredProductLineIds.map((productLineId) => {
+                    const settings =
+                      config.productLinePricing.productLineSettings[
+                        productLineId
+                      ];
+                    return (
+                      <TableRow key={productLineId}>
+                        <TableCell>
+                          {getProductLineName(productLineId)}
+                        </TableCell>
+                        <TableCell align="center">
+                          {settings.skip ? "—" : `${settings.percentile}%`}
+                        </TableCell>
+                        <TableCell align="center">
+                          {settings.skip ? (
+                            <Chip
+                              label="Skipped"
+                              size="small"
+                              color="warning"
+                            />
+                          ) : (
+                            <Chip
+                              label="Custom"
+                              size="small"
+                              color="info"
+                              variant="outlined"
+                            />
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Alert severity="info" sx={{ py: 0.5 }}>
+              All product lines will use the default percentile (
+              {config.productLinePricing.defaultPercentile}%).
+            </Alert>
+          )}
+        </Paper>
 
         <Box sx={{ display: "flex", gap: 2 }}>
           {!isProcessing ? (
@@ -99,12 +200,7 @@ export function SellerForm({
               type="submit"
               variant="contained"
               fullWidth
-              disabled={
-                !sellerKey.trim() ||
-                isSubmitting ||
-                percentile < config.pricing.minPercentile ||
-                percentile > config.pricing.maxPercentile
-              }
+              disabled={!sellerKey.trim() || isSubmitting}
             >
               {isSubmitting ? "Starting..." : "Process Seller Inventory"}
             </Button>

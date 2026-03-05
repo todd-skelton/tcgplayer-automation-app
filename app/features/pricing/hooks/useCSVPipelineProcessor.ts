@@ -12,7 +12,7 @@ export const useCSVPipelineProcessor = () => {
 
   const processCSV = async (
     file: File,
-    percentile: number
+    percentile: number,
   ): Promise<PipelineResult | undefined> => {
     baseProcessor.startProcessing();
     setWarning(null);
@@ -32,6 +32,7 @@ export const useCSVPipelineProcessor = () => {
             includeUnverifiedSellers:
               baseProcessor.supplyAnalysisConfig.includeUnverifiedSellers,
           },
+          productLinePricingConfig: baseProcessor.productLinePricingConfig,
           source: file.name,
           filename: `priced-${Date.now()}.csv`,
           enableEnrichment: true,
@@ -43,7 +44,7 @@ export const useCSVPipelineProcessor = () => {
             baseProcessor.setError(error);
           },
           isCancelled: () => baseProcessor.isCancelledRef.current,
-        }
+        },
       );
 
       baseProcessor.setSummary(result.summary);

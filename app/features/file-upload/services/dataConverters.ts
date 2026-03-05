@@ -29,7 +29,7 @@ export class CsvToPricerSkuConverter
   implements InputConverter<TcgPlayerListing>
 {
   async convertToPricerSkus(
-    listings: TcgPlayerListing[]
+    listings: TcgPlayerListing[],
   ): Promise<PricerSku[]> {
     // Use server-side API to avoid client-side database imports
     const response = await fetch("/api/convert-to-pricer-sku", {
@@ -77,6 +77,7 @@ export class PricedSkuToTcgPlayerListingConverter
         "TCG Marketplace Price": pricedSku.price?.toFixed(2) || "",
         "Previous Price": pricedSku.previousPrice?.toFixed(2) || "",
         "Suggested Price": pricedSku.suggestedPrice?.toFixed(2) || "",
+        "Percentile Used": pricedSku.percentileUsed?.toString() || "",
         "Historical Sales Velocity (Days)":
           pricedSku.historicalSalesVelocityDays?.toString() || "",
         "Estimated Time to Sell (Days)":
@@ -102,7 +103,7 @@ export class SellerInventoryToPricerSkuConverter
   implements InputConverter<SellerInventoryItem>
 {
   async convertToPricerSkus(
-    inventory: SellerInventoryItem[]
+    inventory: SellerInventoryItem[],
   ): Promise<PricerSku[]> {
     // Use server-side API to avoid client-side database imports
     const response = await fetch("/api/convert-to-pricer-sku", {
@@ -119,7 +120,7 @@ export class SellerInventoryToPricerSkuConverter
         .json()
         .catch(() => ({ error: "Unknown error" }));
       throw new Error(
-        errorData.error || "Failed to convert seller inventory to PricerSku"
+        errorData.error || "Failed to convert seller inventory to PricerSku",
       );
     }
 

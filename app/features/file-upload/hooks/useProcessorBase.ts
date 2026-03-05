@@ -4,7 +4,10 @@ import type {
   ProcessingSummary,
 } from "../../../core/types/pricing";
 import type { PipelineResult } from "../../pricing/services/pricingOrchestrator";
-import { useSupplyAnalysisConfig } from "../../pricing/hooks/useConfiguration";
+import {
+  useSupplyAnalysisConfig,
+  useProductLinePricingConfig,
+} from "../../pricing/hooks/useConfiguration";
 
 export interface ProcessorBaseState {
   isProcessing: boolean;
@@ -30,6 +33,9 @@ export const useProcessorBase = () => {
 
   // Supply analysis configuration from localStorage
   const { config: supplyAnalysisConfig } = useSupplyAnalysisConfig();
+
+  // Product line pricing configuration from localStorage
+  const { config: productLinePricingConfig } = useProductLinePricingConfig();
 
   const handleCancel = () => {
     isCancelledRef.current = true;
@@ -71,6 +77,7 @@ export const useProcessorBase = () => {
 
     // Configuration
     supplyAnalysisConfig,
+    productLinePricingConfig,
 
     // State setters
     setIsProcessing,

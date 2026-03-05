@@ -33,6 +33,11 @@ export interface PipelineConfig extends PricingConfig {
   enableExport?: boolean;
   onProgress?: (progress: ProcessingProgress) => void;
   isCancelled?: () => boolean;
+  // Per-product-line pricing configuration (passed through to PricingCalculator)
+  productLinePricingConfig?: {
+    productLineSettings: Record<number, { percentile: number; skip: boolean }>;
+    defaultPercentile: number;
+  };
 }
 
 /**
@@ -51,7 +56,7 @@ export class PricingOrchestrator {
   async executePipeline<TInput>(
     dataSource: DataSourceService<TInput>,
     sourceParams: any,
-    config: PipelineConfig
+    config: PipelineConfig,
   ): Promise<PipelineResult> {
     const startTime = Date.now();
 
@@ -135,7 +140,7 @@ export class PricingOrchestrator {
               },
               phaseStartTime: step3StartTime,
             });
-          }
+          },
         );
 
       if (config.isCancelled?.())
@@ -181,7 +186,7 @@ export class PricingOrchestrator {
         validSkus,
         wrappedConfig,
         pricePointsMap,
-        config.source
+        config.source,
       );
 
       if (config.isCancelled?.())
@@ -223,7 +228,7 @@ export class PricingOrchestrator {
         },
         pricePointsMap,
         undefined, // productLineIdHints will be extracted from originalPricerSkus
-        validSkus // Pass original PricerSku data for productLineId hints
+        validSkus, // Pass original PricerSku data for productLineId hints
       );
 
       // Step 6: Generate export files if requested
@@ -247,14 +252,14 @@ export class PricingOrchestrator {
             sku.price !== undefined &&
             sku.price !== null &&
             sku.price > 0 &&
-            (!sku.errors || sku.errors.length === 0)
+            (!sku.errors || sku.errors.length === 0),
         );
         const failedPricing = enrichedSkus.filter(
           (sku) =>
             sku.price === undefined ||
             sku.price === null ||
             sku.price <= 0 ||
-            (sku.errors && sku.errors.length > 0)
+            (sku.errors && sku.errors.length > 0),
         );
 
         // Sort both lists by product line, set name, then product name
@@ -273,7 +278,7 @@ export class PricingOrchestrator {
             const aProductName = a.productName || "";
             const bProductName = b.productName || "";
             return aProductName.localeCompare(bProductName);
-          }
+          },
         );
 
         const sortedFailedPricing = [...failedPricing].sort((a, b) => {
@@ -294,7 +299,7 @@ export class PricingOrchestrator {
 
         // Export main file with successfully priced items
         const csvData = this.outputConverter.convertFromPricedSkus(
-          sortedSuccessfullyPriced
+          sortedSuccessfullyPriced,
         );
         const filename =
           config.filename || `priced-${config.source}-${Date.now()}.csv`;
@@ -322,6 +327,65 @@ export class PricingOrchestrator {
       const endTime = Date.now();
       const processingTime = endTime - startTime;
 
+      // Build product line breakdown from enriched SKUs
+      const productLineBreakdown: {
+        [productLineName: string]: {
+          count: number;
+          percentileUsed: number;
+          skipped: boolean;
+          totalValue: number;
+        };
+      } = {};
+
+      // Track processed items by product line
+      enrichedSkus.forEach((sku: PricedSku) => {
+        const productLineName = sku.productLine || "Unknown";
+        const percentileUsed = sku.percentileUsed || config.percentile;
+        const combinedQty = (sku.quantity || 0) + (sku.addToQuantity || 0);
+        const value = (sku.suggestedPrice || 0) * combinedQty;
+
+        if (!productLineBreakdown[productLineName]) {
+          productLineBreakdown[productLineName] = {
+            count: 0,
+            percentileUsed,
+            skipped: false,
+            totalValue: 0,
+          };
+        }
+
+        productLineBreakdown[productLineName].count++;
+        productLineBreakdown[productLineName].totalValue += value;
+      });
+
+      // Track skipped items by checking what was filtered out
+      // Calculate skipped count per product line from the config
+      if (config.productLinePricingConfig) {
+        const settings = config.productLinePricingConfig.productLineSettings;
+        for (const [productLineIdStr, plSettings] of Object.entries(settings)) {
+          if (plSettings.skip) {
+            // Count how many SKUs were skipped for this product line
+            const productLineId = parseInt(productLineIdStr);
+            const skippedCount = sourceSkus.filter(
+              (sku: PricerSku) =>
+                sku.productLineId === productLineId &&
+                !(sku.addToQuantity && sku.addToQuantity > 0),
+            ).length;
+
+            if (skippedCount > 0) {
+              // We need to find the product line name - check if any enriched SKU has it
+              // or use a placeholder that will be resolved in the UI
+              const productLineName = `ProductLine-${productLineId}`;
+              productLineBreakdown[productLineName] = {
+                count: skippedCount,
+                percentileUsed: 0,
+                skipped: true,
+                totalValue: 0,
+              };
+            }
+          }
+        }
+      }
+
       // Create summary
       const summary: ProcessingSummary = {
         totalRows: sourceSkus.length,
@@ -335,11 +399,11 @@ export class PricingOrchestrator {
         percentileUsed: config.percentile,
         totalQuantity: enrichedSkus.reduce(
           (sum: number, sku: PricedSku) => sum + (sku.quantity || 0),
-          0
+          0,
         ),
         totalAddQuantity: enrichedSkus.reduce(
           (sum: number, sku: PricedSku) => sum + (sku.addToQuantity || 0),
-          0
+          0,
         ),
         totals: {
           marketPrice: enrichedSkus.reduce((sum: number, sku: PricedSku) => {
@@ -356,7 +420,7 @@ export class PricingOrchestrator {
                 (sku.quantity || 0) + (sku.addToQuantity || 0);
               return sum + (sku.price || 0) * combinedQty;
             },
-            0
+            0,
           ),
           percentiles: pricingResult.aggregatedPercentiles.marketPrice,
         },
@@ -375,7 +439,7 @@ export class PricingOrchestrator {
             .reduce(
               (sum: number, sku: PricedSku) =>
                 sum + (sku.quantity || 0) + (sku.addToQuantity || 0),
-              0
+              0,
             ),
         },
         medianDaysToSell: {
@@ -385,6 +449,10 @@ export class PricingOrchestrator {
           marketAdjustedPercentiles:
             pricingResult.aggregatedPercentiles.estimatedTimeToSell,
         },
+        productLineBreakdown:
+          Object.keys(productLineBreakdown).length > 0
+            ? productLineBreakdown
+            : undefined,
       };
 
       config.onProgress?.({
@@ -411,7 +479,7 @@ export class PricingOrchestrator {
       throw new Error(
         `Pipeline execution failed: ${
           error instanceof Error ? error.message : "Unknown error"
-        }`
+        }`,
       );
     }
   }

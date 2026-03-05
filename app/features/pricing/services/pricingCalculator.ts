@@ -15,6 +15,8 @@ export interface PricingResult {
   estimatedTimeToSellDays?: number; // Market-adjusted time to sell in days
   salesCountForHistorical?: number; // Number of sales used for historical calculation
   listingsCountForEstimated?: number; // Number of listings used for estimated calculation
+  percentileUsed?: number; // The percentile used for this SKU's pricing
+  productLineId?: number; // The product line ID for aggregation
   errors?: string[];
   warnings?: string[];
 }
@@ -45,7 +47,7 @@ export class PricingCalculator {
     config: PricingConfig,
     pricePointsMap: Map<number, PricePoint> = new Map(),
     source: string = "pricing",
-    productDisplayMap?: Map<number, ProductDisplayInfo>
+    productDisplayMap?: Map<number, ProductDisplayInfo>,
   ): Promise<PricingCalculationResult> {
     const startTime = Date.now();
     let processed = 0;
@@ -102,22 +104,60 @@ export class PricingCalculator {
           continue;
         }
 
+        // Check if this product line should be skipped based on per-product-line config
+        // Never skip items with addToQuantity (pending inventory) - they always need pricing
+        const hasPendingQuantity =
+          pricerSku.addToQuantity && pricerSku.addToQuantity > 0;
+        if (config.productLinePricingConfig && !hasPendingQuantity) {
+          const plSettings =
+            config.productLinePricingConfig.productLineSettings[
+              pricerSku.productLineId
+            ];
+          if (plSettings?.skip) {
+            skipped++;
+            continue;
+          }
+        }
+
+        // Determine the percentile to use for this SKU
+        // Use per-product-line percentile if configured, otherwise fall back to config.percentile
+        // For skipped product lines with pending inventory, use the default percentile
+        let effectivePercentile = config.percentile;
+        if (config.productLinePricingConfig) {
+          const plSettings =
+            config.productLinePricingConfig.productLineSettings[
+              pricerSku.productLineId
+            ];
+          if (plSettings && !plSettings.skip) {
+            effectivePercentile = plSettings.percentile;
+          } else if (!plSettings || plSettings.skip) {
+            // Use default percentile for non-configured product lines
+            // or for skipped product lines with pending inventory
+            effectivePercentile =
+              config.productLinePricingConfig.defaultPercentile;
+          }
+        }
+
         // Get suggested price for this SKU
         // Use productLineId hint from PricerSku if available for better performance
         const result = await getSuggestedPrice(
           pricerSku.sku.toString(),
-          config.percentile,
+          effectivePercentile,
           config.enableSupplyAnalysis,
           config.supplyAnalysisConfig,
-          pricerSku.productLineId
+          pricerSku.productLineId,
         );
 
         // Create pricing result from suggested price result
         const pricedItem = await this.createPricedItem(
           pricerSku,
           result,
-          pricePointsMap
+          pricePointsMap,
         );
+
+        // Add the percentile and product line info used for this SKU
+        pricedItem.percentileUsed = effectivePercentile;
+        pricedItem.productLineId = pricerSku.productLineId;
 
         // Track errors vs warnings vs success
         if (pricedItem.errors && pricedItem.errors.length > 0) {
@@ -203,7 +243,7 @@ export class PricingCalculator {
       estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
       salesCount?: number; // Number of sales used for historical calculation
       quantity: number;
-    }>
+    }>,
   ): {
     marketPrice: { [key: string]: number };
     historicalSalesVelocity: { [key: string]: number };
@@ -292,7 +332,7 @@ export class PricingCalculator {
   private async createPricedItem(
     pricerSku: PricerSku,
     result: any,
-    pricePointsMap: Map<number, PricePoint> = new Map()
+    pricePointsMap: Map<number, PricePoint> = new Map(),
   ): Promise<PricingResult> {
     const pricedItem: PricingResult = {
       sku: pricerSku.sku,
@@ -328,7 +368,7 @@ export class PricingCalculator {
                 highestPrice: pricePoint.highestPrice,
                 calculatedAt: pricePoint.calculatedAt,
               }
-            : null
+            : null,
         );
 
       // Set the bounded price as the marketplace price
