@@ -5,6 +5,7 @@ import {
 } from "~/datastores.server";
 import type { ProductLine } from "~/shared/data-types/productLine";
 import type { Sku } from "~/shared/data-types/sku";
+import { mapPullSheetProductLineName } from "../utils/productLineNameMap";
 
 interface PullSheetLookupRequest {
   items: Array<{
@@ -41,8 +42,11 @@ export async function action({ request }: { request: Request }) {
     const skuToProductLine = new Map<number, number>();
 
     for (const item of items) {
+      const mappedProductLineName = mapPullSheetProductLineName(
+        item.productLineName
+      );
       const productLine = productLineNameMap.get(
-        item.productLineName.toLowerCase()
+        mappedProductLineName.toLowerCase()
       );
       if (!productLine) {
         continue; // Skip items with unknown product lines

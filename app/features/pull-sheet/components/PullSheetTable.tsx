@@ -16,7 +16,7 @@ import { ClientOnlyDataGrid } from "~/features/file-upload/components/ClientOnly
 import type { PullSheetItem } from "../types/pullSheetTypes";
 import {
   getConditionChipColor,
-  getVariantLabel,
+  getVariantVisuals,
   getTcgPlayerImageUrl,
 } from "./pullSheetUtils";
 
@@ -100,6 +100,7 @@ export const PullSheetTable: React.FC<PullSheetTableProps> = React.memo(
           renderCell: (params) => {
             const condition = params.row.dbCondition || params.row.condition;
             const variant = params.row.variant;
+            const variantVisuals = getVariantVisuals(variant);
             return (
               <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", alignItems: "center" }}>
                 <Chip
@@ -108,24 +109,24 @@ export const PullSheetTable: React.FC<PullSheetTableProps> = React.memo(
                   size="small"
                   variant="filled"
                 />
-                {variant && variant !== "Normal" && (
+                {variantVisuals.label && (
                   <Chip
-                    label={getVariantLabel(variant)}
+                    label={variantVisuals.label}
                     size="small"
                     variant="outlined"
                     sx={{
-                      borderColor: variant.toLowerCase().includes("holo")
-                        ? "#FFD700"
-                        : undefined,
-                      color: variant.toLowerCase().includes("holo")
-                        ? "#B8860B"
-                        : undefined,
-                      fontStyle: variant.toLowerCase().includes("reverse")
-                        ? "italic"
-                        : "normal",
-                      fontWeight: variant.toLowerCase().includes("1st")
-                        ? "bold"
-                        : "normal",
+                      borderColor: variantVisuals.isReverseHolo
+                        ? "#c4b5fd"
+                        : variantVisuals.isHolo
+                          ? "#fcd34d"
+                          : undefined,
+                      color: variantVisuals.isReverseHolo
+                        ? "#6d28d9"
+                        : variantVisuals.isHolo
+                          ? "#a16207"
+                          : undefined,
+                      fontStyle: variantVisuals.chipFontStyle,
+                      fontWeight: variantVisuals.chipFontWeight,
                     }}
                   />
                 )}

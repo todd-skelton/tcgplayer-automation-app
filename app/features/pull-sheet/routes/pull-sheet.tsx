@@ -18,6 +18,7 @@ import Papa from "papaparse";
 import { PullSheetTable } from "../components/PullSheetTable";
 import { PullSheetGrid } from "../components/PullSheetGrid";
 import { getReleaseYear } from "../components/pullSheetUtils";
+import { mapPullSheetProductLineName } from "../utils/productLineNameMap";
 import type {
   PullSheetCsvRow,
   PullSheetItem,
@@ -94,7 +95,7 @@ export default function PullSheetRoute() {
         // Build lookup request
         const lookupItems = rows.map((row) => ({
           skuId: parseInt(row.SkuId, 10),
-          productLineName: row["Product Line"],
+          productLineName: mapPullSheetProductLineName(row["Product Line"]),
         }));
 
         // Call API to look up SKUs
@@ -114,10 +115,11 @@ export default function PullSheetRoute() {
         const pullSheetItems: PullSheetItem[] = rows.map((row) => {
           const skuId = parseInt(row.SkuId, 10);
           const dbSku = skuMap[skuId];
+          const productLine = mapPullSheetProductLineName(row["Product Line"]);
 
           return {
             skuId,
-            productLine: row["Product Line"],
+            productLine,
             productName: row["Product Name"],
             condition: row.Condition,
             number: row.Number,

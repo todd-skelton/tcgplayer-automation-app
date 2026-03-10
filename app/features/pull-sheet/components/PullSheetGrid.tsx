@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { Box, Card, CardMedia, Chip, Tooltip, Typography } from "@mui/material";
 import WarningIcon from "@mui/icons-material/Warning";
+import { keyframes } from "@mui/system";
 import type { PullSheetItem } from "../types/pullSheetTypes";
 import {
   getConditionBackdropColor,
@@ -10,12 +11,268 @@ import {
   getImageFilter,
   getPullSheetDisplayName,
   getTcgPlayerImageUrl,
-  getVariantGlow,
-  getVariantLabel,
+  getVariantVisuals,
 } from "./pullSheetUtils";
+import type { PullSheetVariantVisuals } from "./pullSheetUtils";
 
 interface PullSheetGridProps {
   items: PullSheetItem[];
+}
+
+const shimmerSweep = keyframes`
+  0% {
+    transform: translate(-132%, -132%) rotate(-18deg);
+    opacity: 0;
+  }
+
+  16% {
+    opacity: 0;
+  }
+
+  30% {
+    opacity: 0.95;
+  }
+
+  48% {
+    opacity: 0.6;
+  }
+
+  62%,
+  100% {
+    transform: translate(110%, 110%) rotate(-18deg);
+    opacity: 0;
+  }
+`;
+
+const shimmerSweepReverse = keyframes`
+  0% {
+    transform: translate(132%, 132%) rotate(-18deg);
+    opacity: 0;
+  }
+
+  16% {
+    opacity: 0;
+  }
+
+  30% {
+    opacity: 0.95;
+  }
+
+  48% {
+    opacity: 0.6;
+  }
+
+  62%,
+  100% {
+    transform: translate(-110%, -110%) rotate(-18deg);
+    opacity: 0;
+  }
+`;
+
+const ambientDrift = keyframes`
+  0% {
+    transform: scale(1) translate3d(-2%, -2%, 0);
+    filter: hue-rotate(0deg);
+  }
+
+  50% {
+    transform: scale(1.06) translate3d(2%, 2%, 0);
+    filter: hue-rotate(18deg);
+  }
+
+  100% {
+    transform: scale(1) translate3d(-2%, -2%, 0);
+    filter: hue-rotate(0deg);
+  }
+`;
+
+const firstEditionPulse = keyframes`
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: scale(0.96);
+  }
+
+  50% {
+    opacity: 0.34;
+    transform: scale(1.05);
+  }
+`;
+
+const badgeGlint = keyframes`
+  0% {
+    transform: translateX(-150%) skewX(-18deg);
+    opacity: 0;
+  }
+
+  22% {
+    opacity: 0;
+  }
+
+  36% {
+    opacity: 0.72;
+  }
+
+  54%,
+  100% {
+    transform: translateX(160%) skewX(-18deg);
+    opacity: 0;
+  }
+`;
+
+interface VariantEffectLayersProps {
+  variantVisuals: PullSheetVariantVisuals;
+  shimmerDelay: string;
+  pulseDelay: string;
+}
+
+function VariantEffectLayers({
+  variantVisuals,
+  shimmerDelay,
+  pulseDelay,
+}: VariantEffectLayersProps) {
+  return (
+    <>
+      {variantVisuals.ambientBackground !== "none" && (
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 2,
+            pointerEvents: "none",
+            background: variantVisuals.ambientBackground,
+            mixBlendMode:
+              variantVisuals.effectType === "none" ? "screen" : "screen",
+            opacity: variantVisuals.effectType === "none" ? 0.95 : 1,
+            WebkitMaskImage: variantVisuals.shimmerMaskImage ?? undefined,
+            maskImage: variantVisuals.shimmerMaskImage ?? undefined,
+            animation:
+              variantVisuals.effectType === "none"
+                ? `${firstEditionPulse} 3.8s ease-in-out infinite`
+                : `${ambientDrift} 8s ease-in-out infinite`,
+            animationDelay: pulseDelay,
+            "@media (prefers-reduced-motion: reduce)": {
+              animation: "none",
+              filter: "none",
+              transform: "none",
+              opacity: variantVisuals.effectType === "none" ? 0.3 : 0.24,
+            },
+          }}
+        />
+      )}
+
+      {variantVisuals.effectType !== "none" && (
+        <>
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 2,
+              pointerEvents: "none",
+              border: `1px solid ${variantVisuals.effectBorderColor}`,
+              boxShadow: `inset 0 0 18px ${variantVisuals.effectBorderColor}`,
+              borderRadius: 0.5,
+            }}
+          />
+          <Box
+            sx={{
+              position: "absolute",
+              inset: "-42%",
+              zIndex: 2,
+              pointerEvents: "none",
+              background: variantVisuals.shimmerGradient,
+              backgroundSize: "160% 160%",
+              mixBlendMode: variantVisuals.shimmerBlendMode,
+              opacity: variantVisuals.effectOpacity,
+              WebkitMaskImage: variantVisuals.shimmerMaskImage ?? undefined,
+              maskImage: variantVisuals.shimmerMaskImage ?? undefined,
+              willChange: "transform, opacity, background-position",
+              animation:
+                variantVisuals.effectType === "reverse-holo"
+                  ? `${shimmerSweepReverse} 5.6s linear infinite`
+                  : `${shimmerSweep} 5.6s linear infinite`,
+              animationDelay: shimmerDelay,
+              "@media (prefers-reduced-motion: reduce)": {
+                animation: "none",
+                opacity: 0.16,
+                transform: "none",
+                backgroundPosition: "50% 50%",
+              },
+            }}
+          />
+        </>
+      )}
+
+      {variantVisuals.isFirstEdition && (
+        <>
+          <Box
+            sx={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "42%",
+              height: "30%",
+              zIndex: 2,
+              pointerEvents: "none",
+              background:
+                "radial-gradient(circle at 18% 18%, rgba(252, 211, 77, 0.42), rgba(251, 191, 36, 0.16) 38%, transparent 72%)",
+              mixBlendMode: "screen",
+              filter: "blur(8px)",
+              animation: `${firstEditionPulse} 3.6s ease-in-out infinite`,
+              animationDelay: pulseDelay,
+              "@media (prefers-reduced-motion: reduce)": {
+                animation: "none",
+                filter: "blur(6px)",
+                opacity: 0.24,
+              },
+            }}
+          />
+          {variantVisuals.badgeText && (
+            <Box
+              sx={{
+                position: "absolute",
+                top: 10,
+                left: 10,
+                zIndex: 2,
+                px: 1,
+                py: 0.4,
+                borderRadius: 1,
+                overflow: "hidden",
+                border: "1px solid rgba(255,255,255,0.45)",
+                background: variantVisuals.badgeBackground,
+                color: "#fff7ed",
+                fontSize: "0.68rem",
+                fontWeight: 800,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                textShadow: "0 1px 2px rgba(0,0,0,0.55)",
+                boxShadow: `0 4px 10px rgba(0,0,0,0.18), ${variantVisuals.badgeGlow}`,
+                "&::after": {
+                  content: '""',
+                  position: "absolute",
+                  inset: "-25%",
+                  background:
+                    "linear-gradient(112deg, transparent 34%, rgba(255,255,255,0) 42%, rgba(255,255,255,0.72) 50%, rgba(255,255,255,0) 58%, transparent 66%)",
+                  transform: "translateX(-150%) skewX(-18deg)",
+                  animation: `${badgeGlint} 4.8s linear infinite`,
+                  animationDelay: pulseDelay,
+                },
+                "@media (prefers-reduced-motion: reduce)": {
+                  "&::after": {
+                    animation: "none",
+                    opacity: 0.18,
+                    transform: "translateX(0) skewX(-18deg)",
+                  },
+                },
+              }}
+            >
+              {variantVisuals.badgeText}
+            </Box>
+          )}
+        </>
+      )}
+    </>
+  );
 }
 
 export const PullSheetGrid: React.FC<PullSheetGridProps> = React.memo(
@@ -47,13 +304,15 @@ export const PullSheetGrid: React.FC<PullSheetGridProps> = React.memo(
             const backdropColor = getConditionBackdropColor(condition);
             const borderColor = getConditionBorderColor(condition);
             const overlay = getConditionOverlay(condition);
-            const glow = getVariantGlow(variant);
+            const variantVisuals = getVariantVisuals(variant);
             const imageFilter = getImageFilter(condition);
             const displayName = getPullSheetDisplayName(
               item.productName,
               item.number,
             );
             const isInfoHidden = !!hiddenInfoKeys[itemKey];
+            const shimmerDelay = `${(index % 8) * 0.55}s`;
+            const pulseDelay = `${((index * 3) % 10) * 0.35}s`;
             const metaLine = [item.set, item.releaseYear].filter(Boolean).join(
               " | ",
             );
@@ -66,12 +325,17 @@ export const PullSheetGrid: React.FC<PullSheetGridProps> = React.memo(
                   border: `3px solid ${borderColor}`,
                   borderRadius: 2,
                   overflow: "hidden",
-                  boxShadow: glow !== "none" ? glow : undefined,
+                  boxShadow:
+                    variantVisuals.glow !== "none"
+                      ? variantVisuals.glow
+                      : undefined,
                   transition: "all 0.2s ease",
                   "&:hover": {
                     transform: "translateY(-2px)",
                     boxShadow: `${
-                      glow !== "none" ? `${glow},` : ""
+                      variantVisuals.glow !== "none"
+                        ? `${variantVisuals.glow},`
+                        : ""
                     } 0 4px 12px rgba(0,0,0,0.15)`,
                   },
                 }}
@@ -143,6 +407,14 @@ export const PullSheetGrid: React.FC<PullSheetGridProps> = React.memo(
                     </Tooltip>
                   )}
 
+                  {item.productId && (
+                    <VariantEffectLayers
+                      variantVisuals={variantVisuals}
+                      shimmerDelay={shimmerDelay}
+                      pulseDelay={pulseDelay}
+                    />
+                  )}
+
                   {!isInfoHidden && (
                     <Box
                       sx={{
@@ -211,21 +483,19 @@ export const PullSheetGrid: React.FC<PullSheetGridProps> = React.memo(
                             variant="filled"
                             sx={{ fontSize: "0.7rem", height: 22 }}
                           />
-                          {variant && variant !== "Normal" && (
+                          {variantVisuals.label && (
                             <Chip
-                              label={getVariantLabel(variant)}
+                              label={variantVisuals.label}
                               size="small"
                               variant="outlined"
                               sx={{
                                 fontSize: "0.7rem",
                                 height: 22,
                                 backgroundColor: "rgba(0,0,0,0.32)",
-                                borderColor: variant.toLowerCase().includes("holo")
-                                  ? "#FFD700"
-                                  : "rgba(255,255,255,0.45)",
-                                color: variant.toLowerCase().includes("holo")
-                                  ? "#FFD700"
-                                  : "common.white",
+                                borderColor: variantVisuals.chipBorderColor,
+                                color: variantVisuals.chipTextColor,
+                                fontStyle: variantVisuals.chipFontStyle,
+                                fontWeight: variantVisuals.chipFontWeight,
                               }}
                             />
                           )}
