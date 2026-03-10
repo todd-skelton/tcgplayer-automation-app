@@ -66,4 +66,12 @@ export default [
     path: "/api/pending-inventory",
     file: "features/pending-inventory/routes/api.pending-inventory.ts",
   },
+  {
+    path: "/pull-sheet",
+    file: "features/pull-sheet/routes/pull-sheet.tsx",
+  },
+  {
+    path: "/api/pull-sheet-lookup",
+    file: "features/pull-sheet/routes/api.pull-sheet-lookup.ts",
+  },
 ] satisfies RouteConfig;

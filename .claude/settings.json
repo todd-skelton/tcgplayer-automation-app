@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"export.*Component\\\\|export default\\\\|export const\" /d/Users/ToddS/Source/Repos/tcgplayer-automation-app/app/features/*/components/index.ts)",
+      "Bash(ls -la /d/Users/ToddS/Source/Repos/tcgplayer-automation-app/app/features/*/components/)",
+      "Bash(ls -la app/features/*/routes/)",
+      "Bash(npx tsc --noEmit)"
+    ],
+    "additionalDirectories": [
+      "d:\\Users\\ToddS\\Source\\Repos\\tcgplayer-automation-app\\app\\features\\pull-sheet"
+    ]
+  }
+}
