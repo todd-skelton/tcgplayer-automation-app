@@ -79,7 +79,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
   const loadSkus = useCallback(async (setId: number, productLineId: number) => {
     try {
       // Load SKUs for the selected set
-      // Include productLineId for efficient sharded query
+      // Include productLineId for a targeted lookup
       const skusResponse = await fetch(
         `/api/inventory/skus-by-set?setId=${setId}&productLineId=${productLineId}`
       );

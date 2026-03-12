@@ -6,15 +6,15 @@ export default defineConfig({
   plugins: [reactRouter(), tsconfigPaths()],
   ssr: {
     noExternal: ["@mui/x-data-grid"],
-    external: ["nedb-promises", "@seald-io/nedb", "path", "fs", "os"],
+    external: ["pg", "pg-native", "path", "fs", "os"],
   },
   optimizeDeps: {
     include: ["@mui/x-data-grid"],
-    exclude: ["nedb-promises", "@seald-io/nedb"],
+    exclude: ["pg", "pg-native"],
   },
   build: {
     rollupOptions: {
-      external: ["nedb-promises", "@seald-io/nedb", "path", "fs", "os"],
+      external: ["pg", "pg-native", "path", "fs", "os"],
     },
   },
   css: {

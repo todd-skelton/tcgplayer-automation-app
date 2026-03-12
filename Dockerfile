@@ -1,22 +1,26 @@
-FROM node:20-alpine AS development-dependencies-env
-COPY . /app
+FROM node:20-alpine AS base
 WORKDIR /app
+
+FROM base AS development-dependencies-env
+COPY package.json package-lock.json /app/
 RUN npm ci
+COPY . /app
 
-FROM node:20-alpine AS production-dependencies-env
-COPY ./package.json package-lock.json /app/
-WORKDIR /app
-RUN npm ci --omit=dev && npm install cross-env
+FROM base AS production-dependencies-env
+COPY package.json package-lock.json /app/
+RUN npm ci --omit=dev
 
-FROM node:20-alpine AS build-env
-COPY . /app/
+FROM base AS build-env
 COPY --from=development-dependencies-env /app/node_modules /app/node_modules
-WORKDIR /app
+COPY . /app/
 RUN npm run build
 
-FROM node:20-alpine
-COPY ./package.json package-lock.json /app/
+FROM base AS runtime
+ENV NODE_ENV=production
+ENV PORT=3000
 COPY --from=production-dependencies-env /app/node_modules /app/node_modules
 COPY --from=build-env /app/build /app/build
-WORKDIR /app
-CMD ["npm", "run", "start"]
+COPY package.json package-lock.json /app/
+COPY db /app/db
+COPY scripts /app/scripts
+CMD ["node", "scripts/docker-start.mjs"]

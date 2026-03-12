@@ -97,7 +97,7 @@ export class PricedSkuToTcgPlayerListingConverter
  * Converts seller inventory to PricerSku format
  * Enhanced version that looks up missing performance metadata
  * Deduplicates SKUs to prevent processing the same item multiple times
- * Uses product line information to avoid cross-shard searching
+ * Uses product line information to avoid ambiguous cross-line lookups
  */
 export class SellerInventoryToPricerSkuConverter
   implements InputConverter<SellerInventoryItem>

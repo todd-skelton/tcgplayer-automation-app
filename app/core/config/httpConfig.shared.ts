@@ -7,7 +7,7 @@
 // Domain Constants
 // ============================================================================
 
-// Short keys for storage (NeDB doesn't allow dots in field names)
+// Short keys for persisted storage.
 export const DOMAIN_KEYS = {
   MP_SEARCH_API: "mpSearchApi",
   MPAPI: "mpApi",

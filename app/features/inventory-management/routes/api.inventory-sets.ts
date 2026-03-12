@@ -1,5 +1,5 @@
 import { data } from "react-router";
-import { categorySetsDb } from "~/datastores.server";
+import { categorySetsRepository } from "~/core/db";
 
 export async function loader({ request }: { request: Request }) {
   try {
@@ -10,9 +10,9 @@ export async function loader({ request }: { request: Request }) {
       return data({ error: "productLineId is required" }, { status: 400 });
     }
 
-    const sets = await categorySetsDb.find({
-      categoryId: Number(productLineId),
-    });
+    const sets = await categorySetsRepository.findByCategoryId(
+      Number(productLineId),
+    );
     return data(sets, { status: 200 });
   } catch (error) {
     return data({ error: String(error) }, { status: 500 });

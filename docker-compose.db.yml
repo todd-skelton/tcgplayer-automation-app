@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tcgplayer-postgres-dev
+    environment:
+      POSTGRES_DB: tcgplayer_automation
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tcgplayer_automation"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data-dev:/var/lib/postgresql/data
+
+volumes:
+  postgres-data-dev:

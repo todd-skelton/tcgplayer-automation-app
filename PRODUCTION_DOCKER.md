@@ -1,165 +1,96 @@
 # Production Docker Deployment
 
-This guide explains how to run a stable production version of the TCGPlayer Automation App locally using Docker.
+The production stack runs the app and PostgreSQL together. The app container waits for the database, applies SQL migrations during startup, and can import the legacy NeDB files from the mounted `data/` directory.
 
 ## Quick Start
 
-### Initial Deployment
+Deploy the production stack:
 
 ```bash
-# Deploy production for the first time
 npm run prod:deploy
 ```
 
-This will:
+This starts:
 
-- Build a production Docker image
-- Start the container on port 3001
-- Mount your `data` directory for persistence
-- Set up health checks and auto-restart
+- The app on `http://localhost:3001`
+- PostgreSQL in a sidecar container
+- Persistent database storage in the `postgres-data` Docker volume
 
-### Access Your Applications
+## Configuration
 
-- **Production (Stable)**: http://localhost:3001
-- **Development**: http://localhost:5173 (when running `npm run dev`)
-
-## Available Commands
-
-### NPM Scripts
+The production compose file sets:
 
 ```bash
-# Deployment
-npm run prod:deploy    # Initial deployment (builds and starts)
-npm run prod:update    # Update existing production (rebuild and restart)
-
-# Management
-npm run prod:start     # Start production container
-npm run prod:stop      # Stop production container
-npm run prod:restart   # Restart production container
-
-# Monitoring
-npm run prod:status    # Show container status
-npm run prod:logs      # View production logs (follow mode)
-npm run prod:shell     # Connect to production container shell
-
-# Cleanup
-npm run prod:clean     # Stop and clean up containers/images
+DATABASE_URL=postgresql://postgres:postgres@postgres:5432/tcgplayer_automation
 ```
 
-### Direct Docker Commands
+Optional startup flags:
 
 ```bash
-# Start production
-docker-compose -f docker-compose.prod.yml up -d
-
-# Stop production
-docker-compose -f docker-compose.prod.yml down
-
-# View logs
-docker-compose -f docker-compose.prod.yml logs -f
-
-# Rebuild and restart
-docker-compose -f docker-compose.prod.yml up -d --build
+DB_STARTUP_RETRIES=30
+DB_STARTUP_DELAY_MS=2000
+DB_IMPORT_ON_START=false
 ```
 
-## Workflow
+`DB_IMPORT_ON_START` is off by default. Import manually when you want to migrate the checked-in NeDB source files.
 
-### Daily Development Workflow
+## Commands
 
-1. **Start production once**: `npm run prod:deploy`
-2. **Use production daily**: Navigate to http://localhost:3001
-3. **Develop new features**: Run `npm run dev` and work on http://localhost:5173
-4. **Update production**: When ready, run `npm run prod:update`
-
-### Data Management
-
-- Your `data` directory is mounted to the production container
-- Both development and production share the same data
-- Logs are stored in the `logs` directory
-
-### Monitoring Production
+NPM wrappers:
 
 ```bash
-# Check if production is running
-npm run prod:status
-
-# Watch production logs in real-time
+npm run prod:deploy
+npm run prod:update
+npm run prod:start
+npm run prod:stop
+npm run prod:restart
 npm run prod:logs
-
-# Connect to production container for debugging
+npm run prod:status
 npm run prod:shell
+npm run prod:clean
 ```
 
-## Features
+Direct Docker Compose commands:
 
-- **Isolation**: Production runs in a separate container
-- **Persistence**: Data directory is mounted for data persistence
-- **Health Checks**: Automatic health monitoring
-- **Auto-restart**: Container restarts if it crashes
-- **Logging**: Centralized logging to `logs` directory
-- **Port Separation**: Production (3001) vs Development (5173)
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml logs -f
+docker compose -f docker-compose.prod.yml ps
+```
+
+Run migrations manually:
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm app npm run db:migrate
+```
+
+Import the legacy NeDB files:
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm app npm run db:import
+```
+
+## Persistence
+
+- PostgreSQL data is stored in the named Docker volume `postgres-data`.
+- Legacy `.db` files remain available through the mounted `./data` directory.
+- Application logs are mounted to `./logs`.
 
 ## Troubleshooting
 
-### Container Won't Start
+Check status and logs:
 
 ```bash
-# Check container status
 npm run prod:status
-
-# View detailed logs
 npm run prod:logs
+```
 
-# Rebuild from scratch
+Clean rebuild:
+
+```bash
 npm run prod:clean
 npm run prod:deploy
 ```
 
-### Port Conflicts
-
-If port 3001 is in use, edit `docker-compose.prod.yml`:
-
-```yaml
-ports:
-  - "3002:3000" # Change 3001 to any available port
-```
-
-### Memory Issues
-
-If you see memory errors during build:
-
-```bash
-# Clean up Docker cache
-docker system prune -f
-
-# Then rebuild
-npm run prod:deploy
-```
-
-### Data Issues
-
-- Data is shared between dev and production via volume mount
-- To reset data: stop production, delete `data` directory, restart
-- To backup data: copy the `data` directory to a safe location
-
-## Technical Details
-
-### Docker Architecture
-
-- **Multi-stage build**: Optimized for production
-- **Alpine Linux**: Lightweight base image
-- **Node.js 20**: Latest LTS version
-- **Health checks**: Ensures container is responding
-- **Volume mounts**: Persistent data and logs
-
-### Environment Variables
-
-- `NODE_ENV=production`
-- `PORT=3000` (internal container port)
-- `NODE_OPTIONS=--max-old-space-size=16384` (from package.json)
-
-### Security
-
-- Container runs as non-root user
-- Only necessary ports exposed
-- Production dependencies only
+If port `3001` is already in use, change the host-side port mapping in `docker-compose.prod.yml`.

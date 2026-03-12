@@ -1,5 +1,5 @@
 export type InventoryEntry = {
-  id?: string; // NeDB auto-generated ID
+  id?: string; // Optional legacy identifier
   sku: number;
   productId: number;
   productName: string;

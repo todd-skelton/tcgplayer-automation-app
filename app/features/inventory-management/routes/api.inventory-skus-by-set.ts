@@ -1,12 +1,10 @@
 import { data } from "react-router";
-import type { Product } from "../types/product";
+import { productsRepository, setProductsRepository } from "~/core/db";
 import type { SetProduct } from "~/shared/data-types/setProduct";
 import type { Sku } from "~/shared/data-types/sku";
-import { productsDb, setProductsDb } from "~/datastores.server";
 
-// Extended interface for API response that includes display information
 interface SkuWithDisplayInfo extends Sku {
-  cardNumber?: string | null; // Card number for client-side display
+  cardNumber?: string | null;
 }
 
 export async function loader({ request }: { request: Request }) {
@@ -19,50 +17,41 @@ export async function loader({ request }: { request: Request }) {
       return data({ error: "setId is required" }, { status: 400 });
     }
 
-    // Build query - include productLineId for efficient sharded lookup if available
-    const productQuery: any = { setId: Number(setId) };
-    if (productLineId) {
-      productQuery.productLineId = Number(productLineId);
-    }
-
-    // Get all products for the set and set products for card numbers
-    // Using productLineId makes this query much more efficient with sharded datastores
     const [products, setProducts] = await Promise.all([
-      productsDb.find<Product>(productQuery),
-      setProductsDb.find<SetProduct>({ setNameId: Number(setId) }),
+      productsRepository.findBySetId(
+        Number(setId),
+        productLineId ? Number(productLineId) : undefined,
+      ),
+      setProductsRepository.findBySetNameId(Number(setId)),
     ]);
 
-    if (!products || products.length === 0) {
+    if (products.length === 0) {
       return data([], { status: 200 });
     }
 
-    // Create a map of productId to SetProduct for fast lookup
     const setProductMap = new Map<number, SetProduct>();
     setProducts.forEach((setProduct) => {
       setProductMap.set(setProduct.productId, setProduct);
     });
 
-    // Flatten all SKUs from all products in the set
     const allSkus: SkuWithDisplayInfo[] = products.flatMap((product) => {
       const setProduct = setProductMap.get(product.productId);
 
-      return product.skus.map(
-        (sku): SkuWithDisplayInfo => ({
-          ...sku,
-          productTypeName: product.productTypeName,
-          rarityName: product.rarityName,
-          sealed: product.sealed,
-          productName: product.productName, // Use actual product name for validation
-          cardNumber: setProduct?.number || null, // Pass card number separately for client-side display
-          setId: product.setId,
-          setCode: product.setCode,
-          productId: product.productId,
-          setName: product.setName,
-          productLineId: product.productLineId,
-          productStatusId: product.productStatusId,
-          productLineName: product.productLineName,
-        })
-      );
+      return product.skus.map((sku) => ({
+        ...sku,
+        productTypeName: product.productTypeName,
+        rarityName: product.rarityName,
+        sealed: product.sealed,
+        productName: product.productName,
+        cardNumber: setProduct?.number ?? null,
+        setId: product.setId,
+        setCode: product.setCode,
+        productId: product.productId,
+        setName: product.setName,
+        productLineId: product.productLineId,
+        productStatusId: product.productStatusId,
+        productLineName: product.productLineName,
+      }));
     });
 
     return data(allSkus, { status: 200 });

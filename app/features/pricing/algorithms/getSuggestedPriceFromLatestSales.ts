@@ -7,7 +7,7 @@ import { levenbergMarquardt } from "ml-levenberg-marquardt";
 import type { Condition } from "../../../integrations/tcgplayer/types/Condition";
 import type { ListingData } from "../services/supplyAnalysisService";
 import { SupplyAnalysisService } from "../services/supplyAnalysisService";
-import { categoryFiltersDb } from "../../../datastores.server";
+import { categoryFiltersRepository } from "~/core/db";
 
 // Define condition ordering for Zipf model (from best to worst condition)
 const CONDITION_ORDER: Condition[] = [
@@ -201,9 +201,9 @@ export async function getSuggestedPriceFromLatestSales(
   const { halfLifeDays = 7, percentile = 80 } = config;
 
   // Fetch category filter for this SKU's productLineId (which is used as categoryId)
-  const categoryFilter = await categoryFiltersDb.findOne({
-    categoryId: sku.productLineId,
-  });
+  const categoryFilter = await categoryFiltersRepository.findByCategoryId(
+    sku.productLineId,
+  );
   if (!categoryFilter) {
     throw new Error(
       `No category filter found for categoryId (productLineId) ${sku.productLineId}`,

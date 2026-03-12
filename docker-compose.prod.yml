@@ -1,18 +1,25 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  tcgplayer-automation-prod:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "3001:3000"
     volumes:
-      - ./data:/app/data
+      - ./data:/app/data:ro
       - ./logs:/app/logs
     environment:
-      - NODE_ENV=production
-      - PORT=3000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tcgplayer_automation
+      NODE_ENV: production
+      PORT: 3000
+      DB_STARTUP_RETRIES: 30
+      DB_STARTUP_DELAY_MS: 2000
+      DB_IMPORT_ON_START: "false"
     restart: unless-stopped
     container_name: tcgplayer-automation-prod
     healthcheck:
@@ -21,3 +28,22 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: tcgplayer-postgres-prod
+    environment:
+      POSTGRES_DB: tcgplayer_automation
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tcgplayer_automation"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:

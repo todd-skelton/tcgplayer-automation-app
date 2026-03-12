@@ -177,6 +177,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
               "Moderately Played": 3,
               "Heavily Played": 4,
               Damaged: 5,
+              Unopened: 6,
             };
             return conditionOrder[a.condition] - conditionOrder[b.condition];
           });

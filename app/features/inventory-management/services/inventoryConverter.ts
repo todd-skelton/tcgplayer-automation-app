@@ -37,6 +37,7 @@ export function convertProductToListing(
     "TCG Marketplace Price": listing.price.toString(),
     "Previous Price": "",
     "Suggested Price": "",
+    "Percentile Used": "",
     "Historical Sales Velocity (Days)": "",
     "Estimated Time to Sell (Days)": "",
     "Sales Count for Historical Calculation": "",

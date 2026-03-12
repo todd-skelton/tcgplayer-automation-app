@@ -1,7 +1,7 @@
 import { data } from "react-router";
 import type { PricerSku, TcgPlayerListing } from "~/core/types/pricing";
+import { productLinesRepository, skusRepository } from "~/core/db";
 import type { SellerInventoryItem } from "~/features/inventory-management/services/inventoryConverter";
-import { productLinesDb, skusDb } from "~/datastores.server";
 
 export async function action({ request }: { request: Request }) {
   if (request.method !== "POST") {
@@ -48,16 +48,10 @@ export async function action({ request }: { request: Request }) {
       const productLineMap = new Map<string, number>();
       for (const productLineName of uniqueProductLines) {
         try {
-          const productLine = await productLinesDb.findOne({
-            $or: [
-              { productLineName: productLineName },
-              {
-                productLineUrlName: productLineName
-                  .toLowerCase()
-                  .replace(/\s+/g, "-"),
-              },
-            ],
-          });
+          const productLine = await productLinesRepository.findByNameOrUrlName(
+            productLineName,
+            productLineName.toLowerCase().replace(/\s+/g, "-")
+          );
           if (productLine) {
             productLineMap.set(productLineName, productLine.productLineId);
           }
@@ -86,13 +80,13 @@ export async function action({ request }: { request: Request }) {
           continue;
         }
 
-        // Look up SKU metadata using sharded database
+        // Look up SKU metadata within the matched product line
         let skuMetadata;
         try {
-          skuMetadata = await skusDb.findOne({
-            sku: skuId,
-            productLineId: productLineId,
-          });
+          skuMetadata = await skusRepository.findBySkuAndProductLine(
+            skuId,
+            productLineId
+          );
         } catch (error) {
           console.warn(
             `Failed to lookup SKU ${skuId} in product line ${productLineId}:`,
@@ -183,16 +177,10 @@ export async function action({ request }: { request: Request }) {
       const productLineMap = new Map<string, number>();
       for (const productLineName of uniqueProductLines) {
         try {
-          const productLine = await productLinesDb.findOne({
-            $or: [
-              { productLineName: productLineName },
-              {
-                productLineUrlName: productLineName
-                  .toLowerCase()
-                  .replace(/\s+/g, "-"),
-              },
-            ],
-          });
+          const productLine = await productLinesRepository.findByNameOrUrlName(
+            productLineName,
+            productLineName.toLowerCase().replace(/\s+/g, "-")
+          );
           if (productLine) {
             productLineMap.set(productLineName, productLine.productLineId);
           }
@@ -229,13 +217,13 @@ export async function action({ request }: { request: Request }) {
           continue;
         }
 
-        // Look up SKU metadata using sharded database
+        // Look up SKU metadata within the matched product line
         let skuMetadata;
         try {
-          skuMetadata = await skusDb.findOne({
-            sku: skuId,
-            productLineId: productLineId,
-          });
+          skuMetadata = await skusRepository.findBySkuAndProductLine(
+            skuId,
+            productLineId
+          );
         } catch (error) {
           console.warn(
             `Failed to lookup SKU ${skuId} in product line ${productLineId}:`,

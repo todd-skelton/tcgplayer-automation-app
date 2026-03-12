@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development-dependencies-env
+    command: sh -c "node scripts/db-migrate.mjs && npm run dev -- --host 0.0.0.0"
+    container_name: tcgplayer-automation-dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tcgplayer_automation
+      NODE_ENV: development
+      PORT: 5173
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: tcgplayer-postgres-dev
+    environment:
+      POSTGRES_DB: tcgplayer_automation
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tcgplayer_automation"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data-dev:/var/lib/postgresql/data
+
+volumes:
+  postgres-data-dev:

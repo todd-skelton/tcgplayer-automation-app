@@ -26,12 +26,12 @@ import {
 import { useEffect, useState } from "react";
 import { getHttpConfig } from "../core/config/httpConfig.server";
 import {
-  productLinesDb,
-  categorySetsDb,
-  setProductsDb,
-  getProductsDbShard,
-  getSkusDbShard,
-} from "../datastores.server";
+  categorySetsRepository,
+  productLinesRepository,
+  productsRepository,
+  setProductsRepository,
+  skusRepository,
+} from "../core/db";
 import {
   fetchAndUpsertCategorySets,
   fetchAndUpsertSetProducts,
@@ -70,7 +70,7 @@ export async function action({ request }: LoaderFunctionArgs) {
 
       return data(
         {
-          message: `Fetched and verified all sets, products, and skus for category 3 using NeDB. Sets: ${sets.length}, set-products: ${allSetProducts.length}, products: ${productCount}, skus: ${totalSkus}.`,
+          message: `Fetched and verified all sets, products, and skus for category ${categoryId} using PostgreSQL. Sets: ${sets.length}, set-products: ${allSetProducts.length}, products: ${productCount}, skus: ${totalSkus}.`,
         },
         { status: 200 },
       );
@@ -112,11 +112,11 @@ export async function action({ request }: LoaderFunctionArgs) {
         );
       }
 
-      // ✅ Efficient: Use shard-targeted query with required productLineId
-      const existingProduct = await getProductsDbShard(productLineId).findOne({
+      // Use the known product line for a targeted lookup
+      const existingProduct = await productsRepository.findByProductId(
         productId,
         productLineId,
-      });
+      );
 
       if (!existingProduct) {
         return data(
@@ -165,9 +165,9 @@ export async function action({ request }: LoaderFunctionArgs) {
       // If delete option is selected, remove existing data first
       if (deleteExisting) {
         // First find the product line to get the categoryId
-        const productLineForDelete = await productLinesDb.findOne({
-          productLineUrlName: productLineName,
-        });
+        const productLineForDelete = await productLinesRepository.findByUrlName(
+          productLineName,
+        );
 
         if (!productLineForDelete) {
           return data(
@@ -177,46 +177,29 @@ export async function action({ request }: LoaderFunctionArgs) {
         }
 
         // Find the set in the database using categoryId and set name
-        const categorySet = await categorySetsDb.findOne({
-          categoryId: productLineForDelete.productLineId,
-          urlName: setName,
-        });
+        const categorySet =
+          await categorySetsRepository.findByCategoryIdAndUrlName(
+            productLineForDelete.productLineId,
+            setName,
+          );
 
         if (categorySet) {
-          // Get the sharded datastores for this product line
-          const productsDbShard = getProductsDbShard(
+          await setProductsRepository.removeBySetNameId(categorySet.setNameId);
+          await productsRepository.removeBySetId(
+            categorySet.setNameId,
             productLineForDelete.productLineId,
           );
-          const skusDbShard = getSkusDbShard(
+          await skusRepository.removeBySetId(
+            categorySet.setNameId,
             productLineForDelete.productLineId,
-          );
-
-          // Delete set products, products, and SKUs associated with this set
-          await setProductsDb.remove(
-            { setNameId: categorySet.setNameId },
-            { multi: true },
-          );
-          await productsDbShard.remove(
-            {
-              setId: categorySet.setNameId,
-              productLineId: productLineForDelete.productLineId,
-            },
-            { multi: true },
-          );
-          await skusDbShard.remove(
-            {
-              setId: categorySet.setNameId,
-              productLineId: productLineForDelete.productLineId,
-            },
-            { multi: true },
           );
         }
       }
 
       // Find the product line to get the categoryId for proper set lookup
-      const productLine = await productLinesDb.findOne({
-        productLineUrlName: productLineName,
-      });
+      const productLine = await productLinesRepository.findByUrlName(
+        productLineName,
+      );
 
       if (!productLine) {
         return data(
@@ -226,10 +209,10 @@ export async function action({ request }: LoaderFunctionArgs) {
       }
 
       // First try to find the set in the database using categoryId and urlName only
-      let categorySet = await categorySetsDb.findOne({
-        categoryId: productLine.productLineId,
-        urlName: setName,
-      });
+      let categorySet = await categorySetsRepository.findByCategoryIdAndUrlName(
+        productLine.productLineId,
+        setName,
+      );
 
       // If not found in database, try to fetch and store the set data first
       if (!categorySet) {
@@ -238,10 +221,10 @@ export async function action({ request }: LoaderFunctionArgs) {
             productLine.productLineId,
           );
           // Try to find the set again after fetching
-          categorySet = await categorySetsDb.findOne({
-            categoryId: productLine.productLineId,
-            urlName: setName,
-          });
+          categorySet = await categorySetsRepository.findByCategoryIdAndUrlName(
+            productLine.productLineId,
+            setName,
+          );
         } catch (err) {
           console.warn(
             `Could not fetch sets for category ${productLine.productLineId}:`,
@@ -300,13 +283,7 @@ export async function action({ request }: LoaderFunctionArgs) {
         }
 
         // Always update/store set products in database to capture any changes
-        await Promise.all(
-          setProducts.map((prod) =>
-            setProductsDb.update({ productId: prod.productId }, prod, {
-              upsert: true,
-            }),
-          ),
-        );
+        await setProductsRepository.upsertMany(setProducts);
       } catch (err) {
         console.error(`[API] Failed to search for products:`, err);
         return data(
@@ -336,8 +313,7 @@ export async function action({ request }: LoaderFunctionArgs) {
 }
 
 export async function loader() {
-  // Load all product lines from NeDB
-  const productLines = await productLinesDb.find({});
+  const productLines = await productLinesRepository.findAll();
   const httpConfig = await getHttpConfig();
 
   return {

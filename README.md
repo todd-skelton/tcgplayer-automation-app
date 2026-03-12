@@ -1,87 +1,83 @@
-# Welcome to React Router!
+# TCGPlayer Automation App
 
-A modern, production-ready template for building full-stack React applications using React Router.
+This app now uses PostgreSQL for server-side storage. The repo includes checked-in SQL migrations, a NeDB-to-Postgres import script, and Docker Compose workflows for both development and production.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+## Requirements
 
-## Features
+- Node.js 20
+- npm
+- Docker Desktop or another Docker runtime
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
+## Environment
 
-## Getting Started
-
-### Installation
-
-Install the dependencies:
+The server uses `DATABASE_URL`. The local default is:
 
 ```bash
-npm install
+postgresql://postgres:postgres@localhost:5433/tcgplayer_automation
 ```
 
-### Development
-
-Start the development server with HMR:
+Optional startup flags:
 
 ```bash
+DB_STARTUP_RETRIES=30
+DB_STARTUP_DELAY_MS=2000
+DB_IMPORT_ON_START=false
+```
+
+## Local Development
+
+Run Postgres in Docker and the app on your host:
+
+```bash
+docker compose up -d postgres
+npm install
+npm run db:migrate
+npm run db:import
 npm run dev
 ```
 
-Your application will be available at `http://localhost:5173`.
+The app is available at `http://localhost:5173`.
 
-## Building for Production
+If you are using the standalone database container from `docker-compose.db.yml`, the app now defaults to `localhost:5433` automatically.
 
-Create a production build:
-
-```bash
-npm run build
-```
-
-## Deployment
-
-### Docker Deployment
-
-To build and run using Docker:
+Run the full development stack in Docker:
 
 ```bash
-docker build -t my-app .
-
-# Run the container
-docker run -p 3000:3000 my-app
+docker compose up --build
 ```
 
-The containerized application can be deployed to any platform that supports Docker, including:
+That starts the app on `http://localhost:5173` and Postgres on `localhost:5432`.
 
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
+To import the checked-in NeDB files into the containerized database:
 
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `npm run build`
-
-```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
+```bash
+docker compose run --rm app npm run db:import
 ```
 
-## Styling
+## Database Commands
 
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
+Apply migrations:
 
----
+```bash
+npm run db:migrate
+```
 
-Built with ❤️ using React Router.
+Import legacy `.db` files from `data/`:
+
+```bash
+npm run db:import
+```
+
+The import is upsert-based, so rerunning it does not duplicate rows.
+
+## Production Docker
+
+Build and start the production stack:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+The production app is exposed at `http://localhost:3001`.
+
+Additional production workflow details are documented in `PRODUCTION_DOCKER.md`.

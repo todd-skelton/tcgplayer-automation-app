@@ -1,4 +1,4 @@
-import { httpConfigDb } from "../../datastores.server";
+import { httpConfigRepository } from "../db";
 
 // Re-export types and constants from shared module
 export {
@@ -28,21 +28,20 @@ import {
 // Server-side helper - reads from database
 export async function getHttpConfig(): Promise<HttpConfig> {
   try {
-    const config = await httpConfigDb.findOne({});
+    const config = await httpConfigRepository.get();
     if (config) {
-      const { _id, ...httpConfig } = config;
       // Ensure all domains exist (in case new domains are added)
       const mergedDomainConfigs = {
         ...DEFAULT_DOMAIN_CONFIGS,
-        ...httpConfig.domainConfigs,
+        ...config.domainConfigs,
       };
       // Ensure adaptive config exists (in case upgrading from older DB)
       const mergedAdaptiveConfig = {
         ...DEFAULT_ADAPTIVE_CONFIG,
-        ...httpConfig.adaptiveConfig,
+        ...config.adaptiveConfig,
       };
       return {
-        ...httpConfig,
+        ...config,
         domainConfigs: mergedDomainConfigs,
         adaptiveConfig: mergedAdaptiveConfig,
       } as HttpConfig;
@@ -64,7 +63,7 @@ export async function getDomainConfig(
 // Save to database
 export async function saveHttpConfig(config: HttpConfig): Promise<void> {
   try {
-    await httpConfigDb.update({}, config, { upsert: true });
+    await httpConfigRepository.save(config);
   } catch (error) {
     console.error("Failed to save HTTP config:", error);
     throw error;
@@ -76,7 +75,7 @@ export async function updateDomainDelays(
   domainKey: DomainKey,
   requestDelayMs: number,
   learnedMinDelayMs: number,
-): Promise<void> {
+  ): Promise<void> {
   try {
     const config = await getHttpConfig();
     config.domainConfigs[domainKey] = {
@@ -84,7 +83,7 @@ export async function updateDomainDelays(
       requestDelayMs,
       learnedMinDelayMs,
     };
-    await httpConfigDb.update({}, config, { upsert: true });
+    await httpConfigRepository.save(config);
     console.log(
       `[HTTP:${domainKey}] Adaptive: delay=${requestDelayMs}ms, floor=${learnedMinDelayMs}ms`,
     );

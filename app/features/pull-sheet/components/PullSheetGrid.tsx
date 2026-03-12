@@ -21,7 +21,7 @@ interface PullSheetGridProps {
 
 const shimmerSweep = keyframes`
   0% {
-    transform: translate(-132%, -132%) rotate(-18deg);
+    transform: translate(-116%, -116%) rotate(-18deg);
     opacity: 0;
   }
 
@@ -34,19 +34,19 @@ const shimmerSweep = keyframes`
   }
 
   48% {
-    opacity: 0.6;
+    opacity: 0.5;
   }
 
   62%,
   100% {
-    transform: translate(110%, 110%) rotate(-18deg);
+    transform: translate(94%, 94%) rotate(-18deg);
     opacity: 0;
   }
 `;
 
 const shimmerSweepReverse = keyframes`
   0% {
-    transform: translate(132%, 132%) rotate(-18deg);
+    transform: translate(116%, 116%) rotate(-18deg);
     opacity: 0;
   }
 
@@ -59,12 +59,12 @@ const shimmerSweepReverse = keyframes`
   }
 
   48% {
-    opacity: 0.6;
+    opacity: 0.5;
   }
 
   62%,
   100% {
-    transform: translate(-110%, -110%) rotate(-18deg);
+    transform: translate(-94%, -94%) rotate(-18deg);
     opacity: 0;
   }
 `;
@@ -131,6 +131,13 @@ function VariantEffectLayers({
   shimmerDelay,
   pulseDelay,
 }: VariantEffectLayersProps) {
+  const shimmerMaskImage =
+    variantVisuals.shimmerMaskImage ??
+    [
+      "linear-gradient(135deg, transparent 0%, rgba(0,0,0,0.18) 28%, rgba(0,0,0,0.82) 42%, #000 50%, rgba(0,0,0,0.82) 58%, rgba(0,0,0,0.18) 72%, transparent 100%)",
+      "linear-gradient(135deg, transparent 0%, rgba(0,0,0,0.5) 18%, #000 34%, #000 66%, rgba(0,0,0,0.5) 82%, transparent 100%)",
+    ].join(", ");
+
   return (
     <>
       {variantVisuals.ambientBackground !== "none" && (
@@ -177,16 +184,23 @@ function VariantEffectLayers({
           <Box
             sx={{
               position: "absolute",
-              inset: "-42%",
+              inset: "-22%",
               zIndex: 2,
               pointerEvents: "none",
               background: variantVisuals.shimmerGradient,
-              backgroundSize: "160% 160%",
+              backgroundSize: "120% 120%",
               mixBlendMode: variantVisuals.shimmerBlendMode,
               opacity: variantVisuals.effectOpacity,
-              WebkitMaskImage: variantVisuals.shimmerMaskImage ?? undefined,
-              maskImage: variantVisuals.shimmerMaskImage ?? undefined,
-              willChange: "transform, opacity, background-position",
+              WebkitMaskImage: shimmerMaskImage,
+              maskImage: shimmerMaskImage,
+              WebkitMaskSize: "100% 100%, 64% 64%",
+              maskSize: "100% 100%, 64% 64%",
+              WebkitMaskPosition: "center, center",
+              maskPosition: "center, center",
+              WebkitMaskRepeat: "no-repeat, no-repeat",
+              maskRepeat: "no-repeat, no-repeat",
+              filter: "blur(0.6px)",
+              willChange: "transform, opacity",
               animation:
                 variantVisuals.effectType === "reverse-holo"
                   ? `${shimmerSweepReverse} 5.6s linear infinite`

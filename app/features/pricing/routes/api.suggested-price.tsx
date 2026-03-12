@@ -1,9 +1,6 @@
 import { getSuggestedPriceFromLatestSales } from "../algorithms/getSuggestedPriceFromLatestSales";
 import { data } from "react-router";
-import type { Product } from "../../inventory-management/types/product";
-import type { Sku } from "../../../shared/data-types/sku";
-import { calculateMarketplacePrice } from "../services/pricingService";
-import { skusDb, productsDb } from "~/datastores.server";
+import { productsRepository, skusRepository } from "~/core/db";
 
 // Simple API endpoint to get suggested price for a single product
 export async function action({ request }: { request: Request }) {
@@ -29,12 +26,12 @@ export async function action({ request }: { request: Request }) {
       return data({ error: "Product line ID is required" }, { status: 400 });
     }
 
-    // Look up the SKU directly from the SKU database using shard-targeted query
+    // Look up the SKU directly within the provided product line
     const skuId = Number(tcgplayerId);
-    const sku = await skusDb.findOne<Sku>({
-      sku: skuId,
-      productLineId: Number(productLineId),
-    });
+    const sku = await skusRepository.findBySkuAndProductLine(
+      skuId,
+      Number(productLineId)
+    );
 
     if (!sku) {
       return data(
@@ -47,10 +44,10 @@ export async function action({ request }: { request: Request }) {
     }
 
     // Now we can find the product efficiently using the productLineId from the SKU
-    const product = await productsDb.findOne<Product>({
-      productId: sku.productId,
-      productLineId: sku.productLineId,
-    });
+    const product = await productsRepository.findByProductId(
+      sku.productId,
+      sku.productLineId
+    );
 
     if (!product) {
       return data(

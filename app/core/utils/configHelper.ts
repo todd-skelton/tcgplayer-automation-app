@@ -1,4 +1,4 @@
-import type { HttpConfig } from "../config/httpConfig";
+import type { HttpConfig } from "../config/httpConfig.shared";
 import { setRequestConfig } from "../httpClient";
 
 /**

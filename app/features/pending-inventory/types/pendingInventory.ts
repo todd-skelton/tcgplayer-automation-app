@@ -1,5 +1,5 @@
 export type PendingInventoryEntry = {
-  id?: string; // NeDB auto-generated ID
+  id?: string; // Optional legacy identifier
   sku: number;
   quantity: number;
   productLineId: number; // Required for performance optimization

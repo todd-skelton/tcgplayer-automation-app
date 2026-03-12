@@ -1,9 +1,9 @@
 import { data } from "react-router";
 import { getProductDetails } from "~/integrations/tcgplayer/client/get-product-details.server";
 import { processWithConcurrency } from "~/core/processWithConcurrency";
+import { productsRepository, skusRepository } from "~/core/db";
 import type { Product } from "~/features/inventory-management/types/product";
 import type { Sku } from "~/shared/data-types/sku";
-import { skusDb, productsDb } from "~/datastores.server";
 
 export async function action({ request }: { request: Request }) {
   if (request.method !== "POST") {
@@ -61,7 +61,7 @@ export async function action({ request }: { request: Request }) {
       }
     }
 
-    // Check which SKUs exist in the database for each product line (optimized sharded queries)
+    // Check which SKUs exist in the database for each product line
     const existingSkusByProductLine: Record<number, Set<number>> = {};
     let totalExistingSkus = 0;
 
@@ -76,10 +76,10 @@ export async function action({ request }: { request: Request }) {
       }
 
       if (allSkusForProductLine.length > 0) {
-        const existingSkus = await skusDb.find<Sku>({
-          sku: { $in: allSkusForProductLine },
-          productLineId: productLineIdNum,
-        });
+        const existingSkus = await skusRepository.findBySkuIds(
+          productLineIdNum,
+          allSkusForProductLine
+        );
 
         existingSkusByProductLine[productLineIdNum] = new Set(
           existingSkus.map((sku) => sku.sku)
@@ -125,13 +125,13 @@ export async function action({ request }: { request: Request }) {
       });
     }
 
-    // Update products and their SKUs for missing SKUs - process by product line for optimal sharding
+    // Update products and their SKUs for missing SKUs, grouped by product line
     let updatedProducts = 0;
     let totalSkus = 0;
 
     const PRODUCT_CONCURRENCY = 50;
 
-    // Process each product line separately for optimal sharding
+    // Process each product line separately
     for (const [productLineId, productMap] of Object.entries(productLineSkus)) {
       const productLineIdNum = parseInt(productLineId);
       const typedProductMap = productMap as Record<string, number[]>;
@@ -155,11 +155,12 @@ export async function action({ request }: { request: Request }) {
             const missingSkusForProduct =
               missingSkusByProductLine[productLineIdNum][productId];
 
-            // Use targeted product lookup with known product line ID (optimized for sharding)
-            let details: Product | null = await productsDb.findOne({
-              productId,
-              productLineId: productLineIdNum,
-            });
+            // Use the known product line ID for a targeted product lookup
+            let details: Product | null =
+              await productsRepository.findByProductId(
+                productId,
+                productLineIdNum
+              );
 
             if (!details || !details.skus || !details.skus.length) {
               // Fetch fresh product details from API
@@ -180,14 +181,7 @@ export async function action({ request }: { request: Request }) {
                   skus: fetched.skus,
                 };
                 // Upsert the product details
-                await productsDb.update(
-                  {
-                    productId: details.productId,
-                    productLineId: details.productLineId,
-                  },
-                  details,
-                  { upsert: true }
-                );
+                await productsRepository.upsert(details);
               }
             }
 
@@ -220,7 +214,7 @@ export async function action({ request }: { request: Request }) {
 
               if (skusToInsert.length > 0) {
                 try {
-                  await skusDb.insert(skusToInsert);
+                  await skusRepository.insertMany(skusToInsert);
                 } catch (err) {
                   console.error(
                     `Error inserting SKUs for product ${productId}:`,

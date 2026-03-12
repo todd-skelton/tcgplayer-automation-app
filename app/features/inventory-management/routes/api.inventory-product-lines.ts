@@ -1,9 +1,9 @@
 import { data } from "react-router";
-import { productLinesDb } from "~/datastores.server";
+import { productLinesRepository } from "~/core/db";
 
 export async function loader() {
   try {
-    const productLines = await productLinesDb.find({});
+    const productLines = await productLinesRepository.findAll();
     return data(productLines, { status: 200 });
   } catch (error) {
     return data({ error: String(error) }, { status: 500 });
