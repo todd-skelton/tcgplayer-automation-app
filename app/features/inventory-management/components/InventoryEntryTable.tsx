@@ -56,6 +56,7 @@ interface DataGridRow {
   productId: number;
   productName: string;
   displayName: string; // Enhanced name with card number for display
+  setName: string;
   variant: string;
   language: string;
   groupKey: string;
@@ -68,6 +69,7 @@ type ProductGroup = {
   productId: number;
   productName: string;
   displayName: string; // Enhanced name with card number for display
+  setName: string;
   cardNumber?: string | null; // Card number for enhanced filtering
   variant: string;
   language: string;
@@ -82,12 +84,23 @@ interface InventoryEntryTableProps {
     quantity: number,
     metadata: { productLineId: number; setId: number; productId: number }
   ) => void;
+  searchScope: "set" | "allSets";
+  allSetsSearchTerm: string;
+  onAllSetsSearch: (cardNumber: string) => void;
   sealedFilter?: "all" | "sealed" | "unsealed";
 }
 
 export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
   React.memo(
-    ({ skus, pendingInventory, onUpdateQuantity, sealedFilter = "all" }) => {
+    ({
+      skus,
+      pendingInventory,
+      onUpdateQuantity,
+      searchScope,
+      allSetsSearchTerm,
+      onAllSetsSearch,
+      sealedFilter = "all",
+    }) => {
       const [quantities, setQuantities] = useState<{ [sku: number]: string }>(
         {}
       );
@@ -98,7 +111,6 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
       const [submittedProductNameFilter, setSubmittedProductNameFilter] =
         useState<string>("");
       const searchInputRef = useRef<HTMLInputElement>(null);
-      const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
       const firstPlusButtonRef = useRef<HTMLButtonElement>(null);
       const [imageDialogOpen, setImageDialogOpen] = useState<boolean>(false);
       const [selectedProductId, setSelectedProductId] = useState<number | null>(
@@ -107,14 +119,21 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
 
       // Handle search submission
       const handleSearchSubmit = useCallback(() => {
-        setSubmittedProductNameFilter(productNameFilter);
+        const trimmedFilter = productNameFilter.trim();
+        setSubmittedProductNameFilter(trimmedFilter);
+
+        if (searchScope === "allSets") {
+          onAllSetsSearch(trimmedFilter);
+          return;
+        }
+
         // Focus the first + button after search is submitted
         setTimeout(() => {
           if (firstPlusButtonRef.current) {
             firstPlusButtonRef.current.focus();
           }
         }, 100);
-      }, [productNameFilter]);
+      }, [onAllSetsSearch, productNameFilter, searchScope]);
 
       // Handle Enter key press in search input
       const handleSearchKeyPress = useCallback(
@@ -159,6 +178,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
               productId: sku.productId,
               productName: sku.productName,
               displayName: displayName,
+              setName: sku.setName,
               cardNumber: sku.cardNumber,
               variant: sku.variant,
               language: sku.language,
@@ -197,7 +217,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
         });
 
         // Apply product name filter
-        if (submittedProductNameFilter.trim()) {
+        if (searchScope === "set" && submittedProductNameFilter.trim()) {
           const filterLower = submittedProductNameFilter.toLowerCase().trim();
 
           // Phase 1: Try enhanced number field matching first
@@ -217,7 +237,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
         }
 
         return sortedGroups;
-      }, [filteredSkus, submittedProductNameFilter]);
+      }, [filteredSkus, searchScope, submittedProductNameFilter]);
 
       // Create DataGrid rows from grouped SKUs - one row per product group
       const dataGridRows: GridRowsProp<DataGridRow> = useMemo(() => {
@@ -233,6 +253,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
             productId: group.productId,
             productName: group.productName,
             displayName: group.displayName,
+            setName: group.setName,
             variant: group.variant,
             language: group.language,
             groupKey,
@@ -241,6 +262,11 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
           };
         });
       }, [groupedSkus, pendingInventory]);
+
+      useEffect(() => {
+        setProductNameFilter("");
+        setSubmittedProductNameFilter("");
+      }, [searchScope]);
 
       // Helper function to create SKU display name
       const createSkuDisplayName = useCallback(
@@ -452,10 +478,6 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
         );
       };
 
-      const getTotalPendingItems = useCallback(() => {
-        return pendingInventory.reduce((sum, entry) => sum + entry.quantity, 0);
-      }, [pendingInventory]);
-
       // Helper function to get TCGPlayer image URL
       const getTcgPlayerImageUrl = useCallback(
         (productId: number, size: string = "200x200") => {
@@ -561,10 +583,6 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
               );
             }
 
-            const selectedSkuData = params.row.skus.find(
-              (sku) => sku.sku === selectedSku
-            );
-
             const currentQty = getPendingQuantity(
               pendingInventory,
               selectedSku
@@ -653,6 +671,14 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                 >
                   {params.value}
                 </Typography>
+                {searchScope === "allSets" && params.row.setName && (
+                  <Chip
+                    label={params.row.setName}
+                    color="info"
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
                 {selectedSkuData && (
                   <Chip
                     label={createSkuDisplayName(selectedSkuData)}
@@ -702,6 +728,16 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
 
       // Show early return only if there are no SKUs at all (not just filtered out)
       if (skus.length === 0) {
+        if (searchScope === "allSets") {
+          return (
+            <Alert severity={allSetsSearchTerm ? "warning" : "info"}>
+              {allSetsSearchTerm
+                ? `No matches found for card number "${allSetsSearchTerm}" in the selected product line.`
+                : "Enter a card number to search across all sets in the selected product line."}
+            </Alert>
+          );
+        }
+
         return (
           <Alert severity="info">
             No SKUs available. Please select a product line and set to see
@@ -715,7 +751,11 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
           {/* Product Name Search Filter */}
           <Box sx={{ mb: 2 }}>
             <TextField
-              label={`Search Product Names (Press Enter to search)${
+              label={`${
+                searchScope === "allSets"
+                  ? "Search Card Number Across All Sets"
+                  : "Search Product Names"
+              } (Press Enter to search)${
                 productNameFilter &&
                 productNameFilter !== submittedProductNameFilter
                   ? " - Press Enter!"
@@ -726,9 +766,11 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
               value={productNameFilter}
               onChange={(e) => setProductNameFilter(e.target.value)}
               onKeyPress={handleSearchKeyPress}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              placeholder="Type to filter products and press Enter..."
+              placeholder={
+                searchScope === "allSets"
+                  ? "Type an exact card number like 3 or 3/120 and press Enter..."
+                  : "Type to filter products and press Enter..."
+              }
               sx={{
                 width: 400,
                 "& .MuiInputLabel-root": {
@@ -753,6 +795,9 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                 onClick={() => {
                   setProductNameFilter("");
                   setSubmittedProductNameFilter("");
+                  if (searchScope === "allSets") {
+                    onAllSetsSearch("");
+                  }
                 }}
                 sx={{ ml: 1 }}
                 variant="outlined"
@@ -769,7 +814,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                   variant="contained"
                   color="primary"
                 >
-                  Search
+                  {searchScope === "allSets" ? "Search All Sets" : "Search"}
                 </Button>
               )}
           </Box>
@@ -788,15 +833,24 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                 size="small"
               />
             )}
-            {submittedProductNameFilter && (
+            {(searchScope === "allSets"
+              ? allSetsSearchTerm
+              : submittedProductNameFilter) && (
               <Chip
-                label={`Filtered by: "${submittedProductNameFilter}"`}
+                label={
+                  searchScope === "allSets"
+                    ? `Card number: "${allSetsSearchTerm}"`
+                    : `Filtered by: "${submittedProductNameFilter}"`
+                }
                 color="primary"
                 variant="outlined"
                 size="small"
                 onDelete={() => {
                   setProductNameFilter("");
                   setSubmittedProductNameFilter("");
+                  if (searchScope === "allSets") {
+                    onAllSetsSearch("");
+                  }
                 }}
               />
             )}

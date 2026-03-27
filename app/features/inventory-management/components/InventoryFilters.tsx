@@ -13,6 +13,8 @@ import {
   Select,
   MenuItem,
   Chip,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import type { ProductLine } from "../../../shared/data-types/productLine";
 import type { CategorySet } from "../../../shared/data-types/categorySet";
@@ -37,10 +39,12 @@ interface InventoryFiltersProps {
   sets: CategorySet[];
   selectedProductLineId: number | null;
   selectedSetId: number | null;
+  searchScope: "set" | "allSets";
   sealedFilter: "all" | "sealed" | "unsealed";
   selectedLanguages: string[];
   onProductLineChange: (productLineId: number) => void;
   onSetChange: (setId: number) => void;
+  onSearchScopeChange: (searchScope: "set" | "allSets") => void;
   onSealedFilterChange: (sealedFilter: "all" | "sealed" | "unsealed") => void;
   onLanguagesChange: (languages: string[]) => void;
 }
@@ -60,10 +64,12 @@ export const InventoryFilters = forwardRef<
       sets,
       selectedProductLineId,
       selectedSetId,
+      searchScope,
       sealedFilter,
       selectedLanguages,
       onProductLineChange,
       onSetChange,
+      onSearchScopeChange,
       onSealedFilterChange,
       onLanguagesChange,
     },
@@ -211,8 +217,16 @@ export const InventoryFilters = forwardRef<
           />
         </Box>
 
-        {/* Second row: Set with full width */}
-        <Box sx={{ width: "100%" }}>
+        {/* Second row: Set and all-sets toggle */}
+        <Box
+          sx={{
+            width: "100%",
+            display: "flex",
+            gap: 2,
+            alignItems: { xs: "stretch", md: "center" },
+            flexDirection: { xs: "column", md: "row" },
+          }}
+        >
           <Autocomplete
             options={sortedSets}
             getOptionLabel={(option) => {
@@ -231,8 +245,21 @@ export const InventoryFilters = forwardRef<
               }
             }}
             disabled={!selectedProductLineId}
-            sx={{ width: "100%" }}
+            sx={{ flex: 1 }}
             renderInput={(params) => <TextField {...params} label="Set" />}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={searchScope === "allSets"}
+                onChange={(_, checked) =>
+                  onSearchScopeChange(checked ? "allSets" : "set")
+                }
+                disabled={!selectedProductLineId}
+              />
+            }
+            label="All sets"
+            sx={{ mr: 0 }}
           />
         </Box>
       </Box>

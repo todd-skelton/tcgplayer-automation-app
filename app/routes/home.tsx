@@ -42,8 +42,11 @@ import { getAllProducts } from "../integrations/tcgplayer/client/get-search-resu
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
+    { title: "Data Management" },
+    {
+      name: "description",
+      content: "Fetch and manage product lines, categories, and SKU data",
+    },
   ];
 };
 
@@ -363,10 +366,19 @@ export default function Home() {
         </Alert>
       )}
 
-      {/* Navigation Links */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Data Management
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Fetch and manage product lines, categories, and SKU data.
+        </Typography>
+      </Box>
+
+      {/* Tool shortcuts */}
       <Paper sx={{ p: 2, mb: 3 }} elevation={2}>
         <Typography variant="h5" gutterBottom>
-          TCGPlayer Automation Tools
+          Tool Shortcuts
         </Typography>
         <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
           <Button
@@ -421,11 +433,8 @@ export default function Home() {
           </Button>
         </Stack>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-          Use the CSV Pricer to upload and price TCGPlayer CSV files, the Seller
-          Inventory Pricer to fetch and price all listings for a specific
-          seller, the Inventory Manager to add new inventory items, or the
-          Pending Inventory Pricer to process all pending inventory and generate
-          pricing.
+          Quick links to the main inventory and pricing workflows while you are
+          working on product and SKU data.
         </Typography>
       </Paper>
 

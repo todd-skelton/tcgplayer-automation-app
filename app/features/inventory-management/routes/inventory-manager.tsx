@@ -23,22 +23,24 @@ export default function InventoryManagerRoute() {
   const {
     productLines,
     sets,
-    skus,
     pendingInventory,
     selectedProductLineId,
     selectedSetId,
+    searchScope,
+    allSetsSearchTerm,
     sealedFilter,
     selectedLanguages,
     loadProductLines,
     loadSets,
-    loadSkus,
+    loadSkusByCardNumber,
     loadPendingInventory,
     updatePendingInventory,
     clearPendingInventory,
+    selectSet,
+    setSearchScope,
     toggleSealedFilter,
     setSelectedLanguages,
     getFilteredSkus,
-    getAvailableLanguages,
   } = useInventoryProcessor();
 
   const [clearDialogOpen, setClearDialogOpen] = React.useState(false);
@@ -54,9 +56,11 @@ export default function InventoryManagerRoute() {
   };
 
   const handleSetChange = (setId: number) => {
-    if (selectedProductLineId) {
-      loadSkus(setId, selectedProductLineId);
-    }
+    selectSet(setId);
+  };
+
+  const handleSearchScopeChange = (nextSearchScope: "set" | "allSets") => {
+    setSearchScope(nextSearchScope);
   };
 
   const handleClearPendingInventory = () => {
@@ -109,10 +113,12 @@ export default function InventoryManagerRoute() {
             sets={sets}
             selectedProductLineId={selectedProductLineId}
             selectedSetId={selectedSetId}
+            searchScope={searchScope}
             sealedFilter={sealedFilter}
             selectedLanguages={selectedLanguages}
             onProductLineChange={handleProductLineChange}
             onSetChange={handleSetChange}
+            onSearchScopeChange={handleSearchScopeChange}
             onSealedFilterChange={toggleSealedFilter}
             onLanguagesChange={setSelectedLanguages}
           />
@@ -161,6 +167,13 @@ export default function InventoryManagerRoute() {
             skus={getFilteredSkus()}
             pendingInventory={pendingInventory}
             onUpdateQuantity={updatePendingInventory}
+            searchScope={searchScope}
+            allSetsSearchTerm={allSetsSearchTerm}
+            onAllSetsSearch={(cardNumber) => {
+              if (selectedProductLineId) {
+                loadSkusByCardNumber(cardNumber, selectedProductLineId);
+              }
+            }}
             sealedFilter={sealedFilter}
           />
         </Paper>

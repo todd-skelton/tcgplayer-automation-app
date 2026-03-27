@@ -1,7 +1,7 @@
 import { type RouteConfig, index } from "@react-router/dev/routes";
 
 export default [
-  index("routes/home.tsx"),
+  index("routes/dashboard.tsx"),
   {
     path: "/pricer",
     file: "features/pricing/routes/pricer.tsx",
@@ -25,6 +25,10 @@ export default [
   {
     path: "/http-configuration",
     file: "routes/http-configuration.tsx",
+  },
+  {
+    path: "/data-management",
+    file: "routes/home.tsx",
   },
   {
     path: "/api/suggested-price",
@@ -61,6 +65,10 @@ export default [
   {
     path: "/api/inventory/skus-by-set",
     file: "features/inventory-management/routes/api.inventory-skus-by-set.ts",
+  },
+  {
+    path: "/api/inventory/skus-by-card-number",
+    file: "features/inventory-management/routes/api.inventory-skus-by-card-number.ts",
   },
   {
     path: "/api/pending-inventory",

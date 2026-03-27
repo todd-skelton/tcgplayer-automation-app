@@ -7,6 +7,10 @@ import {
   withTransaction,
   type Queryable,
 } from "../database.server";
+import {
+  normalizeNumberFieldPrefix,
+  normalizeNumberFieldValue,
+} from "~/core/utils/numberFieldMatching";
 
 type SetProductRow = SetProduct;
 
@@ -81,6 +85,48 @@ export const setProductsRepository = {
       FROM set_products
       WHERE product_id = ANY($1::int[])`,
       [productIds],
+      executor,
+    );
+  },
+
+  async findByCardNumber(
+    productLineId: number,
+    cardNumber: string,
+    executor?: Queryable,
+  ): Promise<SetProduct[]> {
+    const trimmedCardNumber = cardNumber.trim();
+
+    if (!trimmedCardNumber) {
+      return [];
+    }
+
+    const normalizedCardNumber = trimmedCardNumber.includes("/")
+      ? normalizeNumberFieldValue(trimmedCardNumber)
+      : normalizeNumberFieldPrefix(trimmedCardNumber);
+
+    const normalizedColumn = trimmedCardNumber.includes("/")
+      ? "normalize_card_number(sp.number)"
+      : "normalize_card_number_prefix(sp.number)";
+
+    return query<SetProductRow>(
+      `SELECT
+        sp.set_name_id AS "setNameId",
+        sp.product_id AS "productId",
+        sp.game,
+        sp.number,
+        sp.product_name AS "productName",
+        sp.rarity,
+        sp.set_name AS "set",
+        sp.set_abbrv AS "setAbbrv",
+        sp.type,
+        sp.display_name AS "displayName"
+      FROM set_products sp
+      INNER JOIN products p
+        ON p.product_id = sp.product_id
+      WHERE p.product_line_id = $1
+        AND ${normalizedColumn} = $2
+      ORDER BY sp.set_name ASC, sp.product_name ASC`,
+      [productLineId, normalizedCardNumber],
       executor,
     );
   },

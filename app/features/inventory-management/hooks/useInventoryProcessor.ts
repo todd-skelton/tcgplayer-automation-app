@@ -27,6 +27,8 @@ export interface InventoryProcessorState {
   // Filters
   selectedProductLineId: number | null;
   selectedSetId: number | null;
+  searchScope: "set" | "allSets";
+  allSetsSearchTerm: string;
   sealedFilter: "all" | "sealed" | "unsealed";
   selectedLanguages: string[];
 }
@@ -47,6 +49,12 @@ export interface InventoryProcessorReturn extends InventoryProcessorState {
   loadProductLines: () => Promise<void>;
   loadSets: (productLineId: number) => Promise<void>;
   loadSkus: (setId: number, productLineId: number) => Promise<void>;
+  loadSkusByCardNumber: (
+    cardNumber: string,
+    productLineId: number
+  ) => Promise<void>;
+  selectSet: (setId: number) => Promise<void>;
+  setSearchScope: (searchScope: "set" | "allSets") => Promise<void>;
   loadCurrentInventory: () => Promise<void>;
   loadPendingInventory: () => Promise<void>;
   updatePendingInventory: (
@@ -72,6 +80,8 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     pendingInventory: [],
     selectedProductLineId: null,
     selectedSetId: null,
+    searchScope: "set",
+    allSetsSearchTerm: "",
     sealedFilter: "unsealed", // Default to Unsealed
     selectedLanguages: [],
   });
@@ -92,11 +102,92 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
         ...prev,
         skus,
         selectedSetId: setId,
+        searchScope: "set",
+        allSetsSearchTerm: "",
       }));
     } catch (error) {
       baseProcessor.setError(`Failed to load SKUs: ${error}`);
     }
   }, []);
+
+  const loadSkusByCardNumber = useCallback(
+    async (cardNumber: string, productLineId: number) => {
+      const trimmedCardNumber = cardNumber.trim();
+
+      if (!trimmedCardNumber) {
+        setState((prev) => ({
+          ...prev,
+          skus: [],
+          allSetsSearchTerm: "",
+        }));
+        return;
+      }
+
+      try {
+        const skusResponse = await fetch(
+          `/api/inventory/skus-by-card-number?productLineId=${productLineId}&cardNumber=${encodeURIComponent(trimmedCardNumber)}`
+        );
+
+        if (!skusResponse.ok) throw new Error("Failed to load SKUs");
+
+        const skus = await skusResponse.json();
+
+        setState((prev) => ({
+          ...prev,
+          skus,
+          allSetsSearchTerm: trimmedCardNumber,
+        }));
+      } catch (error) {
+        baseProcessor.setError(`Failed to load SKUs: ${error}`);
+      }
+    },
+    [baseProcessor]
+  );
+
+  const selectSet = useCallback(
+    async (setId: number) => {
+      if (!state.selectedProductLineId) {
+        setState((prev) => ({ ...prev, selectedSetId: setId }));
+        return;
+      }
+
+      if (state.searchScope === "allSets") {
+        setState((prev) => ({ ...prev, selectedSetId: setId }));
+        return;
+      }
+
+      await loadSkus(setId, state.selectedProductLineId);
+    },
+    [loadSkus, state.searchScope, state.selectedProductLineId]
+  );
+
+  const setSearchScope = useCallback(
+    async (searchScope: "set" | "allSets") => {
+      if (searchScope === "allSets") {
+        setState((prev) => ({
+          ...prev,
+          searchScope,
+          skus: [],
+          allSetsSearchTerm: "",
+        }));
+        return;
+      }
+
+      setState((prev) => ({
+        ...prev,
+        searchScope,
+        allSetsSearchTerm: "",
+        skus: [],
+      }));
+
+      if (state.selectedProductLineId && state.selectedSetId) {
+        await loadSkus(state.selectedSetId, state.selectedProductLineId);
+      } else {
+        setState((prev) => ({ ...prev, skus: [] }));
+      }
+    },
+    [loadSkus, state.selectedProductLineId, state.selectedSetId]
+  );
 
   const loadSets = useCallback(
     async (productLineId: number) => {
@@ -128,6 +219,8 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
           sets,
           selectedProductLineId: productLineId,
           selectedSetId: latestSet?.setNameId || null,
+          searchScope: "set",
+          allSetsSearchTerm: "",
           skus: [],
         }));
 
@@ -485,6 +578,8 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     pendingInventory: state.pendingInventory || [],
     selectedProductLineId: state.selectedProductLineId,
     selectedSetId: state.selectedSetId,
+    searchScope: state.searchScope,
+    allSetsSearchTerm: state.allSetsSearchTerm,
     sealedFilter: state.sealedFilter,
     selectedLanguages: state.selectedLanguages || [],
     ...baseProcessor,
@@ -494,6 +589,9 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     loadProductLines,
     loadSets,
     loadSkus,
+    loadSkusByCardNumber,
+    selectSet,
+    setSearchScope,
     loadCurrentInventory,
     loadPendingInventory,
     updatePendingInventory,

@@ -6,7 +6,7 @@
  * Normalizes a number string by removing leading zeros
  * Examples: "003" -> "3", "0001" -> "1", "10" -> "10"
  */
-function normalizeNumber(numberStr: string): string {
+export function normalizeNumberFieldPart(numberStr: string): string {
   // Handle empty strings
   if (!numberStr) {
     return numberStr;
@@ -22,6 +22,18 @@ function normalizeNumber(numberStr: string): string {
   }
 
   return num.toString();
+}
+
+export function normalizeNumberFieldValue(fieldValue: string): string {
+  return fieldValue
+    .trim()
+    .split("/")
+    .map((part) => normalizeNumberFieldPart(part.trim()))
+    .join("/");
+}
+
+export function normalizeNumberFieldPrefix(fieldValue: string): string {
+  return normalizeNumberFieldPart(fieldValue.trim().split("/")[0]?.trim() ?? "");
 }
 
 /**
@@ -67,8 +79,8 @@ export function matchesNumberField(
 
     // Compare each part with normalization
     for (let i = 0; i < queryParts.length; i++) {
-      const normalizedQueryPart = normalizeNumber(queryParts[i]);
-      const normalizedFieldPart = normalizeNumber(fieldParts[i]);
+      const normalizedQueryPart = normalizeNumberFieldPart(queryParts[i]);
+      const normalizedFieldPart = normalizeNumberFieldPart(fieldParts[i]);
 
       if (normalizedQueryPart !== normalizedFieldPart) {
         return false;
@@ -80,9 +92,8 @@ export function matchesNumberField(
 
   // If query has no slash, match against the part before the first slash in the field
   // (or the entire field if it has no slash) with number normalization
-  const fieldBeforeSlash = cleanField.split("/")[0];
-  const normalizedQuery = normalizeNumber(cleanQuery);
-  const normalizedField = normalizeNumber(fieldBeforeSlash);
+  const normalizedQuery = normalizeNumberFieldPart(cleanQuery);
+  const normalizedField = normalizeNumberFieldPrefix(cleanField);
 
   return normalizedQuery === normalizedField;
 }

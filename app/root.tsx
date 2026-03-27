@@ -1,16 +1,48 @@
+import React from "react";
 import {
+  Link,
+  data,
   isRouteErrorResponse,
   Links,
   Meta,
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLoaderData,
+  useLocation,
 } from "react-router";
-import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
+import {
+  Alert,
+  AppBar,
+  Box,
+  CssBaseline,
+  Divider,
+  Drawer,
+  IconButton,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Paper,
+  ThemeProvider,
+  Toolbar,
+  Tooltip,
+  Typography,
+  createTheme,
+} from "@mui/material";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import { Box, Paper, Typography, Alert } from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import SettingsIcon from "@mui/icons-material/Settings";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 
 import type { Route } from "./+types/root";
+import { getHttpConfig } from "./core/config/httpConfig.server";
+import {
+  primaryNavigationItems,
+  settingsNavigationItems,
+} from "./shared/appNavigation";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -25,8 +57,12 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
+export async function loader() {
+  const httpConfig = await getHttpConfig();
+  return data({ hasAuthCookie: !!httpConfig.tcgAuthCookie });
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
-  // Detect system dark mode
   const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
   const theme = createTheme({
     palette: {
@@ -55,7 +91,205 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  const { hasAuthCookie } = useLoaderData<typeof loader>();
+  const location = useLocation();
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [settingsAnchorEl, setSettingsAnchorEl] =
+    React.useState<null | HTMLElement>(null);
+
+  const isCurrentPath = (path: string) => location.pathname === path;
+  const settingsActive = settingsNavigationItems.some((item) =>
+    isCurrentPath(item.to),
+  );
+
+  return (
+    <>
+      <AppBar position="fixed">
+        <Toolbar>
+          <IconButton
+            color="inherit"
+            edge="start"
+            onClick={() => setMobileOpen(true)}
+            sx={{ mr: 1, display: { sm: "none" } }}
+          >
+            <MenuIcon />
+          </IconButton>
+
+          <Typography
+            variant="h6"
+            component={Link}
+            to="/"
+            sx={{
+              textDecoration: "none",
+              color: "inherit",
+              fontWeight: 700,
+              mr: 3,
+              flexShrink: 0,
+            }}
+          >
+            TCGPlayer Automation
+          </Typography>
+
+          <Box
+            sx={{
+              display: { xs: "none", sm: "flex" },
+              gap: 0.5,
+              flexGrow: 1,
+              overflow: "auto",
+            }}
+          >
+            {primaryNavigationItems.map((item) => (
+              <MenuItem
+                key={item.to}
+                component={Link}
+                to={item.to}
+                sx={{
+                  color: "inherit",
+                  borderBottom: isCurrentPath(item.to)
+                    ? "2px solid white"
+                    : "2px solid transparent",
+                  borderRadius: 0,
+                  minWidth: "auto",
+                  px: 1.5,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {item.label}
+              </MenuItem>
+            ))}
+          </Box>
+
+          <Box sx={{ display: "flex", alignItems: "center", ml: "auto" }}>
+            {!hasAuthCookie && (
+              <Tooltip title="Auth cookie not configured">
+                <IconButton
+                  color="inherit"
+                  component={Link}
+                  to="/http-configuration"
+                  size="small"
+                >
+                  <WarningAmberIcon sx={{ color: "warning.light" }} />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            <Tooltip title="Settings">
+              <IconButton
+                color="inherit"
+                onClick={(event) => setSettingsAnchorEl(event.currentTarget)}
+                sx={{
+                  border: settingsActive
+                    ? "1px solid rgba(255,255,255,0.5)"
+                    : "none",
+                }}
+              >
+                <SettingsIcon />
+              </IconButton>
+            </Tooltip>
+
+            <Menu
+              anchorEl={settingsAnchorEl}
+              open={Boolean(settingsAnchorEl)}
+              onClose={() => setSettingsAnchorEl(null)}
+            >
+              {settingsNavigationItems.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <MenuItem
+                    key={item.to}
+                    component={Link}
+                    to={item.to}
+                    selected={isCurrentPath(item.to)}
+                    onClick={() => setSettingsAnchorEl(null)}
+                  >
+                    <ListItemIcon>
+                      <Icon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>{item.label}</ListItemText>
+                  </MenuItem>
+                );
+              })}
+            </Menu>
+          </Box>
+        </Toolbar>
+      </AppBar>
+
+      <Drawer
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        variant="temporary"
+        ModalProps={{ keepMounted: true }}
+      >
+        <Box sx={{ width: 260 }}>
+          <Typography variant="h6" sx={{ p: 2, fontWeight: 700 }}>
+            Navigation
+          </Typography>
+          <Divider />
+
+          <List>
+            {primaryNavigationItems.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <ListItemButton
+                  key={item.to}
+                  component={Link}
+                  to={item.to}
+                  selected={isCurrentPath(item.to)}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <ListItemIcon>
+                    <Icon />
+                  </ListItemIcon>
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              );
+            })}
+          </List>
+
+          <Divider />
+
+          <List>
+            {settingsNavigationItems.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <ListItemButton
+                  key={item.to}
+                  component={Link}
+                  to={item.to}
+                  selected={isCurrentPath(item.to)}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <ListItemIcon>
+                    <Icon />
+                  </ListItemIcon>
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              );
+            })}
+          </List>
+
+          {!hasAuthCookie && (
+            <>
+              <Divider />
+              <Box sx={{ p: 2, display: "flex", alignItems: "center", gap: 1 }}>
+                <WarningAmberIcon color="warning" />
+                <Typography variant="body2" color="warning.main">
+                  Auth cookie not configured
+                </Typography>
+              </Box>
+            </>
+          )}
+        </Box>
+      </Drawer>
+
+      <Box component="main" sx={{ pt: 8 }}>
+        <Outlet />
+      </Box>
+    </>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
