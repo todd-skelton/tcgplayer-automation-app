@@ -71,6 +71,22 @@ export default [
     file: "features/inventory-management/routes/api.inventory-skus-by-card-number.ts",
   },
   {
+    path: "/api/inventory-batches",
+    file: "features/pending-inventory/routes/api.inventory-batches.ts",
+  },
+  {
+    path: "/api/inventory-batches/:batchNumber",
+    file: "features/pending-inventory/routes/api.inventory-batch.ts",
+  },
+  {
+    path: "/api/inventory-batches/:batchNumber/items",
+    file: "features/pending-inventory/routes/api.inventory-batch-items.ts",
+  },
+  {
+    path: "/api/inventory-batches/:batchNumber/results",
+    file: "features/pending-inventory/routes/api.inventory-batch-results.ts",
+  },
+  {
     path: "/api/pending-inventory",
     file: "features/pending-inventory/routes/api.pending-inventory.ts",
   },

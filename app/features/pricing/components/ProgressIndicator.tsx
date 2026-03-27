@@ -1,24 +1,31 @@
 import React from "react";
-import { Box, Typography, Paper, LinearProgress, Chip } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Paper,
+  LinearProgress,
+  Chip,
+  Button,
+} from "@mui/material";
 import type { ProcessingProgress } from "../../../core/types/pricing";
 
 interface ProgressIndicatorProps {
   progress: ProcessingProgress;
+  onCancel?: () => void;
 }
 
 export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   progress,
+  onCancel,
 }) => {
   const progressPercentage =
     progress.total > 0 ? (progress.current / progress.total) * 100 : 0;
 
-  // Calculate sub-progress percentage if available
   const subProgressPercentage =
     progress.subProgress && progress.subProgress.total > 0
       ? (progress.subProgress.current / progress.subProgress.total) * 100
       : 0;
 
-  // Calculate elapsed time if phase start time is available
   const getElapsedTime = () => {
     if (!progress.phaseStartTime) return null;
     const elapsedMs = Date.now() - progress.phaseStartTime;
@@ -29,7 +36,6 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
     return `${minutes}m ${seconds}s`;
   };
 
-  // Determine appropriate label based on context
   const getProgressLabel = () => {
     if (progress.total === 0) {
       return "Initializing...";
@@ -46,27 +52,34 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
           justifyContent: "space-between",
           alignItems: "center",
           mb: 2,
+          gap: 2,
         }}
       >
         <Typography variant="h6">Processing Progress</Typography>
-        {progress.phase && (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Chip
-              label={progress.phase}
-              color="primary"
-              size="small"
-              variant="outlined"
-            />
-            {getElapsedTime() && (
-              <Typography variant="caption" color="text.secondary">
-                {getElapsedTime()}
-              </Typography>
-            )}
-          </Box>
-        )}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {progress.phase && (
+            <>
+              <Chip
+                label={progress.phase}
+                color="primary"
+                size="small"
+                variant="outlined"
+              />
+              {getElapsedTime() && (
+                <Typography variant="caption" color="text.secondary">
+                  {getElapsedTime()}
+                </Typography>
+              )}
+            </>
+          )}
+          {onCancel && (
+            <Button variant="outlined" color="secondary" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
+        </Box>
       </Box>
 
-      {/* Primary Progress Bar - Overall Pipeline */}
       <Box sx={{ mb: 3 }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
           <Typography variant="body2" color="text.secondary">
@@ -92,7 +105,6 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
         </Typography>
       </Box>
 
-      {/* Secondary Progress Bar - Current Phase Sub-Progress */}
       {progress.subProgress && (
         <Box
           sx={{
@@ -104,8 +116,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
         >
           <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
             <Typography variant="body2" color="text.secondary">
-              {progress.subProgress.current} of {progress.subProgress.total}{" "}
-              items
+              {progress.subProgress.current} of {progress.subProgress.total} items
             </Typography>
             <Typography
               variant="body2"
@@ -130,18 +141,13 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
         </Box>
       )}
 
-      {/* Stats Chips */}
       <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
         <Chip
           label={`Processed: ${progress.processed}`}
           color="success"
           size="small"
         />
-        <Chip
-          label={`Skipped: ${progress.skipped}`}
-          color="info"
-          size="small"
-        />
+        <Chip label={`Skipped: ${progress.skipped}`} color="info" size="small" />
         <Chip
           label={`Warnings: ${progress.warnings}`}
           color="warning"

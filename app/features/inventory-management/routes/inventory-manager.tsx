@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import {
   Box,
   Typography,
@@ -11,7 +11,7 @@ import {
   DialogContentText,
   DialogActions,
 } from "@mui/material";
-import { Link } from "react-router";
+import { useNavigate } from "react-router";
 import { useInventoryProcessor } from "../hooks/useInventoryProcessor";
 import {
   InventoryFilters,
@@ -20,6 +20,7 @@ import {
 import { InventoryEntryTable } from "../components/InventoryEntryTable";
 
 export default function InventoryManagerRoute() {
+  const navigate = useNavigate();
   const {
     productLines,
     sets,
@@ -36,6 +37,7 @@ export default function InventoryManagerRoute() {
     loadPendingInventory,
     updatePendingInventory,
     clearPendingInventory,
+    createBatchFromPendingInventory,
     selectSet,
     setSearchScope,
     toggleSealedFilter,
@@ -44,6 +46,7 @@ export default function InventoryManagerRoute() {
   } = useInventoryProcessor();
 
   const [clearDialogOpen, setClearDialogOpen] = React.useState(false);
+  const [isCreatingBatch, setIsCreatingBatch] = React.useState(false);
   const filtersRef = useRef<InventoryFiltersRef>(null);
 
   useEffect(() => {
@@ -72,11 +75,23 @@ export default function InventoryManagerRoute() {
     setClearDialogOpen(false);
   };
 
+  const handleCreateBatch = async () => {
+    setIsCreatingBatch(true);
+
+    try {
+      const batch = await createBatchFromPendingInventory();
+      navigate(`/pending-inventory-pricer?batch=${batch.batchNumber}`);
+    } catch (error) {
+      console.error("Failed to create batch:", error);
+    } finally {
+      setIsCreatingBatch(false);
+    }
+  };
+
   const getPendingTotal = () => {
     return pendingInventory.reduce((sum, entry) => sum + entry.quantity, 0);
   };
 
-  // Handle global keyboard shortcuts for set navigation
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.key === "PageUp" && filtersRef.current) {
       event.preventDefault();
@@ -87,7 +102,6 @@ export default function InventoryManagerRoute() {
     }
   }, []);
 
-  // Add global keyboard listener
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -97,7 +111,6 @@ export default function InventoryManagerRoute() {
 
   return (
     <Box>
-      {/* Header and Filters - constrained width */}
       <Box sx={{ maxWidth: 1200, mx: "auto", p: 3 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Inventory Manager
@@ -124,7 +137,7 @@ export default function InventoryManagerRoute() {
           />
         </Paper>
       </Box>
-      {/* Inventory Entry - full width */}
+
       <Box sx={{ width: "100%", px: 3, mb: 3 }}>
         <Paper sx={{ p: 3 }} elevation={3}>
           <Box
@@ -139,25 +152,25 @@ export default function InventoryManagerRoute() {
             {pendingInventory.length > 0 && (
               <Stack direction="row" spacing={2} alignItems="center">
                 <Typography variant="body2" color="primary">
-                  {getPendingTotal()} items pending across{" "}
-                  {pendingInventory.length} SKUs
+                  {getPendingTotal()} live items across {pendingInventory.length} SKUs
                 </Typography>
                 <Button
-                  component={Link}
-                  to="/pending-inventory-pricer"
                   variant="contained"
                   color="primary"
                   size="small"
+                  onClick={() => void handleCreateBatch()}
+                  disabled={isCreatingBatch}
                 >
-                  Process & Price
+                  {isCreatingBatch ? "Creating Batch..." : "Process & Price"}
                 </Button>
                 <Button
                   variant="outlined"
                   color="secondary"
                   onClick={handleClearPendingInventory}
                   size="small"
+                  disabled={isCreatingBatch}
                 >
-                  Clear All
+                  Clear Live Queue
                 </Button>
               </Stack>
             )}
@@ -177,10 +190,10 @@ export default function InventoryManagerRoute() {
             sealedFilter={sealedFilter}
           />
         </Paper>
-      </Box>{" "}
-      {/* Processing Controls and other sections - constrained width */}
-      <Box sx={{ maxWidth: 1200, mx: "auto", px: 3 }}></Box>
-      {/* Clear Pending Inventory Confirmation Dialog */}
+      </Box>
+
+      <Box sx={{ maxWidth: 1200, mx: "auto", px: 3 }} />
+
       <Dialog
         open={clearDialogOpen}
         onClose={() => setClearDialogOpen(false)}
@@ -188,17 +201,16 @@ export default function InventoryManagerRoute() {
         aria-describedby="clear-dialog-description"
       >
         <DialogTitle id="clear-dialog-title">
-          Clear Pending Inventory?
+          Clear Live Inventory Queue?
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="clear-dialog-description">
-            Are you sure you want to clear all pending inventory entries? This
+            Are you sure you want to clear all unbatched inventory entries? This
             will remove {getPendingTotal()} items from {pendingInventory.length}{" "}
             SKUs.
             <br />
             <br />
-            <strong>Note:</strong> Pending inventory is automatically cleared
-            when you successfully process and download a CSV file.
+            Batches that have already been created are not affected.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -210,7 +222,7 @@ export default function InventoryManagerRoute() {
             color="secondary"
             variant="contained"
           >
-            Clear All
+            Clear Live Queue
           </Button>
         </DialogActions>
       </Dialog>

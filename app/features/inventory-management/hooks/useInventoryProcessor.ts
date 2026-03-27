@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import type { InventoryEntry, InventoryFilter } from "../types/inventoryEntry";
 import type { PendingInventoryEntry } from "../../pending-inventory/types/pendingInventory";
+import type { InventoryBatch } from "../../pending-inventory/types/inventoryBatch";
 import type { ProductLine } from "../../../shared/data-types/productLine";
 import type { CategorySet } from "../../../shared/data-types/categorySet";
 import type { Sku } from "../../../shared/data-types/sku";
@@ -63,6 +64,7 @@ export interface InventoryProcessorReturn extends InventoryProcessorState {
     metadata: { productLineId: number; setId: number; productId: number }
   ) => void;
   clearPendingInventory: () => void;
+  createBatchFromPendingInventory: () => Promise<InventoryBatch>;
   toggleSealedFilter: (sealedFilter: "all" | "sealed" | "unsealed") => void;
   setSelectedLanguages: (languages: string[]) => void;
   getFilteredSkus: () => SkuWithDisplayInfo[];
@@ -318,6 +320,23 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     } catch (error) {
       baseProcessor.setError(`Failed to clear pending inventory: ${error}`);
     }
+  }, []);
+  const createBatchFromPendingInventory = useCallback(async () => {
+    const response = await fetch("/api/inventory-batches", {
+      method: "POST",
+    });
+    const payload = (await response.json()) as InventoryBatch | { error?: string };
+
+    if (!response.ok) {
+      throw new Error(
+        "error" in payload && payload.error
+          ? payload.error
+          : "Failed to create inventory batch",
+      );
+    }
+
+    setState((prev) => ({ ...prev, pendingInventory: [] }));
+    return payload as InventoryBatch;
   }, []);
   const processInventory = useCallback(
     async (percentile: number = 50) => {
@@ -596,6 +615,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     loadPendingInventory,
     updatePendingInventory,
     clearPendingInventory,
+    createBatchFromPendingInventory,
     toggleSealedFilter,
     setSelectedLanguages,
     getFilteredSkus,
@@ -603,3 +623,4 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     processInventory,
   };
 };
+
