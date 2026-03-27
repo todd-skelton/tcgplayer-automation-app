@@ -75,9 +75,13 @@ The import is upsert-based, so rerunning it does not duplicate rows.
 Build and start the production stack:
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+npm run prod:deploy
 ```
 
 The production app is exposed at `http://localhost:3001`.
+
+When you deploy through `npm run prod:deploy`, `npm run prod:update`, `npm run prod:start`, or `npm run prod:restart`, the repo now fetches `origin/master` and refuses to run unless the working tree is clean and local `HEAD` exactly matches `origin/master`. This keeps production aligned with the remote `master` branch instead of whichever local branch happens to be checked out.
+
+Direct `docker compose -f docker-compose.prod.yml ...` commands still work, but they bypass that protection. Use the `npm run prod:*` wrappers whenever you want enforced production source control.
 
 Additional production workflow details are documented in `PRODUCTION_DOCKER.md`.

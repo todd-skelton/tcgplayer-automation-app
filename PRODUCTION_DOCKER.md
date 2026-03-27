@@ -10,6 +10,8 @@ Deploy the production stack:
 npm run prod:deploy
 ```
 
+The guarded `npm run prod:*` commands are the supported production entrypoints when you want source enforcement. `prod:deploy`, `prod:update`, `prod:start`, and `prod:restart` fetch `origin/master` and refuse to run unless the local checkout is clean and `HEAD` exactly matches `origin/master`.
+
 This starts:
 
 - The app on `http://localhost:3001`
@@ -50,6 +52,12 @@ npm run prod:shell
 npm run prod:clean
 ```
 
+Source guard behavior:
+
+- `prod:deploy`, `prod:update`, `prod:start`, and `prod:restart` are blocked unless the repo has no uncommitted changes and the checked-out commit matches `origin/master`.
+- `prod:stop`, `prod:logs`, `prod:status`, `prod:shell`, and `prod:clean` remain unguarded for operational use.
+- The guard is commit-based, not branch-name-based, so a detached `HEAD` is allowed only when it points to the same commit as `origin/master`.
+
 Direct Docker Compose commands:
 
 ```bash
@@ -58,6 +66,8 @@ docker compose -f docker-compose.prod.yml down
 docker compose -f docker-compose.prod.yml logs -f
 docker compose -f docker-compose.prod.yml ps
 ```
+
+Direct `docker compose` commands bypass the source guard. Use the `npm run prod:*` wrappers if you need the `origin/master` enforcement.
 
 Run migrations manually:
 

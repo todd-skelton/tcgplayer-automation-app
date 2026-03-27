@@ -726,30 +726,13 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
         }
       }, [groupedSkus, selectedSkus]);
 
-      // Show early return only if there are no SKUs at all (not just filtered out)
-      if (skus.length === 0) {
-        if (searchScope === "allSets") {
-          return (
-            <Alert severity={allSetsSearchTerm ? "warning" : "info"}>
-              {allSetsSearchTerm
-                ? `No matches found for card number "${allSetsSearchTerm}" in the selected product line.`
-                : "Enter a card number to search across all sets in the selected product line."}
-            </Alert>
-          );
-        }
-
-        return (
-          <Alert severity="info">
-            No SKUs available. Please select a product line and set to see
-            available inventory options.
-          </Alert>
-        );
-      }
+      const hasNoSkus = skus.length === 0;
 
       return (
         <Box>
           {/* Product Name Search Filter */}
-          <Box sx={{ mb: 2 }}>
+          {(!hasNoSkus || searchScope === "allSets") && (
+            <Box sx={{ mb: 2 }}>
             <TextField
               label={`${
                 searchScope === "allSets"
@@ -817,9 +800,29 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                   {searchScope === "allSets" ? "Search All Sets" : "Search"}
                 </Button>
               )}
-          </Box>
+            </Box>
+          )}
 
-          <Box sx={{ mb: 2, display: "flex", gap: 1, alignItems: "center" }}>
+          {hasNoSkus && (
+            <Alert
+              severity={
+                searchScope === "allSets" && allSetsSearchTerm
+                  ? "warning"
+                  : "info"
+              }
+              sx={{ mb: 2 }}
+            >
+              {searchScope === "allSets"
+                ? allSetsSearchTerm
+                  ? `No matches found for card number "${allSetsSearchTerm}" in the selected product line.`
+                  : "Enter a card number to search across all sets in the selected product line."
+                : "No SKUs available. Please select a product line and set to see available inventory options."}
+            </Alert>
+          )}
+
+          {!hasNoSkus && (
+            <>
+              <Box sx={{ mb: 2, display: "flex", gap: 1, alignItems: "center" }}>
             <Chip
               label={`${dataGridRows.length} products displayed`}
               color="info"
@@ -856,43 +859,45 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
             )}
           </Box>
 
-          <Box sx={{ height: 600, width: "100%" }}>
-            <ClientOnlyDataGrid
-              rows={dataGridRows}
-              columns={columns}
-              disableRowSelectionOnClick
-              pagination
-              pageSizeOptions={[25, 50, 100]}
-              initialState={{
-                pagination: {
-                  paginationModel: {
-                    pageSize: 100,
-                  },
-                },
-                filter: {
-                  filterModel: {
-                    items: [],
-                    quickFilterValues: [],
-                  },
-                },
-              }}
-              slots={{
-                toolbar: CustomToolbar,
-              }}
-              sx={{
-                "& .MuiDataGrid-row": {
-                  "&:hover": {
-                    backgroundColor: "action.hover",
-                  },
-                },
-                "& .MuiDataGrid-cell": {
-                  borderBottom: "1px solid",
-                  borderColor: "divider",
-                },
-              }}
-              getRowHeight={() => "auto"}
-            />
-          </Box>
+              <Box sx={{ height: 600, width: "100%" }}>
+                <ClientOnlyDataGrid
+                  rows={dataGridRows}
+                  columns={columns}
+                  disableRowSelectionOnClick
+                  pagination
+                  pageSizeOptions={[25, 50, 100]}
+                  initialState={{
+                    pagination: {
+                      paginationModel: {
+                        pageSize: 100,
+                      },
+                    },
+                    filter: {
+                      filterModel: {
+                        items: [],
+                        quickFilterValues: [],
+                      },
+                    },
+                  }}
+                  slots={{
+                    toolbar: CustomToolbar,
+                  }}
+                  sx={{
+                    "& .MuiDataGrid-row": {
+                      "&:hover": {
+                        backgroundColor: "action.hover",
+                      },
+                    },
+                    "& .MuiDataGrid-cell": {
+                      borderBottom: "1px solid",
+                      borderColor: "divider",
+                    },
+                  }}
+                  getRowHeight={() => "auto"}
+                />
+              </Box>
+            </>
+          )}
 
           {/* Image Dialog for Full Size View */}
           <Dialog
