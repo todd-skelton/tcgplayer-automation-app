@@ -15,12 +15,12 @@ REM Check if production container is already running
 docker ps | findstr "tcgplayer-automation-prod" >nul
 if %errorlevel% equ 0 (
     echo Stopping existing production container...
-    docker-compose -f docker-compose.prod.yml down
+    docker compose -f docker-compose.prod.yml down
 )
 
 REM Build and start production container
 echo Building production image...
-docker-compose -f docker-compose.prod.yml build --no-cache
+docker compose -f docker-compose.prod.yml build --no-cache
 
 if %errorlevel% neq 0 (
     echo Build failed!
@@ -28,7 +28,7 @@ if %errorlevel% neq 0 (
 )
 
 echo Starting production container...
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d
 
 if %errorlevel% neq 0 (
     echo Failed to start container!
@@ -46,12 +46,12 @@ if %errorlevel% equ 0 (
     echo.
     echo Production app is running at: http://localhost:3001
     echo Container status: docker ps ^| findstr tcgplayer-automation-prod
-    echo View logs: docker-compose -f docker-compose.prod.yml logs -f
-    echo Stop production: docker-compose -f docker-compose.prod.yml down
+    echo View logs: docker compose -f docker-compose.prod.yml logs -f
+    echo Stop production: docker compose -f docker-compose.prod.yml down
     echo.
     echo Development can still run on: http://localhost:5173 ^(npm run dev^)
 ) else (
     echo Production deployment failed!
-    echo Check logs: docker-compose -f docker-compose.prod.yml logs
+    echo Check logs: docker compose -f docker-compose.prod.yml logs
     exit /b 1
 )

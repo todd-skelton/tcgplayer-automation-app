@@ -18,6 +18,8 @@ This starts:
 - PostgreSQL in a sidecar container
 - Persistent database storage in the `postgres-data` Docker volume
 
+The production compose file now uses the explicit project name `tcgplayer-automation-prod` so it can run beside the dev database without sharing Docker networks.
+
 ## Configuration
 
 The production compose file sets:
@@ -68,6 +70,25 @@ docker compose -f docker-compose.prod.yml ps
 ```
 
 Direct `docker compose` commands bypass the source guard. Use the `npm run prod:*` wrappers if you need the `origin/master` enforcement.
+
+## One-Time Cleanup After Upgrading
+
+If you ran production before the explicit compose project names were added, remove the stale containers once and then recreate the stack:
+
+```bash
+docker rm -f tcgplayer-automation-prod tcgplayer-postgres-prod
+docker network rm tcgplayer-automation-app_default
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+If you also run the standalone dev database, remove and recreate it once too:
+
+```bash
+docker rm -f tcgplayer-postgres-dev
+docker compose -f docker-compose.db.yml up -d
+```
+
+These commands remove containers and the old shared network only. The named PostgreSQL volumes are preserved.
 
 Run migrations manually:
 

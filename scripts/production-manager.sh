@@ -5,37 +5,37 @@ command=$1
 
 case $command in
   "start")
-    echo "🏃 Starting production..."
-    docker-compose -f docker-compose.prod.yml up -d
-    echo "✅ Production started at http://localhost:3001"
+    echo "Starting production..."
+    docker compose -f docker-compose.prod.yml up -d
+    echo "Production started at http://localhost:3001"
     ;;
   "stop")
-    echo "🛑 Stopping production..."
-    docker-compose -f docker-compose.prod.yml down
-    echo "✅ Production stopped"
+    echo "Stopping production..."
+    docker compose -f docker-compose.prod.yml down
+    echo "Production stopped"
     ;;
   "restart")
-    echo "🔄 Restarting production..."
-    docker-compose -f docker-compose.prod.yml restart
-    echo "✅ Production restarted"
+    echo "Restarting production..."
+    docker compose -f docker-compose.prod.yml restart
+    echo "Production restarted"
     ;;
   "logs")
-    echo "📋 Showing production logs..."
-    docker-compose -f docker-compose.prod.yml logs -f
+    echo "Showing production logs..."
+    docker compose -f docker-compose.prod.yml logs -f
     ;;
   "status")
-    echo "📊 Production status:"
-    docker-compose -f docker-compose.prod.yml ps
+    echo "Production status:"
+    docker compose -f docker-compose.prod.yml ps
     ;;
   "shell")
-    echo "🐚 Connecting to production container..."
+    echo "Connecting to production container..."
     docker exec -it tcgplayer-automation-prod sh
     ;;
   "clean")
-    echo "🧹 Cleaning up production containers and images..."
-    docker-compose -f docker-compose.prod.yml down
+    echo "Cleaning up production containers and images..."
+    docker compose -f docker-compose.prod.yml down
     docker image prune -f
-    echo "✅ Cleanup complete"
+    echo "Cleanup complete"
     ;;
   *)
     echo "TCGPlayer Automation - Production Management"

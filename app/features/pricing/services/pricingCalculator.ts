@@ -1,4 +1,8 @@
-import type { PricerSku, PricingConfig } from "../../../core/types/pricing";
+import type {
+  PricerSku,
+  PricingConfig,
+  SuggestedPriceResolver,
+} from "../../../core/types/pricing";
 import { getSuggestedPrice } from "./pricingService";
 import { calculateMarketplacePrice } from "./pricingService";
 import type { PricePoint } from "../../../integrations/tcgplayer/client/get-price-points.server";
@@ -37,6 +41,23 @@ export interface PricingCalculationResult {
   };
 }
 
+function getDefaultSuggestedPriceResolver(): SuggestedPriceResolver {
+  return async ({
+    tcgplayerId,
+    percentile,
+    enableSupplyAnalysis,
+    supplyAnalysisConfig,
+    productLineId,
+  }) =>
+    getSuggestedPrice(
+      tcgplayerId,
+      percentile,
+      enableSupplyAnalysis,
+      supplyAnalysisConfig,
+      productLineId,
+    );
+}
+
 /**
  * Core pricing calculator that only handles price calculation.
  * No data enrichment, no file operations, no UI concerns.
@@ -50,6 +71,8 @@ export class PricingCalculator {
     productDisplayMap?: Map<number, ProductDisplayInfo>,
   ): Promise<PricingCalculationResult> {
     const startTime = Date.now();
+    const suggestedPriceResolver =
+      config.suggestedPriceResolver ?? getDefaultSuggestedPriceResolver();
     let processed = 0;
     let skipped = 0;
     let errors = 0;
@@ -140,13 +163,13 @@ export class PricingCalculator {
 
         // Get suggested price for this SKU
         // Use productLineId hint from PricerSku if available for better performance
-        const result = await getSuggestedPrice(
-          pricerSku.sku.toString(),
-          effectivePercentile,
-          config.enableSupplyAnalysis,
-          config.supplyAnalysisConfig,
-          pricerSku.productLineId,
-        );
+        const result = await suggestedPriceResolver({
+          tcgplayerId: pricerSku.sku.toString(),
+          percentile: effectivePercentile,
+          enableSupplyAnalysis: config.enableSupplyAnalysis,
+          supplyAnalysisConfig: config.supplyAnalysisConfig,
+          productLineId: pricerSku.productLineId,
+        });
 
         // Create pricing result from suggested price result
         const pricedItem = await this.createPricedItem(

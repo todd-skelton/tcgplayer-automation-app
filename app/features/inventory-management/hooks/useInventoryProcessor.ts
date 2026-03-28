@@ -5,12 +5,7 @@ import type { InventoryBatch } from "../../pending-inventory/types/inventoryBatc
 import type { ProductLine } from "../../../shared/data-types/productLine";
 import type { CategorySet } from "../../../shared/data-types/categorySet";
 import type { Sku } from "../../../shared/data-types/sku";
-import type { TcgPlayerListing, PricerSku } from "../../../core/types/pricing";
 import { useProcessorBase } from "../../file-upload/hooks/useProcessorBase";
-import { downloadCSV } from "../../../core/utils/csvProcessing";
-import { PricingCalculator } from "../../pricing/services/pricingCalculator";
-import { DataEnrichmentService } from "../../../shared/services/dataEnrichmentService";
-import { PricedSkuToTcgPlayerListingConverter } from "../../file-upload/services/dataConverters";
 
 // Extended interface for SKUs with display information
 interface SkuWithDisplayInfo extends Sku {
@@ -69,7 +64,6 @@ export interface InventoryProcessorReturn extends InventoryProcessorState {
   setSelectedLanguages: (languages: string[]) => void;
   getFilteredSkus: () => SkuWithDisplayInfo[];
   getAvailableLanguages: () => string[];
-  processInventory: () => Promise<void>;
 }
 
 export const useInventoryProcessor = (): InventoryProcessorReturn => {
@@ -338,214 +332,6 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     setState((prev) => ({ ...prev, pendingInventory: [] }));
     return payload as InventoryBatch;
   }, []);
-  const processInventory = useCallback(
-    async (percentile: number = 50) => {
-      if (state.pendingInventory.length === 0) {
-        baseProcessor.setError("No inventory entries to process");
-        return;
-      }
-
-      baseProcessor.startProcessing();
-
-      try {
-        // Convert pending inventory to PricerSku format
-        const pricerSkus: PricerSku[] = [];
-        const skusNotFoundByProductLine: Map<
-          number,
-          { skus: number[]; entries: PendingInventoryEntry[] }
-        > = new Map();
-
-        for (const pendingEntry of state.pendingInventory) {
-          const sku = pendingEntry.sku;
-          const quantity = pendingEntry.quantity;
-
-          const skuData = state.skus.find((s) => s.sku === sku);
-          if (skuData) {
-            pricerSkus.push({
-              sku,
-              quantity: 0, // Existing quantity (always 0 for new inventory)
-              addToQuantity: quantity,
-              productLineId: pendingEntry.productLineId,
-              setId: pendingEntry.setId,
-              productId: pendingEntry.productId,
-            });
-          } else {
-            // SKU data not found in current state, group by product line for efficient fetching
-            const productLineId = pendingEntry.productLineId;
-            if (!skusNotFoundByProductLine.has(productLineId)) {
-              skusNotFoundByProductLine.set(productLineId, {
-                skus: [],
-                entries: [],
-              });
-            }
-            const group = skusNotFoundByProductLine.get(productLineId)!;
-            group.skus.push(sku);
-            group.entries.push(pendingEntry);
-          }
-        }
-
-        // If we have SKUs that aren't in the current state, fetch their data grouped by product line
-        if (skusNotFoundByProductLine.size > 0) {
-          baseProcessor.setProgress({
-            current: 0,
-            total: state.pendingInventory.length,
-            status: "Fetching SKU data for pending inventory...",
-            processed: 0,
-            skipped: 0,
-            errors: 0,
-            warnings: 0,
-          });
-
-          try {
-            // Create the productLineSkus object structure for the API
-            const productLineSkus: { [key: string]: number[] } = {};
-            for (const [productLineId, group] of skusNotFoundByProductLine) {
-              productLineSkus[productLineId.toString()] = group.skus;
-            }
-
-            // Make a single API call with all grouped SKUs
-            const skuResponse = await fetch("/api/inventory/skus", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ productLineSkus }),
-            });
-
-            if (skuResponse.ok) {
-              const skuDataArray = await skuResponse.json();
-
-              // Add PricerSku entries for the fetched SKUs
-              for (const skuData of skuDataArray) {
-                const pendingEntry = state.pendingInventory.find(
-                  (p) => p.sku === skuData.sku
-                );
-                if (pendingEntry) {
-                  pricerSkus.push({
-                    sku: skuData.sku,
-                    quantity: 0,
-                    addToQuantity: pendingEntry.quantity,
-                    productLineId: pendingEntry.productLineId,
-                    setId: pendingEntry.setId,
-                    productId: pendingEntry.productId,
-                  });
-                }
-              }
-            } else {
-              console.warn("Failed to fetch missing SKU data");
-            }
-          } catch (error) {
-            console.warn("Error fetching missing SKU data:", error);
-          }
-        }
-
-        if (pricerSkus.length === 0) {
-          throw new Error(
-            "No valid pricing entries could be created from pending inventory"
-          );
-        }
-
-        // Use the new modular pricing architecture
-        const pricingCalculator = new PricingCalculator();
-        const enrichmentService = new DataEnrichmentService();
-
-        // First, calculate prices (fast)
-        const pricingResult = await pricingCalculator.calculatePrices(
-          pricerSkus,
-          {
-            percentile,
-            enableSupplyAnalysis:
-              baseProcessor.supplyAnalysisConfig.enableSupplyAnalysis,
-            supplyAnalysisConfig: {
-              maxListingsPerSku:
-                baseProcessor.supplyAnalysisConfig.maxListingsPerSku,
-              includeUnverifiedSellers:
-                baseProcessor.supplyAnalysisConfig.includeUnverifiedSellers,
-            },
-            onProgress: (progress: any) => {
-              baseProcessor.setProgress(progress);
-            },
-          }
-        );
-
-        // Then enrich with product details for display
-        const enrichedSkus = await enrichmentService.enrichForDisplay(
-          pricingResult.pricedItems,
-          (current: number, total: number, status: string) => {
-            baseProcessor.setProgress({
-              current,
-              total,
-              status,
-              processed: pricingResult.stats.processed,
-              skipped: pricingResult.stats.skipped,
-              errors: pricingResult.stats.errors,
-              warnings: pricingResult.stats.warnings || 0,
-            });
-          }
-        );
-
-        // Convert to TcgPlayerListing format using the converter
-        const converter = new PricedSkuToTcgPlayerListingConverter();
-        const processedListings = converter.convertFromPricedSkus(enrichedSkus);
-
-        // Create summary from pricing stats
-        const summary = {
-          totalRows: pricerSkus.length,
-          processedRows: pricingResult.stats.processed,
-          skippedRows: pricingResult.stats.skipped,
-          errorRows: pricingResult.stats.errors,
-          warningRows: pricingResult.stats.warnings || 0,
-          successRate:
-            (pricingResult.stats.processed / pricerSkus.length) * 100,
-          processingTime: pricingResult.stats.processingTime,
-          fileName: `inventory-${Date.now()}.csv`,
-          percentileUsed: percentile,
-          totalQuantity: 0,
-          totalAddQuantity: 0,
-          totals: {
-            marketPrice: 0,
-            lowPrice: 0,
-            marketplacePrice: 0,
-            percentiles: {},
-          },
-          totalsWithMarket: {
-            marketPrice: 0,
-            percentiles: {},
-            quantityWithMarket: 0,
-          },
-          medianDaysToSell: {
-            historicalSalesVelocity: 0,
-            estimatedTimeToSell: 0,
-            percentiles: {} as { [key: string]: number },
-          },
-        };
-
-        // Set the summary
-        baseProcessor.setSummary(summary);
-
-        // Clear pending inventory using the API
-        await clearPendingInventory();
-
-        // Download the CSV
-        const filename = `inventory-${Date.now()}.csv`;
-        downloadCSV(processedListings, filename);
-
-        // Show success message
-        baseProcessor.setSuccess(
-          `Successfully processed ${pricerSkus.length} inventory entries and downloaded CSV. Pending inventory has been cleared.`
-        );
-      } catch (error: any) {
-        if (error?.message === "Processing cancelled by user") {
-          console.log("Processing cancelled by user");
-          return;
-        }
-        baseProcessor.setError(
-          `Failed to process inventory: ${error?.message || error}`
-        );
-      } finally {
-        baseProcessor.finishProcessing();
-      }
-    },
-    [state.pendingInventory, state.skus, baseProcessor, clearPendingInventory]
-  );
 
   const toggleSealedFilter = useCallback(
     (sealedFilter: "all" | "sealed" | "unsealed") => {
@@ -620,7 +406,6 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     setSelectedLanguages,
     getFilteredSkus,
     getAvailableLanguages,
-    processInventory,
   };
 };
 

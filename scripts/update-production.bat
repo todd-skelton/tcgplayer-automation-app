@@ -17,7 +17,7 @@ if %errorlevel% neq 0 (
 
 REM Rebuild and restart
 echo Rebuilding production image...
-docker-compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml build
 
 if %errorlevel% neq 0 (
     echo Build failed!
@@ -25,7 +25,7 @@ if %errorlevel% neq 0 (
 )
 
 echo Restarting production container...
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d
 
 if %errorlevel% neq 0 (
     echo Restart failed!
@@ -41,6 +41,6 @@ if %errorlevel% equ 0 (
     echo Production app is running at: http://localhost:3001
 ) else (
     echo Production update failed!
-    echo Check logs: docker-compose -f docker-compose.prod.yml logs
+    echo Check logs: docker compose -f docker-compose.prod.yml logs
     exit /b 1
 )

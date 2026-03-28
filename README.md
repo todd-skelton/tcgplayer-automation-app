@@ -16,6 +16,8 @@ The server uses `DATABASE_URL`. The local default is:
 postgresql://postgres:postgres@localhost:5433/tcgplayer_automation
 ```
 
+That host fallback is intended for the standalone dev database in `docker-compose.db.yml`.
+
 Optional startup flags:
 
 ```bash
@@ -29,7 +31,7 @@ DB_IMPORT_ON_START=false
 Run Postgres in Docker and the app on your host:
 
 ```bash
-docker compose up -d postgres
+docker compose -f docker-compose.db.yml up -d
 npm install
 npm run db:migrate
 npm run db:import
@@ -38,7 +40,7 @@ npm run dev
 
 The app is available at `http://localhost:5173`.
 
-If you are using the standalone database container from `docker-compose.db.yml`, the app now defaults to `localhost:5433` automatically.
+If you are using the standalone database container from `docker-compose.db.yml`, the app defaults to `localhost:5433` automatically. That compose file now uses the explicit project name `tcgplayer-automation-db`, so it can run beside production without sharing Docker networks.
 
 Run the full development stack in Docker:
 
@@ -46,7 +48,7 @@ Run the full development stack in Docker:
 docker compose up --build
 ```
 
-That starts the app on `http://localhost:5173` and Postgres on `localhost:5432`.
+That starts the app on `http://localhost:5173` and Postgres on `localhost:5432`. The development stack uses the explicit project name `tcgplayer-automation-dev`.
 
 To import the checked-in NeDB files into the containerized database:
 
@@ -85,3 +87,21 @@ When you deploy through `npm run prod:deploy`, `npm run prod:update`, `npm run p
 Direct `docker compose -f docker-compose.prod.yml ...` commands still work, but they bypass that protection. Use the `npm run prod:*` wrappers whenever you want enforced production source control.
 
 Additional production workflow details are documented in `PRODUCTION_DOCKER.md`.
+
+## One-Time Docker Cleanup
+
+If you ran older dev or prod containers before the explicit compose project names were added, remove the stale containers once before recreating the stacks:
+
+```bash
+docker rm -f tcgplayer-automation-prod tcgplayer-postgres-prod tcgplayer-postgres-dev
+docker network rm tcgplayer-automation-app_default
+```
+
+Then recreate the environments you need:
+
+```bash
+docker compose -f docker-compose.db.yml up -d
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+The cleanup removes containers and the old shared network only. Your named Docker volumes, including the PostgreSQL data volumes, are preserved.

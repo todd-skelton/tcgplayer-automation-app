@@ -13,6 +13,7 @@ import { createDisplayName } from "~/core/utils/displayNameUtils";
 import type { PricePoint } from "~/integrations/tcgplayer/client/get-price-points.server";
 import { getPricePoints } from "~/integrations/tcgplayer/client/get-price-points.server";
 import { PricingCalculator } from "~/features/pricing/services/pricingCalculator";
+import { resolveSuggestedPrice } from "~/features/pricing/services/suggestedPriceResolver.server";
 import type { ProductDisplayInfo } from "~/shared/services/dataEnrichmentService";
 import type {
   InventoryBatchItem,
@@ -399,6 +400,7 @@ export async function executeInventoryBatchPricingJob({
         includeUnverifiedSellers: config.supplyAnalysis.includeUnverifiedSellers,
       },
       productLinePricingConfig: config.productLinePricing,
+      suggestedPriceResolver: resolveSuggestedPrice,
       isCancelled,
       onProgress: (progress) => {
         latestPricingProgress = {

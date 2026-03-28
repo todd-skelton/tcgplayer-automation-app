@@ -5,7 +5,6 @@ import type {
 } from "../../../core/types/pricing";
 import type { Listing } from "../../../integrations/tcgplayer/client/get-search-results.server";
 import type { SellerInventoryItem } from "../../inventory-management/services/inventoryConverter";
-import type { PendingInventoryEntry } from "../../pending-inventory/types/pendingInventory";
 
 /**
  * Base interface for converters that transform input data to PricerSku format
@@ -129,24 +128,3 @@ export class SellerInventoryToPricerSkuConverter
   }
 }
 
-/**
- * Converts pending inventory to PricerSku format
- */
-export class PendingInventoryToPricerSkuConverter
-  implements InputConverter<PendingInventoryEntry>
-{
-  convertToPricerSkus(pendingInventory: PendingInventoryEntry[]): PricerSku[] {
-    return pendingInventory
-      .filter((item) => item.sku && item.sku > 0)
-      .map((item): PricerSku => {
-        return {
-          sku: item.sku,
-          addToQuantity: item.quantity,
-          // Performance metadata is now always available
-          productLineId: item.productLineId,
-          setId: item.setId,
-          productId: item.productId,
-        };
-      });
-  }
-}

@@ -8,15 +8,53 @@ const DEFAULT_DATABASE_URL =
   "postgresql://postgres:postgres@localhost:5433/tcgplayer_automation";
 
 let pool: pg.Pool | null = null;
+let hasLoggedDatabaseTarget = false;
 
 export function getDatabaseUrl(): string {
   return process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL;
 }
 
+function formatDatabaseUrlForLog(connectionString: string): string {
+  try {
+    const url = new URL(connectionString);
+    const maskedUsername = url.username ? "***" : "";
+    const maskedPassword = url.password ? ":***" : "";
+    const auth = maskedUsername ? `${maskedUsername}${maskedPassword}@` : "";
+
+    return `${url.protocol}//${auth}${url.hostname}${url.port ? `:${url.port}` : ""}${url.pathname}`;
+  } catch {
+    return "(unparseable DATABASE_URL)";
+  }
+}
+
+function logDatabaseTargetOnce(connectionString: string): void {
+  if (hasLoggedDatabaseTarget) {
+    return;
+  }
+
+  hasLoggedDatabaseTarget = true;
+
+  try {
+    const url = new URL(connectionString);
+    const databaseName = url.pathname.replace(/^\/+/, "") || "(default)";
+    const port = url.port || "5432";
+
+    console.info(
+      `[db] Creating PostgreSQL pool for ${formatDatabaseUrlForLog(connectionString)} ` +
+        `(host=${url.hostname}, port=${port}, database=${databaseName})`,
+    );
+  } catch {
+    console.info("[db] Creating PostgreSQL pool for the configured DATABASE_URL.");
+  }
+}
+
 export function getPool(): pg.Pool {
   if (!pool) {
+    const connectionString = getDatabaseUrl();
+    logDatabaseTargetOnce(connectionString);
+
     pool = new Pool({
-      connectionString: getDatabaseUrl(),
+      connectionString,
       max: 20,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 10_000,

@@ -99,6 +99,21 @@ export interface SuggestedPriceResult {
   }>;
 }
 
+export interface SuggestedPriceResolverInput {
+  tcgplayerId: string;
+  percentile: number;
+  enableSupplyAnalysis?: boolean;
+  supplyAnalysisConfig?: {
+    maxListingsPerSku?: number;
+    includeUnverifiedSellers?: boolean;
+  };
+  productLineId?: number;
+}
+
+export type SuggestedPriceResolver = (
+  input: SuggestedPriceResolverInput,
+) => Promise<SuggestedPriceResult>;
+
 export interface PricingConfig {
   percentile: number;
   halfLifeDays?: number; // For time decay in pricing algorithms
@@ -115,6 +130,7 @@ export interface PricingConfig {
     productLineSettings: Record<number, { percentile: number; skip: boolean }>;
     defaultPercentile: number;
   };
+  suggestedPriceResolver?: SuggestedPriceResolver;
 }
 
 export type PricerSku = {

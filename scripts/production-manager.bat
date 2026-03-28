@@ -7,14 +7,14 @@ if "%command%"=="start" (
     call "%~dp0assert-production-source.bat"
     if errorlevel 1 exit /b 1
     echo Starting production...
-    docker-compose -f docker-compose.prod.yml up -d
+    docker compose -f docker-compose.prod.yml up -d
     echo Production started at http://localhost:3001
     goto :eof
 )
 
 if "%command%"=="stop" (
     echo Stopping production...
-    docker-compose -f docker-compose.prod.yml down
+    docker compose -f docker-compose.prod.yml down
     echo Production stopped
     goto :eof
 )
@@ -23,20 +23,20 @@ if "%command%"=="restart" (
     call "%~dp0assert-production-source.bat"
     if errorlevel 1 exit /b 1
     echo Restarting production...
-    docker-compose -f docker-compose.prod.yml restart
+    docker compose -f docker-compose.prod.yml restart
     echo Production restarted
     goto :eof
 )
 
 if "%command%"=="logs" (
     echo Showing production logs...
-    docker-compose -f docker-compose.prod.yml logs -f
+    docker compose -f docker-compose.prod.yml logs -f
     goto :eof
 )
 
 if "%command%"=="status" (
     echo Production status:
-    docker-compose -f docker-compose.prod.yml ps
+    docker compose -f docker-compose.prod.yml ps
     goto :eof
 )
 
@@ -48,7 +48,7 @@ if "%command%"=="shell" (
 
 if "%command%"=="clean" (
     echo Cleaning up production containers and images...
-    docker-compose -f docker-compose.prod.yml down
+    docker compose -f docker-compose.prod.yml down
     docker image prune -f
     echo Cleanup complete
     goto :eof
