@@ -1,0 +1,8 @@
+ALTER TABLE products
+ALTER COLUMN rarity_name DROP NOT NULL;
+
+ALTER TABLE set_products
+ALTER COLUMN rarity DROP NOT NULL;
+
+ALTER TABLE skus
+ALTER COLUMN rarity_name DROP NOT NULL;

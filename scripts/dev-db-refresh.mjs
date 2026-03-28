@@ -7,7 +7,8 @@ const DATABASE_NAME = "tcgplayer_automation";
 const DATABASE_USER = "postgres";
 const DATABASE_PASSWORD = "postgres";
 const BACKUP_DIR = path.resolve(".artifacts", "db-backups");
-const DB_HOST_URL = `postgresql://${DATABASE_USER}:${DATABASE_PASSWORD}@localhost:5433/${DATABASE_NAME}`;
+const WORKSPACE_DIR = process.cwd();
+const WORKSPACE_MOUNT_PATH = "/workspace";
 const prodDatabase = {
   containerName: "tcgplayer-postgres-prod",
   label: "production",
@@ -19,6 +20,7 @@ const targets = {
     label: "full Docker dev stack",
     dbContainerName: "tcgplayer-postgres-dev",
     appContainerName: "tcgplayer-automation-dev",
+    databaseUrl: `postgresql://${DATABASE_USER}:${DATABASE_PASSWORD}@localhost:5432/${DATABASE_NAME}`,
     ensureArgs: ["compose", "-f", "docker-compose.yml", "up", "-d", "postgres"],
     startArgs: ["compose", "-f", "docker-compose.yml", "up", "-d", "app"],
   },
@@ -26,6 +28,7 @@ const targets = {
     key: "db",
     label: "standalone development database",
     dbContainerName: "tcgplayer-postgres-db",
+    databaseUrl: `postgresql://${DATABASE_USER}:${DATABASE_PASSWORD}@localhost:5433/${DATABASE_NAME}`,
     ensureArgs: ["compose", "-f", "docker-compose.db.yml", "up", "-d"],
   },
 };
@@ -164,63 +167,66 @@ function writeCommandOutputToFile(command, args, outputPath, options = {}) {
   });
 }
 
-function pipeFileToCommand(inputPath, command, args, options = {}) {
-  const { env = process.env } = options;
+function runAndCapture(command, args, options = {}) {
+  const { env = process.env, trim = true } = options;
 
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
-      stdio: ["pipe", "inherit", "pipe"],
+      stdio: ["ignore", "pipe", "pipe"],
       env,
     });
 
-    const inputStream = fs.createReadStream(inputPath);
+    let stdout = "";
     let stderr = "";
-    let settled = false;
 
-    const finishWithError = (error) => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      inputStream.destroy();
-      child.stdin.destroy();
-      reject(error);
-    };
-
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
     child.stderr.on("data", (chunk) => {
       stderr += chunk;
     });
 
-    inputStream.on("error", (error) => {
-      finishWithError(error);
-    });
-
     child.on("error", (error) => {
-      finishWithError(formatError(command, error));
+      reject(formatError(command, error));
     });
-
-    inputStream.pipe(child.stdin);
 
     child.on("exit", (code, signal) => {
-      if (settled) {
-        return;
-      }
-
       if (signal) {
-        finishWithError(new Error(`${command} exited with signal ${signal}`));
+        reject(new Error(`${command} exited with signal ${signal}`));
         return;
       }
 
       if ((code ?? 0) !== 0) {
-        finishWithError(new Error(getFailureDetails(command, args, code ?? 1, "", stderr.trim())));
+        reject(
+          new Error(
+            getFailureDetails(
+              command,
+              args,
+              code ?? 1,
+              trim ? stdout.trim() : stdout,
+              trim ? stderr.trim() : stderr,
+            ),
+          ),
+        );
         return;
       }
 
-      settled = true;
-      resolve();
+      resolve({
+        stdout: trim ? stdout.trim() : stdout,
+        stderr: trim ? stderr.trim() : stderr,
+      });
     });
   });
+}
+
+function getMountedWorkspacePath(localPath) {
+  const relativePath = path.relative(WORKSPACE_DIR, localPath);
+
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    throw new Error(`Path ${localPath} is outside the workspace and cannot be mounted for restore.`);
+  }
+
+  return `${WORKSPACE_MOUNT_PATH}/${relativePath.split(path.sep).join("/")}`;
 }
 
 function runNodeScript(scriptPath, options = {}) {
@@ -459,6 +465,33 @@ async function dumpDatabaseToFile(containerName, outputPath) {
   );
 }
 
+async function getRestoreArchiveList(dumpPath) {
+  const mountedDumpPath = getMountedWorkspacePath(dumpPath);
+  const result = await runAndCapture(
+    "docker",
+    [
+      "run",
+      "--rm",
+      "-v",
+      `${WORKSPACE_DIR}:${WORKSPACE_MOUNT_PATH}`,
+      "postgres:16-alpine",
+      "pg_restore",
+      "-l",
+      mountedDumpPath,
+    ],
+    { trim: false },
+  );
+
+  return result.stdout;
+}
+
+function createDataOnlyRestoreList(archiveList) {
+  return archiveList
+    .split(/\r?\n/)
+    .filter((line) => !line.includes("TABLE DATA public schema_migrations "))
+    .join("\n");
+}
+
 async function recreateDatabase(containerName) {
   await run(
     "docker",
@@ -497,22 +530,51 @@ async function recreateDatabase(containerName) {
   );
 }
 
-async function restoreDatabaseFromFile(containerName, dumpPath) {
-  await pipeFileToCommand(
-    dumpPath,
+async function runMigrations(databaseUrl) {
+  await runNodeScript(path.resolve("scripts/db-migrate.mjs"), {
+    env: {
+      ...process.env,
+      DATABASE_URL: databaseUrl,
+    },
+  });
+}
+
+async function restoreDatabaseFromFile(containerName, dumpPath, restoreListPath) {
+  const mountedDumpPath = getMountedWorkspacePath(dumpPath);
+  const mountedRestoreListPath = getMountedWorkspacePath(restoreListPath);
+
+  await run(
     "docker",
     [
-      "exec",
-      "-i",
-      containerName,
+      "run",
+      "--rm",
+      "--network",
+      `container:${containerName}`,
+      "-v",
+      `${WORKSPACE_DIR}:${WORKSPACE_MOUNT_PATH}`,
+      "postgres:16-alpine",
       "pg_restore",
+      "--data-only",
+      "--disable-triggers",
       "--no-owner",
       "--no-privileges",
+      "--use-list",
+      mountedRestoreListPath,
+      "-h",
+      "localhost",
       "-U",
       DATABASE_USER,
       "-d",
       DATABASE_NAME,
+      mountedDumpPath,
     ],
+    {
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        PGPASSWORD: DATABASE_PASSWORD,
+      },
+    },
   );
 }
 
@@ -547,6 +609,7 @@ async function main() {
   const timestamp = formatTimestamp();
   const currentDevBackupPath = path.join(BACKUP_DIR, `${timestamp}-${target.key}-before-refresh.dump`);
   const prodDumpPath = path.join(BACKUP_DIR, `${timestamp}-prod-refresh-source.dump`);
+  const restoreListPath = path.join(BACKUP_DIR, `${timestamp}-prod-refresh-data.list`);
 
   let appWasRunning = false;
   let destructiveStepStarted = false;
@@ -576,21 +639,22 @@ async function main() {
     destructiveStepStarted = true;
     await recreateDatabase(target.dbContainerName);
 
-    console.log("Restoring production dump into the target database...");
-    await restoreDatabaseFromFile(target.dbContainerName, prodDumpPath);
+    console.log("Applying local schema migrations to the fresh target database...");
+    await runMigrations(target.databaseUrl);
+
+    console.log(`Preparing a data-only restore list at ${restoreListPath}...`);
+    const archiveList = await getRestoreArchiveList(prodDumpPath);
+    const dataOnlyRestoreList = createDataOnlyRestoreList(archiveList);
+    await fsPromises.writeFile(restoreListPath, dataOnlyRestoreList, "utf8");
+
+    console.log("Restoring production data into the target database...");
+    await restoreDatabaseFromFile(target.dbContainerName, prodDumpPath, restoreListPath);
 
     if (target.key === "dev") {
       console.log("Starting the development app container again...");
       await restartDevApp(target);
-      console.log("The development app will run its normal startup migrations as it comes back up.");
+      console.log("The development app container is back up with the refreshed schema and production data.");
     } else {
-      console.log("Running migrations for the standalone development database...");
-      await runNodeScript(path.resolve("scripts/db-migrate.mjs"), {
-        env: {
-          ...process.env,
-          DATABASE_URL: DB_HOST_URL,
-        },
-      });
       console.log("Standalone development database is ready on localhost:5433.");
     }
 
@@ -602,6 +666,10 @@ async function main() {
 
     if (prodDumpCreated) {
       console.error(`Production dump preserved at: ${prodDumpPath}`);
+    }
+
+    if (await fsPromises.stat(restoreListPath).then(() => true).catch(() => false)) {
+      console.error(`Filtered restore list preserved at: ${restoreListPath}`);
     }
 
     if (target.key === "dev") {
@@ -625,6 +693,7 @@ async function main() {
     throw error;
   } finally {
     if (refreshSucceeded) {
+      await fsPromises.unlink(restoreListPath).catch(() => {});
       await fsPromises.unlink(prodDumpPath).catch(() => {});
     }
   }
