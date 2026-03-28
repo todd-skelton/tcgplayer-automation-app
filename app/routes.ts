@@ -47,6 +47,10 @@ export default [
     file: "features/pricing/routes/api.validate-skus.ts",
   },
   {
+    path: "/api/pricing-config",
+    file: "features/pricing/routes/api.pricing-config.ts",
+  },
+  {
     path: "/api/convert-to-pricer-sku",
     file: "features/file-upload/routes/api.convert-to-pricer-sku.ts",
   },
@@ -85,6 +89,14 @@ export default [
   {
     path: "/api/inventory-batches/:batchNumber/results",
     file: "features/pending-inventory/routes/api.inventory-batch-results.ts",
+  },
+  {
+    path: "/api/inventory-batches/:batchNumber/pricing-jobs",
+    file: "features/pending-inventory/routes/api.inventory-batch-pricing-jobs.ts",
+  },
+  {
+    path: "/api/inventory-batches/:batchNumber/pricing-stream",
+    file: "features/pending-inventory/routes/api.inventory-batch-pricing-stream.ts",
   },
   {
     path: "/api/pending-inventory",

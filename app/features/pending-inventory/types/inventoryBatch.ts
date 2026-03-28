@@ -1,10 +1,43 @@
-import type { ProcessingSummary, TcgPlayerListing } from "~/core/types/pricing";
+import type {
+  ProcessingProgress,
+  ProcessingSummary,
+  TcgPlayerListing,
+} from "~/core/types/pricing";
+import type { ServerPricingConfig } from "~/features/pricing/types/config";
 
-export type InventoryBatchStatus = "pending" | "priced";
+export type InventoryBatchStatus =
+  | "pending"
+  | "queued"
+  | "pricing"
+  | "priced"
+  | "failed";
 export type InventoryBatchPricingMode = "full" | "errors";
 export type InventoryBatchResultStatus = "successful" | "manual_review";
 export type InventoryBatchResultsScope = "successful" | "manual-review";
 export type InventoryBatchItemsScope = "all" | "errors";
+export type InventoryBatchPricingJobStatus =
+  | "queued"
+  | "pricing"
+  | "completed"
+  | "failed";
+
+export interface InventoryBatchPricingJob {
+  id: number;
+  batchNumber: number;
+  mode: InventoryBatchPricingMode;
+  status: InventoryBatchPricingJobStatus;
+  config: ServerPricingConfig;
+  progress: ProcessingProgress | null;
+  summary: ProcessingSummary | null;
+  errorMessage: string | null;
+  attemptCount: number;
+  claimedBy: string | null;
+  claimExpiresAt: Date | null;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export interface InventoryBatch {
   batchNumber: number;
@@ -16,6 +49,7 @@ export interface InventoryBatch {
   successfulCount: number;
   manualReviewCount: number;
   itemCount: number;
+  latestJob: InventoryBatchPricingJob | null;
 }
 
 export interface InventoryBatchItem {
@@ -52,3 +86,5 @@ export interface SaveInventoryBatchResultsParams {
     pricedAt: Date;
   }>;
 }
+
+export interface InventoryBatchWithJob extends InventoryBatch {}

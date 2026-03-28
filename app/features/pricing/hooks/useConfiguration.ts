@@ -1,145 +1,223 @@
+import { useEffect, useMemo, useState } from "react";
 import { useLocalStorageState } from "../../../core/hooks/useLocalStorageState";
 import {
-  PRICING_CONSTANTS,
-  FILE_CONFIG,
-} from "../../../core/constants/pricing";
+  DEFAULT_FILE_CONFIG,
+  DEFAULT_FORM_DEFAULTS,
+  DEFAULT_PRODUCT_LINE_PRICING_CONFIG,
+  DEFAULT_PRICING_CONFIG,
+  DEFAULT_SERVER_PRICING_CONFIG,
+  DEFAULT_SUPPLY_ANALYSIS_CONFIG,
+  type FileConfig,
+  type FormDefaults,
+  type PricingConfigSettings,
+  type ProductLinePricingConfig,
+  type ProductLineSettings,
+  type ServerPricingConfig,
+  type SupplyAnalysisConfig,
+} from "../types/config";
 
-// Configuration interfaces
-export interface PricingConfig {
-  defaultPercentile: number;
-  percentileStep: number;
-  minPercentile: number;
-  maxPercentile: number;
-  skipPrefix: string;
-  minPriceMultiplier: number;
-  minPriceConstant: number;
-  successRateThreshold: {
-    low: number;
-    high: number;
-  };
+const SERVER_CONFIG_ENDPOINT = "/api/pricing-config";
+
+type ServerConfigUpdater =
+  | ServerPricingConfig
+  | ((prev: ServerPricingConfig) => ServerPricingConfig);
+
+let serverConfigCache: ServerPricingConfig = DEFAULT_SERVER_PRICING_CONFIG;
+let serverConfigLoaded = false;
+let serverConfigLoadPromise: Promise<void> | null = null;
+const serverConfigListeners = new Set<() => void>();
+
+function notifyServerConfigListeners(): void {
+  serverConfigListeners.forEach((listener) => listener());
 }
 
-export interface SupplyAnalysisConfig {
-  enableSupplyAnalysis: boolean;
-  maxListingsPerSku: number;
-  includeUnverifiedSellers: boolean;
-}
+function normalizeServerPricingConfig(value: unknown): ServerPricingConfig {
+  const raw = (value ?? {}) as Partial<ServerPricingConfig>;
 
-export interface FileConfig {
-  accept: string;
-  outputPrefix: string;
-  mimeType: string;
-}
-
-export interface FormDefaults {
-  percentile: number;
-  sellerKey: string;
-}
-
-// Product line-specific pricing settings
-export interface ProductLineSettings {
-  percentile: number;
-  skip: boolean;
-}
-
-export interface ProductLinePricingConfig {
-  // Per-product-line settings keyed by productLineId
-  productLineSettings: Record<number, ProductLineSettings>;
-  // Default percentile for non-configured product lines
-  defaultPercentile: number;
-}
-
-// Default configurations
-const DEFAULT_PRICING_CONFIG: PricingConfig = {
-  defaultPercentile: PRICING_CONSTANTS.DEFAULT_PERCENTILE,
-  percentileStep: PRICING_CONSTANTS.PERCENTILE_STEP,
-  minPercentile: PRICING_CONSTANTS.MIN_PERCENTILE,
-  maxPercentile: PRICING_CONSTANTS.MAX_PERCENTILE,
-  skipPrefix: PRICING_CONSTANTS.SKIP_PREFIX,
-  minPriceMultiplier: PRICING_CONSTANTS.MIN_PRICE_MULTIPLIER,
-  minPriceConstant: PRICING_CONSTANTS.MIN_PRICE_CONSTANT,
-  successRateThreshold: {
-    low: PRICING_CONSTANTS.SUCCESS_RATE_THRESHOLD.LOW,
-    high: PRICING_CONSTANTS.SUCCESS_RATE_THRESHOLD.HIGH,
-  },
-};
-
-const DEFAULT_SUPPLY_ANALYSIS_CONFIG: SupplyAnalysisConfig = {
-  enableSupplyAnalysis: true, // Enabled by default for accurate time-to-sell estimates
-  maxListingsPerSku: 200, // Reasonable limit for performance
-  includeUnverifiedSellers: false, // Quality over quantity
-};
-
-const DEFAULT_FILE_CONFIG: FileConfig = {
-  accept: FILE_CONFIG.ACCEPT,
-  outputPrefix: FILE_CONFIG.OUTPUT_PREFIX,
-  mimeType: FILE_CONFIG.MIME_TYPE,
-};
-
-const DEFAULT_FORM_DEFAULTS: FormDefaults = {
-  percentile: PRICING_CONSTANTS.DEFAULT_PERCENTILE,
-  sellerKey: "",
-};
-
-const DEFAULT_PRODUCT_LINE_PRICING_CONFIG: ProductLinePricingConfig = {
-  productLineSettings: {},
-  defaultPercentile: PRICING_CONSTANTS.DEFAULT_PERCENTILE,
-};
-
-// Individual configuration hooks
-export function usePricingConfig() {
-  const [config, setConfig] = useLocalStorageState<PricingConfig>(
-    "tcgplayer-pricing-config",
-    DEFAULT_PRICING_CONFIG,
-  );
-
-  const updateConfig = (updates: Partial<PricingConfig>) => {
-    setConfig((prev) => ({ ...prev, ...updates }));
-  };
-
-  const resetToDefaults = () => {
-    setConfig(DEFAULT_PRICING_CONFIG);
-  };
-
-  // Computed values
-  const percentiles = Array.from(
-    {
-      length: Math.floor(
-        (config.maxPercentile - config.minPercentile) / config.percentileStep +
-          1,
-      ),
+  return {
+    pricing: {
+      ...DEFAULT_PRICING_CONFIG,
+      ...(raw.pricing ?? {}),
+      successRateThreshold: {
+        ...DEFAULT_PRICING_CONFIG.successRateThreshold,
+        ...(raw.pricing?.successRateThreshold ?? {}),
+      },
     },
-    (_, i) => config.minPercentile + i * config.percentileStep,
-  );
+    supplyAnalysis: {
+      ...DEFAULT_SUPPLY_ANALYSIS_CONFIG,
+      ...(raw.supplyAnalysis ?? {}),
+    },
+    productLinePricing: {
+      ...DEFAULT_PRODUCT_LINE_PRICING_CONFIG,
+      ...(raw.productLinePricing ?? {}),
+      productLineSettings: raw.productLinePricing?.productLineSettings ?? {},
+    },
+  };
+}
+
+async function loadServerConfig(): Promise<void> {
+  if (serverConfigLoaded) {
+    return;
+  }
+
+  if (!serverConfigLoadPromise) {
+    serverConfigLoadPromise = fetch(SERVER_CONFIG_ENDPOINT)
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Failed to load pricing configuration");
+        }
+
+        serverConfigCache = normalizeServerPricingConfig(await response.json());
+        serverConfigLoaded = true;
+        notifyServerConfigListeners();
+      })
+      .catch((error) => {
+        console.warn("Failed to load pricing configuration:", error);
+      })
+      .finally(() => {
+        serverConfigLoadPromise = null;
+      });
+  }
+
+  await serverConfigLoadPromise;
+}
+
+async function persistServerConfig(nextConfig: ServerPricingConfig): Promise<void> {
+  serverConfigCache = nextConfig;
+  notifyServerConfigListeners();
+
+  try {
+    const response = await fetch(SERVER_CONFIG_ENDPOINT, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(nextConfig),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to save pricing configuration");
+    }
+
+    serverConfigCache = normalizeServerPricingConfig(await response.json());
+    serverConfigLoaded = true;
+  } catch (error) {
+    console.warn("Failed to save pricing configuration:", error);
+  } finally {
+    notifyServerConfigListeners();
+  }
+}
+
+function updateServerConfig(updater: ServerConfigUpdater): void {
+  const nextConfig =
+    typeof updater === "function" ? updater(serverConfigCache) : updater;
+  void persistServerConfig(nextConfig);
+}
+
+function subscribeToServerConfig(listener: () => void): () => void {
+  serverConfigListeners.add(listener);
+  return () => {
+    serverConfigListeners.delete(listener);
+  };
+}
+
+function useServerPricingConfiguration() {
+  const [config, setConfigState] = useState<ServerPricingConfig>(serverConfigCache);
+
+  useEffect(() => subscribeToServerConfig(() => setConfigState(serverConfigCache)), []);
+  useEffect(() => {
+    void loadServerConfig();
+  }, []);
 
   return {
     config,
-    setConfig,
+    setConfig: updateServerConfig,
+    isLoaded: serverConfigLoaded,
+  };
+}
+
+export function usePricingConfig() {
+  const serverConfig = useServerPricingConfiguration();
+  const config = serverConfig.config.pricing;
+
+  const percentiles = useMemo(
+    () =>
+      Array.from(
+        {
+          length:
+            Math.floor(
+              (config.maxPercentile - config.minPercentile) /
+                config.percentileStep,
+            ) + 1,
+        },
+        (_, index) => config.minPercentile + index * config.percentileStep,
+      ),
+    [config.maxPercentile, config.minPercentile, config.percentileStep],
+  );
+
+  const updateConfig = (updates: Partial<PricingConfigSettings>) => {
+    serverConfig.setConfig((prev) => ({
+      ...prev,
+      pricing: {
+        ...prev.pricing,
+        ...updates,
+        successRateThreshold: {
+          ...prev.pricing.successRateThreshold,
+          ...(updates.successRateThreshold ?? {}),
+        },
+      },
+    }));
+  };
+
+  const resetToDefaults = () => {
+    serverConfig.setConfig((prev) => ({
+      ...prev,
+      pricing: DEFAULT_PRICING_CONFIG,
+    }));
+  };
+
+  return {
+    config,
+    setConfig: (nextConfig: PricingConfigSettings) => {
+      serverConfig.setConfig((prev) => ({
+        ...prev,
+        pricing: nextConfig,
+      }));
+    },
     updateConfig,
     resetToDefaults,
     percentiles,
-    // Backward compatibility
     PRICING_CONSTANTS: config,
   };
 }
 
 export function useSupplyAnalysisConfig() {
-  const [config, setConfig] = useLocalStorageState<SupplyAnalysisConfig>(
-    "tcgplayer-supply-analysis-config",
-    DEFAULT_SUPPLY_ANALYSIS_CONFIG,
-  );
+  const serverConfig = useServerPricingConfiguration();
+  const config = serverConfig.config.supplyAnalysis;
 
   const updateConfig = (updates: Partial<SupplyAnalysisConfig>) => {
-    setConfig((prev) => ({ ...prev, ...updates }));
+    serverConfig.setConfig((prev) => ({
+      ...prev,
+      supplyAnalysis: {
+        ...prev.supplyAnalysis,
+        ...updates,
+      },
+    }));
   };
 
   const resetToDefaults = () => {
-    setConfig(DEFAULT_SUPPLY_ANALYSIS_CONFIG);
+    serverConfig.setConfig((prev) => ({
+      ...prev,
+      supplyAnalysis: DEFAULT_SUPPLY_ANALYSIS_CONFIG,
+    }));
   };
 
   return {
     config,
-    setConfig,
+    setConfig: (nextConfig: SupplyAnalysisConfig) => {
+      serverConfig.setConfig((prev) => ({
+        ...prev,
+        supplyAnalysis: nextConfig,
+      }));
+    },
     updateConfig,
     resetToDefaults,
   };
@@ -164,7 +242,6 @@ export function useFileConfig() {
     setConfig,
     updateConfig,
     resetToDefaults,
-    // Backward compatibility
     FILE_CONFIG: config,
   };
 }
@@ -198,54 +275,75 @@ export function useFormDefaults() {
     updatePercentile,
     updateSellerKey,
     resetToDefaults,
-    // For backward compatibility as formDefaults
     formDefaults: config,
     setFormDefaults: setConfig,
   };
 }
 
 export function useProductLinePricingConfig() {
-  const [config, setConfig] = useLocalStorageState<ProductLinePricingConfig>(
-    "tcgplayer-product-line-pricing-config",
-    DEFAULT_PRODUCT_LINE_PRICING_CONFIG,
-  );
+  const serverConfig = useServerPricingConfiguration();
+  const config = serverConfig.config.productLinePricing;
 
   const updateConfig = (updates: Partial<ProductLinePricingConfig>) => {
-    setConfig((prev) => ({ ...prev, ...updates }));
+    serverConfig.setConfig((prev) => ({
+      ...prev,
+      productLinePricing: {
+        ...prev.productLinePricing,
+        ...updates,
+        productLineSettings:
+          updates.productLineSettings ?? prev.productLinePricing.productLineSettings,
+      },
+    }));
   };
 
   const setProductLineSettings = (
     productLineId: number,
     settings: ProductLineSettings,
   ) => {
-    setConfig((prev) => ({
+    serverConfig.setConfig((prev) => ({
       ...prev,
-      productLineSettings: {
-        ...prev.productLineSettings,
-        [productLineId]: settings,
+      productLinePricing: {
+        ...prev.productLinePricing,
+        productLineSettings: {
+          ...prev.productLinePricing.productLineSettings,
+          [productLineId]: settings,
+        },
       },
     }));
   };
 
   const removeProductLineSettings = (productLineId: number) => {
-    setConfig((prev) => {
-      const { [productLineId]: _, ...rest } = prev.productLineSettings;
+    serverConfig.setConfig((prev) => {
+      const { [productLineId]: _ignored, ...rest } =
+        prev.productLinePricing.productLineSettings;
+
       return {
         ...prev,
-        productLineSettings: rest,
+        productLinePricing: {
+          ...prev.productLinePricing,
+          productLineSettings: rest,
+        },
       };
     });
   };
 
   const setDefaultPercentile = (percentile: number) => {
-    setConfig((prev) => ({ ...prev, defaultPercentile: percentile }));
+    serverConfig.setConfig((prev) => ({
+      ...prev,
+      productLinePricing: {
+        ...prev.productLinePricing,
+        defaultPercentile: percentile,
+      },
+    }));
   };
 
   const resetToDefaults = () => {
-    setConfig(DEFAULT_PRODUCT_LINE_PRICING_CONFIG);
+    serverConfig.setConfig((prev) => ({
+      ...prev,
+      productLinePricing: DEFAULT_PRODUCT_LINE_PRICING_CONFIG,
+    }));
   };
 
-  // Helper to get effective percentile for a product line
   const getEffectivePercentile = (productLineId: number): number => {
     const settings = config.productLineSettings[productLineId];
     if (settings && !settings.skip) {
@@ -254,7 +352,6 @@ export function useProductLinePricingConfig() {
     return config.defaultPercentile;
   };
 
-  // Helper to check if a product line should be skipped
   const shouldSkipProductLine = (productLineId: number): boolean => {
     const settings = config.productLineSettings[productLineId];
     return settings?.skip ?? false;
@@ -262,7 +359,12 @@ export function useProductLinePricingConfig() {
 
   return {
     config,
-    setConfig,
+    setConfig: (nextConfig: ProductLinePricingConfig) => {
+      serverConfig.setConfig((prev) => ({
+        ...prev,
+        productLinePricing: nextConfig,
+      }));
+    },
     updateConfig,
     setProductLineSettings,
     removeProductLineSettings,
@@ -273,7 +375,6 @@ export function useProductLinePricingConfig() {
   };
 }
 
-// Composite hook for the configuration page (when all configs are needed together)
 export function useConfiguration() {
   const pricingConfig = usePricingConfig();
   const supplyAnalysisConfig = useSupplyAnalysisConfig();
@@ -282,22 +383,17 @@ export function useConfiguration() {
   const productLinePricingConfig = useProductLinePricingConfig();
 
   const resetAllToDefaults = () => {
-    pricingConfig.resetToDefaults();
-    supplyAnalysisConfig.resetToDefaults();
+    updateServerConfig(DEFAULT_SERVER_PRICING_CONFIG);
     fileConfig.resetToDefaults();
     formDefaults.resetToDefaults();
-    productLinePricingConfig.resetToDefaults();
   };
 
   return {
-    // Individual configs
     pricing: pricingConfig,
     supplyAnalysis: supplyAnalysisConfig,
     file: fileConfig,
-    formDefaults: formDefaults,
+    formDefaults,
     productLinePricing: productLinePricingConfig,
-
-    // Combined config object for backward compatibility
     config: {
       pricing: pricingConfig.config,
       supplyAnalysis: supplyAnalysisConfig.config,
@@ -305,21 +401,13 @@ export function useConfiguration() {
       formDefaults: formDefaults.config,
       productLinePricing: productLinePricingConfig.config,
     },
-
-    // Individual update functions (for backward compatibility)
     updatePricingConfig: pricingConfig.updateConfig,
     updateSupplyAnalysisConfig: supplyAnalysisConfig.updateConfig,
     updateFileConfig: fileConfig.updateConfig,
     updateFormDefaults: formDefaults.updateConfig,
     updateProductLinePricingConfig: productLinePricingConfig.updateConfig,
-
-    // Reset all configurations
     resetToDefaults: resetAllToDefaults,
-
-    // Computed values
     percentiles: pricingConfig.percentiles,
-
-    // Backward compatibility helpers
     PRICING_CONSTANTS: pricingConfig.config,
     FILE_CONFIG: fileConfig.config,
   };

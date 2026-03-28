@@ -55,6 +55,10 @@ export default function ConfigurationRoute() {
   );
   const [newSkip, setNewSkip] = React.useState<boolean>(false);
 
+  React.useEffect(() => {
+    setNewPercentile(config.pricing.defaultPercentile);
+  }, [config.pricing.defaultPercentile]);
+
   // Fetch product lines on mount
   React.useEffect(() => {
     if (productLinesFetcher.state === "idle" && !productLinesFetcher.data) {
@@ -195,8 +199,7 @@ export default function ConfigurationRoute() {
         Configuration Settings
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Customize default values and pricing parameters. Changes are
-        automatically saved to local storage.
+        Pricing, supply analysis, and product line settings are saved to the server so background pricing jobs use the same configuration. File and form defaults remain local to this browser.
       </Typography>
 
       {!httpConfig.tcgAuthCookie && (
@@ -633,3 +636,5 @@ export default function ConfigurationRoute() {
     </Box>
   );
 }
+
+

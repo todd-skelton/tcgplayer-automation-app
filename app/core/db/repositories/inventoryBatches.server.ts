@@ -6,6 +6,7 @@ import type {
   InventoryBatchResult,
   InventoryBatchResultsScope,
   SaveInventoryBatchResultsParams,
+  InventoryBatchStatus,
 } from "~/features/pending-inventory/types/inventoryBatch";
 import {
   execute,
@@ -14,8 +15,9 @@ import {
   withTransaction,
   type Queryable,
 } from "../database.server";
+import { inventoryBatchPricingJobsRepository } from "./inventoryBatchPricingJobs.server";
 
-type InventoryBatchRow = InventoryBatch;
+type InventoryBatchRow = Omit<InventoryBatch, "latestJob">;
 type InventoryBatchItemRow = InventoryBatchItem;
 type InventoryBatchResultRow = InventoryBatchResult;
 
@@ -42,6 +44,21 @@ const batchGroupBy = `GROUP BY
   b.summary_json,
   b.successful_count,
   b.manual_review_count`;
+
+async function attachLatestJobs(
+  batches: InventoryBatchRow[],
+  executor?: Queryable,
+): Promise<InventoryBatch[]> {
+  const jobsByBatch = await inventoryBatchPricingJobsRepository.findLatestByBatchNumbers(
+    batches.map((batch) => batch.batchNumber),
+    executor,
+  );
+
+  return batches.map((batch) => ({
+    ...batch,
+    latestJob: jobsByBatch.get(batch.batchNumber) ?? null,
+  }));
+}
 
 async function refreshBatchCounts(
   batchNumber: number,
@@ -84,24 +101,55 @@ async function refreshBatchCounts(
 
 export const inventoryBatchesRepository = {
   async findAll(executor?: Queryable): Promise<InventoryBatch[]> {
-    return query<InventoryBatchRow>(
+    const rows = await query<InventoryBatchRow>(
       `${batchSelect}
       ${batchGroupBy}
       ORDER BY b.batch_number DESC`,
       [],
       executor,
     );
+
+    return attachLatestJobs(rows, executor);
   },
 
   async findByBatchNumber(
     batchNumber: number,
     executor?: Queryable,
   ): Promise<InventoryBatch | null> {
-    return queryOne<InventoryBatchRow>(
+    const batch = await queryOne<InventoryBatchRow>(
       `${batchSelect}
       WHERE b.batch_number = $1
       ${batchGroupBy}`,
       [batchNumber],
+      executor,
+    );
+
+    if (!batch) {
+      return null;
+    }
+
+    const latestJob = await inventoryBatchPricingJobsRepository.findLatestByBatchNumber(
+      batchNumber,
+      executor,
+    );
+
+    return {
+      ...batch,
+      latestJob,
+    };
+  },
+
+  async updateStatus(
+    batchNumber: number,
+    status: InventoryBatchStatus,
+    executor?: Queryable,
+  ): Promise<void> {
+    await execute(
+      `UPDATE inventory_batches
+      SET status = $2,
+          updated_at = NOW()
+      WHERE batch_number = $1`,
+      [batchNumber, status],
       executor,
     );
   },
@@ -186,12 +234,14 @@ export const inventoryBatchesRepository = {
   ): Promise<InventoryBatchItem[]> {
     const whereClause =
       scope === "errors"
-        ? `AND EXISTS (
+        ? `AND i.sku > 0
+          AND i.quantity > 0
+          AND EXISTS (
             SELECT 1
             FROM inventory_batch_results r
             WHERE r.batch_number = i.batch_number
               AND r.sku = i.sku
-              AND r.result_status = 'manual_review'
+              AND r.result_status <> 'successful'
           )`
         : "";
 
@@ -219,8 +269,10 @@ export const inventoryBatchesRepository = {
     scope: InventoryBatchResultsScope,
     executor?: Queryable,
   ): Promise<InventoryBatchResult[]> {
-    const resultStatus =
-      scope === "manual-review" ? "manual_review" : "successful";
+    const resultStatusClause =
+      scope === "manual-review"
+        ? "r.result_status <> 'successful'"
+        : "r.result_status = 'successful'";
 
     return query<InventoryBatchResultRow>(
       `SELECT
@@ -233,13 +285,13 @@ export const inventoryBatchesRepository = {
         r.priced_at AS "pricedAt"
       FROM inventory_batch_results r
       WHERE r.batch_number = $1
-        AND r.result_status = $2
+        AND ${resultStatusClause}
       ORDER BY
         COALESCE(r.row_json->>'Product Line', ''),
         COALESCE(r.row_json->>'Set Name', ''),
         COALESCE(r.row_json->>'Product', ''),
         r.sku`,
-      [batchNumber, resultStatus],
+      [batchNumber],
       executor,
     );
   },
@@ -311,3 +363,4 @@ export const inventoryBatchesRepository = {
     });
   },
 };
+

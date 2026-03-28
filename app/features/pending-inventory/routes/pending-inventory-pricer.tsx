@@ -33,6 +33,21 @@ import type {
   InventoryBatchResultsScope,
 } from "../types/inventoryBatch";
 
+function getBatchStatusColor(status: InventoryBatch["status"]) {
+  switch (status) {
+    case "priced":
+      return "success" as const;
+    case "queued":
+      return "info" as const;
+    case "pricing":
+      return "primary" as const;
+    case "failed":
+      return "error" as const;
+    default:
+      return "default" as const;
+  }
+}
+
 function BatchSummaryCard({ batch }: { batch: InventoryBatch }) {
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
@@ -51,13 +66,31 @@ function BatchSummaryCard({ batch }: { batch: InventoryBatch }) {
             size="small"
           />
           <Chip
+            label={batch.status}
+            color={getBatchStatusColor(batch.status)}
+            variant="filled"
+            size="small"
+          />
+          {batch.latestJob && (
+            <Chip
+              label={`${batch.latestJob.mode} job: ${batch.latestJob.status}`}
+              color={getBatchStatusColor(
+                batch.latestJob.status === "completed"
+                  ? "priced"
+                  : batch.latestJob.status,
+              )}
+              variant="outlined"
+              size="small"
+            />
+          )}
+          <Chip
             label={`${batch.successfulCount} successful`}
             color="success"
             variant="outlined"
             size="small"
           />
           <Chip
-            label={`${batch.manualReviewCount} manual review`}
+            label={`${batch.manualReviewCount} manual review/errors`}
             color="warning"
             variant="outlined"
             size="small"
@@ -116,7 +149,6 @@ export default function PendingInventoryPricerRoute() {
     loadBatch,
     setError,
     setSuccess,
-    handleCancel,
   } = useInventoryBatchProcessor();
   const [searchParams, setSearchParams] = useSearchParams();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -145,11 +177,11 @@ export default function PendingInventoryPricerRoute() {
       return;
     }
 
-    const nextBatchNumber = requestedBatchNumber && batches.some(
-      (batch) => batch.batchNumber === requestedBatchNumber,
-    )
-      ? requestedBatchNumber
-      : batches[0].batchNumber;
+    const nextBatchNumber =
+      requestedBatchNumber &&
+      batches.some((batch) => batch.batchNumber === requestedBatchNumber)
+        ? requestedBatchNumber
+        : batches[0].batchNumber;
 
     if (requestedBatchNumber !== nextBatchNumber) {
       setSearchParams({ batch: String(nextBatchNumber) }, { replace: true });
@@ -212,6 +244,9 @@ export default function PendingInventoryPricerRoute() {
   };
 
   const hasPricingResults = Boolean(selectedBatch?.lastPricedAt);
+  const isSelectedBatchActive =
+    selectedBatch?.latestJob?.status === "queued" ||
+    selectedBatch?.latestJob?.status === "pricing";
 
   return (
     <Box sx={{ maxWidth: 1100, mx: "auto", p: 3 }}>
@@ -240,7 +275,7 @@ export default function PendingInventoryPricerRoute() {
                 label="Batch"
                 value={selectedBatch?.batchNumber ?? ""}
                 onChange={(event) => void handleSelectBatch(Number(event.target.value))}
-                disabled={isLoadingBatches || isProcessing}
+                disabled={isLoadingBatches}
                 renderValue={(value) => {
                   const batch = batches.find(
                     (candidate) => candidate.batchNumber === value,
@@ -260,7 +295,7 @@ export default function PendingInventoryPricerRoute() {
                       <Chip
                         label={batch.status}
                         size="small"
-                        color={batch.status === "priced" ? "success" : "default"}
+                        color={getBatchStatusColor(batch.status)}
                         variant="filled"
                       />
                     </Stack>
@@ -290,13 +325,13 @@ export default function PendingInventoryPricerRoute() {
             >
               <Stack direction="row" spacing={1}>
                 <Tooltip
-                  title={`Will price ${selectedBatch.itemCount} SKUs using product line pricing configuration`}
+                  title={`Will queue pricing for ${selectedBatch.itemCount} SKUs using the server pricing configuration`}
                 >
                   <span>
                     <Button
                       variant="contained"
                       onClick={() => void handleProcessBatch("full")}
-                      disabled={isProcessing}
+                      disabled={isSelectedBatchActive}
                     >
                       {hasPricingResults ? "Reprice Batch" : "Price Batch"}
                     </Button>
@@ -307,7 +342,7 @@ export default function PendingInventoryPricerRoute() {
                   color="warning"
                   onClick={() => void handleProcessBatch("errors")}
                   disabled={
-                    isProcessing ||
+                    isSelectedBatchActive ||
                     !hasPricingResults ||
                     selectedBatch.manualReviewCount === 0
                   }
@@ -340,7 +375,7 @@ export default function PendingInventoryPricerRoute() {
                     !hasPricingResults || selectedBatch.manualReviewCount === 0
                   }
                 >
-                  Manual Review ({selectedBatch.manualReviewCount})
+                  Manual Review / Errors ({selectedBatch.manualReviewCount})
                 </Button>
               </Stack>
 
@@ -355,7 +390,7 @@ export default function PendingInventoryPricerRoute() {
                 color="error"
                 startIcon={<DeleteIcon />}
                 onClick={() => setDeleteDialogOpen(true)}
-                disabled={isProcessing}
+                disabled={isSelectedBatchActive}
               >
                 Delete Batch
               </Button>
@@ -364,7 +399,7 @@ export default function PendingInventoryPricerRoute() {
         </Paper>
       )}
 
-      {progress && <ProgressIndicator progress={progress} onCancel={handleCancel} />}
+      {progress && <ProgressIndicator progress={progress} />}
 
       {success && (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
@@ -405,3 +440,4 @@ export default function PendingInventoryPricerRoute() {
     </Box>
   );
 }
+

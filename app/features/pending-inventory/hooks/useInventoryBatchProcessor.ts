@@ -1,9 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { PipelineResult } from "~/features/pricing/services/pricingOrchestrator";
-import { PricingOrchestrator } from "~/features/pricing/services/pricingOrchestrator";
-import { useProcessorBase } from "~/features/file-upload/hooks/useProcessorBase";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { downloadCSV } from "~/core/utils/csvProcessing";
-import { InventoryBatchDataSource } from "../services/inventoryBatchDataSource";
 import type {
   InventoryBatch,
   InventoryBatchPricingMode,
@@ -20,14 +16,74 @@ function getBatchResultFilename(
     : `inventory-batch-${batchNumber}.csv`;
 }
 
+function createQueuedProgress(batchNumber: number) {
+  return {
+    current: 0,
+    total: 1,
+    status: `Batch ${batchNumber} is queued for pricing...`,
+    processed: 0,
+    skipped: 0,
+    errors: 0,
+    warnings: 0,
+    phase: "Queued",
+  };
+}
+
 export const useInventoryBatchProcessor = () => {
   const [batches, setBatches] = useState<InventoryBatch[]>([]);
   const [selectedBatch, setSelectedBatch] = useState<InventoryBatch | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isLoadingBatches, setIsLoadingBatches] = useState(false);
-  const baseProcessor = useProcessorBase();
-  const pricingOrchestrator = useRef(new PricingOrchestrator());
-  const batchDataSource = useRef(new InventoryBatchDataSource());
+  const streamRef = useRef<EventSource | null>(null);
+  const latestSelectedBatchRef = useRef<InventoryBatch | null>(null);
+
+  const updateBatchCollection = useCallback((nextBatch: InventoryBatch) => {
+    setBatches((prev) => {
+      const index = prev.findIndex(
+        (candidate) => candidate.batchNumber === nextBatch.batchNumber,
+      );
+
+      if (index === -1) {
+        return [nextBatch, ...prev].sort((a, b) => b.batchNumber - a.batchNumber);
+      }
+
+      const next = [...prev];
+      next[index] = nextBatch;
+      return next;
+    });
+    setSelectedBatch((prev) =>
+      prev?.batchNumber === nextBatch.batchNumber ? nextBatch : prev,
+    );
+    latestSelectedBatchRef.current =
+      latestSelectedBatchRef.current?.batchNumber === nextBatch.batchNumber
+        ? nextBatch
+        : latestSelectedBatchRef.current;
+  }, []);
+
+  const handleBatchTransition = useCallback((nextBatch: InventoryBatch) => {
+    const previousBatch = latestSelectedBatchRef.current;
+    const previousStatus = previousBatch?.latestJob?.status;
+    const nextStatus = nextBatch.latestJob?.status;
+
+    if (nextStatus === "completed" && previousStatus !== "completed") {
+      setSuccess(
+        nextBatch.latestJob?.mode === "errors"
+          ? `Batch ${nextBatch.batchNumber} errors repriced successfully`
+          : `Batch ${nextBatch.batchNumber} priced successfully`,
+      );
+      setError(null);
+    }
+
+    if (nextStatus === "failed" && previousStatus !== "failed") {
+      setError(
+        nextBatch.latestJob?.errorMessage ||
+          `Batch ${nextBatch.batchNumber} pricing failed`,
+      );
+    }
+
+    latestSelectedBatchRef.current = nextBatch;
+  }, []);
 
   const loadBatches = useCallback(async (): Promise<InventoryBatch[]> => {
     setIsLoadingBatches(true);
@@ -41,13 +97,13 @@ export const useInventoryBatchProcessor = () => {
       const data = (await response.json()) as InventoryBatch[];
       setBatches(data);
       return data;
-    } catch (error) {
-      baseProcessor.setError(`Failed to load inventory batches: ${error}`);
+    } catch (loadError) {
+      setError(`Failed to load inventory batches: ${loadError}`);
       return [];
     } finally {
       setIsLoadingBatches(false);
     }
-  }, [baseProcessor.setError]);
+  }, []);
 
   const loadBatch = useCallback(
     async (batchNumber: number): Promise<InventoryBatch | null> => {
@@ -64,110 +120,108 @@ export const useInventoryBatchProcessor = () => {
         }
 
         const batch = payload as InventoryBatch;
+        handleBatchTransition(batch);
+        updateBatchCollection(batch);
         setSelectedBatch(batch);
-        baseProcessor.setSummary(batch.summary);
         return batch;
-      } catch (error) {
-        baseProcessor.setError(`Failed to load batch: ${error}`);
+      } catch (loadError) {
+        setError(`Failed to load batch: ${loadError}`);
         return null;
       }
     },
-    [baseProcessor],
+    [handleBatchTransition, updateBatchCollection],
   );
 
   useEffect(() => {
     void loadBatches();
   }, [loadBatches]);
 
+  useEffect(() => {
+    latestSelectedBatchRef.current = selectedBatch;
+  }, [selectedBatch]);
+
+  useEffect(() => {
+    const batchNumber = selectedBatch?.batchNumber;
+    if (!batchNumber) {
+      streamRef.current?.close();
+      streamRef.current = null;
+      return;
+    }
+
+    const stream = new EventSource(
+      `/api/inventory-batches/${batchNumber}/pricing-stream`,
+    );
+    streamRef.current = stream;
+
+    const handleBatchEvent = (event: MessageEvent) => {
+      const payload = JSON.parse(event.data) as { batch: InventoryBatch };
+      handleBatchTransition(payload.batch);
+      updateBatchCollection(payload.batch);
+      setSelectedBatch(payload.batch);
+    };
+
+    const handleStreamError = () => {
+      if (stream.readyState === EventSource.CLOSED) {
+        return;
+      }
+      setError("Lost live pricing updates for the selected batch");
+    };
+
+    stream.addEventListener("batch", handleBatchEvent as EventListener);
+    stream.addEventListener("error", handleStreamError);
+
+    return () => {
+      stream.removeEventListener("batch", handleBatchEvent as EventListener);
+      stream.removeEventListener("error", handleStreamError);
+      stream.close();
+      if (streamRef.current === stream) {
+        streamRef.current = null;
+      }
+    };
+  }, [handleBatchTransition, selectedBatch?.batchNumber, updateBatchCollection]);
+
   const processBatch = useCallback(
-    async (
-      batchNumber: number,
-      mode: InventoryBatchPricingMode = "full",
-    ): Promise<PipelineResult | undefined> => {
-      baseProcessor.startProcessing();
-      setSuccess(null);
-      batchDataSource.current.setContext(batchNumber, mode === "errors");
-
+    async (batchNumber: number, mode: InventoryBatchPricingMode) => {
       try {
-        const result = await pricingOrchestrator.current.executePipeline(
-          batchDataSource.current,
-          {},
-          {
-            percentile: baseProcessor.productLinePricingConfig.defaultPercentile,
-            enableSupplyAnalysis:
-              baseProcessor.supplyAnalysisConfig.enableSupplyAnalysis,
-            supplyAnalysisConfig: {
-              maxListingsPerSku:
-                baseProcessor.supplyAnalysisConfig.maxListingsPerSku,
-              includeUnverifiedSellers:
-                baseProcessor.supplyAnalysisConfig.includeUnverifiedSellers,
-            },
-            productLinePricingConfig: baseProcessor.productLinePricingConfig,
-            source: `inventory-batch-${batchNumber}`,
-            enableEnrichment: true,
-            enableExport: false,
-            onProgress: (progress) => {
-              baseProcessor.setProgress(progress);
-            },
-            onError: (error) => {
-              baseProcessor.setError(error);
-            },
-            isCancelled: () => baseProcessor.isCancelledRef.current,
-          },
-        );
-
-        const payload = {
-          batchNumber,
-          mode,
-          summary: result.summary,
-          pricedSkus: result.pricedSkus,
-        };
-
-        const saveResponse = await fetch(
-          `/api/inventory-batches/${batchNumber}/results`,
+        setError(null);
+        const response = await fetch(
+          `/api/inventory-batches/${batchNumber}/pricing-jobs`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({ mode }),
           },
         );
-        const savePayload = (await saveResponse.json()) as
-          | InventoryBatch
-          | { error?: string };
+        const payload = (await response.json()) as {
+          status?: string;
+          mode?: InventoryBatchPricingMode;
+          error?: string;
+        };
 
-        if (!saveResponse.ok) {
+        if (!response.ok) {
           throw new Error(
-            "error" in savePayload && savePayload.error
-              ? savePayload.error
-              : "Failed to save batch pricing results",
+            "error" in payload && payload.error
+              ? payload.error
+              : "Failed to queue batch pricing job",
           );
         }
 
-        const savedBatch = savePayload as InventoryBatch;
-        setSelectedBatch(savedBatch);
-        baseProcessor.setSummary(savedBatch.summary);
-        await loadBatches();
         setSuccess(
-          mode === "errors"
-            ? `Batch ${batchNumber} errors repriced successfully`
-            : `Batch ${batchNumber} priced successfully`,
+          payload.status === "pricing"
+            ? `Batch ${batchNumber} is already pricing`
+            : payload.status === "queued"
+            ? `Batch ${batchNumber} queued for pricing`
+            : `Batch ${batchNumber} pricing requested`,
         );
 
-        return result;
-      } catch (error: any) {
-        if (error.message === "Processing cancelled by user") {
-          return;
-        }
-
-        baseProcessor.setError(
-          error?.message || "Failed to process inventory batch",
-        );
-        throw error;
-      } finally {
-        baseProcessor.finishProcessing();
+        await loadBatch(batchNumber);
+        await loadBatches();
+      } catch (processError) {
+        setError(String(processError));
+        throw processError;
       }
     },
-    [baseProcessor, loadBatches],
+    [loadBatch, loadBatches],
   );
 
   const deleteBatch = useCallback(
@@ -183,14 +237,14 @@ export const useInventoryBatchProcessor = () => {
 
       if (selectedBatch?.batchNumber === batchNumber) {
         setSelectedBatch(null);
-        baseProcessor.setSummary(null);
+        latestSelectedBatchRef.current = null;
       }
 
       const refreshedBatches = await loadBatches();
       setSuccess(`Batch ${batchNumber} deleted`);
       return refreshedBatches;
     },
-    [baseProcessor, loadBatches, selectedBatch?.batchNumber],
+    [loadBatches, selectedBatch?.batchNumber],
   );
 
   const downloadBatchResults = useCallback(
@@ -219,7 +273,7 @@ export const useInventoryBatchProcessor = () => {
       if (rows.length === 0) {
         throw new Error(
           scope === "manual-review"
-            ? "No manual review rows are available for this batch"
+            ? "No manual review or error rows are available for this batch"
             : "No successful rows are available for this batch",
         );
       }
@@ -229,18 +283,41 @@ export const useInventoryBatchProcessor = () => {
     [],
   );
 
+  const progress = useMemo(() => {
+    if (!selectedBatch?.latestJob) {
+      return null;
+    }
+
+    if (selectedBatch.latestJob.status === "queued") {
+      return createQueuedProgress(selectedBatch.batchNumber);
+    }
+
+    if (selectedBatch.latestJob.status === "pricing") {
+      return (
+        selectedBatch.latestJob.progress ||
+        createQueuedProgress(selectedBatch.batchNumber)
+      );
+    }
+
+    return null;
+  }, [selectedBatch]);
+
+  const isProcessing =
+    selectedBatch?.latestJob?.status === "queued" ||
+    selectedBatch?.latestJob?.status === "pricing";
+
   return {
     batches,
     selectedBatch,
     isLoadingBatches,
-    isProcessing: baseProcessor.isProcessing,
-    progress: baseProcessor.progress,
-    error: baseProcessor.error,
-    warning: baseProcessor.warning,
+    isProcessing,
+    progress,
+    error,
+    warning: null,
     success,
-    summary: selectedBatch ? selectedBatch.summary : baseProcessor.summary,
-    handleCancel: baseProcessor.handleCancel,
-    setError: baseProcessor.setError,
+    summary: selectedBatch?.summary ?? null,
+    handleCancel: undefined,
+    setError,
     setSuccess,
     loadBatches,
     loadBatch,
@@ -249,3 +326,4 @@ export const useInventoryBatchProcessor = () => {
     downloadBatchResults,
   };
 };
+
