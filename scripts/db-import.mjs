@@ -2,7 +2,6 @@ import fs from "node:fs";
 import fsPromises from "node:fs/promises";
 import path from "node:path";
 import readline from "node:readline";
-import { spawn } from "node:child_process";
 import pg from "pg";
 
 const { Pool } = pg;
@@ -53,25 +52,6 @@ function parseLine(line) {
 
   delete parsed._id;
   return parsed;
-}
-
-function runMigrations() {
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ["scripts/db-migrate.mjs"], {
-      cwd: process.cwd(),
-      env: process.env,
-      stdio: "inherit",
-    });
-
-    child.on("exit", (code) => {
-      if (code === 0) {
-        resolve();
-        return;
-      }
-
-      reject(new Error(`db-migrate failed with exit code ${code}`));
-    });
-  });
 }
 
 async function importJsonLines(filePaths, onBatch) {
@@ -519,8 +499,6 @@ async function importHttpConfig() {
 }
 
 async function run() {
-  await runMigrations();
-
   const stages = [
     ["product_lines", importProductLines],
     ["category_sets", importCategorySets],

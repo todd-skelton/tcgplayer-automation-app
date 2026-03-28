@@ -80,7 +80,7 @@ Import legacy `.db` files from `data/`:
 npm run db:import
 ```
 
-The import is upsert-based, so rerunning it does not duplicate rows.
+`npm run db:import` applies migrations first and then runs the import. The import is upsert-based, so rerunning it does not duplicate rows.
 
 ## Production Docker
 
@@ -95,6 +95,8 @@ The production app is exposed at `http://localhost:3001`.
 Docker may label the built image as `tcgplayer-automation-app-app`. That image name comes from the repository directory and service name, not the Compose project name. The actual project names are `tcgplayer-automation-prod`, `tcgplayer-automation-dev`, and `tcgplayer-automation-db`.
 
 When you deploy through `npm run prod:deploy`, `npm run prod:update`, `npm run prod:start`, or `npm run prod:restart`, the repo now fetches `origin/master` and refuses to run unless the working tree is clean and local `HEAD` exactly matches `origin/master`. This keeps production aligned with the remote `master` branch instead of whichever local branch happens to be checked out.
+
+The `prod:*` commands are implemented through a cross-platform Node wrapper now, so the same npm entrypoints work on both Windows and Unix-like shells.
 
 Direct `docker compose -f docker-compose.prod.yml ...` commands still work, but they bypass that protection. Use the `npm run prod:*` wrappers whenever you want enforced production source control.
 

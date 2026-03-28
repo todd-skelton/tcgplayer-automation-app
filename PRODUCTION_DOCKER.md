@@ -12,6 +12,8 @@ npm run prod:deploy
 
 The guarded `npm run prod:*` commands are the supported production entrypoints when you want source enforcement. `prod:deploy`, `prod:update`, `prod:start`, and `prod:restart` fetch `origin/master` and refuse to run unless the local checkout is clean and `HEAD` exactly matches `origin/master`.
 
+Those `prod:*` commands now route through a cross-platform Node wrapper, so the same npm commands work from Windows and Unix-like shells without separate `.bat` and `.sh` entrypoints.
+
 This starts:
 
 - The app on `http://localhost:3001`
@@ -104,6 +106,8 @@ Import the legacy NeDB files:
 ```bash
 docker compose -f docker-compose.prod.yml run --rm app npm run db:import
 ```
+
+`npm run db:import` applies migrations first and then performs the import.
 
 ## Persistence
 
