@@ -66,6 +66,21 @@ Apply migrations:
 npm run db:migrate
 ```
 
+Refresh a development database from the running production PostgreSQL container:
+
+```bash
+npm run dev:db:refresh
+```
+
+Optional target selectors:
+
+```bash
+npm run dev:db:refresh -- --target=dev
+npm run dev:db:refresh -- --target=db
+```
+
+The refresh command creates a timestamped backup in `.artifacts/db-backups/` before replacing the target database. By default it auto-detects which dev database to refresh. If neither dev target is running, it starts the standalone database from `docker-compose.db.yml`. If both are running, it exits and asks for an explicit `--target` because the full Docker dev stack and the standalone dev database use separate Docker volumes.
+
 ## Production Docker
 
 Build and start the production stack:

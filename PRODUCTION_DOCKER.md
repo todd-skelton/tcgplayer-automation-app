@@ -72,6 +72,23 @@ docker compose -f docker-compose.prod.yml ps
 
 Direct `docker compose` commands bypass the source guard. Use the `npm run prod:*` wrappers if you need the `origin/master` enforcement.
 
+## Refresh Dev Data From Production
+
+If you need current production data in development, refresh a dev database from the running production PostgreSQL container:
+
+```bash
+npm run dev:db:refresh
+```
+
+Optional target selectors:
+
+```bash
+npm run dev:db:refresh -- --target=dev
+npm run dev:db:refresh -- --target=db
+```
+
+This workflow creates a timestamped backup in `.artifacts/db-backups/` before overwriting the selected development database. The default behavior auto-detects which dev database is running. If neither dev target is running, it starts the standalone database and refreshes that one. If both are running, the command exits and requires `--target` because the full Docker dev stack and the standalone dev database use separate Docker volumes.
+
 ## One-Time Cleanup After Upgrading
 
 If Docker Desktop still shows the legacy `tcgplayer-automation-app` project, remove the stale containers and network once and then recreate the stacks:
