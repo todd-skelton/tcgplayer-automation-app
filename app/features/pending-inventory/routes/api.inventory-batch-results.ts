@@ -31,7 +31,6 @@ function getPricedSkuResultStatus(pricedSku: PricedSku): "successful" | "manual_
 interface SaveBatchResultsPayload {
   batchNumber: number;
   mode: InventoryBatchPricingMode;
-  summary: any;
   pricedSkus: PricedSku[];
 }
 
@@ -88,11 +87,11 @@ export async function action({
     const savedBatch = await inventoryBatchesRepository.saveResults({
       batchNumber,
       mode: payload.mode,
-      summary: payload.summary,
       rows: payload.pricedSkus.map((pricedSku, index) => ({
         sku: pricedSku.sku,
         resultStatus: getPricedSkuResultStatus(pricedSku),
         row: rows[index],
+        pricingDetails: pricedSku.pricingDetails ?? null,
         errorMessages: pricedSku.errors || [],
         warningMessages: pricedSku.warnings || [],
         pricedAt: new Date(),

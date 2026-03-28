@@ -82,6 +82,41 @@ export interface ProcessingSummary {
   };
 }
 
+export interface PricingPercentileDetail {
+  percentile: number;
+  suggestedPrice: number;
+  historicalSalesVelocityDays?: number;
+  estimatedTimeToSellDays?: number;
+  salesCount?: number;
+  listingsCount?: number;
+}
+
+export interface PersistedPricingDetails {
+  schemaVersion: number;
+  mode?: "full" | "errors";
+  pricedAt: string;
+  productLineId?: number;
+  percentileUsed?: number;
+  suggestedPrice?: number;
+  marketplacePrice?: number;
+  previousPrice?: number;
+  tcgMarketPrice?: number;
+  lowestSalePrice?: number;
+  highestSalePrice?: number;
+  quantity?: number;
+  addToQuantity?: number;
+  historicalSalesVelocityDays?: number;
+  estimatedTimeToSellDays?: number;
+  salesCountForHistorical?: number;
+  listingsCountForEstimated?: number;
+  percentiles?: PricingPercentileDetail[];
+  warnings?: string[];
+  errors?: string[];
+  featureFlags?: {
+    supplyAnalysis?: boolean;
+  };
+}
+
 export interface SuggestedPriceResult {
   error?: string;
   suggestedPrice: number | null;
@@ -146,6 +181,7 @@ export type PricerSku = {
 
 export type PricedSku = {
   sku: number;
+  productLineId?: number;
   productLine?: string;
   setName?: string;
   productName?: string;
@@ -165,6 +201,8 @@ export type PricedSku = {
   listingsCountForEstimated?: number; // Number of listings used for estimated calculation
   suggestedPrice?: number;
   percentileUsed?: number; // The percentile used for this SKU's pricing
+  percentiles?: PricingPercentileDetail[];
   errors?: string[];
   warnings?: string[];
+  pricingDetails?: PersistedPricingDetails;
 };

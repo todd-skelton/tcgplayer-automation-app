@@ -1,5 +1,6 @@
 import type {
   PricerSku,
+  PricingPercentileDetail,
   PricingConfig,
   SuggestedPriceResolver,
 } from "../../../core/types/pricing";
@@ -20,6 +21,7 @@ export interface PricingResult {
   salesCountForHistorical?: number; // Number of sales used for historical calculation
   listingsCountForEstimated?: number; // Number of listings used for estimated calculation
   percentileUsed?: number; // The percentile used for this SKU's pricing
+  percentiles?: PricingPercentileDetail[];
   productLineId?: number; // The product line ID for aggregation
   errors?: string[];
   warnings?: string[];
@@ -181,6 +183,18 @@ export class PricingCalculator {
         // Add the percentile and product line info used for this SKU
         pricedItem.percentileUsed = effectivePercentile;
         pricedItem.productLineId = pricerSku.productLineId;
+        pricedItem.percentiles = result.percentiles?.map((percentile) => ({
+          percentile: percentile.percentile,
+          suggestedPrice: percentile.price,
+          historicalSalesVelocityDays: percentile.historicalSalesVelocityMs
+            ? percentile.historicalSalesVelocityMs / (24 * 60 * 60 * 1000)
+            : undefined,
+          estimatedTimeToSellDays: percentile.estimatedTimeToSellMs
+            ? percentile.estimatedTimeToSellMs / (24 * 60 * 60 * 1000)
+            : undefined,
+          salesCount: percentile.salesCount,
+          listingsCount: percentile.listingsCount,
+        }));
 
         // Track errors vs warnings vs success
         if (pricedItem.errors && pricedItem.errors.length > 0) {

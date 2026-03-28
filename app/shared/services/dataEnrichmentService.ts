@@ -191,6 +191,7 @@ export class DataEnrichmentService {
 
       const enrichedSku: PricedSku = {
         sku: pricedItem.sku,
+        productLineId: pricedItem.productLineId,
         quantity: pricedItem.quantity,
         addToQuantity: pricedItem.addToQuantity,
         previousPrice: pricedItem.previousPrice,
@@ -201,6 +202,7 @@ export class DataEnrichmentService {
         salesCountForHistorical: pricedItem.salesCountForHistorical,
         listingsCountForEstimated: pricedItem.listingsCountForEstimated,
         percentileUsed: pricedItem.percentileUsed,
+        percentiles: pricedItem.percentiles,
         errors: pricedItem.errors,
         warnings: pricedItem.warnings,
 

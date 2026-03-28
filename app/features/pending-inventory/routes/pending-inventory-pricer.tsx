@@ -22,10 +22,8 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import {
-  ProcessingSummaryComponent,
-  ProgressIndicator,
-} from "../../pricing/components";
+import { ProgressIndicator } from "../../pricing/components";
+import { InventoryBatchSummaryComponent } from "../components/InventoryBatchSummary";
 import { useInventoryBatchProcessor } from "../hooks/useInventoryBatchProcessor";
 import type {
   InventoryBatch,
@@ -416,9 +414,12 @@ export default function PendingInventoryPricerRoute() {
       {selectedBatch && summary && (
         <Box sx={{ mt: 3 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            Latest pricing run summary for this batch.
+            Current batch summary for the saved pricing results.
           </Typography>
-          <ProcessingSummaryComponent summary={summary} />
+          <InventoryBatchSummaryComponent
+            summary={summary}
+            lastPricedAt={selectedBatch.lastPricedAt}
+          />
         </Box>
       )}
 

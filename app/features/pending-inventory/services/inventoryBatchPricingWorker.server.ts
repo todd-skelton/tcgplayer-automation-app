@@ -1,6 +1,10 @@
 import { inventoryBatchPricingJobsRepository, inventoryBatchesRepository } from "~/core/db";
 import { PricedSkuToTcgPlayerListingConverter } from "~/features/file-upload/services/dataConverters";
-import type { ProcessingProgress, PricedSku } from "~/core/types/pricing";
+import type {
+  PersistedPricingDetails,
+  ProcessingProgress,
+  PricedSku,
+} from "~/core/types/pricing";
 import type { InventoryBatchPricingJob } from "../types/inventoryBatch";
 import { executeInventoryBatchPricingJob } from "./inventoryBatchPricing.server";
 
@@ -8,6 +12,7 @@ const LEASE_MS = 15_000;
 const HEARTBEAT_MS = 2_000;
 const POLL_MS = 1_000;
 const PROGRESS_FLUSH_MS = 1_000;
+const PRICING_DETAILS_SCHEMA_VERSION = 1;
 
 interface WorkerState {
   started: boolean;
@@ -55,6 +60,39 @@ function getPricedSkuResultStatus(pricedSku: PricedSku): "successful" | "manual_
   return hasPrice && !hasErrors ? "successful" : "manual_review";
 }
 
+function buildPricingDetails(
+  pricedSku: PricedSku,
+  mode: InventoryBatchPricingJob["mode"],
+  pricedAt: Date,
+  job: InventoryBatchPricingJob,
+): PersistedPricingDetails {
+  return {
+    schemaVersion: PRICING_DETAILS_SCHEMA_VERSION,
+    mode,
+    pricedAt: pricedAt.toISOString(),
+    productLineId: pricedSku.productLineId,
+    percentileUsed: pricedSku.percentileUsed,
+    suggestedPrice: pricedSku.suggestedPrice,
+    marketplacePrice: pricedSku.price,
+    previousPrice: pricedSku.previousPrice,
+    tcgMarketPrice: pricedSku.tcgMarketPrice,
+    lowestSalePrice: pricedSku.lowestSalePrice,
+    highestSalePrice: pricedSku.highestSalePrice,
+    quantity: pricedSku.quantity,
+    addToQuantity: pricedSku.addToQuantity,
+    historicalSalesVelocityDays: pricedSku.historicalSalesVelocityDays,
+    estimatedTimeToSellDays: pricedSku.estimatedTimeToSellDays,
+    salesCountForHistorical: pricedSku.salesCountForHistorical,
+    listingsCountForEstimated: pricedSku.listingsCountForEstimated,
+    percentiles: pricedSku.percentiles,
+    warnings: pricedSku.warnings || [],
+    errors: pricedSku.errors || [],
+    featureFlags: {
+      supplyAnalysis: job.config.supplyAnalysis.enableSupplyAnalysis,
+    },
+  };
+}
+
 async function processJob(
   state: WorkerState,
   job: InventoryBatchPricingJob,
@@ -91,18 +129,19 @@ async function processJob(
     });
 
     const rows = converter.convertFromPricedSkus(result.pricedSkus);
+    const pricedAt = new Date();
 
     await inventoryBatchesRepository.saveResults({
       batchNumber: job.batchNumber,
       mode: job.mode,
-      summary: result.summary,
       rows: result.pricedSkus.map((pricedSku, index) => ({
         sku: pricedSku.sku,
         resultStatus: getPricedSkuResultStatus(pricedSku),
         row: rows[index],
+        pricingDetails: buildPricingDetails(pricedSku, job.mode, pricedAt, job),
         errorMessages: pricedSku.errors || [],
         warningMessages: pricedSku.warnings || [],
-        pricedAt: new Date(),
+        pricedAt,
       })),
     });
 

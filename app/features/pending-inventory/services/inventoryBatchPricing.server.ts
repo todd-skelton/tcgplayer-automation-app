@@ -102,6 +102,7 @@ function enrichPricedSkus(
 
     return {
       sku: pricedItem.sku,
+      productLineId: pricedItem.productLineId,
       quantity: pricedItem.quantity,
       addToQuantity: pricedItem.addToQuantity,
       previousPrice: pricedItem.previousPrice,
@@ -112,6 +113,7 @@ function enrichPricedSkus(
       salesCountForHistorical: pricedItem.salesCountForHistorical,
       listingsCountForEstimated: pricedItem.listingsCountForEstimated,
       percentileUsed: pricedItem.percentileUsed,
+      percentiles: pricedItem.percentiles,
       errors: pricedItem.errors,
       warnings: pricedItem.warnings,
       productLine: productInfo?.productLine,

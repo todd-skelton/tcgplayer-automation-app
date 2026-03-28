@@ -1,4 +1,5 @@
 import type {
+  PersistedPricingDetails,
   ProcessingProgress,
   ProcessingSummary,
   TcgPlayerListing,
@@ -20,6 +21,43 @@ export type InventoryBatchPricingJobStatus =
   | "pricing"
   | "completed"
   | "failed";
+
+export interface InventoryBatchSummary {
+  totalRows: number;
+  processedRows: number;
+  manualReviewRows: number;
+  skippedRows: number;
+  errorRows: number;
+  warningRows: number;
+  successRate: number;
+  generatedAt: string;
+  fileName: string;
+  totalQuantity: number;
+  totalAddQuantity: number;
+  totals: {
+    marketPrice: number;
+    lowPrice: number;
+    marketplacePrice: number;
+    percentiles: { [key: string]: number };
+  };
+  totalsWithMarket: {
+    marketPrice: number;
+    percentiles: { [key: string]: number };
+    quantityWithMarket: number;
+  };
+  medianDaysToSell: {
+    historicalSalesVelocity: number;
+    percentiles: { [key: string]: number };
+    marketAdjustedPercentiles?: { [key: string]: number };
+  };
+  productLineBreakdown?: {
+    [productLineName: string]: {
+      count: number;
+      percentilesUsed: number[];
+      totalValue: number;
+    };
+  };
+}
 
 export interface InventoryBatchPricingJob {
   id: number;
@@ -45,7 +83,7 @@ export interface InventoryBatch {
   createdAt: Date;
   updatedAt: Date;
   lastPricedAt: Date | null;
-  summary: ProcessingSummary | null;
+  summary: InventoryBatchSummary | null;
   successfulCount: number;
   manualReviewCount: number;
   itemCount: number;
@@ -68,6 +106,7 @@ export interface InventoryBatchResult {
   sku: number;
   resultStatus: InventoryBatchResultStatus;
   row: TcgPlayerListing;
+  pricingDetails: PersistedPricingDetails | null;
   errorMessages: string[];
   warningMessages: string[];
   pricedAt: Date;
@@ -76,11 +115,11 @@ export interface InventoryBatchResult {
 export interface SaveInventoryBatchResultsParams {
   batchNumber: number;
   mode: InventoryBatchPricingMode;
-  summary: ProcessingSummary;
   rows: Array<{
     sku: number;
     resultStatus: InventoryBatchResultStatus;
     row: TcgPlayerListing;
+    pricingDetails: PersistedPricingDetails | null;
     errorMessages: string[];
     warningMessages: string[];
     pricedAt: Date;
