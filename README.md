@@ -1,6 +1,6 @@
 # TCGPlayer Automation App
 
-This app now uses PostgreSQL for server-side storage. The repo includes checked-in SQL migrations, a NeDB-to-Postgres import script, and Docker Compose workflows for container-first development and production.
+This app now uses PostgreSQL for server-side storage. The repo includes checked-in SQL migrations and Docker Compose workflows for container-first development and production.
 
 ## Requirements
 
@@ -23,7 +23,6 @@ Optional startup flags:
 ```bash
 DB_STARTUP_RETRIES=30
 DB_STARTUP_DELAY_MS=2000
-DB_IMPORT_ON_START=false
 ```
 
 ## Local Development
@@ -44,12 +43,6 @@ npm run dev:down
 npm run dev:db
 ```
 
-To import the checked-in NeDB files into the containerized development database:
-
-```bash
-docker compose run --rm app npm run db:import
-```
-
 ### Host App Fallback
 
 If you want to run the app on your host instead of in Docker, start the standalone dev database and use the explicit host-mode script:
@@ -58,7 +51,6 @@ If you want to run the app on your host instead of in Docker, start the standalo
 docker compose -f docker-compose.db.yml up -d
 npm install
 npm run db:migrate
-npm run db:import
 npm run dev:host
 ```
 
@@ -73,14 +65,6 @@ Apply migrations:
 ```bash
 npm run db:migrate
 ```
-
-Import legacy `.db` files from `data/`:
-
-```bash
-npm run db:import
-```
-
-`npm run db:import` applies migrations first and then runs the import. The import is upsert-based, so rerunning it does not duplicate rows.
 
 ## Production Docker
 

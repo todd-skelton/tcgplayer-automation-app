@@ -1,6 +1,6 @@
 # Production Docker Deployment
 
-The production stack runs the app and PostgreSQL together. The app container waits for the database, applies SQL migrations during startup, and can import the legacy NeDB files from the mounted `data/` directory.
+The production stack runs the app and PostgreSQL together. The app container waits for the database, applies SQL migrations during startup, and then starts serving traffic.
 
 ## Quick Start
 
@@ -37,10 +37,7 @@ Optional startup flags:
 ```bash
 DB_STARTUP_RETRIES=30
 DB_STARTUP_DELAY_MS=2000
-DB_IMPORT_ON_START=false
 ```
-
-`DB_IMPORT_ON_START` is off by default. Import manually when you want to migrate the checked-in NeDB source files.
 
 ## Commands
 
@@ -101,18 +98,9 @@ Run migrations manually:
 docker compose -f docker-compose.prod.yml run --rm app npm run db:migrate
 ```
 
-Import the legacy NeDB files:
-
-```bash
-docker compose -f docker-compose.prod.yml run --rm app npm run db:import
-```
-
-`npm run db:import` applies migrations first and then performs the import.
-
 ## Persistence
 
 - PostgreSQL data is stored in the named Docker volume `postgres-data`.
-- Legacy `.db` files remain available through the mounted `./data` directory.
 - Application logs are mounted to `./logs`.
 
 ## Troubleshooting

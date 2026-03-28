@@ -3,7 +3,6 @@ import path from "node:path";
 
 const retries = Number(process.env.DB_STARTUP_RETRIES ?? 30);
 const delayMs = Number(process.env.DB_STARTUP_DELAY_MS ?? 2000);
-const shouldImport = process.env.DB_IMPORT_ON_START === "true";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -48,10 +47,6 @@ async function migrateWithRetry() {
 
 async function main() {
   await migrateWithRetry();
-
-  if (shouldImport) {
-    await runNodeScript(path.resolve("scripts/db-import.mjs"));
-  }
 
   const serverBinary =
     process.platform === "win32"

@@ -12,7 +12,6 @@
     "start": "node scripts/run-with-node-options.mjs react-router-serve ./build/server/index.js",
     "typecheck": "node scripts/run-with-node-options.mjs react-router typegen && node scripts/run-with-node-options.mjs tsc",
     "db:migrate": "node scripts/db-migrate.mjs",
-    "db:import": "npm run db:migrate && node scripts/db-import.mjs",
     "prod:deploy": "node scripts/prod.mjs deploy",
     "prod:update": "node scripts/prod.mjs update",
     "prod:start": "node scripts/prod.mjs start",
