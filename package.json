@@ -3,8 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "docker compose up --build",
+    "dev:host": "cross-env NODE_OPTIONS=\"--max-old-space-size=16384\" react-router dev",
+    "dev:down": "docker compose down",
+    "dev:logs": "docker compose logs -f",
+    "dev:db": "docker compose exec postgres psql -U postgres -d tcgplayer_automation",
     "build": "cross-env NODE_OPTIONS=\"--max-old-space-size=16384\" react-router build",
-    "dev": "cross-env NODE_OPTIONS=\"--max-old-space-size=16384\" react-router dev",
     "start": "cross-env NODE_OPTIONS=\"--max-old-space-size=16384\" react-router-serve ./build/server/index.js",
     "start:docker": "node scripts/docker-start.mjs",
     "typecheck": "cross-env NODE_OPTIONS=\"--max-old-space-size=16384\" react-router typegen && cross-env NODE_OPTIONS=\"--max-old-space-size=16384\" tsc",

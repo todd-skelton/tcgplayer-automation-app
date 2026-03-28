@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: development-dependencies-env
-    command: sh -c "node scripts/db-migrate.mjs && npm run dev -- --host 0.0.0.0"
+    command: sh -c "node scripts/db-migrate.mjs && npm run dev:host -- --host 0.0.0.0"
     container_name: tcgplayer-automation-dev
     depends_on:
       postgres:

@@ -51,6 +51,7 @@ export async function loader({
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let closed = false;
+      let controllerClosed = false;
       let pollTimer: NodeJS.Timeout | null = null;
       let heartbeatTimer: NodeJS.Timeout | null = null;
       let lastVersion = "";
@@ -69,17 +70,44 @@ export async function loader({
         }
       };
 
+      const closeController = () => {
+        if (controllerClosed) {
+          return;
+        }
+
+        controllerClosed = true;
+        controller.close();
+      };
+
+      const enqueueEvent = (event: string, payload: unknown) => {
+        if (closed || controllerClosed) {
+          return;
+        }
+
+        try {
+          controller.enqueue(encoder.encode(encodeEvent(event, payload)));
+        } catch (error) {
+          if (error instanceof TypeError) {
+            cleanup();
+            controllerClosed = true;
+            return;
+          }
+
+          throw error;
+        }
+      };
+
       const pushSnapshot = async () => {
         const batch = await inventoryBatchesRepository.findByBatchNumber(batchNumber);
 
+        if (closed || controllerClosed) {
+          return;
+        }
+
         if (!batch) {
-          controller.enqueue(
-            encoder.encode(
-              encodeEvent("error", { error: `Batch ${batchNumber} not found` }),
-            ),
-          );
+          enqueueEvent("error", { error: `Batch ${batchNumber} not found` });
           cleanup();
-          controller.close();
+          closeController();
           return;
         }
 
@@ -89,24 +117,26 @@ export async function loader({
         }
 
         lastVersion = version;
-        controller.enqueue(encoder.encode(encodeEvent("batch", { batch })));
+        enqueueEvent("batch", { batch });
       };
 
       request.signal.addEventListener("abort", () => {
         cleanup();
-        controller.close();
+        closeController();
       });
 
       await pushSnapshot();
+
+      if (closed || controllerClosed) {
+        return;
+      }
 
       pollTimer = setInterval(() => {
         void pushSnapshot();
       }, POLL_MS);
 
       heartbeatTimer = setInterval(() => {
-        if (!closed) {
-          controller.enqueue(encoder.encode(encodeEvent("heartbeat", {})));
-        }
+        enqueueEvent("heartbeat", {});
       }, HEARTBEAT_MS);
     },
     cancel() {

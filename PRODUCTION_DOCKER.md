@@ -18,7 +18,9 @@ This starts:
 - PostgreSQL in a sidecar container
 - Persistent database storage in the `postgres-data` Docker volume
 
-The production compose file now uses the explicit project name `tcgplayer-automation-prod` so it can run beside the dev database without sharing Docker networks.
+The production compose file uses the explicit project name `tcgplayer-automation-prod`, so it can run beside the full dev stack `tcgplayer-automation-dev` and the standalone dev database `tcgplayer-automation-db` without sharing Docker networks.
+
+Docker may show the built image name as `tcgplayer-automation-app-app`. That is only the generated image name. The Compose project name for the production stack is still `tcgplayer-automation-prod`.
 
 ## Configuration
 
@@ -73,22 +75,23 @@ Direct `docker compose` commands bypass the source guard. Use the `npm run prod:
 
 ## One-Time Cleanup After Upgrading
 
-If you ran production before the explicit compose project names were added, remove the stale containers once and then recreate the stack:
+If Docker Desktop still shows the legacy `tcgplayer-automation-app` project, remove the stale containers and network once and then recreate the stacks:
 
 ```bash
-docker rm -f tcgplayer-automation-prod tcgplayer-postgres-prod
+docker compose down --remove-orphans
+docker compose -f docker-compose.db.yml down --remove-orphans
+docker compose -f docker-compose.prod.yml down --remove-orphans
+docker rm -f tcgplayer-automation-prod tcgplayer-automation-dev tcgplayer-postgres-prod tcgplayer-postgres-dev tcgplayer-postgres-db
 docker network rm tcgplayer-automation-app_default
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-If you also run the standalone dev database, remove and recreate it once too:
+If you also want a development environment available again, recreate only the one you need:
 
-```bash
-docker rm -f tcgplayer-postgres-dev
-docker compose -f docker-compose.db.yml up -d
-```
+- Full dev stack: `npm run dev`
+- Standalone dev database: `docker compose -f docker-compose.db.yml up -d`
 
-These commands remove containers and the old shared network only. The named PostgreSQL volumes are preserved.
+These commands remove containers and the old shared network only. The named PostgreSQL volumes are preserved. If the old network is already gone, Docker may print an error that you can ignore.
 
 Run migrations manually:
 

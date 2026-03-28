@@ -2,7 +2,7 @@ name: tcgplayer-automation-db
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: tcgplayer-postgres-dev
+    container_name: tcgplayer-postgres-db
     environment:
       POSTGRES_DB: tcgplayer_automation
       POSTGRES_USER: postgres

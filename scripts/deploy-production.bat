@@ -49,7 +49,7 @@ if %errorlevel% equ 0 (
     echo View logs: docker compose -f docker-compose.prod.yml logs -f
     echo Stop production: docker compose -f docker-compose.prod.yml down
     echo.
-    echo Development can still run on: http://localhost:5173 ^(npm run dev^)
+    echo Development can still run on: http://localhost:5173 ^(npm run dev or npm run dev:host^)
 ) else (
     echo Production deployment failed!
     echo Check logs: docker compose -f docker-compose.prod.yml logs
