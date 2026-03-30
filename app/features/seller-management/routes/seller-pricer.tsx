@@ -1,32 +1,41 @@
-import React from "react";
-import { Box, Typography, Paper, Alert } from "@mui/material";
-import { useSellerInventoryPipelineProcessor } from "../hooks/useSellerInventoryPipelineProcessor";
+import React, { useState } from "react";
+import { useNavigate } from "react-router";
+import { Alert, Box, Paper, Typography } from "@mui/material";
 import { SellerForm } from "../components";
-import {
-  ProgressIndicator,
-  ProcessingSummaryComponent,
-} from "../../pricing/components";
+import type { InventoryBatch } from "~/features/pending-inventory/types/inventoryBatch";
 
 export default function SellerInventoryPricerRoute() {
-  const {
-    isProcessing,
-    progress,
-    error,
-    warning,
-    summary,
-    exportInfo,
-    processSellerInventory,
-    handleCancel,
-    setError,
-  } = useSellerInventoryPipelineProcessor();
+  const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (sellerKey: string, percentile: number) => {
-    if (!sellerKey.trim()) {
-      setError("Please enter a seller key");
-      return;
+  const handleSubmit = async (sellerKey: string) => {
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/inventory-batches/import-seller", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sellerKey }),
+      });
+      const payload = (await response.json()) as InventoryBatch | { error?: string };
+
+      if (!response.ok) {
+        throw new Error(
+          "error" in payload && payload.error
+            ? payload.error
+            : "Failed to queue seller inventory batch",
+        );
+      }
+
+      const batch = payload as InventoryBatch;
+      navigate(`/pending-inventory-pricer?batch=${batch.batchNumber}`);
+    } catch (submitError) {
+      setError(String(submitError));
+    } finally {
+      setIsSubmitting(false);
     }
-
-    await processSellerInventory(sellerKey, percentile);
   };
 
   return (
@@ -37,53 +46,21 @@ export default function SellerInventoryPricerRoute() {
 
       <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
         <Typography variant="h6" gutterBottom>
-          Process Seller Inventory
+          Queue Seller Inventory Batch
         </Typography>
-        <SellerForm
-          onSubmit={handleSubmit}
-          isProcessing={isProcessing}
-          onCancel={handleCancel}
-        />
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Freeze the seller's current live inventory into a batch, queue background
+          pricing on the server, then review progress and downloads from the
+          Inventory Batch Pricer.
+        </Typography>
+        <SellerForm onSubmit={handleSubmit} isProcessing={isSubmitting} />
       </Paper>
 
-      {/* Progress indicator */}
-      {progress && <ProgressIndicator progress={progress} />}
-
-      {/* Warning display */}
-      {warning && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          <Typography>{warning}</Typography>
-        </Alert>
-      )}
-
-      {/* Error display */}
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           <Typography>{error}</Typography>
         </Alert>
       )}
-
-      {/* Export information */}
-      {exportInfo && exportInfo.failedCount > 0 && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          <Typography variant="body2">
-            <strong>Export Complete:</strong> {exportInfo.successfulCount} items
-            exported to main file.
-            {exportInfo.failedCount > 0 && (
-              <>
-                <br />
-                <strong>{exportInfo.failedCount} items</strong> could not be
-                priced (no sales data available) and have been exported to{" "}
-                <strong>{exportInfo.manualReviewFile}</strong> for manual
-                review.
-              </>
-            )}
-          </Typography>
-        </Alert>
-      )}
-
-      {/* Processing Summary */}
-      {summary && <ProcessingSummaryComponent summary={summary} />}
     </Box>
   );
 }

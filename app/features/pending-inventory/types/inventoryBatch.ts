@@ -12,6 +12,7 @@ export type InventoryBatchStatus =
   | "pricing"
   | "priced"
   | "failed";
+export type InventoryBatchSourceType = "pending_inventory" | "seller" | "csv";
 export type InventoryBatchPricingMode = "full" | "errors";
 export type InventoryBatchResultStatus = "successful" | "manual_review";
 export type InventoryBatchResultsScope = "successful" | "manual-review";
@@ -80,6 +81,8 @@ export interface InventoryBatchPricingJob {
 export interface InventoryBatch {
   batchNumber: number;
   status: InventoryBatchStatus;
+  sourceType: InventoryBatchSourceType;
+  sourceLabel: string;
   createdAt: Date;
   updatedAt: Date;
   lastPricedAt: Date | null;
@@ -93,10 +96,13 @@ export interface InventoryBatch {
 export interface InventoryBatchItem {
   batchNumber: number;
   sku: number;
-  quantity: number;
+  totalQuantity: number;
+  addToQuantity: number;
+  currentPrice: number | null;
   productLineId: number;
   setId: number;
   productId: number;
+  originalRow: TcgPlayerListing | null;
   createdAt: Date;
   updatedAt: Date;
 }

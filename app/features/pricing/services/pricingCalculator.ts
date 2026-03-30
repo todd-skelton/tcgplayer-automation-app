@@ -129,11 +129,12 @@ export class PricingCalculator {
           continue;
         }
 
-        // Check if this product line should be skipped based on per-product-line config
-        // Never skip items with addToQuantity (pending inventory) - they always need pricing
-        const hasPendingQuantity =
-          pricerSku.addToQuantity && pricerSku.addToQuantity > 0;
-        if (config.productLinePricingConfig && !hasPendingQuantity) {
+        // Inventory Manager batches bypass skip rules because they represent
+        // explicit repricing work the user queued from live pending inventory.
+        if (
+          config.productLinePricingConfig &&
+          !pricerSku.bypassProductLineSkips
+        ) {
           const plSettings =
             config.productLinePricingConfig.productLineSettings[
               pricerSku.productLineId

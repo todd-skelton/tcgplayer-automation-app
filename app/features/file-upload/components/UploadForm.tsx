@@ -1,36 +1,28 @@
 import React from "react";
-import { Box, Button, TextField } from "@mui/material";
+import { Box, Button, TextField, Typography } from "@mui/material";
 import { useConfiguration } from "../../pricing/hooks/useConfiguration";
 
 interface UploadFormProps {
-  onSubmit: (file: File, percentile: number) => void;
+  onSubmit: (file: File) => void | Promise<void>;
   isProcessing: boolean;
-  onCancel: () => void;
 }
 
 export const UploadForm: React.FC<UploadFormProps> = ({
   onSubmit,
   isProcessing,
-  onCancel,
 }) => {
-  const { config, updateFormDefaults } = useConfiguration();
+  const { config } = useConfiguration();
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const file = formData.get("csv") as File;
-    const percentileValue = formData.get("percentile") as string;
 
-    if (!file) {
+    if (!file || file.size === 0) {
       return;
     }
 
-    const percentile =
-      parseInt(percentileValue, 10) || config.pricing.defaultPercentile;
-
-    // Save percentile as form default for next time
-    updateFormDefaults({ percentile });
-
-    onSubmit(file, percentile);
+    onSubmit(file);
   };
 
   return (
@@ -43,34 +35,18 @@ export const UploadForm: React.FC<UploadFormProps> = ({
           inputProps={{ accept: config.file.accept }}
           disabled={isProcessing}
         />
-        <TextField
-          label="Price Percentile"
-          name="percentile"
-          type="number"
-          defaultValue={config.formDefaults.percentile}
-          inputProps={{
-            min: config.pricing.minPercentile,
-            max: config.pricing.maxPercentile,
-          }}
-          helperText={`Percentile for suggested price calculation (${config.pricing.minPercentile}-${config.pricing.maxPercentile}). Examples: 65, 75, 80`}
+        <Typography variant="body2" color="text.secondary">
+          Background pricing uses the shared server configuration, including the
+          default percentile and any product-line overrides.
+        </Typography>
+        <Button
+          type="submit"
+          variant="contained"
+          color="primary"
           disabled={isProcessing}
-        />
-        <Box sx={{ display: "flex", gap: 2 }}>
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            disabled={isProcessing}
-          >
-            {isProcessing ? "Processing..." : "Upload and Price CSV"}
-          </Button>
-
-          {isProcessing && (
-            <Button variant="outlined" color="secondary" onClick={onCancel}>
-              Cancel
-            </Button>
-          )}
-        </Box>
+        >
+          {isProcessing ? "Queueing Batch..." : "Upload and Queue Batch"}
+        </Button>
       </Box>
     </form>
   );

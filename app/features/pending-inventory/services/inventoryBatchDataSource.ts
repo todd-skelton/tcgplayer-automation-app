@@ -31,13 +31,20 @@ export class InventoryBatchDataSource
   }
 
   async validateData(items: InventoryBatchItem[]): Promise<InventoryBatchItem[]> {
-    return items.filter((item) => item.sku && item.sku > 0 && item.quantity > 0);
+    return items.filter(
+      (item) =>
+        item.sku &&
+        item.sku > 0 &&
+        item.totalQuantity + item.addToQuantity > 0,
+    );
   }
 
   async convertToPricerSku(items: InventoryBatchItem[]): Promise<PricerSku[]> {
     return items.map((item) => ({
       sku: item.sku,
-      addToQuantity: item.quantity,
+      quantity: item.totalQuantity > 0 ? item.totalQuantity : undefined,
+      addToQuantity: item.addToQuantity > 0 ? item.addToQuantity : undefined,
+      currentPrice: item.currentPrice ?? undefined,
       productLineId: item.productLineId,
       setId: item.setId,
       productId: item.productId,

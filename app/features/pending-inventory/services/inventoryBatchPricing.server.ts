@@ -181,9 +181,7 @@ function buildSummary(
 
     const productLineId = Number(productLineIdText);
     const skippedCount = sourceSkus.filter(
-      (sku) =>
-        sku.productLineId === productLineId &&
-        !(sku.addToQuantity && sku.addToQuantity > 0),
+      (sku) => sku.productLineId === productLineId && !sku.bypassProductLineSkips,
     ).length;
 
     if (skippedCount === 0) {
@@ -297,15 +295,28 @@ export async function executeInventoryBatchPricingJob({
     phaseStartTime: validationStartTime,
   });
 
+  const batch = await inventoryBatchesRepository.findByBatchNumber(batchNumber);
+  if (!batch) {
+    throw new Error(`Batch ${batchNumber} not found`);
+  }
+
   const items = await inventoryBatchesRepository.findItems(batchNumber, sourceScope);
   throwIfCancelled(isCancelled);
 
+  const bypassProductLineSkips = batch.sourceType === "pending_inventory";
+
   const sourceSkus = items
-    .filter((item) => item.sku > 0 && item.quantity > 0)
+    .filter(
+      (item) =>
+        item.sku > 0 && item.totalQuantity + item.addToQuantity > 0,
+    )
     .map(
       (item): PricerSku => ({
         sku: item.sku,
-        addToQuantity: item.quantity,
+        quantity: item.totalQuantity > 0 ? item.totalQuantity : undefined,
+        addToQuantity: item.addToQuantity > 0 ? item.addToQuantity : undefined,
+        currentPrice: item.currentPrice ?? undefined,
+        bypassProductLineSkips,
         productLineId: item.productLineId,
         setId: item.setId,
         productId: item.productId,

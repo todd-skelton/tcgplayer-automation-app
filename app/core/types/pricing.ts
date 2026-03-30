@@ -173,6 +173,7 @@ export type PricerSku = {
   quantity?: number;
   addToQuantity?: number;
   currentPrice?: number;
+  bypassProductLineSkips?: boolean;
   // Performance optimization metadata - required for optimal processing
   productLineId: number;
   setId: number;

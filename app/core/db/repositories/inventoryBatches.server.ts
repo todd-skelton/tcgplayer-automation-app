@@ -10,6 +10,7 @@ import type {
   InventoryBatchSummary,
 } from "~/features/pending-inventory/types/inventoryBatch";
 import {
+  createValuesPlaceholders,
   execute,
   query,
   queryOne,
@@ -31,9 +32,30 @@ type BatchSummarySourceRow = Pick<
   | "pricedAt"
 >;
 
+interface CreateInventoryBatchItemInput {
+  sku: number;
+  totalQuantity: number;
+  addToQuantity: number;
+  currentPrice?: number | null;
+  productLineId: number;
+  setId: number;
+  productId: number;
+  originalRow?: TcgPlayerListing | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+interface CreateImportedBatchParams {
+  sourceType: Extract<InventoryBatch["sourceType"], "seller" | "csv">;
+  sourceLabel: string;
+  items: CreateInventoryBatchItemInput[];
+}
+
 const batchSelect = `SELECT
   b.batch_number AS "batchNumber",
   b.status,
+  b.source_type AS "sourceType",
+  b.source_label AS "sourceLabel",
   b.created_at AS "createdAt",
   b.updated_at AS "updatedAt",
   b.last_priced_at AS "lastPricedAt",
@@ -48,6 +70,8 @@ LEFT JOIN inventory_batch_items i
 const batchGroupBy = `GROUP BY
   b.batch_number,
   b.status,
+  b.source_type,
+  b.source_label,
   b.created_at,
   b.updated_at,
   b.last_priced_at,
@@ -335,6 +359,54 @@ async function refreshBatchCounts(
   );
 }
 
+async function insertBatchItems(
+  batchNumber: number,
+  items: CreateInventoryBatchItemInput[],
+  executor: Queryable,
+): Promise<void> {
+  if (items.length === 0) {
+    return;
+  }
+
+  const placeholders = createValuesPlaceholders(items.length, 11);
+  const values = items.flatMap((item) => {
+    const createdAt = item.createdAt ?? new Date();
+    const updatedAt = item.updatedAt ?? createdAt;
+
+    return [
+      batchNumber,
+      item.sku,
+      item.totalQuantity,
+      item.addToQuantity,
+      item.currentPrice ?? null,
+      item.productLineId,
+      item.setId,
+      item.productId,
+      item.originalRow ? JSON.stringify(item.originalRow) : null,
+      createdAt,
+      updatedAt,
+    ];
+  });
+
+  await execute(
+    `INSERT INTO inventory_batch_items (
+      batch_number,
+      sku,
+      total_quantity,
+      add_to_quantity,
+      current_price,
+      product_line_id,
+      set_id,
+      product_id,
+      original_row_json,
+      created_at,
+      updated_at
+    ) VALUES ${placeholders}`,
+    values,
+    executor,
+  );
+}
+
 export const inventoryBatchesRepository = {
   async findAll(executor?: Queryable): Promise<InventoryBatch[]> {
     const rows = await query<InventoryBatchRow>(
@@ -407,8 +479,8 @@ export const inventoryBatchesRepository = {
       }
 
       const createdBatch = await queryOne<{ batchNumber: number }>(
-        `INSERT INTO inventory_batches (status)
-        VALUES ('pending')
+        `INSERT INTO inventory_batches (status, source_type, source_label)
+        VALUES ('pending', 'pending_inventory', 'Inventory Manager')
         RETURNING batch_number AS "batchNumber"`,
         [],
         client,
@@ -422,20 +494,26 @@ export const inventoryBatchesRepository = {
         `INSERT INTO inventory_batch_items (
           batch_number,
           sku,
-          quantity,
+          total_quantity,
+          add_to_quantity,
+          current_price,
           product_line_id,
           set_id,
           product_id,
+          original_row_json,
           created_at,
           updated_at
         )
         SELECT
           $1,
           sku,
+          0,
           quantity,
+          NULL,
           product_line_id,
           set_id,
           product_id,
+          NULL,
           created_at,
           updated_at
         FROM pending_inventory`,
@@ -449,6 +527,37 @@ export const inventoryBatchesRepository = {
         createdBatch.batchNumber,
         client,
       );
+    });
+  },
+
+  async createImportedBatch(
+    params: CreateImportedBatchParams,
+  ): Promise<InventoryBatch> {
+    return withTransaction(async (client) => {
+      const createdBatch = await queryOne<{ batchNumber: number }>(
+        `INSERT INTO inventory_batches (status, source_type, source_label)
+        VALUES ('pending', $1, $2)
+        RETURNING batch_number AS "batchNumber"`,
+        [params.sourceType, params.sourceLabel],
+        client,
+      );
+
+      if (!createdBatch) {
+        throw new Error("Failed to create inventory batch");
+      }
+
+      await insertBatchItems(createdBatch.batchNumber, params.items, client);
+
+      const batch = await inventoryBatchesRepository.findByBatchNumber(
+        createdBatch.batchNumber,
+        client,
+      );
+
+      if (!batch) {
+        throw new Error(`Batch ${createdBatch.batchNumber} could not be reloaded`);
+      }
+
+      return batch;
     });
   },
 
@@ -472,7 +581,7 @@ export const inventoryBatchesRepository = {
     const whereClause =
       scope === "errors"
         ? `AND i.sku > 0
-          AND i.quantity > 0
+          AND (i.total_quantity > 0 OR i.add_to_quantity > 0)
           AND EXISTS (
             SELECT 1
             FROM inventory_batch_results r
@@ -486,10 +595,13 @@ export const inventoryBatchesRepository = {
       `SELECT
         i.batch_number AS "batchNumber",
         i.sku,
-        i.quantity,
+        i.total_quantity AS "totalQuantity",
+        i.add_to_quantity AS "addToQuantity",
+        i.current_price::float8 AS "currentPrice",
         i.product_line_id AS "productLineId",
         i.set_id AS "setId",
         i.product_id AS "productId",
+        i.original_row_json AS "originalRow",
         i.created_at AS "createdAt",
         i.updated_at AS "updatedAt"
       FROM inventory_batch_items i

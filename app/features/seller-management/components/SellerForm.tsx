@@ -1,41 +1,35 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Box,
-  TextField,
   Button,
-  Stack,
-  Typography,
+  Chip,
   Paper,
+  Stack,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Chip,
-  Alert,
+  TextField,
+  Typography,
 } from "@mui/material";
 import { Link, useFetcher } from "react-router";
 import { useConfiguration } from "../../pricing/hooks/useConfiguration";
 import type { ProductLine } from "~/shared/data-types/productLine";
 
 interface SellerFormProps {
-  onSubmit: (sellerKey: string, percentile: number) => Promise<void>;
+  onSubmit: (sellerKey: string) => Promise<void>;
   isProcessing: boolean;
-  onCancel: () => void;
 }
 
-export function SellerForm({
-  onSubmit,
-  isProcessing,
-  onCancel,
-}: SellerFormProps) {
+export function SellerForm({ onSubmit, isProcessing }: SellerFormProps) {
   const { config, updateFormDefaults } = useConfiguration();
 
   const [sellerKey, setSellerKey] = useState(config.formDefaults.sellerKey);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch product lines for display names
   const productLinesFetcher = useFetcher<ProductLine[]>();
 
   useEffect(() => {
@@ -46,62 +40,51 @@ export function SellerForm({
 
   const productLines = productLinesFetcher.data || [];
 
-  // Get product line name by ID
   const getProductLineName = (productLineId: number): string => {
-    const pl = productLines.find((p) => p.productLineId === productLineId);
-    return pl?.productLineName || `Product Line ${productLineId}`;
+    const productLine = productLines.find(
+      (candidate) => candidate.productLineId === productLineId,
+    );
+    return productLine?.productLineName || `Product Line ${productLineId}`;
   };
 
-  // Get configured product line IDs
   const configuredProductLineIds = Object.keys(
     config.productLinePricing.productLineSettings,
   ).map(Number);
 
-  // Update form state when config changes (after localStorage loads)
   useEffect(() => {
     setSellerKey(config.formDefaults.sellerKey);
   }, [config.formDefaults.sellerKey]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
 
     if (!sellerKey.trim()) {
       return;
     }
 
-    // Save form defaults for next time
     updateFormDefaults({ sellerKey: sellerKey.trim() });
 
     setIsSubmitting(true);
     try {
-      // Pass the default percentile - per-product-line config is handled in the pipeline
-      await onSubmit(
-        sellerKey.trim(),
-        config.productLinePricing.defaultPercentile,
-      );
+      await onSubmit(sellerKey.trim());
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleCancel = () => {
-    onCancel();
-    setSellerKey("");
   };
 
   return (
     <Box component="form" onSubmit={handleSubmit}>
       <Stack spacing={3}>
         <Typography variant="body2" color="text.secondary">
-          Enter a seller key to fetch and price all their current inventory.
-          This will retrieve all active listings for the seller and run the
-          pricing algorithm on each item.
+          Enter a seller key to snapshot the seller's live inventory into a batch.
+          Background pricing will use the shared server configuration and open in
+          the Inventory Batch Pricer when the batch is created.
         </Typography>
 
         <TextField
           label="Seller Key"
           value={sellerKey}
-          onChange={(e) => setSellerKey(e.target.value)}
+          onChange={(event) => setSellerKey(event.target.value)}
           placeholder="Enter seller key (e.g., 'seller123')"
           fullWidth
           required
@@ -109,7 +92,6 @@ export function SellerForm({
           helperText="The unique identifier for the seller whose inventory you want to price"
         />
 
-        {/* Product Line Pricing Summary */}
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Box
             sx={{
@@ -120,12 +102,7 @@ export function SellerForm({
             }}
           >
             <Typography variant="subtitle2">Pricing Configuration</Typography>
-            <Button
-              component={Link}
-              to="/configuration"
-              size="small"
-              variant="text"
-            >
+            <Button component={Link} to="/configuration" size="small" variant="text">
               Edit Settings
             </Button>
           </Box>
@@ -153,24 +130,16 @@ export function SellerForm({
                 <TableBody>
                   {configuredProductLineIds.map((productLineId) => {
                     const settings =
-                      config.productLinePricing.productLineSettings[
-                        productLineId
-                      ];
+                      config.productLinePricing.productLineSettings[productLineId];
                     return (
                       <TableRow key={productLineId}>
-                        <TableCell>
-                          {getProductLineName(productLineId)}
-                        </TableCell>
+                        <TableCell>{getProductLineName(productLineId)}</TableCell>
                         <TableCell align="center">
-                          {settings.skip ? "—" : `${settings.percentile}%`}
+                          {settings.skip ? "-" : `${settings.percentile}%`}
                         </TableCell>
                         <TableCell align="center">
                           {settings.skip ? (
-                            <Chip
-                              label="Skipped"
-                              size="small"
-                              color="warning"
-                            />
+                            <Chip label="Skipped" size="small" color="warning" />
                           ) : (
                             <Chip
                               label="Custom"
@@ -194,28 +163,14 @@ export function SellerForm({
           )}
         </Paper>
 
-        <Box sx={{ display: "flex", gap: 2 }}>
-          {!isProcessing ? (
-            <Button
-              type="submit"
-              variant="contained"
-              fullWidth
-              disabled={!sellerKey.trim() || isSubmitting}
-            >
-              {isSubmitting ? "Starting..." : "Process Seller Inventory"}
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="outlined"
-              color="error"
-              fullWidth
-              onClick={handleCancel}
-            >
-              Cancel Processing
-            </Button>
-          )}
-        </Box>
+        <Button
+          type="submit"
+          variant="contained"
+          fullWidth
+          disabled={!sellerKey.trim() || isProcessing || isSubmitting}
+        >
+          {isSubmitting || isProcessing ? "Queueing Batch..." : "Queue Seller Batch"}
+        </Button>
       </Stack>
     </Box>
   );

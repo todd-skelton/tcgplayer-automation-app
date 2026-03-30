@@ -46,6 +46,28 @@ function getBatchStatusColor(status: InventoryBatch["status"]) {
   }
 }
 
+function getBatchSourceLabel(batch: InventoryBatch): string {
+  switch (batch.sourceType) {
+    case "seller":
+      return `Seller: ${batch.sourceLabel}`;
+    case "csv":
+      return `CSV: ${batch.sourceLabel}`;
+    default:
+      return batch.sourceLabel;
+  }
+}
+
+function getBatchSourceColor(batch: InventoryBatch) {
+  switch (batch.sourceType) {
+    case "seller":
+      return "secondary" as const;
+    case "csv":
+      return "info" as const;
+    default:
+      return "success" as const;
+  }
+}
+
 function BatchSummaryCard({ batch }: { batch: InventoryBatch }) {
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
@@ -57,6 +79,12 @@ function BatchSummaryCard({ batch }: { batch: InventoryBatch }) {
           flexWrap="wrap"
         >
           <Typography variant="h6">Batch {batch.batchNumber}</Typography>
+          <Chip
+            label={getBatchSourceLabel(batch)}
+            color={getBatchSourceColor(batch)}
+            variant="outlined"
+            size="small"
+          />
           <Chip
             label={`${batch.itemCount} SKUs`}
             color="info"
@@ -259,14 +287,14 @@ export default function PendingInventoryPricerRoute() {
               Select Inventory Batch
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Each batch is a frozen snapshot from Inventory Manager. New live
-              inventory can continue to be entered while you price a different
-              batch here.
+              Each batch is a frozen snapshot from Inventory Manager, Seller
+              Pricer, or CSV Pricer. New live inventory can continue to be entered
+              while you price a different batch here.
             </Typography>
           </Box>
 
           {batches.length > 0 ? (
-            <FormControl sx={{ minWidth: 280, maxWidth: 480 }}>
+            <FormControl sx={{ minWidth: 280, maxWidth: 560 }}>
               <InputLabel id="batch-select-label">Batch</InputLabel>
               <Select
                 labelId="batch-select-label"
@@ -279,7 +307,7 @@ export default function PendingInventoryPricerRoute() {
                     (candidate) => candidate.batchNumber === value,
                   );
                   return batch
-                    ? `Batch ${batch.batchNumber} - ${batch.status}`
+                    ? `Batch ${batch.batchNumber} - ${getBatchSourceLabel(batch)} - ${batch.status}`
                     : "";
                 }}
               >
@@ -289,6 +317,12 @@ export default function PendingInventoryPricerRoute() {
                       <Typography variant="body2" sx={{ mr: 1 }}>
                         Batch {batch.batchNumber}
                       </Typography>
+                      <Chip
+                        label={getBatchSourceLabel(batch)}
+                        size="small"
+                        color={getBatchSourceColor(batch)}
+                        variant="outlined"
+                      />
                       <Chip label={`${batch.itemCount} SKUs`} size="small" variant="outlined" />
                       <Chip
                         label={batch.status}
@@ -303,7 +337,7 @@ export default function PendingInventoryPricerRoute() {
             </FormControl>
           ) : (
             <Alert severity="info">
-              No inventory batches exist yet. Create one from the <Link to="/inventory-manager">Inventory Manager</Link> by clicking Process &amp; Price.
+              No inventory batches exist yet. Create one from the <Link to="/inventory-manager">Inventory Manager</Link>, <Link to="/seller-pricer">Seller Pricer</Link>, or <Link to="/pricer">CSV Pricer</Link>.
             </Alert>
           )}
 
@@ -441,4 +475,3 @@ export default function PendingInventoryPricerRoute() {
     </Box>
   );
 }
-

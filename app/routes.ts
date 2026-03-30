@@ -79,6 +79,14 @@ export default [
     file: "features/pending-inventory/routes/api.inventory-batches.ts",
   },
   {
+    path: "/api/inventory-batches/import-seller",
+    file: "features/pending-inventory/routes/api.inventory-batches-import-seller.ts",
+  },
+  {
+    path: "/api/inventory-batches/import-csv",
+    file: "features/pending-inventory/routes/api.inventory-batches-import-csv.ts",
+  },
+  {
     path: "/api/inventory-batches/:batchNumber",
     file: "features/pending-inventory/routes/api.inventory-batch.ts",
   },

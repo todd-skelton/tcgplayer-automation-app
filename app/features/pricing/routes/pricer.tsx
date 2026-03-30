@@ -1,33 +1,44 @@
-import React from "react";
-import { Box, Typography, Paper, Alert } from "@mui/material";
-import { useCSVPipelineProcessor } from "../hooks/useCSVPipelineProcessor";
+import React, { useState } from "react";
+import { useNavigate } from "react-router";
+import { Alert, Box, Paper, Typography } from "@mui/material";
 import { UploadForm } from "../../file-upload/components";
-import {
-  ProgressIndicator,
-  ProcessingSummaryComponent,
-  QuickSettings,
-} from "../components";
+import { QuickSettings } from "../components";
+import type { InventoryBatch } from "~/features/pending-inventory/types/inventoryBatch";
 
 export default function PricerRoute() {
-  const {
-    isProcessing,
-    progress,
-    error,
-    warning,
-    summary,
-    exportInfo,
-    processCSV,
-    handleCancel,
-    setError,
-  } = useCSVPipelineProcessor();
+  const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (file: File, percentile: number) => {
-    if (!file) {
-      setError("Please select a CSV file");
-      return;
+  const handleSubmit = async (file: File) => {
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/inventory-batches/import-csv", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json()) as InventoryBatch | { error?: string };
+
+      if (!response.ok) {
+        throw new Error(
+          "error" in payload && payload.error
+            ? payload.error
+            : "Failed to queue CSV pricing batch",
+        );
+      }
+
+      const batch = payload as InventoryBatch;
+      navigate(`/pending-inventory-pricer?batch=${batch.batchNumber}`);
+    } catch (submitError) {
+      setError(String(submitError));
+    } finally {
+      setIsSubmitting(false);
     }
-
-    await processCSV(file, percentile);
   };
 
   return (
@@ -45,54 +56,24 @@ export default function PricerRoute() {
             mb: 3,
           }}
         >
-          <Typography variant="h6">Upload CSV File</Typography>
+          <Box>
+            <Typography variant="h6">Queue CSV Pricing Batch</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Upload a CSV export to freeze it into a batch, queue background
+              pricing on the server, and review progress from the Inventory Batch
+              Pricer.
+            </Typography>
+          </Box>
           <QuickSettings compact />
         </Box>
-        <UploadForm
-          onSubmit={handleSubmit}
-          isProcessing={isProcessing}
-          onCancel={handleCancel}
-        />
+        <UploadForm onSubmit={handleSubmit} isProcessing={isSubmitting} />
       </Paper>
 
-      {/* Progress indicator */}
-      {progress && <ProgressIndicator progress={progress} />}
-
-      {/* Warning display */}
-      {warning && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          <Typography>{warning}</Typography>
-        </Alert>
-      )}
-
-      {/* Error display */}
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           <Typography>{error}</Typography>
         </Alert>
       )}
-
-      {/* Export information */}
-      {exportInfo && exportInfo.failedCount > 0 && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          <Typography variant="body2">
-            <strong>Export Complete:</strong> {exportInfo.successfulCount} items
-            exported to main file.
-            {exportInfo.failedCount > 0 && (
-              <>
-                <br />
-                <strong>{exportInfo.failedCount} items</strong> could not be
-                priced (no sales data available) and have been exported to{" "}
-                <strong>{exportInfo.manualReviewFile}</strong> for manual
-                review.
-              </>
-            )}
-          </Typography>
-        </Alert>
-      )}
-
-      {/* Processing Summary */}
-      {summary && <ProcessingSummaryComponent summary={summary} />}
     </Box>
   );
 }
