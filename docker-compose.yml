@@ -6,13 +6,15 @@ services:
       context: .
       dockerfile: Dockerfile
       target: development-dependencies-env
-    command: sh -c "node scripts/db-migrate.mjs && npm run dev:host -- --host 0.0.0.0"
+    command: node scripts/docker-dev-start.mjs
     container_name: tcgplayer-automation-dev
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tcgplayer_automation
+      DB_STARTUP_RETRIES: 30
+      DB_STARTUP_DELAY_MS: 2000
       NODE_ENV: development
       PORT: 5173
     ports:
@@ -33,8 +35,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
-    ports:
-      - "5432:5432"
     volumes:
       - postgres-data-dev:/var/lib/postgresql/data
 

@@ -10,6 +10,8 @@ import { useProcessorBase } from "../../file-upload/hooks/useProcessorBase";
 // Extended interface for SKUs with display information
 interface SkuWithDisplayInfo extends Sku {
   cardNumber?: string | null;
+  setNameId?: number;
+  setReleaseDate?: string;
 }
 
 export interface InventoryProcessorState {
@@ -408,4 +410,5 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     getAvailableLanguages,
   };
 };
+
 

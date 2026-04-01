@@ -39,6 +39,8 @@ import { matchesNumberField } from "../../../core/utils/numberFieldMatching";
 // Extended interface for SKUs with display information
 interface SkuWithDisplayInfo extends Sku {
   cardNumber?: string | null;
+  setNameId?: number;
+  setReleaseDate?: string;
 }
 
 // Helper function to get quantity from pending inventory array
@@ -50,6 +52,15 @@ const getPendingQuantity = (
   return entry ? entry.quantity : 0;
 };
 
+const getReleaseYear = (releaseDate?: string): string | null => {
+  if (!releaseDate) {
+    return null;
+  }
+
+  const releaseYear = new Date(releaseDate).getFullYear();
+  return Number.isNaN(releaseYear) ? null : releaseYear.toString();
+};
+
 // DataGrid row type
 interface DataGridRow {
   id: string;
@@ -57,6 +68,7 @@ interface DataGridRow {
   productName: string;
   displayName: string; // Enhanced name with card number for display
   setName: string;
+  setReleaseYear?: string | null;
   variant: string;
   language: string;
   groupKey: string;
@@ -70,6 +82,7 @@ type ProductGroup = {
   productName: string;
   displayName: string; // Enhanced name with card number for display
   setName: string;
+  setReleaseYear?: string | null;
   cardNumber?: string | null; // Card number for enhanced filtering
   variant: string;
   language: string;
@@ -179,6 +192,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
               productName: sku.productName,
               displayName: displayName,
               setName: sku.setName,
+              setReleaseYear: getReleaseYear(sku.setReleaseDate),
               cardNumber: sku.cardNumber,
               variant: sku.variant,
               language: sku.language,
@@ -254,6 +268,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
             productName: group.productName,
             displayName: group.displayName,
             setName: group.setName,
+            setReleaseYear: group.setReleaseYear,
             variant: group.variant,
             language: group.language,
             groupKey,
@@ -673,8 +688,16 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                 </Typography>
                 {searchScope === "allSets" && params.row.setName && (
                   <Chip
-                    label={params.row.setName}
-                    color="info"
+                    label={
+                      params.row.setReleaseYear
+                        ? `${params.row.setName} - ${params.row.setReleaseYear}`
+                        : params.row.setName
+                    }
+                    color={
+                      selectedSkuData
+                        ? getConditionColor(selectedSkuData.condition)
+                        : "default"
+                    }
                     size="small"
                     variant="outlined"
                   />
@@ -954,3 +977,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
       );
     }
   );
+
+
+
+

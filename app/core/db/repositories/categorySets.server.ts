@@ -57,6 +57,34 @@ export const categorySetsRepository = {
     );
   },
 
+  async findByCategoryIdAndSetNameIds(
+    categoryId: number,
+    setNameIds: number[],
+    executor?: Queryable,
+  ): Promise<CategorySet[]> {
+    if (setNameIds.length === 0) {
+      return [];
+    }
+
+    return query<CategorySetRow>(
+      `SELECT
+        set_name_id AS "setNameId",
+        category_id AS "categoryId",
+        name,
+        clean_set_name AS "cleanSetName",
+        url_name AS "urlName",
+        abbreviation,
+        release_date AS "releaseDate",
+        is_supplemental AS "isSupplemental",
+        active
+      FROM category_sets
+      WHERE category_id = $1
+        AND set_name_id = ANY($2::int[])`,
+      [categoryId, setNameIds],
+      executor,
+    );
+  },
+
   async findByCategoryIdAndUrlName(
     categoryId: number,
     urlName: string,

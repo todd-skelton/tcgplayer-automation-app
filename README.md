@@ -33,7 +33,7 @@ Run the full development stack in Docker:
 npm run dev
 ```
 
-That starts the app on `http://localhost:5173` and Postgres on `localhost:5432`. The development stack uses `docker-compose.yml` with the explicit project name `tcgplayer-automation-dev`.
+That starts the app on `http://localhost:5173`. The development stack uses `docker-compose.yml` with the explicit project name `tcgplayer-automation-dev`, and the PostgreSQL container stays internal to the Docker network so `npm run dev` does not depend on host port `5432` being free.
 
 Useful Docker-first development commands:
 
@@ -42,6 +42,8 @@ npm run dev:logs
 npm run dev:down
 npm run dev:db
 ```
+
+`npm run dev:db` opens `psql` inside the running `postgres` container for the full Docker dev stack.
 
 ### Host App Fallback
 
@@ -56,7 +58,7 @@ npm run dev:host
 
 The app is available at `http://localhost:5173`.
 
-If you are using the standalone database container from `docker-compose.db.yml`, the app defaults to `localhost:5433` automatically. That compose file uses the explicit project name `tcgplayer-automation-db`, so it can run beside both the production stack and the full dev stack without sharing Docker networks.
+If you are using the standalone database container from `docker-compose.db.yml`, the app defaults to `localhost:5433` automatically. That standalone database flow is the host-accessible PostgreSQL option for development. The compose file uses the explicit project name `tcgplayer-automation-db`, so it can run beside both the production stack and the full dev stack without sharing Docker networks.
 
 ## Database Commands
 

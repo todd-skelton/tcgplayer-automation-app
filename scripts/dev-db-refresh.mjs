@@ -20,8 +20,8 @@ const targets = {
     label: "full Docker dev stack",
     dbContainerName: "tcgplayer-postgres-dev",
     appContainerName: "tcgplayer-automation-dev",
-    databaseUrl: `postgresql://${DATABASE_USER}:${DATABASE_PASSWORD}@localhost:5432/${DATABASE_NAME}`,
     ensureArgs: ["compose", "-f", "docker-compose.yml", "up", "-d", "postgres"],
+    migrateArgs: ["compose", "-f", "docker-compose.yml", "run", "--rm", "app", "node", "scripts/db-migrate.mjs"],
     startArgs: ["compose", "-f", "docker-compose.yml", "up", "-d", "app"],
   },
   db: {
@@ -530,11 +530,16 @@ async function recreateDatabase(containerName) {
   );
 }
 
-async function runMigrations(databaseUrl) {
+async function runMigrations(target) {
+  if (target.migrateArgs) {
+    await run("docker", target.migrateArgs, { stdio: "inherit" });
+    return;
+  }
+
   await runNodeScript(path.resolve("scripts/db-migrate.mjs"), {
     env: {
       ...process.env,
-      DATABASE_URL: databaseUrl,
+      DATABASE_URL: target.databaseUrl,
     },
   });
 }
@@ -640,7 +645,7 @@ async function main() {
     await recreateDatabase(target.dbContainerName);
 
     console.log("Applying local schema migrations to the fresh target database...");
-    await runMigrations(target.databaseUrl);
+    await runMigrations(target);
 
     console.log(`Preparing a data-only restore list at ${restoreListPath}...`);
     const archiveList = await getRestoreArchiveList(prodDumpPath);
