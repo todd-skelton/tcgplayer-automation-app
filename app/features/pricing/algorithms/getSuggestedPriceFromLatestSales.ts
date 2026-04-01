@@ -8,15 +8,10 @@ import type { Condition } from "../../../integrations/tcgplayer/types/Condition"
 import type { ListingData } from "../services/supplyAnalysisService";
 import { SupplyAnalysisService } from "../services/supplyAnalysisService";
 import { categoryFiltersRepository } from "~/core/db";
+import { INVENTORY_CONDITION_ORDER } from "../../../core/utils/conditionOrder";
 
 // Define condition ordering for Zipf model (from best to worst condition)
-const CONDITION_ORDER: Condition[] = [
-  "Near Mint",
-  "Lightly Played",
-  "Moderately Played",
-  "Heavily Played",
-  "Damaged",
-];
+const CONDITION_ORDER: Condition[] = INVENTORY_CONDITION_ORDER;
 
 // Return sale price per unit, including shipping when the base price meets the $5 threshold
 function getEffectiveSalePrice(sale: Sale): number {

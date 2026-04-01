@@ -5,6 +5,11 @@ import {
   Paper,
   Button,
   Stack,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -18,6 +23,10 @@ import {
   type InventoryFiltersRef,
 } from "../components/InventoryFilters";
 import { InventoryEntryTable } from "../components/InventoryEntryTable";
+import {
+  INVENTORY_CONDITION_ORDER,
+  type InventorySelectableCondition,
+} from "../../../core/utils/conditionOrder";
 
 export default function InventoryManagerRoute() {
   const navigate = useNavigate();
@@ -31,6 +40,7 @@ export default function InventoryManagerRoute() {
     allSetsSearchTerm,
     sealedFilter,
     selectedLanguages,
+    selectedCondition,
     loadProductLines,
     loadSets,
     loadSkusByCardNumber,
@@ -42,6 +52,8 @@ export default function InventoryManagerRoute() {
     setSearchScope,
     toggleSealedFilter,
     setSelectedLanguages,
+    setSelectedCondition,
+    cycleSelectedCondition,
     getFilteredSkus,
   } = useInventoryProcessor();
 
@@ -93,6 +105,25 @@ export default function InventoryManagerRoute() {
   };
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) {
+      return;
+    }
+
+    const target = event.target;
+    const isEditableTarget =
+      target instanceof HTMLElement &&
+      Boolean(
+        target.closest(
+          'input, textarea, select, [contenteditable="true"], [role="combobox"]'
+        )
+      );
+
+    if (!isEditableTarget && (event.key === "." || event.key === " ")) {
+      event.preventDefault();
+      cycleSelectedCondition();
+      return;
+    }
+
     if (event.key === "PageUp" && filtersRef.current) {
       event.preventDefault();
       filtersRef.current.navigateSet("previous");
@@ -100,7 +131,7 @@ export default function InventoryManagerRoute() {
       event.preventDefault();
       filtersRef.current.navigateSet("next");
     }
-  }, []);
+  }, [cycleSelectedCondition]);
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
@@ -145,12 +176,46 @@ export default function InventoryManagerRoute() {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              gap: 2,
+              flexWrap: "wrap",
               mb: 2,
             }}
           >
             <Typography variant="h6">Add New Inventory</Typography>
-            {pendingInventory.length > 0 && (
-              <Stack direction="row" spacing={2} alignItems="center">
+            <Stack
+              direction="row"
+              spacing={2}
+              alignItems="center"
+              sx={{ flexWrap: "wrap", justifyContent: "flex-end" }}
+            >
+              <FormControl size="small" sx={{ minWidth: 220 }}>
+                <InputLabel id="inventory-condition-label">
+                  Entry Condition
+                </InputLabel>
+                <Select
+                  labelId="inventory-condition-label"
+                  value={selectedCondition}
+                  label="Entry Condition"
+                  onChange={(event) =>
+                    setSelectedCondition(
+                      event.target.value as InventorySelectableCondition
+                    )
+                  }
+                >
+                  {INVENTORY_CONDITION_ORDER.map((condition) => (
+                    <MenuItem key={condition} value={condition}>
+                      {condition}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Chip
+                label="Shortcut: . or Space"
+                variant="outlined"
+                color="info"
+              />
+              {pendingInventory.length > 0 && (
+                <Stack direction="row" spacing={2} alignItems="center">
                 <Typography variant="body2" color="primary">
                   {getPendingTotal()} live items across {pendingInventory.length} SKUs
                 </Typography>
@@ -172,8 +237,9 @@ export default function InventoryManagerRoute() {
                 >
                   Clear Live Queue
                 </Button>
-              </Stack>
-            )}
+                </Stack>
+              )}
+            </Stack>
           </Box>
 
           <InventoryEntryTable
@@ -182,6 +248,7 @@ export default function InventoryManagerRoute() {
             onUpdateQuantity={updatePendingInventory}
             searchScope={searchScope}
             allSetsSearchTerm={allSetsSearchTerm}
+            selectedCondition={selectedCondition}
             onAllSetsSearch={(cardNumber) => {
               if (selectedProductLineId) {
                 loadSkusByCardNumber(cardNumber, selectedProductLineId);

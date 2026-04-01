@@ -6,6 +6,10 @@ import type { ProductLine } from "../../../shared/data-types/productLine";
 import type { CategorySet } from "../../../shared/data-types/categorySet";
 import type { Sku } from "../../../shared/data-types/sku";
 import { useProcessorBase } from "../../file-upload/hooks/useProcessorBase";
+import {
+  getNextInventoryCondition,
+  type InventorySelectableCondition,
+} from "../../../core/utils/conditionOrder";
 
 // Extended interface for SKUs with display information
 interface SkuWithDisplayInfo extends Sku {
@@ -29,6 +33,7 @@ export interface InventoryProcessorState {
   allSetsSearchTerm: string;
   sealedFilter: "all" | "sealed" | "unsealed";
   selectedLanguages: string[];
+  selectedCondition: InventorySelectableCondition;
 }
 
 export interface InventoryProcessorReturn extends InventoryProcessorState {
@@ -64,6 +69,8 @@ export interface InventoryProcessorReturn extends InventoryProcessorState {
   createBatchFromPendingInventory: () => Promise<InventoryBatch>;
   toggleSealedFilter: (sealedFilter: "all" | "sealed" | "unsealed") => void;
   setSelectedLanguages: (languages: string[]) => void;
+  setSelectedCondition: (condition: InventorySelectableCondition) => void;
+  cycleSelectedCondition: () => void;
   getFilteredSkus: () => SkuWithDisplayInfo[];
   getAvailableLanguages: () => string[];
 }
@@ -82,6 +89,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     allSetsSearchTerm: "",
     sealedFilter: "unsealed", // Default to Unsealed
     selectedLanguages: [],
+    selectedCondition: "Near Mint",
   });
 
   const loadSkus = useCallback(async (setId: number, productLineId: number) => {
@@ -346,6 +354,20 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     setState((prev) => ({ ...prev, selectedLanguages: languages }));
   }, []);
 
+  const setSelectedCondition = useCallback(
+    (condition: InventorySelectableCondition) => {
+      setState((prev) => ({ ...prev, selectedCondition: condition }));
+    },
+    []
+  );
+
+  const cycleSelectedCondition = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      selectedCondition: getNextInventoryCondition(prev.selectedCondition),
+    }));
+  }, []);
+
   const getFilteredSkus = useCallback((): SkuWithDisplayInfo[] => {
     let filtered = state.skus;
 
@@ -389,6 +411,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     allSetsSearchTerm: state.allSetsSearchTerm,
     sealedFilter: state.sealedFilter,
     selectedLanguages: state.selectedLanguages || [],
+    selectedCondition: state.selectedCondition,
     ...baseProcessor,
     setError: baseProcessor.setError,
     setWarning: baseProcessor.setWarning,
@@ -406,6 +429,8 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     createBatchFromPendingInventory,
     toggleSealedFilter,
     setSelectedLanguages,
+    setSelectedCondition,
+    cycleSelectedCondition,
     getFilteredSkus,
     getAvailableLanguages,
   };
