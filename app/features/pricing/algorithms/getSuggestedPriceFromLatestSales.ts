@@ -193,7 +193,11 @@ export async function getSuggestedPriceFromLatestSales(
   usedCrossConditionAnalysis?: boolean;
   conditionMultipliers?: Map<Condition, number>;
 }> {
-  const { halfLifeDays = 7, percentile = 80 } = config;
+  const {
+    halfLifeDays = 7,
+    percentile = 80,
+    additionalPercentiles = [],
+  } = config;
 
   // Fetch category filter for this SKU's productLineId (which is used as categoryId)
   const categoryFilter = await categoryFiltersRepository.findByCategoryId(
@@ -296,6 +300,7 @@ export async function getSuggestedPriceFromLatestSales(
   const result = getSuggestedPriceFromSales(adjustedSales, {
     halfLifeDays: dynamicHalfLife,
     percentile,
+    additionalPercentiles,
     listings: config.enableSupplyAnalysis ? listings : undefined,
     supplyAnalysisConfig: config.supplyAnalysisConfig,
   });
@@ -311,6 +316,7 @@ export async function getSuggestedPriceFromLatestSales(
 export interface LatestSalesPriceConfig {
   halfLifeDays?: number; // for time decay
   percentile?: number; // for percentile selection
+  additionalPercentiles?: number[];
   enableSupplyAnalysis?: boolean; // Enable market-adjusted time to sell calculations
   supplyAnalysisConfig?: {
     maxListingsPerSku?: number; // Performance limit (default 200)
@@ -540,6 +546,7 @@ export function getSuggestedPriceFromSales(
   sales: { price: number; quantity: number; timestamp: number }[],
   options: {
     percentile?: number;
+    additionalPercentiles?: number[];
     halfLifeDays?: number;
     listings?: ListingData[];
     supplyAnalysisConfig?: {
@@ -557,20 +564,23 @@ export function getSuggestedPriceFromSales(
   listingsCount?: number; // Number of listings used for the selected percentile estimated calculation
   percentiles: PercentileData[];
 } {
-  const { percentile = 80, listings, supplyAnalysisConfig } = options;
+  const {
+    percentile = 80,
+    additionalPercentiles = [],
+    listings,
+    supplyAnalysisConfig,
+  } = options;
 
   // Use dynamic half-life if not provided
   const halfLifeDays = options.halfLifeDays || calculateDynamicHalfLife(sales);
 
   // Create percentiles array that includes the custom percentile
   const standardPercentiles = [10, 20, 30, 40, 50, 60, 70, 80, 90];
-  const percentilesToCalculate = [...standardPercentiles];
-
-  // Add custom percentile if it's not already in the standard set
-  if (!standardPercentiles.includes(percentile)) {
-    percentilesToCalculate.push(percentile);
-    percentilesToCalculate.sort((a, b) => a - b); // Keep sorted
-  }
+  const percentilesToCalculate = [...new Set([
+    ...standardPercentiles,
+    percentile,
+    ...additionalPercentiles,
+  ])].sort((a, b) => a - b);
 
   const percentiles = getTimeDecayedPercentileWeightedSuggestedPrice(sales, {
     halfLifeDays,

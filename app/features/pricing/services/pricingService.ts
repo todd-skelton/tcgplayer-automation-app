@@ -53,6 +53,7 @@ export const calculateMarketplacePrice = (
 export const getSuggestedPrice = async (
   tcgplayerId: string,
   percentile: number,
+  additionalPercentiles?: number[],
   enableSupplyAnalysis?: boolean,
   supplyAnalysisConfig?: {
     maxListingsPerSku?: number;
@@ -69,6 +70,7 @@ export const getSuggestedPrice = async (
       body: JSON.stringify({
         tcgplayerId,
         percentile,
+        additionalPercentiles,
         enableSupplyAnalysis,
         supplyAnalysisConfig,
         productLineId,

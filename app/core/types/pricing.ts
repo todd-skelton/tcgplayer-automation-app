@@ -137,6 +137,7 @@ export interface SuggestedPriceResult {
 export interface SuggestedPriceResolverInput {
   tcgplayerId: string;
   percentile: number;
+  additionalPercentiles?: number[];
   enableSupplyAnalysis?: boolean;
   supplyAnalysisConfig?: {
     maxListingsPerSku?: number;

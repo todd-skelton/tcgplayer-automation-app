@@ -8,6 +8,7 @@ import { getSuggestedPriceFromLatestSales } from "../algorithms/getSuggestedPric
 export async function resolveSuggestedPrice({
   tcgplayerId,
   percentile = 65,
+  additionalPercentiles = [],
   enableSupplyAnalysis = false,
   supplyAnalysisConfig = {},
   productLineId,
@@ -47,6 +48,7 @@ export async function resolveSuggestedPrice({
 
   const algorithmResult = await getSuggestedPriceFromLatestSales(sku, {
     percentile,
+    additionalPercentiles,
     enableSupplyAnalysis,
     supplyAnalysisConfig,
   });

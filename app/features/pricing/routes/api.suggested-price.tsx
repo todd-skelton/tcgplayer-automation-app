@@ -13,6 +13,7 @@ export async function action({ request }: { request: Request }) {
       tcgplayerId,
       productLineId,
       percentile = 65,
+      additionalPercentiles = [],
       enableSupplyAnalysis = false,
       supplyAnalysisConfig = {},
     } = body;
@@ -29,6 +30,7 @@ export async function action({ request }: { request: Request }) {
       tcgplayerId,
       productLineId,
       percentile,
+      additionalPercentiles,
       enableSupplyAnalysis,
       supplyAnalysisConfig,
     });

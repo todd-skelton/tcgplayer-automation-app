@@ -47,6 +47,7 @@ function getDefaultSuggestedPriceResolver(): SuggestedPriceResolver {
   return async ({
     tcgplayerId,
     percentile,
+    additionalPercentiles,
     enableSupplyAnalysis,
     supplyAnalysisConfig,
     productLineId,
@@ -54,6 +55,7 @@ function getDefaultSuggestedPriceResolver(): SuggestedPriceResolver {
     getSuggestedPrice(
       tcgplayerId,
       percentile,
+      additionalPercentiles,
       enableSupplyAnalysis,
       supplyAnalysisConfig,
       productLineId,
@@ -89,6 +91,7 @@ export class PricingCalculator {
       salesCount?: number; // Number of sales used for historical calculation
       quantity: number;
     }> = [];
+    const batchPercentiles = this.getBatchPercentiles(config);
 
     // Initialize progress
     config.onProgress?.({
@@ -169,6 +172,9 @@ export class PricingCalculator {
         const result = await suggestedPriceResolver({
           tcgplayerId: pricerSku.sku.toString(),
           percentile: effectivePercentile,
+          additionalPercentiles: batchPercentiles.filter(
+            (percentile) => percentile !== effectivePercentile,
+          ),
           enableSupplyAnalysis: config.enableSupplyAnalysis,
           supplyAnalysisConfig: config.supplyAnalysisConfig,
           productLineId: pricerSku.productLineId,
@@ -271,6 +277,27 @@ export class PricingCalculator {
       },
       aggregatedPercentiles,
     };
+  }
+
+  private getBatchPercentiles(config: PricingConfig): number[] {
+    const percentiles = new Set<number>([config.percentile]);
+
+    const productLinePricingConfig = config.productLinePricingConfig;
+    if (!productLinePricingConfig) {
+      return [...percentiles].sort((a, b) => a - b);
+    }
+
+    percentiles.add(productLinePricingConfig.defaultPercentile);
+
+    for (const settings of Object.values(
+      productLinePricingConfig.productLineSettings,
+    )) {
+      if (!settings.skip) {
+        percentiles.add(settings.percentile);
+      }
+    }
+
+    return [...percentiles].sort((a, b) => a - b);
   }
 
   private calculateAggregatedPercentiles(
