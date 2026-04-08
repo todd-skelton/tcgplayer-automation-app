@@ -62,6 +62,72 @@ export default function InventoryManagerRoute() {
   const [isCreatingBatch, setIsCreatingBatch] = React.useState(false);
   const filtersRef = useRef<InventoryFiltersRef>(null);
 
+  const preserveFocusAcrossConditionChange = useCallback(
+    (changeCondition: () => void) => {
+      const activeElement =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      const focusId = activeElement?.dataset.inventoryFocusId ?? null;
+      const selectionSnapshot =
+        activeElement instanceof HTMLInputElement ||
+        activeElement instanceof HTMLTextAreaElement
+          ? {
+              start: activeElement.selectionStart,
+              end: activeElement.selectionEnd,
+              direction: activeElement.selectionDirection,
+            }
+          : null;
+
+      changeCondition();
+
+      window.requestAnimationFrame(() => {
+        const nextFocusTarget =
+          focusId === null
+            ? activeElement
+            : Array.from(
+                document.querySelectorAll<HTMLElement>(
+                  "[data-inventory-focus-id]",
+                ),
+              ).find(
+                (element) => element.dataset.inventoryFocusId === focusId,
+              ) ?? activeElement;
+
+        if (
+          !(nextFocusTarget instanceof HTMLElement) ||
+          !nextFocusTarget.isConnected
+        ) {
+          return;
+        }
+
+        nextFocusTarget.focus({ preventScroll: true });
+
+        if (
+          selectionSnapshot &&
+          (nextFocusTarget instanceof HTMLInputElement ||
+            nextFocusTarget instanceof HTMLTextAreaElement)
+        ) {
+          const maxSelectionIndex = nextFocusTarget.value.length;
+          const start = Math.max(
+            0,
+            Math.min(selectionSnapshot.start ?? 0, maxSelectionIndex),
+          );
+          const end = Math.max(
+            0,
+            Math.min(selectionSnapshot.end ?? start, maxSelectionIndex),
+          );
+
+          nextFocusTarget.setSelectionRange(
+            start,
+            end,
+            selectionSnapshot.direction ?? "none",
+          );
+        }
+      });
+    },
+    [],
+  );
+
   useEffect(() => {
     loadProductLines();
     loadPendingInventory();
@@ -105,31 +171,38 @@ export default function InventoryManagerRoute() {
     return pendingInventory.reduce((sum, entry) => sum + entry.quantity, 0);
   };
 
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (event.altKey || event.metaKey) {
-      return;
-    }
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.altKey || event.metaKey) {
+        return;
+      }
 
-    if (event.ctrlKey && event.key === "ArrowUp") {
-      event.preventDefault();
-      selectPreviousCondition();
-      return;
-    }
+      if (event.ctrlKey && event.key === "ArrowUp") {
+        event.preventDefault();
+        preserveFocusAcrossConditionChange(selectPreviousCondition);
+        return;
+      }
 
-    if (event.ctrlKey && event.key === "ArrowDown") {
-      event.preventDefault();
-      selectNextCondition();
-      return;
-    }
+      if (event.ctrlKey && event.key === "ArrowDown") {
+        event.preventDefault();
+        preserveFocusAcrossConditionChange(selectNextCondition);
+        return;
+      }
 
-    if (event.key === "PageUp" && filtersRef.current) {
-      event.preventDefault();
-      filtersRef.current.navigateSet("previous");
-    } else if (event.key === "PageDown" && filtersRef.current) {
-      event.preventDefault();
-      filtersRef.current.navigateSet("next");
-    }
-  }, [selectNextCondition, selectPreviousCondition]);
+      if (event.key === "PageUp" && filtersRef.current) {
+        event.preventDefault();
+        filtersRef.current.navigateSet("previous");
+      } else if (event.key === "PageDown" && filtersRef.current) {
+        event.preventDefault();
+        filtersRef.current.navigateSet("next");
+      }
+    },
+    [
+      preserveFocusAcrossConditionChange,
+      selectNextCondition,
+      selectPreviousCondition,
+    ],
+  );
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
@@ -196,7 +269,7 @@ export default function InventoryManagerRoute() {
                   label="Entry Condition"
                   onChange={(event) =>
                     setSelectedCondition(
-                      event.target.value as InventorySelectableCondition
+                      event.target.value as InventorySelectableCondition,
                     )
                   }
                 >
@@ -214,27 +287,28 @@ export default function InventoryManagerRoute() {
               />
               {pendingInventory.length > 0 && (
                 <Stack direction="row" spacing={2} alignItems="center">
-                <Typography variant="body2" color="primary">
-                  {getPendingTotal()} live items across {pendingInventory.length} SKUs
-                </Typography>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  size="small"
-                  onClick={() => void handleCreateBatch()}
-                  disabled={isCreatingBatch}
-                >
-                  {isCreatingBatch ? "Creating Batch..." : "Process & Price"}
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  onClick={handleClearPendingInventory}
-                  size="small"
-                  disabled={isCreatingBatch}
-                >
-                  Clear Live Queue
-                </Button>
+                  <Typography variant="body2" color="primary">
+                    {getPendingTotal()} live items across{" "}
+                    {pendingInventory.length} SKUs
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    size="small"
+                    onClick={() => void handleCreateBatch()}
+                    disabled={isCreatingBatch}
+                  >
+                    {isCreatingBatch ? "Creating Batch..." : "Process & Price"}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    onClick={handleClearPendingInventory}
+                    size="small"
+                    disabled={isCreatingBatch}
+                  >
+                    Clear Live Queue
+                  </Button>
                 </Stack>
               )}
             </Stack>
@@ -247,6 +321,12 @@ export default function InventoryManagerRoute() {
             searchScope={searchScope}
             allSetsSearchTerm={allSetsSearchTerm}
             selectedCondition={selectedCondition}
+            onSelectPreviousCondition={() =>
+              preserveFocusAcrossConditionChange(selectPreviousCondition)
+            }
+            onSelectNextCondition={() =>
+              preserveFocusAcrossConditionChange(selectNextCondition)
+            }
             onAllSetsSearch={async (cardNumber) => {
               if (selectedProductLineId) {
                 await loadSkusByCardNumber(cardNumber, selectedProductLineId);
