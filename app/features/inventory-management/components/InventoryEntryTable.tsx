@@ -15,6 +15,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import ImageIcon from "@mui/icons-material/Image";
 import {
   type GridColDef,
+  type GridPaginationModel,
   type GridRowsProp,
   GridToolbarContainer,
   GridToolbarQuickFilter,
@@ -64,7 +65,6 @@ interface DataGridRow {
   variant: string;
   language: string;
   skus: SkuWithDisplayInfo[];
-  groupPendingTotal: number;
 }
 
 type ProductGroup = {
@@ -94,6 +94,253 @@ interface InventoryEntryTableProps {
   sealedFilter?: "all" | "sealed" | "unsealed";
 }
 
+interface ImageGridCellProps {
+  productId: number;
+  onThumbnailClick: (productId: number) => void;
+}
+
+const ImageGridCell = React.memo(({ productId, onThumbnailClick }: ImageGridCellProps) => (
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      height: "100%",
+    }}
+  >
+    <Tooltip title="View product image">
+      <IconButton
+        size="small"
+        onClick={() => onThumbnailClick(productId)}
+        sx={{
+          color: "primary.main",
+          "&:hover": {
+            color: "primary.dark",
+          },
+        }}
+      >
+        <ImageIcon />
+      </IconButton>
+    </Tooltip>
+  </Box>
+));
+
+interface SetGridCellProps {
+  setName: string;
+  setReleaseYear?: string | null;
+  activeSku: SkuWithDisplayInfo | null;
+}
+
+const SetGridCell = React.memo(
+  ({ setName, setReleaseYear, activeSku }: SetGridCellProps) => (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        height: "100%",
+        width: "100%",
+      }}
+    >
+      <Chip
+        label={setReleaseYear ? `${setName} - ${setReleaseYear}` : setName}
+        color={activeSku ? getConditionColor(activeSku.condition) : "default"}
+        size="small"
+        variant="outlined"
+        sx={{
+          maxWidth: "none",
+          "& .MuiChip-label": {
+            display: "block",
+            whiteSpace: "nowrap",
+          },
+        }}
+      />
+    </Box>
+  )
+);
+
+interface SkuGridCellProps {
+  activeSku: SkuWithDisplayInfo | null;
+  selectedCondition: InventorySelectableCondition;
+  conditionLabel: string;
+}
+
+const SkuGridCell = React.memo(
+  ({ activeSku, selectedCondition, conditionLabel }: SkuGridCellProps) => (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        height: "100%",
+        width: "100%",
+      }}
+    >
+      <Chip
+        label={conditionLabel}
+        color={activeSku ? getConditionColor(activeSku.condition) : "warning"}
+        size="small"
+        variant="outlined"
+        sx={{
+          maxWidth: "none",
+          fontStyle:
+            activeSku &&
+            (activeSku.variant?.toLowerCase().includes("reverse") ||
+              activeSku.variant?.toLowerCase().includes("holo"))
+              ? "italic"
+              : "normal",
+          fontWeight:
+            activeSku &&
+            (activeSku.variant?.toLowerCase().includes("1st") ||
+              activeSku.variant?.toLowerCase().includes("first"))
+              ? "bold"
+              : "normal",
+          opacity: activeSku ? 1 : 0.75,
+          "& .MuiChip-label": {
+            display: "block",
+            whiteSpace: "nowrap",
+          },
+        }}
+      />
+    </Box>
+  ),
+  (previousProps, nextProps) =>
+    previousProps.activeSku === nextProps.activeSku &&
+    previousProps.selectedCondition === nextProps.selectedCondition &&
+    previousProps.conditionLabel === nextProps.conditionLabel
+);
+
+interface ProductNameGridCellProps {
+  value: string;
+  activeSku: SkuWithDisplayInfo | null;
+}
+
+const ProductNameGridCell = React.memo(
+  ({ value, activeSku }: ProductNameGridCellProps) => (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 1,
+        height: "100%",
+        flexWrap: "wrap",
+      }}
+    >
+      <Typography
+        variant="body2"
+        sx={{
+          fontWeight: "medium",
+          color: activeSku
+            ? `${getConditionColor(activeSku.condition)}.main`
+            : "text.primary",
+        }}
+      >
+        {value}
+      </Typography>
+    </Box>
+  )
+);
+
+interface QuantityGridCellProps {
+  activeSku: SkuWithDisplayInfo | null;
+  currentQty: number;
+  isFirstRow: boolean;
+  selectedCondition: InventorySelectableCondition;
+  firstPlusButtonRef: React.RefObject<HTMLButtonElement | null>;
+  onQuantityChange: (sku: number, value: string) => void;
+  onQuickAdd: (
+    activeSku: SkuWithDisplayInfo | null,
+    amount: number,
+    returnFocus?: boolean
+  ) => void;
+  onPlusButtonKeyDown: (
+    event: React.KeyboardEvent,
+    activeSku: SkuWithDisplayInfo | null
+  ) => void;
+}
+
+const QuantityGridCell = React.memo(
+  ({
+    activeSku,
+    currentQty,
+    isFirstRow,
+    selectedCondition,
+    firstPlusButtonRef,
+    onQuantityChange,
+    onQuickAdd,
+    onPlusButtonKeyDown,
+  }: QuantityGridCellProps) => {
+    const [displayValue, setDisplayValue] = useState(currentQty.toString());
+
+    useEffect(() => {
+      setDisplayValue(currentQty.toString());
+    }, [activeSku?.sku, currentQty]);
+
+    if (!activeSku) {
+      return (
+        <Typography variant="body2" color="text.secondary">
+          {`${selectedCondition} unavailable`}
+        </Typography>
+      );
+    }
+
+    return (
+      <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+        <Button
+          size="small"
+          onClick={() => {
+            const nextQty = Math.max(0, currentQty - 1);
+            setDisplayValue(nextQty.toString());
+            onQuickAdd(activeSku, -1);
+          }}
+          color="secondary"
+          variant="outlined"
+          disabled={currentQty <= 0}
+          sx={{ minWidth: "32px", padding: "4px" }}
+          tabIndex={-1}
+        >
+          -
+        </Button>
+        <TextField
+          size="small"
+          value={displayValue}
+          onChange={(event) => {
+            const nextValue = event.target.value;
+            setDisplayValue(nextValue);
+            onQuantityChange(activeSku.sku, nextValue);
+          }}
+          inputProps={{
+            min: 0,
+            style: { textAlign: "center" },
+          }}
+          sx={{ width: "56px" }}
+        />
+        <Button
+          size="small"
+          onClick={() => {
+            const nextQty = currentQty + 1;
+            setDisplayValue(nextQty.toString());
+            onQuickAdd(activeSku, 1);
+          }}
+          onKeyDown={(event) => onPlusButtonKeyDown(event, activeSku)}
+          color="primary"
+          variant="outlined"
+          sx={{ minWidth: "32px", padding: "4px" }}
+          ref={isFirstRow ? firstPlusButtonRef : undefined}
+        >
+          +
+        </Button>
+      </Box>
+    );
+  },
+  (previousProps, nextProps) =>
+    previousProps.activeSku === nextProps.activeSku &&
+    previousProps.currentQty === nextProps.currentQty &&
+    previousProps.isFirstRow === nextProps.isFirstRow &&
+    previousProps.selectedCondition === nextProps.selectedCondition &&
+    previousProps.onQuantityChange === nextProps.onQuantityChange &&
+    previousProps.onQuickAdd === nextProps.onQuickAdd &&
+    previousProps.onPlusButtonKeyDown === nextProps.onPlusButtonKeyDown
+);
+
 export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.memo(
   ({
     skus,
@@ -105,7 +352,6 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
     onAllSetsSearch,
     sealedFilter = "all",
   }) => {
-    const [quantities, setQuantities] = useState<{ [sku: number]: string }>({});
     const [productNameFilter, setProductNameFilter] = useState<string>("");
     const [submittedProductNameFilter, setSubmittedProductNameFilter] =
       useState<string>("");
@@ -117,6 +363,19 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
     const [selectedProductId, setSelectedProductId] = useState<number | null>(
       null
     );
+    const focusRequestCounterRef = useRef(0);
+    const [pendingFocusRequestId, setPendingFocusRequestId] = useState<number | null>(
+      null
+    );
+    const [completedFocusRequestId, setCompletedFocusRequestId] = useState<
+      number | null
+    >(null);
+    const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
+      page: 0,
+      pageSize: 100,
+    });
+    const autosizeFrameRef = useRef<number | null>(null);
+    const pendingInventoryRef = useRef(pendingInventory);
 
     const clearFocusRetry = useCallback(() => {
       if (focusRetryTimeoutRef.current !== null) {
@@ -124,6 +383,17 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
         focusRetryTimeoutRef.current = null;
       }
     }, []);
+
+    const clearScheduledAutosize = useCallback(() => {
+      if (autosizeFrameRef.current !== null) {
+        window.cancelAnimationFrame(autosizeFrameRef.current);
+        autosizeFrameRef.current = null;
+      }
+    }, []);
+
+    useEffect(() => {
+      pendingInventoryRef.current = pendingInventory;
+    }, [pendingInventory]);
 
     const focusFirstQuantityPlusButton = useCallback(
       (remainingAttempts = 6) => {
@@ -155,19 +425,38 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
 
     const handleSearchSubmit = useCallback(() => {
       const trimmedFilter = productNameFilter.trim();
+      const shouldFocus =
+        searchScope === "set" || trimmedFilter.length > 0;
+      const nextFocusRequestId = shouldFocus
+        ? focusRequestCounterRef.current + 1
+        : null;
+
+      if (nextFocusRequestId !== null) {
+        focusRequestCounterRef.current = nextFocusRequestId;
+        setPendingFocusRequestId(nextFocusRequestId);
+        setCompletedFocusRequestId(null);
+      } else {
+        setPendingFocusRequestId(null);
+        setCompletedFocusRequestId(null);
+        clearFocusRetry();
+      }
+
       setSubmittedProductNameFilter(trimmedFilter);
 
       if (searchScope === "allSets") {
         void onAllSetsSearch(trimmedFilter).then(() => {
-          if (trimmedFilter) {
-            focusFirstQuantityPlusButton();
+          if (nextFocusRequestId !== null) {
+            setCompletedFocusRequestId(nextFocusRequestId);
           }
         });
         return;
       }
 
-      focusFirstQuantityPlusButton();
+      if (nextFocusRequestId !== null) {
+        setCompletedFocusRequestId(nextFocusRequestId);
+      }
     }, [
+      clearFocusRetry,
       focusFirstQuantityPlusButton,
       onAllSetsSearch,
       productNameFilter,
@@ -261,11 +550,6 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
 
     const dataGridRows: GridRowsProp<DataGridRow> = useMemo(() => {
       return groupedSkus.map((group) => {
-        const groupPendingTotal = group.skus.reduce(
-          (sum, sku) => sum + getPendingQuantity(pendingInventory, sku.sku),
-          0
-        );
-
         return {
           id: `${group.productId}-${group.variant}-${group.language}`,
           productId: group.productId,
@@ -276,21 +560,53 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
           variant: group.variant,
           language: group.language,
           skus: group.skus,
-          groupPendingTotal,
         };
       });
-    }, [groupedSkus, pendingInventory]);
+    }, [groupedSkus]);
 
     useEffect(() => {
+      setPendingFocusRequestId(null);
+      setCompletedFocusRequestId(null);
+      clearFocusRetry();
       setProductNameFilter("");
       setSubmittedProductNameFilter("");
-    }, [searchScope]);
+    }, [clearFocusRetry, searchScope]);
+
+    useEffect(() => {
+      if (
+        pendingFocusRequestId === null ||
+        completedFocusRequestId !== pendingFocusRequestId
+      ) {
+        return;
+      }
+
+      if (paginationModel.page !== 0) {
+        return;
+      }
+
+      if (dataGridRows.length === 0) {
+        setPendingFocusRequestId(null);
+        setCompletedFocusRequestId(null);
+        return;
+      }
+
+      focusFirstQuantityPlusButton();
+      setPendingFocusRequestId(null);
+      setCompletedFocusRequestId(null);
+    }, [
+      completedFocusRequestId,
+      dataGridRows.length,
+      focusFirstQuantityPlusButton,
+      paginationModel.page,
+      pendingFocusRequestId,
+    ]);
 
     useEffect(() => {
       return () => {
         clearFocusRetry();
+        clearScheduledAutosize();
       };
-    }, [clearFocusRetry]);
+    }, [clearFocusRetry, clearScheduledAutosize]);
 
     const createSkuDisplayName = useCallback((sku: SkuWithDisplayInfo): string => {
       const parts: string[] = [sku.condition];
@@ -317,26 +633,39 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
       [selectedCondition]
     );
 
-    const getSkuMetadata = useCallback(
-      (sku: number) => {
-        const skuData = skus.find((availableSku) => availableSku.sku === sku);
-        if (!skuData) {
-          throw new Error(`SKU ${sku} not found in available skus`);
-        }
-
-        return {
-          productLineId: skuData.productLineId,
-          setId: skuData.setId,
-          productId: skuData.productId,
-        };
-      },
+    const skuMetadataBySku = useMemo(
+      () =>
+        new Map(
+          skus.map((sku) => [
+            sku.sku,
+            {
+              productLineId: sku.productLineId,
+              setId: sku.setId,
+              productId: sku.productId,
+            },
+          ])
+        ),
       [skus]
     );
 
+    const getSkuMetadata = useCallback(
+      (sku: number) => {
+        const metadata = skuMetadataBySku.get(sku);
+        if (!metadata) {
+          throw new Error(`SKU ${sku} not found in available skus`);
+        }
+
+        return metadata;
+      },
+      [skuMetadataBySku]
+    );
+
+    const getCurrentPendingQuantity = useCallback((sku: number) => {
+      return getPendingQuantity(pendingInventoryRef.current, sku);
+    }, []);
+
     const handleQuantityChange = useCallback(
       (sku: number, value: string) => {
-        setQuantities((prev) => ({ ...prev, [sku]: value }));
-
         const numValue = parseInt(value) || 0;
 
         try {
@@ -355,13 +684,8 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
           return;
         }
 
-        const currentQty = getPendingQuantity(pendingInventory, activeSku.sku);
+        const currentQty = getCurrentPendingQuantity(activeSku.sku);
         const newQty = Math.max(0, currentQty + amount);
-
-        setQuantities((prev) => ({
-          ...prev,
-          [activeSku.sku]: newQty.toString(),
-        }));
 
         try {
           const metadata = getSkuMetadata(activeSku.sku);
@@ -379,7 +703,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
           }, 0);
         }
       },
-      [pendingInventory, onUpdateQuantity, getSkuMetadata]
+      [getCurrentPendingQuantity, onUpdateQuantity, getSkuMetadata]
     );
 
     const handlePlusButtonKeyDown = useCallback(
@@ -449,6 +773,18 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
       []
     );
 
+    const scheduleAutosize = useCallback(() => {
+      clearScheduledAutosize();
+
+      autosizeFrameRef.current = window.requestAnimationFrame(() => {
+        autosizeFrameRef.current = null;
+        void apiRef.current?.autosizeColumns({
+          ...autosizeOptions,
+          columns: autosizeColumnFields,
+        });
+      });
+    }, [apiRef, autosizeColumnFields, autosizeOptions, clearScheduledAutosize]);
+
     const columns: GridColDef<DataGridRow>[] = useMemo(() => {
       const baseColumns: GridColDef<DataGridRow>[] = [
         {
@@ -457,33 +793,12 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
           width: 60,
           sortable: false,
           filterable: false,
-          renderCell: (params) => {
-            return (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "100%",
-                }}
-              >
-                <Tooltip title="View product image">
-                  <IconButton
-                    size="small"
-                    onClick={() => handleThumbnailClick(params.row.productId)}
-                    sx={{
-                      color: "primary.main",
-                      "&:hover": {
-                        color: "primary.dark",
-                      },
-                    }}
-                  >
-                    <ImageIcon />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            );
-          },
+          renderCell: (params) => (
+            <ImageGridCell
+              productId={params.row.productId}
+              onThumbnailClick={handleThumbnailClick}
+            />
+          ),
         },
       ];
 
@@ -497,32 +812,11 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
           renderCell: (params) => {
             const activeSku = getActiveSku(params.row.skus);
             return (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  height: "100%",
-                  width: "100%",
-                }}
-              >
-                <Chip
-                  label={
-                    params.row.setReleaseYear
-                      ? `${params.row.setName} - ${params.row.setReleaseYear}`
-                      : params.row.setName
-                  }
-                  color={activeSku ? getConditionColor(activeSku.condition) : "default"}
-                  size="small"
-                  variant="outlined"
-                  sx={{
-                    maxWidth: "none",
-                    "& .MuiChip-label": {
-                      display: "block",
-                      whiteSpace: "nowrap",
-                    },
-                  }}
-                />
-              </Box>
+              <SetGridCell
+                setName={params.row.setName}
+                setReleaseYear={params.row.setReleaseYear}
+                activeSku={activeSku}
+              />
             );
           },
         });
@@ -542,41 +836,11 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
               : `${selectedCondition} unavailable`;
 
             return (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  height: "100%",
-                  width: "100%",
-                }}
-              >
-                <Chip
-                  label={conditionLabel}
-                  color={activeSku ? getConditionColor(activeSku.condition) : "warning"}
-                  size="small"
-                  variant="outlined"
-                  sx={{
-                    maxWidth: "none",
-                    fontStyle:
-                      activeSku &&
-                      (activeSku.variant?.toLowerCase().includes("reverse") ||
-                        activeSku.variant?.toLowerCase().includes("holo"))
-                        ? "italic"
-                        : "normal",
-                    fontWeight:
-                      activeSku &&
-                      (activeSku.variant?.toLowerCase().includes("1st") ||
-                        activeSku.variant?.toLowerCase().includes("first"))
-                        ? "bold"
-                        : "normal",
-                    opacity: activeSku ? 1 : 0.75,
-                    "& .MuiChip-label": {
-                      display: "block",
-                      whiteSpace: "nowrap",
-                    },
-                  }}
-                />
-              </Box>
+              <SkuGridCell
+                activeSku={activeSku}
+                selectedCondition={selectedCondition}
+                conditionLabel={conditionLabel}
+              />
             );
           },
         },
@@ -586,57 +850,23 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
           width: 150,
           renderCell: (params) => {
             const activeSku = getActiveSku(params.row.skus);
-
-            if (!activeSku) {
-              return (
-                <Typography variant="body2" color="text.secondary">
-                  {`${selectedCondition} unavailable`}
-                </Typography>
-              );
-            }
-
-            const currentQty = getPendingQuantity(pendingInventory, activeSku.sku);
-            const displayValue = quantities[activeSku.sku] ?? currentQty.toString();
+            const currentQty = activeSku
+              ? getCurrentPendingQuantity(activeSku.sku)
+              : 0;
             const isFirstRow =
               params.api.getRowIndexRelativeToVisibleRows(params.id) === 0;
 
             return (
-              <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                <Button
-                  size="small"
-                  onClick={() => handleQuickAdd(activeSku, -1)}
-                  color="secondary"
-                  variant="outlined"
-                  disabled={currentQty <= 0}
-                  sx={{ minWidth: "32px", padding: "4px" }}
-                  tabIndex={-1}
-                >
-                  -
-                </Button>
-                <TextField
-                  size="small"
-                  value={displayValue}
-                  onChange={(event) =>
-                    handleQuantityChange(activeSku.sku, event.target.value)
-                  }
-                  inputProps={{
-                    min: 0,
-                    style: { textAlign: "center" },
-                  }}
-                  sx={{ width: "56px" }}
-                />
-                <Button
-                  size="small"
-                  onClick={() => handleQuickAdd(activeSku, 1)}
-                  onKeyDown={(event) => handlePlusButtonKeyDown(event, activeSku)}
-                  color="primary"
-                  variant="outlined"
-                  sx={{ minWidth: "32px", padding: "4px" }}
-                  ref={isFirstRow ? firstPlusButtonRef : undefined}
-                >
-                  +
-                </Button>
-              </Box>
+              <QuantityGridCell
+                activeSku={activeSku}
+                currentQty={currentQty}
+                isFirstRow={isFirstRow}
+                selectedCondition={selectedCondition}
+                firstPlusButtonRef={firstPlusButtonRef}
+                onQuantityChange={handleQuantityChange}
+                onQuickAdd={handleQuickAdd}
+                onPlusButtonKeyDown={handlePlusButtonKeyDown}
+              />
             );
           },
         },
@@ -649,27 +879,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
           renderCell: (params) => {
             const activeSku = getActiveSku(params.row.skus);
             return (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  height: "100%",
-                  flexWrap: "wrap",
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontWeight: "medium",
-                    color: activeSku
-                      ? `${getConditionColor(activeSku.condition)}.main`
-                      : "text.primary",
-                  }}
-                >
-                  {params.value}
-                </Typography>
-              </Box>
+              <ProductNameGridCell value={params.value} activeSku={activeSku} />
             );
           },
         }
@@ -683,35 +893,39 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
       handleQuantityChange,
       handleQuickAdd,
       handleThumbnailClick,
-      pendingInventory,
-      quantities,
+      getCurrentPendingQuantity,
       searchScope,
       selectedCondition,
     ]);
 
     useEffect(() => {
-      const gridApi = apiRef.current;
-
-      if (!gridApi || dataGridRows.length === 0) {
+      if (paginationModel.page === 0) {
         return;
       }
 
-      const resizeHandle = window.requestAnimationFrame(() => {
-        void gridApi.autosizeColumns({
-          ...autosizeOptions,
-          columns: autosizeColumnFields,
-        });
-      });
-
-      return () => {
-        window.cancelAnimationFrame(resizeHandle);
-      };
+      setPaginationModel((current) => ({
+        ...current,
+        page: 0,
+      }));
     }, [
-      apiRef,
-      autosizeColumnFields,
-      autosizeOptions,
-      dataGridRows,
+      allSetsSearchTerm,
+      groupedSkus,
+      paginationModel.page,
+      searchScope,
+      submittedProductNameFilter,
+    ]);
+
+    useEffect(() => {
+      scheduleAutosize();
+    }, [
+      allSetsSearchTerm,
+      groupedSkus,
+      paginationModel.page,
+      paginationModel.pageSize,
+      scheduleAutosize,
+      searchScope,
       selectedCondition,
+      submittedProductNameFilter,
     ]);
 
     const hasNoSkus = skus.length === 0;
@@ -849,13 +1063,18 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
                   ...autosizeOptions,
                   columns: autosizeColumnFields,
                 }}
+                paginationModel={paginationModel}
+                onPaginationModelChange={(model: GridPaginationModel) => {
+                  setPaginationModel(model);
+                  scheduleAutosize();
+                }}
                 disableRowSelectionOnClick
                 pagination
                 pageSizeOptions={[25, 50, 100]}
                 initialState={{
                   pagination: {
                     paginationModel: {
-                      pageSize: 100,
+                      pageSize: paginationModel.pageSize,
                     },
                   },
                   filter: {
