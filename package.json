@@ -11,6 +11,7 @@
     "dev:logs": "docker compose logs -f",
     "dev:db": "docker compose exec postgres psql -U postgres -d tcgplayer_automation",
     "dev:db:refresh": "node scripts/dev-db-refresh.mjs",
+    "test": "tsx app/features/inventory-management/components/quantityKeyboard.test.ts",
     "build": "node scripts/run-with-node-options.mjs react-router build",
     "start": "node scripts/run-with-node-options.mjs react-router-serve ./build/server/index.js",
     "typecheck": "node scripts/run-with-node-options.mjs react-router typegen && node scripts/run-with-node-options.mjs tsc",

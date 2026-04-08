@@ -321,11 +321,12 @@ export default function InventoryManagerRoute() {
             searchScope={searchScope}
             allSetsSearchTerm={allSetsSearchTerm}
             selectedCondition={selectedCondition}
-            onSelectPreviousCondition={() =>
-              preserveFocusAcrossConditionChange(selectPreviousCondition)
-            }
-            onSelectNextCondition={() =>
-              preserveFocusAcrossConditionChange(selectNextCondition)
+            onChangeCondition={(direction) =>
+              preserveFocusAcrossConditionChange(
+                direction === "previous"
+                  ? selectPreviousCondition
+                  : selectNextCondition,
+              )
             }
             onAllSetsSearch={async (cardNumber) => {
               if (selectedProductLineId) {

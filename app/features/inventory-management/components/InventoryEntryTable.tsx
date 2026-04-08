@@ -40,6 +40,11 @@ import {
   getConditionSortRank,
   type InventorySelectableCondition,
 } from "../../../core/utils/conditionOrder";
+import {
+  getAdjacentVisibleQuantityRowId,
+  getQuantityKeyboardAction,
+  type QuantityNavigationDirection,
+} from "./quantityKeyboard";
 
 interface SkuWithDisplayInfo extends Sku {
   cardNumber?: string | null;
@@ -102,8 +107,7 @@ interface InventoryEntryTableProps {
   allSetsSearchTerm: string;
   selectedCondition: InventorySelectableCondition;
   onAllSetsSearch: (cardNumber: string) => Promise<void>;
-  onSelectPreviousCondition: () => void;
-  onSelectNextCondition: () => void;
+  onChangeCondition: (direction: QuantityNavigationDirection) => void;
   sealedFilter?: "all" | "sealed" | "unsealed";
 }
 
@@ -270,8 +274,7 @@ interface QuantityGridCellProps {
     rowId: GridRowId,
     direction: "previous" | "next",
   ) => void;
-  onSelectPreviousCondition: () => void;
-  onSelectNextCondition: () => void;
+  onChangeCondition: (direction: QuantityNavigationDirection) => void;
   registerQuantityInput: (
     rowId: GridRowId,
     input: HTMLInputElement | null,
@@ -288,8 +291,7 @@ const QuantityGridCell = React.memo(
     onQuickAdd,
     onFocusSearchInput,
     onFocusAdjacentQuantityInput,
-    onSelectPreviousCondition,
-    onSelectNextCondition,
+    onChangeCondition,
     registerQuantityInput,
   }: QuantityGridCellProps) => {
     const [displayValue, setDisplayValue] = useState(currentQty.toString());
@@ -350,64 +352,34 @@ const QuantityGridCell = React.memo(
         return;
       }
 
-      if (
-        event.ctrlKey &&
-        !event.altKey &&
-        !event.metaKey &&
-        event.key === "ArrowUp"
-      ) {
-        event.preventDefault();
-        event.stopPropagation();
-        onSelectPreviousCondition();
+      const action = getQuantityKeyboardAction({
+        key: event.key,
+        code: event.code,
+        ctrlKey: event.ctrlKey,
+        altKey: event.altKey,
+        metaKey: event.metaKey,
+        untouchedSinceFocus: untouchedSinceFocusRef.current,
+      });
+
+      if (action.type === "none") {
         return;
       }
 
-      if (
-        event.ctrlKey &&
-        !event.altKey &&
-        !event.metaKey &&
-        event.key === "ArrowDown"
-      ) {
-        event.preventDefault();
-        event.stopPropagation();
-        onSelectNextCondition();
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (action.type === "change-condition") {
+        onChangeCondition(action.direction);
         return;
       }
 
-      const isPlainArrowUp =
-        event.key === "ArrowUp" &&
-        !event.ctrlKey &&
-        !event.altKey &&
-        !event.metaKey;
-      if (isPlainArrowUp) {
-        event.preventDefault();
-        event.stopPropagation();
-        onFocusAdjacentQuantityInput(rowId, "previous");
+      if (action.type === "move-focus") {
+        onFocusAdjacentQuantityInput(rowId, action.direction);
         return;
       }
 
-      const isPlainArrowDown =
-        event.key === "ArrowDown" &&
-        !event.ctrlKey &&
-        !event.altKey &&
-        !event.metaKey;
-      if (isPlainArrowDown) {
-        event.preventDefault();
-        event.stopPropagation();
-        onFocusAdjacentQuantityInput(rowId, "next");
-        return;
-      }
-
-      if (
-        event.key === "Enter" &&
-        !event.ctrlKey &&
-        !event.altKey &&
-        !event.metaKey
-      ) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        if (untouchedSinceFocusRef.current) {
+      if (action.type === "submit") {
+        if (action.incrementQuantity) {
           untouchedSinceFocusRef.current = false;
           onQuickAdd(activeSku, 1, false);
         }
@@ -416,32 +388,7 @@ const QuantityGridCell = React.memo(
         return;
       }
 
-      const isPlusKey =
-        (event.key === "+" ||
-          event.key === "=" ||
-          event.code === "NumpadAdd") &&
-        !event.ctrlKey &&
-        !event.altKey &&
-        !event.metaKey;
-      if (isPlusKey) {
-        event.preventDefault();
-        event.stopPropagation();
-        applyKeyboardQuantityDelta(1);
-        return;
-      }
-
-      const isMinusKey =
-        (event.key === "-" ||
-          event.key === "_" ||
-          event.code === "NumpadSubtract") &&
-        !event.ctrlKey &&
-        !event.altKey &&
-        !event.metaKey;
-      if (isMinusKey) {
-        event.preventDefault();
-        event.stopPropagation();
-        applyKeyboardQuantityDelta(-1);
-      }
+      applyKeyboardQuantityDelta(action.amount);
     };
 
     return (
@@ -509,9 +456,7 @@ const QuantityGridCell = React.memo(
     previousProps.onFocusSearchInput === nextProps.onFocusSearchInput &&
     previousProps.onFocusAdjacentQuantityInput ===
       nextProps.onFocusAdjacentQuantityInput &&
-    previousProps.onSelectPreviousCondition ===
-      nextProps.onSelectPreviousCondition &&
-    previousProps.onSelectNextCondition === nextProps.onSelectNextCondition &&
+    previousProps.onChangeCondition === nextProps.onChangeCondition &&
     previousProps.registerQuantityInput === nextProps.registerQuantityInput,
 );
 
@@ -523,12 +468,11 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
       onUpdateQuantity,
       searchScope,
       allSetsSearchTerm,
-    selectedCondition,
-    onAllSetsSearch,
-    onSelectPreviousCondition,
-    onSelectNextCondition,
-    sealedFilter = "all",
-  }) => {
+      selectedCondition,
+      onAllSetsSearch,
+      onChangeCondition,
+      sealedFilter = "all",
+    }) => {
       const [productNameFilter, setProductNameFilter] = useState<string>("");
       const [submittedProductNameFilter, setSubmittedProductNameFilter] =
         useState<string>("");
@@ -817,21 +761,12 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
       const focusAdjacentQuantityInput = useCallback(
         (rowId: GridRowId, direction: "previous" | "next") => {
           const visibleRowIds = getVisibleQuantityRowIds();
-          const currentIndex = visibleRowIds.findIndex(
-            (visibleRowId) => visibleRowId === rowId,
+          const adjacentRowId = getAdjacentVisibleQuantityRowId(
+            visibleRowIds,
+            rowId,
+            direction,
           );
-
-          if (currentIndex === -1) {
-            return;
-          }
-
-          const targetIndex =
-            direction === "previous" ? currentIndex - 1 : currentIndex + 1;
-          if (targetIndex < 0 || targetIndex >= visibleRowIds.length) {
-            return;
-          }
-
-          focusQuantityInputByRowId(visibleRowIds[targetIndex]);
+          focusQuantityInputByRowId(adjacentRowId);
         },
         [focusQuantityInputByRowId, getVisibleQuantityRowIds],
       );
@@ -1213,12 +1148,11 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                   activeSku={activeSku}
                   currentQty={currentQty}
                   selectedCondition={selectedCondition}
-                  onQuantityChange={handleQuantityChange}
+                onQuantityChange={handleQuantityChange}
                 onQuickAdd={handleQuickAdd}
                 onFocusSearchInput={focusSearchInput}
                 onFocusAdjacentQuantityInput={focusAdjacentQuantityInput}
-                onSelectPreviousCondition={onSelectPreviousCondition}
-                onSelectNextCondition={onSelectNextCondition}
+                onChangeCondition={onChangeCondition}
                 registerQuantityInput={registerQuantityInput}
               />
             );
@@ -1252,8 +1186,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
       handleQuickAdd,
       handleThumbnailClick,
       getCurrentPendingQuantity,
-      onSelectNextCondition,
-      onSelectPreviousCondition,
+      onChangeCondition,
       registerQuantityInput,
       autosizedColumnWidths,
       searchScope,
