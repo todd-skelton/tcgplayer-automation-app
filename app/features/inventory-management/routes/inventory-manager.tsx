@@ -53,7 +53,8 @@ export default function InventoryManagerRoute() {
     toggleSealedFilter,
     setSelectedLanguages,
     setSelectedCondition,
-    cycleSelectedCondition,
+    selectPreviousCondition,
+    selectNextCondition,
     getFilteredSkus,
   } = useInventoryProcessor();
 
@@ -105,22 +106,19 @@ export default function InventoryManagerRoute() {
   };
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (event.altKey || event.ctrlKey || event.metaKey) {
+    if (event.altKey || event.metaKey) {
       return;
     }
 
-    const target = event.target;
-    const isEditableTarget =
-      target instanceof HTMLElement &&
-      Boolean(
-        target.closest(
-          'input, textarea, select, [contenteditable="true"], [role="combobox"]'
-        )
-      );
-
-    if (!isEditableTarget && (event.key === "." || event.key === " ")) {
+    if (event.ctrlKey && event.key === "ArrowUp") {
       event.preventDefault();
-      cycleSelectedCondition();
+      selectPreviousCondition();
+      return;
+    }
+
+    if (event.ctrlKey && event.key === "ArrowDown") {
+      event.preventDefault();
+      selectNextCondition();
       return;
     }
 
@@ -131,7 +129,7 @@ export default function InventoryManagerRoute() {
       event.preventDefault();
       filtersRef.current.navigateSet("next");
     }
-  }, [cycleSelectedCondition]);
+  }, [selectNextCondition, selectPreviousCondition]);
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
@@ -210,7 +208,7 @@ export default function InventoryManagerRoute() {
                 </Select>
               </FormControl>
               <Chip
-                label="Shortcut: . or Space"
+                label="Shortcut: Ctrl+Up / Ctrl+Down"
                 variant="outlined"
                 color="info"
               />

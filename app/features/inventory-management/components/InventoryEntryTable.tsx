@@ -79,6 +79,8 @@ type ProductGroup = {
   skus: SkuWithDisplayInfo[];
 };
 
+type AutosizedColumnField = "setName" | "sku";
+
 interface InventoryEntryTableProps {
   skus: SkuWithDisplayInfo[];
   pendingInventory: PendingInventoryEntry[];
@@ -370,11 +372,17 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
     const [completedFocusRequestId, setCompletedFocusRequestId] = useState<
       number | null
     >(null);
+    const [autosizedColumnWidths, setAutosizedColumnWidths] = useState<
+      Partial<Record<AutosizedColumnField, number>>
+    >({});
     const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
       page: 0,
       pageSize: 100,
     });
     const autosizeFrameRef = useRef<number | null>(null);
+    const autosizeFollowUpFrameRef = useRef<number | null>(null);
+    const autosizeInFlightRef = useRef(false);
+    const autosizeQueuedRef = useRef(false);
     const pendingInventoryRef = useRef(pendingInventory);
 
     const clearFocusRetry = useCallback(() => {
@@ -388,6 +396,11 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
       if (autosizeFrameRef.current !== null) {
         window.cancelAnimationFrame(autosizeFrameRef.current);
         autosizeFrameRef.current = null;
+      }
+
+      if (autosizeFollowUpFrameRef.current !== null) {
+        window.cancelAnimationFrame(autosizeFollowUpFrameRef.current);
+        autosizeFollowUpFrameRef.current = null;
       }
     }, []);
 
@@ -760,7 +773,8 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
     }, []);
 
     const autosizeColumnFields = useMemo(
-      () => (searchScope === "allSets" ? ["setName", "sku"] : ["sku"]),
+      (): AutosizedColumnField[] =>
+        searchScope === "allSets" ? ["setName", "sku"] : ["sku"],
       [searchScope]
     );
 
@@ -773,17 +787,105 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
       []
     );
 
-    const scheduleAutosize = useCallback(() => {
-      clearScheduledAutosize();
+    const syncAutosizedColumnWidths = useCallback(
+      (fields: AutosizedColumnField[]) => {
+        const gridApi = apiRef.current;
 
-      autosizeFrameRef.current = window.requestAnimationFrame(() => {
-        autosizeFrameRef.current = null;
-        void apiRef.current?.autosizeColumns({
+        if (!gridApi) {
+          return;
+        }
+
+        const nextWidths = fields.reduce<Partial<Record<AutosizedColumnField, number>>>(
+          (widths, field) => {
+            const column = gridApi.getColumn(field);
+            const measuredWidth = Math.ceil(
+              column.computedWidth ?? column.width ?? 0
+            );
+
+            if (measuredWidth > 0) {
+              widths[field] = measuredWidth;
+            }
+
+            return widths;
+          },
+          {}
+        );
+
+        setAutosizedColumnWidths((currentWidths) => {
+          const mergedWidths = { ...currentWidths, ...nextWidths };
+          const currentEntries = Object.entries(currentWidths);
+          const mergedEntries = Object.entries(mergedWidths);
+
+          if (
+            currentEntries.length === mergedEntries.length &&
+            mergedEntries.every(([field, width]) => currentWidths[field as AutosizedColumnField] === width)
+          ) {
+            return currentWidths;
+          }
+
+          return mergedWidths;
+        });
+      },
+      [apiRef]
+    );
+
+    const runAutosize = useCallback(async () => {
+      const gridApi = apiRef.current;
+
+      if (!gridApi) {
+        return;
+      }
+
+      if (autosizeInFlightRef.current) {
+        autosizeQueuedRef.current = true;
+        return;
+      }
+
+      autosizeInFlightRef.current = true;
+
+      try {
+        await gridApi.autosizeColumns({
           ...autosizeOptions,
           columns: autosizeColumnFields,
         });
+        syncAutosizedColumnWidths(autosizeColumnFields);
+      } finally {
+        autosizeInFlightRef.current = false;
+
+        if (autosizeQueuedRef.current) {
+          autosizeQueuedRef.current = false;
+          clearScheduledAutosize();
+
+          autosizeFrameRef.current = window.requestAnimationFrame(() => {
+            autosizeFrameRef.current = null;
+            autosizeFollowUpFrameRef.current = window.requestAnimationFrame(() => {
+              autosizeFollowUpFrameRef.current = null;
+              void runAutosize();
+            });
+          });
+        }
+      }
+    }, [
+      apiRef,
+      autosizeColumnFields,
+      autosizeOptions,
+      clearScheduledAutosize,
+      syncAutosizedColumnWidths,
+    ]);
+
+    const scheduleAutosize = useCallback(() => {
+      clearScheduledAutosize();
+
+      // Wait an extra frame so MUI can finish its own row-height/layout work
+      // before measuring cell widths for autosizing.
+      autosizeFrameRef.current = window.requestAnimationFrame(() => {
+        autosizeFrameRef.current = null;
+        autosizeFollowUpFrameRef.current = window.requestAnimationFrame(() => {
+          autosizeFollowUpFrameRef.current = null;
+          void runAutosize();
+        });
       });
-    }, [apiRef, autosizeColumnFields, autosizeOptions, clearScheduledAutosize]);
+    }, [clearScheduledAutosize, runAutosize]);
 
     const columns: GridColDef<DataGridRow>[] = useMemo(() => {
       const baseColumns: GridColDef<DataGridRow>[] = [
@@ -806,6 +908,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
         baseColumns.push({
           field: "setName",
           headerName: "Set",
+          width: autosizedColumnWidths.setName,
           minWidth: 170,
           sortable: false,
           filterable: false,
@@ -826,6 +929,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
         {
           field: "sku",
           headerName: "SKU",
+          width: autosizedColumnWidths.sku,
           minWidth: 165,
           sortable: false,
           filterable: false,
@@ -894,6 +998,58 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
       handleQuickAdd,
       handleThumbnailClick,
       getCurrentPendingQuantity,
+      autosizedColumnWidths,
+      searchScope,
+      selectedCondition,
+    ]);
+
+    const resultSetSignature = useMemo(() => {
+      return JSON.stringify({
+        searchScope,
+        allSetsSearchTerm,
+        submittedProductNameFilter,
+        rowIds: dataGridRows.map((row) => row.id),
+      });
+    }, [
+      allSetsSearchTerm,
+      dataGridRows,
+      searchScope,
+      submittedProductNameFilter,
+    ]);
+
+    const autosizeSignature = useMemo(() => {
+      const pageStart = paginationModel.page * paginationModel.pageSize;
+      const pageEnd = pageStart + paginationModel.pageSize;
+      const currentPageRows = dataGridRows.slice(pageStart, pageEnd);
+
+      return JSON.stringify({
+        searchScope,
+        selectedCondition,
+        page: paginationModel.page,
+        pageSize: paginationModel.pageSize,
+        rows: currentPageRows.map((row) => {
+          const activeSku = getActiveSku(row.skus);
+
+          return {
+            id: row.id,
+            setLabel:
+              searchScope === "allSets"
+                ? row.setReleaseYear
+                  ? `${row.setName} - ${row.setReleaseYear}`
+                  : row.setName
+                : null,
+            skuLabel: activeSku
+              ? createSkuDisplayName(activeSku)
+              : `${selectedCondition} unavailable`,
+          };
+        }),
+      });
+    }, [
+      createSkuDisplayName,
+      dataGridRows,
+      getActiveSku,
+      paginationModel.page,
+      paginationModel.pageSize,
       searchScope,
       selectedCondition,
     ]);
@@ -907,26 +1063,11 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
         ...current,
         page: 0,
       }));
-    }, [
-      allSetsSearchTerm,
-      groupedSkus,
-      paginationModel.page,
-      searchScope,
-      submittedProductNameFilter,
-    ]);
+    }, [paginationModel.page, resultSetSignature]);
 
     useEffect(() => {
       scheduleAutosize();
-    }, [
-      allSetsSearchTerm,
-      groupedSkus,
-      paginationModel.page,
-      paginationModel.pageSize,
-      scheduleAutosize,
-      searchScope,
-      selectedCondition,
-      submittedProductNameFilter,
-    ]);
+    }, [autosizeSignature, scheduleAutosize]);
 
     const hasNoSkus = skus.length === 0;
 
@@ -1058,7 +1199,6 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
                 apiRef={apiRef}
                 rows={dataGridRows}
                 columns={columns}
-                autosizeOnMount
                 autosizeOptions={{
                   ...autosizeOptions,
                   columns: autosizeColumnFields,
@@ -1066,7 +1206,6 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
                 paginationModel={paginationModel}
                 onPaginationModelChange={(model: GridPaginationModel) => {
                   setPaginationModel(model);
-                  scheduleAutosize();
                 }}
                 disableRowSelectionOnClick
                 pagination

@@ -8,6 +8,7 @@ import type { Sku } from "../../../shared/data-types/sku";
 import { useProcessorBase } from "../../file-upload/hooks/useProcessorBase";
 import {
   getNextInventoryCondition,
+  getPreviousInventoryCondition,
   type InventorySelectableCondition,
 } from "../../../core/utils/conditionOrder";
 
@@ -70,7 +71,8 @@ export interface InventoryProcessorReturn extends InventoryProcessorState {
   toggleSealedFilter: (sealedFilter: "all" | "sealed" | "unsealed") => void;
   setSelectedLanguages: (languages: string[]) => void;
   setSelectedCondition: (condition: InventorySelectableCondition) => void;
-  cycleSelectedCondition: () => void;
+  selectPreviousCondition: () => void;
+  selectNextCondition: () => void;
   getFilteredSkus: () => SkuWithDisplayInfo[];
   getAvailableLanguages: () => string[];
 }
@@ -361,7 +363,14 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     []
   );
 
-  const cycleSelectedCondition = useCallback(() => {
+  const selectPreviousCondition = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      selectedCondition: getPreviousInventoryCondition(prev.selectedCondition),
+    }));
+  }, []);
+
+  const selectNextCondition = useCallback(() => {
     setState((prev) => ({
       ...prev,
       selectedCondition: getNextInventoryCondition(prev.selectedCondition),
@@ -430,10 +439,9 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     toggleSealedFilter,
     setSelectedLanguages,
     setSelectedCondition,
-    cycleSelectedCondition,
+    selectPreviousCondition,
+    selectNextCondition,
     getFilteredSkus,
     getAvailableLanguages,
   };
 };
-
-

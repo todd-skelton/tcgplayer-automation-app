@@ -211,7 +211,7 @@ async function deploy() {
   console.log("View logs: docker compose -f docker-compose.prod.yml logs -f");
   console.log("Stop production: docker compose -f docker-compose.prod.yml down");
   console.log("");
-  console.log("Development can still run on: http://localhost:5173 (npm run dev or npm run dev:host)");
+  console.log("Development can still run on: http://localhost:5173 (npm run dev, npm run dev:host, npm run dev:app, or npm run dev:docker)");
 }
 
 async function update() {

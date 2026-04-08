@@ -36,3 +36,18 @@ export function getNextInventoryCondition(
     (currentIndex + 1) % INVENTORY_CONDITION_ORDER.length
   ];
 }
+
+export function getPreviousInventoryCondition(
+  condition: InventorySelectableCondition,
+): InventorySelectableCondition {
+  const currentIndex = INVENTORY_CONDITION_ORDER.indexOf(condition);
+
+  if (currentIndex === -1) {
+    return INVENTORY_CONDITION_ORDER[INVENTORY_CONDITION_ORDER.length - 1];
+  }
+
+  return INVENTORY_CONDITION_ORDER[
+    (currentIndex - 1 + INVENTORY_CONDITION_ORDER.length) %
+      INVENTORY_CONDITION_ORDER.length
+  ];
+}

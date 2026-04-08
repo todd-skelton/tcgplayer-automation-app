@@ -1,12 +1,12 @@
 # TCGPlayer Automation App
 
-This app now uses PostgreSQL for server-side storage. The repo includes checked-in SQL migrations and Docker Compose workflows for container-first development and production.
+This app now uses PostgreSQL for server-side storage. The repo includes checked-in SQL migrations and Docker Compose workflows for development databases and production.
 
 ## Requirements
 
 - Node.js 20
 - npm
-- Docker Desktop or another Docker runtime
+- Docker Desktop or another Docker runtime for the PostgreSQL dev database and production containers
 
 ## Environment
 
@@ -27,38 +27,40 @@ DB_STARTUP_DELAY_MS=2000
 
 ## Local Development
 
-Run the full development stack in Docker:
+Run the app directly on your host for normal hot reload:
 
 ```bash
 npm run dev
 ```
 
-That starts the app on `http://localhost:5173`. The development stack uses `docker-compose.yml` with the explicit project name `tcgplayer-automation-dev`, and the PostgreSQL container stays internal to the Docker network so `npm run dev` does not depend on host port `5432` being free.
+That starts the app on `http://localhost:5173` in the terminal process instead of inside a container. It also starts the standalone PostgreSQL development container from `docker-compose.db.yml` and applies local migrations before launching the dev server.
 
-Useful Docker-first development commands:
+If you are using the standalone database container from `docker-compose.db.yml`, the app defaults to `localhost:5433` automatically. That standalone database flow is the host-accessible PostgreSQL option for development. The compose file uses the explicit project name `tcgplayer-automation-db`, so it can run beside both the optional Docker app stack and the production stack without sharing Docker networks.
+
+Useful commands around local development:
 
 ```bash
+npm run dev:host
+npm run dev:app
+npm run dev:docker
 npm run dev:logs
 npm run dev:down
 npm run dev:db
 ```
 
+`npm run dev:host` is an explicit alias for the same host-run development flow as `npm run dev`. `npm run dev:app` starts only the host app process and assumes the standalone database is already running. `npm run dev:docker` still starts the full Docker app stack when you want the app itself inside a container.
+
 `npm run dev:db` opens `psql` inside the running `postgres` container for the full Docker dev stack.
 
-### Host App Fallback
+### Optional Docker App Stack
 
-If you want to run the app on your host instead of in Docker, start the standalone dev database and use the explicit host-mode script:
+If you want to run the app in Docker too, use the explicit Docker script:
 
 ```bash
-docker compose -f docker-compose.db.yml up -d
-npm install
-npm run db:migrate
-npm run dev:host
+npm run dev:docker
 ```
 
-The app is available at `http://localhost:5173`.
-
-If you are using the standalone database container from `docker-compose.db.yml`, the app defaults to `localhost:5433` automatically. That standalone database flow is the host-accessible PostgreSQL option for development. The compose file uses the explicit project name `tcgplayer-automation-db`, so it can run beside both the production stack and the full dev stack without sharing Docker networks.
+That starts the app on `http://localhost:5173` through `docker-compose.yml` with the explicit project name `tcgplayer-automation-dev`. The PostgreSQL container stays internal to that Docker network, so the full Docker app stack does not depend on host port `5432` being free.
 
 ## Database Commands
 
@@ -117,7 +119,8 @@ docker network rm tcgplayer-automation-app_default
 
 Then recreate only the environments you need:
 
-- Full dev stack: `npm run dev`
+- Host app server: `npm run dev`
+- Full Docker dev stack: `npm run dev:docker`
 - Production stack: `npm run prod:deploy`
 - Standalone dev database: `docker compose -f docker-compose.db.yml up -d`
 

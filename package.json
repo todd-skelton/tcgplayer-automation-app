@@ -3,8 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "docker compose up --build",
-    "dev:host": "node scripts/run-with-node-options.mjs react-router dev",
+    "dev": "node scripts/dev-host-start.mjs",
+    "dev:docker": "docker compose up --build",
+    "dev:host": "node scripts/dev-host-start.mjs",
+    "dev:app": "node scripts/run-with-node-options.mjs react-router dev",
     "dev:down": "docker compose down",
     "dev:logs": "docker compose logs -f",
     "dev:db": "docker compose exec postgres psql -U postgres -d tcgplayer_automation",
