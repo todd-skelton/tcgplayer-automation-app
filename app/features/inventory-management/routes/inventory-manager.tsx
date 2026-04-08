@@ -249,9 +249,9 @@ export default function InventoryManagerRoute() {
             searchScope={searchScope}
             allSetsSearchTerm={allSetsSearchTerm}
             selectedCondition={selectedCondition}
-            onAllSetsSearch={(cardNumber) => {
+            onAllSetsSearch={async (cardNumber) => {
               if (selectedProductLineId) {
-                loadSkusByCardNumber(cardNumber, selectedProductLineId);
+                await loadSkusByCardNumber(cardNumber, selectedProductLineId);
               }
             }}
             sealedFilter={sealedFilter}

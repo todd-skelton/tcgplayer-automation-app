@@ -18,6 +18,7 @@ import {
   type GridRowsProp,
   GridToolbarContainer,
   GridToolbarQuickFilter,
+  useGridApiRef,
 } from "@mui/x-data-grid";
 import { ClientOnlyDataGrid } from "../../file-upload/components/ClientOnlyDataGrid";
 import type { Sku } from "../../../shared/data-types/sku";
@@ -89,7 +90,7 @@ interface InventoryEntryTableProps {
   searchScope: "set" | "allSets";
   allSetsSearchTerm: string;
   selectedCondition: InventorySelectableCondition;
-  onAllSetsSearch: (cardNumber: string) => void;
+  onAllSetsSearch: (cardNumber: string) => Promise<void>;
   sealedFilter?: "all" | "sealed" | "unsealed";
 }
 
@@ -108,11 +109,48 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
     const [productNameFilter, setProductNameFilter] = useState<string>("");
     const [submittedProductNameFilter, setSubmittedProductNameFilter] =
       useState<string>("");
+    const apiRef = useGridApiRef();
     const searchInputRef = useRef<HTMLInputElement>(null);
     const firstPlusButtonRef = useRef<HTMLButtonElement>(null);
+    const focusRetryTimeoutRef = useRef<number | null>(null);
     const [imageDialogOpen, setImageDialogOpen] = useState<boolean>(false);
     const [selectedProductId, setSelectedProductId] = useState<number | null>(
       null
+    );
+
+    const clearFocusRetry = useCallback(() => {
+      if (focusRetryTimeoutRef.current !== null) {
+        window.clearTimeout(focusRetryTimeoutRef.current);
+        focusRetryTimeoutRef.current = null;
+      }
+    }, []);
+
+    const focusFirstQuantityPlusButton = useCallback(
+      (remainingAttempts = 6) => {
+        clearFocusRetry();
+
+        const tryFocus = (attemptsLeft: number) => {
+          if (firstPlusButtonRef.current) {
+            firstPlusButtonRef.current.focus();
+            focusRetryTimeoutRef.current = null;
+            return;
+          }
+
+          if (attemptsLeft <= 1) {
+            focusRetryTimeoutRef.current = null;
+            return;
+          }
+
+          focusRetryTimeoutRef.current = window.setTimeout(() => {
+            tryFocus(attemptsLeft - 1);
+          }, 50);
+        };
+
+        focusRetryTimeoutRef.current = window.setTimeout(() => {
+          tryFocus(remainingAttempts);
+        }, 0);
+      },
+      [clearFocusRetry]
     );
 
     const handleSearchSubmit = useCallback(() => {
@@ -120,16 +158,21 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
       setSubmittedProductNameFilter(trimmedFilter);
 
       if (searchScope === "allSets") {
-        onAllSetsSearch(trimmedFilter);
+        void onAllSetsSearch(trimmedFilter).then(() => {
+          if (trimmedFilter) {
+            focusFirstQuantityPlusButton();
+          }
+        });
         return;
       }
 
-      setTimeout(() => {
-        if (firstPlusButtonRef.current) {
-          firstPlusButtonRef.current.focus();
-        }
-      }, 100);
-    }, [onAllSetsSearch, productNameFilter, searchScope]);
+      focusFirstQuantityPlusButton();
+    }, [
+      focusFirstQuantityPlusButton,
+      onAllSetsSearch,
+      productNameFilter,
+      searchScope,
+    ]);
 
     const handleSearchKeyPress = useCallback(
       (event: React.KeyboardEvent) => {
@@ -242,6 +285,12 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
       setProductNameFilter("");
       setSubmittedProductNameFilter("");
     }, [searchScope]);
+
+    useEffect(() => {
+      return () => {
+        clearFocusRetry();
+      };
+    }, [clearFocusRetry]);
 
     const createSkuDisplayName = useCallback((sku: SkuWithDisplayInfo): string => {
       const parts: string[] = [sku.condition];
@@ -386,6 +435,20 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
       setSelectedProductId(null);
     }, []);
 
+    const autosizeColumnFields = useMemo(
+      () => (searchScope === "allSets" ? ["setName", "sku"] : ["sku"]),
+      [searchScope]
+    );
+
+    const autosizeOptions = useMemo(
+      () => ({
+        includeHeaders: true,
+        includeOutliers: true,
+        expand: false,
+      }),
+      []
+    );
+
     const columns: GridColDef<DataGridRow>[] = useMemo(() => {
       const baseColumns: GridColDef<DataGridRow>[] = [
         {
@@ -428,7 +491,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
         baseColumns.push({
           field: "setName",
           headerName: "Set",
-          width: 170,
+          minWidth: 170,
           sortable: false,
           filterable: false,
           renderCell: (params) => {
@@ -452,11 +515,10 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
                   size="small"
                   variant="outlined"
                   sx={{
-                    maxWidth: "100%",
+                    maxWidth: "none",
                     "& .MuiChip-label": {
                       display: "block",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     },
                   }}
                 />
@@ -470,7 +532,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
         {
           field: "sku",
           headerName: "SKU",
-          width: 165,
+          minWidth: 165,
           sortable: false,
           filterable: false,
           renderCell: (params) => {
@@ -494,7 +556,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
                   size="small"
                   variant="outlined"
                   sx={{
-                    maxWidth: "100%",
+                    maxWidth: "none",
                     fontStyle:
                       activeSku &&
                       (activeSku.variant?.toLowerCase().includes("reverse") ||
@@ -510,8 +572,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
                     opacity: activeSku ? 1 : 0.75,
                     "& .MuiChip-label": {
                       display: "block",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     },
                   }}
                 />
@@ -625,6 +686,31 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
       pendingInventory,
       quantities,
       searchScope,
+      selectedCondition,
+    ]);
+
+    useEffect(() => {
+      const gridApi = apiRef.current;
+
+      if (!gridApi || dataGridRows.length === 0) {
+        return;
+      }
+
+      const resizeHandle = window.requestAnimationFrame(() => {
+        void gridApi.autosizeColumns({
+          ...autosizeOptions,
+          columns: autosizeColumnFields,
+        });
+      });
+
+      return () => {
+        window.cancelAnimationFrame(resizeHandle);
+      };
+    }, [
+      apiRef,
+      autosizeColumnFields,
+      autosizeOptions,
+      dataGridRows,
       selectedCondition,
     ]);
 
@@ -755,8 +841,14 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> = React.mem
 
             <Box sx={{ height: 600, width: "100%" }}>
               <ClientOnlyDataGrid
+                apiRef={apiRef}
                 rows={dataGridRows}
                 columns={columns}
+                autosizeOnMount
+                autosizeOptions={{
+                  ...autosizeOptions,
+                  columns: autosizeColumnFields,
+                }}
                 disableRowSelectionOnClick
                 pagination
                 pageSizeOptions={[25, 50, 100]}
