@@ -41,6 +41,17 @@ function getAveragePerUnit(totalValue: number, combinedQuantity: number): number
   return combinedQuantity > 0 ? totalValue / combinedQuantity : 0;
 }
 
+function getPercentDiffFromMarket(
+  value: number,
+  marketValue: number,
+): number | null {
+  if (marketValue <= 0) {
+    return null;
+  }
+
+  return ((value - marketValue) / marketValue) * 100;
+}
+
 export const InventoryBatchSummaryComponent: React.FC<
   InventoryBatchSummaryComponentProps
 > = ({ summary, lastPricedAt }) => {
@@ -66,6 +77,15 @@ export const InventoryBatchSummaryComponent: React.FC<
             : [],
       totalValue: data.totalValue,
     }));
+  const marketComparableMarketValue = summary.totalsWithMarket.marketPrice || 0;
+  const lowPricePercentDiff = getPercentDiffFromMarket(
+    summary.totalsWithMarket.lowPrice ?? 0,
+    marketComparableMarketValue,
+  );
+  const marketplacePricePercentDiff = getPercentDiffFromMarket(
+    summary.totalsWithMarket.marketplacePrice ?? 0,
+    marketComparableMarketValue,
+  );
 
   return (
     <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
@@ -221,6 +241,7 @@ export const InventoryBatchSummaryComponent: React.FC<
                   <TableCell>Price Type</TableCell>
                   <TableCell align="right">Total Value</TableCell>
                   <TableCell align="right">Average per Unit</TableCell>
+                  <TableCell align="right">% vs Market</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -234,6 +255,7 @@ export const InventoryBatchSummaryComponent: React.FC<
                       getAveragePerUnit(summary.totals.marketPrice, combinedQuantity),
                     )}
                   </TableCell>
+                  <TableCell align="right">0.0%</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell>Low Price</TableCell>
@@ -244,6 +266,23 @@ export const InventoryBatchSummaryComponent: React.FC<
                     {formatCurrency(
                       getAveragePerUnit(summary.totals.lowPrice, combinedQuantity),
                     )}
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{
+                      color:
+                        lowPricePercentDiff === null
+                          ? "text.secondary"
+                          : lowPricePercentDiff > 0
+                            ? "success.main"
+                            : lowPricePercentDiff < 0
+                              ? "error.main"
+                              : "text.primary",
+                    }}
+                  >
+                    {lowPricePercentDiff === null
+                      ? "Not available"
+                      : `${lowPricePercentDiff >= 0 ? "+" : ""}${lowPricePercentDiff.toFixed(1)}%`}
                   </TableCell>
                 </TableRow>
                 <TableRow>
@@ -261,6 +300,25 @@ export const InventoryBatchSummaryComponent: React.FC<
                           combinedQuantity,
                         ),
                       )}
+                    </strong>
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{
+                      color:
+                        marketplacePricePercentDiff === null
+                          ? "text.secondary"
+                          : marketplacePricePercentDiff > 0
+                            ? "success.main"
+                            : marketplacePricePercentDiff < 0
+                              ? "error.main"
+                              : "text.primary",
+                    }}
+                  >
+                    <strong>
+                      {marketplacePricePercentDiff === null
+                        ? "Not available"
+                        : `${marketplacePricePercentDiff >= 0 ? "+" : ""}${marketplacePricePercentDiff.toFixed(1)}%`}
                     </strong>
                   </TableCell>
                 </TableRow>
@@ -397,3 +455,4 @@ export const InventoryBatchSummaryComponent: React.FC<
     </Paper>
   );
 };
+

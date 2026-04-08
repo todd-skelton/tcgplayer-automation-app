@@ -43,6 +43,8 @@ export interface InventoryBatchSummary {
   };
   totalsWithMarket: {
     marketPrice: number;
+    lowPrice?: number;
+    marketplacePrice?: number;
     percentiles: { [key: string]: number };
     quantityWithMarket: number;
   };
@@ -133,3 +135,4 @@ export interface SaveInventoryBatchResultsParams {
 }
 
 export interface InventoryBatchWithJob extends InventoryBatch {}
+

@@ -175,6 +175,8 @@ async function buildBatchSummary(
   let totalLowPrice = 0;
   let totalMarketplacePrice = 0;
   let totalMarketWithMarket = 0;
+  let totalLowWithMarket = 0;
+  let totalMarketplaceWithMarket = 0;
   let quantityWithMarket = 0;
 
   for (const resultRow of successfulRows) {
@@ -206,6 +208,8 @@ async function buildBatchSummary(
 
     if (tcgMarketPrice > 0) {
       totalMarketWithMarket += tcgMarketPrice * combinedQuantity;
+      totalLowWithMarket += lowestSalePrice * combinedQuantity;
+      totalMarketplaceWithMarket += marketplacePrice * combinedQuantity;
       quantityWithMarket += combinedQuantity;
     }
 
@@ -287,6 +291,8 @@ async function buildBatchSummary(
     },
     totalsWithMarket: {
       marketPrice: totalMarketWithMarket,
+      lowPrice: totalLowWithMarket,
+      marketplacePrice: totalMarketplaceWithMarket,
       percentiles: totalsWithMarketPercentiles,
       quantityWithMarket,
     },
@@ -716,3 +722,4 @@ export const inventoryBatchesRepository = {
     });
   },
 };
+
