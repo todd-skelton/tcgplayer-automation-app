@@ -27,6 +27,10 @@ export default [
     file: "routes/http-configuration.tsx",
   },
   {
+    path: "/shipping-configuration",
+    file: "features/shipping-export/routes/shipping-configuration.tsx",
+  },
+  {
     path: "/data-management",
     file: "routes/home.tsx",
   },
@@ -115,7 +119,12 @@ export default [
     file: "features/pull-sheet/routes/pull-sheet.tsx",
   },
   {
+    path: "/shipping-export",
+    file: "features/shipping-export/routes/shipping-export.tsx",
+  },
+  {
     path: "/api/pull-sheet-lookup",
     file: "features/pull-sheet/routes/api.pull-sheet-lookup.ts",
   },
 ] satisfies RouteConfig;
+

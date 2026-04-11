@@ -2,6 +2,7 @@ import type { SvgIconComponent } from "@mui/icons-material";
 import BatchPredictionIcon from "@mui/icons-material/BatchPrediction";
 import HttpIcon from "@mui/icons-material/Http";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
+import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import SettingsIcon from "@mui/icons-material/Settings";
 import StorageIcon from "@mui/icons-material/Storage";
 import StorefrontIcon from "@mui/icons-material/Storefront";
@@ -30,11 +31,21 @@ export const primaryNavigationItems: NavigationItem[] = [
     icon: BatchPredictionIcon,
   },
   { label: "Pull Sheet", to: "/pull-sheet", icon: ViewListIcon },
+  {
+    label: "Shipping Export",
+    to: "/shipping-export",
+    icon: LocalShippingIcon,
+  },
   { label: "Data Mgmt", to: "/data-management", icon: StorageIcon },
 ];
 
 export const settingsNavigationItems: NavigationItem[] = [
   { label: "Configuration", to: "/configuration", icon: SettingsIcon },
+  {
+    label: "Shipping Configuration",
+    to: "/shipping-configuration",
+    icon: LocalShippingIcon,
+  },
   {
     label: "HTTP Configuration",
     to: "/http-configuration",
@@ -82,6 +93,14 @@ export const dashboardCards: DashboardCard[] = [
     to: "/pull-sheet",
     icon: ViewListIcon,
     color: "warning.main",
+  },
+  {
+    title: "Shipping Export",
+    label: "Shipping Export",
+    description: "Convert TCGPlayer shipping exports into EasyPost batch files",
+    to: "/shipping-export",
+    icon: LocalShippingIcon,
+    color: "error.main",
   },
   {
     title: "Data Management",

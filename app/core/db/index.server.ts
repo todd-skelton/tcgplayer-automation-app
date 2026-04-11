@@ -15,4 +15,5 @@ export { pricingConfigRepository } from "./repositories/pricingConfig.server";
 export { productLinesRepository } from "./repositories/productLines.server";
 export { productsRepository } from "./repositories/products.server";
 export { setProductsRepository } from "./repositories/setProducts.server";
+export { shippingExportConfigRepository } from "./repositories/shippingExportConfig.server";
 export { skusRepository } from "./repositories/skus.server";
