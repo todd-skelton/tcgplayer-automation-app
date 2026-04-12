@@ -123,6 +123,18 @@ export default [
     file: "features/shipping-export/routes/shipping-export.tsx",
   },
   {
+    path: "/api/shipping-export/postages",
+    file: "features/shipping-export/routes/api.shipping-export-postages.ts",
+  },
+  {
+    path: "/api/shipping-export/batch-labels",
+    file: "features/shipping-export/routes/api.shipping-export-batch-labels.ts",
+  },
+  {
+    path: "/api/shipping-export/postage-lookups",
+    file: "features/shipping-export/routes/api.shipping-export-postage-lookups.ts",
+  },
+  {
     path: "/api/pull-sheet-lookup",
     file: "features/pull-sheet/routes/api.pull-sheet-lookup.ts",
   },

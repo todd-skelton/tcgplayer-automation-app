@@ -2,6 +2,9 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
 import path from "node:path";
+import { loadLocalEnv } from "./load-local-env.mjs";
+
+loadLocalEnv();
 
 const DATABASE_NAME = "tcgplayer_automation";
 const DATABASE_USER = "postgres";

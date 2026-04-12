@@ -27,6 +27,7 @@
     "prod:clean": "node scripts/prod.mjs clean"
   },
   "dependencies": {
+    "@easypost/api": "^8.8.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^7.2.0",
@@ -36,6 +37,7 @@
     "@react-router/serve": "^7.5.3",
     "axios": "^1.9.0",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.4.1",
     "isbot": "^5.1.27",
     "ml-levenberg-marquardt": "^5.0.0",
     "p-limit": "^6.2.0",
@@ -59,4 +61,3 @@
     "vite-tsconfig-paths": "^5.1.4"
   }
 }
-

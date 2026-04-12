@@ -174,6 +174,10 @@ const testCases: TestCase[] = [
       assert.equal(mergedConfig.labelFormat, "PNG");
       assert.equal(mergedConfig.flat.maxValueUsd, 125);
       assert.equal(
+        mergedConfig.easypostMode,
+        DEFAULT_SHIPPING_EXPORT_CONFIG.easypostMode,
+      );
+      assert.equal(
         mergedConfig.letter.labelSize,
         DEFAULT_SHIPPING_EXPORT_CONFIG.letter.labelSize,
       );

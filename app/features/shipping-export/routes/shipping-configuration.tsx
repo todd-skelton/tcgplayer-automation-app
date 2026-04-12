@@ -2,6 +2,7 @@ import { Alert, Box, Button, Stack, Typography } from "@mui/material";
 import { Link, data, useFetcher, useLoaderData, type ActionFunctionArgs, type MetaFunction } from "react-router";
 import { useEffect, useState } from "react";
 import { ShippingExportSettingsEditor } from "../components/ShippingExportSettingsEditor";
+import { getEasyPostEnvironmentStatus } from "../config/easyPostConfig.server";
 import {
   getShippingExportConfig,
   resetShippingExportConfig,
@@ -17,6 +18,7 @@ type ActionData = {
   success: boolean;
   message: string;
   config?: ShippingExportConfig;
+  environmentStatus?: ReturnType<typeof getEasyPostEnvironmentStatus>;
 };
 
 export const meta: MetaFunction = () => {
@@ -32,7 +34,7 @@ export const meta: MetaFunction = () => {
 
 export async function loader() {
   const config = await getShippingExportConfig();
-  return data({ config });
+  return data({ config, environmentStatus: getEasyPostEnvironmentStatus() });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -46,6 +48,7 @@ export async function action({ request }: ActionFunctionArgs) {
       success: true,
       message: "Shipping configuration saved.",
       config: savedConfig,
+      environmentStatus: getEasyPostEnvironmentStatus(),
     });
   }
 
@@ -55,6 +58,7 @@ export async function action({ request }: ActionFunctionArgs) {
       success: true,
       message: "Shipping configuration reset to defaults.",
       config: resetConfig,
+      environmentStatus: getEasyPostEnvironmentStatus(),
     });
   }
 
@@ -65,20 +69,33 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function ShippingConfigurationRoute() {
-  const { config: initialConfig } = useLoaderData<typeof loader>();
+  const {
+    config: initialConfig,
+    environmentStatus: initialEnvironmentStatus,
+  } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<ActionData>();
   const [config, setConfig] = useState(initialConfig);
+  const [environmentStatus, setEnvironmentStatus] = useState(
+    initialEnvironmentStatus,
+  );
 
   useEffect(() => {
     setConfig(initialConfig);
-  }, [initialConfig]);
+    setEnvironmentStatus(initialEnvironmentStatus);
+  }, [initialConfig, initialEnvironmentStatus]);
 
   useEffect(() => {
-    if (fetcher.state !== "idle" || !fetcher.data?.success || !fetcher.data.config) {
+    if (
+      fetcher.state !== "idle" ||
+      !fetcher.data?.success ||
+      !fetcher.data.config ||
+      !fetcher.data.environmentStatus
+    ) {
       return;
     }
 
     setConfig(fetcher.data.config);
+    setEnvironmentStatus(fetcher.data.environmentStatus);
   }, [fetcher.data, fetcher.state]);
 
   const handleSaveSettings = () => {
@@ -130,12 +147,25 @@ export default function ShippingConfigurationRoute() {
         </Alert>
       )}
 
+      {!(
+        config.easypostMode === "test"
+          ? environmentStatus.hasTestApiKey
+          : environmentStatus.hasProductionApiKey
+      ) && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          {config.easypostMode === "test"
+            ? "EASYPOST_TEST_API_KEY is not set. Direct postage purchasing will stay disabled until it is configured."
+            : "EASYPOST_PRODUCTION_API_KEY is not set. Direct postage purchasing will stay disabled until it is configured."}
+        </Alert>
+      )}
+
       <ShippingExportSettingsEditor
         config={config}
         onChange={setConfig}
         onSave={handleSaveSettings}
         onReset={handleResetSettings}
         isSubmitting={fetcher.state === "submitting"}
+        environmentStatus={environmentStatus}
       />
     </Box>
   );

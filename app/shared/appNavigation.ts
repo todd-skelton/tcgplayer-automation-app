@@ -97,7 +97,7 @@ export const dashboardCards: DashboardCard[] = [
   {
     title: "Shipping Export",
     label: "Shipping Export",
-    description: "Convert TCGPlayer shipping exports into EasyPost batch files",
+    description: "Review shipments, buy EasyPost postage, or export fallback CSVs",
     to: "/shipping-export",
     icon: LocalShippingIcon,
     color: "error.main",

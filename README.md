@@ -25,6 +25,23 @@ DB_STARTUP_RETRIES=30
 DB_STARTUP_DELAY_MS=2000
 ```
 
+Optional EasyPost shipping flags:
+
+```bash
+EASYPOST_TEST_API_KEY=your_test_key
+EASYPOST_PRODUCTION_API_KEY=your_production_key
+```
+
+The shipping exporter uses these server-side keys for direct postage purchase.
+The selected EasyPost mode is stored in Shipping Configuration, defaults to
+`test`, and falls back to CSV export when the corresponding key is missing.
+
+For local development, create a repo-root `.env.local` file if you want to keep
+these values out of your shell profile. The repo loads `.env.local` first and
+then `.env` for Node-based commands, without overriding variables that are
+already set in the environment. `.env.local` is gitignored; use
+`.env.local.example` as the template.
+
 ## Local Development
 
 Run the app directly on your host for normal hot reload:

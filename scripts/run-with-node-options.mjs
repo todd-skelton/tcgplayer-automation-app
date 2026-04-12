@@ -1,9 +1,12 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { loadLocalEnv } from "./load-local-env.mjs";
 
 const maxOldSpaceSizeOption = "--max-old-space-size=16384";
 const [, , command, ...args] = process.argv;
+
+loadLocalEnv();
 
 function resolveCommand(commandName) {
   if (

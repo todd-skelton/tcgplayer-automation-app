@@ -1,5 +1,6 @@
 export type LabelSize = "4x6" | "7x3" | "6x4";
 export type LabelFormat = "PDF" | "PNG";
+export type EasyPostMode = "test" | "production";
 
 export type EasyPostPackageType = "Letter" | "Flat" | "Parcel";
 export type EasyPostService =
@@ -87,9 +88,99 @@ export interface ShippingExportConfig {
   labelFormat: LabelFormat;
   combineOrders: boolean;
   expeditedService: EasyPostService;
+  easypostMode: EasyPostMode;
 }
 
 export type ShipmentToOrderMap = Record<string, string[]>;
+
+export interface ShippingPostagePurchaseRequestItem {
+  shipment: EasyPostShipment;
+  orderNumbers: string[];
+}
+
+export interface ShippingPostagePurchaseRequest {
+  labelSize: LabelSize;
+  shipments: ShippingPostagePurchaseRequestItem[];
+}
+
+export interface ShippingPostageLookupRequestItem {
+  shipmentReference: string;
+  orderNumbers: string[];
+}
+
+export interface ShippingPostageLookupRequest {
+  shipments: ShippingPostageLookupRequestItem[];
+}
+
+export interface ShippingPostageRateSummary {
+  service: string;
+  rate: string;
+  currency: string;
+}
+
+export type ShippingPostagePurchaseStatus =
+  | "purchased"
+  | "failed"
+  | "skipped";
+
+export type ShippingPostageBatchLabelStatus =
+  | "ready"
+  | "pending"
+  | "failed"
+  | "skipped";
+
+export interface ShippingPostagePurchaseResult {
+  reference: string;
+  orderNumbers: string[];
+  status: ShippingPostagePurchaseStatus;
+  easypostShipmentId?: string;
+  trackingCode?: string;
+  selectedRate?: ShippingPostageRateSummary;
+  labelUrl?: string;
+  labelPdfUrl?: string;
+  error?: string;
+}
+
+export interface ShippingPostageBatchLabelResult {
+  status: ShippingPostageBatchLabelStatus;
+  shipmentReferences: string[];
+  batchId?: string;
+  labelUrl?: string;
+  message?: string;
+}
+
+export interface ShippingPostagePurchaseResponse {
+  mode: EasyPostMode;
+  batchLabel: ShippingPostageBatchLabelResult;
+  results: ShippingPostagePurchaseResult[];
+}
+
+export interface ShippingPostageLookupResult {
+  shipmentReference: string;
+  mode: EasyPostMode;
+  labelSize: LabelSize;
+  result: ShippingPostagePurchaseResult;
+}
+
+export interface ShippingPostageLookupResponse {
+  results: ShippingPostageLookupResult[];
+}
+
+export interface ShippingPostageBatchLabelRequestItem {
+  shipmentReference: string;
+  easypostShipmentId: string;
+}
+
+export interface ShippingPostageBatchLabelRequest {
+  mode: EasyPostMode;
+  labelSize: LabelSize;
+  shipments: ShippingPostageBatchLabelRequestItem[];
+}
+
+export interface EasyPostEnvironmentStatus {
+  hasTestApiKey: boolean;
+  hasProductionApiKey: boolean;
+}
 
 type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends Array<infer U>
@@ -158,6 +249,7 @@ export const DEFAULT_SHIPPING_EXPORT_CONFIG: ShippingExportConfig = {
   labelFormat: "PDF",
   combineOrders: true,
   expeditedService: "GroundAdvantage",
+  easypostMode: "test",
 };
 
 export function mergeShippingExportConfigWithDefaults(

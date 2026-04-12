@@ -1,9 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import pg from "pg";
+import { loadLocalEnv } from "./load-local-env.mjs";
 
 const { Client } = pg;
 const migrationsDir = path.resolve(process.cwd(), "db", "migrations");
+loadLocalEnv();
 const databaseUrl =
   process.env.DATABASE_URL ??
   "postgresql://postgres:postgres@localhost:5433/tcgplayer_automation";

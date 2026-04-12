@@ -1,5 +1,6 @@
 import {
   DEFAULT_SHIPPING_EXPORT_CONFIG,
+  type EasyPostMode,
   type EasyPostService,
   type LabelFormat,
   type LabelSize,
@@ -168,6 +169,11 @@ export function parseShippingExportConfigFormData(
       "expeditedService",
       DEFAULT_SHIPPING_EXPORT_CONFIG.expeditedService,
     ) as EasyPostService,
+    easypostMode: parseStringFormValue(
+      formData,
+      "easypostMode",
+      DEFAULT_SHIPPING_EXPORT_CONFIG.easypostMode,
+    ) as EasyPostMode,
   };
 }
 
@@ -223,6 +229,7 @@ export function createShippingExportConfigFormData(
   formData.append("labelFormat", config.labelFormat);
   formData.append("combineOrders", String(config.combineOrders));
   formData.append("expeditedService", config.expeditedService);
+  formData.append("easypostMode", config.easypostMode);
 
   return formData;
 }

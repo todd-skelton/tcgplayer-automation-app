@@ -1,7 +1,9 @@
 import SaveIcon from "@mui/icons-material/Save";
 import {
+  Alert,
   Box,
   Button,
+  Chip,
   Divider,
   FormControl,
   FormControlLabel,
@@ -15,6 +17,8 @@ import {
   Typography,
 } from "@mui/material";
 import type {
+  EasyPostEnvironmentStatus,
+  EasyPostMode,
   EasyPostService,
   LabelFormat,
   LabelSize,
@@ -159,12 +163,14 @@ export function ShippingExportSettingsEditor({
   onSave,
   onReset,
   isSubmitting = false,
+  environmentStatus,
 }: {
   config: ShippingExportConfig;
   onChange: (config: ShippingExportConfig) => void;
   onSave: () => void;
   onReset: () => void;
   isSubmitting?: boolean;
+  environmentStatus: EasyPostEnvironmentStatus;
 }) {
   const setConfigValue = <
     TKey extends keyof ShippingExportConfig,
@@ -213,6 +219,76 @@ export function ShippingExportSettingsEditor({
               Save Settings
             </Button>
           </Stack>
+        </Stack>
+
+        <Divider />
+        <Stack spacing={2}>
+          <Box>
+            <Typography variant="subtitle1">EasyPost Purchase Mode</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Direct postage purchases use the selected EasyPost environment.
+              API keys stay in environment variables instead of the database.
+            </Typography>
+          </Box>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <FormControl fullWidth>
+              <InputLabel id="easypost-mode-label">EasyPost Mode</InputLabel>
+              <Select
+                labelId="easypost-mode-label"
+                label="EasyPost Mode"
+                value={config.easypostMode}
+                onChange={(event) =>
+                  setConfigValue(
+                    "easypostMode",
+                    event.target.value as EasyPostMode,
+                  )
+                }
+              >
+                <MenuItem value="test">Test</MenuItem>
+                <MenuItem value="production">Production</MenuItem>
+              </Select>
+            </FormControl>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+            >
+              <Chip
+                label={
+                  environmentStatus.hasTestApiKey
+                    ? "Test Key Ready"
+                    : "Missing Test Key"
+                }
+                color={environmentStatus.hasTestApiKey ? "success" : "warning"}
+                variant={environmentStatus.hasTestApiKey ? "filled" : "outlined"}
+              />
+              <Chip
+                label={
+                  environmentStatus.hasProductionApiKey
+                    ? "Production Key Ready"
+                    : "Missing Production Key"
+                }
+                color={
+                  environmentStatus.hasProductionApiKey ? "success" : "warning"
+                }
+                variant={
+                  environmentStatus.hasProductionApiKey ? "filled" : "outlined"
+                }
+              />
+            </Stack>
+          </Stack>
+          {!(
+            config.easypostMode === "test"
+              ? environmentStatus.hasTestApiKey
+              : environmentStatus.hasProductionApiKey
+          ) && (
+            <Alert severity="warning">
+              {config.easypostMode === "test"
+                ? "Set EASYPOST_TEST_API_KEY to enable direct postage purchasing in test mode."
+                : "Set EASYPOST_PRODUCTION_API_KEY to enable direct postage purchasing in production mode."}
+            </Alert>
+          )}
         </Stack>
 
         <Divider />
