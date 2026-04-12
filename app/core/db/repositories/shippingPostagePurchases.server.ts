@@ -2,6 +2,7 @@ import { execute, query, type Queryable } from "../database.server";
 import type {
   EasyPostMode,
   LabelSize,
+  ShippingPostageDirection,
   ShippingPostagePurchaseStatus,
 } from "~/features/shipping-export/types/shippingExport";
 
@@ -10,7 +11,7 @@ export interface ShippingPostagePurchaseRecord {
   shipmentReference: string;
   orderNumbers: string[];
   mode: EasyPostMode;
-  direction: "outbound";
+  direction: ShippingPostageDirection;
   labelSize: LabelSize;
   easypostShipmentId: string | null;
   trackingCode: string | null;
@@ -28,6 +29,7 @@ export interface CreateShippingPostagePurchaseInput {
   shipmentReference: string;
   orderNumbers: string[];
   mode: EasyPostMode;
+  direction?: ShippingPostageDirection;
   labelSize: LabelSize;
   easypostShipmentId?: string | null;
   trackingCode?: string | null;
@@ -146,7 +148,6 @@ export const shippingPostagePurchasesRepository = {
         $1,
         $2::text[],
         $3,
-        'outbound',
         $4,
         $5,
         $6,
@@ -156,12 +157,14 @@ export const shippingPostagePurchasesRepository = {
         $10,
         $11,
         $12,
-        $13
+        $13,
+        $14
       )`,
       [
         input.shipmentReference,
         input.orderNumbers,
         input.mode,
+        input.direction ?? "outbound",
         input.labelSize,
         input.easypostShipmentId ?? null,
         input.trackingCode ?? null,

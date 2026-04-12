@@ -117,8 +117,8 @@ export default function ShippingConfigurationRoute() {
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
         Manage the saved shipping settings used by the EasyPost shipping export
-        workflow. Save changes here, then rebuild shipments from the export
-        page after uploading a file.
+        workflow. Save a default seller key for live TCGPlayer order loading,
+        then build or rebuild shipments from the export page.
       </Typography>
 
       <Alert severity="info" sx={{ mb: 3 }}>
@@ -130,7 +130,8 @@ export default function ShippingConfigurationRoute() {
         >
           <Typography variant="body2">
             These settings are stored on the server and used by the shipping
-            export tool when it generates EasyPost shipment rows.
+            export tool when it loads live seller orders and generates
+            EasyPost shipment rows.
           </Typography>
           <Button component={Link} to="/shipping-export" variant="outlined">
             Open Shipping Export

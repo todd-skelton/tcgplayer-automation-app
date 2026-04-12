@@ -6,6 +6,8 @@ import type {
   EasyPostShipment,
   LabelFormat,
   LabelSize,
+  ShippingPostageDirection,
+  ShippingPostagePurchaseScope,
   ShippingPostagePurchaseRequest,
   ShippingPostagePurchaseRequestItem,
 } from "../types/shippingExport";
@@ -17,6 +19,14 @@ type ShippingPostageActionDependencies = {
 
 const LABEL_SIZES = new Set<LabelSize>(["4x6", "7x3", "6x4"]);
 const LABEL_FORMATS = new Set<LabelFormat>(["PDF", "PNG"]);
+const POSTAGE_DIRECTIONS = new Set<ShippingPostageDirection>([
+  "outbound",
+  "return",
+]);
+const PURCHASE_SCOPES = new Set<ShippingPostagePurchaseScope>([
+  "bulk",
+  "single",
+]);
 const SERVICES = new Set(["First", "GroundAdvantage", "Priority", "Express"]);
 const DELIVERY_CONFIRMATIONS = new Set(["NO_SIGNATURE", "SIGNATURE"]);
 
@@ -121,10 +131,26 @@ export function createShippingPostagesAction(
     try {
       const payload = (await request.json()) as Partial<ShippingPostagePurchaseRequest>;
       const labelSize = payload.labelSize;
+      const direction = payload.direction ?? "outbound";
+      const purchaseScope = payload.purchaseScope ?? "bulk";
 
       if (!labelSize || !LABEL_SIZES.has(labelSize)) {
         return data(
           { error: "labelSize must be one of 4x6, 7x3, or 6x4." },
+          { status: 400 },
+        );
+      }
+
+      if (!POSTAGE_DIRECTIONS.has(direction)) {
+        return data(
+          { error: "direction must be either outbound or return." },
+          { status: 400 },
+        );
+      }
+
+      if (!PURCHASE_SCOPES.has(purchaseScope)) {
+        return data(
+          { error: "purchaseScope must be either bulk or single." },
           { status: 400 },
         );
       }
@@ -155,6 +181,10 @@ export function createShippingPostagesAction(
         config.easypostMode,
         labelSize,
         shipments,
+        {
+          direction,
+          purchaseScope,
+        },
       );
 
       return data(response, { status: 200 });

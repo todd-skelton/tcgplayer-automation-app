@@ -6,7 +6,14 @@
  * continue operating normally.
  *
  * @example
- * import { mpSearchApi, mpApi, infiniteApi, mpGateway } from "~/core/clients";
+ * import {
+ *   mpSearchApi,
+ *   mpApi,
+ *   infiniteApi,
+ *   mpGateway,
+ *   orderManagementApi,
+ *   messagesApi,
+ * } from "~/core/clients";
  *
  * // Use relative paths - baseURL is already set
  * const result = await mpSearchApi.get<ProductResponse>("/v1/search/products");
@@ -18,6 +25,8 @@ export { mpSearchApi } from "./mpSearchApi.client.server";
 export { mpApi } from "./mpApi.client.server";
 export { infiniteApi } from "./infiniteApi.client.server";
 export { mpGateway } from "./mpGateway.client.server";
+export { orderManagementApi } from "./orderManagementApi.client.server";
+export { messagesApi } from "./messagesApi.client.server";
 
 // Base client class for advanced use cases
 export { DomainHttpClient } from "./baseDomainClient.server";

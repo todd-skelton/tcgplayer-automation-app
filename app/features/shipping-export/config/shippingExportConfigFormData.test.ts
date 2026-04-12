@@ -15,6 +15,7 @@ const testCases: TestCase[] = [
     name: "parseShippingExportConfigFormData defaults easypost mode to test",
     run: () => {
       const formData = new FormData();
+      formData.append("defaultSellerKey", "8520a14f");
       formData.append("fromAddress.name", "Warehouse");
       formData.append("fromAddress.street1", "123 Main");
       formData.append("fromAddress.city", "Austin");
@@ -52,6 +53,7 @@ const testCases: TestCase[] = [
       formData.append("expeditedService", "GroundAdvantage");
 
       const config = parseShippingExportConfigFormData(formData);
+      assert.equal(config.defaultSellerKey, "8520a14f");
       assert.equal(config.easypostMode, "test");
     },
   },
@@ -60,9 +62,11 @@ const testCases: TestCase[] = [
     run: () => {
       const formData = createShippingExportConfigFormData({
         ...DEFAULT_SHIPPING_EXPORT_CONFIG,
+        defaultSellerKey: "seller-123",
         easypostMode: "production",
       });
 
+      assert.equal(formData.get("defaultSellerKey"), "seller-123");
       assert.equal(formData.get("easypostMode"), "production");
     },
   },

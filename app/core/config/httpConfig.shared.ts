@@ -13,6 +13,8 @@ export const DOMAIN_KEYS = {
   MPAPI: "mpApi",
   INFINITE_API: "infiniteApi",
   MP_GATEWAY: "mpGateway",
+  ORDER_MANAGEMENT_API: "orderManagementApi",
+  MESSAGES_API: "messagesApi",
 } as const;
 
 export type DomainKey = (typeof DOMAIN_KEYS)[keyof typeof DOMAIN_KEYS];
@@ -23,6 +25,8 @@ export const TCGPLAYER_DOMAINS: Record<DomainKey, string> = {
   [DOMAIN_KEYS.MPAPI]: "mpapi.tcgplayer.com",
   [DOMAIN_KEYS.INFINITE_API]: "infinite-api.tcgplayer.com",
   [DOMAIN_KEYS.MP_GATEWAY]: "mpgateway.tcgplayer.com",
+  [DOMAIN_KEYS.ORDER_MANAGEMENT_API]: "order-management-api.tcgplayer.com",
+  [DOMAIN_KEYS.MESSAGES_API]: "messages-api.tcgplayer.com",
 };
 
 // ============================================================================
@@ -83,6 +87,24 @@ export const DEFAULT_DOMAIN_CONFIGS: DomainConfigs = {
     maxRequestDelayMs: 10000,
     learnedMinDelayMs: 0,
   },
+  [DOMAIN_KEYS.ORDER_MANAGEMENT_API]: {
+    requestDelayMs: 0,
+    rateLimitCooldownMs: 10000,
+    maxConcurrentRequests: 5,
+    adaptiveEnabled: true,
+    minRequestDelayMs: 0,
+    maxRequestDelayMs: 10000,
+    learnedMinDelayMs: 0,
+  },
+  [DOMAIN_KEYS.MESSAGES_API]: {
+    requestDelayMs: 0,
+    rateLimitCooldownMs: 10000,
+    maxConcurrentRequests: 5,
+    adaptiveEnabled: true,
+    minRequestDelayMs: 0,
+    maxRequestDelayMs: 10000,
+    learnedMinDelayMs: 0,
+  },
 };
 
 // ============================================================================
@@ -131,4 +153,6 @@ export const DOMAIN_DISPLAY_NAMES: Record<DomainKey, string> = {
   [DOMAIN_KEYS.MPAPI]: "Marketplace API (mpapi)",
   [DOMAIN_KEYS.INFINITE_API]: "Infinite API (infinite-api)",
   [DOMAIN_KEYS.MP_GATEWAY]: "Gateway API (mpgateway)",
+  [DOMAIN_KEYS.ORDER_MANAGEMENT_API]: "Order Management API",
+  [DOMAIN_KEYS.MESSAGES_API]: "Messages API",
 };

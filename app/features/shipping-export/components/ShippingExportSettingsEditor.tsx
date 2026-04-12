@@ -292,6 +292,26 @@ export function ShippingExportSettingsEditor({
         </Stack>
 
         <Divider />
+        <Stack spacing={2}>
+          <Box>
+            <Typography variant="subtitle1">Live TCGPlayer Orders</Typography>
+            <Typography variant="body2" color="text.secondary">
+              This seller key is used as the default when the shipping export
+              page loads live seller orders directly from TCGPlayer.
+            </Typography>
+          </Box>
+          <TextField
+            label="Default Seller Key"
+            value={config.defaultSellerKey}
+            onChange={(event) =>
+              setConfigValue("defaultSellerKey", event.target.value)
+            }
+            fullWidth
+            helperText="Leave blank to require entering a seller key on the shipping page."
+          />
+        </Stack>
+
+        <Divider />
         <Typography variant="subtitle1">From Address</Typography>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
           <TextField

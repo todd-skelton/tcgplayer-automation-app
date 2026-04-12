@@ -77,15 +77,23 @@ const testCases: TestCase[] = [
       let capturedMode: string | null = null;
       let capturedLabelSize: string | null = null;
       let capturedShipmentCount = 0;
+      let capturedDirection: string | null = null;
+      let capturedPurchaseScope: string | null = null;
       const action = createShippingPostagesAction({
         getShippingExportConfig: async () => ({
           ...DEFAULT_SHIPPING_EXPORT_CONFIG,
           easypostMode: "test",
         }),
-        purchaseShippingPostages: async (mode, labelSize, shipments) => {
+        purchaseShippingPostages: async (mode, labelSize, shipments, options) => {
+          const purchaseOptions = (options ?? {}) as {
+            direction?: string;
+            purchaseScope?: string;
+          };
           capturedMode = mode;
           capturedLabelSize = labelSize;
           capturedShipmentCount = shipments.length;
+          capturedDirection = purchaseOptions.direction ?? null;
+          capturedPurchaseScope = purchaseOptions.purchaseScope ?? null;
           return {
             mode,
             batchLabel: {
@@ -119,6 +127,8 @@ const testCases: TestCase[] = [
       assert.equal(capturedMode, "test");
       assert.equal(capturedLabelSize, "4x6");
       assert.equal(capturedShipmentCount, 1);
+      assert.equal(capturedDirection, "outbound");
+      assert.equal(capturedPurchaseScope, "bulk");
       assert.deepEqual(parsed.body, {
         mode: "test",
         batchLabel: {
@@ -216,6 +226,58 @@ const testCases: TestCase[] = [
     },
   },
   {
+    name: "shipping postage route forwards single return purchases",
+    run: async () => {
+      let capturedDirection: string | null = null;
+      let capturedPurchaseScope: string | null = null;
+      const action = createShippingPostagesAction({
+        getShippingExportConfig: async () => DEFAULT_SHIPPING_EXPORT_CONFIG,
+        purchaseShippingPostages: async (_mode, _labelSize, _shipments, options) => {
+          const purchaseOptions = (options ?? {}) as {
+            direction?: string;
+            purchaseScope?: string;
+          };
+          capturedDirection = purchaseOptions.direction ?? null;
+          capturedPurchaseScope = purchaseOptions.purchaseScope ?? null;
+
+          return {
+            mode: "test",
+            batchLabel: {
+              status: "skipped",
+              shipmentReferences: ["1001"],
+              message:
+                "Batch PDF generation is only available for outbound purchases.",
+            },
+            results: [
+              {
+                reference: "1001",
+                orderNumbers: ["1001"],
+                status: "purchased",
+              },
+            ],
+          };
+        },
+      });
+
+      const result = await action({
+        request: new Request("http://localhost/api/shipping-export/postages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...createValidRequestBody(),
+            direction: "return",
+            purchaseScope: "single",
+          }),
+        }),
+      });
+
+      const parsed = await parseActionResult(result);
+      assert.equal(parsed.status, 200);
+      assert.equal(capturedDirection, "return");
+      assert.equal(capturedPurchaseScope, "single");
+    },
+  },
+  {
     name: "shipping postage route rejects invalid payloads",
     run: async () => {
       let purchaseCalled = false;
@@ -250,6 +312,31 @@ const testCases: TestCase[] = [
         error: "labelSize must be one of 4x6, 7x3, or 6x4.",
       });
       assert.equal(purchaseCalled, false);
+    },
+  },
+  {
+    name: "shipping postage route rejects invalid direction",
+    run: async () => {
+      const action = createShippingPostagesAction({
+        getShippingExportConfig: async () => DEFAULT_SHIPPING_EXPORT_CONFIG,
+      });
+
+      const result = await action({
+        request: new Request("http://localhost/api/shipping-export/postages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...createValidRequestBody(),
+            direction: "sideways",
+          }),
+        }),
+      });
+
+      const parsed = await parseActionResult(result);
+      assert.equal(parsed.status, 400);
+      assert.deepEqual(parsed.body, {
+        error: "direction must be either outbound or return.",
+      });
     },
   },
   {

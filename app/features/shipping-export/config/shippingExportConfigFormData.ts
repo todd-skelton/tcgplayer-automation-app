@@ -29,6 +29,7 @@ export function parseShippingExportConfigFormData(
   formData: FormData,
 ): ShippingExportConfig {
   return {
+    defaultSellerKey: parseStringFormValue(formData, "defaultSellerKey"),
     fromAddress: {
       name: parseStringFormValue(formData, "fromAddress.name"),
       company: parseStringFormValue(formData, "fromAddress.company") || undefined,
@@ -184,6 +185,7 @@ export function createShippingExportConfigFormData(
   const formData = new FormData();
 
   formData.append("actionType", actionType);
+  formData.append("defaultSellerKey", config.defaultSellerKey);
   formData.append("fromAddress.name", config.fromAddress.name);
   formData.append("fromAddress.company", config.fromAddress.company ?? "");
   formData.append("fromAddress.phone", config.fromAddress.phone ?? "");

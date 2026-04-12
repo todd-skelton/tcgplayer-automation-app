@@ -13,6 +13,8 @@ import type {
   LabelSize,
   ShippingPostageBatchLabelRequestItem,
   ShippingPostageBatchLabelResult,
+  ShippingPostageDirection,
+  ShippingPostagePurchaseScope,
   ShippingPostagePurchaseRequestItem,
   ShippingPostagePurchaseResponse,
   ShippingPostagePurchaseResult,
@@ -27,6 +29,7 @@ type EasyPostClientLike = {
   Shipment: {
     create: (params: IShipmentCreateParameters) => Promise<IShipment>;
     buy: (id: string, rate: string | IRate) => Promise<IShipment>;
+    retrieve: (id: string) => Promise<IShipment>;
   };
 };
 
@@ -37,6 +40,11 @@ type PurchaseShippingPostagesDependencies = {
   createClient?: (apiKey: string) => EasyPostClientLike;
   getApiKeyForMode?: (mode: EasyPostMode) => string;
   postagePurchasesRepository?: ShippingPostagePurchasesRepositoryLike;
+};
+
+type PurchaseShippingPostagesOptions = {
+  direction?: ShippingPostageDirection;
+  purchaseScope?: ShippingPostagePurchaseScope;
 };
 
 const BATCH_FAILURE_STATES = new Set(["creation_failed", "purchase_failed"]);
@@ -147,6 +155,7 @@ function toRateSummary(
 async function persistPurchaseResult(
   repository: ShippingPostagePurchasesRepositoryLike,
   mode: EasyPostMode,
+  direction: ShippingPostageDirection,
   labelSize: LabelSize,
   result: ShippingPostagePurchaseResult,
 ): Promise<void> {
@@ -154,6 +163,7 @@ async function persistPurchaseResult(
     shipmentReference: result.reference,
     orderNumbers: result.orderNumbers,
     mode,
+    direction,
     labelSize,
     easypostShipmentId: result.easypostShipmentId,
     trackingCode: result.trackingCode,
@@ -348,6 +358,13 @@ async function createBatchLabel(
   }
 }
 
+function shouldBlockDuplicatePurchase(
+  direction: ShippingPostageDirection,
+  purchaseScope: ShippingPostagePurchaseScope,
+): boolean {
+  return direction === "outbound" && purchaseScope === "bulk";
+}
+
 export async function generateBatchLabelForPurchasedShipments(
   mode: EasyPostMode,
   shipments: ShippingPostageBatchLabelRequestItem[],
@@ -370,18 +387,56 @@ export async function generateBatchLabelForPurchasedShipments(
   );
 }
 
-export async function purchaseShippingPostages(
+export async function getPublicTrackingUrlForPurchasedShipment(
   mode: EasyPostMode,
-  labelSize: LabelSize,
-  items: ShippingPostagePurchaseRequestItem[],
+  easypostShipmentId: string,
   dependencies: PurchaseShippingPostagesDependencies = {},
-): Promise<ShippingPostagePurchaseResponse> {
+): Promise<string> {
   const getApiKeyForMode = dependencies.getApiKeyForMode ?? getEasyPostApiKey;
   const createClient =
     dependencies.createClient ??
     ((apiKey: string) => new EasyPostClient(apiKey) as EasyPostClientLike);
+  const client = createClient(getApiKeyForMode(mode));
+  const shipment = await client.Shipment.retrieve(easypostShipmentId);
+  const trackingUrl = shipment.tracker?.public_url?.trim();
+
+  if (!trackingUrl) {
+    throw new Error(
+      `EasyPost shipment ${easypostShipmentId} does not have a public tracking URL.`,
+    );
+  }
+
+  return trackingUrl;
+}
+
+export async function purchaseShippingPostages(
+  mode: EasyPostMode,
+  labelSize: LabelSize,
+  items: ShippingPostagePurchaseRequestItem[],
+  optionsOrDependencies:
+    | PurchaseShippingPostagesOptions
+    | PurchaseShippingPostagesDependencies = {},
+  dependencies: PurchaseShippingPostagesDependencies = {},
+): Promise<ShippingPostagePurchaseResponse> {
+  const hasDependencyKeys =
+    "createClient" in optionsOrDependencies ||
+    "getApiKeyForMode" in optionsOrDependencies ||
+    "postagePurchasesRepository" in optionsOrDependencies;
+  const options: PurchaseShippingPostagesOptions = hasDependencyKeys
+    ? {}
+    : (optionsOrDependencies as PurchaseShippingPostagesOptions);
+  const resolvedDependencies = hasDependencyKeys
+    ? (optionsOrDependencies as PurchaseShippingPostagesDependencies)
+    : dependencies;
+  const direction = options.direction ?? "outbound";
+  const purchaseScope = options.purchaseScope ?? "bulk";
+  const getApiKeyForMode =
+    resolvedDependencies.getApiKeyForMode ?? getEasyPostApiKey;
+  const createClient =
+    resolvedDependencies.createClient ??
+    ((apiKey: string) => new EasyPostClient(apiKey) as EasyPostClientLike);
   const repository =
-    dependencies.postagePurchasesRepository ??
+    resolvedDependencies.postagePurchasesRepository ??
     shippingPostagePurchasesRepository;
 
   const client = createClient(getApiKeyForMode(mode));
@@ -392,21 +447,23 @@ export async function purchaseShippingPostages(
       .map((orderNumber) => orderNumber.trim())
       .filter(Boolean);
 
-    const duplicatePurchases =
-      await repository.findSuccessfulOutboundByOrderNumbers(
-        mode,
-        normalizedOrderNumbers,
-      );
+    if (shouldBlockDuplicatePurchase(direction, purchaseScope)) {
+      const duplicatePurchases =
+        await repository.findSuccessfulOutboundByOrderNumbers(
+          mode,
+          normalizedOrderNumbers,
+        );
 
-    if (duplicatePurchases.length > 0) {
-      const result = createSkippedResult(
-        item,
-        `Postage already purchased in ${mode} mode for order ${duplicatePurchases[0].orderNumbers[0]}.`,
-        duplicatePurchases[0],
-      );
-      await persistPurchaseResult(repository, mode, labelSize, result);
-      results.push(result);
-      continue;
+      if (duplicatePurchases.length > 0) {
+        const result = createSkippedResult(
+          item,
+          `Postage already purchased in ${mode} mode for order ${duplicatePurchases[0].orderNumbers[0]}.`,
+          duplicatePurchases[0],
+        );
+        await persistPurchaseResult(repository, mode, direction, labelSize, result);
+        results.push(result);
+        continue;
+      }
     }
 
     if (item.shipment.to_address.country.toUpperCase() !== "US") {
@@ -414,7 +471,7 @@ export async function purchaseShippingPostages(
         item,
         "Direct EasyPost purchase is limited to US domestic shipments in v1.",
       );
-      await persistPurchaseResult(repository, mode, labelSize, result);
+      await persistPurchaseResult(repository, mode, direction, labelSize, result);
       results.push(result);
       continue;
     }
@@ -433,7 +490,7 @@ export async function purchaseShippingPostages(
           item,
           `No USPS ${item.shipment.service} rate was available for this shipment.`,
         );
-        await persistPurchaseResult(repository, mode, labelSize, result);
+        await persistPurchaseResult(repository, mode, direction, labelSize, result);
         results.push(result);
         continue;
       }
@@ -458,16 +515,26 @@ export async function purchaseShippingPostages(
         labelPdfUrl: boughtShipment.postage_label?.label_pdf_url,
       };
 
-      await persistPurchaseResult(repository, mode, labelSize, result);
+      await persistPurchaseResult(repository, mode, direction, labelSize, result);
       results.push(result);
     } catch (error) {
       const result = createFailedResult(item, formatEasyPostError(error));
-      await persistPurchaseResult(repository, mode, labelSize, result);
+      await persistPurchaseResult(repository, mode, direction, labelSize, result);
       results.push(result);
     }
   }
 
-  const batchLabel = await createBatchLabel(client, results);
+  const batchLabel =
+    direction === "outbound" && purchaseScope === "bulk"
+      ? await createBatchLabel(client, results)
+      : {
+          status: "skipped" as const,
+          shipmentReferences: results.map((result) => result.reference),
+          message:
+            purchaseScope === "single"
+              ? "Batch PDF generation is only available for bulk outbound purchases."
+              : "Batch PDF generation is only available for outbound purchases.",
+        };
 
   return {
     mode,

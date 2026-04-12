@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -15,10 +15,12 @@ import ViewListIcon from "@mui/icons-material/ViewList";
 import ViewModuleIcon from "@mui/icons-material/ViewModule";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import Papa from "papaparse";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { PullSheetTable } from "../components/PullSheetTable";
 import { PullSheetGrid } from "../components/PullSheetGrid";
 import { getReleaseYear } from "../components/pullSheetUtils";
 import { mapPullSheetProductLineName } from "../utils/productLineNameMap";
+import { useSearchParams } from "react-router";
 import type {
   PullSheetCsvRow,
   PullSheetItem,
@@ -26,8 +28,10 @@ import type {
 import type { Sku } from "~/shared/data-types/sku";
 
 type ViewMode = "table" | "grid";
+const PULL_SHEET_IMPORT_STORAGE_PREFIX = "pull-sheet-import:";
 
 export default function PullSheetRoute() {
+  const [searchParams] = useSearchParams();
   const [items, setItems] = useState<PullSheetItem[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [loading, setLoading] = useState(false);
@@ -36,19 +40,13 @@ export default function PullSheetRoute() {
   const [filterText, setFilterText] = useState("");
   const [orderIds, setOrderIds] = useState<string[]>([]);
 
-  const handleFileUpload = useCallback(
-    async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
+  const loadPullSheetCsv = useCallback(
+    async (text: string, nextFileName: string) => {
       setLoading(true);
       setError(null);
-      setFileName(file.name);
+      setFileName(nextFileName);
 
       try {
-        const text = await file.text();
-
-        // Extract order IDs from the last line if present
         const lines = text.trim().split("\n");
         const lastLine = lines[lines.length - 1];
         let csvText = text;
@@ -57,14 +55,15 @@ export default function PullSheetRoute() {
         if (lastLine.startsWith("Orders Contained in Pull Sheet:")) {
           const ordersPart = lastLine.split(",").slice(1).join(",").trim();
           extractedOrderIds.push(
-            ...ordersPart.split("|").map((id) => id.trim())
+            ...ordersPart
+              .split("|")
+              .map((id) => id.trim())
+              .filter(Boolean),
           );
-          // Remove the last line from CSV text for parsing
           csvText = lines.slice(0, -1).join("\n");
         }
         setOrderIds(extractedOrderIds);
 
-        // Parse CSV
         const parseResult = Papa.parse<PullSheetCsvRow>(csvText, {
           header: true,
           skipEmptyLines: true,
@@ -76,29 +75,25 @@ export default function PullSheetRoute() {
             .map((e) => e.message)
             .join(", ");
           setError(`CSV parsing errors: ${errorMessages}`);
-          setLoading(false);
           return;
         }
 
         const rows = parseResult.data.filter(
-          (row) => row.SkuId && row["Product Name"]
+          (row) => row.SkuId && row["Product Name"],
         );
 
         if (rows.length === 0) {
           setError(
-            "No valid rows found in CSV. Expected columns: Product Line, Product Name, Condition, SkuId, etc."
+            "No valid rows found in CSV. Expected columns: Product Line, Product Name, Condition, SkuId, etc.",
           );
-          setLoading(false);
           return;
         }
 
-        // Build lookup request
         const lookupItems = rows.map((row) => ({
           skuId: parseInt(row.SkuId, 10),
           productLineName: mapPullSheetProductLineName(row["Product Line"]),
         }));
 
-        // Call API to look up SKUs
         const response = await fetch("/api/pull-sheet-lookup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -111,7 +106,6 @@ export default function PullSheetRoute() {
           skuMap = result.skuMap || {};
         }
 
-        // Build pull sheet items with enriched data
         const pullSheetItems: PullSheetItem[] = rows.map((row) => {
           const skuId = parseInt(row.SkuId, 10);
           const dbSku = skuMap[skuId];
@@ -143,8 +137,57 @@ export default function PullSheetRoute() {
         setLoading(false);
       }
     },
-    []
+    [],
   );
+
+  const handleFileUpload = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const text = await file.text();
+      await loadPullSheetCsv(text, file.name);
+    },
+    [loadPullSheetCsv],
+  );
+
+  useEffect(() => {
+    const importKey = searchParams.get("importKey");
+
+    if (!importKey || typeof window === "undefined") {
+      return;
+    }
+
+    const storageKey = `${PULL_SHEET_IMPORT_STORAGE_PREFIX}${importKey}`;
+    const storedValue = window.localStorage.getItem(storageKey);
+
+    if (!storedValue) {
+      setError("The shared pull sheet data was not found. Generate it again from Shipping Export.");
+      return;
+    }
+
+    window.localStorage.removeItem(storageKey);
+
+    try {
+      const payload = JSON.parse(storedValue) as {
+        csvText?: string;
+        fileName?: string;
+      };
+
+      if (!payload.csvText) {
+        setError("The shared pull sheet data was empty. Generate it again from Shipping Export.");
+        return;
+      }
+
+      void loadPullSheetCsv(
+        payload.csvText,
+        payload.fileName || "shipping-export-pull-sheet.csv",
+      );
+      window.history.replaceState({}, "", "/pull-sheet");
+    } catch (error) {
+      setError(`Failed to load shared pull sheet data: ${String(error)}`);
+    }
+  }, [loadPullSheetCsv, searchParams]);
 
   const handleViewModeChange = useCallback(
     (_: React.MouseEvent<HTMLElement>, newMode: ViewMode | null) => {
@@ -324,6 +367,11 @@ export default function PullSheetRoute() {
             The pull sheet will display all items with condition and print
             indicators to help you pull the correct cards.
           </Typography>
+          <Typography variant="body2" color="text.disabled" sx={{ mt: 1 }}>
+            Shipping Export can also open this page in a new tab with a generated
+            pull sheet ready to review.
+          </Typography>
+          <OpenInNewIcon sx={{ fontSize: 18, color: "text.disabled", mt: 2 }} />
         </Paper>
       )}
     </Box>

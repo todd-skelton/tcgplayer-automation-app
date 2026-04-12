@@ -1,7 +1,15 @@
 import "../features/inventory-management/components/quantityKeyboard.test";
 import "../features/shipping-export/config/shippingExportConfigFormData.test";
 import "../features/shipping-export/routes/api.shipping-export-batch-labels.test";
+import "../features/shipping-export/routes/api.shipping-export-packing-slips-export.test";
 import "../features/shipping-export/routes/api.shipping-export-postage-lookups.test";
 import "../features/shipping-export/routes/api.shipping-export-postages.test";
+import "../features/shipping-export/routes/api.shipping-export-pull-sheet-export.test";
+import "../features/shipping-export/routes/api.shipping-export-tcgplayer-tracking.test";
+import "../features/shipping-export/routes/api.shipping-export-tcgplayer-shipped-messages.test";
+import "../features/shipping-export/routes/api.shipping-export-tcgplayer-orders.test";
 import "../features/shipping-export/services/easyPostPostage.server.test";
 import "../features/shipping-export/services/shippingExportUtils.test";
+import "../features/shipping-export/services/tcgplayerTracking.server.test";
+import "../features/shipping-export/services/tcgplayerShippedMessages.server.test";
+import "../features/shipping-export/services/tcgplayerSellerOrders.server.test";

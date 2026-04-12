@@ -1,4 +1,8 @@
-import axios, { type AxiosInstance, type AxiosResponse } from "axios";
+import axios, {
+  type AxiosInstance,
+  type AxiosRequestConfig,
+  type AxiosResponse,
+} from "axios";
 import {
   type DomainKey,
   type DomainRateLimitConfig,
@@ -235,11 +239,12 @@ export class DomainHttpClient {
   async get<TResponse, TParams = unknown>(
     path: string,
     params?: TParams,
+    options?: Pick<AxiosRequestConfig, "headers" | "responseType">,
   ): Promise<TResponse> {
     return this.executeWithRetry(
       "GET",
       path,
-      () => this.axiosClient.get<TResponse>(path, { params }),
+      () => this.axiosClient.get<TResponse>(path, { params, ...options }),
       params ? { params } : undefined,
     );
   }
@@ -250,11 +255,12 @@ export class DomainHttpClient {
   async post<TResponse, TData = unknown>(
     path: string,
     data?: TData,
+    options?: Pick<AxiosRequestConfig, "headers" | "responseType">,
   ): Promise<TResponse> {
     return this.executeWithRetry(
       "POST",
       path,
-      () => this.axiosClient.post<TResponse>(path, data),
+      () => this.axiosClient.post<TResponse>(path, data, options),
       data ? { data } : undefined,
     );
   }

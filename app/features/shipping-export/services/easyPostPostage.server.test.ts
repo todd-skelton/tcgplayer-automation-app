@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import type { IBatch, IRate, IShipment } from "@easypost/api";
 import {
+  getPublicTrackingUrlForPurchasedShipment,
   generateBatchLabelForPurchasedShipments,
   purchaseShippingPostages,
 } from "./easyPostPostage.server";
@@ -178,15 +179,16 @@ function createBatch(
 
 function createClient(
   overrides: Partial<{
-    Shipment: {
+    Shipment: Partial<{
       create: (params: unknown) => Promise<IShipment>;
       buy: (id: string, rate: string | IRate) => Promise<IShipment>;
-    };
-    Batch: {
+      retrieve: (id: string) => Promise<IShipment>;
+    }>;
+    Batch: Partial<{
       create: (params: { shipments: string[] }) => Promise<IBatch>;
       generateLabel: (id: string, fileFormat: "PDF") => Promise<IBatch>;
       retrieve: (id: string) => Promise<IBatch>;
-    };
+    }>;
   }> = {},
 ) {
   return {
@@ -196,6 +198,13 @@ function createClient(
       },
       async buy() {
         return createShipment();
+      },
+      async retrieve() {
+        return createShipment({
+          tracker: {
+            public_url: "https://track.easypost.com/example",
+          } as IShipment["tracker"],
+        });
       },
       ...overrides.Shipment,
     },
@@ -239,6 +248,59 @@ function createRepository(
 }
 
 const testCases: TestCase[] = [
+  {
+    name: "getPublicTrackingUrlForPurchasedShipment returns the EasyPost public tracker url",
+    run: async () => {
+      const trackingUrl = await getPublicTrackingUrlForPurchasedShipment(
+        "production",
+        "shp_123",
+        {
+          getApiKeyForMode: () => "prod-key",
+          createClient: (apiKey) => {
+            assert.equal(apiKey, "prod-key");
+
+            return createClient({
+              Shipment: {
+                async retrieve(id) {
+                  assert.equal(id, "shp_123");
+
+                  return createShipment({
+                    tracker: {
+                      public_url: "https://track.easypost.com/trk_public",
+                    } as IShipment["tracker"],
+                  });
+                },
+              },
+            });
+          },
+        },
+      );
+
+      assert.equal(trackingUrl, "https://track.easypost.com/trk_public");
+    },
+  },
+  {
+    name: "getPublicTrackingUrlForPurchasedShipment rejects shipments without a public tracker url",
+    run: async () => {
+      await assert.rejects(
+        () =>
+          getPublicTrackingUrlForPurchasedShipment("test", "shp_123", {
+            getApiKeyForMode: () => "test-key",
+            createClient: () =>
+              createClient({
+                Shipment: {
+                  async retrieve() {
+                    return createShipment({
+                      tracker: {} as IShipment["tracker"],
+                    });
+                  },
+                },
+              }),
+          }),
+        /does not have a public tracking URL/,
+      );
+    },
+  },
   {
     name: "purchaseShippingPostages resolves the requested mode to the configured API key",
     run: async () => {
@@ -456,6 +518,115 @@ const testCases: TestCase[] = [
       assert.equal(createCalled, false);
       assert.equal(response.results[0].status, "skipped");
       assert.match(response.results[0].error ?? "", /already purchased/);
+    },
+  },
+  {
+    name: "purchaseShippingPostages allows single outbound repurchases for the same order",
+    run: async () => {
+      let createCalled = false;
+      let duplicateLookupCount = 0;
+      const { saved, repository } = createRepository({
+        async findSuccessfulOutboundByOrderNumbers() {
+          duplicateLookupCount += 1;
+          return [
+            {
+              id: 1,
+              shipmentReference: "1001",
+              orderNumbers: ["1001"],
+              mode: "test",
+              direction: "outbound",
+              labelSize: "4x6",
+              easypostShipmentId: "shp_existing",
+              trackingCode: "9400",
+              selectedRateService: "GroundAdvantage",
+              selectedRateRate: "4.11",
+              selectedRateCurrency: "USD",
+              labelUrl: null,
+              labelPdfUrl: null,
+              status: "purchased",
+              errorMessage: null,
+              createdAt: new Date(),
+            },
+          ];
+        },
+      });
+
+      const response = await purchaseShippingPostages(
+        "test",
+        "4x6",
+        [createShipmentItem()],
+        {
+          direction: "outbound",
+          purchaseScope: "single",
+        },
+        {
+          getApiKeyForMode: () => "test-key",
+          createClient: () =>
+            createClient({
+              Shipment: {
+                async create() {
+                  createCalled = true;
+                  return createShipment();
+                },
+                async buy() {
+                  return createShipment();
+                },
+              },
+            }),
+          postagePurchasesRepository: repository as never,
+        },
+      );
+
+      assert.equal(duplicateLookupCount, 0);
+      assert.equal(createCalled, true);
+      assert.equal(response.results[0].status, "purchased");
+      assert.equal(saved[0].direction, "outbound");
+      assert.equal(response.batchLabel.status, "skipped");
+    },
+  },
+  {
+    name: "purchaseShippingPostages allows return labels and persists return direction",
+    run: async () => {
+      let createCalled = false;
+      let duplicateLookupCount = 0;
+      const { saved, repository } = createRepository({
+        async findSuccessfulOutboundByOrderNumbers() {
+          duplicateLookupCount += 1;
+          return [];
+        },
+      });
+
+      const response = await purchaseShippingPostages(
+        "test",
+        "4x6",
+        [createShipmentItem()],
+        {
+          direction: "return",
+          purchaseScope: "single",
+        },
+        {
+          getApiKeyForMode: () => "test-key",
+          createClient: () =>
+            createClient({
+              Shipment: {
+                async create() {
+                  createCalled = true;
+                  return createShipment();
+                },
+                async buy() {
+                  return createShipment();
+                },
+              },
+            }),
+          postagePurchasesRepository: repository as never,
+        },
+      );
+
+      assert.equal(duplicateLookupCount, 0);
+      assert.equal(createCalled, true);
+      assert.equal(response.results[0].status, "purchased");
+      assert.equal(saved[0].direction, "return");
+      assert.equal(response.batchLabel.status, "skipped");
     },
   },
   {

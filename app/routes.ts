@@ -135,6 +135,26 @@ export default [
     file: "features/shipping-export/routes/api.shipping-export-postage-lookups.ts",
   },
   {
+    path: "/api/shipping-export/tcgplayer-orders",
+    file: "features/shipping-export/routes/api.shipping-export-tcgplayer-orders.ts",
+  },
+  {
+    path: "/api/shipping-export/tcgplayer-tracking",
+    file: "features/shipping-export/routes/api.shipping-export-tcgplayer-tracking.ts",
+  },
+  {
+    path: "/api/shipping-export/tcgplayer-shipped-messages",
+    file: "features/shipping-export/routes/api.shipping-export-tcgplayer-shipped-messages.ts",
+  },
+  {
+    path: "/api/shipping-export/pull-sheet-export",
+    file: "features/shipping-export/routes/api.shipping-export-pull-sheet-export.ts",
+  },
+  {
+    path: "/api/shipping-export/packing-slips-export",
+    file: "features/shipping-export/routes/api.shipping-export-packing-slips-export.ts",
+  },
+  {
     path: "/api/pull-sheet-lookup",
     file: "features/pull-sheet/routes/api.pull-sheet-lookup.ts",
   },
