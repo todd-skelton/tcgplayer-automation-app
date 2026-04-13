@@ -87,6 +87,11 @@ export function mapSellerOrderDetailToShippingOrder(
     "Shipping Fee Paid": order.transaction.shippingAmount,
     "Tracking #": "",
     Carrier: "",
+    products: order.products.map((p) => ({
+      name: p.name,
+      quantity: p.quantity,
+      unitPrice: p.unitPrice,
+    })),
   };
 }
 

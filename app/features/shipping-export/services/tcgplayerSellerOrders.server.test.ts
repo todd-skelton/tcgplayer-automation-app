@@ -86,6 +86,7 @@ const testCases: TestCase[] = [
         "Shipping Fee Paid": 0,
         "Tracking #": "",
         Carrier: "",
+        products: [{ name: "Magearna EX", quantity: 1, unitPrice: 10.01 }],
       });
     },
   },

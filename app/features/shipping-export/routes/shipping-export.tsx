@@ -1,31 +1,14 @@
-import DownloadIcon from "@mui/icons-material/Download";
-import EditIcon from "@mui/icons-material/Edit";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import ReplyIcon from "@mui/icons-material/Reply";
 import {
   Alert,
   Box,
-  Button,
   Chip,
-  Container,
-  CircularProgress,
-  Divider,
-  Drawer,
-  FormControl,
-  IconButton,
-  InputLabel,
-  MenuItem,
   Paper,
-  Select,
+  Step,
+  StepButton,
+  Stepper,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Tooltip,
+  Tab,
+  Tabs,
   Typography,
 } from "@mui/material";
 import { data, Link, type MetaFunction, useLoaderData } from "react-router";
@@ -40,39 +23,57 @@ import {
   getShipmentCsvRows,
   getShipmentsForLabelSize,
   mapOrdersToShipments,
+  mapOrderToShipment,
   mergeOrdersByAddress,
   parseShippingOrdersCsv,
 } from "../services/shippingExportUtils";
 import {
-  type EasyPostAddress,
   type EasyPostMode,
-  type EasyPostService,
   type EasyPostShipment,
-  type LabelFormat,
   type LabelSize,
+  type ReturnFlowType,
+  type ShipmentToOrderMap,
+  type ShippingExportConfig,
+  type ShippingLiveOrderLoadResponse,
   type ShippingPostageBatchLabelRequestItem,
   type ShippingPostageBatchLabelResult,
   type ShippingPostageDirection,
   type ShippingPostageLookupResponse,
-  type ShippingPostagePurchaseScope,
   type ShippingPostagePurchaseResponse,
   type ShippingPostagePurchaseResult,
-  type ShippingLiveOrderLoadResponse,
+  type ShippingPostagePurchaseScope,
   type ShippingShippedMessageRequestItem,
   type ShippingShippedMessageResponse,
   type ShippingShippedMessageResult,
   type ShippingTrackingApplyRequestItem,
   type ShippingTrackingApplyResponse,
   type ShippingTrackingApplyResult,
-  type ShipmentToOrderMap,
-  type ShippingExportConfig,
   type TcgPlayerShippingOrder,
 } from "../types/shippingExport";
+import { ShipmentEditDrawer } from "../components/ShipmentEditDrawer";
+import { LoadOrdersStep } from "../components/steps/LoadOrdersStep";
+import { PullSheetStep } from "../components/steps/PullSheetStep";
+import { BuyPostageStep } from "../components/steps/BuyPostageStep";
+import { PrintStep } from "../components/steps/PrintStep";
+import { PackStep } from "../components/steps/PackStep";
+import { ApplyTrackingStep } from "../components/steps/ApplyTrackingStep";
+import { NotifyStep } from "../components/steps/NotifyStep";
+import { ReturnFlowPanel } from "../components/ReturnFlowPanel";
 
 type PurchaseEntry = {
   mode: EasyPostMode;
   result: ShippingPostagePurchaseResult;
 };
+
+const OUTBOUND_STEPS = [
+  { key: "load-orders", label: "Load Orders" },
+  { key: "pull-sheet", label: "Pull Sheet" },
+  { key: "buy-postage", label: "Buy Postage" },
+  { key: "print", label: "Print" },
+  { key: "pack", label: "Pack" },
+  { key: "apply-tracking", label: "Apply Tracking" },
+  { key: "notify", label: "Notify" },
+] as const;
 
 function buildTrackingApplyItems(
   shipments: EasyPostShipment[],
@@ -94,9 +95,7 @@ function buildTrackingApplyItems(
       continue;
     }
 
-    for (const orderNumber of shipmentToOrderMap[shipment.reference] ?? [
-      shipment.reference,
-    ]) {
+    for (const orderNumber of shipmentToOrderMap[shipment.reference] ?? [shipment.reference]) {
       const normalizedOrderNumber = orderNumber.trim();
 
       if (!normalizedOrderNumber || seenOrderNumbers.has(normalizedOrderNumber)) {
@@ -142,9 +141,7 @@ function buildShippedMessageItems(
       continue;
     }
 
-    for (const orderNumber of shipmentToOrderMap[shipment.reference] ?? [
-      shipment.reference,
-    ]) {
+    for (const orderNumber of shipmentToOrderMap[shipment.reference] ?? [shipment.reference]) {
       const normalizedOrderNumber = orderNumber.trim();
 
       if (!normalizedOrderNumber || seenOrderNumbers.has(normalizedOrderNumber)) {
@@ -180,10 +177,7 @@ function updateOrderDerivedState(
   };
 }
 
-function downloadCsvFile(
-  filenamePrefix: string,
-  shipments: EasyPostShipment[],
-): void {
+function downloadCsvFile(filenamePrefix: string, shipments: EasyPostShipment[]): void {
   const csvOutput = Papa.unparse(getShipmentCsvRows(shipments));
   const blob = new Blob([csvOutput], { type: "text/csv" });
   downloadBlobFile(blob, buildTimestampedFileName(filenamePrefix));
@@ -245,260 +239,13 @@ function getFileNameFromContentDisposition(
   return fallbackFileName;
 }
 
-function AddressBlock({ address }: { address: EasyPostAddress }) {
-  const lines = [
-    address.name,
-    address.company,
-    address.street1,
-    address.street2,
-    `${address.city}, ${address.state} ${address.zip}`.trim(),
-    address.country,
-  ].filter(Boolean);
-
-  return <Typography component="pre">{lines.join("\n")}</Typography>;
-}
-
-function ShipmentEditDrawer({
-  shipment,
-  open,
-  onClose,
-  onSave,
-  onChange,
-}: {
-  shipment: EasyPostShipment | null;
-  open: boolean;
-  onClose: () => void;
-  onSave: () => void;
-  onChange: (changes: Partial<EasyPostShipment>) => void;
-}) {
-  if (!shipment) {
-    return null;
-  }
-
-  return (
-    <Drawer anchor="right" open={open} onClose={onClose}>
-      <Container sx={{ width: 420, p: 3 }}>
-        <Stack spacing={2}>
-          <Typography variant="h6">Edit Shipment</Typography>
-
-          <Typography variant="subtitle2">To Address</Typography>
-          <TextField
-            label="Name"
-            value={shipment.to_address.name}
-            onChange={(event) =>
-              onChange({
-                to_address: {
-                  ...shipment.to_address,
-                  name: event.target.value,
-                },
-              })
-            }
-          />
-          <TextField
-            label="Street 1"
-            value={shipment.to_address.street1}
-            onChange={(event) =>
-              onChange({
-                to_address: {
-                  ...shipment.to_address,
-                  street1: event.target.value,
-                },
-              })
-            }
-          />
-          <TextField
-            label="Street 2"
-            value={shipment.to_address.street2 ?? ""}
-            onChange={(event) =>
-              onChange({
-                to_address: {
-                  ...shipment.to_address,
-                  street2: event.target.value || undefined,
-                },
-              })
-            }
-          />
-          <TextField
-            label="City"
-            value={shipment.to_address.city}
-            onChange={(event) =>
-              onChange({
-                to_address: {
-                  ...shipment.to_address,
-                  city: event.target.value,
-                },
-              })
-            }
-          />
-          <Stack direction="row" spacing={2}>
-            <TextField
-              label="State"
-              value={shipment.to_address.state}
-              onChange={(event) =>
-                onChange({
-                  to_address: {
-                    ...shipment.to_address,
-                    state: event.target.value,
-                  },
-                })
-              }
-              fullWidth
-            />
-            <TextField
-              label="Zip"
-              value={shipment.to_address.zip}
-              onChange={(event) =>
-                onChange({
-                  to_address: {
-                    ...shipment.to_address,
-                    zip: event.target.value,
-                  },
-                })
-              }
-              fullWidth
-            />
-          </Stack>
-
-          <Divider />
-          <Typography variant="subtitle2">Shipment Details</Typography>
-          <TextField
-            label="Reference"
-            value={shipment.reference}
-            onChange={(event) => onChange({ reference: event.target.value })}
-          />
-          <FormControl fullWidth>
-            <InputLabel id="shipment-service-label">Service</InputLabel>
-            <Select
-              labelId="shipment-service-label"
-              label="Service"
-              value={shipment.service}
-              onChange={(event) =>
-                onChange({ service: event.target.value as EasyPostService })
-              }
-            >
-              <MenuItem value="First">First</MenuItem>
-              <MenuItem value="GroundAdvantage">Ground Advantage</MenuItem>
-              <MenuItem value="Priority">Priority</MenuItem>
-              <MenuItem value="Express">Express</MenuItem>
-            </Select>
-          </FormControl>
-          <Stack direction="row" spacing={2}>
-            <TextField
-              label="Length (in)"
-              type="number"
-              value={shipment.parcel.length}
-              onChange={(event) =>
-                onChange({
-                  parcel: {
-                    ...shipment.parcel,
-                    length: Number(event.target.value),
-                  },
-                })
-              }
-              fullWidth
-            />
-            <TextField
-              label="Width (in)"
-              type="number"
-              value={shipment.parcel.width}
-              onChange={(event) =>
-                onChange({
-                  parcel: {
-                    ...shipment.parcel,
-                    width: Number(event.target.value),
-                  },
-                })
-              }
-              fullWidth
-            />
-          </Stack>
-          <Stack direction="row" spacing={2}>
-            <TextField
-              label="Height (in)"
-              type="number"
-              value={shipment.parcel.height}
-              onChange={(event) =>
-                onChange({
-                  parcel: {
-                    ...shipment.parcel,
-                    height: Number(event.target.value),
-                  },
-                })
-              }
-              fullWidth
-            />
-            <TextField
-              label="Weight (oz)"
-              type="number"
-              value={shipment.parcel.weight}
-              onChange={(event) =>
-                onChange({
-                  parcel: {
-                    ...shipment.parcel,
-                    weight: Number(event.target.value),
-                  },
-                })
-              }
-              fullWidth
-            />
-          </Stack>
-          <FormControl fullWidth>
-            <InputLabel id="shipment-label-format-label">
-              Label Format
-            </InputLabel>
-            <Select
-              labelId="shipment-label-format-label"
-              label="Label Format"
-              value={shipment.options.label_format}
-              onChange={(event) =>
-                onChange({
-                  options: {
-                    ...shipment.options,
-                    label_format: event.target.value as LabelFormat,
-                  },
-                })
-              }
-            >
-              <MenuItem value="PDF">PDF</MenuItem>
-              <MenuItem value="PNG">PNG</MenuItem>
-            </Select>
-          </FormControl>
-          <FormControl fullWidth>
-            <InputLabel id="shipment-label-size-label">Label Size</InputLabel>
-            <Select
-              labelId="shipment-label-size-label"
-              label="Label Size"
-              value={shipment.options.label_size}
-              onChange={(event) =>
-                onChange({
-                  options: {
-                    ...shipment.options,
-                    label_size: event.target.value as LabelSize,
-                  },
-                })
-              }
-            >
-              <MenuItem value="4x6">4x6</MenuItem>
-              <MenuItem value="7x3">7x3</MenuItem>
-              <MenuItem value="6x4">6x4</MenuItem>
-            </Select>
-          </FormControl>
-          <Button variant="contained" onClick={onSave}>
-            Save Shipment Changes
-          </Button>
-        </Stack>
-      </Container>
-    </Drawer>
-  );
-}
-
 export const meta: MetaFunction = () => {
   return [
-    { title: "EasyPost Shipping Export" },
+    { title: "Shipping Workflow" },
     {
       name: "description",
       content:
-        "Load live TCGPlayer seller orders or upload CSV exports, then build and buy EasyPost shipments.",
+        "Step-by-step shipping workflow: load orders, pull cards, buy postage, print labels, pack, apply tracking, and notify buyers.",
     },
   ];
 };
@@ -513,25 +260,30 @@ export async function loader() {
 
 export default function ShippingExportRoute() {
   const { config, environmentStatus } = useLoaderData<typeof loader>();
-  const [sourceOrders, setSourceOrders] = useState<TcgPlayerShippingOrder[]>(
-    [],
-  );
+
+  // ── Workflow navigation ───────────────────────────────────────────────────
+  const [currentStep, setCurrentStep] = useState(0);
+  const [activeTab, setActiveTab] = useState<"outbound" | "return">("outbound");
+
+  // ── Order / shipment state ────────────────────────────────────────────────
+  const [sourceOrders, setSourceOrders] = useState<TcgPlayerShippingOrder[]>([]);
   const [orders, setOrders] = useState<TcgPlayerShippingOrder[]>([]);
   const [shipments, setShipments] = useState<EasyPostShipment[]>([]);
-  const [shipmentToOrderMap, setShipmentToOrderMap] =
-    useState<ShipmentToOrderMap>({});
+  const [shipmentToOrderMap, setShipmentToOrderMap] = useState<ShipmentToOrderMap>({});
+
+  // ── Input controls ────────────────────────────────────────────────────────
   const [sellerKeyInput, setSellerKeyInput] = useState(config.defaultSellerKey);
   const [singleOrderNumberInput, setSingleOrderNumberInput] = useState("");
-  const [uploadedFileName, setUploadedFileName] = useState("");
   const [loadedSourceLabel, setLoadedSourceLabel] = useState("");
   const [loadWarnings, setLoadWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [selectedShipment, setSelectedShipment] =
-    useState<EasyPostShipment | null>(null);
-  const [selectedShipmentReference, setSelectedShipmentReference] = useState<
-    string | null
-  >(null);
+
+  // ── Shipment edit drawer ──────────────────────────────────────────────────
+  const [selectedShipment, setSelectedShipment] = useState<EasyPostShipment | null>(null);
+  const [selectedShipmentReference, setSelectedShipmentReference] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // ── Postage state ─────────────────────────────────────────────────────────
   const [outboundPurchaseResultsByReference, setOutboundPurchaseResultsByReference] =
     useState<Record<string, PurchaseEntry>>({});
   const [returnPurchaseResultsByReference, setReturnPurchaseResultsByReference] =
@@ -539,73 +291,47 @@ export default function ShippingExportRoute() {
   const [batchLabelResultsBySize, setBatchLabelResultsBySize] = useState<
     Partial<Record<LabelSize, ShippingPostageBatchLabelResult>>
   >({});
-  const [isLoadingExistingPostage, setIsLoadingExistingPostage] =
-    useState(false);
+
+  // ── Loading flags ─────────────────────────────────────────────────────────
+  const [isLoadingExistingPostage, setIsLoadingExistingPostage] = useState(false);
   const [isLoadingLiveOrders, setIsLoadingLiveOrders] = useState(false);
   const [isLoadingSingleOrder, setIsLoadingSingleOrder] = useState(false);
   const [isGeneratingPullSheet, setIsGeneratingPullSheet] = useState(false);
-  const [packingSlipAction, setPackingSlipAction] = useState<
-    "download" | "open" | null
-  >(null);
-  const [generatingBatchLabelSize, setGeneratingBatchLabelSize] =
-    useState<LabelSize | null>(null);
-  const [purchasingLabelSize, setPurchasingLabelSize] =
-    useState<LabelSize | null>(null);
-  const [purchasingActionKey, setPurchasingActionKey] = useState<string | null>(
-    null,
-  );
+  const [packingSlipAction, setPackingSlipAction] = useState<"download" | "open" | null>(null);
+  const [generatingBatchLabelSize, setGeneratingBatchLabelSize] = useState<LabelSize | null>(null);
+  const [purchasingLabelSize, setPurchasingLabelSize] = useState<LabelSize | null>(null);
+  const [purchasingActionKey, setPurchasingActionKey] = useState<string | null>(null);
   const [isApplyingTracking, setIsApplyingTracking] = useState(false);
-  const [trackingApplyResults, setTrackingApplyResults] = useState<
-    ShippingTrackingApplyResult[]
-  >([]);
-  const [isSendingShippedMessages, setIsSendingShippedMessages] =
-    useState(false);
-  const [shippedMessageResults, setShippedMessageResults] = useState<
-    ShippingShippedMessageResult[]
-  >([]);
+  const [trackingApplyResults, setTrackingApplyResults] = useState<ShippingTrackingApplyResult[]>([]);
+  const [isSendingShippedMessages, setIsSendingShippedMessages] = useState(false);
+  const [shippedMessageResults, setShippedMessageResults] = useState<ShippingShippedMessageResult[]>([]);
 
-  const selectedModeHasApiKey =
-    config.easypostMode === "test"
-      ? environmentStatus.hasTestApiKey
-      : environmentStatus.hasProductionApiKey;
+  // ── Pack step state ───────────────────────────────────────────────────────
+  const [packedOrderNumbers, setPackedOrderNumbers] = useState<Set<string>>(new Set());
+
+  // ── Return flow state ─────────────────────────────────────────────────────
+  const [returnFlowType, setReturnFlowType] = useState<ReturnFlowType>("round-trip");
+  const [returnOrder, setReturnOrder] = useState<TcgPlayerShippingOrder | null>(null);
+  const [returnShipment, setReturnShipment] = useState<EasyPostShipment | null>(null);
+  const [isLoadingReturnOrder, setIsLoadingReturnOrder] = useState(false);
+  const [isPurchasingReturn, setIsPurchasingReturn] = useState(false);
+  const [outboundReturnPurchaseEntry, setOutboundReturnPurchaseEntry] = useState<PurchaseEntry | null>(null);
+  const [returnOnlyPurchaseEntry, setReturnOnlyPurchaseEntry] = useState<PurchaseEntry | null>(null);
+
+  // ── Derived values ────────────────────────────────────────────────────────
   const availableLabelSizes = getAllLabelSizes().filter((labelSize) =>
     shipments.some((shipment) => shipment.options.label_size === labelSize),
   );
-  const loadedOrderNumbers = [
-    ...new Set(
-      sourceOrders
-        .map((order) => order["Order #"].trim())
-        .filter(Boolean),
-    ),
-  ];
-  const trackingApplyItems = buildTrackingApplyItems(
-    shipments,
-    shipmentToOrderMap,
-    outboundPurchaseResultsByReference,
-  );
+  const loadedOrderNumbers = [...new Set(sourceOrders.map((o) => o["Order #"].trim()).filter(Boolean))];
+  const trackingApplyItems = buildTrackingApplyItems(shipments, shipmentToOrderMap, outboundPurchaseResultsByReference);
   const shippedMessageItems = buildShippedMessageItems(
     shipments,
     sellerKeyInput,
     shipmentToOrderMap,
     outboundPurchaseResultsByReference,
   );
-  const appliedTrackingCount = trackingApplyResults.filter(
-    (result) => result.status === "applied",
-  ).length;
-  const failedTrackingResults = trackingApplyResults.filter(
-    (result) => result.status === "failed",
-  );
-  const sentShippedMessageCount = shippedMessageResults.filter(
-    (result) => result.status === "sent",
-  ).length;
-  const failedShippedMessageResults = shippedMessageResults.filter(
-    (result) => result.status === "failed",
-  );
 
-  const applyOutboundPurchaseResults = (results: Record<string, PurchaseEntry>) => {
-    setOutboundPurchaseResultsByReference(results);
-  };
-
+  // ── Internal helpers ──────────────────────────────────────────────────────
   const getOrderNumbersForShipment = (shipmentReference: string) =>
     shipmentToOrderMap[shipmentReference] ?? [shipmentReference];
 
@@ -619,27 +345,41 @@ export default function ShippingExportRoute() {
     for (const result of results) {
       const previousResult = previousResults[result.reference];
 
-      if (
-        previousResult?.result.status === "purchased" &&
-        result.status === "skipped"
-      ) {
+      if (previousResult?.result.status === "purchased" && result.status === "skipped") {
         continue;
       }
 
-      nextResults[result.reference] = {
-        mode,
-        result,
-      };
+      nextResults[result.reference] = { mode, result };
     }
 
     return nextResults;
   };
 
+  const getSavedPurchasedEntriesForLabelSize = (labelSize: LabelSize) =>
+    getShipmentsForLabelSize(shipments, labelSize)
+      .map((shipment) => ({
+        shipment,
+        purchaseEntry: outboundPurchaseResultsByReference[shipment.reference],
+      }))
+      .filter(
+        (
+          entry,
+        ): entry is {
+          shipment: EasyPostShipment;
+          purchaseEntry: PurchaseEntry;
+        } =>
+          Boolean(
+            entry.purchaseEntry &&
+              entry.purchaseEntry.result.status !== "failed" &&
+              entry.purchaseEntry.result.easypostShipmentId,
+          ),
+      );
+
   const loadExistingPostage = async (
     nextShipments: EasyPostShipment[],
     nextShipmentToOrderMap: ShipmentToOrderMap,
   ) => {
-    applyOutboundPurchaseResults({});
+    setOutboundPurchaseResultsByReference({});
     setReturnPurchaseResultsByReference({});
     setBatchLabelResultsBySize({});
     setTrackingApplyResults([]);
@@ -654,47 +394,34 @@ export default function ShippingExportRoute() {
     try {
       const response = await fetch("/api/shipping-export/postage-lookups", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           shipments: nextShipments.map((shipment) => ({
             shipmentReference: shipment.reference,
-            orderNumbers: nextShipmentToOrderMap[shipment.reference] ?? [
-              shipment.reference,
-            ],
+            orderNumbers: nextShipmentToOrderMap[shipment.reference] ?? [shipment.reference],
           })),
         }),
       });
 
-      const payload = (await response.json()) as
-        | ShippingPostageLookupResponse
-        | { error?: string };
+      const payload = (await response.json()) as ShippingPostageLookupResponse | { error?: string };
 
       if (!response.ok) {
-        throw new Error(
-          "error" in payload
-            ? payload.error ?? "Failed to load saved postage."
-            : "Failed to load saved postage.",
-        );
+        throw new Error("error" in payload ? payload.error ?? "Failed to load saved postage." : "Failed to load saved postage.");
       }
 
       const lookupResponse = payload as ShippingPostageLookupResponse;
 
-      applyOutboundPurchaseResults(
+      setOutboundPurchaseResultsByReference(
         Object.fromEntries(
           lookupResponse.results.map((entry) => [
             entry.shipmentReference,
-            {
-              mode: entry.mode,
-              result: entry.result,
-            },
+            { mode: entry.mode, result: entry.result },
           ]),
         ),
       );
     } catch (lookupError) {
       console.error("Failed to load saved postage labels", lookupError);
-      applyOutboundPurchaseResults({});
+      setOutboundPurchaseResultsByReference({});
     } finally {
       setIsLoadingExistingPostage(false);
     }
@@ -716,16 +443,13 @@ export default function ShippingExportRoute() {
     setBatchLabelResultsBySize({});
     setTrackingApplyResults([]);
     setShippedMessageResults([]);
+    setPackedOrderNumbers(new Set());
     setError(null);
-    await loadExistingPostage(
-      nextState.shipments,
-      nextState.shipmentToOrderMap,
-    );
+    await loadExistingPostage(nextState.shipments, nextState.shipmentToOrderMap);
   };
 
-  const handleFileInput = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  // ── Handlers: load orders ─────────────────────────────────────────────────
+  const handleFileInput = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
 
     if (!file) {
@@ -740,7 +464,6 @@ export default function ShippingExportRoute() {
         throw new Error("No valid order rows were found in the uploaded CSV.");
       }
 
-      setUploadedFileName(file.name);
       await applyOrderSource(parsedOrders, `CSV export: ${file.name}`);
     } catch (uploadError) {
       setError(String(uploadError));
@@ -754,30 +477,19 @@ export default function ShippingExportRoute() {
     try {
       const response = await fetch("/api/shipping-export/tcgplayer-orders", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          sellerKey: sellerKeyInput.trim(),
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sellerKey: sellerKeyInput.trim() }),
       });
 
-      const payload = (await response.json()) as
-        | ShippingLiveOrderLoadResponse
-        | { error?: string };
+      const payload = (await response.json()) as ShippingLiveOrderLoadResponse | { error?: string };
 
       if (!response.ok) {
-        throw new Error(
-          "error" in payload
-            ? payload.error ?? "Failed to load live seller orders."
-            : "Failed to load live seller orders.",
-        );
+        throw new Error("error" in payload ? payload.error ?? "Failed to load live seller orders." : "Failed to load live seller orders.");
       }
 
       const liveOrderResponse = payload as ShippingLiveOrderLoadResponse;
 
       setSellerKeyInput(liveOrderResponse.sellerKey);
-      setUploadedFileName("");
       await applyOrderSource(
         liveOrderResponse.orders,
         `Live seller orders: ${liveOrderResponse.sellerKey}`,
@@ -804,25 +516,17 @@ export default function ShippingExportRoute() {
     try {
       const response = await fetch("/api/shipping-export/tcgplayer-orders", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sellerKey: sellerKeyInput.trim(),
           orderNumber: normalizedOrderNumber,
         }),
       });
 
-      const payload = (await response.json()) as
-        | ShippingLiveOrderLoadResponse
-        | { error?: string };
+      const payload = (await response.json()) as ShippingLiveOrderLoadResponse | { error?: string };
 
       if (!response.ok) {
-        throw new Error(
-          "error" in payload
-            ? payload.error ?? "Failed to load the requested TCGPlayer order."
-            : "Failed to load the requested TCGPlayer order.",
-        );
+        throw new Error("error" in payload ? payload.error ?? "Failed to load the requested TCGPlayer order." : "Failed to load the requested TCGPlayer order.");
       }
 
       const singleOrderResponse = payload as ShippingLiveOrderLoadResponse;
@@ -831,15 +535,10 @@ export default function ShippingExportRoute() {
         setSellerKeyInput(singleOrderResponse.sellerKey);
       }
 
-      setSingleOrderNumberInput(
-        singleOrderResponse.loadedOrderNumbers[0] ?? normalizedOrderNumber,
-      );
-      setUploadedFileName("");
+      setSingleOrderNumberInput(singleOrderResponse.loadedOrderNumbers[0] ?? normalizedOrderNumber);
       await applyOrderSource(
         singleOrderResponse.orders,
-        `Single TCGPlayer order: ${
-          singleOrderResponse.loadedOrderNumbers[0] ?? normalizedOrderNumber
-        }`,
+        `Single TCGPlayer order: ${singleOrderResponse.loadedOrderNumbers[0] ?? normalizedOrderNumber}`,
         singleOrderResponse.warnings ?? [],
       );
     } catch (loadError) {
@@ -849,33 +548,7 @@ export default function ShippingExportRoute() {
     }
   };
 
-  const handleRebuildShipments = async () => {
-    if (sourceOrders.length === 0) {
-      return;
-    }
-
-    const nextState = updateOrderDerivedState(sourceOrders, config);
-    setOrders(nextState.orders);
-    setShipments(nextState.shipments);
-    setShipmentToOrderMap(nextState.shipmentToOrderMap);
-    setBatchLabelResultsBySize({});
-    setError(null);
-    await loadExistingPostage(
-      nextState.shipments,
-      nextState.shipmentToOrderMap,
-    );
-  };
-
-  const handleDownloadAll = () => {
-    for (const labelSize of getAllLabelSizes()) {
-      const labelShipments = getShipmentsForLabelSize(shipments, labelSize);
-
-      if (labelShipments.length > 0) {
-        downloadCsvFile(`EasyPost_Shipments_${labelSize}`, labelShipments);
-      }
-    }
-  };
-
+  // ── Handlers: pull sheet & packing slips ──────────────────────────────────
   const handleOpenPullSheet = async () => {
     if (loadedOrderNumbers.length === 0 || isGeneratingPullSheet) {
       return;
@@ -889,9 +562,7 @@ export default function ShippingExportRoute() {
     try {
       const response = await fetch("/api/shipping-export/pull-sheet-export", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderNumbers: loadedOrderNumbers,
           timezoneOffset: -new Date().getTimezoneOffset() / 60,
@@ -900,16 +571,10 @@ export default function ShippingExportRoute() {
 
       if (!response.ok) {
         let message = "Failed to generate pull sheet export.";
-
         try {
           const payload = (await response.json()) as { error?: string };
-          if (payload.error) {
-            message = payload.error;
-          }
-        } catch {
-          // Ignore parsing failures and use the default message.
-        }
-
+          if (payload.error) message = payload.error;
+        } catch { /* ignore */ }
         throw new Error(message);
       }
 
@@ -918,10 +583,7 @@ export default function ShippingExportRoute() {
 
       window.localStorage.setItem(
         `pull-sheet-import:${importKey}`,
-        JSON.stringify({
-          csvText,
-          fileName: `pull-sheet-${Date.now()}.csv`,
-        }),
+        JSON.stringify({ csvText, fileName: `pull-sheet-${Date.now()}.csv` }),
       );
 
       const pullSheetUrl = `/pull-sheet?importKey=${encodeURIComponent(importKey)}`;
@@ -936,53 +598,38 @@ export default function ShippingExportRoute() {
       if (pullSheetWindow && !pullSheetWindow.closed) {
         pullSheetWindow.close();
       }
-
       setError(String(pullSheetError));
     } finally {
       setIsGeneratingPullSheet(false);
     }
   };
 
-  const handlePackingSlipExport = async (
-    action: "download" | "open",
-  ) => {
+  const handlePackingSlipExport = async (action: "download" | "open") => {
     if (loadedOrderNumbers.length === 0 || packingSlipAction !== null) {
       return;
     }
 
-    const packingSlipWindow =
-      action === "open" ? window.open("about:blank", "_blank") : null;
+    const packingSlipWindow = action === "open" ? window.open("about:blank", "_blank") : null;
 
     setPackingSlipAction(action);
     setError(null);
 
     try {
-      const response = await fetch(
-        "/api/shipping-export/packing-slips-export",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            orderNumbers: loadedOrderNumbers,
-            timezoneOffset: -new Date().getTimezoneOffset() / 60,
-          }),
-        },
-      );
+      const response = await fetch("/api/shipping-export/packing-slips-export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderNumbers: loadedOrderNumbers,
+          timezoneOffset: -new Date().getTimezoneOffset() / 60,
+        }),
+      });
 
       if (!response.ok) {
         let message = "Failed to generate packing slips export.";
-
         try {
           const payload = (await response.json()) as { error?: string };
-          if (payload.error) {
-            message = payload.error;
-          }
-        } catch {
-          // Ignore parsing failures and use the default message.
-        }
-
+          if (payload.error) message = payload.error;
+        } catch { /* ignore */ }
         throw new Error(message);
       }
 
@@ -1001,26 +648,13 @@ export default function ShippingExportRoute() {
       if (packingSlipWindow && !packingSlipWindow.closed) {
         packingSlipWindow.close();
       }
-
       setError(String(packingSlipError));
     } finally {
       setPackingSlipAction(null);
     }
   };
 
-  const handleDownloadShipment = (shipment: EasyPostShipment) => {
-    downloadCsvFile(`EasyPost_Shipments_${shipment.options.label_size}`, [
-      shipment,
-    ]);
-  };
-
-  const handleDownloadReturnShipment = (shipment: EasyPostShipment) => {
-    const returnShipment = createReturnShipment(shipment);
-    downloadCsvFile(`EasyPost_Returns_${returnShipment.options.label_size}`, [
-      returnShipment,
-    ]);
-  };
-
+  // ── Handlers: shipment edit ───────────────────────────────────────────────
   const handleOpenEditDrawer = (shipment: EasyPostShipment) => {
     setSelectedShipment(shipment);
     setSelectedShipmentReference(shipment.reference);
@@ -1032,17 +666,23 @@ export default function ShippingExportRoute() {
       return;
     }
 
-    setShipments((previousShipments) =>
-      previousShipments.map((shipment) =>
-        shipment.reference === selectedShipmentReference
-          ? selectedShipment
-          : shipment,
-      ),
+    setShipments((prev) =>
+      prev.map((s) => (s.reference === selectedShipmentReference ? selectedShipment : s)),
     );
     setDrawerOpen(false);
     setSelectedShipmentReference(selectedShipment.reference);
   };
 
+  const handleDownloadShipment = (shipment: EasyPostShipment) => {
+    downloadCsvFile(`EasyPost_Shipments_${shipment.options.label_size}`, [shipment]);
+  };
+
+  const handleDownloadReturnShipment = (shipment: EasyPostShipment) => {
+    const returnShipmentData = createReturnShipment(shipment);
+    downloadCsvFile(`EasyPost_Returns_${returnShipmentData.options.label_size}`, [returnShipmentData]);
+  };
+
+  // ── Handlers: postage purchase ────────────────────────────────────────────
   const purchaseShipments = async ({
     labelSize,
     shipmentItems,
@@ -1050,10 +690,7 @@ export default function ShippingExportRoute() {
     purchaseScope,
   }: {
     labelSize: LabelSize;
-    shipmentItems: Array<{
-      shipment: EasyPostShipment;
-      orderNumbers: string[];
-    }>;
+    shipmentItems: Array<{ shipment: EasyPostShipment; orderNumbers: string[] }>;
     direction: ShippingPostageDirection;
     purchaseScope: ShippingPostagePurchaseScope;
   }) => {
@@ -1063,53 +700,32 @@ export default function ShippingExportRoute() {
 
     const response = await fetch("/api/shipping-export/postages", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        labelSize,
-        direction,
-        purchaseScope,
-        shipments: shipmentItems,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ labelSize, direction, purchaseScope, shipments: shipmentItems }),
     });
 
-    const payload = (await response.json()) as
-      | ShippingPostagePurchaseResponse
-      | { error?: string };
+    const payload = (await response.json()) as ShippingPostagePurchaseResponse | { error?: string };
 
     if (!response.ok) {
-      throw new Error(
-        "error" in payload
-          ? payload.error ?? "Failed to buy postage."
-          : "Failed to buy postage.",
-      );
+      throw new Error("error" in payload ? payload.error ?? "Failed to buy postage." : "Failed to buy postage.");
     }
 
     const purchaseResponse = payload as ShippingPostagePurchaseResponse;
 
     if (direction === "return") {
-      setReturnPurchaseResultsByReference((previousResults) =>
-        mergePurchaseResults(
-          previousResults,
-          purchaseResponse.mode,
-          purchaseResponse.results,
-        ),
+      setReturnPurchaseResultsByReference((prev) =>
+        mergePurchaseResults(prev, purchaseResponse.mode, purchaseResponse.results),
       );
       return;
     }
 
-    setOutboundPurchaseResultsByReference((previousResults) =>
-      mergePurchaseResults(
-        previousResults,
-        purchaseResponse.mode,
-        purchaseResponse.results,
-      ),
+    setOutboundPurchaseResultsByReference((prev) =>
+      mergePurchaseResults(prev, purchaseResponse.mode, purchaseResponse.results),
     );
 
     if (purchaseScope === "bulk") {
-      setBatchLabelResultsBySize((previousResults) => ({
-        ...previousResults,
+      setBatchLabelResultsBySize((prev) => ({
+        ...prev,
         [labelSize]: purchaseResponse.batchLabel,
       }));
     }
@@ -1118,9 +734,7 @@ export default function ShippingExportRoute() {
   const purchasePostageForLabelSize = async (labelSize: LabelSize) => {
     const labelShipments = getShipmentsForLabelSize(shipments, labelSize);
 
-    if (labelShipments.length === 0) {
-      return;
-    }
+    if (labelShipments.length === 0) return;
 
     await purchaseShipments({
       labelSize,
@@ -1133,108 +747,8 @@ export default function ShippingExportRoute() {
     });
   };
 
-  const getSavedPurchasedEntriesForLabelSize = (labelSize: LabelSize) =>
-    getShipmentsForLabelSize(shipments, labelSize)
-      .map((shipment) => ({
-        shipment,
-        purchaseEntry: outboundPurchaseResultsByReference[shipment.reference],
-      }))
-      .filter(
-        (
-          entry,
-        ): entry is {
-          shipment: EasyPostShipment;
-          purchaseEntry: {
-            mode: EasyPostMode;
-            result: ShippingPostagePurchaseResult;
-          };
-        } =>
-          Boolean(
-            entry.purchaseEntry &&
-              entry.purchaseEntry.result.status !== "failed" &&
-              entry.purchaseEntry.result.easypostShipmentId,
-          ),
-      );
-
-  const handleGenerateBatchLabelFromSavedPostage = async (
-    labelSize: LabelSize,
-  ) => {
-    const savedEntries = getSavedPurchasedEntriesForLabelSize(labelSize);
-
-    if (savedEntries.length === 0 || generatingBatchLabelSize) {
-      return;
-    }
-
-    const uniqueModes = [
-      ...new Set(savedEntries.map((entry) => entry.purchaseEntry.mode)),
-    ];
-
-    if (uniqueModes.length !== 1) {
-      setBatchLabelResultsBySize((previousResults) => ({
-        ...previousResults,
-        [labelSize]: {
-          status: "failed",
-          shipmentReferences: savedEntries.map(
-            (entry) => entry.shipment.reference,
-          ),
-          message:
-            "Saved labels for this size span multiple EasyPost modes. Rebuy or regroup them to generate one batch PDF.",
-        },
-      }));
-      return;
-    }
-
-    setGeneratingBatchLabelSize(labelSize);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/shipping-export/batch-labels", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          mode: uniqueModes[0],
-          labelSize,
-          shipments: savedEntries.map(
-            (entry): ShippingPostageBatchLabelRequestItem => ({
-              shipmentReference: entry.shipment.reference,
-              easypostShipmentId:
-                entry.purchaseEntry.result.easypostShipmentId!,
-            }),
-          ),
-        }),
-      });
-
-      const payload = (await response.json()) as
-        | ShippingPostageBatchLabelResult
-        | { error?: string };
-
-      if (!response.ok) {
-        throw new Error(
-          "error" in payload
-            ? payload.error ?? "Failed to create the batch label PDF."
-            : "Failed to create the batch label PDF.",
-        );
-      }
-
-      setBatchLabelResultsBySize((previousResults) => ({
-        ...previousResults,
-        [labelSize]: payload as ShippingPostageBatchLabelResult,
-      }));
-    } catch (generationError) {
-      setError(String(generationError));
-    } finally {
-      setGeneratingBatchLabelSize(null);
-    }
-  };
-
   const handleBuyPostage = async () => {
-    if (
-      availableLabelSizes.length === 0 ||
-      purchasingLabelSize ||
-      purchasingActionKey
-    ) {
+    if (availableLabelSizes.length === 0 || purchasingLabelSize || purchasingActionKey) {
       return;
     }
 
@@ -1253,9 +767,7 @@ export default function ShippingExportRoute() {
   };
 
   const handleBuyShipment = async (shipment: EasyPostShipment) => {
-    if (purchasingLabelSize || purchasingActionKey) {
-      return;
-    }
+    if (purchasingLabelSize || purchasingActionKey) return;
 
     setPurchasingActionKey(`outbound:${shipment.reference}`);
     setError(null);
@@ -1265,12 +777,7 @@ export default function ShippingExportRoute() {
         labelSize: shipment.options.label_size,
         direction: "outbound",
         purchaseScope: "single",
-        shipmentItems: [
-          {
-            shipment,
-            orderNumbers: getOrderNumbersForShipment(shipment.reference),
-          },
-        ],
+        shipmentItems: [{ shipment, orderNumbers: getOrderNumbersForShipment(shipment.reference) }],
       });
     } catch (purchaseError) {
       setError(String(purchaseError));
@@ -1280,26 +787,18 @@ export default function ShippingExportRoute() {
   };
 
   const handleBuyReturnLabel = async (shipment: EasyPostShipment) => {
-    if (purchasingLabelSize || purchasingActionKey) {
-      return;
-    }
+    if (purchasingLabelSize || purchasingActionKey) return;
 
     setPurchasingActionKey(`return:${shipment.reference}`);
     setError(null);
 
     try {
-      const returnShipment = createReturnShipment(shipment);
-
+      const returnShipmentData = createReturnShipment(shipment);
       await purchaseShipments({
-        labelSize: returnShipment.options.label_size,
+        labelSize: returnShipmentData.options.label_size,
         direction: "return",
         purchaseScope: "single",
-        shipmentItems: [
-          {
-            shipment: returnShipment,
-            orderNumbers: getOrderNumbersForShipment(shipment.reference),
-          },
-        ],
+        shipmentItems: [{ shipment: returnShipmentData, orderNumbers: getOrderNumbersForShipment(shipment.reference) }],
       });
     } catch (purchaseError) {
       setError(String(purchaseError));
@@ -1308,16 +807,64 @@ export default function ShippingExportRoute() {
     }
   };
 
-  const handleApplyTracking = async () => {
-    if (
-      trackingApplyItems.length === 0 ||
-      isApplyingTracking ||
-      isSendingShippedMessages ||
-      purchasingLabelSize ||
-      purchasingActionKey
-    ) {
+  const handleGenerateBatchLabelFromSavedPostage = async (labelSize: LabelSize) => {
+    const savedEntries = getSavedPurchasedEntriesForLabelSize(labelSize);
+
+    if (savedEntries.length === 0 || generatingBatchLabelSize) return;
+
+    const uniqueModes = [...new Set(savedEntries.map((entry) => entry.purchaseEntry.mode))];
+
+    if (uniqueModes.length !== 1) {
+      setBatchLabelResultsBySize((prev) => ({
+        ...prev,
+        [labelSize]: {
+          status: "failed",
+          shipmentReferences: savedEntries.map((e) => e.shipment.reference),
+          message: "Saved labels for this size span multiple EasyPost modes. Rebuy or regroup them to generate one batch PDF.",
+        },
+      }));
       return;
     }
+
+    setGeneratingBatchLabelSize(labelSize);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/shipping-export/batch-labels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: uniqueModes[0],
+          labelSize,
+          shipments: savedEntries.map(
+            (entry): ShippingPostageBatchLabelRequestItem => ({
+              shipmentReference: entry.shipment.reference,
+              easypostShipmentId: entry.purchaseEntry.result.easypostShipmentId!,
+            }),
+          ),
+        }),
+      });
+
+      const payload = (await response.json()) as ShippingPostageBatchLabelResult | { error?: string };
+
+      if (!response.ok) {
+        throw new Error("error" in payload ? payload.error ?? "Failed to create the batch label PDF." : "Failed to create the batch label PDF.");
+      }
+
+      setBatchLabelResultsBySize((prev) => ({
+        ...prev,
+        [labelSize]: payload as ShippingPostageBatchLabelResult,
+      }));
+    } catch (generationError) {
+      setError(String(generationError));
+    } finally {
+      setGeneratingBatchLabelSize(null);
+    }
+  };
+
+  // ── Handlers: tracking & messaging ───────────────────────────────────────
+  const handleApplyTracking = async () => {
+    if (trackingApplyItems.length === 0 || isApplyingTracking) return;
 
     setIsApplyingTracking(true);
     setTrackingApplyResults([]);
@@ -1326,28 +873,17 @@ export default function ShippingExportRoute() {
     try {
       const response = await fetch("/api/shipping-export/tcgplayer-tracking", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          updates: trackingApplyItems,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates: trackingApplyItems }),
       });
 
-      const payload = (await response.json()) as
-        | ShippingTrackingApplyResponse
-        | { error?: string };
+      const payload = (await response.json()) as ShippingTrackingApplyResponse | { error?: string };
 
       if (!response.ok) {
-        throw new Error(
-          "error" in payload
-            ? payload.error ?? "Failed to apply tracking to TCGPlayer orders."
-            : "Failed to apply tracking to TCGPlayer orders.",
-        );
+        throw new Error("error" in payload ? payload.error ?? "Failed to apply tracking to TCGPlayer orders." : "Failed to apply tracking to TCGPlayer orders.");
       }
 
-      const trackingResponse = payload as ShippingTrackingApplyResponse;
-      setTrackingApplyResults(trackingResponse.results);
+      setTrackingApplyResults((payload as ShippingTrackingApplyResponse).results);
     } catch (trackingError) {
       setError(String(trackingError));
     } finally {
@@ -1356,54 +892,182 @@ export default function ShippingExportRoute() {
   };
 
   const handleSendShippedMessages = async () => {
-    if (
-      shippedMessageItems.length === 0 ||
-      isSendingShippedMessages ||
-      isApplyingTracking ||
-      purchasingLabelSize ||
-      purchasingActionKey
-    ) {
-      return;
-    }
+    if (shippedMessageItems.length === 0 || isSendingShippedMessages) return;
 
     setIsSendingShippedMessages(true);
     setShippedMessageResults([]);
     setError(null);
 
     try {
-      const response = await fetch(
-        "/api/shipping-export/tcgplayer-shipped-messages",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            messages: shippedMessageItems,
-          }),
-        },
-      );
+      const response = await fetch("/api/shipping-export/tcgplayer-shipped-messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: shippedMessageItems }),
+      });
 
-      const payload = (await response.json()) as
-        | ShippingShippedMessageResponse
-        | { error?: string };
+      const payload = (await response.json()) as ShippingShippedMessageResponse | { error?: string };
 
       if (!response.ok) {
-        throw new Error(
-          "error" in payload
-            ? payload.error ?? "Failed to send shipped messages to TCGPlayer."
-            : "Failed to send shipped messages to TCGPlayer.",
-        );
+        throw new Error("error" in payload ? payload.error ?? "Failed to send shipped messages to TCGPlayer." : "Failed to send shipped messages to TCGPlayer.");
       }
 
-      const shippedMessageResponse = payload as ShippingShippedMessageResponse;
-      setShippedMessageResults(shippedMessageResponse.results);
+      setShippedMessageResults((payload as ShippingShippedMessageResponse).results);
     } catch (shippedMessageError) {
       setError(String(shippedMessageError));
     } finally {
       setIsSendingShippedMessages(false);
     }
   };
+
+  // ── Handler: pack step ────────────────────────────────────────────────────
+  const handleOrderPacked = (reference: string, packed: boolean) => {
+    setPackedOrderNumbers((prev) => {
+      const next = new Set(prev);
+      if (packed) {
+        next.add(reference);
+      } else {
+        next.delete(reference);
+      }
+      return next;
+    });
+  };
+
+  // ── Handler: return flow ──────────────────────────────────────────────────
+  const handleLookupReturnOrder = async () => {
+    const normalizedOrderNumber = singleOrderNumberInput.trim();
+
+    if (!normalizedOrderNumber) return;
+
+    setIsLoadingReturnOrder(true);
+    setReturnOrder(null);
+    setReturnShipment(null);
+    setOutboundReturnPurchaseEntry(null);
+    setReturnOnlyPurchaseEntry(null);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/shipping-export/tcgplayer-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sellerKey: sellerKeyInput.trim(),
+          orderNumber: normalizedOrderNumber,
+        }),
+      });
+
+      const payload = (await response.json()) as ShippingLiveOrderLoadResponse | { error?: string };
+
+      if (!response.ok) {
+        throw new Error("error" in payload ? payload.error ?? "Failed to load order." : "Failed to load order.");
+      }
+
+      const singleOrderResponse = payload as ShippingLiveOrderLoadResponse;
+      const loadedOrder = singleOrderResponse.orders[0] ?? null;
+
+      setReturnOrder(loadedOrder);
+
+      if (loadedOrder) {
+        const shipmentForOrder = mapOrderToShipment(loadedOrder, config);
+        setReturnShipment(shipmentForOrder);
+      }
+    } catch (loadError) {
+      setError(String(loadError));
+    } finally {
+      setIsLoadingReturnOrder(false);
+    }
+  };
+
+  const handleBuyReturnFlowLabels = async () => {
+    if (!returnShipment || isPurchasingReturn) return;
+
+    setIsPurchasingReturn(true);
+    setOutboundReturnPurchaseEntry(null);
+    setReturnOnlyPurchaseEntry(null);
+    setError(null);
+
+    const orderNumbers = returnOrder ? [returnOrder["Order #"]] : [returnShipment.reference];
+
+    try {
+      if (returnFlowType === "round-trip") {
+        // Outbound: seller → buyer (normal shipment direction)
+        const outboundResponse = await fetch("/api/shipping-export/postages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            labelSize: returnShipment.options.label_size,
+            direction: "outbound",
+            purchaseScope: "single",
+            shipments: [{ shipment: returnShipment, orderNumbers }],
+          }),
+        });
+
+        const outboundPayload = (await outboundResponse.json()) as ShippingPostagePurchaseResponse | { error?: string };
+
+        if (!outboundResponse.ok) {
+          throw new Error("error" in outboundPayload ? outboundPayload.error ?? "Failed to buy outbound label." : "Failed to buy outbound label.");
+        }
+
+        const outboundResult = (outboundPayload as ShippingPostagePurchaseResponse).results[0];
+
+        if (outboundResult) {
+          setOutboundReturnPurchaseEntry({ mode: (outboundPayload as ShippingPostagePurchaseResponse).mode, result: outboundResult });
+        }
+      }
+
+      // Return label: buyer → seller (swap addresses)
+      const returnShipmentData = createReturnShipment(returnShipment);
+      const returnResponse = await fetch("/api/shipping-export/postages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          labelSize: returnShipmentData.options.label_size,
+          direction: "return",
+          purchaseScope: "single",
+          shipments: [{ shipment: returnShipmentData, orderNumbers }],
+        }),
+      });
+
+      const returnPayload = (await returnResponse.json()) as ShippingPostagePurchaseResponse | { error?: string };
+
+      if (!returnResponse.ok) {
+        throw new Error("error" in returnPayload ? returnPayload.error ?? "Failed to buy return label." : "Failed to buy return label.");
+      }
+
+      const returnResult = (returnPayload as ShippingPostagePurchaseResponse).results[0];
+
+      if (returnResult) {
+        setReturnOnlyPurchaseEntry({ mode: (returnPayload as ShippingPostagePurchaseResponse).mode, result: returnResult });
+      }
+    } catch (purchaseError) {
+      setError(String(purchaseError));
+    } finally {
+      setIsPurchasingReturn(false);
+    }
+  };
+
+  // ── Handler: reset workflow ───────────────────────────────────────────────
+  const handleReset = () => {
+    setCurrentStep(0);
+    setSourceOrders([]);
+    setOrders([]);
+    setShipments([]);
+    setShipmentToOrderMap({});
+    setOutboundPurchaseResultsByReference({});
+    setReturnPurchaseResultsByReference({});
+    setBatchLabelResultsBySize({});
+    setTrackingApplyResults([]);
+    setShippedMessageResults([]);
+    setPackedOrderNumbers(new Set());
+    setLoadedSourceLabel("");
+    setLoadWarnings([]);
+    setError(null);
+  };
+
+  // ── Derived for mode status ───────────────────────────────────────────────
+  const selectedModeHasApiKey =
+    config.easypostMode === "test"
+      ? environmentStatus.hasTestApiKey
+      : environmentStatus.hasProductionApiKey;
 
   return (
     <Box sx={{ maxWidth: 1400, mx: "auto", p: 3 }}>
@@ -1412,905 +1076,197 @@ export default function ShippingExportRoute() {
         spacing={2}
         justifyContent="space-between"
         alignItems={{ md: "center" }}
+        sx={{ mb: 1 }}
       >
         <Box>
           <Typography variant="h4" component="h1" gutterBottom>
-            EasyPost Shipping Export
+            Shipping Workflow
           </Typography>
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            flexWrap="wrap"
-          >
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
             <Chip
-              label={
-                config.easypostMode === "test" ? "Test Mode" : "Production Mode"
-              }
+              label={config.easypostMode === "test" ? "Test Mode" : "Production Mode"}
               color={config.easypostMode === "test" ? "warning" : "error"}
             />
             <Chip
-              label={
-                selectedModeHasApiKey ? "API Key Ready" : "Missing API Key"
-              }
+              label={selectedModeHasApiKey ? "API Key Ready" : "Missing API Key"}
               color={selectedModeHasApiKey ? "success" : "warning"}
               variant={selectedModeHasApiKey ? "filled" : "outlined"}
             />
           </Stack>
         </Box>
       </Stack>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-        Load live TCGPlayer seller orders first, or fall back to a shipping
-        export CSV, then review EasyPost-ready shipment rows and buy postage or
-        download batch files by label size.
-      </Typography>
 
-      <Alert severity="info" sx={{ mb: 2 }}>
-        Manage sender address, package thresholds, label defaults, and the saved
-        default seller key in{" "}
-        <Link
-          to="/shipping-configuration"
-          style={{ color: "inherit", fontWeight: 600 }}
-        >
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Manage sender address, package thresholds, and label defaults in{" "}
+        <Link to="/shipping-configuration" style={{ color: "inherit", fontWeight: 600 }}>
           Shipping Configuration
         </Link>
-        . After changing settings, use <strong>Rebuild Shipments</strong> to
-        regenerate rows from the current order source.
-      </Alert>
-
-      {!selectedModeHasApiKey && (
-        <Alert severity="warning" sx={{ mb: 3 }}>
-          {config.easypostMode === "test"
-            ? "EASYPOST_TEST_API_KEY is not set. Direct postage purchase is disabled, but CSV export still works."
-            : "EASYPOST_PRODUCTION_API_KEY is not set. Direct postage purchase is disabled, but CSV export still works."}
-        </Alert>
-      )}
+        .
+      </Typography>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
 
-      {loadWarnings.length > 0 && (
-        <Alert severity="warning" sx={{ mb: 3 }}>
-          <Stack spacing={0.5}>
-            <Typography variant="body2" fontWeight={600}>
-              Order load warnings
-            </Typography>
-            {loadWarnings.map((warning) => (
-              <Typography key={warning} variant="body2">
-                {warning}
-              </Typography>
+      <Tabs
+        value={activeTab}
+        onChange={(_, value: "outbound" | "return") => setActiveTab(value)}
+        sx={{ mb: 3, borderBottom: 1, borderColor: "divider" }}
+      >
+        <Tab label="Outbound Workflow" value="outbound" />
+        <Tab label="Return Labels" value="return" />
+      </Tabs>
+
+      {activeTab === "outbound" && (
+        <>
+          <Stepper nonLinear activeStep={currentStep} sx={{ mb: 4 }}>
+            {OUTBOUND_STEPS.map((step, index) => (
+              <Step key={step.key} completed={index < currentStep}>
+                <StepButton onClick={() => setCurrentStep(index)}>
+                  {step.label}
+                </StepButton>
+              </Step>
             ))}
-          </Stack>
-        </Alert>
+          </Stepper>
+
+          <Paper sx={{ p: 3 }} elevation={2}>
+            {currentStep === 0 && (
+              <LoadOrdersStep
+                config={config}
+                sellerKeyInput={sellerKeyInput}
+                singleOrderNumberInput={singleOrderNumberInput}
+                sourceOrders={sourceOrders}
+                loadedSourceLabel={loadedSourceLabel}
+                isLoadingLiveOrders={isLoadingLiveOrders}
+                isLoadingSingleOrder={isLoadingSingleOrder}
+                isLoadingExistingPostage={isLoadingExistingPostage}
+                loadWarnings={loadWarnings}
+                onSellerKeyChange={setSellerKeyInput}
+                onSingleOrderNumberChange={setSingleOrderNumberInput}
+                onLoadLiveOrders={() => void handleLoadLiveOrders()}
+                onLoadSingleOrder={() => void handleLoadSingleOrder()}
+                onFileUpload={(e) => void handleFileInput(e)}
+                onContinue={() => setCurrentStep(1)}
+              />
+            )}
+
+            {currentStep === 1 && (
+              <PullSheetStep
+                sourceOrders={sourceOrders}
+                orders={orders}
+                shipments={shipments}
+                shipmentToOrderMap={shipmentToOrderMap}
+                isGeneratingPullSheet={isGeneratingPullSheet}
+                onOpenPullSheet={() => void handleOpenPullSheet()}
+                onBack={() => setCurrentStep(0)}
+                onContinue={() => setCurrentStep(2)}
+              />
+            )}
+
+            {currentStep === 2 && (
+              <BuyPostageStep
+                config={config}
+                environmentStatus={environmentStatus}
+                shipments={shipments}
+                orders={orders}
+                shipmentToOrderMap={shipmentToOrderMap}
+                outboundPurchaseResultsByReference={outboundPurchaseResultsByReference}
+                returnPurchaseResultsByReference={returnPurchaseResultsByReference}
+                batchLabelResultsBySize={batchLabelResultsBySize}
+                availableLabelSizes={availableLabelSizes}
+                purchasingLabelSize={purchasingLabelSize}
+                purchasingActionKey={purchasingActionKey}
+                generatingBatchLabelSize={generatingBatchLabelSize}
+                isLoadingExistingPostage={isLoadingExistingPostage}
+                onBuyPostage={() => void handleBuyPostage()}
+                onBuyShipment={(s) => void handleBuyShipment(s)}
+                onBuyReturnLabel={(s) => void handleBuyReturnLabel(s)}
+                onGenerateBatchLabel={(size) => void handleGenerateBatchLabelFromSavedPostage(size)}
+                onEditShipment={handleOpenEditDrawer}
+                onDownloadShipment={handleDownloadShipment}
+                onDownloadReturnShipment={handleDownloadReturnShipment}
+                savedPurchasedEntriesForLabelSize={getSavedPurchasedEntriesForLabelSize}
+                onBack={() => setCurrentStep(1)}
+                onContinue={() => setCurrentStep(3)}
+              />
+            )}
+
+            {currentStep === 3 && (
+              <PrintStep
+                sourceOrders={sourceOrders}
+                shipments={shipments}
+                outboundPurchaseResultsByReference={outboundPurchaseResultsByReference}
+                batchLabelResultsBySize={batchLabelResultsBySize}
+                availableLabelSizes={availableLabelSizes}
+                generatingBatchLabelSize={generatingBatchLabelSize}
+                packingSlipAction={packingSlipAction}
+                savedPurchasedEntriesForLabelSize={getSavedPurchasedEntriesForLabelSize}
+                onOpenPackingSlips={() => void handlePackingSlipExport("open")}
+                onDownloadPackingSlips={() => void handlePackingSlipExport("download")}
+                onGenerateBatchLabel={(size) => void handleGenerateBatchLabelFromSavedPostage(size)}
+                onBack={() => setCurrentStep(2)}
+                onContinue={() => setCurrentStep(4)}
+              />
+            )}
+
+            {currentStep === 4 && (
+              <PackStep
+                sourceOrders={sourceOrders}
+                shipmentToOrderMap={shipmentToOrderMap}
+                outboundPurchaseResultsByReference={outboundPurchaseResultsByReference}
+                packedOrderNumbers={packedOrderNumbers}
+                onOrderPacked={handleOrderPacked}
+                onBack={() => setCurrentStep(3)}
+                onContinue={() => setCurrentStep(5)}
+              />
+            )}
+
+            {currentStep === 5 && (
+              <ApplyTrackingStep
+                trackingApplyItems={trackingApplyItems}
+                trackingApplyResults={trackingApplyResults}
+                isApplyingTracking={isApplyingTracking}
+                onApplyTracking={() => void handleApplyTracking()}
+                onBack={() => setCurrentStep(4)}
+                onContinue={() => setCurrentStep(6)}
+              />
+            )}
+
+            {currentStep === 6 && (
+              <NotifyStep
+                shippedMessageItems={shippedMessageItems}
+                shippedMessageResults={shippedMessageResults}
+                isSendingShippedMessages={isSendingShippedMessages}
+                onSendShippedMessages={() => void handleSendShippedMessages()}
+                onBack={() => setCurrentStep(5)}
+                onReset={handleReset}
+              />
+            )}
+          </Paper>
+        </>
       )}
 
-      <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
-        <Typography variant="h6" gutterBottom>
-          1. Load Orders
-        </Typography>
-        <Stack spacing={3}>
-          <Box>
-            <Typography variant="subtitle1" gutterBottom>
-              Live TCGPlayer Seller Orders
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Load live `Ready to Ship` orders from the last three months using
-              your saved seller key or an override entered here.
-            </Typography>
-          </Box>
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            spacing={2}
-            alignItems={{ md: "center" }}
-            flexWrap="wrap"
-          >
-            <TextField
-              label="Seller Key"
-              value={sellerKeyInput}
-              onChange={(event) => setSellerKeyInput(event.target.value)}
-              placeholder={config.defaultSellerKey || "Enter seller key"}
-              helperText={
-                config.defaultSellerKey
-                  ? `Saved default: ${config.defaultSellerKey}`
-                  : "Save a default seller key in Shipping Configuration or enter one here."
-              }
-              sx={{ minWidth: { xs: "100%", md: 320 } }}
-            />
-            <Button
-              variant="contained"
-              onClick={() => void handleLoadLiveOrders()}
-              disabled={isLoadingLiveOrders || isLoadingSingleOrder}
-              startIcon={
-                isLoadingLiveOrders ? (
-                  <CircularProgress color="inherit" size={18} />
-                ) : undefined
-              }
-            >
-              {isLoadingLiveOrders
-                ? "Loading Live Orders..."
-                : "Load Live TCGPlayer Orders"}
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => void handleRebuildShipments()}
-              disabled={
-                sourceOrders.length === 0 ||
-                isLoadingLiveOrders ||
-                isLoadingSingleOrder
-              }
-            >
-              Rebuild Shipments
-            </Button>
-          </Stack>
-
-          <Box>
-            <Typography variant="subtitle1" gutterBottom>
-              Single Order Lookup
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Load one TCGPlayer order by number when you want to inspect it and
-              buy postage without pulling the full live queue. The seller key
-              above is used for the lookup.
-            </Typography>
-          </Box>
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            spacing={2}
-            alignItems={{ md: "center" }}
-            flexWrap="wrap"
-          >
-            <TextField
-              label="Order Number"
-              value={singleOrderNumberInput}
-              onChange={(event) => setSingleOrderNumberInput(event.target.value)}
-              placeholder="Enter order number"
-              sx={{ minWidth: { xs: "100%", md: 320 } }}
-            />
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={() => void handleLoadSingleOrder()}
-              disabled={isLoadingSingleOrder || isLoadingLiveOrders}
-              startIcon={
-                isLoadingSingleOrder ? (
-                  <CircularProgress color="inherit" size={18} />
-                ) : undefined
-              }
-            >
-              {isLoadingSingleOrder
-                ? "Looking Up Order..."
-                : "Lookup Single Order"}
-            </Button>
-          </Stack>
-
-          <Divider />
-
-          <Box>
-            <Typography variant="subtitle1" gutterBottom>
-              CSV Fallback
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              If live loading is unavailable or you need to work from an export,
-              upload a TCGPlayer shipping export CSV instead.
-            </Typography>
-            <Button variant="outlined" component="label">
-              Upload TCGPlayer Shipping Export CSV
-              <input
-                type="file"
-                hidden
-                accept=".csv"
-                onChange={handleFileInput}
-                onClick={(event) => {
-                  (event.target as HTMLInputElement).value = "";
-                }}
-              />
-            </Button>
-          </Box>
-
-          {(loadedSourceLabel ||
-            uploadedFileName ||
-            isLoadingExistingPostage) && (
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
-              flexWrap="wrap"
-            >
-              {loadedSourceLabel && (
-                <Chip
-                  label={loadedSourceLabel}
-                  size="small"
-                  color="primary"
-                  variant="outlined"
-                />
-              )}
-              <Chip
-                label={`${sourceOrders.length} orders loaded`}
-                size="small"
-                variant="outlined"
-              />
-              {uploadedFileName && (
-                <Typography variant="body2" color="text.secondary">
-                  {uploadedFileName}
-                </Typography>
-              )}
-              {isLoadingExistingPostage && (
-                <Chip
-                  label="Loading saved labels..."
-                  size="small"
-                  color="info"
-                  variant="outlined"
-                />
-              )}
-            </Stack>
-          )}
-        </Stack>
-      </Paper>
-
-      {shipments.length > 0 ? (
-        <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            spacing={2}
-            justifyContent="space-between"
-            alignItems={{ md: "center" }}
-            sx={{ mb: 2 }}
-          >
-            <Typography variant="h6">2. Review Shipments</Typography>
-            <Stack
-              direction={{ xs: "column", md: "row" }}
-              spacing={1}
-              useFlexGap
-              flexWrap="wrap"
-            >
-              <Button
-                variant="outlined"
-                startIcon={
-                  isGeneratingPullSheet ? (
-                    <CircularProgress color="inherit" size={18} />
-                  ) : (
-                    <OpenInNewIcon />
-                  )
-                }
-                onClick={() => void handleOpenPullSheet()}
-                disabled={sourceOrders.length === 0 || isGeneratingPullSheet}
-              >
-                {isGeneratingPullSheet
-                  ? "Opening Pull Sheet..."
-                  : "Open Pull Sheet"}
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={
-                  packingSlipAction === "open" ? (
-                    <CircularProgress color="inherit" size={18} />
-                  ) : (
-                    <OpenInNewIcon />
-                  )
-                }
-                onClick={() => void handlePackingSlipExport("open")}
-                disabled={sourceOrders.length === 0 || packingSlipAction !== null}
-              >
-                {packingSlipAction === "open"
-                  ? "Opening Packing Slips..."
-                  : "Open Packing Slips PDF"}
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={
-                  packingSlipAction === "download" ? (
-                    <CircularProgress color="inherit" size={18} />
-                  ) : (
-                    <DownloadIcon />
-                  )
-                }
-                onClick={() => void handlePackingSlipExport("download")}
-                disabled={sourceOrders.length === 0 || packingSlipAction !== null}
-              >
-                {packingSlipAction === "download"
-                  ? "Downloading Packing Slips..."
-                  : "Download Packing Slips PDF"}
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                onClick={handleDownloadAll}
-              >
-                Download EasyPost Batch File(s)
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={() => void handleApplyTracking()}
-                disabled={
-                  trackingApplyItems.length === 0 ||
-                  isApplyingTracking ||
-                  isSendingShippedMessages ||
-                  purchasingLabelSize !== null ||
-                  purchasingActionKey !== null
-                }
-                startIcon={
-                  isApplyingTracking ? (
-                    <CircularProgress color="inherit" size={18} />
-                  ) : undefined
-                }
-              >
-                {isApplyingTracking
-                  ? "Applying Tracking..."
-                  : "Apply Tracking to TCGPlayer"}
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={() => void handleSendShippedMessages()}
-                disabled={
-                  shippedMessageItems.length === 0 ||
-                  isSendingShippedMessages ||
-                  isApplyingTracking ||
-                  purchasingLabelSize !== null ||
-                  purchasingActionKey !== null
-                }
-                startIcon={
-                  isSendingShippedMessages ? (
-                    <CircularProgress color="inherit" size={18} />
-                  ) : undefined
-                }
-              >
-                {isSendingShippedMessages
-                  ? "Sending Shipped Messages..."
-                  : "Send Shipped Messages"}
-              </Button>
-              <Button
-                variant="contained"
-                color={config.easypostMode === "test" ? "warning" : "primary"}
-                onClick={() => void handleBuyPostage()}
-                disabled={
-                  availableLabelSizes.length === 0 ||
-                  !selectedModeHasApiKey ||
-                  purchasingLabelSize !== null ||
-                  purchasingActionKey !== null
-                }
-                startIcon={
-                  purchasingLabelSize ? (
-                    <CircularProgress color="inherit" size={18} />
-                  ) : undefined
-                }
-              >
-                {purchasingLabelSize
-                  ? `Buying ${purchasingLabelSize} Postage...`
-                  : "Buy Postage"}
-              </Button>
-            </Stack>
-          </Stack>
-          {trackingApplyResults.length > 0 && (
-            <Alert
-              severity={failedTrackingResults.length > 0 ? "warning" : "success"}
-              sx={{ mb: 2 }}
-            >
-              <Stack spacing={0.5}>
-                <Typography variant="body2" fontWeight={600}>
-                  Applied tracking to {appliedTrackingCount} order
-                  {appliedTrackingCount === 1 ? "" : "s"}.
-                </Typography>
-                {failedTrackingResults.length > 0 && (
-                  <Typography variant="body2">
-                    {failedTrackingResults.length} order
-                    {failedTrackingResults.length === 1 ? "" : "s"} could not be
-                    updated.
-                  </Typography>
-                )}
-                {failedTrackingResults.map((result) => (
-                  <Typography
-                    key={result.orderNumber}
-                    variant="body2"
-                    color="text.secondary"
-                  >
-                    {result.orderNumber}: {result.error}
-                  </Typography>
-                ))}
-              </Stack>
-            </Alert>
-          )}
-          {shippedMessageResults.length > 0 && (
-            <Alert
-              severity={
-                failedShippedMessageResults.length > 0 ? "warning" : "success"
-              }
-              sx={{ mb: 2 }}
-            >
-              <Stack spacing={0.5}>
-                <Typography variant="body2" fontWeight={600}>
-                  Sent shipped messages to {sentShippedMessageCount} order
-                  {sentShippedMessageCount === 1 ? "" : "s"}.
-                </Typography>
-                {failedShippedMessageResults.length > 0 && (
-                  <Typography variant="body2">
-                    {failedShippedMessageResults.length} order
-                    {failedShippedMessageResults.length === 1 ? "" : "s"} could
-                    not be messaged.
-                  </Typography>
-                )}
-                {failedShippedMessageResults.map((result) => (
-                  <Typography
-                    key={result.orderNumber}
-                    variant="body2"
-                    color="text.secondary"
-                  >
-                    {result.orderNumber}: {result.error}
-                  </Typography>
-                ))}
-              </Stack>
-            </Alert>
-          )}
-          {(() => {
-            const letterCount = shipments.filter(
-              (s) => s.parcel.predefined_package === "Letter",
-            ).length;
-            const flatCount = shipments.filter(
-              (s) => s.parcel.predefined_package === "Flat",
-            ).length;
-            const parcelCount = shipments.filter(
-              (s) => s.parcel.predefined_package === "Parcel",
-            ).length;
-            const purchasedCount = shipments.filter(
-              (s) =>
-                outboundPurchaseResultsByReference[s.reference]?.result.status ===
-                "purchased",
-            ).length;
-            return (
-              <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
-                <Chip label={`${shipments.length} shipments`} size="small" />
-                {letterCount > 0 && (
-                  <Chip
-                    label={`${letterCount} Letter`}
-                    size="small"
-                    variant="outlined"
-                  />
-                )}
-                {flatCount > 0 && (
-                  <Chip
-                    label={`${flatCount} Flat`}
-                    size="small"
-                    variant="outlined"
-                  />
-                )}
-                {parcelCount > 0 && (
-                  <Chip
-                    label={`${parcelCount} Parcel`}
-                    size="small"
-                    variant="outlined"
-                  />
-                )}
-                {purchasedCount > 0 && (
-                  <Chip
-                    label={`${purchasedCount} postage purchased`}
-                    size="small"
-                    color="success"
-                    variant="outlined"
-                  />
-                )}
-                {trackingApplyItems.length > 0 && (
-                  <Chip
-                    label={`${trackingApplyItems.length} tracking-ready orders`}
-                    size="small"
-                    color="info"
-                    variant="outlined"
-                  />
-                )}
-                {shippedMessageItems.length > 0 && (
-                  <Chip
-                    label={`${shippedMessageItems.length} message-ready orders`}
-                    size="small"
-                    color="secondary"
-                    variant="outlined"
-                  />
-                )}
-                {purchasedCount < shipments.length &&
-                  !isLoadingExistingPostage && (
-                    <Chip
-                      label={`${shipments.length - purchasedCount} pending`}
-                      size="small"
-                      color="warning"
-                      variant="outlined"
-                    />
-                  )}
-              </Stack>
-            );
-          })()}
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Orders</TableCell>
-                  <TableCell>To Address</TableCell>
-                  <TableCell>Parcel Details</TableCell>
-                  <TableCell>Service / Label</TableCell>
-                  <TableCell>Postage</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {shipments.map((shipment) => {
-                  const order = orders.find(
-                    (candidate) => candidate["Order #"] === shipment.reference,
-                  );
-                  const purchaseEntry =
-                    outboundPurchaseResultsByReference[shipment.reference];
-                  const returnPurchaseEntry =
-                    returnPurchaseResultsByReference[shipment.reference];
-                  const isBuyingOutbound =
-                    purchasingActionKey === `outbound:${shipment.reference}`;
-                  const isBuyingReturn =
-                    purchasingActionKey === `return:${shipment.reference}`;
-
-                  return (
-                    <TableRow key={shipment.reference}>
-                      <TableCell>
-                        <Stack spacing={0.5}>
-                          {(
-                            shipmentToOrderMap[shipment.reference] ?? [
-                              shipment.reference,
-                            ]
-                          ).map((num) => (
-                            <Typography key={num} variant="body2">
-                              {num}
-                            </Typography>
-                          ))}
-                        </Stack>
-                      </TableCell>
-                      <TableCell>
-                        <AddressBlock address={shipment.to_address} />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {shipment.parcel.predefined_package} &bull;{" "}
-                          {shipment.parcel.weight}oz
-                          {shipment.options.delivery_confirmation ===
-                            "SIGNATURE" && (
-                            <Chip
-                              label="Sig. Required"
-                              size="small"
-                              color="warning"
-                              sx={{ ml: 1 }}
-                            />
-                          )}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {shipment.parcel.length}&times;
-                          {shipment.parcel.width}&times;
-                          {shipment.parcel.height} in
-                          {order
-                            ? ` • ${order["Item Count"]} items • $${order["Value Of Products"]}`
-                            : ""}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {shipment.service}
-                        </Typography>
-                        <Chip
-                          label={shipment.options.label_size}
-                          size="small"
-                          variant="outlined"
-                          sx={{ mt: 0.5 }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {purchaseEntry ? (
-                          <Stack spacing={1}>
-                            <Chip
-                              label={purchaseEntry.result.status.toUpperCase()}
-                              color={
-                                purchaseEntry.result.status === "purchased"
-                                  ? "success"
-                                  : purchaseEntry.result.status === "failed"
-                                  ? "error"
-                                  : "warning"
-                              }
-                              size="small"
-                            />
-                            <Typography variant="body2" color="text.secondary">
-                              Mode: {purchaseEntry.mode}
-                            </Typography>
-                            {purchaseEntry.result.trackingCode && (
-                              <Typography variant="body2">
-                                Tracking: {purchaseEntry.result.trackingCode}
-                              </Typography>
-                            )}
-                            {purchaseEntry.result.selectedRate && (
-                              <Typography variant="body2">
-                                Rate:{" "}
-                                {purchaseEntry.result.selectedRate.service} $
-                                {purchaseEntry.result.selectedRate.rate}{" "}
-                                {purchaseEntry.result.selectedRate.currency}
-                              </Typography>
-                            )}
-                            {purchaseEntry.result.labelPdfUrl && (
-                              <Button
-                                component="a"
-                                href={purchaseEntry.result.labelPdfUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                size="small"
-                                variant="outlined"
-                              >
-                                Open Label PDF
-                              </Button>
-                            )}
-                            {!purchaseEntry.result.labelPdfUrl &&
-                              purchaseEntry.result.labelUrl && (
-                                <Button
-                                  component="a"
-                                  href={purchaseEntry.result.labelUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  size="small"
-                                  variant="outlined"
-                                >
-                                  Open Label
-                                </Button>
-                              )}
-                            {purchaseEntry.result.error && (
-                              <Typography variant="body2" color="error">
-                                {purchaseEntry.result.error}
-                              </Typography>
-                            )}
-                          </Stack>
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            Not purchased yet.
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Stack spacing={1} alignItems="flex-start">
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color={
-                              config.easypostMode === "test"
-                                ? "warning"
-                                : "primary"
-                            }
-                            onClick={() => void handleBuyShipment(shipment)}
-                            disabled={
-                              !selectedModeHasApiKey ||
-                              purchasingLabelSize !== null ||
-                              purchasingActionKey !== null
-                            }
-                            startIcon={
-                              isBuyingOutbound ? (
-                                <CircularProgress color="inherit" size={16} />
-                              ) : undefined
-                            }
-                          >
-                            {isBuyingOutbound
-                              ? "Buying..."
-                              : purchaseEntry?.result.status === "purchased" &&
-                                  purchaseEntry.mode === config.easypostMode
-                                ? "Buy Again"
-                                : "Buy Postage"}
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => void handleBuyReturnLabel(shipment)}
-                            disabled={
-                              !selectedModeHasApiKey ||
-                              purchasingLabelSize !== null ||
-                              purchasingActionKey !== null
-                            }
-                            startIcon={
-                              isBuyingReturn ? (
-                                <CircularProgress color="inherit" size={16} />
-                              ) : (
-                                <ReplyIcon fontSize="small" />
-                              )
-                            }
-                          >
-                            {isBuyingReturn ? "Buying..." : "Buy Return Label"}
-                          </Button>
-                          {returnPurchaseEntry?.result.labelPdfUrl && (
-                            <Button
-                              component="a"
-                              href={returnPurchaseEntry.result.labelPdfUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              size="small"
-                              variant="text"
-                            >
-                              Open Return PDF
-                            </Button>
-                          )}
-                          {!returnPurchaseEntry?.result.labelPdfUrl &&
-                            returnPurchaseEntry?.result.labelUrl && (
-                              <Button
-                                component="a"
-                                href={returnPurchaseEntry.result.labelUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                size="small"
-                                variant="text"
-                              >
-                                Open Return Label
-                              </Button>
-                            )}
-                          <Stack direction="row" spacing={0.5}>
-                            <Tooltip title="Edit Shipment" arrow>
-                              <IconButton
-                                onClick={() => handleOpenEditDrawer(shipment)}
-                                color="primary"
-                              >
-                                <EditIcon />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Download Shipment CSV" arrow>
-                              <IconButton
-                                onClick={() => handleDownloadShipment(shipment)}
-                                color="primary"
-                              >
-                                <DownloadIcon />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Download Return CSV" arrow>
-                              <IconButton
-                                onClick={() =>
-                                  handleDownloadReturnShipment(shipment)
-                                }
-                                color="primary"
-                              >
-                                <ReplyIcon />
-                              </IconButton>
-                            </Tooltip>
-                          </Stack>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-      ) : (
-        <Paper
-          sx={{ p: 6, textAlign: "center", backgroundColor: "action.hover" }}
-          elevation={0}
-        >
-          <Typography variant="h6" color="text.secondary">
-            Load live seller orders or upload a TCGPlayer shipping export CSV to
-            get started.
-          </Typography>
-          <Typography variant="body2" color="text.disabled" sx={{ mt: 1 }}>
-            Use the live order loader above, or fall back to CSV upload. Saved
-            shipping settings are managed from{" "}
-            <Link to="/shipping-configuration" style={{ color: "inherit" }}>
-              Shipping Configuration
-            </Link>
-            .
-          </Typography>
-        </Paper>
-      )}
-
-      {Object.keys(outboundPurchaseResultsByReference).length > 0 && (
-        <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            3. Batch Labels & Postage
-          </Typography>
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            spacing={2}
-            flexWrap="wrap"
-          >
-            {availableLabelSizes.map((labelSize) => {
-              const batchLabel =
-                batchLabelResultsBySize[labelSize as LabelSize];
-              const savedPurchasedEntries =
-                getSavedPurchasedEntriesForLabelSize(labelSize as LabelSize);
-              const savedModes = [
-                ...new Set(
-                  savedPurchasedEntries.map(
-                    (entry) => entry.purchaseEntry.mode,
-                  ),
-                ),
-              ];
-              const canGenerateBatchLabelFromSavedPostage =
-                savedPurchasedEntries.length > 0 && savedModes.length === 1;
-
-              return (
-                <Paper
-                  key={labelSize}
-                  variant="outlined"
-                  sx={{ p: 2, minWidth: 240 }}
-                >
-                  <Stack spacing={1.5} alignItems="flex-start">
-                    <Typography variant="subtitle2">
-                      {labelSize} Labels
-                    </Typography>
-                    {batchLabel?.status === "ready" && batchLabel.labelUrl && (
-                      <Button
-                        component="a"
-                        href={batchLabel.labelUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        variant="outlined"
-                      >
-                        Open Batch Label PDF
-                      </Button>
-                    )}
-                    {batchLabel?.status === "ready" && (
-                      <Chip
-                        label={`Batch PDF Ready (${batchLabel.shipmentReferences.length})`}
-                        color="success"
-                        size="small"
-                      />
-                    )}
-                    {batchLabel?.status === "pending" && (
-                      <Typography variant="body2" color="text.secondary">
-                        {batchLabel.message ??
-                          "EasyPost is still generating the batch PDF."}
-                      </Typography>
-                    )}
-                    {batchLabel?.status === "failed" && (
-                      <Typography variant="body2" color="error">
-                        {batchLabel.message ??
-                          "Failed to generate the batch PDF."}
-                      </Typography>
-                    )}
-                    {batchLabel?.status === "skipped" && batchLabel.message && (
-                      <Typography variant="body2" color="text.secondary">
-                        {batchLabel.message}
-                      </Typography>
-                    )}
-                    {!batchLabel && canGenerateBatchLabelFromSavedPostage && (
-                      <>
-                        <Chip
-                          label={`Saved Labels Ready (${savedPurchasedEntries.length})`}
-                          color="info"
-                          size="small"
-                          variant="outlined"
-                        />
-                        <Button
-                          variant="outlined"
-                          onClick={() =>
-                            void handleGenerateBatchLabelFromSavedPostage(
-                              labelSize as LabelSize,
-                            )
-                          }
-                          disabled={generatingBatchLabelSize !== null}
-                          startIcon={
-                            generatingBatchLabelSize === labelSize ? (
-                              <CircularProgress color="inherit" size={18} />
-                            ) : undefined
-                          }
-                        >
-                          {generatingBatchLabelSize === labelSize
-                            ? `Creating ${labelSize} Batch PDF...`
-                            : "Create Batch Label PDF"}
-                        </Button>
-                      </>
-                    )}
-                    {!batchLabel &&
-                      savedPurchasedEntries.length > 0 &&
-                      !canGenerateBatchLabelFromSavedPostage && (
-                        <Typography variant="body2" color="text.secondary">
-                          Saved labels exist for this size, but they span
-                          multiple EasyPost modes and cannot be combined
-                          automatically.
-                        </Typography>
-                      )}
-                    {!batchLabel && savedPurchasedEntries.length === 0 && (
-                      <Typography variant="body2" color="text.secondary">
-                        Buy postage to generate a combined PDF for this label
-                        size.
-                      </Typography>
-                    )}
-                  </Stack>
-                </Paper>
-              );
-            })}
-          </Stack>
+      {activeTab === "return" && (
+        <Paper sx={{ p: 3 }} elevation={2}>
+          <ReturnFlowPanel
+            config={config}
+            environmentStatus={environmentStatus}
+            sellerKeyInput={sellerKeyInput}
+            singleOrderNumberInput={singleOrderNumberInput}
+            returnOrder={returnOrder}
+            returnShipment={returnShipment}
+            returnFlowType={returnFlowType}
+            outboundReturnPurchaseEntry={outboundReturnPurchaseEntry}
+            returnOnlyPurchaseEntry={returnOnlyPurchaseEntry}
+            isLoadingReturnOrder={isLoadingReturnOrder}
+            isPurchasingReturn={isPurchasingReturn}
+            onOrderNumberChange={setSingleOrderNumberInput}
+            onLookupOrder={() => void handleLookupReturnOrder()}
+            onReturnFlowTypeChange={setReturnFlowType}
+            onBuyLabels={() => void handleBuyReturnFlowLabels()}
+          />
         </Paper>
       )}
 
@@ -2320,11 +1276,7 @@ export default function ShippingExportRoute() {
         onClose={() => setDrawerOpen(false)}
         onSave={handleSaveShipmentChanges}
         onChange={(changes) =>
-          setSelectedShipment((previousShipment) =>
-            previousShipment
-              ? { ...previousShipment, ...changes }
-              : previousShipment,
-          )
+          setSelectedShipment((prev) => (prev ? { ...prev, ...changes } : prev))
         }
       />
     </Box>

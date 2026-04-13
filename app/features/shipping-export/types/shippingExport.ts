@@ -51,6 +51,12 @@ export interface EasyPostShipment {
 
 export type TcgPlayerShippingMethod = `Standard${string}` | `Expedited${string}`;
 
+export interface OrderLineItem {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+}
+
 export interface TcgPlayerShippingOrder {
   "Order #": string;
   FirstName: string;
@@ -69,7 +75,19 @@ export interface TcgPlayerShippingOrder {
   "Shipping Fee Paid": number;
   "Tracking #": string;
   Carrier: string;
+  products?: OrderLineItem[];
 }
+
+export type OutboundWorkflowStep =
+  | "load-orders"
+  | "pull-sheet"
+  | "buy-postage"
+  | "print"
+  | "pack"
+  | "apply-tracking"
+  | "notify";
+
+export type ReturnFlowType = "round-trip" | "return-only";
 
 export interface ShippingPackageSettings {
   labelSize: LabelSize;
