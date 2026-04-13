@@ -1,10 +1,14 @@
 import { data } from "react-router";
 import { getShippingExportConfig } from "../config/shippingExportConfig.server";
-import { loadSellerShippingOrders } from "../services/tcgplayerSellerOrders.server";
+import {
+  loadSellerShippingOrders,
+  loadSingleSellerShippingOrder,
+} from "../services/tcgplayerSellerOrders.server";
 
 type ShippingTcgplayerOrdersActionDependencies = {
   getShippingExportConfig?: typeof getShippingExportConfig;
   loadSellerShippingOrders?: typeof loadSellerShippingOrders;
+  loadSingleSellerShippingOrder?: typeof loadSingleSellerShippingOrder;
 };
 
 export function createShippingTcgplayerOrdersAction(
@@ -14,6 +18,8 @@ export function createShippingTcgplayerOrdersAction(
     dependencies.getShippingExportConfig ?? getShippingExportConfig;
   const loadOrders =
     dependencies.loadSellerShippingOrders ?? loadSellerShippingOrders;
+  const loadSingleOrder =
+    dependencies.loadSingleSellerShippingOrder ?? loadSingleSellerShippingOrder;
 
   return async function action({ request }: { request: Request }) {
     if (request.method !== "POST") {
@@ -21,9 +27,14 @@ export function createShippingTcgplayerOrdersAction(
     }
 
     try {
-      const payload = (await request.json()) as { sellerKey?: unknown };
+      const payload = (await request.json()) as {
+        sellerKey?: unknown;
+        orderNumber?: unknown;
+      };
       const providedSellerKey =
         typeof payload.sellerKey === "string" ? payload.sellerKey.trim() : "";
+      const providedOrderNumber =
+        typeof payload.orderNumber === "string" ? payload.orderNumber.trim() : "";
       const config = await getConfig();
       const sellerKey = providedSellerKey || config.defaultSellerKey.trim();
 
@@ -35,6 +46,11 @@ export function createShippingTcgplayerOrdersAction(
           },
           { status: 400 },
         );
+      }
+
+      if (providedOrderNumber) {
+        const response = await loadSingleOrder(sellerKey, providedOrderNumber);
+        return data(response, { status: 200 });
       }
 
       const response = await loadOrders(sellerKey);

@@ -17,6 +17,12 @@ type GetSellerOrderFn = typeof getSellerOrder;
 const SEARCH_RANGE = "LastThreeMonths";
 const ORDER_STATUSES = ["ReadyToShip"] as const;
 const PAGE_SIZE = 500;
+const READY_TO_SHIP_STATUS = "readytoship";
+const SINGLE_ORDER_SEARCH_SIZE = 25;
+const SINGLE_ORDER_SORT = [
+  { sortingType: "orderStatus", direction: "ascending" },
+  { sortingType: "orderDate", direction: "ascending" },
+] as const;
 
 function splitRecipientName(recipientName: string): {
   firstName: string;
@@ -38,6 +44,22 @@ function splitRecipientName(recipientName: string): {
 
 function sumProductQuantity(order: SellerOrderDetail): number {
   return order.products.reduce((total, product) => total + product.quantity, 0);
+}
+
+function normalizeOrderStatus(status: string): string {
+  return status.trim().replace(/\s+/g, "").toLowerCase();
+}
+
+function getSingleOrderWarnings(order: SellerOrderDetail): string[] {
+  const normalizedStatus = normalizeOrderStatus(order.status);
+
+  if (normalizedStatus === READY_TO_SHIP_STATUS) {
+    return [];
+  }
+
+  return [
+    `Order ${order.orderNumber} is currently "${order.status}", not "Ready to Ship". Review it before buying postage.`,
+  ];
 }
 
 export function mapSellerOrderDetailToShippingOrder(
@@ -96,6 +118,35 @@ async function fetchAllSellerOrderSummaries(
   return { totalOrders, orders };
 }
 
+async function fetchSingleSellerOrderSummary(
+  sellerKey: string,
+  orderNumber: string,
+  searchOrders: SearchSellerOrdersFn,
+) {
+  const response = await searchOrders({
+    searchRange: SEARCH_RANGE,
+    query: {
+      orderNumber,
+    },
+    filters: {
+      sellerKey,
+    },
+    sortBy: [...SINGLE_ORDER_SORT],
+    from: 0,
+    size: SINGLE_ORDER_SEARCH_SIZE,
+  });
+  const match =
+    response.orders.find((order) => order.orderNumber === orderNumber) ?? null;
+
+  if (!match) {
+    throw new Error(
+      `Order ${orderNumber} was not found for seller ${sellerKey}.`,
+    );
+  }
+
+  return match;
+}
+
 export async function loadSellerShippingOrders(
   sellerKey: string,
   dependencies: {
@@ -133,6 +184,35 @@ export async function loadSellerShippingOrders(
     totalOrders: searchResponse.totalOrders,
     loadedOrderNumbers,
     orders,
+    ...(warnings.length > 0 ? { warnings } : {}),
+  };
+}
+
+export async function loadSingleSellerShippingOrder(
+  sellerKey: string,
+  orderNumber: string,
+  dependencies: {
+    searchOrders?: SearchSellerOrdersFn;
+    getOrder?: GetSellerOrderFn;
+  } = {},
+): Promise<ShippingLiveOrderLoadResponse> {
+  const searchOrders = dependencies.searchOrders ?? searchSellerOrders;
+  const getOrder = dependencies.getOrder ?? getSellerOrder;
+  const normalizedOrderNumber = orderNumber.trim();
+  const normalizedSellerKey = sellerKey.trim();
+  const summary = await fetchSingleSellerOrderSummary(
+    normalizedSellerKey,
+    normalizedOrderNumber,
+    searchOrders,
+  );
+  const order = await getOrder(summary.orderNumber);
+  const warnings = getSingleOrderWarnings(order);
+
+  return {
+    sellerKey: normalizedSellerKey,
+    totalOrders: 1,
+    loadedOrderNumbers: [order.orderNumber],
+    orders: [mapSellerOrderDetailToShippingOrder(order)],
     ...(warnings.length > 0 ? { warnings } : {}),
   };
 }

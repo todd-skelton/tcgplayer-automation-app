@@ -5,9 +5,12 @@ export type SellerOrderStatusFilter = "ReadyToShip";
 
 export interface SearchSellerOrdersRequest {
   searchRange: SellerOrderSearchRange;
+  query?: {
+    orderNumber?: string;
+  };
   filters: {
     sellerKey: string;
-    orderStatuses: SellerOrderStatusFilter[];
+    orderStatuses?: SellerOrderStatusFilter[];
   };
   sortBy: unknown[];
   from: number;

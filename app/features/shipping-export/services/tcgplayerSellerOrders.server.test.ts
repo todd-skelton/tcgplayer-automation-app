@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import type { SellerOrderDetail } from "~/integrations/tcgplayer/client/get-seller-order.server";
 import {
   loadSellerShippingOrders,
+  loadSingleSellerShippingOrder,
   mapSellerOrderDetailToShippingOrder,
 } from "./tcgplayerSellerOrders.server";
 
@@ -250,6 +251,138 @@ const testCases: TestCase[] = [
       assert.equal(response.orders.length, 2);
       assert.equal(response.warnings?.length, 1);
       assert.match(response.warnings?.[0] ?? "", /Failed to load seller order B/);
+    },
+  },
+  {
+    name: "loadSingleSellerShippingOrder searches by seller key and order number, then warns when the order is not ready to ship",
+    run: async () => {
+      let capturedRequest:
+        | {
+            searchRange: string;
+            query?: { orderNumber?: string };
+            filters: { sellerKey: string; orderStatuses?: readonly string[] };
+            sortBy: unknown[];
+            from: number;
+            size: number;
+          }
+        | undefined;
+      let capturedOrderNumber = "";
+      const response = await loadSingleSellerShippingOrder(
+        " seller-123 ",
+        "  ORD-1001  ",
+        {
+          searchOrders: async (request) => {
+            capturedRequest = request;
+            return {
+              totalOrders: 1,
+              orders: [
+                {
+                  orderNumber: "ORD-1001",
+                  orderDate: "2026-04-12T00:00:00Z",
+                  orderChannel: "TcgMarketplace",
+                  orderStatus: "Shipped",
+                  buyerName: "Jane Doe",
+                  shippingType: "Standard",
+                  productAmount: 10,
+                  shippingAmount: 0,
+                  totalAmount: 10,
+                  buyerPaid: true,
+                  orderFulfillment: "Normal",
+                },
+              ],
+            };
+          },
+          getOrder: async (orderNumber) => {
+            capturedOrderNumber = orderNumber;
+            return createSellerOrderDetail({
+              orderNumber: "ORD-1001",
+              status: "Shipped",
+            });
+          },
+        },
+      );
+
+      assert.deepEqual(capturedRequest, {
+        searchRange: "LastThreeMonths",
+        query: {
+          orderNumber: "ORD-1001",
+        },
+        filters: {
+          sellerKey: "seller-123",
+        },
+        sortBy: [
+          { sortingType: "orderStatus", direction: "ascending" },
+          { sortingType: "orderDate", direction: "ascending" },
+        ],
+        from: 0,
+        size: 25,
+      });
+      assert.equal(capturedOrderNumber, "ORD-1001");
+      assert.equal(response.sellerKey, "seller-123");
+      assert.equal(response.totalOrders, 1);
+      assert.deepEqual(response.loadedOrderNumbers, ["ORD-1001"]);
+      assert.equal(response.orders.length, 1);
+      assert.deepEqual(response.warnings, [
+        'Order ORD-1001 is currently "Shipped", not "Ready to Ship". Review it before buying postage.',
+      ]);
+    },
+  },
+  {
+    name: "loadSingleSellerShippingOrder fails when the seller search does not find the order",
+    run: async () => {
+      await assert.rejects(
+        () =>
+          loadSingleSellerShippingOrder("seller-123", "ORD-404", {
+            searchOrders: async () => ({
+              totalOrders: 0,
+              orders: [],
+            }),
+            getOrder: async () => {
+              throw new Error("should not be called");
+            },
+          }),
+        /Order ORD-404 was not found for seller seller-123\./,
+      );
+    },
+  },
+  {
+    name: "loadSingleSellerShippingOrder omits warnings for ready to ship orders",
+    run: async () => {
+      const response = await loadSingleSellerShippingOrder(
+        "seller-123",
+        "ORD-2002",
+        {
+          searchOrders: async (request) => ({
+            totalOrders: 1,
+            orders: [
+              {
+                orderNumber: request.query?.orderNumber ?? "ORD-2002",
+                orderDate: "2026-04-12T00:00:00Z",
+                orderChannel: "TcgMarketplace",
+                orderStatus: "ReadyToShip",
+                buyerName: "Jane Doe",
+                shippingType: "Standard",
+                productAmount: 10,
+                shippingAmount: 0,
+                totalAmount: 10,
+                buyerPaid: true,
+                orderFulfillment: "Normal",
+              },
+            ],
+          }),
+          getOrder: async (orderNumber) =>
+            createSellerOrderDetail({
+              orderNumber,
+              status: "ReadyToShip",
+            }),
+        },
+      );
+
+      assert.equal(response.sellerKey, "seller-123");
+      assert.equal(response.totalOrders, 1);
+      assert.deepEqual(response.loadedOrderNumbers, ["ORD-2002"]);
+      assert.equal(response.orders.length, 1);
+      assert.equal(response.warnings, undefined);
     },
   },
 ];

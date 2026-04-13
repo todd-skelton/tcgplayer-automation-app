@@ -45,6 +45,9 @@ const testCases: TestCase[] = [
         loadSellerShippingOrders: async () => {
           throw new Error("should not be called");
         },
+        loadSingleSellerShippingOrder: async () => {
+          throw new Error("should not be called");
+        },
       });
 
       const result = await action({
@@ -101,6 +104,9 @@ const testCases: TestCase[] = [
             ],
             warnings: ["Failed to load seller order 1002: Error: 403"],
           };
+        },
+        loadSingleSellerShippingOrder: async () => {
+          throw new Error("should not be called");
         },
       });
 
@@ -162,6 +168,9 @@ const testCases: TestCase[] = [
             orders: [],
           };
         },
+        loadSingleSellerShippingOrder: async () => {
+          throw new Error("should not be called");
+        },
       });
 
       const result = await action({
@@ -180,6 +189,125 @@ const testCases: TestCase[] = [
         totalOrders: 0,
         loadedOrderNumbers: [],
         orders: [],
+      });
+    },
+  },
+  {
+    name: "shipping tcgplayer orders route uses the resolved seller key for single-order lookups",
+    run: async () => {
+      let capturedSellerKey = "";
+      let capturedOrderNumber = "";
+      const action = createShippingTcgplayerOrdersAction({
+        getShippingExportConfig: async () => ({
+          ...DEFAULT_SHIPPING_EXPORT_CONFIG,
+          defaultSellerKey: "saved-seller",
+        }),
+        loadSellerShippingOrders: async () => {
+          throw new Error("should not be called");
+        },
+        loadSingleSellerShippingOrder: async (sellerKey, orderNumber) => {
+          capturedSellerKey = sellerKey;
+          capturedOrderNumber = orderNumber;
+          return {
+            sellerKey,
+            totalOrders: 1,
+            loadedOrderNumbers: ["ORD-1001"],
+            orders: [
+              {
+                "Order #": "ORD-1001",
+                FirstName: "Jane",
+                LastName: "Doe",
+                Address1: "123 Main",
+                Address2: "",
+                City: "Austin",
+                State: "TX",
+                PostalCode: "78701",
+                Country: "US",
+                "Order Date": "2026-04-12T00:00:00Z",
+                "Product Weight": 0,
+                "Shipping Method": "Standard",
+                "Item Count": 1,
+                "Value Of Products": 10,
+                "Shipping Fee Paid": 0,
+                "Tracking #": "",
+                Carrier: "",
+              },
+            ],
+            warnings: ['Order ORD-1001 is currently "Shipped".'],
+          };
+        },
+      });
+
+      const result = await action({
+        request: new Request("http://localhost/api/shipping-export/tcgplayer-orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderNumber: " ORD-1001 " }),
+        }),
+      });
+
+      const parsed = await parseActionResult(result);
+      assert.equal(parsed.status, 200);
+      assert.equal(capturedSellerKey, "saved-seller");
+      assert.equal(capturedOrderNumber, "ORD-1001");
+      assert.deepEqual(parsed.body, {
+        sellerKey: "saved-seller",
+        totalOrders: 1,
+        loadedOrderNumbers: ["ORD-1001"],
+        orders: [
+          {
+            "Order #": "ORD-1001",
+            FirstName: "Jane",
+            LastName: "Doe",
+            Address1: "123 Main",
+            Address2: "",
+            City: "Austin",
+            State: "TX",
+            PostalCode: "78701",
+            Country: "US",
+            "Order Date": "2026-04-12T00:00:00Z",
+            "Product Weight": 0,
+            "Shipping Method": "Standard",
+            "Item Count": 1,
+            "Value Of Products": 10,
+            "Shipping Fee Paid": 0,
+            "Tracking #": "",
+            Carrier: "",
+          },
+        ],
+        warnings: ['Order ORD-1001 is currently "Shipped".'],
+      });
+    },
+  },
+  {
+    name: "shipping tcgplayer orders route requires a seller key for single-order lookups too",
+    run: async () => {
+      const action = createShippingTcgplayerOrdersAction({
+        getShippingExportConfig: async () => ({
+          ...DEFAULT_SHIPPING_EXPORT_CONFIG,
+          defaultSellerKey: "",
+        }),
+        loadSellerShippingOrders: async () => {
+          throw new Error("should not be called");
+        },
+        loadSingleSellerShippingOrder: async () => {
+          throw new Error("should not be called");
+        },
+      });
+
+      const result = await action({
+        request: new Request("http://localhost/api/shipping-export/tcgplayer-orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderNumber: "ORD-2002" }),
+        }),
+      });
+
+      const parsed = await parseActionResult(result);
+      assert.equal(parsed.status, 400);
+      assert.deepEqual(parsed.body, {
+        error:
+          "A seller key is required. Enter one on the shipping page or save a default in Shipping Configuration.",
       });
     },
   },

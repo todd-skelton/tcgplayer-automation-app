@@ -521,6 +521,7 @@ export default function ShippingExportRoute() {
   const [shipmentToOrderMap, setShipmentToOrderMap] =
     useState<ShipmentToOrderMap>({});
   const [sellerKeyInput, setSellerKeyInput] = useState(config.defaultSellerKey);
+  const [singleOrderNumberInput, setSingleOrderNumberInput] = useState("");
   const [uploadedFileName, setUploadedFileName] = useState("");
   const [loadedSourceLabel, setLoadedSourceLabel] = useState("");
   const [loadWarnings, setLoadWarnings] = useState<string[]>([]);
@@ -541,6 +542,7 @@ export default function ShippingExportRoute() {
   const [isLoadingExistingPostage, setIsLoadingExistingPostage] =
     useState(false);
   const [isLoadingLiveOrders, setIsLoadingLiveOrders] = useState(false);
+  const [isLoadingSingleOrder, setIsLoadingSingleOrder] = useState(false);
   const [isGeneratingPullSheet, setIsGeneratingPullSheet] = useState(false);
   const [packingSlipAction, setPackingSlipAction] = useState<
     "download" | "open" | null
@@ -785,6 +787,65 @@ export default function ShippingExportRoute() {
       setError(String(loadError));
     } finally {
       setIsLoadingLiveOrders(false);
+    }
+  };
+
+  const handleLoadSingleOrder = async () => {
+    const normalizedOrderNumber = singleOrderNumberInput.trim();
+
+    if (!normalizedOrderNumber) {
+      setError("Enter a TCGPlayer order number to load a single order.");
+      return;
+    }
+
+    setIsLoadingSingleOrder(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/shipping-export/tcgplayer-orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sellerKey: sellerKeyInput.trim(),
+          orderNumber: normalizedOrderNumber,
+        }),
+      });
+
+      const payload = (await response.json()) as
+        | ShippingLiveOrderLoadResponse
+        | { error?: string };
+
+      if (!response.ok) {
+        throw new Error(
+          "error" in payload
+            ? payload.error ?? "Failed to load the requested TCGPlayer order."
+            : "Failed to load the requested TCGPlayer order.",
+        );
+      }
+
+      const singleOrderResponse = payload as ShippingLiveOrderLoadResponse;
+
+      if (singleOrderResponse.sellerKey) {
+        setSellerKeyInput(singleOrderResponse.sellerKey);
+      }
+
+      setSingleOrderNumberInput(
+        singleOrderResponse.loadedOrderNumbers[0] ?? normalizedOrderNumber,
+      );
+      setUploadedFileName("");
+      await applyOrderSource(
+        singleOrderResponse.orders,
+        `Single TCGPlayer order: ${
+          singleOrderResponse.loadedOrderNumbers[0] ?? normalizedOrderNumber
+        }`,
+        singleOrderResponse.warnings ?? [],
+      );
+    } catch (loadError) {
+      setError(String(loadError));
+    } finally {
+      setIsLoadingSingleOrder(false);
     }
   };
 
@@ -1415,7 +1476,7 @@ export default function ShippingExportRoute() {
         <Alert severity="warning" sx={{ mb: 3 }}>
           <Stack spacing={0.5}>
             <Typography variant="body2" fontWeight={600}>
-              Some live seller orders could not be loaded.
+              Order load warnings
             </Typography>
             {loadWarnings.map((warning) => (
               <Typography key={warning} variant="body2">
@@ -1461,7 +1522,7 @@ export default function ShippingExportRoute() {
             <Button
               variant="contained"
               onClick={() => void handleLoadLiveOrders()}
-              disabled={isLoadingLiveOrders}
+              disabled={isLoadingLiveOrders || isLoadingSingleOrder}
               startIcon={
                 isLoadingLiveOrders ? (
                   <CircularProgress color="inherit" size={18} />
@@ -1475,9 +1536,53 @@ export default function ShippingExportRoute() {
             <Button
               variant="outlined"
               onClick={() => void handleRebuildShipments()}
-              disabled={sourceOrders.length === 0 || isLoadingLiveOrders}
+              disabled={
+                sourceOrders.length === 0 ||
+                isLoadingLiveOrders ||
+                isLoadingSingleOrder
+              }
             >
               Rebuild Shipments
+            </Button>
+          </Stack>
+
+          <Box>
+            <Typography variant="subtitle1" gutterBottom>
+              Single Order Lookup
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Load one TCGPlayer order by number when you want to inspect it and
+              buy postage without pulling the full live queue. The seller key
+              above is used for the lookup.
+            </Typography>
+          </Box>
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            spacing={2}
+            alignItems={{ md: "center" }}
+            flexWrap="wrap"
+          >
+            <TextField
+              label="Order Number"
+              value={singleOrderNumberInput}
+              onChange={(event) => setSingleOrderNumberInput(event.target.value)}
+              placeholder="Enter order number"
+              sx={{ minWidth: { xs: "100%", md: 320 } }}
+            />
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={() => void handleLoadSingleOrder()}
+              disabled={isLoadingSingleOrder || isLoadingLiveOrders}
+              startIcon={
+                isLoadingSingleOrder ? (
+                  <CircularProgress color="inherit" size={18} />
+                ) : undefined
+              }
+            >
+              {isLoadingSingleOrder
+                ? "Looking Up Order..."
+                : "Lookup Single Order"}
             </Button>
           </Stack>
 
