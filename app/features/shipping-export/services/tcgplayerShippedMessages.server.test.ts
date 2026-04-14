@@ -58,7 +58,7 @@ const testCases: TestCase[] = [
       );
       assert.match(
         sentMessages[0]?.messageBody ?? "",
-        /<a href="https:\/\/track\.easypost\.com\/public\/shp_1">Pok\u00E9Bash TCG Tracking<\/a>/,
+        /<a href="https:\/\/track\.easypost\.com\/public\/shp_1" target="_blank">Pok\u00E9Bash TCG Tracking<\/a>/,
       );
       assert.deepEqual(response, {
         results: [

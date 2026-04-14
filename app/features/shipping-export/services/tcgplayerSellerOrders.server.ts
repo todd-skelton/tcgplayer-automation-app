@@ -91,6 +91,8 @@ export function mapSellerOrderDetailToShippingOrder(
       name: p.name,
       quantity: p.quantity,
       unitPrice: p.unitPrice,
+      skuId: Number.parseInt(p.skuId, 10) || undefined,
+      productId: Number.parseInt(p.productId, 10) || undefined,
     })),
   };
 }

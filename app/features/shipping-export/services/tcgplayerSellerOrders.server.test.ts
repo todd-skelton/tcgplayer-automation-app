@@ -86,7 +86,15 @@ const testCases: TestCase[] = [
         "Shipping Fee Paid": 0,
         "Tracking #": "",
         Carrier: "",
-        products: [{ name: "Magearna EX", quantity: 1, unitPrice: 10.01 }],
+        products: [
+          {
+            name: "Magearna EX",
+            quantity: 1,
+            unitPrice: 10.01,
+            skuId: 3191391,
+            productId: 121234,
+          },
+        ],
       });
     },
   },
@@ -143,6 +151,8 @@ const testCases: TestCase[] = [
       assert.equal(order["Item Count"], 5);
       assert.equal(order["Shipping Fee Paid"], 1.31);
       assert.equal(order["Shipping Method"], "Expedited (3-5 days)");
+      assert.equal(order.products?.[0]?.skuId, 1);
+      assert.equal(order.products?.[1]?.productId, 2);
     },
   },
   {

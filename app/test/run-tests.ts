@@ -10,6 +10,9 @@ import "../features/shipping-export/routes/api.shipping-export-tcgplayer-shipped
 import "../features/shipping-export/routes/api.shipping-export-tcgplayer-orders.test";
 import "../features/shipping-export/services/easyPostPostage.server.test";
 import "../features/shipping-export/services/shippingExportUtils.test";
+import "../features/shipping-export/services/packPullSheet.test";
 import "../features/shipping-export/services/tcgplayerTracking.server.test";
 import "../features/shipping-export/services/tcgplayerShippedMessages.server.test";
 import "../features/shipping-export/services/tcgplayerSellerOrders.server.test";
+import "../features/pull-sheet/utils/pullSheetItems.test";
+import "../features/shipping-export/components/steps/PackStep.test";

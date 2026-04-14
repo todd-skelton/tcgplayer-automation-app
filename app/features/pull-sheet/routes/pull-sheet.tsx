@@ -14,18 +14,12 @@ import {
 import ViewListIcon from "@mui/icons-material/ViewList";
 import ViewModuleIcon from "@mui/icons-material/ViewModule";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import Papa from "papaparse";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { PullSheetTable } from "../components/PullSheetTable";
 import { PullSheetGrid } from "../components/PullSheetGrid";
-import { getReleaseYear } from "../components/pullSheetUtils";
-import { mapPullSheetProductLineName } from "../utils/productLineNameMap";
+import { loadPullSheetItemsFromCsvText } from "../utils/pullSheetItems";
 import { useSearchParams } from "react-router";
-import type {
-  PullSheetCsvRow,
-  PullSheetItem,
-} from "../types/pullSheetTypes";
-import type { Sku } from "~/shared/data-types/sku";
+import type { PullSheetItem } from "../types/pullSheetTypes";
 
 type ViewMode = "table" | "grid";
 const PULL_SHEET_IMPORT_STORAGE_PREFIX = "pull-sheet-import:";
@@ -47,90 +41,9 @@ export default function PullSheetRoute() {
       setFileName(nextFileName);
 
       try {
-        const lines = text.trim().split("\n");
-        const lastLine = lines[lines.length - 1];
-        let csvText = text;
-        const extractedOrderIds: string[] = [];
-
-        if (lastLine.startsWith("Orders Contained in Pull Sheet:")) {
-          const ordersPart = lastLine.split(",").slice(1).join(",").trim();
-          extractedOrderIds.push(
-            ...ordersPart
-              .split("|")
-              .map((id) => id.trim())
-              .filter(Boolean),
-          );
-          csvText = lines.slice(0, -1).join("\n");
-        }
-        setOrderIds(extractedOrderIds);
-
-        const parseResult = Papa.parse<PullSheetCsvRow>(csvText, {
-          header: true,
-          skipEmptyLines: true,
-        });
-
-        if (parseResult.errors.length > 0) {
-          const errorMessages = parseResult.errors
-            .slice(0, 3)
-            .map((e) => e.message)
-            .join(", ");
-          setError(`CSV parsing errors: ${errorMessages}`);
-          return;
-        }
-
-        const rows = parseResult.data.filter(
-          (row) => row.SkuId && row["Product Name"],
-        );
-
-        if (rows.length === 0) {
-          setError(
-            "No valid rows found in CSV. Expected columns: Product Line, Product Name, Condition, SkuId, etc.",
-          );
-          return;
-        }
-
-        const lookupItems = rows.map((row) => ({
-          skuId: parseInt(row.SkuId, 10),
-          productLineName: mapPullSheetProductLineName(row["Product Line"]),
-        }));
-
-        const response = await fetch("/api/pull-sheet-lookup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items: lookupItems }),
-        });
-
-        let skuMap: Record<number, Sku> = {};
-        if (response.ok) {
-          const result = await response.json();
-          skuMap = result.skuMap || {};
-        }
-
-        const pullSheetItems: PullSheetItem[] = rows.map((row) => {
-          const skuId = parseInt(row.SkuId, 10);
-          const dbSku = skuMap[skuId];
-          const productLine = mapPullSheetProductLineName(row["Product Line"]);
-
-          return {
-            skuId,
-            productLine,
-            productName: row["Product Name"],
-            condition: row.Condition,
-            number: row.Number,
-            set: row.Set,
-            releaseYear: getReleaseYear(row["Set Release Date"]),
-            rarity: row.Rarity,
-            quantity: parseInt(row.Quantity, 10) || 1,
-            orderQuantity: row["Order Quantity"],
-            productId: dbSku?.productId,
-            productLineId: dbSku?.productLineId,
-            variant: dbSku?.variant,
-            dbCondition: dbSku?.condition,
-            found: !!dbSku,
-          };
-        });
-
-        setItems(pullSheetItems);
+        const result = await loadPullSheetItemsFromCsvText(text);
+        setOrderIds(result.orderIds);
+        setItems(result.items);
       } catch (err) {
         setError(`Failed to process file: ${String(err)}`);
       } finally {

@@ -25,6 +25,11 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { PullSheetGrid } from "~/features/pull-sheet/components/PullSheetGrid";
+import type {
+  PackPullSheetLoadStatus,
+  PackPullSheetShipmentMatch,
+} from "../../services/packPullSheet";
 import type {
   EasyPostMode,
   ShipmentToOrderMap,
@@ -41,6 +46,9 @@ interface PackStepProps {
   sourceOrders: TcgPlayerShippingOrder[];
   shipmentToOrderMap: ShipmentToOrderMap;
   outboundPurchaseResultsByReference: Record<string, PurchaseEntry>;
+  packPullSheetStatus: PackPullSheetLoadStatus;
+  packPullSheetError: string | null;
+  packPullSheetMatchesByReference: Record<string, PackPullSheetShipmentMatch>;
   packedOrderNumbers: Set<string>;
   onOrderPacked: (reference: string, packed: boolean) => void;
   onBack: () => void;
@@ -53,6 +61,9 @@ export function PackStep({
   sourceOrders,
   shipmentToOrderMap,
   outboundPurchaseResultsByReference,
+  packPullSheetStatus,
+  packPullSheetError,
+  packPullSheetMatchesByReference,
   packedOrderNumbers,
   onOrderPacked,
   onBack,
@@ -64,23 +75,27 @@ export function PackStep({
   const shipmentReferences =
     Object.keys(shipmentToOrderMap).length > 0
       ? Object.keys(shipmentToOrderMap)
-      : sourceOrders.map((o) => o["Order #"]);
+      : sourceOrders.map((order) => order["Order #"]);
 
   const totalShipments = shipmentReferences.length;
   const currentReference = shipmentReferences[currentIndex] ?? null;
-
   const currentOrder =
-    sourceOrders.find((o) => o["Order #"] === currentReference) ?? null;
+    sourceOrders.find((order) => order["Order #"] === currentReference) ?? null;
 
   const mergedOrderNumbers = currentReference
     ? (shipmentToOrderMap[currentReference] ?? [currentReference])
     : [];
   const mergedOrders = mergedOrderNumbers
-    .map((num) => sourceOrders.find((o) => o["Order #"] === num))
-    .filter((o): o is TcgPlayerShippingOrder => o !== null);
+    .map((orderNumber) =>
+      sourceOrders.find((order) => order["Order #"] === orderNumber),
+    )
+    .filter((order): order is TcgPlayerShippingOrder => order !== null);
 
   const purchaseEntry = currentReference
     ? outboundPurchaseResultsByReference[currentReference]
+    : null;
+  const visualPullSheetMatch = currentReference
+    ? packPullSheetMatchesByReference[currentReference] ?? null
     : null;
   const isPacked = currentReference
     ? packedOrderNumbers.has(currentReference)
@@ -88,7 +103,7 @@ export function PackStep({
   const packedCount = packedOrderNumbers.size;
   const progress = totalShipments > 0 ? (packedCount / totalShipments) * 100 : 0;
 
-  const allLineItems = mergedOrders.flatMap((o) => o.products ?? []);
+  const allLineItems = mergedOrders.flatMap((order) => order.products ?? []);
   const hasLineItems = allLineItems.length > 0;
 
   const aggregatedItems = allLineItems.reduce<Map<string, number>>((map, item) => {
@@ -96,18 +111,47 @@ export function PackStep({
     return map;
   }, new Map());
 
+  function renderSimplePullSheetTable() {
+    return (
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Card</TableCell>
+              <TableCell align="right">Qty</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {[...aggregatedItems.entries()].map(([name, qty]) => (
+              <TableRow key={name}>
+                <TableCell>{name}</TableCell>
+                <TableCell align="right">{qty}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  }
+
   function handleMarkPacked(reference: string, packed: boolean) {
     onOrderPacked(reference, packed);
+
     if (packed) {
       const nextUnpacked = shipmentReferences.findIndex(
-        (ref, i) => i > currentIndex && !packedOrderNumbers.has(ref)
+        (shipmentReference, index) =>
+          index > currentIndex && !packedOrderNumbers.has(shipmentReference),
       );
+
       if (nextUnpacked !== -1) {
         setCurrentIndex(nextUnpacked);
       } else {
         const firstUnpacked = shipmentReferences.findIndex(
-          (ref) => ref !== reference && !packedOrderNumbers.has(ref)
+          (shipmentReference) =>
+            shipmentReference !== reference &&
+            !packedOrderNumbers.has(shipmentReference),
         );
+
         if (firstUnpacked !== -1) {
           setCurrentIndex(firstUnpacked);
         }
@@ -117,12 +161,17 @@ export function PackStep({
 
   return (
     <Stack spacing={3}>
-      <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
+      <Stack
+        direction="row"
+        spacing={2}
+        alignItems="center"
+        justifyContent="space-between"
+      >
         <Stack direction="row" spacing={1} alignItems="center">
           {viewMode === "card" && (
             <>
               <IconButton
-                onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
+                onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
                 disabled={currentIndex === 0}
               >
                 <ChevronLeftIcon />
@@ -132,7 +181,9 @@ export function PackStep({
               </Typography>
               <IconButton
                 onClick={() =>
-                  setCurrentIndex((i) => Math.min(totalShipments - 1, i + 1))
+                  setCurrentIndex((index) =>
+                    Math.min(totalShipments - 1, index + 1),
+                  )
                 }
                 disabled={currentIndex === totalShipments - 1}
               >
@@ -161,7 +212,7 @@ export function PackStep({
           <ToggleButtonGroup
             value={viewMode}
             exclusive
-            onChange={(_, v) => v && setViewMode(v)}
+            onChange={(_, value) => value && setViewMode(value)}
             size="small"
           >
             <ToggleButton value="card" aria-label="card view">
@@ -194,8 +245,13 @@ export function PackStep({
 
                     {mergedOrderNumbers.length > 1 && (
                       <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                        {mergedOrderNumbers.map((num) => (
-                          <Chip key={num} label={num} size="small" variant="outlined" />
+                        {mergedOrderNumbers.map((orderNumber) => (
+                          <Chip
+                            key={orderNumber}
+                            label={orderNumber}
+                            size="small"
+                            variant="outlined"
+                          />
                         ))}
                         <Typography
                           variant="caption"
@@ -206,6 +262,7 @@ export function PackStep({
                         </Typography>
                       </Stack>
                     )}
+
                     {mergedOrderNumbers.length === 1 && (
                       <Typography variant="body2" fontWeight={500}>
                         {currentReference}
@@ -247,7 +304,7 @@ export function PackStep({
                           Items
                         </Typography>
                         <Typography variant="body2">
-                          {mergedOrders.reduce((s, o) => s + o["Item Count"], 0)}
+                          {mergedOrders.reduce((sum, order) => sum + order["Item Count"], 0)}
                         </Typography>
                       </Box>
                       <Box>
@@ -257,7 +314,7 @@ export function PackStep({
                         <Typography variant="body2">
                           $
                           {mergedOrders
-                            .reduce((s, o) => s + o["Value Of Products"], 0)
+                            .reduce((sum, order) => sum + order["Value Of Products"], 0)
                             .toFixed(2)}
                         </Typography>
                       </Box>
@@ -320,30 +377,45 @@ export function PackStep({
 
                     {!hasLineItems && (
                       <Alert severity="info">
-                        Line item details unavailable — refer to the packing slip PDF.
+                        Line item details unavailable - refer to the packing slip PDF.
                       </Alert>
                     )}
 
-                    {hasLineItems && (
-                      <TableContainer>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>Card</TableCell>
-                              <TableCell align="right">Qty</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {[...aggregatedItems.entries()].map(([name, qty]) => (
-                              <TableRow key={name}>
-                                <TableCell>{name}</TableCell>
-                                <TableCell align="right">{qty}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
+                    {hasLineItems && packPullSheetStatus === "loading" && (
+                      <Alert severity="info">
+                        Loading visual pull sheet for this shipment.
+                      </Alert>
                     )}
+
+                    {hasLineItems && packPullSheetStatus === "error" && (
+                      <Alert severity="warning">
+                        {packPullSheetError ??
+                          "Visual pull sheet unavailable. Showing the shipment item list instead."}
+                      </Alert>
+                    )}
+
+                    {hasLineItems &&
+                      visualPullSheetMatch?.fallbackReason &&
+                      packPullSheetStatus !== "loading" && (
+                        <Alert severity="info">
+                          {visualPullSheetMatch.fallbackReason} Showing the shipment
+                          item list instead.
+                        </Alert>
+                      )}
+
+                    {hasLineItems &&
+                      visualPullSheetMatch?.canRenderGrid &&
+                      packPullSheetStatus === "ready" && (
+                        <Box sx={{ maxHeight: 560, overflow: "auto", pr: 0.5 }}>
+                          <PullSheetGrid items={visualPullSheetMatch.items} />
+                        </Box>
+                      )}
+
+                    {hasLineItems &&
+                      packPullSheetStatus !== "loading" &&
+                      (!visualPullSheetMatch?.canRenderGrid ||
+                        packPullSheetStatus === "error") &&
+                      renderSimplePullSheetTable()}
                   </Stack>
                 </Stack>
               </CardContent>
@@ -370,56 +442,63 @@ export function PackStep({
               </TableRow>
             </TableHead>
             <TableBody>
-              {shipmentReferences.map((ref, idx) => {
-                const orderNums = shipmentToOrderMap[ref] ?? [ref];
+              {shipmentReferences.map((shipmentReference, index) => {
+                const orderNumbers = shipmentToOrderMap[shipmentReference] ?? [shipmentReference];
                 const primaryOrder =
-                  sourceOrders.find((o) => o["Order #"] === ref) ?? null;
-                const rowOrders = orderNums
-                  .map((num) => sourceOrders.find((o) => o["Order #"] === num))
-                  .filter((o): o is TcgPlayerShippingOrder => o !== null);
-                const purchase = outboundPurchaseResultsByReference[ref];
-                const packed = packedOrderNumbers.has(ref);
+                  sourceOrders.find(
+                    (order) => order["Order #"] === shipmentReference,
+                  ) ?? null;
+                const rowOrders = orderNumbers
+                  .map((orderNumber) =>
+                    sourceOrders.find((order) => order["Order #"] === orderNumber),
+                  )
+                  .filter((order): order is TcgPlayerShippingOrder => order !== null);
+                const purchase = outboundPurchaseResultsByReference[shipmentReference];
+                const packed = packedOrderNumbers.has(shipmentReference);
 
                 return (
                   <TableRow
-                    key={ref}
-                    selected={idx === currentIndex}
+                    key={shipmentReference}
+                    selected={index === currentIndex}
                     hover
-                    onClick={() => setCurrentIndex(idx)}
+                    onClick={() => setCurrentIndex(index)}
                     sx={{ cursor: "pointer" }}
                   >
                     <TableCell padding="checkbox">
                       <Checkbox
                         checked={packed}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          handleMarkPacked(ref, e.target.checked);
+                        onChange={(event) => {
+                          event.stopPropagation();
+                          handleMarkPacked(shipmentReference, event.target.checked);
                         }}
                         color="success"
                         size="small"
                       />
                     </TableCell>
                     <TableCell>
-                      {orderNums.length > 1 ? (
+                      {orderNumbers.length > 1 ? (
                         <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                          {orderNums.map((n) => (
-                            <Chip key={n} label={n} size="small" variant="outlined" />
+                          {orderNumbers.map((orderNumber) => (
+                            <Chip
+                              key={orderNumber}
+                              label={orderNumber}
+                              size="small"
+                              variant="outlined"
+                            />
                           ))}
                         </Stack>
                       ) : (
-                        <Typography variant="body2">{ref}</Typography>
+                        <Typography variant="body2">{shipmentReference}</Typography>
                       )}
                     </TableCell>
                     <TableCell>
                       {primaryOrder
                         ? `${primaryOrder.FirstName} ${primaryOrder.LastName}`
-                        : "—"}
+                        : "-"}
                     </TableCell>
-                    <TableCell>
-                      {primaryOrder?.["Shipping Method"] ?? "—"}
-                    </TableCell>
+                    <TableCell>{primaryOrder?.["Shipping Method"] ?? "-"}</TableCell>
                     <TableCell align="right">
-                      {rowOrders.reduce((s, o) => s + o["Item Count"], 0)}
+                      {rowOrders.reduce((sum, order) => sum + order["Item Count"], 0)}
                     </TableCell>
                     <TableCell>
                       {purchase ? (
@@ -435,7 +514,7 @@ export function PackStep({
                           }
                         />
                       ) : (
-                        "—"
+                        "-"
                       )}
                     </TableCell>
                   </TableRow>

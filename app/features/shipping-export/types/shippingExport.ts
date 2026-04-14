@@ -55,6 +55,8 @@ export interface OrderLineItem {
   name: string;
   quantity: number;
   unitPrice: number;
+  skuId?: number;
+  productId?: number;
 }
 
 export interface TcgPlayerShippingOrder {

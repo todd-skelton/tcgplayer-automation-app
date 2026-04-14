@@ -57,7 +57,7 @@ function buildShippedMessageBody(trackingUrl: string): string {
     "",
     "You can track your shipment here:",
     "",
-    `<a href=${safeTrackingUrl} target=_blank>${STORE_NAME} Tracking</a>`,
+    `<a href="${safeTrackingUrl}" target="_blank">${STORE_NAME} Tracking</a>`,
     "",
     "Please keep in mind that it can take 24\u201348 hours for the first scan to appear, so a short delay in updates is completely normal.",
     "",

@@ -13,7 +13,8 @@ import {
 } from "@mui/material";
 import { data, Link, type MetaFunction, useLoaderData } from "react-router";
 import Papa from "papaparse";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { loadPullSheetItemsFromCsvText } from "~/features/pull-sheet/utils/pullSheetItems";
 import { getEasyPostEnvironmentStatus } from "../config/easyPostConfig.server";
 import { getShippingExportConfig } from "../config/shippingExportConfig.server";
 import {
@@ -27,6 +28,10 @@ import {
   mergeOrdersByAddress,
   parseShippingOrdersCsv,
 } from "../services/shippingExportUtils";
+import {
+  allocatePullSheetItemsToShipments,
+  type PackPullSheetLoadStatus,
+} from "../services/packPullSheet";
 import {
   type EasyPostMode,
   type EasyPostShipment,
@@ -239,6 +244,36 @@ function getFileNameFromContentDisposition(
   return fallbackFileName;
 }
 
+async function fetchShippingExportPullSheetCsv(
+  orderNumbers: string[],
+): Promise<string> {
+  const response = await fetch("/api/shipping-export/pull-sheet-export", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      orderNumbers,
+      timezoneOffset: -new Date().getTimezoneOffset() / 60,
+    }),
+  });
+
+  if (!response.ok) {
+    let message = "Failed to generate pull sheet export.";
+
+    try {
+      const payload = (await response.json()) as { error?: string };
+      if (payload.error) {
+        message = payload.error;
+      }
+    } catch {
+      // Ignore non-JSON failures and use the default message.
+    }
+
+    throw new Error(message);
+  }
+
+  return response.text();
+}
+
 export const meta: MetaFunction = () => {
   return [
     { title: "Shipping Workflow" },
@@ -308,6 +343,11 @@ export default function ShippingExportRoute() {
 
   // ── Pack step state ───────────────────────────────────────────────────────
   const [packedOrderNumbers, setPackedOrderNumbers] = useState<Set<string>>(new Set());
+  const [packPullSheetStatus, setPackPullSheetStatus] =
+    useState<PackPullSheetLoadStatus>("idle");
+  const [packPullSheetError, setPackPullSheetError] = useState<string | null>(null);
+  const [packPullSheetMatchesByReference, setPackPullSheetMatchesByReference] =
+    useState<ReturnType<typeof allocatePullSheetItemsToShipments>>({});
 
   // ── Return flow state ─────────────────────────────────────────────────────
   const [returnFlowType, setReturnFlowType] = useState<ReturnFlowType>("round-trip");
@@ -323,6 +363,10 @@ export default function ShippingExportRoute() {
     shipments.some((shipment) => shipment.options.label_size === labelSize),
   );
   const loadedOrderNumbers = [...new Set(sourceOrders.map((o) => o["Order #"].trim()).filter(Boolean))];
+  const loadedOrderNumbersKey = loadedOrderNumbers.join("|");
+  const hasPackPullSheetSourceData = sourceOrders.some(
+    (order) => (order.products?.length ?? 0) > 0,
+  );
   const trackingApplyItems = buildTrackingApplyItems(shipments, shipmentToOrderMap, outboundPurchaseResultsByReference);
   const shippedMessageItems = buildShippedMessageItems(
     shipments,
@@ -444,11 +488,65 @@ export default function ShippingExportRoute() {
     setTrackingApplyResults([]);
     setShippedMessageResults([]);
     setPackedOrderNumbers(new Set());
+    setPackPullSheetStatus("idle");
+    setPackPullSheetError(null);
+    setPackPullSheetMatchesByReference({});
     setError(null);
     await loadExistingPostage(nextState.shipments, nextState.shipmentToOrderMap);
   };
 
   // ── Handlers: load orders ─────────────────────────────────────────────────
+  useEffect(() => {
+    let isActive = true;
+
+    if (loadedOrderNumbers.length === 0 || !hasPackPullSheetSourceData) {
+      setPackPullSheetStatus("idle");
+      setPackPullSheetError(null);
+      setPackPullSheetMatchesByReference({});
+
+      return () => {
+        isActive = false;
+      };
+    }
+
+    const loadPackPullSheet = async () => {
+      setPackPullSheetStatus("loading");
+      setPackPullSheetError(null);
+      setPackPullSheetMatchesByReference({});
+
+      try {
+        const csvText = await fetchShippingExportPullSheetCsv(loadedOrderNumbers);
+        const result = await loadPullSheetItemsFromCsvText(csvText);
+        const matches = allocatePullSheetItemsToShipments(
+          sourceOrders,
+          shipmentToOrderMap,
+          result.items,
+        );
+
+        if (!isActive) {
+          return;
+        }
+
+        setPackPullSheetMatchesByReference(matches);
+        setPackPullSheetStatus("ready");
+      } catch (packPullSheetLoadError) {
+        if (!isActive) {
+          return;
+        }
+
+        setPackPullSheetStatus("error");
+        setPackPullSheetError(String(packPullSheetLoadError));
+        setPackPullSheetMatchesByReference({});
+      }
+    };
+
+    void loadPackPullSheet();
+
+    return () => {
+      isActive = false;
+    };
+  }, [hasPackPullSheetSourceData, loadedOrderNumbersKey, shipmentToOrderMap, sourceOrders]);
+
   const handleFileInput = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
 
@@ -560,25 +658,7 @@ export default function ShippingExportRoute() {
     setError(null);
 
     try {
-      const response = await fetch("/api/shipping-export/pull-sheet-export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orderNumbers: loadedOrderNumbers,
-          timezoneOffset: -new Date().getTimezoneOffset() / 60,
-        }),
-      });
-
-      if (!response.ok) {
-        let message = "Failed to generate pull sheet export.";
-        try {
-          const payload = (await response.json()) as { error?: string };
-          if (payload.error) message = payload.error;
-        } catch { /* ignore */ }
-        throw new Error(message);
-      }
-
-      const csvText = await response.text();
+      const csvText = await fetchShippingExportPullSheetCsv(loadedOrderNumbers);
       const importKey = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
       window.localStorage.setItem(
@@ -1058,6 +1138,9 @@ export default function ShippingExportRoute() {
     setTrackingApplyResults([]);
     setShippedMessageResults([]);
     setPackedOrderNumbers(new Set());
+    setPackPullSheetStatus("idle");
+    setPackPullSheetError(null);
+    setPackPullSheetMatchesByReference({});
     setLoadedSourceLabel("");
     setLoadWarnings([]);
     setError(null);
@@ -1216,6 +1299,9 @@ export default function ShippingExportRoute() {
                 sourceOrders={sourceOrders}
                 shipmentToOrderMap={shipmentToOrderMap}
                 outboundPurchaseResultsByReference={outboundPurchaseResultsByReference}
+                packPullSheetStatus={packPullSheetStatus}
+                packPullSheetError={packPullSheetError}
+                packPullSheetMatchesByReference={packPullSheetMatchesByReference}
                 packedOrderNumbers={packedOrderNumbers}
                 onOrderPacked={handleOrderPacked}
                 onBack={() => setCurrentStep(3)}
