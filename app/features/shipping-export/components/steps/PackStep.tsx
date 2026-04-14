@@ -237,140 +237,183 @@ export function PackStep({
           {currentOrder ? (
             <Card variant="outlined">
               <CardContent>
-                <Stack spacing={2} direction={{ xs: "column", md: "row" }}>
-                  <Stack spacing={1.5} flex={1}>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Order Details
-                    </Typography>
+                <Stack spacing={3}>
+                  <Stack
+                    direction={{ xs: "column", lg: "row" }}
+                    spacing={2}
+                    alignItems={{ xs: "stretch", lg: "flex-start" }}
+                    justifyContent="space-between"
+                  >
+                    <Stack spacing={1.5} flex={1}>
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={1}
+                        alignItems={{ xs: "flex-start", sm: "center" }}
+                        justifyContent="space-between"
+                      >
+                        <Typography variant="subtitle1" fontWeight={600}>
+                          Order Details
+                        </Typography>
 
-                    {mergedOrderNumbers.length > 1 && (
-                      <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                        {mergedOrderNumbers.map((orderNumber) => (
+                        {mergedOrderNumbers.length > 1 ? (
+                          <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                            {mergedOrderNumbers.map((orderNumber) => (
+                              <Chip
+                                key={orderNumber}
+                                label={orderNumber}
+                                size="small"
+                                variant="outlined"
+                              />
+                            ))}
+                            <Chip
+                              label="Combined shipment"
+                              size="small"
+                              color="default"
+                            />
+                          </Stack>
+                        ) : (
                           <Chip
-                            key={orderNumber}
-                            label={orderNumber}
+                            label={currentReference}
                             size="small"
                             variant="outlined"
                           />
-                        ))}
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ alignSelf: "center" }}
-                        >
-                          (combined shipment)
-                        </Typography>
+                        )}
                       </Stack>
-                    )}
 
-                    {mergedOrderNumbers.length === 1 && (
-                      <Typography variant="body2" fontWeight={500}>
-                        {currentReference}
-                      </Typography>
-                    )}
-
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">
-                        Recipient
-                      </Typography>
-                      <Typography variant="body2">
-                        {currentOrder.FirstName} {currentOrder.LastName}
-                      </Typography>
-                    </Box>
-
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">
-                        Address
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        component="pre"
-                        sx={{ fontFamily: "inherit" }}
+                      <Stack
+                        direction="row"
+                        spacing={2}
+                        useFlexGap
+                        flexWrap="wrap"
+                        alignItems="flex-start"
                       >
-                        {[
-                          currentOrder.Address1,
-                          currentOrder.Address2,
-                          `${currentOrder.City}, ${currentOrder.State} ${currentOrder.PostalCode}`,
-                          currentOrder.Country,
-                        ]
-                          .filter(Boolean)
-                          .join("\n")}
-                      </Typography>
-                    </Box>
+                        <Box sx={{ minWidth: 180, flex: "1 1 180px" }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Recipient
+                          </Typography>
+                          <Typography variant="body2">
+                            {currentOrder.FirstName} {currentOrder.LastName}
+                          </Typography>
+                        </Box>
 
-                    <Stack direction="row" spacing={2}>
-                      <Box>
-                        <Typography variant="body2" color="text.secondary">
-                          Items
-                        </Typography>
-                        <Typography variant="body2">
-                          {mergedOrders.reduce((sum, order) => sum + order["Item Count"], 0)}
-                        </Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="body2" color="text.secondary">
-                          Value
-                        </Typography>
-                        <Typography variant="body2">
-                          $
-                          {mergedOrders
-                            .reduce((sum, order) => sum + order["Value Of Products"], 0)
-                            .toFixed(2)}
-                        </Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="body2" color="text.secondary">
-                          Method
-                        </Typography>
-                        <Typography variant="body2">
-                          {currentOrder["Shipping Method"]}
-                        </Typography>
-                      </Box>
+                        <Box sx={{ minWidth: 240, flex: "2 1 280px" }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Address
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            component="pre"
+                            sx={{
+                              m: 0,
+                              whiteSpace: "pre-wrap",
+                              fontFamily: "inherit",
+                            }}
+                          >
+                            {[
+                              currentOrder.Address1,
+                              currentOrder.Address2,
+                              `${currentOrder.City}, ${currentOrder.State} ${currentOrder.PostalCode}`,
+                              currentOrder.Country,
+                            ]
+                              .filter(Boolean)
+                              .join("\n")}
+                          </Typography>
+                        </Box>
+
+                        <Box sx={{ minWidth: 96 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Items
+                          </Typography>
+                          <Typography variant="body2">
+                            {mergedOrders.reduce(
+                              (sum, order) => sum + order["Item Count"],
+                              0,
+                            )}
+                          </Typography>
+                        </Box>
+
+                        <Box sx={{ minWidth: 96 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Value
+                          </Typography>
+                          <Typography variant="body2">
+                            $
+                            {mergedOrders
+                              .reduce(
+                                (sum, order) => sum + order["Value Of Products"],
+                                0,
+                              )
+                              .toFixed(2)}
+                          </Typography>
+                        </Box>
+
+                        <Box sx={{ minWidth: 128 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Method
+                          </Typography>
+                          <Typography variant="body2">
+                            {currentOrder["Shipping Method"]}
+                          </Typography>
+                        </Box>
+
+                        {purchaseEntry && (
+                          <Box sx={{ minWidth: 180 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Postage
+                            </Typography>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <Chip
+                                label={purchaseEntry.result.status.toUpperCase()}
+                                size="small"
+                                color={
+                                  purchaseEntry.result.status === "purchased"
+                                    ? "success"
+                                    : purchaseEntry.result.status === "failed"
+                                      ? "error"
+                                      : "warning"
+                                }
+                              />
+                              {purchaseEntry.result.trackingCode && (
+                                <Typography variant="body2" color="text.secondary">
+                                  {purchaseEntry.result.trackingCode}
+                                </Typography>
+                              )}
+                            </Stack>
+                          </Box>
+                        )}
+                      </Stack>
                     </Stack>
 
-                    {purchaseEntry && (
-                      <Box>
-                        <Typography variant="body2" color="text.secondary">
-                          Postage
-                        </Typography>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Chip
-                            label={purchaseEntry.result.status.toUpperCase()}
-                            size="small"
-                            color={
-                              purchaseEntry.result.status === "purchased"
-                                ? "success"
-                                : purchaseEntry.result.status === "failed"
-                                  ? "error"
-                                  : "warning"
-                            }
+                    <Box
+                      sx={{
+                        border: 1,
+                        borderColor: isPacked ? "success.main" : "divider",
+                        borderRadius: 2,
+                        px: 2,
+                        py: 1,
+                        alignSelf: { xs: "stretch", lg: "center" },
+                        bgcolor: isPacked ? "success.light" : "background.paper",
+                      }}
+                    >
+                      <FormControlLabel
+                        sx={{ m: 0 }}
+                        control={
+                          <Checkbox
+                            checked={isPacked}
+                            onChange={(_, checked) => {
+                              if (currentReference) {
+                                handleMarkPacked(currentReference, checked);
+                              }
+                            }}
+                            color="success"
                           />
-                          {purchaseEntry.result.trackingCode && (
-                            <Typography variant="body2" color="text.secondary">
-                              {purchaseEntry.result.trackingCode}
-                            </Typography>
-                          )}
-                        </Stack>
-                      </Box>
-                    )}
-
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={isPacked}
-                          onChange={(_, checked) => {
-                            if (currentReference) {
-                              handleMarkPacked(currentReference, checked);
-                            }
-                          }}
-                          color="success"
-                        />
-                      }
-                      label={<Typography fontWeight={600}>Mark as Packed</Typography>}
-                    />
+                        }
+                        label={<Typography fontWeight={600}>Mark as Packed</Typography>}
+                      />
+                    </Box>
                   </Stack>
 
-                  <Stack spacing={1.5} flex={1}>
+                  <Stack spacing={1.5}>
                     <Typography variant="subtitle1" fontWeight={600}>
                       Pull Sheet
                     </Typography>
@@ -406,7 +449,7 @@ export function PackStep({
                     {hasLineItems &&
                       visualPullSheetMatch?.canRenderGrid &&
                       packPullSheetStatus === "ready" && (
-                        <Box sx={{ maxHeight: 560, overflow: "auto", pr: 0.5 }}>
+                        <Box>
                           <PullSheetGrid items={visualPullSheetMatch.items} />
                         </Box>
                       )}
