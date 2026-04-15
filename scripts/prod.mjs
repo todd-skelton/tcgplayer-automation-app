@@ -1,9 +1,9 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
-import { loadLocalEnv } from "./load-local-env.mjs";
+import { loadAppEnv } from "./load-local-env.mjs";
 
 const composeArgs = ["compose", "-f", "docker-compose.prod.yml"];
-loadLocalEnv();
+loadAppEnv("production");
 const validCommands = new Set([
   "deploy",
   "update",

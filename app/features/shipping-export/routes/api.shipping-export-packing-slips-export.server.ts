@@ -24,6 +24,11 @@ function buildPackingSlipsFileName(now: Date): string {
   return `packing-slips-${now.toISOString().replace(/[:.]/g, "-")}.pdf`;
 }
 
+function toResponsePdfBody(pdfBytes: Uint8Array): Blob {
+  const bodyBytes = new Uint8Array(pdfBytes);
+  return new Blob([bodyBytes.buffer], { type: "application/pdf" });
+}
+
 export function createShippingPackingSlipsExportAction(
   dependencies: ShippingPackingSlipsExportActionDependencies = {},
 ) {
@@ -67,7 +72,7 @@ export function createShippingPackingSlipsExportAction(
         timezoneOffset,
       });
 
-      return new Response(pdfBytes, {
+      return new Response(toResponsePdfBody(pdfBytes), {
         status: 200,
         headers: {
           "Cache-Control": "no-store",

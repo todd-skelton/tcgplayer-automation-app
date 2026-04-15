@@ -1,12 +1,27 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { loadLocalEnv } from "./load-local-env.mjs";
+import { loadAppEnv } from "./load-local-env.mjs";
 
 const maxOldSpaceSizeOption = "--max-old-space-size=16384";
 const [, , command, ...args] = process.argv;
 
-loadLocalEnv();
+function inferEnvMode(commandName, commandArgs) {
+  if (commandName === "react-router" && commandArgs[0] === "dev") {
+    return "development";
+  }
+
+  if (
+    commandName === "react-router-serve" ||
+    (commandName === "react-router" && commandArgs[0] === "build")
+  ) {
+    return "production";
+  }
+
+  return process.env.NODE_ENV;
+}
+
+loadAppEnv(inferEnvMode(command, args));
 
 function resolveCommand(commandName) {
   if (

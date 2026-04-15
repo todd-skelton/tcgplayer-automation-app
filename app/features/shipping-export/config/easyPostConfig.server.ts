@@ -16,6 +16,10 @@ export function getEasyPostEnvironmentStatus(): EasyPostEnvironmentStatus {
   };
 }
 
+export function getDefaultEasyPostMode(): EasyPostMode {
+  return process.env.NODE_ENV === "production" ? "production" : "test";
+}
+
 export function getEasyPostApiKey(mode: EasyPostMode): string {
   const envVarName =
     mode === "test" ? "EASYPOST_TEST_API_KEY" : "EASYPOST_PRODUCTION_API_KEY";

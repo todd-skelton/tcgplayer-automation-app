@@ -1,13 +1,13 @@
 import path from "node:path";
 import { spawn } from "node:child_process";
-import { loadLocalEnv } from "./load-local-env.mjs";
+import { loadAppEnv } from "./load-local-env.mjs";
 
 import {
   migrateWithRetry,
   spawnInheritedProcess,
 } from "./docker-start-support.mjs";
 
-loadLocalEnv();
+loadAppEnv("development");
 
 const DEV_DATABASE_CONTAINER_NAME = "tcgplayer-postgres-db";
 const DEV_DATABASE_DESCRIPTION = "standalone development database";

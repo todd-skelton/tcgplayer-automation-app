@@ -36,11 +36,19 @@ The shipping exporter uses these server-side keys for direct postage purchase.
 The selected EasyPost mode is stored in Shipping Configuration, defaults to
 `test`, and falls back to CSV export when the corresponding key is missing.
 
-For local development, create a repo-root `.env.local` file if you want to keep
-these values out of your shell profile. The repo loads `.env.local` first and
-then `.env` for Node-based commands, without overriding variables that are
-already set in the environment. `.env.local` is gitignored; use
-`.env.local.example` as the template.
+For local development, keep shared settings such as `DATABASE_URL` in
+`.env.local`, put the EasyPost test key in `.env.development.local`, and put
+the live EasyPost key for deploys in `.env.production.local`. These files are
+gitignored; use `.env.local.example`, `.env.development.local.example`, and
+`.env.production.local.example` as the templates.
+
+Node-based commands load environment files by mode without overriding values
+that are already present in the shell:
+
+```bash
+development: .env.development.local, .env.local, .env.development, .env
+production: .env.production.local, .env.production, .env
+```
 
 ## Local Development
 
@@ -78,6 +86,8 @@ npm run dev:docker
 ```
 
 That starts the app on `http://localhost:5173` through `docker-compose.yml` with the explicit project name `tcgplayer-automation-dev`. The PostgreSQL container stays internal to that Docker network, so the full Docker app stack does not depend on host port `5432` being free.
+The Docker dev stack also loads `.env.development.local`, so EasyPost stays on
+the test API there.
 
 ## Database Commands
 
@@ -111,6 +121,8 @@ npm run prod:deploy
 ```
 
 The production app is exposed at `http://localhost:3001`.
+The production Docker stack reads `.env.production.local`, so production uses
+the live EasyPost API on deploy.
 
 Docker may label the built image as `tcgplayer-automation-app-app`. That image name comes from the repository directory and service name, not the Compose project name. The actual project names are `tcgplayer-automation-prod`, `tcgplayer-automation-dev`, and `tcgplayer-automation-db`.
 

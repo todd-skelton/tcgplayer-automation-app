@@ -5,6 +5,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    env_file:
+      - path: .env.production.local
+        required: false
     depends_on:
       postgres:
         condition: service_healthy

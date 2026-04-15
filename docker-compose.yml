@@ -8,6 +8,11 @@ services:
       target: development-dependencies-env
     command: node scripts/docker-dev-start.mjs
     container_name: tcgplayer-automation-dev
+    env_file:
+      - path: .env.local
+        required: false
+      - path: .env.development.local
+        required: false
     depends_on:
       postgres:
         condition: service_healthy

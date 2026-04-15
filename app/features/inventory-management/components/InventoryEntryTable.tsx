@@ -476,7 +476,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
       const [productNameFilter, setProductNameFilter] = useState<string>("");
       const [submittedProductNameFilter, setSubmittedProductNameFilter] =
         useState<string>("");
-      const apiRef = useGridApiRef<GridApi>();
+      const apiRef = useGridApiRef();
       const searchInputRef = useRef<HTMLInputElement>(null);
       const focusRetryTimeoutRef = useRef<number | null>(null);
       const quantityInputRefs = useRef<Map<GridRowId, HTMLInputElement>>(

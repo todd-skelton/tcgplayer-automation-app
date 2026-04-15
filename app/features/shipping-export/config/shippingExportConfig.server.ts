@@ -1,24 +1,54 @@
 import { shippingExportConfigRepository } from "~/core/db";
 import {
-  DEFAULT_SHIPPING_EXPORT_CONFIG,
+  createDefaultShippingExportConfig,
   mergeShippingExportConfigWithDefaults,
   type ShippingExportConfig,
 } from "../types/shippingExport";
+import { getDefaultEasyPostMode } from "./easyPostConfig.server";
+
+export function applyEnvironmentEasyPostMode(
+  config: ShippingExportConfig,
+): ShippingExportConfig {
+  const easypostMode = getDefaultEasyPostMode();
+
+  if (config.easypostMode === easypostMode) {
+    return config;
+  }
+
+  return {
+    ...config,
+    easypostMode,
+  };
+}
 
 export async function getShippingExportConfig(): Promise<ShippingExportConfig> {
+  const defaultEasyPostMode = getDefaultEasyPostMode();
+
   try {
     const config = await shippingExportConfigRepository.get();
-    return mergeShippingExportConfigWithDefaults(config?.settings);
+    return applyEnvironmentEasyPostMode(
+      mergeShippingExportConfigWithDefaults(config?.settings, {
+        easypostMode: defaultEasyPostMode,
+      }),
+    );
   } catch (error) {
     console.warn("Failed to load shipping export config from database:", error);
-    return DEFAULT_SHIPPING_EXPORT_CONFIG;
+    return applyEnvironmentEasyPostMode(
+      createDefaultShippingExportConfig({
+        easypostMode: defaultEasyPostMode,
+      }),
+    );
   }
 }
 
 export async function saveShippingExportConfig(
   config: ShippingExportConfig,
 ): Promise<ShippingExportConfig> {
-  const mergedConfig = mergeShippingExportConfigWithDefaults(config);
+  const mergedConfig = applyEnvironmentEasyPostMode(
+    mergeShippingExportConfigWithDefaults(config, {
+      easypostMode: getDefaultEasyPostMode(),
+    }),
+  );
 
   try {
     await shippingExportConfigRepository.save(mergedConfig);
@@ -30,5 +60,9 @@ export async function saveShippingExportConfig(
 }
 
 export async function resetShippingExportConfig(): Promise<ShippingExportConfig> {
-  return saveShippingExportConfig(DEFAULT_SHIPPING_EXPORT_CONFIG);
+  return saveShippingExportConfig(
+    createDefaultShippingExportConfig({
+      easypostMode: getDefaultEasyPostMode(),
+    }),
+  );
 }

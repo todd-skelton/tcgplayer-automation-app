@@ -18,7 +18,6 @@ import {
 } from "@mui/material";
 import type {
   EasyPostEnvironmentStatus,
-  EasyPostMode,
   EasyPostService,
   LabelFormat,
   LabelSize,
@@ -226,8 +225,9 @@ export function ShippingExportSettingsEditor({
           <Box>
             <Typography variant="subtitle1">EasyPost Purchase Mode</Typography>
             <Typography variant="body2" color="text.secondary">
-              Direct postage purchases use the selected EasyPost environment.
-              API keys stay in environment variables instead of the database.
+              Direct postage purchases follow the current runtime environment.
+              Development is locked to EasyPost test mode and production is
+              locked to EasyPost production mode.
             </Typography>
           </Box>
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
@@ -237,12 +237,7 @@ export function ShippingExportSettingsEditor({
                 labelId="easypost-mode-label"
                 label="EasyPost Mode"
                 value={config.easypostMode}
-                onChange={(event) =>
-                  setConfigValue(
-                    "easypostMode",
-                    event.target.value as EasyPostMode,
-                  )
-                }
+                disabled
               >
                 <MenuItem value="test">Test</MenuItem>
                 <MenuItem value="production">Production</MenuItem>

@@ -264,6 +264,10 @@ export interface EasyPostEnvironmentStatus {
   hasProductionApiKey: boolean;
 }
 
+type ShippingExportConfigDefaults = {
+  easypostMode?: EasyPostMode;
+};
+
 type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends Array<infer U>
     ? Array<DeepPartial<U>>
@@ -335,28 +339,52 @@ export const DEFAULT_SHIPPING_EXPORT_CONFIG: ShippingExportConfig = {
   easypostMode: "test",
 };
 
-export function mergeShippingExportConfigWithDefaults(
-  config?: DeepPartial<ShippingExportConfig> | null,
+export function createDefaultShippingExportConfig(
+  defaults: ShippingExportConfigDefaults = {},
 ): ShippingExportConfig {
-  const value = config ?? {};
-
   return {
     ...DEFAULT_SHIPPING_EXPORT_CONFIG,
-    ...value,
     fromAddress: {
       ...DEFAULT_SHIPPING_EXPORT_CONFIG.fromAddress,
-      ...(value.fromAddress ?? {}),
     },
     letter: {
       ...DEFAULT_SHIPPING_EXPORT_CONFIG.letter,
-      ...(value.letter ?? {}),
     },
     flat: {
       ...DEFAULT_SHIPPING_EXPORT_CONFIG.flat,
-      ...(value.flat ?? {}),
     },
     parcel: {
       ...DEFAULT_SHIPPING_EXPORT_CONFIG.parcel,
+    },
+    easypostMode:
+      defaults.easypostMode ?? DEFAULT_SHIPPING_EXPORT_CONFIG.easypostMode,
+  };
+}
+
+export function mergeShippingExportConfigWithDefaults(
+  config?: DeepPartial<ShippingExportConfig> | null,
+  defaults: ShippingExportConfigDefaults = {},
+): ShippingExportConfig {
+  const value = config ?? {};
+  const defaultConfig = createDefaultShippingExportConfig(defaults);
+
+  return {
+    ...defaultConfig,
+    ...value,
+    fromAddress: {
+      ...defaultConfig.fromAddress,
+      ...(value.fromAddress ?? {}),
+    },
+    letter: {
+      ...defaultConfig.letter,
+      ...(value.letter ?? {}),
+    },
+    flat: {
+      ...defaultConfig.flat,
+      ...(value.flat ?? {}),
+    },
+    parcel: {
+      ...defaultConfig.parcel,
       ...(value.parcel ?? {}),
     },
   };

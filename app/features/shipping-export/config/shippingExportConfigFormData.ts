@@ -27,6 +27,9 @@ function parseStringFormValue(
 
 export function parseShippingExportConfigFormData(
   formData: FormData,
+  options: {
+    defaultEasyPostMode?: EasyPostMode;
+  } = {},
 ): ShippingExportConfig {
   return {
     defaultSellerKey: parseStringFormValue(formData, "defaultSellerKey"),
@@ -173,7 +176,7 @@ export function parseShippingExportConfigFormData(
     easypostMode: parseStringFormValue(
       formData,
       "easypostMode",
-      DEFAULT_SHIPPING_EXPORT_CONFIG.easypostMode,
+      options.defaultEasyPostMode ?? DEFAULT_SHIPPING_EXPORT_CONFIG.easypostMode,
     ) as EasyPostMode,
   };
 }

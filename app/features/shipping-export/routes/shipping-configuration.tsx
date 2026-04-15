@@ -2,7 +2,10 @@ import { Alert, Box, Button, Stack, Typography } from "@mui/material";
 import { Link, data, useFetcher, useLoaderData, type ActionFunctionArgs, type MetaFunction } from "react-router";
 import { useEffect, useState } from "react";
 import { ShippingExportSettingsEditor } from "../components/ShippingExportSettingsEditor";
-import { getEasyPostEnvironmentStatus } from "../config/easyPostConfig.server";
+import {
+  getDefaultEasyPostMode,
+  getEasyPostEnvironmentStatus,
+} from "../config/easyPostConfig.server";
 import {
   getShippingExportConfig,
   resetShippingExportConfig,
@@ -42,7 +45,9 @@ export async function action({ request }: ActionFunctionArgs) {
   const actionType = String(formData.get("actionType") ?? "");
 
   if (actionType === "save") {
-    const config = parseShippingExportConfigFormData(formData);
+    const config = parseShippingExportConfigFormData(formData, {
+      defaultEasyPostMode: getDefaultEasyPostMode(),
+    });
     const savedConfig = await saveShippingExportConfig(config);
     return data<ActionData>({
       success: true,
