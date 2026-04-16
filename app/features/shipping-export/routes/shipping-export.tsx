@@ -14,6 +14,7 @@ import {
 import { data, Link, type MetaFunction, useLoaderData } from "react-router";
 import Papa from "papaparse";
 import { useEffect, useState } from "react";
+import type { PullSheetItem } from "~/features/pull-sheet/types/pullSheetTypes";
 import { loadPullSheetItemsFromCsvText } from "~/features/pull-sheet/utils/pullSheetItems";
 import { getEasyPostEnvironmentStatus } from "../config/easyPostConfig.server";
 import { getShippingExportConfig } from "../config/shippingExportConfig.server";
@@ -332,6 +333,9 @@ export default function ShippingExportRoute() {
   const [isLoadingLiveOrders, setIsLoadingLiveOrders] = useState(false);
   const [isLoadingSingleOrder, setIsLoadingSingleOrder] = useState(false);
   const [isGeneratingPullSheet, setIsGeneratingPullSheet] = useState(false);
+  const [pullSheetItems, setPullSheetItems] = useState<PullSheetItem[]>([]);
+  const [pullSheetOrderIds, setPullSheetOrderIds] = useState<string[]>([]);
+  const [pullSheetError, setPullSheetError] = useState<string | null>(null);
   const [packingSlipAction, setPackingSlipAction] = useState<"download" | "open" | null>(null);
   const [generatingBatchLabelSize, setGeneratingBatchLabelSize] = useState<LabelSize | null>(null);
   const [purchasingLabelSize, setPurchasingLabelSize] = useState<LabelSize | null>(null);
@@ -488,6 +492,10 @@ export default function ShippingExportRoute() {
     setTrackingApplyResults([]);
     setShippedMessageResults([]);
     setPackedOrderNumbers(new Set());
+    setIsGeneratingPullSheet(false);
+    setPullSheetItems([]);
+    setPullSheetOrderIds([]);
+    setPullSheetError(null);
     setPackPullSheetStatus("idle");
     setPackPullSheetError(null);
     setPackPullSheetMatchesByReference({});
@@ -499,7 +507,11 @@ export default function ShippingExportRoute() {
   useEffect(() => {
     let isActive = true;
 
-    if (loadedOrderNumbers.length === 0 || !hasPackPullSheetSourceData) {
+    if (loadedOrderNumbers.length === 0) {
+      setIsGeneratingPullSheet(false);
+      setPullSheetItems([]);
+      setPullSheetOrderIds([]);
+      setPullSheetError(null);
       setPackPullSheetStatus("idle");
       setPackPullSheetError(null);
       setPackPullSheetMatchesByReference({});
@@ -509,38 +521,64 @@ export default function ShippingExportRoute() {
       };
     }
 
-    const loadPackPullSheet = async () => {
-      setPackPullSheetStatus("loading");
+    const loadPullSheet = async () => {
+      setIsGeneratingPullSheet(true);
+      setPullSheetItems([]);
+      setPullSheetOrderIds([]);
+      setPullSheetError(null);
+
+      if (hasPackPullSheetSourceData) {
+        setPackPullSheetStatus("loading");
+      } else {
+        setPackPullSheetStatus("idle");
+      }
       setPackPullSheetError(null);
       setPackPullSheetMatchesByReference({});
 
       try {
         const csvText = await fetchShippingExportPullSheetCsv(loadedOrderNumbers);
         const result = await loadPullSheetItemsFromCsvText(csvText);
-        const matches = allocatePullSheetItemsToShipments(
-          sourceOrders,
-          shipmentToOrderMap,
-          result.items,
-        );
 
         if (!isActive) {
           return;
         }
 
-        setPackPullSheetMatchesByReference(matches);
-        setPackPullSheetStatus("ready");
-      } catch (packPullSheetLoadError) {
+        setPullSheetItems(result.items);
+        setPullSheetOrderIds(result.orderIds);
+
+        if (hasPackPullSheetSourceData) {
+          const matches = allocatePullSheetItemsToShipments(
+            sourceOrders,
+            shipmentToOrderMap,
+            result.items,
+          );
+
+          setPackPullSheetMatchesByReference(matches);
+          setPackPullSheetStatus("ready");
+        }
+      } catch (pullSheetLoadError) {
         if (!isActive) {
           return;
         }
 
-        setPackPullSheetStatus("error");
-        setPackPullSheetError(String(packPullSheetLoadError));
-        setPackPullSheetMatchesByReference({});
+        const nextError = String(pullSheetLoadError);
+        setPullSheetItems([]);
+        setPullSheetOrderIds([]);
+        setPullSheetError(nextError);
+
+        if (hasPackPullSheetSourceData) {
+          setPackPullSheetStatus("error");
+          setPackPullSheetError(nextError);
+          setPackPullSheetMatchesByReference({});
+        }
+      } finally {
+        if (isActive) {
+          setIsGeneratingPullSheet(false);
+        }
       }
     };
 
-    void loadPackPullSheet();
+    void loadPullSheet();
 
     return () => {
       isActive = false;
@@ -647,43 +685,6 @@ export default function ShippingExportRoute() {
   };
 
   // ── Handlers: pull sheet & packing slips ──────────────────────────────────
-  const handleOpenPullSheet = async () => {
-    if (loadedOrderNumbers.length === 0 || isGeneratingPullSheet) {
-      return;
-    }
-
-    const pullSheetWindow = window.open("about:blank", "_blank");
-
-    setIsGeneratingPullSheet(true);
-    setError(null);
-
-    try {
-      const csvText = await fetchShippingExportPullSheetCsv(loadedOrderNumbers);
-      const importKey = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-      window.localStorage.setItem(
-        `pull-sheet-import:${importKey}`,
-        JSON.stringify({ csvText, fileName: `pull-sheet-${Date.now()}.csv` }),
-      );
-
-      const pullSheetUrl = `/pull-sheet?importKey=${encodeURIComponent(importKey)}`;
-
-      if (pullSheetWindow) {
-        pullSheetWindow.location.href = pullSheetUrl;
-        pullSheetWindow.focus();
-      } else {
-        window.open(pullSheetUrl, "_blank");
-      }
-    } catch (pullSheetError) {
-      if (pullSheetWindow && !pullSheetWindow.closed) {
-        pullSheetWindow.close();
-      }
-      setError(String(pullSheetError));
-    } finally {
-      setIsGeneratingPullSheet(false);
-    }
-  };
-
   const handlePackingSlipExport = async (action: "download" | "open") => {
     if (loadedOrderNumbers.length === 0 || packingSlipAction !== null) {
       return;
@@ -1138,6 +1139,10 @@ export default function ShippingExportRoute() {
     setTrackingApplyResults([]);
     setShippedMessageResults([]);
     setPackedOrderNumbers(new Set());
+    setIsGeneratingPullSheet(false);
+    setPullSheetItems([]);
+    setPullSheetOrderIds([]);
+    setPullSheetError(null);
     setPackPullSheetStatus("idle");
     setPackPullSheetError(null);
     setPackPullSheetMatchesByReference({});
@@ -1238,11 +1243,11 @@ export default function ShippingExportRoute() {
             {currentStep === 1 && (
               <PullSheetStep
                 sourceOrders={sourceOrders}
-                orders={orders}
                 shipments={shipments}
-                shipmentToOrderMap={shipmentToOrderMap}
-                isGeneratingPullSheet={isGeneratingPullSheet}
-                onOpenPullSheet={() => void handleOpenPullSheet()}
+                pullSheetItems={pullSheetItems}
+                pullSheetOrderIds={pullSheetOrderIds}
+                isLoadingPullSheet={isGeneratingPullSheet}
+                pullSheetError={pullSheetError}
                 onBack={() => setCurrentStep(0)}
                 onContinue={() => setCurrentStep(2)}
               />
