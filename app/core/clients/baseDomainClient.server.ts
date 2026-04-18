@@ -20,41 +20,50 @@ const RETRYABLE_STATUS_CODES = new Set([403, 429, 502, 503, 504]);
 // Rate Limiting & Throttling (per-domain instance)
 // ============================================================================
 
-class RequestThrottler {
+export class RequestThrottler {
   private lastRequestStartTime = 0;
   private rateLimitedUntil = 0;
   private readonly startQueue: Array<() => void> = [];
   private isProcessingQueue = false;
   private consecutiveSuccesses = 0;
 
-  constructor(private readonly domainKey: DomainKey) {}
+  constructor(
+    private readonly domainKey: DomainKey,
+    private readonly loadDomainConfig: () => Promise<DomainRateLimitConfig> = () =>
+      getDomainConfig(domainKey),
+    private readonly persistDomainDelays: (
+      requestDelayMs: number,
+      learnedMinDelayMs: number,
+    ) => Promise<void> = (requestDelayMs, learnedMinDelayMs) =>
+      updateDomainDelays(domainKey, requestDelayMs, learnedMinDelayMs),
+    private readonly sleep: (ms: number) => Promise<void> = (ms) =>
+      new Promise((resolve) => setTimeout(resolve, ms)),
+  ) {}
 
   /**
    * Record a successful request for adaptive rate limiting.
    * After successThreshold successes, decreases delay (floored at learnedMinDelayMs).
    */
-  async recordSuccess(
-    config: DomainRateLimitConfig,
-    adaptiveConfig: AdaptiveConfig,
-  ): Promise<void> {
-    if (!config.adaptiveEnabled) return;
-
+  async recordSuccess(adaptiveConfig: AdaptiveConfig): Promise<void> {
     this.consecutiveSuccesses++;
 
     if (this.consecutiveSuccesses >= adaptiveConfig.successThreshold) {
       this.consecutiveSuccesses = 0;
+      const config = await this.loadDomainConfig();
+      if (!config.adaptiveEnabled) return;
+
+      const effectiveMinDelay = Math.max(
+        config.minRequestDelayMs,
+        config.learnedMinDelayMs,
+      );
 
       const newDelay = Math.max(
-        config.learnedMinDelayMs,
+        effectiveMinDelay,
         config.requestDelayMs - adaptiveConfig.decreaseAmountMs,
       );
 
       if (newDelay < config.requestDelayMs) {
-        await updateDomainDelays(
-          this.domainKey,
-          newDelay,
-          config.learnedMinDelayMs,
-        );
+        await this.persistDomainDelays(newDelay, config.learnedMinDelayMs);
       }
     }
   }
@@ -64,10 +73,10 @@ class RequestThrottler {
    * Raises the learned floor and multiplies the delay.
    */
   async recordRateLimit(
-    config: DomainRateLimitConfig,
     adaptiveConfig: AdaptiveConfig,
-  ): Promise<void> {
-    if (!config.adaptiveEnabled) return;
+  ): Promise<DomainRateLimitConfig | null> {
+    const config = await this.loadDomainConfig();
+    if (!config.adaptiveEnabled) return null;
 
     this.consecutiveSuccesses = 0;
 
@@ -83,14 +92,20 @@ class RequestThrottler {
       newFloor * adaptiveConfig.increaseMultiplier,
     );
 
-    await updateDomainDelays(this.domainKey, newDelay, newFloor);
+    await this.persistDomainDelays(newDelay, newFloor);
+
+    return {
+      ...config,
+      requestDelayMs: newDelay,
+      learnedMinDelayMs: newFloor,
+    };
   }
 
   /**
    * Ensures requests are staggered by requestDelayMs, but allows up to
    * maxConcurrentRequests to be in-flight simultaneously.
    */
-  async waitToStart(config: DomainRateLimitConfig): Promise<void> {
+  async waitToStart(): Promise<void> {
     // Wait out any active rate limit cooldown first
     const now = Date.now();
     if (this.rateLimitedUntil > now) {
@@ -100,26 +115,28 @@ class RequestThrottler {
           waitTime / 1000,
         )}s...`,
       );
-      await this.delay(waitTime);
+      await this.sleep(waitTime);
     }
 
     // Queue this request and process sequentially to ensure proper staggering
     await new Promise<void>((resolve) => {
       this.startQueue.push(resolve);
-      this.processQueue(config);
+      void this.processQueue();
     });
   }
 
-  private async processQueue(config: DomainRateLimitConfig): Promise<void> {
+  private async processQueue(): Promise<void> {
     if (this.isProcessingQueue) return;
     this.isProcessingQueue = true;
 
     while (this.startQueue.length > 0) {
+      const config = await this.loadDomainConfig();
+
       // Enforce minimum delay between request starts
       const timeSinceLastStart = Date.now() - this.lastRequestStartTime;
       const remainingDelay = config.requestDelayMs - timeSinceLastStart;
       if (remainingDelay > 0) {
-        await this.delay(remainingDelay);
+        await this.sleep(remainingDelay);
       }
 
       this.lastRequestStartTime = Date.now();
@@ -137,11 +154,7 @@ class RequestThrottler {
         config.rateLimitCooldownMs / 1000,
       )}s cooldown period`,
     );
-    await this.delay(config.rateLimitCooldownMs);
-  }
-
-  private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    await this.sleep(config.rateLimitCooldownMs);
   }
 }
 
@@ -276,17 +289,18 @@ export class DomainHttpClient {
   ): Promise<T> {
     // Get fresh config for each request execution (may have been updated by adaptive logic)
     const httpConfig = await getHttpConfig();
-    let domainConfig = httpConfig.domainConfigs[this.domainKey];
     const adaptiveConfig = httpConfig.adaptiveConfig;
+    let domainConfig = httpConfig.domainConfigs[this.domainKey];
 
     // Track if we've already adjusted for rate limit in this request's retry loop
     let hasRecordedRateLimit = false;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      domainConfig = await getDomainConfig(this.domainKey);
       await this.limiter.acquire(domainConfig.maxConcurrentRequests);
 
       try {
-        await this.throttler.waitToStart(domainConfig);
+        await this.throttler.waitToStart();
 
         if (attempt === 0) {
           console.log(
@@ -302,7 +316,7 @@ export class DomainHttpClient {
         const response = await requestFn();
 
         // Record success for adaptive rate limiting
-        await this.throttler.recordSuccess(domainConfig, adaptiveConfig);
+        await this.throttler.recordSuccess(adaptiveConfig);
 
         return response.data;
       } catch (error) {
@@ -316,11 +330,12 @@ export class DomainHttpClient {
         if (isRateLimitError(error)) {
           // Only adjust adaptive settings once per request, not on every retry
           if (!hasRecordedRateLimit) {
-            await this.throttler.recordRateLimit(domainConfig, adaptiveConfig);
-            domainConfig = (await getHttpConfig()).domainConfigs[
-              this.domainKey
-            ];
+            domainConfig =
+              (await this.throttler.recordRateLimit(adaptiveConfig)) ??
+              (await getDomainConfig(this.domainKey));
             hasRecordedRateLimit = true;
+          } else {
+            domainConfig = await getDomainConfig(this.domainKey);
           }
           await this.throttler.applyRateLimitCooldown(domainConfig);
         } else {

@@ -1,3 +1,4 @@
+import "../core/clients/baseDomainClient.server.test";
 import "../features/inventory-management/components/quantityKeyboard.test";
 import "../features/shipping-export/config/shippingExportConfig.server.test";
 import "../features/shipping-export/config/shippingExportConfigFormData.test";
