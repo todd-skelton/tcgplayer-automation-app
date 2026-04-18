@@ -38,6 +38,7 @@ function createPullSheetItem(
   skuId: number,
   productName: string,
   quantity: number,
+  orderQuantity = "1001:1",
 ): PullSheetItem {
   return {
     skuId,
@@ -48,7 +49,7 @@ function createPullSheetItem(
     set: "Base",
     rarity: "Rare",
     quantity,
-    orderQuantity: "1",
+    orderQuantity,
     productId: skuId + 1000,
     productLineId: 1,
     variant: skuId % 2 === 0 ? "Reverse Holo" : "Holo",
@@ -59,26 +60,33 @@ function createPullSheetItem(
 
 const testCases: TestCase[] = [
   {
-    name: "allocatePullSheetItemsToShipments matches exact sku quantities for a single shipment",
+    name: "allocatePullSheetItemsToShipments preserves pull sheet row order for a single shipment",
     run: () => {
       const orders = [
         createOrder("1001", [
-          { name: "Card A", quantity: 2, unitPrice: 1, skuId: 11 },
+          { name: "Card B", quantity: 1, unitPrice: 1, skuId: 22 },
+          { name: "Card A", quantity: 1, unitPrice: 1, skuId: 11 },
         ]),
       ];
       const matches = allocatePullSheetItemsToShipments(
         orders,
         {},
-        [createPullSheetItem(11, "Card A", 2)],
+        [
+          createPullSheetItem(11, "Card A", 1, "1001:1"),
+          createPullSheetItem(22, "Card B", 1, "1001:1"),
+        ],
       );
 
       assert.equal(matches["1001"]?.canRenderGrid, true);
       assert.equal(matches["1001"]?.matchedQuantity, 2);
-      assert.equal(matches["1001"]?.items[0]?.productId, 1011);
+      assert.deepEqual(
+        matches["1001"]?.items.map((item) => item.productName),
+        ["Card A", "Card B"],
+      );
     },
   },
   {
-    name: "allocatePullSheetItemsToShipments supports combined shipments",
+    name: "allocatePullSheetItemsToShipments preserves global pull sheet order for combined shipments",
     run: () => {
       const orders = [
         createOrder("1001", [
@@ -86,21 +94,36 @@ const testCases: TestCase[] = [
         ]),
         createOrder("1002", [
           { name: "Card B", quantity: 2, unitPrice: 1, skuId: 22 },
+          { name: "Card A", quantity: 1, unitPrice: 1, skuId: 11 },
         ]),
       ];
       const matches = allocatePullSheetItemsToShipments(
         orders,
         { "1001": ["1001", "1002"] },
-        [createPullSheetItem(11, "Card A", 1), createPullSheetItem(22, "Card B", 2)],
+        [
+          createPullSheetItem(22, "Card B", 1, "1002:1"),
+          createPullSheetItem(11, "Card A", 2, "1001:1 | 1002:1"),
+          createPullSheetItem(22, "Card B", 1, "1002:1"),
+        ],
       );
 
       assert.equal(matches["1001"]?.canRenderGrid, true);
-      assert.equal(matches["1001"]?.expectedQuantity, 3);
-      assert.equal(matches["1001"]?.items.length, 2);
+      assert.equal(matches["1001"]?.expectedQuantity, 4);
+      assert.deepEqual(
+        matches["1001"]?.items.map((item) => ({
+          name: item.productName,
+          quantity: item.quantity,
+        })),
+        [
+          { name: "Card B", quantity: 1 },
+          { name: "Card A", quantity: 2 },
+          { name: "Card B", quantity: 1 },
+        ],
+      );
     },
   },
   {
-    name: "allocatePullSheetItemsToShipments splits duplicate sku quantities across shipments",
+    name: "allocatePullSheetItemsToShipments keeps duplicate sku rows in original order per shipment",
     run: () => {
       const orders = [
         createOrder("1001", [
@@ -113,30 +136,46 @@ const testCases: TestCase[] = [
       const matches = allocatePullSheetItemsToShipments(
         orders,
         {},
-        [createPullSheetItem(11, "Card A", 3)],
+        [
+          createPullSheetItem(11, "Card A", 1, "1002:1"),
+          createPullSheetItem(11, "Card A", 1, "1001:1"),
+          createPullSheetItem(11, "Card A", 1, "1002:1"),
+        ],
       );
 
       assert.equal(matches["1001"]?.matchedQuantity, 1);
       assert.equal(matches["1002"]?.matchedQuantity, 2);
+      assert.deepEqual(
+        matches["1001"]?.items.map((item) => item.quantity),
+        [1],
+      );
+      assert.deepEqual(
+        matches["1002"]?.items.map((item) => item.quantity),
+        [1, 1],
+      );
       assert.equal(matches["1002"]?.canRenderGrid, true);
     },
   },
   {
-    name: "allocatePullSheetItemsToShipments falls back when matching is incomplete",
+    name: "allocatePullSheetItemsToShipments falls back when order quantity data is malformed",
     run: () => {
       const orders = [
         createOrder("1001", [
-          { name: "Card A", quantity: 2, unitPrice: 1, skuId: 11 },
+          { name: "Card A", quantity: 1, unitPrice: 1, skuId: 11 },
         ]),
       ];
       const matches = allocatePullSheetItemsToShipments(
         orders,
         {},
-        [createPullSheetItem(11, "Card A", 1)],
+        [createPullSheetItem(11, "Card A", 1, "bad-data")],
       );
 
       assert.equal(matches["1001"]?.canRenderGrid, false);
-      assert.match(matches["1001"]?.fallbackReason ?? "", /incomplete/i);
+      assert.equal(matches["1001"]?.matchedQuantity, 0);
+      assert.match(
+        matches["1001"]?.fallbackReason ?? "",
+        /missing or malformed/i,
+      );
     },
   },
 ];

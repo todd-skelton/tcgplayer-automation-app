@@ -11,6 +11,8 @@ type TestCase = {
 };
 
 function createOrder(): TcgPlayerShippingOrder {
+  const products = [{ name: "Pikachu", quantity: 1, unitPrice: 4.99, skuId: 25 }];
+
   return {
     "Order #": "1001",
     FirstName: "Ash",
@@ -24,41 +26,52 @@ function createOrder(): TcgPlayerShippingOrder {
     "Order Date": "2026-04-13",
     "Product Weight": 0,
     "Shipping Method": "Standard",
-    "Item Count": 1,
+    "Item Count": products.reduce((sum, product) => sum + product.quantity, 0),
     "Value Of Products": 4.99,
     "Shipping Fee Paid": 0,
     "Tracking #": "",
     Carrier: "",
-    products: [{ name: "Pikachu", quantity: 1, unitPrice: 4.99, skuId: 25 }],
+    products,
   };
 }
 
-function createMatch(canRenderGrid: boolean): PackPullSheetShipmentMatch {
+function createPullSheetRow(
+  productName: string,
+  quantity: number,
+  skuId: number,
+) {
+  return {
+    skuId,
+    productLine: "Pokemon",
+    productName,
+    condition: "Near Mint",
+    number: String(skuId),
+    set: "Base",
+    rarity: "Common",
+    quantity,
+    orderQuantity: "ORD-1",
+    productId: skuId + 12000,
+    productLineId: 1,
+    variant: "Reverse Holo",
+    dbCondition: "Near Mint" as const,
+    found: true,
+  };
+}
+
+function createMatch(
+  canRenderGrid: boolean,
+  items = [createPullSheetRow("Pikachu", 1, 25)],
+): PackPullSheetShipmentMatch {
+  const matchedQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+
   return {
     canRenderGrid,
-    fallbackReason: canRenderGrid ? null : "Visual pull sheet matching was incomplete for Pikachu.",
-    expectedQuantity: 1,
-    matchedQuantity: canRenderGrid ? 1 : 0,
-    items: canRenderGrid
-      ? [
-          {
-            skuId: 25,
-            productLine: "Pokemon",
-            productName: "Pikachu",
-            condition: "Near Mint",
-            number: "25",
-            set: "Base",
-            rarity: "Common",
-            quantity: 1,
-            orderQuantity: "ORD-1",
-            productId: 12345,
-            productLineId: 1,
-            variant: "Reverse Holo",
-            dbCondition: "Near Mint",
-            found: true,
-          },
-        ]
-      : [],
+    fallbackReason: canRenderGrid
+      ? null
+      : "Visual pull sheet matching was incomplete for this shipment.",
+    expectedQuantity: matchedQuantity,
+    matchedQuantity,
+    items,
   };
 }
 
@@ -99,15 +112,56 @@ const testCases: TestCase[] = [
     run: () => {
       const html = renderPackStep();
 
-      assert.match(html, /12345_in_400x400\.jpg/);
+      assert.match(html, /12025_in_400x400\.jpg/);
       assert.match(html, /Pikachu/);
     },
   },
   {
-    name: "PackStep falls back to the simple shipment table when visual matching is unavailable",
+    name: "PackStep uses pull sheet row order for the fallback shipment table",
     run: () => {
       const html = renderPackStep({
-        packPullSheetMatchesByReference: { "1001": createMatch(false) },
+        sourceOrders: [
+          {
+            ...createOrder(),
+            "Item Count": 2,
+            products: [
+              { name: "Zubat", quantity: 1, unitPrice: 4.99, skuId: 41 },
+              { name: "Abra", quantity: 1, unitPrice: 4.99, skuId: 63 },
+            ],
+          },
+        ],
+        packPullSheetMatchesByReference: {
+          "1001": createMatch(false, [
+            createPullSheetRow("Abra", 1, 63),
+            createPullSheetRow("Zubat", 1, 41),
+          ]),
+        },
+      });
+
+      const abraIndex = html.indexOf("Abra");
+      const zubatIndex = html.indexOf("Zubat");
+
+      assert.match(html, /Showing the shipment item list instead/);
+      assert.match(html, /<table/);
+      assert.notEqual(abraIndex, -1);
+      assert.notEqual(zubatIndex, -1);
+      assert.ok(
+        abraIndex < zubatIndex,
+        "expected fallback table to preserve pull sheet row order",
+      );
+    },
+  },
+  {
+    name: "PackStep falls back to the aggregated shipment table when no ordered pull sheet rows exist",
+    run: () => {
+      const html = renderPackStep({
+        packPullSheetMatchesByReference: {
+          "1001": {
+            ...createMatch(false, []),
+            expectedQuantity: 1,
+            matchedQuantity: 0,
+          },
+        },
       });
 
       assert.match(html, /Showing the shipment item list instead/);

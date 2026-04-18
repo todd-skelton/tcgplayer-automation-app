@@ -105,13 +105,27 @@ export function PackStep({
 
   const allLineItems = mergedOrders.flatMap((order) => order.products ?? []);
   const hasLineItems = allLineItems.length > 0;
+  const orderedPullSheetItems = visualPullSheetMatch?.items ?? [];
 
   const aggregatedItems = allLineItems.reduce<Map<string, number>>((map, item) => {
     map.set(item.name, (map.get(item.name) ?? 0) + item.quantity);
     return map;
   }, new Map());
 
-  function renderSimplePullSheetTable() {
+  function renderFallbackPullSheetTable() {
+    const tableRows =
+      orderedPullSheetItems.length > 0
+        ? orderedPullSheetItems.map((item, index) => ({
+            key: `${item.skuId}-${index}`,
+            name: item.productName,
+            quantity: item.quantity,
+          }))
+        : [...aggregatedItems.entries()].map(([name, quantity], index) => ({
+            key: `${name}-${index}`,
+            name,
+            quantity,
+          }));
+
     return (
       <TableContainer>
         <Table size="small">
@@ -122,10 +136,10 @@ export function PackStep({
             </TableRow>
           </TableHead>
           <TableBody>
-            {[...aggregatedItems.entries()].map(([name, qty]) => (
-              <TableRow key={name}>
-                <TableCell>{name}</TableCell>
-                <TableCell align="right">{qty}</TableCell>
+            {tableRows.map((row) => (
+              <TableRow key={row.key}>
+                <TableCell>{row.name}</TableCell>
+                <TableCell align="right">{row.quantity}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -458,7 +472,7 @@ export function PackStep({
                       packPullSheetStatus !== "loading" &&
                       (!visualPullSheetMatch?.canRenderGrid ||
                         packPullSheetStatus === "error") &&
-                      renderSimplePullSheetTable()}
+                      renderFallbackPullSheetTable()}
                   </Stack>
                 </Stack>
               </CardContent>
