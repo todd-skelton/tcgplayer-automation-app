@@ -60,6 +60,35 @@ export function extractPullSheetCsvParts(text: string): {
   };
 }
 
+function parsePullSheetCsvRows(csvText: string) {
+  return Papa.parse<PullSheetCsvRow>(csvText, {
+    header: true,
+    skipEmptyLines: true,
+  });
+}
+
+function sanitizeMalformedProductNameQuotes(csvText: string): string {
+  return csvText
+    .split(/\r?\n/)
+    .map((line, lineIndex) => {
+      if (lineIndex === 0) {
+        return line;
+      }
+
+      const match = line.match(
+        /^(?<prefix>"(?:[^"]|"")*",")(?<productName>.*)(?<suffix>",(?:"(?:[^"]|"")*")(?:,"(?:[^"]|"")*"){8})$/,
+      );
+
+      if (!match?.groups) {
+        return line;
+      }
+
+      const { prefix, productName, suffix } = match.groups;
+      return `${prefix}${productName.replace(/"/g, '""')}${suffix}`;
+    })
+    .join("\n");
+}
+
 export function parsePullSheetCsv(text: string): ParsedPullSheetCsv {
   const { csvText, orderIds } = extractPullSheetCsvParts(text);
 
@@ -67,10 +96,13 @@ export function parsePullSheetCsv(text: string): ParsedPullSheetCsv {
     throw new Error("The pull sheet CSV was empty.");
   }
 
-  const parseResult = Papa.parse<PullSheetCsvRow>(csvText, {
-    header: true,
-    skipEmptyLines: true,
-  });
+  let normalizedCsvText = csvText;
+  let parseResult = parsePullSheetCsvRows(normalizedCsvText);
+
+  if (parseResult.errors.some((error) => error.code === "InvalidQuotes")) {
+    normalizedCsvText = sanitizeMalformedProductNameQuotes(csvText);
+    parseResult = parsePullSheetCsvRows(normalizedCsvText);
+  }
 
   if (parseResult.errors.length > 0) {
     const errorMessages = parseResult.errors
@@ -91,7 +123,7 @@ export function parsePullSheetCsv(text: string): ParsedPullSheetCsv {
   }
 
   return {
-    csvText,
+    csvText: normalizedCsvText,
     orderIds,
     rows,
   };

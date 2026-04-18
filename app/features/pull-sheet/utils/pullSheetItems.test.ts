@@ -78,6 +78,24 @@ const testCases: TestCase[] = [
     },
   },
   {
+    name: "parsePullSheetCsv repairs malformed quotes in the product name field",
+    run: () => {
+      const malformedCsv = [
+        "Product Line,Product Name,Condition,Number,Set,Rarity,Quantity,Main Photo URL,Set Release Date,SkuId,Order Quantity",
+        '"One Piece Card Game","Eustass"Captain"Kid - EB04-039 (SP)","Near Mint Foil","EB04-039","The Azure Sea\'s Seven","R","1","","01/16/2026 00:00:00","9077713","ORDER-1"',
+      ].join("\n");
+
+      const result = parsePullSheetCsv(malformedCsv);
+
+      assert.equal(result.rows.length, 1);
+      assert.match(result.csvText, /"Eustass""Captain""Kid - EB04-039 \(SP\)"/);
+      assert.equal(
+        result.rows[0]?.["Product Name"],
+        'Eustass"Captain"Kid - EB04-039 (SP)',
+      );
+    },
+  },
+  {
     name: "buildPullSheetItemsFromRows merges lookup data when it exists",
     run: () => {
       const parsed = parsePullSheetCsv(SAMPLE_CSV);
