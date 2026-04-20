@@ -30,6 +30,9 @@ import type {
   PackPullSheetLoadStatus,
   PackPullSheetShipmentMatch,
 } from "../../services/packPullSheet";
+import {
+  getPullSheetItemsForOrder,
+} from "../../services/packPullSheet";
 import type {
   EasyPostMode,
   ShipmentToOrderMap,
@@ -107,24 +110,12 @@ export function PackStep({
   const hasLineItems = allLineItems.length > 0;
   const orderedPullSheetItems = visualPullSheetMatch?.items ?? [];
 
-  const aggregatedItems = allLineItems.reduce<Map<string, number>>((map, item) => {
-    map.set(item.name, (map.get(item.name) ?? 0) + item.quantity);
-    return map;
-  }, new Map());
-
-  function renderFallbackPullSheetTable() {
-    const tableRows =
-      orderedPullSheetItems.length > 0
-        ? orderedPullSheetItems.map((item, index) => ({
-            key: `${item.skuId}-${index}`,
-            name: item.productName,
-            quantity: item.quantity,
-          }))
-        : [...aggregatedItems.entries()].map(([name, quantity], index) => ({
-            key: `${name}-${index}`,
-            name,
-            quantity,
-          }));
+  function renderFallbackPullSheetTable(
+    tableRows: Array<{ key: string; name: string; quantity: number }>,
+  ) {
+    if (tableRows.length === 0) {
+      return null;
+    }
 
     return (
       <TableContainer>
@@ -147,6 +138,45 @@ export function PackStep({
       </TableContainer>
     );
   }
+
+  const orderSections = mergedOrders.map((order) => {
+    const orderPullSheetItems = getPullSheetItemsForOrder(
+      orderedPullSheetItems,
+      order["Order #"],
+    );
+    const orderLineItems = order.products ?? [];
+    const fallbackRows =
+      orderPullSheetItems.length > 0
+        ? orderPullSheetItems.map((item, index) => ({
+            key: `${order["Order #"]}-${item.skuId}-${index}`,
+            name: item.productName,
+            quantity: item.quantity,
+          }))
+        : orderLineItems.reduce<Array<{ key: string; name: string; quantity: number }>>(
+            (rows, item, index) => {
+              const existingRow = rows.find((row) => row.name === item.name);
+
+              if (existingRow) {
+                existingRow.quantity += item.quantity;
+                return rows;
+              }
+
+              rows.push({
+                key: `${order["Order #"]}-${item.name}-${index}`,
+                name: item.name,
+                quantity: item.quantity,
+              });
+              return rows;
+            },
+            [],
+          );
+
+    return {
+      order,
+      orderPullSheetItems,
+      fallbackRows,
+    };
+  });
 
   function handleMarkPacked(reference: string, packed: boolean) {
     onOrderPacked(reference, packed);
@@ -266,7 +296,7 @@ export function PackStep({
                         justifyContent="space-between"
                       >
                         <Typography variant="subtitle1" fontWeight={600}>
-                          Order Details
+                          Shipment Details
                         </Typography>
 
                         {mergedOrderNumbers.length > 1 ? (
@@ -427,7 +457,7 @@ export function PackStep({
                     </Box>
                   </Stack>
 
-                  <Stack spacing={1.5}>
+                      <Stack spacing={1.5}>
                     <Typography variant="subtitle1" fontWeight={600}>
                       Pull Sheet
                     </Typography>
@@ -463,16 +493,92 @@ export function PackStep({
                     {hasLineItems &&
                       visualPullSheetMatch?.canRenderGrid &&
                       packPullSheetStatus === "ready" && (
-                        <Box>
-                          <PullSheetGrid items={visualPullSheetMatch.items} />
-                        </Box>
+                        <Stack spacing={2}>
+                          {orderSections.map(({ order, orderPullSheetItems }) => (
+                            <Box
+                              key={order["Order #"]}
+                              sx={{
+                                border: 1,
+                                borderColor: "divider",
+                                borderRadius: 2,
+                                p: 2,
+                              }}
+                            >
+                              <Stack spacing={1.5}>
+                                <Stack
+                                  direction={{ xs: "column", sm: "row" }}
+                                  spacing={1}
+                                  alignItems={{ xs: "flex-start", sm: "center" }}
+                                  justifyContent="space-between"
+                                >
+                                  <Typography variant="subtitle2" fontWeight={600}>
+                                    Order {order["Order #"]}
+                                  </Typography>
+                                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                                    <Chip
+                                      label={`${order["Item Count"]} items`}
+                                      size="small"
+                                      variant="outlined"
+                                    />
+                                    <Chip
+                                      label={`$${order["Value Of Products"].toFixed(2)}`}
+                                      size="small"
+                                      variant="outlined"
+                                    />
+                                  </Stack>
+                                </Stack>
+                                <PullSheetGrid items={orderPullSheetItems} />
+                              </Stack>
+                            </Box>
+                          ))}
+                        </Stack>
                       )}
 
                     {hasLineItems &&
                       packPullSheetStatus !== "loading" &&
                       (!visualPullSheetMatch?.canRenderGrid ||
                         packPullSheetStatus === "error") &&
-                      renderFallbackPullSheetTable()}
+                      (
+                        <Stack spacing={2}>
+                          {orderSections.map(({ order, fallbackRows }) => (
+                            <Box
+                              key={order["Order #"]}
+                              sx={{
+                                border: 1,
+                                borderColor: "divider",
+                                borderRadius: 2,
+                                p: 2,
+                              }}
+                            >
+                              <Stack spacing={1.5}>
+                                <Stack
+                                  direction={{ xs: "column", sm: "row" }}
+                                  spacing={1}
+                                  alignItems={{ xs: "flex-start", sm: "center" }}
+                                  justifyContent="space-between"
+                                >
+                                  <Typography variant="subtitle2" fontWeight={600}>
+                                    Order {order["Order #"]}
+                                  </Typography>
+                                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                                    <Chip
+                                      label={`${order["Item Count"]} items`}
+                                      size="small"
+                                      variant="outlined"
+                                    />
+                                    <Chip
+                                      label={`$${order["Value Of Products"].toFixed(2)}`}
+                                      size="small"
+                                      variant="outlined"
+                                    />
+                                  </Stack>
+                                </Stack>
+                                {renderFallbackPullSheetTable(fallbackRows)}
+                              </Stack>
+                            </Box>
+                          ))}
+                        </Stack>
+                      )}
                   </Stack>
                 </Stack>
               </CardContent>

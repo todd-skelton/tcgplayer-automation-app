@@ -10,11 +10,19 @@ type TestCase = {
   run: () => void;
 };
 
-function createOrder(): TcgPlayerShippingOrder {
-  const products = [{ name: "Pikachu", quantity: 1, unitPrice: 4.99, skuId: 25 }];
+function createOrder(
+  orderNumber = "1001",
+  products: NonNullable<TcgPlayerShippingOrder["products"]> = [
+    { name: "Pikachu", quantity: 1, unitPrice: 4.99, skuId: 25 },
+  ],
+): TcgPlayerShippingOrder {
+  const valueOfProducts = products.reduce(
+    (sum, product) => sum + product.quantity * product.unitPrice,
+    0,
+  );
 
   return {
-    "Order #": "1001",
+    "Order #": orderNumber,
     FirstName: "Ash",
     LastName: "Ketchum",
     Address1: "1 Pokemon Way",
@@ -27,7 +35,7 @@ function createOrder(): TcgPlayerShippingOrder {
     "Product Weight": 0,
     "Shipping Method": "Standard",
     "Item Count": products.reduce((sum, product) => sum + product.quantity, 0),
-    "Value Of Products": 4.99,
+    "Value Of Products": valueOfProducts,
     "Shipping Fee Paid": 0,
     "Tracking #": "",
     Carrier: "",
@@ -49,7 +57,7 @@ function createPullSheetRow(
     set: "Base",
     rarity: "Common",
     quantity,
-    orderQuantity: "ORD-1",
+    orderQuantity: "1001:1",
     productId: skuId + 12000,
     productLineId: 1,
     variant: "Reverse Holo",
@@ -112,49 +120,89 @@ const testCases: TestCase[] = [
     run: () => {
       const html = renderPackStep();
 
+      assert.match(html, /Shipment Details/);
+      assert.match(html, /Order 1001/);
       assert.match(html, /12025_in_400x400\.jpg/);
       assert.match(html, /Pikachu/);
     },
   },
   {
-    name: "PackStep uses pull sheet row order for the fallback shipment table",
+    name: "PackStep breaks combined shipments into separate order sections",
     run: () => {
       const html = renderPackStep({
         sourceOrders: [
-          {
-            ...createOrder(),
-            "Item Count": 2,
-            products: [
-              { name: "Zubat", quantity: 1, unitPrice: 4.99, skuId: 41 },
-              { name: "Abra", quantity: 1, unitPrice: 4.99, skuId: 63 },
-            ],
-          },
+          createOrder("1001", [
+            { name: "Abra", quantity: 1, unitPrice: 4.99, skuId: 63 },
+          ]),
+          createOrder("1002", [
+            { name: "Zubat", quantity: 1, unitPrice: 4.99, skuId: 41 },
+          ]),
         ],
+        shipmentToOrderMap: { "1001": ["1001", "1002"] },
         packPullSheetMatchesByReference: {
-          "1001": createMatch(false, [
-            createPullSheetRow("Abra", 1, 63),
-            createPullSheetRow("Zubat", 1, 41),
+          "1001": createMatch(true, [
+            { ...createPullSheetRow("Abra", 1, 63), orderQuantity: "1001:1" },
+            { ...createPullSheetRow("Zubat", 1, 41), orderQuantity: "1002:1" },
           ]),
         },
       });
 
+      const order1001Index = html.indexOf("Order 1001");
+      const order1002Index = html.indexOf("Order 1002");
+
+      assert.match(html, /Combined shipment/);
+      assert.notEqual(order1001Index, -1);
+      assert.notEqual(order1002Index, -1);
+      assert.ok(
+        order1001Index < order1002Index,
+        "expected combined shipment sections to follow order sequence",
+      );
+      assert.match(html, /Abra/);
+      assert.match(html, /Zubat/);
+    },
+  },
+  {
+    name: "PackStep uses pull sheet row order for each order fallback table",
+    run: () => {
+      const html = renderPackStep({
+        sourceOrders: [
+          createOrder("1001", [
+            { name: "Zubat", quantity: 1, unitPrice: 4.99, skuId: 41 },
+            { name: "Abra", quantity: 1, unitPrice: 4.99, skuId: 63 },
+          ]),
+        ],
+        packPullSheetMatchesByReference: {
+          "1001": createMatch(false, [
+            { ...createPullSheetRow("Abra", 1, 63), orderQuantity: "1001:1" },
+            { ...createPullSheetRow("Zubat", 1, 41), orderQuantity: "1001:1" },
+          ]),
+        },
+      });
+
+      const order1001Index = html.indexOf("Order 1001");
       const abraIndex = html.indexOf("Abra");
       const zubatIndex = html.indexOf("Zubat");
 
       assert.match(html, /Showing the shipment item list instead/);
       assert.match(html, /<table/);
+      assert.notEqual(order1001Index, -1);
       assert.notEqual(abraIndex, -1);
       assert.notEqual(zubatIndex, -1);
       assert.ok(
-        abraIndex < zubatIndex,
-        "expected fallback table to preserve pull sheet row order",
+        order1001Index < abraIndex && abraIndex < zubatIndex,
+        "expected fallback order section to preserve pull sheet row order",
       );
     },
   },
   {
-    name: "PackStep falls back to the aggregated shipment table when no ordered pull sheet rows exist",
+    name: "PackStep falls back to the aggregated table for an order with no ordered pull sheet rows",
     run: () => {
       const html = renderPackStep({
+        sourceOrders: [
+          createOrder("1001", [
+            { name: "Pikachu", quantity: 1, unitPrice: 4.99, skuId: 25 },
+          ]),
+        ],
         packPullSheetMatchesByReference: {
           "1001": {
             ...createMatch(false, []),
@@ -164,9 +212,9 @@ const testCases: TestCase[] = [
         },
       });
 
-      assert.match(html, /Showing the shipment item list instead/);
-      assert.match(html, /<table/);
+      assert.match(html, /Order 1001/);
       assert.match(html, /Pikachu/);
+      assert.match(html, /<table/);
     },
   },
 ];

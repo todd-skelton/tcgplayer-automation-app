@@ -142,6 +142,33 @@ function getShipmentPullSheetItems(
   };
 }
 
+export function getPullSheetItemsForOrder(
+  pullSheetItems: PullSheetItem[],
+  orderNumber: string,
+): PullSheetItem[] {
+  const normalizedOrderNumber = orderNumber.trim();
+
+  if (!normalizedOrderNumber) {
+    return [];
+  }
+
+  return pullSheetItems.flatMap((item) => {
+    const parsedEntries = parsePullSheetOrderQuantity(item.orderQuantity);
+
+    if (!parsedEntries) {
+      return [];
+    }
+
+    const orderQuantity = parsedEntries.reduce((sum, entry) => {
+      return entry.orderNumber === normalizedOrderNumber
+        ? sum + entry.quantity
+        : sum;
+    }, 0);
+
+    return orderQuantity > 0 ? [clonePullSheetItem(item, orderQuantity)] : [];
+  });
+}
+
 export function allocatePullSheetItemsToShipments(
   sourceOrders: TcgPlayerShippingOrder[],
   shipmentToOrderMap: ShipmentToOrderMap,
