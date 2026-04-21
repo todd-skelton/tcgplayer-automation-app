@@ -69,6 +69,7 @@ const testCases: TestCase[] = [
         ]),
       ];
       const matches = allocatePullSheetItemsToShipments(
+        ["1001"],
         orders,
         {},
         [
@@ -98,6 +99,7 @@ const testCases: TestCase[] = [
         ]),
       ];
       const matches = allocatePullSheetItemsToShipments(
+        ["1001"],
         orders,
         { "1001": ["1001", "1002"] },
         [
@@ -134,6 +136,7 @@ const testCases: TestCase[] = [
         ]),
       ];
       const matches = allocatePullSheetItemsToShipments(
+        ["1001", "1002"],
         orders,
         {},
         [
@@ -165,6 +168,7 @@ const testCases: TestCase[] = [
         ]),
       ];
       const matches = allocatePullSheetItemsToShipments(
+        ["1001"],
         orders,
         {},
         [createPullSheetItem(11, "Card A", 1, "bad-data")],

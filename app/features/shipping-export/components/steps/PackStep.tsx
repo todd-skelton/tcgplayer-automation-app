@@ -26,6 +26,7 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 import { PullSheetGrid } from "~/features/pull-sheet/components/PullSheetGrid";
+import { getOrderNumbersForShipmentReference } from "../../services/shippingExportUtils";
 import type {
   PackPullSheetLoadStatus,
   PackPullSheetShipmentMatch,
@@ -47,6 +48,7 @@ type PurchaseEntry = {
 
 interface PackStepProps {
   sourceOrders: TcgPlayerShippingOrder[];
+  shipmentReferences: string[];
   shipmentToOrderMap: ShipmentToOrderMap;
   outboundPurchaseResultsByReference: Record<string, PurchaseEntry>;
   packPullSheetStatus: PackPullSheetLoadStatus;
@@ -62,6 +64,7 @@ type ViewMode = "card" | "list";
 
 export function PackStep({
   sourceOrders,
+  shipmentReferences,
   shipmentToOrderMap,
   outboundPurchaseResultsByReference,
   packPullSheetStatus,
@@ -75,18 +78,13 @@ export function PackStep({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>("card");
 
-  const shipmentReferences =
-    Object.keys(shipmentToOrderMap).length > 0
-      ? Object.keys(shipmentToOrderMap)
-      : sourceOrders.map((order) => order["Order #"]);
-
   const totalShipments = shipmentReferences.length;
   const currentReference = shipmentReferences[currentIndex] ?? null;
   const currentOrder =
     sourceOrders.find((order) => order["Order #"] === currentReference) ?? null;
 
   const mergedOrderNumbers = currentReference
-    ? (shipmentToOrderMap[currentReference] ?? [currentReference])
+    ? getOrderNumbersForShipmentReference(shipmentToOrderMap, currentReference)
     : [];
   const mergedOrders = mergedOrderNumbers
     .map((orderNumber) =>
@@ -606,7 +604,10 @@ export function PackStep({
             </TableHead>
             <TableBody>
               {shipmentReferences.map((shipmentReference, index) => {
-                const orderNumbers = shipmentToOrderMap[shipmentReference] ?? [shipmentReference];
+                const orderNumbers = getOrderNumbersForShipmentReference(
+                  shipmentToOrderMap,
+                  shipmentReference,
+                );
                 const primaryOrder =
                   sourceOrders.find(
                     (order) => order["Order #"] === shipmentReference,

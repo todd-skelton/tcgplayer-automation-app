@@ -1,4 +1,5 @@
 import type { PullSheetItem } from "~/features/pull-sheet/types/pullSheetTypes";
+import { getOrderNumbersForShipmentReference } from "./shippingExportUtils";
 import type {
   OrderLineItem,
   ShipmentToOrderMap,
@@ -30,25 +31,15 @@ function clonePullSheetItem(
   };
 }
 
-function getShipmentReferences(
-  sourceOrders: TcgPlayerShippingOrder[],
-  shipmentToOrderMap: ShipmentToOrderMap,
-): string[] {
-  const mappedReferences = Object.keys(shipmentToOrderMap);
-
-  if (mappedReferences.length > 0) {
-    return mappedReferences;
-  }
-
-  return sourceOrders.map((order) => order["Order #"]);
-}
-
 function getShipmentOrderItems(
   shipmentReference: string,
   sourceOrders: TcgPlayerShippingOrder[],
   shipmentToOrderMap: ShipmentToOrderMap,
 ): OrderLineItem[] {
-  const orderNumbers = shipmentToOrderMap[shipmentReference] ?? [shipmentReference];
+  const orderNumbers = getOrderNumbersForShipmentReference(
+    shipmentToOrderMap,
+    shipmentReference,
+  );
 
   return orderNumbers
     .map((orderNumber) =>
@@ -170,12 +161,11 @@ export function getPullSheetItemsForOrder(
 }
 
 export function allocatePullSheetItemsToShipments(
+  shipmentReferences: string[],
   sourceOrders: TcgPlayerShippingOrder[],
   shipmentToOrderMap: ShipmentToOrderMap,
   pullSheetItems: PullSheetItem[],
 ): Record<string, PackPullSheetShipmentMatch> {
-  const shipmentReferences = getShipmentReferences(sourceOrders, shipmentToOrderMap);
-
   return Object.fromEntries(
     shipmentReferences.map((shipmentReference) => {
       const orderItems = getShipmentOrderItems(
@@ -202,7 +192,10 @@ export function allocatePullSheetItemsToShipments(
       }
 
       const shipmentOrderNumbers = new Set(
-        (shipmentToOrderMap[shipmentReference] ?? [shipmentReference]).map(
+        getOrderNumbersForShipmentReference(
+          shipmentToOrderMap,
+          shipmentReference,
+        ).map(
           (orderNumber) => orderNumber.trim(),
         ),
       );

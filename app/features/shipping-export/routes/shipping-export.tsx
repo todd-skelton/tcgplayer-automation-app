@@ -19,15 +19,15 @@ import { loadPullSheetItemsFromCsvText } from "~/features/pull-sheet/utils/pullS
 import { getEasyPostEnvironmentStatus } from "../config/easyPostConfig.server";
 import { getShippingExportConfig } from "../config/shippingExportConfig.server";
 import {
+  buildShippingWorkflowOrderState,
+  buildOrderNumbersInShipmentOrder,
   buildTimestampedFileName,
   createReturnShipment,
   getAllLabelSizes,
+  getOrderNumbersForShipmentReference,
   getShipmentCsvRows,
   getShipmentsForLabelSize,
-  mapOrdersToShipments,
   mapOrderToShipment,
-  mergeOrdersByAddress,
-  parseShippingOrdersCsv,
 } from "../services/shippingExportUtils";
 import {
   allocatePullSheetItemsToShipments,
@@ -170,17 +170,14 @@ function updateOrderDerivedState(
   sourceOrders: TcgPlayerShippingOrder[],
   config: ShippingExportConfig,
 ): {
+  sourceOrders: TcgPlayerShippingOrder[];
   orders: TcgPlayerShippingOrder[];
   shipments: EasyPostShipment[];
   shipmentToOrderMap: ShipmentToOrderMap;
+  shipmentReferences: string[];
+  orderedOrderNumbers: string[];
 } {
-  const mergedOrders = mergeOrdersByAddress(sourceOrders, config.combineOrders);
-
-  return {
-    orders: mergedOrders.orders,
-    shipments: mapOrdersToShipments(mergedOrders.orders, config),
-    shipmentToOrderMap: mergedOrders.shipmentToOrderMap,
-  };
+  return buildShippingWorkflowOrderState(sourceOrders, config);
 }
 
 function downloadCsvFile(filenamePrefix: string, shipments: EasyPostShipment[]): void {
@@ -306,6 +303,7 @@ export default function ShippingExportRoute() {
   const [orders, setOrders] = useState<TcgPlayerShippingOrder[]>([]);
   const [shipments, setShipments] = useState<EasyPostShipment[]>([]);
   const [shipmentToOrderMap, setShipmentToOrderMap] = useState<ShipmentToOrderMap>({});
+  const [shipmentReferences, setShipmentReferences] = useState<string[]>([]);
 
   // ── Input controls ────────────────────────────────────────────────────────
   const [sellerKeyInput, setSellerKeyInput] = useState(config.defaultSellerKey);
@@ -366,8 +364,12 @@ export default function ShippingExportRoute() {
   const availableLabelSizes = getAllLabelSizes().filter((labelSize) =>
     shipments.some((shipment) => shipment.options.label_size === labelSize),
   );
-  const loadedOrderNumbers = [...new Set(sourceOrders.map((o) => o["Order #"].trim()).filter(Boolean))];
-  const loadedOrderNumbersKey = loadedOrderNumbers.join("|");
+  const orderedWorkflowOrderNumbers = buildOrderNumbersInShipmentOrder(
+    shipmentReferences,
+    shipmentToOrderMap,
+  );
+  const shipmentReferencesKey = shipmentReferences.join("|");
+  const orderedWorkflowOrderNumbersKey = orderedWorkflowOrderNumbers.join("|");
   const hasPackPullSheetSourceData = sourceOrders.some(
     (order) => (order.products?.length ?? 0) > 0,
   );
@@ -381,7 +383,7 @@ export default function ShippingExportRoute() {
 
   // ── Internal helpers ──────────────────────────────────────────────────────
   const getOrderNumbersForShipment = (shipmentReference: string) =>
-    shipmentToOrderMap[shipmentReference] ?? [shipmentReference];
+    getOrderNumbersForShipmentReference(shipmentToOrderMap, shipmentReference);
 
   const mergePurchaseResults = (
     previousResults: Record<string, PurchaseEntry>,
@@ -482,10 +484,11 @@ export default function ShippingExportRoute() {
   ) => {
     const nextState = updateOrderDerivedState(nextSourceOrders, config);
 
-    setSourceOrders(nextSourceOrders);
+    setSourceOrders(nextState.sourceOrders);
     setOrders(nextState.orders);
     setShipments(nextState.shipments);
     setShipmentToOrderMap(nextState.shipmentToOrderMap);
+    setShipmentReferences(nextState.shipmentReferences);
     setLoadedSourceLabel(nextSourceLabel);
     setLoadWarnings(nextWarnings);
     setBatchLabelResultsBySize({});
@@ -507,7 +510,7 @@ export default function ShippingExportRoute() {
   useEffect(() => {
     let isActive = true;
 
-    if (loadedOrderNumbers.length === 0) {
+    if (orderedWorkflowOrderNumbers.length === 0) {
       setIsGeneratingPullSheet(false);
       setPullSheetItems([]);
       setPullSheetOrderIds([]);
@@ -536,7 +539,9 @@ export default function ShippingExportRoute() {
       setPackPullSheetMatchesByReference({});
 
       try {
-        const csvText = await fetchShippingExportPullSheetCsv(loadedOrderNumbers);
+        const csvText = await fetchShippingExportPullSheetCsv(
+          orderedWorkflowOrderNumbers,
+        );
         const result = await loadPullSheetItemsFromCsvText(csvText);
 
         if (!isActive) {
@@ -548,6 +553,7 @@ export default function ShippingExportRoute() {
 
         if (hasPackPullSheetSourceData) {
           const matches = allocatePullSheetItemsToShipments(
+            shipmentReferences,
             sourceOrders,
             shipmentToOrderMap,
             result.items,
@@ -583,28 +589,13 @@ export default function ShippingExportRoute() {
     return () => {
       isActive = false;
     };
-  }, [hasPackPullSheetSourceData, loadedOrderNumbersKey, shipmentToOrderMap, sourceOrders]);
-
-  const handleFileInput = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    try {
-      const csvText = await file.text();
-      const parsedOrders = parseShippingOrdersCsv(csvText);
-
-      if (parsedOrders.length === 0) {
-        throw new Error("No valid order rows were found in the uploaded CSV.");
-      }
-
-      await applyOrderSource(parsedOrders, `CSV export: ${file.name}`);
-    } catch (uploadError) {
-      setError(String(uploadError));
-    }
-  };
+  }, [
+    hasPackPullSheetSourceData,
+    orderedWorkflowOrderNumbersKey,
+    shipmentReferencesKey,
+    shipmentToOrderMap,
+    sourceOrders,
+  ]);
 
   const handleLoadLiveOrders = async () => {
     setIsLoadingLiveOrders(true);
@@ -686,7 +677,7 @@ export default function ShippingExportRoute() {
 
   // ── Handlers: pull sheet & packing slips ──────────────────────────────────
   const handlePackingSlipExport = async (action: "download" | "open") => {
-    if (loadedOrderNumbers.length === 0 || packingSlipAction !== null) {
+    if (orderedWorkflowOrderNumbers.length === 0 || packingSlipAction !== null) {
       return;
     }
 
@@ -700,7 +691,7 @@ export default function ShippingExportRoute() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          orderNumbers: loadedOrderNumbers,
+          orderNumbers: orderedWorkflowOrderNumbers,
           timezoneOffset: -new Date().getTimezoneOffset() / 60,
         }),
       });
@@ -1133,6 +1124,7 @@ export default function ShippingExportRoute() {
     setOrders([]);
     setShipments([]);
     setShipmentToOrderMap({});
+    setShipmentReferences([]);
     setOutboundPurchaseResultsByReference({});
     setReturnPurchaseResultsByReference({});
     setBatchLabelResultsBySize({});
@@ -1235,7 +1227,6 @@ export default function ShippingExportRoute() {
                 onSingleOrderNumberChange={setSingleOrderNumberInput}
                 onLoadLiveOrders={() => void handleLoadLiveOrders()}
                 onLoadSingleOrder={() => void handleLoadSingleOrder()}
-                onFileUpload={(e) => void handleFileInput(e)}
                 onContinue={() => setCurrentStep(1)}
               />
             )}
@@ -1302,6 +1293,7 @@ export default function ShippingExportRoute() {
             {currentStep === 4 && (
               <PackStep
                 sourceOrders={sourceOrders}
+                shipmentReferences={shipmentReferences}
                 shipmentToOrderMap={shipmentToOrderMap}
                 outboundPurchaseResultsByReference={outboundPurchaseResultsByReference}
                 packPullSheetStatus={packPullSheetStatus}

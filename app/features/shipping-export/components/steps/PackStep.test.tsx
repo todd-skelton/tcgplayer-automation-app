@@ -89,6 +89,7 @@ function renderPackStep(
   return renderToStaticMarkup(
     <PackStep
       sourceOrders={[createOrder()]}
+      shipmentReferences={["1001"]}
       shipmentToOrderMap={{}}
       outboundPurchaseResultsByReference={{}}
       packPullSheetStatus="ready"
@@ -138,6 +139,7 @@ const testCases: TestCase[] = [
             { name: "Zubat", quantity: 1, unitPrice: 4.99, skuId: 41 },
           ]),
         ],
+        shipmentReferences: ["1001"],
         shipmentToOrderMap: { "1001": ["1001", "1002"] },
         packPullSheetMatchesByReference: {
           "1001": createMatch(true, [
@@ -192,6 +194,38 @@ const testCases: TestCase[] = [
         order1001Index < abraIndex && abraIndex < zubatIndex,
         "expected fallback order section to preserve pull sheet row order",
       );
+    },
+  },
+  {
+    name: "PackStep follows the explicit shipment reference order in list and card views",
+    run: () => {
+      const html = renderPackStep({
+        sourceOrders: [
+          createOrder("1001", [
+            { name: "Abra", quantity: 1, unitPrice: 4.99, skuId: 63 },
+          ]),
+          createOrder("1002", [
+            { name: "Zubat", quantity: 1, unitPrice: 4.99, skuId: 41 },
+          ]),
+        ],
+        shipmentReferences: ["1002", "1001"],
+        shipmentToOrderMap: {
+          "1001": ["1001"],
+          "1002": ["1002"],
+        },
+        packPullSheetMatchesByReference: {
+          "1001": createMatch(true, [
+            { ...createPullSheetRow("Abra", 1, 63), orderQuantity: "1001:1" },
+          ]),
+          "1002": createMatch(true, [
+            { ...createPullSheetRow("Zubat", 1, 41), orderQuantity: "1002:1" },
+          ]),
+        },
+      });
+
+      assert.match(html, /Shipment 1 of 2/);
+      assert.match(html, /Order 1002/);
+      assert.doesNotMatch(html, /Order 1001/);
     },
   },
   {

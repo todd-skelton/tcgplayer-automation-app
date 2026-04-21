@@ -1,4 +1,3 @@
-import Papa from "papaparse";
 import {
   type DeliveryConfirmation,
   type EasyPostAddress,
@@ -10,70 +9,74 @@ import {
   type TcgPlayerShippingOrder,
 } from "../types/shippingExport";
 
-type RawShippingOrder = Record<string, string>;
-
 const LABEL_SIZES = ["4x6", "7x3", "6x4"] as const;
 
-function parseNumber(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-
-  const cleanedValue = String(value ?? "")
-    .trim()
-    .replace(/[$,\s]/g, "");
-  const parsedValue = Number(cleanedValue);
-  return Number.isFinite(parsedValue) ? parsedValue : 0;
+function getOrderDateTimestamp(order: TcgPlayerShippingOrder): number | null {
+  const timestamp = Date.parse(order["Order Date"]);
+  return Number.isFinite(timestamp) ? timestamp : null;
 }
 
-function parseShippingOrder(row: RawShippingOrder): TcgPlayerShippingOrder | null {
-  const orderNumber = String(row["Order #"] ?? "").trim();
+export function sortShippingOrdersByOldestFirst(
+  orders: TcgPlayerShippingOrder[],
+): TcgPlayerShippingOrder[] {
+  return orders
+    .map((order, index) => ({
+      index,
+      order,
+      timestamp: getOrderDateTimestamp(order),
+    }))
+    .sort((left, right) => {
+      if (left.timestamp !== null && right.timestamp !== null) {
+        if (left.timestamp !== right.timestamp) {
+          return left.timestamp - right.timestamp;
+        }
+      }
 
-  if (!orderNumber) {
-    return null;
-  }
-
-  return {
-    "Order #": orderNumber,
-    FirstName: String(row.FirstName ?? "").trim(),
-    LastName: String(row.LastName ?? "").trim(),
-    Address1: String(row.Address1 ?? "").trim(),
-    Address2: String(row.Address2 ?? "").trim(),
-    City: String(row.City ?? "").trim(),
-    State: String(row.State ?? "").trim(),
-    PostalCode: String(row.PostalCode ?? "").trim(),
-    Country: String(row.Country ?? "US").trim() || "US",
-    "Order Date": String(row["Order Date"] ?? "").trim(),
-    "Product Weight": parseNumber(row["Product Weight"]),
-    "Shipping Method": String(
-      row["Shipping Method"] ?? "Standard",
-    ) as TcgPlayerShippingOrder["Shipping Method"],
-    "Item Count": parseNumber(row["Item Count"]),
-    "Value Of Products": parseNumber(row["Value Of Products"]),
-    "Shipping Fee Paid": parseNumber(row["Shipping Fee Paid"]),
-    "Tracking #": String(row["Tracking #"] ?? "").trim(),
-    Carrier: String(row.Carrier ?? "").trim(),
-  };
+      return left.index - right.index;
+    })
+    .map((entry) => entry.order);
 }
 
-export function parseShippingOrdersCsv(csvText: string): TcgPlayerShippingOrder[] {
-  const parseResult = Papa.parse<RawShippingOrder>(csvText.replace(/^\uFEFF/, ""), {
-    header: true,
-    skipEmptyLines: true,
-    transformHeader: (header) => header.trim(),
-  });
+export function getOrderNumbersForShipmentReference(
+  shipmentToOrderMap: ShipmentToOrderMap,
+  shipmentReference: string,
+): string[] {
+  return shipmentToOrderMap[shipmentReference] ?? [shipmentReference];
+}
 
-  if (parseResult.errors.length > 0) {
-    const messages = parseResult.errors
-      .slice(0, 3)
-      .map((error) => error.message)
-      .join(", ");
-    throw new Error(`CSV parsing failed: ${messages}`);
+export function buildOrderNumbersInShipmentOrder(
+  shipmentReferences: string[],
+  shipmentToOrderMap: ShipmentToOrderMap,
+): string[] {
+  const orderedOrderNumbers: string[] = [];
+  const seenOrderNumbers = new Set<string>();
+
+  for (const shipmentReference of shipmentReferences) {
+    for (const orderNumber of getOrderNumbersForShipmentReference(
+      shipmentToOrderMap,
+      shipmentReference,
+    )) {
+      const normalizedOrderNumber = orderNumber.trim();
+
+      if (!normalizedOrderNumber || seenOrderNumbers.has(normalizedOrderNumber)) {
+        continue;
+      }
+
+      seenOrderNumbers.add(normalizedOrderNumber);
+      orderedOrderNumbers.push(normalizedOrderNumber);
+    }
   }
 
-  return parseResult.data
-    .map(parseShippingOrder)
-    .filter((order): order is TcgPlayerShippingOrder => order !== null);
+  return orderedOrderNumbers;
+}
+
+export interface ShippingWorkflowOrderState {
+  sourceOrders: TcgPlayerShippingOrder[];
+  orders: TcgPlayerShippingOrder[];
+  shipments: EasyPostShipment[];
+  shipmentToOrderMap: ShipmentToOrderMap;
+  shipmentReferences: string[];
+  orderedOrderNumbers: string[];
 }
 
 export function normalizeZipCode(zipCode: string | number): string {
@@ -148,6 +151,31 @@ export function mergeOrdersByAddress(
   return {
     orders: Object.values(mergedOrders),
     shipmentToOrderMap,
+  };
+}
+
+export function buildShippingWorkflowOrderState(
+  sourceOrders: TcgPlayerShippingOrder[],
+  config: ShippingExportConfig,
+): ShippingWorkflowOrderState {
+  const orderedSourceOrders = sortShippingOrdersByOldestFirst(sourceOrders);
+  const mergedOrders = mergeOrdersByAddress(
+    orderedSourceOrders,
+    config.combineOrders,
+  );
+  const shipments = mapOrdersToShipments(mergedOrders.orders, config);
+  const shipmentReferences = shipments.map((shipment) => shipment.reference);
+
+  return {
+    sourceOrders: orderedSourceOrders,
+    orders: mergedOrders.orders,
+    shipments,
+    shipmentToOrderMap: mergedOrders.shipmentToOrderMap,
+    shipmentReferences,
+    orderedOrderNumbers: buildOrderNumbersInShipmentOrder(
+      shipmentReferences,
+      mergedOrders.shipmentToOrderMap,
+    ),
   };
 }
 

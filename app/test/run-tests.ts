@@ -2,6 +2,7 @@ import "../core/clients/baseDomainClient.server.test";
 import "../features/inventory-management/components/quantityKeyboard.test";
 import "../features/shipping-export/config/shippingExportConfig.server.test";
 import "../features/shipping-export/config/shippingExportConfigFormData.test";
+import "../features/shipping-export/components/steps/LoadOrdersStep.test";
 import "../features/shipping-export/components/steps/PullSheetStep.test";
 import "../features/shipping-export/routes/api.shipping-export-batch-labels.test";
 import "../features/shipping-export/routes/api.shipping-export-packing-slips-export.test";

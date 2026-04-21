@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import {
+  buildShippingWorkflowOrderState,
+  buildOrderNumbersInShipmentOrder,
   calculatePackageType,
   calculateService,
   createReturnShipment,
@@ -8,6 +10,7 @@ import {
   buildTimestampedFileName,
   mergeOrdersByAddress,
   normalizeZipCode,
+  sortShippingOrdersByOldestFirst,
 } from "./shippingExportUtils";
 import {
   DEFAULT_SHIPPING_EXPORT_CONFIG,
@@ -74,6 +77,116 @@ const testCases: TestCase[] = [
       assert.equal(merged.orders[0]["Item Count"], 6);
       assert.equal(merged.orders[0]["Value Of Products"], 50);
       assert.deepEqual(merged.shipmentToOrderMap["1001"], ["1001", "1002"]);
+    },
+  },
+  {
+    name: "sortShippingOrdersByOldestFirst sorts by full order timestamp and keeps exact ties stable",
+    run: () => {
+      const firstSeenTie = createOrder({
+        "Order #": "1003",
+        "Order Date": "2026-04-11T10:30:00Z",
+      });
+      const olderOrder = createOrder({
+        "Order #": "1001",
+        "Order Date": "2026-04-11T08:15:00Z",
+      });
+      const secondSeenTie = createOrder({
+        "Order #": "1002",
+        "Order Date": "2026-04-11T10:30:00Z",
+      });
+
+      const ordered = sortShippingOrdersByOldestFirst([
+        firstSeenTie,
+        olderOrder,
+        secondSeenTie,
+      ]);
+
+      assert.deepEqual(
+        ordered.map((order) => order["Order #"]),
+        ["1001", "1003", "1002"],
+      );
+    },
+  },
+  {
+    name: "mergeOrdersByAddress preserves the provided grouped order sequence",
+    run: () => {
+      const newerOrder = createOrder({
+        "Order #": "1002",
+        "Order Date": "2026-04-11T11:00:00Z",
+        "Item Count": 1,
+        "Value Of Products": 10,
+      });
+      const olderOrder = createOrder({
+        "Order #": "1001",
+        "Order Date": "2026-04-11T09:00:00Z",
+        "Item Count": 2,
+        "Value Of Products": 25,
+      });
+      const unrelatedOrder = createOrder({
+        "Order #": "1003",
+        Address1: "999 Side St",
+        "Order Date": "2026-04-11T12:00:00Z",
+      });
+
+      const merged = mergeOrdersByAddress(
+        [newerOrder, unrelatedOrder, olderOrder],
+        DEFAULT_SHIPPING_EXPORT_CONFIG.combineOrders,
+      );
+
+      assert.deepEqual(
+        merged.orders.map((order) => order["Order #"]),
+        ["1002", "1003"],
+      );
+      assert.deepEqual(merged.shipmentToOrderMap["1002"], ["1002", "1001"]);
+    },
+  },
+  {
+    name: "buildOrderNumbersInShipmentOrder keeps grouped shipments adjacent in shipment order",
+    run: () => {
+      const orderNumbers = buildOrderNumbersInShipmentOrder(
+        ["1001", "1003", "1004"],
+        {
+          "1001": ["1001", "1002"],
+          "1003": ["1003"],
+          "1004": ["1004", "1005"],
+        },
+      );
+
+      assert.deepEqual(orderNumbers, ["1001", "1002", "1003", "1004", "1005"]);
+    },
+  },
+  {
+    name: "buildShippingWorkflowOrderState centralizes canonical shipment and export order",
+    run: () => {
+      const workflowState = buildShippingWorkflowOrderState(
+        [
+          createOrder({
+            "Order #": "1002",
+            "Order Date": "2026-04-11T11:00:00Z",
+          }),
+          createOrder({
+            "Order #": "1003",
+            Address1: "999 Side St",
+            "Order Date": "2026-04-11T12:00:00Z",
+          }),
+          createOrder({
+            "Order #": "1001",
+            "Order Date": "2026-04-11T09:00:00Z",
+          }),
+        ],
+        DEFAULT_SHIPPING_EXPORT_CONFIG,
+      );
+
+      assert.deepEqual(
+        workflowState.sourceOrders.map((order) => order["Order #"]),
+        ["1001", "1002", "1003"],
+      );
+      assert.deepEqual(workflowState.shipmentReferences, ["1001", "1003"]);
+      assert.deepEqual(workflowState.orderedOrderNumbers, ["1001", "1002", "1003"]);
+      assert.deepEqual(
+        workflowState.shipments.map((shipment) => shipment.reference),
+        workflowState.shipmentReferences,
+      );
     },
   },
   {

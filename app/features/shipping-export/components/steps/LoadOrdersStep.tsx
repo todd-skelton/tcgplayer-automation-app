@@ -1,7 +1,4 @@
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -11,7 +8,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import type { ShippingExportConfig, TcgPlayerShippingOrder } from "../../types/shippingExport";
 
 interface LoadOrdersStepProps {
@@ -28,7 +24,6 @@ interface LoadOrdersStepProps {
   onSingleOrderNumberChange: (value: string) => void;
   onLoadLiveOrders: () => void;
   onLoadSingleOrder: () => void;
-  onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onContinue: () => void;
 }
 
@@ -46,7 +41,6 @@ export function LoadOrdersStep({
   onSingleOrderNumberChange,
   onLoadLiveOrders,
   onLoadSingleOrder,
-  onFileUpload,
   onContinue,
 }: LoadOrdersStepProps) {
   return (
@@ -71,7 +65,7 @@ export function LoadOrdersStep({
           Live TCGPlayer Seller Orders
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Load live Ready to Ship orders from the last three months using your
+          Load live Ready to Ship orders directly from TCGPlayer using your
           saved seller key or an override entered here.
         </Typography>
       </Box>
@@ -146,33 +140,6 @@ export function LoadOrdersStep({
           {isLoadingSingleOrder ? "Looking Up Order..." : "Lookup Single Order"}
         </Button>
       </Stack>
-
-      <Accordion disableGutters elevation={0} sx={{ border: "1px solid", borderColor: "divider" }}>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography variant="body2" color="text.secondary">
-            Legacy: CSV Upload
-          </Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            If live loading is unavailable or you need to work from an export,
-            upload a TCGPlayer shipping export CSV instead. Line item details
-            will not be available for pull sheets.
-          </Typography>
-          <Button variant="outlined" component="label">
-            Upload TCGPlayer Shipping Export CSV
-            <input
-              type="file"
-              hidden
-              accept=".csv"
-              onChange={onFileUpload}
-              onClick={(event) => {
-                (event.target as HTMLInputElement).value = "";
-              }}
-            />
-          </Button>
-        </AccordionDetails>
-      </Accordion>
 
       {(loadedSourceLabel || isLoadingExistingPostage) && (
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
