@@ -1,12 +1,17 @@
 import type { Sku } from "../../../shared/data-types/sku";
 import {
   getAllLatestSales,
+  type GetLastSalesRequestParams,
+  type GetLastestSalesRequestBody,
   type Sale,
 } from "../../../integrations/tcgplayer/client/get-latest-sales.server";
 import { levenbergMarquardt } from "ml-levenberg-marquardt";
 import type { Condition } from "../../../integrations/tcgplayer/types/Condition";
 import type { ListingData } from "../services/supplyAnalysisService";
-import { SupplyAnalysisService } from "../services/supplyAnalysisService";
+import {
+  SupplyAnalysisService,
+  type SupplyAnalysisConfig,
+} from "../services/supplyAnalysisService";
 import { categoryFiltersRepository } from "~/core/db";
 import { INVENTORY_CONDITION_ORDER } from "../../../core/utils/conditionOrder";
 
@@ -226,7 +231,8 @@ export async function getSuggestedPriceFromLatestSales(
   };
 
   // Fetch up to 100 sales for all conditions
-  const allSales: Sale[] = await getAllLatestSales(
+  const fetchLatestSales = config.fetchLatestSales ?? getAllLatestSales;
+  const allSales: Sale[] = await fetchLatestSales(
     { id: sku.productId },
     salesOptions,
     100,
@@ -276,8 +282,6 @@ export async function getSuggestedPriceFromLatestSales(
   // Handle supply analysis
   let listings: ListingData[] = [];
   if (config.enableSupplyAnalysis && !config.listings) {
-    const supplyAnalysisService = new SupplyAnalysisService();
-
     // Optimization: Calculate max sales price to filter listings
     const maxSalesPrice =
       adjustedSales.length > 0
@@ -289,10 +293,15 @@ export async function getSuggestedPriceFromLatestSales(
       maxSalesPrice,
     };
 
-    listings = await supplyAnalysisService.fetchListingsForSku(
-      sku,
-      optimizedConfig,
-    );
+    if (config.fetchListingsForSku) {
+      listings = await config.fetchListingsForSku(sku, optimizedConfig);
+    } else {
+      const supplyAnalysisService = new SupplyAnalysisService();
+      listings = await supplyAnalysisService.fetchListingsForSku(
+        sku,
+        optimizedConfig,
+      );
+    }
   } else if (config.listings) {
     listings = config.listings;
   }
@@ -323,6 +332,15 @@ export interface LatestSalesPriceConfig {
     includeUnverifiedSellers?: boolean; // Include unverified sellers in analysis (default false)
   };
   listings?: ListingData[]; // Pre-fetched listings data (optional)
+  fetchLatestSales?: (
+    params: GetLastSalesRequestParams,
+    body: GetLastestSalesRequestBody,
+    maxSales?: number,
+  ) => Promise<Sale[]>;
+  fetchListingsForSku?: (
+    sku: Sku,
+    config: SupplyAnalysisConfig,
+  ) => Promise<ListingData[]>;
 }
 
 export interface PercentileData {

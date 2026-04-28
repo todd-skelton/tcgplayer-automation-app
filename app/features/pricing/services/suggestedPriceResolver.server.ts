@@ -4,15 +4,23 @@ import type {
 } from "~/core/types/pricing";
 import { productsRepository, skusRepository } from "~/core/db";
 import { getSuggestedPriceFromLatestSales } from "../algorithms/getSuggestedPriceFromLatestSales";
+import type { PricingBatchApiCache } from "./pricingBatchApiCache.server";
 
-export async function resolveSuggestedPrice({
-  tcgplayerId,
-  percentile = 65,
-  additionalPercentiles = [],
-  enableSupplyAnalysis = false,
-  supplyAnalysisConfig = {},
-  productLineId,
-}: SuggestedPriceResolverInput): Promise<SuggestedPriceResult> {
+interface ResolveSuggestedPriceOptions {
+  batchApiCache?: PricingBatchApiCache;
+}
+
+export async function resolveSuggestedPrice(
+  {
+    tcgplayerId,
+    percentile = 65,
+    additionalPercentiles = [],
+    enableSupplyAnalysis = false,
+    supplyAnalysisConfig = {},
+    productLineId,
+  }: SuggestedPriceResolverInput,
+  options: ResolveSuggestedPriceOptions = {},
+): Promise<SuggestedPriceResult> {
   if (!tcgplayerId) {
     return { error: "TCGplayer ID is required", suggestedPrice: null };
   }
@@ -51,6 +59,12 @@ export async function resolveSuggestedPrice({
     additionalPercentiles,
     enableSupplyAnalysis,
     supplyAnalysisConfig,
+    fetchLatestSales: options.batchApiCache
+      ? options.batchApiCache.fetchLatestSales.bind(options.batchApiCache)
+      : undefined,
+    fetchListingsForSku: options.batchApiCache
+      ? options.batchApiCache.fetchListingsForSku.bind(options.batchApiCache)
+      : undefined,
   });
 
   return {

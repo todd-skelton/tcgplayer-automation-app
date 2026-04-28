@@ -3,6 +3,7 @@ import type {
   ProcessingProgress,
   ProcessingSummary,
   PricerSku,
+  SuggestedPriceResolver,
 } from "~/core/types/pricing";
 import {
   inventoryBatchesRepository,
@@ -13,6 +14,7 @@ import { createDisplayName } from "~/core/utils/displayNameUtils";
 import type { PricePoint } from "~/integrations/tcgplayer/client/get-price-points.server";
 import { getPricePoints } from "~/integrations/tcgplayer/client/get-price-points.server";
 import { PricingCalculator } from "~/features/pricing/services/pricingCalculator";
+import { PricingBatchApiCache } from "~/features/pricing/services/pricingBatchApiCache.server";
 import { resolveSuggestedPrice } from "~/features/pricing/services/suggestedPriceResolver.server";
 import type { ProductDisplayInfo } from "~/shared/services/dataEnrichmentService";
 import type {
@@ -389,6 +391,9 @@ export async function executeInventoryBatchPricingJob({
   });
 
   const pricingStartTime = Date.now();
+  const batchApiCache = new PricingBatchApiCache();
+  const resolveSuggestedPriceWithBatchCache: SuggestedPriceResolver = (input) =>
+    resolveSuggestedPrice(input, { batchApiCache });
   let latestPricingProgress: ProcessingProgress = {
     current: 4,
     total: 6,
@@ -413,7 +418,7 @@ export async function executeInventoryBatchPricingJob({
         includeUnverifiedSellers: config.supplyAnalysis.includeUnverifiedSellers,
       },
       productLinePricingConfig: config.productLinePricing,
-      suggestedPriceResolver: resolveSuggestedPrice,
+      suggestedPriceResolver: resolveSuggestedPriceWithBatchCache,
       isCancelled,
       onProgress: (progress) => {
         latestPricingProgress = {
