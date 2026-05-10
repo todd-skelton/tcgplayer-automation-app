@@ -42,6 +42,7 @@ const testCases: TestCase[] = [
     name: "lettered card numbers use raw text search",
     run: () => {
       assert.equal(shouldSearchRawCardNumberText("OP13-119"), true);
+      assert.equal(shouldSearchRawCardNumberText("op13-119"), true);
       assert.equal(shouldSearchRawCardNumberText("SWSH029"), true);
       assert.equal(matchesNumberField("OP13-119", "OP13-119"), true);
       assert.equal(matchesNumberField("SWSH029", "SWSH029"), true);
