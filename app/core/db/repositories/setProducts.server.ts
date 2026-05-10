@@ -8,8 +8,10 @@ import {
   type Queryable,
 } from "../database.server";
 import {
+  escapeSqlLikePattern,
   normalizeNumberFieldPrefix,
   normalizeNumberFieldValue,
+  shouldSearchRawCardNumberText,
 } from "~/core/utils/numberFieldMatching";
 
 type SetProductRow = SetProduct;
@@ -107,6 +109,19 @@ export const setProductsRepository = {
     const normalizedColumn = trimmedCardNumber.includes("/")
       ? "normalize_card_number(sp.number)"
       : "normalize_card_number_prefix(sp.number)";
+    const shouldSearchRawText =
+      shouldSearchRawCardNumberText(trimmedCardNumber);
+    const rawCardNumberPattern = `%${escapeSqlLikePattern(trimmedCardNumber)}%`;
+    const cardNumberConditions = [`${normalizedColumn} = $2`];
+    const values: Array<number | string> = [
+      productLineId,
+      normalizedCardNumber,
+    ];
+
+    if (shouldSearchRawText) {
+      values.push(rawCardNumberPattern);
+      cardNumberConditions.push(`sp.number ILIKE $3 ESCAPE '\\'`);
+    }
 
     return query<SetProductRow>(
       `SELECT
@@ -124,9 +139,9 @@ export const setProductsRepository = {
       INNER JOIN products p
         ON p.product_id = sp.product_id
       WHERE p.product_line_id = $1
-        AND ${normalizedColumn} = $2
+        AND (${cardNumberConditions.join(" OR ")})
       ORDER BY sp.set_name ASC, sp.product_name ASC`,
-      [productLineId, normalizedCardNumber],
+      values,
       executor,
     );
   },

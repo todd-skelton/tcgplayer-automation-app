@@ -36,6 +36,20 @@ export function normalizeNumberFieldPrefix(fieldValue: string): string {
   return normalizeNumberFieldPart(fieldValue.trim().split("/")[0]?.trim() ?? "");
 }
 
+export function shouldSearchRawCardNumberText(query: string): boolean {
+  const cleanQuery = query.trim();
+
+  if (!cleanQuery) {
+    return false;
+  }
+
+  return /[^0-9/\s]/.test(cleanQuery);
+}
+
+export function escapeSqlLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
 /**
  * Matches a query against a number field following these rules:
  * 1. If query has no slash: match against content before the first slash (or entire field if no slash)

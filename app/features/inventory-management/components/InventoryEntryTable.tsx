@@ -1283,7 +1283,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                 onKeyPress={handleSearchKeyPress}
                 placeholder={
                   searchScope === "allSets"
-                    ? "Type an exact card number like 3 or 3/120 and press Enter..."
+                    ? "Type a card number like 3, 3/120, OP13-119, or SWSH029 and press Enter..."
                     : "Type to filter products and press Enter..."
                 }
                 sx={{
