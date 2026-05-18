@@ -8,14 +8,18 @@ import {
   FormControl,
   FormControlLabel,
   FormLabel,
+  InputLabel,
+  MenuItem,
   Radio,
   RadioGroup,
+  Select,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 import type {
   EasyPostMode,
+  EasyPostService,
   EasyPostShipment,
   ReturnFlowType,
   ShippingExportConfig,
@@ -37,6 +41,7 @@ interface ReturnFlowPanelProps {
   returnOrder: TcgPlayerShippingOrder | null;
   returnShipment: EasyPostShipment | null;
   returnFlowType: ReturnFlowType;
+  returnService: EasyPostService;
   outboundReturnPurchaseEntry: PurchaseEntry | null;
   returnOnlyPurchaseEntry: PurchaseEntry | null;
   isLoadingReturnOrder: boolean;
@@ -44,6 +49,7 @@ interface ReturnFlowPanelProps {
   onOrderNumberChange: (value: string) => void;
   onLookupOrder: () => void;
   onReturnFlowTypeChange: (type: ReturnFlowType) => void;
+  onReturnServiceChange: (service: EasyPostService) => void;
   onBuyLabels: () => void;
 }
 
@@ -55,6 +61,7 @@ export function ReturnFlowPanel({
   returnOrder,
   returnShipment,
   returnFlowType,
+  returnService,
   outboundReturnPurchaseEntry,
   returnOnlyPurchaseEntry,
   isLoadingReturnOrder,
@@ -62,6 +69,7 @@ export function ReturnFlowPanel({
   onOrderNumberChange,
   onLookupOrder,
   onReturnFlowTypeChange,
+  onReturnServiceChange,
   onBuyLabels,
 }: ReturnFlowPanelProps) {
   const selectedModeHasApiKey =
@@ -160,6 +168,23 @@ export function ReturnFlowPanel({
                 }
               />
             </RadioGroup>
+          </FormControl>
+
+          <FormControl sx={{ maxWidth: 320 }}>
+            <InputLabel id="return-service-label">Postage Service</InputLabel>
+            <Select
+              labelId="return-service-label"
+              label="Postage Service"
+              value={returnService}
+              onChange={(event) =>
+                onReturnServiceChange(event.target.value as EasyPostService)
+              }
+            >
+              <MenuItem value="First">First</MenuItem>
+              <MenuItem value="GroundAdvantage">Ground Advantage</MenuItem>
+              <MenuItem value="Priority">Priority</MenuItem>
+              <MenuItem value="Express">Express</MenuItem>
+            </Select>
           </FormControl>
 
           {!selectedModeHasApiKey && (

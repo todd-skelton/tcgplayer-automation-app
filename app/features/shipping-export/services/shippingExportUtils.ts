@@ -308,11 +308,28 @@ export function mapOrdersToShipments(
 
 export function createReturnShipment(
   shipment: EasyPostShipment,
+  service: EasyPostService = shipment.service,
 ): EasyPostShipment {
   return {
     ...shipment,
+    service,
     to_address: { ...shipment.from_address },
     from_address: { ...shipment.to_address },
+  };
+}
+
+export function createRoundTripShipments(
+  shipment: EasyPostShipment,
+  service: EasyPostService,
+): { outboundShipment: EasyPostShipment; returnShipment: EasyPostShipment } {
+  const outboundShipment = {
+    ...shipment,
+    service,
+  };
+
+  return {
+    outboundShipment,
+    returnShipment: createReturnShipment(outboundShipment, service),
   };
 }
 

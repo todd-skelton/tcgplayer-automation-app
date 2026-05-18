@@ -4,6 +4,7 @@ import {
   buildOrderNumbersInShipmentOrder,
   calculatePackageType,
   calculateService,
+  createRoundTripShipments,
   createReturnShipment,
   getDeliveryConfirmation,
   mapOrderToShipment,
@@ -266,6 +267,35 @@ const testCases: TestCase[] = [
 
       assert.equal(returnShipment.to_address.name, shipment.from_address.name);
       assert.equal(returnShipment.from_address.name, shipment.to_address.name);
+    },
+  },
+  {
+    name: "createReturnShipment can use a return-specific service",
+    run: () => {
+      const shipment = mapOrderToShipment(
+        createOrder({ "Value Of Products": 75 }),
+        DEFAULT_SHIPPING_EXPORT_CONFIG,
+      );
+      const returnShipment = createReturnShipment(shipment, "First");
+
+      assert.equal(shipment.service, "GroundAdvantage");
+      assert.equal(returnShipment.service, "First");
+    },
+  },
+  {
+    name: "createRoundTripShipments applies the same service to outbound and return labels",
+    run: () => {
+      const shipment = mapOrderToShipment(
+        createOrder({ "Value Of Products": 75 }),
+        DEFAULT_SHIPPING_EXPORT_CONFIG,
+      );
+      const roundTrip = createRoundTripShipments(shipment, "First");
+
+      assert.equal(shipment.service, "GroundAdvantage");
+      assert.equal(roundTrip.outboundShipment.service, "First");
+      assert.equal(roundTrip.returnShipment.service, "First");
+      assert.equal(roundTrip.returnShipment.to_address.name, shipment.from_address.name);
+      assert.equal(roundTrip.returnShipment.from_address.name, shipment.to_address.name);
     },
   },
   {

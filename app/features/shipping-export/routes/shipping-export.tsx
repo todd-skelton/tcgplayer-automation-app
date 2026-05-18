@@ -22,6 +22,7 @@ import {
   buildShippingWorkflowOrderState,
   buildOrderNumbersInShipmentOrder,
   buildTimestampedFileName,
+  createRoundTripShipments,
   createReturnShipment,
   getAllLabelSizes,
   getOrderNumbersForShipmentReference,
@@ -35,6 +36,7 @@ import {
 } from "../services/packPullSheet";
 import {
   type EasyPostMode,
+  type EasyPostService,
   type EasyPostShipment,
   type LabelSize,
   type ReturnFlowType,
@@ -353,6 +355,7 @@ export default function ShippingExportRoute() {
 
   // ── Return flow state ─────────────────────────────────────────────────────
   const [returnFlowType, setReturnFlowType] = useState<ReturnFlowType>("round-trip");
+  const [returnService, setReturnService] = useState<EasyPostService>("First");
   const [returnOrder, setReturnOrder] = useState<TcgPlayerShippingOrder | null>(null);
   const [returnShipment, setReturnShipment] = useState<EasyPostShipment | null>(null);
   const [isLoadingReturnOrder, setIsLoadingReturnOrder] = useState(false);
@@ -1013,6 +1016,7 @@ export default function ShippingExportRoute() {
     setIsLoadingReturnOrder(true);
     setReturnOrder(null);
     setReturnShipment(null);
+    setReturnService("First");
     setOutboundReturnPurchaseEntry(null);
     setReturnOnlyPurchaseEntry(null);
     setError(null);
@@ -1058,6 +1062,7 @@ export default function ShippingExportRoute() {
     setError(null);
 
     const orderNumbers = returnOrder ? [returnOrder["Order #"]] : [returnShipment.reference];
+    const roundTripShipments = createRoundTripShipments(returnShipment, returnService);
 
     try {
       if (returnFlowType === "round-trip") {
@@ -1066,10 +1071,10 @@ export default function ShippingExportRoute() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            labelSize: returnShipment.options.label_size,
+            labelSize: roundTripShipments.outboundShipment.options.label_size,
             direction: "outbound",
             purchaseScope: "single",
-            shipments: [{ shipment: returnShipment, orderNumbers }],
+            shipments: [{ shipment: roundTripShipments.outboundShipment, orderNumbers }],
           }),
         });
 
@@ -1087,7 +1092,7 @@ export default function ShippingExportRoute() {
       }
 
       // Return label: buyer → seller (swap addresses)
-      const returnShipmentData = createReturnShipment(returnShipment);
+      const returnShipmentData = roundTripShipments.returnShipment;
       const returnResponse = await fetch("/api/shipping-export/postages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1341,6 +1346,7 @@ export default function ShippingExportRoute() {
             returnOrder={returnOrder}
             returnShipment={returnShipment}
             returnFlowType={returnFlowType}
+            returnService={returnService}
             outboundReturnPurchaseEntry={outboundReturnPurchaseEntry}
             returnOnlyPurchaseEntry={returnOnlyPurchaseEntry}
             isLoadingReturnOrder={isLoadingReturnOrder}
@@ -1348,6 +1354,11 @@ export default function ShippingExportRoute() {
             onOrderNumberChange={setSingleOrderNumberInput}
             onLookupOrder={() => void handleLookupReturnOrder()}
             onReturnFlowTypeChange={setReturnFlowType}
+            onReturnServiceChange={(service) => {
+              setReturnService(service);
+              setOutboundReturnPurchaseEntry(null);
+              setReturnOnlyPurchaseEntry(null);
+            }}
             onBuyLabels={() => void handleBuyReturnFlowLabels()}
           />
         </Paper>
