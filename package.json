@@ -35,7 +35,7 @@
     "@mui/x-data-grid": "^8.28.2",
     "@react-router/node": "^7.14.1",
     "@react-router/serve": "^7.14.1",
-    "axios": "^1.9.0",
+    "axios": "^1.16.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.4.2",
     "isbot": "^5.1.38",
@@ -47,9 +47,13 @@
     "react-dom": "^19.2.5",
     "react-router": "^7.14.1"
   },
+  "overrides": {
+    "follow-redirects": "^1.15.12",
+    "postcss": "^8.5.10",
+    "uuid": "^11.1.1"
+  },
   "devDependencies": {
     "@react-router/dev": "^7.14.1",
-    "@types/date-fns": "^2.6.3",
     "@types/node": "^20.19.39",
     "@types/papaparse": "^5.5.2",
     "@types/pg": "^8.20.0",

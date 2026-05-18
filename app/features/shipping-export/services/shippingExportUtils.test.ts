@@ -6,6 +6,7 @@ import {
   calculateService,
   createRoundTripShipments,
   createReturnShipment,
+  createShipmentForPostageService,
   getDeliveryConfirmation,
   mapOrderToShipment,
   buildTimestampedFileName,
@@ -257,6 +258,9 @@ const testCases: TestCase[] = [
       assert.equal(shipment.from_address.country, "US");
       assert.equal(shipment.options.label_format, "PDF");
       assert.equal(shipment.parcel.predefined_package, "Letter");
+      assert.equal(shipment.parcel.length, 9);
+      assert.equal(shipment.parcel.width, 4);
+      assert.equal(shipment.parcel.height, 0.25);
     },
   },
   {
@@ -285,17 +289,50 @@ const testCases: TestCase[] = [
   {
     name: "createRoundTripShipments applies the same service to outbound and return labels",
     run: () => {
-      const shipment = mapOrderToShipment(
-        createOrder({ "Value Of Products": 75 }),
+      const order = createOrder({ "Value Of Products": 75 });
+      const shipment = mapOrderToShipment(order, DEFAULT_SHIPPING_EXPORT_CONFIG);
+      const roundTrip = createRoundTripShipments(
+        shipment,
+        "First",
         DEFAULT_SHIPPING_EXPORT_CONFIG,
+        order,
       );
-      const roundTrip = createRoundTripShipments(shipment, "First");
 
       assert.equal(shipment.service, "GroundAdvantage");
       assert.equal(roundTrip.outboundShipment.service, "First");
       assert.equal(roundTrip.returnShipment.service, "First");
+      assert.equal(roundTrip.outboundShipment.parcel.predefined_package, "Letter");
+      assert.equal(roundTrip.outboundShipment.parcel.length, 9);
+      assert.equal(roundTrip.outboundShipment.parcel.width, 4);
+      assert.equal(roundTrip.outboundShipment.parcel.height, 0.25);
+      assert.equal(roundTrip.outboundShipment.options.label_size, "7x3");
+      assert.equal(roundTrip.returnShipment.parcel.predefined_package, "Letter");
+      assert.equal(roundTrip.returnShipment.parcel.length, 9);
+      assert.equal(roundTrip.returnShipment.parcel.width, 4);
+      assert.equal(roundTrip.returnShipment.parcel.height, 0.25);
+      assert.equal(roundTrip.returnShipment.options.label_size, "7x3");
       assert.equal(roundTrip.returnShipment.to_address.name, shipment.from_address.name);
       assert.equal(roundTrip.returnShipment.from_address.name, shipment.to_address.name);
+    },
+  },
+  {
+    name: "createShipmentForPostageService preserves parcel details for non-First services",
+    run: () => {
+      const shipment = mapOrderToShipment(
+        createOrder({ "Value Of Products": 75 }),
+        DEFAULT_SHIPPING_EXPORT_CONFIG,
+      );
+      const priorityShipment = createShipmentForPostageService(
+        shipment,
+        "Priority",
+        DEFAULT_SHIPPING_EXPORT_CONFIG,
+      );
+
+      assert.equal(priorityShipment.service, "Priority");
+      assert.equal(priorityShipment.parcel.predefined_package, "Parcel");
+      assert.equal(priorityShipment.parcel.length, shipment.parcel.length);
+      assert.equal(priorityShipment.parcel.width, shipment.parcel.width);
+      assert.equal(priorityShipment.options.label_size, shipment.options.label_size);
     },
   },
   {

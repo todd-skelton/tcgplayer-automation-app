@@ -43,21 +43,41 @@ function resolveCommand(commandName) {
   return commandName;
 }
 
+function quoteWindowsCommandArgument(value) {
+  if (!/[()\s"%!^<>&|]/.test(value)) {
+    return value;
+  }
+
+  return `"${value.replace(/"/g, '\\"')}"`;
+}
+
 if (!command) {
   console.error("Usage: node scripts/run-with-node-options.mjs <command> [args...]");
   process.exit(1);
 }
 
 const resolvedCommand = resolveCommand(command);
-const child = spawn(resolvedCommand, args, {
+const shouldRunCommandFile =
+  process.platform === "win32" &&
+  path.extname(resolvedCommand).toLowerCase() === ".cmd";
+const childCommand = shouldRunCommandFile
+  ? process.env.ComSpec ?? "cmd.exe"
+  : resolvedCommand;
+const childArgs = shouldRunCommandFile
+  ? [
+      "/d",
+      "/s",
+      "/c",
+      [resolvedCommand, ...args].map(quoteWindowsCommandArgument).join(" "),
+    ]
+  : args;
+
+const child = spawn(childCommand, childArgs, {
   stdio: "inherit",
   env: {
     ...process.env,
     NODE_OPTIONS: maxOldSpaceSizeOption,
   },
-  shell:
-    process.platform === "win32" &&
-    path.extname(resolvedCommand).toLowerCase() === ".cmd",
 });
 
 child.on("error", (error) => {

@@ -1,5 +1,7 @@
 FROM node:20-alpine AS base
 WORKDIR /app
+ENV NPM_CONFIG_FUND=false
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 
 FROM base AS development-dependencies-env
 COPY package.json package-lock.json /app/

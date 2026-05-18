@@ -10,6 +10,9 @@ import {
 } from "../types/shippingExport";
 
 const LABEL_SIZES = ["4x6", "7x3", "6x4"] as const;
+const FIRST_CLASS_LETTER_LENGTH_IN = 9;
+const FIRST_CLASS_LETTER_WIDTH_IN = 4;
+const FIRST_CLASS_LETTER_HEIGHT_IN = 0.25;
 
 function getOrderDateTimestamp(order: TcgPlayerShippingOrder): number | null {
   const timestamp = Date.parse(order["Order Date"]);
@@ -318,14 +321,64 @@ export function createReturnShipment(
   };
 }
 
+function calculatePackageWeight(
+  packageSettings: ShippingExportConfig["letter"],
+  itemCount: number,
+): number {
+  return (
+    Math.ceil(
+      (packageSettings.baseWeightOz +
+        itemCount * packageSettings.perItemWeightOz) *
+        100,
+    ) / 100
+  );
+}
+
+export function createShipmentForPostageService(
+  shipment: EasyPostShipment,
+  service: EasyPostService,
+  config: ShippingExportConfig,
+  order?: TcgPlayerShippingOrder | null,
+): EasyPostShipment {
+  if (service !== "First") {
+    return {
+      ...shipment,
+      service,
+    };
+  }
+
+  return {
+    ...shipment,
+    service,
+    parcel: {
+      ...shipment.parcel,
+      length: FIRST_CLASS_LETTER_LENGTH_IN,
+      width: FIRST_CLASS_LETTER_WIDTH_IN,
+      height: FIRST_CLASS_LETTER_HEIGHT_IN,
+      weight: order
+        ? calculatePackageWeight(config.letter, order["Item Count"])
+        : shipment.parcel.weight,
+      predefined_package: "Letter",
+    },
+    options: {
+      ...shipment.options,
+      label_size: config.letter.labelSize,
+    },
+  };
+}
+
 export function createRoundTripShipments(
   shipment: EasyPostShipment,
   service: EasyPostService,
+  config: ShippingExportConfig,
+  order?: TcgPlayerShippingOrder | null,
 ): { outboundShipment: EasyPostShipment; returnShipment: EasyPostShipment } {
-  const outboundShipment = {
-    ...shipment,
+  const outboundShipment = createShipmentForPostageService(
+    shipment,
     service,
-  };
+    config,
+    order,
+  );
 
   return {
     outboundShipment,

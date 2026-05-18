@@ -311,8 +311,8 @@ export const DEFAULT_SHIPPING_EXPORT_CONFIG: ShippingExportConfig = {
     perItemWeightOz: SLEEVED_CARD_OZ,
     maxItemCount: 24,
     maxValueUsd: 50,
-    lengthIn: 9.5,
-    widthIn: 4.125,
+    lengthIn: 9,
+    widthIn: 4,
     heightIn: 0.25,
   },
   flat: {

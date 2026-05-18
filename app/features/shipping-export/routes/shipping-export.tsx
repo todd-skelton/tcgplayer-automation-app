@@ -1062,7 +1062,12 @@ export default function ShippingExportRoute() {
     setError(null);
 
     const orderNumbers = returnOrder ? [returnOrder["Order #"]] : [returnShipment.reference];
-    const roundTripShipments = createRoundTripShipments(returnShipment, returnService);
+    const roundTripShipments = createRoundTripShipments(
+      returnShipment,
+      returnService,
+      config,
+      returnOrder,
+    );
 
     try {
       if (returnFlowType === "round-trip") {
