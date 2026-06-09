@@ -20,4 +20,5 @@ import "../features/shipping-export/services/tcgplayerTracking.server.test";
 import "../features/shipping-export/services/tcgplayerShippedMessages.server.test";
 import "../features/shipping-export/services/tcgplayerSellerOrders.server.test";
 import "../features/pull-sheet/utils/pullSheetItems.test";
+import "../features/product-price-matrix/services/productPriceMatrix.server.test";
 import "../features/shipping-export/components/steps/PackStep.test";

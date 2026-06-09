@@ -19,6 +19,10 @@ export default [
     file: "features/pending-inventory/routes/pending-inventory-pricer.tsx",
   },
   {
+    path: "/product-price-matrix",
+    file: "features/product-price-matrix/routes/product-price-matrix.tsx",
+  },
+  {
     path: "/configuration",
     file: "features/pricing/routes/configuration.tsx",
   },
@@ -45,6 +49,14 @@ export default [
   {
     path: "/api/price-points",
     file: "features/pricing/routes/api.price-points.ts",
+  },
+  {
+    path: "/api/product-price-matrix",
+    file: "features/product-price-matrix/routes/api.product-price-matrix.ts",
+  },
+  {
+    path: "/api/product-price-matrix/products",
+    file: "features/product-price-matrix/routes/api.product-price-matrix-products.ts",
   },
   {
     path: "/api/validate-skus",

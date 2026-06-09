@@ -3,6 +3,7 @@ import BatchPredictionIcon from "@mui/icons-material/BatchPrediction";
 import HttpIcon from "@mui/icons-material/Http";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
+import PriceCheckIcon from "@mui/icons-material/PriceCheck";
 import SettingsIcon from "@mui/icons-material/Settings";
 import StorageIcon from "@mui/icons-material/Storage";
 import StorefrontIcon from "@mui/icons-material/Storefront";
@@ -29,6 +30,11 @@ export const primaryNavigationItems: NavigationItem[] = [
     label: "Batch Pricer",
     to: "/pending-inventory-pricer",
     icon: BatchPredictionIcon,
+  },
+  {
+    label: "Price Matrix",
+    to: "/product-price-matrix",
+    icon: PriceCheckIcon,
   },
   { label: "Pull Sheet", to: "/pull-sheet", icon: ViewListIcon },
   {
@@ -85,6 +91,14 @@ export const dashboardCards: DashboardCard[] = [
     to: "/pending-inventory-pricer",
     icon: BatchPredictionIcon,
     color: "info.main",
+  },
+  {
+    title: "Product Price Matrix",
+    label: "Price Matrix",
+    description: "Compare one product across conditions and variants",
+    to: "/product-price-matrix",
+    icon: PriceCheckIcon,
+    color: "success.dark",
   },
   {
     title: "Pull Sheet",
