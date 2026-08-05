@@ -549,7 +549,7 @@ Acceptance:
 ## Open Verification Items
 
 - Identify a Seller Portal staged-import status/history endpoint for ambiguity reconciliation.
-- Confirm minimal move-to-live form requirements independently of browser-supplied search fields.
+- Monitor the delay between Seller Portal live state and the public seller-inventory snapshot.
 - Determine whether finalized but unmoved imports expire automatically.
 - Measure safe staged import size and cadence under normal production traffic.
 - Confirm authentication-cookie lifetime and observable expiry response.
@@ -568,4 +568,9 @@ Acceptance:
 - 2026-08-05: Milestone 6 completed with the seller inventory projection, due-SKU scheduler, micro-batches, per-SKU controls, and publication history.
 - 2026-08-05: Migrations 014 through 016 validated against the local PostgreSQL development database.
 - 2026-08-05: Full type check, unit/route suite, repository integration tests, production build, worker bundle syntax checks, and Compose validation pass.
-- 2026-08-05: No production services were started and no live publication was triggered during implementation; all automatic controls remain disabled by default.
+- 2026-08-05: Production Compose services started with migrations 014 through 016 applied; pricing, publication, and scheduler workers are healthy.
+- 2026-08-05: Two controlled staged attempts rolled back before move-to-live after the Seller Portal rejected mismatched display metadata; no live price or quantity changed.
+- 2026-08-05: Publication planning was corrected to preserve frozen catalog product names and normalized condition/printing labels, with regression coverage.
+- 2026-08-05: Controlled publication 3 moved upload 16109624 live for ProductConditionId 9190499, changing Decidueye ex - 012/088 from $0.55 to $0.53 with AddToQuantity 0.
+- 2026-08-05: Logged-in Seller Portal verification showed live price $0.53 and quantity 2. The public seller-inventory snapshot still showed $0.55 immediately afterward, establishing an external propagation/cache delay.
+- 2026-08-05: Automatic publication for every source and continuous pricing remain disabled after the rollout.
