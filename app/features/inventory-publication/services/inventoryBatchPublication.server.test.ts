@@ -249,6 +249,30 @@ const testCases: TestCase[] = [
     },
   },
   {
+    name: "publication uses frozen catalog metadata instead of enriched result labels",
+    run: async () => {
+      const originalRow = {
+        ...createRow(),
+        Product: "Greninja Star",
+      };
+      const result = createResult({
+        row: {
+          ...originalRow,
+          Product: "Greninja Star - Promo",
+        },
+      });
+      const preview = await previewInventoryBatchPublication(90, {
+        dependencies: createDependencies({
+          result,
+          batchItem: createBatchItem({ originalRow }),
+        }).dependencies,
+        now: NOW,
+      });
+
+      assert.equal(preview.items[0]?.productName, "Greninja Star");
+    },
+  },
+  {
     name: "confirmed published deltas become price-only while ambiguous deltas stay blocked",
     run: async () => {
       const published = await previewInventoryBatchPublication(90, {

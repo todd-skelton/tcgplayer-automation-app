@@ -196,10 +196,11 @@ export async function previewInventoryBatchPublication(
       parsePrice(result.row["Previous Price"]) ??
       batchItem?.currentPrice ??
       null;
-    const productLine = result.row["Product Line"]?.trim() ?? "";
-    const setName = result.row["Set Name"]?.trim() ?? "";
-    const productName = result.row.Product?.trim() ?? "";
-    const condition = buildPublicationCondition(result.row);
+    const catalogRow = batchItem?.originalRow ?? result.row;
+    const productLine = catalogRow["Product Line"]?.trim() ?? "";
+    const setName = catalogRow["Set Name"]?.trim() ?? "";
+    const productName = catalogRow.Product?.trim() ?? "";
+    const condition = buildPublicationCondition(catalogRow);
     const decision = evaluateInventoryPublicationCandidate(
       {
         sourceType: batch.sourceType,
