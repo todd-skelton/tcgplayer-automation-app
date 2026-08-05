@@ -590,89 +590,85 @@ export default function PendingInventoryPricerRoute() {
       )}
 
       <Dialog
+        open={publishDialogOpen}
+        onClose={() => setPublishDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Publish Batch {selectedBatch?.batchNumber} to Seller Portal?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            This stages the exact price and quantity changes shown below, then
+            moves the staged upload live once. Positive quantities are
+            additions, not absolute stock counts. An ambiguous response is never
+            replayed automatically.
+          </DialogContentText>
+
+          <Stack spacing={1} sx={{ maxHeight: 420, overflowY: "auto" }}>
+            {publicationPreview?.items.map((item) => (
+              <Paper key={item.candidateKey} variant="outlined" sx={{ p: 1.5 }}>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1}
+                  justifyContent="space-between"
+                >
+                  <Box>
+                    <Typography variant="subtitle2">
+                      {item.productName ?? `Product ${item.productId}`}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      SKU {item.sku} · Product {item.productId} · Condition{" "}
+                      {item.sku}
+                    </Typography>
+                  </Box>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="body2">
+                      {item.previousPrice === null
+                        ? "New"
+                        : `$${item.previousPrice.toFixed(2)}`}{" "}
+                      →{" "}
+                      {item.desiredPrice === null
+                        ? "Unavailable"
+                        : `$${item.desiredPrice.toFixed(2)}`}
+                    </Typography>
+                    <Typography variant="body2">
+                      Qty {item.quantityDelta >= 0 ? "+" : ""}
+                      {item.quantityDelta}
+                    </Typography>
+                    <Chip
+                      size="small"
+                      color={item.eligible ? "success" : "warning"}
+                      label={
+                        item.eligible
+                          ? "Ready"
+                          : item.reasons.join(", ").replaceAll("_", " ")
+                      }
+                    />
+                  </Stack>
+                </Stack>
+              </Paper>
+            ))}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPublishDialogOpen(false)}>Cancel</Button>
+          <Button
+            onClick={() => void handleConfirmPublish()}
+            color="success"
+            variant="contained"
+            disabled={isPublishing || !publicationPreview?.eligibleCount}
+          >
+            Publish {publicationPreview?.eligibleCount ?? 0} SKUs
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
       >
-        <Dialog
-          open={publishDialogOpen}
-          onClose={() => setPublishDialogOpen(false)}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle>
-            Publish Batch {selectedBatch?.batchNumber} to Seller Portal?
-          </DialogTitle>
-          <DialogContent>
-            <DialogContentText sx={{ mb: 2 }}>
-              This stages the exact price and quantity changes shown below, then
-              moves the staged upload live once. Positive quantities are
-              additions, not absolute stock counts. An ambiguous response is
-              never replayed automatically.
-            </DialogContentText>
-
-            <Stack spacing={1} sx={{ maxHeight: 420, overflowY: "auto" }}>
-              {publicationPreview?.items.map((item) => (
-                <Paper
-                  key={item.candidateKey}
-                  variant="outlined"
-                  sx={{ p: 1.5 }}
-                >
-                  <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={1}
-                    justifyContent="space-between"
-                  >
-                    <Box>
-                      <Typography variant="subtitle2">
-                        {item.productName ?? `Product ${item.productId}`}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        SKU {item.sku} · Product {item.productId} · Condition{" "}
-                        {item.sku}
-                      </Typography>
-                    </Box>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Typography variant="body2">
-                        {item.previousPrice === null
-                          ? "New"
-                          : `$${item.previousPrice.toFixed(2)}`}{" "}
-                        →{" "}
-                        {item.desiredPrice === null
-                          ? "Unavailable"
-                          : `$${item.desiredPrice.toFixed(2)}`}
-                      </Typography>
-                      <Typography variant="body2">
-                        Qty {item.quantityDelta >= 0 ? "+" : ""}
-                        {item.quantityDelta}
-                      </Typography>
-                      <Chip
-                        size="small"
-                        color={item.eligible ? "success" : "warning"}
-                        label={
-                          item.eligible
-                            ? "Ready"
-                            : item.reasons.join(", ").replaceAll("_", " ")
-                        }
-                      />
-                    </Stack>
-                  </Stack>
-                </Paper>
-              ))}
-            </Stack>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setPublishDialogOpen(false)}>Cancel</Button>
-            <Button
-              onClick={() => void handleConfirmPublish()}
-              color="success"
-              variant="contained"
-              disabled={isPublishing || !publicationPreview?.eligibleCount}
-            >
-              Publish {publicationPreview?.eligibleCount ?? 0} SKUs
-            </Button>
-          </DialogActions>
-        </Dialog>
-
         <DialogTitle>Delete Batch {selectedBatch?.batchNumber}?</DialogTitle>
         <DialogContent>
           <DialogContentText>

@@ -4,6 +4,7 @@ import "../features/inventory-publication/services/inventoryPublicationPolicy.te
 import "../features/continuous-pricing/services/continuousPricingSettings.test";
 import "../features/inventory-publication/services/inventoryPublicationState.test";
 import "../features/inventory-publication/services/inventoryBatchPublication.server.test";
+import "../features/pending-inventory/routes/pending-inventory-pricer.dialogs.test";
 import "../features/inventory-publication/services/inventoryPublicationWorker.test";
 import "../features/inventory-publication/services/inventoryPublicationSettings.test";
 import "../integrations/tcgplayer/client/update-seller-inventory.server.test";
