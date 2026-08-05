@@ -95,6 +95,22 @@ function parsePrice(value: unknown): number | null {
   return null;
 }
 
+function buildPublicationCondition(row: InventoryBatchResult["row"]): string {
+  const condition = row["Sku Condition"]?.trim() ?? "";
+  const variant = row["Sku Variant"]?.trim() ?? "";
+
+  if (
+    !condition ||
+    !variant ||
+    variant.toLowerCase() === "normal" ||
+    condition.toLowerCase().includes(variant.toLowerCase())
+  ) {
+    return condition;
+  }
+
+  return `${condition} ${variant}`;
+}
+
 function addReason(
   reasons: InventoryPublicationEligibilityReason[],
   reason: InventoryPublicationEligibilityReason,
@@ -183,7 +199,7 @@ export async function previewInventoryBatchPublication(
     const productLine = result.row["Product Line"]?.trim() ?? "";
     const setName = result.row["Set Name"]?.trim() ?? "";
     const productName = result.row.Product?.trim() ?? "";
-    const condition = result.row["Sku Condition"]?.trim() ?? "";
+    const condition = buildPublicationCondition(result.row);
     const decision = evaluateInventoryPublicationCandidate(
       {
         sourceType: batch.sourceType,

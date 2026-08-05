@@ -41,7 +41,7 @@ export interface InventoryPublicationWorkerDependencies {
     fileName: string;
     uploadId: number;
     updates: StagedPricingUpdate[];
-  }): Promise<{ SuccessfulProductCount: number }>;
+  }): Promise<{ SuccessfulProductCount: number; Messages?: unknown[] }>;
   finalize(request: {
     uploadId: number;
     successfulProductCount: number;
@@ -173,6 +173,21 @@ function scheduleNextTick(state: WorkerState, delayMs: number): void {
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
+
+function formatSellerPortalMessages(messages?: unknown[]): string {
+  if (!messages?.length) {
+    return "";
+  }
+
+  const formatted = messages
+    .map((message) =>
+      typeof message === "string" ? message : JSON.stringify(message),
+    )
+    .filter((message): message is string => Boolean(message))
+    .join("; ");
+  return formatted ? `Seller Portal messages: ${formatted.slice(0, 1000)}` : "";
+}
+
 export function isSellerPortalAuthenticationFailure(error: unknown): boolean {
   const candidate = error as { response?: { status?: unknown } };
   const status = Number(candidate?.response?.status);
@@ -428,7 +443,12 @@ export async function executeClaimedStagedPublication(
       });
       if (result.SuccessfulProductCount !== chunk.length) {
         throw new Error(
-          `TCGplayer accepted ${result.SuccessfulProductCount} of ${chunk.length} staged pricing rows.`,
+          [
+            `TCGplayer accepted ${result.SuccessfulProductCount} of ${chunk.length} staged pricing rows.`,
+            formatSellerPortalMessages(result.Messages),
+          ]
+            .filter(Boolean)
+            .join(" "),
         );
       }
     }

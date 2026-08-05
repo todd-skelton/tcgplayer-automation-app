@@ -231,6 +231,24 @@ const testCases: TestCase[] = [
     },
   },
   {
+    name: "staged conditions include non-normal printing variants",
+    run: async () => {
+      const result = createResult({
+        row: {
+          ...createRow(),
+          "Sku Condition": "Near Mint",
+          "Sku Variant": "Holofoil",
+        },
+      });
+      const preview = await previewInventoryBatchPublication(90, {
+        dependencies: createDependencies({ result }).dependencies,
+        now: NOW,
+      });
+
+      assert.equal(preview.items[0]?.condition, "Near Mint Holofoil");
+    },
+  },
+  {
     name: "confirmed published deltas become price-only while ambiguous deltas stay blocked",
     run: async () => {
       const published = await previewInventoryBatchPublication(90, {
