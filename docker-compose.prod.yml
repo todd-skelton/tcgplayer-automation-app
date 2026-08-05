@@ -15,7 +15,7 @@ services:
     ports:
       - "3001:3000"
     volumes:
-      - ./logs:/app/logs
+      - app-logs:/app/logs
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tcgplayer_automation
       NODE_ENV: production
@@ -121,3 +121,4 @@ services:
 
 volumes:
   postgres-data:
+  app-logs:

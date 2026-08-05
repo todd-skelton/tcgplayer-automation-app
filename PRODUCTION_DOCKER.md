@@ -118,7 +118,7 @@ docker compose -f docker-compose.prod.yml run --rm app npm run db:migrate
 ## Persistence
 
 - PostgreSQL data is stored in the named Docker volume `postgres-data`.
-- Application logs are mounted to `./logs`.
+- Application logs use the persistent `app-logs` Docker volume and remain available through `npm run prod:logs`.
 
 ## Troubleshooting
 
