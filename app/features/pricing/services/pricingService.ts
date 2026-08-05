@@ -15,13 +15,25 @@ export interface PricePointData {
   calculatedAt?: string;
 }
 
+export interface MinimumMarketplacePriceConfig {
+  minPriceMultiplier: number;
+  minPriceConstant: number;
+}
+
+const DEFAULT_MINIMUM_MARKETPLACE_PRICE_CONFIG: MinimumMarketplacePriceConfig =
+  {
+    minPriceMultiplier: PRICING_CONSTANTS.MIN_PRICE_MULTIPLIER,
+    minPriceConstant: PRICING_CONSTANTS.MIN_PRICE_CONSTANT,
+  };
+
 /**
  * Calculates the marketplace price with bounds checking and error handling
  * This function ensures consistent pricing logic across all processors
  */
 export const calculateMarketplacePrice = (
   suggestedPrice: number,
-  pricePoint: PricePointData | null
+  pricePoint: PricePointData | null,
+  minimumPriceConfig: MinimumMarketplacePriceConfig = DEFAULT_MINIMUM_MARKETPLACE_PRICE_CONFIG,
 ): PriceCalculationResult => {
   const marketPrice = pricePoint?.marketPrice || 0;
   let marketplacePrice = suggestedPrice;
@@ -38,8 +50,8 @@ export const calculateMarketplacePrice = (
   // Case 2: Market price available - enforce lower bound only
   if (marketPrice > 0 && suggestedPrice > 0) {
     const lowerBound =
-      marketPrice * PRICING_CONSTANTS.MIN_PRICE_MULTIPLIER -
-      PRICING_CONSTANTS.MIN_PRICE_CONSTANT;
+      marketPrice * minimumPriceConfig.minPriceMultiplier -
+      minimumPriceConfig.minPriceConstant;
 
     if (suggestedPrice < lowerBound) {
       marketplacePrice = lowerBound;
@@ -59,7 +71,7 @@ export const getSuggestedPrice = async (
     maxListingsPerSku?: number;
     includeUnverifiedSellers?: boolean;
   },
-  productLineId?: number
+  productLineId?: number,
 ): Promise<SuggestedPriceResult> => {
   try {
     const response = await fetch("/api/suggested-price", {

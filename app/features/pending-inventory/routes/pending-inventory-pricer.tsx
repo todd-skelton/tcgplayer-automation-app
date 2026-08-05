@@ -1,5 +1,6 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
+import PublishIcon from "@mui/icons-material/Publish";
 import {
   Alert,
   Box,
@@ -22,6 +23,7 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
+import { useInventoryBatchPublication } from "../../inventory-publication/hooks/useInventoryBatchPublication";
 import { ProgressIndicator } from "../../pricing/components";
 import { InventoryBatchSummaryComponent } from "../components/InventoryBatchSummary";
 import { useInventoryBatchProcessor } from "../hooks/useInventoryBatchProcessor";
@@ -134,7 +136,9 @@ function BatchSummaryCard({ batch }: { batch: InventoryBatch }) {
             orientation="horizontal"
             sx={{
               width: 32,
-              borderColor: batch.lastPricedAt ? "success.main" : "action.disabled",
+              borderColor: batch.lastPricedAt
+                ? "success.main"
+                : "action.disabled",
               borderWidth: 1,
             }}
           />
@@ -176,8 +180,19 @@ export default function PendingInventoryPricerRoute() {
     setError,
     setSuccess,
   } = useInventoryBatchProcessor();
+  const {
+    preview: publicationPreview,
+    publications,
+    latestPublication,
+    hasActivePublication,
+    currentPlanAlreadyExists,
+    isSubmitting: isPublishing,
+    error: publicationError,
+    publish,
+  } = useInventoryBatchPublication(selectedBatch?.batchNumber);
   const [searchParams, setSearchParams] = useSearchParams();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!success) {
@@ -195,7 +210,9 @@ export default function PendingInventoryPricerRoute() {
     }
 
     const batchNumber = Number(batchParam);
-    return Number.isInteger(batchNumber) && batchNumber > 0 ? batchNumber : null;
+    return Number.isInteger(batchNumber) && batchNumber > 0
+      ? batchNumber
+      : null;
   }, [searchParams]);
 
   useEffect(() => {
@@ -269,6 +286,22 @@ export default function PendingInventoryPricerRoute() {
     }
   };
 
+  const handleConfirmPublish = async () => {
+    if (!selectedBatch) {
+      return;
+    }
+
+    setPublishDialogOpen(false);
+    try {
+      await publish();
+      setSuccess(
+        `Batch ${selectedBatch.batchNumber} queued for Seller Portal publication`,
+      );
+    } catch {
+      // The publication hook owns the user-facing error state.
+    }
+  };
+
   const hasPricingResults = Boolean(selectedBatch?.lastPricedAt);
   const isSelectedBatchActive =
     selectedBatch?.latestJob?.status === "queued" ||
@@ -288,8 +321,8 @@ export default function PendingInventoryPricerRoute() {
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Each batch is a frozen snapshot from Inventory Manager, Seller
-              Pricer, or CSV Pricer. New live inventory can continue to be entered
-              while you price a different batch here.
+              Pricer, or CSV Pricer. New live inventory can continue to be
+              entered while you price a different batch here.
             </Typography>
           </Box>
 
@@ -300,7 +333,9 @@ export default function PendingInventoryPricerRoute() {
                 labelId="batch-select-label"
                 label="Batch"
                 value={selectedBatch?.batchNumber ?? ""}
-                onChange={(event) => void handleSelectBatch(Number(event.target.value))}
+                onChange={(event) =>
+                  void handleSelectBatch(Number(event.target.value))
+                }
                 disabled={isLoadingBatches}
                 renderValue={(value) => {
                   const batch = batches.find(
@@ -313,7 +348,12 @@ export default function PendingInventoryPricerRoute() {
               >
                 {batches.map((batch) => (
                   <MenuItem key={batch.batchNumber} value={batch.batchNumber}>
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%" }}>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      sx={{ width: "100%" }}
+                    >
                       <Typography variant="body2" sx={{ mr: 1 }}>
                         Batch {batch.batchNumber}
                       </Typography>
@@ -323,7 +363,11 @@ export default function PendingInventoryPricerRoute() {
                         color={getBatchSourceColor(batch)}
                         variant="outlined"
                       />
-                      <Chip label={`${batch.itemCount} SKUs`} size="small" variant="outlined" />
+                      <Chip
+                        label={`${batch.itemCount} SKUs`}
+                        size="small"
+                        variant="outlined"
+                      />
                       <Chip
                         label={batch.status}
                         size="small"
@@ -337,7 +381,10 @@ export default function PendingInventoryPricerRoute() {
             </FormControl>
           ) : (
             <Alert severity="info">
-              No inventory batches exist yet. Create one from the <Link to="/inventory-manager">Inventory Manager</Link>, <Link to="/seller-pricer">Seller Pricer</Link>, or <Link to="/pricer">CSV Pricer</Link>.
+              No inventory batches exist yet. Create one from the{" "}
+              <Link to="/inventory-manager">Inventory Manager</Link>,{" "}
+              <Link to="/seller-pricer">Seller Pricer</Link>, or{" "}
+              <Link to="/pricer">CSV Pricer</Link>.
             </Alert>
           )}
 
@@ -363,7 +410,7 @@ export default function PendingInventoryPricerRoute() {
                     <Button
                       variant="contained"
                       onClick={() => void handleProcessBatch("full")}
-                      disabled={isSelectedBatchActive}
+                      disabled={isSelectedBatchActive || hasActivePublication}
                     >
                       {hasPricingResults ? "Reprice Batch" : "Price Batch"}
                     </Button>
@@ -374,6 +421,7 @@ export default function PendingInventoryPricerRoute() {
                   color="warning"
                   onClick={() => void handleProcessBatch("errors")}
                   disabled={
+                    hasActivePublication ||
                     isSelectedBatchActive ||
                     !hasPricingResults ||
                     selectedBatch.manualReviewCount === 0
@@ -394,7 +442,9 @@ export default function PendingInventoryPricerRoute() {
                   variant="outlined"
                   startIcon={<DownloadIcon />}
                   onClick={() => void handleDownload("successful")}
-                  disabled={!hasPricingResults || selectedBatch.successfulCount === 0}
+                  disabled={
+                    !hasPricingResults || selectedBatch.successfulCount === 0
+                  }
                 >
                   Successful ({selectedBatch.successfulCount})
                 </Button>
@@ -418,15 +468,87 @@ export default function PendingInventoryPricerRoute() {
               />
 
               <Button
+                variant="contained"
+                color="success"
+                startIcon={<PublishIcon />}
+                onClick={() => setPublishDialogOpen(true)}
+                disabled={
+                  isSelectedBatchActive ||
+                  hasActivePublication ||
+                  isPublishing ||
+                  currentPlanAlreadyExists ||
+                  !publicationPreview ||
+                  publicationPreview.eligibleCount === 0
+                }
+              >
+                Publish ({publicationPreview?.eligibleCount ?? 0})
+              </Button>
+
+              <Divider
+                orientation="vertical"
+                flexItem
+                sx={{ display: { xs: "none", md: "block" } }}
+              />
+
+              <Button
                 variant="outlined"
                 color="error"
                 startIcon={<DeleteIcon />}
                 onClick={() => setDeleteDialogOpen(true)}
-                disabled={isSelectedBatchActive}
+                disabled={isSelectedBatchActive || publications.length > 0}
               >
                 Delete Batch
               </Button>
             </Stack>
+
+            {publicationPreview && (
+              <Alert
+                severity={
+                  publicationPreview.excludedCount > 0 ? "warning" : "info"
+                }
+              >
+                {publicationPreview.eligibleCount} SKU
+                {publicationPreview.eligibleCount === 1 ? "" : "s"} ready to
+                publish; {publicationPreview.excludedCount} excluded by safety
+                checks.
+              </Alert>
+            )}
+
+            {latestPublication && (
+              <Alert
+                severity={
+                  latestPublication.status === "published"
+                    ? "success"
+                    : latestPublication.status === "failed" ||
+                        latestPublication.status === "rolled_back"
+                      ? "error"
+                      : latestPublication.status === "ambiguous"
+                        ? "warning"
+                        : "info"
+                }
+              >
+                Latest publication:{" "}
+                {latestPublication.status.replaceAll("_", " ")}. Published{" "}
+                {
+                  latestPublication.items.filter(
+                    (item) => item.status === "published",
+                  ).length
+                }
+                , failed{" "}
+                {
+                  latestPublication.items.filter(
+                    (item) => item.status === "failed",
+                  ).length
+                }
+                , ambiguous{" "}
+                {
+                  latestPublication.items.filter(
+                    (item) => item.status === "ambiguous",
+                  ).length
+                }
+                .
+              </Alert>
+            )}
           </Stack>
         </Paper>
       )}
@@ -434,7 +556,11 @@ export default function PendingInventoryPricerRoute() {
       {progress && <ProgressIndicator progress={progress} />}
 
       {success && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
+        <Alert
+          severity="success"
+          sx={{ mb: 2 }}
+          onClose={() => setSuccess(null)}
+        >
           <Typography>{success}</Typography>
         </Alert>
       )}
@@ -442,6 +568,12 @@ export default function PendingInventoryPricerRoute() {
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           <Typography>{error}</Typography>
+        </Alert>
+      )}
+
+      {publicationError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <Typography>{publicationError}</Typography>
         </Alert>
       )}
 
@@ -457,7 +589,90 @@ export default function PendingInventoryPricerRoute() {
         </Box>
       )}
 
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+      >
+        <Dialog
+          open={publishDialogOpen}
+          onClose={() => setPublishDialogOpen(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            Publish Batch {selectedBatch?.batchNumber} to Seller Portal?
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText sx={{ mb: 2 }}>
+              This stages the exact price and quantity changes shown below, then
+              moves the staged upload live once. Positive quantities are
+              additions, not absolute stock counts. An ambiguous response is
+              never replayed automatically.
+            </DialogContentText>
+
+            <Stack spacing={1} sx={{ maxHeight: 420, overflowY: "auto" }}>
+              {publicationPreview?.items.map((item) => (
+                <Paper
+                  key={item.candidateKey}
+                  variant="outlined"
+                  sx={{ p: 1.5 }}
+                >
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1}
+                    justifyContent="space-between"
+                  >
+                    <Box>
+                      <Typography variant="subtitle2">
+                        {item.productName ?? `Product ${item.productId}`}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        SKU {item.sku} · Product {item.productId} · Condition{" "}
+                        {item.sku}
+                      </Typography>
+                    </Box>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography variant="body2">
+                        {item.previousPrice === null
+                          ? "New"
+                          : `$${item.previousPrice.toFixed(2)}`}{" "}
+                        →{" "}
+                        {item.desiredPrice === null
+                          ? "Unavailable"
+                          : `$${item.desiredPrice.toFixed(2)}`}
+                      </Typography>
+                      <Typography variant="body2">
+                        Qty {item.quantityDelta >= 0 ? "+" : ""}
+                        {item.quantityDelta}
+                      </Typography>
+                      <Chip
+                        size="small"
+                        color={item.eligible ? "success" : "warning"}
+                        label={
+                          item.eligible
+                            ? "Ready"
+                            : item.reasons.join(", ").replaceAll("_", " ")
+                        }
+                      />
+                    </Stack>
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setPublishDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => void handleConfirmPublish()}
+              color="success"
+              variant="contained"
+              disabled={isPublishing || !publicationPreview?.eligibleCount}
+            >
+              Publish {publicationPreview?.eligibleCount ?? 0} SKUs
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         <DialogTitle>Delete Batch {selectedBatch?.batchNumber}?</DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -467,7 +682,11 @@ export default function PendingInventoryPricerRoute() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button onClick={() => void handleConfirmDelete()} color="error" variant="contained">
+          <Button
+            onClick={() => void handleConfirmDelete()}
+            color="error"
+            variant="contained"
+          >
             Delete Batch
           </Button>
         </DialogActions>

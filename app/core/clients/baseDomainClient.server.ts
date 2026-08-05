@@ -252,13 +252,18 @@ export class DomainHttpClient {
   async get<TResponse, TParams = unknown>(
     path: string,
     params?: TParams,
-    options?: Pick<AxiosRequestConfig, "headers" | "responseType">,
+    options?: Pick<AxiosRequestConfig, "headers" | "responseType"> & {
+      retry?: boolean;
+    },
   ): Promise<TResponse> {
+    const { retry = true, ...requestOptions } = options ?? {};
     return this.executeWithRetry(
       "GET",
       path,
-      () => this.axiosClient.get<TResponse>(path, { params, ...options }),
+      () =>
+        this.axiosClient.get<TResponse>(path, { params, ...requestOptions }),
       params ? { params } : undefined,
+      retry ? MAX_RETRIES : 0,
     );
   }
 
@@ -268,13 +273,17 @@ export class DomainHttpClient {
   async post<TResponse, TData = unknown>(
     path: string,
     data?: TData,
-    options?: Pick<AxiosRequestConfig, "headers" | "responseType">,
+    options?: Pick<AxiosRequestConfig, "headers" | "responseType"> & {
+      retry?: boolean;
+    },
   ): Promise<TResponse> {
+    const { retry = true, ...requestOptions } = options ?? {};
     return this.executeWithRetry(
       "POST",
       path,
-      () => this.axiosClient.post<TResponse>(path, data, options),
+      () => this.axiosClient.post<TResponse>(path, data, requestOptions),
       data ? { data } : undefined,
+      retry ? MAX_RETRIES : 0,
     );
   }
 
@@ -286,6 +295,7 @@ export class DomainHttpClient {
     path: string,
     requestFn: () => Promise<AxiosResponse<T>>,
     logContext?: unknown,
+    maxRetries: number = MAX_RETRIES,
   ): Promise<T> {
     // Get fresh config for each request execution (may have been updated by adaptive logic)
     const httpConfig = await getHttpConfig();
@@ -295,7 +305,7 @@ export class DomainHttpClient {
     // Track if we've already adjusted for rate limit in this request's retry loop
     let hasRecordedRateLimit = false;
 
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
       domainConfig = await getDomainConfig(this.domainKey);
       await this.limiter.acquire(domainConfig.maxConcurrentRequests);
 
@@ -309,7 +319,7 @@ export class DomainHttpClient {
           );
         } else {
           console.log(
-            `[HTTP:${this.domainKey} ${method}] Retry ${attempt}/${MAX_RETRIES}: ${path}`,
+            `[HTTP:${this.domainKey} ${method}] Retry ${attempt}/${maxRetries}: ${path}`,
           );
         }
 
@@ -320,7 +330,7 @@ export class DomainHttpClient {
 
         return response.data;
       } catch (error) {
-        const isLastAttempt = attempt === MAX_RETRIES;
+        const isLastAttempt = attempt === maxRetries;
 
         if (!isRetryableError(error) || isLastAttempt) {
           throw error;
@@ -357,7 +367,7 @@ export class DomainHttpClient {
 
     // This should never be reached due to the throw in the loop, but TypeScript needs it
     throw new Error(
-      `Request to ${this.domainKey} failed after ${MAX_RETRIES} retries`,
+      `Request to ${this.domainKey} failed after ${maxRetries} retries`,
     );
   }
 }

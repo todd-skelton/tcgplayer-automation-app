@@ -7,9 +7,12 @@ export {
 } from "./database.server";
 export { categoryFiltersRepository } from "./repositories/categoryFilters.server";
 export { categorySetsRepository } from "./repositories/categorySets.server";
+export { continuousPricingRepository } from "./repositories/continuousPricing.server";
 export { httpConfigRepository } from "./repositories/httpConfig.server";
 export { inventoryBatchesRepository } from "./repositories/inventoryBatches.server";
 export { inventoryBatchPricingJobsRepository } from "./repositories/inventoryBatchPricingJobs.server";
+export { inventoryPublicationsRepository } from "./repositories/inventoryPublications.server";
+export { inventoryPublicationSettingsRepository } from "./repositories/inventoryPublicationSettings.server";
 export { pendingInventoryRepository } from "./repositories/pendingInventory.server";
 export { pricingConfigRepository } from "./repositories/pricingConfig.server";
 export { productLinesRepository } from "./repositories/productLines.server";

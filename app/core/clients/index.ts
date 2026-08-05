@@ -13,6 +13,7 @@
  *   mpGateway,
  *   orderManagementApi,
  *   messagesApi,
+ *   sellerPortal,
  * } from "~/core/clients";
  *
  * // Use relative paths - baseURL is already set
@@ -27,6 +28,7 @@ export { infiniteApi } from "./infiniteApi.client.server";
 export { mpGateway } from "./mpGateway.client.server";
 export { orderManagementApi } from "./orderManagementApi.client.server";
 export { messagesApi } from "./messagesApi.client.server";
+export { sellerPortal } from "./sellerPortal.client.server";
 
 // Base client class for advanced use cases
 export { DomainHttpClient } from "./baseDomainClient.server";

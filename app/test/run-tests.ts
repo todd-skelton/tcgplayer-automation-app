@@ -1,5 +1,13 @@
 import "../core/clients/baseDomainClient.server.test";
 import "../core/utils/numberFieldMatching.test";
+import "../features/inventory-publication/services/inventoryPublicationPolicy.test";
+import "../features/continuous-pricing/services/continuousPricingSettings.test";
+import "../features/inventory-publication/services/inventoryPublicationState.test";
+import "../features/inventory-publication/services/inventoryBatchPublication.server.test";
+import "../features/inventory-publication/services/inventoryPublicationWorker.test";
+import "../features/inventory-publication/services/inventoryPublicationSettings.test";
+import "../integrations/tcgplayer/client/update-seller-inventory.server.test";
+import "../integrations/tcgplayer/client/staged-pricing-import.server.test";
 import "../features/inventory-management/components/quantityKeyboard.test";
 import "../features/shipping-export/config/shippingExportConfig.server.test";
 import "../features/shipping-export/config/shippingExportConfigFormData.test";
@@ -21,4 +29,5 @@ import "../features/shipping-export/services/tcgplayerShippedMessages.server.tes
 import "../features/shipping-export/services/tcgplayerSellerOrders.server.test";
 import "../features/pull-sheet/utils/pullSheetItems.test";
 import "../features/product-price-matrix/services/productPriceMatrix.server.test";
+import "../features/pricing/services/pricingService.test";
 import "../features/shipping-export/components/steps/PackStep.test";

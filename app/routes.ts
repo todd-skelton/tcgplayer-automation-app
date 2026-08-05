@@ -19,12 +19,20 @@ export default [
     file: "features/pending-inventory/routes/pending-inventory-pricer.tsx",
   },
   {
+    path: "/continuous-pricing",
+    file: "features/continuous-pricing/routes/continuous-pricing.tsx",
+  },
+  {
     path: "/product-price-matrix",
     file: "features/product-price-matrix/routes/product-price-matrix.tsx",
   },
   {
     path: "/configuration",
     file: "features/pricing/routes/configuration.tsx",
+  },
+  {
+    path: "/publication-configuration",
+    file: "features/inventory-publication/routes/publication-configuration.tsx",
   },
   {
     path: "/http-configuration",
@@ -65,6 +73,14 @@ export default [
   {
     path: "/api/pricing-config",
     file: "features/pricing/routes/api.pricing-config.ts",
+  },
+  {
+    path: "/api/inventory-publication-settings",
+    file: "features/inventory-publication/routes/api.inventory-publication-settings.ts",
+  },
+  {
+    path: "/api/inventory-publication-health",
+    file: "features/inventory-publication/routes/api.inventory-publication-health.ts",
   },
   {
     path: "/api/convert-to-pricer-sku",
@@ -113,6 +129,10 @@ export default [
   {
     path: "/api/inventory-batches/:batchNumber/results",
     file: "features/pending-inventory/routes/api.inventory-batch-results.ts",
+  },
+  {
+    path: "/api/inventory-batches/:batchNumber/publications",
+    file: "features/pending-inventory/routes/api.inventory-batch-publications.ts",
   },
   {
     path: "/api/inventory-batches/:batchNumber/pricing-jobs",
@@ -171,4 +191,3 @@ export default [
     file: "features/pull-sheet/routes/api.pull-sheet-lookup.ts",
   },
 ] satisfies RouteConfig;
-

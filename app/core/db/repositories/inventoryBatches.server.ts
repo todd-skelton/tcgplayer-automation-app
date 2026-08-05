@@ -46,7 +46,10 @@ interface CreateInventoryBatchItemInput {
 }
 
 interface CreateImportedBatchParams {
-  sourceType: Extract<InventoryBatch["sourceType"], "seller" | "csv">;
+  sourceType: Extract<
+    InventoryBatch["sourceType"],
+    "seller" | "csv" | "continuous"
+  >;
   sourceLabel: string;
   items: CreateInventoryBatchItemInput[];
 }
@@ -184,7 +187,8 @@ async function buildBatchSummary(
     const quantity =
       pricingDetails?.quantity ?? parseNumericValue(row["Total Quantity"]);
     const addToQuantity =
-      pricingDetails?.addToQuantity ?? parseNumericValue(row["Add to Quantity"]);
+      pricingDetails?.addToQuantity ??
+      parseNumericValue(row["Add to Quantity"]);
     const combinedQuantity = getCombinedQuantity(row, quantity, addToQuantity);
     const tcgMarketPrice =
       pricingDetails?.tcgMarketPrice ??
@@ -263,7 +267,9 @@ async function buildBatchSummary(
               productLineName,
               {
                 count: data.count,
-                percentilesUsed: [...data.percentilesUsed].sort((a, b) => a - b),
+                percentilesUsed: [...data.percentilesUsed].sort(
+                  (a, b) => a - b,
+                ),
                 totalValue: data.totalValue,
               },
             ]),
@@ -560,7 +566,9 @@ export const inventoryBatchesRepository = {
       );
 
       if (!batch) {
-        throw new Error(`Batch ${createdBatch.batchNumber} could not be reloaded`);
+        throw new Error(
+          `Batch ${createdBatch.batchNumber} could not be reloaded`,
+        );
       }
 
       return batch;
@@ -722,4 +730,3 @@ export const inventoryBatchesRepository = {
     });
   },
 };
-

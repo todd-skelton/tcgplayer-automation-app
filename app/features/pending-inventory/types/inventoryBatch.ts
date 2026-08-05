@@ -135,4 +135,3 @@ export interface SaveInventoryBatchResultsParams {
 }
 
 export interface InventoryBatchWithJob extends InventoryBatch {}
-

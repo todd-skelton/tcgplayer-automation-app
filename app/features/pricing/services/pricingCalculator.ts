@@ -6,6 +6,7 @@ import type {
 } from "../../../core/types/pricing";
 import { getSuggestedPrice } from "./pricingService";
 import { calculateMarketplacePrice } from "./pricingService";
+import { PRICING_CONSTANTS } from "../../../core/constants/pricing";
 import type { PricePoint } from "../../../integrations/tcgplayer/client/get-price-points.server";
 import type { ProductDisplayInfo } from "../../../shared/services/dataEnrichmentService";
 
@@ -185,6 +186,7 @@ export class PricingCalculator {
           pricerSku,
           result,
           pricePointsMap,
+          config,
         );
 
         // Add the percentile and product line info used for this SKU
@@ -398,6 +400,7 @@ export class PricingCalculator {
     pricerSku: PricerSku,
     result: any,
     pricePointsMap: Map<number, PricePoint> = new Map(),
+    config: Pick<PricingConfig, "minPriceMultiplier" | "minPriceConstant"> = {},
   ): Promise<PricingResult> {
     const pricedItem: PricingResult = {
       sku: pricerSku.sku,
@@ -434,6 +437,13 @@ export class PricingCalculator {
                 calculatedAt: pricePoint.calculatedAt,
               }
             : null,
+          {
+            minPriceMultiplier:
+              config.minPriceMultiplier ??
+              PRICING_CONSTANTS.MIN_PRICE_MULTIPLIER,
+            minPriceConstant:
+              config.minPriceConstant ?? PRICING_CONSTANTS.MIN_PRICE_CONSTANT,
+          },
         );
 
       // Set the bounded price as the marketplace price

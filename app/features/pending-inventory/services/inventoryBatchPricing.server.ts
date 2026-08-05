@@ -89,12 +89,18 @@ async function loadProductDisplayMap(
   return skuMap;
 }
 
-function createPricePointMap(pricePoints: PricePoint[]): Map<number, PricePoint> {
-  return new Map(pricePoints.map((pricePoint) => [pricePoint.skuId, pricePoint]));
+function createPricePointMap(
+  pricePoints: PricePoint[],
+): Map<number, PricePoint> {
+  return new Map(
+    pricePoints.map((pricePoint) => [pricePoint.skuId, pricePoint]),
+  );
 }
 
 function enrichPricedSkus(
-  pricedItems: Awaited<ReturnType<PricingCalculator["calculatePrices"]>>["pricedItems"],
+  pricedItems: Awaited<
+    ReturnType<PricingCalculator["calculatePrices"]>
+  >["pricedItems"],
   productDisplayMap: Map<number, ProductDisplayInfo>,
   pricePointsMap: Map<number, PricePoint>,
 ): PricedSku[] {
@@ -183,7 +189,8 @@ function buildSummary(
 
     const productLineId = Number(productLineIdText);
     const skippedCount = sourceSkus.filter(
-      (sku) => sku.productLineId === productLineId && !sku.bypassProductLineSkips,
+      (sku) =>
+        sku.productLineId === productLineId && !sku.bypassProductLineSkips,
     ).length;
 
     if (skippedCount === 0) {
@@ -302,15 +309,17 @@ export async function executeInventoryBatchPricingJob({
     throw new Error(`Batch ${batchNumber} not found`);
   }
 
-  const items = await inventoryBatchesRepository.findItems(batchNumber, sourceScope);
+  const items = await inventoryBatchesRepository.findItems(
+    batchNumber,
+    sourceScope,
+  );
   throwIfCancelled(isCancelled);
 
   const bypassProductLineSkips = batch.sourceType === "pending_inventory";
 
   const sourceSkus = items
     .filter(
-      (item) =>
-        item.sku > 0 && item.totalQuantity + item.addToQuantity > 0,
+      (item) => item.sku > 0 && item.totalQuantity + item.addToQuantity > 0,
     )
     .map(
       (item): PricerSku => ({
@@ -412,10 +421,13 @@ export async function executeInventoryBatchPricingJob({
     sourceSkus,
     {
       percentile: config.productLinePricing.defaultPercentile,
+      minPriceMultiplier: config.pricing.minPriceMultiplier,
+      minPriceConstant: config.pricing.minPriceConstant,
       enableSupplyAnalysis: config.supplyAnalysis.enableSupplyAnalysis,
       supplyAnalysisConfig: {
         maxListingsPerSku: config.supplyAnalysis.maxListingsPerSku,
-        includeUnverifiedSellers: config.supplyAnalysis.includeUnverifiedSellers,
+        includeUnverifiedSellers:
+          config.supplyAnalysis.includeUnverifiedSellers,
       },
       productLinePricingConfig: config.productLinePricing,
       suggestedPriceResolver: resolveSuggestedPriceWithBatchCache,

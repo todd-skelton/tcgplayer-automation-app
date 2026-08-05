@@ -152,6 +152,8 @@ export type SuggestedPriceResolver = (
 
 export interface PricingConfig {
   percentile: number;
+  minPriceMultiplier?: number;
+  minPriceConstant?: number;
   halfLifeDays?: number; // For time decay in pricing algorithms
   onProgress?: (progress: ProcessingProgress) => void;
   onError?: (error: string) => void;

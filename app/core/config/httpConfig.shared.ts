@@ -15,6 +15,7 @@ export const DOMAIN_KEYS = {
   MP_GATEWAY: "mpGateway",
   ORDER_MANAGEMENT_API: "orderManagementApi",
   MESSAGES_API: "messagesApi",
+  SELLER_PORTAL: "sellerPortal",
 } as const;
 
 export type DomainKey = (typeof DOMAIN_KEYS)[keyof typeof DOMAIN_KEYS];
@@ -27,6 +28,7 @@ export const TCGPLAYER_DOMAINS: Record<DomainKey, string> = {
   [DOMAIN_KEYS.MP_GATEWAY]: "mpgateway.tcgplayer.com",
   [DOMAIN_KEYS.ORDER_MANAGEMENT_API]: "order-management-api.tcgplayer.com",
   [DOMAIN_KEYS.MESSAGES_API]: "messages-api.tcgplayer.com",
+  [DOMAIN_KEYS.SELLER_PORTAL]: "store.tcgplayer.com",
 };
 
 // ============================================================================
@@ -105,6 +107,15 @@ export const DEFAULT_DOMAIN_CONFIGS: DomainConfigs = {
     maxRequestDelayMs: 10000,
     learnedMinDelayMs: 0,
   },
+  [DOMAIN_KEYS.SELLER_PORTAL]: {
+    requestDelayMs: 2000,
+    rateLimitCooldownMs: 10000,
+    maxConcurrentRequests: 1,
+    adaptiveEnabled: false,
+    minRequestDelayMs: 2000,
+    maxRequestDelayMs: 10000,
+    learnedMinDelayMs: 0,
+  },
 };
 
 // ============================================================================
@@ -155,4 +166,5 @@ export const DOMAIN_DISPLAY_NAMES: Record<DomainKey, string> = {
   [DOMAIN_KEYS.MP_GATEWAY]: "Gateway API (mpgateway)",
   [DOMAIN_KEYS.ORDER_MANAGEMENT_API]: "Order Management API",
   [DOMAIN_KEYS.MESSAGES_API]: "Messages API",
+  [DOMAIN_KEYS.SELLER_PORTAL]: "Seller Portal (store)",
 };

@@ -1,5 +1,10 @@
-import { inventoryBatchPricingJobsRepository, inventoryBatchesRepository } from "~/core/db";
+import {
+  continuousPricingRepository,
+  inventoryBatchPricingJobsRepository,
+  inventoryBatchesRepository,
+} from "~/core/db";
 import { PricedSkuToTcgPlayerListingConverter } from "~/features/file-upload/services/dataConverters";
+import { planAutomaticInventoryBatchPublication } from "~/features/inventory-publication/services/automaticInventoryBatchPublication.server";
 import type {
   PersistedPricingDetails,
   ProcessingProgress,
@@ -50,7 +55,9 @@ function scheduleNextTick(state: WorkerState, delayMs: number): void {
   }, delayMs);
 }
 
-function getPricedSkuResultStatus(pricedSku: PricedSku): "successful" | "manual_review" {
+function getPricedSkuResultStatus(
+  pricedSku: PricedSku,
+): "successful" | "manual_review" {
   const hasErrors = Boolean(pricedSku.errors && pricedSku.errors.length > 0);
   const hasPrice =
     pricedSku.price !== undefined &&
@@ -151,6 +158,23 @@ async function processJob(
       result.summary,
       result.finalProgress,
     );
+    try {
+      await continuousPricingRepository.recordBatchCompleted(job.batchNumber);
+    } catch (projectionError) {
+      console.error(
+        `Continuous pricing projection update failed for batch ${job.batchNumber}:`,
+        projectionError,
+      );
+    }
+
+    try {
+      await planAutomaticInventoryBatchPublication(job.batchNumber);
+    } catch (automaticPublicationError) {
+      console.error(
+        `Automatic publication planning failed for batch ${job.batchNumber}:`,
+        automaticPublicationError,
+      );
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await inventoryBatchPricingJobsRepository.fail(
@@ -193,13 +217,18 @@ async function tick(state: WorkerState): Promise<void> {
   }
 }
 
-export function ensureInventoryBatchPricingWorker(): void {
+export function startInventoryBatchPricingWorkerProcess(): void {
   const state = getWorkerState();
-
   if (state.started) {
     return;
   }
-
   state.started = true;
   scheduleNextTick(state, 0);
+}
+
+export function ensureInventoryBatchPricingWorker(): void {
+  if (process.env.WORKERS_RUN_IN_PROCESS === "false") {
+    return;
+  }
+  startInventoryBatchPricingWorkerProcess();
 }

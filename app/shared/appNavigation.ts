@@ -3,8 +3,10 @@ import BatchPredictionIcon from "@mui/icons-material/BatchPrediction";
 import HttpIcon from "@mui/icons-material/Http";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
+import LoopIcon from "@mui/icons-material/Loop";
 import PriceCheckIcon from "@mui/icons-material/PriceCheck";
 import SettingsIcon from "@mui/icons-material/Settings";
+import PublishIcon from "@mui/icons-material/Publish";
 import StorageIcon from "@mui/icons-material/Storage";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
@@ -32,6 +34,11 @@ export const primaryNavigationItems: NavigationItem[] = [
     icon: BatchPredictionIcon,
   },
   {
+    label: "Continuous Pricing",
+    to: "/continuous-pricing",
+    icon: LoopIcon,
+  },
+  {
     label: "Price Matrix",
     to: "/product-price-matrix",
     icon: PriceCheckIcon,
@@ -47,6 +54,11 @@ export const primaryNavigationItems: NavigationItem[] = [
 
 export const settingsNavigationItems: NavigationItem[] = [
   { label: "Configuration", to: "/configuration", icon: SettingsIcon },
+  {
+    label: "Inventory Publication",
+    to: "/publication-configuration",
+    icon: PublishIcon,
+  },
   {
     label: "Shipping Configuration",
     to: "/shipping-configuration",
@@ -111,7 +123,8 @@ export const dashboardCards: DashboardCard[] = [
   {
     title: "Shipping Export",
     label: "Shipping Export",
-    description: "Review shipments, buy EasyPost postage, or export fallback CSVs",
+    description:
+      "Review shipments, buy EasyPost postage, or export fallback CSVs",
     to: "/shipping-export",
     icon: LocalShippingIcon,
     color: "error.main",
