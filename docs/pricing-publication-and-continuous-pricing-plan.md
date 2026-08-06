@@ -574,3 +574,8 @@ Acceptance:
 - 2026-08-05: Controlled publication 3 moved upload 16109624 live for ProductConditionId 9190499, changing Decidueye ex - 012/088 from $0.55 to $0.53 with AddToQuantity 0.
 - 2026-08-05: Logged-in Seller Portal verification showed live price $0.53 and quantity 2. The public seller-inventory snapshot still showed $0.55 immediately afterward, establishing an external propagation/cache delay.
 - 2026-08-05: Automatic publication for every source and continuous pricing remain disabled after the rollout.
+- 2026-08-06: Manual publication gained exact SKU selection, a conservative 20-SKU price-only default, selection-specific durable identities, staged-size validation, and regression coverage.
+- 2026-08-06: Batch 89 completed with 1,115 successful results and 95 manual-review results, but the one-hour candidate-age guard correctly excluded the batch after its long pricing run.
+- 2026-08-06: A fresh batch 91 repriced 20 price-only canary SKUs from frozen batch-89 catalog metadata with zero errors, warnings, or inventory deltas; one unchanged price was excluded.
+- 2026-08-06: Publication 4 moved staged upload 16124993 live for the remaining 19 SKUs with 19 published, 0 failed, 0 ambiguous, and total AddToQuantity 0.
+- 2026-08-06: A fresh public seller-inventory snapshot matched all 19 desired prices and all 19 frozen quantities. Authentication remained healthy, the circuit remained closed, and every automatic publication source plus continuous pricing remained disabled.
