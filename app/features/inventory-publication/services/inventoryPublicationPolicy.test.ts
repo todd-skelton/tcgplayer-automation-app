@@ -124,22 +124,24 @@ const testCases: TestCase[] = [
     },
   },
   {
-    name: "price movement limits block excessive increases and decreases",
+    name: "previous-price percentages do not block valid cent changes",
     run: () => {
       const policy = createEnabledPolicy();
       const increase = evaluateInventoryPublicationCandidate(
-        createCandidate({ previousPrice: 10, price: 25 }),
+        createCandidate({ previousPrice: 0.01, price: 0.03 }),
         policy,
         NOW,
       );
       const decrease = evaluateInventoryPublicationCandidate(
-        createCandidate({ previousPrice: 10, price: 7 }),
+        createCandidate({ previousPrice: 0.02, price: 0.01 }),
         policy,
         NOW,
       );
 
-      assert.ok(increase.reasons.includes("increase_limit_exceeded"));
-      assert.ok(decrease.reasons.includes("decrease_limit_exceeded"));
+      assert.equal(increase.eligible, true);
+      assert.deepEqual(increase.reasons, []);
+      assert.equal(decrease.eligible, true);
+      assert.deepEqual(decrease.reasons, []);
     },
   },
   {

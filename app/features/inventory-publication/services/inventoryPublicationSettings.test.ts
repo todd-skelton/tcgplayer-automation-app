@@ -16,7 +16,6 @@ const normalized = normalizeInventoryPublicationSettings({
       csv: true,
       continuous: true,
     },
-    maximumAutomaticDecreasePercent: 15,
     stagedMicroBatchMaximum: 800,
   },
 });
@@ -24,7 +23,6 @@ const normalized = normalizeInventoryPublicationSettings({
 assert.equal(normalized.consecutiveFailureLimit, 5);
 assert.equal(normalized.policy.automaticSources.pending_inventory, true);
 assert.equal(normalized.policy.stagedMicroBatchMaximum, 250);
-assert.equal(normalized.policy.maximumAutomaticDecreasePercent, 15);
 
 const configuration = {
   settings: normalized,

@@ -108,8 +108,7 @@ export function evaluateInventoryPublicationCandidate(
   }
 
   if (roundedPrice !== undefined && roundedPreviousPrice !== undefined) {
-    const signedPriceChange = roundedPrice - roundedPreviousPrice;
-    absolutePriceChange = Math.abs(signedPriceChange);
+    absolutePriceChange = Math.abs(roundedPrice - roundedPreviousPrice);
     relativePriceChangePercent =
       (absolutePriceChange / roundedPreviousPrice) * 100;
 
@@ -121,20 +120,6 @@ export function evaluateInventoryPublicationCandidate(
         relativePriceChangePercent < policy.minimumRelativePriceChangePercent
       ) {
         addReason(reasons, "below_minimum_change");
-      }
-
-      if (
-        signedPriceChange < 0 &&
-        relativePriceChangePercent > policy.maximumAutomaticDecreasePercent
-      ) {
-        addReason(reasons, "decrease_limit_exceeded");
-      }
-
-      if (
-        signedPriceChange > 0 &&
-        relativePriceChangePercent > policy.maximumAutomaticIncreasePercent
-      ) {
-        addReason(reasons, "increase_limit_exceeded");
       }
     }
   }

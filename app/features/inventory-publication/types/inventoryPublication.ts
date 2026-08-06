@@ -34,8 +34,6 @@ export type InventoryPublicationEligibilityReason =
   | "missing_previous_price"
   | "unchanged_price"
   | "below_minimum_change"
-  | "decrease_limit_exceeded"
-  | "increase_limit_exceeded"
   | "candidate_stale"
   | "invalid_quantity_delta"
   | "missing_product_metadata"
@@ -51,8 +49,6 @@ export interface InventoryPublicationPolicy {
   maximumCandidateAgeMs: number;
   minimumAbsolutePriceChange: number;
   minimumRelativePriceChangePercent: number;
-  maximumAutomaticDecreasePercent: number;
-  maximumAutomaticIncreasePercent: number;
   stagedMicroBatchMaximum: number;
   stagedFlushWindowMs: number;
 }
@@ -70,8 +66,6 @@ export const DEFAULT_INVENTORY_PUBLICATION_POLICY: InventoryPublicationPolicy =
     maximumCandidateAgeMs: 60 * 60 * 1000,
     minimumAbsolutePriceChange: 0.01,
     minimumRelativePriceChangePercent: 0,
-    maximumAutomaticDecreasePercent: 25,
-    maximumAutomaticIncreasePercent: 100,
     stagedMicroBatchMaximum: 250,
     stagedFlushWindowMs: 60 * 1000,
   };

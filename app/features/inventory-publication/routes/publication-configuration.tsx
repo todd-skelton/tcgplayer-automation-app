@@ -233,30 +233,6 @@ export default function PublicationConfigurationRoute() {
               }
               slotProps={{ htmlInput: { min: 1, max: 100 } }}
             />
-            <TextField
-              label="Maximum automatic decrease (%)"
-              type="number"
-              value={settings.policy.maximumAutomaticDecreasePercent}
-              onChange={(event) =>
-                updatePolicy(
-                  "maximumAutomaticDecreasePercent",
-                  Number(event.target.value),
-                )
-              }
-              slotProps={{ htmlInput: { min: 0, max: 100 } }}
-            />
-            <TextField
-              label="Maximum automatic increase (%)"
-              type="number"
-              value={settings.policy.maximumAutomaticIncreasePercent}
-              onChange={(event) =>
-                updatePolicy(
-                  "maximumAutomaticIncreasePercent",
-                  Number(event.target.value),
-                )
-              }
-              slotProps={{ htmlInput: { min: 0, max: 10000 } }}
-            />
           </Stack>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <TextField

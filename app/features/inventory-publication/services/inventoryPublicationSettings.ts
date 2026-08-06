@@ -89,18 +89,6 @@ function normalizePolicy(value: unknown): InventoryPublicationPolicy {
       0,
       100,
     ),
-    maximumAutomaticDecreasePercent: finiteNumber(
-      input.maximumAutomaticDecreasePercent,
-      DEFAULT_INVENTORY_PUBLICATION_POLICY.maximumAutomaticDecreasePercent,
-      0,
-      100,
-    ),
-    maximumAutomaticIncreasePercent: finiteNumber(
-      input.maximumAutomaticIncreasePercent,
-      DEFAULT_INVENTORY_PUBLICATION_POLICY.maximumAutomaticIncreasePercent,
-      0,
-      10_000,
-    ),
     stagedMicroBatchMaximum: integer(
       input.stagedMicroBatchMaximum,
       DEFAULT_INVENTORY_PUBLICATION_POLICY.stagedMicroBatchMaximum,

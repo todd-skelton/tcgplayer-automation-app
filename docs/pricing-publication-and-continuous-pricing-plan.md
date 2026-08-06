@@ -274,8 +274,7 @@ Initial configuration:
 - Maximum candidate age: 60 minutes.
 - Minimum absolute price change: $0.01.
 - Minimum relative price change: 0%.
-- Maximum automatic decrease: 25%.
-- Maximum automatic increase: 100%.
+- Price movement is constrained by the pricing engine's market-price rules, not by percentage change from the previous seller price.
 - Staged micro-batch maximum: 250 items.
 - Staged flush window: 60 seconds.
 
@@ -290,8 +289,6 @@ Reason codes include:
 - `missing_previous_price`
 - `unchanged_price`
 - `below_minimum_change`
-- `decrease_limit_exceeded`
-- `increase_limit_exceeded`
 - `candidate_stale`
 - `inventory_delta_already_consumed`
 - `older_price_candidate_superseded`
@@ -583,3 +580,4 @@ Acceptance:
 - 2026-08-06: The first fresh projection admitted 1,173 in-stock SKUs into batches 92 through 115. A post-publication refresh observed one newly in-stock SKU and admitted it once as batch 116, demonstrating continuous inventory discovery without duplicating an already scheduled SKU.
 - 2026-08-06: Batch 92 completed with 48 successful results and 2 manual-review results. Publication 5 moved staged upload 16125564 live for the 16 eligible price changes with 16 published, 0 failed, 0 ambiguous, and every item price-only with AddToQuantity 0.
 - 2026-08-06: A fresh seller-inventory snapshot matched all 16 desired prices and all 16 immutable batch quantities exactly. Authentication remained healthy, the circuit remained closed with zero consecutive failures, batch 93 continued pricing, and the daily continuous cycle was left enabled.
+- 2026-08-06: Removed arbitrary previous-price percentage caps from publication eligibility. Low-value cent changes now rely on the pricing engine's market-price restrictions and the remaining freshness, validity, warning, metadata, and quantity safeguards.
