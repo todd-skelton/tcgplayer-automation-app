@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Chip,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
@@ -193,6 +194,68 @@ export default function PendingInventoryPricerRoute() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [selectedPublicationSkus, setSelectedPublicationSkus] = useState<
+    Set<number>
+  >(new Set());
+
+  const eligiblePublicationItems = useMemo(() => {
+    const items =
+      publicationPreview?.items.filter((item) => item.eligible) ?? [];
+    return [...items].sort((left, right) => {
+      const leftAbsoluteChange =
+        left.previousPrice !== null && left.desiredPrice !== null
+          ? Math.abs(left.desiredPrice - left.previousPrice)
+          : Number.POSITIVE_INFINITY;
+      const rightAbsoluteChange =
+        right.previousPrice !== null && right.desiredPrice !== null
+          ? Math.abs(right.desiredPrice - right.previousPrice)
+          : Number.POSITIVE_INFINITY;
+      const leftRelativeChange =
+        left.previousPrice && left.desiredPrice
+          ? leftAbsoluteChange / left.previousPrice
+          : Number.POSITIVE_INFINITY;
+      const rightRelativeChange =
+        right.previousPrice && right.desiredPrice
+          ? rightAbsoluteChange / right.previousPrice
+          : Number.POSITIVE_INFINITY;
+      return (
+        leftAbsoluteChange - rightAbsoluteChange ||
+        leftRelativeChange - rightRelativeChange ||
+        left.sku - right.sku
+      );
+    });
+  }, [publicationPreview]);
+
+  const selectedPublicationQuantityDelta = useMemo(
+    () =>
+      eligiblePublicationItems
+        .filter((item) => selectedPublicationSkus.has(item.sku))
+        .reduce((total, item) => total + item.quantityDelta, 0),
+    [eligiblePublicationItems, selectedPublicationSkus],
+  );
+
+  useEffect(() => {
+    setPublishDialogOpen(false);
+    setSelectedPublicationSkus(new Set());
+  }, [selectedBatch?.batchNumber]);
+
+  const handleOpenPublishDialog = () => {
+    const canarySkus = eligiblePublicationItems
+      .filter((item) => item.quantityDelta === 0)
+      .slice(0, 20)
+      .map((item) => item.sku);
+    setSelectedPublicationSkus(new Set(canarySkus));
+    setPublishDialogOpen(true);
+  };
+
+  const togglePublicationSku = (sku: number) => {
+    setSelectedPublicationSkus((current) => {
+      const next = new Set(current);
+      if (next.has(sku)) next.delete(sku);
+      else next.add(sku);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!success) {
@@ -287,15 +350,16 @@ export default function PendingInventoryPricerRoute() {
   };
 
   const handleConfirmPublish = async () => {
-    if (!selectedBatch) {
+    if (!selectedBatch || selectedPublicationSkus.size === 0) {
       return;
     }
 
+    const selectedSkus = [...selectedPublicationSkus];
     setPublishDialogOpen(false);
     try {
-      await publish();
+      await publish(selectedSkus);
       setSuccess(
-        `Batch ${selectedBatch.batchNumber} queued for Seller Portal publication`,
+        `${selectedSkus.length} SKUs from batch ${selectedBatch.batchNumber} queued for Seller Portal publication`,
       );
     } catch {
       // The publication hook owns the user-facing error state.
@@ -471,7 +535,7 @@ export default function PendingInventoryPricerRoute() {
                 variant="contained"
                 color="success"
                 startIcon={<PublishIcon />}
-                onClick={() => setPublishDialogOpen(true)}
+                onClick={handleOpenPublishDialog}
                 disabled={
                   isSelectedBatchActive ||
                   hasActivePublication ||
@@ -596,7 +660,7 @@ export default function PendingInventoryPricerRoute() {
         fullWidth
       >
         <DialogTitle>
-          Publish Batch {selectedBatch?.batchNumber} to Seller Portal?
+          Select Batch {selectedBatch?.batchNumber} Seller Portal Publication
         </DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 2 }}>
@@ -606,23 +670,61 @@ export default function PendingInventoryPricerRoute() {
             replayed automatically.
           </DialogContentText>
 
+          <Alert
+            severity={
+              selectedPublicationQuantityDelta === 0 ? "info" : "warning"
+            }
+            sx={{ mb: 2 }}
+          >
+            Selected {selectedPublicationSkus.size} SKU
+            {selectedPublicationSkus.size === 1 ? "" : "s"}; total quantity
+            delta {selectedPublicationQuantityDelta >= 0 ? "+" : ""}
+            {selectedPublicationQuantityDelta}. The default canary contains the
+            20 smallest price changes and no quantity changes.
+          </Alert>
+
+          <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={handleOpenPublishDialog}
+            >
+              Reset to safest 20
+            </Button>
+            <Button
+              size="small"
+              onClick={() => setSelectedPublicationSkus(new Set())}
+            >
+              Clear selection
+            </Button>
+          </Stack>
+
           <Stack spacing={1} sx={{ maxHeight: 420, overflowY: "auto" }}>
-            {publicationPreview?.items.map((item) => (
+            {eligiblePublicationItems.map((item) => (
               <Paper key={item.candidateKey} variant="outlined" sx={{ p: 1.5 }}>
                 <Stack
                   direction={{ xs: "column", sm: "row" }}
                   spacing={1}
                   justifyContent="space-between"
                 >
-                  <Box>
-                    <Typography variant="subtitle2">
-                      {item.productName ?? `Product ${item.productId}`}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      SKU {item.sku} · Product {item.productId} · Condition{" "}
-                      {item.sku}
-                    </Typography>
-                  </Box>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Checkbox
+                      checked={selectedPublicationSkus.has(item.sku)}
+                      onChange={() => togglePublicationSku(item.sku)}
+                      inputProps={{
+                        "aria-label": `Select SKU ${item.sku}`,
+                      }}
+                    />
+                    <Box>
+                      <Typography variant="subtitle2">
+                        {item.productName ?? `Product ${item.productId}`}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        SKU {item.sku} · Product {item.productId} · Condition{" "}
+                        {item.condition}
+                      </Typography>
+                    </Box>
+                  </Stack>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <Typography variant="body2">
                       {item.previousPrice === null
@@ -658,9 +760,9 @@ export default function PendingInventoryPricerRoute() {
             onClick={() => void handleConfirmPublish()}
             color="success"
             variant="contained"
-            disabled={isPublishing || !publicationPreview?.eligibleCount}
+            disabled={isPublishing || selectedPublicationSkus.size === 0}
           >
-            Publish {publicationPreview?.eligibleCount ?? 0} SKUs
+            Publish {selectedPublicationSkus.size} SKUs
           </Button>
         </DialogActions>
       </Dialog>

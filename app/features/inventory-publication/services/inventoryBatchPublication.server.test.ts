@@ -322,6 +322,53 @@ const testCases: TestCase[] = [
       assert.equal(created[0]?.items[0]?.quantityDelta, 2);
     },
   },
+  {
+    name: "manual plans persist only the selected eligible SKUs",
+    run: async () => {
+      const { dependencies, created } = createDependencies();
+      const planned = await planInventoryBatchPublication(90, {
+        dependencies,
+        now: NOW,
+        selectedSkus: [5199433, 5199433],
+      });
+
+      assert.match(
+        planned.publication.planningKey,
+        /^inventory-batch-pricing-job:21:selection:[0-9a-f]{16}$/,
+      );
+      assert.deepEqual(created[0]?.config?.selectedSkus, [5199433]);
+      assert.deepEqual(
+        created[0]?.items.map((item) => item.sku),
+        [5199433],
+      );
+      assert.equal(
+        planned.preview.planningKey,
+        planned.publication.planningKey,
+      );
+    },
+  },
+  {
+    name: "manual selection rejects missing, ineligible, and empty SKU sets",
+    run: async () => {
+      const { dependencies } = createDependencies();
+      await assert.rejects(
+        planInventoryBatchPublication(90, {
+          dependencies,
+          now: NOW,
+          selectedSkus: [123456],
+        }),
+        /missing or ineligible: 123456/,
+      );
+      await assert.rejects(
+        planInventoryBatchPublication(90, {
+          dependencies,
+          now: NOW,
+          selectedSkus: [],
+        }),
+        /Select at least one valid SKU/,
+      );
+    },
+  },
 ];
 
 let failures = 0;

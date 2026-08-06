@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   inventoryBatchesRepository,
   inventoryPublicationsRepository,
@@ -127,6 +128,39 @@ function requirePublishableBatch(batch: InventoryBatch): number {
     );
   }
   return batch.latestJob.id;
+}
+
+function normalizeSelectedSkus(
+  selectedSkus: readonly number[] | undefined,
+): number[] | null {
+  if (selectedSkus === undefined) {
+    return null;
+  }
+
+  if (
+    selectedSkus.length === 0 ||
+    selectedSkus.some((sku) => !Number.isInteger(sku) || sku <= 0)
+  ) {
+    throw new Error("Select at least one valid SKU for publication.");
+  }
+
+  return [...new Set(selectedSkus)].sort((left, right) => left - right);
+}
+
+function createSelectedPlanningKey(
+  pricingJobId: number,
+  selectedSkus: readonly number[] | null,
+): string {
+  const baseKey = `inventory-batch-pricing-job:${pricingJobId}`;
+  if (!selectedSkus) {
+    return baseKey;
+  }
+
+  const selectionHash = createHash("sha256")
+    .update(selectedSkus.join(","))
+    .digest("hex")
+    .slice(0, 16);
+  return `${baseKey}:selection:${selectionHash}`;
 }
 
 export async function previewInventoryBatchPublication(
@@ -285,6 +319,7 @@ export async function planInventoryBatchPublication(
     now?: Date;
     dependencies?: InventoryBatchPublicationDependencies;
     mode?: "manual" | "automatic";
+    selectedSkus?: readonly number[];
   } = {},
 ): Promise<{
   publication: InventoryPublication;
@@ -292,17 +327,40 @@ export async function planInventoryBatchPublication(
   created: boolean;
 }> {
   const dependencies = options.dependencies ?? defaultDependencies;
+  const selectedSkus = normalizeSelectedSkus(options.selectedSkus);
   const preview = await previewInventoryBatchPublication(batchNumber, {
     ...options,
     dependencies,
   });
-  const eligibleItems = preview.items.filter(
+  const allEligibleItems = preview.items.filter(
     (
       item,
     ): item is InventoryBatchPublicationPreviewItem & {
       desiredPrice: number;
     } => item.eligible && item.desiredPrice !== null,
   );
+  const eligibleItems = selectedSkus
+    ? allEligibleItems.filter((item) => selectedSkus.includes(item.sku))
+    : allEligibleItems;
+
+  if (selectedSkus) {
+    const eligibleSkuSet = new Set(eligibleItems.map((item) => item.sku));
+    const rejectedSkus = selectedSkus.filter((sku) => !eligibleSkuSet.has(sku));
+    if (rejectedSkus.length > 0) {
+      throw new Error(
+        `Selected SKUs are missing or ineligible: ${rejectedSkus.join(", ")}.`,
+      );
+    }
+
+    const maximum =
+      options.policy?.stagedMicroBatchMaximum ??
+      DEFAULT_INVENTORY_PUBLICATION_POLICY.stagedMicroBatchMaximum;
+    if (eligibleItems.length > maximum) {
+      throw new Error(
+        `Select no more than ${maximum} SKUs for one staged publication.`,
+      );
+    }
+  }
 
   if (eligibleItems.length === 0) {
     throw new Error(
@@ -310,8 +368,12 @@ export async function planInventoryBatchPublication(
     );
   }
 
+  const planningKey = createSelectedPlanningKey(
+    preview.pricingJobId,
+    selectedSkus,
+  );
   const result = await dependencies.createPublication({
-    planningKey: preview.planningKey,
+    planningKey,
     batchNumber,
     pricingJobId: preview.pricingJobId,
     method: "staged_delta",
@@ -323,6 +385,7 @@ export async function planInventoryBatchPublication(
     config: {
       policy: options.policy ?? DEFAULT_INVENTORY_PUBLICATION_POLICY,
       mode: options.mode ?? "manual",
+      selectedSkus,
     },
     items: eligibleItems.map((item) => ({
       candidateKey: item.candidateKey,
@@ -345,7 +408,10 @@ export async function planInventoryBatchPublication(
 
   return {
     publication: result.publication,
-    preview,
+    preview: {
+      ...preview,
+      planningKey,
+    },
     created: result.created,
   };
 }

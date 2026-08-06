@@ -73,40 +73,47 @@ export function useInventoryBatchPublication(batchNumber?: number) {
     return () => window.clearInterval(timer);
   }, [batchNumber, hasActivePublication, load]);
 
-  const publish = useCallback(async () => {
-    if (!batchNumber) {
-      throw new Error("Select a batch before publishing.");
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      const response = await fetch(
-        `/api/inventory-batches/${batchNumber}/publications`,
-        { method: "POST" },
-      );
-      const payload = (await response.json()) as
-        | {
-            publication: InventoryPublication;
-          }
-        | { error?: string };
-      if (!response.ok) {
-        throw new Error(
-          "error" in payload && payload.error
-            ? payload.error
-            : "Failed to publish inventory batch",
-        );
+  const publish = useCallback(
+    async (selectedSkus: readonly number[]) => {
+      if (!batchNumber) {
+        throw new Error("Select a batch before publishing.");
       }
 
-      await load();
-      return (payload as { publication: InventoryPublication }).publication;
-    } catch (publishError) {
-      setError(String(publishError));
-      throw publishError;
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [batchNumber, load]);
+      setIsSubmitting(true);
+      setError(null);
+      try {
+        const response = await fetch(
+          `/api/inventory-batches/${batchNumber}/publications`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ selectedSkus }),
+          },
+        );
+        const payload = (await response.json()) as
+          | {
+              publication: InventoryPublication;
+            }
+          | { error?: string };
+        if (!response.ok) {
+          throw new Error(
+            "error" in payload && payload.error
+              ? payload.error
+              : "Failed to publish inventory batch",
+          );
+        }
+
+        await load();
+        return (payload as { publication: InventoryPublication }).publication;
+      } catch (publishError) {
+        setError(String(publishError));
+        throw publishError;
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [batchNumber, load],
+  );
 
   const currentPlanAlreadyExists = useMemo(() => {
     const planningKey = state?.preview?.planningKey;

@@ -14,11 +14,7 @@ function parseBatchNumber(rawValue: string | undefined): number | null {
   return Number.isInteger(batchNumber) && batchNumber > 0 ? batchNumber : null;
 }
 
-export async function loader({
-  params,
-}: {
-  params: { batchNumber?: string };
-}) {
+export async function loader({ params }: { params: { batchNumber?: string } }) {
   try {
     const batchNumber = parseBatchNumber(params.batchNumber);
     if (!batchNumber) {
@@ -28,10 +24,7 @@ export async function loader({
     const batch =
       await inventoryBatchesRepository.findByBatchNumber(batchNumber);
     if (!batch) {
-      return data(
-        { error: `Batch ${batchNumber} not found` },
-        { status: 404 },
-      );
+      return data({ error: `Batch ${batchNumber} not found` }, { status: 404 });
     }
 
     const publications =
@@ -63,7 +56,30 @@ export async function action({
       return data({ error: "Method not allowed" }, { status: 405 });
     }
 
-    const result = await planInventoryBatchPublication(batchNumber);
+    let body: unknown = null;
+    try {
+      body = await request.json();
+    } catch {
+      // An empty body preserves the existing publish-all behavior.
+    }
+    const selectedSkus =
+      body && typeof body === "object" && "selectedSkus" in body
+        ? (body as { selectedSkus?: unknown }).selectedSkus
+        : undefined;
+    if (
+      selectedSkus !== undefined &&
+      (!Array.isArray(selectedSkus) ||
+        selectedSkus.some((sku) => !Number.isInteger(sku) || Number(sku) <= 0))
+    ) {
+      return data(
+        { error: "selectedSkus must contain valid SKU numbers" },
+        { status: 400 },
+      );
+    }
+
+    const result = await planInventoryBatchPublication(batchNumber, {
+      selectedSkus: selectedSkus as number[] | undefined,
+    });
     ensureInventoryPublicationWorker();
 
     return data(result, { status: result.created ? 201 : 200 });
