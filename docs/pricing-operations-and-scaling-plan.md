@@ -90,7 +90,7 @@ Due selection orders priority candidates first and then uses `next_price_at, sku
 
 1. Apply the additive migration before application code begins writing priorities.
 2. Deploy one application revision containing the migration-compatible reads and writes.
-3. Let existing priority-zero queued work drain naturally; do not rewrite or delete it.
+3. Backfill only queued never-priced and recovery work; let existing routine priority-zero work drain naturally without deleting it.
 4. Confirm that no more than one new routine continuous job is queued and that a priority job jumps ahead at the next claim.
 5. Watch pricing error clusters, paused SKUs, publication item failures, ambiguous publications, and queue age during the first complete interval.
 6. Treat sustained queue age greater than the configured pricing interval as a capacity signal. Increase worker capacity or adjust interval/batch size; do not remove backpressure.
