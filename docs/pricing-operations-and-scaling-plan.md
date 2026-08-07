@@ -107,4 +107,14 @@ The queue model supports a continuously cycling service without coupling operato
 - [x] Implement priority scheduling and transient retry.
 - [x] Implement continuous inventory search/filter/pagination.
 - [x] Implement exact seller metadata reject isolation.
-- [ ] Run full verification and production validation.
+- [x] Run full verification and production validation.
+
+### Production validation (2026-08-07)
+
+- Migrations 017 and 018 applied successfully.
+- The app, database, pricing worker, publication worker, and scheduler are healthy with no post-deploy errors.
+- Manual batch loading returned three manual batches and no continuous batches.
+- Continuous Pricing rendered 50 inventory controls, one filtered Greninja result, zero current needs-review results, and exactly 25 recent automatic runs.
+- The scheduler created no additional backlog; batch 142 remained the newest batch after deployment.
+- Recovery batches 137 and 138 were backfilled to priority 100 and moved ahead of seven priority-zero routine batches.
+- Full tests, route type generation, TypeScript validation, and the production application/worker build passed.
