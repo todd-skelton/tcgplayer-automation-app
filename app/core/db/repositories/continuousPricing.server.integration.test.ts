@@ -48,9 +48,15 @@ try {
     },
   ]);
 
-  const inventory = await continuousPricingRepository.findAll(sellerKey);
-  assert.equal(inventory.length, 1);
-  assert.equal(inventory[0]?.quantity, 29);
+  const inventory = await continuousPricingRepository.findPage({
+    sellerKey,
+    search: "",
+    state: "all",
+    page: 1,
+    pageSize: 50,
+  });
+  assert.equal(inventory.items.length, 1);
+  assert.equal(inventory.items[0]?.quantity, 29);
 
   const scheduled = await continuousPricingRepository.scheduleDueBatch({
     sellerKey,
@@ -58,7 +64,7 @@ try {
     minimumIntervalMinutes: 60,
     pricingConfig: DEFAULT_SERVER_PRICING_CONFIG,
   });
-  assert.ok(scheduled);
+  assert.ok(scheduled && scheduled.status === "scheduled");
   batchNumber = scheduled.batchNumber;
   assert.equal(scheduled.itemCount, 1);
 
@@ -73,9 +79,15 @@ try {
   await continuousPricingRepository.recordPublishedPrices(sellerKey, [
     { sku: 5199433, price: 25.01 },
   ]);
-  const published = await continuousPricingRepository.findAll(sellerKey);
-  assert.equal(published[0]?.currentPrice, 25.01);
-  assert.ok(published[0]?.lastPublishedAt);
+  const published = await continuousPricingRepository.findPage({
+    sellerKey,
+    search: "",
+    state: "all",
+    page: 1,
+    pageSize: 50,
+  });
+  assert.equal(published.items[0]?.currentPrice, 25.01);
+  assert.ok(published.items[0]?.lastPublishedAt);
 
   console.log(
     "PASS continuous pricing snapshot and due scheduling are durable and idempotent",

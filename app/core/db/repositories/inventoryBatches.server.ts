@@ -8,6 +8,7 @@ import type {
   SaveInventoryBatchResultsParams,
   InventoryBatchStatus,
   InventoryBatchSummary,
+  InventoryBatchSourceType,
 } from "~/features/pending-inventory/types/inventoryBatch";
 import {
   createValuesPlaceholders,
@@ -420,12 +421,24 @@ async function insertBatchItems(
 }
 
 export const inventoryBatchesRepository = {
-  async findAll(executor?: Queryable): Promise<InventoryBatch[]> {
+  async findRecent(
+    options: {
+      sourceTypes: InventoryBatchSourceType[];
+      limit: number;
+    },
+    executor?: Queryable,
+  ): Promise<InventoryBatch[]> {
+    if (options.sourceTypes.length === 0 || options.limit <= 0) {
+      return [];
+    }
+
     const rows = await query<InventoryBatchRow>(
       `${batchSelect}
+      WHERE b.source_type = ANY($1::text[])
       ${batchGroupBy}
-      ORDER BY b.batch_number DESC`,
-      [],
+      ORDER BY b.batch_number DESC
+      LIMIT $2`,
+      [options.sourceTypes, options.limit],
       executor,
     );
 

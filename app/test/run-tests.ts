@@ -1,4 +1,5 @@
 import "../core/clients/baseDomainClient.server.test";
+import "../core/db/repositories/inventoryBatchPricingJobs.server.test";
 import "../core/utils/numberFieldMatching.test";
 import "../features/inventory-publication/services/inventoryPublicationPolicy.test";
 import "../features/continuous-pricing/services/continuousPricingSettings.test";

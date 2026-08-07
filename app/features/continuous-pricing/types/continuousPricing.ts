@@ -45,6 +45,22 @@ export interface ContinuousPricingInventoryItem {
   updatedAt: Date;
 }
 
+export type ContinuousPricingInventoryState =
+  | "all"
+  | "enabled"
+  | "paused"
+  | "needs_review"
+  | "in_stock"
+  | "out_of_stock"
+  | "due";
+
+export interface ContinuousPricingInventoryPage {
+  items: ContinuousPricingInventoryItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface UpsertContinuousPricingInventoryItem {
   sellerKey: string;
   sku: number;

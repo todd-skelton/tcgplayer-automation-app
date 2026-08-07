@@ -12,7 +12,11 @@ export type InventoryBatchStatus =
   | "pricing"
   | "priced"
   | "failed";
-export type InventoryBatchSourceType = "pending_inventory" | "seller" | "csv";
+export type InventoryBatchSourceType =
+  | "pending_inventory"
+  | "seller"
+  | "csv"
+  | "continuous";
 export type InventoryBatchPricingMode = "full" | "errors";
 export type InventoryBatchResultStatus = "successful" | "manual_review";
 export type InventoryBatchResultsScope = "successful" | "manual-review";
@@ -65,6 +69,7 @@ export interface InventoryBatchSummary {
 export interface InventoryBatchPricingJob {
   id: number;
   batchNumber: number;
+  priority: number;
   mode: InventoryBatchPricingMode;
   status: InventoryBatchPricingJobStatus;
   config: ServerPricingConfig;

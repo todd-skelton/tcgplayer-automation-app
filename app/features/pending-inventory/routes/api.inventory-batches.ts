@@ -3,7 +3,10 @@ import { inventoryBatchesRepository } from "~/core/db";
 
 export async function loader() {
   try {
-    const batches = await inventoryBatchesRepository.findAll();
+    const batches = await inventoryBatchesRepository.findRecent({
+      sourceTypes: ["pending_inventory", "seller", "csv"],
+      limit: 100,
+    });
     return data(batches, { status: 200 });
   } catch (error) {
     return data({ error: String(error) }, { status: 500 });

@@ -1,6 +1,8 @@
 import type { ServerPricingConfig } from "~/features/pricing/types/config";
 import type {
   ContinuousPricingInventoryItem,
+  ContinuousPricingInventoryPage,
+  ContinuousPricingInventoryState,
   ContinuousPricingStatus,
   UpsertContinuousPricingInventoryItem,
 } from "~/features/continuous-pricing/types/continuousPricing";
@@ -14,6 +16,7 @@ import {
   withTransaction,
   type Queryable,
 } from "../database.server";
+import { PRICING_JOB_PRIORITIES } from "./inventoryBatchPricingJobs.server";
 
 type ContinuousPricingInventoryRow = ContinuousPricingInventoryItem;
 
@@ -43,6 +46,35 @@ const inventorySelect = `SELECT
   created_at AS "createdAt",
   updated_at AS "updatedAt"
 FROM continuous_pricing_inventory`;
+
+const schedulableInventoryWhere = `seller_key = $1
+  AND enabled
+  AND in_stock
+  AND quantity > 0
+  AND pause_reason IS NULL
+  AND next_price_at <= NOW()
+  AND NOT EXISTS (
+    SELECT 1
+    FROM inventory_publication_items publication_item
+    JOIN inventory_publications publication
+      ON publication.id = publication_item.publication_id
+    WHERE publication.source_type = 'continuous'
+      AND publication.seller_key = continuous_pricing_inventory.seller_key
+      AND publication.status IN (
+        'planned',
+        'staging',
+        'staged',
+        'publishing',
+        'ambiguous'
+      )
+      AND publication_item.sku = continuous_pricing_inventory.sku
+      AND publication_item.status IN ('planned', 'ambiguous')
+  )`;
+
+const priorityDueWhere = `(
+  last_priced_at IS NULL
+  OR consecutive_pricing_failures > 0
+)`;
 
 function toOriginalRow(item: ContinuousPricingInventoryItem): TcgPlayerListing {
   return {
@@ -201,17 +233,68 @@ export const continuousPricingRepository = {
     );
   },
 
-  async findAll(
-    sellerKey: string,
+  async findPage(
+    input: {
+      sellerKey: string;
+      search: string;
+      state: ContinuousPricingInventoryState;
+      page: number;
+      pageSize: number;
+    },
     executor?: Queryable,
-  ): Promise<ContinuousPricingInventoryItem[]> {
-    return query<ContinuousPricingInventoryRow>(
-      `${inventorySelect}
-      WHERE seller_key = $1
-      ORDER BY enabled DESC, in_stock DESC, next_price_at, sku`,
-      [sellerKey],
+  ): Promise<ContinuousPricingInventoryPage> {
+    const stateWhere: Record<ContinuousPricingInventoryState, string> = {
+      all: "TRUE",
+      enabled: "enabled AND pause_reason IS NULL",
+      paused: "NOT enabled",
+      needs_review: "pause_reason IS NOT NULL",
+      in_stock: "in_stock",
+      out_of_stock: "NOT in_stock",
+      due: `enabled
+        AND in_stock
+        AND pause_reason IS NULL
+        AND next_price_at <= NOW()`,
+    };
+    const search = input.search.trim();
+    const requestedPage = Math.max(1, Math.floor(input.page));
+    const pageSize = Math.min(100, Math.max(1, Math.floor(input.pageSize)));
+    const where = `seller_key = $1
+      AND (
+        $2 = ''
+        OR sku::text = $2
+        OR product_name ILIKE '%' || $2 || '%'
+        OR set_name ILIKE '%' || $2 || '%'
+        OR condition ILIKE '%' || $2 || '%'
+        OR product_line ILIKE '%' || $2 || '%'
+      )
+      AND (${stateWhere[input.state]})`;
+    const parameters = [input.sellerKey, search];
+    const count = await queryOne<{ total: number }>(
+      `SELECT COUNT(*)::INTEGER AS total
+      FROM continuous_pricing_inventory
+      WHERE ${where}`,
+      parameters,
       executor,
     );
+    const total = count?.total ?? 0;
+    const maximumPage = Math.max(1, Math.ceil(total / pageSize));
+    const page = Math.min(requestedPage, maximumPage);
+    const offset = (page - 1) * pageSize;
+    const items = await query<ContinuousPricingInventoryRow>(
+      `${inventorySelect}
+      WHERE ${where}
+      ORDER BY enabled DESC, in_stock DESC, next_price_at, sku
+      LIMIT $3 OFFSET $4`,
+      [...parameters, pageSize, offset],
+      executor,
+    );
+
+    return {
+      items,
+      total,
+      page,
+      pageSize,
+    };
   },
 
   async setEnabled(
@@ -241,28 +324,61 @@ export const continuousPricingRepository = {
     batchSize: number;
     minimumIntervalMinutes: number;
     pricingConfig: ServerPricingConfig;
-  }): Promise<{ batchNumber: number; itemCount: number } | null> {
+  }): Promise<
+    | {
+        status: "scheduled";
+        batchNumber: number;
+        itemCount: number;
+        priority: number;
+      }
+    | { status: "backlogged" }
+    | null
+  > {
     return withTransaction(async (client) => {
+      await query(
+        `SELECT pg_advisory_xact_lock(hashtext($1))`,
+        [`continuous-pricing:${input.sellerKey}`],
+        client,
+      );
+
+      const priorityDue = await queryOne<{ exists: boolean }>(
+        `SELECT EXISTS (
+          SELECT 1
+          FROM continuous_pricing_inventory
+          WHERE ${schedulableInventoryWhere}
+            AND ${priorityDueWhere}
+        ) AS exists`,
+        [input.sellerKey],
+        client,
+      );
+      const schedulePriority = priorityDue?.exists
+        ? PRICING_JOB_PRIORITIES.continuousPriority
+        : PRICING_JOB_PRIORITIES.continuousRoutine;
+      const queuedAtPriority = await queryOne<{ exists: boolean }>(
+        `SELECT EXISTS (
+          SELECT 1
+          FROM inventory_batch_pricing_jobs job
+          JOIN inventory_batches batch
+            ON batch.batch_number = job.batch_number
+          WHERE job.status = 'queued'
+            AND job.priority = $1
+            AND batch.source_type = 'continuous'
+        ) AS exists`,
+        [schedulePriority],
+        client,
+      );
+      if (queuedAtPriority?.exists) {
+        return { status: "backlogged" };
+      }
+
       const dueItems = await query<ContinuousPricingInventoryRow>(
         `${inventorySelect}
-        WHERE seller_key = $1
-          AND enabled
-          AND in_stock
-          AND quantity > 0
-          AND pause_reason IS NULL
-          AND next_price_at <= NOW()
-          AND NOT EXISTS (
-            SELECT 1
-            FROM inventory_publication_items publication_item
-            JOIN inventory_publications publication
-              ON publication.id = publication_item.publication_id
-            WHERE publication.source_type = 'continuous'
-              AND publication.seller_key = continuous_pricing_inventory.seller_key
-              AND publication.status IN ('planned', 'staging', 'staged', 'publishing', 'ambiguous')
-              AND publication_item.sku = continuous_pricing_inventory.sku
-              AND publication_item.status IN ('planned', 'ambiguous')
-          )
-        ORDER BY next_price_at, sku
+        WHERE ${schedulableInventoryWhere}
+          ${priorityDue?.exists ? `AND ${priorityDueWhere}` : ""}
+        ORDER BY
+          CASE WHEN ${priorityDueWhere} THEN 0 ELSE 1 END,
+          next_price_at,
+          sku
         FOR UPDATE SKIP LOCKED
         LIMIT $2`,
         [input.sellerKey, input.batchSize],
@@ -319,11 +435,12 @@ export const continuousPricingRepository = {
       await execute(
         `INSERT INTO inventory_batch_pricing_jobs (
           batch_number,
+          priority,
           mode,
           status,
           config_json
-        ) VALUES ($1, 'full', 'queued', $2::jsonb)`,
-        [batch.batchNumber, asJson(input.pricingConfig)],
+        ) VALUES ($1, $2, 'full', 'queued', $3::jsonb)`,
+        [batch.batchNumber, schedulePriority, asJson(input.pricingConfig)],
         client,
       );
       await execute(
@@ -343,8 +460,10 @@ export const continuousPricingRepository = {
       );
 
       return {
+        status: "scheduled" as const,
         batchNumber: batch.batchNumber,
         itemCount: dueItems.length,
+        priority: schedulePriority,
       };
     });
   },
@@ -365,6 +484,13 @@ export const continuousPricingRepository = {
               AND consecutive_pricing_failures + 1 >= 3
             THEN 'Repeated pricing failures require review.'
             ELSE pause_reason
+          END,
+          next_price_at = CASE
+            WHEN result.result_status <> 'successful'
+              AND cardinality(result.error_messages) > 0
+              AND consecutive_pricing_failures + 1 < 3
+            THEN LEAST(next_price_at, NOW() + INTERVAL '15 minutes')
+            ELSE next_price_at
           END,
           updated_at = NOW()
       FROM inventory_batch_results result
@@ -407,6 +533,26 @@ export const continuousPricingRepository = {
     return execute(
       `UPDATE continuous_pricing_inventory
       SET pause_reason = 'Ambiguous publication outcome requires reconciliation.',
+          updated_at = NOW()
+      WHERE seller_key = $1
+        AND sku = ANY($2::int[])`,
+      [sellerKey, skus],
+      executor,
+    );
+  },
+
+  async pauseProductDetailMismatchSkus(
+    sellerKey: string,
+    skus: number[],
+    executor?: Queryable,
+  ): Promise<number> {
+    if (skus.length === 0) {
+      return 0;
+    }
+    return execute(
+      `UPDATE continuous_pricing_inventory
+      SET pause_reason =
+            'Seller product details do not match this SKU; review required.',
           updated_at = NOW()
       WHERE seller_key = $1
         AND sku = ANY($2::int[])`,

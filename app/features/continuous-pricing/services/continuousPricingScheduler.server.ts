@@ -7,7 +7,7 @@ import { ensureInventoryBatchPricingWorker } from "~/features/pending-inventory/
 import { refreshContinuousPricingInventory } from "./continuousInventoryRefresh.server";
 
 export type ContinuousPricingSchedulerResult =
-  | { status: "disabled" | "refresh_failed" | "idle" }
+  | { status: "disabled" | "refresh_failed" | "idle" | "backlogged" }
   | {
       status: "scheduled";
       batchNumber: number;
@@ -52,7 +52,10 @@ export async function runContinuousPricingSchedulerCycle(): Promise<ContinuousPr
   if (!scheduled) {
     return { status: "idle" };
   }
+  if (scheduled.status === "backlogged") {
+    return scheduled;
+  }
 
   ensureInventoryBatchPricingWorker();
-  return { status: "scheduled", ...scheduled };
+  return scheduled;
 }

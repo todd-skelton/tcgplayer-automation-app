@@ -1,7 +1,11 @@
-import type { ProcessingProgress, ProcessingSummary } from "~/core/types/pricing";
+import type {
+  ProcessingProgress,
+  ProcessingSummary,
+} from "~/core/types/pricing";
 import type {
   InventoryBatchPricingJob,
   InventoryBatchPricingMode,
+  InventoryBatchSourceType,
 } from "~/features/pending-inventory/types/inventoryBatch";
 import type { ServerPricingConfig } from "~/features/pricing/types/config";
 import {
@@ -16,6 +20,7 @@ import {
 type InventoryBatchPricingJobRow = {
   id: number;
   batchNumber: number;
+  priority: number;
   mode: InventoryBatchPricingMode;
   status: InventoryBatchPricingJob["status"];
   config: ServerPricingConfig;
@@ -34,6 +39,7 @@ type InventoryBatchPricingJobRow = {
 const jobSelect = `SELECT
   id,
   batch_number AS "batchNumber",
+  priority,
   mode,
   status,
   config_json AS "config",
@@ -48,6 +54,25 @@ const jobSelect = `SELECT
   created_at AS "createdAt",
   updated_at AS "updatedAt"
 FROM inventory_batch_pricing_jobs`;
+
+export const PRICING_JOB_PRIORITIES = {
+  pendingInventory: 300,
+  operator: 200,
+  continuousPriority: 100,
+  continuousRoutine: 0,
+} as const;
+
+export function getBatchSourcePriority(
+  sourceType: InventoryBatchSourceType,
+): number {
+  if (sourceType === "pending_inventory") {
+    return PRICING_JOB_PRIORITIES.pendingInventory;
+  }
+  if (sourceType === "seller" || sourceType === "csv") {
+    return PRICING_JOB_PRIORITIES.operator;
+  }
+  return PRICING_JOB_PRIORITIES.continuousRoutine;
+}
 
 export const inventoryBatchPricingJobsRepository = {
   async findLatestByBatchNumber(
@@ -78,6 +103,7 @@ export const inventoryBatchPricingJobsRepository = {
       `SELECT DISTINCT ON (batch_number)
         id,
         batch_number AS "batchNumber",
+        priority,
         mode,
         status,
         config_json AS "config",
@@ -122,16 +148,29 @@ export const inventoryBatchPricingJobsRepository = {
         return existing;
       }
 
+      const batch = await queryOne<{ sourceType: InventoryBatchSourceType }>(
+        `SELECT source_type AS "sourceType"
+        FROM inventory_batches
+        WHERE batch_number = $1`,
+        [batchNumber],
+        client,
+      );
+      if (!batch) {
+        throw new Error(`Inventory batch ${batchNumber} does not exist`);
+      }
+
       const inserted = await queryOne<InventoryBatchPricingJobRow>(
         `INSERT INTO inventory_batch_pricing_jobs (
           batch_number,
+          priority,
           mode,
           status,
           config_json
-        ) VALUES ($1, $2, 'queued', $3::jsonb)
+        ) VALUES ($1, $2, $3, 'queued', $4::jsonb)
         RETURNING
           id,
           batch_number AS "batchNumber",
+          priority,
           mode,
           status,
           config_json AS "config",
@@ -145,7 +184,12 @@ export const inventoryBatchPricingJobsRepository = {
           completed_at AS "completedAt",
           created_at AS "createdAt",
           updated_at AS "updatedAt"`,
-        [batchNumber, mode, asJson(config)],
+        [
+          batchNumber,
+          getBatchSourcePriority(batch.sourceType),
+          mode,
+          asJson(config),
+        ],
         client,
       );
 
@@ -205,7 +249,7 @@ export const inventoryBatchPricingJobsRepository = {
           SELECT id
           FROM inventory_batch_pricing_jobs
           WHERE status = 'queued'
-          ORDER BY created_at ASC, id ASC
+          ORDER BY priority DESC, created_at ASC, id ASC
           FOR UPDATE SKIP LOCKED
           LIMIT 1
         )
@@ -221,6 +265,7 @@ export const inventoryBatchPricingJobsRepository = {
         RETURNING
           job.id,
           job.batch_number AS "batchNumber",
+          job.priority,
           job.mode,
           job.status,
           job.config_json AS "config",

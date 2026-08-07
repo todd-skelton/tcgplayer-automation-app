@@ -2,8 +2,14 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
+  FormControl,
   FormControlLabel,
+  InputLabel,
+  MenuItem,
+  Pagination,
   Paper,
+  Select,
   Stack,
   Switch,
   TextField,
@@ -15,17 +21,40 @@ import {
   useFetcher,
   useLoaderData,
   useRevalidator,
+  useSearchParams,
   type ActionFunctionArgs,
+  type LoaderFunctionArgs,
   type MetaFunction,
 } from "react-router";
 import {
   continuousPricingRepository,
+  inventoryBatchesRepository,
   inventoryPublicationSettingsRepository,
 } from "~/core/db";
 import { refreshContinuousPricingInventory } from "../services/continuousInventoryRefresh.server";
 import { runContinuousPricingSchedulerCycle } from "../services/continuousPricingScheduler.server";
 import { normalizeContinuousPricingSettings } from "../services/continuousPricingSettings";
-import type { ContinuousPricingSettings } from "../types/continuousPricing";
+import type {
+  ContinuousPricingInventoryState,
+  ContinuousPricingSettings,
+} from "../types/continuousPricing";
+
+const INVENTORY_PAGE_SIZE = 50;
+const RECENT_AUTOMATIC_BATCH_LIMIT = 25;
+
+function isInventoryState(
+  value: string,
+): value is ContinuousPricingInventoryState {
+  return [
+    "all",
+    "enabled",
+    "paused",
+    "needs_review",
+    "in_stock",
+    "out_of_stock",
+    "due",
+  ].includes(value);
+}
 
 type ActionData =
   | { success: true; message: string }
@@ -40,13 +69,31 @@ export const meta: MetaFunction = () => [
   },
 ];
 
-export async function loader() {
+export async function loader({ request }: LoaderFunctionArgs) {
   const configuration = await inventoryPublicationSettingsRepository.get();
   const settings = configuration.settings.continuousPricing;
-  const [status, inventory] = settings.sellerKey
+  const url = new URL(request.url);
+  const search = url.searchParams.get("q")?.trim() ?? "";
+  const requestedState = url.searchParams.get("state") ?? "all";
+  const state = isInventoryState(requestedState) ? requestedState : "all";
+  const page = Math.max(
+    1,
+    Number.parseInt(url.searchParams.get("page") ?? "1", 10) || 1,
+  );
+  const [status, inventory, recentBatches] = settings.sellerKey
     ? await Promise.all([
         continuousPricingRepository.getStatus(settings.sellerKey, settings),
-        continuousPricingRepository.findAll(settings.sellerKey),
+        continuousPricingRepository.findPage({
+          sellerKey: settings.sellerKey,
+          search,
+          state,
+          page,
+          pageSize: INVENTORY_PAGE_SIZE,
+        }),
+        inventoryBatchesRepository.findRecent({
+          sourceTypes: ["continuous"],
+          limit: RECENT_AUTOMATIC_BATCH_LIMIT,
+        }),
       ])
     : [
         {
@@ -59,10 +106,11 @@ export async function loader() {
           lastRefreshStatus: null,
           lastRefreshError: null,
         },
+        { items: [], total: 0, page: 1, pageSize: INVENTORY_PAGE_SIZE },
         [],
       ];
 
-  return data({ status, inventory });
+  return data({ status, inventory, recentBatches, filters: { search, state } });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -152,13 +200,23 @@ export default function ContinuousPricingRoute() {
   const loaderData = useLoaderData<typeof loader>();
   const fetcher = useFetcher<ActionData>();
   const revalidator = useRevalidator();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [settings, setSettings] = useState<ContinuousPricingSettings>(
     loaderData.status.settings,
   );
+  const [search, setSearch] = useState(loaderData.filters.search);
+  const [inventoryState, setInventoryState] =
+    useState<ContinuousPricingInventoryState>(loaderData.filters.state);
 
   useEffect(() => {
     setSettings(loaderData.status.settings);
-  }, [loaderData.status.settings]);
+    setSearch(loaderData.filters.search);
+    setInventoryState(loaderData.filters.state);
+  }, [
+    loaderData.filters.search,
+    loaderData.filters.state,
+    loaderData.status.settings,
+  ]);
 
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data?.success) {
@@ -177,7 +235,40 @@ export default function ContinuousPricingRoute() {
       encType: "application/json",
     });
   const busy = fetcher.state !== "idle";
-  const { status, inventory } = loaderData;
+  const { status, inventory, recentBatches } = loaderData;
+  const pageCount = Math.max(
+    1,
+    Math.ceil(inventory.total / inventory.pageSize),
+  );
+  const setInventoryParams = (
+    nextSearch: string,
+    nextState: ContinuousPricingInventoryState,
+    page: number,
+  ) => {
+    const next = new URLSearchParams(searchParams);
+    if (nextSearch.trim()) {
+      next.set("q", nextSearch.trim());
+    } else {
+      next.delete("q");
+    }
+    if (nextState === "all") {
+      next.delete("state");
+    } else {
+      next.set("state", nextState);
+    }
+    if (page === 1) {
+      next.delete("page");
+    } else {
+      next.set("page", String(page));
+    }
+    setSearchParams(next);
+  };
+  const firstVisible =
+    inventory.total === 0 ? 0 : (inventory.page - 1) * inventory.pageSize + 1;
+  const lastVisible = Math.min(
+    inventory.total,
+    inventory.page * inventory.pageSize,
+  );
 
   return (
     <Box sx={{ maxWidth: 1000, mx: "auto", p: 3 }}>
@@ -309,8 +400,74 @@ export default function ContinuousPricingRoute() {
         </Stack>
       </Paper>
 
+      <Paper elevation={3} sx={{ p: 3, mb: 2 }}>
+        <Stack spacing={2}>
+          <Typography variant="h6">Inventory controls</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Search and manage one bounded page at a time. Filters are retained
+            in the URL so a review view can be bookmarked.
+          </Typography>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <TextField
+              fullWidth
+              label="Search SKU, product, set, condition, or product line"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  setInventoryParams(search, inventoryState, 1);
+                }
+              }}
+            />
+            <FormControl sx={{ minWidth: 190 }}>
+              <InputLabel id="inventory-state-label">State</InputLabel>
+              <Select
+                labelId="inventory-state-label"
+                label="State"
+                value={inventoryState}
+                onChange={(event) =>
+                  setInventoryState(
+                    event.target.value as ContinuousPricingInventoryState,
+                  )
+                }
+              >
+                <MenuItem value="all">All inventory</MenuItem>
+                <MenuItem value="enabled">Enabled</MenuItem>
+                <MenuItem value="paused">Paused</MenuItem>
+                <MenuItem value="needs_review">Needs review</MenuItem>
+                <MenuItem value="in_stock">In stock</MenuItem>
+                <MenuItem value="out_of_stock">Out of stock</MenuItem>
+                <MenuItem value="due">Due now</MenuItem>
+              </Select>
+            </FormControl>
+            <Button
+              variant="contained"
+              onClick={() => setInventoryParams(search, inventoryState, 1)}
+            >
+              Apply
+            </Button>
+            <Button
+              variant="text"
+              onClick={() => {
+                setSearch("");
+                setInventoryState("all");
+                setInventoryParams("", "all", 1);
+              }}
+            >
+              Clear
+            </Button>
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            Showing {firstVisible}-{lastVisible} of {inventory.total}
+          </Typography>
+        </Stack>
+      </Paper>
+
       <Stack spacing={1}>
-        {inventory.map((item) => (
+        {inventory.items.length === 0 && (
+          <Alert severity="info">No inventory matches these filters.</Alert>
+        )}
+        {inventory.items.map((item) => (
           <Paper
             key={`${item.sellerKey}:${item.sku}`}
             variant="outlined"
@@ -396,6 +553,67 @@ export default function ContinuousPricingRoute() {
           </Paper>
         ))}
       </Stack>
+
+      {pageCount > 1 && (
+        <Stack alignItems="center" sx={{ my: 3 }}>
+          <Pagination
+            count={pageCount}
+            page={Math.min(inventory.page, pageCount)}
+            onChange={(_, page) =>
+              setInventoryParams(
+                loaderData.filters.search,
+                loaderData.filters.state,
+                page,
+              )
+            }
+            color="primary"
+          />
+        </Stack>
+      )}
+
+      <Paper elevation={3} sx={{ p: 3, mt: 3 }}>
+        <Stack spacing={2}>
+          <Box>
+            <Typography variant="h6">Recent automatic runs</Typography>
+            <Typography variant="body2" color="text.secondary">
+              The newest {RECENT_AUTOMATIC_BATCH_LIMIT} continuous batches are
+              shown here. Manual batch history stays in Batch Pricer.
+            </Typography>
+          </Box>
+          {recentBatches.length === 0 ? (
+            <Alert severity="info">No automatic pricing runs yet.</Alert>
+          ) : (
+            recentBatches.map((batch) => (
+              <Stack
+                key={batch.batchNumber}
+                direction={{ xs: "column", sm: "row" }}
+                justifyContent="space-between"
+                spacing={1}
+                sx={{ borderTop: 1, borderColor: "divider", pt: 1 }}
+              >
+                <Typography variant="body2">
+                  Batch {batch.batchNumber} · {batch.itemCount} SKUs ·{" "}
+                  {new Date(batch.createdAt).toLocaleString()}
+                </Typography>
+                <Stack direction="row" spacing={1}>
+                  <Chip size="small" label={batch.status} />
+                  {batch.latestJob && (
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={
+                        batch.latestJob.priority > 0
+                          ? "New / retry priority"
+                          : "Routine"
+                      }
+                    />
+                  )}
+                </Stack>
+              </Stack>
+            ))
+          )}
+        </Stack>
+      </Paper>
     </Box>
   );
 }

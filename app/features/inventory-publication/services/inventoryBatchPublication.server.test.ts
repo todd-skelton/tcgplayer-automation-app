@@ -69,6 +69,7 @@ function createBatch(
     latestJob: {
       id: 21,
       batchNumber: 90,
+      priority: 300,
       mode: "full",
       status: "completed",
       config: DEFAULT_SERVER_PRICING_CONFIG,

@@ -146,6 +146,21 @@ const defaultDependencies: InventoryPublicationWorkerDependencies = {
         .filter((item) => ambiguousIds.has(item.id))
         .map((item) => item.sku),
     );
+    const productDetailMismatchIds = new Set(
+      outcomes
+        .filter(
+          (outcome) =>
+            outcome.status === "failed" &&
+            outcome.errorCode === "seller_portal_product_details_mismatch",
+        )
+        .map((outcome) => outcome.itemId),
+    );
+    await continuousPricingRepository.pauseProductDetailMismatchSkus(
+      publication.sellerKey,
+      publication.items
+        .filter((item) => productDetailMismatchIds.has(item.id))
+        .map((item) => item.sku),
+    );
   },
 };
 
@@ -186,6 +201,58 @@ function formatSellerPortalMessages(messages?: unknown[]): string {
     .filter((message): message is string => Boolean(message))
     .join("; ");
   return formatted ? `Seller Portal messages: ${formatted.slice(0, 1000)}` : "";
+}
+
+function messageText(message: unknown): string {
+  return typeof message === "string"
+    ? message
+    : (JSON.stringify(message) ?? String(message));
+}
+
+export function findExactProductDetailMismatchSkus(
+  messages: unknown[] | undefined,
+  submittedSkus: number[],
+  expectedRejectedCount: number,
+): number[] | null {
+  if (
+    expectedRejectedCount <= 0 ||
+    expectedRejectedCount > submittedSkus.length ||
+    !messages?.length
+  ) {
+    return null;
+  }
+
+  const detailMismatchMessages = messages
+    .map(messageText)
+    .filter((message) => /does not match product details/i.test(message));
+  if (detailMismatchMessages.length === 0) {
+    return null;
+  }
+
+  const rejected = submittedSkus.filter((sku) => {
+    const skuPattern = new RegExp(`\\b${sku}\\b`);
+    return detailMismatchMessages.some((message) => skuPattern.test(message));
+  });
+
+  const uniqueRejected = [...new Set(rejected)];
+  return uniqueRejected.length === expectedRejectedCount
+    ? uniqueRejected
+    : null;
+}
+
+function buildProductDetailMismatchOutcomes(
+  items: InventoryPublicationItem[],
+  rejectedSkus: Set<number>,
+): InventoryPublicationItemOutcome[] {
+  return items
+    .filter((item) => rejectedSkus.has(item.sku))
+    .map((item) => ({
+      itemId: item.id,
+      status: "failed",
+      errorCode: "seller_portal_product_details_mismatch",
+      errorMessage:
+        "TCGplayer reports that this SKU does not match its product details.",
+    }));
 }
 
 export function isSellerPortalAuthenticationFailure(error: unknown): boolean {
@@ -430,6 +497,8 @@ export async function executeClaimedStagedPublication(
   const updates = plannedItems.map(toStagedPricingUpdate);
   let uploadId: number | null = null;
   let currentStatus: "staging" | "staged" = "staging";
+  let successfulProductCount = 0;
+  const productDetailMismatchSkus = new Set<number>();
 
   try {
     uploadId = await dependencies.initialize(fileName);
@@ -441,7 +510,16 @@ export async function executeClaimedStagedPublication(
         uploadId,
         updates: chunk,
       });
-      if (result.SuccessfulProductCount !== chunk.length) {
+      if (result.SuccessfulProductCount === chunk.length) {
+        successfulProductCount += result.SuccessfulProductCount;
+        continue;
+      }
+      const rejectedSkus = findExactProductDetailMismatchSkus(
+        result.Messages,
+        chunk.map((update) => update.sku),
+        chunk.length - result.SuccessfulProductCount,
+      );
+      if (!rejectedSkus) {
         throw new Error(
           [
             `TCGplayer accepted ${result.SuccessfulProductCount} of ${chunk.length} staged pricing rows.`,
@@ -451,12 +529,24 @@ export async function executeClaimedStagedPublication(
             .join(" "),
         );
       }
+      successfulProductCount += result.SuccessfulProductCount;
+      rejectedSkus.forEach((sku) => productDetailMismatchSkus.add(sku));
     }
 
+    if (successfulProductCount === 0) {
+      throw new Error("TCGplayer accepted no staged pricing rows.");
+    }
     await dependencies.finalize({
       uploadId,
-      successfulProductCount: updates.length,
+      successfulProductCount,
     });
+    const rejectedOutcomes = buildProductDetailMismatchOutcomes(
+      plannedItems,
+      productDetailMismatchSkus,
+    );
+    if (rejectedOutcomes.length > 0) {
+      await dependencies.saveItemOutcomes(publication.id, rejectedOutcomes);
+    }
     await dependencies.transition(publication.id, "staging", "staged", {
       workerId,
     });
@@ -478,11 +568,19 @@ export async function executeClaimedStagedPublication(
   });
 
   try {
+    const acceptedItems = plannedItems.filter(
+      (item) => !productDetailMismatchSkus.has(item.sku),
+    );
+    const rejectedOutcomes = buildProductDetailMismatchOutcomes(
+      plannedItems,
+      productDetailMismatchSkus,
+    );
     const response = await dependencies.move({ uploadId });
-    const outcomes = buildMoveToLiveOutcomes(plannedItems, response);
-    await dependencies.saveItemOutcomes(publication.id, outcomes);
+    const acceptedOutcomes = buildMoveToLiveOutcomes(acceptedItems, response);
+    await dependencies.saveItemOutcomes(publication.id, acceptedOutcomes);
+    const allOutcomes = [...rejectedOutcomes, ...acceptedOutcomes];
 
-    const hasAmbiguousItems = outcomes.some(
+    const hasAmbiguousItems = allOutcomes.some(
       (outcome) => outcome.status === "ambiguous",
     );
     await dependencies.transition(
@@ -503,7 +601,7 @@ export async function executeClaimedStagedPublication(
     await safelyRecordPublicationProjection(
       dependencies,
       publication,
-      outcomes,
+      allOutcomes,
     );
   } catch (error) {
     const message = getErrorMessage(error);

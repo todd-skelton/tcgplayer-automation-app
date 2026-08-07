@@ -7,6 +7,7 @@ import type {
 import {
   buildMoveToLiveOutcomes,
   executeClaimedStagedPublication,
+  findExactProductDetailMismatchSkus,
   type InventoryPublicationWorkerDependencies,
   isSellerPortalAuthenticationFailure,
 } from "./inventoryPublicationWorker.server";
@@ -84,6 +85,10 @@ function createPublication(
 function createDependencies(
   overrides: {
     uploadCount?: number;
+    uploadMessages?: unknown[];
+    moveResponse?: Awaited<
+      ReturnType<InventoryPublicationWorkerDependencies["move"]>
+    >;
     moveError?: Error;
   } = {},
 ): {
@@ -109,10 +114,11 @@ function createDependencies(
         calls.push(`upload:${updates.length}`);
         return {
           SuccessfulProductCount: overrides.uploadCount ?? updates.length,
+          Messages: overrides.uploadMessages,
         };
       },
-      finalize: async () => {
-        calls.push("finalize");
+      finalize: async ({ successfulProductCount }) => {
+        calls.push(`finalize:${successfulProductCount}`);
       },
       rollback: async () => {
         calls.push("rollback");
@@ -121,6 +127,9 @@ function createDependencies(
         calls.push("move");
         if (overrides.moveError) {
           throw overrides.moveError;
+        }
+        if (overrides.moveResponse) {
+          return overrides.moveResponse;
         }
         return {
           Success: [],
@@ -173,7 +182,7 @@ const testCases: TestCase[] = [
         "initialize",
         "record-upload",
         "upload:1",
-        "finalize",
+        "finalize:1",
         "transition:staging:staged",
         "transition:staged:publishing",
         "move",
@@ -205,6 +214,124 @@ const testCases: TestCase[] = [
           errorCode: "staged_publication_rolled_back",
         },
       ]);
+    },
+  },
+  {
+    name: "exact product-detail rejects do not discard accepted staged rows",
+    run: async () => {
+      const rejectedItem = createItem({
+        id: 12,
+        sku: 8121674,
+        candidateKey: "pricing-result:90:8121674:2026-08-05T11:30:00.000Z",
+        inventoryDeltaKey: "inventory-batch-item:90:8121674",
+      });
+      const { dependencies, calls, outcomes } = createDependencies({
+        uploadCount: 1,
+        uploadMessages: [
+          "SKU 8121674 does not match product details and was not imported.",
+        ],
+        moveResponse: {
+          Success: [],
+          Warning: [],
+          Error: [],
+          Update: [
+            {
+              ProductConditionId: 5199433,
+              StorePriceCustomId: null,
+              Message: null,
+              ProductName: "Greninja Star",
+              ChannelName: "Marketplace",
+            },
+          ],
+        },
+      });
+
+      await executeClaimedStagedPublication(
+        createPublication({ items: [createItem(), rejectedItem] }),
+        "test-worker",
+        dependencies,
+      );
+
+      assert.ok(!calls.includes("rollback"));
+      assert.ok(calls.includes("finalize:1"));
+      assert.ok(calls.includes("move"));
+      assert.ok(calls.includes("transition:publishing:published"));
+      assert.deepEqual(
+        outcomes.map(({ itemId, status, errorCode }) => ({
+          itemId,
+          status,
+          errorCode,
+        })),
+        [
+          {
+            itemId: 12,
+            status: "failed",
+            errorCode: "seller_portal_product_details_mismatch",
+          },
+          {
+            itemId: 11,
+            status: "published",
+            errorCode: undefined,
+          },
+        ],
+      );
+    },
+  },
+  {
+    name: "product-detail reject parser requires an exact partial account",
+    run: () => {
+      assert.deepEqual(
+        findExactProductDetailMismatchSkus(
+          ["8121674 does not match product details"],
+          [5199433, 8121674],
+          1,
+        ),
+        [8121674],
+      );
+      assert.deepEqual(
+        findExactProductDetailMismatchSkus(
+          [
+            "5199433 does not match product details",
+            "8121674 does not match product details",
+          ],
+          [5199433, 8121674],
+          2,
+        ),
+        [5199433, 8121674],
+      );
+      assert.equal(
+        findExactProductDetailMismatchSkus(
+          ["An item does not match product details"],
+          [5199433, 8121674],
+          1,
+        ),
+        null,
+      );
+    },
+  },
+  {
+    name: "an exactly rejected upload with no accepted rows still rolls back",
+    run: async () => {
+      const { dependencies, calls } = createDependencies({
+        uploadCount: 0,
+        uploadMessages: [
+          "5199433 does not match product details",
+          "8121674 does not match product details",
+        ],
+      });
+
+      await executeClaimedStagedPublication(
+        createPublication({
+          items: [createItem(), createItem({ id: 12, sku: 8121674 })],
+        }),
+        "test-worker",
+        dependencies,
+      );
+
+      assert.ok(calls.includes("rollback"));
+      assert.ok(!calls.includes("finalize:0"));
+      assert.ok(!calls.includes("move"));
+      assert.ok(calls.includes("transition:staging:rolled_back"));
     },
   },
   {

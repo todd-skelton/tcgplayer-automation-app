@@ -279,17 +279,13 @@ export default function PendingInventoryPricerRoute() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (batches.length === 0) {
+    const nextBatchNumber =
+      requestedBatchNumber ?? batches[0]?.batchNumber ?? null;
+    if (nextBatchNumber === null) {
       return;
     }
 
-    const nextBatchNumber =
-      requestedBatchNumber &&
-      batches.some((batch) => batch.batchNumber === requestedBatchNumber)
-        ? requestedBatchNumber
-        : batches[0].batchNumber;
-
-    if (requestedBatchNumber !== nextBatchNumber) {
+    if (requestedBatchNumber === null) {
       setSearchParams({ batch: String(nextBatchNumber) }, { replace: true });
       return;
     }
@@ -384,9 +380,10 @@ export default function PendingInventoryPricerRoute() {
               Select Inventory Batch
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Each batch is a frozen snapshot from Inventory Manager, Seller
-              Pricer, or CSV Pricer. New live inventory can continue to be
-              entered while you price a different batch here.
+              The newest 100 manual batches are shown here. Each is a frozen
+              snapshot from Inventory Manager, Seller Pricer, or CSV Pricer.
+              Automatic run history is kept on Continuous Pricing, and a direct
+              batch link remains available for older manual batches.
             </Typography>
           </Box>
 
