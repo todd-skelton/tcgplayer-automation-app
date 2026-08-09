@@ -22,10 +22,6 @@ type TestCase = {
 
 const update: StagedPricingUpdate = {
   sku: 5199433,
-  productLine: "Pokemon",
-  setName: "SWSH: Sword & Shield Promo Cards",
-  productName: "Greninja Star",
-  condition: "Near Mint Holofoil",
   addToQuantity: -1,
   price: 24.57,
 };
@@ -36,7 +32,7 @@ function postResponse(response: unknown): SellerPortalFormPost {
 
 const testCases: TestCase[] = [
   {
-    name: "staged pricing forms preserve the verified import contract",
+    name: "staged pricing forms preserve the verified minimal import contract",
     run: () => {
       assert.equal(
         buildInitializeStagedPricingImportForm(
@@ -52,18 +48,16 @@ const testCases: TestCase[] = [
       });
       assert.equal(upload.get("data[0][Id]"), "0");
       assert.equal(upload.get("data[0][ProductConditionId]"), "5199433");
-      assert.equal(upload.get("data[0][CategoryName]"), "Pokemon");
-      assert.equal(
-        upload.get("data[0][SetName]"),
-        "SWSH: Sword & Shield Promo Cards",
-      );
-      assert.equal(upload.get("data[0][ProductName]"), "Greninja Star");
-      assert.equal(upload.get("data[0][ConditionName]"), "Near Mint Holofoil");
       assert.equal(upload.get("data[0][AddToQuantity]"), "-1");
       assert.equal(upload.get("data[0][MyPrice]"), "24.57");
-      assert.equal(upload.get("data[0][ProOnlineStoreReserveQuantity]"), "");
-      assert.equal(upload.get("data[0][ProOnlineStorePrice]"), "");
-      assert.equal(upload.get("data[0][Number]"), "");
+      assert.equal(upload.get("data[0][CategoryName]"), null);
+      assert.equal(upload.get("data[0][SetName]"), null);
+      assert.equal(upload.get("data[0][ProductName]"), null);
+      assert.equal(upload.get("data[0][ConditionName]"), null);
+      assert.equal(
+        upload.toString(),
+        "data%5B0%5D%5BId%5D=0&data%5B0%5D%5BProductConditionId%5D=5199433&data%5B0%5D%5BAddToQuantity%5D=-1&data%5B0%5D%5BMyPrice%5D=24.57&stagedPricingUploadId=16104570&fileName=inventory-batch-90.csv&type=Pricing",
+      );
       assert.equal(upload.get("stagedPricingUploadId"), "16104570");
       assert.equal(upload.get("fileName"), "inventory-batch-90.csv");
       assert.equal(upload.get("type"), "Pricing");

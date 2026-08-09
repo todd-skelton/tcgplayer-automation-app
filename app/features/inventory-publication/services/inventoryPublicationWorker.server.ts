@@ -314,10 +314,6 @@ function toStagedPricingUpdate(
 ): StagedPricingUpdate {
   return {
     sku: item.sku,
-    productLine: item.productLine,
-    setName: item.setName,
-    productName: item.productName,
-    condition: item.condition,
     addToQuantity: item.quantityDelta,
     price: item.desiredPrice,
   };

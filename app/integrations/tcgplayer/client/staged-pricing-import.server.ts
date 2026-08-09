@@ -18,17 +18,10 @@ export const STAGED_PRICING_IMPORT_CHUNK_SIZE = 750;
 export interface StagedPricingUpdate {
   /** TCGplayer's ProductConditionId, used as the inventory SKU. */
   sku: number;
-  productLine: string;
-  setName: string;
-  productName: string;
-  condition: string;
   /** Delta applied to live inventory when TCGplayer processes the update. */
   addToQuantity: number;
   price: number;
   rowId?: number;
-  number?: string | null;
-  storeReserveQuantity?: number | null;
-  storePrice?: number | null;
 }
 
 export interface UploadStagedPricingChunkRequest {
@@ -112,21 +105,9 @@ function requirePrice(value: number, name: string): void {
   }
 }
 
-function appendOptionalNumber(
-  form: URLSearchParams,
-  key: string,
-  value: number | null | undefined,
-): void {
-  form.append(key, value === null || value === undefined ? "" : String(value));
-}
-
 function validateUpdate(update: StagedPricingUpdate, index: number): void {
   const prefix = `updates[${index}]`;
   requirePositiveInteger(update.sku, `${prefix}.sku`);
-  requireNonEmptyText(update.productLine, `${prefix}.productLine`);
-  requireNonEmptyText(update.setName, `${prefix}.setName`);
-  requireNonEmptyText(update.productName, `${prefix}.productName`);
-  requireNonEmptyText(update.condition, `${prefix}.condition`);
 
   if (!Number.isInteger(update.addToQuantity)) {
     throw new RangeError(`${prefix}.addToQuantity must be an integer.`);
@@ -136,18 +117,6 @@ function validateUpdate(update: StagedPricingUpdate, index: number): void {
 
   if (update.rowId !== undefined) {
     requireNonNegativeInteger(update.rowId, `${prefix}.rowId`);
-  }
-  if (
-    update.storeReserveQuantity !== undefined &&
-    update.storeReserveQuantity !== null
-  ) {
-    requireNonNegativeInteger(
-      update.storeReserveQuantity,
-      `${prefix}.storeReserveQuantity`,
-    );
-  }
-  if (update.storePrice !== undefined && update.storePrice !== null) {
-    requirePrice(update.storePrice, `${prefix}.storePrice`);
   }
 }
 
@@ -181,23 +150,8 @@ export function buildUploadStagedPricingChunkForm(
     const prefix = `data[${index}]`;
     form.append(`${prefix}[Id]`, String(update.rowId ?? index));
     form.append(`${prefix}[ProductConditionId]`, String(update.sku));
-    form.append(`${prefix}[CategoryName]`, update.productLine);
-    form.append(`${prefix}[SetName]`, update.setName);
-    form.append(`${prefix}[ProductName]`, update.productName);
-    form.append(`${prefix}[ConditionName]`, update.condition);
     form.append(`${prefix}[AddToQuantity]`, String(update.addToQuantity));
     form.append(`${prefix}[MyPrice]`, update.price.toFixed(2));
-    appendOptionalNumber(
-      form,
-      `${prefix}[ProOnlineStoreReserveQuantity]`,
-      update.storeReserveQuantity,
-    );
-    appendOptionalNumber(
-      form,
-      `${prefix}[ProOnlineStorePrice]`,
-      update.storePrice,
-    );
-    form.append(`${prefix}[Number]`, update.number ?? "");
   });
   form.append("stagedPricingUploadId", String(request.uploadId));
   form.append("fileName", request.fileName);
