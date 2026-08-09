@@ -145,6 +145,20 @@ const testCases: TestCase[] = [
     },
   },
   {
+    name: "an exact one-cent change meets the one-cent minimum",
+    run: () => {
+      const decision = evaluateInventoryPublicationCandidate(
+        createCandidate({ previousPrice: 0.24, price: 0.23 }),
+        createEnabledPolicy({ minimumAbsolutePriceChange: 0.01 }),
+        NOW,
+      );
+
+      assert.equal(decision.absolutePriceChange, 0.01);
+      assert.equal(decision.eligible, true);
+      assert.deepEqual(decision.reasons, []);
+    },
+  },
+  {
     name: "candidate identities and publication methods are stable",
     run: () => {
       const candidate = createCandidate();

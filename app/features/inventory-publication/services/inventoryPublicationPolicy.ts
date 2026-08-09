@@ -108,7 +108,9 @@ export function evaluateInventoryPublicationCandidate(
   }
 
   if (roundedPrice !== undefined && roundedPreviousPrice !== undefined) {
-    absolutePriceChange = Math.abs(roundedPrice - roundedPreviousPrice);
+    absolutePriceChange = roundToCents(
+      Math.abs(roundedPrice - roundedPreviousPrice),
+    );
     relativePriceChangePercent =
       (absolutePriceChange / roundedPreviousPrice) * 100;
 
