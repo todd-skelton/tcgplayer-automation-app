@@ -240,11 +240,18 @@ export default function PendingInventoryPricerRoute() {
   }, [selectedBatch?.batchNumber]);
 
   const handleOpenPublishDialog = () => {
-    const canarySkus = eligiblePublicationItems
+    const inventoryChangeSkus = eligiblePublicationItems
+      .filter((item) => item.quantityDelta !== 0)
+      .map((item) => item.sku);
+    const priceOnlyCanarySkus = eligiblePublicationItems
       .filter((item) => item.quantityDelta === 0)
       .slice(0, 20)
       .map((item) => item.sku);
-    setSelectedPublicationSkus(new Set(canarySkus));
+    const recommendedSkus =
+      inventoryChangeSkus.length > 0
+        ? inventoryChangeSkus
+        : priceOnlyCanarySkus;
+    setSelectedPublicationSkus(new Set(recommendedSkus));
     setPublishDialogOpen(true);
   };
 
@@ -676,8 +683,9 @@ export default function PendingInventoryPricerRoute() {
             Selected {selectedPublicationSkus.size} SKU
             {selectedPublicationSkus.size === 1 ? "" : "s"}; total quantity
             delta {selectedPublicationQuantityDelta >= 0 ? "+" : ""}
-            {selectedPublicationQuantityDelta}. The default canary contains the
-            20 smallest price changes and no quantity changes.
+            {selectedPublicationQuantityDelta}. Inventory changes are selected
+            by default so the published quantity matches the batch. Price-only
+            batches default to the 20 smallest price changes.
           </Alert>
 
           <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
@@ -686,7 +694,7 @@ export default function PendingInventoryPricerRoute() {
               variant="outlined"
               onClick={handleOpenPublishDialog}
             >
-              Reset to safest 20
+              Reset recommended selection
             </Button>
             <Button
               size="small"

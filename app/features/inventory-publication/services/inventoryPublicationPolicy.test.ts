@@ -100,7 +100,7 @@ const testCases: TestCase[] = [
     },
   },
   {
-    name: "warnings, stale candidates, and consumed deltas require review",
+    name: "stale candidates and consumed inventory deltas require review",
     run: () => {
       const decision = evaluateInventoryPublicationCandidate(
         createCandidate({
@@ -117,10 +117,35 @@ const testCases: TestCase[] = [
 
       assert.equal(decision.eligible, false);
       assert.deepEqual(decision.reasons, [
-        "pricing_warning",
         "inventory_delta_already_consumed",
         "candidate_stale",
       ]);
+    },
+  },
+  {
+    name: "price warnings block price-only updates but not inventory additions",
+    run: () => {
+      const warning = ["Suggested price below minimum. Using minimum price."];
+      const priceOnly = evaluateInventoryPublicationCandidate(
+        createCandidate({ warnings: warning }),
+        createEnabledPolicy(),
+        NOW,
+      );
+      const inventoryAddition = evaluateInventoryPublicationCandidate(
+        createCandidate({
+          sourceType: "pending_inventory",
+          previousPrice: null,
+          quantityDelta: 3,
+          warnings: warning,
+        }),
+        createEnabledPolicy(),
+        NOW,
+      );
+
+      assert.equal(priceOnly.eligible, false);
+      assert.deepEqual(priceOnly.reasons, ["pricing_warning"]);
+      assert.equal(inventoryAddition.eligible, true);
+      assert.deepEqual(inventoryAddition.reasons, []);
     },
   },
   {

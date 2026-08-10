@@ -67,7 +67,8 @@ export function evaluateInventoryPublicationCandidate(
   if (
     !policy.allowWarnings &&
     candidate.warnings &&
-    candidate.warnings.length > 0
+    candidate.warnings.length > 0 &&
+    candidate.quantityDelta <= 0
   ) {
     addReason(reasons, "pricing_warning");
   }
