@@ -35,6 +35,7 @@ export type InventoryPublicationEligibilityReason =
   | "unchanged_price"
   | "below_minimum_change"
   | "candidate_stale"
+  | "pricing_candidate_already_used"
   | "invalid_quantity_delta"
   | "missing_product_metadata"
   | "csv_quantity_delta_requires_review"

@@ -214,6 +214,25 @@ export const inventoryPublicationsRepository = {
     return new Set(rows.map((row) => row.inventoryDeltaKey));
   },
 
+  async findExistingPricingCandidateKeys(
+    candidateKeys: string[],
+    executor?: Queryable,
+  ): Promise<Set<string>> {
+    if (candidateKeys.length === 0) {
+      return new Set();
+    }
+
+    const rows = await query<{ candidateKey: string }>(
+      `SELECT DISTINCT candidate_key AS "candidateKey"
+      FROM inventory_publication_items
+      WHERE candidate_key = ANY($1::text[])`,
+      [candidateKeys],
+      executor,
+    );
+
+    return new Set(rows.map((row) => row.candidateKey));
+  },
+
   async findInventoryDeltaStatuses(
     inventoryDeltaKeys: string[],
     executor?: Queryable,

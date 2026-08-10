@@ -61,6 +61,7 @@ interface InventoryBatchPublicationDependencies {
   findInventoryDeltaStatuses(
     keys: string[],
   ): Promise<Map<string, InventoryPublicationItemStatus>>;
+  findExistingPricingCandidateKeys(keys: string[]): Promise<Set<string>>;
   createPublication(
     params: Parameters<
       typeof inventoryPublicationsRepository.createOrFindPlanned
@@ -81,6 +82,8 @@ const defaultDependencies: InventoryBatchPublicationDependencies = {
     inventoryBatchesRepository.findResults(batchNumber, "successful"),
   findInventoryDeltaStatuses: (keys) =>
     inventoryPublicationsRepository.findInventoryDeltaStatuses(keys),
+  findExistingPricingCandidateKeys: (keys) =>
+    inventoryPublicationsRepository.findExistingPricingCandidateKeys(keys),
   createPublication: (params) =>
     inventoryPublicationsRepository.createOrFindPlanned(params),
 };
@@ -195,10 +198,25 @@ export async function previewInventoryBatchPublication(
         sku: item.sku,
       }),
     );
-  const existingDeltaStatuses =
-    await dependencies.findInventoryDeltaStatuses(possibleDeltaKeys);
+  const candidateKeys = results.map((result) =>
+    createPricingCandidateKey({
+      batchNumber,
+      sku: result.sku,
+      pricedAt: result.pricedAt,
+    }),
+  );
+  const [existingDeltaStatuses, existingPricingCandidateKeys] =
+    await Promise.all([
+      dependencies.findInventoryDeltaStatuses(possibleDeltaKeys),
+      dependencies.findExistingPricingCandidateKeys(candidateKeys),
+    ]);
 
   const items = results.map((result): InventoryBatchPublicationPreviewItem => {
+    const candidateKey = createPricingCandidateKey({
+      batchNumber,
+      sku: result.sku,
+      pricedAt: result.pricedAt,
+    });
     const batchItem = batchItemsBySku.get(result.sku);
     const originalQuantityDelta = batchItem?.addToQuantity ?? 0;
     const possibleDeltaKey =
@@ -260,6 +278,9 @@ export async function previewInventoryBatchPublication(
     if (!productLine || !setName || !productName || !condition) {
       addReason(reasons, "missing_product_metadata");
     }
+    if (existingPricingCandidateKeys.has(candidateKey)) {
+      addReason(reasons, "pricing_candidate_already_used");
+    }
     if (batch.sourceType === "csv" && quantityDelta !== 0) {
       addReason(reasons, "csv_quantity_delta_requires_review");
     }
@@ -287,11 +308,7 @@ export async function previewInventoryBatchPublication(
       pricedAt: result.pricedAt,
       eligible: reasons.length === 0,
       reasons,
-      candidateKey: createPricingCandidateKey({
-        batchNumber,
-        sku: result.sku,
-        pricedAt: result.pricedAt,
-      }),
+      candidateKey,
       inventoryDeltaKey,
     };
   });

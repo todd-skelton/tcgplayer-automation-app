@@ -188,14 +188,21 @@ function createDependencies(
   options: {
     sourceType?: InventoryBatch["sourceType"];
     deltaStatus?: InventoryPublicationItemStatus;
+    candidateAlreadyUsed?: boolean;
     batchItem?: InventoryBatchItem;
     result?: InventoryBatchResult;
   } = {},
 ) {
   const created: CreateInventoryPublication[] = [];
   const deltaStatuses = new Map<string, InventoryPublicationItemStatus>();
+  const existingCandidateKeys = new Set<string>();
   if (options.deltaStatus) {
     deltaStatuses.set("inventory-batch-item:90:5199433", options.deltaStatus);
+  }
+  if (options.candidateAlreadyUsed) {
+    existingCandidateKeys.add(
+      "pricing-result:90:5199433:2026-08-05T11:30:00.000Z",
+    );
   }
 
   return {
@@ -205,6 +212,7 @@ function createDependencies(
       findItems: async () => [options.batchItem ?? createBatchItem()],
       findSuccessfulResults: async () => [options.result ?? createResult()],
       findInventoryDeltaStatuses: async () => deltaStatuses,
+      findExistingPricingCandidateKeys: async () => existingCandidateKeys,
       createPublication: async (params: CreateInventoryPublication) => {
         created.push(params);
         return {
@@ -274,9 +282,16 @@ const testCases: TestCase[] = [
     },
   },
   {
-    name: "confirmed published deltas become price-only while ambiguous deltas stay blocked",
+    name: "published candidates are not offered twice while later repricing stays price-only",
     run: async () => {
       const published = await previewInventoryBatchPublication(90, {
+        dependencies: createDependencies({
+          deltaStatus: "published",
+          candidateAlreadyUsed: true,
+        }).dependencies,
+        now: NOW,
+      });
+      const repriced = await previewInventoryBatchPublication(90, {
         dependencies: createDependencies({
           deltaStatus: "published",
         }).dependencies,
@@ -290,7 +305,14 @@ const testCases: TestCase[] = [
       });
 
       assert.equal(published.items[0]?.quantityDelta, 0);
-      assert.equal(published.items[0]?.eligible, true);
+      assert.equal(published.items[0]?.eligible, false);
+      assert.ok(
+        published.items[0]?.reasons.includes(
+          "pricing_candidate_already_used",
+        ),
+      );
+      assert.equal(repriced.items[0]?.quantityDelta, 0);
+      assert.equal(repriced.items[0]?.eligible, true);
       assert.equal(ambiguous.items[0]?.eligible, false);
       assert.ok(
         ambiguous.items[0]?.reasons.includes("inventory_delta_ambiguous"),
