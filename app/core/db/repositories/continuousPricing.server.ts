@@ -145,7 +145,7 @@ export const continuousPricingRepository = {
       }
 
       if (items.length > 0) {
-        const placeholders = createValuesPlaceholders(items.length, 13);
+        const placeholders = createValuesPlaceholders(items.length, 14);
         await execute(
           `INSERT INTO continuous_pricing_inventory (
             seller_key,
@@ -160,6 +160,7 @@ export const continuousPricingRepository = {
             variant,
             quantity,
             current_price,
+            in_stock,
             last_observed_at
           ) VALUES ${placeholders}
           ON CONFLICT (seller_key, sku) DO UPDATE SET
@@ -173,7 +174,7 @@ export const continuousPricingRepository = {
             variant = EXCLUDED.variant,
             quantity = EXCLUDED.quantity,
             current_price = EXCLUDED.current_price,
-            in_stock = TRUE,
+            in_stock = EXCLUDED.in_stock,
             last_observed_at = EXCLUDED.last_observed_at,
             updated_at = NOW()`,
           items.flatMap((item) => [
@@ -189,6 +190,7 @@ export const continuousPricingRepository = {
             item.variant,
             item.quantity,
             item.currentPrice,
+            item.quantity > 0,
             observedAt,
           ]),
           client,
@@ -248,10 +250,11 @@ export const continuousPricingRepository = {
       enabled: "enabled AND pause_reason IS NULL",
       paused: "NOT enabled",
       needs_review: "pause_reason IS NOT NULL",
-      in_stock: "in_stock",
-      out_of_stock: "NOT in_stock",
+      in_stock: "in_stock AND quantity > 0",
+      out_of_stock: "NOT in_stock OR quantity <= 0",
       due: `enabled
         AND in_stock
+        AND quantity > 0
         AND pause_reason IS NULL
         AND next_price_at <= NOW()`,
     };
@@ -602,16 +605,20 @@ export const continuousPricingRepository = {
         COUNT(*) FILTER (
           WHERE NOT in_stock OR quantity <= 0
         )::INTEGER AS "outOfStockSkuCount",
-        COUNT(*) FILTER (WHERE enabled AND in_stock)::INTEGER AS "enabledInStockCount",
+        COUNT(*) FILTER (
+          WHERE enabled AND in_stock AND quantity > 0
+        )::INTEGER AS "enabledInStockCount",
         COUNT(*) FILTER (
           WHERE enabled
             AND in_stock
+            AND quantity > 0
             AND pause_reason IS NULL
             AND next_price_at <= NOW()
         )::INTEGER AS "dueCount",
         MIN(next_price_at) FILTER (
           WHERE enabled
             AND in_stock
+            AND quantity > 0
             AND pause_reason IS NULL
             AND next_price_at <= NOW()
         ) AS "oldestDueAt"
