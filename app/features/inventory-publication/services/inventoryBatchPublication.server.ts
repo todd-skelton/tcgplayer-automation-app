@@ -15,6 +15,7 @@ import {
 } from "./inventoryPublicationPolicy";
 import {
   DEFAULT_INVENTORY_PUBLICATION_POLICY,
+  type CreateInventoryPublication,
   type InventoryPublication,
   type InventoryPublicationEligibilityReason,
   type InventoryPublicationItemStatus,
@@ -164,6 +165,83 @@ function createSelectedPlanningKey(
     .digest("hex")
     .slice(0, 16);
   return `${baseKey}:selection:${selectionHash}`;
+}
+
+type PublishablePreviewItem = InventoryBatchPublicationPreviewItem & {
+  desiredPrice: number;
+};
+
+function selectPublishableItems(
+  preview: InventoryBatchPublicationPreview,
+  selectedSkus: readonly number[] | null,
+): PublishablePreviewItem[] {
+  const allEligibleItems = preview.items.filter(
+    (item): item is PublishablePreviewItem =>
+      item.eligible && item.desiredPrice !== null,
+  );
+  const eligibleItems = selectedSkus
+    ? allEligibleItems.filter((item) => selectedSkus.includes(item.sku))
+    : allEligibleItems;
+
+  if (selectedSkus) {
+    const eligibleSkuSet = new Set(eligibleItems.map((item) => item.sku));
+    const rejectedSkus = selectedSkus.filter((sku) => !eligibleSkuSet.has(sku));
+    if (rejectedSkus.length > 0) {
+      throw new Error(
+        `Selected SKUs are missing or ineligible: ${rejectedSkus.join(", ")}.`,
+      );
+    }
+  }
+
+  if (eligibleItems.length === 0) {
+    throw new Error(
+      `Batch ${preview.batchNumber} has no pricing results eligible for publication.`,
+    );
+  }
+
+  return eligibleItems;
+}
+
+function createPublicationParams(
+  preview: InventoryBatchPublicationPreview,
+  policy: InventoryPublicationPolicy,
+  mode: "manual" | "automatic",
+  items: readonly PublishablePreviewItem[],
+  selectedSkus: readonly number[] | null = items.map((item) => item.sku),
+): CreateInventoryPublication {
+  return {
+    planningKey: createSelectedPlanningKey(preview.pricingJobId, selectedSkus),
+    batchNumber: preview.batchNumber,
+    pricingJobId: preview.pricingJobId,
+    method: "staged_delta",
+    sourceType: preview.sourceType,
+    sellerKey:
+      preview.sourceType === "seller" || preview.sourceType === "continuous"
+        ? preview.sourceLabel
+        : undefined,
+    config: {
+      policy,
+      mode,
+      selectedSkus,
+    },
+    items: items.map((item) => ({
+      candidateKey: item.candidateKey,
+      inventoryDeltaKey: item.inventoryDeltaKey,
+      batchNumber: preview.batchNumber,
+      sku: item.sku,
+      productId: item.productId,
+      productLine: item.productLine,
+      setName: item.setName,
+      productName: item.productName,
+      condition: item.condition,
+      previousPrice: item.previousPrice,
+      desiredPrice: item.desiredPrice,
+      quantityDelta: item.quantityDelta,
+      pricedAt: item.pricedAt,
+      eligibilityReasons: [],
+      status: "planned",
+    })),
+  };
 }
 
 export async function previewInventoryBatchPublication(
@@ -349,26 +427,9 @@ export async function planInventoryBatchPublication(
     ...options,
     dependencies,
   });
-  const allEligibleItems = preview.items.filter(
-    (
-      item,
-    ): item is InventoryBatchPublicationPreviewItem & {
-      desiredPrice: number;
-    } => item.eligible && item.desiredPrice !== null,
-  );
-  const eligibleItems = selectedSkus
-    ? allEligibleItems.filter((item) => selectedSkus.includes(item.sku))
-    : allEligibleItems;
+  const eligibleItems = selectPublishableItems(preview, selectedSkus);
 
   if (selectedSkus) {
-    const eligibleSkuSet = new Set(eligibleItems.map((item) => item.sku));
-    const rejectedSkus = selectedSkus.filter((sku) => !eligibleSkuSet.has(sku));
-    if (rejectedSkus.length > 0) {
-      throw new Error(
-        `Selected SKUs are missing or ineligible: ${rejectedSkus.join(", ")}.`,
-      );
-    }
-
     const maximum =
       options.policy?.stagedMicroBatchMaximum ??
       DEFAULT_INVENTORY_PUBLICATION_POLICY.stagedMicroBatchMaximum;
@@ -378,57 +439,70 @@ export async function planInventoryBatchPublication(
       );
     }
   }
-
-  if (eligibleItems.length === 0) {
-    throw new Error(
-      `Batch ${batchNumber} has no pricing results eligible for publication.`,
-    );
-  }
-
-  const planningKey = createSelectedPlanningKey(
-    preview.pricingJobId,
+  const params = createPublicationParams(
+    preview,
+    options.policy ?? DEFAULT_INVENTORY_PUBLICATION_POLICY,
+    options.mode ?? "manual",
+    eligibleItems,
     selectedSkus,
   );
-  const result = await dependencies.createPublication({
-    planningKey,
-    batchNumber,
-    pricingJobId: preview.pricingJobId,
-    method: "staged_delta",
-    sourceType: preview.sourceType,
-    sellerKey:
-      preview.sourceType === "seller" || preview.sourceType === "continuous"
-        ? preview.sourceLabel
-        : undefined,
-    config: {
-      policy: options.policy ?? DEFAULT_INVENTORY_PUBLICATION_POLICY,
-      mode: options.mode ?? "manual",
-      selectedSkus,
-    },
-    items: eligibleItems.map((item) => ({
-      candidateKey: item.candidateKey,
-      inventoryDeltaKey: item.inventoryDeltaKey,
-      batchNumber,
-      sku: item.sku,
-      productId: item.productId,
-      productLine: item.productLine,
-      setName: item.setName,
-      productName: item.productName,
-      condition: item.condition,
-      previousPrice: item.previousPrice,
-      desiredPrice: item.desiredPrice,
-      quantityDelta: item.quantityDelta,
-      pricedAt: item.pricedAt,
-      eligibilityReasons: [],
-      status: "planned",
-    })),
-  });
+  const result = await dependencies.createPublication(params);
 
   return {
     publication: result.publication,
     preview: {
       ...preview,
-      planningKey,
+      planningKey: params.planningKey,
     },
     created: result.created,
+  };
+}
+
+export async function planInventoryBatchPublications(
+  batchNumber: number,
+  options: {
+    policy?: InventoryPublicationPolicy;
+    now?: Date;
+    dependencies?: InventoryBatchPublicationDependencies;
+    mode?: "manual" | "automatic";
+    selectedSkus?: readonly number[];
+  } = {},
+): Promise<{
+  publications: InventoryPublication[];
+  preview: InventoryBatchPublicationPreview;
+  createdCount: number;
+}> {
+  const dependencies = options.dependencies ?? defaultDependencies;
+  const policy = options.policy ?? DEFAULT_INVENTORY_PUBLICATION_POLICY;
+  const mode = options.mode ?? "manual";
+  const selectedSkus = normalizeSelectedSkus(options.selectedSkus);
+  const preview = await previewInventoryBatchPublication(batchNumber, {
+    ...options,
+    dependencies,
+  });
+  const eligibleItems = selectPublishableItems(preview, selectedSkus);
+  const maximum = policy.stagedMicroBatchMaximum;
+  if (!Number.isInteger(maximum) || maximum <= 0) {
+    throw new Error("The staged publication batch maximum must be positive.");
+  }
+  const chunks: PublishablePreviewItem[][] = [];
+
+  for (let index = 0; index < eligibleItems.length; index += maximum) {
+    chunks.push(eligibleItems.slice(index, index + maximum));
+  }
+
+  const results = [];
+  for (const chunk of chunks) {
+    results.push(
+      await dependencies.createPublication(
+        createPublicationParams(preview, policy, mode, chunk),
+      ),
+    );
+  }
+
+  return {
+    publications: results.map((result) => result.publication),
+    preview,
+    createdCount: results.filter((result) => result.created).length,
   };
 }

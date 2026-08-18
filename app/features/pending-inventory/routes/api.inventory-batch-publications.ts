@@ -4,7 +4,7 @@ import {
   inventoryPublicationsRepository,
 } from "~/core/db";
 import {
-  planInventoryBatchPublication,
+  planInventoryBatchPublications,
   previewInventoryBatchPublication,
 } from "~/features/inventory-publication/services/inventoryBatchPublication.server";
 import { ensureInventoryPublicationWorker } from "~/features/inventory-publication/services/inventoryPublicationWorker.server";
@@ -77,12 +77,12 @@ export async function action({
       );
     }
 
-    const result = await planInventoryBatchPublication(batchNumber, {
+    const result = await planInventoryBatchPublications(batchNumber, {
       selectedSkus: selectedSkus as number[] | undefined,
     });
     ensureInventoryPublicationWorker();
 
-    return data(result, { status: result.created ? 201 : 200 });
+    return data(result, { status: result.createdCount > 0 ? 201 : 200 });
   } catch (error) {
     return data({ error: String(error) }, { status: 500 });
   }

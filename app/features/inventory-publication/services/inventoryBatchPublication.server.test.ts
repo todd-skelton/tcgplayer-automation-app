@@ -13,6 +13,7 @@ import type {
 } from "../types/inventoryPublication";
 import {
   planInventoryBatchPublication,
+  planInventoryBatchPublications,
   previewInventoryBatchPublication,
 } from "./inventoryBatchPublication.server";
 
@@ -307,9 +308,7 @@ const testCases: TestCase[] = [
       assert.equal(published.items[0]?.quantityDelta, 0);
       assert.equal(published.items[0]?.eligible, false);
       assert.ok(
-        published.items[0]?.reasons.includes(
-          "pricing_candidate_already_used",
-        ),
+        published.items[0]?.reasons.includes("pricing_candidate_already_used"),
       );
       assert.equal(repriced.items[0]?.quantityDelta, 0);
       assert.equal(repriced.items[0]?.eligible, true);
@@ -367,6 +366,59 @@ const testCases: TestCase[] = [
       assert.equal(
         planned.preview.planningKey,
         planned.publication.planningKey,
+      );
+    },
+  },
+  {
+    name: "manual plans split large selections into staged publication batches",
+    run: async () => {
+      const { dependencies, created } = createDependencies();
+      const skus = Array.from({ length: 501 }, (_, index) => index + 1);
+      dependencies.findItems = async () =>
+        skus.map((sku) =>
+          createBatchItem({
+            sku,
+            productId: sku,
+            addToQuantity: 0,
+            currentPrice: 20,
+          }),
+        );
+      dependencies.findSuccessfulResults = async () =>
+        skus.map((sku) =>
+          createResult({
+            sku,
+            pricingDetails: {
+              schemaVersion: 1,
+              pricedAt: PRICED_AT.toISOString(),
+              marketplacePrice: 24.99,
+              previousPrice: 20,
+              quantity: 0,
+              addToQuantity: 0,
+            },
+          }),
+        );
+
+      const planned = await planInventoryBatchPublications(90, {
+        dependencies,
+        now: NOW,
+        selectedSkus: [...skus].reverse(),
+      });
+
+      assert.equal(planned.createdCount, 3);
+      assert.equal(planned.publications.length, 3);
+      assert.deepEqual(
+        created.map((publication) => publication.items.length),
+        [250, 250, 1],
+      );
+      assert.deepEqual(
+        created.flatMap((publication) =>
+          publication.items.map((item) => item.sku),
+        ),
+        skus,
+      );
+      assert.equal(
+        new Set(created.map((publication) => publication.planningKey)).size,
+        3,
       );
     },
   },

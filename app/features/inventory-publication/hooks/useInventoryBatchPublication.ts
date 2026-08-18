@@ -58,8 +58,9 @@ export function useInventoryBatchPublication(batchNumber?: number) {
 
   const latestPublication = state?.publications[0] ?? null;
   const hasActivePublication = Boolean(
-    latestPublication &&
-    ACTIVE_PUBLICATION_STATUSES.has(latestPublication.status),
+    state?.publications.some((publication) =>
+      ACTIVE_PUBLICATION_STATUSES.has(publication.status),
+    ),
   );
 
   useEffect(() => {
@@ -92,7 +93,8 @@ export function useInventoryBatchPublication(batchNumber?: number) {
         );
         const payload = (await response.json()) as
           | {
-              publication: InventoryPublication;
+              publications: InventoryPublication[];
+              createdCount: number;
             }
           | { error?: string };
         if (!response.ok) {
@@ -104,7 +106,10 @@ export function useInventoryBatchPublication(batchNumber?: number) {
         }
 
         await load();
-        return (payload as { publication: InventoryPublication }).publication;
+        return payload as {
+          publications: InventoryPublication[];
+          createdCount: number;
+        };
       } catch (publishError) {
         setError(String(publishError));
         throw publishError;

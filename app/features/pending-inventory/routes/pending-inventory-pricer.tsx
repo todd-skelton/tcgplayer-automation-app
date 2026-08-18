@@ -360,9 +360,10 @@ export default function PendingInventoryPricerRoute() {
     const selectedSkus = [...selectedPublicationSkus];
     setPublishDialogOpen(false);
     try {
-      await publish(selectedSkus);
+      const result = await publish(selectedSkus);
+      const publicationCount = result.publications.length;
       setSuccess(
-        `${selectedSkus.length} SKUs from batch ${selectedBatch.batchNumber} queued for Seller Portal publication`,
+        `${selectedSkus.length} SKUs from batch ${selectedBatch.batchNumber} queued in ${publicationCount} Seller Portal publication${publicationCount === 1 ? "" : "s"}`,
       );
     } catch {
       // The publication hook owns the user-facing error state.
@@ -669,9 +670,9 @@ export default function PendingInventoryPricerRoute() {
         <DialogContent>
           <DialogContentText sx={{ mb: 2 }}>
             This stages the exact price and quantity changes shown below, then
-            moves the staged upload live once. Positive quantities are
-            additions, not absolute stock counts. An ambiguous response is never
-            replayed automatically.
+            publishes them in automatic groups of no more than 250 SKUs.
+            Positive quantities are additions, not absolute stock counts. An
+            ambiguous response is never replayed automatically.
           </DialogContentText>
 
           <Alert
@@ -695,6 +696,16 @@ export default function PendingInventoryPricerRoute() {
               onClick={handleOpenPublishDialog}
             >
               Reset recommended selection
+            </Button>
+            <Button
+              size="small"
+              onClick={() =>
+                setSelectedPublicationSkus(
+                  new Set(eligiblePublicationItems.map((item) => item.sku)),
+                )
+              }
+            >
+              Select all ready
             </Button>
             <Button
               size="small"
