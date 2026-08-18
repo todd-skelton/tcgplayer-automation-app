@@ -27,6 +27,7 @@ import { Link, useSearchParams } from "react-router";
 import { useInventoryBatchPublication } from "../../inventory-publication/hooks/useInventoryBatchPublication";
 import { ProgressIndicator } from "../../pricing/components";
 import { InventoryBatchSummaryComponent } from "../components/InventoryBatchSummary";
+import { summarizeLatestInventoryPublicationRun } from "../components/inventoryPublicationRunSummary";
 import { useInventoryBatchProcessor } from "../hooks/useInventoryBatchProcessor";
 import type {
   InventoryBatch,
@@ -184,7 +185,6 @@ export default function PendingInventoryPricerRoute() {
   const {
     preview: publicationPreview,
     publications,
-    latestPublication,
     hasActivePublication,
     currentPlanAlreadyExists,
     isSubmitting: isPublishing,
@@ -197,6 +197,11 @@ export default function PendingInventoryPricerRoute() {
   const [selectedPublicationSkus, setSelectedPublicationSkus] = useState<
     Set<number>
   >(new Set());
+
+  const publicationRunSummary = useMemo(
+    () => summarizeLatestInventoryPublicationRun(publications),
+    [publications],
+  );
 
   const eligiblePublicationItems = useMemo(() => {
     const items =
@@ -583,39 +588,25 @@ export default function PendingInventoryPricerRoute() {
               </Alert>
             )}
 
-            {latestPublication && (
+            {publicationRunSummary && (
               <Alert
                 severity={
-                  latestPublication.status === "published"
+                  publicationRunSummary.status === "published"
                     ? "success"
-                    : latestPublication.status === "failed" ||
-                        latestPublication.status === "rolled_back"
+                    : publicationRunSummary.status === "failed"
                       ? "error"
-                      : latestPublication.status === "ambiguous"
+                      : publicationRunSummary.status === "ambiguous"
                         ? "warning"
                         : "info"
                 }
               >
-                Latest publication:{" "}
-                {latestPublication.status.replaceAll("_", " ")}. Published{" "}
-                {
-                  latestPublication.items.filter(
-                    (item) => item.status === "published",
-                  ).length
-                }
-                , failed{" "}
-                {
-                  latestPublication.items.filter(
-                    (item) => item.status === "failed",
-                  ).length
-                }
-                , ambiguous{" "}
-                {
-                  latestPublication.items.filter(
-                    (item) => item.status === "ambiguous",
-                  ).length
-                }
-                .
+                Latest pricing run:{" "}
+                {publicationRunSummary.status.replaceAll("_", " ")}. Published{" "}
+                {publicationRunSummary.publishedCount} across{" "}
+                {publicationRunSummary.publicationCount} publication batch
+                {publicationRunSummary.publicationCount === 1 ? "" : "es"},
+                failed {publicationRunSummary.failedCount}, ambiguous{" "}
+                {publicationRunSummary.ambiguousCount}.
               </Alert>
             )}
           </Stack>
