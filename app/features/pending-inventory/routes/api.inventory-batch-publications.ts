@@ -1,6 +1,7 @@
 import { data } from "react-router";
 import {
   inventoryBatchesRepository,
+  inventoryPublicationSettingsRepository,
   inventoryPublicationsRepository,
 } from "~/core/db";
 import {
@@ -77,8 +78,11 @@ export async function action({
       );
     }
 
+    const configuration = await inventoryPublicationSettingsRepository.get();
     const result = await planInventoryBatchPublications(batchNumber, {
       selectedSkus: selectedSkus as number[] | undefined,
+      targetSellerKey:
+        configuration.settings.continuousPricing.sellerKey || undefined,
     });
     ensureInventoryPublicationWorker();
 

@@ -54,6 +54,8 @@ export async function planAutomaticInventoryBatchPublication(
   const result = await planInventoryBatchPublication(batchNumber, {
     policy: configuration.settings.policy,
     mode: "automatic",
+    targetSellerKey:
+      configuration.settings.continuousPricing.sellerKey || undefined,
   });
   ensureInventoryPublicationWorker();
 

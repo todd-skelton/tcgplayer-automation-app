@@ -20,6 +20,18 @@ import { PRICING_JOB_PRIORITIES } from "./inventoryBatchPricingJobs.server";
 
 type ContinuousPricingInventoryRow = ContinuousPricingInventoryItem;
 
+interface InventoryManagementPricingObservation {
+  sku: number;
+  price: number;
+  pricedAt: Date;
+  publishedAt: Date;
+}
+
+interface UpsertContinuousPricingSnapshotOptions {
+  minimumIntervalMinutes: number;
+  observedAt?: Date;
+}
+
 const inventorySelect = `SELECT
   seller_key AS "sellerKey",
   sku,
@@ -104,6 +116,51 @@ function toOriginalRow(item: ContinuousPricingInventoryItem): TcgPlayerListing {
   };
 }
 
+async function reconcileInventoryManagementPublications(
+  sellerKey: string,
+  minimumIntervalMinutes: number,
+  executor: Queryable,
+): Promise<number> {
+  return execute(
+    `WITH latest_publication AS (
+      SELECT DISTINCT ON (item.sku)
+        item.sku,
+        item.desired_price,
+        item.priced_at,
+        item.published_at
+      FROM inventory_publication_items item
+      JOIN inventory_publications publication
+        ON publication.id = item.publication_id
+      WHERE publication.source_type = 'pending_inventory'
+        AND publication.seller_key = $1
+        AND item.status = 'published'
+        AND item.published_at IS NOT NULL
+      ORDER BY item.sku, item.published_at DESC, item.id DESC
+    )
+    UPDATE continuous_pricing_inventory inventory
+    SET last_priced_at = GREATEST(
+          COALESCE(inventory.last_priced_at, latest.priced_at),
+          latest.priced_at
+        ),
+        last_published_price = latest.desired_price,
+        last_published_at = latest.published_at,
+        next_price_at = GREATEST(
+          inventory.next_price_at,
+          latest.published_at + ($2 * INTERVAL '1 minute')
+        ),
+        updated_at = NOW()
+    FROM latest_publication latest
+    WHERE inventory.seller_key = $1
+      AND inventory.sku = latest.sku
+      AND (
+        inventory.last_published_at IS NULL
+        OR inventory.last_published_at < latest.published_at
+      )`,
+    [sellerKey, minimumIntervalMinutes],
+    executor,
+  );
+}
+
 export const continuousPricingRepository = {
   async shouldRefresh(
     sellerKey: string,
@@ -127,8 +184,9 @@ export const continuousPricingRepository = {
   async upsertSnapshot(
     sellerKey: string,
     items: UpsertContinuousPricingInventoryItem[],
-    observedAt = new Date(),
+    options: UpsertContinuousPricingSnapshotOptions,
   ): Promise<void> {
+    const observedAt = options.observedAt ?? new Date();
     await withTransaction(async (client) => {
       const refresh = await queryOne<{ id: number }>(
         `INSERT INTO continuous_pricing_refreshes (
@@ -205,6 +263,11 @@ export const continuousPricingRepository = {
         WHERE seller_key = $1
           AND last_observed_at < $2`,
         [sellerKey, observedAt],
+        client,
+      );
+      await reconcileInventoryManagementPublications(
+        sellerKey,
+        options.minimumIntervalMinutes,
         client,
       );
       await execute(
@@ -523,6 +586,58 @@ export const continuousPricingRepository = {
         executor,
       );
     }
+  },
+
+  async recordInventoryManagementPublication(
+    sellerKey: string,
+    items: InventoryManagementPricingObservation[],
+    minimumIntervalMinutes: number,
+    executor?: Queryable,
+  ): Promise<number> {
+    if (items.length === 0) {
+      return 0;
+    }
+
+    return execute(
+      `WITH observation AS (
+        SELECT *
+        FROM UNNEST(
+          $2::int[],
+          $3::float8[],
+          $4::timestamptz[],
+          $5::timestamptz[]
+        ) AS value(sku, price, priced_at, published_at)
+      )
+      UPDATE continuous_pricing_inventory inventory
+      SET current_price = observation.price,
+          last_priced_at = GREATEST(
+            COALESCE(inventory.last_priced_at, observation.priced_at),
+            observation.priced_at
+          ),
+          last_published_price = observation.price,
+          last_published_at = observation.published_at,
+          next_price_at = GREATEST(
+            inventory.next_price_at,
+            observation.published_at + ($6 * INTERVAL '1 minute')
+          ),
+          updated_at = NOW()
+      FROM observation
+      WHERE inventory.seller_key = $1
+        AND inventory.sku = observation.sku
+        AND (
+          inventory.last_published_at IS NULL
+          OR inventory.last_published_at < observation.published_at
+        )`,
+      [
+        sellerKey,
+        items.map((item) => item.sku),
+        items.map((item) => item.price),
+        items.map((item) => item.pricedAt),
+        items.map((item) => item.publishedAt),
+        minimumIntervalMinutes,
+      ],
+      executor,
+    );
   },
 
   async pauseAmbiguousSkus(

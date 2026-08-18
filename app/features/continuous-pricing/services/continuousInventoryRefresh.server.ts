@@ -7,6 +7,7 @@ import { fetchSellerInventorySnapshot } from "~/features/seller-management/servi
 
 export async function refreshContinuousPricingInventory(
   sellerKey: string,
+  minimumIntervalMinutes: number,
 ): Promise<number> {
   const config = await pricingConfigRepository.get();
   const excludeProductLineIds = Object.entries(
@@ -40,7 +41,7 @@ export async function refreshContinuousPricingInventory(
       currentPrice: item.currentPrice ?? null,
       originalRow: item.originalRow,
     })),
-    observedAt,
+    { observedAt, minimumIntervalMinutes },
   );
 
   return batchItems.length;

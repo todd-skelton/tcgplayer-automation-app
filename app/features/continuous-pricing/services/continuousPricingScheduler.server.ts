@@ -28,7 +28,10 @@ export async function runContinuousPricingSchedulerCycle(): Promise<ContinuousPr
   );
   if (shouldRefresh) {
     try {
-      await refreshContinuousPricingInventory(settings.sellerKey);
+      await refreshContinuousPricingInventory(
+        settings.sellerKey,
+        settings.minimumIntervalMinutes,
+      );
     } catch (error) {
       await continuousPricingRepository.recordRefreshFailure(
         settings.sellerKey,

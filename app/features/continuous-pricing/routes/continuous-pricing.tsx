@@ -186,7 +186,10 @@ export async function action({ request }: ActionFunctionArgs) {
       if (!current.sellerKey) {
         throw new Error("Save a seller key before refreshing inventory.");
       }
-      const count = await refreshContinuousPricingInventory(current.sellerKey);
+      const count = await refreshContinuousPricingInventory(
+        current.sellerKey,
+        current.minimumIntervalMinutes,
+      );
       return data<ActionData>({
         success: true,
         message: `Refreshed ${count} seller inventory SKUs.`,

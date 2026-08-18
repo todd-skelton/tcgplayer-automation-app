@@ -96,15 +96,18 @@ function createDependencies(
   calls: string[];
   outcomes: InventoryPublicationItemOutcome[];
   markedItems: Array<{ status: string; errorCode: string }>;
+  projectedPublications: InventoryPublication[];
 } {
   const calls: string[] = [];
   const outcomes: InventoryPublicationItemOutcome[] = [];
   const markedItems: Array<{ status: string; errorCode: string }> = [];
+  const projectedPublications: InventoryPublication[] = [];
 
   return {
     calls,
     outcomes,
     markedItems,
+    projectedPublications,
     dependencies: {
       initialize: async () => {
         calls.push("initialize");
@@ -151,7 +154,13 @@ function createDependencies(
       },
       transition: async (_publicationId, expectedStatus, nextStatus) => {
         calls.push(`transition:${expectedStatus}:${nextStatus}`);
-        return createPublication({ status: nextStatus });
+        return createPublication({
+          status: nextStatus,
+          items:
+            nextStatus === "published"
+              ? [createItem({ status: "published", publishedAt: NOW })]
+              : [createItem()],
+        });
       },
       saveItemOutcomes: async (_publicationId, nextOutcomes) => {
         calls.push("save-outcomes");
@@ -162,6 +171,9 @@ function createDependencies(
         markedItems.push({ status, errorCode });
         return 1;
       },
+      recordPublishedPrices: async (publication) => {
+        projectedPublications.push(publication);
+      },
     },
   };
 }
@@ -170,7 +182,8 @@ const testCases: TestCase[] = [
   {
     name: "staged publication confirms Update items and moves live once",
     run: async () => {
-      const { dependencies, calls, outcomes } = createDependencies();
+      const { dependencies, calls, outcomes, projectedPublications } =
+        createDependencies();
 
       await executeClaimedStagedPublication(
         createPublication(),
@@ -190,6 +203,12 @@ const testCases: TestCase[] = [
         "transition:publishing:published",
       ]);
       assert.deepEqual(outcomes, [{ itemId: 11, status: "published" }]);
+      assert.equal(projectedPublications.length, 1);
+      assert.equal(projectedPublications[0]?.items[0]?.status, "published");
+      assert.equal(
+        projectedPublications[0]?.items[0]?.publishedAt?.getTime(),
+        NOW.getTime(),
+      );
     },
   },
   {

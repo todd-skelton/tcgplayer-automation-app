@@ -333,6 +333,7 @@ const testCases: TestCase[] = [
       const planned = await planInventoryBatchPublication(90, {
         dependencies,
         now: NOW,
+        targetSellerKey: "test-seller",
       });
 
       assert.equal(planned.created, true);
@@ -342,6 +343,7 @@ const testCases: TestCase[] = [
         "inventory-batch-item:90:5199433",
       );
       assert.equal(created[0]?.items[0]?.quantityDelta, 2);
+      assert.equal(created[0]?.sellerKey, "test-seller");
     },
   },
   {

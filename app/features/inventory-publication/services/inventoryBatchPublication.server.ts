@@ -208,7 +208,10 @@ function createPublicationParams(
   mode: "manual" | "automatic",
   items: readonly PublishablePreviewItem[],
   selectedSkus: readonly number[] | null = items.map((item) => item.sku),
+  targetSellerKey?: string,
 ): CreateInventoryPublication {
+  const sellerKey = targetSellerKey?.trim() || undefined;
+
   return {
     planningKey: createSelectedPlanningKey(preview.pricingJobId, selectedSkus),
     batchNumber: preview.batchNumber,
@@ -218,7 +221,9 @@ function createPublicationParams(
     sellerKey:
       preview.sourceType === "seller" || preview.sourceType === "continuous"
         ? preview.sourceLabel
-        : undefined,
+        : preview.sourceType === "pending_inventory"
+          ? sellerKey
+          : undefined,
     config: {
       policy,
       mode,
@@ -415,6 +420,7 @@ export async function planInventoryBatchPublication(
     dependencies?: InventoryBatchPublicationDependencies;
     mode?: "manual" | "automatic";
     selectedSkus?: readonly number[];
+    targetSellerKey?: string;
   } = {},
 ): Promise<{
   publication: InventoryPublication;
@@ -445,6 +451,7 @@ export async function planInventoryBatchPublication(
     options.mode ?? "manual",
     eligibleItems,
     selectedSkus,
+    options.targetSellerKey,
   );
   const result = await dependencies.createPublication(params);
 
@@ -466,6 +473,7 @@ export async function planInventoryBatchPublications(
     dependencies?: InventoryBatchPublicationDependencies;
     mode?: "manual" | "automatic";
     selectedSkus?: readonly number[];
+    targetSellerKey?: string;
   } = {},
 ): Promise<{
   publications: InventoryPublication[];
@@ -495,7 +503,14 @@ export async function planInventoryBatchPublications(
   for (const chunk of chunks) {
     results.push(
       await dependencies.createPublication(
-        createPublicationParams(preview, policy, mode, chunk),
+        createPublicationParams(
+          preview,
+          policy,
+          mode,
+          chunk,
+          undefined,
+          options.targetSellerKey,
+        ),
       ),
     );
   }

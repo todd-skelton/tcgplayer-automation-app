@@ -121,7 +121,7 @@ const defaultDependencies: InventoryPublicationWorkerDependencies = {
     });
   },
   recordPublishedPrices: async (publication, outcomes) => {
-    if (publication.sourceType !== "continuous" || !publication.sellerKey) {
+    if (!publication.sellerKey) {
       return;
     }
     const publishedIds = new Set(
@@ -129,6 +129,37 @@ const defaultDependencies: InventoryPublicationWorkerDependencies = {
         .filter((outcome) => outcome.status === "published")
         .map((outcome) => outcome.itemId),
     );
+
+    if (publication.sourceType === "pending_inventory") {
+      const configuration = await inventoryPublicationSettingsRepository.get();
+      const continuousPricing = configuration.settings.continuousPricing;
+      if (continuousPricing.sellerKey !== publication.sellerKey) {
+        return;
+      }
+
+      await continuousPricingRepository.recordInventoryManagementPublication(
+        publication.sellerKey,
+        publication.items.flatMap((item) =>
+          publishedIds.has(item.id) && item.publishedAt
+            ? [
+                {
+                  sku: item.sku,
+                  price: item.desiredPrice,
+                  pricedAt: item.pricedAt,
+                  publishedAt: item.publishedAt,
+                },
+              ]
+            : [],
+        ),
+        continuousPricing.minimumIntervalMinutes,
+      );
+      return;
+    }
+
+    if (publication.sourceType !== "continuous") {
+      return;
+    }
+
     await continuousPricingRepository.recordPublishedPrices(
       publication.sellerKey,
       publication.items
@@ -579,7 +610,7 @@ export async function executeClaimedStagedPublication(
     const hasAmbiguousItems = allOutcomes.some(
       (outcome) => outcome.status === "ambiguous",
     );
-    await dependencies.transition(
+    const projectedPublication = await dependencies.transition(
       publication.id,
       "publishing",
       hasAmbiguousItems ? "ambiguous" : "published",
@@ -596,7 +627,7 @@ export async function executeClaimedStagedPublication(
     await safelyRecordPortalSuccess(dependencies);
     await safelyRecordPublicationProjection(
       dependencies,
-      publication,
+      projectedPublication,
       allOutcomes,
     );
   } catch (error) {

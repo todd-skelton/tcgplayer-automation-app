@@ -4,11 +4,12 @@ import {
   type UpsertContinuousPricingInventoryItem,
 } from "~/features/continuous-pricing/types/continuousPricing";
 import { DEFAULT_SERVER_PRICING_CONFIG } from "~/features/pricing/types/config";
-import { execute, getPool } from "../database.server";
+import { execute, getPool, queryOne } from "../database.server";
 import { continuousPricingRepository } from "./continuousPricing.server";
 
 const sellerKey = `continuous-integration-${Date.now()}`;
 let batchNumber: number | null = null;
+let publicationId: number | null = null;
 
 function createInventoryItem(
   sku: number,
@@ -59,10 +60,11 @@ const inStockItem = createInventoryItem(5199433, 29, 24.99);
 const outOfStockItem = createInventoryItem(5199434, 0, 12.34);
 
 try {
-  await continuousPricingRepository.upsertSnapshot(sellerKey, [
-    inStockItem,
-    outOfStockItem,
-  ]);
+  await continuousPricingRepository.upsertSnapshot(
+    sellerKey,
+    [inStockItem, outOfStockItem],
+    { minimumIntervalMinutes: 60 },
+  );
 
   const inventory = await continuousPricingRepository.findPage({
     sellerKey,
@@ -105,7 +107,7 @@ try {
     minimumIntervalMinutes: 60,
     pricingConfig: DEFAULT_SERVER_PRICING_CONFIG,
   });
-  assert.deepEqual(duplicate, { status: "backlogged" });
+  assert.equal(duplicate, null);
 
   await continuousPricingRepository.recordPublishedPrices(sellerKey, [
     { sku: 5199433, price: 25.01 },
@@ -127,13 +129,98 @@ try {
   assert.equal(publishedSnapshot.currentInventoryValue, 725.29);
   assert.equal(publishedSnapshot.publishedInStockSkuCount, 1);
 
+  const directPricedAt = new Date(Date.now() + 1_000);
+  const directPublishedAt = new Date(Date.now() + 2_000);
+  const projected =
+    await continuousPricingRepository.recordInventoryManagementPublication(
+      sellerKey,
+      [
+        {
+          sku: 5199434,
+          price: 12.5,
+          pricedAt: directPricedAt,
+          publishedAt: directPublishedAt,
+        },
+      ],
+      60,
+    );
+  assert.equal(projected, 1);
+  const directlyProjected = await continuousPricingRepository.findPage({
+    sellerKey,
+    search: "5199434",
+    state: "all",
+    page: 1,
+    pageSize: 50,
+  });
+  assert.equal(directlyProjected.items[0]?.currentPrice, 12.5);
+  assert.equal(
+    directlyProjected.items[0]?.lastPricedAt?.getTime(),
+    directPricedAt.getTime(),
+  );
+  assert.equal(
+    directlyProjected.items[0]?.lastPublishedAt?.getTime(),
+    directPublishedAt.getTime(),
+  );
+
+  const refreshPricedAt = new Date(Date.now() + 3_000);
+  const refreshPublishedAt = new Date(Date.now() + 4_000);
+  const publication = await queryOne<{ id: number }>(
+    `INSERT INTO inventory_publications (
+      planning_key,
+      method,
+      source_type,
+      seller_key,
+      status,
+      published_at,
+      completed_at
+    ) VALUES ($1, 'staged_delta', 'pending_inventory', $2, 'published', $3, $3)
+    RETURNING id`,
+    [
+      `continuous-integration-publication:${sellerKey}`,
+      sellerKey,
+      refreshPublishedAt,
+    ],
+  );
+  assert.ok(publication);
+  publicationId = publication.id;
+  await execute(
+    `INSERT INTO inventory_publication_items (
+      publication_id,
+      candidate_key,
+      sku,
+      product_id,
+      product_line,
+      set_name,
+      product_name,
+      condition,
+      desired_price,
+      quantity_delta,
+      priced_at,
+      status,
+      published_at
+    ) VALUES (
+      $1, $2, 5199435, 248731, 'Pokemon', 'Celebrations',
+      'Greninja Star', 'Near Mint Holofoil', 17.89, 0, $3, 'published', $4
+    )`,
+    [
+      publicationId,
+      `continuous-integration-candidate:${sellerKey}`,
+      refreshPricedAt,
+      refreshPublishedAt,
+    ],
+  );
+
   await continuousPricingRepository.upsertSnapshot(
     sellerKey,
     [
       createInventoryItem(5199433, 29, 25.01),
-      createInventoryItem(5199434, 2, 12.34),
+      createInventoryItem(5199434, 2, 12.5),
+      createInventoryItem(5199435, 1, 17.89),
     ],
-    new Date(Date.now() + 1_000),
+    {
+      minimumIntervalMinutes: 60,
+      observedAt: new Date(Date.now() + 1_000),
+    },
   );
   const restocked = await continuousPricingRepository.findPage({
     sellerKey,
@@ -146,10 +233,40 @@ try {
   assert.equal(restocked.items[0]?.quantity, 2);
   assert.equal(restocked.items[0]?.inStock, true);
 
+  const refreshedProjection = await continuousPricingRepository.findPage({
+    sellerKey,
+    search: "5199435",
+    state: "in_stock",
+    page: 1,
+    pageSize: 50,
+  });
+  assert.equal(refreshedProjection.total, 1);
+  assert.equal(
+    refreshedProjection.items[0]?.lastPricedAt?.getTime(),
+    refreshPricedAt.getTime(),
+  );
+  assert.equal(
+    refreshedProjection.items[0]?.lastPublishedAt?.getTime(),
+    refreshPublishedAt.getTime(),
+  );
+  assert.ok(
+    (refreshedProjection.items[0]?.nextPriceAt.getTime() ?? 0) >=
+      refreshPublishedAt.getTime() + 60 * 60 * 1_000,
+  );
+
   console.log(
-    "PASS continuous pricing schedules only positive stock and recognizes restocks",
+    "PASS continuous pricing inherits confirmed Inventory Management pricing",
   );
 } finally {
+  if (publicationId !== null) {
+    await execute(
+      `DELETE FROM inventory_publication_items WHERE publication_id = $1`,
+      [publicationId],
+    );
+    await execute(`DELETE FROM inventory_publications WHERE id = $1`, [
+      publicationId,
+    ]);
+  }
   await execute(
     `DELETE FROM continuous_pricing_inventory WHERE seller_key = $1`,
     [sellerKey],
