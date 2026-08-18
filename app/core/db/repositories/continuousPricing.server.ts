@@ -568,12 +568,40 @@ export const continuousPricingRepository = {
   ): Promise<ContinuousPricingStatus> {
     const counts = await queryOne<{
       inventoryCount: number;
+      inStockSkuCount: number;
+      availableUnitCount: number;
+      currentInventoryValue: number;
+      pricedInStockSkuCount: number;
+      publishedInStockSkuCount: number;
+      needsReviewCount: number;
+      outOfStockSkuCount: number;
       enabledInStockCount: number;
       dueCount: number;
       oldestDueAt: Date | null;
     }>(
       `SELECT
         COUNT(*)::INTEGER AS "inventoryCount",
+        COUNT(*) FILTER (
+          WHERE in_stock AND quantity > 0
+        )::INTEGER AS "inStockSkuCount",
+        COALESCE(SUM(quantity) FILTER (
+          WHERE in_stock AND quantity > 0
+        ), 0)::INTEGER AS "availableUnitCount",
+        COALESCE(SUM(quantity * current_price) FILTER (
+          WHERE in_stock AND quantity > 0 AND current_price IS NOT NULL
+        ), 0)::FLOAT8 AS "currentInventoryValue",
+        COUNT(*) FILTER (
+          WHERE in_stock AND quantity > 0 AND last_priced_at IS NOT NULL
+        )::INTEGER AS "pricedInStockSkuCount",
+        COUNT(*) FILTER (
+          WHERE in_stock AND quantity > 0 AND last_published_at IS NOT NULL
+        )::INTEGER AS "publishedInStockSkuCount",
+        COUNT(*) FILTER (
+          WHERE pause_reason IS NOT NULL
+        )::INTEGER AS "needsReviewCount",
+        COUNT(*) FILTER (
+          WHERE NOT in_stock OR quantity <= 0
+        )::INTEGER AS "outOfStockSkuCount",
         COUNT(*) FILTER (WHERE enabled AND in_stock)::INTEGER AS "enabledInStockCount",
         COUNT(*) FILTER (
           WHERE enabled
@@ -614,6 +642,13 @@ export const continuousPricingRepository = {
     return {
       settings,
       inventoryCount: counts?.inventoryCount ?? 0,
+      inStockSkuCount: counts?.inStockSkuCount ?? 0,
+      availableUnitCount: counts?.availableUnitCount ?? 0,
+      currentInventoryValue: counts?.currentInventoryValue ?? 0,
+      pricedInStockSkuCount: counts?.pricedInStockSkuCount ?? 0,
+      publishedInStockSkuCount: counts?.publishedInStockSkuCount ?? 0,
+      needsReviewCount: counts?.needsReviewCount ?? 0,
+      outOfStockSkuCount: counts?.outOfStockSkuCount ?? 0,
       enabledInStockCount: counts?.enabledInStockCount ?? 0,
       dueCount: counts?.dueCount ?? 0,
       oldestDueAt: counts?.oldestDueAt ?? null,

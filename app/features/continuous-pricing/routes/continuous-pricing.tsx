@@ -41,6 +41,38 @@ import type {
 
 const INVENTORY_PAGE_SIZE = 50;
 const RECENT_AUTOMATIC_BATCH_LIMIT = 25;
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
+
+function formatCoverage(count: number, total: number): string {
+  return total === 0 ? "0%" : `${Math.round((count / total) * 100)}%`;
+}
+
+function InventoryMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string | number;
+  detail: string;
+}) {
+  return (
+    <Paper variant="outlined" sx={{ p: 2, height: "100%" }}>
+      <Stack spacing={0.5}>
+        <Typography variant="body2" color="text.secondary">
+          {label}
+        </Typography>
+        <Typography variant="h5">{value}</Typography>
+        <Typography variant="caption" color="text.secondary">
+          {detail}
+        </Typography>
+      </Stack>
+    </Paper>
+  );
+}
 
 function isInventoryState(
   value: string,
@@ -99,6 +131,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
         {
           settings,
           inventoryCount: 0,
+          inStockSkuCount: 0,
+          availableUnitCount: 0,
+          currentInventoryValue: 0,
+          pricedInStockSkuCount: 0,
+          publishedInStockSkuCount: 0,
+          needsReviewCount: 0,
+          outOfStockSkuCount: 0,
           enabledInStockCount: 0,
           dueCount: 0,
           oldestDueAt: null,
@@ -381,12 +420,83 @@ export default function ContinuousPricingRoute() {
       </Paper>
 
       <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-        <Stack spacing={1}>
-          <Typography variant="h6">Status</Typography>
-          <Typography>
-            {status.enabledInStockCount} enabled and in stock ·{" "}
-            {status.dueCount} due · {status.inventoryCount} tracked
-          </Typography>
+        <Stack spacing={2}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+          >
+            <Box>
+              <Typography variant="h6">Current inventory snapshot</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Based on the most recently refreshed seller inventory, not
+                real-time availability.
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Chip
+                size="small"
+                label={`${status.enabledInStockCount} enabled`}
+              />
+              <Chip
+                size="small"
+                color={status.dueCount > 0 ? "warning" : "default"}
+                label={`${status.dueCount} due`}
+              />
+              <Chip size="small" label={`${status.inventoryCount} tracked`} />
+            </Stack>
+          </Stack>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "1fr",
+                sm: "repeat(2, minmax(0, 1fr))",
+                lg: "repeat(3, minmax(0, 1fr))",
+              },
+              gap: 2,
+            }}
+          >
+            <InventoryMetric
+              label="Available units"
+              value={status.availableUnitCount.toLocaleString()}
+              detail={`Across ${status.inStockSkuCount.toLocaleString()} in-stock SKUs`}
+            />
+            <InventoryMetric
+              label="Current listed value"
+              value={currencyFormatter.format(status.currentInventoryValue)}
+              detail="Available quantity × current listed price"
+            />
+            <InventoryMetric
+              label="Pricing coverage"
+              value={formatCoverage(
+                status.pricedInStockSkuCount,
+                status.inStockSkuCount,
+              )}
+              detail={`${status.pricedInStockSkuCount.toLocaleString()} of ${status.inStockSkuCount.toLocaleString()} in-stock SKUs priced`}
+            />
+            <InventoryMetric
+              label="Published coverage"
+              value={formatCoverage(
+                status.publishedInStockSkuCount,
+                status.inStockSkuCount,
+              )}
+              detail={`${status.publishedInStockSkuCount.toLocaleString()} of ${status.inStockSkuCount.toLocaleString()} in-stock SKUs published`}
+            />
+            <InventoryMetric
+              label="Needs review"
+              value={status.needsReviewCount.toLocaleString()}
+              detail="Tracked SKUs with a review warning"
+            />
+            <InventoryMetric
+              label="Out of stock"
+              value={status.outOfStockSkuCount.toLocaleString()}
+              detail="Tracked SKUs with no available quantity"
+            />
+          </Box>
+
           <Typography color="text.secondary">
             Last refresh:{" "}
             {status.lastRefreshAt

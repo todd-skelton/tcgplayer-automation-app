@@ -80,6 +80,13 @@ export interface UpsertContinuousPricingInventoryItem {
 export interface ContinuousPricingStatus {
   settings: ContinuousPricingSettings;
   inventoryCount: number;
+  inStockSkuCount: number;
+  availableUnitCount: number;
+  currentInventoryValue: number;
+  pricedInStockSkuCount: number;
+  publishedInStockSkuCount: number;
+  needsReviewCount: number;
+  outOfStockSkuCount: number;
   enabledInStockCount: number;
   dueCount: number;
   oldestDueAt: Date | null;
