@@ -36,6 +36,45 @@ export interface SupplyQueueAnalysis {
  * Service for analyzing current market supply and calculating supply-adjusted time to sell
  */
 export class SupplyAnalysisService {
+  async fetchLowestListingPrice(
+    sku: Sku,
+    config: Pick<SupplyAnalysisConfig, "includeUnverifiedSellers"> = {},
+  ): Promise<number | undefined> {
+    try {
+      const response = await getListings(
+        { id: sku.productId },
+        {
+          filters: {
+            term: {
+              listingType: ["standard"],
+              condition: [sku.condition],
+              language: [sku.language],
+              printing: [sku.variant],
+              "verified-seller": config.includeUnverifiedSellers
+                ? undefined
+                : true,
+            },
+          },
+          size: 1,
+          sort: { field: "price+shipping", order: "asc" },
+        },
+      );
+      const listing = response.results[0]?.results[0];
+      if (!listing) {
+        return undefined;
+      }
+
+      const deliveredPrice =
+        (listing.price ?? 0) + (listing.sellerShippingPrice ?? 0);
+      return Number.isFinite(deliveredPrice) && deliveredPrice > 0
+        ? deliveredPrice
+        : undefined;
+    } catch (error) {
+      console.warn(`Failed to fetch lowest listing for SKU ${sku.sku}:`, error);
+      return undefined;
+    }
+  }
+
   /**
    * Fetch all listings for a SKU with pagination and optional price range optimization
    *
@@ -45,7 +84,7 @@ export class SupplyAnalysisService {
    */
   async fetchListingsForSku(
     sku: Sku,
-    config: SupplyAnalysisConfig = {}
+    config: SupplyAnalysisConfig = {},
   ): Promise<ListingData[]> {
     const {
       maxListingsPerSku = 200,
@@ -70,7 +109,7 @@ export class SupplyAnalysisService {
           size: 50, // Keep reasonable page size
           sort: { field: "price+shipping", order: "asc" },
         },
-        maxSalesPrice // This will cause early termination when price exceeds this value
+        maxSalesPrice, // This will cause early termination when price exceeds this value
       );
 
       // Limit to maxListingsPerSku and convert to standardized format
@@ -98,15 +137,15 @@ export class SupplyAnalysisService {
    */
   analyzeSupplyQueue(
     listings: ListingData[],
-    targetPrice: number
+    targetPrice: number,
   ): SupplyQueueAnalysis {
     const belowTarget = listings.filter(
-      (l) => l.price + l.shippingCost <= targetPrice
+      (l) => l.price + l.shippingCost <= targetPrice,
     );
 
     const totalSupplyBelow = belowTarget.reduce(
       (sum, l) => sum + l.quantity,
-      0
+      0,
     );
     const competitorCount = belowTarget.length;
 
@@ -114,7 +153,7 @@ export class SupplyAnalysisService {
     if (belowTarget.length > 0) {
       const totalValue = belowTarget.reduce(
         (sum, l) => sum + (l.price + l.shippingCost) * l.quantity,
-        0
+        0,
       );
       const totalQuantity = Math.max(1, totalSupplyBelow);
       averageQueuePrice = totalValue / totalQuantity;
@@ -133,7 +172,7 @@ export class SupplyAnalysisService {
    */
   calculateSalesVelocity(
     sales: SalesVelocityData[],
-    targetPrice: number
+    targetPrice: number,
   ): number | undefined {
     const relevantSales = sales.filter((s) => s.price >= targetPrice);
 
@@ -158,7 +197,7 @@ export class SupplyAnalysisService {
     sales: SalesVelocityData[],
     listings: ListingData[],
     targetPrice: number,
-    historicalSalesVelocityMs?: number
+    historicalSalesVelocityMs?: number,
   ): { timeMs: number | undefined; listingsCount: number } {
     if (listings.length === 0) {
       // If no listings available, your listing would be the only one,
@@ -213,7 +252,7 @@ export class SupplyAnalysisService {
   async fetchListingsForSkus(
     skus: Sku[],
     config: SupplyAnalysisConfig = {},
-    onProgress?: (current: number, total: number, status: string) => void
+    onProgress?: (current: number, total: number, status: string) => void,
   ): Promise<Map<number, ListingData[]>> {
     const listingsMap = new Map<number, ListingData[]>();
 
@@ -223,7 +262,7 @@ export class SupplyAnalysisService {
       onProgress?.(
         i + 1,
         skus.length,
-        `Fetching listings for SKU ${sku.sku}...`
+        `Fetching listings for SKU ${sku.sku}...`,
       );
 
       try {

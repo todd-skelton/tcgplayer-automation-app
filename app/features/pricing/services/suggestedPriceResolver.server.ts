@@ -65,10 +65,16 @@ export async function resolveSuggestedPrice(
     fetchListingsForSku: options.batchApiCache
       ? options.batchApiCache.fetchListingsForSku.bind(options.batchApiCache)
       : undefined,
+    fetchLowestListingPrice: options.batchApiCache
+      ? options.batchApiCache.fetchLowestListingPrice.bind(
+          options.batchApiCache,
+        )
+      : undefined,
   });
 
   return {
     suggestedPrice: algorithmResult.suggestedPrice ?? null,
+    lowestListingPrice: algorithmResult.lowestListingPrice,
     historicalSalesVelocityMs: algorithmResult.historicalSalesVelocityMs,
     estimatedTimeToSellMs: algorithmResult.estimatedTimeToSellMs,
     salesCount: algorithmResult.salesCount,

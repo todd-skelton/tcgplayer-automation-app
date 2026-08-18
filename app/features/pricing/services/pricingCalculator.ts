@@ -4,8 +4,11 @@ import type {
   PricingConfig,
   SuggestedPriceResolver,
 } from "../../../core/types/pricing";
-import { getSuggestedPrice } from "./pricingService";
-import { calculateMarketplacePrice } from "./pricingService";
+import {
+  calculateInsufficientSalesFallback,
+  calculateMarketplacePrice,
+  getSuggestedPrice,
+} from "./pricingService";
 import { PRICING_CONSTANTS } from "../../../core/constants/pricing";
 import type { PricePoint } from "../../../integrations/tcgplayer/client/get-price-points.server";
 import type { ProductDisplayInfo } from "../../../shared/services/dataEnrichmentService";
@@ -417,13 +420,12 @@ export class PricingCalculator {
       return pricedItem;
     }
 
+    const pricePoint = pricePointsMap.get(pricerSku.sku) || null;
+
     // Set pricing data with minimum price bounds
     if (result.suggestedPrice !== null && result.suggestedPrice !== undefined) {
       // Always set the original suggested price from the algorithm
       pricedItem.suggestedPrice = result.suggestedPrice;
-
-      // Get price point from the provided map (no API call needed)
-      const pricePoint = pricePointsMap.get(pricerSku.sku) || null;
 
       // Apply minimum price bounds
       const { marketplacePrice, warningMessage, errorMessage } =
@@ -457,6 +459,18 @@ export class PricingCalculator {
       // Add error message for actual pricing failures
       if (errorMessage) {
         pricedItem.errors?.push(errorMessage);
+      }
+    } else {
+      const fallback = calculateInsufficientSalesFallback({
+        marketPrice: pricePoint?.marketPrice,
+        lowestListingPrice: result.lowestListingPrice,
+        currentPrice: pricerSku.currentPrice,
+      });
+
+      if (fallback) {
+        pricedItem.suggestedPrice = fallback.price;
+        pricedItem.price = fallback.price;
+        pricedItem.warnings?.push(fallback.warningMessage);
       }
     }
 

@@ -36,6 +36,10 @@ function createCacheKey(value: unknown): string {
 export class PricingBatchApiCache {
   private latestSalesRequests = new Map<string, Promise<Sale[]>>();
   private listingRequests = new Map<string, Promise<ListingData[]>>();
+  private lowestListingPriceRequests = new Map<
+    string,
+    Promise<number | undefined>
+  >();
   private supplyAnalysisService = new SupplyAnalysisService();
 
   fetchLatestSales(
@@ -72,6 +76,30 @@ export class PricingBatchApiCache {
 
     const request = this.supplyAnalysisService.fetchListingsForSku(sku, config);
     this.listingRequests.set(key, request);
+    return request;
+  }
+
+  fetchLowestListingPrice(
+    sku: Sku,
+    config: Pick<SupplyAnalysisConfig, "includeUnverifiedSellers"> = {},
+  ): Promise<number | undefined> {
+    const key = createCacheKey({
+      productId: sku.productId,
+      condition: sku.condition,
+      language: sku.language,
+      variant: sku.variant,
+      includeUnverifiedSellers: config.includeUnverifiedSellers,
+    });
+    const cached = this.lowestListingPriceRequests.get(key);
+    if (cached) {
+      return cached;
+    }
+
+    const request = this.supplyAnalysisService.fetchLowestListingPrice(
+      sku,
+      config,
+    );
+    this.lowestListingPriceRequests.set(key, request);
     return request;
   }
 }

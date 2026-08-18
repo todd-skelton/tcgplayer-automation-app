@@ -188,6 +188,7 @@ export async function getSuggestedPriceFromLatestSales(
   config: LatestSalesPriceConfig = {},
 ): Promise<{
   suggestedPrice?: number;
+  lowestListingPrice?: number;
   totalQuantity: number;
   saleCount: number;
   historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
@@ -239,9 +240,18 @@ export async function getSuggestedPriceFromLatestSales(
   );
 
   if (allSales.length < 2) {
+    const supplyAnalysisService = new SupplyAnalysisService();
+    const lowestListingPrice = config.fetchLowestListingPrice
+      ? await config.fetchLowestListingPrice(sku, config.supplyAnalysisConfig)
+      : await supplyAnalysisService.fetchLowestListingPrice(
+          sku,
+          config.supplyAnalysisConfig,
+        );
+
     // Not enough data for any meaningful analysis
     return {
       suggestedPrice: undefined,
+      lowestListingPrice,
       totalQuantity: 0,
       saleCount: 0,
       percentiles: [],
@@ -341,6 +351,10 @@ export interface LatestSalesPriceConfig {
     sku: Sku,
     config: SupplyAnalysisConfig,
   ) => Promise<ListingData[]>;
+  fetchLowestListingPrice?: (
+    sku: Sku,
+    config?: Pick<SupplyAnalysisConfig, "includeUnverifiedSellers">,
+  ) => Promise<number | undefined>;
 }
 
 export interface PercentileData {
@@ -594,11 +608,9 @@ export function getSuggestedPriceFromSales(
 
   // Create percentiles array that includes the custom percentile
   const standardPercentiles = [10, 20, 30, 40, 50, 60, 70, 80, 90];
-  const percentilesToCalculate = [...new Set([
-    ...standardPercentiles,
-    percentile,
-    ...additionalPercentiles,
-  ])].sort((a, b) => a - b);
+  const percentilesToCalculate = [
+    ...new Set([...standardPercentiles, percentile, ...additionalPercentiles]),
+  ].sort((a, b) => a - b);
 
   const percentiles = getTimeDecayedPercentileWeightedSuggestedPrice(sales, {
     halfLifeDays,

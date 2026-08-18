@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { PRICING_CONSTANTS } from "~/core/constants/pricing";
-import { calculateMarketplacePrice } from "./pricingService";
+import {
+  calculateInsufficientSalesFallback,
+  calculateMarketplacePrice,
+} from "./pricingService";
 
 type TestCase = {
   name: string;
@@ -40,6 +43,47 @@ const testCases: TestCase[] = [
         result.warningMessage,
         "Suggested price below minimum. Using minimum price.",
       );
+    },
+  },
+  {
+    name: "insufficient sales use the higher market or listing price",
+    run: () => {
+      const listingWins = calculateInsufficientSalesFallback({
+        marketPrice: 10,
+        lowestListingPrice: 12.34,
+        currentPrice: 20,
+      });
+      const marketWins = calculateInsufficientSalesFallback({
+        marketPrice: 15.67,
+        lowestListingPrice: 12,
+        currentPrice: 20,
+      });
+
+      assert.equal(listingWins?.price, 12.34);
+      assert.match(listingWins?.warningMessage ?? "", /highest available/);
+      assert.equal(marketWins?.price, 15.67);
+    },
+  },
+  {
+    name: "insufficient sales use either available reference price",
+    run: () => {
+      assert.equal(
+        calculateInsufficientSalesFallback({ lowestListingPrice: 8.25 })?.price,
+        8.25,
+      );
+      assert.equal(
+        calculateInsufficientSalesFallback({ marketPrice: 9.5 })?.price,
+        9.5,
+      );
+    },
+  },
+  {
+    name: "insufficient sales keep the current price without references",
+    run: () => {
+      const result = calculateInsufficientSalesFallback({ currentPrice: 4.99 });
+
+      assert.equal(result?.price, 4.99);
+      assert.match(result?.warningMessage ?? "", /Keeping the current price/);
     },
   },
 ];

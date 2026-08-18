@@ -120,6 +120,7 @@ export interface PersistedPricingDetails {
 export interface SuggestedPriceResult {
   error?: string;
   suggestedPrice: number | null;
+  lowestListingPrice?: number;
   historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
   estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
   salesCount?: number; // Number of sales used for the selected percentile historical calculation

@@ -20,6 +20,53 @@ export interface MinimumMarketplacePriceConfig {
   minPriceConstant: number;
 }
 
+export interface InsufficientSalesFallbackResult {
+  price: number;
+  warningMessage: string;
+}
+
+function normalizePositivePrice(value: number | undefined): number | null {
+  if (value === undefined || !Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+export function calculateInsufficientSalesFallback(input: {
+  marketPrice?: number;
+  lowestListingPrice?: number;
+  currentPrice?: number;
+}): InsufficientSalesFallbackResult | null {
+  const marketPrice = normalizePositivePrice(input.marketPrice);
+  const lowestListingPrice = normalizePositivePrice(input.lowestListingPrice);
+
+  if (marketPrice !== null || lowestListingPrice !== null) {
+    const price = Math.max(marketPrice ?? 0, lowestListingPrice ?? 0);
+    const availableReferences = [
+      marketPrice === null ? null : `TCG market $${marketPrice.toFixed(2)}`,
+      lowestListingPrice === null
+        ? null
+        : `lowest delivered listing $${lowestListingPrice.toFixed(2)}`,
+    ].filter((reference): reference is string => reference !== null);
+
+    return {
+      price,
+      warningMessage: `Insufficient sales history. Using the highest available reference price (${availableReferences.join(", ")}): $${price.toFixed(2)}.`,
+    };
+  }
+
+  const currentPrice = normalizePositivePrice(input.currentPrice);
+  if (currentPrice === null) {
+    return null;
+  }
+
+  return {
+    price: currentPrice,
+    warningMessage: `Insufficient sales history and no market price or listing is available. Keeping the current price at $${currentPrice.toFixed(2)}.`,
+  };
+}
+
 const DEFAULT_MINIMUM_MARKETPLACE_PRICE_CONFIG: MinimumMarketplacePriceConfig =
   {
     minPriceMultiplier: PRICING_CONSTANTS.MIN_PRICE_MULTIPLIER,
