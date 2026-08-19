@@ -45,6 +45,7 @@ const inventorySelect = `SELECT
   variant,
   quantity,
   current_price::float8 AS "currentPrice",
+  market_price::float8 AS "marketPrice",
   in_stock AS "inStock",
   enabled,
   pause_reason AS "pauseReason",
@@ -99,7 +100,8 @@ function toOriginalRow(item: ContinuousPricingInventoryItem): TcgPlayerListing {
     "Sale Count": "",
     "Lowest Sale Price": "",
     "Highest Sale Price": "",
-    "TCG Market Price": "",
+    "TCG Market Price":
+      item.marketPrice === null ? "" : String(item.marketPrice),
     "Total Quantity": String(item.quantity),
     "Add to Quantity": "0",
     "TCG Marketplace Price":
@@ -203,7 +205,7 @@ export const continuousPricingRepository = {
       }
 
       if (items.length > 0) {
-        const placeholders = createValuesPlaceholders(items.length, 14);
+        const placeholders = createValuesPlaceholders(items.length, 15);
         await execute(
           `INSERT INTO continuous_pricing_inventory (
             seller_key,
@@ -218,6 +220,7 @@ export const continuousPricingRepository = {
             variant,
             quantity,
             current_price,
+            market_price,
             in_stock,
             last_observed_at
           ) VALUES ${placeholders}
@@ -232,6 +235,7 @@ export const continuousPricingRepository = {
             variant = EXCLUDED.variant,
             quantity = EXCLUDED.quantity,
             current_price = EXCLUDED.current_price,
+            market_price = EXCLUDED.market_price,
             in_stock = EXCLUDED.in_stock,
             last_observed_at = EXCLUDED.last_observed_at,
             updated_at = NOW()`,
@@ -248,6 +252,7 @@ export const continuousPricingRepository = {
             item.variant,
             item.quantity,
             item.currentPrice,
+            item.marketPrice,
             item.quantity > 0,
             observedAt,
           ]),
@@ -689,10 +694,12 @@ export const continuousPricingRepository = {
       inStockSkuCount: number;
       availableUnitCount: number;
       currentInventoryValue: number;
+      currentMarketValue: number;
+      marketComparableMarketValue: number;
+      marketComparableListedValue: number;
+      marketValueSkuCount: number;
       pricedInStockSkuCount: number;
-      publishedInStockSkuCount: number;
       needsReviewCount: number;
-      outOfStockSkuCount: number;
       enabledInStockCount: number;
       dueCount: number;
       oldestDueAt: Date | null;
@@ -708,18 +715,32 @@ export const continuousPricingRepository = {
         COALESCE(SUM(quantity * current_price) FILTER (
           WHERE in_stock AND quantity > 0 AND current_price IS NOT NULL
         ), 0)::FLOAT8 AS "currentInventoryValue",
+        COALESCE(SUM(quantity * market_price) FILTER (
+          WHERE in_stock AND quantity > 0 AND market_price IS NOT NULL
+        ), 0)::FLOAT8 AS "currentMarketValue",
+        COALESCE(SUM(quantity * market_price) FILTER (
+          WHERE in_stock
+            AND quantity > 0
+            AND market_price IS NOT NULL
+            AND current_price IS NOT NULL
+        ), 0)::FLOAT8 AS "marketComparableMarketValue",
+        COALESCE(SUM(quantity * current_price) FILTER (
+          WHERE in_stock
+            AND quantity > 0
+            AND market_price IS NOT NULL
+            AND current_price IS NOT NULL
+        ), 0)::FLOAT8 AS "marketComparableListedValue",
+        COUNT(*) FILTER (
+          WHERE in_stock
+            AND quantity > 0
+            AND market_price IS NOT NULL
+        )::INTEGER AS "marketValueSkuCount",
         COUNT(*) FILTER (
           WHERE in_stock AND quantity > 0 AND last_priced_at IS NOT NULL
         )::INTEGER AS "pricedInStockSkuCount",
         COUNT(*) FILTER (
-          WHERE in_stock AND quantity > 0 AND last_published_at IS NOT NULL
-        )::INTEGER AS "publishedInStockSkuCount",
-        COUNT(*) FILTER (
           WHERE pause_reason IS NOT NULL
         )::INTEGER AS "needsReviewCount",
-        COUNT(*) FILTER (
-          WHERE NOT in_stock OR quantity <= 0
-        )::INTEGER AS "outOfStockSkuCount",
         COUNT(*) FILTER (
           WHERE enabled AND in_stock AND quantity > 0
         )::INTEGER AS "enabledInStockCount",
@@ -740,6 +761,32 @@ export const continuousPricingRepository = {
       FROM continuous_pricing_inventory
       WHERE seller_key = $1`,
       [sellerKey],
+      executor,
+    );
+    const awaitingPublication = await queryOne<{
+      itemCount: number;
+      unitCount: number;
+    }>(
+      `SELECT
+        COUNT(*)::INTEGER AS "itemCount",
+        COALESCE(SUM(item.add_to_quantity), 0)::INTEGER AS "unitCount"
+      FROM inventory_batch_items item
+      JOIN inventory_batches batch
+        ON batch.batch_number = item.batch_number
+      JOIN inventory_batch_results result
+        ON result.batch_number = item.batch_number
+        AND result.sku = item.sku
+      WHERE batch.source_type = 'pending_inventory'
+        AND item.add_to_quantity > 0
+        AND result.result_status = 'successful'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM inventory_publication_items publication_item
+          WHERE publication_item.inventory_delta_key =
+                'inventory-batch-item:' || item.batch_number || ':' || item.sku
+            AND publication_item.status = 'published'
+        )`,
+      [],
       executor,
     );
     const refresh = await queryOne<{
@@ -767,10 +814,14 @@ export const continuousPricingRepository = {
       inStockSkuCount: counts?.inStockSkuCount ?? 0,
       availableUnitCount: counts?.availableUnitCount ?? 0,
       currentInventoryValue: counts?.currentInventoryValue ?? 0,
+      currentMarketValue: counts?.currentMarketValue ?? 0,
+      marketComparableMarketValue: counts?.marketComparableMarketValue ?? 0,
+      marketComparableListedValue: counts?.marketComparableListedValue ?? 0,
+      marketValueSkuCount: counts?.marketValueSkuCount ?? 0,
       pricedInStockSkuCount: counts?.pricedInStockSkuCount ?? 0,
-      publishedInStockSkuCount: counts?.publishedInStockSkuCount ?? 0,
+      pricedAwaitingPublicationCount: awaitingPublication?.itemCount ?? 0,
+      pricedAwaitingPublicationUnitCount: awaitingPublication?.unitCount ?? 0,
       needsReviewCount: counts?.needsReviewCount ?? 0,
-      outOfStockSkuCount: counts?.outOfStockSkuCount ?? 0,
       enabledInStockCount: counts?.enabledInStockCount ?? 0,
       dueCount: counts?.dueCount ?? 0,
       oldestDueAt: counts?.oldestDueAt ?? null,

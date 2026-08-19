@@ -12,6 +12,7 @@ import "../features/inventory-publication/services/inventoryPublicationSettings.
 import "../integrations/tcgplayer/client/update-seller-inventory.server.test";
 import "../integrations/tcgplayer/client/staged-pricing-import.server.test";
 import "../features/inventory-management/components/quantityKeyboard.test";
+import "../features/inventory-management/services/inventoryConverter.test";
 import "../features/shipping-export/config/shippingExportConfig.server.test";
 import "../features/shipping-export/config/shippingExportConfigFormData.test";
 import "../features/shipping-export/components/steps/LoadOrdersStep.test";

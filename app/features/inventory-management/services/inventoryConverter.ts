@@ -19,7 +19,7 @@ export interface SellerInventoryItem {
 
 export function convertProductToListing(
   product: Product,
-  listing: Listing
+  listing: Listing,
 ): TcgPlayerListing {
   return {
     "TCGplayer Id": listing.productConditionId.toString(),
@@ -31,7 +31,8 @@ export function convertProductToListing(
     "Sale Count": "",
     "Lowest Sale Price": "",
     "Highest Sale Price": "",
-    "TCG Market Price": "",
+    "TCG Market Price":
+      product.marketPrice > 0 ? String(product.marketPrice) : "",
     "Total Quantity": listing.quantity.toString(),
     "Add to Quantity": "0",
     "TCG Marketplace Price": listing.price.toString(),
@@ -48,7 +49,7 @@ export function convertProductToListing(
 }
 
 export function convertSellerInventoryToListings(
-  inventory: SellerInventoryItem[]
+  inventory: SellerInventoryItem[],
 ): { listings: TcgPlayerListing[]; duplicatesFound: number } {
   const listings: TcgPlayerListing[] = [];
   const seenSkuIds = new Set<string>();
@@ -58,7 +59,7 @@ export function convertSellerInventoryToListings(
     // Filter out custom listings (those with customListingId)
     // Custom listings have manually set prices and shouldn't be processed by pricing algorithms
     const regularListings = item.listings.filter(
-      (listing) => !listing.customData?.customListingId
+      (listing) => !listing.customData?.customListingId,
     );
 
     regularListings.forEach((listing) => {
@@ -67,7 +68,7 @@ export function convertSellerInventoryToListings(
       // Check for duplicate SKU IDs
       if (seenSkuIds.has(skuId)) {
         console.warn(
-          `Duplicate SKU ID found: ${skuId}. Skipping duplicate listing.`
+          `Duplicate SKU ID found: ${skuId}. Skipping duplicate listing.`,
         );
         duplicatesFound++;
         return;
@@ -86,7 +87,7 @@ export function convertSellerInventoryToListings(
           lowestPrice: item.lowestPrice,
           customAttributes: item.customAttributes,
         } as Product,
-        listing
+        listing,
       );
       listings.push(tcgListing);
     });

@@ -9,12 +9,14 @@ import { continuousPricingRepository } from "./continuousPricing.server";
 
 const sellerKey = `continuous-integration-${Date.now()}`;
 let batchNumber: number | null = null;
+let pendingBatchNumber: number | null = null;
 let publicationId: number | null = null;
 
 function createInventoryItem(
   sku: number,
   quantity: number,
   currentPrice: number,
+  marketPrice = currentPrice,
 ): UpsertContinuousPricingInventoryItem {
   return {
     sellerKey,
@@ -29,6 +31,7 @@ function createInventoryItem(
     variant: "Holofoil",
     quantity,
     currentPrice,
+    marketPrice,
     originalRow: {
       "TCGplayer Id": String(sku),
       "Product Line": "Pokemon",
@@ -39,7 +42,7 @@ function createInventoryItem(
       "Sale Count": "",
       "Lowest Sale Price": "",
       "Highest Sale Price": "",
-      "TCG Market Price": "",
+      "TCG Market Price": String(marketPrice),
       "Total Quantity": String(quantity),
       "Add to Quantity": "0",
       "TCG Marketplace Price": String(currentPrice),
@@ -56,8 +59,8 @@ function createInventoryItem(
   };
 }
 
-const inStockItem = createInventoryItem(5199433, 29, 24.99);
-const outOfStockItem = createInventoryItem(5199434, 0, 12.34);
+const inStockItem = createInventoryItem(5199433, 29, 24.99, 20);
+const outOfStockItem = createInventoryItem(5199434, 0, 12.34, 10);
 
 try {
   await continuousPricingRepository.upsertSnapshot(
@@ -86,10 +89,14 @@ try {
   assert.equal(snapshot.inStockSkuCount, 1);
   assert.equal(snapshot.availableUnitCount, 29);
   assert.equal(snapshot.currentInventoryValue, 724.71);
+  assert.equal(snapshot.currentMarketValue, 580);
+  assert.equal(snapshot.marketComparableMarketValue, 580);
+  assert.equal(snapshot.marketComparableListedValue, 724.71);
+  assert.equal(snapshot.marketValueSkuCount, 1);
   assert.equal(snapshot.pricedInStockSkuCount, 0);
-  assert.equal(snapshot.publishedInStockSkuCount, 0);
+  assert.equal(snapshot.pricedAwaitingPublicationCount, 0);
+  assert.equal(snapshot.pricedAwaitingPublicationUnitCount, 0);
   assert.equal(snapshot.needsReviewCount, 0);
-  assert.equal(snapshot.outOfStockSkuCount, 1);
 
   const scheduled = await continuousPricingRepository.scheduleDueBatch({
     sellerKey,
@@ -127,7 +134,9 @@ try {
     snapshot.settings,
   );
   assert.equal(publishedSnapshot.currentInventoryValue, 725.29);
-  assert.equal(publishedSnapshot.publishedInStockSkuCount, 1);
+  assert.equal(publishedSnapshot.currentMarketValue, 580);
+  assert.equal(publishedSnapshot.marketComparableListedValue, 725.29);
+  assert.equal(publishedSnapshot.pricedAwaitingPublicationCount, 0);
 
   const directPricedAt = new Date(Date.now() + 1_000);
   const directPublishedAt = new Date(Date.now() + 2_000);
@@ -164,19 +173,69 @@ try {
 
   const refreshPricedAt = new Date(Date.now() + 3_000);
   const refreshPublishedAt = new Date(Date.now() + 4_000);
+  const pendingBatch = await queryOne<{ batchNumber: number }>(
+    `INSERT INTO inventory_batches (status, source_type, source_label)
+    VALUES ('priced', 'pending_inventory', 'Inventory Manager')
+    RETURNING batch_number AS "batchNumber"`,
+  );
+  assert.ok(pendingBatch);
+  pendingBatchNumber = pendingBatch.batchNumber;
+  await execute(
+    `INSERT INTO inventory_batch_items (
+      batch_number,
+      sku,
+      total_quantity,
+      add_to_quantity,
+      current_price,
+      product_line_id,
+      set_id,
+      product_id,
+      original_row_json,
+      created_at,
+      updated_at
+    ) VALUES ($1, 5199435, 0, 2, NULL, 3, 3059, 248731, $2::jsonb, NOW(), NOW())`,
+    [
+      pendingBatchNumber,
+      JSON.stringify(createInventoryItem(5199435, 2, 17.89).originalRow),
+    ],
+  );
+  await execute(
+    `INSERT INTO inventory_batch_results (
+      batch_number,
+      sku,
+      result_status,
+      row_json,
+      priced_at
+    ) VALUES ($1, 5199435, 'successful', $2::jsonb, $3)`,
+    [
+      pendingBatchNumber,
+      JSON.stringify(createInventoryItem(5199435, 2, 17.89).originalRow),
+      refreshPricedAt,
+    ],
+  );
+
+  const awaitingPublication = await continuousPricingRepository.getStatus(
+    sellerKey,
+    snapshot.settings,
+  );
+  assert.equal(awaitingPublication.pricedAwaitingPublicationCount, 1);
+  assert.equal(awaitingPublication.pricedAwaitingPublicationUnitCount, 2);
+
   const publication = await queryOne<{ id: number }>(
     `INSERT INTO inventory_publications (
       planning_key,
+      batch_number,
       method,
       source_type,
       seller_key,
       status,
       published_at,
       completed_at
-    ) VALUES ($1, 'staged_delta', 'pending_inventory', $2, 'published', $3, $3)
+    ) VALUES ($1, $2, 'staged_delta', 'pending_inventory', $3, 'published', $4, $4)
     RETURNING id`,
     [
       `continuous-integration-publication:${sellerKey}`,
+      pendingBatchNumber,
       sellerKey,
       refreshPublishedAt,
     ],
@@ -187,6 +246,8 @@ try {
     `INSERT INTO inventory_publication_items (
       publication_id,
       candidate_key,
+      inventory_delta_key,
+      batch_number,
       sku,
       product_id,
       product_line,
@@ -199,16 +260,25 @@ try {
       status,
       published_at
     ) VALUES (
-      $1, $2, 5199435, 248731, 'Pokemon', 'Celebrations',
-      'Greninja Star', 'Near Mint Holofoil', 17.89, 0, $3, 'published', $4
+      $1, $2, $3, $4, 5199435, 248731, 'Pokemon', 'Celebrations',
+      'Greninja Star', 'Near Mint Holofoil', 17.89, 2, $5, 'published', $6
     )`,
     [
       publicationId,
       `continuous-integration-candidate:${sellerKey}`,
+      `inventory-batch-item:${pendingBatchNumber}:5199435`,
+      pendingBatchNumber,
       refreshPricedAt,
       refreshPublishedAt,
     ],
   );
+
+  const publishedInventory = await continuousPricingRepository.getStatus(
+    sellerKey,
+    snapshot.settings,
+  );
+  assert.equal(publishedInventory.pricedAwaitingPublicationCount, 0);
+  assert.equal(publishedInventory.pricedAwaitingPublicationUnitCount, 0);
 
   await continuousPricingRepository.upsertSnapshot(
     sellerKey,
@@ -278,6 +348,11 @@ try {
   if (batchNumber !== null) {
     await execute(`DELETE FROM inventory_batches WHERE batch_number = $1`, [
       batchNumber,
+    ]);
+  }
+  if (pendingBatchNumber !== null) {
+    await execute(`DELETE FROM inventory_batches WHERE batch_number = $1`, [
+      pendingBatchNumber,
     ]);
   }
   await getPool().end();

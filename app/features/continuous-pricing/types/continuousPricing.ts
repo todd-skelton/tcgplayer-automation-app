@@ -31,6 +31,7 @@ export interface ContinuousPricingInventoryItem {
   variant: string;
   quantity: number;
   currentPrice: number | null;
+  marketPrice: number | null;
   inStock: boolean;
   enabled: boolean;
   pauseReason: string | null;
@@ -74,6 +75,7 @@ export interface UpsertContinuousPricingInventoryItem {
   variant: string;
   quantity: number;
   currentPrice: number | null;
+  marketPrice: number | null;
   originalRow: TcgPlayerListing;
 }
 
@@ -83,10 +85,14 @@ export interface ContinuousPricingStatus {
   inStockSkuCount: number;
   availableUnitCount: number;
   currentInventoryValue: number;
+  currentMarketValue: number;
+  marketComparableMarketValue: number;
+  marketComparableListedValue: number;
+  marketValueSkuCount: number;
   pricedInStockSkuCount: number;
-  publishedInStockSkuCount: number;
+  pricedAwaitingPublicationCount: number;
+  pricedAwaitingPublicationUnitCount: number;
   needsReviewCount: number;
-  outOfStockSkuCount: number;
   enabledInStockCount: number;
   dueCount: number;
   oldestDueAt: Date | null;

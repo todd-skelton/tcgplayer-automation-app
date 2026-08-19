@@ -10,6 +10,7 @@ export interface BatchSnapshotItem {
   totalQuantity: number;
   addToQuantity: number;
   currentPrice?: number | null;
+  marketPrice?: number | null;
   productLineId: number;
   setId: number;
   productId: number;
@@ -113,6 +114,7 @@ export async function convertCsvListingsToBatchItems(
       totalQuantity: parseInteger(listing["Total Quantity"]),
       addToQuantity: parseInteger(listing["Add to Quantity"]),
       currentPrice: parseNumber(listing["TCG Marketplace Price"]),
+      marketPrice: parseNumber(listing["TCG Market Price"]),
       productLineId: skuMetadata.productLineId,
       setId: skuMetadata.setId,
       productId: skuMetadata.productId,

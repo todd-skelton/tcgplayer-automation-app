@@ -54,10 +54,12 @@ function InventoryMetric({
   label,
   value,
   detail,
+  detailColor = "text.secondary",
 }: {
   label: string;
   value: string | number;
   detail: string;
+  detailColor?: string;
 }) {
   return (
     <Paper variant="outlined" sx={{ p: 2, height: "100%" }}>
@@ -66,7 +68,7 @@ function InventoryMetric({
           {label}
         </Typography>
         <Typography variant="h5">{value}</Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" color={detailColor}>
           {detail}
         </Typography>
       </Stack>
@@ -134,10 +136,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
           inStockSkuCount: 0,
           availableUnitCount: 0,
           currentInventoryValue: 0,
+          currentMarketValue: 0,
+          marketComparableMarketValue: 0,
+          marketComparableListedValue: 0,
+          marketValueSkuCount: 0,
           pricedInStockSkuCount: 0,
-          publishedInStockSkuCount: 0,
+          pricedAwaitingPublicationCount: 0,
+          pricedAwaitingPublicationUnitCount: 0,
           needsReviewCount: 0,
-          outOfStockSkuCount: 0,
           enabledInStockCount: 0,
           dueCount: 0,
           oldestDueAt: null,
@@ -311,6 +317,19 @@ export default function ContinuousPricingRoute() {
     inventory.total,
     inventory.page * inventory.pageSize,
   );
+  const marketDifferencePercentage =
+    status.marketComparableMarketValue > 0
+      ? ((status.marketComparableListedValue -
+          status.marketComparableMarketValue) /
+          status.marketComparableMarketValue) *
+        100
+      : null;
+  const marketDifferenceDetail =
+    marketDifferencePercentage === null
+      ? "Market comparison unavailable until the next inventory refresh"
+      : marketDifferencePercentage === 0
+        ? "At market for SKUs where both values are available"
+        : `${Math.abs(marketDifferencePercentage).toFixed(1)}% ${marketDifferencePercentage > 0 ? "above" : "below"} market where both values are available`;
 
   return (
     <Box sx={{ maxWidth: 1000, mx: "auto", p: 3 }}>
@@ -470,7 +489,14 @@ export default function ContinuousPricingRoute() {
             <InventoryMetric
               label="Current listed value"
               value={currencyFormatter.format(status.currentInventoryValue)}
-              detail="Available quantity × current listed price"
+              detail={marketDifferenceDetail}
+              detailColor={
+                marketDifferencePercentage === null
+                  ? "text.secondary"
+                  : marketDifferencePercentage >= 0
+                    ? "success.main"
+                    : "error.main"
+              }
             />
             <InventoryMetric
               label="Pricing coverage"
@@ -481,12 +507,9 @@ export default function ContinuousPricingRoute() {
               detail={`${status.pricedInStockSkuCount.toLocaleString()} of ${status.inStockSkuCount.toLocaleString()} in-stock SKUs priced`}
             />
             <InventoryMetric
-              label="Published coverage"
-              value={formatCoverage(
-                status.publishedInStockSkuCount,
-                status.inStockSkuCount,
-              )}
-              detail={`${status.publishedInStockSkuCount.toLocaleString()} of ${status.inStockSkuCount.toLocaleString()} in-stock SKUs published`}
+              label="Priced awaiting publication"
+              value={status.pricedAwaitingPublicationCount.toLocaleString()}
+              detail={`${status.pricedAwaitingPublicationUnitCount.toLocaleString()} new inventory units without confirmed publication`}
             />
             <InventoryMetric
               label="Needs review"
@@ -494,9 +517,9 @@ export default function ContinuousPricingRoute() {
               detail="Tracked SKUs with a review warning"
             />
             <InventoryMetric
-              label="Out of stock"
-              value={status.outOfStockSkuCount.toLocaleString()}
-              detail="Tracked SKUs with no available quantity"
+              label="Current market value"
+              value={currencyFormatter.format(status.currentMarketValue)}
+              detail={`Available quantity × market price across ${status.marketValueSkuCount.toLocaleString()} in-stock SKUs`}
             />
           </Box>
 

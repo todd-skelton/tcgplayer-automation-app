@@ -39,6 +39,12 @@ export async function refreshContinuousPricingInventory(
       variant: item.originalRow["Sku Variant"],
       quantity: item.totalQuantity,
       currentPrice: item.currentPrice ?? null,
+      marketPrice:
+        item.marketPrice !== null &&
+        item.marketPrice !== undefined &&
+        item.marketPrice > 0
+          ? item.marketPrice
+          : null,
       originalRow: item.originalRow,
     })),
     { observedAt, minimumIntervalMinutes },
