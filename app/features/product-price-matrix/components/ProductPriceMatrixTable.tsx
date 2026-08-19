@@ -78,18 +78,21 @@ function getConditionAccentColor(condition: Condition): string {
   return color === null ? "divider" : `${color}.main`;
 }
 
-function getConditionTint(
+function getConditionTintStyles(
   condition: Condition,
   theme: Theme,
   opacity: number,
-): string {
+): { backgroundColor: string; backgroundImage: string } {
   const color = getMatrixConditionColor(condition);
+  const tint =
+    color === null
+      ? alpha(theme.palette.text.primary, opacity * 0.5)
+      : alpha(theme.palette[color].main, opacity);
 
-  if (color === null) {
-    return alpha(theme.palette.text.primary, opacity * 0.5);
-  }
-
-  return alpha(theme.palette[color].main, opacity);
+  return {
+    backgroundColor: theme.palette.background.paper,
+    backgroundImage: `linear-gradient(${tint}, ${tint})`,
+  };
 }
 
 export function ProductPriceMatrixTable({
@@ -269,7 +272,7 @@ export function ProductPriceMatrixTable({
                 key={cell.sku}
                 sx={(theme) => ({
                   "&:hover td, &:hover th": {
-                    bgcolor: getConditionTint(
+                    ...getConditionTintStyles(
                       cell.condition,
                       theme,
                       theme.palette.mode === "dark" ? 0.2 : 0.1,
@@ -284,7 +287,7 @@ export function ProductPriceMatrixTable({
                     fontWeight: 700,
                     position: "sticky",
                     left: 0,
-                    bgcolor: getConditionTint(
+                    ...getConditionTintStyles(
                       cell.condition,
                       theme,
                       theme.palette.mode === "dark" ? 0.16 : 0.06,
@@ -311,7 +314,7 @@ export function ProductPriceMatrixTable({
                     width: CONDITION_COLUMN_WIDTH,
                     minWidth: CONDITION_COLUMN_WIDTH,
                     maxWidth: CONDITION_COLUMN_WIDTH,
-                    bgcolor: getConditionTint(
+                    ...getConditionTintStyles(
                       cell.condition,
                       theme,
                       theme.palette.mode === "dark" ? 0.16 : 0.06,
@@ -395,13 +398,13 @@ export function ProductPriceMatrixTable({
                         }`}
                         sx={(theme) => ({
                           minWidth: 130,
-                          bgcolor: isConfigured
-                            ? getConditionTint(
+                          ...(isConfigured
+                            ? getConditionTintStyles(
                                 cell.condition,
                                 theme,
                                 theme.palette.mode === "dark" ? 0.24 : 0.1,
                               )
-                            : undefined,
+                            : {}),
                           borderLeft: "1px solid",
                           borderLeftColor: isConfigured
                             ? getConditionAccentColor(cell.condition)
