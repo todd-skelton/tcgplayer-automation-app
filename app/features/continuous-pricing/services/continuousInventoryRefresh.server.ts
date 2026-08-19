@@ -4,6 +4,7 @@ import {
 } from "~/core/db";
 import { convertSellerInventoryToBatchItems } from "~/features/file-upload/services/pricingBatchSnapshots.server";
 import { fetchSellerInventorySnapshot } from "~/features/seller-management/services/sellerInventorySnapshot.server";
+import { fetchContinuousMarketPrices } from "./continuousMarketPrices.server";
 
 export async function refreshContinuousPricingInventory(
   sellerKey: string,
@@ -22,6 +23,9 @@ export async function refreshContinuousPricingInventory(
   const batchItems = await convertSellerInventoryToBatchItems(
     snapshot.inventory,
   );
+  const marketPrices = await fetchContinuousMarketPrices(
+    batchItems.map((item) => item.sku),
+  );
   const observedAt = new Date();
 
   await continuousPricingRepository.upsertSnapshot(
@@ -39,12 +43,7 @@ export async function refreshContinuousPricingInventory(
       variant: item.originalRow["Sku Variant"],
       quantity: item.totalQuantity,
       currentPrice: item.currentPrice ?? null,
-      marketPrice:
-        item.marketPrice !== null &&
-        item.marketPrice !== undefined &&
-        item.marketPrice > 0
-          ? item.marketPrice
-          : null,
+      marketPrice: marketPrices.get(item.sku) ?? null,
       originalRow: item.originalRow,
     })),
     { observedAt, minimumIntervalMinutes },

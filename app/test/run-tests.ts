@@ -3,6 +3,7 @@ import "../core/db/repositories/inventoryBatchPricingJobs.server.test";
 import "../core/utils/numberFieldMatching.test";
 import "../features/inventory-publication/services/inventoryPublicationPolicy.test";
 import "../features/continuous-pricing/services/continuousPricingSettings.test";
+import "../features/continuous-pricing/services/continuousMarketPrices.server.test";
 import "../features/inventory-publication/services/inventoryPublicationState.test";
 import "../features/inventory-publication/services/inventoryBatchPublication.server.test";
 import "../features/pending-inventory/routes/pending-inventory-pricer.dialogs.test";
