@@ -17,29 +17,22 @@ import {
   Select,
   Stack,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
-import type { Theme } from "@mui/material/styles";
-import { getConditionColor } from "~/core/utils/conditionColors";
-import type { Condition } from "~/integrations/tcgplayer/types/Condition";
 import type { CategorySet } from "~/shared/data-types/categorySet";
 import type { ProductLine } from "~/shared/data-types/productLine";
 import type {
-  ProductPriceMatrixCell,
   ProductPriceMatrixProduct,
   ProductPriceMatrixProductsResponse,
   ProductPriceMatrixResponse,
   ProductPriceMatrixSearchScope,
 } from "../types/productPriceMatrix";
+import {
+  formatPercentileLabel,
+  getConfiguredPercentiles,
+} from "../components/percentileColumns";
+import { ProductPriceMatrixTable } from "../components/ProductPriceMatrixTable";
 
 const DEFAULT_PRODUCT_LINE_ID = 3;
 
@@ -100,31 +93,7 @@ function getProductLabel(product: ProductPriceMatrixProduct): string {
 function getDefaultLanguage(product: ProductPriceMatrixProduct): string {
   return product.languages.includes("English")
     ? "English"
-    : product.languages[0] ?? "";
-}
-
-function formatCurrency(value: number | null | undefined): string {
-  if (value === null || value === undefined) {
-    return "N/A";
-  }
-
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(value);
-}
-
-function formatDays(value: number | undefined): string {
-  if (value === undefined) {
-    return "N/A";
-  }
-
-  if (value < 1) {
-    return "<1 day";
-  }
-
-  const rounded = value >= 10 ? value.toFixed(0) : value.toFixed(1);
-  return `${rounded} days`;
+    : (product.languages[0] ?? "");
 }
 
 function formatDateTime(value: string | undefined): string {
@@ -135,56 +104,13 @@ function formatDateTime(value: string | undefined): string {
   return new Date(value).toLocaleString();
 }
 
-function getMarketDelta(
-  cell: ProductPriceMatrixCell,
-): number | null {
-  if (
-    cell.tcgMarketPrice === null ||
-    cell.tcgMarketPrice === 0 ||
-    cell.suggestedPrice === null
-  ) {
-    return null;
-  }
-
-  return ((cell.suggestedPrice - cell.tcgMarketPrice) / cell.tcgMarketPrice) * 100;
-}
-
-type MatrixConditionColor = Exclude<
-  ReturnType<typeof getConditionColor>,
-  "default"
->;
-
-function getMatrixConditionColor(condition: Condition): MatrixConditionColor | null {
-  const color = getConditionColor(condition);
-  return color === "default" ? null : color;
-}
-
-function getConditionAccentColor(condition: Condition): string {
-  const color = getMatrixConditionColor(condition);
-  return color === null ? "divider" : `${color}.main`;
-}
-
-function getConditionTint(
-  condition: Condition,
-  theme: Theme,
-  opacity: number,
-): string {
-  const color = getMatrixConditionColor(condition);
-
-  if (color === null) {
-    return alpha(theme.palette.text.primary, opacity * 0.5);
-  }
-
-  return alpha(theme.palette[color].main, opacity);
-}
-
 export default function ProductPriceMatrixRoute() {
   const [productLines, setProductLines] = useState<ProductLine[]>([]);
   const [sets, setSets] = useState<CategorySet[]>([]);
   const [products, setProducts] = useState<ProductPriceMatrixProduct[]>([]);
-  const [selectedProductLineId, setSelectedProductLineId] = useState<number | null>(
-    null,
-  );
+  const [selectedProductLineId, setSelectedProductLineId] = useState<
+    number | null
+  >(null);
   const [selectedSetId, setSelectedSetId] = useState<number | null>(null);
   const [searchScope, setSearchScope] =
     useState<ProductPriceMatrixSearchScope>("set");
@@ -222,6 +148,10 @@ export default function ProductPriceMatrixRoute() {
         return true;
       }),
     [products, productTypeFilter],
+  );
+  const configuredPercentiles = useMemo(
+    () => getConfiguredPercentiles(matrix?.cells ?? []),
+    [matrix],
   );
   const loadProductOptions = useCallback(
     async ({
@@ -424,7 +354,9 @@ export default function ProductPriceMatrixRoute() {
     });
   };
 
-  const handleSearchScopeChange = async (nextScope: ProductPriceMatrixSearchScope) => {
+  const handleSearchScopeChange = async (
+    nextScope: ProductPriceMatrixSearchScope,
+  ) => {
     setSearchScope(nextScope);
     setAllSetsCardNumber("");
     setSelectedProduct(null);
@@ -516,7 +448,8 @@ export default function ProductPriceMatrixRoute() {
     });
   };
 
-  const productLoading = isLoadingProductLines || isLoadingSets || isLoadingProducts;
+  const productLoading =
+    isLoadingProductLines || isLoadingSets || isLoadingProducts;
   const matrixBusy = isLoadingMatrix || isCalculatingSuggested;
 
   return (
@@ -538,7 +471,12 @@ export default function ProductPriceMatrixRoute() {
           </Box>
 
           {matrix && (
-            <Stack direction="row" spacing={1} flexWrap="wrap" justifyContent="flex-end">
+            <Stack
+              direction="row"
+              spacing={1}
+              flexWrap="wrap"
+              justifyContent="flex-end"
+            >
               <Chip
                 size="small"
                 variant="outlined"
@@ -569,7 +507,9 @@ export default function ProductPriceMatrixRoute() {
                 options={productLines}
                 value={selectedProductLine}
                 getOptionLabel={(option) => option.productLineName}
-                onChange={(_, nextValue) => void handleProductLineChange(nextValue)}
+                onChange={(_, nextValue) =>
+                  void handleProductLineChange(nextValue)
+                }
                 loading={isLoadingProductLines}
                 sx={{ minWidth: 220, flex: 1 }}
                 renderInput={(params) => (
@@ -583,7 +523,9 @@ export default function ProductPriceMatrixRoute() {
                   value={productTypeFilter}
                   label="Product Type"
                   onChange={(event) =>
-                    setProductTypeFilter(event.target.value as ProductTypeFilter)
+                    setProductTypeFilter(
+                      event.target.value as ProductTypeFilter,
+                    )
                   }
                 >
                   <MenuItem value="all">All Products</MenuItem>
@@ -621,7 +563,9 @@ export default function ProductPriceMatrixRoute() {
                   loading={isLoadingSets}
                   disabled={!selectedProductLineId}
                   sx={{ minWidth: 280, flex: 1.1 }}
-                  renderInput={(params) => <TextField {...params} label="Set" />}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Set" />
+                  )}
                 />
               ) : (
                 <Stack
@@ -632,7 +576,9 @@ export default function ProductPriceMatrixRoute() {
                   <TextField
                     label="Card Number"
                     value={allSetsCardNumber}
-                    onChange={(event) => setAllSetsCardNumber(event.target.value)}
+                    onChange={(event) =>
+                      setAllSetsCardNumber(event.target.value)
+                    }
                     onKeyDown={(event) => {
                       if (event.key === "Enter") {
                         void handleAllSetsSearch();
@@ -735,16 +681,32 @@ export default function ProductPriceMatrixRoute() {
                   </Typography>
                   <Stack direction="row" spacing={1} flexWrap="wrap">
                     {selectedProduct.cardNumber && (
-                      <Chip size="small" label={`#${selectedProduct.cardNumber}`} />
+                      <Chip
+                        size="small"
+                        label={`#${selectedProduct.cardNumber}`}
+                      />
                     )}
                     <Chip size="small" label={selectedProduct.setName} />
                     <Chip size="small" label={selectedProduct.rarityName} />
-                    <Chip size="small" label={`${selectedProduct.skuCount} SKUs`} />
+                    <Chip
+                      size="small"
+                      label={`${selectedProduct.skuCount} SKUs`}
+                    />
                     <Chip
                       size="small"
                       variant="outlined"
                       label={selectedLanguage || "No language"}
                     />
+                    {configuredPercentiles.length > 0 && (
+                      <Chip
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                        label={`Configured: ${configuredPercentiles
+                          .map(formatPercentileLabel)
+                          .join(", ")}`}
+                      />
+                    )}
                   </Stack>
                 </Stack>
 
@@ -784,267 +746,7 @@ export default function ProductPriceMatrixRoute() {
               )}
 
               {matrix && matrix.cells.length > 0 && (
-                <TableContainer component={Box} sx={{ overflowX: "auto" }}>
-                  <Table size="small" sx={{ minWidth: 1120 }}>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell
-                          sx={{
-                            fontWeight: 700,
-                            position: "sticky",
-                            left: 0,
-                            bgcolor: "background.paper",
-                            zIndex: 1,
-                            minWidth: 150,
-                          }}
-                        >
-                          Variant
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 700, minWidth: 150 }}>
-                          Condition
-                        </TableCell>
-                        <TableCell
-                          align="right"
-                          sx={{ fontWeight: 700, minWidth: 110 }}
-                        >
-                          Market
-                        </TableCell>
-                        <TableCell
-                          align="right"
-                          sx={{ fontWeight: 700, minWidth: 100 }}
-                        >
-                          Low
-                        </TableCell>
-                        <TableCell
-                          align="right"
-                          sx={{ fontWeight: 700, minWidth: 100 }}
-                        >
-                          High
-                        </TableCell>
-                        <TableCell
-                          align="right"
-                          sx={{ fontWeight: 700, minWidth: 80 }}
-                        >
-                          Sales
-                        </TableCell>
-                        <TableCell
-                          align="right"
-                          sx={{
-                            fontWeight: 700,
-                            minWidth: 120,
-                            bgcolor: "action.hover",
-                          }}
-                        >
-                          Suggested
-                        </TableCell>
-                        <TableCell
-                          align="right"
-                          sx={{ fontWeight: 700, minWidth: 130 }}
-                        >
-                          Marketplace
-                        </TableCell>
-                        <TableCell
-                          align="right"
-                          sx={{ fontWeight: 700, minWidth: 110 }}
-                        >
-                          Time
-                        </TableCell>
-                        <TableCell
-                          align="right"
-                          sx={{ fontWeight: 700, minWidth: 100 }}
-                        >
-                          Percentile
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 700, minWidth: 120 }}>
-                          Notes
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {matrix.cells.map((cell, index) => {
-                        const marketDelta = getMarketDelta(cell);
-                        const hasWarnings = cell.warnings.length > 0;
-                        const hasErrors = cell.errors.length > 0;
-                        const conditionColor = getConditionColor(cell.condition);
-                        const startsVariantGroup =
-                          index === 0 ||
-                          matrix.cells[index - 1]?.variant !== cell.variant;
-                        const groupBorder = startsVariantGroup
-                          ? "2px solid"
-                          : undefined;
-
-                        return (
-                          <TableRow
-                            key={cell.sku}
-                            sx={(theme) => ({
-                              "&:hover td, &:hover th": {
-                                bgcolor: getConditionTint(
-                                  cell.condition,
-                                  theme,
-                                  theme.palette.mode === "dark" ? 0.2 : 0.1,
-                                ),
-                              },
-                            })}
-                          >
-                          <TableCell
-                            component="th"
-                            scope="row"
-                            sx={(theme) => ({
-                              fontWeight: 700,
-                              position: "sticky",
-                              left: 0,
-                              bgcolor: getConditionTint(
-                                cell.condition,
-                                theme,
-                                theme.palette.mode === "dark" ? 0.16 : 0.06,
-                              ),
-                              zIndex: 1,
-                              whiteSpace: "nowrap",
-                              borderLeft: "4px solid",
-                              borderLeftColor: getConditionAccentColor(
-                                cell.condition,
-                              ),
-                              borderTop: groupBorder,
-                              borderTopColor: "divider",
-                            })}
-                          >
-                            {cell.variant}
-                          </TableCell>
-                          <TableCell
-                            sx={(theme) => ({
-                              whiteSpace: "nowrap",
-                              bgcolor: getConditionTint(
-                                cell.condition,
-                                theme,
-                                theme.palette.mode === "dark" ? 0.16 : 0.06,
-                              ),
-                              borderTop: groupBorder,
-                              borderTopColor: "divider",
-                            })}
-                          >
-                            <Chip
-                              color={conditionColor}
-                              label={cell.condition}
-                              size="small"
-                              variant="outlined"
-                              sx={{
-                                fontWeight: 700,
-                                minWidth: 122,
-                                justifyContent: "flex-start",
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{
-                              fontWeight: 700,
-                              borderTop: groupBorder,
-                              borderTopColor: "divider",
-                            }}
-                          >
-                            {formatCurrency(cell.tcgMarketPrice)}
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{ borderTop: groupBorder, borderTopColor: "divider" }}
-                          >
-                            {formatCurrency(cell.lowestSalePrice)}
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{ borderTop: groupBorder, borderTopColor: "divider" }}
-                          >
-                            {formatCurrency(cell.highestSalePrice)}
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{ borderTop: groupBorder, borderTopColor: "divider" }}
-                          >
-                            {cell.saleCount.toLocaleString()}
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={(theme) => ({
-                              bgcolor: getConditionTint(
-                                cell.condition,
-                                theme,
-                                theme.palette.mode === "dark" ? 0.24 : 0.1,
-                              ),
-                              fontWeight: 700,
-                              borderLeft: "1px solid",
-                              borderLeftColor: getConditionAccentColor(
-                                cell.condition,
-                              ),
-                              borderTop: groupBorder,
-                              borderTopColor: "divider",
-                            })}
-                          >
-                            <Stack
-                              direction="row"
-                              spacing={0.75}
-                              alignItems="center"
-                              justifyContent="flex-end"
-                              flexWrap="nowrap"
-                            >
-                              {marketDelta !== null && (
-                                <Chip
-                                  size="small"
-                                  variant="outlined"
-                                  label={`${marketDelta >= 0 ? "+" : ""}${marketDelta.toFixed(0)}%`}
-                                  color={marketDelta >= 0 ? "success" : "default"}
-                                />
-                              )}
-                              <Typography
-                                variant="body2"
-                                fontWeight={700}
-                                sx={{ minWidth: 76, textAlign: "right" }}
-                              >
-                                {formatCurrency(cell.suggestedPrice)}
-                              </Typography>
-                            </Stack>
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{ borderTop: groupBorder, borderTopColor: "divider" }}
-                          >
-                            {formatCurrency(cell.marketplacePrice)}
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{ borderTop: groupBorder, borderTopColor: "divider" }}
-                          >
-                            {formatDays(cell.estimatedTimeToSellDays)}
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{ borderTop: groupBorder, borderTopColor: "divider" }}
-                          >
-                            {cell.percentileUsed === undefined
-                              ? "N/A"
-                              : `${cell.percentileUsed}%`}
-                          </TableCell>
-                          <TableCell
-                            sx={{ borderTop: groupBorder, borderTopColor: "divider" }}
-                          >
-                            <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                              {hasWarnings && (
-                                <Tooltip title={cell.warnings.join(" ")}>
-                                  <Chip size="small" color="warning" label="Warning" />
-                                </Tooltip>
-                              )}
-                              {hasErrors && (
-                                <Tooltip title={cell.errors.join(" ")}>
-                                  <Chip size="small" color="error" label="Error" />
-                                </Tooltip>
-                              )}
-                            </Stack>
-                          </TableCell>
-                        </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                <ProductPriceMatrixTable matrix={matrix} />
               )}
 
               {matrix && matrix.cells.length === 0 && (

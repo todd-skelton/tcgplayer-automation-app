@@ -32,6 +32,7 @@ import "../features/shipping-export/services/tcgplayerShippedMessages.server.tes
 import "../features/shipping-export/services/tcgplayerSellerOrders.server.test";
 import "../features/pull-sheet/utils/pullSheetItems.test";
 import "../features/product-price-matrix/services/productPriceMatrix.server.test";
+import "../features/product-price-matrix/components/percentileColumns.test";
 import "../features/pricing/services/pricingService.test";
 import "../features/pricing/services/pricingCalculator.test";
 import "../features/shipping-export/components/steps/PackStep.test";
