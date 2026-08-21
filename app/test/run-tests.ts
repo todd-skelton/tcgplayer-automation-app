@@ -6,6 +6,7 @@ import "../features/continuous-pricing/services/continuousPricingSettings.test";
 import "../features/continuous-pricing/services/continuousMarketPrices.server.test";
 import "../features/inventory-publication/services/inventoryPublicationState.test";
 import "../features/inventory-publication/services/inventoryBatchPublication.server.test";
+import "../features/pending-inventory/routes/api.inventory-batch-publications.policy.test";
 import "../features/pending-inventory/routes/pending-inventory-pricer.dialogs.test";
 import "../features/pending-inventory/components/inventoryPublicationRunSummary.test";
 import "../features/inventory-publication/services/inventoryPublicationWorker.test";

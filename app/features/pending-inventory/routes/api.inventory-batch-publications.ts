@@ -28,11 +28,15 @@ export async function loader({ params }: { params: { batchNumber?: string } }) {
       return data({ error: `Batch ${batchNumber} not found` }, { status: 404 });
     }
 
-    const publications =
-      await inventoryPublicationsRepository.findByBatchNumber(batchNumber);
+    const [publications, configuration] = await Promise.all([
+      inventoryPublicationsRepository.findByBatchNumber(batchNumber),
+      inventoryPublicationSettingsRepository.get(),
+    ]);
     const preview =
       batch.latestJob?.status === "completed"
-        ? await previewInventoryBatchPublication(batchNumber)
+        ? await previewInventoryBatchPublication(batchNumber, {
+            policy: configuration.settings.policy,
+          })
         : null;
 
     return data({ preview, publications }, { status: 200 });
@@ -80,6 +84,7 @@ export async function action({
 
     const configuration = await inventoryPublicationSettingsRepository.get();
     const result = await planInventoryBatchPublications(batchNumber, {
+      policy: configuration.settings.policy,
       selectedSkus: selectedSkus as number[] | undefined,
       targetSellerKey:
         configuration.settings.continuousPricing.sellerKey || undefined,
