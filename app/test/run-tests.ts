@@ -38,4 +38,5 @@ import "../features/product-price-matrix/services/productPriceMatrix.server.test
 import "../features/product-price-matrix/components/percentileColumns.test";
 import "../features/pricing/services/pricingService.test";
 import "../features/pricing/services/pricingCalculator.test";
+import "../features/pricing/algorithms/getSuggestedPriceFromLatestSales.test";
 import "../features/shipping-export/components/steps/PackStep.test";

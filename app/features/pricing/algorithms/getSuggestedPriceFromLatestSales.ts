@@ -18,17 +18,16 @@ import { INVENTORY_CONDITION_ORDER } from "../../../core/utils/conditionOrder";
 // Define condition ordering for Zipf model (from best to worst condition)
 const CONDITION_ORDER: Condition[] = INVENTORY_CONDITION_ORDER;
 
-// Return sale price per unit, including shipping when the base price meets the $5 threshold
-function getEffectiveSalePrice(sale: Sale): number {
-  const basePrice = sale.purchasePrice ?? 0;
+// The sales API reports purchasePrice per unit and shippingPrice per order.
+// Allocate only the order-level shipping across the purchased units.
+export function getEffectiveSalePrice(sale: Sale): number {
+  const unitPurchasePrice = sale.purchasePrice ?? 0;
   const shippingPrice = sale.shippingPrice ?? 0;
-  const quantity = sale.quantity ?? 1;
+  const quantity = sale.quantity && sale.quantity > 0 ? sale.quantity : 1;
 
-  // Calculate total order value (with shipping if base price >= $5)
-  const totalPrice = basePrice >= 5 ? basePrice + shippingPrice : basePrice;
+  const shippingPerUnit = unitPurchasePrice >= 5 ? shippingPrice / quantity : 0;
 
-  // Return per-unit price
-  return totalPrice / quantity;
+  return unitPurchasePrice + shippingPerUnit;
 }
 
 /**
