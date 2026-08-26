@@ -1,8 +1,23 @@
 import type { PersistedPricingDetails } from "~/core/types/pricing";
 
-export const INVENTORY_STRATEGY_PERCENTILES = [
-  10, 20, 30, 40, 50, 60, 70, 80, 90,
-] as const;
+export const INVENTORY_STRATEGY_MIN_PERCENTILE = 5;
+export const INVENTORY_STRATEGY_MAX_PERCENTILE = 95;
+export const INVENTORY_STRATEGY_PERCENTILES = Array.from(
+  {
+    length:
+      (INVENTORY_STRATEGY_MAX_PERCENTILE - INVENTORY_STRATEGY_MIN_PERCENTILE) /
+        5 +
+      1,
+  },
+  (_, index) => INVENTORY_STRATEGY_MIN_PERCENTILE + index * 5,
+);
+export const INVENTORY_STRATEGY_PREVIEW_PERCENTILES = Array.from(
+  {
+    length:
+      INVENTORY_STRATEGY_MAX_PERCENTILE - INVENTORY_STRATEGY_MIN_PERCENTILE + 1,
+  },
+  (_, index) => INVENTORY_STRATEGY_MIN_PERCENTILE + index,
+);
 
 export type InventoryStrategyPercentile = number;
 
@@ -33,14 +48,23 @@ export interface InventoryStrategyTimeDistribution {
 
 export interface InventoryStrategyScenario {
   percentile: InventoryStrategyPercentile;
+  kneeScore: number | null;
   listedValue: number;
   deltaFromCurrentPolicy: number;
   deltaPercentFromCurrentPolicy: number | null;
   modeledSkuCount: number;
   modeledUnitCount: number;
+  interpolatedSkuCount: number;
+  interpolatedUnitCount: number;
   timeModeledUnitCount: number;
   estimatedTime: InventoryStrategyTimeDistribution | null;
 }
+
+export type InventoryStrategyKneeConfidence =
+  | "high"
+  | "medium"
+  | "low"
+  | "unavailable";
 
 export interface InventoryStrategyProductLine {
   key: string;
@@ -53,10 +77,16 @@ export interface InventoryStrategyProductLine {
   currentListedValue: number;
   currentMarketValue: number;
   currentPolicyValue: number;
+  mathematicalKneePercentile: number | null;
+  estimatedPercentile: number | null;
+  kneeRangeMinimum: number | null;
+  kneeRangeMaximum: number | null;
+  kneeConfidence: InventoryStrategyKneeConfidence;
   modeledSkuCount: number;
   modeledUnitCount: number;
   oldestPricingAt: string | null;
   newestPricingAt: string | null;
+  matrixPercentiles: number[];
   scenarios: InventoryStrategyScenario[];
 }
 

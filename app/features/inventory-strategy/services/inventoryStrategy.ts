@@ -1,8 +1,13 @@
 import type { ServerPricingConfig } from "~/features/pricing/types/config";
 import { calculateMarketplacePrice } from "~/features/pricing/services/pricingService";
+import type { PricingPercentileDetail } from "~/core/types/pricing";
 import {
+  INVENTORY_STRATEGY_MAX_PERCENTILE,
+  INVENTORY_STRATEGY_MIN_PERCENTILE,
   INVENTORY_STRATEGY_PERCENTILES,
+  INVENTORY_STRATEGY_PREVIEW_PERCENTILES,
   type InventoryStrategyDashboard,
+  type InventoryStrategyKneeConfidence,
   type InventoryStrategyPercentile,
   type InventoryStrategyProductLine,
   type InventoryStrategyScenario,
@@ -13,6 +18,27 @@ import {
 interface WeightedValue {
   value: number;
   weight: number;
+}
+
+interface KneeEstimate {
+  mathematicalPercentile: number | null;
+  estimatedPercentile: number | null;
+  rangeMinimum: number | null;
+  rangeMaximum: number | null;
+  confidence: InventoryStrategyKneeConfidence;
+}
+
+const KNEE_SCORE_RANGE_TOLERANCE = 0.02;
+
+interface ScenarioPricingDetail {
+  suggestedPrice: number;
+  estimatedTimeToSellDays?: number;
+  interpolated: boolean;
+}
+
+interface ScenarioItem {
+  item: InventoryStrategySnapshotItem;
+  pricingDetails: PricingPercentileDetail[];
 }
 
 function roundCurrency(value: number): number {
@@ -61,26 +87,66 @@ function getConfiguredPercentile(
   return settings?.percentile ?? config.productLinePricing.defaultPercentile;
 }
 
+function getScenarioPricingDetail(
+  details: PricingPercentileDetail[],
+  percentile: InventoryStrategyPercentile,
+): ScenarioPricingDetail | null {
+  const exact = details.find((detail) => detail.percentile === percentile);
+  if (exact) {
+    return {
+      suggestedPrice: exact.suggestedPrice,
+      estimatedTimeToSellDays: exact.estimatedTimeToSellDays,
+      interpolated: false,
+    };
+  }
+
+  const lower = [...details]
+    .reverse()
+    .find((detail) => detail.percentile < percentile);
+  const upper = details.find((detail) => detail.percentile > percentile);
+  if (!lower || !upper || lower.percentile === upper.percentile) {
+    return null;
+  }
+
+  const position =
+    (percentile - lower.percentile) / (upper.percentile - lower.percentile);
+  const lowerTime = lower.estimatedTimeToSellDays;
+  const upperTime = upper.estimatedTimeToSellDays;
+  const canInterpolateTime =
+    lowerTime !== undefined &&
+    Number.isFinite(lowerTime) &&
+    lowerTime >= 0 &&
+    upperTime !== undefined &&
+    Number.isFinite(upperTime) &&
+    upperTime >= 0;
+
+  return {
+    suggestedPrice:
+      lower.suggestedPrice +
+      (upper.suggestedPrice - lower.suggestedPrice) * position,
+    estimatedTimeToSellDays: canInterpolateTime
+      ? lowerTime + (upperTime - lowerTime) * position
+      : undefined,
+    interpolated: true,
+  };
+}
+
 function buildScenario(
-  items: InventoryStrategySnapshotItem[],
+  scenarioItems: ScenarioItem[],
   percentile: InventoryStrategyPercentile,
   currentListedValue: number,
 ): InventoryStrategyScenario {
   let listedValue = currentListedValue;
   let modeledSkuCount = 0;
   let modeledUnitCount = 0;
+  let interpolatedSkuCount = 0;
+  let interpolatedUnitCount = 0;
   let timeModeledUnitCount = 0;
   const timeValues: WeightedValue[] = [];
 
-  for (const item of items) {
-    const detail = item.pricingDetails?.percentiles?.find(
-      (candidate) => candidate.percentile === percentile,
-    );
-    if (
-      !detail ||
-      !Number.isFinite(detail.suggestedPrice) ||
-      detail.suggestedPrice <= 0
-    ) {
+  for (const { item, pricingDetails } of scenarioItems) {
+    const detail = getScenarioPricingDetail(pricingDetails, percentile);
+    if (!detail) {
       continue;
     }
 
@@ -94,6 +160,10 @@ function buildScenario(
     listedValue += boundedPrice * item.quantity - currentValue;
     modeledSkuCount += 1;
     modeledUnitCount += item.quantity;
+    if (detail.interpolated) {
+      interpolatedSkuCount += 1;
+      interpolatedUnitCount += item.quantity;
+    }
 
     if (
       detail.estimatedTimeToSellDays !== undefined &&
@@ -110,13 +180,101 @@ function buildScenario(
 
   return {
     percentile,
+    kneeScore: null,
     listedValue: roundCurrency(listedValue),
     deltaFromCurrentPolicy: 0,
     deltaPercentFromCurrentPolicy: null,
     modeledSkuCount,
     modeledUnitCount,
+    interpolatedSkuCount,
+    interpolatedUnitCount,
     timeModeledUnitCount,
     estimatedTime: summarizeTime(timeValues),
+  };
+}
+
+function estimateKnee(
+  scenarios: InventoryStrategyScenario[],
+  configuredPercentile: number | null,
+  totalUnitCount: number,
+  exactCandidatePercentiles: ReadonlySet<number>,
+): KneeEstimate {
+  const scoredScenarios = scenarios.filter(
+    (scenario) =>
+      scenario.estimatedTime !== null && scenario.modeledUnitCount > 0,
+  );
+  const candidates = scoredScenarios.filter((scenario) =>
+    exactCandidatePercentiles.has(scenario.percentile),
+  );
+  if (candidates.length < 3) {
+    return {
+      mathematicalPercentile: null,
+      estimatedPercentile: null,
+      rangeMinimum: null,
+      rangeMaximum: null,
+      confidence: "unavailable",
+    };
+  }
+
+  const values = scoredScenarios.map((scenario) => scenario.listedValue);
+  const times = scoredScenarios.map(
+    (scenario) => scenario.estimatedTime?.medianDays ?? 0,
+  );
+  const minimumValue = Math.min(...values);
+  const maximumValue = Math.max(...values);
+  const minimumTime = Math.min(...times);
+  const maximumTime = Math.max(...times);
+  const valueRange = maximumValue - minimumValue;
+  const timeRange = maximumTime - minimumTime;
+  if (valueRange <= 0 || timeRange <= 0) {
+    return {
+      mathematicalPercentile: null,
+      estimatedPercentile: null,
+      rangeMinimum: null,
+      rangeMaximum: null,
+      confidence: "unavailable",
+    };
+  }
+
+  for (const scenario of scoredScenarios) {
+    const normalizedValue = (scenario.listedValue - minimumValue) / valueRange;
+    const normalizedTime =
+      ((scenario.estimatedTime?.medianDays ?? minimumTime) - minimumTime) /
+      timeRange;
+    scenario.kneeScore = normalizedValue - normalizedTime;
+  }
+
+  const mathematical = [...candidates].sort(
+    (left, right) =>
+      (right.kneeScore ?? Number.NEGATIVE_INFINITY) -
+        (left.kneeScore ?? Number.NEGATIVE_INFINITY) ||
+      left.percentile - right.percentile,
+  )[0];
+  const maximumScore = mathematical.kneeScore ?? 0;
+  const range = candidates.filter(
+    (scenario) =>
+      scenario.kneeScore !== null &&
+      scenario.kneeScore >= maximumScore - KNEE_SCORE_RANGE_TOLERANCE,
+  );
+  const configuredCandidate = range.find(
+    (scenario) => scenario.percentile === configuredPercentile,
+  );
+  const coverage =
+    totalUnitCount === 0 ? 0 : mathematical.modeledUnitCount / totalUnitCount;
+  const confidence: InventoryStrategyKneeConfidence =
+    coverage < 0.8
+      ? "low"
+      : range.length === 1 && candidates.length >= 5
+        ? "high"
+        : "medium";
+
+  return {
+    mathematicalPercentile: mathematical.percentile,
+    estimatedPercentile:
+      configuredCandidate?.percentile ?? mathematical.percentile,
+    rangeMinimum: Math.min(...range.map((scenario) => scenario.percentile)),
+    rangeMaximum: Math.max(...range.map((scenario) => scenario.percentile)),
+    confidence,
   };
 }
 
@@ -126,6 +284,7 @@ function buildProductLine(
   productLine: string,
   items: InventoryStrategySnapshotItem[],
   config: ServerPricingConfig,
+  additionalPercentiles: readonly number[] = [],
 ): InventoryStrategyProductLine {
   const configuredPercentile =
     productLineId === null
@@ -143,13 +302,53 @@ function buildProductLine(
       0,
     ),
   );
-  const scenarioPercentiles = new Set<number>(INVENTORY_STRATEGY_PERCENTILES);
-  if (configuredPercentile !== null) {
-    scenarioPercentiles.add(configuredPercentile);
+  const exactCandidatePercentiles = new Set<number>(
+    INVENTORY_STRATEGY_PERCENTILES,
+  );
+  for (const item of items) {
+    for (const detail of item.pricingDetails?.percentiles ?? []) {
+      if (
+        Number.isFinite(detail.percentile) &&
+        detail.percentile >= 0 &&
+        detail.percentile <= 100
+      ) {
+        exactCandidatePercentiles.add(detail.percentile);
+      }
+    }
   }
+  for (const percentile of additionalPercentiles) {
+    exactCandidatePercentiles.add(percentile);
+  }
+  if (configuredPercentile !== null) {
+    exactCandidatePercentiles.add(configuredPercentile);
+  }
+  const scenarioPercentiles = new Set<number>(
+    INVENTORY_STRATEGY_PREVIEW_PERCENTILES,
+  );
+  for (const percentile of exactCandidatePercentiles) {
+    if (
+      percentile >= INVENTORY_STRATEGY_MIN_PERCENTILE &&
+      percentile <= INVENTORY_STRATEGY_MAX_PERCENTILE
+    ) {
+      scenarioPercentiles.add(percentile);
+    }
+  }
+  const scenarioItems = items.map((item) => ({
+    item,
+    pricingDetails: (item.pricingDetails?.percentiles ?? [])
+      .filter(
+        (detail) =>
+          Number.isFinite(detail.percentile) &&
+          Number.isFinite(detail.suggestedPrice) &&
+          detail.suggestedPrice > 0,
+      )
+      .sort((left, right) => left.percentile - right.percentile),
+  }));
   const scenarios = [...scenarioPercentiles]
     .sort((left, right) => left - right)
-    .map((percentile) => buildScenario(items, percentile, currentListedValue));
+    .map((percentile) =>
+      buildScenario(scenarioItems, percentile, currentListedValue),
+    );
   const configuredScenario = scenarios.find(
     (scenario) => scenario.percentile === configuredPercentile,
   );
@@ -173,6 +372,13 @@ function buildProductLine(
     .map((item) => item.strategyPricedAt)
     .filter((value): value is Date => value instanceof Date)
     .sort((left, right) => left.getTime() - right.getTime());
+  const unitCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const knee = estimateKnee(
+    scenarios,
+    configuredPercentile,
+    unitCount,
+    exactCandidatePercentiles,
+  );
 
   return {
     key,
@@ -181,10 +387,15 @@ function buildProductLine(
     configuredPercentile,
     pricingEligible: items.some((item) => item.pricingEligible),
     skuCount: items.length,
-    unitCount: items.reduce((sum, item) => sum + item.quantity, 0),
+    unitCount,
     currentListedValue,
     currentMarketValue,
     currentPolicyValue,
+    mathematicalKneePercentile: knee.mathematicalPercentile,
+    estimatedPercentile: knee.estimatedPercentile,
+    kneeRangeMinimum: knee.rangeMinimum,
+    kneeRangeMaximum: knee.rangeMaximum,
+    kneeConfidence: knee.confidence,
     modeledSkuCount: modeledItems.length,
     modeledUnitCount: modeledItems.reduce(
       (sum, item) => sum + item.quantity,
@@ -192,6 +403,13 @@ function buildProductLine(
     ),
     oldestPricingAt: pricingDates[0]?.toISOString() ?? null,
     newestPricingAt: pricingDates.at(-1)?.toISOString() ?? null,
+    matrixPercentiles: [...exactCandidatePercentiles]
+      .filter(
+        (percentile) =>
+          percentile >= INVENTORY_STRATEGY_MIN_PERCENTILE &&
+          percentile <= INVENTORY_STRATEGY_MAX_PERCENTILE,
+      )
+      .sort((left, right) => left - right),
     scenarios,
   };
 }
@@ -239,6 +457,12 @@ export function buildInventoryStrategyDashboard(
     "All listed inventory",
     items,
     config,
+    [
+      config.productLinePricing.defaultPercentile,
+      ...Object.values(config.productLinePricing.productLineSettings)
+        .filter((settings) => !settings.skip)
+        .map((settings) => settings.percentile),
+    ],
   );
   overall.currentPolicyValue = roundCurrency(
     productLines.reduce(

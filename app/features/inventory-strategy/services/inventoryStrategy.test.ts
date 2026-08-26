@@ -31,9 +31,19 @@ function item(
           estimatedTimeToSellDays: 4,
         },
         {
+          percentile: 70,
+          suggestedPrice: 11,
+          estimatedTimeToSellDays: 8,
+        },
+        {
+          percentile: 75,
+          suggestedPrice: 12,
+          estimatedTimeToSellDays: 11,
+        },
+        {
           percentile: 80,
           suggestedPrice: 14,
-          estimatedTimeToSellDays: 12,
+          estimatedTimeToSellDays: 20,
         },
       ],
     },
@@ -98,6 +108,37 @@ assert.equal(fiftieth.listedValue, 23.62);
 assert.equal(fiftieth.deltaFromCurrentPolicy, -9.38);
 assert.equal(fiftieth.estimatedTime?.medianDays, 4);
 assert.equal(fiftieth.modeledUnitCount, 2);
+
+const seventyFifth = pokemon.scenarios.find(
+  (scenario) => scenario.percentile === 75,
+);
+assert.ok(seventyFifth);
+assert.equal(seventyFifth.interpolatedSkuCount, 0);
+assert.equal(seventyFifth.interpolatedUnitCount, 0);
+assert.ok(
+  (seventyFifth.kneeScore ?? 0) >
+    (pokemon.scenarios.find((scenario) => scenario.percentile === 70)
+      ?.kneeScore ?? 0),
+);
+assert.equal(pokemon.mathematicalKneePercentile, 75);
+assert.equal(pokemon.estimatedPercentile, 75);
+assert.equal(pokemon.kneeRangeMinimum, 75);
+assert.equal(pokemon.kneeRangeMaximum, 75);
+assert.equal(pokemon.kneeConfidence, "low");
+
+const seventyThird = pokemon.scenarios.find(
+  (scenario) => scenario.percentile === 73,
+);
+assert.ok(seventyThird);
+assert.equal(seventyThird.listedValue, 28.2);
+assert.equal(seventyThird.estimatedTime?.medianDays, 9.8);
+assert.equal(seventyThird.interpolatedSkuCount, 1);
+assert.equal(seventyThird.interpolatedUnitCount, 2);
+assert.equal(pokemon.scenarios.length, 91);
+assert.deepEqual(
+  pokemon.matrixPercentiles,
+  Array.from({ length: 19 }, (_, index) => 5 + index * 5),
+);
 
 const magic = dashboard.productLines.find(
   (productLine) => productLine.productLine === "Magic",

@@ -14,6 +14,7 @@ import {
 } from "../services/supplyAnalysisService";
 import { categoryFiltersRepository } from "~/core/db";
 import { INVENTORY_CONDITION_ORDER } from "../../../core/utils/conditionOrder";
+import { PERCENTILES } from "../../../core/constants/pricing";
 
 // Define condition ordering for Zipf model (from best to worst condition)
 const CONDITION_ORDER: Condition[] = INVENTORY_CONDITION_ORDER;
@@ -370,7 +371,7 @@ export interface PercentileData {
  * Ignores sale quantity to focus on individual willingness to pay rather than bulk purchases.
  * @param sales Array of sales, each with a price, quantity, and a timestamp (ms since epoch)
  * @param options.halfLifeDays Half-life for time decay in days (default 7)
- * @param options.percentiles Array of percentiles to calculate (default: [10,20,30,40,50,60,70,80,90])
+ * @param options.percentiles Array of percentiles to calculate (default: 5 through 95 in five-point steps)
  * @returns Array of percentile data with prices and expected time to sell, or empty array if no sales
  */
 export function getTimeDecayedPercentileWeightedSuggestedPrice(
@@ -388,9 +389,7 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
   if (!sales || sales.length === 0) return [];
 
   const halfLifeDays = options.halfLifeDays ?? 7;
-  const requestedPercentiles = options.percentiles ?? [
-    10, 20, 30, 40, 50, 60, 70, 80, 90,
-  ];
+  const requestedPercentiles = options.percentiles ?? PERCENTILES;
   const { listings, supplyAnalysisConfig } = options;
 
   const now = Date.now();
@@ -606,9 +605,8 @@ export function getSuggestedPriceFromSales(
   const halfLifeDays = options.halfLifeDays || calculateDynamicHalfLife(sales);
 
   // Create percentiles array that includes the custom percentile
-  const standardPercentiles = [10, 20, 30, 40, 50, 60, 70, 80, 90];
   const percentilesToCalculate = [
-    ...new Set([...standardPercentiles, percentile, ...additionalPercentiles]),
+    ...new Set([...PERCENTILES, percentile, ...additionalPercentiles]),
   ].sort((a, b) => a - b);
 
   const percentiles = getTimeDecayedPercentileWeightedSuggestedPrice(sales, {

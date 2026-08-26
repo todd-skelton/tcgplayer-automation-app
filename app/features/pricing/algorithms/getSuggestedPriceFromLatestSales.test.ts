@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
+import { PERCENTILES } from "~/core/constants/pricing";
 import type { Sale } from "~/integrations/tcgplayer/client/get-latest-sales.server";
-import { getEffectiveSalePrice } from "./getSuggestedPriceFromLatestSales";
+import {
+  getEffectiveSalePrice,
+  getSuggestedPriceFromSales,
+} from "./getSuggestedPriceFromLatestSales";
 
 function createSale(
   quantity: number,
@@ -45,6 +49,25 @@ assert.equal(
   getEffectiveSalePrice(createSale(10, 4.99, 1)),
   4.99,
   "shipping below the existing five-dollar threshold remains excluded",
+);
+
+assert.deepEqual(
+  PERCENTILES,
+  Array.from({ length: 19 }, (_, index) => 5 + index * 5),
+  "standard pricing curves cover 5th through 95th in five-point steps",
+);
+
+const curve = getSuggestedPriceFromSales(
+  [
+    { price: 1, quantity: 1, timestamp: Date.now() - 86_400_000 },
+    { price: 2, quantity: 1, timestamp: Date.now() },
+  ],
+  { percentile: 73, halfLifeDays: 7 },
+);
+assert.deepEqual(
+  curve.percentiles.map(({ percentile }) => percentile),
+  [...PERCENTILES, 73].sort((left, right) => left - right),
+  "pricing preserves a custom target alongside the standard exact curve",
 );
 
 console.log(

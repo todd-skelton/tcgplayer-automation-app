@@ -5,10 +5,8 @@ import {
   Card,
   CardContent,
   Chip,
-  FormControl,
-  MenuItem,
   Paper,
-  Select,
+  Slider,
   Stack,
   Table,
   TableBody,
@@ -37,7 +35,8 @@ import { refreshContinuousPricingInventory } from "~/features/continuous-pricing
 import { buildInventoryStrategyDashboard } from "../services/inventoryStrategy";
 import { queueInventoryStrategyAnalysis } from "../services/inventoryStrategyAnalysis.server";
 import {
-  INVENTORY_STRATEGY_PERCENTILES,
+  INVENTORY_STRATEGY_MAX_PERCENTILE,
+  INVENTORY_STRATEGY_MIN_PERCENTILE,
   type InventoryStrategyProductLine,
   type InventoryStrategyScenario,
 } from "../types/inventoryStrategy";
@@ -99,10 +98,28 @@ function findScenario(
 
 function defaultSelection(productLine: InventoryStrategyProductLine): number {
   const configured = productLine.configuredPercentile;
-  if (configured !== null && findScenario(productLine, configured)) {
-    return configured;
+  if (configured !== null) {
+    return Math.min(
+      INVENTORY_STRATEGY_MAX_PERCENTILE,
+      Math.max(INVENTORY_STRATEGY_MIN_PERCENTILE, configured),
+    );
   }
   return 80;
+}
+
+function formatKneeEstimate(productLine: InventoryStrategyProductLine): string {
+  if (productLine.estimatedPercentile === null) {
+    return "Estimate unavailable";
+  }
+  const estimate = formatPercentile(productLine.estimatedPercentile);
+  if (
+    productLine.kneeRangeMinimum === null ||
+    productLine.kneeRangeMaximum === null ||
+    productLine.kneeRangeMinimum === productLine.kneeRangeMaximum
+  ) {
+    return `Estimated ${estimate}`;
+  }
+  return `Estimated ${estimate} · ${formatPercentile(productLine.kneeRangeMinimum)}–${formatPercentile(productLine.kneeRangeMaximum)} range`;
 }
 
 export async function loader() {
@@ -260,6 +277,17 @@ export default function InventoryStrategyRoute() {
     0,
   );
   const selectedDelta = selectedValue - dashboard.overall.currentPolicyValue;
+  const matrixPercentiles = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          [dashboard.overall, ...dashboard.productLines].flatMap(
+            (productLine) => productLine.matrixPercentiles,
+          ),
+        ),
+      ).sort((left, right) => left - right),
+    [dashboard.overall, dashboard.productLines],
+  );
 
   const submit = (intent: "refresh_inventory" | "queue_analysis") =>
     fetcher.submit(
@@ -396,6 +424,7 @@ export default function InventoryStrategyRoute() {
                 <TableCell align="right">Scenario value</TableCell>
                 <TableCell align="right">Value change</TableCell>
                 <TableCell align="right">Expected wait</TableCell>
+                <TableCell align="right">Knee score</TableCell>
                 <TableCell align="right">Coverage</TableCell>
                 <TableCell align="right">Oldest curve</TableCell>
               </TableRow>
@@ -416,14 +445,6 @@ export default function InventoryStrategyRoute() {
                       ? scenario.estimatedTime.medianDays -
                         currentPolicyScenario.estimatedTime.medianDays
                       : null;
-                  const options = Array.from(
-                    new Set([
-                      ...INVENTORY_STRATEGY_PERCENTILES,
-                      ...(productLine.configuredPercentile === null
-                        ? []
-                        : [productLine.configuredPercentile]),
-                    ]),
-                  ).sort((left, right) => left - right);
                   return (
                     <TableRow key={productLine.key} hover>
                       <TableCell>
@@ -434,6 +455,14 @@ export default function InventoryStrategyRoute() {
                           {!productLine.pricingEligible && (
                             <Chip size="small" label="Analysis only" />
                           )}
+                          {productLine.estimatedPercentile !== null && (
+                            <Chip
+                              size="small"
+                              color="success"
+                              variant="outlined"
+                              label={formatKneeEstimate(productLine)}
+                            />
+                          )}
                         </Stack>
                       </TableCell>
                       <TableCell align="center">
@@ -442,23 +471,44 @@ export default function InventoryStrategyRoute() {
                           : formatPercentile(productLine.configuredPercentile)}
                       </TableCell>
                       <TableCell align="center">
-                        <FormControl size="small" sx={{ minWidth: 100 }}>
-                          <Select
+                        <Stack
+                          direction="row"
+                          spacing={1.5}
+                          alignItems="center"
+                          sx={{ minWidth: 220 }}
+                        >
+                          <Slider
+                            aria-label={`${productLine.productLine} scenario percentile`}
+                            min={INVENTORY_STRATEGY_MIN_PERCENTILE}
+                            max={INVENTORY_STRATEGY_MAX_PERCENTILE}
+                            step={1}
                             value={percentile}
-                            onChange={(event) =>
+                            valueLabelDisplay="auto"
+                            valueLabelFormat={formatPercentile}
+                            onChange={(_, value) =>
                               setSelections((current) => ({
                                 ...current,
-                                [productLine.key]: Number(event.target.value),
+                                [productLine.key]: Array.isArray(value)
+                                  ? value[0]
+                                  : value,
                               }))
                             }
-                          >
-                            {options.map((option) => (
-                              <MenuItem key={option} value={option}>
-                                {formatPercentile(option)}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
+                          />
+                          <Box sx={{ minWidth: 54, textAlign: "right" }}>
+                            <Typography variant="body2" fontWeight={700}>
+                              {formatPercentile(percentile)}
+                            </Typography>
+                            {(scenario?.interpolatedUnitCount ?? 0) > 0 && (
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                {scenario?.interpolatedUnitCount.toLocaleString()}{" "}
+                                units interpolated
+                              </Typography>
+                            )}
+                          </Box>
+                        </Stack>
                       </TableCell>
                       <TableCell align="right">
                         {productLine.unitCount.toLocaleString()}
@@ -498,6 +548,12 @@ export default function InventoryStrategyRoute() {
                           : "Not modeled"}
                       </TableCell>
                       <TableCell align="right">
+                        {scenario?.kneeScore === null ||
+                        scenario?.kneeScore === undefined
+                          ? "—"
+                          : scenario.kneeScore.toFixed(3)}
+                      </TableCell>
+                      <TableCell align="right">
                         {formatCoverage(
                           scenario?.modeledUnitCount ?? 0,
                           productLine.unitCount,
@@ -512,7 +568,7 @@ export default function InventoryStrategyRoute() {
               )}
               {dashboard.productLines.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={11} align="center">
+                  <TableCell colSpan={12} align="center">
                     Refresh inventory to populate the strategy dashboard.
                   </TableCell>
                 </TableRow>
@@ -527,7 +583,8 @@ export default function InventoryStrategyRoute() {
           <Typography variant="h6">Full percentile matrix</Typography>
           <Typography variant="body2" color="text.secondary">
             Each cell shows guarded listed value and unit-weighted median
-            expected wait. The configured percentile is highlighted.
+            expected wait. Knee score is normalized value minus normalized time;
+            the outlined cell is the stable estimated recommendation.
           </Typography>
         </Box>
         <TableContainer>
@@ -544,7 +601,7 @@ export default function InventoryStrategyRoute() {
                 >
                   Product line
                 </TableCell>
-                {INVENTORY_STRATEGY_PERCENTILES.map((percentile) => (
+                {matrixPercentiles.map((percentile) => (
                   <TableCell key={percentile} align="right">
                     {formatPercentile(percentile)}
                   </TableCell>
@@ -566,19 +623,26 @@ export default function InventoryStrategyRoute() {
                     >
                       {productLine.productLine}
                     </TableCell>
-                    {INVENTORY_STRATEGY_PERCENTILES.map((percentile) => {
+                    {matrixPercentiles.map((percentile) => {
                       const scenario = findScenario(productLine, percentile);
                       const configured =
                         productLine.configuredPercentile === percentile;
+                      const estimated =
+                        productLine.estimatedPercentile === percentile;
+                      const mathematical =
+                        productLine.mathematicalKneePercentile === percentile;
                       return (
                         <TableCell
                           key={percentile}
                           align="right"
-                          sx={
-                            configured
-                              ? { bgcolor: "action.selected" }
-                              : undefined
-                          }
+                          sx={{
+                            bgcolor: configured ? "action.selected" : undefined,
+                            outline: estimated ? "2px solid" : undefined,
+                            outlineColor: estimated
+                              ? "success.main"
+                              : undefined,
+                            outlineOffset: estimated ? "-2px" : undefined,
+                          }}
                         >
                           <Typography
                             variant="body2"
@@ -592,6 +656,24 @@ export default function InventoryStrategyRoute() {
                             {scenario?.estimatedTime
                               ? `${scenario.estimatedTime.medianDays.toFixed(1)} days`
                               : "No time estimate"}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            display="block"
+                            color={
+                              estimated ? "success.main" : "text.secondary"
+                            }
+                            fontWeight={estimated ? 700 : 400}
+                          >
+                            {scenario?.kneeScore === null ||
+                            scenario?.kneeScore === undefined
+                              ? "No knee score"
+                              : `Score ${scenario.kneeScore.toFixed(3)}`}
+                            {estimated ? " · Estimated" : ""}
+                            {mathematical && !estimated ? " · Math knee" : ""}
+                            {(scenario?.interpolatedUnitCount ?? 0) > 0
+                              ? " · Interpolated"
+                              : ""}
                           </Typography>
                         </TableCell>
                       );
