@@ -2,6 +2,7 @@ import {
   continuousPricingRepository,
   inventoryBatchPricingJobsRepository,
   inventoryBatchesRepository,
+  inventoryStrategyRepository,
 } from "~/core/db";
 import { PricedSkuToTcgPlayerListingConverter } from "~/features/file-upload/services/dataConverters";
 import { planAutomaticInventoryBatchPublication } from "~/features/inventory-publication/services/automaticInventoryBatchPublication.server";
@@ -158,6 +159,14 @@ async function processJob(
       result.summary,
       result.finalProgress,
     );
+    try {
+      await inventoryStrategyRepository.recordSuccessfulBatch(job.batchNumber);
+    } catch (strategyProjectionError) {
+      console.error(
+        `Inventory strategy projection update failed for batch ${job.batchNumber}:`,
+        strategyProjectionError,
+      );
+    }
     try {
       await continuousPricingRepository.recordBatchCompleted(job.batchNumber);
     } catch (projectionError) {

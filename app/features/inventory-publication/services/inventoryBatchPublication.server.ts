@@ -266,6 +266,13 @@ export async function previewInventoryBatchPublication(
   if (!batch) {
     throw new Error(`Batch ${batchNumber} not found.`);
   }
+  if (batch.sourceType === "strategy") {
+    throw new Error(
+      `Batch ${batchNumber} is an analysis-only strategy batch and cannot be published.`,
+    );
+  }
+  const publicationSourceType: InventoryPublicationSourceType =
+    batch.sourceType;
   const pricingJobId = requirePublishableBatch(batch);
 
   const [batchItems, results] = await Promise.all([
@@ -338,7 +345,7 @@ export async function previewInventoryBatchPublication(
     const condition = buildPublicationCondition(catalogRow);
     const decision = evaluateInventoryPublicationCandidate(
       {
-        sourceType: batch.sourceType,
+        sourceType: publicationSourceType,
         batchNumber,
         sku: result.sku,
         price,
@@ -364,7 +371,7 @@ export async function previewInventoryBatchPublication(
     if (existingPricingCandidateKeys.has(candidateKey)) {
       addReason(reasons, "pricing_candidate_already_used");
     }
-    if (batch.sourceType === "csv" && quantityDelta !== 0) {
+    if (publicationSourceType === "csv" && quantityDelta !== 0) {
       addReason(reasons, "csv_quantity_delta_requires_review");
     }
     if (existingDeltaStatus === "ambiguous") {
@@ -402,7 +409,7 @@ export async function previewInventoryBatchPublication(
     batchNumber,
     pricingJobId,
     planningKey: `inventory-batch-pricing-job:${pricingJobId}`,
-    sourceType: batch.sourceType,
+    sourceType: publicationSourceType,
     sourceLabel: batch.sourceLabel,
     successfulResultCount: results.length,
     existingManualReviewCount: batch.manualReviewCount,

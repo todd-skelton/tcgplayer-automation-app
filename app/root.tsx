@@ -110,7 +110,7 @@ export default function App() {
             color="inherit"
             edge="start"
             onClick={() => setMobileOpen(true)}
-            sx={{ mr: 1, display: { sm: "none" } }}
+            sx={{ mr: 1, display: { xl: "none" } }}
           >
             <MenuIcon />
           </IconButton>
@@ -132,10 +132,10 @@ export default function App() {
 
           <Box
             sx={{
-              display: { xs: "none", sm: "flex" },
+              display: { xs: "none", xl: "flex" },
               gap: 0.5,
               flexGrow: 1,
-              overflow: "auto",
+              overflow: "hidden",
             }}
           >
             {primaryNavigationItems.map((item) => (

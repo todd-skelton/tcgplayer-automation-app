@@ -4,6 +4,7 @@ import "../core/utils/numberFieldMatching.test";
 import "../features/inventory-publication/services/inventoryPublicationPolicy.test";
 import "../features/continuous-pricing/services/continuousPricingSettings.test";
 import "../features/continuous-pricing/services/continuousMarketPrices.server.test";
+import "../features/inventory-strategy/services/inventoryStrategy.test";
 import "../features/inventory-publication/services/inventoryPublicationState.test";
 import "../features/inventory-publication/services/inventoryBatchPublication.server.test";
 import "../features/pending-inventory/routes/api.inventory-batch-publications.policy.test";

@@ -617,8 +617,8 @@ export default function ContinuousPricingRoute() {
               <Box>
                 <Typography variant="subtitle2">{item.productName}</Typography>
                 <Typography variant="caption" color="text.secondary">
-                  SKU {item.sku} · {item.setName} · {item.condition} · Qty{" "}
-                  {item.quantity} · Price{" "}
+                  SKU {item.sku} · {item.productLine} · {item.setName} ·{" "}
+                  {item.condition} · Qty {item.quantity} · Price{" "}
                   {item.currentPrice === null
                     ? "unknown"
                     : `$${item.currentPrice.toFixed(2)}`}
@@ -650,15 +650,17 @@ export default function ContinuousPricingRoute() {
                         enabled,
                       })
                     }
-                    disabled={busy}
+                    disabled={busy || !item.pricingEligible}
                   />
                 }
                 label={
-                  item.pauseReason
-                    ? "Needs review"
-                    : item.enabled
-                      ? "Enabled"
-                      : "Paused"
+                  !item.pricingEligible
+                    ? "Excluded by product-line config"
+                    : item.pauseReason
+                      ? "Needs review"
+                      : item.enabled
+                        ? "Enabled"
+                        : "Paused"
                 }
               />
             </Stack>

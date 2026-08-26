@@ -16,7 +16,8 @@ export type InventoryBatchSourceType =
   | "pending_inventory"
   | "seller"
   | "csv"
-  | "continuous";
+  | "continuous"
+  | "strategy";
 export type InventoryBatchPricingMode = "full" | "errors";
 export type InventoryBatchResultStatus = "successful" | "manual_review";
 export type InventoryBatchResultsScope = "successful" | "manual-review";

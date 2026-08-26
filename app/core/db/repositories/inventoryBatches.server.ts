@@ -49,7 +49,7 @@ interface CreateInventoryBatchItemInput {
 interface CreateImportedBatchParams {
   sourceType: Extract<
     InventoryBatch["sourceType"],
-    "seller" | "csv" | "continuous"
+    "seller" | "csv" | "continuous" | "strategy"
   >;
   sourceLabel: string;
   items: CreateInventoryBatchItemInput[];

@@ -227,6 +227,19 @@ function createDependencies(
 
 const testCases: TestCase[] = [
   {
+    name: "strategy analysis batches can never be published",
+    run: async () => {
+      await assert.rejects(
+        previewInventoryBatchPublication(90, {
+          dependencies: createDependencies({ sourceType: "strategy" })
+            .dependencies,
+          now: NOW,
+        }),
+        /analysis-only strategy batch and cannot be published/,
+      );
+    },
+  },
+  {
     name: "manual preview accepts new inventory while automatic publishing is disabled",
     run: async () => {
       const { dependencies } = createDependencies();

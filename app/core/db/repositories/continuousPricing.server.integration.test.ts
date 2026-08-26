@@ -32,6 +32,7 @@ function createInventoryItem(
     quantity,
     currentPrice,
     marketPrice,
+    pricingEligible: true,
     originalRow: {
       "TCGplayer Id": String(sku),
       "Product Line": "Pokemon",

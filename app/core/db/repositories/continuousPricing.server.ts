@@ -47,6 +47,7 @@ const inventorySelect = `SELECT
   current_price::float8 AS "currentPrice",
   market_price::float8 AS "marketPrice",
   in_stock AS "inStock",
+  pricing_eligible AS "pricingEligible",
   enabled,
   pause_reason AS "pauseReason",
   last_observed_at AS "lastObservedAt",
@@ -62,6 +63,7 @@ FROM continuous_pricing_inventory`;
 
 const schedulableInventoryWhere = `seller_key = $1
   AND enabled
+  AND pricing_eligible
   AND in_stock
   AND quantity > 0
   AND pause_reason IS NULL
@@ -205,7 +207,7 @@ export const continuousPricingRepository = {
       }
 
       if (items.length > 0) {
-        const placeholders = createValuesPlaceholders(items.length, 15);
+        const placeholders = createValuesPlaceholders(items.length, 16);
         await execute(
           `INSERT INTO continuous_pricing_inventory (
             seller_key,
@@ -222,6 +224,7 @@ export const continuousPricingRepository = {
             current_price,
             market_price,
             in_stock,
+            pricing_eligible,
             last_observed_at
           ) VALUES ${placeholders}
           ON CONFLICT (seller_key, sku) DO UPDATE SET
@@ -237,6 +240,7 @@ export const continuousPricingRepository = {
             current_price = EXCLUDED.current_price,
             market_price = EXCLUDED.market_price,
             in_stock = EXCLUDED.in_stock,
+            pricing_eligible = EXCLUDED.pricing_eligible,
             last_observed_at = EXCLUDED.last_observed_at,
             updated_at = NOW()`,
           items.flatMap((item) => [
@@ -254,6 +258,7 @@ export const continuousPricingRepository = {
             item.currentPrice,
             item.marketPrice,
             item.quantity > 0,
+            item.pricingEligible,
             observedAt,
           ]),
           client,
@@ -315,12 +320,13 @@ export const continuousPricingRepository = {
   ): Promise<ContinuousPricingInventoryPage> {
     const stateWhere: Record<ContinuousPricingInventoryState, string> = {
       all: "TRUE",
-      enabled: "enabled AND pause_reason IS NULL",
+      enabled: "enabled AND pricing_eligible AND pause_reason IS NULL",
       paused: "NOT enabled",
       needs_review: "pause_reason IS NOT NULL",
       in_stock: "in_stock AND quantity > 0",
       out_of_stock: "NOT in_stock OR quantity <= 0",
       due: `enabled
+        AND pricing_eligible
         AND in_stock
         AND quantity > 0
         AND pause_reason IS NULL
@@ -742,10 +748,11 @@ export const continuousPricingRepository = {
           WHERE pause_reason IS NOT NULL
         )::INTEGER AS "needsReviewCount",
         COUNT(*) FILTER (
-          WHERE enabled AND in_stock AND quantity > 0
+          WHERE enabled AND pricing_eligible AND in_stock AND quantity > 0
         )::INTEGER AS "enabledInStockCount",
         COUNT(*) FILTER (
           WHERE enabled
+            AND pricing_eligible
             AND in_stock
             AND quantity > 0
             AND pause_reason IS NULL
@@ -753,6 +760,7 @@ export const continuousPricingRepository = {
         )::INTEGER AS "dueCount",
         MIN(next_price_at) FILTER (
           WHERE enabled
+            AND pricing_eligible
             AND in_stock
             AND quantity > 0
             AND pause_reason IS NULL

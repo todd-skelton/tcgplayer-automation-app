@@ -68,7 +68,11 @@ export function getBatchSourcePriority(
   if (sourceType === "pending_inventory") {
     return PRICING_JOB_PRIORITIES.pendingInventory;
   }
-  if (sourceType === "seller" || sourceType === "csv") {
+  if (
+    sourceType === "seller" ||
+    sourceType === "csv" ||
+    sourceType === "strategy"
+  ) {
     return PRICING_JOB_PRIORITIES.operator;
   }
   return PRICING_JOB_PRIORITIES.continuousRoutine;

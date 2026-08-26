@@ -33,6 +33,7 @@ export interface ContinuousPricingInventoryItem {
   currentPrice: number | null;
   marketPrice: number | null;
   inStock: boolean;
+  pricingEligible: boolean;
   enabled: boolean;
   pauseReason: string | null;
   lastObservedAt: Date;
@@ -76,6 +77,7 @@ export interface UpsertContinuousPricingInventoryItem {
   quantity: number;
   currentPrice: number | null;
   marketPrice: number | null;
+  pricingEligible: boolean;
   originalRow: TcgPlayerListing;
 }
 

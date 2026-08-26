@@ -36,6 +36,13 @@ export async function planAutomaticInventoryBatchPublication(
     return { planned: false, reason: "batch_not_found" };
   }
 
+  if (batch.sourceType === "strategy") {
+    return {
+      planned: false,
+      reason: "automatic_publication_unavailable",
+    };
+  }
+
   if (!isAutomaticPublicationAvailable(configuration, batch.sourceType)) {
     return {
       planned: false,

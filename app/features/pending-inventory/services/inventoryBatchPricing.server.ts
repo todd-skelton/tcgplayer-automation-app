@@ -315,7 +315,8 @@ export async function executeInventoryBatchPricingJob({
   );
   throwIfCancelled(isCancelled);
 
-  const bypassProductLineSkips = batch.sourceType === "pending_inventory";
+  const bypassProductLineSkips =
+    batch.sourceType === "pending_inventory" || batch.sourceType === "strategy";
 
   const sourceSkus = items
     .filter(

@@ -11,14 +11,13 @@ export async function refreshContinuousPricingInventory(
   minimumIntervalMinutes: number,
 ): Promise<number> {
   const config = await pricingConfigRepository.get();
-  const excludeProductLineIds = Object.entries(
-    config.productLinePricing.productLineSettings,
-  )
-    .filter(([, settings]) => settings.skip)
-    .map(([productLineId]) => Number(productLineId));
+  const excludedProductLineIds = new Set(
+    Object.entries(config.productLinePricing.productLineSettings)
+      .filter(([, settings]) => settings.skip)
+      .map(([productLineId]) => Number(productLineId)),
+  );
   const snapshot = await fetchSellerInventorySnapshot({
     sellerKey,
-    excludeProductLineIds,
   });
   const batchItems = await convertSellerInventoryToBatchItems(
     snapshot.inventory,
@@ -44,6 +43,7 @@ export async function refreshContinuousPricingInventory(
       quantity: item.totalQuantity,
       currentPrice: item.currentPrice ?? null,
       marketPrice: marketPrices.get(item.sku) ?? null,
+      pricingEligible: !excludedProductLineIds.has(item.productLineId),
       originalRow: item.originalRow,
     })),
     { observedAt, minimumIntervalMinutes },

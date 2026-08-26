@@ -4,6 +4,7 @@ import HttpIcon from "@mui/icons-material/Http";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import LoopIcon from "@mui/icons-material/Loop";
+import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import PriceCheckIcon from "@mui/icons-material/PriceCheck";
 import SettingsIcon from "@mui/icons-material/Settings";
 import PublishIcon from "@mui/icons-material/Publish";
@@ -37,6 +38,11 @@ export const primaryNavigationItems: NavigationItem[] = [
     label: "Continuous Pricing",
     to: "/continuous-pricing",
     icon: LoopIcon,
+  },
+  {
+    label: "Inventory Strategy",
+    to: "/inventory-strategy",
+    icon: QueryStatsIcon,
   },
   {
     label: "Price Matrix",
@@ -111,6 +117,14 @@ export const dashboardCards: DashboardCard[] = [
     to: "/product-price-matrix",
     icon: PriceCheckIcon,
     color: "success.dark",
+  },
+  {
+    title: "Inventory Strategy",
+    label: "Inventory Strategy",
+    description: "Compare portfolio value and selling time across percentiles",
+    to: "/inventory-strategy",
+    icon: QueryStatsIcon,
+    color: "info.dark",
   },
   {
     title: "Pull Sheet",

@@ -23,6 +23,10 @@ export default [
     file: "features/continuous-pricing/routes/continuous-pricing.tsx",
   },
   {
+    path: "/inventory-strategy",
+    file: "features/inventory-strategy/routes/inventory-strategy.tsx",
+  },
+  {
     path: "/product-price-matrix",
     file: "features/product-price-matrix/routes/product-price-matrix.tsx",
   },
