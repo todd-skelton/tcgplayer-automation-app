@@ -99,6 +99,26 @@ try {
   assert.equal(snapshot.pricedAwaitingPublicationUnitCount, 0);
   assert.equal(snapshot.needsReviewCount, 0);
 
+  await execute(
+    `UPDATE continuous_pricing_inventory
+    SET next_price_at = NOW() + INTERVAL '1 day'
+    WHERE seller_key = $1`,
+    [sellerKey],
+  );
+  assert.equal(
+    await continuousPricingRepository.makeEligibleInventoryDue(sellerKey),
+    1,
+  );
+  const dueInventory = await continuousPricingRepository.findPage({
+    sellerKey,
+    search: "",
+    state: "due",
+    page: 1,
+    pageSize: 50,
+  });
+  assert.equal(dueInventory.total, 1);
+  assert.equal(dueInventory.items[0]?.sku, inStockItem.sku);
+
   const scheduled = await continuousPricingRepository.scheduleDueBatch({
     sellerKey,
     batchSize: 100,

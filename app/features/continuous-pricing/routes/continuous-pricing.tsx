@@ -213,6 +213,30 @@ export async function action({ request }: ActionFunctionArgs) {
       });
     }
 
+    if (payload.intent === "reprice_all") {
+      if (!current.enabled || !current.sellerKey) {
+        throw new Error("Enable continuous pricing before repricing inventory.");
+      }
+      const count = await continuousPricingRepository.makeEligibleInventoryDue(
+        current.sellerKey,
+      );
+      const result = await runContinuousPricingSchedulerCycle();
+      const schedulerMessage =
+        result.status === "scheduled"
+          ? `Queued batch ${result.batchNumber} with ${result.itemCount} SKUs.`
+          : result.status === "backlogged"
+            ? "The existing pricing queue will process the due inventory."
+            : result.status === "refresh_failed"
+              ? "The scheduler will retry after the inventory refresh recovers."
+              : result.status === "idle"
+                ? "No inventory is currently schedulable."
+                : "The scheduler is currently disabled.";
+      return data<ActionData>({
+        success: true,
+        message: `Marked ${count} eligible SKUs due. ${schedulerMessage}`,
+      });
+    }
+
     if (payload.intent === "set_enabled") {
       if (!current.sellerKey) {
         throw new Error("No continuous pricing seller is configured.");
@@ -436,6 +460,16 @@ export default function ContinuousPricingRoute() {
               disabled={busy || !settings.enabled}
             >
               Run scheduler cycle
+            </Button>
+            <Button
+              variant="outlined"
+              color="warning"
+              onClick={() => submit({ intent: "reprice_all" })}
+              disabled={
+                busy || !settings.enabled || status.enabledInStockCount === 0
+              }
+            >
+              Reprice all inventory now
             </Button>
           </Stack>
         </Stack>

@@ -396,6 +396,25 @@ export const continuousPricingRepository = {
     );
   },
 
+  async makeEligibleInventoryDue(
+    sellerKey: string,
+    executor?: Queryable,
+  ): Promise<number> {
+    return execute(
+      `UPDATE continuous_pricing_inventory
+      SET next_price_at = LEAST(next_price_at, NOW()),
+          updated_at = NOW()
+      WHERE seller_key = $1
+        AND enabled
+        AND pricing_eligible
+        AND in_stock
+        AND quantity > 0
+        AND pause_reason IS NULL`,
+      [sellerKey],
+      executor,
+    );
+  },
+
   async scheduleDueBatch(input: {
     sellerKey: string;
     batchSize: number;
