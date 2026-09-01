@@ -153,6 +153,77 @@ assert.equal(dashboard.overall.currentPolicyValue, 53);
 assert.equal(dashboard.overall.modeledUnitCount, 2);
 assert.equal(dashboard.generatedAt, "2026-08-26T12:00:00.000Z");
 
+const mixedPlanDashboard = buildInventoryStrategyDashboard(
+  "seller",
+  [
+    item({
+      sku: 10,
+      pricingDetails: {
+        schemaVersion: 2,
+        pricingModelVersion: "exposure-share-v1",
+        pricedAt: "2026-08-30T10:00:00.000Z",
+        shadowDecision: {
+          method: "target-horizon",
+          selectedPrice: 12,
+          targetHorizonDays: 40,
+          estimatedMedianSellDays: 40,
+          constraint: "none",
+          basis: "modeled",
+          forecastStatus: "interpolated",
+          planId: "plan-a",
+        },
+      },
+    }),
+    item({
+      sku: 11,
+      pricingDetails: {
+        schemaVersion: 2,
+        pricingModelVersion: "exposure-share-v1",
+        pricedAt: "2026-08-30T10:00:00.000Z",
+        shadowDecision: {
+          method: "target-horizon",
+          selectedPrice: 13,
+          targetHorizonDays: 55,
+          estimatedMedianSellDays: 55,
+          constraint: "none",
+          basis: "modeled",
+          forecastStatus: "interpolated",
+          planId: "plan-b",
+        },
+      },
+    }),
+    item({
+      sku: 12,
+      pricingDetails: {
+        schemaVersion: 2,
+        pricingModelVersion: "exposure-share-v1",
+        pricedAt: "2026-08-30T10:00:00.000Z",
+        shadowDecision: {
+          method: "target-horizon",
+          selectedPrice: 12,
+          targetHorizonDays: 40,
+          estimatedMedianSellDays: 999,
+          constraint: "current-price",
+          basis: "current-price",
+          forecastStatus: "unavailable",
+          planId: "plan-a",
+        },
+      },
+    }),
+  ],
+  config,
+);
+const mixedComparison = mixedPlanDashboard.overall.policyComparisons.find(
+  ({ key }) => key === "target-horizon-shadow",
+);
+assert.equal(mixedComparison?.planState, "mixed");
+assert.equal(mixedComparison?.modeledSkuCount, 2);
+assert.equal(
+  mixedComparison?.estimatedTime?.p90Days,
+  55,
+  "unavailable reference decisions do not pollute modeled time distributions",
+);
+
 console.log(
   "PASS inventory strategy preserves unmodeled value and applies guarded scenario prices",
 );

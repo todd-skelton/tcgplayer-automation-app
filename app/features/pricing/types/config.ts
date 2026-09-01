@@ -16,7 +16,6 @@ export interface PricingConfigSettings {
 
 export interface SupplyAnalysisConfig {
   enableSupplyAnalysis: boolean;
-  maxListingsPerSku: number;
   includeUnverifiedSellers: boolean;
 }
 
@@ -63,7 +62,6 @@ export const DEFAULT_PRICING_CONFIG: PricingConfigSettings = {
 
 export const DEFAULT_SUPPLY_ANALYSIS_CONFIG: SupplyAnalysisConfig = {
   enableSupplyAnalysis: true,
-  maxListingsPerSku: 200,
   includeUnverifiedSellers: false,
 };
 

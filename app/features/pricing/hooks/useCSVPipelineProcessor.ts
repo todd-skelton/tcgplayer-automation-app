@@ -27,8 +27,6 @@ export const useCSVPipelineProcessor = () => {
           enableSupplyAnalysis:
             baseProcessor.supplyAnalysisConfig.enableSupplyAnalysis,
           supplyAnalysisConfig: {
-            maxListingsPerSku:
-              baseProcessor.supplyAnalysisConfig.maxListingsPerSku,
             includeUnverifiedSellers:
               baseProcessor.supplyAnalysisConfig.includeUnverifiedSellers,
           },

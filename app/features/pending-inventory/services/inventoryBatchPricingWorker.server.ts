@@ -11,6 +11,7 @@ import type {
   ProcessingProgress,
   PricedSku,
 } from "~/core/types/pricing";
+import { PRICING_MODEL_VERSION } from "~/core/types/pricingPolicy";
 import type { InventoryBatchPricingJob } from "../types/inventoryBatch";
 import { executeInventoryBatchPricingJob } from "./inventoryBatchPricing.server";
 
@@ -18,7 +19,7 @@ const LEASE_MS = 15_000;
 const HEARTBEAT_MS = 2_000;
 const POLL_MS = 1_000;
 const PROGRESS_FLUSH_MS = 1_000;
-const PRICING_DETAILS_SCHEMA_VERSION = 1;
+const PRICING_DETAILS_SCHEMA_VERSION = 2;
 
 interface WorkerState {
   started: boolean;
@@ -76,6 +77,7 @@ function buildPricingDetails(
 ): PersistedPricingDetails {
   return {
     schemaVersion: PRICING_DETAILS_SCHEMA_VERSION,
+    pricingModelVersion: PRICING_MODEL_VERSION,
     mode,
     pricedAt: pricedAt.toISOString(),
     productLineId: pricedSku.productLineId,
@@ -98,6 +100,18 @@ function buildPricingDetails(
     featureFlags: {
       supplyAnalysis: job.config.supplyAnalysis.enableSupplyAnalysis,
     },
+    policy:
+      pricedSku.pricingDecision?.method === "percentile"
+        ? {
+            method: "percentile",
+            percentile:
+              pricedSku.pricingDecision.configuredPercentile ??
+              pricedSku.percentileUsed ??
+              job.config.productLinePricing.defaultPercentile,
+          }
+        : undefined,
+    decision: pricedSku.pricingDecision,
+    shadowDecision: pricedSku.shadowPricingDecision,
   };
 }
 

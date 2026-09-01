@@ -42,7 +42,6 @@
     "date-fns": "^4.1.0",
     "dotenv": "^17.4.2",
     "isbot": "^5.1.38",
-    "ml-levenberg-marquardt": "^5.0.0",
     "p-limit": "^6.2.0",
     "papaparse": "^5.5.3",
     "pg": "^8.16.3",

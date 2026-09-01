@@ -12,6 +12,50 @@ import {
 import { PRICING_CONSTANTS } from "../../../core/constants/pricing";
 import type { PricePoint } from "../../../integrations/tcgplayer/client/get-price-points.server";
 import type { ProductDisplayInfo } from "../../../shared/services/dataEnrichmentService";
+import type {
+  PortfolioPricingPlan,
+  PricingDecision,
+} from "../domain/pricingPolicy";
+import {
+  resolveValueMatchedPortfolioPlan,
+  selectPricingDecision,
+  toPricingCurve,
+} from "../domain/pricingPolicy";
+
+function roundCurrency(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function createMarketplaceConstraint(
+  pricePoint: PricePoint | null,
+  config: Pick<PricingConfig, "minPriceMultiplier" | "minPriceConstant">,
+) {
+  return (candidatePrice: number) => {
+    const constrained = calculateMarketplacePrice(
+      candidatePrice,
+      pricePoint
+        ? {
+            marketPrice: pricePoint.marketPrice,
+            lowestPrice: pricePoint.lowestPrice,
+            highestPrice: pricePoint.highestPrice,
+            calculatedAt: pricePoint.calculatedAt,
+          }
+        : null,
+      {
+        minPriceMultiplier:
+          config.minPriceMultiplier ?? PRICING_CONSTANTS.MIN_PRICE_MULTIPLIER,
+        minPriceConstant:
+          config.minPriceConstant ?? PRICING_CONSTANTS.MIN_PRICE_CONSTANT,
+      },
+    );
+    return {
+      price: roundCurrency(constrained.marketplacePrice),
+      constraint: constrained.warningMessage?.includes("minimum")
+        ? ("floor" as const)
+        : ("none" as const),
+    };
+  };
+}
 
 export interface PricingResult {
   sku: number;
@@ -20,19 +64,22 @@ export interface PricingResult {
   previousPrice?: number;
   suggestedPrice?: number;
   price?: number;
-  historicalSalesVelocityDays?: number; // Historical sales velocity in days
-  estimatedTimeToSellDays?: number; // Market-adjusted time to sell in days
-  salesCountForHistorical?: number; // Number of sales used for historical calculation
-  listingsCountForEstimated?: number; // Number of listings used for estimated calculation
-  percentileUsed?: number; // The percentile used for this SKU's pricing
+  historicalSalesVelocityDays?: number;
+  estimatedTimeToSellDays?: number;
+  salesCountForHistorical?: number;
+  listingsCountForEstimated?: number;
+  percentileUsed?: number;
   percentiles?: PricingPercentileDetail[];
-  productLineId?: number; // The product line ID for aggregation
+  productLineId?: number;
   errors?: string[];
   warnings?: string[];
+  pricingDecision?: PricingDecision;
+  shadowPricingDecision?: PricingDecision;
 }
 
 export interface PricingCalculationResult {
   pricedItems: PricingResult[];
+  shadowPortfolioPlan?: PortfolioPricingPlan;
   stats: {
     processed: number;
     skipped: number;
@@ -66,10 +113,6 @@ function getDefaultSuggestedPriceResolver(): SuggestedPriceResolver {
     );
 }
 
-/**
- * Core pricing calculator that only handles price calculation.
- * No data enrichment, no file operations, no UI concerns.
- */
 export class PricingCalculator {
   async calculatePrices(
     skus: PricerSku[],
@@ -90,14 +133,13 @@ export class PricingCalculator {
     const allPercentileData: Array<{
       percentile: number;
       price: number;
-      historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
-      estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
-      salesCount?: number; // Number of sales used for historical calculation
+      historicalSalesVelocityMs?: number;
+      estimatedTimeToSellMs?: number;
+      salesCount?: number;
       quantity: number;
     }> = [];
     const batchPercentiles = this.getBatchPercentiles(config);
 
-    // Initialize progress
     config.onProgress?.({
       current: 0,
       total: skus.length,
@@ -108,17 +150,14 @@ export class PricingCalculator {
       warnings: 0,
     });
 
-    // Process each SKU
     for (let i = 0; i < skus.length && !config.isCancelled?.(); i++) {
       const pricerSku = skus[i];
 
-      // Get display name if available
       const productInfo = productDisplayMap?.get(pricerSku.sku);
       const displayName = productInfo?.productName
         ? `${productInfo.productName} (${pricerSku.sku})`
         : `SKU ${pricerSku.sku}`;
 
-      // Update progress
       config.onProgress?.({
         current: i + 1,
         total: skus.length,
@@ -130,7 +169,6 @@ export class PricingCalculator {
       });
 
       try {
-        // Skip invalid SKUs
         if (!pricerSku.sku || pricerSku.sku <= 0) {
           skipped++;
           continue;
@@ -152,9 +190,6 @@ export class PricingCalculator {
           }
         }
 
-        // Determine the percentile to use for this SKU
-        // Use per-product-line percentile if configured, otherwise fall back to config.percentile
-        // For skipped product lines with pending inventory, use the default percentile
         let effectivePercentile = config.percentile;
         if (config.productLinePricingConfig) {
           const plSettings =
@@ -164,15 +199,11 @@ export class PricingCalculator {
           if (plSettings && !plSettings.skip) {
             effectivePercentile = plSettings.percentile;
           } else if (!plSettings || plSettings.skip) {
-            // Use default percentile for non-configured product lines
-            // or for skipped product lines with pending inventory
             effectivePercentile =
               config.productLinePricingConfig.defaultPercentile;
           }
         }
 
-        // Get suggested price for this SKU
-        // Use productLineId hint from PricerSku if available for better performance
         const result = await suggestedPriceResolver({
           tcgplayerId: pricerSku.sku.toString(),
           percentile: effectivePercentile,
@@ -184,7 +215,6 @@ export class PricingCalculator {
           productLineId: pricerSku.productLineId,
         });
 
-        // Create pricing result from suggested price result
         const pricedItem = await this.createPricedItem(
           pricerSku,
           result,
@@ -192,7 +222,6 @@ export class PricingCalculator {
           config,
         );
 
-        // Add the percentile and product line info used for this SKU
         pricedItem.percentileUsed = effectivePercentile;
         pricedItem.productLineId = pricerSku.productLineId;
         pricedItem.percentiles = result.percentiles?.map((percentile) => ({
@@ -205,10 +234,55 @@ export class PricingCalculator {
             ? percentile.estimatedTimeToSellMs / (24 * 60 * 60 * 1000)
             : undefined,
           salesCount: percentile.salesCount,
+          historyCapped: percentile.historyCapped,
           listingsCount: percentile.listingsCount,
+          storeWinShare: percentile.storeWinShare,
+          supplyStatus: percentile.supplyStatus,
         }));
+        const curve = toPricingCurve(pricedItem.percentiles);
+        const activeDecision = selectPricingDecision(
+          curve,
+          { method: "percentile", percentile: effectivePercentile },
+          pricerSku.currentPrice,
+          createMarketplaceConstraint(
+            pricePointsMap.get(pricerSku.sku) ?? null,
+            config,
+          ),
+        );
+        if (activeDecision?.basis === "modeled") {
+          pricedItem.pricingDecision = activeDecision;
+          pricedItem.historicalSalesVelocityDays =
+            activeDecision.buyerIntervalDays;
+          pricedItem.estimatedTimeToSellDays =
+            activeDecision.estimatedMedianSellDays;
+          pricedItem.salesCountForHistorical =
+            activeDecision.qualifyingSalesCount === undefined
+              ? undefined
+              : Math.round(activeDecision.qualifyingSalesCount);
+          pricedItem.listingsCountForEstimated =
+            activeDecision.listingsCount === undefined
+              ? undefined
+              : Math.round(activeDecision.listingsCount);
+        } else if (pricedItem.pricingDecision) {
+          pricedItem.pricingDecision.configuredPercentile = effectivePercentile;
+        } else if (
+          pricedItem.suggestedPrice !== undefined &&
+          pricedItem.price !== undefined
+        ) {
+          pricedItem.pricingDecision = {
+            method: "percentile",
+            selectedPrice: roundCurrency(pricedItem.price),
+            unconstrainedPrice: roundCurrency(pricedItem.suggestedPrice),
+            configuredPercentile: effectivePercentile,
+            constraint:
+              Math.abs(pricedItem.price - pricedItem.suggestedPrice) >= 0.005
+                ? "floor"
+                : "none",
+            basis: "modeled",
+            forecastStatus: "unavailable",
+          };
+        }
 
-        // Track errors vs warnings vs success
         if (pricedItem.errors && pricedItem.errors.length > 0) {
           errors++;
         } else if (pricedItem.warnings && pricedItem.warnings.length > 0) {
@@ -218,8 +292,6 @@ export class PricingCalculator {
           processed++;
         }
 
-        // Collect percentile data for aggregation if available
-        // Include all SKUs that have percentile data, regardless of errors
         if (result.percentiles && Array.isArray(result.percentiles)) {
           const quantity =
             (pricerSku.quantity || 0) + (pricerSku.addToQuantity || 0);
@@ -249,12 +321,10 @@ export class PricingCalculator {
       }
     }
 
-    // Check if cancelled
     if (config.isCancelled?.()) {
       throw new Error("Processing cancelled by user");
     }
 
-    // Final progress update
     config.onProgress?.({
       current: skus.length,
       total: skus.length,
@@ -267,12 +337,39 @@ export class PricingCalculator {
 
     const processingTime = Date.now() - startTime;
 
-    // Calculate aggregated percentiles
     const aggregatedPercentiles =
       this.calculateAggregatedPercentiles(allPercentileData);
 
+    const sourceSkusById = new Map(skus.map((sku) => [sku.sku, sku]));
+    const portfolioItems = pricedItems.map((item) => {
+      const sourceSku = sourceSkusById.get(item.sku);
+      const pricePoint = pricePointsMap.get(item.sku) ?? null;
+      return {
+        sku: item.sku,
+        currentPrice: sourceSku?.currentPrice,
+        curve: toPricingCurve(item.percentiles),
+        constraintIdentity: [
+          pricePoint?.marketPrice ?? 0,
+          config.minPriceMultiplier ?? PRICING_CONSTANTS.MIN_PRICE_MULTIPLIER,
+          config.minPriceConstant ?? PRICING_CONSTANTS.MIN_PRICE_CONSTANT,
+        ].join(":"),
+        applyConstraint: createMarketplaceConstraint(pricePoint, config),
+      };
+    });
+    const hasValueMatchBaseline = portfolioItems.some(
+      (item) => (item.currentPrice ?? 0) > 0,
+    );
+    const shadow = hasValueMatchBaseline
+      ? resolveValueMatchedPortfolioPlan(portfolioItems, { cohortId: source })
+      : undefined;
+
+    for (const item of pricedItems) {
+      item.shadowPricingDecision = shadow?.decisionsBySku.get(item.sku);
+    }
+
     return {
       pricedItems,
+      shadowPortfolioPlan: shadow?.plan,
       stats: {
         processed,
         skipped,
@@ -309,9 +406,9 @@ export class PricingCalculator {
     percentileData: Array<{
       percentile: number;
       price: number;
-      historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
-      estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
-      salesCount?: number; // Number of sales used for historical calculation
+      historicalSalesVelocityMs?: number;
+      estimatedTimeToSellMs?: number;
+      salesCount?: number;
       quantity: number;
     }>,
   ): {
@@ -325,7 +422,6 @@ export class PricingCalculator {
       estimatedTimeToSell: {} as { [key: string]: number },
     };
 
-    // Group by percentile
     const percentileGroups: { [key: number]: typeof percentileData } = {};
 
     percentileData.forEach((item) => {
@@ -335,24 +431,19 @@ export class PricingCalculator {
       percentileGroups[item.percentile].push(item);
     });
 
-    // Calculate TOTAL VALUES for each percentile (not averages)
-    // This represents the total value if all inventory was priced at this percentile
     Object.entries(percentileGroups).forEach(([percentile, items]) => {
       let totalValue = 0;
       let totalQuantity = 0;
 
       items.forEach((item) => {
         const quantity = item.quantity || 1;
-        // Calculate total value: price * quantity for each SKU at this percentile
         totalValue += item.price * quantity;
         totalQuantity += quantity;
       });
 
-      // Store total value (not average price)
       aggregated.marketPrice[`${percentile}th`] = totalValue;
 
       if (totalQuantity > 0) {
-        // Calculate median historical sales velocity
         const historicalVelocityValues = items
           .map((item) => {
             const timeMs = item.historicalSalesVelocityMs;
@@ -373,7 +464,6 @@ export class PricingCalculator {
           aggregated.historicalSalesVelocity[`${percentile}th`] = median;
         }
 
-        // Calculate median market-adjusted time to sell (if available)
         const marketAdjustedValues = items
           .map((item) => {
             const timeMs = item.estimatedTimeToSellMs;
@@ -414,7 +504,6 @@ export class PricingCalculator {
       warnings: [],
     };
 
-    // Handle errors
     if (result.error) {
       pricedItem.errors?.push(result.error);
       return pricedItem;
@@ -422,12 +511,9 @@ export class PricingCalculator {
 
     const pricePoint = pricePointsMap.get(pricerSku.sku) || null;
 
-    // Set pricing data with minimum price bounds
     if (result.suggestedPrice !== null && result.suggestedPrice !== undefined) {
-      // Always set the original suggested price from the algorithm
       pricedItem.suggestedPrice = result.suggestedPrice;
 
-      // Apply minimum price bounds
       const { marketplacePrice, warningMessage, errorMessage } =
         calculateMarketplacePrice(
           result.suggestedPrice,
@@ -448,15 +534,12 @@ export class PricingCalculator {
           },
         );
 
-      // Set the bounded price as the marketplace price
-      pricedItem.price = marketplacePrice;
+      pricedItem.price = roundCurrency(marketplacePrice);
 
-      // Add warning message if minimum price was applied (this is just a warning, not an error)
       if (warningMessage) {
         pricedItem.warnings?.push(warningMessage);
       }
 
-      // Add error message for actual pricing failures
       if (errorMessage) {
         pricedItem.errors?.push(errorMessage);
       }
@@ -470,11 +553,19 @@ export class PricingCalculator {
       if (fallback) {
         pricedItem.suggestedPrice = fallback.price;
         pricedItem.price = fallback.price;
+        pricedItem.pricingDecision = {
+          method: "percentile",
+          selectedPrice: fallback.price,
+          unconstrainedPrice: fallback.price,
+          constraint:
+            fallback.basis === "current-price" ? "current-price" : "none",
+          basis: fallback.basis,
+          forecastStatus: "unavailable",
+        };
         pricedItem.warnings?.push(fallback.warningMessage);
       }
     }
 
-    // Add time to sell data (convert from milliseconds to days)
     if (result.historicalSalesVelocityMs) {
       pricedItem.historicalSalesVelocityDays =
         result.historicalSalesVelocityMs / (24 * 60 * 60 * 1000);
@@ -485,12 +576,10 @@ export class PricingCalculator {
         result.estimatedTimeToSellMs / (24 * 60 * 60 * 1000);
     }
 
-    // Add sales count for historical calculation
     if (result.salesCount !== undefined) {
       pricedItem.salesCountForHistorical = result.salesCount;
     }
 
-    // Add listings count for estimated calculation
     if (result.listingsCount !== undefined) {
       pricedItem.listingsCountForEstimated = result.listingsCount;
     }

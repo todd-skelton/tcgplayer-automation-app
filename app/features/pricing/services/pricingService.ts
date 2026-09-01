@@ -23,6 +23,11 @@ export interface MinimumMarketplacePriceConfig {
 export interface InsufficientSalesFallbackResult {
   price: number;
   warningMessage: string;
+  basis:
+    | "market-reference"
+    | "listing-reference"
+    | "market-and-listing-reference"
+    | "current-price";
 }
 
 function normalizePositivePrice(value: number | undefined): number | null {
@@ -52,6 +57,12 @@ export function calculateInsufficientSalesFallback(input: {
 
     return {
       price,
+      basis:
+        marketPrice !== null && lowestListingPrice !== null
+          ? "market-and-listing-reference"
+          : marketPrice !== null
+            ? "market-reference"
+            : "listing-reference",
       warningMessage: `Insufficient sales history. Using the highest available reference price (${availableReferences.join(", ")}): $${price.toFixed(2)}.`,
     };
   }
@@ -63,6 +74,7 @@ export function calculateInsufficientSalesFallback(input: {
 
   return {
     price: currentPrice,
+    basis: "current-price",
     warningMessage: `Insufficient sales history and no market price or listing is available. Keeping the current price at $${currentPrice.toFixed(2)}.`,
   };
 }
@@ -115,8 +127,8 @@ export const getSuggestedPrice = async (
   additionalPercentiles?: number[],
   enableSupplyAnalysis?: boolean,
   supplyAnalysisConfig?: {
-    maxListingsPerSku?: number;
     includeUnverifiedSellers?: boolean;
+    excludedSellerKey?: string;
   },
   productLineId?: number,
 ): Promise<SuggestedPriceResult> => {

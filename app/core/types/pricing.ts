@@ -1,3 +1,10 @@
+import type {
+  PortfolioPricingPlan,
+  PricingDecision,
+  PricingPolicy,
+  PricingSupplyStatus,
+} from "./pricingPolicy";
+
 export interface TcgPlayerListing {
   "TCGplayer Id": string;
   "Product Line": string;
@@ -66,7 +73,7 @@ export interface ProcessingSummary {
     quantityWithMarket: number;
   };
   medianDaysToSell: {
-    historicalSalesVelocity: number; // Based on historical sales intervals (sales velocity only)
+    historicalSalesVelocity: number; // Based on exposure-adjusted buyer arrival
     estimatedTimeToSell?: number; // Market-adjusted time (velocity + current competition) - optional
     percentiles: { [key: string]: number }; // Uses historical sales velocity by default
     marketAdjustedPercentiles?: { [key: string]: number }; // Market-adjusted percentiles if available
@@ -80,6 +87,7 @@ export interface ProcessingSummary {
       totalValue: number;
     };
   };
+  shadowPortfolioPlan?: PortfolioPricingPlan;
 }
 
 export interface PricingPercentileDetail {
@@ -88,11 +96,15 @@ export interface PricingPercentileDetail {
   historicalSalesVelocityDays?: number;
   estimatedTimeToSellDays?: number;
   salesCount?: number;
+  historyCapped?: boolean;
   listingsCount?: number;
+  storeWinShare?: number;
+  supplyStatus?: PricingSupplyStatus;
 }
 
 export interface PersistedPricingDetails {
   schemaVersion: number;
+  pricingModelVersion?: string;
   mode?: "full" | "errors";
   pricedAt: string;
   productLineId?: number;
@@ -115,23 +127,29 @@ export interface PersistedPricingDetails {
   featureFlags?: {
     supplyAnalysis?: boolean;
   };
+  policy?: PricingPolicy;
+  decision?: PricingDecision;
+  shadowDecision?: PricingDecision;
 }
 
 export interface SuggestedPriceResult {
   error?: string;
   suggestedPrice: number | null;
   lowestListingPrice?: number;
-  historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
+  historicalSalesVelocityMs?: number; // Exposure-based buyer-arrival interval
   estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
   salesCount?: number; // Number of sales used for the selected percentile historical calculation
   listingsCount?: number; // Number of listings used for the selected percentile estimated calculation
   percentiles?: Array<{
     percentile: number;
     price: number;
-    historicalSalesVelocityMs?: number; // Historical sales intervals (sales velocity only)
+    historicalSalesVelocityMs?: number; // Exposure-based buyer-arrival interval
     estimatedTimeToSellMs?: number; // Market-adjusted time (velocity + current competition)
     salesCount?: number; // Number of sales used for this percentile historical calculation
+    historyCapped?: boolean;
     listingsCount?: number; // Number of listings used for this percentile estimated calculation
+    storeWinShare?: number;
+    supplyStatus?: PricingSupplyStatus;
   }>;
 }
 
@@ -141,8 +159,8 @@ export interface SuggestedPriceResolverInput {
   additionalPercentiles?: number[];
   enableSupplyAnalysis?: boolean;
   supplyAnalysisConfig?: {
-    maxListingsPerSku?: number;
     includeUnverifiedSellers?: boolean;
+    excludedSellerKey?: string;
   };
   productLineId?: number;
 }
@@ -161,8 +179,8 @@ export interface PricingConfig {
   isCancelled?: () => boolean;
   enableSupplyAnalysis?: boolean; // Enable market-adjusted time to sell calculations
   supplyAnalysisConfig?: {
-    maxListingsPerSku?: number; // Performance limit (default 200)
     includeUnverifiedSellers?: boolean; // Include unverified sellers in analysis (default false)
+    excludedSellerKey?: string;
   };
   // Per-product-line pricing configuration
   productLinePricingConfig?: {
@@ -207,6 +225,8 @@ export type PricedSku = {
   suggestedPrice?: number;
   percentileUsed?: number; // The percentile used for this SKU's pricing
   percentiles?: PricingPercentileDetail[];
+  pricingDecision?: PricingDecision;
+  shadowPricingDecision?: PricingDecision;
   errors?: string[];
   warnings?: string[];
   pricingDetails?: PersistedPricingDetails;

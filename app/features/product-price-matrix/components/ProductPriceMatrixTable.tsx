@@ -207,6 +207,13 @@ export function ProductPriceMatrixTable({
             <TableCell
               rowSpan={headerRowSpan}
               align="right"
+              sx={{ fontWeight: 700, minWidth: 145 }}
+            >
+              Selection
+            </TableCell>
+            <TableCell
+              rowSpan={headerRowSpan}
+              align="right"
               sx={{ fontWeight: 700, minWidth: 130 }}
             >
               Marketplace
@@ -460,6 +467,41 @@ export function ProductPriceMatrixTable({
                     Run Suggested Pricing to compare percentiles
                   </TableCell>
                 )}
+                <TableCell
+                  align="right"
+                  sx={{ borderTop: groupBorder, borderTopColor: "divider" }}
+                >
+                  {cell.pricingDecision ? (
+                    <Stack spacing={0.25} alignItems="flex-end">
+                      <Typography variant="body2" fontWeight={700}>
+                        {cell.pricingDecision.method === "percentile"
+                          ? `${cell.pricingDecision.configuredPercentile ?? cell.percentileUsed}th percentile`
+                          : `${formatDays(cell.pricingDecision.targetHorizonDays)} target`}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {cell.pricingDecision.basis.replaceAll("-", " ")}
+                      </Typography>
+                      {cell.pricingDecision.equivalentPercentile !==
+                        undefined &&
+                        cell.pricingDecision.method === "target-horizon" && (
+                          <Typography variant="caption" color="text.secondary">
+                            ≈{" "}
+                            {cell.pricingDecision.equivalentPercentile.toFixed(
+                              1,
+                            )}
+                            th
+                          </Typography>
+                        )}
+                      {cell.pricingDecision.constraint !== "none" && (
+                        <Typography variant="caption" color="warning.main">
+                          {cell.pricingDecision.constraint.replaceAll("-", " ")}
+                        </Typography>
+                      )}
+                    </Stack>
+                  ) : (
+                    "N/A"
+                  )}
+                </TableCell>
                 <TableCell
                   align="right"
                   sx={{ borderTop: groupBorder, borderTopColor: "divider" }}

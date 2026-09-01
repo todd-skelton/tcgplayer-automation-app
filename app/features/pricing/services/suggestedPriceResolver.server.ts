@@ -2,7 +2,11 @@ import type {
   SuggestedPriceResolverInput,
   SuggestedPriceResult,
 } from "~/core/types/pricing";
-import { productsRepository, skusRepository } from "~/core/db";
+import {
+  categorySetsRepository,
+  productsRepository,
+  skusRepository,
+} from "~/core/db";
 import { getSuggestedPriceFromLatestSales } from "../algorithms/getSuggestedPriceFromLatestSales";
 import type { PricingBatchApiCache } from "./pricingBatchApiCache.server";
 
@@ -42,10 +46,13 @@ export async function resolveSuggestedPrice(
     };
   }
 
-  const product = await productsRepository.findByProductId(
-    sku.productId,
-    sku.productLineId,
-  );
+  const [product, categorySet] = await Promise.all([
+    productsRepository.findByProductId(sku.productId, sku.productLineId),
+    categorySetsRepository.findByCategoryIdAndSetNameId(
+      sku.productLineId,
+      sku.setId,
+    ),
+  ]);
 
   if (!product) {
     return {
@@ -59,6 +66,9 @@ export async function resolveSuggestedPrice(
     additionalPercentiles,
     enableSupplyAnalysis,
     supplyAnalysisConfig,
+    availableSinceTimestamp: categorySet?.releaseDate
+      ? new Date(categorySet.releaseDate).getTime()
+      : undefined,
     fetchLatestSales: options.batchApiCache
       ? options.batchApiCache.fetchLatestSales.bind(options.batchApiCache)
       : undefined,

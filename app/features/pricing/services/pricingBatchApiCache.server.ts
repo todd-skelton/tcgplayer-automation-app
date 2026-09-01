@@ -6,7 +6,7 @@ import {
   type Sale,
 } from "~/integrations/tcgplayer/client/get-latest-sales.server";
 import type {
-  ListingData,
+  ListingObservation,
   SupplyAnalysisConfig,
 } from "./supplyAnalysisService";
 import { SupplyAnalysisService } from "./supplyAnalysisService";
@@ -35,7 +35,7 @@ function createCacheKey(value: unknown): string {
 
 export class PricingBatchApiCache {
   private latestSalesRequests = new Map<string, Promise<Sale[]>>();
-  private listingRequests = new Map<string, Promise<ListingData[]>>();
+  private listingRequests = new Map<string, Promise<ListingObservation>>();
   private lowestListingPriceRequests = new Map<
     string,
     Promise<number | undefined>
@@ -61,7 +61,7 @@ export class PricingBatchApiCache {
   fetchListingsForSku(
     sku: Sku,
     config: SupplyAnalysisConfig = {},
-  ): Promise<ListingData[]> {
+  ): Promise<ListingObservation> {
     const key = createCacheKey({
       productId: sku.productId,
       condition: sku.condition,
@@ -81,7 +81,10 @@ export class PricingBatchApiCache {
 
   fetchLowestListingPrice(
     sku: Sku,
-    config: Pick<SupplyAnalysisConfig, "includeUnverifiedSellers"> = {},
+    config: Pick<
+      SupplyAnalysisConfig,
+      "includeUnverifiedSellers" | "excludedSellerKey"
+    > = {},
   ): Promise<number | undefined> {
     const key = createCacheKey({
       productId: sku.productId,
@@ -89,6 +92,7 @@ export class PricingBatchApiCache {
       language: sku.language,
       variant: sku.variant,
       includeUnverifiedSellers: config.includeUnverifiedSellers,
+      excludedSellerKey: config.excludedSellerKey,
     });
     const cached = this.lowestListingPriceRequests.get(key);
     if (cached) {

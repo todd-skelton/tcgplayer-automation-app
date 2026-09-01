@@ -1,6 +1,7 @@
 import type { Condition } from "~/integrations/tcgplayer/types/Condition";
 import type { Variant } from "~/integrations/tcgplayer/types/Variant";
 import type { PricingPercentileDetail } from "~/core/types/pricing";
+import type { PricingDecision } from "~/features/pricing/domain/pricingPolicy";
 
 export type ProductPriceMatrixSearchScope = "set" | "allSets";
 
@@ -53,6 +54,7 @@ export interface ProductPriceMatrixCell {
   salesCountForHistorical?: number;
   listingsCountForEstimated?: number;
   percentiles?: PricingPercentileDetail[];
+  pricingDecision?: PricingDecision;
   warnings: string[];
   errors: string[];
 }

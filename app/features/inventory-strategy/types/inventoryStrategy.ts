@@ -60,6 +60,25 @@ export interface InventoryStrategyScenario {
   estimatedTime: InventoryStrategyTimeDistribution | null;
 }
 
+export interface InventoryStrategyPolicyComparison {
+  key: "current" | "percentile" | "target-horizon-shadow";
+  label: string;
+  planState: "none" | "single" | "mixed";
+  matchStatus:
+    | "matched"
+    | "boundary"
+    | "infeasible"
+    | "mixed"
+    | null;
+  oneCopyValue: number;
+  physicalValue: number;
+  modeledSkuCount: number;
+  raisedCount: number;
+  loweredCount: number;
+  heldCount: number;
+  estimatedTime: InventoryStrategyTimeDistribution | null;
+}
+
 export type InventoryStrategyKneeConfidence =
   | "high"
   | "medium"
@@ -88,6 +107,7 @@ export interface InventoryStrategyProductLine {
   newestPricingAt: string | null;
   matrixPercentiles: number[];
   scenarios: InventoryStrategyScenario[];
+  policyComparisons: InventoryStrategyPolicyComparison[];
 }
 
 export interface InventoryStrategyDashboard {

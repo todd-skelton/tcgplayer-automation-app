@@ -18,6 +18,9 @@ import type { ProcessingSummary } from "../../../core/types/pricing";
 import { useConfiguration } from "../hooks/useConfiguration";
 import { formatProcessingTime } from "../../../core/utils/timeFormatting";
 
+const formatCurrency = (value: number) =>
+  value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+
 interface ProcessingSummaryComponentProps {
   summary: ProcessingSummary;
 }
@@ -296,8 +299,8 @@ export const ProcessingSummaryComponent: React.FC<
                             percentDiffFromMarket > 0
                               ? "success.main"
                               : percentDiffFromMarket < 0
-                              ? "error.main"
-                              : "text.primary",
+                                ? "error.main"
+                                : "text.primary",
                         }}
                       >
                         {isCurrentPercentile ? (
@@ -343,6 +346,51 @@ export const ProcessingSummaryComponent: React.FC<
               </TableBody>
             </Table>
           </TableContainer>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderShadowPolicy = () => {
+    const plan = summary.shadowPortfolioPlan;
+    if (!plan) return null;
+
+    return (
+      <Card variant="outlined">
+        <CardContent>
+          <Box display="flex" justifyContent="space-between" gap={2}>
+            <Typography variant="h6">Target-horizon shadow</Typography>
+            <Chip
+              label={plan.matchStatus}
+              color={plan.matchStatus === "matched" ? "success" : "warning"}
+              size="small"
+              variant="outlined"
+            />
+          </Box>
+          <Typography variant="body2" color="text.secondary" mt={1}>
+            Read only; published prices still use percentiles.
+          </Typography>
+          <Typography mt={2}>
+            <strong>
+              {plan.modeledSkuCount
+                ? `${plan.resolvedHorizonDays.toFixed(1)} days`
+                : "No modeled horizon"}
+            </strong>{" "}
+            · {formatCurrency(plan.selectedOneCopyValue)} shadow versus{" "}
+            {formatCurrency(plan.baselineValue)} current · {plan.raisedCount}{" "}
+            raised, {plan.loweredCount} lowered, {plan.heldCount} held
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mt={1}>
+            {plan.modeledSkuCount} modeled · {plan.sparseDecisionCount} sparse ·{" "}
+            {plan.cappedHistoryCount} capped ·{" "}
+            {plan.unavailableBaselineSkuCount} missing current price
+          </Typography>
+          {plan.matchStatus !== "matched" && (
+            <Typography variant="body2" color="text.secondary" mt={1}>
+              Reachable one-copy value: {formatCurrency(plan.minimumReachableValue)}–
+              {formatCurrency(plan.maximumReachableValue)}
+            </Typography>
+          )}
         </CardContent>
       </Card>
     );
@@ -505,6 +553,8 @@ export const ProcessingSummaryComponent: React.FC<
 
         {/* Price Totals */}
         {renderPriceTotals()}
+
+        {renderShadowPolicy()}
 
         {/* Percentile Analysis */}
         {renderPercentileAnalysis()}

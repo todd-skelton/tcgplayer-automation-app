@@ -60,8 +60,10 @@ const testCases: TestCase[] = [
       });
 
       assert.equal(listingWins?.price, 12.34);
+      assert.equal(listingWins?.basis, "market-and-listing-reference");
       assert.match(listingWins?.warningMessage ?? "", /highest available/);
       assert.equal(marketWins?.price, 15.67);
+      assert.equal(marketWins?.basis, "market-and-listing-reference");
     },
   },
   {
@@ -70,6 +72,10 @@ const testCases: TestCase[] = [
       assert.equal(
         calculateInsufficientSalesFallback({ lowestListingPrice: 8.25 })?.price,
         8.25,
+      );
+      assert.equal(
+        calculateInsufficientSalesFallback({ lowestListingPrice: 8.25 })?.basis,
+        "listing-reference",
       );
       assert.equal(
         calculateInsufficientSalesFallback({ marketPrice: 9.5 })?.price,
@@ -84,6 +90,7 @@ const testCases: TestCase[] = [
 
       assert.equal(result?.price, 4.99);
       assert.match(result?.warningMessage ?? "", /Keeping the current price/);
+      assert.equal(result?.basis, "current-price");
     },
   },
 ];

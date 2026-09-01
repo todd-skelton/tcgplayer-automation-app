@@ -519,15 +519,6 @@ export default function ConfigurationRoute() {
                 estimates by analyzing current market supply.
               </Alert>
 
-              <TextField
-                label="Max Listings Per SKU"
-                type="number"
-                value={config.supplyAnalysis.maxListingsPerSku}
-                onChange={handleSupplyAnalysisConfigChange("maxListingsPerSku")}
-                inputProps={{ min: 50, max: 500, step: 50 }}
-                helperText="Maximum number of listings to fetch per SKU (higher = more accurate but slower)"
-              />
-
               <FormControlLabel
                 control={
                   <Switch
@@ -636,5 +627,3 @@ export default function ConfigurationRoute() {
     </Box>
   );
 }
-
-

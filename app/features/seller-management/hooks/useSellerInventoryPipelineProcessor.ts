@@ -128,10 +128,9 @@ export const useSellerInventoryPipelineProcessor = () => {
           enableSupplyAnalysis:
             baseProcessor.supplyAnalysisConfig.enableSupplyAnalysis,
           supplyAnalysisConfig: {
-            maxListingsPerSku:
-              baseProcessor.supplyAnalysisConfig.maxListingsPerSku,
             includeUnverifiedSellers:
               baseProcessor.supplyAnalysisConfig.includeUnverifiedSellers,
+            excludedSellerKey: sellerKey,
           },
           productLinePricingConfig: baseProcessor.productLinePricingConfig,
           source: `seller-${sellerKey}`,

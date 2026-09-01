@@ -453,6 +453,7 @@ export class PricingOrchestrator {
           Object.keys(productLineBreakdown).length > 0
             ? productLineBreakdown
             : undefined,
+        shadowPortfolioPlan: pricingResult.shadowPortfolioPlan,
       };
 
       config.onProgress?.({

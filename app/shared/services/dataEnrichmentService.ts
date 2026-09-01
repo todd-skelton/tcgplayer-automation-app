@@ -203,6 +203,8 @@ export class DataEnrichmentService {
         listingsCountForEstimated: pricedItem.listingsCountForEstimated,
         percentileUsed: pricedItem.percentileUsed,
         percentiles: pricedItem.percentiles,
+        pricingDecision: pricedItem.pricingDecision,
+        shadowPricingDecision: pricedItem.shadowPricingDecision,
         errors: pricedItem.errors,
         warnings: pricedItem.warnings,
 

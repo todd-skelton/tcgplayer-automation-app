@@ -122,6 +122,8 @@ function enrichPricedSkus(
       listingsCountForEstimated: pricedItem.listingsCountForEstimated,
       percentileUsed: pricedItem.percentileUsed,
       percentiles: pricedItem.percentiles,
+      pricingDecision: pricedItem.pricingDecision,
+      shadowPricingDecision: pricedItem.shadowPricingDecision,
       errors: pricedItem.errors,
       warnings: pricedItem.warnings,
       productLine: productInfo?.productLine,
@@ -273,6 +275,7 @@ function buildSummary(
       Object.keys(productLineBreakdown).length > 0
         ? productLineBreakdown
         : undefined,
+    shadowPortfolioPlan: pricingResult.shadowPortfolioPlan,
   };
 }
 
@@ -426,9 +429,13 @@ export async function executeInventoryBatchPricingJob({
       minPriceConstant: config.pricing.minPriceConstant,
       enableSupplyAnalysis: config.supplyAnalysis.enableSupplyAnalysis,
       supplyAnalysisConfig: {
-        maxListingsPerSku: config.supplyAnalysis.maxListingsPerSku,
         includeUnverifiedSellers:
           config.supplyAnalysis.includeUnverifiedSellers,
+        excludedSellerKey: ["seller", "continuous", "strategy"].includes(
+          batch.sourceType,
+        )
+          ? batch.sourceLabel
+          : undefined,
       },
       productLinePricingConfig: config.productLinePricing,
       suggestedPriceResolver: resolveSuggestedPriceWithBatchCache,

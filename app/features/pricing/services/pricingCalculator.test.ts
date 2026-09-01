@@ -41,7 +41,118 @@ assert.equal(result.pricedItems[0]?.warnings?.length, 1);
 assert.equal(result.stats.processed, 1);
 assert.equal(result.stats.errors, 0);
 assert.equal(result.stats.warnings, 1);
+assert.equal(result.pricedItems[0]?.pricingDecision?.selectedPrice, 12.34);
+assert.equal(
+  result.pricedItems[0]?.pricingDecision?.basis,
+  "market-and-listing-reference",
+);
+assert.equal(result.pricedItems[0]?.pricingDecision?.constraint, "none");
 
 console.log(
   "PASS insufficient-sales fallbacks are warning-only priced results",
+);
+
+const shadowResult = await calculator.calculatePrices(
+  [
+    {
+      sku: 456,
+      quantity: 8,
+      currentPrice: 20,
+      productLineId: 1,
+      setId: 2,
+      productId: 3,
+    },
+  ],
+  {
+    percentile: 65,
+    suggestedPriceResolver: async () => ({
+      suggestedPrice: 14,
+      percentiles: [
+        {
+          percentile: 5,
+          price: 10,
+          historicalSalesVelocityMs: 10 * 24 * 60 * 60 * 1000,
+          estimatedTimeToSellMs: 10 * 24 * 60 * 60 * 1000,
+          salesCount: 10,
+          supplyStatus: "observed",
+        },
+        {
+          percentile: 65,
+          price: 14,
+          historicalSalesVelocityMs: 30 * 24 * 60 * 60 * 1000,
+          estimatedTimeToSellMs: 30 * 24 * 60 * 60 * 1000,
+          salesCount: 6,
+          supplyStatus: "observed",
+        },
+        {
+          percentile: 95,
+          price: 30,
+          historicalSalesVelocityMs: 100 * 24 * 60 * 60 * 1000,
+          estimatedTimeToSellMs: 100 * 24 * 60 * 60 * 1000,
+          salesCount: 2,
+          supplyStatus: "observed",
+        },
+      ],
+    }),
+  },
+);
+
+assert.equal(shadowResult.pricedItems[0]?.suggestedPrice, 14);
+assert.equal(shadowResult.pricedItems[0]?.price, 14);
+assert.equal(
+  shadowResult.pricedItems[0]?.pricingDecision?.method,
+  "percentile",
+);
+assert.equal(
+  shadowResult.pricedItems[0]?.shadowPricingDecision?.method,
+  "target-horizon",
+);
+assert.equal(
+  shadowResult.pricedItems[0]?.shadowPricingDecision?.selectedPrice,
+  20,
+);
+assert.equal(shadowResult.shadowPortfolioPlan?.baselineValue, 20);
+
+console.log("PASS shadow horizon cannot replace the active percentile price");
+
+const unavailableSupplyResult = await calculator.calculatePrices(
+  [
+    {
+      sku: 789,
+      quantity: 1,
+      currentPrice: 20,
+      productLineId: 1,
+      setId: 2,
+      productId: 3,
+    },
+  ],
+  {
+    percentile: 65,
+    suggestedPriceResolver: async () => ({
+      suggestedPrice: 14,
+      percentiles: [
+        {
+          percentile: 5,
+          price: 10,
+          historicalSalesVelocityMs: 10 * 24 * 60 * 60 * 1000,
+          supplyStatus: "unavailable",
+        },
+        {
+          percentile: 95,
+          price: 30,
+          historicalSalesVelocityMs: 100 * 24 * 60 * 60 * 1000,
+          supplyStatus: "unavailable",
+        },
+      ],
+    }),
+  },
+);
+assert.equal(unavailableSupplyResult.shadowPortfolioPlan?.modeledSkuCount, 0);
+assert.equal(
+  unavailableSupplyResult.shadowPortfolioPlan?.matchStatus,
+  "infeasible",
+);
+assert.equal(
+  unavailableSupplyResult.pricedItems[0]?.shadowPricingDecision?.basis,
+  "current-price",
 );

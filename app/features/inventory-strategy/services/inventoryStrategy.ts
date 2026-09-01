@@ -1,5 +1,9 @@
 import type { ServerPricingConfig } from "~/features/pricing/types/config";
 import { calculateMarketplacePrice } from "~/features/pricing/services/pricingService";
+import {
+  readPricingDecision,
+  readShadowPricingDecision,
+} from "~/features/pricing/domain/pricingPolicy";
 import type { PricingPercentileDetail } from "~/core/types/pricing";
 import {
   INVENTORY_STRATEGY_MAX_PERCENTILE,
@@ -9,6 +13,7 @@ import {
   type InventoryStrategyDashboard,
   type InventoryStrategyKneeConfidence,
   type InventoryStrategyPercentile,
+  type InventoryStrategyPolicyComparison,
   type InventoryStrategyProductLine,
   type InventoryStrategyScenario,
   type InventoryStrategySnapshotItem,
@@ -191,6 +196,114 @@ function buildScenario(
     timeModeledUnitCount,
     estimatedTime: summarizeTime(timeValues),
   };
+}
+
+function buildPolicyComparisons(
+  items: InventoryStrategySnapshotItem[],
+): InventoryStrategyPolicyComparison[] {
+  const build = (
+    key: InventoryStrategyPolicyComparison["key"],
+  ): InventoryStrategyPolicyComparison | null => {
+    const isCurrent = key === "current";
+    const decisions = items.map((item) => ({
+      item,
+      decision:
+        key === "percentile"
+          ? readPricingDecision(item.pricingDetails)
+          : key === "target-horizon-shadow"
+            ? readShadowPricingDecision(item.pricingDetails)
+            : undefined,
+    }));
+    if (!isCurrent && !decisions.some(({ decision }) => decision)) return null;
+
+    let oneCopyValue = 0;
+    let physicalValue = 0;
+    let modeledSkuCount = 0;
+    let raisedCount = 0;
+    let loweredCount = 0;
+    let heldCount = 0;
+    const timeValues: WeightedValue[] = [];
+    const targetHorizons = new Set<number>();
+    const planIds = new Set<string>();
+    const planMatchStatuses = new Set<
+      "matched" | "boundary" | "infeasible"
+    >();
+
+    for (const { item, decision } of decisions) {
+      const currentPrice = item.currentPrice ?? 0;
+      const selectedPrice =
+        key === "percentile"
+          ? (item.pricingDetails?.marketplacePrice ??
+            decision?.selectedPrice ??
+            currentPrice)
+          : (decision?.selectedPrice ?? currentPrice);
+      oneCopyValue += selectedPrice;
+      physicalValue += selectedPrice * item.quantity;
+      if (decision) {
+        const isModeledDecision =
+          decision.basis === "modeled" &&
+          decision.forecastStatus !== "unavailable";
+        if (isModeledDecision) modeledSkuCount += 1;
+        if (selectedPrice > currentPrice) raisedCount += 1;
+        else if (selectedPrice < currentPrice) loweredCount += 1;
+        else heldCount += 1;
+        if (
+          isModeledDecision &&
+          decision.estimatedMedianSellDays !== undefined
+        ) {
+          timeValues.push({
+            value: decision.estimatedMedianSellDays,
+            weight: item.quantity,
+          });
+        }
+        if (decision.targetHorizonDays !== undefined)
+          targetHorizons.add(decision.targetHorizonDays);
+        if (decision.planId) planIds.add(decision.planId);
+        if (decision.planMatchStatus)
+          planMatchStatuses.add(decision.planMatchStatus);
+      } else {
+        heldCount += 1;
+      }
+    }
+
+    return {
+      key,
+      label:
+        key === "current"
+          ? "Current listed prices"
+          : key === "percentile"
+            ? "Configured percentile"
+            : "Value-matched horizon (shadow)",
+      planState:
+        planIds.size > 1 || targetHorizons.size > 1
+          ? "mixed"
+          : planIds.size === 1
+            ? "single"
+            : "none",
+      matchStatus:
+        planIds.size > 1 ||
+        targetHorizons.size > 1 ||
+        planMatchStatuses.size > 1
+          ? "mixed"
+          : planMatchStatuses.size === 1
+            ? [...planMatchStatuses][0]
+            : null,
+      oneCopyValue: roundCurrency(oneCopyValue),
+      physicalValue: roundCurrency(physicalValue),
+      modeledSkuCount,
+      raisedCount,
+      loweredCount,
+      heldCount,
+      estimatedTime: summarizeTime(timeValues),
+    };
+  };
+
+  return (["current", "percentile", "target-horizon-shadow"] as const)
+    .map(build)
+    .filter(
+      (comparison): comparison is InventoryStrategyPolicyComparison =>
+        comparison !== null,
+    );
 }
 
 function estimateKnee(
@@ -411,6 +524,7 @@ function buildProductLine(
       )
       .sort((left, right) => left - right),
     scenarios,
+    policyComparisons: buildPolicyComparisons(items),
   };
 }
 

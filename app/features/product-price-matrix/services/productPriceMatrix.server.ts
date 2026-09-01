@@ -264,6 +264,7 @@ function buildMatrixCell(
     salesCountForHistorical: pricingResult?.salesCountForHistorical,
     listingsCountForEstimated: pricingResult?.listingsCountForEstimated,
     percentiles: pricingResult?.percentiles,
+    pricingDecision: pricingResult?.pricingDecision,
     warnings: pricingResult?.warnings ?? [],
     errors: pricingResult?.errors ?? [],
   };
@@ -456,7 +457,6 @@ export function createProductPriceMatrixAction(
             percentile: config.productLinePricing.defaultPercentile,
             enableSupplyAnalysis: config.supplyAnalysis.enableSupplyAnalysis,
             supplyAnalysisConfig: {
-              maxListingsPerSku: config.supplyAnalysis.maxListingsPerSku,
               includeUnverifiedSellers:
                 config.supplyAnalysis.includeUnverifiedSellers,
             },
