@@ -298,7 +298,9 @@ function buildPolicyComparisons(
                 ? benchmarkDecision
                 : undefined
             : key === "target-horizon-shadow"
-              ? activeDecision?.method === "target-horizon"
+              ? activePolicy.method === "target-horizon" &&
+                activeDecision?.method === "target-horizon" &&
+                activeDecision.targetHorizonDays === activePolicy.horizonDays
                 ? activeDecision
                 : calibratedHorizonDecisions.get(item.sku)
               : undefined,

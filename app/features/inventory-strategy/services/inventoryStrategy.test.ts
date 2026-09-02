@@ -368,7 +368,7 @@ const activeHorizonDashboard = buildInventoryStrategyDashboard(
     ...config,
     pricing: {
       ...config.pricing,
-      policy: { method: "target-horizon", horizonDays: 33.5 },
+      policy: { method: "target-horizon", horizonDays: 20 },
     },
   },
 );
@@ -381,7 +381,8 @@ const percentileBenchmark =
     ({ key }) => key === "percentile",
   );
 assert.equal(activeHorizonComparison?.role, "active");
-assert.equal(activeHorizonComparison?.oneCopyValue, 30);
+assert.equal(activeHorizonComparison?.oneCopyValue, 24);
+assert.equal(activeHorizonComparison?.planState, "single");
 assert.equal(percentileBenchmark?.role, "benchmark");
 assert.equal(percentileBenchmark?.oneCopyValue, 24);
 
