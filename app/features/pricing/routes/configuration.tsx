@@ -20,6 +20,7 @@ import {
   TableRow,
   IconButton,
   Checkbox,
+  MenuItem,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { Link, data, useLoaderData, useFetcher } from "react-router";
@@ -232,6 +233,42 @@ export default function ConfigurationRoute() {
           Pricing Configuration
         </Typography>
         <Stack spacing={3}>
+          <TextField
+            select
+            label="Active Pricing Policy"
+            value={config.pricing.policy.method}
+            onChange={(event) =>
+              updatePricingConfig({
+                policy:
+                  event.target.value === "target-horizon"
+                    ? { method: "target-horizon", horizonDays: 33.5 }
+                    : { method: "percentile" },
+              })
+            }
+            helperText="Percentile uses the product-line settings below. Target horizon applies one median sell-time target across inventory."
+          >
+            <MenuItem value="percentile">Configured percentile</MenuItem>
+            <MenuItem value="target-horizon">Target sell horizon</MenuItem>
+          </TextField>
+
+          {config.pricing.policy.method === "target-horizon" && (
+            <TextField
+              label="Target Median Sell Time (days)"
+              type="number"
+              value={config.pricing.policy.horizonDays}
+              onChange={(event) => {
+                const horizonDays = Number(event.target.value);
+                if (horizonDays > 0) {
+                  updatePricingConfig({
+                    policy: { method: "target-horizon", horizonDays },
+                  });
+                }
+              }}
+              inputProps={{ min: 0.1, step: 0.1 }}
+              helperText="Calibrate this value from the complete inventory portfolio; continuous pricing keeps it fixed as markets move."
+            />
+          )}
+
           <TextField
             label="Default Percentile"
             type="number"

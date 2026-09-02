@@ -7,6 +7,7 @@ import {
   DEFAULT_PRICING_CONFIG,
   DEFAULT_SERVER_PRICING_CONFIG,
   DEFAULT_SUPPLY_ANALYSIS_CONFIG,
+  normalizeServerPricingConfig,
   type FileConfig,
   type FormDefaults,
   type PricingConfigSettings,
@@ -29,30 +30,6 @@ const serverConfigListeners = new Set<() => void>();
 
 function notifyServerConfigListeners(): void {
   serverConfigListeners.forEach((listener) => listener());
-}
-
-function normalizeServerPricingConfig(value: unknown): ServerPricingConfig {
-  const raw = (value ?? {}) as Partial<ServerPricingConfig>;
-
-  return {
-    pricing: {
-      ...DEFAULT_PRICING_CONFIG,
-      ...(raw.pricing ?? {}),
-      successRateThreshold: {
-        ...DEFAULT_PRICING_CONFIG.successRateThreshold,
-        ...(raw.pricing?.successRateThreshold ?? {}),
-      },
-    },
-    supplyAnalysis: {
-      ...DEFAULT_SUPPLY_ANALYSIS_CONFIG,
-      ...(raw.supplyAnalysis ?? {}),
-    },
-    productLinePricing: {
-      ...DEFAULT_PRODUCT_LINE_PRICING_CONFIG,
-      ...(raw.productLinePricing ?? {}),
-      productLineSettings: raw.productLinePricing?.productLineSettings ?? {},
-    },
-  };
 }
 
 async function loadServerConfig(): Promise<void> {

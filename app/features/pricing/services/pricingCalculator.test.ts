@@ -115,6 +115,105 @@ assert.equal(shadowResult.shadowPortfolioPlan?.baselineValue, 20);
 
 console.log("PASS shadow horizon cannot replace the active percentile price");
 
+const targetHorizonResult = await calculator.calculatePrices(
+  [
+    {
+      sku: 457,
+      quantity: 1,
+      currentPrice: 20,
+      productLineId: 1,
+      setId: 2,
+      productId: 3,
+    },
+  ],
+  {
+    percentile: 65,
+    policy: { method: "target-horizon", horizonDays: 20 },
+    suggestedPriceResolver: async () => ({
+      suggestedPrice: 14,
+      percentiles: [
+        {
+          percentile: 5,
+          price: 10,
+          estimatedTimeToSellMs: 10 * 24 * 60 * 60 * 1000,
+          supplyStatus: "observed",
+        },
+        {
+          percentile: 65,
+          price: 14,
+          estimatedTimeToSellMs: 30 * 24 * 60 * 60 * 1000,
+          supplyStatus: "observed",
+        },
+      ],
+    }),
+  },
+);
+
+assert.equal(targetHorizonResult.pricedItems[0]?.price, 12);
+assert.equal(
+  targetHorizonResult.pricedItems[0]?.pricingDecision?.method,
+  "target-horizon",
+);
+assert.equal(
+  targetHorizonResult.pricedItems[0]?.pricingDecision?.targetHorizonDays,
+  20,
+);
+assert.equal(
+  targetHorizonResult.pricedItems[0]?.shadowPricingDecision?.method,
+  "percentile",
+);
+assert.equal(
+  targetHorizonResult.pricedItems[0]?.shadowPricingDecision?.selectedPrice,
+  14,
+);
+assert.equal(targetHorizonResult.shadowPortfolioPlan, undefined);
+
+console.log(
+  "PASS fixed target horizon becomes active with percentile benchmark",
+);
+
+const targetUnavailableResult = await calculator.calculatePrices(
+  [
+    {
+      sku: 458,
+      quantity: 1,
+      currentPrice: 20,
+      productLineId: 1,
+      setId: 2,
+      productId: 3,
+    },
+  ],
+  {
+    percentile: 65,
+    policy: { method: "target-horizon", horizonDays: 20 },
+    suggestedPriceResolver: async () => ({
+      suggestedPrice: 14,
+      percentiles: [
+        {
+          percentile: 65,
+          price: 14,
+          estimatedTimeToSellMs: 30 * 24 * 60 * 60 * 1000,
+          supplyStatus: "unavailable",
+        },
+      ],
+    }),
+  },
+);
+
+assert.equal(targetUnavailableResult.pricedItems[0]?.price, 20);
+assert.equal(
+  targetUnavailableResult.pricedItems[0]?.pricingDecision?.basis,
+  "current-price",
+);
+assert.equal(
+  targetUnavailableResult.pricedItems[0]?.pricingDecision?.method,
+  "target-horizon",
+);
+
+console.log(
+  "PASS target horizon keeps current price when forecasting is unavailable",
+);
+
 const unavailableSupplyResult = await calculator.calculatePrices(
   [
     {

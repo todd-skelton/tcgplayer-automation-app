@@ -2,6 +2,7 @@ import type { ServerPricingConfig } from "~/features/pricing/types/config";
 import { calculateMarketplacePrice } from "~/features/pricing/services/pricingService";
 import {
   readPricingDecision,
+  readShadowPricingDecision,
   resolveValueMatchedPortfolioPlan,
   toPricingCurve,
 } from "~/features/pricing/domain/pricingPolicy";
@@ -264,21 +265,32 @@ function buildScenario(
 
 function buildPolicyComparisons(
   items: InventoryStrategySnapshotItem[],
-  shadowDecisions: ReadonlyMap<number, PricingDecision>,
+  calibratedHorizonDecisions: ReadonlyMap<number, PricingDecision>,
+  activePolicy: ServerPricingConfig["pricing"]["policy"],
 ): InventoryStrategyPolicyComparison[] {
   const build = (
     key: InventoryStrategyPolicyComparison["key"],
   ): InventoryStrategyPolicyComparison | null => {
     const isCurrent = key === "current";
-    const decisions = items.map((item) => ({
-      item,
-      decision:
-        key === "percentile"
-          ? readPricingDecision(item.pricingDetails)
-          : key === "target-horizon-shadow"
-            ? shadowDecisions.get(item.sku)
-            : undefined,
-    }));
+    const decisions = items.map((item) => {
+      const activeDecision = readPricingDecision(item.pricingDetails);
+      const benchmarkDecision = readShadowPricingDecision(item.pricingDetails);
+      return {
+        item,
+        decision:
+          key === "percentile"
+            ? activeDecision?.method === "percentile"
+              ? activeDecision
+              : benchmarkDecision?.method === "percentile"
+                ? benchmarkDecision
+                : undefined
+            : key === "target-horizon-shadow"
+              ? activeDecision?.method === "target-horizon"
+                ? activeDecision
+                : calibratedHorizonDecisions.get(item.sku)
+              : undefined,
+      };
+    });
     if (!isCurrent && !decisions.some(({ decision }) => decision)) return null;
 
     let oneCopyValue = 0;
@@ -296,12 +308,7 @@ function buildPolicyComparisons(
 
     for (const { item, decision } of decisions) {
       const currentPrice = item.currentPrice ?? 0;
-      const selectedPrice =
-        key === "percentile"
-          ? (item.pricingDetails?.marketplacePrice ??
-            decision?.selectedPrice ??
-            currentPrice)
-          : (decision?.selectedPrice ?? currentPrice);
+      const selectedPrice = decision?.selectedPrice ?? currentPrice;
       oneCopyValue += selectedPrice;
       physicalValue += selectedPrice * item.quantity;
       if (decision) {
@@ -337,12 +344,26 @@ function buildPolicyComparisons(
         key === "current"
           ? "Current listed prices"
           : key === "percentile"
-            ? "Configured percentile"
-            : "Value-matched horizon (shadow)",
+            ? activePolicy.method === "percentile"
+              ? "Configured percentile"
+              : "Configured percentile (benchmark)"
+            : activePolicy.method === "target-horizon"
+              ? `Target horizon (${activePolicy.horizonDays.toFixed(1)} days)`
+              : "Value-matched horizon (calibration)",
+      role:
+        key === "current"
+          ? "current"
+          : key === "percentile"
+            ? activePolicy.method === "percentile"
+              ? "active"
+              : "benchmark"
+            : activePolicy.method === "target-horizon"
+              ? "active"
+              : "calibration",
       planState:
         planIds.size > 1 || targetHorizons.size > 1
           ? "mixed"
-          : planIds.size === 1
+          : planIds.size === 1 || targetHorizons.size === 1
             ? "single"
             : "none",
       matchStatus:
@@ -592,6 +613,7 @@ function buildProductLine(
     policyComparisons: buildPolicyComparisons(
       items,
       resolveInventoryValueMatchedDecisions(key, items, config),
+      config.pricing.policy,
     ),
   };
 }

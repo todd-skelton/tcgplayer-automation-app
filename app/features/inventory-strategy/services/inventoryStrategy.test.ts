@@ -269,6 +269,81 @@ assert.ok(
   "the inventory-wide shadow plan matches current one-copy value",
 );
 
+const activeHorizonDashboard = buildInventoryStrategyDashboard(
+  "seller",
+  [
+    item({
+      sku: 20,
+      currentPrice: 15,
+      pricingDetails: {
+        schemaVersion: 2,
+        pricingModelVersion: "exposure-share-v1",
+        pricedAt: "2026-08-30T10:00:00.000Z",
+        percentileUsed: 65,
+        marketplacePrice: 15,
+        percentiles: [
+          {
+            percentile: 20,
+            suggestedPrice: 10,
+            estimatedTimeToSellDays: 10,
+            supplyStatus: "observed",
+          },
+          {
+            percentile: 65,
+            suggestedPrice: 12,
+            estimatedTimeToSellDays: 20,
+            supplyStatus: "observed",
+          },
+          {
+            percentile: 90,
+            suggestedPrice: 15,
+            estimatedTimeToSellDays: 33.5,
+            supplyStatus: "observed",
+          },
+        ],
+        policy: { method: "target-horizon", horizonDays: 33.5 },
+        decision: {
+          method: "target-horizon",
+          selectedPrice: 15,
+          targetHorizonDays: 33.5,
+          estimatedMedianSellDays: 33.5,
+          constraint: "none",
+          basis: "modeled",
+          forecastStatus: "interpolated",
+        },
+        shadowDecision: {
+          method: "percentile",
+          selectedPrice: 12,
+          configuredPercentile: 65,
+          estimatedMedianSellDays: 20,
+          constraint: "none",
+          basis: "modeled",
+          forecastStatus: "interpolated",
+        },
+      },
+    }),
+  ],
+  {
+    ...config,
+    pricing: {
+      ...config.pricing,
+      policy: { method: "target-horizon", horizonDays: 33.5 },
+    },
+  },
+);
+const activeHorizonComparison =
+  activeHorizonDashboard.overall.policyComparisons.find(
+    ({ key }) => key === "target-horizon-shadow",
+  );
+const percentileBenchmark =
+  activeHorizonDashboard.overall.policyComparisons.find(
+    ({ key }) => key === "percentile",
+  );
+assert.equal(activeHorizonComparison?.role, "active");
+assert.equal(activeHorizonComparison?.oneCopyValue, 15);
+assert.equal(percentileBenchmark?.role, "benchmark");
+assert.equal(percentileBenchmark?.oneCopyValue, 12);
+
 console.log(
   "PASS inventory strategy preserves unmodeled value and applies guarded scenario prices",
 );

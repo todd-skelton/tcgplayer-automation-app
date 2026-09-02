@@ -425,6 +425,7 @@ export async function executeInventoryBatchPricingJob({
     sourceSkus,
     {
       percentile: config.productLinePricing.defaultPercentile,
+      policy: config.pricing.policy,
       minPriceMultiplier: config.pricing.minPriceMultiplier,
       minPriceConstant: config.pricing.minPriceConstant,
       enableSupplyAnalysis: config.supplyAnalysis.enableSupplyAnalysis,

@@ -171,6 +171,9 @@ export type SuggestedPriceResolver = (
 
 export interface PricingConfig {
   percentile: number;
+  policy?:
+    | { method: "percentile" }
+    | Extract<PricingPolicy, { method: "target-horizon" }>;
   minPriceMultiplier?: number;
   minPriceConstant?: number;
   halfLifeDays?: number; // For time decay in pricing algorithms

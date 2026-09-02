@@ -1,5 +1,8 @@
 import type { ServerPricingConfig } from "~/features/pricing/types/config";
-import { DEFAULT_SERVER_PRICING_CONFIG } from "~/features/pricing/types/config";
+import {
+  DEFAULT_SERVER_PRICING_CONFIG,
+  normalizeServerPricingConfig,
+} from "~/features/pricing/types/config";
 import { asJson, execute, queryOne, type Queryable } from "../database.server";
 
 type PricingConfigRow = ServerPricingConfig & {
@@ -23,7 +26,10 @@ export const pricingConfigRepository = {
     );
 
     if (config) {
-      return config;
+      return {
+        ...normalizeServerPricingConfig(config),
+        updatedAt: config.updatedAt,
+      };
     }
 
     await this.save(DEFAULT_SERVER_PRICING_CONFIG, executor);

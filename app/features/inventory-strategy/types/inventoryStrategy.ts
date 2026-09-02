@@ -63,6 +63,7 @@ export interface InventoryStrategyScenario {
 export interface InventoryStrategyPolicyComparison {
   key: "current" | "percentile" | "target-horizon-shadow";
   label: string;
+  role: "current" | "active" | "benchmark" | "calibration";
   planState: "none" | "single" | "mixed";
   matchStatus:
     | "matched"

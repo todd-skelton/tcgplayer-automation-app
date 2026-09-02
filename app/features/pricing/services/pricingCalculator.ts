@@ -240,15 +240,67 @@ export class PricingCalculator {
           supplyStatus: percentile.supplyStatus,
         }));
         const curve = toPricingCurve(pricedItem.percentiles);
+        const percentilePolicy = {
+          method: "percentile" as const,
+          percentile: effectivePercentile,
+        };
+        const activePolicy =
+          config.policy?.method === "target-horizon"
+            ? config.policy
+            : percentilePolicy;
+        const marketplaceConstraint = createMarketplaceConstraint(
+          pricePointsMap.get(pricerSku.sku) ?? null,
+          config,
+        );
         const activeDecision = selectPricingDecision(
           curve,
-          { method: "percentile", percentile: effectivePercentile },
+          activePolicy,
           pricerSku.currentPrice,
-          createMarketplaceConstraint(
-            pricePointsMap.get(pricerSku.sku) ?? null,
-            config,
-          ),
+          marketplaceConstraint,
         );
+        if (config.policy?.method === "target-horizon") {
+          pricedItem.shadowPricingDecision =
+            selectPricingDecision(
+              curve,
+              percentilePolicy,
+              pricerSku.currentPrice,
+              marketplaceConstraint,
+            ) ?? pricedItem.pricingDecision;
+        }
+        if (
+          activePolicy.method === "target-horizon" &&
+          activeDecision &&
+          pricedItem.errors?.length === 0
+        ) {
+          pricedItem.suggestedPrice =
+            activeDecision.unconstrainedPrice ?? activeDecision.selectedPrice;
+          pricedItem.price = activeDecision.selectedPrice;
+          pricedItem.warnings = [];
+          if (activeDecision.basis === "current-price") {
+            pricedItem.warnings.push(
+              `Target-horizon forecast unavailable. Keeping the current price at $${activeDecision.selectedPrice.toFixed(2)}.`,
+            );
+          } else {
+            const priceResult = calculateMarketplacePrice(
+              pricedItem.suggestedPrice,
+              pricePointsMap.get(pricerSku.sku) ?? null,
+              {
+                minPriceMultiplier:
+                  config.minPriceMultiplier ??
+                  PRICING_CONSTANTS.MIN_PRICE_MULTIPLIER,
+                minPriceConstant:
+                  config.minPriceConstant ??
+                  PRICING_CONSTANTS.MIN_PRICE_CONSTANT,
+              },
+            );
+            if (priceResult.warningMessage) {
+              pricedItem.warnings.push(priceResult.warningMessage);
+            }
+            if (priceResult.errorMessage) {
+              pricedItem.errors.push(priceResult.errorMessage);
+            }
+          }
+        }
         if (activeDecision?.basis === "modeled") {
           pricedItem.pricingDecision = activeDecision;
           pricedItem.historicalSalesVelocityDays =
@@ -263,6 +315,18 @@ export class PricingCalculator {
             activeDecision.listingsCount === undefined
               ? undefined
               : Math.round(activeDecision.listingsCount);
+        } else if (activePolicy.method === "target-horizon" && activeDecision) {
+          pricedItem.pricingDecision = activeDecision;
+        } else if (
+          activePolicy.method === "target-horizon" &&
+          pricedItem.pricingDecision
+        ) {
+          pricedItem.pricingDecision = {
+            ...pricedItem.pricingDecision,
+            method: "target-horizon",
+            configuredPercentile: undefined,
+            targetHorizonDays: activePolicy.horizonDays,
+          };
         } else if (pricedItem.pricingDecision) {
           pricedItem.pricingDecision.configuredPercentile = effectivePercentile;
         } else if (
@@ -359,12 +423,15 @@ export class PricingCalculator {
     const hasValueMatchBaseline = portfolioItems.some(
       (item) => (item.currentPrice ?? 0) > 0,
     );
-    const shadow = hasValueMatchBaseline
-      ? resolveValueMatchedPortfolioPlan(portfolioItems, { cohortId: source })
-      : undefined;
+    const shadow =
+      config.policy?.method !== "target-horizon" && hasValueMatchBaseline
+        ? resolveValueMatchedPortfolioPlan(portfolioItems, { cohortId: source })
+        : undefined;
 
-    for (const item of pricedItems) {
-      item.shadowPricingDecision = shadow?.decisionsBySku.get(item.sku);
+    if (shadow) {
+      for (const item of pricedItems) {
+        item.shadowPricingDecision = shadow.decisionsBySku.get(item.sku);
+      }
     }
 
     return {

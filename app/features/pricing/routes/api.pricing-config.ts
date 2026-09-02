@@ -1,36 +1,9 @@
 import { data } from "react-router";
 import { pricingConfigRepository } from "~/core/db";
 import {
-  DEFAULT_PRODUCT_LINE_PRICING_CONFIG,
-  DEFAULT_PRICING_CONFIG,
   DEFAULT_SERVER_PRICING_CONFIG,
-  DEFAULT_SUPPLY_ANALYSIS_CONFIG,
-  type ServerPricingConfig,
+  normalizeServerPricingConfig,
 } from "~/features/pricing/types/config";
-
-function normalizeServerPricingConfig(value: unknown): ServerPricingConfig {
-  const raw = (value ?? {}) as Partial<ServerPricingConfig>;
-
-  return {
-    pricing: {
-      ...DEFAULT_PRICING_CONFIG,
-      ...(raw.pricing ?? {}),
-      successRateThreshold: {
-        ...DEFAULT_PRICING_CONFIG.successRateThreshold,
-        ...(raw.pricing?.successRateThreshold ?? {}),
-      },
-    },
-    supplyAnalysis: {
-      ...DEFAULT_SUPPLY_ANALYSIS_CONFIG,
-      ...(raw.supplyAnalysis ?? {}),
-    },
-    productLinePricing: {
-      ...DEFAULT_PRODUCT_LINE_PRICING_CONFIG,
-      ...(raw.productLinePricing ?? {}),
-      productLineSettings: raw.productLinePricing?.productLineSettings ?? {},
-    },
-  };
-}
 
 export async function loader() {
   try {

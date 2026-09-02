@@ -406,9 +406,9 @@ export default function InventoryStrategyRoute() {
         <Box sx={{ p: 2 }}>
           <Typography variant="h6">Policy comparison</Typography>
           <Typography variant="body2" color="text.secondary">
-            The target-horizon row is read-only and cannot be published.
-            One-copy value is the calibration basis; physical value keeps actual
-            quantities.
+            The active policy supplies continuous-pricing candidates; benchmark
+            and calibration rows are read-only. One-copy value is the
+            calibration basis; physical value keeps actual quantities.
           </Typography>
         </Box>
         <TableContainer>
@@ -431,21 +431,27 @@ export default function InventoryStrategyRoute() {
                       <Typography variant="body2">
                         {comparison.label}
                       </Typography>
-                      {comparison.key === "target-horizon-shadow" && (
+                      {comparison.role !== "current" && (
                         <Chip
                           size="small"
                           color={
-                            comparison.planState === "mixed"
-                              ? "warning"
-                              : "default"
+                            comparison.role === "active"
+                              ? "success"
+                              : comparison.planState === "mixed"
+                                ? "warning"
+                                : "default"
                           }
                           variant="outlined"
                           label={
-                            comparison.planState === "mixed"
-                              ? "Mixed plans"
-                              : comparison.matchStatus
-                                ? `Shadow · ${comparison.matchStatus}`
-                                : "Shadow"
+                            comparison.role === "active"
+                              ? "Active"
+                              : comparison.role === "benchmark"
+                                ? "Benchmark"
+                                : comparison.planState === "mixed"
+                                  ? "Mixed plans"
+                                  : comparison.matchStatus
+                                    ? `Calibration · ${comparison.matchStatus}`
+                                    : "Calibration"
                           }
                         />
                       )}

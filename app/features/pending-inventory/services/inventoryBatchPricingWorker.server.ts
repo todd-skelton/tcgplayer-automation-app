@@ -101,15 +101,21 @@ function buildPricingDetails(
       supplyAnalysis: job.config.supplyAnalysis.enableSupplyAnalysis,
     },
     policy:
-      pricedSku.pricingDecision?.method === "percentile"
+      pricedSku.pricingDecision?.method === "target-horizon" &&
+      pricedSku.pricingDecision.targetHorizonDays !== undefined
         ? {
-            method: "percentile",
-            percentile:
-              pricedSku.pricingDecision.configuredPercentile ??
-              pricedSku.percentileUsed ??
-              job.config.productLinePricing.defaultPercentile,
+            method: "target-horizon",
+            horizonDays: pricedSku.pricingDecision.targetHorizonDays,
           }
-        : undefined,
+        : pricedSku.pricingDecision?.method === "percentile"
+          ? {
+              method: "percentile",
+              percentile:
+                pricedSku.pricingDecision.configuredPercentile ??
+                pricedSku.percentileUsed ??
+                job.config.productLinePricing.defaultPercentile,
+            }
+          : undefined,
     decision: pricedSku.pricingDecision,
     shadowDecision: pricedSku.shadowPricingDecision,
   };

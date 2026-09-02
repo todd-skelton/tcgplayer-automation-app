@@ -1,6 +1,8 @@
 import { FILE_CONFIG, PRICING_CONSTANTS } from "~/core/constants/pricing";
+import type { PricingPolicy } from "~/core/types/pricingPolicy";
 
 export interface PricingConfigSettings {
+  policy: PricingPolicyConfig;
   defaultPercentile: number;
   percentileStep: number;
   minPercentile: number;
@@ -13,6 +15,10 @@ export interface PricingConfigSettings {
     high: number;
   };
 }
+
+export type PricingPolicyConfig =
+  | { method: "percentile" }
+  | Extract<PricingPolicy, { method: "target-horizon" }>;
 
 export interface SupplyAnalysisConfig {
   enableSupplyAnalysis: boolean;
@@ -47,6 +53,7 @@ export interface ServerPricingConfig {
 }
 
 export const DEFAULT_PRICING_CONFIG: PricingConfigSettings = {
+  policy: { method: "percentile" },
   defaultPercentile: PRICING_CONSTANTS.DEFAULT_PERCENTILE,
   percentileStep: PRICING_CONSTANTS.PERCENTILE_STEP,
   minPercentile: PRICING_CONSTANTS.MIN_PERCENTILE,
@@ -75,6 +82,46 @@ export const DEFAULT_SERVER_PRICING_CONFIG: ServerPricingConfig = {
   supplyAnalysis: DEFAULT_SUPPLY_ANALYSIS_CONFIG,
   productLinePricing: DEFAULT_PRODUCT_LINE_PRICING_CONFIG,
 };
+
+function normalizePricingPolicy(value: unknown): PricingPolicyConfig {
+  if (
+    value &&
+    typeof value === "object" &&
+    "method" in value &&
+    value.method === "target-horizon" &&
+    "horizonDays" in value &&
+    typeof value.horizonDays === "number" &&
+    Number.isFinite(value.horizonDays) &&
+    value.horizonDays > 0
+  ) {
+    return { method: "target-horizon", horizonDays: value.horizonDays };
+  }
+  return { method: "percentile" };
+}
+
+export function normalizeServerPricingConfig(value: unknown): ServerPricingConfig {
+  const raw = (value ?? {}) as Partial<ServerPricingConfig>;
+  return {
+    pricing: {
+      ...DEFAULT_PRICING_CONFIG,
+      ...(raw.pricing ?? {}),
+      policy: normalizePricingPolicy(raw.pricing?.policy),
+      successRateThreshold: {
+        ...DEFAULT_PRICING_CONFIG.successRateThreshold,
+        ...(raw.pricing?.successRateThreshold ?? {}),
+      },
+    },
+    supplyAnalysis: {
+      ...DEFAULT_SUPPLY_ANALYSIS_CONFIG,
+      ...(raw.supplyAnalysis ?? {}),
+    },
+    productLinePricing: {
+      ...DEFAULT_PRODUCT_LINE_PRICING_CONFIG,
+      ...(raw.productLinePricing ?? {}),
+      productLineSettings: raw.productLinePricing?.productLineSettings ?? {},
+    },
+  };
+}
 
 export const DEFAULT_FILE_CONFIG: FileConfig = {
   accept: FILE_CONFIG.ACCEPT,
