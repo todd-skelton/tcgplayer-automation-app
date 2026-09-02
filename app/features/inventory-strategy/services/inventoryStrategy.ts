@@ -4,6 +4,7 @@ import {
   readPricingDecision,
   readShadowPricingDecision,
   resolveValueMatchedPortfolioPlan,
+  selectPricingDecision,
   toPricingCurve,
 } from "~/features/pricing/domain/pricingPolicy";
 import type { PricingPercentileDetail } from "~/core/types/pricing";
@@ -88,28 +89,40 @@ function resolveInventoryValueMatchedDecisions(
         : latest,
     null,
   );
-  const resolved = resolveValueMatchedPortfolioPlan(
-    items.map((item) => ({
-      sku: item.sku,
-      currentPrice: item.currentPrice ?? undefined,
-      curve: toPricingCurve(
-        item.pricingDetails?.pricingModelVersion === PRICING_MODEL_VERSION
-          ? item.pricingDetails.percentiles
-          : undefined,
-      ),
-      constraintIdentity: [
-        item.marketPrice ?? 0,
-        config.pricing.minPriceMultiplier,
-        config.pricing.minPriceConstant,
-      ].join(":"),
-      applyConstraint: (price: number) =>
-        constrainMarketplacePrice(price, item, config),
-    })),
-    {
-      cohortId: `inventory-strategy:${items[0]?.sellerKey ?? "unknown"}:${key}`,
-      ...(latestPricingAt ? { createdAt: latestPricingAt } : {}),
-    },
-  );
+  const portfolioItems = items.map((item) => ({
+    sku: item.sku,
+    currentPrice: item.currentPrice ?? undefined,
+    curve: toPricingCurve(
+      item.pricingDetails?.pricingModelVersion === PRICING_MODEL_VERSION
+        ? item.pricingDetails.percentiles
+        : undefined,
+    ),
+    constraintIdentity: [
+      item.marketPrice ?? 0,
+      config.pricing.minPriceMultiplier,
+      config.pricing.minPriceConstant,
+    ].join(":"),
+    applyConstraint: (price: number) =>
+      constrainMarketplacePrice(price, item, config),
+  }));
+  const policy = config.pricing.policy;
+  if (policy.method === "target-horizon") {
+    return new Map(
+      portfolioItems.flatMap((item) => {
+        const decision = selectPricingDecision(
+          item.curve,
+          policy,
+          item.currentPrice,
+          item.applyConstraint,
+        );
+        return decision ? [[item.sku, decision] as const] : [];
+      }),
+    );
+  }
+  const resolved = resolveValueMatchedPortfolioPlan(portfolioItems, {
+    cohortId: `inventory-strategy:${items[0]?.sellerKey ?? "unknown"}:${key}`,
+    ...(latestPricingAt ? { createdAt: latestPricingAt } : {}),
+  });
   return resolved.plan.modeledSkuCount > 0
     ? resolved.decisionsBySku
     : new Map();

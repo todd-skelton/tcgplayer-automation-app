@@ -322,6 +322,47 @@ const activeHorizonDashboard = buildInventoryStrategyDashboard(
         },
       },
     }),
+    item({
+      sku: 21,
+      currentPrice: 12,
+      pricingDetails: {
+        schemaVersion: 2,
+        pricingModelVersion: "exposure-share-v1",
+        pricedAt: "2026-08-29T10:00:00.000Z",
+        percentileUsed: 65,
+        marketplacePrice: 12,
+        percentiles: [
+          {
+            percentile: 20,
+            suggestedPrice: 10,
+            estimatedTimeToSellDays: 10,
+            supplyStatus: "observed",
+          },
+          {
+            percentile: 65,
+            suggestedPrice: 12,
+            estimatedTimeToSellDays: 20,
+            supplyStatus: "observed",
+          },
+          {
+            percentile: 90,
+            suggestedPrice: 15,
+            estimatedTimeToSellDays: 33.5,
+            supplyStatus: "observed",
+          },
+        ],
+        policy: { method: "percentile", percentile: 65 },
+        decision: {
+          method: "percentile",
+          selectedPrice: 12,
+          configuredPercentile: 65,
+          estimatedMedianSellDays: 20,
+          constraint: "none",
+          basis: "modeled",
+          forecastStatus: "interpolated",
+        },
+      },
+    }),
   ],
   {
     ...config,
@@ -340,9 +381,9 @@ const percentileBenchmark =
     ({ key }) => key === "percentile",
   );
 assert.equal(activeHorizonComparison?.role, "active");
-assert.equal(activeHorizonComparison?.oneCopyValue, 15);
+assert.equal(activeHorizonComparison?.oneCopyValue, 30);
 assert.equal(percentileBenchmark?.role, "benchmark");
-assert.equal(percentileBenchmark?.oneCopyValue, 12);
+assert.equal(percentileBenchmark?.oneCopyValue, 24);
 
 console.log(
   "PASS inventory strategy preserves unmodeled value and applies guarded scenario prices",
