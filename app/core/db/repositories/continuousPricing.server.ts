@@ -237,7 +237,12 @@ export const continuousPricingRepository = {
             condition = EXCLUDED.condition,
             variant = EXCLUDED.variant,
             quantity = EXCLUDED.quantity,
-            current_price = EXCLUDED.current_price,
+            current_price = CASE
+              WHEN continuous_pricing_inventory.last_published_at IS NULL
+                OR continuous_pricing_inventory.last_published_at <= EXCLUDED.last_observed_at
+              THEN EXCLUDED.current_price
+              ELSE continuous_pricing_inventory.current_price
+            END,
             market_price = EXCLUDED.market_price,
             in_stock = EXCLUDED.in_stock,
             pricing_eligible = EXCLUDED.pricing_eligible,

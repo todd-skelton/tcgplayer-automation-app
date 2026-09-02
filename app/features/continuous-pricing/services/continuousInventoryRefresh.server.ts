@@ -19,14 +19,13 @@ export async function refreshContinuousPricingInventory(
   const snapshot = await fetchSellerInventorySnapshot({
     sellerKey,
   });
+  const observedAt = new Date();
   const batchItems = await convertSellerInventoryToBatchItems(
     snapshot.inventory,
   );
   const marketPrices = await fetchContinuousMarketPrices(
     batchItems.map((item) => item.sku),
   );
-  const observedAt = new Date();
-
   await continuousPricingRepository.upsertSnapshot(
     sellerKey,
     batchItems.map((item) => ({

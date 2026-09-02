@@ -150,6 +150,23 @@ try {
   assert.equal(published.items[0]?.currentPrice, 25.01);
   assert.ok(published.items[0]?.lastPublishedAt);
 
+  const staleSnapshotObservedAt = new Date(
+    (published.items[0]?.lastPublishedAt?.getTime() ?? Date.now()) - 1,
+  );
+  await continuousPricingRepository.upsertSnapshot(
+    sellerKey,
+    [createInventoryItem(5199433, 29, 24.99, 20), outOfStockItem],
+    { minimumIntervalMinutes: 60, observedAt: staleSnapshotObservedAt },
+  );
+  const afterStaleSnapshot = await continuousPricingRepository.findPage({
+    sellerKey,
+    search: "5199433",
+    state: "all",
+    page: 1,
+    pageSize: 50,
+  });
+  assert.equal(afterStaleSnapshot.items[0]?.currentPrice, 25.01);
+
   const publishedSnapshot = await continuousPricingRepository.getStatus(
     sellerKey,
     snapshot.settings,
