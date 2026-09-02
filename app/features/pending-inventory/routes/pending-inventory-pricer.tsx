@@ -153,7 +153,11 @@ function BatchSummaryCard({ batch }: { batch: InventoryBatch }) {
             />
           ) : (
             <Chip
-              label="Not yet priced"
+              label={
+                batch.latestJob?.status === "completed"
+                  ? "No prices produced"
+                  : "Not yet priced"
+              }
               size="small"
               variant="outlined"
               sx={{ borderStyle: "dashed" }}

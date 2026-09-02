@@ -1,4 +1,5 @@
 import type { ServerPricingConfig } from "~/features/pricing/types/config";
+import type { InventoryBatchPricingMode } from "~/features/pending-inventory/types/inventoryBatch";
 import type {
   ContinuousPricingInventoryItem,
   ContinuousPricingInventoryPage,
@@ -17,6 +18,7 @@ import {
   type Queryable,
 } from "../database.server";
 import { PRICING_JOB_PRIORITIES } from "./inventoryBatchPricingJobs.server";
+import { reusablePricingCurveWhere } from "./inventoryStrategy.server";
 
 type ContinuousPricingInventoryRow = ContinuousPricingInventoryItem;
 
@@ -118,6 +120,76 @@ function toOriginalRow(item: ContinuousPricingInventoryItem): TcgPlayerListing {
     Warning: "",
     Error: "",
   };
+}
+
+async function createContinuousPricingBatch(
+  items: ContinuousPricingInventoryItem[],
+  input: {
+    sellerKey: string;
+    minimumIntervalMinutes: number;
+    pricingConfig: ServerPricingConfig;
+  },
+  mode: InventoryBatchPricingMode,
+  priority: number,
+  client: Queryable,
+): Promise<number> {
+  const batch = await queryOne<{ batchNumber: number }>(
+    `INSERT INTO inventory_batches (status, source_type, source_label)
+    VALUES ('queued', 'continuous', $1)
+    RETURNING batch_number AS "batchNumber"`,
+    [input.sellerKey],
+    client,
+  );
+  if (!batch) throw new Error("Could not create continuous pricing batch.");
+
+  await execute(
+    `INSERT INTO inventory_batch_items (
+      batch_number, sku, total_quantity, add_to_quantity, current_price,
+      product_line_id, set_id, product_id, original_row_json, created_at, updated_at
+    ) VALUES ${createValuesPlaceholders(items.length, 11)}`,
+    items.flatMap((item) => [
+      batch.batchNumber,
+      item.sku,
+      item.quantity,
+      0,
+      item.currentPrice,
+      item.productLineId,
+      item.setId,
+      item.productId,
+      asJson(toOriginalRow(item)),
+      new Date(),
+      new Date(),
+    ]),
+    client,
+  );
+  await execute(
+    `INSERT INTO inventory_batch_pricing_jobs (
+      batch_number, priority, mode, status, config_json
+    ) VALUES ($1, $2, $3, 'queued', $4::jsonb)`,
+    [batch.batchNumber, priority, mode, asJson(input.pricingConfig)],
+    client,
+  );
+  await execute(
+    `UPDATE continuous_pricing_inventory
+    SET last_batch_number = $2,
+        next_price_at = CASE WHEN $5 = 'cached' THEN (
+          SELECT COALESCE((curve.pricing_details_json->>'marketDataAt')::timestamptz, curve.priced_at)
+          FROM inventory_strategy_pricing_curves curve
+          WHERE curve.seller_key = continuous_pricing_inventory.seller_key
+            AND curve.sku = continuous_pricing_inventory.sku
+        ) ELSE NOW() END + ($3 * INTERVAL '1 minute'),
+        updated_at = NOW()
+    WHERE seller_key = $1 AND sku = ANY($4::int[])`,
+    [
+      input.sellerKey,
+      batch.batchNumber,
+      input.minimumIntervalMinutes,
+      items.map((item) => item.sku),
+      mode,
+    ],
+    client,
+  );
+  return batch.batchNumber;
 }
 
 async function reconcileInventoryManagementPublications(
@@ -420,6 +492,83 @@ export const continuousPricingRepository = {
     );
   },
 
+  async scheduleCachedPolicyBatches(input: {
+    sellerKey: string;
+    batchSize: number;
+    minimumIntervalMinutes: number;
+    pricingConfig: ServerPricingConfig;
+    pricingModelVersion: string;
+  }): Promise<{
+    batchNumbers: number[];
+    cachedCount: number;
+    refreshCount: number;
+  }> {
+    return withTransaction(async (client) => {
+      await query(
+        `SELECT pg_advisory_xact_lock(hashtext($1))`,
+        [`continuous-pricing:${input.sellerKey}`],
+        client,
+      );
+      const existing = await queryOne<{ exists: boolean }>(
+        `SELECT EXISTS (
+          SELECT 1 FROM inventory_batch_pricing_jobs job
+          JOIN inventory_batches batch USING (batch_number)
+          WHERE batch.source_type = 'continuous' AND batch.source_label = $1
+            AND job.mode = 'cached' AND job.status IN ('queued', 'pricing')
+            AND job.config_json = $2::jsonb
+        ) AS exists`,
+        [input.sellerKey, asJson(input.pricingConfig)],
+        client,
+      );
+      if (existing?.exists) {
+        throw new Error(
+          "Saved-curve repricing is already queued for this policy.",
+        );
+      }
+      const eligibleCount =
+        await continuousPricingRepository.makeEligibleInventoryDue(
+          input.sellerKey,
+          client,
+        );
+      const items = await query<ContinuousPricingInventoryRow>(
+        `${inventorySelect}
+        WHERE ${schedulableInventoryWhere}
+          AND EXISTS (
+            SELECT 1 FROM inventory_strategy_pricing_curves curve
+            WHERE curve.seller_key = continuous_pricing_inventory.seller_key
+              AND curve.sku = continuous_pricing_inventory.sku
+              AND ${reusablePricingCurveWhere}
+          )
+        ORDER BY sku
+        FOR UPDATE SKIP LOCKED`,
+        [
+          input.sellerKey,
+          input.pricingModelVersion,
+          input.minimumIntervalMinutes,
+          asJson(input.pricingConfig.supplyAnalysis),
+        ],
+        client,
+      );
+      const batchNumbers: number[] = [];
+      for (let offset = 0; offset < items.length; offset += input.batchSize) {
+        batchNumbers.push(
+          await createContinuousPricingBatch(
+            items.slice(offset, offset + input.batchSize),
+            input,
+            "cached",
+            PRICING_JOB_PRIORITIES.operator,
+            client,
+          ),
+        );
+      }
+      return {
+        batchNumbers,
+        cachedCount: items.length,
+        refreshCount: eligibleCount - items.length,
+      };
+    });
+  },
+
   async scheduleDueBatch(input: {
     sellerKey: string;
     batchSize: number;
@@ -489,84 +638,34 @@ export const continuousPricingRepository = {
         return null;
       }
 
-      const batch = await queryOne<{ batchNumber: number }>(
-        `INSERT INTO inventory_batches (
-          status,
-          source_type,
-          source_label
-        ) VALUES ('queued', 'continuous', $1)
-        RETURNING batch_number AS "batchNumber"`,
-        [input.sellerKey],
-        client,
-      );
-      if (!batch) {
-        throw new Error("Could not create continuous pricing batch.");
-      }
-
-      const placeholders = createValuesPlaceholders(dueItems.length, 11);
-      await execute(
-        `INSERT INTO inventory_batch_items (
-          batch_number,
-          sku,
-          total_quantity,
-          add_to_quantity,
-          current_price,
-          product_line_id,
-          set_id,
-          product_id,
-          original_row_json,
-          created_at,
-          updated_at
-        ) VALUES ${placeholders}`,
-        dueItems.flatMap((item) => [
-          batch.batchNumber,
-          item.sku,
-          item.quantity,
-          0,
-          item.currentPrice,
-          item.productLineId,
-          item.setId,
-          item.productId,
-          asJson(toOriginalRow(item)),
-          new Date(),
-          new Date(),
-        ]),
-        client,
-      );
-      await execute(
-        `INSERT INTO inventory_batch_pricing_jobs (
-          batch_number,
-          priority,
-          mode,
-          status,
-          config_json
-        ) VALUES ($1, $2, 'full', 'queued', $3::jsonb)`,
-        [batch.batchNumber, schedulePriority, asJson(input.pricingConfig)],
-        client,
-      );
-      await execute(
-        `UPDATE continuous_pricing_inventory
-        SET last_batch_number = $2,
-            next_price_at = NOW() + ($3 * INTERVAL '1 minute'),
-            updated_at = NOW()
-        WHERE seller_key = $1
-          AND sku = ANY($4::int[])`,
-        [
-          input.sellerKey,
-          batch.batchNumber,
-          input.minimumIntervalMinutes,
-          dueItems.map((item) => item.sku),
-        ],
+      const batchNumber = await createContinuousPricingBatch(
+        dueItems,
+        input,
+        "full",
+        schedulePriority,
         client,
       );
 
       return {
         status: "scheduled" as const,
-        batchNumber: batch.batchNumber,
+        batchNumber,
         itemCount: dueItems.length,
         priority: schedulePriority,
       };
     });
+  },
+
+  async deferBatchItemsToRefresh(
+    batchNumber: number,
+    skus: number[],
+  ): Promise<void> {
+    if (skus.length === 0) return;
+    await execute(
+      `UPDATE continuous_pricing_inventory
+      SET next_price_at = LEAST(next_price_at, NOW()), updated_at = NOW()
+      WHERE last_batch_number = $1 AND sku = ANY($2::int[])`,
+      [batchNumber, skus],
+    );
   },
 
   async recordBatchCompleted(

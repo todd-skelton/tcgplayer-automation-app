@@ -18,7 +18,7 @@ export type InventoryBatchSourceType =
   | "csv"
   | "continuous"
   | "strategy";
-export type InventoryBatchPricingMode = "full" | "errors";
+export type InventoryBatchPricingMode = "full" | "errors" | "cached";
 export type InventoryBatchResultStatus = "successful" | "manual_review";
 export type InventoryBatchResultsScope = "successful" | "manual-review";
 export type InventoryBatchItemsScope = "all" | "errors";

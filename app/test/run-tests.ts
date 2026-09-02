@@ -40,6 +40,7 @@ import "../features/product-price-matrix/components/percentileColumns.test";
 import "../features/pricing/services/pricingService.test";
 import "../features/pricing/types/config.test";
 import "../features/pricing/services/pricingCalculator.test";
+import "../features/pending-inventory/services/inventoryBatchPricing.cached.test";
 import "../features/pricing/domain/pricingPolicy.test";
 import "../features/pricing/services/supplyAnalysisService.test";
 import "../features/pricing/algorithms/buyerArrivalRate.test";

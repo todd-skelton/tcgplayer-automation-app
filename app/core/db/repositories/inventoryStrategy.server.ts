@@ -1,15 +1,33 @@
 import type { InventoryStrategySnapshotItem } from "~/features/inventory-strategy/types/inventoryStrategy";
-import { execute, query, type Queryable } from "../database.server";
+import type { SupplyAnalysisConfig } from "~/features/pricing/types/config";
+import { PRICING_MODEL_VERSION } from "~/core/types/pricingPolicy";
+import { asJson, execute, query, type Queryable } from "../database.server";
 
 type InventoryStrategySnapshotRow = InventoryStrategySnapshotItem;
 
-export const inventoryStrategyRepository = {
-  async findSnapshot(
-    sellerKey: string,
-    executor?: Queryable,
-  ): Promise<InventoryStrategySnapshotItem[]> {
-    return query<InventoryStrategySnapshotRow>(
-      `SELECT
+// Scheduling and execution must apply the same source-data requirements.
+export const reusablePricingCurveWhere = `
+  curve.pricing_details_json->>'pricingModelVersion' = $2
+  AND curve.pricing_details_json->'decision'->>'basis' = 'modeled'
+  AND curve.pricing_details_json->'decision'->>'forecastStatus' <> 'unavailable'
+  AND (
+    SELECT job.config_json->'supplyAnalysis'
+    FROM inventory_batch_pricing_jobs job
+    WHERE job.batch_number = curve.batch_number
+      AND job.created_at <= curve.priced_at
+    ORDER BY job.created_at DESC, job.id DESC LIMIT 1
+  ) = $4::jsonb
+  AND COALESCE(
+    (curve.pricing_details_json->>'marketDataAt')::timestamptz,
+    curve.priced_at
+  ) BETWEEN NOW() - ($3 * INTERVAL '1 minute') AND NOW()
+  AND CASE
+    WHEN jsonb_typeof(curve.pricing_details_json->'percentiles') = 'array'
+    THEN jsonb_array_length(curve.pricing_details_json->'percentiles') > 0
+    ELSE FALSE
+  END`;
+
+const snapshotSelect = `SELECT
         inventory.seller_key AS "sellerKey",
         inventory.sku,
         inventory.product_id AS "productId",
@@ -25,16 +43,50 @@ export const inventoryStrategyRepository = {
         inventory.market_price::float8 AS "marketPrice",
         inventory.pricing_eligible AS "pricingEligible",
         curve.pricing_details_json AS "pricingDetails",
-        curve.priced_at AS "strategyPricedAt"
+        COALESCE(
+          (curve.pricing_details_json->>'marketDataAt')::timestamptz,
+          curve.priced_at
+        ) AS "strategyPricedAt"
       FROM continuous_pricing_inventory inventory
       LEFT JOIN inventory_strategy_pricing_curves curve
         ON curve.seller_key = inventory.seller_key
-        AND curve.sku = inventory.sku
+        AND curve.sku = inventory.sku`;
+
+export const inventoryStrategyRepository = {
+  async findSnapshot(
+    sellerKey: string,
+    executor?: Queryable,
+  ): Promise<InventoryStrategySnapshotItem[]> {
+    return query<InventoryStrategySnapshotRow>(
+      `${snapshotSelect}
       WHERE inventory.seller_key = $1
         AND inventory.in_stock
         AND inventory.quantity > 0
       ORDER BY inventory.product_line, inventory.sku`,
       [sellerKey],
+      executor,
+    );
+  },
+
+  async findReusableSnapshots(
+    sellerKey: string,
+    skus: number[],
+    minimumIntervalMinutes: number,
+    supplyAnalysis: SupplyAnalysisConfig,
+    executor?: Queryable,
+  ): Promise<InventoryStrategySnapshotItem[]> {
+    if (skus.length === 0) return [];
+    return query<InventoryStrategySnapshotRow>(
+      `${snapshotSelect}
+      WHERE inventory.seller_key = $1 AND inventory.sku = ANY($5::int[])
+        AND ${reusablePricingCurveWhere}`,
+      [
+        sellerKey,
+        PRICING_MODEL_VERSION,
+        minimumIntervalMinutes,
+        asJson(supplyAnalysis),
+        skus,
+      ],
       executor,
     );
   },

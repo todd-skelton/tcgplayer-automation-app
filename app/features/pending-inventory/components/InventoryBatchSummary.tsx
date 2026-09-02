@@ -102,7 +102,9 @@ export const InventoryBatchSummaryComponent: React.FC<
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Last priced:{" "}
-          {lastPricedAt ? new Date(lastPricedAt).toLocaleString() : "Not yet priced"}
+          {lastPricedAt
+            ? new Date(lastPricedAt).toLocaleString()
+            : "No prices produced"}
         </Typography>
       </Box>
 
@@ -134,7 +136,7 @@ export const InventoryBatchSummaryComponent: React.FC<
                     </TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell>Not Yet Priced</TableCell>
+                    <TableCell>Skipped</TableCell>
                     <TableCell align="right">
                       {summary.skippedRows.toLocaleString()}
                     </TableCell>

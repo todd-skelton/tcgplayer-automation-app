@@ -1,6 +1,9 @@
+import { isDeepStrictEqual } from "node:util";
+import { normalizeServerPricingConfig } from "~/features/pricing/types/config";
 import {
   inventoryBatchesRepository,
   inventoryPublicationSettingsRepository,
+  pricingConfigRepository,
 } from "~/core/db";
 import { isAutomaticPublicationAvailable } from "../types/inventoryPublicationSettings";
 import {
@@ -15,6 +18,7 @@ export type AutomaticInventoryBatchPublicationResult =
       reason:
         | "batch_not_found"
         | "automatic_publication_unavailable"
+        | "superseded_pricing_config"
         | "no_eligible_items";
     }
   | {
@@ -43,11 +47,27 @@ export async function planAutomaticInventoryBatchPublication(
     };
   }
 
+  if (batch.sourceType === "continuous" && batch.latestJob) {
+    const currentConfig = await pricingConfigRepository.get();
+    if (
+      !isDeepStrictEqual(
+        normalizeServerPricingConfig(batch.latestJob.config),
+        normalizeServerPricingConfig(currentConfig),
+      )
+    ) {
+      return { planned: false, reason: "superseded_pricing_config" };
+    }
+  }
+
   if (!isAutomaticPublicationAvailable(configuration, batch.sourceType)) {
     return {
       planned: false,
       reason: "automatic_publication_unavailable",
     };
+  }
+
+  if (batch.successfulCount === 0) {
+    return { planned: false, reason: "no_eligible_items" };
   }
 
   const preview = await previewInventoryBatchPublication(batchNumber, {

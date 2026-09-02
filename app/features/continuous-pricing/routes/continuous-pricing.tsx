@@ -33,6 +33,7 @@ import {
 } from "~/core/db";
 import { refreshContinuousPricingInventory } from "../services/continuousInventoryRefresh.server";
 import { runContinuousPricingSchedulerCycle } from "../services/continuousPricingScheduler.server";
+import { applyContinuousPricingPolicy } from "../services/continuousPolicyRepricing.server";
 import { normalizeContinuousPricingSettings } from "../services/continuousPricingSettings";
 import type {
   ContinuousPricingInventoryState,
@@ -210,6 +211,19 @@ export async function action({ request }: ActionFunctionArgs) {
           result.status === "scheduled"
             ? `Queued batch ${result.batchNumber} with ${result.itemCount} SKUs.`
             : `Scheduler cycle completed: ${result.status}.`,
+      });
+    }
+
+    if (payload.intent === "apply_policy") {
+      if (!current.enabled || !current.sellerKey) {
+        throw new Error(
+          "Enable continuous pricing before repricing inventory.",
+        );
+      }
+      const result = await applyContinuousPricingPolicy(current);
+      return data<ActionData>({
+        success: true,
+        message: `Queued ${result.cachedCount} SKUs from saved curves in ${result.batchNumbers.length} batches. ${result.refreshCount} SKUs remain due for fresh market data or an in-flight publication.`,
       });
     }
 
@@ -464,6 +478,16 @@ export default function ContinuousPricingRoute() {
             <Button
               variant="outlined"
               color="warning"
+              onClick={() => submit({ intent: "apply_policy" })}
+              disabled={
+                busy || !settings.enabled || status.enabledInStockCount === 0
+              }
+            >
+              Apply policy from saved curves
+            </Button>
+            <Button
+              variant="outlined"
+              color="warning"
               onClick={() => submit({ intent: "reprice_all" })}
               disabled={
                 busy || !settings.enabled || status.enabledInStockCount === 0
@@ -472,6 +496,11 @@ export default function ContinuousPricingRoute() {
               Reprice all inventory now
             </Button>
           </Stack>
+          <Typography variant="body2" color="text.secondary">
+            Applying policy reuses compatible curves from the current pricing
+            interval; missing or older data stays due for refresh. Reprice all
+            fetches fresh market data.
+          </Typography>
         </Stack>
       </Paper>
 

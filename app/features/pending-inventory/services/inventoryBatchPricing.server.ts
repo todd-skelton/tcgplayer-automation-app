@@ -4,9 +4,13 @@ import type {
   ProcessingSummary,
   PricerSku,
   SuggestedPriceResolver,
+  PersistedPricingDetails,
 } from "~/core/types/pricing";
 import {
+  continuousPricingRepository,
   inventoryBatchesRepository,
+  inventoryPublicationSettingsRepository,
+  inventoryStrategyRepository,
   setProductsRepository,
   skusRepository,
 } from "~/core/db";
@@ -22,6 +26,56 @@ import type {
   InventoryBatchPricingMode,
 } from "../types/inventoryBatch";
 import type { ServerPricingConfig } from "~/features/pricing/types/config";
+import { PRICING_MODEL_VERSION } from "~/core/types/pricingPolicy";
+import {
+  selectPricingDecision,
+  toPricingCurve,
+} from "~/features/pricing/domain/pricingPolicy";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function createCachedSuggestedPriceResolver(
+  detailsBySku: ReadonlyMap<number, PersistedPricingDetails>,
+): SuggestedPriceResolver {
+  return async ({ tcgplayerId, percentile }) => {
+    const details = detailsBySku.get(Number(tcgplayerId));
+    const decision =
+      details?.pricingModelVersion === PRICING_MODEL_VERSION
+        ? selectPricingDecision(toPricingCurve(details.percentiles), {
+            method: "percentile",
+            percentile,
+          })
+        : undefined;
+    if (!details || !decision) {
+      return {
+        suggestedPrice: null,
+        error: "A compatible saved pricing curve is no longer available.",
+      };
+    }
+    const milliseconds = (days: number | undefined) =>
+      days === undefined ? undefined : days * DAY_MS;
+    return {
+      suggestedPrice: decision.unconstrainedPrice ?? decision.selectedPrice,
+      historicalSalesVelocityMs: milliseconds(decision.buyerIntervalDays),
+      estimatedTimeToSellMs: milliseconds(decision.estimatedMedianSellDays),
+      salesCount: decision.qualifyingSalesCount,
+      listingsCount: decision.listingsCount,
+      percentiles: details.percentiles?.map((point) => ({
+        percentile: point.percentile,
+        price: point.suggestedPrice,
+        historicalSalesVelocityMs: milliseconds(
+          point.historicalSalesVelocityDays,
+        ),
+        estimatedTimeToSellMs: milliseconds(point.estimatedTimeToSellDays),
+        salesCount: point.salesCount,
+        historyCapped: point.historyCapped,
+        listingsCount: point.listingsCount,
+        storeWinShare: point.storeWinShare,
+        supplyStatus: point.supplyStatus,
+      })),
+    };
+  };
+}
 
 export interface InventoryBatchPricingExecutionResult {
   pricedSkus: PricedSku[];
@@ -321,7 +375,7 @@ export async function executeInventoryBatchPricingJob({
   const bypassProductLineSkips =
     batch.sourceType === "pending_inventory" || batch.sourceType === "strategy";
 
-  const sourceSkus = items
+  let sourceSkus = items
     .filter(
       (item) => item.sku > 0 && item.totalQuantity + item.addToQuantity > 0,
     )
@@ -337,7 +391,6 @@ export async function executeInventoryBatchPricingJob({
         productId: item.productId,
       }),
     );
-  const invalidCount = items.length - sourceSkus.length;
 
   if (sourceSkus.length === 0) {
     throw new Error(
@@ -350,10 +403,49 @@ export async function executeInventoryBatchPricingJob({
   const productDisplayMap = await loadProductDisplayMap(items);
   throwIfCancelled(isCancelled);
 
+  if (mode === "cached" && batch.sourceType !== "continuous") {
+    throw new Error(
+      "Saved-curve repricing requires a continuous inventory batch.",
+    );
+  }
+  const cachedSnapshots =
+    mode === "cached"
+      ? await inventoryStrategyRepository.findReusableSnapshots(
+          batch.sourceLabel,
+          sourceSkus.map((item) => item.sku),
+          (await inventoryPublicationSettingsRepository.get()).settings
+            .continuousPricing.minimumIntervalMinutes,
+          config.supplyAnalysis,
+        )
+      : null;
+  if (cachedSnapshots) {
+    const reusableSkus = new Set(cachedSnapshots.map((item) => item.sku));
+    await continuousPricingRepository.deferBatchItemsToRefresh(
+      batchNumber,
+      sourceSkus
+        .filter((item) => !reusableSkus.has(item.sku))
+        .map((item) => item.sku),
+    );
+    sourceSkus = sourceSkus.filter((item) => reusableSkus.has(item.sku));
+  }
+  const invalidCount = items.length - sourceSkus.length;
+  for (const item of cachedSnapshots ?? []) {
+    if (!productDisplayMap.has(item.sku)) {
+      productDisplayMap.set(item.sku, {
+        sku: item.sku,
+        productLine: item.productLine,
+        setName: item.setName,
+        productName: item.productName,
+        condition: item.condition,
+        variant: item.variant,
+      });
+    }
+  }
+
   emitProgress({
     current: 2,
     total: 6,
-    status: `Validated ${sourceSkus.length} SKUs, fetching price points...`,
+    status: `Validated ${sourceSkus.length} SKUs, preparing price data...`,
     processed: 0,
     skipped: invalidCount,
     errors: 0,
@@ -366,47 +458,76 @@ export async function executeInventoryBatchPricingJob({
   emitProgress({
     current: 3,
     total: 6,
-    status: "Fetching price points...",
+    status: cachedSnapshots
+      ? "Loading saved pricing data..."
+      : "Fetching price points...",
     processed: 0,
     skipped: invalidCount,
     errors: 0,
     warnings: 0,
-    phase: "Fetching Price Data",
+    phase: cachedSnapshots ? "Loading Saved Data" : "Fetching Price Data",
     phaseStartTime: pricePointStartTime,
     subProgress: {
       current: 0,
       total: sourceSkus.length,
-      status: "Requesting latest price points...",
+      status: cachedSnapshots
+        ? "Using the latest saved curves and inventory market prices..."
+        : "Requesting latest price points...",
     },
   });
 
-  const pricePoints = await getPricePoints({
-    skuIds: sourceSkus.map((sku) => sku.sku),
-  });
+  const pricePoints = cachedSnapshots
+    ? cachedSnapshots.flatMap((item): PricePoint[] =>
+        item.marketPrice === null
+          ? []
+          : [
+              {
+                skuId: item.sku,
+                marketPrice: item.marketPrice,
+                lowestPrice: item.pricingDetails?.lowestSalePrice ?? 0,
+                highestPrice: item.pricingDetails?.highestSalePrice ?? 0,
+                priceCount: 0,
+                calculatedAt: item.strategyPricedAt?.toISOString() ?? "",
+              },
+            ],
+      )
+    : await getPricePoints({ skuIds: sourceSkus.map((sku) => sku.sku) });
   const pricePointsMap = createPricePointMap(pricePoints);
   throwIfCancelled(isCancelled);
 
   emitProgress({
     current: 3,
     total: 6,
-    status: "Price points fetched successfully!",
+    status: cachedSnapshots
+      ? "Saved pricing data loaded."
+      : "Price points fetched successfully!",
     processed: 0,
     skipped: invalidCount,
     errors: 0,
     warnings: 0,
-    phase: "Fetching Price Data",
+    phase: cachedSnapshots ? "Loading Saved Data" : "Fetching Price Data",
     phaseStartTime: pricePointStartTime,
     subProgress: {
       current: sourceSkus.length,
       total: sourceSkus.length,
-      status: "Price point fetch complete",
+      status: "Price data ready",
     },
   });
 
   const pricingStartTime = Date.now();
   const batchApiCache = new PricingBatchApiCache();
-  const resolveSuggestedPriceWithBatchCache: SuggestedPriceResolver = (input) =>
-    resolveSuggestedPrice(input, { batchApiCache });
+  const resolveSuggestedPriceWithBatchCache: SuggestedPriceResolver =
+    cachedSnapshots
+      ? createCachedSuggestedPriceResolver(
+          new Map(
+            cachedSnapshots.flatMap((item) =>
+              item.pricingDetails
+                ? [[item.sku, item.pricingDetails] as const]
+                : [],
+            ),
+          ),
+        )
+      : (input) => resolveSuggestedPrice(input, { batchApiCache });
   let latestPricingProgress: ProcessingProgress = {
     current: 4,
     total: 6,
@@ -485,6 +606,18 @@ export async function executeInventoryBatchPricingJob({
     productDisplayMap,
     pricePointsMap,
   );
+  if (cachedSnapshots) {
+    const snapshotsBySku = new Map(
+      cachedSnapshots.map((item) => [item.sku, item]),
+    );
+    for (const item of enrichedSkus) {
+      const snapshot = snapshotsBySku.get(item.sku);
+      item.marketDataAt = snapshot?.strategyPricedAt?.toISOString();
+      item.lowestSalePrice = snapshot?.pricingDetails?.lowestSalePrice;
+      item.highestSalePrice = snapshot?.pricingDetails?.highestSalePrice;
+      item.saleCount = undefined;
+    }
+  }
   const processingTime = Date.now() - startTime;
   const summary = buildSummary(
     batchNumber,

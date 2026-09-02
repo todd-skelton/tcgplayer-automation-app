@@ -80,6 +80,7 @@ function buildPricingDetails(
     pricingModelVersion: PRICING_MODEL_VERSION,
     mode,
     pricedAt: pricedAt.toISOString(),
+    marketDataAt: pricedSku.marketDataAt ?? pricedAt.toISOString(),
     productLineId: pricedSku.productLineId,
     percentileUsed: pricedSku.percentileUsed,
     suggestedPrice: pricedSku.suggestedPrice,

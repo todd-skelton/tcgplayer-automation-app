@@ -105,8 +105,9 @@ export interface PricingPercentileDetail {
 export interface PersistedPricingDetails {
   schemaVersion: number;
   pricingModelVersion?: string;
-  mode?: "full" | "errors";
+  mode?: "full" | "errors" | "cached";
   pricedAt: string;
+  marketDataAt?: string;
   productLineId?: number;
   percentileUsed?: number;
   suggestedPrice?: number;
@@ -207,6 +208,7 @@ export type PricerSku = {
 
 export type PricedSku = {
   sku: number;
+  marketDataAt?: string;
   productLineId?: number;
   productLine?: string;
   setName?: string;

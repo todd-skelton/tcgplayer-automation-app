@@ -141,7 +141,7 @@ async function buildBatchSummary(
   batchNumber: number,
   totalRows: number,
   executor?: Queryable,
-): Promise<InventoryBatchSummary | null> {
+): Promise<InventoryBatchSummary> {
   const resultRows = await query<BatchSummarySourceRow>(
     `SELECT
       r.result_status AS "resultStatus",
@@ -155,10 +155,6 @@ async function buildBatchSummary(
     [batchNumber],
     executor,
   );
-
-  if (resultRows.length === 0) {
-    return null;
-  }
 
   const successfulRows = resultRows.filter(
     (row) => row.resultStatus === "successful",
@@ -344,14 +340,7 @@ async function refreshBatchCounts(
 
   await execute(
     `UPDATE inventory_batches
-    SET status = CASE
-          WHEN EXISTS (
-            SELECT 1
-            FROM inventory_batch_results r
-            WHERE r.batch_number = $1
-          ) THEN 'priced'
-          ELSE 'pending'
-        END,
+    SET status = 'priced',
         updated_at = NOW(),
         last_priced_at = (
           SELECT MAX(r.priced_at)
@@ -364,9 +353,9 @@ async function refreshBatchCounts(
     WHERE batch_number = $1`,
     [
       batchNumber,
-      summary ? JSON.stringify(summary) : null,
-      summary?.processedRows ?? 0,
-      summary?.manualReviewRows ?? 0,
+      JSON.stringify(summary),
+      summary.processedRows,
+      summary.manualReviewRows,
     ],
     executor,
   );
@@ -686,7 +675,7 @@ export const inventoryBatchesRepository = {
         throw new Error(`Batch ${params.batchNumber} not found`);
       }
 
-      if (params.mode === "full") {
+      if (params.mode !== "errors") {
         await execute(
           `DELETE FROM inventory_batch_results
           WHERE batch_number = $1`,
