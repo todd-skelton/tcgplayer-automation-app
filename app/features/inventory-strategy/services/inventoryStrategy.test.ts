@@ -153,7 +153,7 @@ assert.equal(dashboard.overall.currentPolicyValue, 53);
 assert.equal(dashboard.overall.modeledUnitCount, 2);
 assert.equal(dashboard.generatedAt, "2026-08-26T12:00:00.000Z");
 
-const mixedPlanDashboard = buildInventoryStrategyDashboard(
+const completedInventoryDashboard = buildInventoryStrategyDashboard(
   "seller",
   [
     item({
@@ -162,6 +162,26 @@ const mixedPlanDashboard = buildInventoryStrategyDashboard(
         schemaVersion: 2,
         pricingModelVersion: "exposure-share-v1",
         pricedAt: "2026-08-30T10:00:00.000Z",
+        percentileUsed: 80,
+        marketplacePrice: 16,
+        percentiles: [
+          {
+            percentile: 20,
+            suggestedPrice: 8,
+            historicalSalesVelocityDays: 2,
+            estimatedTimeToSellDays: 2.77,
+            storeWinShare: 0.5,
+            supplyStatus: "observed",
+          },
+          {
+            percentile: 80,
+            suggestedPrice: 16,
+            historicalSalesVelocityDays: 30,
+            estimatedTimeToSellDays: 41.59,
+            storeWinShare: 0.5,
+            supplyStatus: "observed",
+          },
+        ],
         shadowDecision: {
           method: "target-horizon",
           selectedPrice: 12,
@@ -180,6 +200,26 @@ const mixedPlanDashboard = buildInventoryStrategyDashboard(
         schemaVersion: 2,
         pricingModelVersion: "exposure-share-v1",
         pricedAt: "2026-08-30T10:00:00.000Z",
+        percentileUsed: 80,
+        marketplacePrice: 17,
+        percentiles: [
+          {
+            percentile: 20,
+            suggestedPrice: 9,
+            historicalSalesVelocityDays: 3,
+            estimatedTimeToSellDays: 4.16,
+            storeWinShare: 0.5,
+            supplyStatus: "observed",
+          },
+          {
+            percentile: 80,
+            suggestedPrice: 17,
+            historicalSalesVelocityDays: 40,
+            estimatedTimeToSellDays: 55.45,
+            storeWinShare: 0.5,
+            supplyStatus: "observed",
+          },
+        ],
         shadowDecision: {
           method: "target-horizon",
           selectedPrice: 13,
@@ -213,15 +253,20 @@ const mixedPlanDashboard = buildInventoryStrategyDashboard(
   ],
   config,
 );
-const mixedComparison = mixedPlanDashboard.overall.policyComparisons.find(
-  ({ key }) => key === "target-horizon-shadow",
-);
-assert.equal(mixedComparison?.planState, "mixed");
-assert.equal(mixedComparison?.modeledSkuCount, 2);
+const completedComparison =
+  completedInventoryDashboard.overall.policyComparisons.find(
+    ({ key }) => key === "target-horizon-shadow",
+  );
 assert.equal(
-  mixedComparison?.estimatedTime?.p90Days,
-  55,
-  "unavailable reference decisions do not pollute modeled time distributions",
+  completedComparison?.planState,
+  "single",
+  "the dashboard resolves one plan from complete inventory curves",
+);
+assert.equal(completedComparison?.modeledSkuCount, 2);
+assert.ok(completedComparison?.estimatedTime);
+assert.ok(
+  Math.abs((completedComparison?.oneCopyValue ?? 0) - 36) <= 0.02,
+  "the inventory-wide shadow plan matches current one-copy value",
 );
 
 console.log(

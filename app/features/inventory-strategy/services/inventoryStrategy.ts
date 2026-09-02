@@ -2,9 +2,14 @@ import type { ServerPricingConfig } from "~/features/pricing/types/config";
 import { calculateMarketplacePrice } from "~/features/pricing/services/pricingService";
 import {
   readPricingDecision,
-  readShadowPricingDecision,
+  resolveValueMatchedPortfolioPlan,
+  toPricingCurve,
 } from "~/features/pricing/domain/pricingPolicy";
 import type { PricingPercentileDetail } from "~/core/types/pricing";
+import {
+  PRICING_MODEL_VERSION,
+  type PricingDecision,
+} from "~/core/types/pricingPolicy";
 import {
   INVENTORY_STRATEGY_MAX_PERCENTILE,
   INVENTORY_STRATEGY_MIN_PERCENTILE,
@@ -48,6 +53,65 @@ interface ScenarioItem {
 
 function roundCurrency(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function constrainMarketplacePrice(
+  suggestedPrice: number,
+  item: InventoryStrategySnapshotItem,
+  config: ServerPricingConfig,
+): { price: number; constraint: "none" | "floor" } {
+  const result = calculateMarketplacePrice(
+    suggestedPrice,
+    item.marketPrice === null ? null : { marketPrice: item.marketPrice },
+    {
+      minPriceMultiplier: config.pricing.minPriceMultiplier,
+      minPriceConstant: config.pricing.minPriceConstant,
+    },
+  );
+  return {
+    price: roundCurrency(result.marketplacePrice),
+    constraint: result.warningMessage?.includes("minimum") ? "floor" : "none",
+  };
+}
+
+function resolveInventoryValueMatchedDecisions(
+  key: string,
+  items: InventoryStrategySnapshotItem[],
+  config: ServerPricingConfig,
+): ReadonlyMap<number, PricingDecision> {
+  const latestPricingAt = items.reduce<Date | null>(
+    (latest, item) =>
+      item.strategyPricedAt &&
+      (!latest || item.strategyPricedAt.getTime() > latest.getTime())
+        ? item.strategyPricedAt
+        : latest,
+    null,
+  );
+  const resolved = resolveValueMatchedPortfolioPlan(
+    items.map((item) => ({
+      sku: item.sku,
+      currentPrice: item.currentPrice ?? undefined,
+      curve: toPricingCurve(
+        item.pricingDetails?.pricingModelVersion === PRICING_MODEL_VERSION
+          ? item.pricingDetails.percentiles
+          : undefined,
+      ),
+      constraintIdentity: [
+        item.marketPrice ?? 0,
+        config.pricing.minPriceMultiplier,
+        config.pricing.minPriceConstant,
+      ].join(":"),
+      applyConstraint: (price: number) =>
+        constrainMarketplacePrice(price, item, config),
+    })),
+    {
+      cohortId: `inventory-strategy:${items[0]?.sellerKey ?? "unknown"}:${key}`,
+      ...(latestPricingAt ? { createdAt: latestPricingAt } : {}),
+    },
+  );
+  return resolved.plan.modeledSkuCount > 0
+    ? resolved.decisionsBySku
+    : new Map();
 }
 
 function weightedQuantile(values: WeightedValue[], quantile: number): number {
@@ -140,6 +204,7 @@ function buildScenario(
   scenarioItems: ScenarioItem[],
   percentile: InventoryStrategyPercentile,
   currentListedValue: number,
+  config: ServerPricingConfig,
 ): InventoryStrategyScenario {
   let listedValue = currentListedValue;
   let modeledSkuCount = 0;
@@ -155,12 +220,11 @@ function buildScenario(
       continue;
     }
 
-    const boundedPrice = roundCurrency(
-      calculateMarketplacePrice(
-        detail.suggestedPrice,
-        item.marketPrice === null ? null : { marketPrice: item.marketPrice },
-      ).marketplacePrice,
-    );
+    const boundedPrice = constrainMarketplacePrice(
+      detail.suggestedPrice,
+      item,
+      config,
+    ).price;
     const currentValue = (item.currentPrice ?? 0) * item.quantity;
     listedValue += boundedPrice * item.quantity - currentValue;
     modeledSkuCount += 1;
@@ -200,6 +264,7 @@ function buildScenario(
 
 function buildPolicyComparisons(
   items: InventoryStrategySnapshotItem[],
+  shadowDecisions: ReadonlyMap<number, PricingDecision>,
 ): InventoryStrategyPolicyComparison[] {
   const build = (
     key: InventoryStrategyPolicyComparison["key"],
@@ -211,7 +276,7 @@ function buildPolicyComparisons(
         key === "percentile"
           ? readPricingDecision(item.pricingDetails)
           : key === "target-horizon-shadow"
-            ? readShadowPricingDecision(item.pricingDetails)
+            ? shadowDecisions.get(item.sku)
             : undefined,
     }));
     if (!isCurrent && !decisions.some(({ decision }) => decision)) return null;
@@ -460,7 +525,7 @@ function buildProductLine(
   const scenarios = [...scenarioPercentiles]
     .sort((left, right) => left - right)
     .map((percentile) =>
-      buildScenario(scenarioItems, percentile, currentListedValue),
+      buildScenario(scenarioItems, percentile, currentListedValue, config),
     );
   const configuredScenario = scenarios.find(
     (scenario) => scenario.percentile === configuredPercentile,
@@ -524,7 +589,10 @@ function buildProductLine(
       )
       .sort((left, right) => left - right),
     scenarios,
-    policyComparisons: buildPolicyComparisons(items),
+    policyComparisons: buildPolicyComparisons(
+      items,
+      resolveInventoryValueMatchedDecisions(key, items, config),
+    ),
   };
 }
 
