@@ -17,10 +17,12 @@ import type {
   PricingDecision,
 } from "../domain/pricingPolicy";
 import {
+  policyParameters,
   resolveValueMatchedPortfolioPlan,
   selectPricingDecision,
   toPricingCurve,
 } from "../domain/pricingPolicy";
+import { productLinePricingPolicy } from "../types/config";
 
 function roundCurrency(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
@@ -174,35 +176,22 @@ export class PricingCalculator {
           continue;
         }
 
+        const productLineSettings =
+          config.productLinePricingConfig?.productLineSettings[
+            pricerSku.productLineId
+          ];
         // Inventory Manager batches bypass skip rules because they represent
         // explicit repricing work the user queued from live pending inventory.
-        if (
-          config.productLinePricingConfig &&
-          !pricerSku.bypassProductLineSkips
-        ) {
-          const plSettings =
-            config.productLinePricingConfig.productLineSettings[
-              pricerSku.productLineId
-            ];
-          if (plSettings?.skip) {
-            skipped++;
-            continue;
-          }
+        if (productLineSettings?.skip && !pricerSku.bypassProductLineSkips) {
+          skipped++;
+          continue;
         }
 
-        let effectivePercentile = config.percentile;
-        if (config.productLinePricingConfig) {
-          const plSettings =
-            config.productLinePricingConfig.productLineSettings[
-              pricerSku.productLineId
-            ];
-          if (plSettings && !plSettings.skip) {
-            effectivePercentile = plSettings.percentile;
-          } else if (!plSettings || plSettings.skip) {
-            effectivePercentile =
-              config.productLinePricingConfig.defaultPercentile;
-          }
-        }
+        const effectivePercentile = !config.productLinePricingConfig
+          ? config.percentile
+          : productLineSettings && !productLineSettings.skip
+            ? productLineSettings.percentile
+            : config.productLinePricingConfig.defaultPercentile;
 
         const result = await suggestedPriceResolver({
           tcgplayerId: pricerSku.sku.toString(),
@@ -245,8 +234,8 @@ export class PricingCalculator {
           percentile: effectivePercentile,
         };
         const activePolicy =
-          config.policy?.method === "target-horizon"
-            ? config.policy
+          config.policy && config.policy.method !== "percentile"
+            ? productLinePricingPolicy(config.policy, productLineSettings)
             : percentilePolicy;
         const marketplaceConstraint = createMarketplaceConstraint(
           pricePointsMap.get(pricerSku.sku) ?? null,
@@ -258,7 +247,7 @@ export class PricingCalculator {
           pricerSku.currentPrice,
           marketplaceConstraint,
         );
-        if (config.policy?.method === "target-horizon") {
+        if (activePolicy.method !== "percentile") {
           pricedItem.shadowPricingDecision =
             selectPricingDecision(
               curve,
@@ -268,7 +257,7 @@ export class PricingCalculator {
             ) ?? pricedItem.pricingDecision;
         }
         if (
-          activePolicy.method === "target-horizon" &&
+          activePolicy.method !== "percentile" &&
           activeDecision &&
           pricedItem.errors?.length === 0
         ) {
@@ -278,9 +267,18 @@ export class PricingCalculator {
           pricedItem.warnings = [];
           if (activeDecision.basis === "current-price") {
             pricedItem.warnings.push(
-              `Target-horizon forecast unavailable. Keeping the current price at $${activeDecision.selectedPrice.toFixed(2)}.`,
+              `${
+                activePolicy.method === "target-horizon"
+                  ? "Target-horizon"
+                  : "Profit-per-day"
+              } forecast unavailable. Keeping the current price at $${activeDecision.selectedPrice.toFixed(2)}.`,
             );
           } else {
+            if (activeDecision.unprofitable) {
+              pricedItem.warnings.push(
+                `No modeled price clears per-unit overhead. Listed at $${activeDecision.selectedPrice.toFixed(2)} to limit the loss.`,
+              );
+            }
             const priceResult = calculateMarketplacePrice(
               pricedItem.suggestedPrice,
               pricePointsMap.get(pricerSku.sku) ?? null,
@@ -315,17 +313,17 @@ export class PricingCalculator {
             activeDecision.listingsCount === undefined
               ? undefined
               : Math.round(activeDecision.listingsCount);
-        } else if (activePolicy.method === "target-horizon" && activeDecision) {
+        } else if (activePolicy.method !== "percentile" && activeDecision) {
           pricedItem.pricingDecision = activeDecision;
         } else if (
-          activePolicy.method === "target-horizon" &&
+          activePolicy.method !== "percentile" &&
           pricedItem.pricingDecision
         ) {
           pricedItem.pricingDecision = {
             ...pricedItem.pricingDecision,
-            method: "target-horizon",
+            method: activePolicy.method,
             configuredPercentile: undefined,
-            targetHorizonDays: activePolicy.horizonDays,
+            ...policyParameters(activePolicy),
           };
         } else if (pricedItem.pricingDecision) {
           pricedItem.pricingDecision.configuredPercentile = effectivePercentile;
@@ -424,7 +422,8 @@ export class PricingCalculator {
       (item) => (item.currentPrice ?? 0) > 0,
     );
     const shadow =
-      config.policy?.method !== "target-horizon" && hasValueMatchBaseline
+      (config.policy?.method ?? "percentile") === "percentile" &&
+      hasValueMatchBaseline
         ? resolveValueMatchedPortfolioPlan(portfolioItems, { cohortId: source })
         : undefined;
 

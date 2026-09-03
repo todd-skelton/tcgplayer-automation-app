@@ -1,6 +1,7 @@
 import type { PricingPercentileDetail } from "~/core/types/pricing";
 import { PRICING_MODEL_VERSION } from "~/core/types/pricingPolicy";
 import { logSpacedHorizons } from "./horizonValueCurve";
+import { maximizeOverCandidates } from "./maximize";
 import type {
   PortfolioPricingPlan,
   PortfolioMatchStatus,
@@ -55,6 +56,8 @@ interface PortfolioPlanOptions {
   createdAt?: Date;
   cohortId?: string;
 }
+
+type ProfitPerDayPolicy = Extract<PricingPolicy, { method: "profit-per-day" }>;
 
 const SAMPLE_COUNT = 64;
 const REFINEMENT_ITERATIONS = 32;
@@ -194,11 +197,11 @@ function pointAtPercentile(
   );
 }
 
-function pointAtHorizon(
+/** Curve points with an observed sell time, ordered fastest to slowest. */
+function observedSellTimePoints(
   curve: readonly PricingCurvePoint[],
-  horizonDays: number,
-): PricingCurvePoint | undefined {
-  const points = curve
+): Array<PricingCurvePoint & { estimatedMedianSellDays: number }> {
+  return curve
     .map((point) => ({
       ...point,
       estimatedMedianSellDays: medianSellDays(
@@ -207,25 +210,30 @@ function pointAtHorizon(
         point.estimatedMedianSellDays,
       ),
     }))
-    .filter((point) => {
-      const median = point.estimatedMedianSellDays;
-      return (
-        point.supplyStatus === "observed" &&
-        median !== undefined &&
-        Number.isFinite(median) &&
-        median > 0
-      );
-    })
+    .filter(isObservedSellTime)
     .sort(
       (left, right) =>
-        left.estimatedMedianSellDays! - right.estimatedMedianSellDays!,
+        left.estimatedMedianSellDays - right.estimatedMedianSellDays,
     );
-  if (points.length === 0) return undefined;
-  if (horizonDays <= points[0].estimatedMedianSellDays!) return points[0];
-  if (horizonDays >= points.at(-1)!.estimatedMedianSellDays!)
-    return points.at(-1);
+}
+
+function pointAtHorizon(
+  curve: readonly PricingCurvePoint[],
+  horizonDays: number,
+): PricingCurvePoint | undefined {
+  const points = observedSellTimePoints(curve);
+  return points.length === 0 ? undefined : pointAtSellTime(points, horizonDays);
+}
+
+function pointAtSellTime(
+  points: ReturnType<typeof observedSellTimePoints>,
+  horizonDays: number,
+): PricingCurvePoint {
+  if (horizonDays <= points[0].estimatedMedianSellDays) return points[0];
+  if (horizonDays >= points.at(-1)!.estimatedMedianSellDays)
+    return points.at(-1)!;
   const upperIndex = points.findIndex(
-    (point) => point.estimatedMedianSellDays! >= horizonDays,
+    (point) => point.estimatedMedianSellDays >= horizonDays,
   );
   const upper = points[upperIndex];
   const lower = points[upperIndex - 1];
@@ -262,6 +270,56 @@ function horizonRatio(
   return Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 0;
 }
 
+function netProceedsAtPrice(price: number, policy: ProfitPerDayPolicy): number {
+  return price * (1 - policy.relativeOverhead) - policy.staticOverheadPerUnit;
+}
+
+/**
+ * Point maximizing net proceeds discounted at the daily return hurdle over
+ * the median wait, so each SKU trades price against its own sell time. A
+ * loss is not discounted: when no price clears overhead the least loss wins,
+ * whatever its wait.
+ */
+function pointAtBestReturn(
+  curve: readonly PricingCurvePoint[],
+  policy: ProfitPerDayPolicy,
+): PricingCurvePoint | undefined {
+  const points = observedSellTimePoints(curve);
+  if (points.length === 0) return undefined;
+  const discountedNet = (sellDays: number): number => {
+    const net = netProceedsAtPrice(
+      pointAtSellTime(points, sellDays).price,
+      policy,
+    );
+    return net > 0 ? net * Math.exp(-policy.dailyReturnHurdle * sellDays) : net;
+  };
+  const best = maximizeOverCandidates(
+    logSpacedHorizons(
+      points[0].estimatedMedianSellDays,
+      points.at(-1)!.estimatedMedianSellDays,
+      SAMPLE_COUNT,
+    ),
+    discountedNet,
+  );
+  return best ? pointAtSellTime(points, best.argument) : undefined;
+}
+
+export function policyParameters(
+  policy: PricingPolicy,
+): Pick<
+  PricingDecision,
+  "configuredPercentile" | "targetHorizonDays" | "dailyReturnHurdle"
+> {
+  switch (policy.method) {
+    case "percentile":
+      return { configuredPercentile: policy.percentile };
+    case "target-horizon":
+      return { targetHorizonDays: policy.horizonDays };
+    case "profit-per-day":
+      return { dailyReturnHurdle: policy.dailyReturnHurdle };
+  }
+}
+
 function pointAtPrice(
   curve: readonly PricingCurvePoint[],
   price: number,
@@ -293,17 +351,16 @@ export function selectPricingDecision(
   const requestedPoint =
     policy.method === "percentile"
       ? pointAtPercentile(curve, policy.percentile)
-      : pointAtHorizon(curve, policy.horizonDays);
+      : policy.method === "target-horizon"
+        ? pointAtHorizon(curve, policy.horizonDays)
+        : pointAtBestReturn(curve, policy);
   if (!requestedPoint) {
     return currentPrice && currentPrice > 0
       ? {
           method: policy.method,
           selectedPrice: roundCurrency(currentPrice),
           unconstrainedPrice: roundCurrency(currentPrice),
-          configuredPercentile:
-            policy.method === "percentile" ? policy.percentile : undefined,
-          targetHorizonDays:
-            policy.method === "target-horizon" ? policy.horizonDays : undefined,
+          ...policyParameters(policy),
           constraint: "current-price",
           basis: "current-price",
           forecastStatus: "unavailable",
@@ -332,10 +389,11 @@ export function selectPricingDecision(
     selectedPrice,
     unconstrainedPrice: roundCurrency(requestedPoint.price),
     equivalentPercentile: finalPoint.percentile,
-    configuredPercentile:
-      policy.method === "percentile" ? policy.percentile : undefined,
-    targetHorizonDays:
-      policy.method === "target-horizon" ? policy.horizonDays : undefined,
+    ...policyParameters(policy),
+    ...(policy.method === "profit-per-day" &&
+    netProceedsAtPrice(selectedPrice, policy) <= 0
+      ? { unprofitable: true }
+      : {}),
     buyerIntervalDays: finalPoint.buyerIntervalDays,
     storeWinShare: finalPoint.storeWinShare,
     estimatedMedianSellDays: finalPoint.estimatedMedianSellDays,
@@ -494,15 +552,16 @@ function horizonBounds(items: readonly PortfolioCurveItem[]): [number, number] {
   return range ? [range.minimumDays, range.maximumDays] : [1, 365];
 }
 
-export function decisionsAtHorizon(
-  items: readonly PortfolioCurveItem[],
-  horizonDays: number,
+/** Decisions by SKU across a portfolio, under one policy or one per item. */
+export function portfolioDecisions<Item extends PortfolioCurveItem>(
+  items: readonly Item[],
+  policy: PricingPolicy | ((item: Item) => PricingPolicy),
 ): Map<number, PricingDecision> {
   return new Map(
     items.flatMap((item) => {
       const decision = selectPricingDecision(
         item.curve,
-        { method: "target-horizon", horizonDays },
+        typeof policy === "function" ? policy(item) : policy,
         item.currentPrice,
         item.applyConstraint,
       );
@@ -539,7 +598,10 @@ function findClosestHorizon(
   maximumReachableValue: number;
 } {
   const evaluate = (horizonDays: number): HorizonCandidate => {
-    const decisions = decisionsAtHorizon(items, horizonDays);
+    const decisions = portfolioDecisions(items, {
+      method: "target-horizon",
+      horizonDays,
+    });
     return { horizonDays, decisions, value: decisionValue(decisions) };
   };
   const samples = logSpacedHorizons(

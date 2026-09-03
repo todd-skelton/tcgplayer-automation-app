@@ -1,4 +1,5 @@
 import type {
+  ActivePricingPolicy,
   PortfolioPricingPlan,
   PricingDecision,
   PricingPolicy,
@@ -170,11 +171,16 @@ export type SuggestedPriceResolver = (
   input: SuggestedPriceResolverInput,
 ) => Promise<SuggestedPriceResult>;
 
+export interface ProductLineSettings {
+  percentile: number;
+  skip: boolean;
+  /** Daily return hurdle for this product line in place of the default. */
+  dailyReturnHurdle?: number;
+}
+
 export interface PricingConfig {
   percentile: number;
-  policy?:
-    | { method: "percentile" }
-    | Extract<PricingPolicy, { method: "target-horizon" }>;
+  policy?: ActivePricingPolicy;
   minPriceMultiplier?: number;
   minPriceConstant?: number;
   halfLifeDays?: number; // For time decay in pricing algorithms
@@ -188,7 +194,7 @@ export interface PricingConfig {
   };
   // Per-product-line pricing configuration
   productLinePricingConfig?: {
-    productLineSettings: Record<number, { percentile: number; skip: boolean }>;
+    productLineSettings: Record<number, ProductLineSettings>;
     defaultPercentile: number;
   };
   suggestedPriceResolver?: SuggestedPriceResolver;

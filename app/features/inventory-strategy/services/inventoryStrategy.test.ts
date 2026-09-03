@@ -274,101 +274,102 @@ assert.ok(
   "the inventory-wide shadow plan matches current one-copy value",
 );
 
+const activeHorizonItems = [
+  item({
+    sku: 20,
+    currentPrice: 15,
+    pricingDetails: {
+      schemaVersion: 2,
+      pricingModelVersion: "exposure-share-v1",
+      pricedAt: "2026-08-30T10:00:00.000Z",
+      percentileUsed: 65,
+      marketplacePrice: 15,
+      percentiles: [
+        {
+          percentile: 20,
+          suggestedPrice: 10,
+          estimatedTimeToSellDays: 10,
+          supplyStatus: "observed",
+        },
+        {
+          percentile: 65,
+          suggestedPrice: 12,
+          estimatedTimeToSellDays: 20,
+          supplyStatus: "observed",
+        },
+        {
+          percentile: 90,
+          suggestedPrice: 15,
+          estimatedTimeToSellDays: 33.5,
+          supplyStatus: "observed",
+        },
+      ],
+      policy: { method: "target-horizon", horizonDays: 33.5 },
+      decision: {
+        method: "target-horizon",
+        selectedPrice: 15,
+        targetHorizonDays: 33.5,
+        estimatedMedianSellDays: 33.5,
+        constraint: "none",
+        basis: "modeled",
+        forecastStatus: "interpolated",
+      },
+      shadowDecision: {
+        method: "percentile",
+        selectedPrice: 12,
+        configuredPercentile: 65,
+        estimatedMedianSellDays: 20,
+        constraint: "none",
+        basis: "modeled",
+        forecastStatus: "interpolated",
+      },
+    },
+  }),
+  item({
+    sku: 21,
+    currentPrice: 12,
+    pricingDetails: {
+      schemaVersion: 2,
+      pricingModelVersion: "exposure-share-v1",
+      pricedAt: "2026-08-29T10:00:00.000Z",
+      percentileUsed: 65,
+      marketplacePrice: 12,
+      percentiles: [
+        {
+          percentile: 20,
+          suggestedPrice: 10,
+          estimatedTimeToSellDays: 10,
+          supplyStatus: "observed",
+        },
+        {
+          percentile: 65,
+          suggestedPrice: 12,
+          estimatedTimeToSellDays: 20,
+          supplyStatus: "observed",
+        },
+        {
+          percentile: 90,
+          suggestedPrice: 15,
+          estimatedTimeToSellDays: 33.5,
+          supplyStatus: "observed",
+        },
+      ],
+      policy: { method: "percentile", percentile: 65 },
+      decision: {
+        method: "percentile",
+        selectedPrice: 12,
+        configuredPercentile: 65,
+        estimatedMedianSellDays: 20,
+        constraint: "none",
+        basis: "modeled",
+        forecastStatus: "interpolated",
+      },
+    },
+  }),
+];
 const activeHorizonDashboard = buildInventoryStrategyDashboard(
   "seller",
-  [
-    item({
-      sku: 20,
-      currentPrice: 15,
-      pricingDetails: {
-        schemaVersion: 2,
-        pricingModelVersion: "exposure-share-v1",
-        pricedAt: "2026-08-30T10:00:00.000Z",
-        percentileUsed: 65,
-        marketplacePrice: 15,
-        percentiles: [
-          {
-            percentile: 20,
-            suggestedPrice: 10,
-            estimatedTimeToSellDays: 10,
-            supplyStatus: "observed",
-          },
-          {
-            percentile: 65,
-            suggestedPrice: 12,
-            estimatedTimeToSellDays: 20,
-            supplyStatus: "observed",
-          },
-          {
-            percentile: 90,
-            suggestedPrice: 15,
-            estimatedTimeToSellDays: 33.5,
-            supplyStatus: "observed",
-          },
-        ],
-        policy: { method: "target-horizon", horizonDays: 33.5 },
-        decision: {
-          method: "target-horizon",
-          selectedPrice: 15,
-          targetHorizonDays: 33.5,
-          estimatedMedianSellDays: 33.5,
-          constraint: "none",
-          basis: "modeled",
-          forecastStatus: "interpolated",
-        },
-        shadowDecision: {
-          method: "percentile",
-          selectedPrice: 12,
-          configuredPercentile: 65,
-          estimatedMedianSellDays: 20,
-          constraint: "none",
-          basis: "modeled",
-          forecastStatus: "interpolated",
-        },
-      },
-    }),
-    item({
-      sku: 21,
-      currentPrice: 12,
-      pricingDetails: {
-        schemaVersion: 2,
-        pricingModelVersion: "exposure-share-v1",
-        pricedAt: "2026-08-29T10:00:00.000Z",
-        percentileUsed: 65,
-        marketplacePrice: 12,
-        percentiles: [
-          {
-            percentile: 20,
-            suggestedPrice: 10,
-            estimatedTimeToSellDays: 10,
-            supplyStatus: "observed",
-          },
-          {
-            percentile: 65,
-            suggestedPrice: 12,
-            estimatedTimeToSellDays: 20,
-            supplyStatus: "observed",
-          },
-          {
-            percentile: 90,
-            suggestedPrice: 15,
-            estimatedTimeToSellDays: 33.5,
-            supplyStatus: "observed",
-          },
-        ],
-        policy: { method: "percentile", percentile: 65 },
-        decision: {
-          method: "percentile",
-          selectedPrice: 12,
-          configuredPercentile: 65,
-          estimatedMedianSellDays: 20,
-          constraint: "none",
-          basis: "modeled",
-          forecastStatus: "interpolated",
-        },
-      },
-    }),
-  ],
+  activeHorizonItems,
   {
     ...config,
     pricing: {
@@ -385,6 +386,102 @@ const percentileBenchmark =
   activeHorizonDashboard.overall.policyComparisons.find(
     ({ key }) => key === "percentile",
   );
+const profitPerDayBenchmark =
+  activeHorizonDashboard.overall.policyComparisons.find(
+    ({ key }) => key === "profit-per-day",
+  );
+assert.equal(profitPerDayBenchmark?.role, "benchmark");
+assert.equal(profitPerDayBenchmark?.planState, "none");
+assert.ok(
+  profitPerDayBenchmark?.label.startsWith("Profit per day at 0.50%/day hurdle"),
+  profitPerDayBenchmark?.label,
+);
+assert.equal(profitPerDayBenchmark?.modeledSkuCount, 2);
+const activeProfitPerDayDashboard = buildInventoryStrategyDashboard(
+  "seller",
+  activeHorizonItems,
+  {
+    ...config,
+    pricing: { ...config.pricing, policy: { method: "profit-per-day" } },
+  },
+);
+const activeProfitPerDayRows = Object.fromEntries(
+  activeProfitPerDayDashboard.overall.policyComparisons.map((comparison) => [
+    comparison.key,
+    comparison,
+  ]),
+);
+assert.equal(activeProfitPerDayRows["profit-per-day"]?.role, "active");
+assert.equal(
+  activeProfitPerDayRows["profit-per-day"]?.label,
+  "Profit per day at 0.50%/day hurdle",
+);
+assert.equal(
+  activeProfitPerDayRows.percentile?.label,
+  "Configured percentile (benchmark)",
+);
+assert.equal(
+  activeProfitPerDayRows["target-horizon-shadow"]?.role,
+  "calibration",
+);
+assert.equal(
+  activeProfitPerDayRows["target-horizon-shadow"]?.label,
+  "Value-matched horizon (calibration)",
+);
+assert.deepEqual(activeProfitPerDayDashboard.policy, {
+  method: "profit-per-day",
+});
+const productLineHurdleDashboard = buildInventoryStrategyDashboard(
+  "seller",
+  [
+    ...activeHorizonItems,
+    item({
+      sku: 30,
+      productLineId: 5,
+      productLine: "Magic",
+      pricingDetails: {
+        schemaVersion: 2,
+        pricingModelVersion: "exposure-share-v1",
+        pricedAt: "2026-08-29T10:00:00.000Z",
+        percentiles: [
+          {
+            percentile: 20,
+            suggestedPrice: 10,
+            estimatedTimeToSellDays: 10,
+            supplyStatus: "observed",
+          },
+          {
+            percentile: 90,
+            suggestedPrice: 15,
+            estimatedTimeToSellDays: 33.5,
+            supplyStatus: "observed",
+          },
+        ],
+      },
+    }),
+  ],
+  {
+    ...config,
+    pricing: { ...config.pricing, policy: { method: "profit-per-day" } },
+    productLinePricing: {
+      ...config.productLinePricing,
+      productLineSettings: {
+        ...config.productLinePricing.productLineSettings,
+        3: { percentile: 80, skip: false, dailyReturnHurdle: 0.05 },
+      },
+    },
+  },
+);
+const profitPerDayLabel = (productLineId: number | null) =>
+  (productLineId === null
+    ? productLineHurdleDashboard.overall
+    : productLineHurdleDashboard.productLines.find(
+        (productLine) => productLine.productLineId === productLineId,
+      )
+  )?.policyComparisons.find(({ key }) => key === "profit-per-day")?.label;
+assert.equal(profitPerDayLabel(3), "Profit per day at 5.00%/day hurdle");
+assert.equal(profitPerDayLabel(5), "Profit per day at 0.50%/day hurdle");
+assert.equal(profitPerDayLabel(null), "Profit per day at product-line hurdles");
 assert.equal(activeHorizonComparison?.role, "active");
 assert.equal(activeHorizonComparison?.oneCopyValue, 24);
 assert.equal(activeHorizonComparison?.planState, "single");

@@ -107,25 +107,23 @@ const fitConfidenceColor = {
   unavailable: "default",
 } as const;
 
-const DEFAULT_CAPITAL_CYCLE_ECONOMICS: CapitalCycleEconomics = {
+/** Cycle inputs the reader can vary; overhead comes from the profit-per-day settings. */
+type CapitalCycleInputs = Pick<
+  CapitalCycleEconomics,
+  "costRatio" | "turnaroundDays"
+>;
+
+const DEFAULT_CAPITAL_CYCLE_INPUTS: CapitalCycleInputs = {
   costRatio: 0.72,
-  relativeOverhead: 0.15,
-  staticOverheadPerUnit: 0.3,
   turnaroundDays: 28,
 };
 
 const CAPITAL_CYCLE_FIELDS: Array<{
-  key: keyof CapitalCycleEconomics;
+  key: keyof CapitalCycleInputs;
   label: string;
   step: number;
 }> = [
   { key: "costRatio", label: "Cost basis (share of market)", step: 0.01 },
-  { key: "relativeOverhead", label: "Relative overhead", step: 0.01 },
-  {
-    key: "staticOverheadPerUnit",
-    label: "Static overhead per item",
-    step: 0.05,
-  },
   { key: "turnaroundDays", label: "Turnaround days", step: 1 },
 ];
 
@@ -363,7 +361,15 @@ export default function InventoryStrategyRoute() {
   const fetcher = useFetcher<ActionData>();
   const revalidator = useRevalidator();
   const [selections, setSelections] = useState<Record<string, number>>({});
-  const [economics, setEconomics] = useState(DEFAULT_CAPITAL_CYCLE_ECONOMICS);
+  const [cycleInputs, setCycleInputs] = useState(DEFAULT_CAPITAL_CYCLE_INPUTS);
+  const economics = useMemo<CapitalCycleEconomics>(
+    () => ({
+      ...cycleInputs,
+      relativeOverhead: dashboard.profitPerDay.relativeOverhead,
+      staticOverheadPerUnit: dashboard.profitPerDay.staticOverheadPerUnit,
+    }),
+    [cycleInputs, dashboard.profitPerDay],
+  );
   const busy = fetcher.state !== "idle";
   const analysisActive =
     latestAnalysis?.status === "queued" || latestAnalysis?.status === "pricing";
@@ -434,6 +440,16 @@ export default function InventoryStrategyRoute() {
   const showValueMatchedColumn = allProductLines.some(
     (productLine) => productLine.valueMatchedHorizonDays !== null,
   );
+  const impliedDailyReturn = useMemo(() => {
+    const model = dashboard.overall.horizonModel;
+    if (!model?.curve) return null;
+    const portfolio = cyclePortfolio(dashboard.overall);
+    const days = bestCycleHorizonDays(model.curve, portfolio, economics, model);
+    return days === undefined
+      ? null
+      : capitalCycleAtHorizon(model.curve, portfolio, economics, days)
+          .dailyReturn;
+  }, [dashboard.overall, economics]);
 
   const submit = (intent: "refresh_inventory" | "queue_analysis") =>
     fetcher.submit(
@@ -643,9 +659,9 @@ export default function InventoryStrategyRoute() {
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             Profit per day takes overhead off the sale, recovers the cost basis
             as a share of market value, and divides by horizon plus turnaround.
-            Best cycle is the horizon that maximizes it. Horizons shorter than
-            most SKUs&apos; fastest sell time overstate how quickly a cycle
-            completes.
+            Best cycle is the horizon that maximizes it. Overhead comes from the
+            profit-per-day settings. Horizons shorter than most SKUs&apos;
+            fastest sell time overstate how quickly a cycle completes.
           </Typography>
           <Stack
             direction="row"
@@ -660,12 +676,12 @@ export default function InventoryStrategyRoute() {
                 size="small"
                 type="number"
                 label={field.label}
-                value={economics[field.key]}
+                value={cycleInputs[field.key]}
                 inputProps={{ min: 0, step: field.step }}
                 onChange={(event) => {
                   const value = Number(event.target.value);
                   if (Number.isFinite(value) && value >= 0) {
-                    setEconomics((current) => ({
+                    setCycleInputs((current) => ({
                       ...current,
                       [field.key]: value,
                     }));
@@ -674,6 +690,18 @@ export default function InventoryStrategyRoute() {
               />
             ))}
           </Stack>
+          <Typography variant="body2" sx={{ mt: 2 }}>
+            {!dashboard.overall.horizonModel?.curve
+              ? "All listed inventory has no horizon model yet."
+              : impliedDailyReturn === null
+                ? "No profitable cycle on all listed inventory at these inputs."
+                : !Number.isFinite(impliedDailyReturn)
+                  ? "The best cycle on all listed inventory has no cost basis, so its return is unbounded."
+                  : `The best cycle on all listed inventory compounds capital at ${(impliedDailyReturn * 100).toFixed(2)}% per day.`}{" "}
+            The default profit-per-day hurdle is configured at{" "}
+            {(dashboard.profitPerDay.dailyReturnHurdle * 100).toFixed(2)}% per
+            day.
+          </Typography>
         </Box>
         <TableContainer>
           <Table size="small" sx={{ minWidth: 1200 }}>

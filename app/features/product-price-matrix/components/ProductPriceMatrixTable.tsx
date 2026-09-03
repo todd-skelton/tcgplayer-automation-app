@@ -476,14 +476,19 @@ export function ProductPriceMatrixTable({
                       <Typography variant="body2" fontWeight={700}>
                         {cell.pricingDecision.method === "percentile"
                           ? `${cell.pricingDecision.configuredPercentile ?? cell.percentileUsed}th percentile`
-                          : `${formatDays(cell.pricingDecision.targetHorizonDays)} target`}
+                          : cell.pricingDecision.method === "target-horizon"
+                            ? `${formatDays(cell.pricingDecision.targetHorizonDays)} target`
+                            : `${((cell.pricingDecision.dailyReturnHurdle ?? 0) * 100).toFixed(2)}%/day hurdle`}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {cell.pricingDecision.basis.replaceAll("-", " ")}
+                        {cell.pricingDecision.unprofitable
+                          ? ", below overhead"
+                          : ""}
                       </Typography>
                       {cell.pricingDecision.equivalentPercentile !==
                         undefined &&
-                        cell.pricingDecision.method === "target-horizon" && (
+                        cell.pricingDecision.method !== "percentile" && (
                           <Typography variant="caption" color="text.secondary">
                             ≈{" "}
                             {cell.pricingDecision.equivalentPercentile.toFixed(

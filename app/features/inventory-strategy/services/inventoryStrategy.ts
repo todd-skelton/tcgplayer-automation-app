@@ -1,12 +1,17 @@
-import type { ServerPricingConfig } from "~/features/pricing/types/config";
+import {
+  activePricingPolicy,
+  productLinePricingPolicy,
+  profitPerDayPolicy,
+  type ActivePricingPolicy,
+  type ServerPricingConfig,
+} from "~/features/pricing/types/config";
 import { calculateMarketplacePrice } from "~/features/pricing/services/pricingService";
 import {
-  decisionsAtHorizon,
   observedHorizonRange,
+  portfolioDecisions,
   readPricingDecision,
   readShadowPricingDecision,
   resolveValueMatchedPortfolioPlan,
-  selectPricingDecision,
   toPricingCurve,
   type PortfolioCurveItem,
 } from "~/features/pricing/domain/pricingPolicy";
@@ -88,6 +93,7 @@ function constrainMarketplacePrice(
 }
 
 interface StrategyPortfolioItem extends PortfolioCurveItem {
+  productLineId: number;
   quantity: number;
 }
 
@@ -97,6 +103,7 @@ function toPortfolioItems(
 ): StrategyPortfolioItem[] {
   return items.map((item) => ({
     sku: item.sku,
+    productLineId: item.productLineId,
     quantity: item.quantity,
     currentPrice: item.currentPrice ?? undefined,
     curve: toPricingCurve(
@@ -129,20 +136,10 @@ function resolveInventoryHorizonDecisions(
   portfolioItems: readonly StrategyPortfolioItem[],
   config: ServerPricingConfig,
 ): InventoryHorizonDecisions {
-  const policy = config.pricing.policy;
+  const policy = activePricingPolicy(config.pricing);
   if (policy.method === "target-horizon") {
     return {
-      decisions: new Map(
-        portfolioItems.flatMap((item) => {
-          const decision = selectPricingDecision(
-            item.curve,
-            policy,
-            item.currentPrice,
-            item.applyConstraint,
-          );
-          return decision ? [[item.sku, decision] as const] : [];
-        }),
-      ),
+      decisions: portfolioDecisions(portfolioItems, policy),
       valueMatchedHorizonDays: null,
     };
   }
@@ -314,10 +311,17 @@ function buildScenario(
   };
 }
 
+const ROW_POLICY_METHOD = {
+  percentile: "percentile",
+  "target-horizon-shadow": "target-horizon",
+  "profit-per-day": "profit-per-day",
+} as const;
+
 function buildPolicyComparisons(
   items: InventoryStrategySnapshotItem[],
-  calibratedHorizonDecisions: ReadonlyMap<number, PricingDecision>,
-  activePolicy: ServerPricingConfig["pricing"]["policy"],
+  horizonDecisions: ReadonlyMap<number, PricingDecision>,
+  profitPerDayDecisions: ReadonlyMap<number, PricingDecision>,
+  activePolicy: ActivePricingPolicy,
 ): InventoryStrategyPolicyComparison[] {
   const build = (
     key: InventoryStrategyPolicyComparison["key"],
@@ -340,8 +344,10 @@ function buildPolicyComparisons(
                 activeDecision?.method === "target-horizon" &&
                 activeDecision.targetHorizonDays === activePolicy.horizonDays
                 ? activeDecision
-                : calibratedHorizonDecisions.get(item.sku)
-              : undefined,
+                : horizonDecisions.get(item.sku)
+              : key === "profit-per-day"
+                ? profitPerDayDecisions.get(item.sku)
+                : undefined,
       };
     });
     if (!isCurrent && !decisions.some(({ decision }) => decision)) return null;
@@ -354,6 +360,7 @@ function buildPolicyComparisons(
     let heldCount = 0;
     const timeValues: WeightedValue[] = [];
     const targetHorizons = new Set<number>();
+    const hurdles = new Set<number>();
     const planIds = new Set<string>();
     const planMatchStatuses = new Set<
       "matched" | "boundary" | "infeasible"
@@ -383,6 +390,8 @@ function buildPolicyComparisons(
         }
         if (decision.targetHorizonDays !== undefined)
           targetHorizons.add(decision.targetHorizonDays);
+        if (decision.dailyReturnHurdle !== undefined)
+          hurdles.add(decision.dailyReturnHurdle);
         if (decision.planId) planIds.add(decision.planId);
         if (decision.planMatchStatus)
           planMatchStatuses.add(decision.planMatchStatus);
@@ -391,28 +400,37 @@ function buildPolicyComparisons(
       }
     }
 
+    const [profitPerDayHurdle] = hurdles;
+    const role: InventoryStrategyPolicyComparison["role"] =
+      key === "current"
+        ? "current"
+        : ROW_POLICY_METHOD[key] === activePolicy.method
+          ? "active"
+          : key === "target-horizon-shadow"
+            ? "calibration"
+            : "benchmark";
+    const label =
+      key === "current"
+        ? "Current listed prices"
+        : key === "percentile"
+          ? "Configured percentile"
+          : key === "target-horizon-shadow"
+            ? activePolicy.method === "target-horizon"
+              ? `Target horizon (${activePolicy.horizonDays.toFixed(1)} days)`
+              : "Value-matched horizon"
+            : hurdles.size > 1
+              ? "Profit per day at product-line hurdles"
+              : `Profit per day at ${(profitPerDayHurdle * 100).toFixed(
+                  2,
+                )}%/day hurdle`;
+
     return {
       key,
       label:
-        key === "current"
-          ? "Current listed prices"
-          : key === "percentile"
-            ? activePolicy.method === "percentile"
-              ? "Configured percentile"
-              : "Configured percentile (benchmark)"
-            : activePolicy.method === "target-horizon"
-              ? `Target horizon (${activePolicy.horizonDays.toFixed(1)} days)`
-              : "Value-matched horizon (calibration)",
-      role:
-        key === "current"
-          ? "current"
-          : key === "percentile"
-            ? activePolicy.method === "percentile"
-              ? "active"
-              : "benchmark"
-            : activePolicy.method === "target-horizon"
-              ? "active"
-              : "calibration",
+        role === "benchmark" || role === "calibration"
+          ? `${label} (${role})`
+          : label,
+      role,
       planState:
         planIds.size > 1 || targetHorizons.size > 1
           ? "mixed"
@@ -437,7 +455,14 @@ function buildPolicyComparisons(
     };
   };
 
-  return (["current", "percentile", "target-horizon-shadow"] as const)
+  return (
+    [
+      "current",
+      "percentile",
+      "target-horizon-shadow",
+      "profit-per-day",
+    ] as const
+  )
     .map(build)
     .filter(
       (comparison): comparison is InventoryStrategyPolicyComparison =>
@@ -535,7 +560,10 @@ function evaluateHorizonValue(
   portfolioItems: readonly StrategyPortfolioItem[],
   horizonDays: number,
 ): number {
-  const decisions = decisionsAtHorizon(portfolioItems, horizonDays);
+  const decisions = portfolioDecisions(portfolioItems, {
+    method: "target-horizon",
+    horizonDays,
+  });
   return roundCurrency(
     portfolioItems.reduce(
       (sum, item) =>
@@ -732,7 +760,13 @@ function buildProductLine(
     policyComparisons: buildPolicyComparisons(
       items,
       horizonDecisions.decisions,
-      config.pricing.policy,
+      portfolioDecisions(portfolioItems, (item) =>
+        productLinePricingPolicy(
+          profitPerDayPolicy(config.pricing.profitPerDay),
+          config.productLinePricing.productLineSettings[item.productLineId],
+        ),
+      ),
+      activePricingPolicy(config.pricing),
     ),
     valueMatchedHorizonDays: horizonDecisions.valueMatchedHorizonDays,
     horizonModel: buildHorizonModel(portfolioItems),
@@ -809,6 +843,7 @@ export function buildInventoryStrategyDashboard(
     sellerKey,
     generatedAt: generatedAt.toISOString(),
     policy: config.pricing.policy,
+    profitPerDay: config.pricing.profitPerDay,
     overall,
     productLines,
   };

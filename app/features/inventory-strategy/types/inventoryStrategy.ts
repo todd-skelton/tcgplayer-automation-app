@@ -1,6 +1,9 @@
 import type { PersistedPricingDetails } from "~/core/types/pricing";
 import type { HorizonValueCurve } from "~/features/pricing/domain/horizonValueCurve";
-import type { PricingPolicyConfig } from "~/features/pricing/types/config";
+import type {
+  PricingPolicyConfig,
+  ProfitPerDaySettings,
+} from "~/features/pricing/types/config";
 
 export const INVENTORY_STRATEGY_HORIZON_DAYS = [7, 14, 30, 60, 90, 180, 365];
 
@@ -65,7 +68,7 @@ export interface InventoryStrategyScenario {
 }
 
 export interface InventoryStrategyPolicyComparison {
-  key: "current" | "percentile" | "target-horizon-shadow";
+  key: "current" | "percentile" | "target-horizon-shadow" | "profit-per-day";
   label: string;
   role: "current" | "active" | "benchmark" | "calibration";
   planState: "none" | "single" | "mixed";
@@ -128,6 +131,7 @@ export interface InventoryStrategyDashboard {
   sellerKey: string;
   generatedAt: string;
   policy: PricingPolicyConfig;
+  profitPerDay: ProfitPerDaySettings;
   overall: InventoryStrategyProductLine;
   productLines: InventoryStrategyProductLine[];
 }

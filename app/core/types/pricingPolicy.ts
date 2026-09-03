@@ -19,7 +19,20 @@ export type PricingSupplyStatus =
 
 export type PricingPolicy =
   | { method: "percentile"; percentile: number }
-  | { method: "target-horizon"; horizonDays: number };
+  | { method: "target-horizon"; horizonDays: number }
+  | {
+      method: "profit-per-day";
+      /** Fraction of capital earned per day when proceeds are redeployed. */
+      dailyReturnHurdle: number;
+      /** Overhead as a fraction of sale price. */
+      relativeOverhead: number;
+      /** Overhead in dollars per unit sold. */
+      staticOverheadPerUnit: number;
+    };
+
+/** The stored choice with its settings resolved; percentile stays per product line. */
+export type ActivePricingPolicy =
+  { method: "percentile" } | Exclude<PricingPolicy, { method: "percentile" }>;
 
 export type PricingConstraint =
   | "none"
@@ -47,6 +60,9 @@ export interface PricingDecision {
   equivalentPercentile?: number;
   configuredPercentile?: number;
   targetHorizonDays?: number;
+  dailyReturnHurdle?: number;
+  /** Net proceeds at the selected price do not clear per-unit overhead. */
+  unprofitable?: boolean;
   buyerIntervalDays?: number;
   storeWinShare?: number;
   estimatedMedianSellDays?: number;

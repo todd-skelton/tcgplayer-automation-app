@@ -1,3 +1,4 @@
+import { profitPerDayPolicy } from "~/features/pricing/types/config";
 import {
   continuousPricingRepository,
   inventoryBatchPricingJobsRepository,
@@ -108,15 +109,21 @@ function buildPricingDetails(
             method: "target-horizon",
             horizonDays: pricedSku.pricingDecision.targetHorizonDays,
           }
-        : pricedSku.pricingDecision?.method === "percentile"
+        : pricedSku.pricingDecision?.method === "profit-per-day" &&
+            pricedSku.pricingDecision.dailyReturnHurdle !== undefined
           ? {
-              method: "percentile",
-              percentile:
-                pricedSku.pricingDecision.configuredPercentile ??
-                pricedSku.percentileUsed ??
-                job.config.productLinePricing.defaultPercentile,
+              ...profitPerDayPolicy(job.config.pricing.profitPerDay),
+              dailyReturnHurdle: pricedSku.pricingDecision.dailyReturnHurdle,
             }
-          : undefined,
+          : pricedSku.pricingDecision?.method === "percentile"
+            ? {
+                method: "percentile",
+                percentile:
+                  pricedSku.pricingDecision.configuredPercentile ??
+                  pricedSku.percentileUsed ??
+                  job.config.productLinePricing.defaultPercentile,
+              }
+            : undefined,
     decision: pricedSku.pricingDecision,
     shadowDecision: pricedSku.shadowPricingDecision,
   };

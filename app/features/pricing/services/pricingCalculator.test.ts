@@ -214,6 +214,105 @@ console.log(
   "PASS target horizon keeps current price when forecasting is unavailable",
 );
 
+const twoPointResolver = async () => ({
+  suggestedPrice: 14,
+  percentiles: [
+    {
+      percentile: 5,
+      price: 10,
+      estimatedTimeToSellMs: 10 * 24 * 60 * 60 * 1000,
+      supplyStatus: "observed" as const,
+    },
+    {
+      percentile: 65,
+      price: 14,
+      estimatedTimeToSellMs: 30 * 24 * 60 * 60 * 1000,
+      supplyStatus: "observed" as const,
+    },
+  ],
+});
+const priceProfitPerDay = (
+  sku: number,
+  dailyReturnHurdle: number,
+  overrides: Partial<Parameters<typeof calculator.calculatePrices>[1]> & {
+    staticOverheadPerUnit?: number;
+  } = {},
+) => {
+  const { staticOverheadPerUnit = 0.3, ...config } = overrides;
+  return calculator.calculatePrices(
+    [
+      {
+        sku,
+        quantity: 1,
+        currentPrice: 20,
+        productLineId: 1,
+        setId: 2,
+        productId: 3,
+      },
+    ],
+    {
+      percentile: 65,
+      policy: {
+        method: "profit-per-day",
+        dailyReturnHurdle,
+        relativeOverhead: 0.15,
+        staticOverheadPerUnit,
+      },
+      suggestedPriceResolver: twoPointResolver,
+      ...config,
+    },
+  );
+};
+
+const profitPerDayResult = await priceProfitPerDay(459, 0.05);
+assert.equal(profitPerDayResult.pricedItems[0]?.price, 10);
+assert.equal(
+  profitPerDayResult.pricedItems[0]?.pricingDecision?.method,
+  "profit-per-day",
+);
+assert.equal(
+  profitPerDayResult.pricedItems[0]?.pricingDecision?.dailyReturnHurdle,
+  0.05,
+);
+assert.equal(
+  profitPerDayResult.pricedItems[0]?.shadowPricingDecision?.method,
+  "percentile",
+);
+assert.equal(profitPerDayResult.shadowPortfolioPlan, undefined);
+
+console.log("PASS profit per day prices each SKU by discounted net proceeds");
+
+const lossLimitingResult = await priceProfitPerDay(460, 0.005, {
+  staticOverheadPerUnit: 20,
+});
+assert.equal(lossLimitingResult.pricedItems[0]?.price, 14);
+assert.equal(
+  lossLimitingResult.pricedItems[0]?.pricingDecision?.unprofitable,
+  true,
+);
+assert.equal(
+  lossLimitingResult.pricedItems[0]?.warnings?.[0],
+  "No modeled price clears per-unit overhead. Listed at $14.00 to limit the loss.",
+);
+
+console.log("PASS profit per day lists at the least loss and says so");
+
+const productLineHurdleResult = await priceProfitPerDay(461, 0.001, {
+  productLinePricingConfig: {
+    defaultPercentile: 65,
+    productLineSettings: {
+      1: { percentile: 65, skip: false, dailyReturnHurdle: 0.05 },
+    },
+  },
+});
+assert.equal(productLineHurdleResult.pricedItems[0]?.price, 10);
+assert.equal(
+  productLineHurdleResult.pricedItems[0]?.pricingDecision?.dailyReturnHurdle,
+  0.05,
+);
+
+console.log("PASS a product line hurdle overrides the default hurdle");
+
 const unavailableSupplyResult = await calculator.calculatePrices(
   [
     {

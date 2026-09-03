@@ -3,6 +3,7 @@ import type {
   PricingConfig,
   ProcessingSummary,
   PricerSku,
+  ProductLineSettings,
   TcgPlayerListing,
   ProcessingProgress,
 } from "../../../core/types/pricing";
@@ -35,7 +36,7 @@ export interface PipelineConfig extends PricingConfig {
   isCancelled?: () => boolean;
   // Per-product-line pricing configuration (passed through to PricingCalculator)
   productLinePricingConfig?: {
-    productLineSettings: Record<number, { percentile: number; skip: boolean }>;
+    productLineSettings: Record<number, ProductLineSettings>;
     defaultPercentile: number;
   };
 }

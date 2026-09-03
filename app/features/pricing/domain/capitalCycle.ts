@@ -3,6 +3,7 @@ import {
   logSpacedHorizons,
   type HorizonValueCurve,
 } from "./horizonValueCurve";
+import { maximizeOverCandidates } from "./maximize";
 
 /** Seller economics that turn sale value at a horizon into return on capital. */
 export interface CapitalCycleEconomics {
@@ -26,11 +27,11 @@ export interface CapitalCycle {
   profit: number;
   cycleDays: number;
   profitPerDay: number;
+  /** Continuous rate per cycle day at which the cycle grows its capital. */
+  dailyReturn: number;
 }
 
-const OPTIMUM_GRID_COUNT = 128;
-const GOLDEN_RATIO = (Math.sqrt(5) - 1) / 2;
-const REFINEMENT_ITERATIONS = 24;
+const BEST_CYCLE_GRID_COUNT = 128;
 
 /**
  * One capital cycle at a target horizon: sell at the modeled value, pay
@@ -46,21 +47,21 @@ export function capitalCycleAtHorizon(
   const netProceeds =
     horizonValue(curve, horizonDays) * (1 - economics.relativeOverhead) -
     economics.staticOverheadPerUnit * portfolio.unitCount;
-  const profit = netProceeds - economics.costRatio * portfolio.marketValue;
+  const cost = economics.costRatio * portfolio.marketValue;
+  const profit = netProceeds - cost;
   const cycleDays = horizonDays + economics.turnaroundDays;
   return {
     netProceeds,
     profit,
     cycleDays,
     profitPerDay: cycleDays > 0 ? profit / cycleDays : 0,
+    dailyReturn: cycleDays > 0 ? Math.log(netProceeds / cost) / cycleDays : 0,
   };
 }
 
 /**
  * Horizon that maximizes profit per day of cycle within the observed range,
- * or undefined when no horizon in the range turns a profit. Profit per day
- * can carry more than one local peak, so a log-spaced grid finds the best
- * region first and a golden-section pass sharpens it.
+ * or undefined when no horizon in the range turns a profit.
  */
 export function bestCycleHorizonDays(
   curve: HorizonValueCurve,
@@ -68,28 +69,15 @@ export function bestCycleHorizonDays(
   economics: CapitalCycleEconomics,
   range: { minimumHorizonDays: number; maximumHorizonDays: number },
 ): number | undefined {
-  const profitPerDay = (horizonDays: number) =>
-    capitalCycleAtHorizon(curve, portfolio, economics, horizonDays)
-      .profitPerDay;
-  const grid = logSpacedHorizons(
-    range.minimumHorizonDays,
-    range.maximumHorizonDays,
-    OPTIMUM_GRID_COUNT,
+  const best = maximizeOverCandidates(
+    logSpacedHorizons(
+      range.minimumHorizonDays,
+      range.maximumHorizonDays,
+      BEST_CYCLE_GRID_COUNT,
+    ),
+    (horizonDays) =>
+      capitalCycleAtHorizon(curve, portfolio, economics, horizonDays)
+        .profitPerDay,
   );
-  const profits = grid.map(profitPerDay);
-  const bestIndex = profits.indexOf(Math.max(...profits));
-  if (!(profits[bestIndex] > 0)) return undefined;
-
-  let low = Math.log(grid[Math.max(0, bestIndex - 1)]);
-  let high = Math.log(grid[Math.min(grid.length - 1, bestIndex + 1)]);
-  for (let iteration = 0; iteration < REFINEMENT_ITERATIONS; iteration += 1) {
-    const lower = high - GOLDEN_RATIO * (high - low);
-    const upper = low + GOLDEN_RATIO * (high - low);
-    if (profitPerDay(Math.exp(lower)) < profitPerDay(Math.exp(upper))) {
-      low = lower;
-    } else {
-      high = upper;
-    }
-  }
-  return Math.exp((low + high) / 2);
+  return best && best.value > 0 ? best.argument : undefined;
 }

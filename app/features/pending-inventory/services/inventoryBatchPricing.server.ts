@@ -25,7 +25,10 @@ import type {
   InventoryBatchItem,
   InventoryBatchPricingMode,
 } from "../types/inventoryBatch";
-import type { ServerPricingConfig } from "~/features/pricing/types/config";
+import {
+  activePricingPolicy,
+  type ServerPricingConfig,
+} from "~/features/pricing/types/config";
 import { PRICING_MODEL_VERSION } from "~/core/types/pricingPolicy";
 import {
   selectPricingDecision,
@@ -546,7 +549,7 @@ export async function executeInventoryBatchPricingJob({
     sourceSkus,
     {
       percentile: config.productLinePricing.defaultPercentile,
-      policy: config.pricing.policy,
+      policy: activePricingPolicy(config.pricing),
       minPriceMultiplier: config.pricing.minPriceMultiplier,
       minPriceConstant: config.pricing.minPriceConstant,
       enableSupplyAnalysis: config.supplyAnalysis.enableSupplyAnalysis,

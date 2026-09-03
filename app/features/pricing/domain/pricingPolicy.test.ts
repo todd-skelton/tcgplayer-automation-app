@@ -132,6 +132,71 @@ assert.equal(
   "horizons above the slowest point pin to that point",
 );
 
+const profitPerDay = (
+  dailyReturnHurdle: number,
+  staticOverheadPerUnit = 0.3,
+) => ({
+  method: "profit-per-day" as const,
+  dailyReturnHurdle,
+  relativeOverhead: 0.15,
+  staticOverheadPerUnit,
+});
+const patientReturn = selectPricingDecision(identityCurve, profitPerDay(0.001));
+assert.equal(
+  patientReturn?.selectedPrice,
+  15,
+  "a low hurdle waits for the slow, high point",
+);
+assert.equal(patientReturn?.dailyReturnHurdle, 0.001);
+assert.equal(patientReturn?.basis, "modeled");
+const hurriedReturn = selectPricingDecision(identityCurve, profitPerDay(0.05));
+assert.equal(
+  hurriedReturn?.selectedPrice,
+  5,
+  "a high hurdle takes the fast, low point",
+);
+const middlingReturn = selectPricingDecision(
+  identityCurve,
+  profitPerDay(0.012),
+);
+assert.ok(
+  (middlingReturn?.selectedPrice ?? 0) > 5 &&
+    (middlingReturn?.selectedPrice ?? 0) < 15,
+  "a middling hurdle lands between the points",
+);
+const unprofitableReturn = selectPricingDecision(
+  identityCurve,
+  profitPerDay(0.005, 20),
+  9,
+);
+assert.equal(
+  unprofitableReturn?.selectedPrice,
+  15,
+  "overhead above every price lists at the slowest, highest point to limit the loss",
+);
+assert.equal(unprofitableReturn?.basis, "modeled");
+assert.equal(unprofitableReturn?.unprofitable, true);
+assert.equal(patientReturn?.unprofitable, undefined);
+const slowLossCurve: PricingCurvePoint[] = [
+  {
+    percentile: 50,
+    price: 15,
+    estimatedMedianSellDays: 10,
+    supplyStatus: "observed",
+  },
+  {
+    percentile: 60,
+    price: 14,
+    estimatedMedianSellDays: 400,
+    supplyStatus: "observed",
+  },
+];
+assert.equal(
+  selectPricingDecision(slowLossCurve, profitPerDay(0.005, 13))?.selectedPrice,
+  15,
+  "a loss is not discounted, so a slower, lower price cannot look better",
+);
+
 const constrainedIdentityDecision = selectPricingDecision(
   identityCurve,
   { method: "target-horizon", horizonDays: 20 },

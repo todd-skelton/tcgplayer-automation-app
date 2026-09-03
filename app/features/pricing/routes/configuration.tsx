@@ -27,6 +27,73 @@ import { Link, data, useLoaderData, useFetcher } from "react-router";
 import { useConfiguration } from "../hooks/useConfiguration";
 import { getHttpConfig } from "~/core/config/httpConfig.server";
 import type { ProductLine } from "~/shared/data-types/productLine";
+import {
+  isValidProfitPerDaySetting,
+  type ProfitPerDaySettings,
+} from "../types/config";
+
+const PROFIT_PER_DAY_FIELDS: Array<{
+  key: keyof ProfitPerDaySettings;
+  label: string;
+  step: number;
+  helperText: string;
+}> = [
+  {
+    key: "dailyReturnHurdle",
+    label: "Daily return hurdle",
+    step: 0.001,
+    helperText:
+      "Fraction of capital earned per day when proceeds are redeployed; 0.005 is 0.5% per day",
+  },
+  {
+    key: "relativeOverhead",
+    label: "Relative overhead",
+    step: 0.01,
+    helperText: "Share of each sale lost to fees",
+  },
+  {
+    key: "staticOverheadPerUnit",
+    label: "Static overhead per item",
+    step: 0.05,
+    helperText: "Dollars lost per unit sold",
+  },
+];
+
+/** Number field that keeps what was typed and saves each complete valid value. */
+function ValidatedNumberField({
+  label,
+  value,
+  step,
+  helperText,
+  isValid,
+  onCommit,
+}: {
+  label: string;
+  value: number;
+  step: number;
+  helperText: string;
+  isValid: (value: number) => boolean;
+  onCommit: (value: number) => void;
+}) {
+  const [text, setText] = React.useState(String(value));
+  React.useEffect(() => setText(String(value)), [value]);
+  const accepts = (input: string) =>
+    input !== "" && Number.isFinite(Number(input)) && isValid(Number(input));
+  return (
+    <TextField
+      label={label}
+      type="number"
+      value={text}
+      error={text !== "" && !accepts(text)}
+      onChange={(event) => {
+        setText(event.target.value);
+        if (accepts(event.target.value)) onCommit(Number(event.target.value));
+      }}
+      inputProps={{ step }}
+      helperText={helperText}
+    />
+  );
+}
 
 export async function loader() {
   const httpConfig = await getHttpConfig();
@@ -55,6 +122,12 @@ export default function ConfigurationRoute() {
     config.pricing.defaultPercentile,
   );
   const [newSkip, setNewSkip] = React.useState<boolean>(false);
+  const [newHurdle, setNewHurdle] = React.useState("");
+  const newHurdleValue = newHurdle === "" ? undefined : Number(newHurdle);
+  const newHurdleValid =
+    newSkip ||
+    newHurdleValue === undefined ||
+    isValidProfitPerDaySetting.dailyReturnHurdle(newHurdleValue);
 
   React.useEffect(() => {
     setNewPercentile(config.pricing.defaultPercentile);
@@ -96,6 +169,9 @@ export default function ConfigurationRoute() {
       {
         percentile: newPercentile,
         skip: newSkip,
+        ...(newSkip || newHurdleValue === undefined
+          ? {}
+          : { dailyReturnHurdle: newHurdleValue }),
       },
     );
 
@@ -103,6 +179,7 @@ export default function ConfigurationRoute() {
     setSelectedProductLine(null);
     setNewPercentile(config.pricing.defaultPercentile);
     setNewSkip(false);
+    setNewHurdle("");
     setSuccessMessage("Product line pricing added");
     setTimeout(() => setSuccessMessage(""), 2000);
   };
@@ -242,32 +319,62 @@ export default function ConfigurationRoute() {
                 policy:
                   event.target.value === "target-horizon"
                     ? { method: "target-horizon", horizonDays: 33.5 }
-                    : { method: "percentile" },
+                    : event.target.value === "profit-per-day"
+                      ? { method: "profit-per-day" }
+                      : { method: "percentile" },
               })
             }
-            helperText="Percentile uses the product-line settings below. Target horizon applies one median sell-time target across inventory."
+            helperText="Percentile uses the product-line settings below. Target horizon applies one median sell-time target across inventory. Profit per day prices each SKU where net proceeds, discounted at the daily return hurdle over its sell time, are highest."
           >
             <MenuItem value="percentile">Configured percentile</MenuItem>
             <MenuItem value="target-horizon">Target sell horizon</MenuItem>
+            <MenuItem value="profit-per-day">Profit per day</MenuItem>
           </TextField>
 
           {config.pricing.policy.method === "target-horizon" && (
-            <TextField
+            <ValidatedNumberField
               label="Target Median Sell Time (days)"
-              type="number"
               value={config.pricing.policy.horizonDays}
-              onChange={(event) => {
-                const horizonDays = Number(event.target.value);
-                if (horizonDays > 0) {
-                  updatePricingConfig({
-                    policy: { method: "target-horizon", horizonDays },
-                  });
-                }
-              }}
-              inputProps={{ min: 0.1, step: 0.1 }}
+              step={0.1}
               helperText="Calibrate this value from the complete inventory portfolio; continuous pricing keeps it fixed as markets move."
+              isValid={(horizonDays) => horizonDays > 0}
+              onCommit={(horizonDays) =>
+                updatePricingConfig({
+                  policy: { method: "target-horizon", horizonDays },
+                })
+              }
             />
           )}
+
+          <Box>
+            <Typography variant="subtitle2" gutterBottom>
+              Profit per day settings
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Used by the profit-per-day policy and by the inventory strategy
+              dashboard's profit-per-day row.
+            </Typography>
+            <Box sx={{ display: "flex", gap: 2 }}>
+              {PROFIT_PER_DAY_FIELDS.map((field) => (
+                <ValidatedNumberField
+                  key={field.key}
+                  label={field.label}
+                  value={config.pricing.profitPerDay[field.key]}
+                  step={field.step}
+                  helperText={field.helperText}
+                  isValid={isValidProfitPerDaySetting[field.key]}
+                  onCommit={(value) =>
+                    updatePricingConfig({
+                      profitPerDay: {
+                        ...config.pricing.profitPerDay,
+                        [field.key]: value,
+                      },
+                    })
+                  }
+                />
+              ))}
+            </Box>
+          </Box>
 
           <TextField
             label="Default Percentile"
@@ -378,9 +485,9 @@ export default function ConfigurationRoute() {
           Product Line Pricing
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Configure different percentiles for specific product lines. You can
-          also skip product lines entirely. Non-configured product lines will
-          use the default percentile below.
+          Configure a different percentile or profit-per-day hurdle for specific
+          product lines. You can also skip product lines entirely.
+          Non-configured product lines use the defaults.
         </Typography>
 
         <Stack spacing={3}>
@@ -442,6 +549,21 @@ export default function ConfigurationRoute() {
                 sx={{ width: 120 }}
                 disabled={newSkip}
               />
+              <TextField
+                label="Daily return hurdle"
+                type="number"
+                value={newHurdle}
+                onChange={(e) => setNewHurdle(e.target.value)}
+                error={!newHurdleValid}
+                placeholder={String(
+                  config.pricing.profitPerDay.dailyReturnHurdle,
+                )}
+                helperText="Blank uses the default"
+                inputProps={{ step: 0.001 }}
+                size="small"
+                sx={{ width: 160 }}
+                disabled={newSkip}
+              />
               <FormControlLabel
                 control={
                   <Checkbox
@@ -455,7 +577,7 @@ export default function ConfigurationRoute() {
               <Button
                 variant="contained"
                 onClick={handleAddProductLineSetting}
-                disabled={!selectedProductLine}
+                disabled={!selectedProductLine || !newHurdleValid}
                 size="small"
               >
                 Add
@@ -471,6 +593,7 @@ export default function ConfigurationRoute() {
                   <TableRow>
                     <TableCell>Product Line</TableCell>
                     <TableCell align="center">Percentile</TableCell>
+                    <TableCell align="center">Daily return hurdle</TableCell>
                     <TableCell align="center">Skip</TableCell>
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
@@ -488,6 +611,11 @@ export default function ConfigurationRoute() {
                         </TableCell>
                         <TableCell align="center">
                           {settings.skip ? "—" : settings.percentile}
+                        </TableCell>
+                        <TableCell align="center">
+                          {settings.skip
+                            ? "—"
+                            : (settings.dailyReturnHurdle ?? "—")}
                         </TableCell>
                         <TableCell align="center">
                           {settings.skip ? "Yes" : "No"}
