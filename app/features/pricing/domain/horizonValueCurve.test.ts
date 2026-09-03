@@ -6,8 +6,17 @@ import {
   horizonKneeDays,
   horizonMarginalValuePerDay,
   horizonValue,
+  logSpacedHorizons,
   type HorizonValueCurve,
 } from "./horizonValueCurve";
+
+const spaced = logSpacedHorizons(10, 33.5, 24);
+assert.equal(spaced.length, 24);
+assert.equal(spaced[0], 10, "the first horizon is exactly the minimum");
+assert.equal(spaced.at(-1), 33.5, "the last horizon is exactly the maximum");
+assert.ok(
+  spaced.every((value, index) => index === 0 || value > spaced[index - 1]),
+);
 
 const known: HorizonValueCurve = {
   floorValue: 100,

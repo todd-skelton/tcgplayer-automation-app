@@ -14,6 +14,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
@@ -33,6 +34,11 @@ import {
 } from "~/core/db";
 import { refreshContinuousPricingInventory } from "~/features/continuous-pricing/services/continuousInventoryRefresh.server";
 import {
+  capitalCycleAtHorizon,
+  bestCycleHorizonDays,
+  type CapitalCycleEconomics,
+} from "~/features/pricing/domain/capitalCycle";
+import {
   horizonGainElasticity,
   horizonKneeDays,
   horizonMarginalValuePerDay,
@@ -44,7 +50,6 @@ import {
   INVENTORY_STRATEGY_HORIZON_DAYS,
   INVENTORY_STRATEGY_MAX_PERCENTILE,
   INVENTORY_STRATEGY_MIN_PERCENTILE,
-  type InventoryStrategyHorizonModel,
   type InventoryStrategyProductLine,
   type InventoryStrategyScenario,
 } from "../types/inventoryStrategy";
@@ -102,32 +107,77 @@ const fitConfidenceColor = {
   unavailable: "default",
 } as const;
 
+const DEFAULT_CAPITAL_CYCLE_ECONOMICS: CapitalCycleEconomics = {
+  costRatio: 0.72,
+  relativeOverhead: 0.15,
+  staticOverheadPerUnit: 0.3,
+  turnaroundDays: 28,
+};
+
+const CAPITAL_CYCLE_FIELDS: Array<{
+  key: keyof CapitalCycleEconomics;
+  label: string;
+  step: number;
+}> = [
+  { key: "costRatio", label: "Cost basis (share of market)", step: 0.01 },
+  { key: "relativeOverhead", label: "Relative overhead", step: 0.01 },
+  {
+    key: "staticOverheadPerUnit",
+    label: "Static overhead per item",
+    step: 0.05,
+  },
+  { key: "turnaroundDays", label: "Turnaround days", step: 1 },
+];
+
 function formatDays(days: number): string {
   const rounded = days >= 100 ? Math.round(days) : Math.round(days * 10) / 10;
   return `${rounded.toLocaleString()} days`;
 }
 
+const emphasisColor = {
+  knee: "success.main",
+  cycle: "info.main",
+  active: "text.primary",
+} as const;
+
+function cyclePortfolio(productLine: InventoryStrategyProductLine) {
+  return {
+    marketValue: productLine.estimatedMarketValue,
+    unitCount: productLine.unitCount,
+  };
+}
+
 /**
- * Modeled value at one horizon with its marginal rate and elasticity. Shows
- * the horizon itself when it varies by row (knee, value-matched).
+ * Modeled value at one horizon with its marginal rate, elasticity, and the
+ * profit per day of a capital cycle. Shows the horizon itself when it varies
+ * by row (knee, best cycle, value-matched).
  */
 function HorizonValueCell({
-  model,
+  productLine,
   horizonDays,
+  economics,
   showDays = false,
   emphasis,
 }: {
-  model: InventoryStrategyHorizonModel | null;
+  productLine: InventoryStrategyProductLine;
   horizonDays: number | null;
+  economics: CapitalCycleEconomics;
   showDays?: boolean;
-  emphasis?: "active" | "knee";
+  emphasis?: "active" | "knee" | "cycle";
 }) {
+  const model = productLine.horizonModel;
   if (!model?.curve || horizonDays === null) {
     return <TableCell align="right">—</TableCell>;
   }
   const outsideRange =
     horizonDays < model.minimumHorizonDays ||
     horizonDays > model.maximumHorizonDays;
+  const cycle = capitalCycleAtHorizon(
+    model.curve,
+    cyclePortfolio(productLine),
+    economics,
+    horizonDays,
+  );
   return (
     <TableCell
       align="right"
@@ -137,7 +187,7 @@ function HorizonValueCell({
         <Typography
           variant="body2"
           fontWeight={700}
-          color={emphasis === "knee" ? "success.main" : "text.primary"}
+          color={emphasis ? emphasisColor[emphasis] : "text.primary"}
         >
           {formatDays(horizonDays)}
         </Typography>
@@ -153,6 +203,14 @@ function HorizonValueCell({
           horizonMarginalValuePerDay(model.curve, horizonDays),
         )}
         /day · e {horizonGainElasticity(model.curve, horizonDays).toFixed(2)}
+      </Typography>
+      <Typography
+        variant="caption"
+        display="block"
+        color={cycle.profit >= 0 ? "text.secondary" : "error.main"}
+      >
+        {currencyFormatter.format(cycle.profitPerDay)}/day profit ·{" "}
+        {currencyFormatter.format(cycle.netProceeds)} net
       </Typography>
       {outsideRange && (
         <Typography variant="caption" color="text.secondary" display="block">
@@ -305,6 +363,7 @@ export default function InventoryStrategyRoute() {
   const fetcher = useFetcher<ActionData>();
   const revalidator = useRevalidator();
   const [selections, setSelections] = useState<Record<string, number>>({});
+  const [economics, setEconomics] = useState(DEFAULT_CAPITAL_CYCLE_ECONOMICS);
   const busy = fetcher.state !== "idle";
   const analysisActive =
     latestAnalysis?.status === "queued" || latestAnalysis?.status === "pricing";
@@ -581,6 +640,40 @@ export default function InventoryStrategyRoute() {
             percent longer horizon). Fit residual is the root-mean-square error
             in headroom fraction.
           </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Profit per day takes overhead off the sale, recovers the cost basis
+            as a share of market value, and divides by horizon plus turnaround.
+            Best cycle is the horizon that maximizes it. Horizons shorter than
+            most SKUs&apos; fastest sell time overstate how quickly a cycle
+            completes.
+          </Typography>
+          <Stack
+            direction="row"
+            spacing={2}
+            flexWrap="wrap"
+            useFlexGap
+            sx={{ mt: 2 }}
+          >
+            {CAPITAL_CYCLE_FIELDS.map((field) => (
+              <TextField
+                key={field.key}
+                size="small"
+                type="number"
+                label={field.label}
+                value={economics[field.key]}
+                inputProps={{ min: 0, step: field.step }}
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  if (Number.isFinite(value) && value >= 0) {
+                    setEconomics((current) => ({
+                      ...current,
+                      [field.key]: value,
+                    }));
+                  }
+                }}
+              />
+            ))}
+          </Stack>
         </Box>
         <TableContainer>
           <Table size="small" sx={{ minWidth: 1200 }}>
@@ -599,6 +692,7 @@ export default function InventoryStrategyRoute() {
                 <TableCell>Fit</TableCell>
                 <TableCell align="right">Floor → ceiling</TableCell>
                 <TableCell align="right">Knee</TableCell>
+                <TableCell align="right">Best cycle</TableCell>
                 {activeHorizonDays !== null && (
                   <TableCell align="right">
                     Active ({formatDays(activeHorizonDays)})
@@ -618,6 +712,15 @@ export default function InventoryStrategyRoute() {
               {allProductLines.map((productLine) => {
                 const model = productLine.horizonModel;
                 const curve = model?.curve ?? null;
+                const bestCycleDays =
+                  model && curve
+                    ? bestCycleHorizonDays(
+                        curve,
+                        cyclePortfolio(productLine),
+                        economics,
+                        model,
+                      )
+                    : null;
                 return (
                   <TableRow key={productLine.key}>
                     <TableCell
@@ -681,30 +784,41 @@ export default function InventoryStrategyRoute() {
                       )}
                     </TableCell>
                     <HorizonValueCell
-                      model={model}
+                      productLine={productLine}
                       horizonDays={curve ? horizonKneeDays(curve) : null}
+                      economics={economics}
                       showDays
                       emphasis="knee"
                     />
+                    <HorizonValueCell
+                      productLine={productLine}
+                      horizonDays={bestCycleDays ?? null}
+                      economics={economics}
+                      showDays
+                      emphasis="cycle"
+                    />
                     {activeHorizonDays !== null && (
                       <HorizonValueCell
-                        model={model}
+                        productLine={productLine}
                         horizonDays={activeHorizonDays}
+                        economics={economics}
                         emphasis="active"
                       />
                     )}
                     {showValueMatchedColumn && (
                       <HorizonValueCell
-                        model={model}
+                        productLine={productLine}
                         horizonDays={productLine.valueMatchedHorizonDays}
+                        economics={economics}
                         showDays
                       />
                     )}
                     {INVENTORY_STRATEGY_HORIZON_DAYS.map((horizonDays) => (
                       <HorizonValueCell
                         key={horizonDays}
-                        model={model}
+                        productLine={productLine}
                         horizonDays={horizonDays}
+                        economics={economics}
                       />
                     ))}
                   </TableRow>

@@ -1,5 +1,6 @@
 import type { PricingPercentileDetail } from "~/core/types/pricing";
 import { PRICING_MODEL_VERSION } from "~/core/types/pricingPolicy";
+import { logSpacedHorizons } from "./horizonValueCurve";
 import type {
   PortfolioPricingPlan,
   PortfolioMatchStatus,
@@ -491,22 +492,6 @@ export function observedHorizonRange(
 function horizonBounds(items: readonly PortfolioCurveItem[]): [number, number] {
   const range = observedHorizonRange(items);
   return range ? [range.minimumDays, range.maximumDays] : [1, 365];
-}
-
-/** Horizons spaced evenly in log space from minimum to maximum, endpoints exact. */
-export function logSpacedHorizons(
-  minimumDays: number,
-  maximumDays: number,
-  count: number,
-): number[] {
-  const lastIndex = count - 1;
-  return Array.from({ length: count }, (_, index) =>
-    index === 0
-      ? minimumDays
-      : index === lastIndex
-        ? maximumDays
-        : minimumDays * (maximumDays / minimumDays) ** (index / lastIndex),
-  );
 }
 
 export function decisionsAtHorizon(

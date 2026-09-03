@@ -28,6 +28,22 @@ const KNEE_HEADROOM_ODDS = 2 + Math.sqrt(3);
 const SATURATION_LIMIT = 1e-3;
 const MINIMUM_FIT_SAMPLES = 3;
 
+/** Horizons spaced evenly in log space from minimum to maximum, endpoints exact. */
+export function logSpacedHorizons(
+  minimumDays: number,
+  maximumDays: number,
+  count: number,
+): number[] {
+  const lastIndex = count - 1;
+  return Array.from({ length: count }, (_, index) =>
+    index === 0
+      ? minimumDays
+      : index === lastIndex
+        ? maximumDays
+        : minimumDays * (maximumDays / minimumDays) ** (index / lastIndex),
+  );
+}
+
 export function horizonHeadroomFraction(
   shape: HorizonShape,
   horizonDays: number,

@@ -2,7 +2,6 @@ import type { ServerPricingConfig } from "~/features/pricing/types/config";
 import { calculateMarketplacePrice } from "~/features/pricing/services/pricingService";
 import {
   decisionsAtHorizon,
-  logSpacedHorizons,
   observedHorizonRange,
   readPricingDecision,
   readShadowPricingDecision,
@@ -11,7 +10,10 @@ import {
   toPricingCurve,
   type PortfolioCurveItem,
 } from "~/features/pricing/domain/pricingPolicy";
-import { fitHorizonValueCurve } from "~/features/pricing/domain/horizonValueCurve";
+import {
+  fitHorizonValueCurve,
+  logSpacedHorizons,
+} from "~/features/pricing/domain/horizonValueCurve";
 import type { PricingPercentileDetail } from "~/core/types/pricing";
 import {
   PRICING_MODEL_VERSION,
@@ -603,9 +605,11 @@ function buildProductLine(
       0,
     ),
   );
-  const currentMarketValue = roundCurrency(
+  // Listed price stands in for SKUs without a known market price.
+  const estimatedMarketValue = roundCurrency(
     items.reduce(
-      (sum, item) => sum + (item.marketPrice ?? 0) * item.quantity,
+      (sum, item) =>
+        sum + (item.marketPrice ?? item.currentPrice ?? 0) * item.quantity,
       0,
     ),
   );
@@ -703,7 +707,7 @@ function buildProductLine(
     skuCount: items.length,
     unitCount,
     currentListedValue,
-    currentMarketValue,
+    estimatedMarketValue,
     currentPolicyValue,
     mathematicalKneePercentile: knee.mathematicalPercentile,
     estimatedPercentile: knee.estimatedPercentile,

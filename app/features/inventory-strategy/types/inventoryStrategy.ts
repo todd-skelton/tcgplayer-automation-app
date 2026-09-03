@@ -106,7 +106,7 @@ export interface InventoryStrategyProductLine {
   skuCount: number;
   unitCount: number;
   currentListedValue: number;
-  currentMarketValue: number;
+  estimatedMarketValue: number;
   currentPolicyValue: number;
   mathematicalKneePercentile: number | null;
   estimatedPercentile: number | null;

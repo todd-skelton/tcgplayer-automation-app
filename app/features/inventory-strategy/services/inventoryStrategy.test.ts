@@ -96,6 +96,11 @@ const pokemon = dashboard.productLines.find(
 );
 assert.ok(pokemon);
 assert.equal(pokemon.currentListedValue, 29);
+assert.equal(
+  pokemon.estimatedMarketValue,
+  25,
+  "listed price stands in for SKUs without a market price",
+);
 assert.equal(pokemon.currentPolicyValue, 33);
 assert.equal(pokemon.modeledSkuCount, 1);
 assert.equal(pokemon.modeledUnitCount, 2);
