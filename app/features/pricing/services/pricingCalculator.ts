@@ -8,8 +8,10 @@ import {
   calculateInsufficientSalesFallback,
   calculateMarketplacePrice,
   getSuggestedPrice,
+  type InsufficientSalesFallbackResult,
 } from "./pricingService";
 import { PRICING_CONSTANTS } from "../../../core/constants/pricing";
+import type { PricingPolicy } from "../../../core/types/pricingPolicy";
 import type { PricePoint } from "../../../integrations/tcgplayer/client/get-price-points.server";
 import type { ProductDisplayInfo } from "../../../shared/services/dataEnrichmentService";
 import type {
@@ -17,6 +19,7 @@ import type {
   PricingDecision,
 } from "../domain/pricingPolicy";
 import {
+  netProceedsAtPrice,
   policyParameters,
   resolveValueMatchedPortfolioPlan,
   selectPricingDecision,
@@ -56,6 +59,65 @@ function createMarketplaceConstraint(
         ? ("floor" as const)
         : ("none" as const),
     };
+  };
+}
+
+function policyName(policy: PricingPolicy): string {
+  return policy.method === "target-horizon"
+    ? "Target-horizon"
+    : "Profit-per-day";
+}
+
+/** A decision priced from a reference or the current price instead of the curve. */
+function fallbackDecision(
+  method: PricingPolicy["method"],
+  fallback: InsufficientSalesFallbackResult,
+): PricingDecision {
+  return {
+    method,
+    selectedPrice: fallback.price,
+    unconstrainedPrice: fallback.price,
+    constraint: fallback.basis === "current-price" ? "current-price" : "none",
+    basis: fallback.basis,
+    forecastStatus: "unavailable",
+  };
+}
+
+/**
+ * When the policy's forecast is unavailable, price as the percentile policy
+ * would: the configured percentile when the curve has a point for it, else
+ * the best reference price, else the current price. The forecast stays
+ * unavailable so the price is reviewed rather than trusted as a forecast.
+ */
+function forecastFallback(
+  policy: Exclude<PricingPolicy, { method: "percentile" }>,
+  percentileDecision: PricingDecision | undefined,
+  references: Parameters<typeof calculateInsufficientSalesFallback>[0],
+): { decision: PricingDecision; warning: string } | undefined {
+  const unavailable = `${policyName(policy)} forecast unavailable.`;
+  const underPolicy = (decision: PricingDecision): PricingDecision => ({
+    ...decision,
+    method: policy.method,
+    ...policyParameters(policy),
+    forecastStatus: "unavailable",
+  });
+  if (percentileDecision?.basis === "modeled") {
+    const unprofitable =
+      policy.method === "profit-per-day" &&
+      netProceedsAtPrice(percentileDecision.selectedPrice, policy) <= 0;
+    return {
+      decision: {
+        ...underPolicy(percentileDecision),
+        ...(unprofitable ? { unprofitable } : {}),
+      },
+      warning: `${unavailable} Priced at percentile ${percentileDecision.configuredPercentile} instead.`,
+    };
+  }
+  const reference = calculateInsufficientSalesFallback(references);
+  if (!reference) return undefined;
+  return {
+    decision: underPolicy(fallbackDecision(policy.method, reference)),
+    warning: `${unavailable} ${reference.warningMessage}`,
   };
 }
 
@@ -237,11 +299,12 @@ export class PricingCalculator {
           config.policy && config.policy.method !== "percentile"
             ? productLinePricingPolicy(config.policy, productLineSettings)
             : percentilePolicy;
+        const pricePoint = pricePointsMap.get(pricerSku.sku) ?? null;
         const marketplaceConstraint = createMarketplaceConstraint(
-          pricePointsMap.get(pricerSku.sku) ?? null,
+          pricePoint,
           config,
         );
-        const activeDecision = selectPricingDecision(
+        const forecastDecision = selectPricingDecision(
           curve,
           activePolicy,
           pricerSku.currentPrice,
@@ -256,6 +319,16 @@ export class PricingCalculator {
               marketplaceConstraint,
             ) ?? pricedItem.pricingDecision;
         }
+        const fallback =
+          activePolicy.method !== "percentile" &&
+          forecastDecision?.basis !== "modeled"
+            ? forecastFallback(activePolicy, pricedItem.shadowPricingDecision, {
+                marketPrice: pricePoint?.marketPrice,
+                lowestListingPrice: result.lowestListingPrice,
+                currentPrice: pricerSku.currentPrice,
+              })
+            : undefined;
+        const activeDecision = fallback?.decision ?? forecastDecision;
         if (
           activePolicy.method !== "percentile" &&
           activeDecision &&
@@ -265,23 +338,16 @@ export class PricingCalculator {
             activeDecision.unconstrainedPrice ?? activeDecision.selectedPrice;
           pricedItem.price = activeDecision.selectedPrice;
           pricedItem.warnings = [];
-          if (activeDecision.basis === "current-price") {
+          if (fallback) pricedItem.warnings.push(fallback.warning);
+          if (activeDecision.unprofitable) {
             pricedItem.warnings.push(
-              `${
-                activePolicy.method === "target-horizon"
-                  ? "Target-horizon"
-                  : "Profit-per-day"
-              } forecast unavailable. Keeping the current price at $${activeDecision.selectedPrice.toFixed(2)}.`,
+              `No modeled price clears per-unit overhead. Listed at $${activeDecision.selectedPrice.toFixed(2)} to limit the loss.`,
             );
-          } else {
-            if (activeDecision.unprofitable) {
-              pricedItem.warnings.push(
-                `No modeled price clears per-unit overhead. Listed at $${activeDecision.selectedPrice.toFixed(2)} to limit the loss.`,
-              );
-            }
+          }
+          if (activeDecision.basis === "modeled") {
             const priceResult = calculateMarketplacePrice(
               pricedItem.suggestedPrice,
-              pricePointsMap.get(pricerSku.sku) ?? null,
+              pricePoint,
               {
                 minPriceMultiplier:
                   config.minPriceMultiplier ??
@@ -619,15 +685,7 @@ export class PricingCalculator {
       if (fallback) {
         pricedItem.suggestedPrice = fallback.price;
         pricedItem.price = fallback.price;
-        pricedItem.pricingDecision = {
-          method: "percentile",
-          selectedPrice: fallback.price,
-          unconstrainedPrice: fallback.price,
-          constraint:
-            fallback.basis === "current-price" ? "current-price" : "none",
-          basis: fallback.basis,
-          forecastStatus: "unavailable",
-        };
+        pricedItem.pricingDecision = fallbackDecision("percentile", fallback);
         pricedItem.warnings?.push(fallback.warningMessage);
       }
     }

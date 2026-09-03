@@ -123,29 +123,85 @@ const testCases: TestCase[] = [
     },
   },
   {
-    name: "price warnings block price-only updates but not inventory additions",
+    name: "a warned price publishes only when forecast, anchored, and profitable",
     run: () => {
-      const warning = ["Suggested price below minimum. Using minimum price."];
-      const priceOnly = evaluateInventoryPublicationCandidate(
-        createCandidate({ warnings: warning }),
-        createEnabledPolicy(),
-        NOW,
+      const forecast = {
+        basis: "modeled",
+        forecastStatus: "interpolated",
+      } as const;
+      const fallback = {
+        basis: "modeled",
+        forecastStatus: "unavailable",
+      } as const;
+      const reference = {
+        basis: "market-reference",
+        forecastStatus: "unavailable",
+      } as const;
+      const evaluate = (
+        overrides: Partial<InventoryPublicationCandidate>,
+        policy = createEnabledPolicy(),
+      ) =>
+        evaluateInventoryPublicationCandidate(
+          createCandidate({
+            warnings: ["Suggested price below minimum. Using minimum price."],
+            decision: forecast,
+            marketPrice: 26.5,
+            ...overrides,
+          }),
+          policy,
+          NOW,
+        );
+      const held = ["pricing_warning"];
+
+      assert.equal(evaluate({}).eligible, true, "floored forecast");
+      assert.deepEqual(
+        evaluate({
+          marketPrice: null,
+          warnings: [
+            "No market price available. Using suggested price directly.",
+          ],
+        }).reasons,
+        held,
+        "no market price",
       );
-      const inventoryAddition = evaluateInventoryPublicationCandidate(
-        createCandidate({
+      assert.deepEqual(
+        evaluate({ decision: fallback }).reasons,
+        held,
+        "fallback",
+      );
+      assert.deepEqual(
+        evaluate({ decision: reference }).reasons,
+        held,
+        "reference",
+      );
+      assert.deepEqual(
+        evaluate({ decision: { ...forecast, unprofitable: true } }).reasons,
+        held,
+        "loss-limiting price",
+      );
+      assert.deepEqual(
+        evaluate({ decision: undefined }).reasons,
+        held,
+        "no decision",
+      );
+      assert.equal(
+        evaluate(
+          { decision: reference },
+          createEnabledPolicy({ allowWarnings: true }),
+        ).eligible,
+        true,
+        "allowed warnings",
+      );
+      assert.equal(
+        evaluate({
           sourceType: "pending_inventory",
           previousPrice: null,
           quantityDelta: 3,
-          warnings: warning,
-        }),
-        createEnabledPolicy(),
-        NOW,
+          decision: reference,
+        }).eligible,
+        true,
+        "inventory additions",
       );
-
-      assert.equal(priceOnly.eligible, false);
-      assert.deepEqual(priceOnly.reasons, ["pricing_warning"]);
-      assert.equal(inventoryAddition.eligible, true);
-      assert.deepEqual(inventoryAddition.reasons, []);
     },
   },
   {

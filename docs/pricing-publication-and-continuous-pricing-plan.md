@@ -54,7 +54,7 @@ Gaps that must be closed:
 
 - No durable publication job, item state, or audit record.
 - Repricing a batch retains the original quantity delta.
-- Successful pricing results with warnings are not distinguished for live publication.
+- Warned prices publish automatically only when forecast from the curve, anchored by a market price, and profitable; fallback and reference prices wait for review unless warnings are allowed.
 - No maximum price movement, minimum meaningful change, or candidate-age policy.
 - Stored minimum-price configuration is not currently passed into the server calculator.
 - Signed negative deltas are normalized away by current batch import conversion.
@@ -270,7 +270,7 @@ Initial configuration:
 
 - Automatic publishing: disabled.
 - Automatic source policies: all disabled.
-- Allow warning-bearing candidates: false.
+- Allow pricing warnings to publish automatically: false. Warned prices forecast from the curve with a market price still publish.
 - Maximum candidate age: 60 minutes.
 - Minimum absolute price change: $0.01.
 - Minimum relative price change: 0%.

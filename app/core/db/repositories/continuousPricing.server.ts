@@ -88,6 +88,10 @@ const schedulableInventoryWhere = `seller_key = $1
       AND publication_item.status IN ('planned', 'ambiguous')
   )`;
 
+/** Set when pricing had no sales history, market price, or listing to work from. */
+const NO_DATA_PAUSE_REASON =
+  "No usable sales history, market price, or listing to price this SKU.";
+
 const priorityDueWhere = `(
   last_priced_at IS NULL
   OR consecutive_pricing_failures > 0
@@ -316,6 +320,12 @@ export const continuousPricingRepository = {
               ELSE continuous_pricing_inventory.current_price
             END,
             market_price = EXCLUDED.market_price,
+            pause_reason = CASE
+              WHEN continuous_pricing_inventory.pause_reason = '${NO_DATA_PAUSE_REASON}'
+                AND EXCLUDED.market_price IS NOT NULL
+              THEN NULL
+              ELSE continuous_pricing_inventory.pause_reason
+            END,
             in_stock = EXCLUDED.in_stock,
             pricing_eligible = EXCLUDED.pricing_eligible,
             last_observed_at = EXCLUDED.last_observed_at,
@@ -683,6 +693,10 @@ export const continuousPricingRepository = {
             WHEN result.result_status <> 'successful'
               AND consecutive_pricing_failures + 1 >= 3
             THEN 'Repeated pricing failures require review.'
+            WHEN result.result_status = 'successful'
+              AND result.pricing_details_json->'decision'->>'basis' = 'current-price'
+              AND pause_reason IS NULL
+            THEN '${NO_DATA_PAUSE_REASON}'
             ELSE pause_reason
           END,
           next_price_at = CASE

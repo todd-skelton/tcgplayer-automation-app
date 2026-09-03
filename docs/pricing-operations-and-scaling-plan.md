@@ -51,8 +51,9 @@ Due selection orders priority candidates first and then uses `next_price_at, sku
 
 - A successful price resets the consecutive pricing failure count.
 - A pricing row with an actual error message becomes due for retry after 15 minutes and receives recovery priority.
-- Market-data warnings without request errors remain on the normal pricing interval.
+- Other warnings, including a policy falling back to its percentile or a reference price, remain on the normal pricing interval.
 - Three consecutive pricing failures pause the SKU for review.
+- A successful result that could only keep the current price, because the SKU has no usable sales history, market price, or listing, pauses the SKU with a no-data reason. An inventory refresh that brings a market price clears that pause.
 - A seller portal upload may continue only when the portal's reported successful count plus an exact, parseable set of product-detail mismatch SKU IDs accounts for every submitted row. Known rejected SKUs are marked failed and paused; accepted rows proceed to live publication.
 - Any unaccounted upload mismatch remains a full rollback. Ambiguous move-to-live outcomes retain the existing reconciliation pause.
 

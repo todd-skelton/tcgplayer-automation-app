@@ -64,10 +64,16 @@ export function evaluateInventoryPublicationCandidate(
   if (candidate.errors && candidate.errors.length > 0) {
     addReason(reasons, "pricing_error");
   }
+  const trustedDespiteWarnings =
+    candidate.decision?.basis === "modeled" &&
+    candidate.decision.forecastStatus !== "unavailable" &&
+    !candidate.decision.unprofitable &&
+    isPositiveFinite(candidate.marketPrice);
   if (
     !policy.allowWarnings &&
     candidate.warnings &&
     candidate.warnings.length > 0 &&
+    !trustedDespiteWarnings &&
     candidate.quantityDelta <= 0
   ) {
     addReason(reasons, "pricing_warning");

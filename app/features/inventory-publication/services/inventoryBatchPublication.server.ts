@@ -355,6 +355,8 @@ export async function previewInventoryBatchPublication(
         errors: result.errorMessages,
         isNewInventory: originalQuantityDelta !== 0,
         warnings: result.warningMessages,
+        decision: result.pricingDetails?.decision,
+        marketPrice: result.pricingDetails?.tcgMarketPrice,
       },
       policy,
       now,

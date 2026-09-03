@@ -200,18 +200,30 @@ const targetUnavailableResult = await calculator.calculatePrices(
   },
 );
 
-assert.equal(targetUnavailableResult.pricedItems[0]?.price, 20);
+assert.equal(targetUnavailableResult.pricedItems[0]?.price, 14);
 assert.equal(
   targetUnavailableResult.pricedItems[0]?.pricingDecision?.basis,
-  "current-price",
+  "modeled",
 );
 assert.equal(
   targetUnavailableResult.pricedItems[0]?.pricingDecision?.method,
   "target-horizon",
 );
+assert.equal(
+  targetUnavailableResult.pricedItems[0]?.pricingDecision?.targetHorizonDays,
+  20,
+);
+assert.equal(
+  targetUnavailableResult.pricedItems[0]?.pricingDecision?.forecastStatus,
+  "unavailable",
+);
+assert.deepEqual(targetUnavailableResult.pricedItems[0]?.warnings, [
+  "Target-horizon forecast unavailable. Priced at percentile 65 instead.",
+  "No market price available. Using suggested price directly.",
+]);
 
 console.log(
-  "PASS target horizon keeps current price when forecasting is unavailable",
+  "PASS target horizon falls back to the percentile when forecasting is unavailable",
 );
 
 const twoPointResolver = async () => ({
@@ -236,9 +248,10 @@ const priceProfitPerDay = (
   dailyReturnHurdle: number,
   overrides: Partial<Parameters<typeof calculator.calculatePrices>[1]> & {
     staticOverheadPerUnit?: number;
+    pricePoints?: Parameters<typeof calculator.calculatePrices>[2];
   } = {},
 ) => {
-  const { staticOverheadPerUnit = 0.3, ...config } = overrides;
+  const { staticOverheadPerUnit = 0.3, pricePoints, ...config } = overrides;
   return calculator.calculatePrices(
     [
       {
@@ -261,6 +274,7 @@ const priceProfitPerDay = (
       suggestedPriceResolver: twoPointResolver,
       ...config,
     },
+    pricePoints,
   );
 };
 
@@ -312,6 +326,106 @@ assert.equal(
 );
 
 console.log("PASS a product line hurdle overrides the default hurdle");
+
+const marketPoints = (sku: number, marketPrice: number) =>
+  new Map([
+    [
+      sku,
+      {
+        skuId: sku,
+        marketPrice,
+        lowestPrice: marketPrice,
+        highestPrice: marketPrice,
+        priceCount: 1,
+        calculatedAt: "2026-08-18T12:00:00.000Z",
+      },
+    ],
+  ]);
+
+const salesOnlyResolver = (price: number) => async () => ({
+  suggestedPrice: price,
+  percentiles: [
+    { percentile: 5, price: price / 2, supplyStatus: "disabled" as const },
+    { percentile: 65, price, supplyStatus: "disabled" as const },
+  ],
+});
+
+// Sales-based percentiles without supply data beat the market price, and the
+// forecast stays unavailable so the price is reviewed.
+const supplyDisabled = await priceProfitPerDay(470, 0.005, {
+  suggestedPriceResolver: salesOnlyResolver(14),
+  pricePoints: marketPoints(470, 9.85),
+});
+const supplyDisabledDecision = supplyDisabled.pricedItems[0]?.pricingDecision;
+assert.equal(supplyDisabled.pricedItems[0]?.price, 14);
+assert.equal(supplyDisabledDecision?.method, "profit-per-day");
+assert.equal(supplyDisabledDecision?.dailyReturnHurdle, 0.005);
+assert.equal(supplyDisabledDecision?.basis, "modeled");
+assert.equal(supplyDisabledDecision?.forecastStatus, "unavailable");
+assert.equal(supplyDisabledDecision?.configuredPercentile, 65);
+assert.equal(supplyDisabledDecision?.unprofitable, undefined);
+assert.deepEqual(supplyDisabled.pricedItems[0]?.warnings, [
+  "Profit-per-day forecast unavailable. Priced at percentile 65 instead.",
+]);
+
+// A percentile price that does not clear overhead is flagged like any other.
+const losing = await priceProfitPerDay(473, 0.005, {
+  suggestedPriceResolver: salesOnlyResolver(0.25),
+  pricePoints: marketPoints(473, 0.3),
+});
+assert.equal(losing.pricedItems[0]?.price, 0.25);
+assert.equal(losing.pricedItems[0]?.pricingDecision?.unprofitable, true);
+assert.deepEqual(losing.pricedItems[0]?.warnings, [
+  "Profit-per-day forecast unavailable. Priced at percentile 65 instead.",
+  "No modeled price clears per-unit overhead. Listed at $0.25 to limit the loss.",
+]);
+
+// With no curve, the reference ladder is the percentile policy's own.
+const marketOnly = await priceProfitPerDay(471, 0.005, {
+  suggestedPriceResolver: async () => ({ suggestedPrice: null }),
+  pricePoints: marketPoints(471, 9.85),
+});
+assert.equal(marketOnly.pricedItems[0]?.price, 9.85);
+assert.equal(
+  marketOnly.pricedItems[0]?.pricingDecision?.method,
+  "profit-per-day",
+);
+assert.equal(
+  marketOnly.pricedItems[0]?.pricingDecision?.basis,
+  "market-reference",
+);
+assert.equal(
+  marketOnly.pricedItems[0]?.pricingDecision?.forecastStatus,
+  "unavailable",
+);
+assert.deepEqual(marketOnly.pricedItems[0]?.warnings, [
+  "Profit-per-day forecast unavailable. Insufficient sales history. Using the highest available reference price (TCG market $9.85): $9.85.",
+]);
+
+const listingOnly = await priceProfitPerDay(472, 0.005, {
+  suggestedPriceResolver: async () => ({
+    suggestedPrice: null,
+    lowestListingPrice: 12.34,
+  }),
+});
+assert.equal(listingOnly.pricedItems[0]?.price, 12.34);
+assert.equal(
+  listingOnly.pricedItems[0]?.pricingDecision?.basis,
+  "listing-reference",
+);
+
+const nothing = await priceProfitPerDay(474, 0.005, {
+  suggestedPriceResolver: async () => ({ suggestedPrice: null }),
+});
+assert.equal(nothing.pricedItems[0]?.price, 20);
+assert.equal(nothing.pricedItems[0]?.pricingDecision?.basis, "current-price");
+assert.deepEqual(nothing.pricedItems[0]?.warnings, [
+  "Profit-per-day forecast unavailable. Insufficient sales history and no market price or listing is available. Keeping the current price at $20.00.",
+]);
+
+console.log(
+  "PASS an unavailable forecast prices as the percentile policy would and stays unavailable",
+);
 
 const unavailableSupplyResult = await calculator.calculatePrices(
   [

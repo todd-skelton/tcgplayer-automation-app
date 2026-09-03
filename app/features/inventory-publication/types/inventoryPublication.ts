@@ -1,3 +1,5 @@
+import type { PricingDecision } from "../../../core/types/pricingPolicy";
+
 export type InventoryPublicationSourceType =
   | "pending_inventory"
   | "seller"
@@ -46,6 +48,10 @@ export type InventoryPublicationEligibilityReason =
 export interface InventoryPublicationPolicy {
   automaticPublishingEnabled: boolean;
   automaticSources: Record<InventoryPublicationSourceType, boolean>;
+  /**
+   * Publish every warned price. Otherwise a warned price publishes only when
+   * it was forecast from the curve, anchored by a market price, and profitable.
+   */
   allowWarnings: boolean;
   maximumCandidateAgeMs: number;
   minimumAbsolutePriceChange: number;
@@ -82,6 +88,10 @@ export interface InventoryPublicationCandidate {
   pricedAt: Date;
   errors?: readonly string[];
   warnings?: readonly string[];
+  /** The decision behind the price, when one was recorded. */
+  decision?: Pick<PricingDecision, "basis" | "forecastStatus" | "unprofitable">;
+  /** The TCG market price, when one was available. */
+  marketPrice?: number | null;
   inventoryDeltaConsumed?: boolean;
 }
 

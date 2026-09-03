@@ -313,7 +313,10 @@ function horizonRatio(
   return Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 0;
 }
 
-function netProceedsAtPrice(price: number, policy: ProfitPerDayPolicy): number {
+export function netProceedsAtPrice(
+  price: number,
+  policy: ProfitPerDayPolicy,
+): number {
   return price * (1 - policy.relativeOverhead) - policy.staticOverheadPerUnit;
 }
 

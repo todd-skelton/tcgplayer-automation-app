@@ -283,6 +283,11 @@ export default function PublicationConfigurationRoute() {
             }
             label="Allow pricing warnings to publish automatically"
           />
+          <Typography variant="caption" color="text.secondary">
+            When off, a warned price still publishes if it was forecast from the
+            curve, anchored by a market price, and profitable. Fallback and
+            reference prices wait for review.
+          </Typography>
         </Stack>
       </Paper>
 
