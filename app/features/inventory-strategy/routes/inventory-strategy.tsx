@@ -29,7 +29,6 @@ import {
 import {
   inventoryBatchesRepository,
   inventoryPublicationSettingsRepository,
-  inventoryStrategyRepository,
   pricingConfigRepository,
 } from "~/core/db";
 import { refreshContinuousPricingInventory } from "~/features/continuous-pricing/services/continuousInventoryRefresh.server";
@@ -44,7 +43,7 @@ import {
   horizonMarginalValuePerDay,
   horizonValue,
 } from "~/features/pricing/domain/horizonValueCurve";
-import { buildInventoryStrategyDashboard } from "../services/inventoryStrategy";
+import { loadInventoryStrategyDashboard } from "../services/inventoryStrategyDashboard.server";
 import { queueInventoryStrategyAnalysis } from "../services/inventoryStrategyAnalysis.server";
 import {
   INVENTORY_STRATEGY_HORIZON_DAYS,
@@ -260,28 +259,20 @@ export async function loader() {
     pricingConfigRepository.get(),
   ]);
   const settings = publicationConfiguration.settings.continuousPricing;
-  const [items, recentBatches] = settings.sellerKey
-    ? await Promise.all([
-        inventoryStrategyRepository.findSnapshot(settings.sellerKey),
-        inventoryBatchesRepository.findRecent({
+  const [dashboard, recentBatches] = await Promise.all([
+    loadInventoryStrategyDashboard(settings.sellerKey, pricingConfig),
+    settings.sellerKey
+      ? inventoryBatchesRepository.findRecent({
           sourceTypes: ["strategy"],
           limit: 10,
-        }),
-      ])
-    : [[], []];
+        })
+      : [],
+  ]);
   const latestAnalysis =
     recentBatches.find((batch) => batch.sourceLabel === settings.sellerKey) ??
     null;
 
-  return data({
-    settings,
-    dashboard: buildInventoryStrategyDashboard(
-      settings.sellerKey,
-      items,
-      pricingConfig,
-    ),
-    latestAnalysis,
-  });
+  return data({ settings, dashboard, latestAnalysis });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -359,7 +350,11 @@ export default function InventoryStrategyRoute() {
   const { settings, dashboard, latestAnalysis } =
     useLoaderData<typeof loader>();
   const fetcher = useFetcher<ActionData>();
-  const revalidator = useRevalidator();
+  const analysisFetcher = useFetcher<{
+    batchNumber?: number;
+    status?: string;
+  }>();
+  const { revalidate } = useRevalidator();
   const [selections, setSelections] = useState<Record<string, number>>({});
   const [cycleInputs, setCycleInputs] = useState(DEFAULT_CAPITAL_CYCLE_INPUTS);
   const economics = useMemo<CapitalCycleEconomics>(
@@ -386,16 +381,30 @@ export default function InventoryStrategyRoute() {
   }, [dashboard.generatedAt, dashboard.productLines]);
 
   useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data?.success) {
-      void revalidator.revalidate();
-    }
-  }, [fetcher.data, fetcher.state, revalidator]);
+    if (fetcher.state === "idle" && fetcher.data?.success) void revalidate();
+  }, [fetcher.data, fetcher.state, revalidate]);
 
+  // Poll only the analysis batch while it runs; the dashboard reloads once it ends.
+  const analysisBatchNumber = analysisActive
+    ? latestAnalysis?.batchNumber
+    : undefined;
+  const { load: pollAnalysis } = analysisFetcher;
   useEffect(() => {
-    if (!analysisActive) return;
-    const timer = setInterval(() => void revalidator.revalidate(), 5_000);
+    if (analysisBatchNumber === undefined) return;
+    const timer = setInterval(
+      () => pollAnalysis(`/api/inventory-batches/${analysisBatchNumber}`),
+      5_000,
+    );
     return () => clearInterval(timer);
-  }, [analysisActive, revalidator]);
+  }, [analysisBatchNumber, pollAnalysis]);
+  const polledStatus =
+    analysisFetcher.data?.batchNumber === latestAnalysis?.batchNumber
+      ? analysisFetcher.data?.status
+      : undefined;
+  useEffect(() => {
+    if (polledStatus && polledStatus !== "queued" && polledStatus !== "pricing")
+      void revalidate();
+  }, [polledStatus, revalidate]);
 
   const selectedProductLines = useMemo(
     () =>
@@ -520,7 +529,7 @@ export default function InventoryStrategyRoute() {
           sx={{ mb: 2 }}
         >
           Latest analysis: batch {latestAnalysis.batchNumber} is{" "}
-          {latestAnalysis.status}
+          {polledStatus ?? latestAnalysis.status}
           {latestAnalysis.lastPricedAt
             ? ` · completed ${new Date(latestAnalysis.lastPricedAt).toLocaleString()}`
             : ""}

@@ -1,7 +1,13 @@
 import type { InventoryStrategySnapshotItem } from "~/features/inventory-strategy/types/inventoryStrategy";
 import type { SupplyAnalysisConfig } from "~/features/pricing/types/config";
 import { PRICING_MODEL_VERSION } from "~/core/types/pricingPolicy";
-import { asJson, execute, query, type Queryable } from "../database.server";
+import {
+  asJson,
+  execute,
+  query,
+  queryOne,
+  type Queryable,
+} from "../database.server";
 
 type InventoryStrategySnapshotRow = InventoryStrategySnapshotItem;
 
@@ -53,6 +59,40 @@ const snapshotSelect = `SELECT
         AND curve.sku = inventory.sku`;
 
 export const inventoryStrategyRepository = {
+  /** Changes whenever the in-stock inventory or any of its curves change. */
+  async findSnapshotVersion(
+    sellerKey: string,
+    executor?: Queryable,
+  ): Promise<string> {
+    const row = await queryOne<{
+      inventoryCount: number;
+      inventoryUpdatedAt: Date | null;
+      curveCount: number;
+      curveUpdatedAt: Date | null;
+    }>(
+      `SELECT
+        COUNT(*)::int AS "inventoryCount",
+        MAX(inventory.updated_at) AS "inventoryUpdatedAt",
+        COUNT(curve.sku)::int AS "curveCount",
+        MAX(curve.updated_at) AS "curveUpdatedAt"
+      FROM continuous_pricing_inventory inventory
+      LEFT JOIN inventory_strategy_pricing_curves curve
+        ON curve.seller_key = inventory.seller_key
+        AND curve.sku = inventory.sku
+      WHERE inventory.seller_key = $1
+        AND inventory.in_stock
+        AND inventory.quantity > 0`,
+      [sellerKey],
+      executor,
+    );
+    return [
+      row?.inventoryCount ?? 0,
+      row?.inventoryUpdatedAt?.toISOString() ?? "",
+      row?.curveCount ?? 0,
+      row?.curveUpdatedAt?.toISOString() ?? "",
+    ].join(":");
+  },
+
   async findSnapshot(
     sellerKey: string,
     executor?: Queryable,

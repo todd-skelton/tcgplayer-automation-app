@@ -30,7 +30,7 @@ export interface PriceConstraintResult {
 export interface PortfolioCurveItem {
   sku: number;
   currentPrice?: number;
-  curve: PricingCurvePoint[];
+  curve: readonly PricingCurvePoint[];
   constraintIdentity?: string;
   applyConstraint?: (price: number) => PriceConstraintResult;
 }
@@ -59,8 +59,9 @@ interface PortfolioPlanOptions {
 
 type ProfitPerDayPolicy = Extract<PricingPolicy, { method: "profit-per-day" }>;
 
-const SAMPLE_COUNT = 64;
-const REFINEMENT_ITERATIONS = 32;
+const BEST_RETURN_SAMPLE_COUNT = 64;
+const VALUE_MATCH_SAMPLE_COUNT = 24;
+const VALUE_MATCH_REFINEMENTS = 16;
 const roundCurrency = (value: number): number => Math.round(value * 100) / 100;
 const clampPercentile = (value: number): number =>
   Math.max(0, Math.min(100, value));
@@ -174,13 +175,75 @@ function interpolate(
   };
 }
 
+type ObservedPoint = PricingCurvePoint & { estimatedMedianSellDays: number };
+
+/** Sorted views of a curve, each built on first use. Curves are never mutated. */
+class PreparedCurve {
+  #byPercentile?: PricingCurvePoint[];
+  #byPrice?: PricingCurvePoint[];
+  #bySellTime?: ObservedPoint[];
+
+  constructor(private readonly curve: readonly PricingCurvePoint[]) {}
+
+  get byPercentile(): PricingCurvePoint[] {
+    return (this.#byPercentile ??= [...this.curve].sort(
+      (left, right) => left.percentile - right.percentile,
+    ));
+  }
+
+  get byPrice(): PricingCurvePoint[] {
+    return (this.#byPrice ??= [...this.curve].sort(
+      (left, right) =>
+        left.price - right.price || left.percentile - right.percentile,
+    ));
+  }
+
+  /** Points with an observed sell time, fastest to slowest. */
+  get bySellTime(): ObservedPoint[] {
+    return (this.#bySellTime ??= this.curve
+      .map((point) => ({
+        ...point,
+        estimatedMedianSellDays: medianSellDays(
+          point.buyerIntervalDays,
+          point.storeWinShare,
+          point.estimatedMedianSellDays,
+        ),
+      }))
+      .filter(isObservedSellTime)
+      .sort(
+        (left, right) =>
+          left.estimatedMedianSellDays - right.estimatedMedianSellDays,
+      ));
+  }
+
+  get minimumPrice(): number {
+    return this.byPrice[0]?.price ?? Number.POSITIVE_INFINITY;
+  }
+
+  get maximumPrice(): number {
+    return this.byPrice.at(-1)?.price ?? Number.NEGATIVE_INFINITY;
+  }
+}
+
+const preparedCurves = new WeakMap<
+  readonly PricingCurvePoint[],
+  PreparedCurve
+>();
+
+function prepare(curve: readonly PricingCurvePoint[]): PreparedCurve {
+  let prepared = preparedCurves.get(curve);
+  if (!prepared) {
+    prepared = new PreparedCurve(curve);
+    preparedCurves.set(curve, prepared);
+  }
+  return prepared;
+}
+
 function pointAtPercentile(
   curve: readonly PricingCurvePoint[],
   percentile: number,
 ): PricingCurvePoint | undefined {
-  const points = [...curve].sort(
-    (left, right) => left.percentile - right.percentile,
-  );
+  const points = prepare(curve).byPercentile;
   if (points.length === 0) return undefined;
   if (percentile <= points[0].percentile) return points[0];
   if (percentile >= points.at(-1)!.percentile) return points.at(-1);
@@ -197,36 +260,16 @@ function pointAtPercentile(
   );
 }
 
-/** Curve points with an observed sell time, ordered fastest to slowest. */
-function observedSellTimePoints(
-  curve: readonly PricingCurvePoint[],
-): Array<PricingCurvePoint & { estimatedMedianSellDays: number }> {
-  return curve
-    .map((point) => ({
-      ...point,
-      estimatedMedianSellDays: medianSellDays(
-        point.buyerIntervalDays,
-        point.storeWinShare,
-        point.estimatedMedianSellDays,
-      ),
-    }))
-    .filter(isObservedSellTime)
-    .sort(
-      (left, right) =>
-        left.estimatedMedianSellDays - right.estimatedMedianSellDays,
-    );
-}
-
 function pointAtHorizon(
   curve: readonly PricingCurvePoint[],
   horizonDays: number,
 ): PricingCurvePoint | undefined {
-  const points = observedSellTimePoints(curve);
+  const points = prepare(curve).bySellTime;
   return points.length === 0 ? undefined : pointAtSellTime(points, horizonDays);
 }
 
 function pointAtSellTime(
-  points: ReturnType<typeof observedSellTimePoints>,
+  points: readonly ObservedPoint[],
   horizonDays: number,
 ): PricingCurvePoint {
   if (horizonDays <= points[0].estimatedMedianSellDays) return points[0];
@@ -284,7 +327,7 @@ function pointAtBestReturn(
   curve: readonly PricingCurvePoint[],
   policy: ProfitPerDayPolicy,
 ): PricingCurvePoint | undefined {
-  const points = observedSellTimePoints(curve);
+  const points = prepare(curve).bySellTime;
   if (points.length === 0) return undefined;
   const discountedNet = (sellDays: number): number => {
     const net = netProceedsAtPrice(
@@ -297,7 +340,7 @@ function pointAtBestReturn(
     logSpacedHorizons(
       points[0].estimatedMedianSellDays,
       points.at(-1)!.estimatedMedianSellDays,
-      SAMPLE_COUNT,
+      BEST_RETURN_SAMPLE_COUNT,
     ),
     discountedNet,
   );
@@ -324,10 +367,7 @@ function pointAtPrice(
   curve: readonly PricingCurvePoint[],
   price: number,
 ): PricingCurvePoint | undefined {
-  const points = [...curve].sort(
-    (left, right) =>
-      left.price - right.price || left.percentile - right.percentile,
-  );
+  const points = prepare(curve).byPrice;
   if (points.length === 0) return undefined;
   if (price <= points[0].price) return points[0];
   if (price >= points.at(-1)!.price) return points.at(-1);
@@ -373,15 +413,14 @@ export function selectPricingDecision(
     constraint: "none" as const,
   };
   const selectedPrice = roundCurrency(constrained.price);
-  const minimumCurvePrice = Math.min(...curve.map(({ price }) => price));
-  const maximumCurvePrice = Math.max(...curve.map(({ price }) => price));
+  const { minimumPrice, maximumPrice } = prepare(curve);
   const finalPoint = pointAtPrice(curve, selectedPrice) ?? requestedPoint;
   const forecastStatus =
     finalPoint.supplyStatus !== "observed"
       ? "unavailable"
-      : selectedPrice < minimumCurvePrice
+      : selectedPrice < minimumPrice
         ? "lower-bound"
-        : selectedPrice > maximumCurvePrice
+        : selectedPrice > maximumPrice
           ? "upper-bound"
           : "interpolated";
   return {
@@ -604,18 +643,19 @@ function findClosestHorizon(
     });
     return { horizonDays, decisions, value: decisionValue(decisions) };
   };
+  const distance = (candidate: HorizonCandidate): number =>
+    Math.abs(candidate.value - baselineValue);
   const samples = logSpacedHorizons(
     minimumHorizon,
     maximumHorizon,
-    SAMPLE_COUNT + 1,
+    VALUE_MATCH_SAMPLE_COUNT,
   ).map(evaluate);
   let best = samples.reduce((closest, candidate) =>
-    Math.abs(candidate.value - baselineValue) <
-    Math.abs(closest.value - baselineValue)
-      ? candidate
-      : closest,
+    distance(candidate) < distance(closest) ? candidate : closest,
   );
 
+  // Bisect every pair of samples that straddles the baseline; log spacing
+  // keeps each step proportional to the horizon.
   for (
     let index = 1;
     best.value !== baselineValue && index < samples.length;
@@ -625,18 +665,9 @@ function findClosestHorizon(
     let right = samples[index];
     if ((left.value - baselineValue) * (right.value - baselineValue) >= 0)
       continue;
-    for (let iteration = 0; iteration < REFINEMENT_ITERATIONS; iteration += 1) {
-      const middle = evaluate(
-        Math.exp(
-          (Math.log(left.horizonDays) + Math.log(right.horizonDays)) / 2,
-        ),
-      );
-      if (
-        Math.abs(middle.value - baselineValue) <
-        Math.abs(best.value - baselineValue)
-      ) {
-        best = middle;
-      }
+    for (let step = 0; step < VALUE_MATCH_REFINEMENTS; step += 1) {
+      const middle = evaluate(Math.sqrt(left.horizonDays * right.horizonDays));
+      if (distance(middle) < distance(best)) best = middle;
       if ((left.value - baselineValue) * (middle.value - baselineValue) <= 0)
         right = middle;
       else left = middle;

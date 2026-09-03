@@ -323,14 +323,17 @@ function buildPolicyComparisons(
   profitPerDayDecisions: ReadonlyMap<number, PricingDecision>,
   activePolicy: ActivePricingPolicy,
 ): InventoryStrategyPolicyComparison[] {
+  const stored = items.map((item) => ({
+    item,
+    activeDecision: readPricingDecision(item.pricingDetails),
+    benchmarkDecision: readShadowPricingDecision(item.pricingDetails),
+  }));
   const build = (
     key: InventoryStrategyPolicyComparison["key"],
   ): InventoryStrategyPolicyComparison | null => {
     const isCurrent = key === "current";
-    const decisions = items.map((item) => {
-      const activeDecision = readPricingDecision(item.pricingDetails);
-      const benchmarkDecision = readShadowPricingDecision(item.pricingDetails);
-      return {
+    const decisions = stored.map(
+      ({ item, activeDecision, benchmarkDecision }) => ({
         item,
         decision:
           key === "percentile"
@@ -348,8 +351,8 @@ function buildPolicyComparisons(
               : key === "profit-per-day"
                 ? profitPerDayDecisions.get(item.sku)
                 : undefined,
-      };
-    });
+      }),
+    );
     if (!isCurrent && !decisions.some(({ decision }) => decision)) return null;
 
     let oneCopyValue = 0;
