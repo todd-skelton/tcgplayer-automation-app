@@ -1,12 +1,17 @@
 import type { ServerPricingConfig } from "~/features/pricing/types/config";
 import { calculateMarketplacePrice } from "~/features/pricing/services/pricingService";
 import {
+  decisionsAtHorizon,
+  logSpacedHorizons,
+  observedHorizonRange,
   readPricingDecision,
   readShadowPricingDecision,
   resolveValueMatchedPortfolioPlan,
   selectPricingDecision,
   toPricingCurve,
+  type PortfolioCurveItem,
 } from "~/features/pricing/domain/pricingPolicy";
+import { fitHorizonValueCurve } from "~/features/pricing/domain/horizonValueCurve";
 import type { PricingPercentileDetail } from "~/core/types/pricing";
 import {
   PRICING_MODEL_VERSION,
@@ -18,7 +23,8 @@ import {
   INVENTORY_STRATEGY_PERCENTILES,
   INVENTORY_STRATEGY_PREVIEW_PERCENTILES,
   type InventoryStrategyDashboard,
-  type InventoryStrategyKneeConfidence,
+  type InventoryStrategyHorizonModel,
+  type InventoryStrategyConfidence,
   type InventoryStrategyPercentile,
   type InventoryStrategyPolicyComparison,
   type InventoryStrategyProductLine,
@@ -37,10 +43,13 @@ interface KneeEstimate {
   estimatedPercentile: number | null;
   rangeMinimum: number | null;
   rangeMaximum: number | null;
-  confidence: InventoryStrategyKneeConfidence;
+  confidence: InventoryStrategyConfidence;
 }
 
 const KNEE_SCORE_RANGE_TOLERANCE = 0.02;
+const HORIZON_FIT_SAMPLE_COUNT = 24;
+const HORIZON_FIT_HIGH_CONFIDENCE_RESIDUAL = 0.02;
+const HORIZON_FIT_MEDIUM_CONFIDENCE_RESIDUAL = 0.05;
 
 interface ScenarioPricingDetail {
   suggestedPrice: number;
@@ -76,21 +85,17 @@ function constrainMarketplacePrice(
   };
 }
 
-function resolveInventoryValueMatchedDecisions(
-  key: string,
+interface StrategyPortfolioItem extends PortfolioCurveItem {
+  quantity: number;
+}
+
+function toPortfolioItems(
   items: InventoryStrategySnapshotItem[],
   config: ServerPricingConfig,
-): ReadonlyMap<number, PricingDecision> {
-  const latestPricingAt = items.reduce<Date | null>(
-    (latest, item) =>
-      item.strategyPricedAt &&
-      (!latest || item.strategyPricedAt.getTime() > latest.getTime())
-        ? item.strategyPricedAt
-        : latest,
-    null,
-  );
-  const portfolioItems = items.map((item) => ({
+): StrategyPortfolioItem[] {
+  return items.map((item) => ({
     sku: item.sku,
+    quantity: item.quantity,
     currentPrice: item.currentPrice ?? undefined,
     curve: toPricingCurve(
       item.pricingDetails?.pricingModelVersion === PRICING_MODEL_VERSION
@@ -105,27 +110,58 @@ function resolveInventoryValueMatchedDecisions(
     applyConstraint: (price: number) =>
       constrainMarketplacePrice(price, item, config),
   }));
+}
+
+interface InventoryHorizonDecisions {
+  decisions: ReadonlyMap<number, PricingDecision>;
+  valueMatchedHorizonDays: number | null;
+}
+
+/**
+ * Horizon-policy decisions for the comparison row: the active horizon when
+ * one is configured, otherwise the value-matched calibration plan.
+ */
+function resolveInventoryHorizonDecisions(
+  key: string,
+  items: InventoryStrategySnapshotItem[],
+  portfolioItems: readonly StrategyPortfolioItem[],
+  config: ServerPricingConfig,
+): InventoryHorizonDecisions {
   const policy = config.pricing.policy;
   if (policy.method === "target-horizon") {
-    return new Map(
-      portfolioItems.flatMap((item) => {
-        const decision = selectPricingDecision(
-          item.curve,
-          policy,
-          item.currentPrice,
-          item.applyConstraint,
-        );
-        return decision ? [[item.sku, decision] as const] : [];
-      }),
-    );
+    return {
+      decisions: new Map(
+        portfolioItems.flatMap((item) => {
+          const decision = selectPricingDecision(
+            item.curve,
+            policy,
+            item.currentPrice,
+            item.applyConstraint,
+          );
+          return decision ? [[item.sku, decision] as const] : [];
+        }),
+      ),
+      valueMatchedHorizonDays: null,
+    };
   }
+  const latestPricingAt = items.reduce<Date | null>(
+    (latest, item) =>
+      item.strategyPricedAt &&
+      (!latest || item.strategyPricedAt.getTime() > latest.getTime())
+        ? item.strategyPricedAt
+        : latest,
+    null,
+  );
   const resolved = resolveValueMatchedPortfolioPlan(portfolioItems, {
     cohortId: `inventory-strategy:${items[0]?.sellerKey ?? "unknown"}:${key}`,
     ...(latestPricingAt ? { createdAt: latestPricingAt } : {}),
   });
   return resolved.plan.modeledSkuCount > 0
-    ? resolved.decisionsBySku
-    : new Map();
+    ? {
+        decisions: resolved.decisionsBySku,
+        valueMatchedHorizonDays: resolved.plan.resolvedHorizonDays,
+      }
+    : { decisions: new Map(), valueMatchedHorizonDays: null };
 }
 
 function weightedQuantile(values: WeightedValue[], quantile: number): number {
@@ -475,7 +511,7 @@ function estimateKnee(
   );
   const coverage =
     totalUnitCount === 0 ? 0 : mathematical.modeledUnitCount / totalUnitCount;
-  const confidence: InventoryStrategyKneeConfidence =
+  const confidence: InventoryStrategyConfidence =
     coverage < 0.8
       ? "low"
       : range.length === 1 && candidates.length >= 5
@@ -489,6 +525,63 @@ function estimateKnee(
     rangeMinimum: Math.min(...range.map((scenario) => scenario.percentile)),
     rangeMaximum: Math.max(...range.map((scenario) => scenario.percentile)),
     confidence,
+  };
+}
+
+/** Physical listed value with every modeled SKU priced at one target horizon. */
+function evaluateHorizonValue(
+  portfolioItems: readonly StrategyPortfolioItem[],
+  horizonDays: number,
+): number {
+  const decisions = decisionsAtHorizon(portfolioItems, horizonDays);
+  return roundCurrency(
+    portfolioItems.reduce(
+      (sum, item) =>
+        sum +
+        (decisions.get(item.sku)?.selectedPrice ?? item.currentPrice ?? 0) *
+          item.quantity,
+      0,
+    ),
+  );
+}
+
+/**
+ * Fits the log-logistic horizon curve from log-spaced samples across the
+ * observed horizon range. The range endpoints pin every SKU to its fastest or
+ * slowest curve point, so the first and last samples are the exact floor and
+ * ceiling.
+ */
+function buildHorizonModel(
+  portfolioItems: readonly StrategyPortfolioItem[],
+): InventoryStrategyHorizonModel | null {
+  const range = observedHorizonRange(portfolioItems);
+  if (!range) return null;
+
+  const samples = logSpacedHorizons(
+    range.minimumDays,
+    range.maximumDays,
+    HORIZON_FIT_SAMPLE_COUNT,
+  ).map((horizonDays) => ({
+    horizonDays,
+    value: evaluateHorizonValue(portfolioItems, horizonDays),
+  }));
+  const curve = fitHorizonValueCurve(
+    samples,
+    samples[0].value,
+    samples.at(-1)!.value,
+  );
+
+  return {
+    minimumHorizonDays: range.minimumDays,
+    maximumHorizonDays: range.maximumDays,
+    curve: curve ?? null,
+    fitConfidence: !curve
+      ? "unavailable"
+      : curve.residual > HORIZON_FIT_MEDIUM_CONFIDENCE_RESIDUAL
+        ? "low"
+        : curve.residual > HORIZON_FIT_HIGH_CONFIDENCE_RESIDUAL
+          ? "medium"
+          : "high",
   };
 }
 
@@ -593,6 +686,13 @@ function buildProductLine(
     unitCount,
     exactCandidatePercentiles,
   );
+  const portfolioItems = toPortfolioItems(items, config);
+  const horizonDecisions = resolveInventoryHorizonDecisions(
+    key,
+    items,
+    portfolioItems,
+    config,
+  );
 
   return {
     key,
@@ -627,9 +727,11 @@ function buildProductLine(
     scenarios,
     policyComparisons: buildPolicyComparisons(
       items,
-      resolveInventoryValueMatchedDecisions(key, items, config),
+      horizonDecisions.decisions,
       config.pricing.policy,
     ),
+    valueMatchedHorizonDays: horizonDecisions.valueMatchedHorizonDays,
+    horizonModel: buildHorizonModel(portfolioItems),
   };
 }
 
@@ -702,6 +804,7 @@ export function buildInventoryStrategyDashboard(
   return {
     sellerKey,
     generatedAt: generatedAt.toISOString(),
+    policy: config.pricing.policy,
     overall,
     productLines,
   };

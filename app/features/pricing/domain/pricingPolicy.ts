@@ -72,8 +72,12 @@ export function toPricingCurve(
         detail.suggestedPrice > 0,
     )
     .map((detail) => {
-      const buyerIntervalDays = detail.historicalSalesVelocityDays;
-      const storeWinShare = detail.storeWinShare;
+      const buyerIntervalDays = isPositive(detail.historicalSalesVelocityDays)
+        ? detail.historicalSalesVelocityDays
+        : undefined;
+      const storeWinShare = isPositive(detail.storeWinShare)
+        ? detail.storeWinShare
+        : undefined;
       return {
         percentile: detail.percentile,
         price: detail.suggestedPrice,
@@ -105,17 +109,16 @@ function mixOptional(
     : left + (right - left) * ratio;
 }
 
+function isPositive(value: number | undefined): value is number {
+  return value !== undefined && Number.isFinite(value) && value > 0;
+}
+
 function medianSellDays(
   buyerIntervalDays: number | undefined,
   storeWinShare: number | undefined,
   fallback: number | undefined,
 ): number | undefined {
-  return buyerIntervalDays !== undefined &&
-    Number.isFinite(buyerIntervalDays) &&
-    buyerIntervalDays > 0 &&
-    storeWinShare !== undefined &&
-    Number.isFinite(storeWinShare) &&
-    storeWinShare > 0
+  return isPositive(buyerIntervalDays) && isPositive(storeWinShare)
     ? (Math.LN2 * buyerIntervalDays) / storeWinShare
     : fallback;
 }
@@ -227,17 +230,35 @@ function pointAtHorizon(
   const lower = points[upperIndex - 1];
   if (lower.estimatedMedianSellDays === upper.estimatedMedianSellDays)
     return lower;
+  return interpolate(lower, upper, horizonRatio(lower, upper, horizonDays));
+}
 
-  let lowerRatio = 0;
-  let upperRatio = 1;
-  for (let iteration = 0; iteration < 40; iteration += 1) {
-    const ratio = (lowerRatio + upperRatio) / 2;
-    const candidate = interpolate(lower, upper, ratio);
-    if ((candidate.estimatedMedianSellDays ?? 0) < horizonDays)
-      lowerRatio = ratio;
-    else upperRatio = ratio;
-  }
-  return interpolate(lower, upper, (lowerRatio + upperRatio) / 2);
+/**
+ * Position of a horizon between two curve points. Interpolation mixes buyer
+ * interval and win share linearly, so the median (ln2 · interval / share) is
+ * a linear-fractional function of the ratio and inverts in closed form. When
+ * either input is missing the stored median mixes linearly instead. Curves
+ * from toPricingCurve carry those inputs only when positive, so the branch
+ * here matches the one interpolate takes.
+ */
+function horizonRatio(
+  lower: PricingCurvePoint,
+  upper: PricingCurvePoint,
+  horizonDays: number,
+): number {
+  const lowerMedian = lower.estimatedMedianSellDays ?? 0;
+  const upperMedian = upper.estimatedMedianSellDays ?? 0;
+  const ratio =
+    isPositive(lower.buyerIntervalDays) &&
+    isPositive(upper.buyerIntervalDays) &&
+    isPositive(lower.storeWinShare) &&
+    isPositive(upper.storeWinShare)
+      ? (horizonDays * lower.storeWinShare -
+          Math.LN2 * lower.buyerIntervalDays) /
+        (Math.LN2 * (upper.buyerIntervalDays - lower.buyerIntervalDays) -
+          horizonDays * (upper.storeWinShare - lower.storeWinShare))
+      : (horizonDays - lowerMedian) / (upperMedian - lowerMedian);
+  return Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 0;
 }
 
 function pointAtPrice(
@@ -432,28 +453,63 @@ function hashText(value: string): string {
   return `${hash(2166136261)}${hash(3335557771)}`;
 }
 
-function hasModeledCurve(item: PortfolioCurveItem): boolean {
-  return item.curve.some(
-    (point) =>
-      point.supplyStatus === "observed" &&
-      point.estimatedMedianSellDays !== undefined &&
-      Number.isFinite(point.estimatedMedianSellDays) &&
-      point.estimatedMedianSellDays > 0,
+function isObservedSellTime(
+  point: PricingCurvePoint,
+): point is PricingCurvePoint & { estimatedMedianSellDays: number } {
+  return (
+    point.supplyStatus === "observed" &&
+    isPositive(point.estimatedMedianSellDays)
   );
+}
+
+function hasModeledCurve(item: PortfolioCurveItem): boolean {
+  return item.curve.some(isObservedSellTime);
+}
+
+/**
+ * Shortest and longest observed median sell time across the portfolio. Below
+ * the minimum every SKU sits at its fastest curve point; above the maximum
+ * every SKU sits at its slowest, so this is the range over which a target
+ * horizon changes any price.
+ */
+export function observedHorizonRange(
+  items: readonly PortfolioCurveItem[],
+): { minimumDays: number; maximumDays: number } | undefined {
+  let minimumDays = Number.POSITIVE_INFINITY;
+  let maximumDays = 0;
+  for (const item of items) {
+    for (const point of item.curve) {
+      if (!isObservedSellTime(point)) continue;
+      minimumDays = Math.min(minimumDays, point.estimatedMedianSellDays);
+      maximumDays = Math.max(maximumDays, point.estimatedMedianSellDays);
+    }
+  }
+  if (maximumDays === 0) return undefined;
+  return { minimumDays: Math.max(0.1, minimumDays), maximumDays };
 }
 
 function horizonBounds(items: readonly PortfolioCurveItem[]): [number, number] {
-  const days = items.flatMap((item) =>
-    item.curve
-      .filter((point) => point.supplyStatus === "observed")
-      .map((point) => point.estimatedMedianSellDays)
-      .filter((value): value is number => Boolean(value && value > 0)),
-  );
-  if (days.length === 0) return [1, 365];
-  return [Math.max(0.1, Math.min(...days)), Math.max(...days)];
+  const range = observedHorizonRange(items);
+  return range ? [range.minimumDays, range.maximumDays] : [1, 365];
 }
 
-function decisionsAtHorizon(
+/** Horizons spaced evenly in log space from minimum to maximum, endpoints exact. */
+export function logSpacedHorizons(
+  minimumDays: number,
+  maximumDays: number,
+  count: number,
+): number[] {
+  const lastIndex = count - 1;
+  return Array.from({ length: count }, (_, index) =>
+    index === 0
+      ? minimumDays
+      : index === lastIndex
+        ? maximumDays
+        : minimumDays * (maximumDays / minimumDays) ** (index / lastIndex),
+  );
+}
+
+export function decisionsAtHorizon(
   items: readonly PortfolioCurveItem[],
   horizonDays: number,
 ): Map<number, PricingDecision> {
@@ -501,13 +557,11 @@ function findClosestHorizon(
     const decisions = decisionsAtHorizon(items, horizonDays);
     return { horizonDays, decisions, value: decisionValue(decisions) };
   };
-  const logMinimum = Math.log(minimumHorizon);
-  const logMaximum = Math.log(maximumHorizon);
-  const samples = Array.from({ length: SAMPLE_COUNT + 1 }, (_, index) =>
-    evaluate(
-      Math.exp(logMinimum + ((logMaximum - logMinimum) * index) / SAMPLE_COUNT),
-    ),
-  );
+  const samples = logSpacedHorizons(
+    minimumHorizon,
+    maximumHorizon,
+    SAMPLE_COUNT + 1,
+  ).map(evaluate);
   let best = samples.reduce((closest, candidate) =>
     Math.abs(candidate.value - baselineValue) <
     Math.abs(closest.value - baselineValue)

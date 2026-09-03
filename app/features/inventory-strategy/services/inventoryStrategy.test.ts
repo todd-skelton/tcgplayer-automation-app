@@ -386,6 +386,50 @@ assert.equal(activeHorizonComparison?.planState, "single");
 assert.equal(percentileBenchmark?.role, "benchmark");
 assert.equal(percentileBenchmark?.oneCopyValue, 24);
 
+assert.equal(
+  pokemon.horizonModel,
+  null,
+  "curves from an older pricing model do not produce a horizon model",
+);
+assert.equal(dashboard.policy.method, "percentile");
+
+const completedHorizonCurve =
+  completedInventoryDashboard.overall.horizonModel?.curve;
+assert.ok(completedHorizonCurve);
+assert.ok(
+  completedHorizonCurve.floorValue < completedHorizonCurve.ceilingValue,
+);
+assert.ok(
+  (completedInventoryDashboard.overall.valueMatchedHorizonDays ?? 0) > 0,
+  "a percentile policy exposes the value-matched calibration horizon",
+);
+
+assert.deepEqual(activeHorizonDashboard.policy, {
+  method: "target-horizon",
+  horizonDays: 20,
+});
+assert.equal(activeHorizonDashboard.overall.valueMatchedHorizonDays, null);
+const activeHorizonModel = activeHorizonDashboard.overall.horizonModel;
+assert.ok(activeHorizonModel?.curve);
+assert.equal(activeHorizonModel.minimumHorizonDays, 10);
+assert.equal(activeHorizonModel.maximumHorizonDays, 33.5);
+assert.equal(
+  activeHorizonModel.curve.floorValue,
+  40,
+  "the floor is the exact value with every SKU at its fastest point",
+);
+assert.equal(
+  activeHorizonModel.curve.ceilingValue,
+  60,
+  "the ceiling is the exact value with every SKU at its slowest point",
+);
+assert.ok(
+  activeHorizonModel.curve.midpointDays > 10 &&
+    activeHorizonModel.curve.midpointDays < 33.5,
+  "the fitted midpoint falls inside the observed horizon range",
+);
+assert.notEqual(activeHorizonModel.fitConfidence, "unavailable");
+
 console.log(
   "PASS inventory strategy preserves unmodeled value and applies guarded scenario prices",
 );

@@ -1,11 +1,38 @@
 import assert from "node:assert/strict";
 import {
+  logSpacedHorizons,
   resolveValueMatchedPortfolioPlan,
   readPricingDecision,
   readShadowPricingDecision,
   selectPricingDecision,
+  toPricingCurve,
   type PricingCurvePoint,
 } from "./pricingPolicy";
+
+const spaced = logSpacedHorizons(10, 33.5, 24);
+assert.equal(spaced.length, 24);
+assert.equal(spaced[0], 10, "the first horizon is exactly the minimum");
+assert.equal(spaced.at(-1), 33.5, "the last horizon is exactly the maximum");
+assert.ok(
+  spaced.every((value, index) => index === 0 || value > spaced[index - 1]),
+);
+
+const normalizedCurve = toPricingCurve([
+  {
+    percentile: 50,
+    suggestedPrice: 10,
+    historicalSalesVelocityDays: 0,
+    storeWinShare: 0.5,
+    estimatedTimeToSellDays: 12,
+  },
+]);
+assert.equal(normalizedCurve[0]?.buyerIntervalDays, undefined);
+assert.equal(normalizedCurve[0]?.storeWinShare, 0.5);
+assert.equal(
+  normalizedCurve[0]?.estimatedMedianSellDays,
+  12,
+  "non-positive model inputs are dropped so the stored median is used",
+);
 
 const curve: PricingCurvePoint[] = [
   {
@@ -74,6 +101,45 @@ for (const horizonDays of [10, 15, 20, 40, 80, 100]) {
     "the rounded selected price remains close to the requested horizon",
   );
 }
+
+const exactIdentityDecision = selectPricingDecision(identityCurve, {
+  method: "target-horizon",
+  horizonDays: 40,
+});
+assert.equal(
+  exactIdentityDecision?.selectedPrice,
+  10,
+  "the closed-form inversion lands on the exact interpolated price",
+);
+assert.ok(
+  Math.abs((exactIdentityDecision?.estimatedMedianSellDays ?? 0) - 40) < 1e-9,
+  "the rational median inverts exactly to the requested horizon",
+);
+const exactLinearDecision = selectPricingDecision(curve, {
+  method: "target-horizon",
+  horizonDays: 55,
+});
+assert.equal(exactLinearDecision?.selectedPrice, 10);
+assert.ok(
+  Math.abs((exactLinearDecision?.estimatedMedianSellDays ?? 0) - 55) < 1e-9,
+  "curves without buyer interval and win share invert linearly",
+);
+assert.equal(
+  selectPricingDecision(identityCurve, {
+    method: "target-horizon",
+    horizonDays: 5,
+  })?.selectedPrice,
+  5,
+  "horizons below the fastest point pin to that point",
+);
+assert.equal(
+  selectPricingDecision(identityCurve, {
+    method: "target-horizon",
+    horizonDays: 500,
+  })?.selectedPrice,
+  15,
+  "horizons above the slowest point pin to that point",
+);
 
 const constrainedIdentityDecision = selectPricingDecision(
   identityCurve,

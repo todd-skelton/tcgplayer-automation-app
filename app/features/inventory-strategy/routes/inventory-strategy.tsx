@@ -32,11 +32,19 @@ import {
   pricingConfigRepository,
 } from "~/core/db";
 import { refreshContinuousPricingInventory } from "~/features/continuous-pricing/services/continuousInventoryRefresh.server";
+import {
+  horizonGainElasticity,
+  horizonKneeDays,
+  horizonMarginalValuePerDay,
+  horizonValue,
+} from "~/features/pricing/domain/horizonValueCurve";
 import { buildInventoryStrategyDashboard } from "../services/inventoryStrategy";
 import { queueInventoryStrategyAnalysis } from "../services/inventoryStrategyAnalysis.server";
 import {
+  INVENTORY_STRATEGY_HORIZON_DAYS,
   INVENTORY_STRATEGY_MAX_PERCENTILE,
   INVENTORY_STRATEGY_MIN_PERCENTILE,
+  type InventoryStrategyHorizonModel,
   type InventoryStrategyProductLine,
   type InventoryStrategyScenario,
 } from "../types/inventoryStrategy";
@@ -85,6 +93,74 @@ function formatAge(isoDate: string | null): string {
   if (ageHours < 1) return "Less than 1 hour";
   if (ageHours < 48) return `${Math.round(ageHours)} hours`;
   return `${Math.round(ageHours / 24)} days`;
+}
+
+const fitConfidenceColor = {
+  high: "success",
+  medium: "warning",
+  low: "default",
+  unavailable: "default",
+} as const;
+
+function formatDays(days: number): string {
+  const rounded = days >= 100 ? Math.round(days) : Math.round(days * 10) / 10;
+  return `${rounded.toLocaleString()} days`;
+}
+
+/**
+ * Modeled value at one horizon with its marginal rate and elasticity. Shows
+ * the horizon itself when it varies by row (knee, value-matched).
+ */
+function HorizonValueCell({
+  model,
+  horizonDays,
+  showDays = false,
+  emphasis,
+}: {
+  model: InventoryStrategyHorizonModel | null;
+  horizonDays: number | null;
+  showDays?: boolean;
+  emphasis?: "active" | "knee";
+}) {
+  if (!model?.curve || horizonDays === null) {
+    return <TableCell align="right">—</TableCell>;
+  }
+  const outsideRange =
+    horizonDays < model.minimumHorizonDays ||
+    horizonDays > model.maximumHorizonDays;
+  return (
+    <TableCell
+      align="right"
+      sx={{ bgcolor: emphasis === "active" ? "action.selected" : undefined }}
+    >
+      {showDays && (
+        <Typography
+          variant="body2"
+          fontWeight={700}
+          color={emphasis === "knee" ? "success.main" : "text.primary"}
+        >
+          {formatDays(horizonDays)}
+        </Typography>
+      )}
+      <Typography
+        variant="body2"
+        fontWeight={emphasis === "active" ? 700 : 400}
+      >
+        {currencyFormatter.format(horizonValue(model.curve, horizonDays))}
+      </Typography>
+      <Typography variant="caption" color="text.secondary" display="block">
+        {currencyFormatter.format(
+          horizonMarginalValuePerDay(model.curve, horizonDays),
+        )}
+        /day · e {horizonGainElasticity(model.curve, horizonDays).toFixed(2)}
+      </Typography>
+      {outsideRange && (
+        <Typography variant="caption" color="text.secondary" display="block">
+          Outside curve range
+        </Typography>
+      )}
+    </TableCell>
+  );
 }
 
 function findScenario(
@@ -277,16 +353,27 @@ export default function InventoryStrategyRoute() {
     0,
   );
   const selectedDelta = selectedValue - dashboard.overall.currentPolicyValue;
+  const allProductLines = useMemo(
+    () => [dashboard.overall, ...dashboard.productLines],
+    [dashboard.overall, dashboard.productLines],
+  );
   const matrixPercentiles = useMemo(
     () =>
       Array.from(
         new Set(
-          [dashboard.overall, ...dashboard.productLines].flatMap(
+          allProductLines.flatMap(
             (productLine) => productLine.matrixPercentiles,
           ),
         ),
       ).sort((left, right) => left - right),
-    [dashboard.overall, dashboard.productLines],
+    [allProductLines],
+  );
+  const activeHorizonDays =
+    dashboard.policy.method === "target-horizon"
+      ? dashboard.policy.horizonDays
+      : null;
+  const showValueMatchedColumn = allProductLines.some(
+    (productLine) => productLine.valueMatchedHorizonDays !== null,
   );
 
   const submit = (intent: "refresh_inventory" | "queue_analysis") =>
@@ -477,6 +564,152 @@ export default function InventoryStrategyRoute() {
                   </TableCell>
                 </TableRow>
               ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ mb: 3 }}>
+        <Box sx={{ p: 2 }}>
+          <Typography variant="h6">Horizon curve</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Physical value across target horizons follows a fitted log-logistic
+            curve: floor plus headroom ÷ (1 + (midpoint ÷ horizon)^steepness).
+            The knee is where gain per doubling of horizon decelerates fastest,
+            at about 79% of headroom. Each cell shows modeled value, dollars per
+            extra day, and elasticity (percent of gain over floor earned per
+            percent longer horizon). Fit residual is the root-mean-square error
+            in headroom fraction.
+          </Typography>
+        </Box>
+        <TableContainer>
+          <Table size="small" sx={{ minWidth: 1200 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell
+                  sx={{
+                    position: "sticky",
+                    left: 0,
+                    bgcolor: "background.paper",
+                    zIndex: 1,
+                  }}
+                >
+                  Product line
+                </TableCell>
+                <TableCell>Fit</TableCell>
+                <TableCell align="right">Floor → ceiling</TableCell>
+                <TableCell align="right">Knee</TableCell>
+                {activeHorizonDays !== null && (
+                  <TableCell align="right">
+                    Active ({formatDays(activeHorizonDays)})
+                  </TableCell>
+                )}
+                {showValueMatchedColumn && (
+                  <TableCell align="right">Value-matched</TableCell>
+                )}
+                {INVENTORY_STRATEGY_HORIZON_DAYS.map((horizonDays) => (
+                  <TableCell key={horizonDays} align="right">
+                    {horizonDays} days
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {allProductLines.map((productLine) => {
+                const model = productLine.horizonModel;
+                const curve = model?.curve ?? null;
+                return (
+                  <TableRow key={productLine.key}>
+                    <TableCell
+                      sx={{
+                        position: "sticky",
+                        left: 0,
+                        bgcolor: "background.paper",
+                        zIndex: 1,
+                        fontWeight: productLine.key === "all" ? 700 : 400,
+                      }}
+                    >
+                      {productLine.productLine}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        color={
+                          model
+                            ? fitConfidenceColor[model.fitConfidence]
+                            : "default"
+                        }
+                        label={
+                          !model
+                            ? "No curve"
+                            : !curve
+                              ? "No fit"
+                              : `${model.fitConfidence} confidence`
+                        }
+                      />
+                      {curve && (
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          display="block"
+                        >
+                          midpoint {formatDays(curve.midpointDays)} · steepness{" "}
+                          {curve.steepness.toFixed(2)} · residual{" "}
+                          {curve.residual.toFixed(3)}
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell align="right">
+                      {model && curve ? (
+                        <>
+                          <Typography variant="body2">
+                            {currencyFormatter.format(curve.floorValue)} →{" "}
+                            {currencyFormatter.format(curve.ceilingValue)}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            display="block"
+                          >
+                            {formatDays(model.minimumHorizonDays)} –{" "}
+                            {formatDays(model.maximumHorizonDays)}
+                          </Typography>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <HorizonValueCell
+                      model={model}
+                      horizonDays={curve ? horizonKneeDays(curve) : null}
+                      showDays
+                      emphasis="knee"
+                    />
+                    {activeHorizonDays !== null && (
+                      <HorizonValueCell
+                        model={model}
+                        horizonDays={activeHorizonDays}
+                        emphasis="active"
+                      />
+                    )}
+                    {showValueMatchedColumn && (
+                      <HorizonValueCell
+                        model={model}
+                        horizonDays={productLine.valueMatchedHorizonDays}
+                        showDays
+                      />
+                    )}
+                    {INVENTORY_STRATEGY_HORIZON_DAYS.map((horizonDays) => (
+                      <HorizonValueCell
+                        key={horizonDays}
+                        model={model}
+                        horizonDays={horizonDays}
+                      />
+                    ))}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
@@ -689,78 +922,72 @@ export default function InventoryStrategyRoute() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {[dashboard.overall, ...dashboard.productLines].map(
-                (productLine) => (
-                  <TableRow key={productLine.key}>
-                    <TableCell
-                      sx={{
-                        position: "sticky",
-                        left: 0,
-                        bgcolor: "background.paper",
-                        zIndex: 1,
-                        fontWeight: productLine.key === "all" ? 700 : 400,
-                      }}
-                    >
-                      {productLine.productLine}
-                    </TableCell>
-                    {matrixPercentiles.map((percentile) => {
-                      const scenario = findScenario(productLine, percentile);
-                      const configured =
-                        productLine.configuredPercentile === percentile;
-                      const estimated =
-                        productLine.estimatedPercentile === percentile;
-                      const mathematical =
-                        productLine.mathematicalKneePercentile === percentile;
-                      return (
-                        <TableCell
-                          key={percentile}
-                          align="right"
-                          sx={{
-                            bgcolor: configured ? "action.selected" : undefined,
-                            outline: estimated ? "2px solid" : undefined,
-                            outlineColor: estimated
-                              ? "success.main"
-                              : undefined,
-                            outlineOffset: estimated ? "-2px" : undefined,
-                          }}
+              {allProductLines.map((productLine) => (
+                <TableRow key={productLine.key}>
+                  <TableCell
+                    sx={{
+                      position: "sticky",
+                      left: 0,
+                      bgcolor: "background.paper",
+                      zIndex: 1,
+                      fontWeight: productLine.key === "all" ? 700 : 400,
+                    }}
+                  >
+                    {productLine.productLine}
+                  </TableCell>
+                  {matrixPercentiles.map((percentile) => {
+                    const scenario = findScenario(productLine, percentile);
+                    const configured =
+                      productLine.configuredPercentile === percentile;
+                    const estimated =
+                      productLine.estimatedPercentile === percentile;
+                    const mathematical =
+                      productLine.mathematicalKneePercentile === percentile;
+                    return (
+                      <TableCell
+                        key={percentile}
+                        align="right"
+                        sx={{
+                          bgcolor: configured ? "action.selected" : undefined,
+                          outline: estimated ? "2px solid" : undefined,
+                          outlineColor: estimated ? "success.main" : undefined,
+                          outlineOffset: estimated ? "-2px" : undefined,
+                        }}
+                      >
+                        <Typography
+                          variant="body2"
+                          fontWeight={configured ? 700 : 400}
                         >
-                          <Typography
-                            variant="body2"
-                            fontWeight={configured ? 700 : 400}
-                          >
-                            {scenario
-                              ? currencyFormatter.format(scenario.listedValue)
-                              : "—"}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {scenario?.estimatedTime
-                              ? `${scenario.estimatedTime.medianDays.toFixed(1)} days`
-                              : "No time estimate"}
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            display="block"
-                            color={
-                              estimated ? "success.main" : "text.secondary"
-                            }
-                            fontWeight={estimated ? 700 : 400}
-                          >
-                            {scenario?.kneeScore === null ||
-                            scenario?.kneeScore === undefined
-                              ? "No knee score"
-                              : `Score ${scenario.kneeScore.toFixed(3)}`}
-                            {estimated ? " · Estimated" : ""}
-                            {mathematical && !estimated ? " · Math knee" : ""}
-                            {(scenario?.interpolatedUnitCount ?? 0) > 0
-                              ? " · Interpolated"
-                              : ""}
-                          </Typography>
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                ),
-              )}
+                          {scenario
+                            ? currencyFormatter.format(scenario.listedValue)
+                            : "—"}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {scenario?.estimatedTime
+                            ? `${scenario.estimatedTime.medianDays.toFixed(1)} days`
+                            : "No time estimate"}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          display="block"
+                          color={estimated ? "success.main" : "text.secondary"}
+                          fontWeight={estimated ? 700 : 400}
+                        >
+                          {scenario?.kneeScore === null ||
+                          scenario?.kneeScore === undefined
+                            ? "No knee score"
+                            : `Score ${scenario.kneeScore.toFixed(3)}`}
+                          {estimated ? " · Estimated" : ""}
+                          {mathematical && !estimated ? " · Math knee" : ""}
+                          {(scenario?.interpolatedUnitCount ?? 0) > 0
+                            ? " · Interpolated"
+                            : ""}
+                        </Typography>
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </TableContainer>

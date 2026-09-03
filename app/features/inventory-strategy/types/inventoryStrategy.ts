@@ -1,4 +1,8 @@
 import type { PersistedPricingDetails } from "~/core/types/pricing";
+import type { HorizonValueCurve } from "~/features/pricing/domain/horizonValueCurve";
+import type { PricingPolicyConfig } from "~/features/pricing/types/config";
+
+export const INVENTORY_STRATEGY_HORIZON_DAYS = [7, 14, 30, 60, 90, 180, 365];
 
 export const INVENTORY_STRATEGY_MIN_PERCENTILE = 5;
 export const INVENTORY_STRATEGY_MAX_PERCENTILE = 95;
@@ -80,11 +84,18 @@ export interface InventoryStrategyPolicyComparison {
   estimatedTime: InventoryStrategyTimeDistribution | null;
 }
 
-export type InventoryStrategyKneeConfidence =
+export type InventoryStrategyConfidence =
   | "high"
   | "medium"
   | "low"
   | "unavailable";
+
+export interface InventoryStrategyHorizonModel {
+  minimumHorizonDays: number;
+  maximumHorizonDays: number;
+  curve: HorizonValueCurve | null;
+  fitConfidence: InventoryStrategyConfidence;
+}
 
 export interface InventoryStrategyProductLine {
   key: string;
@@ -101,7 +112,7 @@ export interface InventoryStrategyProductLine {
   estimatedPercentile: number | null;
   kneeRangeMinimum: number | null;
   kneeRangeMaximum: number | null;
-  kneeConfidence: InventoryStrategyKneeConfidence;
+  kneeConfidence: InventoryStrategyConfidence;
   modeledSkuCount: number;
   modeledUnitCount: number;
   oldestPricingAt: string | null;
@@ -109,11 +120,14 @@ export interface InventoryStrategyProductLine {
   matrixPercentiles: number[];
   scenarios: InventoryStrategyScenario[];
   policyComparisons: InventoryStrategyPolicyComparison[];
+  valueMatchedHorizonDays: number | null;
+  horizonModel: InventoryStrategyHorizonModel | null;
 }
 
 export interface InventoryStrategyDashboard {
   sellerKey: string;
   generatedAt: string;
+  policy: PricingPolicyConfig;
   overall: InventoryStrategyProductLine;
   productLines: InventoryStrategyProductLine[];
 }
