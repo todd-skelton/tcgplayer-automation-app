@@ -483,7 +483,7 @@ export default function ContinuousPricingRoute() {
                 busy || !settings.enabled || status.enabledInStockCount === 0
               }
             >
-              Apply policy from saved curves
+              Reprice all inventory using saved curves
             </Button>
             <Button
               variant="outlined"
@@ -493,13 +493,14 @@ export default function ContinuousPricingRoute() {
                 busy || !settings.enabled || status.enabledInStockCount === 0
               }
             >
-              Reprice all inventory now
+              Mark all inventory due
             </Button>
           </Stack>
           <Typography variant="body2" color="text.secondary">
-            Applying policy reuses compatible curves from the current pricing
-            interval; missing or older data stays due for refresh. Reprice all
-            fetches fresh market data.
+            Marking inventory due schedules fresh market-data pricing. Saved-curve
+            repricing reuses compatible data and schedules fresh pricing for the
+            rest. Both apply to eligible inventory and run in the background;
+            eligible price changes publish automatically when publishing is enabled.
           </Typography>
         </Stack>
       </Paper>
