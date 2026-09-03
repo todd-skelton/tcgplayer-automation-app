@@ -26,18 +26,17 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { Link, data, useLoaderData, useFetcher } from "react-router";
 import { useConfiguration } from "../hooks/useConfiguration";
 import { getHttpConfig } from "~/core/config/httpConfig.server";
+import {
+  ValidatedNumberField,
+  type NumberFieldDescriptor,
+} from "~/shared/components/ValidatedNumberField";
 import type { ProductLine } from "~/shared/data-types/productLine";
 import {
   isValidProfitPerDaySetting,
   type ProfitPerDaySettings,
 } from "../types/config";
 
-const PROFIT_PER_DAY_FIELDS: Array<{
-  key: keyof ProfitPerDaySettings;
-  label: string;
-  step: number;
-  helperText: string;
-}> = [
+const PROFIT_PER_DAY_FIELDS: NumberFieldDescriptor<ProfitPerDaySettings>[] = [
   {
     key: "dailyReturnHurdle",
     label: "Daily return hurdle",
@@ -53,47 +52,11 @@ const PROFIT_PER_DAY_FIELDS: Array<{
   },
   {
     key: "staticOverheadPerUnit",
-    label: "Static overhead per item",
+    label: "Static overhead per unit",
     step: 0.05,
     helperText: "Dollars lost per unit sold",
   },
 ];
-
-/** Number field that keeps what was typed and saves each complete valid value. */
-function ValidatedNumberField({
-  label,
-  value,
-  step,
-  helperText,
-  isValid,
-  onCommit,
-}: {
-  label: string;
-  value: number;
-  step: number;
-  helperText: string;
-  isValid: (value: number) => boolean;
-  onCommit: (value: number) => void;
-}) {
-  const [text, setText] = React.useState(String(value));
-  React.useEffect(() => setText(String(value)), [value]);
-  const accepts = (input: string) =>
-    input !== "" && Number.isFinite(Number(input)) && isValid(Number(input));
-  return (
-    <TextField
-      label={label}
-      type="number"
-      value={text}
-      error={text !== "" && !accepts(text)}
-      onChange={(event) => {
-        setText(event.target.value);
-        if (accepts(event.target.value)) onCommit(Number(event.target.value));
-      }}
-      inputProps={{ step }}
-      helperText={helperText}
-    />
-  );
-}
 
 export async function loader() {
   const httpConfig = await getHttpConfig();

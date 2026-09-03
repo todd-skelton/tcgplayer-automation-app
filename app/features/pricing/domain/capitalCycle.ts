@@ -7,8 +7,14 @@ import { maximizeOverCandidates } from "./maximize";
 
 /** Seller economics that turn sale value at a horizon into return on capital. */
 export interface CapitalCycleEconomics {
-  /** Cost basis as a fraction of market value. */
-  costRatio: number;
+  /** Cost basis as a share of market value. */
+  costBasisShareOfMarket: number;
+  /**
+   * Dollars off the cost basis for every unit bought, as when a lot is priced
+   * at a share of market less an allowance per card. Bulk the seller was paid
+   * to take can make the cost basis negative.
+   */
+  costBasisDiscountPerUnit: number;
   /** Overhead as a fraction of sale value. */
   relativeOverhead: number;
   /** Overhead in dollars per unit sold. */
@@ -23,12 +29,17 @@ export interface CapitalCyclePortfolio {
 }
 
 export interface CapitalCycle {
+  horizonDays: number;
   netProceeds: number;
   profit: number;
   cycleDays: number;
   profitPerDay: number;
-  /** Continuous rate per cycle day at which the cycle grows its capital. */
-  dailyReturn: number;
+  /**
+   * Continuous rate per cycle day at which the cycle grows its capital;
+   * undefined when no capital is at risk, nothing comes back, or the cycle
+   * takes no time.
+   */
+  dailyReturn: number | undefined;
 }
 
 const BEST_CYCLE_GRID_COUNT = 128;
@@ -47,28 +58,34 @@ export function capitalCycleAtHorizon(
   const netProceeds =
     horizonValue(curve, horizonDays) * (1 - economics.relativeOverhead) -
     economics.staticOverheadPerUnit * portfolio.unitCount;
-  const cost = economics.costRatio * portfolio.marketValue;
+  const cost =
+    economics.costBasisShareOfMarket * portfolio.marketValue -
+    economics.costBasisDiscountPerUnit * portfolio.unitCount;
   const profit = netProceeds - cost;
   const cycleDays = horizonDays + economics.turnaroundDays;
   return {
+    horizonDays,
     netProceeds,
     profit,
     cycleDays,
     profitPerDay: cycleDays > 0 ? profit / cycleDays : 0,
-    dailyReturn: cycleDays > 0 ? Math.log(netProceeds / cost) / cycleDays : 0,
+    dailyReturn:
+      cycleDays > 0 && cost > 0 && netProceeds > 0
+        ? Math.log(netProceeds / cost) / cycleDays
+        : undefined,
   };
 }
 
 /**
- * Horizon that maximizes profit per day of cycle within the observed range,
- * or undefined when no horizon in the range turns a profit.
+ * The cycle with the most profit per day within the observed range, or
+ * undefined when no horizon in the range turns a profit.
  */
-export function bestCycleHorizonDays(
+export function bestCapitalCycle(
   curve: HorizonValueCurve,
   portfolio: CapitalCyclePortfolio,
   economics: CapitalCycleEconomics,
   range: { minimumHorizonDays: number; maximumHorizonDays: number },
-): number | undefined {
+): CapitalCycle | undefined {
   const best = maximizeOverCandidates(
     logSpacedHorizons(
       range.minimumHorizonDays,
@@ -79,5 +96,7 @@ export function bestCycleHorizonDays(
       capitalCycleAtHorizon(curve, portfolio, economics, horizonDays)
         .profitPerDay,
   );
-  return best && best.value > 0 ? best.argument : undefined;
+  return best && best.value > 0
+    ? capitalCycleAtHorizon(curve, portfolio, economics, best.argument)
+    : undefined;
 }

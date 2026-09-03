@@ -14,7 +14,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TextField,
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
@@ -33,8 +32,9 @@ import {
 } from "~/core/db";
 import { refreshContinuousPricingInventory } from "~/features/continuous-pricing/services/continuousInventoryRefresh.server";
 import {
+  bestCapitalCycle,
   capitalCycleAtHorizon,
-  bestCycleHorizonDays,
+  type CapitalCycle,
   type CapitalCycleEconomics,
 } from "~/features/pricing/domain/capitalCycle";
 import {
@@ -43,6 +43,10 @@ import {
   horizonMarginalValuePerDay,
   horizonValue,
 } from "~/features/pricing/domain/horizonValueCurve";
+import {
+  ValidatedNumberField,
+  type NumberFieldDescriptor,
+} from "~/shared/components/ValidatedNumberField";
 import { loadInventoryStrategyDashboard } from "../services/inventoryStrategyDashboard.server";
 import { queueInventoryStrategyAnalysis } from "../services/inventoryStrategyAnalysis.server";
 import {
@@ -109,21 +113,34 @@ const fitConfidenceColor = {
 /** Cycle inputs the reader can vary; overhead comes from the profit-per-day settings. */
 type CapitalCycleInputs = Pick<
   CapitalCycleEconomics,
-  "costRatio" | "turnaroundDays"
+  "costBasisShareOfMarket" | "costBasisDiscountPerUnit" | "turnaroundDays"
 >;
 
 const DEFAULT_CAPITAL_CYCLE_INPUTS: CapitalCycleInputs = {
-  costRatio: 0.72,
+  costBasisShareOfMarket: 0.72,
+  costBasisDiscountPerUnit: 0.3,
   turnaroundDays: 28,
 };
 
-const CAPITAL_CYCLE_FIELDS: Array<{
-  key: keyof CapitalCycleInputs;
-  label: string;
-  step: number;
-}> = [
-  { key: "costRatio", label: "Cost basis (share of market)", step: 0.01 },
-  { key: "turnaroundDays", label: "Turnaround days", step: 1 },
+const CAPITAL_CYCLE_FIELDS: NumberFieldDescriptor<CapitalCycleInputs>[] = [
+  {
+    key: "costBasisShareOfMarket",
+    label: "Cost basis share of market",
+    step: 0.01,
+    helperText: "Fraction of market value paid for inventory",
+  },
+  {
+    key: "costBasisDiscountPerUnit",
+    label: "Cost basis discount per unit",
+    step: 0.01,
+    helperText: "Dollars off the cost basis for every unit bought",
+  },
+  {
+    key: "turnaroundDays",
+    label: "Turnaround days",
+    step: 1,
+    helperText: "Days from a sale until the proceeds are relisted",
+  },
 ];
 
 function formatDays(days: number): string {
@@ -142,6 +159,35 @@ function cyclePortfolio(productLine: InventoryStrategyProductLine) {
     marketValue: productLine.estimatedMarketValue,
     unitCount: productLine.unitCount,
   };
+}
+
+/** The product line's best cycle, or undefined without a curve or a profitable horizon. */
+function productLineBestCycle(
+  productLine: InventoryStrategyProductLine,
+  economics: CapitalCycleEconomics,
+): CapitalCycle | undefined {
+  const model = productLine.horizonModel;
+  return model?.curve
+    ? bestCapitalCycle(
+        model.curve,
+        cyclePortfolio(productLine),
+        economics,
+        model,
+      )
+    : undefined;
+}
+
+function cycleSummary(
+  overall: InventoryStrategyProductLine,
+  cycle: CapitalCycle | undefined,
+): string {
+  if (!overall.horizonModel?.curve)
+    return "All listed inventory has no horizon model yet.";
+  if (!cycle)
+    return "No profitable cycle on all listed inventory at these inputs.";
+  if (cycle.dailyReturn === undefined)
+    return "The best cycle on all listed inventory puts no capital at risk at these inputs, so it has no rate of return.";
+  return `The best cycle on all listed inventory compounds capital at ${(cycle.dailyReturn * 100).toFixed(2)}% per day.`;
 }
 
 /**
@@ -449,16 +495,16 @@ export default function InventoryStrategyRoute() {
   const showValueMatchedColumn = allProductLines.some(
     (productLine) => productLine.valueMatchedHorizonDays !== null,
   );
-  const impliedDailyReturn = useMemo(() => {
-    const model = dashboard.overall.horizonModel;
-    if (!model?.curve) return null;
-    const portfolio = cyclePortfolio(dashboard.overall);
-    const days = bestCycleHorizonDays(model.curve, portfolio, economics, model);
-    return days === undefined
-      ? null
-      : capitalCycleAtHorizon(model.curve, portfolio, economics, days)
-          .dailyReturn;
-  }, [dashboard.overall, economics]);
+  const bestCycles = useMemo(
+    () =>
+      Object.fromEntries(
+        allProductLines.map((productLine) => [
+          productLine.key,
+          productLineBestCycle(productLine, economics),
+        ]),
+      ),
+    [allProductLines, economics],
+  );
 
   const submit = (intent: "refresh_inventory" | "queue_analysis") =>
     fetcher.submit(
@@ -666,11 +712,11 @@ export default function InventoryStrategyRoute() {
             in headroom fraction.
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Profit per day takes overhead off the sale, recovers the cost basis
-            as a share of market value, and divides by horizon plus turnaround.
-            Best cycle is the horizon that maximizes it. Overhead comes from the
-            profit-per-day settings. Horizons shorter than most SKUs&apos;
-            fastest sell time overstate how quickly a cycle completes.
+            Profit per day takes overhead off the sale, recovers the cost basis,
+            and divides by horizon plus turnaround. Best cycle is the horizon
+            that maximizes it. Overhead comes from the profit-per-day settings.
+            Horizons shorter than most SKUs&apos; fastest sell time overstate
+            how quickly a cycle completes.
           </Typography>
           <Stack
             direction="row"
@@ -680,33 +726,25 @@ export default function InventoryStrategyRoute() {
             sx={{ mt: 2 }}
           >
             {CAPITAL_CYCLE_FIELDS.map((field) => (
-              <TextField
+              <ValidatedNumberField
                 key={field.key}
                 size="small"
-                type="number"
                 label={field.label}
                 value={cycleInputs[field.key]}
-                inputProps={{ min: 0, step: field.step }}
-                onChange={(event) => {
-                  const value = Number(event.target.value);
-                  if (Number.isFinite(value) && value >= 0) {
-                    setCycleInputs((current) => ({
-                      ...current,
-                      [field.key]: value,
-                    }));
-                  }
-                }}
+                step={field.step}
+                helperText={field.helperText}
+                isValid={(value) => value >= 0}
+                onCommit={(value) =>
+                  setCycleInputs((current) => ({
+                    ...current,
+                    [field.key]: value,
+                  }))
+                }
               />
             ))}
           </Stack>
           <Typography variant="body2" sx={{ mt: 2 }}>
-            {!dashboard.overall.horizonModel?.curve
-              ? "All listed inventory has no horizon model yet."
-              : impliedDailyReturn === null
-                ? "No profitable cycle on all listed inventory at these inputs."
-                : !Number.isFinite(impliedDailyReturn)
-                  ? "The best cycle on all listed inventory has no cost basis, so its return is unbounded."
-                  : `The best cycle on all listed inventory compounds capital at ${(impliedDailyReturn * 100).toFixed(2)}% per day.`}{" "}
+            {cycleSummary(dashboard.overall, bestCycles[dashboard.overall.key])}{" "}
             The default profit-per-day hurdle is configured at{" "}
             {(dashboard.profitPerDay.dailyReturnHurdle * 100).toFixed(2)}% per
             day.
@@ -749,15 +787,6 @@ export default function InventoryStrategyRoute() {
               {allProductLines.map((productLine) => {
                 const model = productLine.horizonModel;
                 const curve = model?.curve ?? null;
-                const bestCycleDays =
-                  model && curve
-                    ? bestCycleHorizonDays(
-                        curve,
-                        cyclePortfolio(productLine),
-                        economics,
-                        model,
-                      )
-                    : null;
                 return (
                   <TableRow key={productLine.key}>
                     <TableCell
@@ -829,7 +858,9 @@ export default function InventoryStrategyRoute() {
                     />
                     <HorizonValueCell
                       productLine={productLine}
-                      horizonDays={bestCycleDays ?? null}
+                      horizonDays={
+                        bestCycles[productLine.key]?.horizonDays ?? null
+                      }
                       economics={economics}
                       showDays
                       emphasis="cycle"
