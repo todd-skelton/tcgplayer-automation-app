@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { useLocalStorageState } from "../../../core/hooks/useLocalStorageState";
+import { pricingConfigStore } from "../services/pricingConfigStore";
 import {
   DEFAULT_FILE_CONFIG,
   DEFAULT_FORM_DEFAULTS,
@@ -7,108 +8,25 @@ import {
   DEFAULT_PRICING_CONFIG,
   DEFAULT_SERVER_PRICING_CONFIG,
   DEFAULT_SUPPLY_ANALYSIS_CONFIG,
-  normalizeServerPricingConfig,
   type FileConfig,
   type FormDefaults,
   type PricingConfigSettings,
   type ProductLinePricingConfig,
   type ProductLineSettings,
-  type ServerPricingConfig,
   type SupplyAnalysisConfig,
 } from "../types/config";
 
-const SERVER_CONFIG_ENDPOINT = "/api/pricing-config";
-
-type ServerConfigUpdater =
-  | ServerPricingConfig
-  | ((prev: ServerPricingConfig) => ServerPricingConfig);
-
-let serverConfigCache: ServerPricingConfig = DEFAULT_SERVER_PRICING_CONFIG;
-let serverConfigLoaded = false;
-let serverConfigLoadPromise: Promise<void> | null = null;
-const serverConfigListeners = new Set<() => void>();
-
-function notifyServerConfigListeners(): void {
-  serverConfigListeners.forEach((listener) => listener());
-}
-
-async function loadServerConfig(): Promise<void> {
-  if (serverConfigLoaded) {
-    return;
-  }
-
-  if (!serverConfigLoadPromise) {
-    serverConfigLoadPromise = fetch(SERVER_CONFIG_ENDPOINT)
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error("Failed to load pricing configuration");
-        }
-
-        serverConfigCache = normalizeServerPricingConfig(await response.json());
-        serverConfigLoaded = true;
-        notifyServerConfigListeners();
-      })
-      .catch((error) => {
-        console.warn("Failed to load pricing configuration:", error);
-      })
-      .finally(() => {
-        serverConfigLoadPromise = null;
-      });
-  }
-
-  await serverConfigLoadPromise;
-}
-
-async function persistServerConfig(nextConfig: ServerPricingConfig): Promise<void> {
-  serverConfigCache = nextConfig;
-  notifyServerConfigListeners();
-
-  try {
-    const response = await fetch(SERVER_CONFIG_ENDPOINT, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(nextConfig),
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to save pricing configuration");
-    }
-
-    serverConfigCache = normalizeServerPricingConfig(await response.json());
-    serverConfigLoaded = true;
-  } catch (error) {
-    console.warn("Failed to save pricing configuration:", error);
-  } finally {
-    notifyServerConfigListeners();
-  }
-}
-
-function updateServerConfig(updater: ServerConfigUpdater): void {
-  const nextConfig =
-    typeof updater === "function" ? updater(serverConfigCache) : updater;
-  void persistServerConfig(nextConfig);
-}
-
-function subscribeToServerConfig(listener: () => void): () => void {
-  serverConfigListeners.add(listener);
-  return () => {
-    serverConfigListeners.delete(listener);
-  };
-}
-
 function useServerPricingConfiguration() {
-  const [config, setConfigState] = useState<ServerPricingConfig>(serverConfigCache);
-
-  useEffect(() => subscribeToServerConfig(() => setConfigState(serverConfigCache)), []);
+  const config = useSyncExternalStore(
+    pricingConfigStore.subscribe,
+    pricingConfigStore.get,
+    pricingConfigStore.get,
+  );
   useEffect(() => {
-    void loadServerConfig();
+    void pricingConfigStore.load();
   }, []);
 
-  return {
-    config,
-    setConfig: updateServerConfig,
-    isLoaded: serverConfigLoaded,
-  };
+  return { config, setConfig: pricingConfigStore.update };
 }
 
 export function usePricingConfig() {
@@ -360,7 +278,7 @@ export function useConfiguration() {
   const productLinePricingConfig = useProductLinePricingConfig();
 
   const resetAllToDefaults = () => {
-    updateServerConfig(DEFAULT_SERVER_PRICING_CONFIG);
+    pricingConfigStore.update(DEFAULT_SERVER_PRICING_CONFIG);
     fileConfig.resetToDefaults();
     formDefaults.resetToDefaults();
   };
