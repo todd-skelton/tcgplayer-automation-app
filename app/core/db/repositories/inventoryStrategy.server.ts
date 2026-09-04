@@ -1,4 +1,7 @@
-import type { InventoryStrategySnapshotItem } from "~/features/inventory-strategy/types/inventoryStrategy";
+import type {
+  ForecastGradingRecord,
+  InventoryStrategySnapshotItem,
+} from "~/features/inventory-strategy/types/inventoryStrategy";
 import type { SupplyAnalysisConfig } from "~/features/pricing/types/config";
 import { PRICING_MODEL_VERSION } from "~/core/types/pricingPolicy";
 import {
@@ -106,6 +109,51 @@ export const inventoryStrategyRepository = {
       [sellerKey],
       executor,
     );
+  },
+
+  /** Continuous pricing results since a moment, with the forecasts each recorded. */
+  async findForecastGradingRecords(
+    sellerKey: string,
+    since: Date,
+    executor?: Queryable,
+  ): Promise<ForecastGradingRecord[]> {
+    return query<ForecastGradingRecord>(
+      `SELECT
+        result.sku,
+        result.priced_at AS "pricedAt",
+        (result.pricing_details_json->>'quantity')::int AS quantity,
+        result.pricing_details_json->'decision'->>'basis' AS basis,
+        result.pricing_details_json->'decision'->>'method' AS method,
+        (result.pricing_details_json->'decision'->>'estimatedMedianSellDays')::float8
+          AS "curveMedianSellDays",
+        (result.pricing_details_json->'buyerChoiceForecast'->>'medianSellDays')::float8
+          AS "buyerChoiceMedianSellDays",
+        result.pricing_details_json->'buyerChoiceForecast'->>'calibration'
+          AS "buyerChoiceCalibration"
+      FROM inventory_batch_results result
+      JOIN inventory_batches batch ON batch.batch_number = result.batch_number
+      WHERE batch.source_type = 'continuous'
+        AND batch.source_label = $1
+        AND result.result_status = 'successful'
+        AND result.priced_at >= $2
+      ORDER BY result.sku, result.priced_at`,
+      [sellerKey, since],
+      executor,
+    );
+  },
+
+  async findInStockSkus(
+    sellerKey: string,
+    executor?: Queryable,
+  ): Promise<number[]> {
+    const rows = await query<{ sku: number }>(
+      `SELECT sku
+      FROM continuous_pricing_inventory
+      WHERE seller_key = $1 AND in_stock AND quantity > 0`,
+      [sellerKey],
+      executor,
+    );
+    return rows.map((row) => row.sku);
   },
 
   async findReusableSnapshots(

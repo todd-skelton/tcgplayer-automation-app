@@ -1,4 +1,5 @@
 import type { PersistedPricingDetails } from "~/core/types/pricing";
+import type { ForecastGrade } from "~/features/pricing/domain/forecastGrading";
 import type { HorizonValueCurve } from "~/features/pricing/domain/horizonValueCurve";
 import type {
   PricingPolicyConfig,
@@ -125,6 +126,33 @@ export interface InventoryStrategyProductLine {
   policyComparisons: InventoryStrategyPolicyComparison[];
   valueMatchedHorizonDays: number | null;
   horizonModel: InventoryStrategyHorizonModel | null;
+}
+
+export const FORECAST_GRADING_HORIZON_DAYS = [14, 21, 28];
+export const DEFAULT_FORECAST_GRADING_HORIZON_DAYS = 21;
+
+/** One continuous pricing result with the sell-time forecasts it recorded. */
+export interface ForecastGradingRecord {
+  sku: number;
+  pricedAt: Date;
+  quantity: number | null;
+  basis: string | null;
+  method: string | null;
+  curveMedianSellDays: number | null;
+  buyerChoiceMedianSellDays: number | null;
+  buyerChoiceCalibration: string | null;
+}
+
+/** Both forecasts graded against realized sales over one horizon. */
+export interface ForecastGradingReport {
+  horizonDays: number;
+  cohortSize: number;
+  soldShare: number;
+  baseRateBrier: number;
+  /** Results whose buyer-choice forecast came from an earlier calibration. */
+  otherCalibrationCount: number;
+  curve: ForecastGrade;
+  buyerChoice: ForecastGrade;
 }
 
 export interface InventoryStrategyDashboard {

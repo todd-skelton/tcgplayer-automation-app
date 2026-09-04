@@ -14,6 +14,8 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
@@ -47,9 +49,12 @@ import {
   ValidatedNumberField,
   type NumberFieldDescriptor,
 } from "~/shared/components/ValidatedNumberField";
+import { loadForecastGrading } from "../services/forecastGrading.server";
 import { loadInventoryStrategyDashboard } from "../services/inventoryStrategyDashboard.server";
 import { queueInventoryStrategyAnalysis } from "../services/inventoryStrategyAnalysis.server";
 import {
+  DEFAULT_FORECAST_GRADING_HORIZON_DAYS,
+  FORECAST_GRADING_HORIZON_DAYS,
   INVENTORY_STRATEGY_HORIZON_DAYS,
   INVENTORY_STRATEGY_MAX_PERCENTILE,
   INVENTORY_STRATEGY_MIN_PERCENTILE,
@@ -60,6 +65,10 @@ import {
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
+});
+const percentFormatter = new Intl.NumberFormat("en-US", {
+  style: "percent",
+  maximumFractionDigits: 1,
 });
 
 type ActionData =
@@ -305,7 +314,7 @@ export async function loader() {
     pricingConfigRepository.get(),
   ]);
   const settings = publicationConfiguration.settings.continuousPricing;
-  const [dashboard, recentBatches] = await Promise.all([
+  const [dashboard, recentBatches, forecastGrading] = await Promise.all([
     loadInventoryStrategyDashboard(settings.sellerKey, pricingConfig),
     settings.sellerKey
       ? inventoryBatchesRepository.findRecent({
@@ -313,12 +322,13 @@ export async function loader() {
           limit: 10,
         })
       : [],
+    loadForecastGrading(settings.sellerKey),
   ]);
   const latestAnalysis =
     recentBatches.find((batch) => batch.sourceLabel === settings.sellerKey) ??
     null;
 
-  return data({ settings, dashboard, latestAnalysis });
+  return data({ settings, dashboard, latestAnalysis, forecastGrading });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -393,8 +403,15 @@ function MetricCard({
 }
 
 export default function InventoryStrategyRoute() {
-  const { settings, dashboard, latestAnalysis } =
+  const { settings, dashboard, latestAnalysis, forecastGrading } =
     useLoaderData<typeof loader>();
+  const [gradingHorizonDays, setGradingHorizonDays] = useState(
+    DEFAULT_FORECAST_GRADING_HORIZON_DAYS,
+  );
+  const grading =
+    forecastGrading.find(
+      (report) => report.horizonDays === gradingHorizonDays,
+    ) ?? forecastGrading[0];
   const fetcher = useFetcher<ActionData>();
   const analysisFetcher = useFetcher<{
     batchNumber?: number;
@@ -1174,6 +1191,98 @@ export default function InventoryStrategyRoute() {
           </Table>
         </TableContainer>
       </Paper>
+
+      {grading ? (
+        <Paper variant="outlined" sx={{ mb: 3 }}>
+          <Box sx={{ p: 2 }}>
+            <Typography variant="h6">Forecast grading</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {grading.cohortSize > 0
+                ? `${grading.cohortSize.toLocaleString()} SKUs first priced with both forecasts between ${grading.horizonDays} and ${2 * grading.horizonDays} days ago and followed for ${grading.horizonDays} days; ${percentFormatter.format(grading.soldShare)} sold.`
+                : `No SKU has carried both forecasts for ${grading.horizonDays} days${dashboard.policy.method === "target-horizon" ? ". The target-horizon policy pins the curve forecast, so grading waits for another policy" : " yet"}.`}
+            </Typography>
+            {grading.cohortSize > 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Brier score against realized sales, lower is better: curve{" "}
+                {grading.curve.brier.toFixed(4)}, buyer-choice{" "}
+                {grading.buyerChoice.brier.toFixed(4)}, base rate{" "}
+                {grading.baseRateBrier.toFixed(4)}.
+                {grading.otherCalibrationCount > 0
+                  ? ` ${grading.otherCalibrationCount.toLocaleString()} results carried a forecast from an earlier calibration, which is not graded.`
+                  : ""}
+              </Typography>
+            ) : null}
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={gradingHorizonDays}
+              onChange={(_, horizonDays: number | null) => {
+                if (horizonDays !== null) setGradingHorizonDays(horizonDays);
+              }}
+              sx={{ mt: 2 }}
+            >
+              {FORECAST_GRADING_HORIZON_DAYS.map((horizonDays) => (
+                <ToggleButton key={horizonDays} value={horizonDays}>
+                  {horizonDays} days
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+          </Box>
+          {grading.cohortSize > 0 ? (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell rowSpan={2}>Decile</TableCell>
+                    <TableCell align="center" colSpan={3}>
+                      Curve forecast
+                    </TableCell>
+                    <TableCell align="center" colSpan={3}>
+                      Buyer-choice forecast
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell align="right">Median days</TableCell>
+                    <TableCell align="right">Sold</TableCell>
+                    <TableCell align="right">Expected</TableCell>
+                    <TableCell align="right">Median days</TableCell>
+                    <TableCell align="right">Sold</TableCell>
+                    <TableCell align="right">Expected</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {grading.curve.deciles.map((curve, index) => {
+                    const buyerChoice = grading.buyerChoice.deciles[index]!;
+                    return (
+                      <TableRow key={index}>
+                        <TableCell>{index + 1}</TableCell>
+                        <TableCell align="right">
+                          {curve.medianDays.toFixed(0)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {percentFormatter.format(curve.soldShare)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {percentFormatter.format(curve.expectedShare)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {buyerChoice.medianDays.toFixed(0)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {percentFormatter.format(buyerChoice.soldShare)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {percentFormatter.format(buyerChoice.expectedShare)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : null}
+        </Paper>
+      ) : null}
 
       <Alert severity="info" sx={{ mt: 3 }}>
         Expected wait estimates the next sale/listing position, not liquidation
