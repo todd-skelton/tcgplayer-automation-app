@@ -59,6 +59,7 @@ import {
   type TcgPlayerShippingOrder,
 } from "../types/shippingExport";
 import { ShipmentEditDrawer } from "../components/ShipmentEditDrawer";
+import { OrderMarketSummary } from "../components/OrderMarketSummary";
 import { LoadOrdersStep } from "../components/steps/LoadOrdersStep";
 import { PullSheetStep } from "../components/steps/PullSheetStep";
 import { BuyPostageStep } from "../components/steps/BuyPostageStep";
@@ -1221,6 +1222,11 @@ export default function ShippingExportRoute() {
             ))}
           </Stepper>
 
+          <OrderMarketSummary
+            sourceOrders={sourceOrders}
+            shipmentCount={shipmentReferences.length}
+          />
+
           <Paper sx={{ p: 3 }} elevation={2}>
             {currentStep === 0 && (
               <LoadOrdersStep
@@ -1260,6 +1266,7 @@ export default function ShippingExportRoute() {
                 environmentStatus={environmentStatus}
                 shipments={shipments}
                 orders={orders}
+                sourceOrders={sourceOrders}
                 shipmentToOrderMap={shipmentToOrderMap}
                 outboundPurchaseResultsByReference={outboundPurchaseResultsByReference}
                 returnPurchaseResultsByReference={returnPurchaseResultsByReference}

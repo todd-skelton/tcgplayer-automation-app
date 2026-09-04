@@ -10,9 +10,19 @@ import type {
   ShippingLiveOrderLoadResponse,
   TcgPlayerShippingOrder,
 } from "../types/shippingExport";
+import {
+  attachMarketPricesToOrders,
+  type FetchMarketPricesFn,
+} from "./orderMarketPrices.server";
 
 type SearchSellerOrdersFn = typeof searchSellerOrders;
 type GetSellerOrderFn = typeof getSellerOrder;
+
+export interface SellerShippingOrderDependencies {
+  searchOrders?: SearchSellerOrdersFn;
+  getOrder?: GetSellerOrderFn;
+  fetchMarketPrices?: FetchMarketPricesFn;
+}
 
 const SEARCH_RANGE = "LastThreeMonths";
 const ORDER_STATUSES = ["ReadyToShip"] as const;
@@ -154,12 +164,23 @@ async function fetchSingleSellerOrderSummary(
   return match;
 }
 
+async function attachMarketPrices(
+  orders: TcgPlayerShippingOrder[],
+  warnings: string[],
+  fetchMarketPrices: FetchMarketPricesFn | undefined,
+): Promise<TcgPlayerShippingOrder[]> {
+  const result = await attachMarketPricesToOrders(orders, fetchMarketPrices);
+
+  if (result.warning) {
+    warnings.push(result.warning);
+  }
+
+  return result.orders;
+}
+
 export async function loadSellerShippingOrders(
   sellerKey: string,
-  dependencies: {
-    searchOrders?: SearchSellerOrdersFn;
-    getOrder?: GetSellerOrderFn;
-  } = {},
+  dependencies: SellerShippingOrderDependencies = {},
 ): Promise<ShippingLiveOrderLoadResponse> {
   const searchOrders = dependencies.searchOrders ?? searchSellerOrders;
   const getOrder = dependencies.getOrder ?? getSellerOrder;
@@ -168,7 +189,7 @@ export async function loadSellerShippingOrders(
     searchResponse.orders.map((summary) => getOrder(summary.orderNumber)),
   );
 
-  const orders: TcgPlayerShippingOrder[] = [];
+  const loadedOrders: TcgPlayerShippingOrder[] = [];
   const loadedOrderNumbers: string[] = [];
   const warnings: string[] = [];
 
@@ -177,7 +198,7 @@ export async function loadSellerShippingOrders(
 
     if (result.status === "fulfilled") {
       loadedOrderNumbers.push(result.value.orderNumber);
-      orders.push(mapSellerOrderDetailToShippingOrder(result.value));
+      loadedOrders.push(mapSellerOrderDetailToShippingOrder(result.value));
       return;
     }
 
@@ -185,6 +206,12 @@ export async function loadSellerShippingOrders(
       `Failed to load seller order ${orderNumber}: ${String(result.reason)}`,
     );
   });
+
+  const orders = await attachMarketPrices(
+    loadedOrders,
+    warnings,
+    dependencies.fetchMarketPrices,
+  );
 
   return {
     sellerKey,
@@ -198,10 +225,7 @@ export async function loadSellerShippingOrders(
 export async function loadSingleSellerShippingOrder(
   sellerKey: string,
   orderNumber: string,
-  dependencies: {
-    searchOrders?: SearchSellerOrdersFn;
-    getOrder?: GetSellerOrderFn;
-  } = {},
+  dependencies: SellerShippingOrderDependencies = {},
 ): Promise<ShippingLiveOrderLoadResponse> {
   const searchOrders = dependencies.searchOrders ?? searchSellerOrders;
   const getOrder = dependencies.getOrder ?? getSellerOrder;
@@ -214,12 +238,17 @@ export async function loadSingleSellerShippingOrder(
   );
   const order = await getOrder(summary.orderNumber);
   const warnings = getSingleOrderWarnings(order);
+  const orders = await attachMarketPrices(
+    [mapSellerOrderDetailToShippingOrder(order)],
+    warnings,
+    dependencies.fetchMarketPrices,
+  );
 
   return {
     sellerKey: normalizedSellerKey,
     totalOrders: 1,
     loadedOrderNumbers: [order.orderNumber],
-    orders: [mapSellerOrderDetailToShippingOrder(order)],
+    orders,
     ...(warnings.length > 0 ? { warnings } : {}),
   };
 }
