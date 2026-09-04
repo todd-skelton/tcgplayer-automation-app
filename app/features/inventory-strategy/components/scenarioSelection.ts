@@ -4,6 +4,25 @@ import {
   type InventoryStrategyProductLine,
   type InventoryStrategyScenario,
 } from "../types/inventoryStrategy";
+import { formatPercentile } from "./format";
+
+/** The product line's estimated knee percentile with its range, or that none is available. */
+export function formatKneeEstimate(
+  productLine: InventoryStrategyProductLine,
+): string {
+  if (productLine.estimatedPercentile === null) {
+    return "Estimate unavailable";
+  }
+  const estimate = formatPercentile(productLine.estimatedPercentile);
+  if (
+    productLine.kneeRangeMinimum === null ||
+    productLine.kneeRangeMaximum === null ||
+    productLine.kneeRangeMinimum === productLine.kneeRangeMaximum
+  ) {
+    return `Estimated ${estimate}`;
+  }
+  return `Estimated ${estimate} · ${formatPercentile(productLine.kneeRangeMinimum)}–${formatPercentile(productLine.kneeRangeMaximum)} range`;
+}
 
 export function findScenario(
   productLine: InventoryStrategyProductLine,
