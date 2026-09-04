@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  capitalCycle,
   capitalCycleAtHorizon,
   bestCapitalCycle,
   type CapitalCycleEconomics,
@@ -25,6 +26,11 @@ const range = { minimumHorizonDays: 0.1, maximumHorizonDays: 100_000 };
 const cost = economics.costBasisShareOfMarket * portfolio.marketValue;
 
 const cycle = capitalCycleAtHorizon(curve, portfolio, economics, 24);
+assert.deepEqual(
+  cycle,
+  capitalCycle(horizonValue(curve, 24), 24, portfolio, economics),
+  "a cycle at a horizon sells at the curve's value there",
+);
 assert.ok(
   Math.abs(
     cycle.netProceeds -

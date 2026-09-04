@@ -11,6 +11,7 @@ import {
   FORECAST_GRADING_HORIZON_DAYS,
   type ForecastGradingRecord,
   type ForecastGradingReport,
+  type GradedForecast,
 } from "../types/inventoryStrategy";
 import { createVersionedCache } from "./versionedCache";
 
@@ -113,21 +114,37 @@ async function gradeForecasts(
     });
   }
   const inStockSkus = new Set(inStock);
+  const firstCarriedAt = (name: string) =>
+    records.reduce<number | undefined>(
+      (earliest, record) =>
+        record.forecasts[name] > 0 &&
+        (earliest === undefined || record.pricedAt < earliest)
+          ? record.pricedAt
+          : earliest,
+      undefined,
+    );
   return FORECAST_GRADING_HORIZON_DAYS.map((horizonDays) => {
     const windowStart = now.getTime() - 2 * horizonDays * DAY_MS;
     const windowRecords = records.filter(
       (record) => record.pricedAt >= windowStart,
     );
-    const grade = (name: string) => {
+    const grade = (name: string): GradedForecast => {
       const cohort = buildCohort(
         windowRecords,
         [name],
         inStockSkus,
         horizonDays,
       );
-      return cohort.length === 0
-        ? NO_GRADE
-        : gradeForecast(cohort, name, horizonDays);
+      const carriedAt = firstCarriedAt(name);
+      return {
+        ...(cohort.length === 0
+          ? NO_GRADE
+          : gradeForecast(cohort, name, horizonDays)),
+        gradableAt:
+          carriedAt === undefined
+            ? null
+            : new Date(carriedAt + horizonDays * DAY_MS).toISOString(),
+      };
     };
     return {
       horizonDays,
