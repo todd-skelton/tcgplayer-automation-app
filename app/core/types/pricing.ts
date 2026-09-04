@@ -113,6 +113,15 @@ export interface BuyerChoiceForecast {
   calibration: string;
 }
 
+/** How sales from other conditions were scaled onto the listed condition. */
+export interface ConditionNormalizationDetail {
+  method: "time-controlled-zipf" | "neutral-condition-fallback";
+  observationCount: number;
+  observedConditionCount: number;
+  conditionExponent: number;
+  conditionTimeConnected: boolean;
+}
+
 export interface PersistedPricingDetails {
   schemaVersion: number;
   pricingModelVersion?: string;
@@ -143,6 +152,7 @@ export interface PersistedPricingDetails {
   decision?: PricingDecision;
   shadowDecision?: PricingDecision;
   buyerChoiceForecast?: BuyerChoiceForecast;
+  conditionNormalization?: ConditionNormalizationDetail;
 }
 
 export interface SuggestedPriceResult {
@@ -164,6 +174,7 @@ export interface SuggestedPriceResult {
     storeWinShare?: number;
     supplyStatus?: PricingSupplyStatus;
   }>;
+  conditionNormalization?: ConditionNormalizationDetail;
 }
 
 export interface SuggestedPriceResolverInput {
@@ -250,6 +261,7 @@ export type PricedSku = {
   pricingDecision?: PricingDecision;
   shadowPricingDecision?: PricingDecision;
   buyerChoiceForecast?: BuyerChoiceForecast;
+  conditionNormalization?: ConditionNormalizationDetail;
   errors?: string[];
   warnings?: string[];
   pricingDetails?: PersistedPricingDetails;

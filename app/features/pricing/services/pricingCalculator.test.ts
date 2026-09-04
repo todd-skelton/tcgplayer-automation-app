@@ -97,11 +97,23 @@ const shadowResult = await calculator.calculatePrices(
           supplyStatus: "observed",
         },
       ],
+      conditionNormalization: {
+        method: "time-controlled-zipf",
+        observationCount: 18,
+        observedConditionCount: 3,
+        conditionExponent: 0.4,
+        conditionTimeConnected: true,
+      },
     }),
   },
 );
 
 assert.equal(shadowResult.pricedItems[0]?.suggestedPrice, 14);
+assert.equal(
+  shadowResult.pricedItems[0]?.conditionNormalization?.conditionExponent,
+  0.4,
+  "the normalization diagnostics travel with the priced item",
+);
 const forecast = shadowResult.pricedItems[0]?.buyerChoiceForecast;
 assert.equal(forecast?.calibration, BUYER_CHOICE_CALIBRATION.name);
 assert.ok(

@@ -1,5 +1,6 @@
 import type {
   BuyerChoiceForecast,
+  ConditionNormalizationDetail,
   PricerSku,
   PricingPercentileDetail,
   PricingConfig,
@@ -141,6 +142,7 @@ export interface PricingResult {
   warnings?: string[];
   pricingDecision?: PricingDecision;
   buyerChoiceForecast?: BuyerChoiceForecast;
+  conditionNormalization?: ConditionNormalizationDetail;
   shadowPricingDecision?: PricingDecision;
 }
 
@@ -278,6 +280,7 @@ export class PricingCalculator {
 
         pricedItem.percentileUsed = effectivePercentile;
         pricedItem.productLineId = pricerSku.productLineId;
+        pricedItem.conditionNormalization = result.conditionNormalization;
         pricedItem.percentiles = result.percentiles?.map((percentile) => ({
           percentile: percentile.percentile,
           suggestedPrice: percentile.price,

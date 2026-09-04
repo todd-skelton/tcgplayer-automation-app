@@ -1,3 +1,4 @@
+import type { ConditionNormalizationDetail } from "../../../core/types/pricing";
 import { INVENTORY_CONDITION_ORDER } from "../../../core/utils/conditionOrder";
 import type { Sale } from "../../../integrations/tcgplayer/client/get-latest-sales.server";
 import type { Condition } from "../../../integrations/tcgplayer/types/Condition";
@@ -15,14 +16,6 @@ const MINIMUM_RESIDUAL_DEGREES_OF_FREEDOM = 2;
 
 export interface ConditionNormalizationOptions {
   asOfTimestamp?: number;
-}
-
-export interface ConditionNormalizationDetail {
-  method: "time-controlled-zipf" | "neutral-condition-fallback";
-  observationCount: number;
-  observedConditionCount: number;
-  conditionExponent: number;
-  conditionTimeConnected: boolean;
 }
 
 type Observation = {

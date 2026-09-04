@@ -90,5 +90,6 @@ export async function resolveSuggestedPrice(
     salesCount: algorithmResult.salesCount,
     listingsCount: algorithmResult.listingsCount,
     percentiles: algorithmResult.percentiles,
+    conditionNormalization: algorithmResult.conditionNormalization,
   };
 }

@@ -48,6 +48,13 @@ const resolver: SuggestedPriceResolver = async () => ({
       historyCapped: true,
     },
   ],
+  conditionNormalization: {
+    method: "time-controlled-zipf",
+    observationCount: 32,
+    observedConditionCount: 3,
+    conditionExponent: 0.6,
+    conditionTimeConnected: true,
+  },
 });
 const market = new Map(
   [1, 2].map((sku) => [
@@ -79,6 +86,7 @@ const saved = new Map(
       pricingModelVersion: PRICING_MODEL_VERSION,
       pricedAt: "2026-09-02T12:00:00Z",
       percentiles: item.percentiles,
+      conditionNormalization: item.conditionNormalization,
     },
   ]),
 );

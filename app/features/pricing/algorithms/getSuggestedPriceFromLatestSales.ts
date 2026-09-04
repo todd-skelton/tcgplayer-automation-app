@@ -13,6 +13,7 @@ import {
 } from "../services/supplyAnalysisService";
 import { categoryFiltersRepository } from "~/core/db";
 import { PERCENTILES } from "../../../core/constants/pricing";
+import type { ConditionNormalizationDetail } from "../../../core/types/pricing";
 import type { PricingSupplyStatus } from "../../../core/types/pricingPolicy";
 import {
   fitTimeAwareZipfModelToConditions,
@@ -38,6 +39,7 @@ export async function getSuggestedPriceFromLatestSales(
   percentiles: PercentileData[];
   usedCrossConditionAnalysis?: boolean;
   conditionMultipliers?: Map<Condition, number>;
+  conditionNormalization?: ConditionNormalizationDetail;
 }> {
   const {
     halfLifeDays = 7,
@@ -166,6 +168,7 @@ export async function getSuggestedPriceFromLatestSales(
     ...result,
     usedCrossConditionAnalysis: !isSealed,
     conditionMultipliers: isSealed ? undefined : zipfMultipliers,
+    conditionNormalization: conditionNormalization?.diagnostics,
   };
 }
 
