@@ -258,20 +258,12 @@ const completedInventoryDashboard = buildInventoryStrategyDashboard(
   ],
   config,
 );
-const completedComparison =
+assert.equal(
   completedInventoryDashboard.overall.policyComparisons.find(
     ({ key }) => key === "target-horizon-shadow",
-  );
-assert.equal(
-  completedComparison?.planState,
-  "single",
-  "the dashboard resolves one plan from complete inventory curves",
-);
-assert.equal(completedComparison?.modeledSkuCount, 2);
-assert.ok(completedComparison?.estimatedTime);
-assert.ok(
-  Math.abs((completedComparison?.oneCopyValue ?? 0) - 36) <= 0.02,
-  "the inventory-wide shadow plan matches current one-copy value",
+  ),
+  undefined,
+  "no target-horizon row is resolved under another policy",
 );
 
 const activeHorizonItems = [
@@ -420,14 +412,7 @@ assert.equal(
   activeProfitPerDayRows.percentile?.label,
   "Configured percentile (benchmark)",
 );
-assert.equal(
-  activeProfitPerDayRows["target-horizon-shadow"]?.role,
-  "calibration",
-);
-assert.equal(
-  activeProfitPerDayRows["target-horizon-shadow"]?.label,
-  "Value-matched horizon (calibration)",
-);
+assert.equal(activeProfitPerDayRows["target-horizon-shadow"], undefined);
 assert.deepEqual(activeProfitPerDayDashboard.policy, {
   method: "profit-per-day",
 });
@@ -557,16 +542,10 @@ assert.ok(completedHorizonCurve);
 assert.ok(
   completedHorizonCurve.floorValue < completedHorizonCurve.ceilingValue,
 );
-assert.ok(
-  (completedInventoryDashboard.overall.valueMatchedHorizonDays ?? 0) > 0,
-  "a percentile policy exposes the value-matched calibration horizon",
-);
-
 assert.deepEqual(activeHorizonDashboard.policy, {
   method: "target-horizon",
   horizonDays: 20,
 });
-assert.equal(activeHorizonDashboard.overall.valueMatchedHorizonDays, null);
 const activeHorizonModel = activeHorizonDashboard.overall.horizonModel;
 assert.ok(activeHorizonModel?.curve);
 assert.equal(activeHorizonModel.minimumHorizonDays, 10);

@@ -25,8 +25,8 @@ export function PolicyComparison({
         <Typography variant="h6">Policy comparison</Typography>
         <Typography variant="body2" color="text.secondary">
           The active policy supplies continuous-pricing candidates; benchmark
-          and calibration rows are read-only. One-copy value is the calibration
-          basis; physical value keeps actual quantities.
+          rows are read-only. One-copy value prices one of each SKU; physical
+          value keeps actual quantities.
         </Typography>
       </Box>
       <TableContainer>
@@ -59,15 +59,11 @@ export function PolicyComparison({
                         }
                         variant="outlined"
                         label={
-                          comparison.role === "active"
-                            ? "Active"
-                            : comparison.role === "benchmark"
-                              ? "Benchmark"
-                              : comparison.planState === "mixed"
-                                ? "Mixed plans"
-                                : comparison.matchStatus
-                                  ? `Calibration · ${comparison.matchStatus}`
-                                  : "Calibration"
+                          comparison.planState === "mixed"
+                            ? "Mixed plans"
+                            : comparison.role === "active"
+                              ? "Active"
+                              : "Benchmark"
                         }
                       />
                     )}

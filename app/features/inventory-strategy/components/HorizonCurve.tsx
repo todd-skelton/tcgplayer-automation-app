@@ -9,21 +9,18 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
+  useTheme,
 } from "@mui/material";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   bestCapitalCycle,
-  capitalCycleAtHorizon,
   type CapitalCycle,
   type CapitalCycleEconomics,
 } from "~/features/pricing/domain/capitalCycle";
-import {
-  horizonGainElasticity,
-  horizonKneeDays,
-  horizonMarginalValuePerDay,
-  horizonValue,
-} from "~/features/pricing/domain/horizonValueCurve";
+import { horizonKneeDays } from "~/features/pricing/domain/horizonValueCurve";
 import { ValidatedNumberField } from "~/shared/components/ValidatedNumberField";
 import {
   INVENTORY_STRATEGY_HORIZON_DAYS,
@@ -36,18 +33,20 @@ import {
   type CapitalCycleInputs,
 } from "./capitalCycleInputs";
 import { currencyFormatter, formatDays } from "./format";
+import { HorizonChart, type HorizonMark } from "./HorizonChart";
+import {
+  horizonPoint,
+  sampleHorizonPoints,
+  type HorizonPoint,
+} from "./horizonPoints";
+
+const CHART_SAMPLE_COUNT = 80;
 
 const fitConfidenceColor = {
   high: "success",
   medium: "warning",
   low: "default",
   unavailable: "default",
-} as const;
-
-const emphasisColor = {
-  knee: "success.main",
-  cycle: "info.main",
-  active: "text.primary",
 } as const;
 
 /** The product line's best cycle, or undefined without a curve or a profitable horizon. */
@@ -79,75 +78,35 @@ function cycleSummary(
   return `The best cycle on all listed inventory compounds capital at ${(cycle.dailyReturn * 100).toFixed(2)}% per day.`;
 }
 
-/**
- * Modeled value at one horizon with its marginal rate, elasticity, and the
- * profit per day of a capital cycle. Shows the horizon itself when it varies
- * by row (knee, best cycle, value-matched).
- */
-function HorizonValueCell({
-  productLine,
-  horizonDays,
-  economics,
-  showDays = false,
-  emphasis,
-}: {
-  productLine: InventoryStrategyProductLine;
-  horizonDays: number | null;
-  economics: CapitalCycleEconomics;
-  showDays?: boolean;
-  emphasis?: "active" | "knee" | "cycle";
-}) {
+function fitLabel(productLine: InventoryStrategyProductLine): string {
   const model = productLine.horizonModel;
-  if (!model?.curve || horizonDays === null) {
-    return <TableCell align="right">—</TableCell>;
-  }
-  const outsideRange =
-    horizonDays < model.minimumHorizonDays ||
-    horizonDays > model.maximumHorizonDays;
-  const cycle = capitalCycleAtHorizon(
-    model.curve,
-    cyclePortfolio(productLine),
-    economics,
-    horizonDays,
-  );
+  return !model
+    ? "No curve"
+    : !model.curve
+      ? "No fit"
+      : `${model.fitConfidence} confidence`;
+}
+
+/** Horizon, value, and profit per day for a called-out horizon, or a dash. */
+function HorizonCell({ point }: { point: HorizonPoint | undefined }) {
   return (
-    <TableCell
-      align="right"
-      sx={{ bgcolor: emphasis === "active" ? "action.selected" : undefined }}
-    >
-      {showDays && (
-        <Typography
-          variant="body2"
-          fontWeight={700}
-          color={emphasis ? emphasisColor[emphasis] : "text.primary"}
-        >
-          {formatDays(horizonDays)}
-        </Typography>
-      )}
-      <Typography
-        variant="body2"
-        fontWeight={emphasis === "active" ? 700 : 400}
-      >
-        {currencyFormatter.format(horizonValue(model.curve, horizonDays))}
-      </Typography>
-      <Typography variant="caption" color="text.secondary" display="block">
-        {currencyFormatter.format(
-          horizonMarginalValuePerDay(model.curve, horizonDays),
-        )}
-        /day · e {horizonGainElasticity(model.curve, horizonDays).toFixed(2)}
-      </Typography>
-      <Typography
-        variant="caption"
-        display="block"
-        color={cycle.profit >= 0 ? "text.secondary" : "error.main"}
-      >
-        {currencyFormatter.format(cycle.profitPerDay)}/day profit ·{" "}
-        {currencyFormatter.format(cycle.netProceeds)} net
-      </Typography>
-      {outsideRange && (
-        <Typography variant="caption" color="text.secondary" display="block">
-          Outside curve range
-        </Typography>
+    <TableCell align="right">
+      {point ? (
+        <>
+          <Typography variant="body2">
+            {formatDays(point.horizonDays)} ·{" "}
+            {currencyFormatter.format(point.value)}
+          </Typography>
+          <Typography
+            variant="caption"
+            display="block"
+            color={point.profit >= 0 ? "text.secondary" : "error.main"}
+          >
+            {currencyFormatter.format(point.profitPerDay)}/day profit
+          </Typography>
+        </>
+      ) : (
+        "—"
       )}
     </TableCell>
   );
@@ -164,6 +123,9 @@ export function HorizonCurve({
   cycleInputs: CapitalCycleInputs;
   onCycleInputsChange: (inputs: CapitalCycleInputs) => void;
 }) {
+  const theme = useTheme();
+  const [selectedKey, setSelectedKey] = useState(dashboard.overall.key);
+  const [tableView, setTableView] = useState(false);
   const allProductLines = useMemo(
     () => [dashboard.overall, ...dashboard.productLines],
     [dashboard.overall, dashboard.productLines],
@@ -172,9 +134,6 @@ export function HorizonCurve({
     dashboard.policy.method === "target-horizon"
       ? dashboard.policy.horizonDays
       : null;
-  const showValueMatchedColumn = allProductLines.some(
-    (productLine) => productLine.valueMatchedHorizonDays !== null,
-  );
   const bestCycles = useMemo(
     () =>
       Object.fromEntries(
@@ -185,26 +144,81 @@ export function HorizonCurve({
       ),
     [allProductLines, economics],
   );
+  const selected =
+    allProductLines.find((productLine) => productLine.key === selectedKey) ??
+    dashboard.overall;
+  const model = selected.horizonModel;
+  const curve = model?.curve ?? null;
+  const portfolio = cyclePortfolio(selected);
+  const pointAt = (
+    productLine: InventoryStrategyProductLine,
+    days: number | null | undefined,
+  ) =>
+    productLine.horizonModel?.curve && days
+      ? horizonPoint(
+          productLine.horizonModel.curve,
+          cyclePortfolio(productLine),
+          economics,
+          days,
+        )
+      : undefined;
+  const markAt = (label: string, horizonDays: number, color: string) =>
+    curve
+      ? [
+          {
+            label,
+            point: horizonPoint(curve, portfolio, economics, horizonDays),
+            color,
+          },
+        ]
+      : [];
+  const marks: HorizonMark[] = curve
+    ? [
+        ...markAt("Knee", horizonKneeDays(curve), theme.palette.success.main),
+        ...(bestCycles[selected.key]
+          ? markAt(
+              "Best cycle",
+              bestCycles[selected.key]!.horizonDays,
+              theme.palette.info.main,
+            )
+          : []),
+        ...(activeHorizonDays !== null
+          ? markAt("Active", activeHorizonDays, theme.palette.text.primary)
+          : []),
+      ]
+    : [];
+  const points =
+    curve && model
+      ? sampleHorizonPoints(
+          curve,
+          model,
+          portfolio,
+          economics,
+          CHART_SAMPLE_COUNT,
+        )
+      : [];
+  const tableRows = curve
+    ? [
+        ...marks.map(({ label, point }) => ({ label, point })),
+        ...INVENTORY_STRATEGY_HORIZON_DAYS.map((horizonDays) => ({
+          label: `${horizonDays} days`,
+          point: horizonPoint(curve, portfolio, economics, horizonDays),
+        })),
+      ].sort((left, right) => left.point.horizonDays - right.point.horizonDays)
+    : [];
 
   return (
     <Paper variant="outlined" sx={{ mb: 3 }}>
       <Box sx={{ p: 2 }}>
         <Typography variant="h6">Horizon curve</Typography>
         <Typography variant="body2" color="text.secondary">
-          Physical value across target horizons follows a fitted log-logistic
-          curve: floor plus headroom ÷ (1 + (midpoint ÷ horizon)^steepness). The
-          knee is where gain per doubling of horizon decelerates fastest, at
-          about 79% of headroom. Each cell shows modeled value, dollars per
-          extra day, and elasticity (percent of gain over floor earned per
-          percent longer horizon). Fit residual is the root-mean-square error in
-          headroom fraction.
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          Profit per day takes overhead off the sale, recovers the cost basis,
-          and divides by horizon plus turnaround. Best cycle is the horizon that
-          maximizes it. Overhead comes from the profit-per-day settings.
-          Horizons shorter than most SKUs&apos; fastest sell time overstate how
-          quickly a cycle completes.
+          Physical value with every modeled SKU priced to sell within one target
+          horizon, on a fitted log-logistic curve, and the profit per day of a
+          sell-and-rebuy cycle at that horizon: overhead off the sale, the cost
+          basis recovered, divided by horizon plus turnaround. The knee is where
+          gain per doubling of horizon slows fastest; the best cycle is the
+          horizon with the most profit per day. Horizons shorter than most
+          SKUs&apos; fastest sell time overstate how quickly a cycle completes.
         </Typography>
         <Stack
           direction="row"
@@ -230,25 +244,120 @@ export function HorizonCurve({
         </Stack>
         <Typography variant="body2" sx={{ mt: 2 }}>
           {cycleSummary(dashboard.overall, bestCycles[dashboard.overall.key])}{" "}
-          The default profit-per-day hurdle is configured at{" "}
-          {(dashboard.profitPerDay.dailyReturnHurdle * 100).toFixed(2)}% per
-          day.
+          Overhead comes from the profit-per-day settings.
         </Typography>
+        <Stack
+          direction="row"
+          spacing={2}
+          alignItems="center"
+          flexWrap="wrap"
+          useFlexGap
+          sx={{ mt: 2 }}
+        >
+          <ToggleButtonGroup
+            size="small"
+            exclusive
+            value={selected.key}
+            onChange={(_, key: string | null) => {
+              if (key !== null) setSelectedKey(key);
+            }}
+          >
+            {allProductLines.map((productLine) => (
+              <ToggleButton key={productLine.key} value={productLine.key}>
+                {productLine.key === "all" ? "All" : productLine.productLine}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+          <ToggleButton
+            size="small"
+            value="table"
+            selected={tableView}
+            onChange={() => setTableView((current) => !current)}
+          >
+            Table
+          </ToggleButton>
+          <Chip
+            size="small"
+            variant="outlined"
+            color={model ? fitConfidenceColor[model.fitConfidence] : "default"}
+            label={fitLabel(selected)}
+          />
+          {curve && model && (
+            <Typography variant="caption" color="text.secondary">
+              midpoint {formatDays(curve.midpointDays)} · steepness{" "}
+              {curve.steepness.toFixed(2)} · residual{" "}
+              {curve.residual.toFixed(3)} ·{" "}
+              {currencyFormatter.format(curve.floorValue)} →{" "}
+              {currencyFormatter.format(curve.ceilingValue)} over{" "}
+              {formatDays(model.minimumHorizonDays)} –{" "}
+              {formatDays(model.maximumHorizonDays)}
+            </Typography>
+          )}
+        </Stack>
+        {points.length > 0 ? (
+          <Box sx={{ mt: 2 }}>
+            <HorizonChart
+              points={points}
+              marks={marks}
+              label={`${selected.productLine}: physical value and cycle profit per day against target horizon`}
+            />
+          </Box>
+        ) : (
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            {selected.productLine} has no fitted horizon curve.
+          </Typography>
+        )}
       </Box>
+      {tableView && tableRows.length > 0 && (
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Horizon</TableCell>
+                <TableCell align="right">Days</TableCell>
+                <TableCell align="right">Value</TableCell>
+                <TableCell align="right">Marginal / day</TableCell>
+                <TableCell align="right">Elasticity</TableCell>
+                <TableCell align="right">Profit / day</TableCell>
+                <TableCell align="right">Net proceeds</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {tableRows.map(({ label, point }) => (
+                <TableRow key={label}>
+                  <TableCell>{label}</TableCell>
+                  <TableCell align="right">
+                    {formatDays(point.horizonDays)}
+                  </TableCell>
+                  <TableCell align="right">
+                    {currencyFormatter.format(point.value)}
+                  </TableCell>
+                  <TableCell align="right">
+                    {currencyFormatter.format(point.marginalValuePerDay)}
+                  </TableCell>
+                  <TableCell align="right">
+                    {point.elasticity.toFixed(2)}
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{ color: point.profit >= 0 ? undefined : "error.main" }}
+                  >
+                    {currencyFormatter.format(point.profitPerDay)}
+                  </TableCell>
+                  <TableCell align="right">
+                    {currencyFormatter.format(point.netProceeds)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
       <TableContainer>
-        <Table size="small" sx={{ minWidth: 1200 }}>
+        <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell
-                sx={{
-                  position: "sticky",
-                  left: 0,
-                  bgcolor: "background.paper",
-                  zIndex: 1,
-                }}
-              >
-                Product line
-              </TableCell>
+              <TableCell>Product line</TableCell>
               <TableCell>Fit</TableCell>
               <TableCell align="right">Floor → ceiling</TableCell>
               <TableCell align="right">Knee</TableCell>
@@ -258,30 +367,21 @@ export function HorizonCurve({
                   Active ({formatDays(activeHorizonDays)})
                 </TableCell>
               )}
-              {showValueMatchedColumn && (
-                <TableCell align="right">Value-matched</TableCell>
-              )}
-              {INVENTORY_STRATEGY_HORIZON_DAYS.map((horizonDays) => (
-                <TableCell key={horizonDays} align="right">
-                  {horizonDays} days
-                </TableCell>
-              ))}
             </TableRow>
           </TableHead>
           <TableBody>
             {allProductLines.map((productLine) => {
-              const model = productLine.horizonModel;
-              const curve = model?.curve ?? null;
+              const lineCurve = productLine.horizonModel?.curve;
               return (
-                <TableRow key={productLine.key}>
+                <TableRow
+                  key={productLine.key}
+                  hover
+                  selected={productLine.key === selected.key}
+                  onClick={() => setSelectedKey(productLine.key)}
+                  sx={{ cursor: "pointer" }}
+                >
                   <TableCell
-                    sx={{
-                      position: "sticky",
-                      left: 0,
-                      bgcolor: "background.paper",
-                      zIndex: 1,
-                      fontWeight: productLine.key === "all" ? 700 : 400,
-                    }}
+                    sx={{ fontWeight: productLine.key === "all" ? 700 : 400 }}
                   >
                     {productLine.productLine}
                   </TableCell>
@@ -290,90 +390,37 @@ export function HorizonCurve({
                       size="small"
                       variant="outlined"
                       color={
-                        model
-                          ? fitConfidenceColor[model.fitConfidence]
+                        productLine.horizonModel
+                          ? fitConfidenceColor[
+                              productLine.horizonModel.fitConfidence
+                            ]
                           : "default"
                       }
-                      label={
-                        !model
-                          ? "No curve"
-                          : !curve
-                            ? "No fit"
-                            : `${model.fitConfidence} confidence`
-                      }
+                      label={fitLabel(productLine)}
                     />
-                    {curve && (
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        display="block"
-                      >
-                        midpoint {formatDays(curve.midpointDays)} · steepness{" "}
-                        {curve.steepness.toFixed(2)} · residual{" "}
-                        {curve.residual.toFixed(3)}
-                      </Typography>
-                    )}
                   </TableCell>
                   <TableCell align="right">
-                    {model && curve ? (
-                      <>
-                        <Typography variant="body2">
-                          {currencyFormatter.format(curve.floorValue)} →{" "}
-                          {currencyFormatter.format(curve.ceilingValue)}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          display="block"
-                        >
-                          {formatDays(model.minimumHorizonDays)} –{" "}
-                          {formatDays(model.maximumHorizonDays)}
-                        </Typography>
-                      </>
-                    ) : (
-                      "—"
-                    )}
+                    {lineCurve
+                      ? `${currencyFormatter.format(lineCurve.floorValue)} → ${currencyFormatter.format(lineCurve.ceilingValue)}`
+                      : "—"}
                   </TableCell>
-                  <HorizonValueCell
-                    productLine={productLine}
-                    horizonDays={curve ? horizonKneeDays(curve) : null}
-                    economics={economics}
-                    showDays
-                    emphasis="knee"
+                  <HorizonCell
+                    point={pointAt(
+                      productLine,
+                      lineCurve ? horizonKneeDays(lineCurve) : null,
+                    )}
                   />
-                  <HorizonValueCell
-                    productLine={productLine}
-                    horizonDays={
-                      bestCycles[productLine.key]?.horizonDays ?? null
-                    }
-                    economics={economics}
-                    showDays
-                    emphasis="cycle"
+                  <HorizonCell
+                    point={pointAt(
+                      productLine,
+                      bestCycles[productLine.key]?.horizonDays,
+                    )}
                   />
                   {activeHorizonDays !== null && (
-                    <HorizonValueCell
-                      productLine={productLine}
-                      horizonDays={activeHorizonDays}
-                      economics={economics}
-                      emphasis="active"
+                    <HorizonCell
+                      point={pointAt(productLine, activeHorizonDays)}
                     />
                   )}
-                  {showValueMatchedColumn && (
-                    <HorizonValueCell
-                      productLine={productLine}
-                      horizonDays={productLine.valueMatchedHorizonDays}
-                      economics={economics}
-                      showDays
-                    />
-                  )}
-                  {INVENTORY_STRATEGY_HORIZON_DAYS.map((horizonDays) => (
-                    <HorizonValueCell
-                      key={horizonDays}
-                      productLine={productLine}
-                      horizonDays={horizonDays}
-                      economics={economics}
-                    />
-                  ))}
                 </TableRow>
               );
             })}

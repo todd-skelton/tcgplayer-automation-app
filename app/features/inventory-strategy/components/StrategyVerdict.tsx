@@ -20,6 +20,10 @@ function formatReturn(dailyReturn: number): string {
   return `${(dailyReturn * 100).toFixed(2)}%/day`;
 }
 
+function formatDaysDelta(days: number): string {
+  return `${days >= 0 ? "+" : "−"}${Math.abs(days).toFixed(1)} days`;
+}
+
 function policyLabel(dashboard: InventoryStrategyDashboard): string {
   const { policy, profitPerDay, productLines } = dashboard;
   if (policy.method === "percentile") {
@@ -70,7 +74,7 @@ function alternative(
     configured &&
     configured.scenario.estimatedTime &&
     best.scenario.estimatedTime
-      ? ` · ${formatDelta(best.scenario.physicalValue - configured.scenario.physicalValue)} · ${(best.scenario.estimatedTime.medianDays - configured.scenario.estimatedTime.medianDays).toFixed(1)} days median`
+      ? ` · ${formatDelta(best.scenario.physicalValue - configured.scenario.physicalValue)} listed · ${formatDaysDelta(best.scenario.estimatedTime.medianDays - configured.scenario.estimatedTime.medianDays)} median wait`
       : "";
   return {
     value: formatHurdle(best.scenario.dailyReturnHurdle),
