@@ -116,6 +116,19 @@ The floor was market price less the fee. Realized sales showed it held liquid ca
 - The floor is the market-based minimum, lowered to the SKU's own-condition low sale in the last 90 days or, when the store's own listing is excluded from the search, to the second-cheapest competing ask in the same condition; both are recorded as `priceEvidence`. Own evidence releases the floor on liquid cards and keeps it where the card has none; without a market price there is no floor, as before. The cheapest ask is skipped because one listing in ten is mis-conditioned or thrown away; asks above the second are the ones that run insane.
 - A curve whose fastest point waits beyond a year holds the current price under every policy, or a reference price when the SKU has none, instead of trading price for a marginally shorter wait. The strategy page and the shadow plan leave such curves out for the same reason.
 
+## Inventory strategy page
+
+The page exists to judge the active pricing policy and the forecasts behind it, in this order:
+
+- A verdict header names the active policy and its parameter, its modeled physical value against the listed value, its median and P90 wait, the hurdle on the sweep whose portfolio compounds fastest under the capital-cycle inputs and what switching would change, and modeled coverage with curve freshness. A chip reports the best graded forecast's realized sold share against its expected share and Brier score, or the date the first forecast becomes gradable.
+- Forecast grading follows directly, one summary line per forecast and a decile table once a cohort exists.
+- The policy comparison lists the current listed prices, the active policy, and the benchmarks. The target-horizon row appears only while that policy is active; the value-matched calibration is gone.
+- The hurdle sweep evaluates the profit-per-day policy at a ladder of daily return hurdles per product line, the configured hurdle shaded, since the hurdle is the only parameter the active policy has.
+- The horizon curve draws the selected product line's fitted log-logistic curve as value and cycle profit per day against horizon, with the knee, best cycle, and active horizon marked, a crosshair tooltip, and a table twin on demand, above a compact per-line table of fit, floor and ceiling, knee, and best cycle.
+- The percentile explorer holds the scenario builder and the full matrix for the percentile policy, collapsed and unmounted until opened.
+
+The dashboard and the grading are served from a versioned cache that returns the last build at once when only the inventory or its curves moved and rebuilds in the background; a changed pricing configuration waits for its build. The pricing worker warms both after every batch that recorded curves.
+
 ## Execution record
 
 - [x] Audit production timing, queue shape, pricing failures, and publications.

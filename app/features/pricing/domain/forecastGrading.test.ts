@@ -72,6 +72,10 @@ assert.ok(Math.abs(grade.soldShare - 2 / 6) < 1e-12);
 const fast = saleProbability(10, 21);
 const slow = saleProbability(40, 21);
 assert.ok(
+  Math.abs(grade.expectedShare - (5 * fast + slow) / 6) < 1e-12,
+  "expected share is the mean forecast probability over the cohort",
+);
+assert.ok(
   Math.abs(
     grade.brier - (2 * (1 - fast) ** 2 + 3 * fast ** 2 + slow ** 2) / 6,
   ) < 1e-12,

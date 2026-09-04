@@ -59,6 +59,7 @@ const grade = (
 ): GradedForecast => ({
   count,
   soldShare: 0.25,
+  expectedShare: 0.3,
   brier,
   deciles: [],
   gradableAt,

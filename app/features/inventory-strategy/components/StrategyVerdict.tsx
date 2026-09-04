@@ -13,6 +13,7 @@ import {
   formatDays,
   formatDelta,
   formatHurdle,
+  percentFormatter,
 } from "./format";
 import { gradingStatus, hurdleReturns, type HurdleReturn } from "./verdict";
 
@@ -46,7 +47,7 @@ function policyLabel(dashboard: InventoryStrategyDashboard): string {
 function gradingLabel(report: ForecastGradingReport | undefined): string {
   const status = gradingStatus(report);
   if (status.graded) {
-    return `Forecasts graded: ${status.label} Brier ${status.grade.brier.toFixed(3)} against ${status.baseRate.toFixed(3)}`;
+    return `Forecasts graded: ${status.label} ${percentFormatter.format(status.grade.soldShare)} sold against ${percentFormatter.format(status.grade.expectedShare)} expected, Brier ${status.grade.brier.toFixed(3)} against ${status.baseRate.toFixed(3)}`;
   }
   return status.gradableAt
     ? `Forecasts ungraded until ${new Date(status.gradableAt).toLocaleDateString()}`
