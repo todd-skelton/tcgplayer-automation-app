@@ -94,14 +94,8 @@ export interface InventoryStrategyHurdleScenario extends InventoryStrategyDecisi
 export interface InventoryStrategyPolicyComparison extends InventoryStrategyDecisionSummary {
   key: "current" | "percentile" | "target-horizon-shadow" | "profit-per-day";
   label: string;
-  role: "current" | "active" | "benchmark" | "calibration";
+  role: "current" | "active" | "benchmark";
   planState: "none" | "single" | "mixed";
-  matchStatus:
-    | "matched"
-    | "boundary"
-    | "infeasible"
-    | "mixed"
-    | null;
 }
 
 export type InventoryStrategyConfidence =
@@ -141,7 +135,6 @@ export interface InventoryStrategyProductLine {
   scenarios: InventoryStrategyScenario[];
   policyComparisons: InventoryStrategyPolicyComparison[];
   hurdleSweep: InventoryStrategyHurdleScenario[];
-  valueMatchedHorizonDays: number | null;
   horizonModel: InventoryStrategyHorizonModel | null;
 }
 

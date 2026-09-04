@@ -12,7 +12,6 @@ import {
   portfolioDecisions,
   readPricingDecision,
   readShadowPricingDecision,
-  resolveValueMatchedPortfolioPlan,
   toPricingCurve,
   type PortfolioCurveItem,
 } from "~/features/pricing/domain/pricingPolicy";
@@ -137,46 +136,14 @@ function toPortfolioItems(
   }));
 }
 
-interface InventoryHorizonDecisions {
-  decisions: ReadonlyMap<number, PricingDecision>;
-  valueMatchedHorizonDays: number | null;
-}
-
-/**
- * Horizon-policy decisions for the comparison row: the active horizon when
- * one is configured, otherwise the value-matched calibration plan.
- */
-function resolveInventoryHorizonDecisions(
-  key: string,
-  items: InventoryStrategySnapshotItem[],
+/** Decisions at the active target horizon; none under another policy. */
+function horizonDecisions(
   portfolioItems: readonly StrategyPortfolioItem[],
-  config: ServerPricingConfig,
-): InventoryHorizonDecisions {
-  const policy = activePricingPolicy(config.pricing);
-  if (policy.method === "target-horizon") {
-    return {
-      decisions: portfolioDecisions(portfolioItems, policy),
-      valueMatchedHorizonDays: null,
-    };
-  }
-  const latestPricingAt = items.reduce<Date | null>(
-    (latest, item) =>
-      item.strategyPricedAt &&
-      (!latest || item.strategyPricedAt.getTime() > latest.getTime())
-        ? item.strategyPricedAt
-        : latest,
-    null,
-  );
-  const resolved = resolveValueMatchedPortfolioPlan(portfolioItems, {
-    cohortId: `inventory-strategy:${items[0]?.sellerKey ?? "unknown"}:${key}`,
-    ...(latestPricingAt ? { createdAt: latestPricingAt } : {}),
-  });
-  return resolved.plan.modeledSkuCount > 0
-    ? {
-        decisions: resolved.decisionsBySku,
-        valueMatchedHorizonDays: resolved.plan.resolvedHorizonDays,
-      }
-    : { decisions: new Map(), valueMatchedHorizonDays: null };
+  policy: ActivePricingPolicy,
+): ReadonlyMap<number, PricingDecision> {
+  return policy.method === "target-horizon"
+    ? portfolioDecisions(portfolioItems, policy)
+    : new Map();
 }
 
 function weightedQuantile(values: WeightedValue[], quantile: number): number {
@@ -475,28 +442,20 @@ function buildPolicyComparisons(
       (decision) => decision.dailyReturnHurdle,
     );
     const planIds = distinct(decisions, (decision) => decision.planId);
-    const planMatchStatuses = distinct(
-      decisions,
-      (decision) => decision.planMatchStatus,
-    );
     const [profitPerDayHurdle] = hurdles;
     const role: InventoryStrategyPolicyComparison["role"] =
       key === "current"
         ? "current"
         : ROW_POLICY_METHOD[key] === activePolicy.method
           ? "active"
-          : key === "target-horizon-shadow"
-            ? "calibration"
-            : "benchmark";
+          : "benchmark";
     const label =
       key === "current"
         ? "Current listed prices"
         : key === "percentile"
           ? "Configured percentile"
           : key === "target-horizon-shadow"
-            ? activePolicy.method === "target-horizon"
-              ? `Target horizon (${activePolicy.horizonDays.toFixed(1)} days)`
-              : "Value-matched horizon"
+            ? `Target horizon (${activePolicy.method === "target-horizon" ? activePolicy.horizonDays.toFixed(1) : ""} days)`
             : hurdles.size > 1
               ? "Profit per day at product-line hurdles"
               : `Profit per day at ${(profitPerDayHurdle * 100).toFixed(
@@ -505,10 +464,7 @@ function buildPolicyComparisons(
 
     return {
       key,
-      label:
-        role === "benchmark" || role === "calibration"
-          ? `${label} (${role})`
-          : label,
+      label: role === "benchmark" ? `${label} (${role})` : label,
       role,
       planState:
         planIds.size > 1 || targetHorizons.size > 1
@@ -516,14 +472,6 @@ function buildPolicyComparisons(
           : planIds.size === 1 || targetHorizons.size === 1
             ? "single"
             : "none",
-      matchStatus:
-        planIds.size > 1 ||
-        targetHorizons.size > 1 ||
-        planMatchStatuses.size > 1
-          ? "mixed"
-          : planMatchStatuses.size === 1
-            ? [...planMatchStatuses][0]
-            : null,
       ...summarizeDecisions(decisions),
     };
   };
@@ -792,12 +740,7 @@ function buildProductLine(
     exactCandidatePercentiles,
   );
   const portfolioItems = toPortfolioItems(items, config);
-  const horizonDecisions = resolveInventoryHorizonDecisions(
-    key,
-    items,
-    portfolioItems,
-    config,
-  );
+  const activePolicy = activePricingPolicy(config.pricing);
   const profitPerDay = profitPerDayPolicy(config.pricing.profitPerDay);
   const configuredHurdle =
     productLineId === null
@@ -840,14 +783,14 @@ function buildProductLine(
     scenarios,
     policyComparisons: buildPolicyComparisons(
       items,
-      horizonDecisions.decisions,
+      horizonDecisions(portfolioItems, activePolicy),
       portfolioDecisions(portfolioItems, (item) =>
         productLinePricingPolicy(
           profitPerDay,
           config.productLinePricing.productLineSettings[item.productLineId],
         ),
       ),
-      activePricingPolicy(config.pricing),
+      activePolicy,
     ),
     hurdleSweep: buildHurdleSweep(
       items,
@@ -855,7 +798,6 @@ function buildProductLine(
       config,
       configuredHurdle,
     ),
-    valueMatchedHorizonDays: horizonDecisions.valueMatchedHorizonDays,
     horizonModel: buildHorizonModel(portfolioItems),
   };
 }

@@ -32,8 +32,12 @@ export function formatAge(isoDate: string | null): string {
     (Date.now() - new Date(isoDate).getTime()) / (60 * 60 * 1000),
   );
   if (ageHours < 1) return "Less than 1 hour";
-  if (ageHours < 48) return `${Math.round(ageHours)} hours`;
-  return `${Math.round(ageHours / 24)} days`;
+  if (ageHours < 48) return plural(Math.round(ageHours), "hour");
+  return plural(Math.round(ageHours / 24), "day");
+}
+
+function plural(count: number, unit: string): string {
+  return `${count} ${unit}${count === 1 ? "" : "s"}`;
 }
 
 export function formatHurdle(dailyReturnHurdle: number): string {
