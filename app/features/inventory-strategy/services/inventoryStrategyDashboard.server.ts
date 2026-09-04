@@ -6,20 +6,21 @@ import type {
   InventoryStrategySnapshotItem,
 } from "../types/inventoryStrategy";
 import { buildInventoryStrategyDashboard } from "./inventoryStrategy";
+import { createVersionedCache } from "./versionedCache";
 
 export interface InventoryStrategySource {
   findSnapshotVersion(sellerKey: string): Promise<string>;
   findSnapshot(sellerKey: string): Promise<InventoryStrategySnapshotItem[]>;
 }
 
-const dashboards = new Map<
-  string,
-  { version: string; dashboard: Promise<InventoryStrategyDashboard> }
->();
+const dashboards = createVersionedCache<InventoryStrategyDashboard>(
+  "Inventory strategy dashboard",
+);
 
 /**
- * The seller's dashboard, rebuilt only when the inventory, its curves, or the
- * pricing configuration changed since the last build.
+ * The seller's dashboard. A changed pricing configuration waits for a
+ * rebuild; changed inventory or curves, which every priced batch brings,
+ * serve the last dashboard while the next one builds in the background.
  */
 export async function loadInventoryStrategyDashboard(
   sellerKey: string,
@@ -27,20 +28,15 @@ export async function loadInventoryStrategyDashboard(
   source: InventoryStrategySource = inventoryStrategyRepository,
 ): Promise<InventoryStrategyDashboard> {
   if (!sellerKey) return buildInventoryStrategyDashboard(sellerKey, [], config);
-  const version = [
-    PRICING_MODEL_VERSION,
+  return dashboards.read(
+    sellerKey,
+    [PRICING_MODEL_VERSION, JSON.stringify(config)].join("|"),
     await source.findSnapshotVersion(sellerKey),
-    JSON.stringify(config),
-  ].join("|");
-  const cached = dashboards.get(sellerKey);
-  if (cached?.version === version) return cached.dashboard;
-  const dashboard = source
-    .findSnapshot(sellerKey)
-    .then((items) => buildInventoryStrategyDashboard(sellerKey, items, config));
-  dashboards.set(sellerKey, { version, dashboard });
-  dashboard.catch(() => {
-    if (dashboards.get(sellerKey)?.dashboard === dashboard)
-      dashboards.delete(sellerKey);
-  });
-  return dashboard;
+    () =>
+      source
+        .findSnapshot(sellerKey)
+        .then((items) =>
+          buildInventoryStrategyDashboard(sellerKey, items, config),
+        ),
+  );
 }

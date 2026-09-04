@@ -47,17 +47,23 @@ const rows: ForecastGradingRecord[] = [
   row(4, 1, 1, { buyerChoiceCalibration: "older-fit" }),
 ];
 let requestedSince: Date | undefined;
-const reports = await loadForecastGrading(
-  "seller",
-  {
-    findForecastGradingRecords: async (_sellerKey, since) => {
-      requestedSince = since;
-      return rows;
-    },
-    findInStockSkus: async () => [1, 2, 3, 4],
+let recordReads = 0;
+const source = {
+  findSnapshotVersion: async () => "inventory-1",
+  findForecastGradingRecords: async (_sellerKey: string, since: Date) => {
+    requestedSince = since;
+    recordReads += 1;
+    return rows;
   },
-  now,
+  findInStockSkus: async () => [1, 2, 3, 4],
+};
+const reports = await loadForecastGrading("seller", source, now);
+assert.equal(
+  await loadForecastGrading("seller", source, now),
+  reports,
+  "the same inventory version within the hour serves the cached report",
 );
+assert.equal(recordReads, 1);
 assert.equal(
   requestedSince?.toISOString(),
   at(56).toISOString(),
@@ -93,6 +99,7 @@ assert.equal(
 const empty = await loadForecastGrading(
   "",
   {
+    findSnapshotVersion: async () => "",
     findForecastGradingRecords: async () => {
       throw new Error("must not query without a seller");
     },

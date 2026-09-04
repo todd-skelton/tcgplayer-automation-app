@@ -11,6 +11,7 @@ const source = {
     return [];
   },
 };
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const first = await loadInventoryStrategyDashboard(
   "seller",
@@ -26,12 +27,24 @@ assert.equal(second, first, "an unchanged version serves the cached dashboard");
 assert.equal(snapshotReads, 1);
 
 version = "inventory-2";
+const stale = await loadInventoryStrategyDashboard(
+  "seller",
+  DEFAULT_SERVER_PRICING_CONFIG,
+  source,
+);
+assert.equal(
+  stale,
+  first,
+  "a changed inventory version serves the last dashboard while rebuilding",
+);
+assert.equal(snapshotReads, 2, "the rebuild started in the background");
+await settle();
 const rebuilt = await loadInventoryStrategyDashboard(
   "seller",
   DEFAULT_SERVER_PRICING_CONFIG,
   source,
 );
-assert.notEqual(rebuilt, first, "a changed inventory version rebuilds");
+assert.notEqual(rebuilt, first, "the next load serves the rebuilt dashboard");
 assert.equal(snapshotReads, 2);
 
 const reconfigured = await loadInventoryStrategyDashboard(
@@ -45,7 +58,11 @@ const reconfigured = await loadInventoryStrategyDashboard(
   },
   source,
 );
-assert.notEqual(reconfigured, rebuilt, "a changed configuration rebuilds");
+assert.notEqual(
+  reconfigured,
+  rebuilt,
+  "a changed configuration waits for its rebuild",
+);
 assert.equal(snapshotReads, 3);
 
 const empty = await loadInventoryStrategyDashboard(
