@@ -50,9 +50,11 @@ export function ForecastGrading({
         <Typography variant="body2" color="text.secondary">
           Each forecast is graded over the SKUs that carried it, first priced
           between {grading.horizonDays} and {2 * grading.horizonDays} days ago
-          and followed for {grading.horizonDays} days. Brier score against
-          realized sales, lower is better; the base rate is the score of
-          forecasting every SKU at its cohort&apos;s sold share.
+          and followed for {grading.horizonDays} days. Sold is the share of the
+          cohort that realized a sale within the horizon; expected is the share
+          the forecast implied. Brier score against realized sales, lower is
+          better; the base rate is the score of forecasting every SKU at its
+          cohort&apos;s sold share.
         </Typography>
         {gradedForecasts.map(([label, grade]) => (
           <Typography
@@ -63,7 +65,7 @@ export function ForecastGrading({
           >
             {label}:{" "}
             {grade.count > 0
-              ? `${grade.count.toLocaleString()} SKUs, ${percentFormatter.format(grade.soldShare)} sold, Brier ${grade.brier.toFixed(4)} against a base rate of ${(grade.soldShare * (1 - grade.soldShare)).toFixed(4)}.`
+              ? `${grade.count.toLocaleString()} SKUs, ${percentFormatter.format(grade.soldShare)} sold against ${percentFormatter.format(grade.expectedShare)} expected, Brier ${grade.brier.toFixed(4)} against a base rate of ${(grade.soldShare * (1 - grade.soldShare)).toFixed(4)}.`
               : `no SKU has carried this forecast for ${grading.horizonDays} days yet.`}
           </Typography>
         ))}

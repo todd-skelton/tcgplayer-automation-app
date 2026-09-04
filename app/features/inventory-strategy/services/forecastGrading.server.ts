@@ -20,6 +20,7 @@ const DAY_MS = 24 * HOUR_MS;
 const NO_GRADE: ForecastGrade = {
   count: 0,
   soldShare: 0,
+  expectedShare: 0,
   brier: 0,
   deciles: [],
 };

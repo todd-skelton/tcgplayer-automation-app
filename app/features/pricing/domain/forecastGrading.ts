@@ -26,7 +26,10 @@ export interface CohortMember {
 
 export interface ForecastGrade {
   count: number;
+  /** Share of the cohort that realized a sale within the horizon. */
   soldShare: number;
+  /** Share the forecast implied would sell within the horizon. */
+  expectedShare: number;
   brier: number;
   deciles: {
     count: number;
@@ -121,6 +124,7 @@ export function gradeForecast(
   return {
     count: members.length,
     soldShare: share(members, (member) => (member.sold ? 1 : 0)),
+    expectedShare: share(members, probability),
     brier: share(
       members,
       (member) => (probability(member) - (member.sold ? 1 : 0)) ** 2,
