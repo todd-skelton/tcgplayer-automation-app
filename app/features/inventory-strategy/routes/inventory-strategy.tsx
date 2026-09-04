@@ -16,6 +16,7 @@ import {
 import { refreshContinuousPricingInventory } from "~/features/continuous-pricing/services/continuousInventoryRefresh.server";
 import { ForecastGrading } from "../components/ForecastGrading";
 import { HorizonCurve } from "../components/HorizonCurve";
+import { HurdleSweep } from "../components/HurdleSweep";
 import { MetricCard } from "../components/MetricCard";
 import { PercentileMatrix } from "../components/PercentileMatrix";
 import { PolicyComparison } from "../components/PolicyComparison";
@@ -305,6 +306,7 @@ export default function InventoryStrategyRoute() {
       </Box>
 
       <PolicyComparison comparisons={dashboard.overall.policyComparisons} />
+      <HurdleSweep dashboard={dashboard} />
       <HorizonCurve dashboard={dashboard} />
       <ScenarioBuilder
         selections={selectedProductLines}

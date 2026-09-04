@@ -68,7 +68,30 @@ export interface InventoryStrategyScenario {
   estimatedTime: InventoryStrategyTimeDistribution | null;
 }
 
-export interface InventoryStrategyPolicyComparison {
+/** Daily return hurdles the profit-per-day policy is evaluated at. */
+export const INVENTORY_STRATEGY_HURDLES = [
+  0.0025, 0.005, 0.0075, 0.01, 0.015, 0.02,
+];
+
+/** Portfolio value, wait, and price movement under one decision per SKU. */
+export interface InventoryStrategyDecisionSummary {
+  oneCopyValue: number;
+  physicalValue: number;
+  modeledSkuCount: number;
+  raisedCount: number;
+  loweredCount: number;
+  heldCount: number;
+  estimatedTime: InventoryStrategyTimeDistribution | null;
+}
+
+/** The profit-per-day policy evaluated at one daily return hurdle. */
+export interface InventoryStrategyHurdleScenario extends InventoryStrategyDecisionSummary {
+  dailyReturnHurdle: number;
+  /** Whether this is the hurdle the product line is configured with. */
+  configured: boolean;
+}
+
+export interface InventoryStrategyPolicyComparison extends InventoryStrategyDecisionSummary {
   key: "current" | "percentile" | "target-horizon-shadow" | "profit-per-day";
   label: string;
   role: "current" | "active" | "benchmark" | "calibration";
@@ -79,13 +102,6 @@ export interface InventoryStrategyPolicyComparison {
     | "infeasible"
     | "mixed"
     | null;
-  oneCopyValue: number;
-  physicalValue: number;
-  modeledSkuCount: number;
-  raisedCount: number;
-  loweredCount: number;
-  heldCount: number;
-  estimatedTime: InventoryStrategyTimeDistribution | null;
 }
 
 export type InventoryStrategyConfidence =
@@ -124,6 +140,7 @@ export interface InventoryStrategyProductLine {
   matrixPercentiles: number[];
   scenarios: InventoryStrategyScenario[];
   policyComparisons: InventoryStrategyPolicyComparison[];
+  hurdleSweep: InventoryStrategyHurdleScenario[];
   valueMatchedHorizonDays: number | null;
   horizonModel: InventoryStrategyHorizonModel | null;
 }
