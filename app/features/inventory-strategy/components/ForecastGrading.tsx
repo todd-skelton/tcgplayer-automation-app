@@ -19,6 +19,7 @@ import {
   type ForecastGradingReport,
 } from "../types/inventoryStrategy";
 import { percentFormatter } from "./format";
+import { GRADED_FORECASTS } from "./verdict";
 
 export function ForecastGrading({
   reports,
@@ -34,11 +35,9 @@ export function ForecastGrading({
     reports.find((report) => report.horizonDays === gradingHorizonDays) ??
     reports[0];
   if (!grading) return null;
-  const gradedForecasts = [
-    ["Curve", grading.curve],
-    ["Buyer-choice", grading.buyerChoice],
-    ["Condition-rate", grading.conditionRate],
-  ] as const;
+  const gradedForecasts = GRADED_FORECASTS.map(
+    ([label, key]) => [label, grading[key]] as const,
+  );
   const gradedDecileCount = Math.max(
     0,
     ...gradedForecasts.map(([, grade]) => grade.deciles.length),

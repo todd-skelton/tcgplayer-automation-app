@@ -87,6 +87,21 @@ assert.equal(
   "a SKU without an own-condition rate leaves only the condition-rate cohort",
 );
 assert.equal(report.otherCalibrationCount, 2);
+assert.equal(
+  report.curve.gradableAt,
+  at(9).toISOString(),
+  "the curve forecast became gradable a horizon after its first result",
+);
+assert.equal(
+  report.buyerChoice.gradableAt,
+  at(19).toISOString(),
+  "a target-horizon result still carries the buyer-choice forecast",
+);
+assert.equal(
+  report.conditionRate.gradableAt,
+  at(19).toISOString(),
+  "every result carrying a forecast counts, whatever policy priced it",
+);
 assert.equal(report.curve.deciles.length, 4);
 assert.equal(report.buyerChoice.deciles.length, 3);
 assert.ok(report.curve.brier > 0 && report.buyerChoice.brier > 0);
@@ -108,11 +123,15 @@ const empty = await loadForecastGrading(
   now,
 );
 assert.deepEqual(
-  empty.map((report) => [report.curve.count, report.curve.deciles]),
+  empty.map((report) => [
+    report.curve.count,
+    report.curve.deciles,
+    report.curve.gradableAt,
+  ]),
   [
-    [0, []],
-    [0, []],
-    [0, []],
+    [0, [], null],
+    [0, [], null],
+    [0, [], null],
   ],
 );
 

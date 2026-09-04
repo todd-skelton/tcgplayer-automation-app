@@ -55,8 +55,23 @@ export function capitalCycleAtHorizon(
   economics: CapitalCycleEconomics,
   horizonDays: number,
 ): CapitalCycle {
+  return capitalCycle(
+    horizonValue(curve, horizonDays),
+    horizonDays,
+    portfolio,
+    economics,
+  );
+}
+
+/** One capital cycle that sells the portfolio for a value after a wait. */
+export function capitalCycle(
+  saleValue: number,
+  horizonDays: number,
+  portfolio: CapitalCyclePortfolio,
+  economics: CapitalCycleEconomics,
+): CapitalCycle {
   const netProceeds =
-    horizonValue(curve, horizonDays) * (1 - economics.relativeOverhead) -
+    saleValue * (1 - economics.relativeOverhead) -
     economics.staticOverheadPerUnit * portfolio.unitCount;
   const cost =
     economics.costBasisShareOfMarket * portfolio.marketValue -

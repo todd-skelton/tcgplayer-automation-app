@@ -14,18 +14,15 @@ import {
   pricingConfigRepository,
 } from "~/core/db";
 import { refreshContinuousPricingInventory } from "~/features/continuous-pricing/services/continuousInventoryRefresh.server";
+import type { CapitalCycleEconomics } from "~/features/pricing/domain/capitalCycle";
+import { DEFAULT_CAPITAL_CYCLE_INPUTS } from "../components/capitalCycleInputs";
 import { ForecastGrading } from "../components/ForecastGrading";
 import { HorizonCurve } from "../components/HorizonCurve";
 import { HurdleSweep } from "../components/HurdleSweep";
-import { MetricCard } from "../components/MetricCard";
 import { PercentileMatrix } from "../components/PercentileMatrix";
 import { PolicyComparison } from "../components/PolicyComparison";
 import { ScenarioBuilder } from "../components/ScenarioBuilder";
-import {
-  currencyFormatter,
-  formatCoverage,
-  formatDelta,
-} from "../components/format";
+import { StrategyVerdict } from "../components/StrategyVerdict";
 import {
   defaultSelection,
   findScenario,
@@ -33,6 +30,7 @@ import {
 import { loadForecastGrading } from "../services/forecastGrading.server";
 import { loadInventoryStrategyDashboard } from "../services/inventoryStrategyDashboard.server";
 import { queueInventoryStrategyAnalysis } from "../services/inventoryStrategyAnalysis.server";
+import { DEFAULT_FORECAST_GRADING_HORIZON_DAYS } from "../types/inventoryStrategy";
 
 type ActionData =
   | { success: true; message: string }
@@ -43,7 +41,7 @@ export const meta: MetaFunction = () => [
   {
     name: "description",
     content:
-      "Compare listed inventory value and estimated selling time across pricing percentiles.",
+      "Judge the active pricing policy against its alternatives and the forecasts behind it.",
   },
 ];
 
@@ -125,6 +123,15 @@ export default function InventoryStrategyRoute() {
   }>();
   const { revalidate } = useRevalidator();
   const [selections, setSelections] = useState<Record<string, number>>({});
+  const [cycleInputs, setCycleInputs] = useState(DEFAULT_CAPITAL_CYCLE_INPUTS);
+  const economics = useMemo<CapitalCycleEconomics>(
+    () => ({
+      ...cycleInputs,
+      relativeOverhead: dashboard.profitPerDay.relativeOverhead,
+      staticOverheadPerUnit: dashboard.profitPerDay.staticOverheadPerUnit,
+    }),
+    [cycleInputs, dashboard.profitPerDay],
+  );
   const busy = fetcher.state !== "idle";
   const analysisActive =
     latestAnalysis?.status === "queued" || latestAnalysis?.status === "pricing";
@@ -179,14 +186,6 @@ export default function InventoryStrategyRoute() {
       }),
     [dashboard.productLines, selections],
   );
-  const selectedValue = selectedProductLines.reduce(
-    (sum, selection) =>
-      sum +
-      (selection.scenario?.listedValue ??
-        selection.productLine.currentPolicyValue),
-    0,
-  );
-  const selectedDelta = selectedValue - dashboard.overall.currentPolicyValue;
   const allProductLines = useMemo(
     () => [dashboard.overall, ...dashboard.productLines],
     [dashboard.overall, dashboard.productLines],
@@ -211,9 +210,9 @@ export default function InventoryStrategyRoute() {
             Inventory Strategy
           </Typography>
           <Typography color="text.secondary">
-            Preview how percentile changes affect listed value and the expected
-            wait for a sale. Scenarios never change configuration or publish
-            prices.
+            Judge the active pricing policy against its alternatives and check
+            the forecasts behind it. Nothing here changes configuration or
+            publishes prices.
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} alignItems="flex-start">
@@ -268,46 +267,28 @@ export default function InventoryStrategyRoute() {
         </Alert>
       )}
 
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: {
-            xs: "1fr",
-            sm: "repeat(2, 1fr)",
-            lg: "repeat(4, 1fr)",
-          },
-          gap: 2,
-          mb: 3,
-        }}
-      >
-        <MetricCard
-          label="Actual listed value"
-          value={currencyFormatter.format(dashboard.overall.currentListedValue)}
-          detail={`${dashboard.overall.unitCount.toLocaleString()} units across ${dashboard.overall.skuCount.toLocaleString()} SKUs`}
-        />
-        <MetricCard
-          label="Current-policy model"
-          value={currencyFormatter.format(dashboard.overall.currentPolicyValue)}
-          detail="Configured percentile per product line, with price floors applied"
-        />
-        <MetricCard
-          label="Selected scenario"
-          value={currencyFormatter.format(selectedValue)}
-          detail={`${formatDelta(selectedDelta)} versus the current-policy model`}
-        />
-        <MetricCard
-          label="Modeled unit coverage"
-          value={formatCoverage(
-            dashboard.overall.modeledUnitCount,
-            dashboard.overall.unitCount,
-          )}
-          detail={`${dashboard.overall.modeledSkuCount.toLocaleString()} of ${dashboard.overall.skuCount.toLocaleString()} SKUs have a saved curve`}
-        />
-      </Box>
-
+      <StrategyVerdict
+        dashboard={dashboard}
+        economics={economics}
+        grading={
+          forecastGrading.find(
+            (report) =>
+              report.horizonDays === DEFAULT_FORECAST_GRADING_HORIZON_DAYS,
+          ) ?? forecastGrading[0]
+        }
+      />
+      <ForecastGrading
+        reports={forecastGrading}
+        policyMethod={dashboard.policy.method}
+      />
       <PolicyComparison comparisons={dashboard.overall.policyComparisons} />
       <HurdleSweep dashboard={dashboard} />
-      <HorizonCurve dashboard={dashboard} />
+      <HorizonCurve
+        dashboard={dashboard}
+        economics={economics}
+        cycleInputs={cycleInputs}
+        onCycleInputsChange={setCycleInputs}
+      />
       <ScenarioBuilder
         selections={selectedProductLines}
         onSelect={(key, percentile) =>
@@ -315,10 +296,6 @@ export default function InventoryStrategyRoute() {
         }
       />
       <PercentileMatrix productLines={allProductLines} />
-      <ForecastGrading
-        reports={forecastGrading}
-        policyMethod={dashboard.policy.method}
-      />
 
       <Alert severity="info" sx={{ mt: 3 }}>
         Expected wait estimates the next sale/listing position, not liquidation

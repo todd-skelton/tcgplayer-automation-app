@@ -11,7 +11,7 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   bestCapitalCycle,
   capitalCycleAtHorizon,
@@ -24,15 +24,17 @@ import {
   horizonMarginalValuePerDay,
   horizonValue,
 } from "~/features/pricing/domain/horizonValueCurve";
-import {
-  ValidatedNumberField,
-  type NumberFieldDescriptor,
-} from "~/shared/components/ValidatedNumberField";
+import { ValidatedNumberField } from "~/shared/components/ValidatedNumberField";
 import {
   INVENTORY_STRATEGY_HORIZON_DAYS,
   type InventoryStrategyDashboard,
   type InventoryStrategyProductLine,
 } from "../types/inventoryStrategy";
+import {
+  CAPITAL_CYCLE_FIELDS,
+  cyclePortfolio,
+  type CapitalCycleInputs,
+} from "./capitalCycleInputs";
 import { currencyFormatter, formatDays } from "./format";
 
 const fitConfidenceColor = {
@@ -42,51 +44,11 @@ const fitConfidenceColor = {
   unavailable: "default",
 } as const;
 
-/** Cycle inputs the reader can vary; overhead comes from the profit-per-day settings. */
-type CapitalCycleInputs = Pick<
-  CapitalCycleEconomics,
-  "costBasisShareOfMarket" | "costBasisDiscountPerUnit" | "turnaroundDays"
->;
-
-const DEFAULT_CAPITAL_CYCLE_INPUTS: CapitalCycleInputs = {
-  costBasisShareOfMarket: 0.72,
-  costBasisDiscountPerUnit: 0.3,
-  turnaroundDays: 28,
-};
-
-const CAPITAL_CYCLE_FIELDS: NumberFieldDescriptor<CapitalCycleInputs>[] = [
-  {
-    key: "costBasisShareOfMarket",
-    label: "Cost basis share of market",
-    step: 0.01,
-    helperText: "Fraction of market value paid for inventory",
-  },
-  {
-    key: "costBasisDiscountPerUnit",
-    label: "Cost basis discount per unit",
-    step: 0.01,
-    helperText: "Dollars off the cost basis for every unit bought",
-  },
-  {
-    key: "turnaroundDays",
-    label: "Turnaround days",
-    step: 1,
-    helperText: "Days from a sale until the proceeds are relisted",
-  },
-];
-
 const emphasisColor = {
   knee: "success.main",
   cycle: "info.main",
   active: "text.primary",
 } as const;
-
-function cyclePortfolio(productLine: InventoryStrategyProductLine) {
-  return {
-    marketValue: productLine.estimatedMarketValue,
-    unitCount: productLine.unitCount,
-  };
-}
 
 /** The product line's best cycle, or undefined without a curve or a profitable horizon. */
 function productLineBestCycle(
@@ -193,18 +155,15 @@ function HorizonValueCell({
 
 export function HorizonCurve({
   dashboard,
+  economics,
+  cycleInputs,
+  onCycleInputsChange,
 }: {
   dashboard: InventoryStrategyDashboard;
+  economics: CapitalCycleEconomics;
+  cycleInputs: CapitalCycleInputs;
+  onCycleInputsChange: (inputs: CapitalCycleInputs) => void;
 }) {
-  const [cycleInputs, setCycleInputs] = useState(DEFAULT_CAPITAL_CYCLE_INPUTS);
-  const economics = useMemo<CapitalCycleEconomics>(
-    () => ({
-      ...cycleInputs,
-      relativeOverhead: dashboard.profitPerDay.relativeOverhead,
-      staticOverheadPerUnit: dashboard.profitPerDay.staticOverheadPerUnit,
-    }),
-    [cycleInputs, dashboard.profitPerDay],
-  );
   const allProductLines = useMemo(
     () => [dashboard.overall, ...dashboard.productLines],
     [dashboard.overall, dashboard.productLines],
@@ -264,10 +223,7 @@ export function HorizonCurve({
               helperText={field.helperText}
               isValid={(value) => value >= 0}
               onCommit={(value) =>
-                setCycleInputs((current) => ({
-                  ...current,
-                  [field.key]: value,
-                }))
+                onCycleInputsChange({ ...cycleInputs, [field.key]: value })
               }
             />
           ))}

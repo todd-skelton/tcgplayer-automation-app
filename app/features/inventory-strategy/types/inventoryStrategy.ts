@@ -162,6 +162,12 @@ export interface ForecastGradingRecord {
   conditionRateMethod: string | null;
 }
 
+/** One forecast's grade, with when its first cohort completes at the horizon. */
+export interface GradedForecast extends ForecastGrade {
+  /** When the first result carrying this forecast is a horizon old; null before any result carried it. */
+  gradableAt: string | null;
+}
+
 /**
  * Every forecast graded against realized sales over one horizon, each over
  * the SKUs that carried it.
@@ -170,9 +176,9 @@ export interface ForecastGradingReport {
   horizonDays: number;
   /** Results whose buyer-choice forecast came from an earlier calibration. */
   otherCalibrationCount: number;
-  curve: ForecastGrade;
-  buyerChoice: ForecastGrade;
-  conditionRate: ForecastGrade;
+  curve: GradedForecast;
+  buyerChoice: GradedForecast;
+  conditionRate: GradedForecast;
 }
 
 export interface InventoryStrategyDashboard {

@@ -10,11 +10,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { InventoryStrategyDashboard } from "../types/inventoryStrategy";
-import { currencyFormatter } from "./format";
-
-function formatHurdle(dailyReturnHurdle: number): string {
-  return `${(dailyReturnHurdle * 100).toFixed(2)}%/day`;
-}
+import { currencyFormatter, formatHurdle } from "./format";
 
 export function HurdleSweep({
   dashboard,
