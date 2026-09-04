@@ -181,6 +181,7 @@ function enrichPricedSkus(
       percentiles: pricedItem.percentiles,
       pricingDecision: pricedItem.pricingDecision,
       shadowPricingDecision: pricedItem.shadowPricingDecision,
+      buyerChoiceForecast: pricedItem.buyerChoiceForecast,
       errors: pricedItem.errors,
       warnings: pricedItem.warnings,
       productLine: productInfo?.productLine,

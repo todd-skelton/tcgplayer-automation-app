@@ -6,6 +6,9 @@ export const PRICING_CONSTANTS = {
   SKIP_PREFIX: "C-",
   MIN_PRICE_MULTIPLIER: 80 / 85,
   MIN_PRICE_CONSTANT: 0.1,
+  /** Orders at or above this ship free; smaller orders pay the small-order fee. */
+  FREE_SHIPPING_THRESHOLD: 5,
+  SMALL_ORDER_SHIPPING_FEE: 1.49,
   SUCCESS_RATE_THRESHOLD: {
     LOW: 70,
     HIGH: 90,

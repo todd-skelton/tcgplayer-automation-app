@@ -1,9 +1,11 @@
 import type {
+  BuyerChoiceForecast,
   PricerSku,
   PricingPercentileDetail,
   PricingConfig,
   SuggestedPriceResolver,
 } from "../../../core/types/pricing";
+import { forecastBuyerChoice } from "../algorithms/buyerChoiceSellTime";
 import {
   calculateInsufficientSalesFallback,
   calculateMarketplacePrice,
@@ -138,6 +140,7 @@ export interface PricingResult {
   errors?: string[];
   warnings?: string[];
   pricingDecision?: PricingDecision;
+  buyerChoiceForecast?: BuyerChoiceForecast;
   shadowPricingDecision?: PricingDecision;
 }
 
@@ -379,6 +382,10 @@ export class PricingCalculator {
             activeDecision.listingsCount === undefined
               ? undefined
               : Math.round(activeDecision.listingsCount);
+          pricedItem.buyerChoiceForecast = forecastBuyerChoice(
+            curve,
+            activeDecision.selectedPrice,
+          );
         } else if (activePolicy.method !== "percentile" && activeDecision) {
           pricedItem.pricingDecision = activeDecision;
         } else if (

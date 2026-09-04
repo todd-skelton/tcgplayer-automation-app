@@ -12,6 +12,7 @@
     "dev:db": "docker compose exec postgres psql -U postgres -d tcgplayer_automation",
     "dev:db:refresh": "node scripts/dev-db-refresh.mjs",
     "test": "tsx app/test/run-tests.ts",
+    "pricing:grade-forecasts": "tsx scripts/grade-forecasts.mts",
     "build": "node scripts/run-with-node-options.mjs react-router build && node scripts/build-workers.mjs",
     "start:pricing-worker": "node build/workers/pricing-worker.js",
     "start:publication-worker": "node build/workers/publication-worker.js",

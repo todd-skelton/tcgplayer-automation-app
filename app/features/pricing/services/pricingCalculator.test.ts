@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { BUYER_CHOICE_CALIBRATION } from "../algorithms/buyerChoiceSellTime";
 import { PricingCalculator } from "./pricingCalculator";
 
 const calculator = new PricingCalculator();
@@ -74,6 +75,7 @@ const shadowResult = await calculator.calculatePrices(
           historicalSalesVelocityMs: 10 * 24 * 60 * 60 * 1000,
           estimatedTimeToSellMs: 10 * 24 * 60 * 60 * 1000,
           salesCount: 10,
+          listingsCount: 0,
           supplyStatus: "observed",
         },
         {
@@ -82,6 +84,7 @@ const shadowResult = await calculator.calculatePrices(
           historicalSalesVelocityMs: 30 * 24 * 60 * 60 * 1000,
           estimatedTimeToSellMs: 30 * 24 * 60 * 60 * 1000,
           salesCount: 6,
+          listingsCount: 3,
           supplyStatus: "observed",
         },
         {
@@ -90,6 +93,7 @@ const shadowResult = await calculator.calculatePrices(
           historicalSalesVelocityMs: 100 * 24 * 60 * 60 * 1000,
           estimatedTimeToSellMs: 100 * 24 * 60 * 60 * 1000,
           salesCount: 2,
+          listingsCount: 9,
           supplyStatus: "observed",
         },
       ],
@@ -98,6 +102,12 @@ const shadowResult = await calculator.calculatePrices(
 );
 
 assert.equal(shadowResult.pricedItems[0]?.suggestedPrice, 14);
+const forecast = shadowResult.pricedItems[0]?.buyerChoiceForecast;
+assert.equal(forecast?.calibration, BUYER_CHOICE_CALIBRATION.name);
+assert.ok(
+  (forecast?.medianSellDays ?? 0) > 0,
+  "a modeled price records the buyer-choice forecast at the listed price",
+);
 assert.equal(shadowResult.pricedItems[0]?.price, 14);
 assert.equal(
   shadowResult.pricedItems[0]?.pricingDecision?.method,

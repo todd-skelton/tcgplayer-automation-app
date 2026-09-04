@@ -100,6 +100,12 @@ Due selection orders priority candidates first and then uses `next_price_at, sku
 
 The queue model supports a continuously cycling service without coupling operator UI to batch volume. Batches remain immutable audit and retry units, while the inventory projection remains the scheduling source of truth. If throughput later requires multiple pricing workers, priority/FIFO ordering and row locking remain valid; concurrency limits can be added per seller without changing the UI or batch contract.
 
+## Forecast grading
+
+Realized sales over the four weeks to 2026-09-03 showed the curve's sell-time forecast is overconfident. Listings forecast to sell within a week sold 29% of the time in three weeks, and listings forecast beyond 120 days sold 13%. A buyer-choice model fitted to the same sales explains the shape: a listing's sale rate is the card's total sale rate, softened by the number of competing sellers, scaled by the card's share of the buyer's effective price once the $1.49 small-order shipping fee is included.
+
+Every modeled result with observed listings now records that forecast at the listed price as `buyerChoiceForecast`, tagged with the calibration that produced it, beside the curve's own forecast. Its inputs are read from the persisted curve, so a refit needs no new data. Pricing does not read it. Once a cohort has had 21 days of exposure, `npm run pricing:grade-forecasts -- --from <batch>` grades both forecasts against realized sales of the modeled inventory. The policy adopts the better forecast only after that comparison, and a randomized price test must follow, because realized sales cover only the prices already listed.
+
 ## Execution record
 
 - [x] Audit production timing, queue shape, pricing failures, and publications.

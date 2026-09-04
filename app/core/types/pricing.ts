@@ -103,6 +103,16 @@ export interface PricingPercentileDetail {
   supplyStatus?: PricingSupplyStatus;
 }
 
+/**
+ * The buyer-choice sell-time forecast at the listed price, recorded beside
+ * the curve's own forecast so realized sales can grade both.
+ */
+export interface BuyerChoiceForecast {
+  medianSellDays: number;
+  /** Name of the calibration that produced it. */
+  calibration: string;
+}
+
 export interface PersistedPricingDetails {
   schemaVersion: number;
   pricingModelVersion?: string;
@@ -132,6 +142,7 @@ export interface PersistedPricingDetails {
   policy?: PricingPolicy;
   decision?: PricingDecision;
   shadowDecision?: PricingDecision;
+  buyerChoiceForecast?: BuyerChoiceForecast;
 }
 
 export interface SuggestedPriceResult {
@@ -238,6 +249,7 @@ export type PricedSku = {
   percentiles?: PricingPercentileDetail[];
   pricingDecision?: PricingDecision;
   shadowPricingDecision?: PricingDecision;
+  buyerChoiceForecast?: BuyerChoiceForecast;
   errors?: string[];
   warnings?: string[];
   pricingDetails?: PersistedPricingDetails;

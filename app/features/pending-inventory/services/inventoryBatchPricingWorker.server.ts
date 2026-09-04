@@ -97,6 +97,7 @@ function buildPricingDetails(
     salesCountForHistorical: pricedSku.salesCountForHistorical,
     listingsCountForEstimated: pricedSku.listingsCountForEstimated,
     percentiles: pricedSku.percentiles,
+    buyerChoiceForecast: pricedSku.buyerChoiceForecast,
     warnings: pricedSku.warnings || [],
     errors: pricedSku.errors || [],
     featureFlags: {
