@@ -144,6 +144,34 @@ const testCases: TestCase[] = [
       assert.match(html, /Loading the embedded pull sheet from the current order set/);
     },
   },
+  {
+    name: "PullSheetStep summarizes sold value and the market delta for the load",
+    run: () => {
+      const order = createOrder();
+      const html = renderPullSheetStep({
+        sourceOrders: [
+          {
+            ...order,
+            products: [
+              { name: "Pikachu", quantity: 1, unitPrice: 4.99, marketPrice: 4, skuId: 25 },
+            ],
+          },
+        ],
+      });
+
+      assert.match(html, /Sold \$4\.99/);
+      assert.match(html, /\+24\.8% \(\+\$0\.99\)/);
+    },
+  },
+  {
+    name: "PullSheetStep hides the market delta chip when no line has a market price",
+    run: () => {
+      const html = renderPullSheetStep();
+
+      assert.match(html, /Sold \$4\.99/);
+      assert.doesNotMatch(html, /No market/);
+    },
+  },
 ];
 
 let failures = 0;

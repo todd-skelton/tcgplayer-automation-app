@@ -16,11 +16,14 @@ import {
 import { useState } from "react";
 import { PullSheetGrid } from "~/features/pull-sheet/components/PullSheetGrid";
 import { PullSheetTable } from "~/features/pull-sheet/components/PullSheetTable";
+import { formatUsd } from "~/core/utils/marketDelta";
 import type { PullSheetItem } from "~/features/pull-sheet/types/pullSheetTypes";
+import { compareOrdersToMarket } from "../../services/orderMarketComparison";
 import type {
   EasyPostShipment,
   TcgPlayerShippingOrder,
 } from "../../types/shippingExport";
+import { MarketDeltaChip } from "../MarketDeltaChip";
 
 interface PullSheetStepProps {
   sourceOrders: TcgPlayerShippingOrder[];
@@ -85,16 +88,23 @@ export function PullSheetStep({
   const missingDatabaseMatches = pullSheetItems.filter(
     (item) => !item.found,
   ).length;
+  const marketComparison = compareOrdersToMarket(sourceOrders);
 
   return (
     <Stack spacing={3}>
-      <Stack direction="row" spacing={1} flexWrap="wrap">
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         <Chip label={`${sourceOrders.length} orders`} size="small" />
         <Chip
           label={`${totalItems} total items`}
           size="small"
           variant="outlined"
         />
+        <Chip
+          label={`Sold ${formatUsd(marketComparison.soldTotal)}`}
+          size="small"
+          variant="outlined"
+        />
+        <MarketDeltaChip comparison={marketComparison} showAmount hideWhenUnavailable />
         <Chip
           label={`${pullSheetItems.length} pull-sheet rows`}
           size="small"

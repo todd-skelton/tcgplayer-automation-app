@@ -31,6 +31,8 @@ import type {
   TcgPlayerShippingOrder,
 } from "../../types/shippingExport";
 import type { EasyPostEnvironmentStatus } from "../../types/shippingExport";
+import { compareShipmentToMarket } from "../../services/orderMarketComparison";
+import { MarketDeltaChip } from "../MarketDeltaChip";
 
 type PurchaseEntry = {
   mode: EasyPostMode;
@@ -42,6 +44,8 @@ interface BuyPostageStepProps {
   environmentStatus: EasyPostEnvironmentStatus;
   shipments: EasyPostShipment[];
   orders: TcgPlayerShippingOrder[];
+  /** Orders before address merging, used for per-order market comparisons. */
+  sourceOrders: TcgPlayerShippingOrder[];
   shipmentToOrderMap: ShipmentToOrderMap;
   outboundPurchaseResultsByReference: Record<string, PurchaseEntry>;
   returnPurchaseResultsByReference: Record<string, PurchaseEntry>;
@@ -84,6 +88,7 @@ export function BuyPostageStep({
   environmentStatus,
   shipments,
   orders,
+  sourceOrders,
   shipmentToOrderMap,
   outboundPurchaseResultsByReference,
   returnPurchaseResultsByReference,
@@ -179,6 +184,11 @@ export function BuyPostageStep({
           <TableBody>
             {shipments.map((shipment) => {
               const order = orders.find((o) => o["Order #"] === shipment.reference);
+              const marketComparison = compareShipmentToMarket(
+                sourceOrders,
+                shipmentToOrderMap,
+                shipment.reference,
+              );
               const purchaseEntry = outboundPurchaseResultsByReference[shipment.reference];
               const returnPurchaseEntry = returnPurchaseResultsByReference[shipment.reference];
               const isBuyingOutbound = purchasingActionKey === `outbound:${shipment.reference}`;
@@ -203,10 +213,13 @@ export function BuyPostageStep({
                         <Chip label="Sig. Required" size="small" color="warning" sx={{ ml: 1 }} />
                       )}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {shipment.parcel.length}&times;{shipment.parcel.width}&times;{shipment.parcel.height} in
-                      {order ? ` • ${order["Item Count"]} items • $${order["Value Of Products"]}` : ""}
-                    </Typography>
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                      <Typography variant="caption" color="text.secondary">
+                        {shipment.parcel.length}&times;{shipment.parcel.width}&times;{shipment.parcel.height} in
+                        {order ? ` • ${order["Item Count"]} items • $${order["Value Of Products"].toFixed(2)}` : ""}
+                      </Typography>
+                      <MarketDeltaChip comparison={marketComparison} hideWhenUnavailable />
+                    </Stack>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">{shipment.service}</Typography>

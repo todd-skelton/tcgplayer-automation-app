@@ -57,6 +57,8 @@ export interface OrderLineItem {
   unitPrice: number;
   skuId?: number;
   productId?: number;
+  /** Current TCGPlayer market price for the SKU, when one was available at load time. */
+  marketPrice?: number;
 }
 
 export interface TcgPlayerShippingOrder {

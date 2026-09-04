@@ -179,7 +179,12 @@ const testCases: TestCase[] = [
     name: "loadSellerShippingOrders paginates search results and keeps partial failures as warnings",
     run: async () => {
       const capturedOffsets: number[] = [];
+      let requestedSkus: number[] = [];
       const response = await loadSellerShippingOrders("seller-123", {
+        fetchMarketPrices: async (skus) => {
+          requestedSkus = skus;
+          return new Map([[3191391, 8.5]]);
+        },
         searchOrders: async (request) => {
           capturedOffsets.push(request.from);
 
@@ -262,6 +267,43 @@ const testCases: TestCase[] = [
       assert.equal(response.orders.length, 2);
       assert.equal(response.warnings?.length, 1);
       assert.match(response.warnings?.[0] ?? "", /Failed to load seller order B/);
+      assert.deepEqual(requestedSkus, [3191391, 3191391]);
+      assert.equal(response.orders[0].products?.[0].marketPrice, 8.5);
+      assert.equal(response.orders[1].products?.[0].marketPrice, 8.5);
+    },
+  },
+  {
+    name: "loadSellerShippingOrders keeps orders and adds a warning when market prices fail to load",
+    run: async () => {
+      const response = await loadSellerShippingOrders("seller-123", {
+        fetchMarketPrices: async () => {
+          throw new Error("gateway down");
+        },
+        searchOrders: async () => ({
+          totalOrders: 1,
+          orders: [
+            {
+              orderNumber: "A",
+              orderDate: "2026-04-12T00:00:00Z",
+              orderChannel: "TcgMarketplace",
+              orderStatus: "Ready to Ship",
+              buyerName: "Buyer A",
+              shippingType: "Standard",
+              productAmount: 1,
+              shippingAmount: 0,
+              totalAmount: 1,
+              buyerPaid: true,
+              orderFulfillment: "Normal",
+            },
+          ],
+        }),
+        getOrder: async (orderNumber) => createSellerOrderDetail({ orderNumber }),
+      });
+
+      assert.equal(response.orders.length, 1);
+      assert.equal(response.orders[0].products?.[0].marketPrice, undefined);
+      assert.equal(response.warnings?.length, 1);
+      assert.match(response.warnings?.[0] ?? "", /Market prices could not be loaded/);
     },
   },
   {
@@ -282,6 +324,7 @@ const testCases: TestCase[] = [
         " seller-123 ",
         "  ORD-1001  ",
         {
+          fetchMarketPrices: async () => new Map([[3191391, 12.25]]),
           searchOrders: async (request) => {
             capturedRequest = request;
             return {
@@ -333,6 +376,7 @@ const testCases: TestCase[] = [
       assert.equal(response.totalOrders, 1);
       assert.deepEqual(response.loadedOrderNumbers, ["ORD-1001"]);
       assert.equal(response.orders.length, 1);
+      assert.equal(response.orders[0].products?.[0].marketPrice, 12.25);
       assert.deepEqual(response.warnings, [
         'Order ORD-1001 is currently "Shipped", not "Ready to Ship". Review it before buying postage.',
       ]);
@@ -344,6 +388,7 @@ const testCases: TestCase[] = [
       await assert.rejects(
         () =>
           loadSingleSellerShippingOrder("seller-123", "ORD-404", {
+            fetchMarketPrices: async () => new Map(),
             searchOrders: async () => ({
               totalOrders: 0,
               orders: [],
@@ -363,6 +408,7 @@ const testCases: TestCase[] = [
         "seller-123",
         "ORD-2002",
         {
+          fetchMarketPrices: async () => new Map(),
           searchOrders: async (request) => ({
             totalOrders: 1,
             orders: [

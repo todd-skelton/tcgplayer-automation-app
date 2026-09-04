@@ -251,6 +251,53 @@ const testCases: TestCase[] = [
       assert.match(html, /<table/);
     },
   },
+  {
+    name: "PackStep shows shipment, order, and card market comparisons in the grid view",
+    run: () => {
+      const html = renderPackStep({
+        sourceOrders: [
+          createOrder("1001", [
+            { name: "Pikachu", quantity: 1, unitPrice: 5, marketPrice: 4, skuId: 25 },
+          ]),
+        ],
+      });
+
+      assert.match(html, />Market</);
+      assert.match(html, />vs Market</);
+      assert.match(html, /\$4\.00/);
+      assert.match(html, /\+25\.0% \(\+\$1\.00\)/);
+      assert.match(html, /Sold \$5\.00/);
+      assert.match(html, /Mkt \$4\.00/);
+      assert.match(html, /\+25\.0%/);
+    },
+  },
+  {
+    name: "PackStep adds sold, market, and delta columns to the fallback table",
+    run: () => {
+      const html = renderPackStep({
+        sourceOrders: [
+          createOrder("1001", [
+            { name: "Priced", quantity: 2, unitPrice: 3, marketPrice: 4, skuId: 63 },
+            { name: "Unpriced", quantity: 1, unitPrice: 9, skuId: 41 },
+          ]),
+        ],
+        packPullSheetMatchesByReference: {
+          "1001": createMatch(false, [
+            { ...createPullSheetRow("Priced", 2, 63), orderQuantity: "1001:2" },
+            { ...createPullSheetRow("Unpriced", 1, 41), orderQuantity: "1001:1" },
+          ]),
+        },
+      });
+
+      assert.match(html, />Sold</);
+      assert.match(html, />Market</);
+      assert.match(html, /\$6\.00/);
+      assert.match(html, /\$8\.00/);
+      assert.match(html, /-25\.0%/);
+      assert.match(html, /No market/);
+      assert.match(html, /1 of 2 lines priced/);
+    },
+  },
 ];
 
 let failures = 0;
