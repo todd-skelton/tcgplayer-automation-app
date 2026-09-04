@@ -19,14 +19,9 @@ import { DEFAULT_CAPITAL_CYCLE_INPUTS } from "../components/capitalCycleInputs";
 import { ForecastGrading } from "../components/ForecastGrading";
 import { HorizonCurve } from "../components/HorizonCurve";
 import { HurdleSweep } from "../components/HurdleSweep";
-import { PercentileMatrix } from "../components/PercentileMatrix";
+import { PercentileExplorer } from "../components/PercentileExplorer";
 import { PolicyComparison } from "../components/PolicyComparison";
-import { ScenarioBuilder } from "../components/ScenarioBuilder";
 import { StrategyVerdict } from "../components/StrategyVerdict";
-import {
-  defaultSelection,
-  findScenario,
-} from "../components/scenarioSelection";
 import { loadForecastGrading } from "../services/forecastGrading.server";
 import { loadInventoryStrategyDashboard } from "../services/inventoryStrategyDashboard.server";
 import { queueInventoryStrategyAnalysis } from "../services/inventoryStrategyAnalysis.server";
@@ -122,7 +117,6 @@ export default function InventoryStrategyRoute() {
     status?: string;
   }>();
   const { revalidate } = useRevalidator();
-  const [selections, setSelections] = useState<Record<string, number>>({});
   const [cycleInputs, setCycleInputs] = useState(DEFAULT_CAPITAL_CYCLE_INPUTS);
   const economics = useMemo<CapitalCycleEconomics>(
     () => ({
@@ -135,17 +129,6 @@ export default function InventoryStrategyRoute() {
   const busy = fetcher.state !== "idle";
   const analysisActive =
     latestAnalysis?.status === "queued" || latestAnalysis?.status === "pricing";
-
-  useEffect(() => {
-    setSelections(
-      Object.fromEntries(
-        dashboard.productLines.map((productLine) => [
-          productLine.key,
-          defaultSelection(productLine),
-        ]),
-      ),
-    );
-  }, [dashboard.generatedAt, dashboard.productLines]);
 
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data?.success) void revalidate();
@@ -172,24 +155,6 @@ export default function InventoryStrategyRoute() {
     if (polledStatus && polledStatus !== "queued" && polledStatus !== "pricing")
       void revalidate();
   }, [polledStatus, revalidate]);
-
-  const selectedProductLines = useMemo(
-    () =>
-      dashboard.productLines.map((productLine) => {
-        const percentile =
-          selections[productLine.key] ?? defaultSelection(productLine);
-        return {
-          productLine,
-          percentile,
-          scenario: findScenario(productLine, percentile),
-        };
-      }),
-    [dashboard.productLines, selections],
-  );
-  const allProductLines = useMemo(
-    () => [dashboard.overall, ...dashboard.productLines],
-    [dashboard.overall, dashboard.productLines],
-  );
 
   const submit = (intent: "refresh_inventory" | "queue_analysis") =>
     fetcher.submit(
@@ -289,13 +254,7 @@ export default function InventoryStrategyRoute() {
         cycleInputs={cycleInputs}
         onCycleInputsChange={setCycleInputs}
       />
-      <ScenarioBuilder
-        selections={selectedProductLines}
-        onSelect={(key, percentile) =>
-          setSelections((current) => ({ ...current, [key]: percentile }))
-        }
-      />
-      <PercentileMatrix productLines={allProductLines} />
+      <PercentileExplorer dashboard={dashboard} />
 
       <Alert severity="info" sx={{ mt: 3 }}>
         Expected wait estimates the next sale/listing position, not liquidation

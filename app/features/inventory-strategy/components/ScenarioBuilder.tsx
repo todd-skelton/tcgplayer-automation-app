@@ -25,28 +25,13 @@ import {
   formatDelta,
   formatPercentile,
 } from "./format";
-import { findScenario } from "./scenarioSelection";
+import { findScenario, formatKneeEstimate } from "./scenarioSelection";
 
 /** One product line with the percentile the reader chose and its scenario. */
 export interface ScenarioSelection {
   productLine: InventoryStrategyProductLine;
   percentile: number;
   scenario: InventoryStrategyScenario | undefined;
-}
-
-function formatKneeEstimate(productLine: InventoryStrategyProductLine): string {
-  if (productLine.estimatedPercentile === null) {
-    return "Estimate unavailable";
-  }
-  const estimate = formatPercentile(productLine.estimatedPercentile);
-  if (
-    productLine.kneeRangeMinimum === null ||
-    productLine.kneeRangeMaximum === null ||
-    productLine.kneeRangeMinimum === productLine.kneeRangeMaximum
-  ) {
-    return `Estimated ${estimate}`;
-  }
-  return `Estimated ${estimate} · ${formatPercentile(productLine.kneeRangeMinimum)}–${formatPercentile(productLine.kneeRangeMaximum)} range`;
 }
 
 export function ScenarioBuilder({
