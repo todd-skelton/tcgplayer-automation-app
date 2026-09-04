@@ -26,12 +26,15 @@ import {
   type PricingDecision,
 } from "~/core/types/pricingPolicy";
 import {
+  INVENTORY_STRATEGY_HURDLES,
   INVENTORY_STRATEGY_MAX_PERCENTILE,
   INVENTORY_STRATEGY_MIN_PERCENTILE,
   INVENTORY_STRATEGY_PERCENTILES,
   INVENTORY_STRATEGY_PREVIEW_PERCENTILES,
   type InventoryStrategyDashboard,
+  type InventoryStrategyDecisionSummary,
   type InventoryStrategyHorizonModel,
+  type InventoryStrategyHurdleScenario,
   type InventoryStrategyConfidence,
   type InventoryStrategyPercentile,
   type InventoryStrategyPolicyComparison,
@@ -330,6 +333,101 @@ const ROW_POLICY_METHOD = {
   "profit-per-day": "profit-per-day",
 } as const;
 
+interface ItemDecision {
+  item: InventoryStrategySnapshotItem;
+  decision: PricingDecision | undefined;
+}
+
+/**
+ * Portfolio value, wait, and price movement across one decision per SKU;
+ * a SKU without a decision keeps its current price.
+ */
+function summarizeDecisions(
+  decisions: readonly ItemDecision[],
+): InventoryStrategyDecisionSummary {
+  let oneCopyValue = 0;
+  let physicalValue = 0;
+  let modeledSkuCount = 0;
+  let raisedCount = 0;
+  let loweredCount = 0;
+  let heldCount = 0;
+  const timeValues: WeightedValue[] = [];
+
+  for (const { item, decision } of decisions) {
+    const currentPrice = item.currentPrice ?? 0;
+    const selectedPrice = decision?.selectedPrice ?? currentPrice;
+    oneCopyValue += selectedPrice;
+    physicalValue += selectedPrice * item.quantity;
+    if (!decision) {
+      heldCount += 1;
+      continue;
+    }
+    const modeled =
+      decision.basis === "modeled" && decision.forecastStatus !== "unavailable";
+    if (modeled) modeledSkuCount += 1;
+    if (selectedPrice > currentPrice) raisedCount += 1;
+    else if (selectedPrice < currentPrice) loweredCount += 1;
+    else heldCount += 1;
+    if (modeled && decision.estimatedMedianSellDays !== undefined) {
+      timeValues.push({
+        value: decision.estimatedMedianSellDays,
+        weight: item.quantity,
+      });
+    }
+  }
+
+  return {
+    oneCopyValue: roundCurrency(oneCopyValue),
+    physicalValue: roundCurrency(physicalValue),
+    modeledSkuCount,
+    raisedCount,
+    loweredCount,
+    heldCount,
+    estimatedTime: summarizeTime(timeValues),
+  };
+}
+
+/** The distinct values one field takes across the decisions. */
+function distinct<Value>(
+  decisions: readonly ItemDecision[],
+  pick: (decision: PricingDecision) => Value | undefined,
+): Set<Value> {
+  return new Set(
+    decisions.flatMap(({ decision }) => {
+      const value = decision && pick(decision);
+      return value === undefined ? [] : [value];
+    }),
+  );
+}
+
+/**
+ * The profit-per-day policy at each hurdle of the ladder, plus the product
+ * line's configured hurdle when the ladder lacks it.
+ */
+function buildHurdleSweep(
+  items: InventoryStrategySnapshotItem[],
+  portfolioItems: readonly StrategyPortfolioItem[],
+  config: ServerPricingConfig,
+  configuredHurdle: number,
+): InventoryStrategyHurdleScenario[] {
+  const policy = profitPerDayPolicy(config.pricing.profitPerDay);
+  return [...new Set([...INVENTORY_STRATEGY_HURDLES, configuredHurdle])]
+    .sort((left, right) => left - right)
+    .map((dailyReturnHurdle) => {
+      const decisions = portfolioDecisions(portfolioItems, {
+        ...policy,
+        dailyReturnHurdle,
+      });
+      return {
+        dailyReturnHurdle,
+        configured: dailyReturnHurdle === configuredHurdle,
+        ...summarizeDecisions(
+          items.map((item) => ({ item, decision: decisions.get(item.sku) })),
+        ),
+      };
+    });
+}
+
 function buildPolicyComparisons(
   items: InventoryStrategySnapshotItem[],
   horizonDecisions: ReadonlyMap<number, PricingDecision>,
@@ -345,7 +443,7 @@ function buildPolicyComparisons(
     key: InventoryStrategyPolicyComparison["key"],
   ): InventoryStrategyPolicyComparison | null => {
     const isCurrent = key === "current";
-    const decisions = stored.map(
+    const decisions: ItemDecision[] = stored.map(
       ({ item, activeDecision, benchmarkDecision }) => ({
         item,
         decision:
@@ -368,54 +466,19 @@ function buildPolicyComparisons(
     );
     if (!isCurrent && !decisions.some(({ decision }) => decision)) return null;
 
-    let oneCopyValue = 0;
-    let physicalValue = 0;
-    let modeledSkuCount = 0;
-    let raisedCount = 0;
-    let loweredCount = 0;
-    let heldCount = 0;
-    const timeValues: WeightedValue[] = [];
-    const targetHorizons = new Set<number>();
-    const hurdles = new Set<number>();
-    const planIds = new Set<string>();
-    const planMatchStatuses = new Set<
-      "matched" | "boundary" | "infeasible"
-    >();
-
-    for (const { item, decision } of decisions) {
-      const currentPrice = item.currentPrice ?? 0;
-      const selectedPrice = decision?.selectedPrice ?? currentPrice;
-      oneCopyValue += selectedPrice;
-      physicalValue += selectedPrice * item.quantity;
-      if (decision) {
-        const isModeledDecision =
-          decision.basis === "modeled" &&
-          decision.forecastStatus !== "unavailable";
-        if (isModeledDecision) modeledSkuCount += 1;
-        if (selectedPrice > currentPrice) raisedCount += 1;
-        else if (selectedPrice < currentPrice) loweredCount += 1;
-        else heldCount += 1;
-        if (
-          isModeledDecision &&
-          decision.estimatedMedianSellDays !== undefined
-        ) {
-          timeValues.push({
-            value: decision.estimatedMedianSellDays,
-            weight: item.quantity,
-          });
-        }
-        if (decision.targetHorizonDays !== undefined)
-          targetHorizons.add(decision.targetHorizonDays);
-        if (decision.dailyReturnHurdle !== undefined)
-          hurdles.add(decision.dailyReturnHurdle);
-        if (decision.planId) planIds.add(decision.planId);
-        if (decision.planMatchStatus)
-          planMatchStatuses.add(decision.planMatchStatus);
-      } else {
-        heldCount += 1;
-      }
-    }
-
+    const targetHorizons = distinct(
+      decisions,
+      (decision) => decision.targetHorizonDays,
+    );
+    const hurdles = distinct(
+      decisions,
+      (decision) => decision.dailyReturnHurdle,
+    );
+    const planIds = distinct(decisions, (decision) => decision.planId);
+    const planMatchStatuses = distinct(
+      decisions,
+      (decision) => decision.planMatchStatus,
+    );
     const [profitPerDayHurdle] = hurdles;
     const role: InventoryStrategyPolicyComparison["role"] =
       key === "current"
@@ -461,13 +524,7 @@ function buildPolicyComparisons(
           : planMatchStatuses.size === 1
             ? [...planMatchStatuses][0]
             : null,
-      oneCopyValue: roundCurrency(oneCopyValue),
-      physicalValue: roundCurrency(physicalValue),
-      modeledSkuCount,
-      raisedCount,
-      loweredCount,
-      heldCount,
-      estimatedTime: summarizeTime(timeValues),
+      ...summarizeDecisions(decisions),
     };
   };
 
@@ -741,6 +798,14 @@ function buildProductLine(
     portfolioItems,
     config,
   );
+  const profitPerDay = profitPerDayPolicy(config.pricing.profitPerDay);
+  const configuredHurdle =
+    productLineId === null
+      ? profitPerDay.dailyReturnHurdle
+      : productLinePricingPolicy(
+          profitPerDay,
+          config.productLinePricing.productLineSettings[productLineId],
+        ).dailyReturnHurdle;
 
   return {
     key,
@@ -778,11 +843,17 @@ function buildProductLine(
       horizonDecisions.decisions,
       portfolioDecisions(portfolioItems, (item) =>
         productLinePricingPolicy(
-          profitPerDayPolicy(config.pricing.profitPerDay),
+          profitPerDay,
           config.productLinePricing.productLineSettings[item.productLineId],
         ),
       ),
       activePricingPolicy(config.pricing),
+    ),
+    hurdleSweep: buildHurdleSweep(
+      items,
+      portfolioItems,
+      config,
+      configuredHurdle,
     ),
     valueMatchedHorizonDays: horizonDecisions.valueMatchedHorizonDays,
     horizonModel: buildHorizonModel(portfolioItems),

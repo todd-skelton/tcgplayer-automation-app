@@ -482,6 +482,62 @@ const profitPerDayLabel = (productLineId: number | null) =>
 assert.equal(profitPerDayLabel(3), "Profit per day at 5.00%/day hurdle");
 assert.equal(profitPerDayLabel(5), "Profit per day at 0.50%/day hurdle");
 assert.equal(profitPerDayLabel(null), "Profit per day at product-line hurdles");
+
+const magicLine = productLineHurdleDashboard.productLines.find(
+  (productLine) => productLine.productLineId === 5,
+);
+assert.ok(magicLine);
+assert.deepEqual(
+  magicLine.hurdleSweep.map((scenario) => scenario.dailyReturnHurdle),
+  [0.0025, 0.005, 0.0075, 0.01, 0.015, 0.02],
+  "the sweep covers the hurdle ladder",
+);
+const magicConfigured = magicLine.hurdleSweep.find(
+  (scenario) => scenario.configured,
+);
+const magicComparison = magicLine.policyComparisons.find(
+  ({ key }) => key === "profit-per-day",
+);
+assert.equal(magicConfigured?.dailyReturnHurdle, 0.005);
+assert.deepEqual(
+  {
+    physicalValue: magicConfigured?.physicalValue,
+    oneCopyValue: magicConfigured?.oneCopyValue,
+    estimatedTime: magicConfigured?.estimatedTime,
+    raisedCount: magicConfigured?.raisedCount,
+  },
+  {
+    physicalValue: magicComparison?.physicalValue,
+    oneCopyValue: magicComparison?.oneCopyValue,
+    estimatedTime: magicComparison?.estimatedTime,
+    raisedCount: magicComparison?.raisedCount,
+  },
+  "the configured hurdle's scenario matches the policy comparison row",
+);
+assert.ok(
+  magicLine.hurdleSweep.every(
+    (scenario, index, sweep) =>
+      index === 0 || scenario.physicalValue <= sweep[index - 1].physicalValue,
+  ),
+  "a higher hurdle never lists for more",
+);
+const pokemonHurdleLine = productLineHurdleDashboard.productLines.find(
+  (productLine) => productLine.productLineId === 3,
+);
+assert.equal(
+  pokemonHurdleLine?.hurdleSweep.find((scenario) => scenario.configured)
+    ?.dailyReturnHurdle,
+  0.05,
+  "a product-line hurdle outside the ladder joins the sweep as configured",
+);
+assert.equal(pokemonHurdleLine?.hurdleSweep.length, 7);
+assert.equal(
+  productLineHurdleDashboard.overall.hurdleSweep.find(
+    (scenario) => scenario.configured,
+  )?.dailyReturnHurdle,
+  0.005,
+  "all listed inventory marks the default hurdle",
+);
 assert.equal(activeHorizonComparison?.role, "active");
 assert.equal(activeHorizonComparison?.oneCopyValue, 24);
 assert.equal(activeHorizonComparison?.planState, "single");
