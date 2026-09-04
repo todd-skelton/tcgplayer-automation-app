@@ -13,9 +13,13 @@ const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const MODEL_PARAMETER_COUNT = 3;
 const MINIMUM_OBSERVATIONS_PER_CONDITION = 2;
 const MINIMUM_RESIDUAL_DEGREES_OF_FREEDOM = 2;
+/** The fitted exponent's cap of 2 spans at most 5^2 between the extreme conditions. */
+const SIBLING_RATIO_LIMIT = 25;
 
 export interface ConditionNormalizationOptions {
   asOfTimestamp?: number;
+  /** Latest market price of each condition of the same product, variant, and language. */
+  siblingMarketPrices?: ReadonlyMap<Condition, number>;
 }
 
 type Observation = {
@@ -134,6 +138,40 @@ function multipliersForExponent(
   );
 }
 
+/**
+ * Scales each condition by the ratio of the sibling SKUs' market prices. Held
+ * out against realized sales, that ratio predicted a condition's price from
+ * the other conditions' sales about as well as a fitted exponent and far
+ * better than treating every condition alike.
+ */
+function siblingRatioMultipliers(
+  marketPrices: ReadonlyMap<Condition, number> | undefined,
+  targetCondition: Condition,
+): Map<Condition, number> | undefined {
+  const target = marketPrices?.get(targetCondition);
+  if (!(target && target > 0)) return undefined;
+  const targetRank = CONDITION_ORDER.indexOf(targetCondition);
+  return new Map(
+    CONDITION_ORDER.map((condition, rank) => {
+      const price = marketPrices?.get(condition);
+      if (!(price && price > 0)) return [condition, 1];
+      const ratio = Math.min(
+        SIBLING_RATIO_LIMIT,
+        Math.max(1 / SIBLING_RATIO_LIMIT, target / price),
+      );
+      // A worse condition never scales below the target, nor a better one above it.
+      return [
+        condition,
+        rank > targetRank
+          ? Math.max(1, ratio)
+          : rank < targetRank
+            ? Math.min(1, ratio)
+            : 1,
+      ];
+    }),
+  );
+}
+
 export function fitTimeAwareZipfModelToConditions(
   sales: Sale[],
   targetCondition: Condition,
@@ -176,13 +214,29 @@ export function fitTimeAwareZipfModelToConditions(
     supportedConditions.has(rank),
   );
   const conditionCount = new Set(observations.map(({ rank }) => rank)).size;
-  const fallbackMultipliers = multipliersForExponent(0, targetCondition);
   const information = conditionInformation(observations);
   const conditionTimeConnected = conditionTimelinesAreConnected(observations);
   const diagnostics = {
     observationCount: observations.length,
     observedConditionCount: conditionCount,
     conditionTimeConnected,
+  };
+  const fallback = () => {
+    const siblingMultipliers = siblingRatioMultipliers(
+      options.siblingMarketPrices,
+      targetCondition,
+    );
+    return {
+      multipliers:
+        siblingMultipliers ?? multipliersForExponent(0, targetCondition),
+      diagnostics: siblingMultipliers
+        ? { ...diagnostics, method: "sibling-market-ratio" as const }
+        : {
+            ...diagnostics,
+            method: "neutral-condition-fallback" as const,
+            conditionExponent: 0,
+          },
+    };
   };
 
   if (
@@ -192,14 +246,7 @@ export function fitTimeAwareZipfModelToConditions(
     information < 1e-6 ||
     !conditionTimeConnected
   ) {
-    return {
-      multipliers: fallbackMultipliers,
-      diagnostics: {
-        ...diagnostics,
-        method: "neutral-condition-fallback",
-        conditionExponent: 0,
-      },
-    };
+    return fallback();
   }
 
   const features = observations.map(({ rank, timestamp }) => [
@@ -247,14 +294,7 @@ export function fitTimeAwareZipfModelToConditions(
   }
 
   if (!coefficients) {
-    return {
-      multipliers: fallbackMultipliers,
-      diagnostics: {
-        ...diagnostics,
-        method: "neutral-condition-fallback",
-        conditionExponent: 0,
-      },
-    };
+    return fallback();
   }
 
   const conditionExponent = Math.max(0, Math.min(2, -coefficients[2]));

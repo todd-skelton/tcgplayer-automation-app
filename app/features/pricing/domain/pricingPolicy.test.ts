@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  forecastsWithinYear,
   resolveValueMatchedPortfolioPlan,
   readPricingDecision,
   readShadowPricingDecision,
@@ -388,6 +389,37 @@ assert.throws(
       { sku: 30, currentPrice: 10, curve },
     ]),
   /one row per SKU.*30/,
+);
+
+const hopelessCurve = [
+  {
+    percentile: 5,
+    price: 6,
+    estimatedMedianSellDays: 400,
+    supplyStatus: "observed" as const,
+  },
+  {
+    percentile: 95,
+    price: 25,
+    estimatedMedianSellDays: 900,
+    supplyStatus: "observed" as const,
+  },
+];
+assert.equal(
+  forecastsWithinYear(hopelessCurve),
+  false,
+  "a curve with no point within a year has no forecast to trade against",
+);
+assert.equal(forecastsWithinYear(curve), true);
+assert.equal(
+  forecastsWithinYear([{ ...hopelessCurve[0], estimatedMedianSellDays: 365 }]),
+  true,
+  "a year exactly still counts",
+);
+assert.equal(
+  forecastsWithinYear([]),
+  true,
+  "a curve without observed sell times is judged by its supply status instead",
 );
 
 console.log(

@@ -46,6 +46,44 @@ const testCases: TestCase[] = [
     },
   },
   {
+    name: "calculateMarketplacePrice lets the SKU's own evidence lower the floor",
+    run: () => {
+      const config = { minPriceMultiplier: 0.75, minPriceConstant: 0.25 };
+      const ask = calculateMarketplacePrice(5, { marketPrice: 10 }, config, {
+        secondCheapestAskPrice: 6,
+      });
+      assert.equal(ask.marketplacePrice, 6);
+      assert.equal(
+        ask.warningMessage,
+        "Suggested price below minimum. Using minimum price.",
+      );
+
+      const sale = calculateMarketplacePrice(5, { marketPrice: 10 }, config, {
+        ownConditionLowSalePrice: 4,
+        secondCheapestAskPrice: 6,
+      });
+      assert.equal(sale.marketplacePrice, 5);
+      assert.equal(sale.warningMessage, "");
+
+      const noMarket = calculateMarketplacePrice(5, null, config, {
+        secondCheapestAskPrice: 6,
+      });
+      assert.equal(
+        noMarket.marketplacePrice,
+        5,
+        "evidence lowers the market floor but never creates one",
+      );
+
+      const penny = calculateMarketplacePrice(0.05, { marketPrice: 0.05 });
+      assert.equal(penny.marketplacePrice, 0.05);
+      assert.equal(
+        penny.warningMessage,
+        "",
+        "a market price too small to bound anything is not a missing one",
+      );
+    },
+  },
+  {
     name: "insufficient sales use the higher market or listing price",
     run: () => {
       const listingWins = calculateInsufficientSalesFallback({

@@ -115,10 +115,14 @@ export interface BuyerChoiceForecast {
 
 /** How sales from other conditions were scaled onto the listed condition. */
 export interface ConditionNormalizationDetail {
-  method: "time-controlled-zipf" | "neutral-condition-fallback";
+  method:
+    | "time-controlled-zipf"
+    | "sibling-market-ratio"
+    | "neutral-condition-fallback";
   observationCount: number;
   observedConditionCount: number;
-  conditionExponent: number;
+  /** Absent when the multipliers came from sibling market prices. */
+  conditionExponent?: number;
   conditionTimeConnected: boolean;
 }
 
@@ -139,6 +143,21 @@ export interface ConditionSaleRate {
  */
 export interface ConditionRateForecast extends ConditionSaleRate {
   medianSellDays: number;
+}
+
+/**
+ * What the SKU's own market says its price is: recent sales in the listed
+ * condition and the asks of competing sellers in it. The price floor gives
+ * way to either.
+ */
+export interface PriceEvidence {
+  /** Lowest effective sale price of this exact SKU in the last 90 days. */
+  ownConditionLowSalePrice?: number;
+  /**
+   * Second-cheapest delivered ask from another seller of this exact SKU,
+   * known only when the store's own listing is excluded from the search.
+   */
+  secondCheapestAskPrice?: number;
 }
 
 export interface PersistedPricingDetails {
@@ -173,6 +192,7 @@ export interface PersistedPricingDetails {
   buyerChoiceForecast?: BuyerChoiceForecast;
   conditionRateForecast?: ConditionRateForecast;
   conditionNormalization?: ConditionNormalizationDetail;
+  priceEvidence?: PriceEvidence;
 }
 
 export interface SuggestedPriceResult {
@@ -196,6 +216,7 @@ export interface SuggestedPriceResult {
   }>;
   conditionSaleRate?: ConditionSaleRate;
   conditionNormalization?: ConditionNormalizationDetail;
+  priceEvidence?: PriceEvidence;
 }
 
 export interface SuggestedPriceResolverInput {
@@ -284,6 +305,7 @@ export type PricedSku = {
   buyerChoiceForecast?: BuyerChoiceForecast;
   conditionRateForecast?: ConditionRateForecast;
   conditionNormalization?: ConditionNormalizationDetail;
+  priceEvidence?: PriceEvidence;
   errors?: string[];
   warnings?: string[];
   pricingDetails?: PersistedPricingDetails;

@@ -541,3 +541,125 @@ assert.ok(
 );
 
 console.log("PASS the condition-rate forecast is recorded at the listed price");
+
+const evidenceFloorResult = await calculator.calculatePrices(
+  [
+    {
+      sku: 791,
+      quantity: 1,
+      currentPrice: 20,
+      productLineId: 1,
+      setId: 2,
+      productId: 3,
+    },
+  ],
+  {
+    percentile: 65,
+    suggestedPriceResolver: async () => ({
+      suggestedPrice: 14,
+      percentiles: [
+        {
+          percentile: 65,
+          price: 14,
+          estimatedTimeToSellMs: 10 * 24 * 60 * 60 * 1000,
+          supplyStatus: "observed",
+        },
+      ],
+      priceEvidence: { secondCheapestAskPrice: 12 },
+    }),
+  },
+  new Map([
+    [
+      791,
+      {
+        skuId: 791,
+        marketPrice: 20,
+        lowestPrice: 9,
+        highestPrice: 30,
+        priceCount: 1,
+        calculatedAt: "2026-09-04T12:00:00.000Z",
+      },
+    ],
+  ]),
+);
+assert.equal(
+  evidenceFloorResult.pricedItems[0]?.price,
+  14,
+  "the market floor gives way to a cheaper competing ask",
+);
+assert.equal(
+  evidenceFloorResult.pricedItems[0]?.pricingDecision?.constraint,
+  "none",
+);
+assert.deepEqual(evidenceFloorResult.pricedItems[0]?.priceEvidence, {
+  secondCheapestAskPrice: 12,
+});
+
+console.log("PASS the price floor yields to the SKU's own evidence");
+
+const hopelessPercentiles = [
+  {
+    percentile: 5,
+    price: 6,
+    estimatedTimeToSellMs: 400 * 24 * 60 * 60 * 1000,
+    supplyStatus: "observed" as const,
+  },
+  {
+    percentile: 95,
+    price: 25,
+    estimatedTimeToSellMs: 900 * 24 * 60 * 60 * 1000,
+    supplyStatus: "observed" as const,
+  },
+];
+for (const policy of [
+  undefined,
+  {
+    method: "profit-per-day" as const,
+    dailyReturnHurdle: 0.005,
+    relativeOverhead: 0.15,
+    staticOverheadPerUnit: 0,
+  },
+]) {
+  const held = await calculator.calculatePrices(
+    [
+      {
+        sku: 792,
+        quantity: 1,
+        currentPrice: 24,
+        productLineId: 1,
+        setId: 2,
+        productId: 3,
+      },
+    ],
+    {
+      percentile: 65,
+      ...(policy ? { policy } : {}),
+      suggestedPriceResolver: async () => ({
+        suggestedPrice: 20,
+        percentiles: hopelessPercentiles,
+      }),
+    },
+  );
+  assert.equal(
+    held.pricedItems[0]?.price,
+    24,
+    "a curve with no forecast within a year holds the current price",
+  );
+  assert.equal(held.pricedItems[0]?.pricingDecision?.basis, "current-price");
+  assert.equal(
+    held.pricedItems[0]?.pricingDecision?.method,
+    policy?.method ?? "percentile",
+  );
+  assert.ok(
+    held.pricedItems[0]?.warnings?.some((warning) =>
+      warning.startsWith(
+        "No forecast within a year. Keeping the current price",
+      ),
+    ),
+    "the hold is explained beside any earlier warning",
+  );
+}
+
+console.log(
+  "PASS a hopeless curve holds the reference price under every policy",
+);

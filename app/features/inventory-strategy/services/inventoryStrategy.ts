@@ -8,6 +8,7 @@ import {
 import { calculateMarketplacePrice } from "~/features/pricing/services/pricingService";
 import {
   observedHorizonRange,
+  forecastsWithinYear,
   portfolioDecisions,
   readPricingDecision,
   readShadowPricingDecision,
@@ -73,6 +74,13 @@ function roundCurrency(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
+/** The curve, or nothing when its fastest point still waits beyond a year, as the pricer holds it. */
+function withinYear(
+  curve: PortfolioCurveItem["curve"],
+): PortfolioCurveItem["curve"] {
+  return forecastsWithinYear(curve) ? curve : [];
+}
+
 function constrainMarketplacePrice(
   suggestedPrice: number,
   item: InventoryStrategySnapshotItem,
@@ -85,6 +93,7 @@ function constrainMarketplacePrice(
       minPriceMultiplier: config.pricing.minPriceMultiplier,
       minPriceConstant: config.pricing.minPriceConstant,
     },
+    item.pricingDetails?.priceEvidence,
   );
   return {
     price: roundCurrency(result.marketplacePrice),
@@ -106,15 +115,19 @@ function toPortfolioItems(
     productLineId: item.productLineId,
     quantity: item.quantity,
     currentPrice: item.currentPrice ?? undefined,
-    curve: toPricingCurve(
-      item.pricingDetails?.pricingModelVersion === PRICING_MODEL_VERSION
-        ? item.pricingDetails.percentiles
-        : undefined,
+    curve: withinYear(
+      toPricingCurve(
+        item.pricingDetails?.pricingModelVersion === PRICING_MODEL_VERSION
+          ? item.pricingDetails.percentiles
+          : undefined,
+      ),
     ),
     constraintIdentity: [
       item.marketPrice ?? 0,
       config.pricing.minPriceMultiplier,
       config.pricing.minPriceConstant,
+      item.pricingDetails?.priceEvidence?.ownConditionLowSalePrice ?? 0,
+      item.pricingDetails?.priceEvidence?.secondCheapestAskPrice ?? 0,
     ].join(":"),
     applyConstraint: (price: number) =>
       constrainMarketplacePrice(price, item, config),

@@ -20,6 +20,7 @@ import { PERCENTILES } from "../../../core/constants/pricing";
 import type {
   ConditionNormalizationDetail,
   ConditionSaleRate,
+  PriceEvidence,
 } from "../../../core/types/pricing";
 import type { PricingSupplyStatus } from "../../../core/types/pricingPolicy";
 import {
@@ -28,9 +29,45 @@ import {
 } from "./conditionNormalization";
 import {
   estimateBuyerArrivalAtPrice,
+  LATEST_SALES_HISTORY_DAYS,
   LATEST_SALES_LIMIT,
 } from "./buyerArrivalRate";
 import { estimateConditionSaleRate } from "./conditionSaleRate";
+import { getEffectiveSalePrice } from "./getEffectiveSalePrice";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Latest market price of each condition of the SKU's product, variant, and language. */
+function siblingMarketPrices(
+  priceHistory: GetPriceHistoryResponse | undefined,
+  sku: Sku,
+): Map<Condition, number> {
+  return new Map(
+    (priceHistory?.result ?? [])
+      .filter(
+        (entry) =>
+          entry.variant === sku.variant && entry.language === sku.language,
+      )
+      .flatMap((entry): [Condition, number][] => {
+        const latest = entry.buckets.reduce<
+          (typeof entry.buckets)[number] | undefined
+        >(
+          (best, bucket) =>
+            Number(bucket.marketPrice) > 0 &&
+            (!best ||
+              new Date(bucket.bucketStartDate).getTime() >
+                new Date(best.bucketStartDate).getTime())
+              ? bucket
+              : best,
+          undefined,
+        );
+        const marketPrice = Number(latest?.marketPrice);
+        return marketPrice > 0
+          ? [[entry.condition as Condition, marketPrice]]
+          : [];
+      }),
+  );
+}
 
 export async function getSuggestedPriceFromLatestSales(
   sku: Sku,
@@ -49,6 +86,7 @@ export async function getSuggestedPriceFromLatestSales(
   conditionMultipliers?: Map<Condition, number>;
   conditionNormalization?: ConditionNormalizationDetail;
   conditionSaleRate?: ConditionSaleRate;
+  priceEvidence?: PriceEvidence;
 }> {
   const {
     halfLifeDays = 7,
@@ -128,7 +166,9 @@ export async function getSuggestedPriceFromLatestSales(
 
   const conditionNormalization = isSealed
     ? undefined
-    : fitTimeAwareZipfModelToConditions(allSales, sku.condition);
+    : fitTimeAwareZipfModelToConditions(allSales, sku.condition, {
+        siblingMarketPrices: siblingMarketPrices(priceHistory, sku),
+      });
   const zipfMultipliers =
     conditionNormalization?.multipliers ?? new Map<Condition, number>();
 
@@ -173,6 +213,32 @@ export async function getSuggestedPriceFromLatestSales(
     }
   }
 
+  const windowStart = Date.now() - LATEST_SALES_HISTORY_DAYS * DAY_MS;
+  const ownConditionSalePrices = allSales
+    .filter(
+      (sale) =>
+        sale.condition === sku.condition &&
+        new Date(sale.orderDate).getTime() >= windowStart,
+    )
+    .map(getEffectiveSalePrice)
+    .filter((price) => price > 0);
+  // Without the store's own listing excluded, the second ask may be the
+  // cheapest competitor, the one most often mis-conditioned.
+  const secondCheapestAsk = config.supplyAnalysisConfig?.excludedSellerKey
+    ? supplyObservation.listings[1]
+    : undefined;
+  const ownConditionLowSalePrice = ownConditionSalePrices.length
+    ? Math.min(...ownConditionSalePrices)
+    : undefined;
+  const secondCheapestAskPrice = secondCheapestAsk
+    ? secondCheapestAsk.price + secondCheapestAsk.shippingCost
+    : undefined;
+  const priceEvidence: PriceEvidence | undefined =
+    ownConditionLowSalePrice === undefined &&
+    secondCheapestAskPrice === undefined
+      ? undefined
+      : { ownConditionLowSalePrice, secondCheapestAskPrice };
+
   const result = getSuggestedPriceFromSales(adjustedSales, {
     halfLifeDays: dynamicHalfLife,
     percentile,
@@ -187,6 +253,7 @@ export async function getSuggestedPriceFromLatestSales(
     conditionMultipliers: isSealed ? undefined : zipfMultipliers,
     conditionNormalization: conditionNormalization?.diagnostics,
     conditionSaleRate,
+    priceEvidence,
   };
 }
 

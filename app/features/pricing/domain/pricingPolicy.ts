@@ -240,6 +240,17 @@ function prepare(curve: readonly PricingCurvePoint[]): PreparedCurve {
   return prepared;
 }
 
+/** A curve whose fastest point waits beyond a year forecasts nothing to trade against. */
+const HOPELESS_FORECAST_DAYS = 365;
+
+/** False when the curve's fastest observed point still waits beyond a year. */
+export function forecastsWithinYear(
+  curve: readonly PricingCurvePoint[],
+): boolean {
+  const fastest = prepare(curve).bySellTime[0]?.estimatedMedianSellDays;
+  return fastest === undefined || fastest <= HOPELESS_FORECAST_DAYS;
+}
+
 function pointAtPercentile(
   curve: readonly PricingCurvePoint[],
   percentile: number,

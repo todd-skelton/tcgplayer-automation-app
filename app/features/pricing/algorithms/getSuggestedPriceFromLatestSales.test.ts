@@ -150,6 +150,60 @@ assert.equal(
   1,
 );
 
+const siblingFallback = fitTimeAwareZipfModelToConditions(
+  [
+    createSale(1, 100, 0, "Near Mint", "2026-08-01T00:00:00.000Z"),
+    createSale(1, 1, 0, "Lightly Played", "2026-08-10T00:00:00.000Z"),
+    createSale(1, 100, 0, "Near Mint", "2026-08-20T00:00:00.000Z"),
+  ],
+  "Near Mint",
+  {
+    asOfTimestamp: new Date("2026-08-31T00:00:00.000Z").getTime(),
+    siblingMarketPrices: new Map([
+      ["Near Mint", 20],
+      ["Lightly Played", 16],
+      ["Damaged", 5],
+    ]),
+  },
+);
+assert.equal(siblingFallback.diagnostics.method, "sibling-market-ratio");
+assert.equal(
+  siblingFallback.multipliers.get("Lightly Played"),
+  1.25,
+  "an underdetermined history scales each condition by the sibling market ratio",
+);
+assert.equal(siblingFallback.multipliers.get("Damaged"), 4);
+assert.equal(
+  siblingFallback.multipliers.get("Moderately Played"),
+  1,
+  "a condition without a market price is left as it is",
+);
+const boundedSiblings = fitTimeAwareZipfModelToConditions(
+  [
+    createSale(1, 100, 0, "Lightly Played", "2026-08-01T00:00:00.000Z"),
+    createSale(1, 1, 0, "Near Mint", "2026-08-10T00:00:00.000Z"),
+  ],
+  "Lightly Played",
+  {
+    asOfTimestamp: new Date("2026-08-31T00:00:00.000Z").getTime(),
+    siblingMarketPrices: new Map([
+      ["Near Mint", 5],
+      ["Lightly Played", 20],
+      ["Damaged", 0.01],
+    ]),
+  },
+);
+assert.equal(
+  boundedSiblings.multipliers.get("Near Mint"),
+  1,
+  "a better condition priced below the target does not scale it down",
+);
+assert.equal(
+  boundedSiblings.multipliers.get("Damaged"),
+  25,
+  "a stale penny price cannot scale a sale beyond the fitted exponent's reach",
+);
+
 const timeConfoundedSales = [
   ...Array.from({ length: 10 }, (_, index) =>
     createSale(

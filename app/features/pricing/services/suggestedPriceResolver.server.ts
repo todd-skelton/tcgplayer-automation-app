@@ -95,5 +95,6 @@ export async function resolveSuggestedPrice(
     percentiles: algorithmResult.percentiles,
     conditionSaleRate: algorithmResult.conditionSaleRate,
     conditionNormalization: algorithmResult.conditionNormalization,
+    priceEvidence: algorithmResult.priceEvidence,
   };
 }

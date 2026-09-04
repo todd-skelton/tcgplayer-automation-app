@@ -108,6 +108,14 @@ Every modeled result with observed listings now records that forecast at the lis
 
 The curve's buyer interval pools sales of every condition, and held out against the following month that pooled rate ranked which slow SKUs would sell barely better than chance, while the SKU's own yearly sale rate ranked them well. Every modeled result now also records `conditionRateForecast`: the median wait at the listed price from a year of the SKU's own weekly sales, weighted toward the last quarter, read from the annual price history that pricing fetches once per product. Pricing does not read it either. The inventory strategy page grades all three forecasts against realized sales of the continuously priced inventory over the newest complete cohort, at a 14, 21, or 28 day horizon. The policy adopts the better forecast only after that comparison, and a randomized price test must follow, because realized sales cover only the prices already listed.
 
+## Price floor
+
+The floor was market price less the fee. Realized sales showed it held liquid cards above where they trade, because the market price is a trailing average, and it was also the only thing stopping the model from listing a near-mint card at a damaged price when the card had no near-mint sales and the curve was built from other conditions. Three changes replace it:
+
+- Condition normalization falls back to the ratio of the sibling SKUs' market prices, read from the annual price history, when the listed condition has too few sales to fit an exponent. Held out, that ratio predicted a condition's price with 14% median error against 33% for the neutral fallback it replaces. Ratios are capped at the reach of the fitted exponent and never move a condition against the condition order. Results record the method in `conditionNormalization`.
+- The floor is the market-based minimum, lowered to the SKU's own-condition low sale in the last 90 days or, when the store's own listing is excluded from the search, to the second-cheapest competing ask in the same condition; both are recorded as `priceEvidence`. Own evidence releases the floor on liquid cards and keeps it where the card has none; without a market price there is no floor, as before. The cheapest ask is skipped because one listing in ten is mis-conditioned or thrown away; asks above the second are the ones that run insane.
+- A curve whose fastest point waits beyond a year holds the current price under every policy, or a reference price when the SKU has none, instead of trading price for a marginally shorter wait. The strategy page and the shadow plan leave such curves out for the same reason.
+
 ## Execution record
 
 - [x] Audit production timing, queue shape, pricing failures, and publications.

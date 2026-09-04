@@ -2,6 +2,7 @@ import type {
   BuyerChoiceForecast,
   ConditionNormalizationDetail,
   ConditionRateForecast,
+  PriceEvidence,
   PricerSku,
   PricingPercentileDetail,
   PricingConfig,
@@ -21,11 +22,13 @@ import type { PricePoint } from "../../../integrations/tcgplayer/client/get-pric
 import type { ProductDisplayInfo } from "../../../shared/services/dataEnrichmentService";
 import type {
   PortfolioPricingPlan,
+  PricingCurvePoint,
   PricingDecision,
 } from "../domain/pricingPolicy";
 import {
   netProceedsAtPrice,
   policyParameters,
+  forecastsWithinYear,
   resolveValueMatchedPortfolioPlan,
   selectPricingDecision,
   toPricingCurve,
@@ -39,6 +42,7 @@ function roundCurrency(value: number): number {
 function createMarketplaceConstraint(
   pricePoint: PricePoint | null,
   config: Pick<PricingConfig, "minPriceMultiplier" | "minPriceConstant">,
+  evidence?: PriceEvidence,
 ) {
   return (candidatePrice: number) => {
     const constrained = calculateMarketplacePrice(
@@ -57,6 +61,7 @@ function createMarketplaceConstraint(
         minPriceConstant:
           config.minPriceConstant ?? PRICING_CONSTANTS.MIN_PRICE_CONSTANT,
       },
+      evidence,
     );
     return {
       price: roundCurrency(constrained.marketplacePrice),
@@ -65,6 +70,11 @@ function createMarketplaceConstraint(
         : ("none" as const),
     };
   };
+}
+
+/** The curve, or nothing when its fastest point still waits beyond a year. */
+function withinYear(curve: PricingCurvePoint[]): PricingCurvePoint[] {
+  return forecastsWithinYear(curve) ? curve : [];
 }
 
 function policyName(policy: PricingPolicy): string {
@@ -146,6 +156,7 @@ export interface PricingResult {
   buyerChoiceForecast?: BuyerChoiceForecast;
   conditionRateForecast?: ConditionRateForecast;
   conditionNormalization?: ConditionNormalizationDetail;
+  priceEvidence?: PriceEvidence;
   shadowPricingDecision?: PricingDecision;
 }
 
@@ -284,6 +295,7 @@ export class PricingCalculator {
         pricedItem.percentileUsed = effectivePercentile;
         pricedItem.productLineId = pricerSku.productLineId;
         pricedItem.conditionNormalization = result.conditionNormalization;
+        pricedItem.priceEvidence = result.priceEvidence;
         pricedItem.percentiles = result.percentiles?.map((percentile) => ({
           percentile: percentile.percentile,
           suggestedPrice: percentile.price,
@@ -309,17 +321,44 @@ export class PricingCalculator {
             ? productLinePricingPolicy(config.policy, productLineSettings)
             : percentilePolicy;
         const pricePoint = pricePointsMap.get(pricerSku.sku) ?? null;
+        const references = {
+          marketPrice: pricePoint?.marketPrice,
+          lowestListingPrice: result.lowestListingPrice,
+          currentPrice: pricerSku.currentPrice,
+        };
+        // A curve with no point within a year holds the current price under
+        // every policy, or a reference price when the SKU has none: the path
+        // SKUs without a curve already take.
+        const held = forecastsWithinYear(curve)
+          ? undefined
+          : (calculateInsufficientSalesFallback({
+              currentPrice: pricerSku.currentPrice,
+            }) ?? calculateInsufficientSalesFallback(references));
+        const hopeless = held !== null && held !== undefined;
+        if (hopeless) {
+          pricedItem.suggestedPrice = held.price;
+          pricedItem.price = held.price;
+          pricedItem.pricingDecision = fallbackDecision("percentile", held);
+          pricedItem.warnings?.push(
+            held.basis === "current-price"
+              ? `No forecast within a year. Keeping the current price at $${held.price.toFixed(2)}.`
+              : `No forecast within a year. ${held.warningMessage}`,
+          );
+        }
         const marketplaceConstraint = createMarketplaceConstraint(
           pricePoint,
           config,
+          result.priceEvidence,
         );
-        const forecastDecision = selectPricingDecision(
-          curve,
-          activePolicy,
-          pricerSku.currentPrice,
-          marketplaceConstraint,
-        );
-        if (activePolicy.method !== "percentile") {
+        const forecastDecision = hopeless
+          ? undefined
+          : selectPricingDecision(
+              curve,
+              activePolicy,
+              pricerSku.currentPrice,
+              marketplaceConstraint,
+            );
+        if (activePolicy.method !== "percentile" && !hopeless) {
           pricedItem.shadowPricingDecision =
             selectPricingDecision(
               curve,
@@ -330,12 +369,13 @@ export class PricingCalculator {
         }
         const fallback =
           activePolicy.method !== "percentile" &&
+          !hopeless &&
           forecastDecision?.basis !== "modeled"
-            ? forecastFallback(activePolicy, pricedItem.shadowPricingDecision, {
-                marketPrice: pricePoint?.marketPrice,
-                lowestListingPrice: result.lowestListingPrice,
-                currentPrice: pricerSku.currentPrice,
-              })
+            ? forecastFallback(
+                activePolicy,
+                pricedItem.shadowPricingDecision,
+                references,
+              )
             : undefined;
         const activeDecision = fallback?.decision ?? forecastDecision;
         if (
@@ -365,6 +405,7 @@ export class PricingCalculator {
                   config.minPriceConstant ??
                   PRICING_CONSTANTS.MIN_PRICE_CONSTANT,
               },
+              result.priceEvidence,
             );
             if (priceResult.warningMessage) {
               pricedItem.warnings.push(priceResult.warningMessage);
@@ -492,13 +533,19 @@ export class PricingCalculator {
       return {
         sku: item.sku,
         currentPrice: sourceSku?.currentPrice,
-        curve: toPricingCurve(item.percentiles),
+        curve: withinYear(toPricingCurve(item.percentiles)),
         constraintIdentity: [
           pricePoint?.marketPrice ?? 0,
           config.minPriceMultiplier ?? PRICING_CONSTANTS.MIN_PRICE_MULTIPLIER,
           config.minPriceConstant ?? PRICING_CONSTANTS.MIN_PRICE_CONSTANT,
+          item.priceEvidence?.ownConditionLowSalePrice ?? 0,
+          item.priceEvidence?.secondCheapestAskPrice ?? 0,
         ].join(":"),
-        applyConstraint: createMarketplaceConstraint(pricePoint, config),
+        applyConstraint: createMarketplaceConstraint(
+          pricePoint,
+          config,
+          item.priceEvidence,
+        ),
       };
     });
     const hasValueMatchBaseline = portfolioItems.some(
@@ -681,6 +728,7 @@ export class PricingCalculator {
             minPriceConstant:
               config.minPriceConstant ?? PRICING_CONSTANTS.MIN_PRICE_CONSTANT,
           },
+          result.priceEvidence,
         );
 
       pricedItem.price = roundCurrency(marketplacePrice);

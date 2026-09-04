@@ -100,6 +100,7 @@ function buildPricingDetails(
     buyerChoiceForecast: pricedSku.buyerChoiceForecast,
     conditionRateForecast: pricedSku.conditionRateForecast,
     conditionNormalization: pricedSku.conditionNormalization,
+    priceEvidence: pricedSku.priceEvidence,
     warnings: pricedSku.warnings || [],
     errors: pricedSku.errors || [],
     featureFlags: {

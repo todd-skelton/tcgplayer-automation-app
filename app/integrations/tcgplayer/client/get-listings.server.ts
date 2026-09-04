@@ -168,21 +168,18 @@ export async function getAllListings(
     const page = results[0];
     if (from === 0) total = page.totalResults;
 
-    // Filter out listings above maxPrice if specified
-    const pageListings =
-      maxPrice !== undefined
-        ? page.results.filter(
-            (listing) =>
-              listing.price + listing.sellerShippingPrice <= maxPrice,
-          )
-        : page.results;
-
-    listings.push(...pageListings);
+    listings.push(...page.results);
     from += size;
 
-    // Early termination: if we got fewer filtered results than expected and we have a maxPrice,
-    // it means we've hit listings above our price threshold
-    if (maxPrice !== undefined && pageListings.length < page.results.length) {
+    // Stop paging once a page reaches listings above the price threshold. The
+    // page is kept whole: listings above the sale prices never compete at a
+    // curve price, and the cheapest asks on it are the floor's evidence.
+    if (
+      maxPrice !== undefined &&
+      page.results.some(
+        (listing) => listing.price + listing.sellerShippingPrice > maxPrice,
+      )
+    ) {
       console.log(
         `getAllListings: Early termination at price threshold $${maxPrice.toFixed(
           2,

@@ -1,4 +1,7 @@
-import type { SuggestedPriceResult } from "../../../core/types/pricing";
+import type {
+  PriceEvidence,
+  SuggestedPriceResult,
+} from "../../../core/types/pricing";
 import { PRICING_CONSTANTS } from "../../../core/constants/pricing";
 
 export interface PriceCalculationResult {
@@ -86,39 +89,39 @@ const DEFAULT_MINIMUM_MARKETPLACE_PRICE_CONFIG: MinimumMarketplacePriceConfig =
   };
 
 /**
- * Calculates the marketplace price with bounds checking and error handling
- * This function ensures consistent pricing logic across all processors
+ * Applies the price floor: the market-based minimum, lowered to the SKU's
+ * own-condition low sale or the second-cheapest competing ask when either
+ * shows the market lower. Without a market price there is no floor.
  */
 export const calculateMarketplacePrice = (
   suggestedPrice: number,
   pricePoint: PricePointData | null,
   minimumPriceConfig: MinimumMarketplacePriceConfig = DEFAULT_MINIMUM_MARKETPLACE_PRICE_CONFIG,
+  evidence: PriceEvidence = {},
 ): PriceCalculationResult => {
   const marketPrice = pricePoint?.marketPrice || 0;
   let marketplacePrice = suggestedPrice;
   let warningMessage = "";
-  let errorMessage = "";
 
-  // Case 1: No market price available
-  if (marketPrice === 0 && suggestedPrice > 0) {
+  if (suggestedPrice > 0 && marketPrice === 0) {
     warningMessage =
       "No market price available. Using suggested price directly.";
-    return { marketplacePrice, warningMessage, errorMessage };
-  }
-
-  // Case 2: Market price available - enforce lower bound only
-  if (marketPrice > 0 && suggestedPrice > 0) {
-    const lowerBound =
+  } else if (suggestedPrice > 0) {
+    const lowerBound = Math.min(
       marketPrice * minimumPriceConfig.minPriceMultiplier -
-      minimumPriceConfig.minPriceConstant;
-
+        minimumPriceConfig.minPriceConstant,
+      ...[
+        evidence.ownConditionLowSalePrice,
+        evidence.secondCheapestAskPrice,
+      ].filter((price): price is number => price !== undefined && price > 0),
+    );
     if (suggestedPrice < lowerBound) {
       marketplacePrice = lowerBound;
       warningMessage = "Suggested price below minimum. Using minimum price.";
     }
   }
 
-  return { marketplacePrice, warningMessage, errorMessage };
+  return { marketplacePrice, warningMessage, errorMessage: "" };
 };
 
 export const getSuggestedPrice = async (

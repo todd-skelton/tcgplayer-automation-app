@@ -65,6 +65,7 @@ export function createCachedSuggestedPriceResolver(
       listingsCount: decision.listingsCount,
       conditionSaleRate: details.conditionRateForecast,
       conditionNormalization: details.conditionNormalization,
+      priceEvidence: details.priceEvidence,
       percentiles: details.percentiles?.map((point) => ({
         percentile: point.percentile,
         price: point.suggestedPrice,
@@ -186,6 +187,7 @@ function enrichPricedSkus(
       buyerChoiceForecast: pricedItem.buyerChoiceForecast,
       conditionRateForecast: pricedItem.conditionRateForecast,
       conditionNormalization: pricedItem.conditionNormalization,
+      priceEvidence: pricedItem.priceEvidence,
       errors: pricedItem.errors,
       warnings: pricedItem.warnings,
       productLine: productInfo?.productLine,
