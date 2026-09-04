@@ -7,6 +7,7 @@ import {
 } from "~/core/db";
 import { PricedSkuToTcgPlayerListingConverter } from "~/features/file-upload/services/dataConverters";
 import { planAutomaticInventoryBatchPublication } from "~/features/inventory-publication/services/automaticInventoryBatchPublication.server";
+import { warmInventoryStrategy } from "~/features/inventory-strategy/services/inventoryStrategyWarmup.server";
 import type {
   PersistedPricingDetails,
   ProcessingProgress,
@@ -191,8 +192,11 @@ async function processJob(
       result.summary,
       result.finalProgress,
     );
+    let curvesRecorded = 0;
     try {
-      await inventoryStrategyRepository.recordSuccessfulBatch(job.batchNumber);
+      curvesRecorded = await inventoryStrategyRepository.recordSuccessfulBatch(
+        job.batchNumber,
+      );
     } catch (strategyProjectionError) {
       console.error(
         `Inventory strategy projection update failed for batch ${job.batchNumber}:`,
@@ -215,6 +219,14 @@ async function processJob(
         `Automatic publication planning failed for batch ${job.batchNumber}:`,
         automaticPublicationError,
       );
+    }
+    if (curvesRecorded > 0) {
+      void warmInventoryStrategy().catch((warmupError) => {
+        console.error(
+          `Inventory strategy warm-up failed after batch ${job.batchNumber}:`,
+          warmupError,
+        );
+      });
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

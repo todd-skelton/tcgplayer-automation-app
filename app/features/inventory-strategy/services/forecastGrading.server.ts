@@ -12,8 +12,10 @@ import {
   type ForecastGradingRecord,
   type ForecastGradingReport,
 } from "../types/inventoryStrategy";
+import { createVersionedCache } from "./versionedCache";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
 const NO_GRADE: ForecastGrade = {
   count: 0,
   soldShare: 0,
@@ -22,11 +24,38 @@ const NO_GRADE: ForecastGrade = {
 };
 
 export interface ForecastGradingSource {
+  /** Changes whenever the inventory or its curves change, as every priced batch does. */
+  findSnapshotVersion(sellerKey: string): Promise<string>;
   findForecastGradingRecords(
     sellerKey: string,
     since: Date,
   ): Promise<ForecastGradingRecord[]>;
   findInStockSkus(sellerKey: string): Promise<number[]>;
+}
+
+const reports =
+  createVersionedCache<ForecastGradingReport[]>("Forecast grading");
+
+/**
+ * The seller's forecast grading, regraded after each priced batch and at
+ * least hourly as the cohort windows move, serving the last report while the
+ * next one builds.
+ */
+export async function loadForecastGrading(
+  sellerKey: string,
+  source: ForecastGradingSource = inventoryStrategyRepository,
+  now: Date = new Date(),
+): Promise<ForecastGradingReport[]> {
+  if (!sellerKey) return gradeForecasts(sellerKey, source, now);
+  return reports.read(
+    sellerKey,
+    "",
+    [
+      await source.findSnapshotVersion(sellerKey),
+      Math.floor(now.getTime() / HOUR_MS),
+    ].join("|"),
+    () => gradeForecasts(sellerKey, source, now),
+  );
 }
 
 /**
@@ -36,10 +65,10 @@ export interface ForecastGradingSource {
  * that forecast is at least one horizon old. Results priced under the target-horizon policy carry no curve
  * forecast, because that policy pins it to the horizon.
  */
-export async function loadForecastGrading(
+async function gradeForecasts(
   sellerKey: string,
-  source: ForecastGradingSource = inventoryStrategyRepository,
-  now: Date = new Date(),
+  source: ForecastGradingSource,
+  now: Date,
 ): Promise<ForecastGradingReport[]> {
   const since = new Date(
     now.getTime() - 2 * Math.max(...FORECAST_GRADING_HORIZON_DAYS) * DAY_MS,
