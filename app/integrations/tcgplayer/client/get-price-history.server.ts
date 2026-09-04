@@ -46,3 +46,18 @@ export async function getPriceHistory({
     `/price/history/${id}/detailed?range=${range}`,
   );
 }
+
+/** A year of weekly sales for every SKU of the product, or nothing on failure. */
+export async function fetchAnnualPriceHistory(
+  productId: number,
+): Promise<GetPriceHistoryResponse | undefined> {
+  try {
+    return await getPriceHistory({ id: productId, range: "annual" });
+  } catch (error) {
+    console.warn(
+      `Failed to fetch price history for product ${productId}:`,
+      error,
+    );
+    return undefined;
+  }
+}

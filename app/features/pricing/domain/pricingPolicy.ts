@@ -118,10 +118,11 @@ function isPositive(value: number | undefined): value is number {
   return value !== undefined && Number.isFinite(value) && value > 0;
 }
 
-function medianSellDays(
+/** Median wait for a buyer interval when the store wins the given share of buyers. */
+export function medianSellDays(
   buyerIntervalDays: number | undefined,
   storeWinShare: number | undefined,
-  fallback: number | undefined,
+  fallback?: number,
 ): number | undefined {
   return isPositive(buyerIntervalDays) && isPositive(storeWinShare)
     ? (Math.LN2 * buyerIntervalDays) / storeWinShare

@@ -5,6 +5,10 @@ import {
   type GetLastestSalesRequestBody,
   type Sale,
 } from "../../../integrations/tcgplayer/client/get-latest-sales.server";
+import {
+  fetchAnnualPriceHistory,
+  type GetPriceHistoryResponse,
+} from "../../../integrations/tcgplayer/client/get-price-history.server";
 import type { Condition } from "../../../integrations/tcgplayer/types/Condition";
 import type { ListingObservation } from "../services/supplyAnalysisService";
 import {
@@ -13,7 +17,10 @@ import {
 } from "../services/supplyAnalysisService";
 import { categoryFiltersRepository } from "~/core/db";
 import { PERCENTILES } from "../../../core/constants/pricing";
-import type { ConditionNormalizationDetail } from "../../../core/types/pricing";
+import type {
+  ConditionNormalizationDetail,
+  ConditionSaleRate,
+} from "../../../core/types/pricing";
 import type { PricingSupplyStatus } from "../../../core/types/pricingPolicy";
 import {
   fitTimeAwareZipfModelToConditions,
@@ -23,6 +30,7 @@ import {
   estimateBuyerArrivalAtPrice,
   LATEST_SALES_LIMIT,
 } from "./buyerArrivalRate";
+import { estimateConditionSaleRate } from "./conditionSaleRate";
 
 export async function getSuggestedPriceFromLatestSales(
   sku: Sku,
@@ -40,6 +48,7 @@ export async function getSuggestedPriceFromLatestSales(
   usedCrossConditionAnalysis?: boolean;
   conditionMultipliers?: Map<Condition, number>;
   conditionNormalization?: ConditionNormalizationDetail;
+  conditionSaleRate?: ConditionSaleRate;
 }> {
   const {
     halfLifeDays = 7,
@@ -108,6 +117,14 @@ export async function getSuggestedPriceFromLatestSales(
   }
 
   const isSealed = sku.condition === "Unopened";
+  const fetchPriceHistory = config.fetchPriceHistory ?? fetchAnnualPriceHistory;
+  const priceHistory = await fetchPriceHistory(sku.productId);
+  const ownHistory = priceHistory?.result.find(
+    (entry) => Number(entry.skuId) === sku.sku,
+  );
+  const conditionSaleRate =
+    ownHistory &&
+    estimateConditionSaleRate(ownHistory.buckets, { availableSinceTimestamp });
 
   const conditionNormalization = isSealed
     ? undefined
@@ -169,6 +186,7 @@ export async function getSuggestedPriceFromLatestSales(
     usedCrossConditionAnalysis: !isSealed,
     conditionMultipliers: isSealed ? undefined : zipfMultipliers,
     conditionNormalization: conditionNormalization?.diagnostics,
+    conditionSaleRate,
   };
 }
 
@@ -187,6 +205,9 @@ export interface LatestSalesPriceConfig {
     body: GetLastestSalesRequestBody,
     maxSales?: number,
   ) => Promise<Sale[]>;
+  fetchPriceHistory?: (
+    productId: number,
+  ) => Promise<GetPriceHistoryResponse | undefined>;
   fetchListingsForSku?: (
     sku: Sku,
     config: SupplyAnalysisConfig,

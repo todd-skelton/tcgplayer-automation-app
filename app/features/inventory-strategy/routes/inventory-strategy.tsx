@@ -18,7 +18,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   data,
   useFetcher,
@@ -412,6 +412,17 @@ export default function InventoryStrategyRoute() {
     forecastGrading.find(
       (report) => report.horizonDays === gradingHorizonDays,
     ) ?? forecastGrading[0];
+  const gradedForecasts = grading
+    ? ([
+        ["Curve", grading.curve],
+        ["Buyer-choice", grading.buyerChoice],
+        ["Condition-rate", grading.conditionRate],
+      ] as const)
+    : [];
+  const gradedDecileCount = Math.max(
+    0,
+    ...gradedForecasts.map(([, grade]) => grade.deciles.length),
+  );
   const fetcher = useFetcher<ActionData>();
   const analysisFetcher = useFetcher<{
     batchNumber?: number;
@@ -1197,19 +1208,45 @@ export default function InventoryStrategyRoute() {
           <Box sx={{ p: 2 }}>
             <Typography variant="h6">Forecast grading</Typography>
             <Typography variant="body2" color="text.secondary">
-              {grading.cohortSize > 0
-                ? `${grading.cohortSize.toLocaleString()} SKUs first priced with both forecasts between ${grading.horizonDays} and ${2 * grading.horizonDays} days ago and followed for ${grading.horizonDays} days; ${percentFormatter.format(grading.soldShare)} sold.`
-                : `No SKU has carried both forecasts for ${grading.horizonDays} days${dashboard.policy.method === "target-horizon" ? ". The target-horizon policy pins the curve forecast, so grading waits for another policy" : " yet"}.`}
+              Each forecast is graded over the SKUs that carried it, first
+              priced between {grading.horizonDays} and {2 * grading.horizonDays}{" "}
+              days ago and followed for {grading.horizonDays} days. Brier score
+              against realized sales, lower is better; the base rate is the
+              score of forecasting every SKU at its cohort's sold share.
             </Typography>
-            {grading.cohortSize > 0 ? (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Brier score against realized sales, lower is better: curve{" "}
-                {grading.curve.brier.toFixed(4)}, buyer-choice{" "}
-                {grading.buyerChoice.brier.toFixed(4)}, base rate{" "}
-                {grading.baseRateBrier.toFixed(4)}.
-                {grading.otherCalibrationCount > 0
-                  ? ` ${grading.otherCalibrationCount.toLocaleString()} results carried a forecast from an earlier calibration, which is not graded.`
-                  : ""}
+            {gradedForecasts.map(([label, grade]) => (
+              <Typography
+                key={label}
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
+                {label}:{" "}
+                {grade.count > 0
+                  ? `${grade.count.toLocaleString()} SKUs, ${percentFormatter.format(grade.soldShare)} sold, Brier ${grade.brier.toFixed(4)} against a base rate of ${(grade.soldShare * (1 - grade.soldShare)).toFixed(4)}.`
+                  : `no SKU has carried this forecast for ${grading.horizonDays} days yet.`}
+              </Typography>
+            ))}
+            {grading.curve.count === 0 &&
+            dashboard.policy.method === "target-horizon" ? (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
+                The target-horizon policy pins the curve forecast, so its
+                grading waits for another policy.
+              </Typography>
+            ) : null}
+            {grading.otherCalibrationCount > 0 ? (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
+                {grading.otherCalibrationCount.toLocaleString()} results carried
+                a buyer-choice forecast from an earlier calibration, which is
+                not graded.
               </Typography>
             ) : null}
             <ToggleButtonGroup
@@ -1228,55 +1265,54 @@ export default function InventoryStrategyRoute() {
               ))}
             </ToggleButtonGroup>
           </Box>
-          {grading.cohortSize > 0 ? (
+          {gradedDecileCount > 0 ? (
             <TableContainer>
               <Table size="small">
                 <TableHead>
                   <TableRow>
                     <TableCell rowSpan={2}>Decile</TableCell>
-                    <TableCell align="center" colSpan={3}>
-                      Curve forecast
-                    </TableCell>
-                    <TableCell align="center" colSpan={3}>
-                      Buyer-choice forecast
-                    </TableCell>
+                    {gradedForecasts.map(([label]) => (
+                      <TableCell key={label} align="center" colSpan={3}>
+                        {label} forecast
+                      </TableCell>
+                    ))}
                   </TableRow>
                   <TableRow>
-                    <TableCell align="right">Median days</TableCell>
-                    <TableCell align="right">Sold</TableCell>
-                    <TableCell align="right">Expected</TableCell>
-                    <TableCell align="right">Median days</TableCell>
-                    <TableCell align="right">Sold</TableCell>
-                    <TableCell align="right">Expected</TableCell>
+                    {gradedForecasts.map(([label]) => (
+                      <Fragment key={label}>
+                        <TableCell align="right">Median days</TableCell>
+                        <TableCell align="right">Sold</TableCell>
+                        <TableCell align="right">Expected</TableCell>
+                      </Fragment>
+                    ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {grading.curve.deciles.map((curve, index) => {
-                    const buyerChoice = grading.buyerChoice.deciles[index]!;
-                    return (
-                      <TableRow key={index}>
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell align="right">
-                          {curve.medianDays.toFixed(0)}
-                        </TableCell>
-                        <TableCell align="right">
-                          {percentFormatter.format(curve.soldShare)}
-                        </TableCell>
-                        <TableCell align="right">
-                          {percentFormatter.format(curve.expectedShare)}
-                        </TableCell>
-                        <TableCell align="right">
-                          {buyerChoice.medianDays.toFixed(0)}
-                        </TableCell>
-                        <TableCell align="right">
-                          {percentFormatter.format(buyerChoice.soldShare)}
-                        </TableCell>
-                        <TableCell align="right">
-                          {percentFormatter.format(buyerChoice.expectedShare)}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {Array.from({ length: gradedDecileCount }, (_, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{index + 1}</TableCell>
+                      {gradedForecasts.map(([label, grade]) => {
+                        const decile = grade.deciles[index];
+                        return (
+                          <Fragment key={label}>
+                            <TableCell align="right">
+                              {decile?.medianDays.toFixed(0) ?? ""}
+                            </TableCell>
+                            <TableCell align="right">
+                              {decile
+                                ? percentFormatter.format(decile.soldShare)
+                                : ""}
+                            </TableCell>
+                            <TableCell align="right">
+                              {decile
+                                ? percentFormatter.format(decile.expectedShare)
+                                : ""}
+                            </TableCell>
+                          </Fragment>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </TableContainer>

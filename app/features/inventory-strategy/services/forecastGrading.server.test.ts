@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { BUYER_CHOICE_CALIBRATION } from "~/features/pricing/algorithms/buyerChoiceSellTime";
+import { CONDITION_RATE_METHOD } from "~/features/pricing/algorithms/conditionSaleRate";
 import type { ForecastGradingRecord } from "../types/inventoryStrategy";
 import { loadForecastGrading } from "./forecastGrading.server";
 
@@ -20,6 +21,8 @@ const row = (
   curveMedianSellDays: 10,
   buyerChoiceMedianSellDays: 30,
   buyerChoiceCalibration: BUYER_CHOICE_CALIBRATION.name,
+  conditionRateMedianSellDays: 20,
+  conditionRateMethod: CONDITION_RATE_METHOD,
   ...overrides,
 });
 
@@ -28,11 +31,12 @@ const rows: ForecastGradingRecord[] = [
   row(1, 30, 2),
   row(1, 20, 1),
   row(1, 1, 1),
-  // unsold: priced throughout; a result without a quantity is ignored
-  row(2, 30, 1),
+  // unsold: priced throughout; a result without a quantity is ignored, and a
+  // SKU with no own-condition sales joins every cohort but the condition-rate one
+  row(2, 30, 1, { conditionRateMedianSellDays: null }),
   row(2, 15, null),
-  row(2, 14, 1),
-  row(2, 1, 1),
+  row(2, 14, 1, { conditionRateMedianSellDays: null }),
+  row(2, 1, 1, { conditionRateMedianSellDays: null }),
   // a target-horizon result carries no curve forecast, so the SKU joins at
   // its next result and the earlier quantity drop does not count
   row(3, 40, 2, { method: "target-horizon" }),
@@ -64,15 +68,24 @@ assert.deepEqual(
   [14, 21, 28],
 );
 const report = reports[1]!;
-assert.equal(report.cohortSize, 3);
-assert.ok(Math.abs(report.soldShare - 1 / 3) < 1e-12);
-assert.ok(Math.abs(report.baseRateBrier - 2 / 9) < 1e-12);
+assert.equal(report.curve.count, 4, "every SKU carries the curve forecast");
+assert.ok(Math.abs(report.curve.soldShare - 1 / 4) < 1e-12);
+assert.equal(
+  report.buyerChoice.count,
+  3,
+  "the older calibration leaves the buyer-choice cohort",
+);
+assert.equal(
+  report.conditionRate.count,
+  3,
+  "a SKU without an own-condition rate leaves only the condition-rate cohort",
+);
 assert.equal(report.otherCalibrationCount, 2);
-assert.equal(report.curve.deciles.length, 3);
+assert.equal(report.curve.deciles.length, 4);
 assert.equal(report.buyerChoice.deciles.length, 3);
 assert.ok(report.curve.brier > 0 && report.buyerChoice.brier > 0);
 assert.equal(
-  reports[0]!.cohortSize,
+  reports[0]!.curve.count,
   1,
   "the 14-day cohort holds only the SKU with a graded result 14 to 28 days ago",
 );
@@ -88,7 +101,7 @@ const empty = await loadForecastGrading(
   now,
 );
 assert.deepEqual(
-  empty.map((report) => [report.cohortSize, report.curve.deciles]),
+  empty.map((report) => [report.curve.count, report.curve.deciles]),
   [
     [0, []],
     [0, []],

@@ -63,6 +63,7 @@ export function createCachedSuggestedPriceResolver(
       estimatedTimeToSellMs: milliseconds(decision.estimatedMedianSellDays),
       salesCount: decision.qualifyingSalesCount,
       listingsCount: decision.listingsCount,
+      conditionSaleRate: details.conditionRateForecast,
       conditionNormalization: details.conditionNormalization,
       percentiles: details.percentiles?.map((point) => ({
         percentile: point.percentile,
@@ -183,6 +184,7 @@ function enrichPricedSkus(
       pricingDecision: pricedItem.pricingDecision,
       shadowPricingDecision: pricedItem.shadowPricingDecision,
       buyerChoiceForecast: pricedItem.buyerChoiceForecast,
+      conditionRateForecast: pricedItem.conditionRateForecast,
       conditionNormalization: pricedItem.conditionNormalization,
       errors: pricedItem.errors,
       warnings: pricedItem.warnings,

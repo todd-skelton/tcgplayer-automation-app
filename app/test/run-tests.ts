@@ -50,6 +50,7 @@ import "../features/pricing/domain/maximize.test";
 import "../features/pricing/services/supplyAnalysisService.test";
 import "../features/pricing/algorithms/buyerArrivalRate.test";
 import "../features/pricing/algorithms/buyerChoiceSellTime.test";
+import "../features/pricing/algorithms/conditionSaleRate.test";
 import "../features/pricing/domain/forecastGrading.test";
 import "../features/inventory-strategy/services/forecastGrading.server.test";
 import "../features/pricing/algorithms/getSuggestedPriceFromLatestSales.test";

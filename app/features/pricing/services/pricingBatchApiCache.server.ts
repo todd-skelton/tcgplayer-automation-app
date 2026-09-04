@@ -1,5 +1,9 @@
 import type { Sku } from "~/shared/data-types/sku";
 import {
+  fetchAnnualPriceHistory,
+  type GetPriceHistoryResponse,
+} from "~/integrations/tcgplayer/client/get-price-history.server";
+import {
   getAllLatestSales,
   type GetLastSalesRequestParams,
   type GetLastestSalesRequestBody,
@@ -35,6 +39,10 @@ function createCacheKey(value: unknown): string {
 
 export class PricingBatchApiCache {
   private latestSalesRequests = new Map<string, Promise<Sale[]>>();
+  private priceHistoryRequests = new Map<
+    number,
+    Promise<GetPriceHistoryResponse | undefined>
+  >();
   private listingRequests = new Map<string, Promise<ListingObservation>>();
   private lowestListingPriceRequests = new Map<
     string,
@@ -55,6 +63,19 @@ export class PricingBatchApiCache {
 
     const request = getAllLatestSales(params, body, maxSales);
     this.latestSalesRequests.set(key, request);
+    return request;
+  }
+
+  fetchPriceHistory(
+    productId: number,
+  ): Promise<GetPriceHistoryResponse | undefined> {
+    const cached = this.priceHistoryRequests.get(productId);
+    if (cached) {
+      return cached;
+    }
+
+    const request = fetchAnnualPriceHistory(productId);
+    this.priceHistoryRequests.set(productId, request);
     return request;
   }
 

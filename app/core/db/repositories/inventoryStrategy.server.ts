@@ -129,7 +129,11 @@ export const inventoryStrategyRepository = {
         (result.pricing_details_json->'buyerChoiceForecast'->>'medianSellDays')::float8
           AS "buyerChoiceMedianSellDays",
         result.pricing_details_json->'buyerChoiceForecast'->>'calibration'
-          AS "buyerChoiceCalibration"
+          AS "buyerChoiceCalibration",
+        (result.pricing_details_json->'conditionRateForecast'->>'medianSellDays')::float8
+          AS "conditionRateMedianSellDays",
+        result.pricing_details_json->'conditionRateForecast'->>'method'
+          AS "conditionRateMethod"
       FROM inventory_batch_results result
       JOIN inventory_batches batch ON batch.batch_number = result.batch_number
       WHERE batch.source_type = 'continuous'

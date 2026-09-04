@@ -1,12 +1,14 @@
 import type {
   BuyerChoiceForecast,
   ConditionNormalizationDetail,
+  ConditionRateForecast,
   PricerSku,
   PricingPercentileDetail,
   PricingConfig,
   SuggestedPriceResolver,
 } from "../../../core/types/pricing";
 import { forecastBuyerChoice } from "../algorithms/buyerChoiceSellTime";
+import { forecastConditionRate } from "../algorithms/conditionSaleRate";
 import {
   calculateInsufficientSalesFallback,
   calculateMarketplacePrice,
@@ -142,6 +144,7 @@ export interface PricingResult {
   warnings?: string[];
   pricingDecision?: PricingDecision;
   buyerChoiceForecast?: BuyerChoiceForecast;
+  conditionRateForecast?: ConditionRateForecast;
   conditionNormalization?: ConditionNormalizationDetail;
   shadowPricingDecision?: PricingDecision;
 }
@@ -388,6 +391,10 @@ export class PricingCalculator {
           pricedItem.buyerChoiceForecast = forecastBuyerChoice(
             curve,
             activeDecision.selectedPrice,
+          );
+          pricedItem.conditionRateForecast = forecastConditionRate(
+            result.conditionSaleRate,
+            activeDecision.storeWinShare,
           );
         } else if (activePolicy.method !== "percentile" && activeDecision) {
           pricedItem.pricingDecision = activeDecision;

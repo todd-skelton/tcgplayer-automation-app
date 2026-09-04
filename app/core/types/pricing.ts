@@ -122,6 +122,25 @@ export interface ConditionNormalizationDetail {
   conditionTimeConnected: boolean;
 }
 
+/** The listed condition's own sale rate over the last year. */
+export interface ConditionSaleRate {
+  /** Mean days between sales of this exact SKU, weighted toward the last quarter. */
+  intervalDays: number;
+  /** Sales of the SKU in the year. */
+  transactions: number;
+  /** Name of the estimator that produced it. */
+  method: string;
+}
+
+/**
+ * The sell-time forecast from the listed condition's own sale rate at the
+ * listed price, recorded beside the curve's forecast so realized sales can
+ * grade it.
+ */
+export interface ConditionRateForecast extends ConditionSaleRate {
+  medianSellDays: number;
+}
+
 export interface PersistedPricingDetails {
   schemaVersion: number;
   pricingModelVersion?: string;
@@ -152,6 +171,7 @@ export interface PersistedPricingDetails {
   decision?: PricingDecision;
   shadowDecision?: PricingDecision;
   buyerChoiceForecast?: BuyerChoiceForecast;
+  conditionRateForecast?: ConditionRateForecast;
   conditionNormalization?: ConditionNormalizationDetail;
 }
 
@@ -174,6 +194,7 @@ export interface SuggestedPriceResult {
     storeWinShare?: number;
     supplyStatus?: PricingSupplyStatus;
   }>;
+  conditionSaleRate?: ConditionSaleRate;
   conditionNormalization?: ConditionNormalizationDetail;
 }
 
@@ -261,6 +282,7 @@ export type PricedSku = {
   pricingDecision?: PricingDecision;
   shadowPricingDecision?: PricingDecision;
   buyerChoiceForecast?: BuyerChoiceForecast;
+  conditionRateForecast?: ConditionRateForecast;
   conditionNormalization?: ConditionNormalizationDetail;
   errors?: string[];
   warnings?: string[];

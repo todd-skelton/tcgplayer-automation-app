@@ -72,6 +72,9 @@ export async function resolveSuggestedPrice(
     fetchLatestSales: options.batchApiCache
       ? options.batchApiCache.fetchLatestSales.bind(options.batchApiCache)
       : undefined,
+    fetchPriceHistory: options.batchApiCache
+      ? options.batchApiCache.fetchPriceHistory.bind(options.batchApiCache)
+      : undefined,
     fetchListingsForSku: options.batchApiCache
       ? options.batchApiCache.fetchListingsForSku.bind(options.batchApiCache)
       : undefined,
@@ -90,6 +93,7 @@ export async function resolveSuggestedPrice(
     salesCount: algorithmResult.salesCount,
     listingsCount: algorithmResult.listingsCount,
     percentiles: algorithmResult.percentiles,
+    conditionSaleRate: algorithmResult.conditionSaleRate,
     conditionNormalization: algorithmResult.conditionNormalization,
   };
 }

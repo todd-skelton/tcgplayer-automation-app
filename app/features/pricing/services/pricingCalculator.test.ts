@@ -490,3 +490,54 @@ assert.equal(
   unavailableSupplyResult.pricedItems[0]?.shadowPricingDecision?.basis,
   "current-price",
 );
+
+const conditionRateResult = await calculator.calculatePrices(
+  [
+    {
+      sku: 790,
+      quantity: 1,
+      currentPrice: 20,
+      productLineId: 1,
+      setId: 2,
+      productId: 3,
+    },
+  ],
+  {
+    percentile: 65,
+    suggestedPriceResolver: async () => ({
+      suggestedPrice: 14,
+      percentiles: [
+        {
+          percentile: 5,
+          price: 10,
+          historicalSalesVelocityMs: 10 * 24 * 60 * 60 * 1000,
+          listingsCount: 0,
+          storeWinShare: 1,
+          supplyStatus: "observed",
+        },
+        {
+          percentile: 65,
+          price: 14,
+          historicalSalesVelocityMs: 30 * 24 * 60 * 60 * 1000,
+          listingsCount: 3,
+          storeWinShare: 0.25,
+          supplyStatus: "observed",
+        },
+      ],
+      conditionSaleRate: {
+        intervalDays: 12,
+        transactions: 30,
+        method: "annual-buckets-v1",
+      },
+    }),
+  },
+);
+const conditionRate = conditionRateResult.pricedItems[0]?.conditionRateForecast;
+assert.equal(conditionRate?.transactions, 30);
+assert.ok(
+  Math.abs((conditionRate?.medianSellDays ?? 0) - (Math.LN2 * 12) / 0.25) <
+    1e-9,
+  "the condition-rate forecast is the own-condition interval over the win share at the listed price",
+);
+
+console.log("PASS the condition-rate forecast is recorded at the listed price");

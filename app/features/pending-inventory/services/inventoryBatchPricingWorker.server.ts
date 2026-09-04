@@ -98,6 +98,7 @@ function buildPricingDetails(
     listingsCountForEstimated: pricedSku.listingsCountForEstimated,
     percentiles: pricedSku.percentiles,
     buyerChoiceForecast: pricedSku.buyerChoiceForecast,
+    conditionRateForecast: pricedSku.conditionRateForecast,
     conditionNormalization: pricedSku.conditionNormalization,
     warnings: pricedSku.warnings || [],
     errors: pricedSku.errors || [],

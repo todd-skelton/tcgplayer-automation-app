@@ -1,5 +1,6 @@
 import { inventoryStrategyRepository } from "~/core/db";
 import { BUYER_CHOICE_CALIBRATION } from "~/features/pricing/algorithms/buyerChoiceSellTime";
+import { CONDITION_RATE_METHOD } from "~/features/pricing/algorithms/conditionSaleRate";
 import {
   buildCohort,
   gradeForecast,
@@ -13,7 +14,6 @@ import {
 } from "../types/inventoryStrategy";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const FORECAST_NAMES = ["curve", "buyer-choice"];
 const NO_GRADE: ForecastGrade = {
   count: 0,
   soldShare: 0,
@@ -30,10 +30,10 @@ export interface ForecastGradingSource {
 }
 
 /**
- * Grades the curve forecast and the buyer-choice forecast at each horizon
- * over the newest complete cohort: SKUs priced under continuous pricing
- * within the last two horizons whose first graded result is at least one
- * horizon old. Results priced under the target-horizon policy carry no curve
+ * Grades the curve, buyer-choice, and condition-rate forecasts at each
+ * horizon, each over its own newest complete cohort: SKUs priced under
+ * continuous pricing within the last two horizons whose first result carrying
+ * that forecast is at least one horizon old. Results priced under the target-horizon policy carry no curve
  * forecast, because that policy pins it to the horizon.
  */
 export async function loadForecastGrading(
@@ -69,6 +69,13 @@ export async function loadForecastGrading(
     } else if (row.buyerChoiceCalibration !== null) {
       otherCalibrationCount += 1;
     }
+    const conditionRateDays = row.conditionRateMedianSellDays ?? 0;
+    if (
+      row.conditionRateMethod === CONDITION_RATE_METHOD &&
+      conditionRateDays > 0
+    ) {
+      forecasts["condition-rate"] = conditionRateDays;
+    }
     records.push({
       sku: row.sku,
       pricedAt: row.pricedAt.getTime(),
@@ -79,23 +86,26 @@ export async function loadForecastGrading(
   const inStockSkus = new Set(inStock);
   return FORECAST_GRADING_HORIZON_DAYS.map((horizonDays) => {
     const windowStart = now.getTime() - 2 * horizonDays * DAY_MS;
-    const cohort = buildCohort(
-      records.filter((record) => record.pricedAt >= windowStart),
-      FORECAST_NAMES,
-      inStockSkus,
-      horizonDays,
+    const windowRecords = records.filter(
+      (record) => record.pricedAt >= windowStart,
     );
-    const grade = (name: string) =>
-      cohort.length === 0 ? NO_GRADE : gradeForecast(cohort, name, horizonDays);
-    const curve = grade("curve");
+    const grade = (name: string) => {
+      const cohort = buildCohort(
+        windowRecords,
+        [name],
+        inStockSkus,
+        horizonDays,
+      );
+      return cohort.length === 0
+        ? NO_GRADE
+        : gradeForecast(cohort, name, horizonDays);
+    };
     return {
       horizonDays,
-      cohortSize: cohort.length,
-      soldShare: curve.soldShare,
-      baseRateBrier: curve.soldShare * (1 - curve.soldShare),
       otherCalibrationCount,
-      curve,
+      curve: grade("curve"),
       buyerChoice: grade("buyer-choice"),
+      conditionRate: grade("condition-rate"),
     };
   });
 }

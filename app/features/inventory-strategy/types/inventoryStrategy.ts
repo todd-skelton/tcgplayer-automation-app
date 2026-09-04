@@ -141,18 +141,21 @@ export interface ForecastGradingRecord {
   curveMedianSellDays: number | null;
   buyerChoiceMedianSellDays: number | null;
   buyerChoiceCalibration: string | null;
+  conditionRateMedianSellDays: number | null;
+  conditionRateMethod: string | null;
 }
 
-/** Both forecasts graded against realized sales over one horizon. */
+/**
+ * Every forecast graded against realized sales over one horizon, each over
+ * the SKUs that carried it.
+ */
 export interface ForecastGradingReport {
   horizonDays: number;
-  cohortSize: number;
-  soldShare: number;
-  baseRateBrier: number;
   /** Results whose buyer-choice forecast came from an earlier calibration. */
   otherCalibrationCount: number;
   curve: ForecastGrade;
   buyerChoice: ForecastGrade;
+  conditionRate: ForecastGrade;
 }
 
 export interface InventoryStrategyDashboard {
