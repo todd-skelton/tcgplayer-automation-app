@@ -1,0 +1,53 @@
+[
+  {
+    "_type": "PageErrorModule",
+    "messages": [
+      {
+        "_type": "TextualDisplay",
+        "textSpans": [
+          {
+            "_type": "TextSpan",
+            "text": "No sold results found for \"Ponyta nonexistent-cert-0000000000\""
+          }
+        ]
+      }
+    ],
+    "severity": "WARNING"
+  },
+  {
+    "_type": "ResultsHeaderModule",
+    "tabs": [
+      {
+        "id": "sold",
+        "active": true
+      },
+      {
+        "id": "active",
+        "active": false
+      }
+    ],
+    "dateRange": {
+      "_type": "TextualDisplay",
+      "textSpans": [
+        {
+          "_type": "TextSpan",
+          "text": "Jun 7, 2026"
+        },
+        {
+          "_type": "TextSpan",
+          "text": "–"
+        },
+        {
+          "_type": "TextSpan",
+          "text": "Sep 5, 2026"
+        }
+      ]
+    }
+  },
+  {
+    "_type": "ResearchAggregateModule"
+  },
+  {
+    "_type": "SearchResultsModule"
+  }
+]

@@ -1,0 +1,686 @@
+[
+  {
+    "_type": "PageErrorModule",
+    "severity": "ERROR"
+  },
+  {
+    "_type": "ResultsHeaderModule",
+    "tabs": [
+      {
+        "id": "sold",
+        "active": true
+      },
+      {
+        "id": "active",
+        "active": false
+      }
+    ],
+    "dateRange": {
+      "_type": "TextualDisplay",
+      "textSpans": [
+        {
+          "_type": "TextSpan",
+          "text": "Jun 7, 2026"
+        },
+        {
+          "_type": "TextSpan",
+          "text": "–"
+        },
+        {
+          "_type": "TextSpan",
+          "text": "Sep 5, 2026"
+        }
+      ]
+    },
+    "autoSwitchTooltip": {
+      "_type": "TextualDisplay",
+      "textSpans": [
+        {
+          "_type": "TextSpan",
+          "text": "We couldn't find any Sold results in the date range you've selected, so we've switched to Active listings."
+        }
+      ]
+    }
+  },
+  {
+    "_type": "ResearchAggregateModule",
+    "sections": [
+      {
+        "dataItems": [
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Avg sold price"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "$168.49"
+                }
+              ]
+            }
+          },
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Sold price range"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "$18.50 - $450.00"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "dataItems": [
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Avg shipping"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "$10.80"
+                }
+              ]
+            }
+          },
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Free shipping"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "19%"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "dataItems": [
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Total sold"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "21"
+                }
+              ]
+            }
+          },
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Sell-through"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "40.38%"
+                }
+              ]
+            }
+          },
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Total sellers"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "19"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "dataItems": [
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Total item sales"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "$3,538.29"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "_type": "SearchResultsModule",
+    "results": [
+      {
+        "listing": {
+          "itemId": {
+            "_type": "TextualDisplayValue",
+            "value": "117245257846",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "117245257846"
+              }
+            ]
+          },
+          "title": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9"
+              }
+            ]
+          },
+          "extendedTitle": {
+            "_type": "TextualDisplayValue",
+            "value": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 060/102 40 Base Set (Shadowless) Basic Common English Ken Sugimori Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850",
+            "textSpans": [
+              {
+                "_type": "TextSpan"
+              }
+            ]
+          },
+          "formatList": [
+            {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Fixed price"
+                }
+              ]
+            }
+          ]
+        },
+        "avgsalesprice": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$124.99"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Free shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Fixed price"
+              }
+            ]
+          }
+        },
+        "avgshipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$0.00"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "100% Free shipping"
+              }
+            ]
+          }
+        },
+        "itemssold": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "1"
+            }
+          ]
+        },
+        "totalsales": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "$124.99"
+            }
+          ]
+        },
+        "bids": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "-"
+            }
+          ]
+        },
+        "datelastsold": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "Jun 21, 2026"
+            }
+          ]
+        }
+      },
+      {
+        "listing": {
+          "itemId": {
+            "_type": "TextualDisplayValue",
+            "value": "127936723252",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "127936723252"
+              }
+            ]
+          },
+          "title": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9"
+              }
+            ]
+          },
+          "extendedTitle": {
+            "_type": "TextualDisplayValue",
+            "value": "1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9 060/102 40 60 Base Set (Shadowless) Basic Common English Ken Sugimori No Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850",
+            "textSpans": [
+              {
+                "_type": "TextSpan"
+              }
+            ]
+          },
+          "formatList": [
+            {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Fixed price"
+                }
+              ]
+            }
+          ]
+        },
+        "avgsalesprice": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$130.00"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$6.50 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Fixed price"
+              }
+            ]
+          }
+        },
+        "avgshipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$6.50"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        },
+        "itemssold": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "1"
+            }
+          ]
+        },
+        "totalsales": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "$130.00"
+            }
+          ]
+        },
+        "bids": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "-"
+            }
+          ]
+        },
+        "datelastsold": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "Jun 22, 2026"
+            }
+          ]
+        }
+      },
+      {
+        "listing": {
+          "itemId": {
+            "_type": "TextualDisplayValue",
+            "value": "127943558744",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "127943558744"
+              }
+            ]
+          },
+          "title": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC"
+              }
+            ]
+          },
+          "extendedTitle": {
+            "_type": "TextualDisplayValue",
+            "value": "1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850",
+            "textSpans": [
+              {
+                "_type": "TextSpan"
+              }
+            ]
+          },
+          "formatList": [
+            {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Fixed price"
+                }
+              ]
+            }
+          ]
+        },
+        "avgsalesprice": {
+          "avgsalesprice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$160.00"
+              }
+            ]
+          },
+          "averageshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$20.27 shipping"
+              }
+            ]
+          },
+          "format": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "Fixed price"
+              }
+            ]
+          }
+        },
+        "avgshipping": {
+          "avgshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$20.27"
+              }
+            ]
+          },
+          "freeshipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "0% Free shipping"
+              }
+            ]
+          }
+        },
+        "itemssold": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "1"
+            }
+          ]
+        },
+        "totalsales": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "$160.00"
+            }
+          ]
+        },
+        "bids": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "-"
+            }
+          ]
+        },
+        "datelastsold": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "Jul 20, 2026"
+            }
+          ]
+        }
+      }
+    ],
+    "pagination": {
+      "summary": {
+        "_type": "TextualDisplay",
+        "textSpans": [
+          {
+            "_type": "TextSpan",
+            "text": "Results: 1 - 3"
+          }
+        ]
+      },
+      "first": {
+        "_type": "PaginationTextualDisplay",
+        "disabled": false,
+        "textSpans": [
+          {
+            "_type": "TextSpan"
+          }
+        ]
+      },
+      "prev": {
+        "_type": "PaginationTextualDisplay",
+        "disabled": true,
+        "textSpans": [
+          {
+            "_type": "TextSpan"
+          }
+        ]
+      },
+      "current": {
+        "_type": "TextualDisplay",
+        "textSpans": [
+          {
+            "_type": "TextSpan",
+            "text": "Page 1"
+          }
+        ]
+      },
+      "next": {
+        "_type": "PaginationTextualDisplay",
+        "disabled": true,
+        "textSpans": [
+          {
+            "_type": "TextSpan"
+          }
+        ]
+      },
+      "itemsPerPage": {
+        "options": [
+          {
+            "_type": "OptionValueSpan",
+            "value": "10",
+            "selected": false,
+            "text": "10"
+          },
+          {
+            "_type": "OptionValueSpan",
+            "value": "20",
+            "selected": false,
+            "text": "20"
+          },
+          {
+            "_type": "OptionValueSpan",
+            "value": "50",
+            "selected": true,
+            "text": "50"
+          }
+        ],
+        "label": "Results per page"
+      },
+      "currentPageNum": 1
+    }
+  }
+]

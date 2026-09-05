@@ -57,21 +57,35 @@ function providerUrl(provider: SlabProvider, path: string): URL {
 async function readText(
   response: Response,
   signal: AbortSignal,
+  onText?: (chunk: string) => void,
 ): Promise<string> {
   const reader = response.body?.getReader();
   if (!reader) throw new ProviderRequestError("invalid-response");
   const decoder = new TextDecoder();
   let size = 0;
   let text = "";
+  let started = false;
+  const consume = (chunk: string) => {
+    if (!started && chunk.trim()) {
+      started = true;
+      if (chunk.trimStart().startsWith("<"))
+        throw new ProviderRequestError("reconnect-required");
+    }
+    if (onText) onText(chunk);
+    else text += chunk;
+  };
   try {
     for (;;) {
       signal.throwIfAborted();
       const { value, done } = await reader.read();
-      if (done) return text + decoder.decode();
+      if (done) {
+        consume(decoder.decode());
+        return text;
+      }
       size += value.byteLength;
       if (size > MAX_RESPONSE_BYTES)
         throw new ProviderRequestError("invalid-response");
-      text += decoder.decode(value, { stream: true });
+      consume(decoder.decode(value, { stream: true }));
     }
   } finally {
     await reader.cancel().catch(() => {});
@@ -100,6 +114,8 @@ export function createProviderRequest(
       signal?: AbortSignal;
       timeoutMs?: number;
       validate?: (body: string) => void;
+      /** Consume decoded chunks without retaining the complete response string. */
+      onText?: (chunk: string) => void;
     } = {},
   ): Promise<string> {
     const url = providerUrl(provider, request.path);
@@ -173,7 +189,7 @@ export function createProviderRequest(
           await response.body?.cancel();
           throw new ProviderRequestError("invalid-response");
         }
-        const body = await readText(response, signal);
+        const body = await readText(response, signal, options.onText);
         if (/^\s*</.test(body))
           throw new ProviderRequestError("reconnect-required");
         options.validate?.(body);

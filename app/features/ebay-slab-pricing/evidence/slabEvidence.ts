@@ -14,6 +14,7 @@ export type SaleEvidence = {
   date: string | null;
   format: string | null;
   title: string | null;
+  extendedTitle?: string | null;
   card: SlabIdentity["card"] | null;
   grading: SlabIdentity["grading"];
   certificateNumber: string | null;
@@ -40,6 +41,8 @@ export type SalesEvidenceResult = {
   };
 };
 export type SupplyEvidence = {
+  title?: string | null;
+  extendedTitle?: string | null;
   provider: "alt" | "ebayResearch";
   providerId: string;
   assetId: string | null;
