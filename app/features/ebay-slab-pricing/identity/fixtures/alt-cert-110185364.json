@@ -1,0 +1,31 @@
+{
+  "data": {
+    "cert": {
+      "certNumber": "110185364",
+      "gradeNumber": "1.0",
+      "gradingCompany": "PSA",
+      "autograph": null,
+      "qualifier": null,
+      "centering": null,
+      "corners": null,
+      "edges": null,
+      "surfaces": null,
+      "asset": {
+        "id": "20c46c8c-4290-4953-b76f-5892bb442f87",
+        "name": "2002 Pokemon Legendary Collection Reverse Holo Hitmonlee #13",
+        "year": 2002,
+        "subject": "Hitmonlee",
+        "category": "POKEMON_CARDS",
+        "brand": "Pokemon Legendary Collection",
+        "variety": "Reverse Holo",
+        "attributes": {
+          "cardNumber": "13",
+          "printRun": null,
+          "__typename": "AssetAttributes"
+        },
+        "__typename": "Asset"
+      },
+      "__typename": "Cert"
+    }
+  }
+}

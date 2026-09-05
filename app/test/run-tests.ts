@@ -70,3 +70,4 @@ import "../features/inventory-strategy/services/forecastGrading.server.test";
 import "../features/pricing/algorithms/getSuggestedPriceFromLatestSales.test";
 import "../features/shipping-export/components/steps/PackStep.test";
 import "../features/ebay-slab-pricing/connections/providerConnections.test";
+import "../features/ebay-slab-pricing/identity/slabIdentity.test";
