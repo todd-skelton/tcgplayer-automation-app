@@ -1,0 +1,57 @@
+import type { SlabIdentity } from "../identity/slabIdentity";
+
+export type EvidenceWindow = { from: string; to: string };
+export type Money = { amount: number; currency: string | null };
+export type SaleEvidence = {
+  provider: "alt" | "ebayResearch";
+  providerId: string;
+  assetId: string | null;
+  sourceUrl: string | null;
+  sourceReference: string | null;
+  sourceItemId: string | null;
+  venue: string | null;
+  kind: "transaction" | "listing-average";
+  date: string | null;
+  format: string | null;
+  title: string | null;
+  card: SlabIdentity["card"] | null;
+  grading: SlabIdentity["grading"];
+  certificateNumber: string | null;
+  price: Money | null;
+  convertedPrice: Money | null;
+  shipping: Money | null;
+  fees: Money | null;
+  shippingIncluded: boolean | null;
+  buyerPremiumIncluded: boolean | null;
+  quantity: number | null;
+  subjectToChange: boolean | null;
+  skippedReason: string | null;
+};
+export type SalesEvidenceResult = {
+  sales: SaleEvidence[];
+  asOf: string;
+  coverage: {
+    requestedWindow: EvidenceWindow;
+    observedWindow: EvidenceWindow | null;
+    complete: false;
+    reason: "capped-per-grade" | "paged-search";
+    sourceCount: number;
+    limitPerGrade: number | null;
+  };
+};
+export type SupplyEvidence = {
+  provider: "alt" | "ebayResearch";
+  providerId: string;
+  assetId: string | null;
+  venue: string;
+  sourceUrl: string | null;
+  format: string | null;
+  state: string | null;
+  price: Money | null;
+  priceKind: "ask" | "bid" | "unknown";
+  shipping: Money | null;
+  quantity: number | null;
+  startedAt: string | null;
+  endsAt: string | null;
+  items: Array<{ assetId: string | null; grading: SlabIdentity["grading"] }>;
+};

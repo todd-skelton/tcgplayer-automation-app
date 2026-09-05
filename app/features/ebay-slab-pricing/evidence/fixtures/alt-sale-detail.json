@@ -1,0 +1,39 @@
+{
+  "data": {
+    "externalTransaction": {
+      "date": "2026-09-05",
+      "id": "11020cc4-2783-494b-86b8-7d90c3ecc298",
+      "auctionHouse": "eBay",
+      "auctionName": "1999 Ponyta 60/102 Base Set 1st Edition PSA 4 VG-EX Pokemon TCG",
+      "auctionType": "BEST_OFFER",
+      "displayPrice": 27.46,
+      "label": "",
+      "fees": null,
+      "shipping": 17.59,
+      "usdAmount": 27.46,
+      "consolidatedSkippedReason": null,
+      "currency": null,
+      "asset": {
+        "id": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+        "name": "1999 Pokemon Base Set 1st Edition Ponyta #60",
+        "year": 1999,
+        "subject": "Ponyta",
+        "category": "POKEMON_CARDS",
+        "brand": "Pokemon Base Set",
+        "variety": "1st Edition",
+        "attributes": {
+          "cardNumber": "60",
+          "printRun": null
+        }
+      },
+      "attributes": {
+        "grade": "4.0",
+        "gradingCompany": "PSA",
+        "cert": null,
+        "url": "https://www.ebay.com/itm/335037487554",
+        "autograph": null
+      },
+      "subjectToChange": false
+    }
+  }
+}
