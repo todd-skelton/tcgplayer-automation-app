@@ -1,0 +1,73 @@
+{
+  "data": {
+    "asset": {
+      "id": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+      "marketTransactions": [
+        {
+          "id": "d7bcc0d1-1305-48e4-ab06-b17451f02780",
+          "date": "2026-09-04",
+          "auctionHouse": "Alt",
+          "auctionType": "AUCTION",
+          "price": "79.20",
+          "attributes": {
+            "gradeNumber": "9.0",
+            "gradingCompany": "PSA",
+            "url": "ab984d1c-d1ad-44ab-961e-fb3b3a63bba2",
+            "autograph": null
+          },
+          "subjectToChange": false,
+          "consolidatedSkippedReason": "PENDING",
+          "label": ""
+        },
+        {
+          "id": "52d35b8b-c1d8-438d-96f0-4b58c9addba2",
+          "date": "2026-08-02",
+          "auctionHouse": "PWCC Weekly Auctions",
+          "auctionType": "AUCTION",
+          "price": "15.60",
+          "attributes": {
+            "gradeNumber": "0.0",
+            "gradingCompany": "CGC",
+            "url": "https://www.fanaticscollect.com/weekly/1d1e4946-879c-11f1-be85-0ad68bfbd9dd",
+            "autograph": null
+          },
+          "subjectToChange": false,
+          "consolidatedSkippedReason": null,
+          "label": ""
+        },
+        {
+          "id": "1eb317f0-3048-467c-81e5-e6000cbc548c",
+          "date": "2024-11-03",
+          "auctionHouse": "PWCC Weekly Auctions",
+          "auctionType": "AUCTION",
+          "price": "336.00",
+          "attributes": {
+            "gradeNumber": "10.5",
+            "gradingCompany": "CGC",
+            "url": "https://www.fanaticscollect.com/weekly/b09db9dc-868a-11ef-b578-0a58a9feac02",
+            "autograph": null
+          },
+          "subjectToChange": false,
+          "consolidatedSkippedReason": null,
+          "label": ""
+        },
+        {
+          "id": "11020cc4-2783-494b-86b8-7d90c3ecc298",
+          "date": "2026-09-05",
+          "auctionHouse": "eBay",
+          "auctionType": "BEST_OFFER",
+          "price": "27.46",
+          "attributes": {
+            "gradeNumber": "4.0",
+            "gradingCompany": "PSA",
+            "url": "https://www.ebay.com/itm/335037487554",
+            "autograph": null
+          },
+          "subjectToChange": false,
+          "consolidatedSkippedReason": null,
+          "label": ""
+        }
+      ]
+    }
+  }
+}
