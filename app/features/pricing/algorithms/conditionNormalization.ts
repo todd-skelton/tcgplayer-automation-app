@@ -397,21 +397,27 @@ export function normalizeListingsToTargetCondition<
  * condition's terms. Scaling a curve's top price back through any condition's
  * multipliers lands on this same number, so one listings fetch capped here
  * serves every condition of the product. It refits for the best condition
- * rather than rescaling the target's multipliers so that every SKU of the
- * product computes the identical number and the batch cache sees one request.
+ * rather than rescaling the target's multipliers, and rounds up to the cent,
+ * so that every SKU of the product computes the identical number and the
+ * batch cache sees one request.
  */
 export function competingAskCeiling(
   sales: Sale[],
   options: ConditionNormalizationOptions = {},
 ): number | undefined {
-  const bestCondition = CONDITION_ORDER[0];
+  const saleTimes = sales
+    .map((sale) => Date.parse(sale.orderDate))
+    .filter(Number.isFinite);
+  if (saleTimes.length === 0) return undefined;
+  // Anchored to the newest sale, not the clock, so SKUs priced seconds apart
+  // weigh the sales identically and compute the identical cap.
   const { multipliers } = fitTimeAwareZipfModelToConditions(
     sales,
-    bestCondition,
-    options,
+    CONDITION_ORDER[0],
+    { ...options, asOfTimestamp: options.asOfTimestamp ?? Math.max(...saleTimes) },
   );
   const prices = normalizeSalesToTargetCondition(sales, multipliers).map(
     ({ price }) => price,
   );
-  return prices.length > 0 ? Math.max(...prices) : undefined;
+  return Math.ceil(Math.max(...prices) * 100) / 100;
 }

@@ -145,13 +145,22 @@ const ceiling = competingAskCeiling([...singleConditionSales, damagedSale], {
 });
 assert.equal(round(ceiling), round(11.5));
 assert.equal(
-  round(
-    competingAskCeiling([damagedSale, nearMintSale(9.5, 1)], {
-      asOfTimestamp,
-      siblingMarketPrices: marketPrices,
-    }),
-  ),
-  round(9 * (11.32 / 9.24)),
+  competingAskCeiling([damagedSale, nearMintSale(9.5, 1)], {
+    asOfTimestamp,
+    siblingMarketPrices: marketPrices,
+  }),
+  Math.ceil(9 * (11.32 / 9.24) * 100) / 100,
 );
 assert.equal(competingAskCeiling([], { asOfTimestamp }), undefined);
+// Without a clock the cap is anchored to the newest sale, so two SKUs of the
+// product priced at different moments agree to the cent.
+assert.equal(
+  competingAskCeiling([...singleConditionSales, damagedSale], {
+    siblingMarketPrices: marketPrices,
+  }),
+  competingAskCeiling([...singleConditionSales, damagedSale], {
+    asOfTimestamp: asOfTimestamp - 86_400_000,
+    siblingMarketPrices: marketPrices,
+  }),
+);
 console.log("PASS the listings cap is the highest sale in the best condition's terms");
