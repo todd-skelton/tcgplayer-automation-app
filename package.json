@@ -14,6 +14,7 @@
     "test": "tsx app/test/run-tests.ts",
     "build": "node scripts/run-with-node-options.mjs react-router build && node scripts/build-workers.mjs",
     "start:pricing-worker": "node build/workers/pricing-worker.js",
+    "start:slab-evidence-worker": "node build/workers/slab-evidence-worker.js",
     "start:publication-worker": "node build/workers/publication-worker.js",
     "start:continuous-pricing-scheduler": "node build/workers/continuous-pricing-scheduler.js",
     "start": "node scripts/run-with-node-options.mjs react-router-serve ./build/server/index.js",

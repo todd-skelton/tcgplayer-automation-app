@@ -73,3 +73,4 @@ import "../features/ebay-slab-pricing/connections/providerConnections.test";
 import "../features/ebay-slab-pricing/identity/slabIdentity.test";
 import "../features/ebay-slab-pricing/evidence/altEvidenceProvider.test";
 import "../features/ebay-slab-pricing/evidence/ebayResearchProvider.test";
+import "../features/ebay-slab-pricing/evidence/evidenceRefresh.test";
