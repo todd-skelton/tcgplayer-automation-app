@@ -1,0 +1,228 @@
+[
+  {
+    "_type": "PageErrorModule",
+    "messages": [
+      {
+        "_type": "TextualDisplay",
+        "textSpans": [
+          {
+            "_type": "TextSpan",
+            "text": "No active results found for \"Ponyta nonexistent-cert-0000000000\""
+          }
+        ]
+      }
+    ],
+    "severity": "ERROR"
+  },
+  {
+    "_type": "ResultsHeaderModule",
+    "tabs": [
+      {
+        "id": "sold",
+        "active": false
+      },
+      {
+        "id": "active",
+        "active": true
+      }
+    ]
+  },
+  {
+    "_type": "ResearchAggregateModule",
+    "sections": [
+      {
+        "dataItems": [
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Avg listing price"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "$0.00"
+                }
+              ]
+            },
+            "tooltip": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "The average price similar items are currently listed for. Shipping costs aren't included in the listing price."
+                }
+              ]
+            }
+          },
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Listing price range"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "- - -"
+                }
+              ]
+            },
+            "tooltip": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "The minimum and maximum price similar items are listed for. Shipping costs aren't included in the listing prices."
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "dataItems": [
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Avg shipping"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "$0.00"
+                }
+              ]
+            },
+            "tooltip": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "The average shipping cost to be paid by the buyer. This average doesn't include listings with free shipping."
+                }
+              ]
+            }
+          },
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Free shipping"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "0%"
+                }
+              ]
+            },
+            "tooltip": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "The percentage of active listings that offer free shipping."
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "dataItems": [
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Total active listings"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "0"
+                }
+              ]
+            },
+            "tooltip": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "The total number of active listings."
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "dataItems": [
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Promoted listings"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "0%"
+                }
+              ]
+            },
+            "tooltip": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "The percentage of listings that are sponsored through Promoted Listings."
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "_type": "ActiveSearchResultsModule"
+  }
+]

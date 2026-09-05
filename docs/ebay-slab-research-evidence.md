@@ -1,0 +1,19 @@
+# eBay Research evidence
+
+`createEbayResearchForRun(signal)` exposes on-demand `getSalesPage(query)` and `getSupplyPage(query)`. Queries include explicit keywords, an inclusive date window, offset, page size (10/20/50) and timezone. The current adapter supports EBAY-US and English USD displays. It defaults to three page requests per run; the lower-level factory allows a maximum of ten. Every request also uses the existing shared provider lease, cooldown, byte limit and deadline. Callers reschedule busy work rather than poll.
+
+`buildResearchKeywords(identity)` includes known card, language, edition, finish/stamp and grade constraints. The optional `omit-set` broadening is explicit and retains the other constraints. Results remain unverified candidates: the queried identity is never copied into each result. Screening and identity decisions follow in #26/#28.
+
+The transport now offers a decoded-chunk callback without retaining the full response string. The Research parser scans only new characters, handles separators spanning chunks, and bounds the stream to two MiB, 16 modules and 50 rows. UTF-8 decoding stays in the transport. Duplicate/missing modules, malformed/truncated JSON, real module failures, mismatched date windows and inconsistent pagination fail the request instead of returning an empty collection.
+
+The selected `ResultsHeaderModule` tab determines source state. Its auto-switch tooltip is present even in successful sold results and is not evidence of a fallback. A sold request that returns active state produces `status: "active-fallback"` without a sales property. Active rows never enter sale evidence. Sold rows use `kind: "listing-average"`, retain total sold and last-sold date, and are not expanded into independent transactions. Original/extended titles remain available for screening. Prices exclude shipping; unknown fees, quantities or grade fields remain unknown. Auction supply is classified as bid data, including a displayed starting bid, rather than an executable asking price.
+
+Empty results require the observed exact message for the requested keywords, the matching selected tab and an empty result module. eBay uses a warning for no sold results and an error for no active results; active emptiness also requires a zero active-listing total. Other errors cannot replace cached evidence with an empty result. Consumers must distinguish an empty sold page from unavailable data and active fallback.
+
+Dates are converted at midnight in the requested timezone and at the next day's midnight for the inclusive end, accounting for daylight-saving changes. Returned sold date headers, page number, page size and row-range summary must agree with the request. Page metadata exposes the next offset and partial-page status. Exhausting a keyword search still does not prove complete market coverage.
+
+## Verification on September 5, 2026
+
+Live configured reads reproduced 21 sold Ponyta rows, ten rows on the second ten-row page, and 24 active listings. The first active auction displayed 9.50 USD with four bids. Exact empty sold and active searches were captured independently; neither is inferred from a missing module. Contract fixtures project three real rows per nonempty page and adjust pagination summaries to that sample, preserving the observed nested display structures. Empty fixtures retain the actual empty-response shape. Fixtures contain no cookies, account credentials or tracking actions.
+
+Tests cover one-character through full-frame chunks, split UTF-8 data, sold-to-active fallback, genuine empty responses, placeholder versus real errors, partial/malformed streams, monetary fields, grouped averages, auction bids, page/budget limits, mismatched ranges and DST boundaries. Populated results are candidates awaiting screening, and the supplied aggregate summaries are display context rather than pricing-model inputs.

@@ -1,0 +1,532 @@
+[
+  {
+    "_type": "PageErrorModule"
+  },
+  {
+    "_type": "ResultsHeaderModule",
+    "tabs": [
+      {
+        "id": "sold",
+        "active": false
+      },
+      {
+        "id": "active",
+        "active": true
+      }
+    ],
+    "autoSwitchTooltip": {
+      "_type": "TextualDisplay",
+      "textSpans": [
+        {
+          "_type": "TextSpan",
+          "text": "We couldn't find any Sold results in the date range you've selected, so we've switched to Active listings."
+        }
+      ]
+    }
+  },
+  {
+    "_type": "ResearchAggregateModule",
+    "sections": [
+      {
+        "dataItems": [
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Avg listing price"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "$308.96"
+                }
+              ]
+            }
+          },
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Listing price range"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "$9.50 - $1,490.73"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "dataItems": [
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Avg shipping"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "$17.28"
+                }
+              ]
+            }
+          },
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Free shipping"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "21%"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "dataItems": [
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Total active listings"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "24"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "dataItems": [
+          {
+            "header": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Promoted listings"
+                }
+              ]
+            },
+            "value": {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "21%"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "_type": "ActiveSearchResultsModule",
+    "results": [
+      {
+        "listing": {
+          "itemId": {
+            "_type": "TextualDisplayValue",
+            "value": "178447981501",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "178447981501"
+              }
+            ]
+          },
+          "title": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "PONYTA PSA 9 1999 POKEMON 1ST EDITION #60/102 BASE SET 5983"
+              }
+            ]
+          },
+          "formatList": [
+            {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Auction"
+                }
+              ]
+            }
+          ]
+        },
+        "listingPrice": {
+          "listingPrice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$9.50"
+              }
+            ]
+          },
+          "listingShipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$6.00 shipping"
+              }
+            ]
+          }
+        },
+        "bids": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "4"
+            }
+          ]
+        },
+        "watchers": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "15"
+            }
+          ]
+        },
+        "promoted": {
+          "_type": "IconAndText",
+          "text": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "-"
+              }
+            ]
+          }
+        },
+        "startDate": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "Sep 1, 2026"
+            }
+          ]
+        }
+      },
+      {
+        "listing": {
+          "itemId": {
+            "_type": "TextualDisplayValue",
+            "value": "397802495164",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "397802495164"
+              }
+            ]
+          },
+          "title": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "1999 Pokemon Base Set 1st Edition Shadowless Ponyta 60/102 PSA 9 Mint"
+              }
+            ]
+          },
+          "formatList": [
+            {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Fixed price"
+                }
+              ]
+            }
+          ]
+        },
+        "listingPrice": {
+          "listingPrice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$150.00"
+              }
+            ]
+          },
+          "listingShipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$5.17 shipping"
+              }
+            ]
+          }
+        },
+        "bids": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "-"
+            }
+          ]
+        },
+        "watchers": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "13"
+            }
+          ]
+        },
+        "promoted": {
+          "_type": "IconAndText",
+          "text": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "-"
+              }
+            ]
+          }
+        },
+        "startDate": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "Apr 4, 2026"
+            }
+          ]
+        }
+      },
+      {
+        "listing": {
+          "itemId": {
+            "_type": "TextualDisplayValue",
+            "value": "267752985103",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "267752985103"
+              }
+            ]
+          },
+          "title": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "PSA 9 MINT Ponyta 1st Edition 60/102 PokÃ©mon 1999 French Base Graded Card"
+              }
+            ]
+          },
+          "formatList": [
+            {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Fixed price"
+                }
+              ]
+            },
+            {
+              "_type": "TextualDisplay",
+              "textSpans": [
+                {
+                  "_type": "TextSpan",
+                  "text": "Best Offer accepted"
+                }
+              ]
+            }
+          ]
+        },
+        "listingPrice": {
+          "listingPrice": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "$99.99"
+              }
+            ]
+          },
+          "listingShipping": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "+$8.30 shipping"
+              }
+            ]
+          }
+        },
+        "bids": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "-"
+            }
+          ]
+        },
+        "watchers": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "0"
+            }
+          ]
+        },
+        "promoted": {
+          "_type": "IconAndText",
+          "text": {
+            "_type": "TextualDisplay",
+            "textSpans": [
+              {
+                "_type": "TextSpan",
+                "text": "-"
+              }
+            ]
+          }
+        },
+        "startDate": {
+          "_type": "TextualDisplay",
+          "textSpans": [
+            {
+              "_type": "TextSpan",
+              "text": "Aug 10, 2026"
+            }
+          ]
+        }
+      }
+    ],
+    "pagination": {
+      "summary": {
+        "_type": "TextualDisplay",
+        "textSpans": [
+          {
+            "_type": "TextSpan",
+            "text": "Results: 1 - 3"
+          }
+        ]
+      },
+      "first": {
+        "_type": "PaginationTextualDisplay",
+        "disabled": false,
+        "textSpans": [
+          {
+            "_type": "TextSpan"
+          }
+        ]
+      },
+      "prev": {
+        "_type": "PaginationTextualDisplay",
+        "disabled": true,
+        "textSpans": [
+          {
+            "_type": "TextSpan"
+          }
+        ]
+      },
+      "current": {
+        "_type": "TextualDisplay",
+        "textSpans": [
+          {
+            "_type": "TextSpan",
+            "text": "Page 1"
+          }
+        ]
+      },
+      "next": {
+        "_type": "PaginationTextualDisplay",
+        "disabled": true,
+        "textSpans": [
+          {
+            "_type": "TextSpan"
+          }
+        ]
+      },
+      "itemsPerPage": {
+        "options": [
+          {
+            "_type": "OptionValueSpan",
+            "value": "10",
+            "selected": false,
+            "text": "10"
+          },
+          {
+            "_type": "OptionValueSpan",
+            "value": "20",
+            "selected": false,
+            "text": "20"
+          },
+          {
+            "_type": "OptionValueSpan",
+            "value": "50",
+            "selected": true,
+            "text": "50"
+          }
+        ],
+        "label": "Results per page"
+      },
+      "currentPageNum": 1
+    }
+  }
+]
