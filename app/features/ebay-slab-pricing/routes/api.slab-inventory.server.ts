@@ -12,6 +12,11 @@ import { parseInventoryCsv } from "../inventory/slabInventoryCsv.server";
 import { readSlabJsonRequest } from "../readJsonRequest.server";
 import { ProviderRequestError } from "../connections/providerRequest.server";
 import { CONNECTION_MESSAGES } from "../connections/providerConnection";
+import {
+  createSellerRequestForRun,
+  sellerOAuthConfigured,
+} from "../inventory/ebaySellerRequest.server";
+import { createSellerInventoryProvider } from "../inventory/ebaySellerInventoryProvider.server";
 
 const response = (body: unknown, status = 200) =>
   data(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -50,6 +55,7 @@ export async function loader({ request }: { request: Request }) {
         url.searchParams.get("after") ?? "",
         Number(url.searchParams.get("limit") ?? 100),
       )),
+      sellerOAuthConfigured: sellerOAuthConfigured(),
     });
   } catch (error) {
     return failure(error);
@@ -143,6 +149,21 @@ export async function action({ request }: { request: Request }) {
             observedAt: new Date().toISOString(),
             listings: input.listings,
           },
+          revision,
+        ),
+      );
+    const provider = createSellerInventoryProvider(createSellerRequestForRun());
+    if (input.intent === "import-ebay")
+      return response(
+        await reconcileInventory(
+          await provider.importActive(seller, { signal: request.signal }),
+          revision,
+        ),
+      );
+    if (input.intent === "refresh-listing")
+      return response(
+        await reconcileInventory(
+          await provider.getListing(seller, input.itemId, request.signal),
           revision,
         ),
       );
