@@ -1,6 +1,8 @@
 import { data } from "react-router";
 import {
   categorySetsRepository as defaultCategorySetsRepository,
+  continuousPricingRepository as defaultContinuousPricingRepository,
+  inventoryPublicationSettingsRepository as defaultInventoryPublicationSettingsRepository,
   pricingConfigRepository as defaultPricingConfigRepository,
   productsRepository as defaultProductsRepository,
   setProductsRepository as defaultSetProductsRepository,
@@ -11,6 +13,12 @@ import type { PricingResult } from "~/features/pricing/services/pricingCalculato
 import { PricingCalculator } from "~/features/pricing/services/pricingCalculator";
 import { PricingBatchApiCache } from "~/features/pricing/services/pricingBatchApiCache.server";
 import { resolveSuggestedPrice } from "~/features/pricing/services/suggestedPriceResolver.server";
+import {
+  activePricingPolicy,
+  pricingCalculatorConfig,
+  productLinePricingPolicy,
+} from "~/features/pricing/types/config";
+import type { ContinuousPricingInventoryItem } from "~/features/continuous-pricing/types/continuousPricing";
 import type { Product } from "~/features/inventory-management/types/product";
 import type { Condition } from "~/integrations/tcgplayer/types/Condition";
 import type { Variant } from "~/integrations/tcgplayer/types/Variant";
@@ -30,6 +38,7 @@ import type {
   ProductPriceMatrixResponse,
   ProductPriceMatrixSearchScope,
 } from "../types/productPriceMatrix";
+import { buildConditionLadder } from "./conditionLadder";
 
 const DISPLAY_VARIANT_ORDER: Variant[] = [
   "Normal",
@@ -58,6 +67,16 @@ type CategorySetsRepository = Pick<
 
 type PricingConfigRepository = Pick<typeof defaultPricingConfigRepository, "get">;
 
+type InventoryPublicationSettingsRepository = Pick<
+  typeof defaultInventoryPublicationSettingsRepository,
+  "get"
+>;
+
+type ContinuousPricingRepository = Pick<
+  typeof defaultContinuousPricingRepository,
+  "findBySkus"
+>;
+
 type PricePointsClient = (
   requestBody: GetPricePointsRequestBody,
 ) => Promise<PricePoint[]>;
@@ -69,6 +88,8 @@ interface ProductPriceMatrixDependencies {
   setProductsRepository?: SetProductsRepository;
   categorySetsRepository?: CategorySetsRepository;
   pricingConfigRepository?: PricingConfigRepository;
+  inventoryPublicationSettingsRepository?: InventoryPublicationSettingsRepository;
+  continuousPricingRepository?: ContinuousPricingRepository;
   getPricePoints?: PricePointsClient;
   createPricingCalculator?: PricingCalculatorFactory;
 }
@@ -82,6 +103,12 @@ function getDependencies(dependencies: ProductPriceMatrixDependencies = {}) {
       dependencies.categorySetsRepository ?? defaultCategorySetsRepository,
     pricingConfigRepository:
       dependencies.pricingConfigRepository ?? defaultPricingConfigRepository,
+    inventoryPublicationSettingsRepository:
+      dependencies.inventoryPublicationSettingsRepository ??
+      defaultInventoryPublicationSettingsRepository,
+    continuousPricingRepository:
+      dependencies.continuousPricingRepository ??
+      defaultContinuousPricingRepository,
     getPricePoints: dependencies.getPricePoints ?? defaultGetPricePoints,
     createPricingCalculator:
       dependencies.createPricingCalculator ?? (() => new PricingCalculator()),
@@ -135,6 +162,10 @@ function sortLanguages(languages: string[]): string[] {
 
 function uniqueValues<T>(values: T[]): T[] {
   return [...new Set(values)];
+}
+
+function indexBySku<T extends { sku: number }>(items: readonly T[]): Map<number, T> {
+  return new Map(items.map((item) => [item.sku, item]));
 }
 
 function expandProductSkus(product: Product): Sku[] {
@@ -210,16 +241,6 @@ function matchesProductQuery(
   ].some((value) => normalizeSearchText(value).includes(normalizedQuery));
 }
 
-function createPricePointMap(pricePoints: PricePoint[]): Map<number, PricePoint> {
-  return new Map(pricePoints.map((pricePoint) => [pricePoint.skuId, pricePoint]));
-}
-
-function createPricingResultMap(
-  pricingResults: PricingResult[],
-): Map<number, PricingResult> {
-  return new Map(pricingResults.map((pricingResult) => [pricingResult.sku, pricingResult]));
-}
-
 function buildDisplayMap(
   skus: Sku[],
   setProduct?: SetProduct | null,
@@ -241,11 +262,30 @@ function buildDisplayMap(
   );
 }
 
+/** The price the store lists a SKU at, when it is listed and in stock. */
+function listedPrice(
+  listing: ContinuousPricingInventoryItem | undefined,
+): number | undefined {
+  return listing &&
+    listing.inStock &&
+    listing.quantity > 0 &&
+    listing.currentPrice !== null &&
+    listing.currentPrice > 0
+    ? listing.currentPrice
+    : undefined;
+}
+
+type UnladderedCell = Omit<
+  ProductPriceMatrixCell,
+  "ladderPrice" | "marketLadderPrice" | "aboveBetterCondition"
+>;
+
 function buildMatrixCell(
   sku: Sku,
   pricePoint: PricePoint | undefined,
+  listing: ContinuousPricingInventoryItem | undefined,
   pricingResult: PricingResult | undefined,
-): ProductPriceMatrixCell {
+): UnladderedCell {
   return {
     sku: sku.sku,
     condition: sku.condition,
@@ -256,18 +296,75 @@ function buildMatrixCell(
     highestSalePrice: pricePoint?.highestPrice ?? null,
     saleCount: pricePoint?.priceCount ?? 0,
     priceCalculatedAt: pricePoint?.calculatedAt,
+    listing: listing
+      ? {
+          price: listing.currentPrice,
+          quantity: listing.quantity,
+          inStock: listing.inStock,
+        }
+      : null,
     suggestedPrice: pricingResult?.suggestedPrice ?? null,
-    marketplacePrice: pricingResult?.price ?? null,
-    percentileUsed: pricingResult?.percentileUsed,
-    historicalSalesVelocityDays: pricingResult?.historicalSalesVelocityDays,
+    sellAtPrice: pricingResult?.price ?? null,
     estimatedTimeToSellDays: pricingResult?.estimatedTimeToSellDays,
-    salesCountForHistorical: pricingResult?.salesCountForHistorical,
-    listingsCountForEstimated: pricingResult?.listingsCountForEstimated,
-    percentiles: pricingResult?.percentiles,
     pricingDecision: pricingResult?.pricingDecision,
+    shadowPricingDecision: pricingResult?.shadowPricingDecision,
+    conditionNormalization: pricingResult?.conditionNormalization,
     warnings: pricingResult?.warnings ?? [],
     errors: pricingResult?.errors ?? [],
   };
+}
+
+/** Clamp each variant's conditions so no condition prices above a better one. */
+function ladderCells(cells: UnladderedCell[]): ProductPriceMatrixCell[] {
+  const groups = new Map<string, UnladderedCell[]>();
+  for (const cell of cells) {
+    const key = `${cell.variant} ${cell.language}`;
+    const group = groups.get(key);
+    if (group) {
+      group.push(cell);
+    } else {
+      groups.set(key, [cell]);
+    }
+  }
+
+  return [...groups.values()].flatMap((group) => {
+    const sellLadder = buildConditionLadder(
+      group.map((cell) => ({ condition: cell.condition, price: cell.sellAtPrice })),
+    );
+    const marketLadder = buildConditionLadder(
+      group.map((cell) => ({
+        condition: cell.condition,
+        price: cell.tcgMarketPrice,
+      })),
+    );
+    return group.map((cell) => ({
+      ...cell,
+      ladderPrice: sellLadder.get(cell.condition)?.price ?? null,
+      marketLadderPrice: marketLadder.get(cell.condition)?.price ?? null,
+      aboveBetterCondition:
+        sellLadder.get(cell.condition)?.aboveBetterCondition ?? false,
+    }));
+  });
+}
+
+function sortCells(cells: ProductPriceMatrixCell[]): ProductPriceMatrixCell[] {
+  return [...cells].sort((left, right) => {
+    const variantDifference =
+      getVariantSortRank(left.variant) - getVariantSortRank(right.variant);
+
+    if (variantDifference !== 0) {
+      return variantDifference;
+    }
+
+    const conditionDifference =
+      getConditionSortRank(left.condition) - getConditionSortRank(right.condition);
+
+    if (conditionDifference !== 0) {
+      return conditionDifference;
+    }
+
+    return left.language.localeCompare(right.language);
+  });
 }
 
 export function createProductPriceMatrixProductsLoader(
@@ -384,9 +481,37 @@ export function createProductPriceMatrixAction(
     setProductsRepository,
     categorySetsRepository,
     pricingConfigRepository,
+    inventoryPublicationSettingsRepository,
+    continuousPricingRepository,
     getPricePoints,
     createPricingCalculator,
   } = getDependencies(dependencies);
+
+  /**
+   * The store's seller key and its listings of the given SKUs. Listings are
+   * a convenience beside the market prices, so when they cannot be read the
+   * matrix still answers without them.
+   */
+  async function findStoreListings(skuIds: number[]): Promise<{
+    sellerKey?: string;
+    listings: ContinuousPricingInventoryItem[];
+  }> {
+    try {
+      const configuration = await inventoryPublicationSettingsRepository.get();
+      const sellerKey =
+        configuration.settings.continuousPricing.sellerKey || undefined;
+      const listings =
+        sellerKey && skuIds.length > 0
+          ? await continuousPricingRepository.findBySkus(sellerKey, skuIds)
+          : [];
+      return { sellerKey, listings };
+    } catch (error) {
+      console.warn(
+        `[product-price-matrix] Store listings unavailable: ${String(error)}`,
+      );
+      return { listings: [] };
+    }
+  }
 
   return async function action({ request }: { request: Request }) {
     if (request.method !== "POST") {
@@ -401,6 +526,7 @@ export function createProductPriceMatrixAction(
         typeof payload.language === "string" && payload.language.trim().length > 0
           ? payload.language.trim()
           : undefined;
+      const includeSuggestedPrices = payload.includeSuggestedPrices === true;
 
       if (!productId) {
         return data({ error: "productId is required" }, { status: 400 });
@@ -419,13 +545,6 @@ export function createProductPriceMatrixAction(
         return data({ error: `Product ${productId} not found` }, { status: 404 });
       }
 
-      const [setProduct, categorySet] = await Promise.all([
-        setProductsRepository.findByProductId(product.productId),
-        categorySetsRepository.findByCategoryIdAndSetNameId(
-          product.productLineId,
-          product.setId,
-        ),
-      ]);
       const allSkus = expandProductSkus(product);
       const availableLanguages = sortLanguages(
         uniqueValues(allSkus.map((sku) => sku.language)),
@@ -433,34 +552,48 @@ export function createProductPriceMatrixAction(
       const matrixSkus = selectedLanguage
         ? allSkus.filter((sku) => sku.language === selectedLanguage)
         : allSkus;
-      const pricePoints =
-        matrixSkus.length > 0
-          ? await getPricePoints({ skuIds: matrixSkus.map((sku) => sku.sku) })
-          : [];
-      const pricePointMap = createPricePointMap(pricePoints);
-      let pricingResultsBySku = new Map<number, PricingResult>();
+      const skuIds = matrixSkus.map((sku) => sku.sku);
+      const shouldPrice = includeSuggestedPrices && matrixSkus.length > 0;
 
-      if (payload.includeSuggestedPrices === true && matrixSkus.length > 0) {
-        const config = await pricingConfigRepository.get();
+      const [setProduct, categorySet, store, pricePoints, config] =
+        await Promise.all([
+          setProductsRepository.findByProductId(product.productId),
+          categorySetsRepository.findByCategoryIdAndSetNameId(
+            product.productLineId,
+            product.setId,
+          ),
+          findStoreListings(skuIds),
+          skuIds.length > 0 ? getPricePoints({ skuIds }) : [],
+          shouldPrice ? pricingConfigRepository.get() : undefined,
+        ]);
+      const pricePointMap = new Map(
+        pricePoints.map((pricePoint) => [pricePoint.skuId, pricePoint]),
+      );
+      const listingMap = indexBySku(store.listings);
+      let pricingResultsBySku = new Map<number, PricingResult>();
+      let policy: ProductPriceMatrixResponse["policy"];
+
+      if (config) {
         const batchApiCache = new PricingBatchApiCache();
         const pricingCalculator = createPricingCalculator();
+        policy = productLinePricingPolicy(
+          activePricingPolicy(config.pricing),
+          config.productLinePricing.productLineSettings[product.productLineId],
+        );
         const pricingResult = await pricingCalculator.calculatePrices(
           matrixSkus.map((sku) => ({
             sku: sku.sku,
             quantity: 1,
+            currentPrice: listedPrice(listingMap.get(sku.sku)),
             productLineId: sku.productLineId,
             setId: sku.setId,
             productId: sku.productId,
             bypassProductLineSkips: true,
           })),
           {
-            percentile: config.productLinePricing.defaultPercentile,
-            enableSupplyAnalysis: config.supplyAnalysis.enableSupplyAnalysis,
-            supplyAnalysisConfig: {
-              includeUnverifiedSellers:
-                config.supplyAnalysis.includeUnverifiedSellers,
-            },
-            productLinePricingConfig: config.productLinePricing,
+            ...pricingCalculatorConfig(config, {
+              excludedSellerKey: store.sellerKey,
+            }),
             suggestedPriceResolver: (input) =>
               resolveSuggestedPrice(input, { batchApiCache }),
           },
@@ -468,34 +601,21 @@ export function createProductPriceMatrixAction(
           "product-price-matrix",
           buildDisplayMap(matrixSkus, setProduct),
         );
-        pricingResultsBySku = createPricingResultMap(pricingResult.pricedItems);
+        pricingResultsBySku = indexBySku(pricingResult.pricedItems);
       }
 
-      const cells = matrixSkus
-        .map((sku) =>
-          buildMatrixCell(
-            sku,
-            pricePointMap.get(sku.sku),
-            pricingResultsBySku.get(sku.sku),
+      const cells = sortCells(
+        ladderCells(
+          matrixSkus.map((sku) =>
+            buildMatrixCell(
+              sku,
+              pricePointMap.get(sku.sku),
+              listingMap.get(sku.sku),
+              pricingResultsBySku.get(sku.sku),
+            ),
           ),
-        )
-        .sort((left, right) => {
-          const variantDifference =
-            getVariantSortRank(left.variant) - getVariantSortRank(right.variant);
-
-          if (variantDifference !== 0) {
-            return variantDifference;
-          }
-
-          const conditionDifference =
-            getConditionSortRank(left.condition) - getConditionSortRank(right.condition);
-
-          if (conditionDifference !== 0) {
-            return conditionDifference;
-          }
-
-          return left.language.localeCompare(right.language);
-        });
+        ),
+      );
 
       const response: ProductPriceMatrixResponse = {
         product: buildProductSummary(product, setProduct, categorySet),
@@ -504,7 +624,9 @@ export function createProductPriceMatrixAction(
         conditions: sortConditions(uniqueValues(cells.map((cell) => cell.condition))),
         variants: sortVariants(uniqueValues(cells.map((cell) => cell.variant))),
         cells,
-        suggestedPricesIncluded: payload.includeSuggestedPrices === true,
+        suggestedPricesIncluded: includeSuggestedPrices,
+        policy,
+        listingsIncluded: store.sellerKey !== undefined,
         pricedAt: new Date().toISOString(),
       };
 

@@ -9,6 +9,9 @@ import {
 } from "~/core/db";
 import { getSuggestedPriceFromLatestSales } from "../algorithms/getSuggestedPriceFromLatestSales";
 import type { PricingBatchApiCache } from "./pricingBatchApiCache.server";
+import { fetchListingsForProductAndRecord } from "./productListingSnapshotsLedger.server";
+import { fetchLatestSalesAndRecord } from "./productSalesLedger.server";
+import { fetchAnnualPriceHistoryAndRecord } from "./productWeeklySalesLedger.server";
 
 interface ResolveSuggestedPriceOptions {
   batchApiCache?: PricingBatchApiCache;
@@ -71,13 +74,13 @@ export async function resolveSuggestedPrice(
       : undefined,
     fetchLatestSales: options.batchApiCache
       ? options.batchApiCache.fetchLatestSales.bind(options.batchApiCache)
-      : undefined,
+      : fetchLatestSalesAndRecord,
     fetchPriceHistory: options.batchApiCache
       ? options.batchApiCache.fetchPriceHistory.bind(options.batchApiCache)
-      : undefined,
-    fetchListingsForSku: options.batchApiCache
-      ? options.batchApiCache.fetchListingsForSku.bind(options.batchApiCache)
-      : undefined,
+      : fetchAnnualPriceHistoryAndRecord,
+    fetchListingsForProduct: options.batchApiCache
+      ? options.batchApiCache.fetchListingsForProduct.bind(options.batchApiCache)
+      : fetchListingsForProductAndRecord,
     fetchLowestListingPrice: options.batchApiCache
       ? options.batchApiCache.fetchLowestListingPrice.bind(
           options.batchApiCache,

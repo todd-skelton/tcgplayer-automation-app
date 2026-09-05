@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { PRICING_MODEL_VERSION } from "~/core/types/pricingPolicy";
 import { DEFAULT_SERVER_PRICING_CONFIG } from "~/features/pricing/types/config";
 import type { InventoryStrategySnapshotItem } from "../types/inventoryStrategy";
 import { buildInventoryStrategyDashboard } from "./inventoryStrategy";
@@ -165,7 +166,7 @@ const completedInventoryDashboard = buildInventoryStrategyDashboard(
       sku: 10,
       pricingDetails: {
         schemaVersion: 2,
-        pricingModelVersion: "exposure-share-v1",
+        pricingModelVersion: PRICING_MODEL_VERSION,
         pricedAt: "2026-08-30T10:00:00.000Z",
         percentileUsed: 80,
         marketplacePrice: 16,
@@ -203,7 +204,7 @@ const completedInventoryDashboard = buildInventoryStrategyDashboard(
       sku: 11,
       pricingDetails: {
         schemaVersion: 2,
-        pricingModelVersion: "exposure-share-v1",
+        pricingModelVersion: PRICING_MODEL_VERSION,
         pricedAt: "2026-08-30T10:00:00.000Z",
         percentileUsed: 80,
         marketplacePrice: 17,
@@ -241,7 +242,7 @@ const completedInventoryDashboard = buildInventoryStrategyDashboard(
       sku: 12,
       pricingDetails: {
         schemaVersion: 2,
-        pricingModelVersion: "exposure-share-v1",
+        pricingModelVersion: PRICING_MODEL_VERSION,
         pricedAt: "2026-08-30T10:00:00.000Z",
         shadowDecision: {
           method: "target-horizon",
@@ -272,7 +273,7 @@ const activeHorizonItems = [
     currentPrice: 15,
     pricingDetails: {
       schemaVersion: 2,
-      pricingModelVersion: "exposure-share-v1",
+      pricingModelVersion: PRICING_MODEL_VERSION,
       pricedAt: "2026-08-30T10:00:00.000Z",
       percentileUsed: 65,
       marketplacePrice: 15,
@@ -322,7 +323,7 @@ const activeHorizonItems = [
     currentPrice: 12,
     pricingDetails: {
       schemaVersion: 2,
-      pricingModelVersion: "exposure-share-v1",
+      pricingModelVersion: PRICING_MODEL_VERSION,
       pricedAt: "2026-08-29T10:00:00.000Z",
       percentileUsed: 65,
       marketplacePrice: 12,
@@ -426,7 +427,7 @@ const productLineHurdleDashboard = buildInventoryStrategyDashboard(
       productLine: "Magic",
       pricingDetails: {
         schemaVersion: 2,
-        pricingModelVersion: "exposure-share-v1",
+        pricingModelVersion: PRICING_MODEL_VERSION,
         pricedAt: "2026-08-29T10:00:00.000Z",
         percentiles: [
           {

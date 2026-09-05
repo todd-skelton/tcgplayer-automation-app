@@ -36,7 +36,10 @@ export interface BuyerChoiceCalibration {
  * Fitted on 1,196 listings priced 2026-08-11 to 13 against their sales over
  * the following 21 days, with the inputs read from the curve exactly as
  * buyerChoiceInputs reads them and the store's small-order shipping fee as
- * the fixed cost of a purchase.
+ * the fixed cost of a purchase. Those curves counted competing sellers in
+ * the listing's own condition; since pooled-supply-v1 the curve counts
+ * sellers in every condition of the product, so this fit reads a larger
+ * competitor count than it was trained on until it is refit on pooled curves.
  */
 export const BUYER_CHOICE_CALIBRATION: BuyerChoiceCalibration = {
   name: "2026-08-11-cohort",

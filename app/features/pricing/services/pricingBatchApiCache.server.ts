@@ -1,14 +1,13 @@
 import type { Sku } from "~/shared/data-types/sku";
-import {
-  fetchAnnualPriceHistory,
-  type GetPriceHistoryResponse,
-} from "~/integrations/tcgplayer/client/get-price-history.server";
-import {
-  getAllLatestSales,
-  type GetLastSalesRequestParams,
-  type GetLastestSalesRequestBody,
-  type Sale,
+import type { GetPriceHistoryResponse } from "~/integrations/tcgplayer/client/get-price-history.server";
+import type {
+  GetLastSalesRequestParams,
+  GetLastestSalesRequestBody,
+  Sale,
 } from "~/integrations/tcgplayer/client/get-latest-sales.server";
+import { fetchListingsForProductAndRecord } from "./productListingSnapshotsLedger.server";
+import { fetchLatestSalesAndRecord } from "./productSalesLedger.server";
+import { fetchAnnualPriceHistoryAndRecord } from "./productWeeklySalesLedger.server";
 import type {
   ListingObservation,
   SupplyAnalysisConfig,
@@ -61,7 +60,7 @@ export class PricingBatchApiCache {
       return cached;
     }
 
-    const request = getAllLatestSales(params, body, maxSales);
+    const request = fetchLatestSalesAndRecord(params, body, maxSales);
     this.latestSalesRequests.set(key, request);
     return request;
   }
@@ -74,18 +73,18 @@ export class PricingBatchApiCache {
       return cached;
     }
 
-    const request = fetchAnnualPriceHistory(productId);
+    const request = fetchAnnualPriceHistoryAndRecord(productId);
     this.priceHistoryRequests.set(productId, request);
     return request;
   }
 
-  fetchListingsForSku(
+  /** One listings fetch serves every condition of a product, variant, and language. */
+  fetchListingsForProduct(
     sku: Sku,
     config: SupplyAnalysisConfig = {},
   ): Promise<ListingObservation> {
     const key = createCacheKey({
       productId: sku.productId,
-      condition: sku.condition,
       language: sku.language,
       variant: sku.variant,
       config,
@@ -95,7 +94,10 @@ export class PricingBatchApiCache {
       return cached;
     }
 
-    const request = this.supplyAnalysisService.fetchListingsForSku(sku, config);
+    const request = fetchListingsForProductAndRecord(sku, config, {
+      fetch: (target, options) =>
+        this.supplyAnalysisService.fetchListingsForProduct(target, options),
+    });
     this.listingRequests.set(key, request);
     return request;
   }

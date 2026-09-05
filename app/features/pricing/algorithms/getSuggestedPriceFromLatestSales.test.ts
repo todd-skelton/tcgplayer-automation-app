@@ -175,8 +175,8 @@ assert.equal(
 assert.equal(siblingFallback.multipliers.get("Damaged"), 4);
 assert.equal(
   siblingFallback.multipliers.get("Moderately Played"),
-  1,
-  "a condition without a market price is left as it is",
+  1.25,
+  "a condition without a market price is valued as its nearest priced better neighbour",
 );
 const boundedSiblings = fitTimeAwareZipfModelToConditions(
   [

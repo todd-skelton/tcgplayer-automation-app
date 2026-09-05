@@ -111,6 +111,17 @@ export async function withTransaction<T>(
   }
 }
 
+/** Postgres accepts 65,535 bound parameters per statement; keep bulk inserts well under it. */
+export const MAX_ROWS_PER_INSERT = 500;
+
+export function chunk<T>(items: readonly T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let start = 0; start < items.length; start += size) {
+    chunks.push(items.slice(start, start + size));
+  }
+  return chunks;
+}
+
 export function createValuesPlaceholders(
   rowCount: number,
   columnCount: number,

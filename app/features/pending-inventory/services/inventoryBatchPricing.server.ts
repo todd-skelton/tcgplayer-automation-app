@@ -26,7 +26,7 @@ import type {
   InventoryBatchPricingMode,
 } from "../types/inventoryBatch";
 import {
-  activePricingPolicy,
+  pricingCalculatorConfig,
   type ServerPricingConfig,
 } from "~/features/pricing/types/config";
 import { PRICING_MODEL_VERSION } from "~/core/types/pricingPolicy";
@@ -555,21 +555,13 @@ export async function executeInventoryBatchPricingJob({
   const pricingResult = await pricingCalculator.calculatePrices(
     sourceSkus,
     {
-      percentile: config.productLinePricing.defaultPercentile,
-      policy: activePricingPolicy(config.pricing),
-      minPriceMultiplier: config.pricing.minPriceMultiplier,
-      minPriceConstant: config.pricing.minPriceConstant,
-      enableSupplyAnalysis: config.supplyAnalysis.enableSupplyAnalysis,
-      supplyAnalysisConfig: {
-        includeUnverifiedSellers:
-          config.supplyAnalysis.includeUnverifiedSellers,
+      ...pricingCalculatorConfig(config, {
         excludedSellerKey: ["seller", "continuous", "strategy"].includes(
           batch.sourceType,
         )
           ? batch.sourceLabel
           : undefined,
-      },
-      productLinePricingConfig: config.productLinePricing,
+      }),
       suggestedPriceResolver: resolveSuggestedPriceWithBatchCache,
       isCancelled,
       onProgress: (progress) => {

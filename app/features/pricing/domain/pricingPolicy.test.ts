@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { PRICING_MODEL_VERSION } from "~/core/types/pricingPolicy";
 import {
   forecastsWithinYear,
   resolveValueMatchedPortfolioPlan,
@@ -273,7 +274,7 @@ const legacyShadow = readShadowPricingDecision({
 assert.equal(legacyShadow, undefined);
 
 const currentShadow = readShadowPricingDecision({
-  pricingModelVersion: "exposure-share-v1",
+  pricingModelVersion: PRICING_MODEL_VERSION,
   shadowDecision: {
     method: "target-horizon",
     selectedPrice: 12,

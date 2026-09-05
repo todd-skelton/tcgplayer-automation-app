@@ -5,6 +5,8 @@ import type {
   InventoryStrategyDashboard,
   InventoryStrategyProductLine,
 } from "../types/inventoryStrategy";
+import { describePricingPolicy } from "~/features/pricing/components/policyLabel";
+import { profitPerDayPolicy } from "~/features/pricing/types/config";
 import { cyclePortfolio } from "./capitalCycleInputs";
 import {
   currencyFormatter,
@@ -27,18 +29,17 @@ function formatDaysDelta(days: number): string {
 
 function policyLabel(dashboard: InventoryStrategyDashboard): string {
   const { policy, profitPerDay, productLines } = dashboard;
-  if (policy.method === "percentile") {
-    return "Configured percentile per product line";
-  }
-  if (policy.method === "target-horizon") {
-    return `Target horizon of ${formatDays(policy.horizonDays)}`;
+  const label = describePricingPolicy(
+    policy.method === "profit-per-day" ? profitPerDayPolicy(profitPerDay) : policy,
+  );
+  if (policy.method !== "profit-per-day") {
+    return label;
   }
   const ownHurdles = productLines.filter(
     (productLine) =>
       productLine.hurdleSweep.find((scenario) => scenario.configured)
         ?.dailyReturnHurdle !== profitPerDay.dailyReturnHurdle,
   ).length;
-  const label = `Profit per day at a ${formatHurdle(profitPerDay.dailyReturnHurdle)} hurdle`;
   return ownHurdles === 0
     ? label
     : `${label}, ${ownHurdles} product ${ownHurdles === 1 ? "line" : "lines"} at their own`;

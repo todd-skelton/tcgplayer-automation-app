@@ -24,7 +24,9 @@ import type {
 } from "../../../core/types/pricing";
 import type { PricingSupplyStatus } from "../../../core/types/pricingPolicy";
 import {
+  competingAskCeiling,
   fitTimeAwareZipfModelToConditions,
+  normalizeListingsToTargetCondition,
   normalizeSalesToTargetCondition,
 } from "./conditionNormalization";
 import {
@@ -36,6 +38,11 @@ import { estimateConditionSaleRate } from "./conditionSaleRate";
 import { getEffectiveSalePrice } from "./getEffectiveSalePrice";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+const supplyAnalysisService = new SupplyAnalysisService();
+const defaultFetchListingsForProduct: NonNullable<
+  LatestSalesPriceConfig["fetchListingsForProduct"]
+> = (sku, config) => supplyAnalysisService.fetchListingsForProduct(sku, config);
 
 /** Latest market price of each condition of the SKU's product, variant, and language. */
 function siblingMarketPrices(
@@ -136,7 +143,6 @@ export async function getSuggestedPriceFromLatestSales(
   );
 
   if (allSales.length < 2) {
-    const supplyAnalysisService = new SupplyAnalysisService();
     const lowestListingPrice = config.fetchLowestListingPrice
       ? await config.fetchLowestListingPrice(sku, config.supplyAnalysisConfig)
       : await supplyAnalysisService.fetchLowestListingPrice(
@@ -164,10 +170,11 @@ export async function getSuggestedPriceFromLatestSales(
     ownHistory &&
     estimateConditionSaleRate(ownHistory.buckets, { availableSinceTimestamp });
 
+  const siblings = siblingMarketPrices(priceHistory, sku);
   const conditionNormalization = isSealed
     ? undefined
     : fitTimeAwareZipfModelToConditions(allSales, sku.condition, {
-        siblingMarketPrices: siblingMarketPrices(priceHistory, sku),
+        siblingMarketPrices: siblings,
       });
   const zipfMultipliers =
     conditionNormalization?.multipliers ?? new Map<Condition, number>();
@@ -184,34 +191,31 @@ export async function getSuggestedPriceFromLatestSales(
   const dynamicHalfLife =
     halfLifeDays || calculateDynamicHalfLife(adjustedSales);
 
-  let supplyObservation: ListingObservation = {
-    status: config.enableSupplyAnalysis ? "unavailable" : "disabled",
-    listings: [],
+  const fetchListingsForProduct =
+    config.fetchListingsForProduct ?? defaultFetchListingsForProduct;
+  const productListings: ListingObservation = config.enableSupplyAnalysis
+    ? await fetchListingsForProduct(sku, {
+        ...config.supplyAnalysisConfig,
+        maxSalesPrice: isSealed
+          ? salesToProcess.length > 0
+            ? Math.max(...salesToProcess.map(getEffectiveSalePrice))
+            : undefined
+          : competingAskCeiling(salesToProcess, { siblingMarketPrices: siblings }),
+      })
+    : { status: "disabled", listings: [] };
+  const ownConditionListings = productListings.listings.filter(
+    (listing) => listing.condition === sku.condition,
+  );
+  // Sealed products compete only with sealed listings.
+  const supplyObservation: ListingObservation = {
+    status: productListings.status,
+    listings: isSealed
+      ? ownConditionListings
+      : normalizeListingsToTargetCondition(
+          productListings.listings,
+          zipfMultipliers,
+        ),
   };
-  if (config.enableSupplyAnalysis) {
-    const maxSalesPrice =
-      adjustedSales.length > 0
-        ? Math.max(...adjustedSales.map((s) => s.price))
-        : undefined;
-
-    const optimizedConfig = {
-      ...config.supplyAnalysisConfig,
-      maxSalesPrice,
-    };
-
-    if (config.fetchListingsForSku) {
-      supplyObservation = await config.fetchListingsForSku(
-        sku,
-        optimizedConfig,
-      );
-    } else {
-      const supplyAnalysisService = new SupplyAnalysisService();
-      supplyObservation = await supplyAnalysisService.fetchListingsForSku(
-        sku,
-        optimizedConfig,
-      );
-    }
-  }
 
   const windowStart = Date.now() - LATEST_SALES_HISTORY_DAYS * DAY_MS;
   const ownConditionSalePrices = allSales
@@ -225,7 +229,7 @@ export async function getSuggestedPriceFromLatestSales(
   // Without the store's own listing excluded, the second ask may be the
   // cheapest competitor, the one most often mis-conditioned.
   const secondCheapestAsk = config.supplyAnalysisConfig?.excludedSellerKey
-    ? supplyObservation.listings[1]
+    ? ownConditionListings[1]
     : undefined;
   const ownConditionLowSalePrice = ownConditionSalePrices.length
     ? Math.min(...ownConditionSalePrices)
@@ -275,7 +279,7 @@ export interface LatestSalesPriceConfig {
   fetchPriceHistory?: (
     productId: number,
   ) => Promise<GetPriceHistoryResponse | undefined>;
-  fetchListingsForSku?: (
+  fetchListingsForProduct?: (
     sku: Sku,
     config: SupplyAnalysisConfig,
   ) => Promise<ListingObservation>;
@@ -393,7 +397,6 @@ export function getTimeDecayedPercentileWeightedSuggestedPrice(
     let storeWinShare: number | undefined;
 
     if (supplyObservation.status === "observed") {
-      const supplyAnalysisService = new SupplyAnalysisService();
       const supplyResult =
         supplyAnalysisService.calculateSupplyAdjustedTimeToSell(
           supplyObservation.listings,

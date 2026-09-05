@@ -1,5 +1,5 @@
 import { FILE_CONFIG, PRICING_CONSTANTS } from "~/core/constants/pricing";
-import type { ProductLineSettings } from "~/core/types/pricing";
+import type { PricingConfig, ProductLineSettings } from "~/core/types/pricing";
 import type {
   ActivePricingPolicy,
   PricingPolicy,
@@ -202,6 +202,38 @@ export function productLinePricingPolicy<Policy extends ActivePricingPolicy>(
     settings?.dailyReturnHurdle !== undefined
     ? { ...policy, dailyReturnHurdle: settings.dailyReturnHurdle }
     : policy;
+}
+
+/**
+ * The calculator settings every pricing run derives from the stored config:
+ * the active policy, the price floor, supply analysis, and per-product-line
+ * percentiles. Callers add their own resolver, progress, and cancellation.
+ */
+export function pricingCalculatorConfig(
+  config: ServerPricingConfig,
+  options: { excludedSellerKey?: string } = {},
+): Pick<
+  PricingConfig,
+  | "percentile"
+  | "policy"
+  | "minPriceMultiplier"
+  | "minPriceConstant"
+  | "enableSupplyAnalysis"
+  | "supplyAnalysisConfig"
+  | "productLinePricingConfig"
+> {
+  return {
+    percentile: config.productLinePricing.defaultPercentile,
+    policy: activePricingPolicy(config.pricing),
+    minPriceMultiplier: config.pricing.minPriceMultiplier,
+    minPriceConstant: config.pricing.minPriceConstant,
+    enableSupplyAnalysis: config.supplyAnalysis.enableSupplyAnalysis,
+    supplyAnalysisConfig: {
+      includeUnverifiedSellers: config.supplyAnalysis.includeUnverifiedSellers,
+      excludedSellerKey: options.excludedSellerKey,
+    },
+    productLinePricingConfig: config.productLinePricing,
+  };
 }
 
 export function normalizeServerPricingConfig(value: unknown): ServerPricingConfig {

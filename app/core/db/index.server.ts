@@ -17,6 +17,9 @@ export { inventoryStrategyRepository } from "./repositories/inventoryStrategy.se
 export { pendingInventoryRepository } from "./repositories/pendingInventory.server";
 export { pricingConfigRepository } from "./repositories/pricingConfig.server";
 export { productLinesRepository } from "./repositories/productLines.server";
+export { productListingSnapshotsRepository } from "./repositories/productListingSnapshots.server";
+export { productSalesRepository } from "./repositories/productSales.server";
+export { productWeeklySalesRepository } from "./repositories/productWeeklySales.server";
 export { productsRepository } from "./repositories/products.server";
 export { setProductsRepository } from "./repositories/setProducts.server";
 export { shippingExportConfigRepository } from "./repositories/shippingExportConfig.server";

@@ -10,56 +10,47 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import { getConditionColor } from "~/core/utils/conditionColors";
-import type { Condition } from "~/integrations/tcgplayer/types/Condition";
-import type { ProductPriceMatrixResponse } from "../types/productPriceMatrix";
 import {
-  formatPercentileLabel,
-  getAvailablePercentiles,
-  getConfiguredPercentiles,
-} from "./percentileColumns";
+  formatOptionalUsd,
+  formatSignedPercent,
+  getMarketDeltaTone,
+  percentAboveMarket,
+  type MarketDeltaTone,
+} from "~/core/utils/marketDelta";
+import {
+  describeDecisionBasis,
+  describeDecisionRule,
+  formatDays,
+  formatPercentile,
+  policyMethodLabel,
+} from "~/features/pricing/components/policyLabel";
+import type { Condition } from "~/integrations/tcgplayer/types/Condition";
+import { ConditionNotes } from "./ConditionNotes";
+import type {
+  ProductPriceMatrixCell,
+  ProductPriceMatrixResponse,
+} from "../types/productPriceMatrix";
 
 const VARIANT_COLUMN_WIDTH = 150;
 const CONDITION_COLUMN_WIDTH = 150;
 const MARKET_COLUMN_WIDTH = 110;
 
-function formatCurrency(value: number | null | undefined): string {
-  if (value === null || value === undefined) {
-    return "N/A";
-  }
+const DELTA_COLORS: Record<MarketDeltaTone, "success" | "error" | "default"> = {
+  above: "success",
+  below: "error",
+  at: "default",
+  unavailable: "default",
+};
 
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(value);
-}
-
-function formatDays(value: number | undefined): string {
-  if (value === undefined) {
-    return "N/A";
-  }
-
-  if (value < 1) {
-    return "<1 day";
-  }
-
-  const rounded = value >= 10 ? value.toFixed(0) : value.toFixed(1);
-  return `${rounded} days`;
-}
-
-function getMarketDelta(
-  marketPrice: number | null,
-  suggestedPrice: number | null,
-): number | null {
-  if (marketPrice === null || marketPrice === 0 || suggestedPrice === null) {
-    return null;
-  }
-
-  return ((suggestedPrice - marketPrice) / marketPrice) * 100;
-}
+const STICKY_HEADER = {
+  fontWeight: 700,
+  position: "sticky" as const,
+  bgcolor: "background.paper",
+  zIndex: 3,
+};
 
 type MatrixConditionColor = Exclude<
   ReturnType<typeof getConditionColor>,
@@ -95,37 +86,141 @@ function getConditionTintStyles(
   };
 }
 
+function MarketDelta({
+  price,
+  market,
+}: {
+  price: number | null;
+  market: number | null;
+}) {
+  const percent = price === null ? null : percentAboveMarket(price, market);
+  if (percent === null) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        —
+      </Typography>
+    );
+  }
+  const tone = getMarketDeltaTone(percent);
+  return (
+    <Chip
+      size="small"
+      variant="outlined"
+      color={DELTA_COLORS[tone]}
+      label={formatSignedPercent(percent)}
+      aria-label={`Sell-at versus market: ${formatSignedPercent(percent)}`}
+    />
+  );
+}
+
+function ListingCell({ cell }: { cell: ProductPriceMatrixCell }) {
+  if (!cell.listing) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        Not listed
+      </Typography>
+    );
+  }
+  const { price, quantity, inStock } = cell.listing;
+  return (
+    <Stack spacing={0.25} alignItems="flex-end">
+      <Typography variant="body2" fontWeight={700}>
+        {formatOptionalUsd(price)}
+      </Typography>
+      <Typography variant="caption" color="text.secondary">
+        {inStock && quantity > 0 ? `${quantity} in stock` : "Out of stock"}
+      </Typography>
+    </Stack>
+  );
+}
+
+function SellAtCell({
+  cell,
+  priced,
+}: {
+  cell: ProductPriceMatrixCell;
+  priced: boolean;
+}) {
+  const decision = cell.pricingDecision;
+  if (cell.sellAtPrice === null || !decision) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        {cell.errors.length > 0 ? "Failed" : priced ? "No price" : "Not priced"}
+      </Typography>
+    );
+  }
+  const equivalent =
+    decision.equivalentPercentile === undefined
+      ? ""
+      : ` · ≈${formatPercentile(decision.equivalentPercentile)}`;
+  return (
+    <Stack spacing={0.25} alignItems="flex-end">
+      <Typography variant="body2" fontWeight={700}>
+        {formatOptionalUsd(cell.sellAtPrice)}
+      </Typography>
+      <Typography variant="caption" color="text.secondary">
+        {decision.basis === "modeled"
+          ? `${formatDays(cell.estimatedTimeToSellDays)}${equivalent}`
+          : describeDecisionBasis(decision)}
+      </Typography>
+      <Typography variant="caption" color="text.secondary">
+        {describeDecisionRule(decision)}
+        {decision.constraint !== "none"
+          ? ` · ${decision.constraint.replaceAll("-", " ")}`
+          : ""}
+        {decision.unprofitable ? " · below overhead" : ""}
+      </Typography>
+    </Stack>
+  );
+}
+
+function ShadowCell({ cell }: { cell: ProductPriceMatrixCell }) {
+  const shadow = cell.shadowPricingDecision;
+  if (!shadow) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        —
+      </Typography>
+    );
+  }
+  return (
+    <Stack spacing={0.25} alignItems="flex-end">
+      <Typography variant="body2">
+        {formatOptionalUsd(shadow.selectedPrice)}
+      </Typography>
+      <Typography variant="caption" color="text.secondary">
+        {shadow.basis === "modeled"
+          ? formatDays(shadow.estimatedMedianSellDays)
+          : describeDecisionBasis(shadow)}
+        {" · "}
+        {describeDecisionRule(shadow)}
+      </Typography>
+    </Stack>
+  );
+}
+
 export function ProductPriceMatrixTable({
   matrix,
 }: {
   matrix: ProductPriceMatrixResponse;
 }) {
-  const availablePercentiles = getAvailablePercentiles(matrix.cells);
-  const configuredPercentiles = getConfiguredPercentiles(matrix.cells);
-  const hasPercentileColumns = availablePercentiles.length > 0;
-  const headerRowSpan = hasPercentileColumns ? 2 : 1;
+  const shadowMethod = matrix.cells.find(
+    (cell) => cell.shadowPricingDecision !== undefined,
+  )?.shadowPricingDecision?.method;
 
   return (
     <TableContainer component={Box} sx={{ overflowX: "auto" }}>
       <Table
         size="small"
-        aria-label="Product prices by condition, variant, and percentile"
-        sx={{
-          minWidth: hasPercentileColumns
-            ? 940 + availablePercentiles.length * 130
-            : 1150,
-        }}
+        aria-label="Product prices by condition and variant"
+        sx={{ minWidth: 1250 }}
       >
         <TableHead>
           <TableRow>
             <TableCell
-              rowSpan={headerRowSpan}
               sx={{
-                fontWeight: 700,
-                position: "sticky",
+                ...STICKY_HEADER,
                 left: 0,
-                bgcolor: "background.paper",
-                zIndex: 3,
                 width: VARIANT_COLUMN_WIDTH,
                 minWidth: VARIANT_COLUMN_WIDTH,
                 maxWidth: VARIANT_COLUMN_WIDTH,
@@ -134,13 +229,9 @@ export function ProductPriceMatrixTable({
               Variant
             </TableCell>
             <TableCell
-              rowSpan={headerRowSpan}
               sx={{
-                fontWeight: 700,
-                position: "sticky",
+                ...STICKY_HEADER,
                 left: VARIANT_COLUMN_WIDTH,
-                bgcolor: "background.paper",
-                zIndex: 3,
                 width: CONDITION_COLUMN_WIDTH,
                 minWidth: CONDITION_COLUMN_WIDTH,
                 maxWidth: CONDITION_COLUMN_WIDTH,
@@ -149,16 +240,12 @@ export function ProductPriceMatrixTable({
               Condition
             </TableCell>
             <TableCell
-              rowSpan={headerRowSpan}
               align="right"
               sx={{
-                fontWeight: 700,
-                position: "sticky",
+                ...STICKY_HEADER,
                 left: VARIANT_COLUMN_WIDTH + CONDITION_COLUMN_WIDTH,
-                bgcolor: "background.paper",
                 borderRight: "1px solid",
                 borderRightColor: "divider",
-                zIndex: 3,
                 width: MARKET_COLUMN_WIDTH,
                 minWidth: MARKET_COLUMN_WIDTH,
                 maxWidth: MARKET_COLUMN_WIDTH,
@@ -166,113 +253,51 @@ export function ProductPriceMatrixTable({
             >
               Market
             </TableCell>
-            <TableCell
-              rowSpan={headerRowSpan}
-              align="right"
-              sx={{ fontWeight: 700, minWidth: 100 }}
-            >
+            <TableCell align="right" sx={{ fontWeight: 700, minWidth: 90 }}>
               Low
             </TableCell>
-            <TableCell
-              rowSpan={headerRowSpan}
-              align="right"
-              sx={{ fontWeight: 700, minWidth: 100 }}
-            >
+            <TableCell align="right" sx={{ fontWeight: 700, minWidth: 90 }}>
               High
             </TableCell>
-            <TableCell
-              rowSpan={headerRowSpan}
-              align="right"
-              sx={{ fontWeight: 700, minWidth: 80 }}
-            >
+            <TableCell align="right" sx={{ fontWeight: 700, minWidth: 70 }}>
               Sales
             </TableCell>
-            {hasPercentileColumns ? (
-              <TableCell
-                align="center"
-                colSpan={availablePercentiles.length}
-                sx={{
-                  fontWeight: 700,
-                  borderLeft: "1px solid",
-                  borderLeftColor: "divider",
-                }}
-              >
-                Suggested price by percentile
-              </TableCell>
-            ) : (
-              <TableCell align="center" sx={{ fontWeight: 700, minWidth: 210 }}>
-                Suggested pricing
+            {matrix.listingsIncluded && (
+              <TableCell align="right" sx={{ fontWeight: 700, minWidth: 110 }}>
+                Your listing
               </TableCell>
             )}
             <TableCell
-              rowSpan={headerRowSpan}
               align="right"
-              sx={{ fontWeight: 700, minWidth: 145 }}
+              sx={{
+                fontWeight: 700,
+                minWidth: 190,
+                borderLeft: "1px solid",
+                borderLeftColor: "divider",
+              }}
             >
-              Selection
+              Sell at
             </TableCell>
-            <TableCell
-              rowSpan={headerRowSpan}
-              align="right"
-              sx={{ fontWeight: 700, minWidth: 130 }}
-            >
-              Marketplace
+            <TableCell align="right" sx={{ fontWeight: 700, minWidth: 100 }}>
+              vs market
             </TableCell>
-            <TableCell
-              rowSpan={headerRowSpan}
-              sx={{ fontWeight: 700, minWidth: 120 }}
-            >
-              Notes
-            </TableCell>
+            {shadowMethod && (
+              <TableCell align="right" sx={{ fontWeight: 700, minWidth: 150 }}>
+                {policyMethodLabel(shadowMethod)}
+              </TableCell>
+            )}
+            <TableCell sx={{ fontWeight: 700, minWidth: 140 }}>Notes</TableCell>
           </TableRow>
-          {hasPercentileColumns && (
-            <TableRow>
-              {availablePercentiles.map((percentile) => {
-                const isConfigured = configuredPercentiles.includes(percentile);
-
-                return (
-                  <TableCell
-                    key={percentile}
-                    align="right"
-                    sx={{
-                      minWidth: 130,
-                      borderLeft: "1px solid",
-                      borderLeftColor: "divider",
-                      bgcolor: isConfigured ? "action.selected" : undefined,
-                    }}
-                  >
-                    <Stack spacing={0.25} alignItems="flex-end">
-                      <Typography
-                        variant="body2"
-                        component="span"
-                        fontWeight={700}
-                        color={isConfigured ? "primary.main" : "inherit"}
-                      >
-                        {formatPercentileLabel(percentile)}
-                        {isConfigured ? " ★" : ""}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        component="span"
-                        color="text.secondary"
-                      >
-                        Price · expected time
-                      </Typography>
-                    </Stack>
-                  </TableCell>
-                );
-              })}
-            </TableRow>
-          )}
         </TableHead>
         <TableBody>
           {matrix.cells.map((cell, index) => {
-            const hasWarnings = cell.warnings.length > 0;
-            const hasErrors = cell.errors.length > 0;
             const conditionColor = getConditionColor(cell.condition);
             const startsVariantGroup =
               index === 0 || matrix.cells[index - 1]?.variant !== cell.variant;
-            const groupBorder = startsVariantGroup ? "2px solid" : undefined;
+            const groupBorder = {
+              borderTop: startsVariantGroup ? "2px solid" : undefined,
+              borderTopColor: "divider",
+            };
 
             return (
               <TableRow
@@ -306,8 +331,7 @@ export function ProductPriceMatrixTable({
                     whiteSpace: "nowrap",
                     borderLeft: "4px solid",
                     borderLeftColor: getConditionAccentColor(cell.condition),
-                    borderTop: groupBorder,
-                    borderTopColor: "divider",
+                    ...groupBorder,
                   })}
                 >
                   {cell.variant}
@@ -326,8 +350,7 @@ export function ProductPriceMatrixTable({
                       theme,
                       theme.palette.mode === "dark" ? 0.16 : 0.06,
                     ),
-                    borderTop: groupBorder,
-                    borderTopColor: "divider",
+                    ...groupBorder,
                   })}
                 >
                   <Chip
@@ -355,179 +378,58 @@ export function ProductPriceMatrixTable({
                     bgcolor: "background.paper",
                     borderRight: "1px solid",
                     borderRightColor: "divider",
-                    borderTop: groupBorder,
-                    borderTopColor: "divider",
+                    ...groupBorder,
                   }}
                 >
-                  {formatCurrency(cell.tcgMarketPrice)}
+                  {formatOptionalUsd(cell.tcgMarketPrice)}
                 </TableCell>
-                <TableCell
-                  align="right"
-                  sx={{ borderTop: groupBorder, borderTopColor: "divider" }}
-                >
-                  {formatCurrency(cell.lowestSalePrice)}
+                <TableCell align="right" sx={groupBorder}>
+                  {formatOptionalUsd(cell.lowestSalePrice)}
                 </TableCell>
-                <TableCell
-                  align="right"
-                  sx={{ borderTop: groupBorder, borderTopColor: "divider" }}
-                >
-                  {formatCurrency(cell.highestSalePrice)}
+                <TableCell align="right" sx={groupBorder}>
+                  {formatOptionalUsd(cell.highestSalePrice)}
                 </TableCell>
-                <TableCell
-                  align="right"
-                  sx={{ borderTop: groupBorder, borderTopColor: "divider" }}
-                >
+                <TableCell align="right" sx={groupBorder}>
                   {cell.saleCount.toLocaleString()}
                 </TableCell>
-                {hasPercentileColumns ? (
-                  availablePercentiles.map((percentile) => {
-                    const detail = cell.percentiles?.find(
-                      (candidate) => candidate.percentile === percentile,
-                    );
-                    const isConfigured = cell.percentileUsed === percentile;
-                    const marketDelta = isConfigured
-                      ? getMarketDelta(
-                          cell.tcgMarketPrice,
-                          detail?.suggestedPrice ?? null,
-                        )
-                      : null;
-
-                    return (
-                      <TableCell
-                        key={percentile}
-                        align="right"
-                        aria-label={`${formatPercentileLabel(
-                          percentile,
-                        )} percentile: ${formatCurrency(
-                          detail?.suggestedPrice,
-                        )}, ${formatDays(detail?.estimatedTimeToSellDays)}${
-                          isConfigured ? ", configured percentile" : ""
-                        }`}
-                        sx={(theme) => ({
-                          minWidth: 130,
-                          ...(isConfigured
-                            ? getConditionTintStyles(
-                                cell.condition,
-                                theme,
-                                theme.palette.mode === "dark" ? 0.24 : 0.1,
-                              )
-                            : {}),
-                          borderLeft: "1px solid",
-                          borderLeftColor: isConfigured
-                            ? getConditionAccentColor(cell.condition)
-                            : "divider",
-                          borderTop: groupBorder,
-                          borderTopColor: "divider",
-                        })}
-                      >
-                        <Stack spacing={0.25} alignItems="flex-end">
-                          <Stack
-                            direction="row"
-                            spacing={0.75}
-                            alignItems="center"
-                            justifyContent="flex-end"
-                            flexWrap="nowrap"
-                          >
-                            {marketDelta !== null && (
-                              <Chip
-                                size="small"
-                                variant="outlined"
-                                label={`${marketDelta >= 0 ? "+" : ""}${marketDelta.toFixed(0)}%`}
-                                color={marketDelta >= 0 ? "success" : "default"}
-                              />
-                            )}
-                            <Typography
-                              variant="body2"
-                              component="span"
-                              fontWeight={700}
-                            >
-                              {formatCurrency(detail?.suggestedPrice)}
-                            </Typography>
-                          </Stack>
-                          <Typography
-                            variant="caption"
-                            component="span"
-                            color="text.secondary"
-                          >
-                            {formatDays(detail?.estimatedTimeToSellDays)}
-                          </Typography>
-                        </Stack>
-                      </TableCell>
-                    );
-                  })
-                ) : (
-                  <TableCell
-                    align="center"
-                    sx={{
-                      color: "text.secondary",
-                      borderTop: groupBorder,
-                      borderTopColor: "divider",
-                    }}
-                  >
-                    Run Suggested Pricing to compare percentiles
+                {matrix.listingsIncluded && (
+                  <TableCell align="right" sx={groupBorder}>
+                    <ListingCell cell={cell} />
                   </TableCell>
                 )}
                 <TableCell
                   align="right"
-                  sx={{ borderTop: groupBorder, borderTopColor: "divider" }}
+                  sx={(theme) => ({
+                    ...groupBorder,
+                    borderLeft: "1px solid",
+                    borderLeftColor: getConditionAccentColor(cell.condition),
+                    ...(cell.sellAtPrice !== null
+                      ? getConditionTintStyles(
+                          cell.condition,
+                          theme,
+                          theme.palette.mode === "dark" ? 0.24 : 0.1,
+                        )
+                      : {}),
+                  })}
                 >
-                  {cell.pricingDecision ? (
-                    <Stack spacing={0.25} alignItems="flex-end">
-                      <Typography variant="body2" fontWeight={700}>
-                        {cell.pricingDecision.method === "percentile"
-                          ? `${cell.pricingDecision.configuredPercentile ?? cell.percentileUsed}th percentile`
-                          : cell.pricingDecision.method === "target-horizon"
-                            ? `${formatDays(cell.pricingDecision.targetHorizonDays)} target`
-                            : `${((cell.pricingDecision.dailyReturnHurdle ?? 0) * 100).toFixed(2)}%/day hurdle`}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {cell.pricingDecision.basis.replaceAll("-", " ")}
-                        {cell.pricingDecision.unprofitable
-                          ? ", below overhead"
-                          : ""}
-                      </Typography>
-                      {cell.pricingDecision.equivalentPercentile !==
-                        undefined &&
-                        cell.pricingDecision.method !== "percentile" && (
-                          <Typography variant="caption" color="text.secondary">
-                            ≈{" "}
-                            {cell.pricingDecision.equivalentPercentile.toFixed(
-                              1,
-                            )}
-                            th
-                          </Typography>
-                        )}
-                      {cell.pricingDecision.constraint !== "none" && (
-                        <Typography variant="caption" color="warning.main">
-                          {cell.pricingDecision.constraint.replaceAll("-", " ")}
-                        </Typography>
-                      )}
-                    </Stack>
-                  ) : (
-                    "N/A"
-                  )}
+                  <SellAtCell
+                    cell={cell}
+                    priced={matrix.suggestedPricesIncluded}
+                  />
                 </TableCell>
-                <TableCell
-                  align="right"
-                  sx={{ borderTop: groupBorder, borderTopColor: "divider" }}
-                >
-                  {formatCurrency(cell.marketplacePrice)}
+                <TableCell align="right" sx={groupBorder}>
+                  <MarketDelta
+                    price={cell.sellAtPrice}
+                    market={cell.tcgMarketPrice}
+                  />
                 </TableCell>
-                <TableCell
-                  sx={{ borderTop: groupBorder, borderTopColor: "divider" }}
-                >
-                  <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                    {hasWarnings && (
-                      <Tooltip title={cell.warnings.join(" ")}>
-                        <Chip size="small" color="warning" label="Warning" />
-                      </Tooltip>
-                    )}
-                    {hasErrors && (
-                      <Tooltip title={cell.errors.join(" ")}>
-                        <Chip size="small" color="error" label="Error" />
-                      </Tooltip>
-                    )}
-                  </Stack>
+                {shadowMethod && (
+                  <TableCell align="right" sx={groupBorder}>
+                    <ShadowCell cell={cell} />
+                  </TableCell>
+                )}
+                <TableCell sx={groupBorder}>
+                  <ConditionNotes cell={cell} />
                 </TableCell>
               </TableRow>
             );

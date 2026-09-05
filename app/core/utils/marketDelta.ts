@@ -37,6 +37,11 @@ export function formatUsd(amount: number): string {
   return usdFormatter.format(amount);
 }
 
+/** "$3.20", or "N/A" when there is no amount. */
+export function formatOptionalUsd(amount: number | null | undefined): string {
+  return amount === null || amount === undefined ? "N/A" : usdFormatter.format(amount);
+}
+
 /** "+$3.20" or "-$1.10". */
 export function formatSignedUsd(amount: number): string {
   const sign = amount > 0 ? "+" : amount < 0 ? "-" : "";

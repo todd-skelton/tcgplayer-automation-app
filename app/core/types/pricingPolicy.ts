@@ -10,7 +10,7 @@ export interface PricingCurvePoint {
   supplyStatus?: PricingSupplyStatus;
 }
 
-export const PRICING_MODEL_VERSION = "exposure-share-v1" as const;
+export const PRICING_MODEL_VERSION = "pooled-supply-v1" as const;
 
 export type PricingSupplyStatus =
   | "observed"

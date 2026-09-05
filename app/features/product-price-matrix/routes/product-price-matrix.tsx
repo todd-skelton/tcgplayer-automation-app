@@ -28,10 +28,8 @@ import type {
   ProductPriceMatrixResponse,
   ProductPriceMatrixSearchScope,
 } from "../types/productPriceMatrix";
-import {
-  formatPercentileLabel,
-  getConfiguredPercentiles,
-} from "../components/percentileColumns";
+import { ConditionRefundHelper } from "../components/ConditionRefundHelper";
+import { describePricingPolicy } from "~/features/pricing/components/policyLabel";
 import { ProductPriceMatrixTable } from "../components/ProductPriceMatrixTable";
 
 const DEFAULT_PRODUCT_LINE_ID = 3;
@@ -148,10 +146,6 @@ export default function ProductPriceMatrixRoute() {
         return true;
       }),
     [products, productTypeFilter],
-  );
-  const configuredPercentiles = useMemo(
-    () => getConfiguredPercentiles(matrix?.cells ?? []),
-    [matrix],
   );
   const loadProductOptions = useCallback(
     async ({
@@ -697,14 +691,12 @@ export default function ProductPriceMatrixRoute() {
                       variant="outlined"
                       label={selectedLanguage || "No language"}
                     />
-                    {configuredPercentiles.length > 0 && (
+                    {matrix?.policy && (
                       <Chip
                         size="small"
                         color="primary"
                         variant="outlined"
-                        label={`Configured: ${configuredPercentiles
-                          .map(formatPercentileLabel)
-                          .join(", ")}`}
+                        label={describePricingPolicy(matrix.policy)}
                       />
                     )}
                   </Stack>
@@ -748,6 +740,12 @@ export default function ProductPriceMatrixRoute() {
               {matrix && matrix.cells.length > 0 && (
                 <ProductPriceMatrixTable matrix={matrix} />
               )}
+
+              {matrix &&
+                matrix.suggestedPricesIncluded &&
+                matrix.cells.length > 0 && (
+                  <ConditionRefundHelper key={matrix.pricedAt} matrix={matrix} />
+                )}
 
               {matrix && matrix.cells.length === 0 && (
                 <Alert severity="info">

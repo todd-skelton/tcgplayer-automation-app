@@ -461,6 +461,26 @@ export const continuousPricingRepository = {
     };
   },
 
+  /** The seller's listings of the given SKUs, whether or not they are in stock. */
+  async findBySkus(
+    sellerKey: string,
+    skus: number[],
+    executor?: Queryable,
+  ): Promise<ContinuousPricingInventoryItem[]> {
+    if (skus.length === 0) {
+      return [];
+    }
+
+    return query<ContinuousPricingInventoryRow>(
+      `${inventorySelect}
+      WHERE seller_key = $1
+        AND sku = ANY($2::integer[])
+      ORDER BY sku`,
+      [sellerKey, skus],
+      executor,
+    );
+  },
+
   async setEnabled(
     sellerKey: string,
     sku: number,

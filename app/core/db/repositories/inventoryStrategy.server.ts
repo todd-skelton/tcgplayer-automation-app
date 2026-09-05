@@ -140,8 +140,9 @@ export const inventoryStrategyRepository = {
         AND batch.source_label = $1
         AND result.result_status = 'successful'
         AND result.priced_at >= $2
+        AND result.pricing_details_json->>'pricingModelVersion' = $3
       ORDER BY result.sku, result.priced_at`,
-      [sellerKey, since],
+      [sellerKey, since, PRICING_MODEL_VERSION],
       executor,
     );
   },

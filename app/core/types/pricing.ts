@@ -1,3 +1,4 @@
+import type { Condition } from "~/integrations/tcgplayer/types/Condition";
 import type {
   ActivePricingPolicy,
   PortfolioPricingPlan,
@@ -123,6 +124,11 @@ export interface ConditionNormalizationDetail {
   observedConditionCount: number;
   /** Absent when the multipliers came from sibling market prices. */
   conditionExponent?: number;
+  /**
+   * The condition whose market price stood in for the listed condition's
+   * when it had none. Present only when the two differ.
+   */
+  anchorCondition?: Condition;
   conditionTimeConnected: boolean;
 }
 

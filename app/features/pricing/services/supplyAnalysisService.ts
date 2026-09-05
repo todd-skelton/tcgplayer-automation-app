@@ -1,10 +1,13 @@
 import type { Sku } from "../../../shared/data-types/sku";
+import { DISPLAY_CONDITION_ORDER } from "../../../core/utils/conditionOrder";
+import type { Condition } from "../../../integrations/tcgplayer/types/Condition";
 import {
   getListings,
   getAllListings,
 } from "../../../integrations/tcgplayer/client/get-listings.server";
 
 export interface ListingData {
+  condition: Condition;
   price: number;
   shippingCost: number;
   sellerId: string;
@@ -19,8 +22,17 @@ export interface ListingObservation {
 
 export interface SupplyAnalysisConfig {
   includeUnverifiedSellers?: boolean;
+  /** Delivered price beyond which listings are not fetched. */
   maxSalesPrice?: number;
   excludedSellerKey?: string;
+}
+
+const KNOWN_CONDITIONS = new Set<string>(DISPLAY_CONDITION_ORDER);
+
+function sellerOf(
+  listing: Pick<ListingData, "sellerKey" | "sellerId" | "listingId">,
+): string {
+  return listing.sellerKey || listing.sellerId || `listing:${listing.listingId}`;
 }
 
 export class SupplyAnalysisService {
@@ -68,7 +80,13 @@ export class SupplyAnalysisService {
     }
   }
 
-  async fetchListingsForSku(
+  /**
+   * Each seller's cheapest ask in each condition of the SKU's product, variant,
+   * and language, cheapest delivered first. Buyers want the card and weigh
+   * condition against price, so a listing competes with asks in every
+   * condition once they are expressed in its own condition's terms.
+   */
+  async fetchListingsForProduct(
     sku: Sku,
     config: SupplyAnalysisConfig = {},
   ): Promise<ListingObservation> {
@@ -85,7 +103,6 @@ export class SupplyAnalysisService {
           filters: {
             term: {
               listingType: ["standard"],
-              condition: [sku.condition],
               language: [sku.language],
               printing: [sku.variant],
               "verified-seller": includeUnverifiedSellers ? undefined : true,
@@ -97,58 +114,54 @@ export class SupplyAnalysisService {
         maxSalesPrice,
       );
 
-      const bestOfferBySeller = new Map<string, ListingData>();
+      const cheapestAskBySellerAndCondition = new Map<string, ListingData>();
       for (const listing of allListings) {
         if (excludedSellerKey && listing.sellerKey === excludedSellerKey)
           continue;
-        const normalized: ListingData = {
+        if (!KNOWN_CONDITIONS.has(listing.condition)) continue;
+        const ask: ListingData = {
+          condition: listing.condition as Condition,
           price: listing.price || 0,
           shippingCost: listing.sellerShippingPrice || 0,
           sellerId: listing.sellerId || "",
           sellerKey: listing.sellerKey || "",
           listingId: listing.listingId || 0,
         };
-        const seller =
-          normalized.sellerKey ||
-          normalized.sellerId ||
-          `listing:${normalized.listingId}`;
-        const current = bestOfferBySeller.get(seller);
+        const key = `${sellerOf(ask)} ${ask.condition}`;
+        const current = cheapestAskBySellerAndCondition.get(key);
         if (
           !current ||
-          normalized.price + normalized.shippingCost <
-            current.price + current.shippingCost
+          ask.price + ask.shippingCost < current.price + current.shippingCost
         ) {
-          bestOfferBySeller.set(seller, normalized);
+          cheapestAskBySellerAndCondition.set(key, ask);
         }
       }
 
-      const uniqueSellerOffers = [...bestOfferBySeller.values()].sort(
-        (left, right) =>
-          left.price + left.shippingCost - (right.price + right.shippingCost),
-      );
       return {
         status: "observed",
-        listings: uniqueSellerOffers,
+        listings: [...cheapestAskBySellerAndCondition.values()].sort(
+          (left, right) =>
+            left.price + left.shippingCost - (right.price + right.shippingCost),
+        ),
       };
     } catch (error) {
-      console.warn(`Failed to fetch listings for SKU ${sku.sku}:`, error);
+      console.warn(
+        `Failed to fetch listings for product ${sku.productId} (${sku.variant}, ${sku.language}):`,
+        error,
+      );
       return { status: "unavailable", listings: [] };
     }
   }
 
+  /** Sellers with an ask delivered at or below the price, each counted once. */
   countCompetingSellers(listings: ListingData[], targetPrice: number): number {
-    const bestOfferBySeller = new Map<string, number>();
+    const sellers = new Set<string>();
     for (const listing of listings) {
-      const deliveredPrice = listing.price + listing.shippingCost;
-      if (deliveredPrice > targetPrice) continue;
-      const seller =
-        listing.sellerKey || listing.sellerId || `listing:${listing.listingId}`;
-      const current = bestOfferBySeller.get(seller);
-      if (current === undefined || deliveredPrice < current) {
-        bestOfferBySeller.set(seller, deliveredPrice);
+      if (listing.price + listing.shippingCost <= targetPrice) {
+        sellers.add(sellerOf(listing));
       }
     }
-    return bestOfferBySeller.size;
+    return sellers.size;
   }
 
   calculateSupplyAdjustedTimeToSell(

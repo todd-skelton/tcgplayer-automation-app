@@ -139,37 +139,82 @@ function multipliersForExponent(
 }
 
 /**
- * Scales each condition by the ratio of the sibling SKUs' market prices. Held
- * out against realized sales, that ratio predicted a condition's price from
- * the other conditions' sales about as well as a fitted exponent and far
- * better than treating every condition alike.
+ * The nearest priced condition to an unpriced one: the closest better
+ * condition with a market price, else the closest worse.
+ */
+function nearestPricedCondition(
+  marketPrices: ReadonlyMap<Condition, number>,
+  condition: Condition,
+): Condition | undefined {
+  const priced = (candidate: Condition): boolean =>
+    (marketPrices.get(candidate) ?? 0) > 0;
+  const rank = CONDITION_ORDER.indexOf(condition);
+  const better = CONDITION_ORDER.slice(0, rank).reverse().find(priced);
+  return better ?? CONDITION_ORDER.slice(rank + 1).find(priced);
+}
+
+/**
+ * One value per condition for the whole card, from the sibling SKUs' market
+ * prices. A condition without a price takes its nearest priced neighbour's,
+ * and no condition is valued above a better one: where the market prices
+ * disagree with the condition order, the better condition's price wins,
+ * since it rests on far more sales. Every condition's value is bounded to
+ * the reach of the fitted exponent below Near Mint's.
+ */
+function conditionValueLadder(
+  marketPrices: ReadonlyMap<Condition, number>,
+): { values: Map<Condition, number>; anchors: Map<Condition, Condition> } | undefined {
+  const values = new Map<Condition, number>();
+  const anchors = new Map<Condition, Condition>();
+  let ceiling = Infinity;
+  for (const condition of CONDITION_ORDER) {
+    const own = marketPrices.get(condition);
+    let value: number | undefined = own && own > 0 ? own : undefined;
+    if (value === undefined) {
+      const neighbour = nearestPricedCondition(marketPrices, condition);
+      if (neighbour === undefined) return undefined;
+      value = marketPrices.get(neighbour)!;
+      anchors.set(condition, neighbour);
+    }
+    value = Math.min(value, ceiling);
+    values.set(condition, value);
+    ceiling = value;
+  }
+  const best = values.get(CONDITION_ORDER[0])!;
+  for (const [condition, value] of values) {
+    values.set(condition, Math.max(value, best / SIBLING_RATIO_LIMIT));
+  }
+  return { values, anchors };
+}
+
+/**
+ * Scales each condition onto the target by the card's value ladder. The
+ * ladder is the same whichever condition is being priced, so every
+ * condition's curve is the one card curve rescaled, never a different shape.
+ * Held out against realized sales, the sibling ratio predicted a condition's
+ * price from the other conditions' sales about as well as a fitted exponent
+ * and far better than treating every condition alike.
  */
 function siblingRatioMultipliers(
   marketPrices: ReadonlyMap<Condition, number> | undefined,
   targetCondition: Condition,
-): Map<Condition, number> | undefined {
-  const target = marketPrices?.get(targetCondition);
-  if (!(target && target > 0)) return undefined;
-  const targetRank = CONDITION_ORDER.indexOf(targetCondition);
-  return new Map(
-    CONDITION_ORDER.map((condition, rank) => {
-      const price = marketPrices?.get(condition);
-      if (!(price && price > 0)) return [condition, 1];
-      const ratio = Math.min(
-        SIBLING_RATIO_LIMIT,
-        Math.max(1 / SIBLING_RATIO_LIMIT, target / price),
-      );
-      // A worse condition never scales below the target, nor a better one above it.
-      return [
-        condition,
-        rank > targetRank
-          ? Math.max(1, ratio)
-          : rank < targetRank
-            ? Math.min(1, ratio)
-            : 1,
-      ];
-    }),
+):
+  | { multipliers: Map<Condition, number>; anchorCondition?: Condition }
+  | undefined {
+  const ladder = marketPrices && conditionValueLadder(marketPrices);
+  const targetValue = ladder?.values.get(targetCondition);
+  if (!ladder || targetValue === undefined) return undefined;
+  const multipliers = new Map(
+    CONDITION_ORDER.map((condition) => [
+      condition,
+      targetValue / ladder.values.get(condition)!,
+    ]),
   );
+  const anchor = ladder.anchors.get(targetCondition);
+  return {
+    multipliers,
+    ...(anchor === undefined ? {} : { anchorCondition: anchor }),
+  };
 }
 
 export function fitTimeAwareZipfModelToConditions(
@@ -222,21 +267,27 @@ export function fitTimeAwareZipfModelToConditions(
     conditionTimeConnected,
   };
   const fallback = () => {
-    const siblingMultipliers = siblingRatioMultipliers(
+    const sibling = siblingRatioMultipliers(
       options.siblingMarketPrices,
       targetCondition,
     );
-    return {
-      multipliers:
-        siblingMultipliers ?? multipliersForExponent(0, targetCondition),
-      diagnostics: siblingMultipliers
-        ? { ...diagnostics, method: "sibling-market-ratio" as const }
-        : {
+    return sibling
+      ? {
+          multipliers: sibling.multipliers,
+          diagnostics: {
+            ...diagnostics,
+            method: "sibling-market-ratio" as const,
+            anchorCondition: sibling.anchorCondition,
+          },
+        }
+      : {
+          multipliers: multipliersForExponent(0, targetCondition),
+          diagnostics: {
             ...diagnostics,
             method: "neutral-condition-fallback" as const,
             conditionExponent: 0,
           },
-    };
+        };
   };
 
   if (
@@ -319,4 +370,48 @@ export function normalizeSalesToTargetCondition(
     quantity: sale.quantity || 1,
     timestamp: new Date(sale.orderDate).getTime(),
   }));
+}
+
+/**
+ * Competing asks expressed in the target condition's terms with the same
+ * multipliers that scale sales, so a better condition's ask competes at or
+ * below its own price and a worse condition's only once it is cheap enough
+ * to be worth the downgrade.
+ */
+export function normalizeListingsToTargetCondition<
+  Listing extends { condition: Condition; price: number; shippingCost: number },
+>(listings: Listing[], conditionMultipliers?: Map<Condition, number>): Listing[] {
+  return listings.map((listing) => {
+    const multiplier = conditionMultipliers?.get(listing.condition) ?? 1;
+    return {
+      ...listing,
+      price: listing.price * multiplier,
+      shippingCost: listing.shippingCost * multiplier,
+    };
+  });
+}
+
+/**
+ * The delivered ask above which no listing of the product competes at any
+ * condition's curve price: the highest sale expressed in the best graded
+ * condition's terms. Scaling a curve's top price back through any condition's
+ * multipliers lands on this same number, so one listings fetch capped here
+ * serves every condition of the product. It refits for the best condition
+ * rather than rescaling the target's multipliers so that every SKU of the
+ * product computes the identical number and the batch cache sees one request.
+ */
+export function competingAskCeiling(
+  sales: Sale[],
+  options: ConditionNormalizationOptions = {},
+): number | undefined {
+  const bestCondition = CONDITION_ORDER[0];
+  const { multipliers } = fitTimeAwareZipfModelToConditions(
+    sales,
+    bestCondition,
+    options,
+  );
+  const prices = normalizeSalesToTargetCondition(sales, multipliers).map(
+    ({ price }) => price,
+  );
+  return prices.length > 0 ? Math.max(...prices) : undefined;
 }
