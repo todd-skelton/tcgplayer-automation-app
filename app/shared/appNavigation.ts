@@ -59,6 +59,7 @@ export const primaryNavigationItems: NavigationItem[] = [
 ];
 
 export const settingsNavigationItems: NavigationItem[] = [
+  { label: "Slab data connections", to: "/slab-connections", icon: HttpIcon },
   { label: "Configuration", to: "/configuration", icon: SettingsIcon },
   {
     label: "Inventory Publication",

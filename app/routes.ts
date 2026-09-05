@@ -43,6 +43,10 @@ export default [
     file: "routes/http-configuration.tsx",
   },
   {
+    path: "/slab-connections",
+    file: "features/ebay-slab-pricing/routes/slab-connections.tsx",
+  },
+  {
     path: "/shipping-configuration",
     file: "features/shipping-export/routes/shipping-configuration.tsx",
   },
