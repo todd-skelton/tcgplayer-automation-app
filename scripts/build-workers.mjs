@@ -3,6 +3,9 @@ import { build } from "esbuild";
 
 await build({
   entryPoints: {
+    "slab-evidence-worker": path.resolve(
+      "app/workers/slab-evidence-worker.server.ts",
+    ),
     "continuous-pricing-scheduler": path.resolve(
       "app/workers/continuous-pricing-scheduler.server.ts",
     ),
