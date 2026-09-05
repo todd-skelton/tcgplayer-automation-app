@@ -18,20 +18,14 @@ import {
   Typography,
 } from "@mui/material";
 import type {
-  EasyPostMode,
   EasyPostService,
   EasyPostShipment,
   ReturnFlowType,
   ShippingExportConfig,
-  ShippingPostagePurchaseResult,
+  ShippingPostagePurchaseEntry,
   TcgPlayerShippingOrder,
 } from "../types/shippingExport";
 import type { EasyPostEnvironmentStatus } from "../types/shippingExport";
-
-type PurchaseEntry = {
-  mode: EasyPostMode;
-  result: ShippingPostagePurchaseResult;
-};
 
 interface ReturnFlowPanelProps {
   config: ShippingExportConfig;
@@ -42,8 +36,8 @@ interface ReturnFlowPanelProps {
   returnShipment: EasyPostShipment | null;
   returnFlowType: ReturnFlowType;
   returnService: EasyPostService;
-  outboundReturnPurchaseEntry: PurchaseEntry | null;
-  returnOnlyPurchaseEntry: PurchaseEntry | null;
+  outboundReturnPurchaseEntry: ShippingPostagePurchaseEntry | null;
+  returnOnlyPurchaseEntry: ShippingPostagePurchaseEntry | null;
   isLoadingReturnOrder: boolean;
   isPurchasingReturn: boolean;
   onOrderNumberChange: (value: string) => void;

@@ -21,23 +21,17 @@ import {
 } from "@mui/material";
 import type {
   EasyPostAddress,
-  EasyPostMode,
   EasyPostShipment,
   LabelSize,
   ShipmentToOrderMap,
   ShippingExportConfig,
   ShippingPostageBatchLabelResult,
-  ShippingPostagePurchaseResult,
+  ShippingPostagePurchaseEntry,
   TcgPlayerShippingOrder,
 } from "../../types/shippingExport";
 import type { EasyPostEnvironmentStatus } from "../../types/shippingExport";
 import { compareShipmentToMarket } from "../../services/orderMarketComparison";
 import { MarketDeltaChip } from "../MarketDeltaChip";
-
-type PurchaseEntry = {
-  mode: EasyPostMode;
-  result: ShippingPostagePurchaseResult;
-};
 
 interface BuyPostageStepProps {
   config: ShippingExportConfig;
@@ -47,8 +41,8 @@ interface BuyPostageStepProps {
   /** Orders before address merging, used for per-order market comparisons. */
   sourceOrders: TcgPlayerShippingOrder[];
   shipmentToOrderMap: ShipmentToOrderMap;
-  outboundPurchaseResultsByReference: Record<string, PurchaseEntry>;
-  returnPurchaseResultsByReference: Record<string, PurchaseEntry>;
+  outboundPurchaseResultsByReference: Record<string, ShippingPostagePurchaseEntry>;
+  returnPurchaseResultsByReference: Record<string, ShippingPostagePurchaseEntry>;
   batchLabelResultsBySize: Partial<Record<LabelSize, ShippingPostageBatchLabelResult>>;
   availableLabelSizes: string[];
   purchasingLabelSize: LabelSize | null;
@@ -64,7 +58,7 @@ interface BuyPostageStepProps {
   onDownloadReturnShipment: (shipment: EasyPostShipment) => void;
   savedPurchasedEntriesForLabelSize: (labelSize: LabelSize) => Array<{
     shipment: EasyPostShipment;
-    purchaseEntry: PurchaseEntry;
+    purchaseEntry: ShippingPostagePurchaseEntry;
   }>;
   onBack: () => void;
   onContinue: () => void;

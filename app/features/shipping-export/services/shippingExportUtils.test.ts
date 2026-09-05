@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import {
   buildShippingWorkflowOrderState,
   buildOrderNumbersInShipmentOrder,
+  buildShippedMessageItems,
+  buildTrackingApplyItems,
+  mergeResultsByOrderNumber,
   calculatePackageType,
   calculateService,
   createRoundTripShipments,
@@ -17,6 +20,10 @@ import {
 import {
   DEFAULT_SHIPPING_EXPORT_CONFIG,
   mergeShippingExportConfigWithDefaults,
+  type EasyPostMode,
+  type ShippingPostagePurchaseEntry,
+  type ShippingShippedMessageResult,
+  type ShippingTrackingApplyResult,
   type TcgPlayerShippingOrder,
 } from "../types/shippingExport";
 
@@ -50,7 +57,123 @@ function createOrder(
   };
 }
 
+function createPurchasedEntry(
+  reference: string,
+  trackingCode: string,
+  mode: EasyPostMode = "production",
+): ShippingPostagePurchaseEntry {
+  return {
+    mode,
+    result: {
+      reference,
+      orderNumbers: [reference],
+      status: "purchased",
+      trackingCode,
+      easypostShipmentId: `shp_${reference}`,
+    },
+  };
+}
+
+function createAppliedResult(orderNumber: string): ShippingTrackingApplyResult {
+  return { orderNumber, carrier: "USPS", trackingNumber: `TRACK-${orderNumber}`, status: "applied" };
+}
+
+function createSentResult(
+  orderNumber: string,
+  easypostShipmentId: string,
+): ShippingShippedMessageResult {
+  return { orderNumber, sellerKey: "seller", easypostShipmentId, status: "sent" };
+}
+
 const testCases: TestCase[] = [
+  {
+    name: "buildTrackingApplyItems skips orders that already carry the purchased tracking",
+    run: () => {
+      const orders = [
+        createOrder({ "Order #": "A" }),
+        createOrder({ "Order #": "B", "Tracking #": " TRACK-B " }),
+        createOrder({ "Order #": "C" }),
+        createOrder({ "Order #": "D" }),
+        createOrder({ "Order #": "E", "Tracking #": "TRACK-OLD" }),
+      ];
+      const shipments = orders.map((order) =>
+        mapOrderToShipment(order, DEFAULT_SHIPPING_EXPORT_CONFIG),
+      );
+      const shipmentToOrderMap = { A: ["A"], B: ["B"], C: ["C"], D: ["D"], E: ["E"] };
+
+      const { updates, alreadyTrackedCount } = buildTrackingApplyItems(
+        shipments,
+        shipmentToOrderMap,
+        {
+          A: createPurchasedEntry("A", "TRACK-A"),
+          B: createPurchasedEntry("B", "TRACK-B"),
+          C: createPurchasedEntry("C", "TRACK-C"),
+          D: createPurchasedEntry("D", "TRACK-D", "test"),
+          E: createPurchasedEntry("E", "TRACK-E"),
+        },
+        orders,
+        [createAppliedResult("C")],
+      );
+
+      assert.deepEqual(updates, [
+        { orderNumber: "A", carrier: "USPS", trackingNumber: "TRACK-A" },
+        { orderNumber: "E", carrier: "USPS", trackingNumber: "TRACK-E" },
+      ]);
+      assert.equal(alreadyTrackedCount, 2);
+    },
+  },
+  {
+    name: "buildShippedMessageItems skips orders that were already messaged",
+    run: () => {
+      const orders = ["A", "B", "C"].map((orderNumber) => createOrder({ "Order #": orderNumber }));
+      const shipments = orders.map((order) =>
+        mapOrderToShipment(order, DEFAULT_SHIPPING_EXPORT_CONFIG),
+      );
+      const { messages, alreadySentCount } = buildShippedMessageItems(
+        shipments,
+        " seller ",
+        { A: ["A"], B: ["B"], C: ["C"] },
+        {
+          A: createPurchasedEntry("A", "TRACK-A"),
+          B: createPurchasedEntry("B", "TRACK-B"),
+          C: createPurchasedEntry("C", "TRACK-C"),
+        },
+        [createSentResult("A", "shp_A"), createSentResult("C", "shp_C_old")],
+      );
+
+      assert.deepEqual(messages, [
+        { orderNumber: "B", sellerKey: "seller", easypostShipmentId: "shp_B" },
+        { orderNumber: "C", sellerKey: "seller", easypostShipmentId: "shp_C" },
+      ]);
+      assert.equal(alreadySentCount, 1);
+      assert.deepEqual(buildShippedMessageItems(shipments, " ", {}, {}, []), {
+        messages: [],
+        alreadySentCount: 0,
+      });
+    },
+  },
+  {
+    name: "mergeResultsByOrderNumber replaces retried orders in place and appends new ones",
+    run: () => {
+      const failed: ShippingTrackingApplyResult = {
+        ...createAppliedResult("B"),
+        status: "failed",
+        error: "timeout",
+      };
+
+      const merged = mergeResultsByOrderNumber(
+        [createAppliedResult("A"), failed, createAppliedResult("C")],
+        [createAppliedResult("B"), createAppliedResult("D")],
+      );
+
+      assert.deepEqual(merged, [
+        createAppliedResult("A"),
+        createAppliedResult("B"),
+        createAppliedResult("C"),
+        createAppliedResult("D"),
+      ]);
+    },
+  },
   {
     name: "normalizeZipCode supports 5 digit and zip+4 output",
     run: () => {

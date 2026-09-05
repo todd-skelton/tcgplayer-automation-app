@@ -48,17 +48,11 @@ import {
   getPullSheetItemsForOrder,
 } from "../../services/packPullSheet";
 import type {
-  EasyPostMode,
   OrderLineItem,
   ShipmentToOrderMap,
-  ShippingPostagePurchaseResult,
+  ShippingPostagePurchaseEntry,
   TcgPlayerShippingOrder,
 } from "../../types/shippingExport";
-
-type PurchaseEntry = {
-  mode: EasyPostMode;
-  result: ShippingPostagePurchaseResult;
-};
 
 type FallbackRow = {
   key: string;
@@ -162,7 +156,7 @@ interface PackStepProps {
   sourceOrders: TcgPlayerShippingOrder[];
   shipmentReferences: string[];
   shipmentToOrderMap: ShipmentToOrderMap;
-  outboundPurchaseResultsByReference: Record<string, PurchaseEntry>;
+  outboundPurchaseResultsByReference: Record<string, ShippingPostagePurchaseEntry>;
   packPullSheetStatus: PackPullSheetLoadStatus;
   packPullSheetError: string | null;
   packPullSheetMatchesByReference: Record<string, PackPullSheetShipmentMatch>;

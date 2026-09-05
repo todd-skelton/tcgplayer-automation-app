@@ -91,7 +91,7 @@ export function LoadOrdersStep({
         <Button
           variant="contained"
           onClick={onLoadLiveOrders}
-          disabled={isLoadingLiveOrders || isLoadingSingleOrder}
+          disabled={isLoadingLiveOrders || isLoadingSingleOrder || isLoadingExistingPostage}
           startIcon={
             isLoadingLiveOrders ? (
               <CircularProgress color="inherit" size={18} />
@@ -130,7 +130,7 @@ export function LoadOrdersStep({
           variant="contained"
           color="secondary"
           onClick={onLoadSingleOrder}
-          disabled={isLoadingSingleOrder || isLoadingLiveOrders}
+          disabled={isLoadingSingleOrder || isLoadingLiveOrders || isLoadingExistingPostage}
           startIcon={
             isLoadingSingleOrder ? (
               <CircularProgress color="inherit" size={18} />

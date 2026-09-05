@@ -182,6 +182,12 @@ export interface ShippingPostagePurchaseResponse {
   results: ShippingPostagePurchaseResult[];
 }
 
+/** A purchase result together with the EasyPost mode it was bought in. */
+export interface ShippingPostagePurchaseEntry {
+  mode: EasyPostMode;
+  result: ShippingPostagePurchaseResult;
+}
+
 export interface ShippingTrackingApplyRequestItem {
   orderNumber: string;
   carrier: string;

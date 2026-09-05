@@ -20,6 +20,8 @@ import type {
 
 interface NotifyStepProps {
   shippedMessageItems: ShippingShippedMessageRequestItem[];
+  /** How many orders were already messaged in this workflow and will be skipped. */
+  alreadySentCount: number;
   shippedMessageResults: ShippingShippedMessageResult[];
   isSendingShippedMessages: boolean;
   onSendShippedMessages: () => void;
@@ -27,8 +29,21 @@ interface NotifyStepProps {
   onReset: () => void;
 }
 
+function describeReadiness(readyCount: number, alreadySentCount: number): string {
+  if (readyCount > 0) {
+    return `${readyCount} order${readyCount === 1 ? "" : "s"} ready to receive shipped messages.`;
+  }
+
+  if (alreadySentCount > 0) {
+    return "Every order with production postage has already received its shipped message.";
+  }
+
+  return "No orders are ready for shipped notifications. Tracking must be applied in production mode first.";
+}
+
 export function NotifyStep({
   shippedMessageItems,
+  alreadySentCount,
   shippedMessageResults,
   isSendingShippedMessages,
   onSendShippedMessages,
@@ -43,10 +58,15 @@ export function NotifyStep({
     <Stack spacing={3}>
       <Box>
         <Typography variant="body1" gutterBottom>
-          {shippedMessageItems.length === 0
-            ? "No orders are ready for shipped notifications. Tracking must be applied in production mode first."
-            : `${shippedMessageItems.length} order${shippedMessageItems.length === 1 ? "" : "s"} ready to receive shipped messages.`}
+          {describeReadiness(shippedMessageItems.length, alreadySentCount)}
         </Typography>
+
+        {alreadySentCount > 0 && shippedMessageItems.length > 0 && (
+          <Typography variant="body2" color="text.secondary">
+            {alreadySentCount} order{alreadySentCount === 1 ? "" : "s"} already messaged will be
+            skipped.
+          </Typography>
+        )}
 
         {shippedMessageItems.length > 0 && (
           <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
@@ -133,7 +153,7 @@ export function NotifyStep({
         </>
       )}
 
-      {hasResults && failedResults.length === 0 && (
+      {hasResults && failedResults.length === 0 && shippedMessageItems.length === 0 && (
         <Alert severity="success">
           Batch complete! All orders have been shipped and customers notified.
         </Alert>

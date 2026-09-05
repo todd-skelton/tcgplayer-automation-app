@@ -11,30 +11,24 @@ import {
   Typography,
 } from "@mui/material";
 import type {
-  EasyPostMode,
   EasyPostShipment,
   LabelSize,
   ShippingPostageBatchLabelResult,
-  ShippingPostagePurchaseResult,
+  ShippingPostagePurchaseEntry,
   TcgPlayerShippingOrder,
 } from "../../types/shippingExport";
-
-type PurchaseEntry = {
-  mode: EasyPostMode;
-  result: ShippingPostagePurchaseResult;
-};
 
 interface PrintStepProps {
   sourceOrders: TcgPlayerShippingOrder[];
   shipments: EasyPostShipment[];
-  outboundPurchaseResultsByReference: Record<string, PurchaseEntry>;
+  outboundPurchaseResultsByReference: Record<string, ShippingPostagePurchaseEntry>;
   batchLabelResultsBySize: Partial<Record<LabelSize, ShippingPostageBatchLabelResult>>;
   availableLabelSizes: string[];
   generatingBatchLabelSize: LabelSize | null;
   packingSlipAction: "download" | "open" | null;
   savedPurchasedEntriesForLabelSize: (labelSize: LabelSize) => Array<{
     shipment: EasyPostShipment;
-    purchaseEntry: PurchaseEntry;
+    purchaseEntry: ShippingPostagePurchaseEntry;
   }>;
   onOpenPackingSlips: () => void;
   onDownloadPackingSlips: () => void;

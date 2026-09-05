@@ -52,7 +52,8 @@ export interface SellerOrderDetail {
   products: SellerOrderProduct[];
   refunds: unknown[];
   refundStatus: string;
-  trackingNumbers: string[];
+  /** May be absent or null; read it defensively. */
+  trackingNumbers?: string[] | null;
   allowedActions: string[];
 }
 

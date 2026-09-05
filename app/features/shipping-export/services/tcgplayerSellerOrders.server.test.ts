@@ -99,6 +99,20 @@ const testCases: TestCase[] = [
     },
   },
   {
+    name: "mapSellerOrderDetailToShippingOrder keeps the tracking number TCGPlayer already has",
+    run: () => {
+      const order = mapSellerOrderDetailToShippingOrder(
+        createSellerOrderDetail({ trackingNumbers: [" 9400136208192278220374 "] }),
+      );
+
+      assert.equal(order["Tracking #"], "9400136208192278220374");
+      assert.equal(
+        mapSellerOrderDetailToShippingOrder(createSellerOrderDetail({ trackingNumbers: null }))["Tracking #"],
+        "",
+      );
+    },
+  },
+  {
     name: "mapSellerOrderDetailToShippingOrder sums quantities and handles single-token names",
     run: () => {
       const order = mapSellerOrderDetailToShippingOrder(

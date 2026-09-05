@@ -20,6 +20,8 @@ import type {
 
 interface ApplyTrackingStepProps {
   trackingApplyItems: ShippingTrackingApplyRequestItem[];
+  /** How many orders already carry the purchased tracking number and will be skipped. */
+  alreadyTrackedCount: number;
   trackingApplyResults: ShippingTrackingApplyResult[];
   isApplyingTracking: boolean;
   onApplyTracking: () => void;
@@ -27,8 +29,21 @@ interface ApplyTrackingStepProps {
   onContinue: () => void;
 }
 
+function describeReadiness(readyCount: number, alreadyTrackedCount: number): string {
+  if (readyCount > 0) {
+    return `${readyCount} order${readyCount === 1 ? "" : "s"} ready to mark as shipped in TCGPlayer.`;
+  }
+
+  if (alreadyTrackedCount > 0) {
+    return "Tracking is already applied to every order with production postage.";
+  }
+
+  return "No orders have production postage ready for tracking. Buy postage in production mode first.";
+}
+
 export function ApplyTrackingStep({
   trackingApplyItems,
+  alreadyTrackedCount,
   trackingApplyResults,
   isApplyingTracking,
   onApplyTracking,
@@ -43,10 +58,15 @@ export function ApplyTrackingStep({
     <Stack spacing={3}>
       <Box>
         <Typography variant="body1" gutterBottom>
-          {trackingApplyItems.length === 0
-            ? "No orders have production postage ready for tracking. Buy postage in production mode first."
-            : `${trackingApplyItems.length} order${trackingApplyItems.length === 1 ? "" : "s"} ready to mark as shipped in TCGPlayer.`}
+          {describeReadiness(trackingApplyItems.length, alreadyTrackedCount)}
         </Typography>
+
+        {alreadyTrackedCount > 0 && trackingApplyItems.length > 0 && (
+          <Typography variant="body2" color="text.secondary">
+            {alreadyTrackedCount} order{alreadyTrackedCount === 1 ? "" : "s"} already tracked in
+            TCGPlayer will be skipped.
+          </Typography>
+        )}
 
         {trackingApplyItems.length > 0 && (
           <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
@@ -122,21 +142,12 @@ export function ApplyTrackingStep({
         <Button variant="outlined" onClick={onBack}>
           Back
         </Button>
-        <Button
-          variant="contained"
-          onClick={onContinue}
-          disabled={!hasResults && trackingApplyItems.length > 0}
-        >
+        <Button variant="contained" onClick={onContinue} disabled={trackingApplyItems.length > 0}>
           Continue to Notify
         </Button>
-        {!hasResults && trackingApplyItems.length > 0 && (
+        {trackingApplyItems.length > 0 && (
           <Button variant="text" onClick={onContinue} size="small" color="inherit">
             Skip (proceed anyway)
-          </Button>
-        )}
-        {trackingApplyItems.length === 0 && (
-          <Button variant="contained" onClick={onContinue}>
-            Continue to Notify
           </Button>
         )}
       </Stack>

@@ -6,6 +6,12 @@ import {
   type EasyPostShipment,
   type ShipmentToOrderMap,
   type ShippingExportConfig,
+  type ShippingPostagePurchaseEntry,
+  type ShippingPostagePurchaseResult,
+  type ShippingShippedMessageRequestItem,
+  type ShippingShippedMessageResult,
+  type ShippingTrackingApplyRequestItem,
+  type ShippingTrackingApplyResult,
   type TcgPlayerShippingOrder,
 } from "../types/shippingExport";
 
@@ -155,6 +161,145 @@ export function mergeOrdersByAddress(
     orders: Object.values(mergedOrders),
     shipmentToOrderMap,
   };
+}
+
+function purchasedProductionResult(
+  purchaseResultsByReference: Record<string, ShippingPostagePurchaseEntry>,
+  shipment: EasyPostShipment,
+): ShippingPostagePurchaseResult | null {
+  const purchaseEntry = purchaseResultsByReference[shipment.reference];
+
+  return purchaseEntry?.mode === "production" && purchaseEntry.result.status === "purchased"
+    ? purchaseEntry.result
+    : null;
+}
+
+/** The shipment's order numbers not yet in `seenOrderNumbers`; adds them to it. */
+function unseenOrderNumbersForShipment(
+  shipment: EasyPostShipment,
+  shipmentToOrderMap: ShipmentToOrderMap,
+  seenOrderNumbers: Set<string>,
+): string[] {
+  const orderNumbers: string[] = [];
+
+  for (const orderNumber of shipmentToOrderMap[shipment.reference] ?? [shipment.reference]) {
+    const normalizedOrderNumber = orderNumber.trim();
+
+    if (normalizedOrderNumber && !seenOrderNumbers.has(normalizedOrderNumber)) {
+      seenOrderNumbers.add(normalizedOrderNumber);
+      orderNumbers.push(normalizedOrderNumber);
+    }
+  }
+
+  return orderNumbers;
+}
+
+/**
+ * The tracking updates still to send to TCGPlayer. Orders that already carry
+ * the purchased tracking number, either in their TCGPlayer record or from an
+ * earlier apply in this workflow, are counted instead, so applying tracking
+ * again after a lost response or a reload is safe.
+ */
+export function buildTrackingApplyItems(
+  shipments: EasyPostShipment[],
+  shipmentToOrderMap: ShipmentToOrderMap,
+  purchaseResultsByReference: Record<string, ShippingPostagePurchaseEntry>,
+  sourceOrders: TcgPlayerShippingOrder[],
+  trackingApplyResults: ShippingTrackingApplyResult[],
+): { updates: ShippingTrackingApplyRequestItem[]; alreadyTrackedCount: number } {
+  const existingTrackingByOrderNumber = new Map(
+    sourceOrders.map((order) => [order["Order #"].trim(), order["Tracking #"].trim()]),
+  );
+
+  for (const result of trackingApplyResults) {
+    if (result.status === "applied") {
+      existingTrackingByOrderNumber.set(result.orderNumber, result.trackingNumber);
+    }
+  }
+
+  const seenOrderNumbers = new Set<string>();
+  const updates: ShippingTrackingApplyRequestItem[] = [];
+  let alreadyTrackedCount = 0;
+
+  for (const shipment of shipments) {
+    const trackingCode = purchasedProductionResult(purchaseResultsByReference, shipment)?.trackingCode;
+
+    if (!trackingCode) {
+      continue;
+    }
+
+    for (const orderNumber of unseenOrderNumbersForShipment(shipment, shipmentToOrderMap, seenOrderNumbers)) {
+      if (existingTrackingByOrderNumber.get(orderNumber) === trackingCode) {
+        alreadyTrackedCount += 1;
+      } else {
+        updates.push({ orderNumber, carrier: shipment.carrier, trackingNumber: trackingCode });
+      }
+    }
+  }
+
+  return { updates, alreadyTrackedCount };
+}
+
+/**
+ * The shipped messages still to send. Orders already messaged about the same
+ * label in this workflow are counted instead, so sending again after a lost
+ * response or a reload only reaches buyers who have not heard yet. A re-bought
+ * label has a new EasyPost shipment id, so its buyer is messaged again.
+ */
+export function buildShippedMessageItems(
+  shipments: EasyPostShipment[],
+  sellerKey: string,
+  shipmentToOrderMap: ShipmentToOrderMap,
+  purchaseResultsByReference: Record<string, ShippingPostagePurchaseEntry>,
+  shippedMessageResults: ShippingShippedMessageResult[],
+): { messages: ShippingShippedMessageRequestItem[]; alreadySentCount: number } {
+  const normalizedSellerKey = sellerKey.trim();
+
+  if (!normalizedSellerKey) {
+    return { messages: [], alreadySentCount: 0 };
+  }
+
+  const sentShipmentIdByOrderNumber = new Map(
+    shippedMessageResults
+      .filter((result) => result.status === "sent")
+      .map((result) => [result.orderNumber, result.easypostShipmentId]),
+  );
+  const seenOrderNumbers = new Set<string>();
+  const messages: ShippingShippedMessageRequestItem[] = [];
+  let alreadySentCount = 0;
+
+  for (const shipment of shipments) {
+    const easypostShipmentId = purchasedProductionResult(purchaseResultsByReference, shipment)
+      ?.easypostShipmentId;
+
+    if (!easypostShipmentId) {
+      continue;
+    }
+
+    for (const orderNumber of unseenOrderNumbersForShipment(shipment, shipmentToOrderMap, seenOrderNumbers)) {
+      if (sentShipmentIdByOrderNumber.get(orderNumber) === easypostShipmentId) {
+        alreadySentCount += 1;
+      } else {
+        messages.push({ orderNumber, sellerKey: normalizedSellerKey, easypostShipmentId });
+      }
+    }
+  }
+
+  return { messages, alreadySentCount };
+}
+
+/** Replaces earlier results for the same orders in place and appends the rest. */
+export function mergeResultsByOrderNumber<T extends { orderNumber: string }>(
+  previousResults: T[],
+  newResults: T[],
+): T[] {
+  const newResultsByOrderNumber = new Map(newResults.map((result) => [result.orderNumber, result]));
+  const previousOrderNumbers = new Set(previousResults.map((result) => result.orderNumber));
+
+  return [
+    ...previousResults.map((result) => newResultsByOrderNumber.get(result.orderNumber) ?? result),
+    ...newResults.filter((result) => !previousOrderNumbers.has(result.orderNumber)),
+  ];
 }
 
 export function buildShippingWorkflowOrderState(

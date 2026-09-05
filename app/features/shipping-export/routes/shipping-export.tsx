@@ -1,6 +1,7 @@
 import {
   Alert,
   Box,
+  Button,
   Chip,
   Paper,
   Step,
@@ -13,15 +14,18 @@ import {
 } from "@mui/material";
 import { data, Link, type MetaFunction, useLoaderData } from "react-router";
 import Papa from "papaparse";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PullSheetItem } from "~/features/pull-sheet/types/pullSheetTypes";
 import { loadPullSheetItemsFromCsvText } from "~/features/pull-sheet/utils/pullSheetItems";
 import { getEasyPostEnvironmentStatus } from "../config/easyPostConfig.server";
 import { getShippingExportConfig } from "../config/shippingExportConfig.server";
 import {
+  buildShippedMessageItems,
   buildShippingWorkflowOrderState,
   buildOrderNumbersInShipmentOrder,
   buildTimestampedFileName,
+  buildTrackingApplyItems,
+  mergeResultsByOrderNumber,
   createRoundTripShipments,
   createReturnShipment,
   getAllLabelSizes,
@@ -34,6 +38,12 @@ import {
   allocatePullSheetItemsToShipments,
   type PackPullSheetLoadStatus,
 } from "../services/packPullSheet";
+import { readJsonResponse, readResponseError } from "~/core/utils/readJsonResponse";
+import {
+  type SavedShippingWorkflow,
+  type SavedShippingWorkflowInput,
+} from "../services/savedShippingWorkflow";
+import { useSavedShippingWorkflow } from "../hooks/useSavedShippingWorkflow";
 import {
   type EasyPostMode,
   type EasyPostService,
@@ -41,19 +51,17 @@ import {
   type LabelSize,
   type ReturnFlowType,
   type ShipmentToOrderMap,
-  type ShippingExportConfig,
   type ShippingLiveOrderLoadResponse,
   type ShippingPostageBatchLabelRequestItem,
   type ShippingPostageBatchLabelResult,
   type ShippingPostageDirection,
   type ShippingPostageLookupResponse,
+  type ShippingPostagePurchaseEntry,
   type ShippingPostagePurchaseResponse,
   type ShippingPostagePurchaseResult,
   type ShippingPostagePurchaseScope,
-  type ShippingShippedMessageRequestItem,
   type ShippingShippedMessageResponse,
   type ShippingShippedMessageResult,
-  type ShippingTrackingApplyRequestItem,
   type ShippingTrackingApplyResponse,
   type ShippingTrackingApplyResult,
   type TcgPlayerShippingOrder,
@@ -69,11 +77,6 @@ import { ApplyTrackingStep } from "../components/steps/ApplyTrackingStep";
 import { NotifyStep } from "../components/steps/NotifyStep";
 import { ReturnFlowPanel } from "../components/ReturnFlowPanel";
 
-type PurchaseEntry = {
-  mode: EasyPostMode;
-  result: ShippingPostagePurchaseResult;
-};
-
 const OUTBOUND_STEPS = [
   { key: "load-orders", label: "Load Orders" },
   { key: "pull-sheet", label: "Pull Sheet" },
@@ -83,105 +86,6 @@ const OUTBOUND_STEPS = [
   { key: "apply-tracking", label: "Apply Tracking" },
   { key: "notify", label: "Notify" },
 ] as const;
-
-function buildTrackingApplyItems(
-  shipments: EasyPostShipment[],
-  shipmentToOrderMap: ShipmentToOrderMap,
-  purchaseResultsByReference: Record<string, PurchaseEntry>,
-): ShippingTrackingApplyRequestItem[] {
-  const seenOrderNumbers = new Set<string>();
-  const updates: ShippingTrackingApplyRequestItem[] = [];
-
-  for (const shipment of shipments) {
-    const purchaseEntry = purchaseResultsByReference[shipment.reference];
-
-    if (
-      !purchaseEntry ||
-      purchaseEntry.mode !== "production" ||
-      purchaseEntry.result.status !== "purchased" ||
-      !purchaseEntry.result.trackingCode
-    ) {
-      continue;
-    }
-
-    for (const orderNumber of shipmentToOrderMap[shipment.reference] ?? [shipment.reference]) {
-      const normalizedOrderNumber = orderNumber.trim();
-
-      if (!normalizedOrderNumber || seenOrderNumbers.has(normalizedOrderNumber)) {
-        continue;
-      }
-
-      seenOrderNumbers.add(normalizedOrderNumber);
-      updates.push({
-        orderNumber: normalizedOrderNumber,
-        carrier: shipment.carrier,
-        trackingNumber: purchaseEntry.result.trackingCode,
-      });
-    }
-  }
-
-  return updates;
-}
-
-function buildShippedMessageItems(
-  shipments: EasyPostShipment[],
-  sellerKey: string,
-  shipmentToOrderMap: ShipmentToOrderMap,
-  purchaseResultsByReference: Record<string, PurchaseEntry>,
-): ShippingShippedMessageRequestItem[] {
-  const normalizedSellerKey = sellerKey.trim();
-
-  if (!normalizedSellerKey) {
-    return [];
-  }
-
-  const seenOrderNumbers = new Set<string>();
-  const messages: ShippingShippedMessageRequestItem[] = [];
-
-  for (const shipment of shipments) {
-    const purchaseEntry = purchaseResultsByReference[shipment.reference];
-
-    if (
-      !purchaseEntry ||
-      purchaseEntry.mode !== "production" ||
-      purchaseEntry.result.status !== "purchased" ||
-      !purchaseEntry.result.easypostShipmentId
-    ) {
-      continue;
-    }
-
-    for (const orderNumber of shipmentToOrderMap[shipment.reference] ?? [shipment.reference]) {
-      const normalizedOrderNumber = orderNumber.trim();
-
-      if (!normalizedOrderNumber || seenOrderNumbers.has(normalizedOrderNumber)) {
-        continue;
-      }
-
-      seenOrderNumbers.add(normalizedOrderNumber);
-      messages.push({
-        orderNumber: normalizedOrderNumber,
-        sellerKey: normalizedSellerKey,
-        easypostShipmentId: purchaseEntry.result.easypostShipmentId,
-      });
-    }
-  }
-
-  return messages;
-}
-
-function updateOrderDerivedState(
-  sourceOrders: TcgPlayerShippingOrder[],
-  config: ShippingExportConfig,
-): {
-  sourceOrders: TcgPlayerShippingOrder[];
-  orders: TcgPlayerShippingOrder[];
-  shipments: EasyPostShipment[];
-  shipmentToOrderMap: ShipmentToOrderMap;
-  shipmentReferences: string[];
-  orderedOrderNumbers: string[];
-} {
-  return buildShippingWorkflowOrderState(sourceOrders, config);
-}
 
 function downloadCsvFile(filenamePrefix: string, shipments: EasyPostShipment[]): void {
   const csvOutput = Papa.unparse(getShipmentCsvRows(shipments));
@@ -258,18 +162,9 @@ async function fetchShippingExportPullSheetCsv(
   });
 
   if (!response.ok) {
-    let message = "Failed to generate pull sheet export.";
-
-    try {
-      const payload = (await response.json()) as { error?: string };
-      if (payload.error) {
-        message = payload.error;
-      }
-    } catch {
-      // Ignore non-JSON failures and use the default message.
-    }
-
-    throw new Error(message);
+    throw new Error(
+      await readResponseError(response, "Failed to generate pull sheet export."),
+    );
   }
 
   return response.text();
@@ -322,9 +217,9 @@ export default function ShippingExportRoute() {
 
   // ── Postage state ─────────────────────────────────────────────────────────
   const [outboundPurchaseResultsByReference, setOutboundPurchaseResultsByReference] =
-    useState<Record<string, PurchaseEntry>>({});
+    useState<Record<string, ShippingPostagePurchaseEntry>>({});
   const [returnPurchaseResultsByReference, setReturnPurchaseResultsByReference] =
-    useState<Record<string, PurchaseEntry>>({});
+    useState<Record<string, ShippingPostagePurchaseEntry>>({});
   const [batchLabelResultsBySize, setBatchLabelResultsBySize] = useState<
     Partial<Record<LabelSize, ShippingPostageBatchLabelResult>>
   >({});
@@ -361,8 +256,11 @@ export default function ShippingExportRoute() {
   const [returnShipment, setReturnShipment] = useState<EasyPostShipment | null>(null);
   const [isLoadingReturnOrder, setIsLoadingReturnOrder] = useState(false);
   const [isPurchasingReturn, setIsPurchasingReturn] = useState(false);
-  const [outboundReturnPurchaseEntry, setOutboundReturnPurchaseEntry] = useState<PurchaseEntry | null>(null);
-  const [returnOnlyPurchaseEntry, setReturnOnlyPurchaseEntry] = useState<PurchaseEntry | null>(null);
+  const [outboundReturnPurchaseEntry, setOutboundReturnPurchaseEntry] = useState<ShippingPostagePurchaseEntry | null>(null);
+  const [returnOnlyPurchaseEntry, setReturnOnlyPurchaseEntry] = useState<ShippingPostagePurchaseEntry | null>(null);
+
+  /** Only the newest postage lookup may write results, so a slow older one cannot overwrite them. */
+  const postageLookupSequenceRef = useRef(0);
 
   // ── Derived values ────────────────────────────────────────────────────────
   const availableLabelSizes = getAllLabelSizes().filter((labelSize) =>
@@ -377,12 +275,19 @@ export default function ShippingExportRoute() {
   const hasPackPullSheetSourceData = sourceOrders.some(
     (order) => (order.products?.length ?? 0) > 0,
   );
-  const trackingApplyItems = buildTrackingApplyItems(shipments, shipmentToOrderMap, outboundPurchaseResultsByReference);
-  const shippedMessageItems = buildShippedMessageItems(
+  const { updates: trackingApplyItems, alreadyTrackedCount } = buildTrackingApplyItems(
+    shipments,
+    shipmentToOrderMap,
+    outboundPurchaseResultsByReference,
+    sourceOrders,
+    trackingApplyResults,
+  );
+  const { messages: shippedMessageItems, alreadySentCount } = buildShippedMessageItems(
     shipments,
     sellerKeyInput,
     shipmentToOrderMap,
     outboundPurchaseResultsByReference,
+    shippedMessageResults,
   );
 
   // ── Internal helpers ──────────────────────────────────────────────────────
@@ -390,7 +295,7 @@ export default function ShippingExportRoute() {
     getOrderNumbersForShipmentReference(shipmentToOrderMap, shipmentReference);
 
   const mergePurchaseResults = (
-    previousResults: Record<string, PurchaseEntry>,
+    previousResults: Record<string, ShippingPostagePurchaseEntry>,
     mode: EasyPostMode,
     results: ShippingPostagePurchaseResult[],
   ) => {
@@ -420,7 +325,7 @@ export default function ShippingExportRoute() {
           entry,
         ): entry is {
           shipment: EasyPostShipment;
-          purchaseEntry: PurchaseEntry;
+          purchaseEntry: ShippingPostagePurchaseEntry;
         } =>
           Boolean(
             entry.purchaseEntry &&
@@ -429,21 +334,23 @@ export default function ShippingExportRoute() {
           ),
       );
 
+  /**
+   * Looks up saved outbound postage for the shipments. Resolves to false when
+   * a newer load superseded this one, in which case nothing was applied.
+   */
   const loadExistingPostage = async (
     nextShipments: EasyPostShipment[],
     nextShipmentToOrderMap: ShipmentToOrderMap,
-  ) => {
-    setOutboundPurchaseResultsByReference({});
-    setReturnPurchaseResultsByReference({});
-    setBatchLabelResultsBySize({});
-    setTrackingApplyResults([]);
-    setShippedMessageResults([]);
+  ): Promise<boolean> => {
+    const lookupSequence = ++postageLookupSequenceRef.current;
+    setIsLoadingExistingPostage(nextShipments.length > 0);
 
     if (nextShipments.length === 0) {
-      return;
+      return true;
     }
 
-    setIsLoadingExistingPostage(true);
+    let purchaseEntriesByReference: Record<string, ShippingPostagePurchaseEntry> | null = null;
+    let lookupError: unknown = null;
 
     try {
       const response = await fetch("/api/shipping-export/postage-lookups", {
@@ -457,36 +364,47 @@ export default function ShippingExportRoute() {
         }),
       });
 
-      const payload = (await response.json()) as ShippingPostageLookupResponse | { error?: string };
-
-      if (!response.ok) {
-        throw new Error("error" in payload ? payload.error ?? "Failed to load saved postage." : "Failed to load saved postage.");
-      }
-
-      const lookupResponse = payload as ShippingPostageLookupResponse;
-
-      setOutboundPurchaseResultsByReference(
-        Object.fromEntries(
-          lookupResponse.results.map((entry) => [
-            entry.shipmentReference,
-            { mode: entry.mode, result: entry.result },
-          ]),
-        ),
+      const lookupResponse = await readJsonResponse<ShippingPostageLookupResponse>(
+        response,
+        "Failed to load saved postage.",
       );
-    } catch (lookupError) {
-      console.error("Failed to load saved postage labels", lookupError);
-      setOutboundPurchaseResultsByReference({});
-    } finally {
-      setIsLoadingExistingPostage(false);
+
+      purchaseEntriesByReference = Object.fromEntries(
+        lookupResponse.results.map((entry) => [
+          entry.shipmentReference,
+          { mode: entry.mode, result: entry.result },
+        ]),
+      );
+    } catch (caughtError) {
+      lookupError = caughtError;
     }
+
+    if (lookupSequence !== postageLookupSequenceRef.current) {
+      return false;
+    }
+
+    setIsLoadingExistingPostage(false);
+
+    if (purchaseEntriesByReference) {
+      setOutboundPurchaseResultsByReference(purchaseEntriesByReference);
+    } else {
+      setError(String(lookupError));
+    }
+
+    return true;
   };
 
-  const applyOrderSource = async (
+  /**
+   * Replaces the loaded orders, clears all downstream progress, and starts the
+   * postage lookup for them. Resolves when that lookup has finished, to false
+   * if a newer load superseded it.
+   */
+  const applyOrderSource = (
     nextSourceOrders: TcgPlayerShippingOrder[],
     nextSourceLabel: string,
     nextWarnings: string[] = [],
-  ) => {
-    const nextState = updateOrderDerivedState(nextSourceOrders, config);
+  ): Promise<boolean> => {
+    const nextState = buildShippingWorkflowOrderState(nextSourceOrders, config);
 
     setSourceOrders(nextState.sourceOrders);
     setOrders(nextState.orders);
@@ -495,6 +413,8 @@ export default function ShippingExportRoute() {
     setShipmentReferences(nextState.shipmentReferences);
     setLoadedSourceLabel(nextSourceLabel);
     setLoadWarnings(nextWarnings);
+    setOutboundPurchaseResultsByReference({});
+    setReturnPurchaseResultsByReference({});
     setBatchLabelResultsBySize({});
     setTrackingApplyResults([]);
     setShippedMessageResults([]);
@@ -507,8 +427,63 @@ export default function ShippingExportRoute() {
     setPackPullSheetError(null);
     setPackPullSheetMatchesByReference({});
     setError(null);
-    await loadExistingPostage(nextState.shipments, nextState.shipmentToOrderMap);
+    return loadExistingPostage(nextState.shipments, nextState.shipmentToOrderMap);
   };
+
+  // ── Saved workflow ────────────────────────────────────────────────────────
+  const savedWorkflowInput = useMemo<SavedShippingWorkflowInput>(
+    () => ({
+      currentStep,
+      sellerKey: sellerKeyInput,
+      loadedSourceLabel,
+      loadWarnings,
+      sourceOrders,
+      returnPurchaseResultsByReference,
+      packedOrderNumbers: [...packedOrderNumbers],
+      trackingApplyResults,
+      shippedMessageResults,
+    }),
+    [
+      currentStep,
+      sellerKeyInput,
+      loadedSourceLabel,
+      loadWarnings,
+      sourceOrders,
+      returnPurchaseResultsByReference,
+      packedOrderNumbers,
+      trackingApplyResults,
+      shippedMessageResults,
+    ],
+  );
+
+  const restoreSavedWorkflow = async (saved: SavedShippingWorkflow) => {
+    if (saved.sellerKey) {
+      setSellerKeyInput(saved.sellerKey);
+    }
+
+    // Waits for the postage lookup so labels are present, or its failure shown,
+    // before the saved step renders.
+    const isCurrent = await applyOrderSource(
+      saved.sourceOrders,
+      saved.loadedSourceLabel,
+      saved.loadWarnings,
+    );
+
+    if (!isCurrent) {
+      throw new Error("The workflow was replaced before the saved one finished restoring.");
+    }
+
+    setCurrentStep(Math.min(Math.max(saved.currentStep, 0), OUTBOUND_STEPS.length - 1));
+    setReturnPurchaseResultsByReference(saved.returnPurchaseResultsByReference);
+    setPackedOrderNumbers(new Set(saved.packedOrderNumbers));
+    setTrackingApplyResults(saved.trackingApplyResults);
+    setShippedMessageResults(saved.shippedMessageResults);
+  };
+
+  const { restoredWorkflow, dismissRestoredWorkflow } = useSavedShippingWorkflow({
+    input: savedWorkflowInput,
+    onRestore: restoreSavedWorkflow,
+  });
 
   // ── Handlers: load orders ─────────────────────────────────────────────────
   useEffect(() => {
@@ -612,16 +587,13 @@ export default function ShippingExportRoute() {
         body: JSON.stringify({ sellerKey: sellerKeyInput.trim() }),
       });
 
-      const payload = (await response.json()) as ShippingLiveOrderLoadResponse | { error?: string };
-
-      if (!response.ok) {
-        throw new Error("error" in payload ? payload.error ?? "Failed to load live seller orders." : "Failed to load live seller orders.");
-      }
-
-      const liveOrderResponse = payload as ShippingLiveOrderLoadResponse;
+      const liveOrderResponse = await readJsonResponse<ShippingLiveOrderLoadResponse>(
+        response,
+        "Failed to load live seller orders.",
+      );
 
       setSellerKeyInput(liveOrderResponse.sellerKey);
-      await applyOrderSource(
+      void applyOrderSource(
         liveOrderResponse.orders,
         `Live seller orders: ${liveOrderResponse.sellerKey}`,
         liveOrderResponse.warnings ?? [],
@@ -654,20 +626,17 @@ export default function ShippingExportRoute() {
         }),
       });
 
-      const payload = (await response.json()) as ShippingLiveOrderLoadResponse | { error?: string };
-
-      if (!response.ok) {
-        throw new Error("error" in payload ? payload.error ?? "Failed to load the requested TCGPlayer order." : "Failed to load the requested TCGPlayer order.");
-      }
-
-      const singleOrderResponse = payload as ShippingLiveOrderLoadResponse;
+      const singleOrderResponse = await readJsonResponse<ShippingLiveOrderLoadResponse>(
+        response,
+        "Failed to load the requested TCGPlayer order.",
+      );
 
       if (singleOrderResponse.sellerKey) {
         setSellerKeyInput(singleOrderResponse.sellerKey);
       }
 
       setSingleOrderNumberInput(singleOrderResponse.loadedOrderNumbers[0] ?? normalizedOrderNumber);
-      await applyOrderSource(
+      void applyOrderSource(
         singleOrderResponse.orders,
         `Single TCGPlayer order: ${singleOrderResponse.loadedOrderNumbers[0] ?? normalizedOrderNumber}`,
         singleOrderResponse.warnings ?? [],
@@ -701,12 +670,9 @@ export default function ShippingExportRoute() {
       });
 
       if (!response.ok) {
-        let message = "Failed to generate packing slips export.";
-        try {
-          const payload = (await response.json()) as { error?: string };
-          if (payload.error) message = payload.error;
-        } catch { /* ignore */ }
-        throw new Error(message);
+        throw new Error(
+          await readResponseError(response, "Failed to generate packing slips export."),
+        );
       }
 
       const pdfBlob = await response.blob();
@@ -770,23 +736,16 @@ export default function ShippingExportRoute() {
     direction: ShippingPostageDirection;
     purchaseScope: ShippingPostagePurchaseScope;
   }) => {
-    if (direction === "outbound") {
-      setTrackingApplyResults([]);
-    }
-
     const response = await fetch("/api/shipping-export/postages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ labelSize, direction, purchaseScope, shipments: shipmentItems }),
     });
 
-    const payload = (await response.json()) as ShippingPostagePurchaseResponse | { error?: string };
-
-    if (!response.ok) {
-      throw new Error("error" in payload ? payload.error ?? "Failed to buy postage." : "Failed to buy postage.");
-    }
-
-    const purchaseResponse = payload as ShippingPostagePurchaseResponse;
+    const purchaseResponse = await readJsonResponse<ShippingPostagePurchaseResponse>(
+      response,
+      "Failed to buy postage.",
+    );
 
     if (direction === "return") {
       setReturnPurchaseResultsByReference((prev) =>
@@ -921,15 +880,14 @@ export default function ShippingExportRoute() {
         }),
       });
 
-      const payload = (await response.json()) as ShippingPostageBatchLabelResult | { error?: string };
-
-      if (!response.ok) {
-        throw new Error("error" in payload ? payload.error ?? "Failed to create the batch label PDF." : "Failed to create the batch label PDF.");
-      }
+      const batchLabelResult = await readJsonResponse<ShippingPostageBatchLabelResult>(
+        response,
+        "Failed to create the batch label PDF.",
+      );
 
       setBatchLabelResultsBySize((prev) => ({
         ...prev,
-        [labelSize]: payload as ShippingPostageBatchLabelResult,
+        [labelSize]: batchLabelResult,
       }));
     } catch (generationError) {
       setError(String(generationError));
@@ -943,7 +901,6 @@ export default function ShippingExportRoute() {
     if (trackingApplyItems.length === 0 || isApplyingTracking) return;
 
     setIsApplyingTracking(true);
-    setTrackingApplyResults([]);
     setError(null);
 
     try {
@@ -953,13 +910,15 @@ export default function ShippingExportRoute() {
         body: JSON.stringify({ updates: trackingApplyItems }),
       });
 
-      const payload = (await response.json()) as ShippingTrackingApplyResponse | { error?: string };
+      const trackingResponse = await readJsonResponse<ShippingTrackingApplyResponse>(
+        response,
+        "Failed to apply tracking to TCGPlayer orders.",
+      );
 
-      if (!response.ok) {
-        throw new Error("error" in payload ? payload.error ?? "Failed to apply tracking to TCGPlayer orders." : "Failed to apply tracking to TCGPlayer orders.");
-      }
-
-      setTrackingApplyResults((payload as ShippingTrackingApplyResponse).results);
+      // Earlier applied orders stay applied when only the failed ones are retried.
+      setTrackingApplyResults((previous) =>
+        mergeResultsByOrderNumber(previous, trackingResponse.results),
+      );
     } catch (trackingError) {
       setError(String(trackingError));
     } finally {
@@ -971,7 +930,6 @@ export default function ShippingExportRoute() {
     if (shippedMessageItems.length === 0 || isSendingShippedMessages) return;
 
     setIsSendingShippedMessages(true);
-    setShippedMessageResults([]);
     setError(null);
 
     try {
@@ -981,13 +939,15 @@ export default function ShippingExportRoute() {
         body: JSON.stringify({ messages: shippedMessageItems }),
       });
 
-      const payload = (await response.json()) as ShippingShippedMessageResponse | { error?: string };
+      const shippedMessageResponse = await readJsonResponse<ShippingShippedMessageResponse>(
+        response,
+        "Failed to send shipped messages to TCGPlayer.",
+      );
 
-      if (!response.ok) {
-        throw new Error("error" in payload ? payload.error ?? "Failed to send shipped messages to TCGPlayer." : "Failed to send shipped messages to TCGPlayer.");
-      }
-
-      setShippedMessageResults((payload as ShippingShippedMessageResponse).results);
+      // Earlier messaged orders stay messaged when only the failed ones are retried.
+      setShippedMessageResults((previous) =>
+        mergeResultsByOrderNumber(previous, shippedMessageResponse.results),
+      );
     } catch (shippedMessageError) {
       setError(String(shippedMessageError));
     } finally {
@@ -1032,13 +992,10 @@ export default function ShippingExportRoute() {
         }),
       });
 
-      const payload = (await response.json()) as ShippingLiveOrderLoadResponse | { error?: string };
-
-      if (!response.ok) {
-        throw new Error("error" in payload ? payload.error ?? "Failed to load order." : "Failed to load order.");
-      }
-
-      const singleOrderResponse = payload as ShippingLiveOrderLoadResponse;
+      const singleOrderResponse = await readJsonResponse<ShippingLiveOrderLoadResponse>(
+        response,
+        "Failed to load order.",
+      );
       const loadedOrder = singleOrderResponse.orders[0] ?? null;
 
       setReturnOrder(loadedOrder);
@@ -1084,16 +1041,14 @@ export default function ShippingExportRoute() {
           }),
         });
 
-        const outboundPayload = (await outboundResponse.json()) as ShippingPostagePurchaseResponse | { error?: string };
-
-        if (!outboundResponse.ok) {
-          throw new Error("error" in outboundPayload ? outboundPayload.error ?? "Failed to buy outbound label." : "Failed to buy outbound label.");
-        }
-
-        const outboundResult = (outboundPayload as ShippingPostagePurchaseResponse).results[0];
+        const outboundPayload = await readJsonResponse<ShippingPostagePurchaseResponse>(
+          outboundResponse,
+          "Failed to buy outbound label.",
+        );
+        const outboundResult = outboundPayload.results[0];
 
         if (outboundResult) {
-          setOutboundReturnPurchaseEntry({ mode: (outboundPayload as ShippingPostagePurchaseResponse).mode, result: outboundResult });
+          setOutboundReturnPurchaseEntry({ mode: outboundPayload.mode, result: outboundResult });
         }
       }
 
@@ -1110,16 +1065,14 @@ export default function ShippingExportRoute() {
         }),
       });
 
-      const returnPayload = (await returnResponse.json()) as ShippingPostagePurchaseResponse | { error?: string };
-
-      if (!returnResponse.ok) {
-        throw new Error("error" in returnPayload ? returnPayload.error ?? "Failed to buy return label." : "Failed to buy return label.");
-      }
-
-      const returnResult = (returnPayload as ShippingPostagePurchaseResponse).results[0];
+      const returnPayload = await readJsonResponse<ShippingPostagePurchaseResponse>(
+        returnResponse,
+        "Failed to buy return label.",
+      );
+      const returnResult = returnPayload.results[0];
 
       if (returnResult) {
-        setReturnOnlyPurchaseEntry({ mode: (returnPayload as ShippingPostagePurchaseResponse).mode, result: returnResult });
+        setReturnOnlyPurchaseEntry({ mode: returnPayload.mode, result: returnResult });
       }
     } catch (purchaseError) {
       setError(String(purchaseError));
@@ -1130,28 +1083,9 @@ export default function ShippingExportRoute() {
 
   // ── Handler: reset workflow ───────────────────────────────────────────────
   const handleReset = () => {
+    dismissRestoredWorkflow();
     setCurrentStep(0);
-    setSourceOrders([]);
-    setOrders([]);
-    setShipments([]);
-    setShipmentToOrderMap({});
-    setShipmentReferences([]);
-    setOutboundPurchaseResultsByReference({});
-    setReturnPurchaseResultsByReference({});
-    setBatchLabelResultsBySize({});
-    setTrackingApplyResults([]);
-    setShippedMessageResults([]);
-    setPackedOrderNumbers(new Set());
-    setIsGeneratingPullSheet(false);
-    setPullSheetItems([]);
-    setPullSheetOrderIds([]);
-    setPullSheetError(null);
-    setPackPullSheetStatus("idle");
-    setPackPullSheetError(null);
-    setPackPullSheetMatchesByReference({});
-    setLoadedSourceLabel("");
-    setLoadWarnings([]);
-    setError(null);
+    void applyOrderSource([], "");
   };
 
   // ── Derived for mode status ───────────────────────────────────────────────
@@ -1198,6 +1132,27 @@ export default function ShippingExportRoute() {
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
+        </Alert>
+      )}
+
+      {restoredWorkflow && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          action={
+            <>
+              <Button color="inherit" size="small" onClick={handleReset}>
+                Start over
+              </Button>
+              <Button color="inherit" size="small" onClick={dismissRestoredWorkflow}>
+                Dismiss
+              </Button>
+            </>
+          }
+        >
+          Restored your in-progress shipping workflow
+          {restoredWorkflow.loadedSourceLabel ? ` (${restoredWorkflow.loadedSourceLabel})` : ""} saved{" "}
+          {new Date(restoredWorkflow.savedAt).toLocaleString()}.
         </Alert>
       )}
 
@@ -1326,6 +1281,7 @@ export default function ShippingExportRoute() {
             {currentStep === 5 && (
               <ApplyTrackingStep
                 trackingApplyItems={trackingApplyItems}
+                alreadyTrackedCount={alreadyTrackedCount}
                 trackingApplyResults={trackingApplyResults}
                 isApplyingTracking={isApplyingTracking}
                 onApplyTracking={() => void handleApplyTracking()}
@@ -1337,6 +1293,7 @@ export default function ShippingExportRoute() {
             {currentStep === 6 && (
               <NotifyStep
                 shippedMessageItems={shippedMessageItems}
+                alreadySentCount={alreadySentCount}
                 shippedMessageResults={shippedMessageResults}
                 isSendingShippedMessages={isSendingShippedMessages}
                 onSendShippedMessages={() => void handleSendShippedMessages()}

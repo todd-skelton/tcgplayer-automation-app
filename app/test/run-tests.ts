@@ -1,6 +1,7 @@
 import "../core/clients/baseDomainClient.server.test";
 import "../core/db/repositories/inventoryBatchPricingJobs.server.test";
 import "../core/utils/numberFieldMatching.test";
+import "../core/utils/readJsonResponse.test";
 import "../features/inventory-publication/services/inventoryPublicationPolicy.test";
 import "../features/continuous-pricing/services/continuousPricingSettings.test";
 import "../features/continuous-pricing/services/continuousMarketPrices.server.test";
@@ -23,6 +24,8 @@ import "../features/shipping-export/config/shippingExportConfig.server.test";
 import "../features/shipping-export/config/shippingExportConfigFormData.test";
 import "../features/shipping-export/components/steps/LoadOrdersStep.test";
 import "../features/shipping-export/components/steps/PullSheetStep.test";
+import "../features/shipping-export/components/steps/ApplyTrackingStep.test";
+import "../features/shipping-export/components/steps/NotifyStep.test";
 import "../features/shipping-export/components/OrderMarketSummary.test";
 import "../features/shipping-export/routes/api.shipping-export-batch-labels.test";
 import "../features/shipping-export/routes/api.shipping-export-packing-slips-export.test";
@@ -34,6 +37,7 @@ import "../features/shipping-export/routes/api.shipping-export-tcgplayer-shipped
 import "../features/shipping-export/routes/api.shipping-export-tcgplayer-orders.test";
 import "../features/shipping-export/services/easyPostPostage.server.test";
 import "../features/shipping-export/services/shippingExportUtils.test";
+import "../features/shipping-export/services/savedShippingWorkflow.test";
 import "../features/shipping-export/services/packPullSheet.test";
 import "../features/shipping-export/services/tcgplayerTracking.server.test";
 import "../features/shipping-export/services/tcgplayerShippedMessages.server.test";

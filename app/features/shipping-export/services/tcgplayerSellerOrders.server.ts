@@ -95,7 +95,7 @@ export function mapSellerOrderDetailToShippingOrder(
     "Item Count": sumProductQuantity(order),
     "Value Of Products": order.transaction.productAmount,
     "Shipping Fee Paid": order.transaction.shippingAmount,
-    "Tracking #": "",
+    "Tracking #": order.trackingNumbers?.[0]?.trim() ?? "",
     Carrier: "",
     products: order.products.map((p) => ({
       name: p.name,
