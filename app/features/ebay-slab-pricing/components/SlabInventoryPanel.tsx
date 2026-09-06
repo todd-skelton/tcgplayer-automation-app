@@ -23,6 +23,7 @@ export type SlabListing = Json<
   Awaited<ReturnType<typeof getInventory>>
 >["items"][number];
 const MaintenancePanel = lazy(() => import("./SlabMaintenancePanel"));
+const SellerOutcomesPanel = lazy(() => import("./SlabSellerOutcomesPanel"));
 export function SlabInventoryPanel({
   onOpen,
 }: {
@@ -40,6 +41,7 @@ export function SlabInventoryPanel({
   const [csv, setCsv] = useState("");
   const [importing, setImporting] = useState(false);
   const [showMaintenance, setShowMaintenance] = useState(false);
+  const [showOutcomes, setShowOutcomes] = useState(false);
   const action = useSlabAction();
   const load = async (name: string, after = "") => {
     const result = await slabRequest<Awaited<ReturnType<typeof getInventory>>>(
@@ -235,6 +237,19 @@ export function SlabInventoryPanel({
                 fallback={<Typography>Loading maintenance…</Typography>}
               >
                 <MaintenancePanel key={loadedSeller} seller={loadedSeller} />
+              </Suspense>
+            )}
+            <Button
+              sx={{ alignSelf: "start" }}
+              onClick={() => setShowOutcomes((value) => !value)}
+            >
+              {showOutcomes ? "Hide seller outcomes" : "Seller outcomes"}
+            </Button>
+            {showOutcomes && (
+              <Suspense
+                fallback={<Typography>Loading seller outcomes…</Typography>}
+              >
+                <SellerOutcomesPanel key={loadedSeller} seller={loadedSeller} />
               </Suspense>
             )}
             <div style={{ height: 440 }}>
