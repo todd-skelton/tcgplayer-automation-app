@@ -1,4 +1,5 @@
 import { ProviderRequestError } from "../connections/providerRequest.server";
+import { runSlabMaintenanceCycle } from "../maintenance/slabMaintenanceCycle.server";
 import { fetchEvidence } from "./evidenceRefreshProvider.server";
 import {
   claimEvidenceJob,
@@ -105,6 +106,9 @@ export function startEvidenceWorker() {
       if (job) {
         waitMs = 2_000;
         await runEvidenceJob(job, { signal: worker.controller.signal });
+      } else {
+        const maintenance = await runSlabMaintenanceCycle();
+        if (maintenance?.queued) waitMs = 2000;
       }
       if (Date.now() - worker.lastCleanup > 3600_000) {
         await cleanEvidenceCache();

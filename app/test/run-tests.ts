@@ -1,4 +1,5 @@
 import "../core/clients/baseDomainClient.server.test";
+import "../features/ebay-slab-pricing/maintenance/slabMaintenance.test";
 import "../features/ebay-slab-pricing/publication/slabPublication.test";
 import "../features/ebay-slab-pricing/evaluation/slabPreviewAcceptance.test";
 import "../features/ebay-slab-pricing/publication/slabPublicationPreview.test";

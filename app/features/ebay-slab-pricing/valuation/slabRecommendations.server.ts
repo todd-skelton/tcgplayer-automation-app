@@ -40,6 +40,7 @@ type EvidenceRow = {
 export async function calculateSlabRecommendation(
   input: RecommendationInput,
   asOf = new Date().toISOString(),
+  options: { expectedRecommendationId?: string } = {},
 ) {
   if (
     !input ||
@@ -49,7 +50,9 @@ export async function calculateSlabRecommendation(
     !Array.isArray(input.revisionIds) ||
     input.revisionIds.length > 20 ||
     input.revisionIds.some((id) => !uuid(id)) ||
-    !Number.isFinite(Date.parse(asOf))
+    !Number.isFinite(Date.parse(asOf)) ||
+    (options.expectedRecommendationId !== undefined &&
+      !uuid(options.expectedRecommendationId))
   )
     throw new SlabValuationError(
       "Choose a current slab identity and at most twenty evidence revisions.",
@@ -65,7 +68,7 @@ export async function calculateSlabRecommendation(
     const target = (
       await db.query<StoredSlabIdentity>(
         `SELECT id, grader, certificate_number AS "certificateNumber", identity, status, revision, valuation_group_key AS "valuationGroupKey" FROM slab_identities
-      WHERE id = $1 AND revision = $2 AND status = 'confirmed' FOR SHARE`,
+      WHERE id = $1 AND revision = $2 AND status = 'confirmed' FOR ${options.expectedRecommendationId ? "UPDATE" : "SHARE"}`,
         [input.slabId, input.identityRevision],
       )
     ).rows[0];
@@ -73,6 +76,20 @@ export async function calculateSlabRecommendation(
       throw new SlabValuationError(
         "The slab identity changed or is unconfirmed. Reload before calculating.",
       );
+    // Serialize background recalculation with manual review on the identity.
+    if (options.expectedRecommendationId) {
+      const latest = (
+        await db.query<{ id: string; reviewed: boolean }>(
+          `SELECT r.id, EXISTS(SELECT 1 FROM slab_price_overrides o WHERE o.recommendation_id=r.id) AS reviewed
+         FROM slab_recommendations r WHERE r.slab_id=$1 ORDER BY r.created_at DESC,r.id DESC LIMIT 1`,
+          [input.slabId],
+        )
+      ).rows[0];
+      if (latest?.id !== options.expectedRecommendationId || latest.reviewed)
+        throw new SlabValuationError(
+          "The recommendation changed or has a reviewed price. Reload before recalculating.",
+        );
+    }
     const size = (
       await db.query<{ count: number; bytes: number }>(
         "SELECT count(*)::int AS count, COALESCE(sum(byte_count),0)::int AS bytes FROM slab_evidence_revisions WHERE id=ANY($1::uuid[])",
@@ -289,18 +306,28 @@ export async function overrideSlabPrice(input: {
     throw new SlabValuationError(
       "Provide an explicit item price, currency and review reason.",
     );
-  const saved = await queryOne(
-    `INSERT INTO slab_price_overrides(recommendation_id,item_price,currency,note)
+  const saved = await withTransaction(async (db) => {
+    await db.query("SET LOCAL statement_timeout = '15s'");
+    await db.query(
+      "SELECT i.id FROM slab_identities i JOIN slab_recommendations r ON r.slab_id=i.id WHERE r.id=$1 FOR UPDATE OF i",
+      [input.recommendationId],
+    );
+    return (
+      await db.query(
+        `INSERT INTO slab_price_overrides(recommendation_id,item_price,currency,note)
     SELECT r.id,$2,$3,$4 FROM slab_recommendations r JOIN slab_identities i ON i.id=r.slab_id
     WHERE r.id=$1 AND i.revision=r.identity_revision AND i.status='confirmed' AND i.valuation_group_key=r.valuation_group_key AND r.calculation->'policy'->>'currency'=$3
+    AND r.id=(SELECT latest.id FROM slab_recommendations latest WHERE latest.slab_id=r.slab_id ORDER BY latest.created_at DESC,latest.id DESC LIMIT 1)
     ON CONFLICT(recommendation_id) DO UPDATE SET item_price=EXCLUDED.item_price,currency=EXCLUDED.currency,note=EXCLUDED.note,reviewed_at=clock_timestamp() RETURNING recommendation_id`,
-    [
-      input.recommendationId,
-      input.itemPrice,
-      input.currency,
-      input.note.trim(),
-    ],
-  );
+        [
+          input.recommendationId,
+          input.itemPrice,
+          input.currency,
+          input.note.trim(),
+        ],
+      )
+    ).rows[0];
+  });
   if (!saved)
     throw new SlabValuationError(
       "The recommendation changed or uses another currency. Recalculate before overriding.",

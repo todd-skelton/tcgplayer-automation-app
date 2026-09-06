@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import {
   Alert,
   Button,
@@ -22,6 +22,7 @@ import {
 export type SlabListing = Json<
   Awaited<ReturnType<typeof getInventory>>
 >["items"][number];
+const MaintenancePanel = lazy(() => import("./SlabMaintenancePanel"));
 export function SlabInventoryPanel({
   onOpen,
 }: {
@@ -38,6 +39,7 @@ export function SlabInventoryPanel({
   const [cursors, setCursors] = useState([""]);
   const [csv, setCsv] = useState("");
   const [importing, setImporting] = useState(false);
+  const [showMaintenance, setShowMaintenance] = useState(false);
   const action = useSlabAction();
   const load = async (name: string, after = "") => {
     const result = await slabRequest<Awaited<ReturnType<typeof getInventory>>>(
@@ -220,6 +222,21 @@ export function SlabInventoryPanel({
               {loadedSeller} · Saved inventory · Page {cursors.length}. Open a
               slab to review or assign its certificate.
             </Typography>
+            <Button
+              sx={{ alignSelf: "start" }}
+              onClick={() => setShowMaintenance((v) => !v)}
+            >
+              {showMaintenance
+                ? "Hide evidence maintenance"
+                : "Evidence maintenance"}
+            </Button>
+            {showMaintenance && (
+              <Suspense
+                fallback={<Typography>Loading maintenance…</Typography>}
+              >
+                <MaintenancePanel key={loadedSeller} seller={loadedSeller} />
+              </Suspense>
+            )}
             <div style={{ height: 440 }}>
               <ClientOnlyDataGrid
                 rows={page.items}
