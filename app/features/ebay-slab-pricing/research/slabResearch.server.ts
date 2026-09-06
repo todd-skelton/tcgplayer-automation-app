@@ -6,6 +6,7 @@ import type { EvidenceWindow } from "../evidence/slabEvidence";
 import type { StoredSlabIdentity } from "../identity/slabIdentity";
 import { valuationGroupKey } from "../identity/slabIdentityService.server";
 import { getSlabRecommendation } from "../valuation/slabRecommendations.server";
+import { gradeModelStatus } from "../model/gradeModelStatus.server";
 
 // Research uses a detached identity. It never confirms a certificate or changes its owned grade.
 export function researchTarget(record: StoredSlabIdentity, grade: string) {
@@ -98,6 +99,9 @@ export async function loadSlabWorkspace(
     keys: plan.slabs[0].keys,
     statuses,
     recommendation: latest ? await getSlabRecommendation(latest.id) : null,
+    gradeModel: gradeModelStatus(
+      record.identity ?? record.candidate?.identity ?? null,
+    ),
   };
 }
 export type SlabWorkspace = Awaited<ReturnType<typeof loadSlabWorkspace>>;

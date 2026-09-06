@@ -1,0 +1,133 @@
+{
+  "version": "slab-grade-evaluation-2026-09-05-v1",
+  "evaluatedAsOf": "2026-09-05T19:18:41.925Z",
+  "policy": {
+    "version": "grade-model-adoption-v1",
+    "declaredBeforeEvaluation": true,
+    "minimumTestCards": 30,
+    "minimumTestTransactions": 200,
+    "minimumCalibrationTransactions": 30,
+    "minimumPairedComparisons": 30,
+    "minimumSparseCoverage": 0.5,
+    "minimumLogErrorImprovementOverRatio": 0.1,
+    "maximumLogErrorRegressionAgainstDirect": 0.05,
+    "maximumMedianRelativeError": 0.25,
+    "intervalTargetCoverage": 0.8,
+    "minimumIntervalCoverage": 0.75,
+    "maximumIntervalCoverage": 0.9,
+    "maximumMedianIntervalRatio": 3,
+    "minimumTrainingCardsPerGradePair": 3,
+    "priorEffectiveSales": 3,
+    "halfLifeDays": 90,
+    "maximumAgeDays": 365
+  },
+  "lineage": {
+    "sourceHash": "e554ddf6d7ec58d8b3da11f1d997d9c182c9921935f5c041379787bbe025b9a9",
+    "sourceRevision": "initial-ebay-evaluation-2026-09-05",
+    "observations": 105,
+    "priceBasis": "USD item-plus-shipping"
+  },
+  "matching": {
+    "titleCompatible": 105,
+    "verified": 0,
+    "missingEventIds": 4,
+    "precision": null,
+    "precisionReason": "No independently verified certification ground truth"
+  },
+  "diagnostic": {
+    "kind": "historical-four-card-diagnostic",
+    "isForwardValidation": false,
+    "priceBasis": "reported-item-plus-shipping",
+    "results": [
+      {
+        "card": "Flareon 022/187",
+        "count10": 25,
+        "count9": 3,
+        "median10": 40,
+        "median9": 20.61,
+        "ratio": 1.940805434255216,
+        "predicted9": 25.78528827037773,
+        "relativeError": 0.25110568997465954
+      },
+      {
+        "card": "Vaporeon 031/187",
+        "count10": 19,
+        "count9": 1,
+        "median10": 45.5,
+        "median9": 23.33,
+        "ratio": 1.950278611230176,
+        "predicted9": 29.33076540755467,
+        "relativeError": 0.25721240495305064
+      },
+      {
+        "card": "Leafeon 003/187",
+        "count10": 29,
+        "count9": 2,
+        "median10": 40,
+        "median9": 28.464999999999996,
+        "ratio": 1.4052344985069385,
+        "predicted9": 20.61,
+        "relativeError": 0.2759529246443
+      },
+      {
+        "card": "Glaceon 041/187",
+        "count10": 23,
+        "count9": 3,
+        "median10": 40.24,
+        "median9": 25.939999999999998,
+        "ratio": 1.5512721665381652,
+        "predicted9": 20.73366,
+        "relativeError": 0.20070701619121045
+      }
+    ],
+    "meanAbsolutePercentageError": 24.624450894080514
+  },
+  "forward": {
+    "version": "grade-forward-evaluation-v1",
+    "policyVersion": "grade-model-adoption-v1",
+    "dates": {
+      "fitCutoff": "2026-07-01T00:00:00Z",
+      "calibrationEnd": "2026-08-01T00:00:00Z",
+      "testEnd": "2026-09-05T00:00:00Z",
+      "asOf": "2026-09-05T19:18:41.925Z"
+    },
+    "inputObservations": 105,
+    "eligibleUniqueEvents": 0,
+    "cohorts": []
+  },
+  "status": "baseline-only",
+  "enabledCohorts": [],
+  "unsupported": [
+    {
+      "cohort": "Japanese Terastal Festival ex PSA 9/10",
+      "reasons": [
+        "unverified-identities",
+        "unknown-edition-finish-stamp",
+        "no-pre-cutoff-snapshots",
+        "insufficient-test-cards-and-transactions"
+      ],
+      "direct": {
+        "forecasts": 0,
+        "error": null,
+        "intervalCoverage": null
+      },
+      "ratio": {
+        "forecasts": 0,
+        "error": null,
+        "intervalCoverage": null
+      },
+      "fitted": {
+        "forecasts": 0,
+        "error": null,
+        "intervalCoverage": null
+      }
+    }
+  ],
+  "limitations": [
+    "Titles reviewed in the initial diagnostic; certification identity is not independently verified.",
+    "One captured snapshot; not historical point-in-time training data.",
+    "Single-quantity eBay listing averages; delivered amounts are reported item price plus shipping.",
+    "Capped/paged search coverage, not exhaustive market history.",
+    "Four source rows lack stable event IDs."
+  ]
+}

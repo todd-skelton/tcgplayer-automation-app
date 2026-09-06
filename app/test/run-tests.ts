@@ -78,3 +78,4 @@ import "../features/ebay-slab-pricing/screening/screenComparables.test";
 import "../features/ebay-slab-pricing/valuation/slabValuation.test";
 import "../features/ebay-slab-pricing/inventory/slabInventory.test";
 import "../features/ebay-slab-pricing/research/slabResearch.test";
+import "../features/ebay-slab-pricing/model/gradeModel.test";

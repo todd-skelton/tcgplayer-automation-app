@@ -287,6 +287,11 @@ export function SlabResearchPanel({
           ))}
         </Stack>
       </Paper>
+      {workspace?.gradeModel && (
+        <Alert severity="info">
+          Cross-grade estimate unavailable. {workspace.gradeModel.reason}
+        </Alert>
+      )}
       {workspace && (
         <SlabRecommendationPanel
           record={record}
