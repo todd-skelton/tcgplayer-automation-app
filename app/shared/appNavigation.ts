@@ -26,6 +26,7 @@ export interface DashboardCard extends NavigationItem {
 }
 
 export const primaryNavigationItems: NavigationItem[] = [
+  { label: "Slab Pricing", to: "/slab-pricing", icon: PriceCheckIcon },
   { label: "CSV Pricer", to: "/pricer", icon: UploadFileIcon },
   { label: "Seller Pricer", to: "/seller-pricer", icon: StorefrontIcon },
   { label: "Inventory", to: "/inventory-manager", icon: Inventory2Icon },
