@@ -11,7 +11,10 @@ import { requestEvidence } from "./evidenceRefreshStore.server";
 import type { EvidenceWindow } from "./slabEvidence";
 
 export function planSlabEvidence(
-  records: StoredSlabIdentity[],
+  records: Pick<
+    StoredSlabIdentity,
+    "id" | "revision" | "status" | "identity" | "valuationGroupKey"
+  >[],
   window: EvidenceWindow,
   includeSupply = false,
 ) {
