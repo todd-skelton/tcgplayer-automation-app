@@ -41,6 +41,8 @@ Structural gates enforce zero remote calls for the fixture cache workload, one r
 
 ## Build, migration and recovery checks
 
+The measurements below describe the preview-stage build through PR #47. Later checks cover [publication execution](slab-publication-review.md), [opt-in evidence maintenance](slab-evidence-maintenance.md), and a [33-migration backup/restore rehearsal](slab-recovery.md). The original performance figures have not been relabeled as measurements of those later stages.
+
 Host typecheck, offline test suite, production/worker build and targeted PostgreSQL integrations pass, including existing TCGplayer pricing/publication regression tests. Docker `npm ci` and production build pass on Node 20; existing MUI build warnings remain. No new runtime dependencies were added across these merged slab changes. No browser runtime is bundled.
 
 A fresh isolated Docker database applied all 31 migrations and served the slab and existing routes with zero provider connections and zero evidence jobs. Rerunning migrations was idempotent. A second isolated database upgraded from migrations 1–23 to 1–31 and retained a seeded existing marker row. These checks are not a production-data restore rehearsal. Expanded Docker exclusions keep `.env*`, research captures and Codex artifacts out of the build context; runtime inspection found no local environment or research files. Temporary validation containers/databases are removed after evaluation; existing development and production containers are untouched.
