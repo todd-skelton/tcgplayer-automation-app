@@ -1,0 +1,1017 @@
+{
+  "observedAt": "2026-09-05T23:45:13.688Z",
+  "rows": [
+    {
+      "alt": {
+        "provider": "alt",
+        "providerId": "37f06cfc-0e23-4891-8469-ab631140ab9f",
+        "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+        "sourceUrl": "https://www.ebay.com/itm/366624413453",
+        "sourceItemId": "366624413453",
+        "sourceReference": "https://www.ebay.com/itm/366624413453",
+        "venue": "eBay",
+        "kind": "transaction",
+        "date": "2026-08-30",
+        "format": "AUCTION",
+        "title": "Ponyta 60/102 1st Edition Game Pokemon PSA 9",
+        "card": {
+          "name": "Ponyta",
+          "game": "Pokemon",
+          "language": null,
+          "set": "Pokemon Base Set",
+          "cardNumber": "60",
+          "year": "1999",
+          "edition": "1st Edition",
+          "finish": null,
+          "stamp": null
+        },
+        "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 102.5,
+          "currency": null
+        },
+        "convertedPrice": {
+          "amount": 102.5,
+          "currency": "USD"
+        },
+        "shipping": {
+          "amount": 0,
+          "currency": null
+        },
+        "fees": null,
+        "shippingIncluded": null,
+        "buyerPremiumIncluded": null,
+        "quantity": null,
+        "subjectToChange": false,
+        "skippedReason": null
+      },
+      "ebay": {
+        "provider": "ebayResearch",
+        "providerId": "366624413453",
+        "assetId": null,
+        "sourceItemId": "366624413453",
+        "sourceUrl": "https://www.ebay.com/itm/366624413453",
+        "sourceReference": "https://www.ebay.com/itm/366624413453",
+        "venue": "eBay",
+        "kind": "listing-average",
+        "date": "2026-08-30",
+        "format": "Auction",
+        "title": "Ponyta 60/102 1st Edition Game Pokemon PSA 9",
+        "extendedTitle": "Ponyta 60/102 1st Edition Game Pokemon PSA 9 No Basic Pokémon 060/102 United States Yes Regular Standard Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 6+ Card Stock 40 The Pokémon Company 1999 4043367850",
+        "card": null,
+        "grading": {
+          "grader": "UNKNOWN",
+          "encoding": "unknown",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 102.5,
+          "currency": "USD"
+        },
+        "convertedPrice": null,
+        "shipping": {
+          "amount": 0,
+          "currency": "USD"
+        },
+        "fees": null,
+        "shippingIncluded": false,
+        "buyerPremiumIncluded": null,
+        "quantity": 1,
+        "subjectToChange": null,
+        "skippedReason": null
+      }
+    },
+    {
+      "alt": {
+        "provider": "alt",
+        "providerId": "9d2d9aa3-7b67-41e6-8454-4fca4b9c9299",
+        "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+        "sourceUrl": "https://www.ebay.com/itm/287520908087",
+        "sourceItemId": "287520908087",
+        "sourceReference": "https://www.ebay.com/itm/287520908087",
+        "venue": "eBay",
+        "kind": "transaction",
+        "date": "2026-08-22",
+        "format": "AUCTION",
+        "title": "1999 Pokemon Base Set PSA 9 1st Edition Shadowless # 60 Ponyta",
+        "card": {
+          "name": "Ponyta",
+          "game": "Pokemon",
+          "language": null,
+          "set": "Pokemon Base Set",
+          "cardNumber": "60",
+          "year": "1999",
+          "edition": "1st Edition",
+          "finish": null,
+          "stamp": null
+        },
+        "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 99.99,
+          "currency": null
+        },
+        "convertedPrice": {
+          "amount": 99.99,
+          "currency": "USD"
+        },
+        "shipping": {
+          "amount": 0,
+          "currency": null
+        },
+        "fees": null,
+        "shippingIncluded": null,
+        "buyerPremiumIncluded": null,
+        "quantity": null,
+        "subjectToChange": false,
+        "skippedReason": null
+      },
+      "ebay": {
+        "provider": "ebayResearch",
+        "providerId": "287520908087",
+        "assetId": null,
+        "sourceItemId": "287520908087",
+        "sourceUrl": "https://www.ebay.com/itm/287520908087",
+        "sourceReference": "https://www.ebay.com/itm/287520908087",
+        "venue": "eBay",
+        "kind": "listing-average",
+        "date": "2026-08-22",
+        "format": "Auction",
+        "title": "1999 Pokemon Base Set PSA 9 1st Edition Shadowless # 60 Ponyta",
+        "extendedTitle": "1999 Pokemon Base Set PSA 9 1st Edition Shadowless # 60 Ponyta Wizards of the Coast No Basic Pokémon 060/102 United States Yes Regular Standard Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) Card Stock 40 The Pokémon Company 4043367850",
+        "card": null,
+        "grading": {
+          "grader": "UNKNOWN",
+          "encoding": "unknown",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 99.99,
+          "currency": "USD"
+        },
+        "convertedPrice": null,
+        "shipping": {
+          "amount": 0,
+          "currency": "USD"
+        },
+        "fees": null,
+        "shippingIncluded": false,
+        "buyerPremiumIncluded": null,
+        "quantity": 1,
+        "subjectToChange": null,
+        "skippedReason": null
+      }
+    },
+    {
+      "alt": {
+        "provider": "alt",
+        "providerId": "2660b605-bc37-49c1-a8f5-3f23bd1025b4",
+        "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+        "sourceUrl": "https://www.ebay.com/itm/336708469907",
+        "sourceItemId": "336708469907",
+        "sourceReference": "https://www.ebay.com/itm/336708469907",
+        "venue": "eBay",
+        "kind": "transaction",
+        "date": "2026-08-20",
+        "format": "BUY_IT_NOW",
+        "title": "1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC",
+        "card": {
+          "name": "Ponyta",
+          "game": "Pokemon",
+          "language": null,
+          "set": "Pokemon Base Set",
+          "cardNumber": "60",
+          "year": "1999",
+          "edition": "1st Edition",
+          "finish": null,
+          "stamp": null
+        },
+        "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 164.99,
+          "currency": null
+        },
+        "convertedPrice": {
+          "amount": 164.99,
+          "currency": "USD"
+        },
+        "shipping": {
+          "amount": 5.48,
+          "currency": null
+        },
+        "fees": null,
+        "shippingIncluded": null,
+        "buyerPremiumIncluded": null,
+        "quantity": null,
+        "subjectToChange": false,
+        "skippedReason": null
+      },
+      "ebay": {
+        "provider": "ebayResearch",
+        "providerId": "336708469907",
+        "assetId": null,
+        "sourceItemId": "336708469907",
+        "sourceUrl": "https://www.ebay.com/itm/336708469907",
+        "sourceReference": "https://www.ebay.com/itm/336708469907",
+        "venue": "eBay",
+        "kind": "listing-average",
+        "date": "2026-08-20",
+        "format": "Fixed price",
+        "title": "1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC",
+        "extendedTitle": "1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850",
+        "card": null,
+        "grading": {
+          "grader": "UNKNOWN",
+          "encoding": "unknown",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 164.99,
+          "currency": "USD"
+        },
+        "convertedPrice": null,
+        "shipping": {
+          "amount": 5.48,
+          "currency": "USD"
+        },
+        "fees": null,
+        "shippingIncluded": false,
+        "buyerPremiumIncluded": null,
+        "quantity": 1,
+        "subjectToChange": null,
+        "skippedReason": null
+      }
+    },
+    {
+      "alt": {
+        "provider": "alt",
+        "providerId": "2f38a1e8-41b5-43bd-b5d8-13c4620c136a",
+        "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+        "sourceUrl": "https://www.ebay.com/itm/377308224695",
+        "sourceItemId": "377308224695",
+        "sourceReference": "https://www.ebay.com/itm/377308224695",
+        "venue": "eBay",
+        "kind": "transaction",
+        "date": "2026-08-18",
+        "format": "BUY_IT_NOW",
+        "title": "1999 POKEMON GAME 1ST EDITION #60 PONYTA PSA 9",
+        "card": {
+          "name": "Ponyta",
+          "game": "Pokemon",
+          "language": null,
+          "set": "Pokemon Base Set",
+          "cardNumber": "60",
+          "year": "1999",
+          "edition": "1st Edition",
+          "finish": null,
+          "stamp": null
+        },
+        "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 130,
+          "currency": null
+        },
+        "convertedPrice": {
+          "amount": 130,
+          "currency": "USD"
+        },
+        "shipping": {
+          "amount": 4.99,
+          "currency": null
+        },
+        "fees": null,
+        "shippingIncluded": null,
+        "buyerPremiumIncluded": null,
+        "quantity": null,
+        "subjectToChange": false,
+        "skippedReason": null
+      },
+      "ebay": {
+        "provider": "ebayResearch",
+        "providerId": "377308224695",
+        "assetId": null,
+        "sourceItemId": "377308224695",
+        "sourceUrl": "https://www.ebay.com/itm/377308224695",
+        "sourceReference": "https://www.ebay.com/itm/377308224695",
+        "venue": "eBay",
+        "kind": "listing-average",
+        "date": "2026-08-18",
+        "format": "Fixed price",
+        "title": "1999 POKEMON GAME 1ST EDITION #60 PONYTA PSA 9",
+        "extendedTitle": "1999 POKEMON GAME 1ST EDITION #60 PONYTA PSA 9 English Professional Sports Authenticator (PSA) Pokémon United States Yes Pokémon TCG",
+        "card": null,
+        "grading": {
+          "grader": "UNKNOWN",
+          "encoding": "unknown",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 130,
+          "currency": "USD"
+        },
+        "convertedPrice": null,
+        "shipping": {
+          "amount": 4.99,
+          "currency": "USD"
+        },
+        "fees": null,
+        "shippingIncluded": false,
+        "buyerPremiumIncluded": null,
+        "quantity": 1,
+        "subjectToChange": null,
+        "skippedReason": null
+      }
+    },
+    {
+      "alt": {
+        "provider": "alt",
+        "providerId": "5f6c361b-ca69-4d66-ba8c-1e92955b53dc",
+        "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+        "sourceUrl": "https://www.ebay.com/itm/377322427446",
+        "sourceItemId": "377322427446",
+        "sourceReference": "https://www.ebay.com/itm/377322427446",
+        "venue": "eBay",
+        "kind": "transaction",
+        "date": "2026-08-14",
+        "format": "BUY_IT_NOW",
+        "title": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9",
+        "card": {
+          "name": "Ponyta",
+          "game": "Pokemon",
+          "language": null,
+          "set": "Pokemon Base Set",
+          "cardNumber": "60",
+          "year": "1999",
+          "edition": "1st Edition",
+          "finish": null,
+          "stamp": null
+        },
+        "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 150,
+          "currency": null
+        },
+        "convertedPrice": {
+          "amount": 150,
+          "currency": "USD"
+        },
+        "shipping": {
+          "amount": 4.99,
+          "currency": null
+        },
+        "fees": null,
+        "shippingIncluded": null,
+        "buyerPremiumIncluded": null,
+        "quantity": null,
+        "subjectToChange": false,
+        "skippedReason": null
+      },
+      "ebay": {
+        "provider": "ebayResearch",
+        "providerId": "377322427446",
+        "assetId": null,
+        "sourceItemId": "377322427446",
+        "sourceUrl": "https://www.ebay.com/itm/377322427446",
+        "sourceReference": "https://www.ebay.com/itm/377322427446",
+        "venue": "eBay",
+        "kind": "listing-average",
+        "date": "2026-08-14",
+        "format": "Fixed price",
+        "title": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9",
+        "extendedTitle": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 Basic Pokémon 060/102 Yes Regular Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 40 The Pokémon Company 4043367850",
+        "card": null,
+        "grading": {
+          "grader": "UNKNOWN",
+          "encoding": "unknown",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 150,
+          "currency": "USD"
+        },
+        "convertedPrice": null,
+        "shipping": {
+          "amount": 4.99,
+          "currency": "USD"
+        },
+        "fees": null,
+        "shippingIncluded": false,
+        "buyerPremiumIncluded": null,
+        "quantity": 1,
+        "subjectToChange": null,
+        "skippedReason": null
+      }
+    },
+    {
+      "alt": {
+        "provider": "alt",
+        "providerId": "456830a7-7e20-461c-b856-5863e8810b60",
+        "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+        "sourceUrl": "https://www.ebay.com/itm/800467858236",
+        "sourceItemId": "800467858236",
+        "sourceReference": "https://www.ebay.com/itm/800467858236",
+        "venue": "eBay",
+        "kind": "transaction",
+        "date": "2026-08-12",
+        "format": "AUCTION",
+        "title": "POKEMON BASE SET SHADOWLESS PONYTA 1999 #60 1ST EDITION PSA 9",
+        "card": {
+          "name": "Ponyta",
+          "game": "Pokemon",
+          "language": null,
+          "set": "Pokemon Base Set",
+          "cardNumber": "60",
+          "year": "1999",
+          "edition": "1st Edition",
+          "finish": null,
+          "stamp": null
+        },
+        "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 143.5,
+          "currency": null
+        },
+        "convertedPrice": {
+          "amount": 143.5,
+          "currency": "USD"
+        },
+        "shipping": {
+          "amount": 7.95,
+          "currency": null
+        },
+        "fees": null,
+        "shippingIncluded": null,
+        "buyerPremiumIncluded": null,
+        "quantity": null,
+        "subjectToChange": false,
+        "skippedReason": null
+      },
+      "ebay": {
+        "provider": "ebayResearch",
+        "providerId": "800467858236",
+        "assetId": null,
+        "sourceItemId": "800467858236",
+        "sourceUrl": "https://www.ebay.com/itm/800467858236",
+        "sourceReference": "https://www.ebay.com/itm/800467858236",
+        "venue": "eBay",
+        "kind": "listing-average",
+        "date": "2026-08-12",
+        "format": "Auction",
+        "title": "POKEMON BASE SET SHADOWLESS PONYTA 1999 #60 1ST EDITION PSA 9",
+        "extendedTitle": "POKEMON BASE SET SHADOWLESS PONYTA 1999 #60 1ST EDITION PSA 9 Basic Pokémon 060/102 Yes Regular Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 60 40 The Pokémon Company 4043367850",
+        "card": null,
+        "grading": {
+          "grader": "UNKNOWN",
+          "encoding": "unknown",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 143.5,
+          "currency": "USD"
+        },
+        "convertedPrice": null,
+        "shipping": {
+          "amount": 7.95,
+          "currency": "USD"
+        },
+        "fees": null,
+        "shippingIncluded": false,
+        "buyerPremiumIncluded": null,
+        "quantity": 1,
+        "subjectToChange": null,
+        "skippedReason": null
+      }
+    },
+    {
+      "alt": {
+        "provider": "alt",
+        "providerId": "47a992a8-e47f-4ac2-8056-064b42afa7c7",
+        "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+        "sourceUrl": "https://www.ebay.com/itm/336701223535",
+        "sourceItemId": "336701223535",
+        "sourceReference": "https://www.ebay.com/itm/336701223535",
+        "venue": "eBay",
+        "kind": "transaction",
+        "date": "2026-07-29",
+        "format": "BUY_IT_NOW",
+        "title": "Pokemon 1999 Base Set 1st Edition Ponyta 60 PSA 9 MINTOpens in a new window or tab",
+        "card": {
+          "name": "Ponyta",
+          "game": "Pokemon",
+          "language": null,
+          "set": "Pokemon Base Set",
+          "cardNumber": "60",
+          "year": "1999",
+          "edition": "1st Edition",
+          "finish": null,
+          "stamp": null
+        },
+        "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 120,
+          "currency": null
+        },
+        "convertedPrice": {
+          "amount": 135,
+          "currency": "USD"
+        },
+        "shipping": {
+          "amount": 0,
+          "currency": null
+        },
+        "fees": null,
+        "shippingIncluded": null,
+        "buyerPremiumIncluded": null,
+        "quantity": null,
+        "subjectToChange": false,
+        "skippedReason": null
+      },
+      "ebay": {
+        "provider": "ebayResearch",
+        "providerId": "336701223535",
+        "assetId": null,
+        "sourceItemId": "336701223535",
+        "sourceUrl": "https://www.ebay.com/itm/336701223535",
+        "sourceReference": "https://www.ebay.com/itm/336701223535",
+        "venue": "eBay",
+        "kind": "listing-average",
+        "date": "2026-07-29",
+        "format": "Fixed price",
+        "title": "Pokemon 1999 Base Set 1st Edition Ponyta 60 PSA 9 MINT",
+        "extendedTitle": "Pokemon 1999 Base Set 1st Edition Ponyta 60 PSA 9 MINT Basic Pokémon 060/102 Yes Regular Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) Card Stock 40 The Pokémon Company 4043367850",
+        "card": null,
+        "grading": {
+          "grader": "UNKNOWN",
+          "encoding": "unknown",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 120,
+          "currency": "USD"
+        },
+        "convertedPrice": null,
+        "shipping": {
+          "amount": 0,
+          "currency": "USD"
+        },
+        "fees": null,
+        "shippingIncluded": false,
+        "buyerPremiumIncluded": null,
+        "quantity": 1,
+        "subjectToChange": null,
+        "skippedReason": null
+      }
+    },
+    {
+      "alt": {
+        "provider": "alt",
+        "providerId": "55770f1d-7717-46e1-b15f-d86283cd0e82",
+        "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+        "sourceUrl": "https://www.ebay.com/itm/366554819849",
+        "sourceItemId": "366554819849",
+        "sourceReference": "https://www.ebay.com/itm/366554819849",
+        "venue": "eBay",
+        "kind": "transaction",
+        "date": "2026-07-28",
+        "format": "AUCTION",
+        "title": "1999 POKEMON GAME 1ST EDITION #60 PONYTA PSA 9Opens in a new window or tab",
+        "card": {
+          "name": "Ponyta",
+          "game": "Pokemon",
+          "language": null,
+          "set": "Pokemon Base Set",
+          "cardNumber": "60",
+          "year": "1999",
+          "edition": "1st Edition",
+          "finish": null,
+          "stamp": null
+        },
+        "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 77.5,
+          "currency": null
+        },
+        "convertedPrice": {
+          "amount": 77.5,
+          "currency": "USD"
+        },
+        "shipping": {
+          "amount": 18.56,
+          "currency": null
+        },
+        "fees": null,
+        "shippingIncluded": null,
+        "buyerPremiumIncluded": null,
+        "quantity": null,
+        "subjectToChange": false,
+        "skippedReason": null
+      },
+      "ebay": {
+        "provider": "ebayResearch",
+        "providerId": "366554819849",
+        "assetId": null,
+        "sourceItemId": "366554819849",
+        "sourceUrl": "https://www.ebay.com/itm/366554819849",
+        "sourceReference": "https://www.ebay.com/itm/366554819849",
+        "venue": "eBay",
+        "kind": "listing-average",
+        "date": "2026-07-28",
+        "format": "Auction",
+        "title": "1999 POKEMON GAME 1ST EDITION #60 PONYTA PSA 9",
+        "extendedTitle": "1999 POKEMON GAME 1ST EDITION #60 PONYTA PSA 9 Basic Professional Sports Authenticator (PSA) Pokémon Yes Regular Dp1: Space-Time Creation 60 Kagemaru Himeno Pokémon TCG Japanese The Pokémon Company Common 13073826034",
+        "card": null,
+        "grading": {
+          "grader": "UNKNOWN",
+          "encoding": "unknown",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 77.5,
+          "currency": "USD"
+        },
+        "convertedPrice": null,
+        "shipping": {
+          "amount": 6.25,
+          "currency": "USD"
+        },
+        "fees": null,
+        "shippingIncluded": false,
+        "buyerPremiumIncluded": null,
+        "quantity": 1,
+        "subjectToChange": null,
+        "skippedReason": null
+      }
+    },
+    {
+      "alt": {
+        "provider": "alt",
+        "providerId": "00d5dff7-60b6-4f58-bb92-e54e1927b9a2",
+        "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+        "sourceUrl": "https://www.ebay.com/itm/397578980482",
+        "sourceItemId": "397578980482",
+        "sourceReference": "https://www.ebay.com/itm/397578980482",
+        "venue": "eBay",
+        "kind": "transaction",
+        "date": "2026-07-21",
+        "format": "BEST_OFFER",
+        "title": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9Opens in a new window or tab",
+        "card": {
+          "name": "Ponyta",
+          "game": "Pokemon",
+          "language": null,
+          "set": "Pokemon Base Set",
+          "cardNumber": "60",
+          "year": "1999",
+          "edition": "1st Edition",
+          "finish": null,
+          "stamp": null
+        },
+        "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 129.89,
+          "currency": null
+        },
+        "convertedPrice": {
+          "amount": 129.89,
+          "currency": "USD"
+        },
+        "shipping": {
+          "amount": 10.88,
+          "currency": null
+        },
+        "fees": null,
+        "shippingIncluded": null,
+        "buyerPremiumIncluded": null,
+        "quantity": null,
+        "subjectToChange": false,
+        "skippedReason": null
+      },
+      "ebay": {
+        "provider": "ebayResearch",
+        "providerId": "397578980482",
+        "assetId": null,
+        "sourceItemId": "397578980482",
+        "sourceUrl": "https://www.ebay.com/itm/397578980482",
+        "sourceReference": "https://www.ebay.com/itm/397578980482",
+        "venue": "eBay",
+        "kind": "listing-average",
+        "date": "2026-07-21",
+        "format": "Fixed price",
+        "title": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9",
+        "extendedTitle": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 Basic Pokémon 060/102 Yes Regular Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 40 The Pokémon Company 4043367850",
+        "card": null,
+        "grading": {
+          "grader": "UNKNOWN",
+          "encoding": "unknown",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 129.89,
+          "currency": "USD"
+        },
+        "convertedPrice": null,
+        "shipping": {
+          "amount": 7.23,
+          "currency": "USD"
+        },
+        "fees": null,
+        "shippingIncluded": false,
+        "buyerPremiumIncluded": null,
+        "quantity": 1,
+        "subjectToChange": null,
+        "skippedReason": null
+      }
+    },
+    {
+      "alt": {
+        "provider": "alt",
+        "providerId": "4aa89a30-2c5c-4ade-85cb-72693b950c1c",
+        "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+        "sourceUrl": "https://www.ebay.com/itm/127943558744",
+        "sourceItemId": "127943558744",
+        "sourceReference": "https://www.ebay.com/itm/127943558744",
+        "venue": "eBay",
+        "kind": "transaction",
+        "date": "2026-07-20",
+        "format": "BEST_OFFER",
+        "title": "1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTCOpens in a new window or tab",
+        "card": {
+          "name": "Ponyta",
+          "game": "Pokemon",
+          "language": null,
+          "set": "Pokemon Base Set",
+          "cardNumber": "60",
+          "year": "1999",
+          "edition": "1st Edition",
+          "finish": null,
+          "stamp": null
+        },
+        "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 160,
+          "currency": null
+        },
+        "convertedPrice": {
+          "amount": 200,
+          "currency": "USD"
+        },
+        "shipping": {
+          "amount": 6.24,
+          "currency": null
+        },
+        "fees": null,
+        "shippingIncluded": null,
+        "buyerPremiumIncluded": null,
+        "quantity": null,
+        "subjectToChange": false,
+        "skippedReason": null
+      },
+      "ebay": {
+        "provider": "ebayResearch",
+        "providerId": "127943558744",
+        "assetId": null,
+        "sourceItemId": "127943558744",
+        "sourceUrl": "https://www.ebay.com/itm/127943558744",
+        "sourceReference": "https://www.ebay.com/itm/127943558744",
+        "venue": "eBay",
+        "kind": "listing-average",
+        "date": "2026-07-20",
+        "format": "Fixed price",
+        "title": "1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC",
+        "extendedTitle": "1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850",
+        "card": null,
+        "grading": {
+          "grader": "UNKNOWN",
+          "encoding": "unknown",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 160,
+          "currency": "USD"
+        },
+        "convertedPrice": null,
+        "shipping": {
+          "amount": 20.27,
+          "currency": "USD"
+        },
+        "fees": null,
+        "shippingIncluded": false,
+        "buyerPremiumIncluded": null,
+        "quantity": 1,
+        "subjectToChange": null,
+        "skippedReason": null
+      }
+    },
+    {
+      "alt": {
+        "provider": "alt",
+        "providerId": "c52dc69f-99b1-4de9-9cf6-5b85201af7b7",
+        "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+        "sourceUrl": "https://www.ebay.com/itm/407062331296",
+        "sourceItemId": "407062331296",
+        "sourceReference": "https://www.ebay.com/itm/407062331296",
+        "venue": "eBay",
+        "kind": "transaction",
+        "date": "2026-07-19",
+        "format": "AUCTION",
+        "title": "Pokemon 1999 Ponyta 60/102 Base Set 1st Edition PSA 9Opens in a new window or tab",
+        "card": {
+          "name": "Ponyta",
+          "game": "Pokemon",
+          "language": null,
+          "set": "Pokemon Base Set",
+          "cardNumber": "60",
+          "year": "1999",
+          "edition": "1st Edition",
+          "finish": null,
+          "stamp": null
+        },
+        "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 89,
+          "currency": null
+        },
+        "convertedPrice": {
+          "amount": 89,
+          "currency": "USD"
+        },
+        "shipping": {
+          "amount": 6.99,
+          "currency": null
+        },
+        "fees": null,
+        "shippingIncluded": null,
+        "buyerPremiumIncluded": null,
+        "quantity": null,
+        "subjectToChange": false,
+        "skippedReason": null
+      },
+      "ebay": {
+        "provider": "ebayResearch",
+        "providerId": "407062331296",
+        "assetId": null,
+        "sourceItemId": "407062331296",
+        "sourceUrl": "https://www.ebay.com/itm/407062331296",
+        "sourceReference": "https://www.ebay.com/itm/407062331296",
+        "venue": "eBay",
+        "kind": "listing-average",
+        "date": "2026-07-19",
+        "format": "Auction",
+        "title": "Pokemon 1999 Ponyta 60/102 Base Set 1st Edition PSA 9",
+        "extendedTitle": "Pokemon 1999 Ponyta 60/102 Base Set 1st Edition PSA 9 Basic Nintendo Pokémon 060/102 Yes Regular Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 6+ 40 The Pokémon Company 4043367850",
+        "card": null,
+        "grading": {
+          "grader": "UNKNOWN",
+          "encoding": "unknown",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+        },
+        "certificateNumber": null,
+        "price": {
+          "amount": 89,
+          "currency": "USD"
+        },
+        "convertedPrice": null,
+        "shipping": {
+          "amount": 1.55,
+          "currency": "USD"
+        },
+        "fees": null,
+        "shippingIncluded": false,
+        "buyerPremiumIncluded": null,
+        "quantity": 1,
+        "subjectToChange": null,
+        "skippedReason": null
+      }
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import {
 } from "../evidence/evidenceRefreshStore.server";
 import { requestSlabEvidence } from "../evidence/slabEvidenceRefresh.server";
 import { ensureEvidenceWorker } from "../evidence/evidenceRefreshWorker.server";
+import { readSlabJsonRequest } from "../readJsonRequest.server";
 const respond = (body: unknown, status = 200) =>
   data(body, { status, headers: { "Cache-Control": "no-store" } });
 function failure(error: unknown) {
@@ -81,23 +82,7 @@ export async function action({ request }: { request: Request }) {
   if (request.headers.get("Origin") !== new URL(request.url).origin)
     return respond({ error: "Submit this request from the application." }, 403);
   try {
-    const reader = request.body?.getReader();
-    if (!reader) throw new EvidenceRefreshError("Provide an evidence request.");
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        size += value.byteLength;
-        if (size > 16384)
-          throw new EvidenceRefreshError("Evidence request is too large.");
-        chunks.push(value);
-      }
-    } finally {
-      await reader.cancel().catch(() => {});
-    }
-    const input = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    const input = await readSlabJsonRequest(request, 16384);
     if (input.intent === "cancel")
       return respond({
         cancelled: await cancelEvidenceRefresh(input.key, input.runId),
