@@ -23,6 +23,7 @@ import {
   type Json,
 } from "./slabClient";
 const CompReview = lazy(() => import("./SlabCompReview"));
+const SupplyPanel = lazy(() => import("./SlabSupplyPanel"));
 export function SlabResearchPanel({
   record,
   listing,
@@ -39,6 +40,7 @@ export function SlabResearchPanel({
   const [loading, setLoading] = useState(false);
   const [reviewVersion, setReviewVersion] = useState(0);
   const [reload, setReload] = useState(0);
+  const [showSupply, setShowSupply] = useState(false);
   const action = useSlabAction();
   useEffect(() => {
     const controller = new AbortController();
@@ -291,6 +293,23 @@ export function SlabResearchPanel({
         <Alert severity="info">
           Cross-grade estimate unavailable. {workspace.gradeModel.reason}
         </Alert>
+      )}
+      <Button
+        sx={{ alignSelf: "start" }}
+        onClick={() => setShowSupply((v) => !v)}
+      >
+        {showSupply ? "Hide supply context" : "Show supply context"}
+      </Button>
+      {showSupply && (
+        <Suspense fallback={<Typography>Loading supply context…</Typography>}>
+          <SupplyPanel
+            key={`${record.id}:${record.revision}:${grade}:${window.from}:${window.to}:${listing?.seller ?? "pokebash"}`}
+            record={record}
+            grade={grade}
+            window={window}
+            seller={listing?.seller ?? "pokebash"}
+          />
+        </Suspense>
       )}
       {workspace && (
         <SlabRecommendationPanel

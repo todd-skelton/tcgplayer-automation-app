@@ -166,7 +166,7 @@ export function titleFacts(text: string) {
 }
 
 export function compareCompIdentity(
-  sale: SaleEvidence,
+  sale: Pick<SaleEvidence, "card" | "grading" | "title" | "extendedTitle">,
   target: SlabIdentity,
 ): CompReason[] {
   const reasons: CompReason[] = [];

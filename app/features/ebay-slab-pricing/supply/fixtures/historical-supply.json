@@ -1,0 +1,459 @@
+{
+  "capturedAt": "2026-09-05T19:18:41.925Z",
+  "scope": "Historical visible Seller Hub sample; unspecified formats remain unknown.",
+  "knownOwnItemIds": ["397285478425", "397978107159", "397333090254"],
+  "cases": [
+    {
+      "query": "Krabby 010/128 CGC",
+      "listings": [
+        {
+          "provider": "ebayResearch",
+          "providerId": "237028950858",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/237028950858",
+          "title": "2001 Pokemon KRABBY #010/128 1st Edition Pokemon-e-Reader Exp PK- JPN CGC MINT 8",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 29.99,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 8.6,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2026-08-25",
+          "endsAt": null,
+          "items": []
+        },
+        {
+          "provider": "ebayResearch",
+          "providerId": "397285478425",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/397285478425",
+          "title": "2001 PokÃ©mon JPN Krabby e-Card 1st Ed #010/128 CGC 9 Base Expansion Pack",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 19,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 5.17,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2025-11-18",
+          "endsAt": null,
+          "items": []
+        },
+        {
+          "provider": "ebayResearch",
+          "providerId": "235306261329",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/235306261329",
+          "title": "2001 Pokemon Base Expansion Pack 1st Edition Krabby 010/128 CGC NM 7 *CCGHouse*",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 34.99,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2023-11-19",
+          "endsAt": null,
+          "items": []
+        },
+        {
+          "provider": "ebayResearch",
+          "providerId": "188131579374",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/188131579374",
+          "title": "(POP 42) CGC 10 GEM MINT 1st Ed. Krabby 010/128 Expedition Japanese Pokemon",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 79.99,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 8.75,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2026-03-07",
+          "endsAt": null,
+          "items": []
+        },
+        {
+          "provider": "ebayResearch",
+          "providerId": "178457045237",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/178457045237",
+          "title": "ð¥ð¥ 1st Ed. Krabby 010/128 CGC PRISTINE 10 Expedition Base Original Pokemon",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 199.99,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 5.4,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2026-08-31",
+          "endsAt": null,
+          "items": []
+        }
+      ]
+    },
+    {
+      "query": "Espathra 081 PSA",
+      "listings": [
+        {
+          "provider": "ebayResearch",
+          "providerId": "397978107159",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/397978107159",
+          "title": "2023 Pokemon Paradox Rift Espathra 081 Two Pack Blister PSA 8",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 14.99,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 5.17,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2026-05-22",
+          "endsAt": null,
+          "items": []
+        },
+        {
+          "provider": "ebayResearch",
+          "providerId": "366146936745",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/366146936745",
+          "title": "Pokemon Espathra 081/182 Holo (NM)",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 1.88,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2026-01-24",
+          "endsAt": null,
+          "items": []
+        },
+        {
+          "provider": "ebayResearch",
+          "providerId": "800579630409",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/800579630409",
+          "title": "PokÃ©mon Espathra 081/182 Rare Holo Card TCG",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 1.29,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 0.99,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2026-08-28",
+          "endsAt": null,
+          "items": []
+        },
+        {
+          "provider": "ebayResearch",
+          "providerId": "366146936797",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/366146936797",
+          "title": "Pokemon Espathra 081/182 Reverse Holo (NM)",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 1.88,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2026-01-24",
+          "endsAt": null,
+          "items": []
+        },
+        {
+          "provider": "ebayResearch",
+          "providerId": "177848996455",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/177848996455",
+          "title": "2023 POKEMON PARADOX RIFT PAR EN 81 ESPATHRA - PSA Mint 9",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 55,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 6.4,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2026-02-09",
+          "endsAt": null,
+          "items": []
+        },
+        {
+          "provider": "ebayResearch",
+          "providerId": "336232212363",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/336232212363",
+          "title": "Espathra 081/182 SV04: Paradox Rift Holo NM",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 0.99,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 0,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2025-10-14",
+          "endsAt": null,
+          "items": []
+        },
+        {
+          "provider": "ebayResearch",
+          "providerId": "407147256392",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/407147256392",
+          "title": "PSA 9 - EU Exclusive Espathra 081/182 Paradox Rift Cosmos Holo Blister Promo",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 42,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 5.62,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2026-08-15",
+          "endsAt": null,
+          "items": []
+        },
+        {
+          "provider": "ebayResearch",
+          "providerId": "407089384193",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/407089384193",
+          "title": "PSA 10 - EU Exclusive Espathra 081/182 Paradox Rift Cosmos Holo Blister Promo",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 1500,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 5.97,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2026-07-21",
+          "endsAt": null,
+          "items": []
+        }
+      ]
+    },
+    {
+      "query": "Slaking 18/18 PSA",
+      "listings": [
+        {
+          "provider": "ebayResearch",
+          "providerId": "397333090254",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/397333090254",
+          "title": "2019 Pokemon Sun & Moon Detective Pikachu Slaking Holo 18/18 PSA 9",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 100,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 5.17,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2025-11-28",
+          "endsAt": null,
+          "items": []
+        },
+        {
+          "provider": "ebayResearch",
+          "providerId": "178450771283",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/178450771283",
+          "title": "PSA 10 2019 POKEMON SUN & MOON SLAKING HOLO #18 DETECTIVE PIKACHU",
+          "format": "auction-bid",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 500,
+            "currency": "USD"
+          },
+          "priceKind": "bid",
+          "shipping": {
+            "amount": 10,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2026-08-30",
+          "endsAt": null,
+          "items": []
+        },
+        {
+          "provider": "ebayResearch",
+          "providerId": "358533153281",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/358533153281",
+          "title": "2019 Pokemon Detective Pikachu #18 Slaking Holo PSA 10",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 1400,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 5.62,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2026-05-08",
+          "endsAt": null,
+          "items": []
+        },
+        {
+          "provider": "ebayResearch",
+          "providerId": "227197315983",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/227197315983",
+          "title": "2019 POKEMON SUN & MOON DETECTIVE PIKACHU #18 SLAKING-HOLO PSA 8",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 5,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 5.4,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2026-01-31",
+          "endsAt": null,
+          "items": []
+        },
+        {
+          "provider": "ebayResearch",
+          "providerId": "114879934598",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/114879934598",
+          "title": "Pokemon Slaking Holo 18/18 Detective Pikachu Sun & Moon PSA 9",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 59.99,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 5.62,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2021-07-05",
+          "endsAt": null,
+          "items": []
+        },
+        {
+          "provider": "ebayResearch",
+          "providerId": "800429688602",
+          "assetId": null,
+          "venue": "eBay",
+          "sourceUrl": "https://www.ebay.com/itm/800429688602",
+          "title": "2019 shiny stage 2 slaking card number 18/18",
+          "format": "unspecified-ask",
+          "state": "ACTIVE",
+          "price": {
+            "amount": 2.99,
+            "currency": "USD"
+          },
+          "priceKind": "unknown",
+          "shipping": {
+            "amount": 5.17,
+            "currency": "USD"
+          },
+          "quantity": null,
+          "startedAt": "2026-07-29",
+          "endsAt": null,
+          "items": []
+        }
+      ]
+    }
+  ]
+}

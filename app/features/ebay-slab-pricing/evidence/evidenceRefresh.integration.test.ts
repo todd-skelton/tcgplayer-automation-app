@@ -43,6 +43,12 @@ try {
   await db.query(
     await readFile("db/migrations/027_add_slab_evidence_refreshes.sql", "utf8"),
   );
+  await db.query(
+    await readFile(
+      "db/migrations/030_add_slab_supply_observations.sql",
+      "utf8",
+    ),
+  );
   const concurrent = await Promise.all(
     Array.from({ length: 8 }, () =>
       requestEvidence(Array.from({ length: 50 }, () => refreshSpec)),

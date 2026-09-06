@@ -2,6 +2,10 @@ import { type RouteConfig, index } from "@react-router/dev/routes";
 
 export default [
   {
+    path: "/api/slab-supply",
+    file: "features/ebay-slab-pricing/routes/api.slab-supply.ts",
+  },
+  {
     path: "/slab-pricing",
     file: "features/ebay-slab-pricing/routes/slab-pricing.tsx",
   },

@@ -47,6 +47,7 @@ try {
   for (const name of [
     "025_add_slab_identities.sql",
     "027_add_slab_evidence_refreshes.sql",
+    "030_add_slab_supply_observations.sql",
     "028_add_slab_comp_decisions.sql",
     "029_add_slab_recommendations.sql",
   ])
