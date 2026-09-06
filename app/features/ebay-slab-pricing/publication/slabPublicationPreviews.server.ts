@@ -101,7 +101,7 @@ export async function preparePublicationPreview(input: PreviewRequest) {
       ],
     );
     await db.query(
-      "DELETE FROM slab_publication_previews WHERE id IN (SELECT id FROM slab_publication_previews WHERE expires_at<clock_timestamp()-interval '30 days' ORDER BY expires_at LIMIT 100 FOR UPDATE SKIP LOCKED)",
+      "DELETE FROM slab_publication_previews WHERE id IN (SELECT p.id FROM slab_publication_previews p WHERE expires_at<clock_timestamp()-interval '30 days' AND NOT EXISTS(SELECT 1 FROM slab_publications s WHERE s.preview_id=p.id) ORDER BY expires_at LIMIT 100 FOR UPDATE SKIP LOCKED)",
     );
     return result.rows[0];
   });

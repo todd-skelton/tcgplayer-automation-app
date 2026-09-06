@@ -32,6 +32,7 @@ import {
 import { DEFAULT_SLAB_POLICY } from "../valuation/slabValuation";
 import type { SaleEvidence } from "../evidence/slabEvidence";
 import { loadSlabSupply } from "../supply/slabSupply.server";
+import { verifyPublicationExecution } from "../publication/slabPublication.integration-cases";
 import {
   preparePublicationPreview,
   readPublicationPreview,
@@ -70,6 +71,7 @@ try {
     "028_add_slab_comp_decisions.sql",
     "029_add_slab_recommendations.sql",
     "031_add_slab_publication_previews.sql",
+    "032_add_slab_publications.sql",
   ])
     await db.query(await readFile(`db/migrations/${migration}`, "utf8"));
   const candidate = parseAltCertificate(JSON.stringify(fixture))!;
@@ -314,6 +316,7 @@ try {
     "UPDATE slab_inventory SET snapshot=jsonb_set(snapshot,'{certificate}','null'::jsonb) WHERE id=$1",
     [first.items[1].id],
   );
+  await verifyPublicationExecution(preview, db);
   const corrected = await slabIdentityService.confirm(
     candidate,
     confirmed.revision,
