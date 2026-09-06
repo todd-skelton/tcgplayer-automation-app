@@ -33,6 +33,7 @@ import { DEFAULT_SLAB_POLICY } from "../valuation/slabValuation";
 import type { SaleEvidence } from "../evidence/slabEvidence";
 import { loadSlabSupply } from "../supply/slabSupply.server";
 import { verifyPublicationExecution } from "../publication/slabPublication.integration-cases";
+import { verifyNativePublication } from "../publication/ebaySlabPublication.integration-cases";
 import {
   preparePublicationPreview,
   readPublicationPreview,
@@ -316,6 +317,7 @@ try {
     "UPDATE slab_inventory SET snapshot=jsonb_set(snapshot,'{certificate}','null'::jsonb) WHERE id=$1",
     [first.items[1].id],
   );
+  await verifyNativePublication(preview, db);
   await verifyPublicationExecution(preview, db);
   const corrected = await slabIdentityService.confirm(
     candidate,

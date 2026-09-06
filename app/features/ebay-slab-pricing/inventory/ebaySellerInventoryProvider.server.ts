@@ -252,6 +252,16 @@ export function createSellerInventoryProvider(request: SellerRequest) {
     async getListing(seller: string, itemId: string, signal?: AbortSignal) {
       seller = sellerAccount(seller);
       if (!/^\d{9,20}$/.test(itemId)) throw invalid();
+      const user = await request(
+        "GetUser",
+        "<OutputSelector>User.UserID</OutputSelector>",
+        signal,
+      );
+      if (sellerAccount(user.User?.UserID) !== seller)
+        throw new SlabInventoryError(
+          "conflict",
+          "The authorized eBay account does not match this seller.",
+        );
       const response = await request(
         "GetItem",
         `<ItemID>${itemId}</ItemID><IncludeItemSpecifics>true</IncludeItemSpecifics>` +

@@ -55,6 +55,20 @@ export async function publicationEvents(id: string) {
     [id],
   );
 }
+export async function listingPublicationHistory(inventoryId: string) {
+  checkId(inventoryId);
+  return query<{
+    id: string;
+    state: PublicationState;
+    reason: string | null;
+    createdAt: Date;
+  }>(
+    `SELECT p.id,p.state,p.reason,p.created_at AS "createdAt" FROM slab_publications p
+     JOIN slab_publication_previews v ON v.id=p.preview_id WHERE v.inventory_id=$1 AND p.mode='live'
+     ORDER BY (p.state IN ('approved','checking','writing','reconcile')) DESC,p.created_at DESC,p.id DESC LIMIT 25`,
+    [inventoryId],
+  );
+}
 export async function savePublication(id: string, plan: SlabPublicationPlan) {
   checkId(id);
   const json = JSON.stringify(plan);

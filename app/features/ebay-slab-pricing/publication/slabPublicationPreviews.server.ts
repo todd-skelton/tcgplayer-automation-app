@@ -31,7 +31,7 @@ async function describe(row: StoredPreview) {
     ),
     canPublish: false as const,
     publicationUnavailableReason:
-      "Seller OAuth and live listing readback are not connected. This saved preview cannot publish a price.",
+      "A preview cannot publish directly. Prepare a live seller review and explicitly approve its separate publication intent.",
   };
 }
 export async function readPublicationPreview(input: {
