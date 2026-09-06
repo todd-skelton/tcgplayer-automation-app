@@ -13,6 +13,7 @@ import type { InventoryRow } from "../inventory/slabInventory.server";
 import type { StoredSlabRecommendation } from "../valuation/slabRecommendations.server";
 import type { SlabPublicationPreview } from "../publication/slabPublicationPreviews.server";
 import { SlabPublicationDryRun } from "./SlabPublicationDryRun";
+import { SlabLivePublication } from "./SlabLivePublication";
 import {
   amount,
   slabRequest,
@@ -195,12 +196,18 @@ export default function SlabPublicationPreviewPanel({
                 Date.parse(plan.expiresAt) <= Date.now()
               }
             />
+            <SlabLivePublication
+              key={`live-${saved.id}`}
+              previewId={saved.id}
+              inventoryId={listing.id}
+              disabled={
+                stale ||
+                saved.conflicts.length > 0 ||
+                Date.parse(plan.expiresAt) <= Date.now()
+              }
+            />
           </>
         )}
-        <Alert severity="info">
-          Seller OAuth and live listing readback are not connected. Publishing
-          is unavailable; saved previews cannot write to eBay.
-        </Alert>
       </Stack>
     </Paper>
   );

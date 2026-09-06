@@ -2,6 +2,7 @@ import { XMLParser, XMLValidator } from "fast-xml-parser";
 import { SlabInventoryError } from "./slabInventory";
 
 export type SellerRead = "GetUser" | "GetMyeBaySelling" | "GetItem";
+type SellerCall = SellerRead | "ReviseInventoryStatus";
 export type SellerXml = Record<string, any>;
 export type SellerRequest = (
   call: SellerRead,
@@ -25,10 +26,11 @@ const parser = new XMLParser({
       "Value",
       "Errors",
       "ShippingServiceOptions",
+      "InventoryStatus",
     ].includes(name),
 });
 
-export function parseSellerXml(xml: string, call: SellerRead): SellerXml {
+export function parseSellerXml(xml: string, call: SellerCall): SellerXml {
   try {
     if (
       Buffer.byteLength(xml) > 2 * 1024 * 1024 ||
@@ -82,11 +84,23 @@ export function sellerOAuthConfigured() {
 export function createSellerRequestForRun(
   fetcher: typeof fetch = fetch,
 ): SellerRequest {
+  return createSellerRequestsForRun(fetcher).read;
+}
+export function createSellerRequestsForRun(fetcher: typeof fetch = fetch) {
   let token: Promise<string> | undefined;
   let count = 0;
-  return async (call, fields, signal) => {
+  const request = async (
+    call: SellerCall,
+    fields: string,
+    signal?: AbortSignal,
+  ): Promise<SellerXml> => {
     if (
-      !["GetUser", "GetMyeBaySelling", "GetItem"].includes(call) ||
+      ![
+        "GetUser",
+        "GetMyeBaySelling",
+        "GetItem",
+        "ReviseInventoryStatus",
+      ].includes(call) ||
       ++count > 30
     )
       throw unavailable();
@@ -143,5 +157,14 @@ export function createSellerRequestForRun(
     } catch {
       throw unavailable();
     }
+  };
+  return {
+    read: (async (call, fields, signal) => {
+      if (!["GetUser", "GetMyeBaySelling", "GetItem"].includes(call))
+        throw unavailable();
+      return request(call, fields, signal);
+    }) as SellerRequest,
+    reviseInventoryStatus: (fields: string, signal?: AbortSignal) =>
+      request("ReviseInventoryStatus", fields, signal),
   };
 }

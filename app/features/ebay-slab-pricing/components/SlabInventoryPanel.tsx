@@ -24,6 +24,9 @@ export type SlabListing = Json<
 >["items"][number];
 const MaintenancePanel = lazy(() => import("./SlabMaintenancePanel"));
 const SellerOutcomesPanel = lazy(() => import("./SlabSellerOutcomesPanel"));
+type InventoryPage = Awaited<ReturnType<typeof getInventory>> & {
+  sellerOAuthConfigured: boolean;
+};
 export function SlabInventoryPanel({
   onOpen,
 }: {
@@ -34,9 +37,7 @@ export function SlabInventoryPanel({
 }) {
   const [seller, setSeller] = useState("pokebash");
   const [loadedSeller, setLoadedSeller] = useState("");
-  const [page, setPage] = useState<Json<
-    Awaited<ReturnType<typeof getInventory>>
-  > | null>(null);
+  const [page, setPage] = useState<Json<InventoryPage> | null>(null);
   const [cursors, setCursors] = useState([""]);
   const [csv, setCsv] = useState("");
   const [importing, setImporting] = useState(false);
@@ -44,7 +45,7 @@ export function SlabInventoryPanel({
   const [showOutcomes, setShowOutcomes] = useState(false);
   const action = useSlabAction();
   const load = async (name: string, after = "") => {
-    const result = await slabRequest<Awaited<ReturnType<typeof getInventory>>>(
+    const result = await slabRequest<InventoryPage>(
       `/api/slab-inventory?${new URLSearchParams({ seller: name, after, limit: "25" })}`,
     );
     setPage(result);
@@ -123,6 +124,31 @@ export function SlabInventoryPanel({
       },
     },
     { field: "state", headerName: "State", width: 95 },
+    {
+      field: "refresh",
+      headerName: "Seller details",
+      width: 140,
+      sortable: false,
+      renderCell: ({ row }) => (
+        <Button
+          size="small"
+          disabled={action.busy || !page?.sellerOAuthConfigured}
+          onClick={() =>
+            void action.run(async () => {
+              await slabRequest("/api/slab-inventory", {
+                intent: "refresh-listing",
+                seller: loadedSeller,
+                revision: page?.revision,
+                itemId: row.itemId,
+              });
+              await load(loadedSeller, cursors.at(-1));
+            })
+          }
+        >
+          Read eBay listing
+        </Button>
+      ),
+    },
     {
       field: "reviewReasons",
       headerName: "Needs attention",
@@ -220,6 +246,29 @@ export function SlabInventoryPanel({
         )}
         {page && (
           <>
+            <Button
+              sx={{ alignSelf: "start" }}
+              disabled={action.busy || !page.sellerOAuthConfigured}
+              onClick={() =>
+                void action.run(async () => {
+                  await slabRequest("/api/slab-inventory", {
+                    intent: "import-ebay",
+                    seller: loadedSeller,
+                    revision: page.revision,
+                  });
+                  await load(loadedSeller);
+                  setCursors([""]);
+                })
+              }
+            >
+              Import active inventory from eBay
+            </Button>
+            {!page.sellerOAuthConfigured && (
+              <Typography variant="body2">
+                Seller OAuth is required for live inventory import and listing
+                details.
+              </Typography>
+            )}
             <Typography variant="body2">
               {loadedSeller} · Saved inventory · Page {cursors.length}. Open a
               slab to review or assign its certificate.
