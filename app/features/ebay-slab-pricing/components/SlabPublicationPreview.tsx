@@ -12,6 +12,7 @@ import {
 import type { InventoryRow } from "../inventory/slabInventory.server";
 import type { StoredSlabRecommendation } from "../valuation/slabRecommendations.server";
 import type { SlabPublicationPreview } from "../publication/slabPublicationPreviews.server";
+import { SlabPublicationDryRun } from "./SlabPublicationDryRun";
 import {
   amount,
   slabRequest,
@@ -185,6 +186,15 @@ export default function SlabPublicationPreviewPanel({
             <Typography variant="caption">
               Preview {saved.id} · {plan.policyVersion} · {plan.version}
             </Typography>
+            <SlabPublicationDryRun
+              key={saved.id}
+              previewId={saved.id}
+              disabled={
+                stale ||
+                saved.conflicts.length > 0 ||
+                Date.parse(plan.expiresAt) <= Date.now()
+              }
+            />
           </>
         )}
         <Alert severity="info">

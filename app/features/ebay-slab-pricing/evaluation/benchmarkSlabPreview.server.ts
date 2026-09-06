@@ -80,6 +80,7 @@ try {
     "029_add_slab_recommendations.sql",
     "030_add_slab_supply_observations.sql",
     "031_add_slab_publication_previews.sql",
+    "032_add_slab_publications.sql",
   ])
     await db.query(await readFile(`db/migrations/${file}`, "utf8"));
   const csv = Papa.unparse(
