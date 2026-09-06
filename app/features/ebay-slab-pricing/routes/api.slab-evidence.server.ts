@@ -9,6 +9,7 @@ import {
 import { requestSlabEvidence } from "../evidence/slabEvidenceRefresh.server";
 import { ensureEvidenceWorker } from "../evidence/evidenceRefreshWorker.server";
 import { readSlabJsonRequest } from "../readJsonRequest.server";
+import { loadResearchPlan } from "../research/slabResearch.server";
 const respond = (body: unknown, status = 200) =>
   data(body, { status, headers: { "Cache-Control": "no-store" } });
 function failure(error: unknown) {
@@ -83,6 +84,27 @@ export async function action({ request }: { request: Request }) {
     return respond({ error: "Submit this request from the application." }, 403);
   try {
     const input = await readSlabJsonRequest(request, 16384);
+    if (input.intent === "research") {
+      if (
+        !Number.isSafeInteger(input.identityRevision) ||
+        input.identityRevision < 1
+      )
+        throw new EvidenceRefreshError(
+          "Provide the current identity revision.",
+        );
+      const { plan } = await loadResearchPlan(
+        input.slabId,
+        input.identityRevision,
+        input.grade,
+        input.window,
+      );
+      const statuses = await requestEvidence(plan.requests, {
+        force: input.force === true,
+        priority: 200,
+      });
+      ensureEvidenceWorker();
+      return respond({ statuses });
+    }
     if (input.intent === "cancel")
       return respond({
         cancelled: await cancelEvidenceRefresh(input.key, input.runId),

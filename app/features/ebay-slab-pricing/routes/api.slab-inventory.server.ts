@@ -48,6 +48,7 @@ export async function loader({ request }: { request: Request }) {
       ...(await getInventory(
         url.searchParams.get("seller") ?? "",
         url.searchParams.get("after") ?? "",
+        Number(url.searchParams.get("limit") ?? 100),
       )),
     });
   } catch (error) {
