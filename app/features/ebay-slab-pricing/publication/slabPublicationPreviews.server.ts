@@ -1,5 +1,5 @@
 import { queryOne, withTransaction } from "~/core/db/database.server";
-import type { InventoryRow } from "../inventory/slabInventory.server";
+import { getInventoryListing } from "../inventory/slabInventory.server";
 import { getSlabRecommendation } from "../valuation/slabRecommendations.server";
 import {
   buildPublicationPreview,
@@ -11,11 +11,6 @@ import {
   type PublicationPreview,
 } from "./slabPublicationPreview";
 
-const columns = `id,seller,item_id AS "itemId",variation_key AS "variationKey",snapshot,source,state,revision,identity_id AS "identityId",identity_source AS "identitySource",identity_note AS "identityNote",observed_at AS "observedAt"`;
-const readInventory = (id: string) =>
-  queryOne<InventoryRow>(`SELECT ${columns} FROM slab_inventory WHERE id=$1`, [
-    id,
-  ]);
 type StoredPreview = {
   id: string;
   request: PreviewRequest;
@@ -23,7 +18,7 @@ type StoredPreview = {
 };
 async function describe(row: StoredPreview) {
   const [inventory, recommendation] = await Promise.all([
-    readInventory(row.plan.inventory.id),
+    getInventoryListing(row.plan.inventory.id),
     getSlabRecommendation(row.plan.recommendationId),
   ]);
   return {
@@ -72,7 +67,7 @@ export async function preparePublicationPreview(input: PreviewRequest) {
     return describe(previous);
   }
   const [inventory, recommendation] = await Promise.all([
-    readInventory(request.inventoryId),
+    getInventoryListing(request.inventoryId),
     getSlabRecommendation(request.recommendationId),
   ]);
   if (!inventory || !recommendation)

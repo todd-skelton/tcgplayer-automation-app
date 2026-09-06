@@ -145,30 +145,18 @@ export async function reconcileInventory(
   });
 }
 
-export async function getInventory(seller: string, after = "", limit = 100) {
-  if (
-    !Number.isSafeInteger(limit) ||
-    limit < 1 ||
-    limit > 200 ||
-    (after && !/^[a-f0-9-]{36}$/.test(after))
-  )
-    throw new SlabInventoryError("invalid-input", "Invalid inventory page.");
-  const rows = await query<
-    InventoryRow & {
-      identity: InventoryIdentity | null;
-      duplicateCertificate: boolean;
-    }
-  >(
-    `SELECT ${COLUMNS},
+type InventoryReviewRow = InventoryRow & {
+  identity: InventoryIdentity | null;
+  duplicateCertificate: boolean;
+};
+const REVIEW_COLUMNS = `${COLUMNS},
     (SELECT jsonb_build_object('id', i.id, 'grader', i.grader, 'certificateNumber', i.certificate_number,
       'candidate', i.candidate, 'identity', i.identity, 'status', i.status, 'reviewReasons', i.review_reasons,
       'valuationGroupKey', i.valuation_group_key, 'revision', i.revision) FROM slab_identities i WHERE i.id = s.identity_id) AS identity,
     EXISTS (SELECT 1 FROM slab_inventory other WHERE other.seller = s.seller AND other.id <> s.id AND other.state = 'active'
-      AND s.snapshot->'certificate' <> 'null'::jsonb AND other.snapshot->'certificate' = s.snapshot->'certificate') AS "duplicateCertificate"
-    FROM slab_inventory s WHERE seller = $1 AND ($2 = '' OR id > NULLIF($2, '')::uuid) ORDER BY id LIMIT $3`,
-    [sellerAccount(seller), after, limit + 1],
-  );
-  const page = rows.slice(0, limit).map((row) => ({
+      AND s.snapshot->'certificate' <> 'null'::jsonb AND other.snapshot->'certificate' = s.snapshot->'certificate') AS "duplicateCertificate"`;
+function reviewInventoryRow(row: InventoryReviewRow) {
+  return {
     ...row,
     url: `https://www.ebay.com/itm/${row.itemId}`,
     reviewReasons: [
@@ -191,7 +179,33 @@ export async function getInventory(seller: string, after = "", limit = 100) {
           : []),
       ]),
     ],
-  }));
+  };
+}
+export async function getInventoryListing(id: string) {
+  if (!/^[a-f0-9-]{36}$/.test(id))
+    throw new SlabInventoryError(
+      "invalid-input",
+      "Choose an inventory listing.",
+    );
+  const row = await queryOne<InventoryReviewRow>(
+    `SELECT ${REVIEW_COLUMNS} FROM slab_inventory s WHERE id=$1`,
+    [id],
+  );
+  return row ? reviewInventoryRow(row) : null;
+}
+export async function getInventory(seller: string, after = "", limit = 100) {
+  if (
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 200 ||
+    (after && !/^[a-f0-9-]{36}$/.test(after))
+  )
+    throw new SlabInventoryError("invalid-input", "Invalid inventory page.");
+  const rows = await query<InventoryReviewRow>(
+    `SELECT ${REVIEW_COLUMNS} FROM slab_inventory s WHERE seller=$1 AND ($2='' OR id>NULLIF($2,'')::uuid) ORDER BY id LIMIT $3`,
+    [sellerAccount(seller), after, limit + 1],
+  );
+  const page = rows.slice(0, limit).map(reviewInventoryRow);
   return {
     items: page,
     next: rows.length > limit ? page.at(-1)!.id : null,

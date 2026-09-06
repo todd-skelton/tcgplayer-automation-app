@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import type { InventoryRow } from "../inventory/slabInventory.server";
+import type { PublicationInventory } from "./slabPublicationPreview";
 import type { StoredSlabRecommendation } from "../valuation/slabRecommendations.server";
 import {
   DEFAULT_SLAB_POLICY,
@@ -85,7 +85,8 @@ const recommendation: StoredSlabRecommendation = {
     ],
   },
 };
-const inventory: InventoryRow = {
+const inventory: PublicationInventory = {
+  reviewReasons: ["certificate-required"],
   id: id(1),
   seller: "fixture",
   itemId: "123456789012",
@@ -124,6 +125,22 @@ const request: PreviewRequest = {
 const build = (row = inventory, rec = recommendation, input = request) =>
   buildPublicationPreview(input, row, rec, now);
 const plan = build();
+assert.throws(
+  () =>
+    build({
+      ...inventory,
+      reviewReasons: ["certificate-used-by-another-active-listing"],
+    }),
+  /review reasons/,
+);
+assert.throws(
+  () =>
+    build({
+      ...inventory,
+      reviewReasons: ["listing-certificate-conflicts-with-manual-identity"],
+    }),
+  /review reasons/,
+);
 assert.equal(plan.mode, "preview");
 assert.equal(plan.oldPrice.amount, 100);
 assert.equal(plan.newPrice.amount, 125);
