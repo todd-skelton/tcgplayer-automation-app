@@ -1,0 +1,23 @@
+# Reviewed eBay price changes
+
+The slab recommendation panel now saves a price-change preview for one selected listing. Choose the calculated or separately reviewed ask, then save the preview. It records the imported listing snapshot, old/new USD item price, identity/inventory revisions, recommendation, evidence references, policy, seller constraints and review reason. Reopening the listing retrieves its latest saved preview without contacting eBay.
+
+Migration 031 adds one indexed PostgreSQL table. Preview intents are immutable: concurrent retries with the same intent return the first saved plan; reuse for another selection is rejected. Plans expire at the earlier of 15 minutes or their evidence expiry. Reads flag changed inventory, recommendation, identity, comp decisions, evidence or reviewed ask. A new preview is required after changes. Each plan is bounded to 64 KiB; creation removes at most 100 previews expired more than 30 days ago. There is no new dependency, queue, polling loop or always-on worker. The review panel is loaded on demand.
+
+Only active, single-quantity fixed-price listings without variations or unresolved listing reasons can be previewed. A confirmed identity must be assigned to the listing. The recommendation must have a supported policy and adequate direct evidence, with the listing's current USD price and shipping charge. Reviewed overrides must use whole cents and meet saved seller floors; unknown inputs cannot satisfy a requested profit constraint. CSV/manual inventory is supported for preview but is not proof of live seller state.
+
+## Current delivery boundary
+
+This is the preview portion of #31. No approval, publication, retry, restoration or continuous-publication endpoint is connected. `canPublish` is always false. The user interface explicitly explains this, and posting a publishing intent to the preview route is rejected. The shared production eBay keyset still needs activation coordinated with the other app that uses it.
+
+The official [ReviseInventoryStatus contract](https://developer.ebay.com/devzone/xml/docs/reference/ebay/ReviseInventoryStatus.html) is a narrow candidate for supported Trading-model fixed-price listings: send identifiers and price only, omitting quantity. Its response is not proof of the resulting price; use an authenticated [GetItem readback](https://developer.ebay.com/devzone/xml/docs/reference/ebay/GetItem.html). Inventory API/MIP listings require their own compatible publisher. Variations require verified exact variation identity and remain unsupported here. A SKU alone is not a substitute for the saved seller/listing/variation identity.
+
+Before live delivery, #31 still requires an authenticated listing-origin/capability check, a fresh seller read during live plan preparation, explicit approval of that concrete live plan, immediate pre-write conflict checks, durable per-item outcomes, bounded execution, readback and ambiguity reconciliation. Only the price may be sent. A timeout must not cause an automatic repeat write: first reconcile the current listing and prior intent. Restore must be a new reviewed update against the current state. The Trading API has no documented compare-and-swap precondition for this price update, so read-then-write cannot promise protection against every concurrent external edit; surface this limitation in the live workflow and verify all protected fields afterward.
+
+No automatic cohort can publish through a preview. Seller OAuth/readback and the remaining publication acceptance tests, including independently approved native before/after validation, remain open prerequisites. Evidence/model gaps in #29/#30 also keep #32 automation disabled.
+
+## Validation
+
+`npm test` includes offline cases for exact price selection, stale evidence, identity/inventory conflicts, sold/ended items, quantities, variations, currency/shipping changes, override revisions and seller floors. `npx tsx app/features/ebay-slab-pricing/research/slabResearch.integration.test.ts` uses a disposable schema on the guarded local development database to verify concurrent immutable intents, retry mismatch rejection, persisted reload and correction invalidation with provider fetches prohibited.
+
+Chrome validation uses a clearly labeled local synthetic listing: the USD 100 to USD 125 reviewed preview survives reload, and changing the reviewed ask requires replacement of the original preview. This is UI/storage validation, not a live eBay publication. Apply migration 031 before this build; restore its table with the referenced inventory/recommendation tables. The migration enables no background work or price writes.

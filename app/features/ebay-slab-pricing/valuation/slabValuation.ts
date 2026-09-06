@@ -301,6 +301,32 @@ export function validateSellerPriceContext(
     minimumProfit: context.minimumProfit,
   };
 }
+// Null means an explicitly requested profit floor cannot be checked with known seller inputs.
+export function minimumSellerAsk(context: SellerPriceContext): number | null {
+  const floor = context.minimumAsk ?? 0;
+  if (context.minimumProfit === null) return floor;
+  if (
+    context.acquisitionCost === null ||
+    context.shippingCost === null ||
+    context.shippingCharged === null ||
+    !context.fees
+  )
+    return null;
+  const feeShipping =
+    context.fees.basis === "item-plus-shipping"
+      ? context.shippingCharged * context.fees.rate
+      : 0;
+  return Math.max(
+    floor,
+    (context.acquisitionCost +
+      context.shippingCost +
+      context.minimumProfit +
+      context.fees.fixed -
+      context.shippingCharged +
+      feeShipping) /
+      (1 - context.fees.rate),
+  );
+}
 export function proposeSlabAsk(
   market: MarketEstimate,
   context: SellerPriceContext,
@@ -351,32 +377,11 @@ export function proposeSlabAsk(
   let ask =
     market.range.midpoint -
     (market.basis === "item-plus-shipping" ? context.shippingCharged! : 0);
-  let floor = context.minimumAsk ?? 0;
-  if (context.minimumProfit !== null) {
-    if (
-      context.acquisitionCost === null ||
-      context.shippingCost === null ||
-      context.shippingCharged === null ||
-      !context.fees
-    ) {
-      flags.push({ code: "profit-floor-cannot-be-verified", review: true });
-      result.requiresReview = true;
-      return result;
-    }
-    const feeShipping =
-      context.fees.basis === "item-plus-shipping"
-        ? context.shippingCharged * context.fees.rate
-        : 0;
-    floor = Math.max(
-      floor,
-      (context.acquisitionCost +
-        context.shippingCost +
-        context.minimumProfit +
-        context.fees.fixed -
-        context.shippingCharged +
-        feeShipping) /
-        (1 - context.fees.rate),
-    );
+  const floor = minimumSellerAsk(context);
+  if (floor === null) {
+    flags.push({ code: "profit-floor-cannot-be-verified", review: true });
+    result.requiresReview = true;
+    return result;
   }
   if (floor > ask) {
     flags.push({ code: "seller-floor-raised-proposed-ask", review: false });
