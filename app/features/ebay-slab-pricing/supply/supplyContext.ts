@@ -255,6 +255,7 @@ export function reconcileSellerOutcomes(
   }
   const known: SellerOutcome[] = [],
     unresolved: string[] = [];
+  const heldSales = new Set<string>();
   for (const [id, copies] of events) {
     const row = [...copies].sort((a, b) =>
       a.observedAt.localeCompare(b.observedAt),
@@ -294,6 +295,9 @@ export function reconcileSellerOutcomes(
         (!row.nextItemId || row.nextItemId === row.itemId))
     ) {
       unresolved.push(id);
+      for (const copy of copies)
+        if (copy.kind === "cancellation" && copy.relatedSaleId)
+          heldSales.add(copy.relatedSaleId);
       continue;
     }
     known.push(row);
@@ -312,13 +316,18 @@ export function reconcileSellerOutcomes(
       Date.parse(sale.occurredAt) <= Date.parse(event.occurredAt)
     )
       cancelled.add(sale.id);
-    else unresolved.push(event.id);
+    else {
+      unresolved.push(event.id);
+      if (sale) heldSales.add(sale.id);
+    }
   }
   return {
     known,
     unresolved,
-    sales: known.filter((r) => r.kind === "sale" && !cancelled.has(r.id))
-      .length,
+    sales: known.filter(
+      (r) => r.kind === "sale" && !cancelled.has(r.id) && !heldSales.has(r.id),
+    ).length,
+    heldSaleIds: [...heldSales],
     cancelledSaleIds: [...cancelled],
     cancellations: known.filter((r) => r.kind === "cancellation").length,
     relists: known.filter((r) => r.kind === "relist").length,

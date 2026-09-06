@@ -250,6 +250,10 @@ try {
     "INSERT INTO slab_maintenance_items(inventory_id,inventory_revision,identity_revision,recommendation_id,outcome,reason,next_check_at,settings_revision) VALUES($1,1,1,$2,'review-required','synthetic',clock_timestamp(),1)",
     [ids.inventory, ids.recommendation],
   );
+  await upgrade.query(
+    'INSERT INTO slab_seller_outcomes(seller,event_id,content_hash,item_id,payload) VALUES($1,\'synthetic-sale\',$2,\'900000000077\',\'{"source":"reviewed-manual","note":"Synthetic recovery observation"}\')',
+    [seller, key],
+  );
   const before = await snapshot(upgrade);
   const archive = (
     await run(
