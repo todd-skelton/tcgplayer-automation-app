@@ -47,6 +47,7 @@ export async function loadResearchPlan(
   revision: number | null,
   grade: string,
   window: EvidenceWindow,
+  includeSupply = false,
 ) {
   if (
     !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(id)
@@ -72,6 +73,7 @@ export async function loadResearchPlan(
       },
     ],
     window,
+    includeSupply,
   );
   return { record, target, plan };
 }

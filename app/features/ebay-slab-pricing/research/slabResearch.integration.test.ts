@@ -31,6 +31,7 @@ import {
 } from "../valuation/slabRecommendations.server";
 import { DEFAULT_SLAB_POLICY } from "../valuation/slabValuation";
 import type { SaleEvidence } from "../evidence/slabEvidence";
+import { loadSlabSupply } from "../supply/slabSupply.server";
 
 dotenv.config({
   path: [".env.development.local", ".env.local", ".env.development", ".env"],
@@ -61,6 +62,7 @@ try {
     "025_add_slab_identities.sql",
     "026_add_slab_inventory.sql",
     "027_add_slab_evidence_refreshes.sql",
+    "030_add_slab_supply_observations.sql",
     "028_add_slab_comp_decisions.sql",
     "029_add_slab_recommendations.sql",
   ])
@@ -136,6 +138,44 @@ try {
     confirmed.revision,
     "owned",
     window,
+  );
+  const supplyPlan = await loadResearchPlan(
+    confirmed.id,
+    confirmed.revision,
+    "owned",
+    window,
+    true,
+  );
+  const supplySpec = supplyPlan.plan.requests.find(
+    (s) => s.kind === "ebay-supply",
+  )!;
+  assert.ok(supplySpec.kind === "ebay-supply");
+  const [supplyPage] = await requestEvidence([{ ...supplySpec, offset: 50 }]);
+  await db.query(
+    "UPDATE slab_evidence_refreshes SET state='cancelled' WHERE key=$1",
+    [supplyPage.key],
+  );
+  const supplyInput = {
+    slabId: confirmed.id,
+    grade: "owned",
+    window,
+    seller: "workspace-sample",
+    key: supplyPage.key,
+  };
+  const supplied = await loadSlabSupply(supplyInput);
+  assert.equal(
+    supplied.selectedKey,
+    supplyPage.key,
+    "Later supply pages preserve their research scope",
+  );
+  assert.equal(supplied.knownOwnListings, 50);
+  await assert.rejects(
+    () => loadSlabSupply({ ...supplyInput, grade: "10" }),
+    /another research context/,
+  );
+  await assert.rejects(
+    () => loadSlabSupply({ ...supplyInput, offset: 1 }),
+    /bounded supply page/,
   );
   const spec = plan.plan.requests.find((s) => s.kind === "alt-sales")!;
   const [status] = await requestEvidence([spec]);

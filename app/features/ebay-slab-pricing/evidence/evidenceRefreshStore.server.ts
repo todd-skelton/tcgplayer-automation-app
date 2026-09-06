@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import {
+  recordSupplyScan,
+  cleanSupplyObservations,
+  getSupplyScan,
+} from "../supply/supplyObservations.server";
+import {
   getPool,
   withTransaction,
   type Queryable,
@@ -152,10 +157,27 @@ export async function completeEvidenceJob(
       [job.key, job.runId, job.leaseId],
     );
     if (!current.rowCount) return false;
+    await recordSupplyScan(db, job, compact.payload);
+    const supply =
+      compact.payload.kind === "alt-supply" ||
+      compact.payload.kind === "ebay-supply";
+    const storedJson = supply
+      ? JSON.stringify({
+          ...compact.payload,
+          data: { ...compact.payload.data, listings: undefined },
+        })
+      : compact.json;
     await db.query(
-      `INSERT INTO slab_evidence_revisions(id, key, payload, fetched_at, byte_count, observation_count)
-      VALUES ($1, $2, $3, clock_timestamp(), $4, $5)`,
-      [job.runId, job.key, compact.json, compact.bytes, compact.observations],
+      `INSERT INTO slab_evidence_revisions(id, key, payload, fetched_at, byte_count, observation_count, supply_scan_id)
+      VALUES ($1, $2, $3, clock_timestamp(), $4, $5, $6)`,
+      [
+        job.runId,
+        job.key,
+        storedJson,
+        compact.bytes,
+        compact.observations,
+        supply ? job.runId : null,
+      ],
     );
     await db.query(
       `UPDATE slab_evidence_refreshes SET state = 'idle', latest_revision = $2, fetched_at = clock_timestamp(),
@@ -220,18 +242,34 @@ export async function cancelEvidenceRefresh(key: string, runId: string) {
 export async function getEvidenceRevision(id: string) {
   if (!/^[a-f0-9-]{36}$/.test(id))
     throw new EvidenceRefreshError("Provide an evidence revision.");
-  return queryOne<{
+  const row = await queryOne<{
     id: string;
     key: string;
     payload: EvidencePayload;
     fetchedAt: Date;
     bytes: number;
     observations: number;
+    supplyScanId: string | null;
   }>(
-    `SELECT id, key, payload, fetched_at AS "fetchedAt", byte_count AS bytes, observation_count AS observations
+    `SELECT id, key, payload, fetched_at AS "fetchedAt", byte_count AS bytes, observation_count AS observations, supply_scan_id AS "supplyScanId"
     FROM slab_evidence_revisions WHERE id = $1`,
     [id],
   );
+  if (!row) return null;
+  const { supplyScanId, ...record } = row;
+  if (supplyScanId) {
+    const scan = await getSupplyScan(supplyScanId);
+    if (!scan) return null;
+    if (scan.sourceKey !== record.key)
+      throw new EvidenceRefreshError("Supply revision scope changed.");
+    if (
+      record.payload.kind !== "alt-supply" &&
+      record.payload.kind !== "ebay-supply"
+    )
+      throw new EvidenceRefreshError("Invalid supply revision.");
+    record.payload.data.listings = scan.listings;
+  }
+  return record;
 }
 // Recommendation creation must retain its evidence inside the same transaction as its references.
 export async function retainEvidenceRevisions(
@@ -254,6 +292,7 @@ export async function retainEvidenceRevisions(
 export async function cleanEvidenceCache() {
   return withTransaction(async (db) => {
     await db.query("SET LOCAL statement_timeout = '15s'");
+    await cleanSupplyObservations(db);
     // Latest/retained revisions survive normal 30-day history compaction.
     const removed =
       await db.query(`DELETE FROM slab_evidence_revisions WHERE id IN (
