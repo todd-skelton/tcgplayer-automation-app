@@ -16,6 +16,9 @@ logs
 # Development files
 .env.local
 .env.development
+.env*
+.artifacts/
+.codex/
 *.log
 
 # Documentation

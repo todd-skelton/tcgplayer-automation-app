@@ -262,6 +262,15 @@ try {
     selection: "calculated" as const,
     overrideReviewedAt: null,
   };
+  await assert.rejects(
+    () => preparePublicationPreview(previewInput),
+    /review reasons/,
+  );
+  // This stress sample repeats one certificate. Leave only the previewed listing assigned to it.
+  await db.query(
+    "UPDATE slab_inventory SET snapshot=jsonb_set(snapshot,'{certificate}','null'::jsonb),identity_id=NULL WHERE seller=$1 AND id<>$2",
+    ["workspace-sample", first.items[0].id],
+  );
   const [preview, repeated] = await Promise.all([
     preparePublicationPreview(previewInput),
     preparePublicationPreview(previewInput),
@@ -290,6 +299,20 @@ try {
   assert.equal(
     (await readPublicationPreview({ inventoryId: first.items[0].id }))!.id,
     preview.id,
+  );
+  await db.query(
+    "UPDATE slab_inventory SET snapshot=jsonb_set(snapshot,'{certificate}',$2::jsonb) WHERE id=$1",
+    [first.items[1].id, JSON.stringify(first.items[0].snapshot.certificate)],
+  );
+  assert.ok(
+    (await readPublicationPreview({ id: preview.id }))!.conflicts.includes(
+      "inventory-changed",
+    ),
+    "A duplicate created elsewhere invalidates the preview without changing the original listing revision",
+  );
+  await db.query(
+    "UPDATE slab_inventory SET snapshot=jsonb_set(snapshot,'{certificate}','null'::jsonb) WHERE id=$1",
+    [first.items[1].id],
   );
   const corrected = await slabIdentityService.confirm(
     candidate,

@@ -4,6 +4,7 @@ import { minimumSellerAsk } from "../valuation/slabValuation";
 
 export const SLAB_PUBLICATION_POLICY = "reviewed-price-v1";
 export class SlabPublicationError extends Error {}
+export type PublicationInventory = InventoryRow & { reviewReasons: string[] };
 export type PreviewRequest = {
   intentId: string;
   inventoryId: string;
@@ -55,7 +56,7 @@ function cents(value: number) {
 }
 export function buildPublicationPreview(
   request: PreviewRequest,
-  inventory: InventoryRow,
+  inventory: PublicationInventory,
   recommendation: StoredSlabRecommendation,
   now: string,
 ) {
@@ -96,7 +97,7 @@ export function buildPublicationPreview(
       "Variation listings need a verified variation publisher and remain in review.",
     );
   if (
-    snapshot.reviewReasons.some((reason) => reason !== "certificate-required")
+    inventory.reviewReasons.some((reason) => reason !== "certificate-required")
   )
     throw new SlabPublicationError(
       "Resolve the listing's review reasons before preparing its price change.",
@@ -196,7 +197,7 @@ export function buildPublicationPreview(
 export type PublicationPreview = ReturnType<typeof buildPublicationPreview>;
 export function previewConflicts(
   plan: PublicationPreview,
-  inventory: InventoryRow | null,
+  inventory: PublicationInventory | null,
   recommendation: StoredSlabRecommendation | null,
   now: string,
 ) {
@@ -217,7 +218,8 @@ export function previewConflicts(
     inventory.itemId !== plan.inventory.itemId ||
     inventory.variationKey !== plan.inventory.variationKey ||
     inventory.identityId !== plan.identity.slabId ||
-    inventory.state !== "active"
+    inventory.state !== "active" ||
+    inventory.reviewReasons.some((reason) => reason !== "certificate-required")
   )
     reasons.push("inventory-changed");
   if (
