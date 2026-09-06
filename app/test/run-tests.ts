@@ -75,3 +75,4 @@ import "../features/ebay-slab-pricing/evidence/altEvidenceProvider.test";
 import "../features/ebay-slab-pricing/evidence/ebayResearchProvider.test";
 import "../features/ebay-slab-pricing/evidence/evidenceRefresh.test";
 import "../features/ebay-slab-pricing/screening/screenComparables.test";
+import "../features/ebay-slab-pricing/valuation/slabValuation.test";
