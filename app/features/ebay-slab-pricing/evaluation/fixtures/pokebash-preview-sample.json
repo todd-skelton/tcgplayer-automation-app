@@ -1,0 +1,462 @@
+{
+  "capturedAt": "2026-09-05T19:18:41.925Z",
+  "seller": "pokebash",
+  "window": {
+    "start": "2026-06-07",
+    "end": "2026-09-05",
+    "marketplace": "EBAY-US"
+  },
+  "limitations": "Historical public listing titles and asks; certificates, quantity, identity and comparable acceptance are unverified. Sold-row counts are observed search coverage, not accepted comps.",
+  "listings": [
+    {
+      "sample": 1,
+      "itemId": "397802495164",
+      "title": "1999 Pokemon Base Set 1st Edition Shadowless Ponyta 60/102 PSA 9 Mint",
+      "askingPriceUsd": 150,
+      "researchQuery": "Ponyta 60 1st PSA 9",
+      "visibleSoldRows": 21,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 2,
+      "itemId": "396930808378",
+      "title": "Blastoise 017/078 Reverse Holo Rare - SGC 10 GEM MINT - Pokémon GO",
+      "askingPriceUsd": 50,
+      "researchQuery": "Blastoise 017/078 reverse SGC 10",
+      "visibleSoldRows": 0,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 3,
+      "itemId": "397103446770",
+      "title": "2025 Pokémon Marnie’s Morpeko SVP #206 PSA 9 Black Star Promo (Rival Battle Deck",
+      "askingPriceUsd": 86,
+      "researchQuery": "Marnie Morpeko 206 PSA 9",
+      "visibleSoldRows": 40,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 4,
+      "itemId": "397443142203",
+      "title": "2022 Pokémon Astral Radiance Hisuian Samurott VSTAR 209/189 Secret PSA 10",
+      "askingPriceUsd": 65,
+      "researchQuery": "Hisuian Samurott 209 PSA 10",
+      "visibleSoldRows": 7,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 5,
+      "itemId": "397774081597",
+      "title": "2023 Pokemon SWSH Black Star Promo Galarian Zapdos SWSH283 Holo PSA 8",
+      "askingPriceUsd": 16,
+      "researchQuery": "Galarian Zapdos SWSH283 PSA 8",
+      "visibleSoldRows": 15,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 6,
+      "itemId": "397978107194",
+      "title": "1999 Pokemon Jungle 1st Edition Goldeen 53/64 CGC 10 Gem Mint",
+      "askingPriceUsd": 49.99,
+      "researchQuery": "Goldeen 53 1st CGC 10",
+      "visibleSoldRows": 1,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 7,
+      "itemId": "397285478450",
+      "title": "2016 Pokémon M Gengar EX XY166 Black Star Promo – PSA 1 (Poor), English",
+      "askingPriceUsd": 200,
+      "researchQuery": "Gengar XY166 \"PSA 1\"",
+      "visibleSoldRows": 10,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 8,
+      "itemId": "396930795644",
+      "title": "Gardevoir ex 228/198 Ultra Rare Full Art - SGC 10 GEM MINT - Scarlet & Violet",
+      "askingPriceUsd": 28,
+      "researchQuery": "Gardevoir 228 SGC 10",
+      "visibleSoldRows": 2,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 9,
+      "itemId": "397978107163",
+      "title": "2024 Pokemon SVP Mimikyu 075 Paldean Fates PC ETB Promo PSA 9",
+      "askingPriceUsd": 99.99,
+      "researchQuery": "Mimikyu 075 Pokemon Center PSA 9",
+      "visibleSoldRows": 50,
+      "possiblyPageLimited": true
+    },
+    {
+      "sample": 10,
+      "itemId": "397285478481",
+      "title": "Okidogi ex #090/064 SIR Shrouded Fable CGC 10 GEM MINT 2024 Pokémon EN",
+      "askingPriceUsd": 60,
+      "researchQuery": "Okidogi 090/064 CGC 10",
+      "visibleSoldRows": 3,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 11,
+      "itemId": "397282303023",
+      "title": "2023 Pokémon JP Charizard ex SSR #331 sv4a — FCG 9.5 Gem Mint",
+      "askingPriceUsd": 37,
+      "researchQuery": "Charizard 331 FCG 9.5",
+      "visibleSoldRows": 0,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 12,
+      "itemId": "397978107199",
+      "title": "2023 Pokemon Japanese Shiny Treasure ex Penny SAR 354/190 PSA 10",
+      "askingPriceUsd": 94.99,
+      "researchQuery": "Penny 354/190 PSA 10",
+      "visibleSoldRows": 14,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 13,
+      "itemId": "397777166036",
+      "title": "2023 Pokemon Card 151 Japanese Charmander 168/165 Art Rare CGC Pristine 10",
+      "askingPriceUsd": 150,
+      "researchQuery": "Charmander 168/165 CGC pristine 10",
+      "visibleSoldRows": 41,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 14,
+      "itemId": "397978107151",
+      "title": "2024 One Piece Sentomaru ST03-007 Bandai Games Fest CGC 10",
+      "askingPriceUsd": 36.99,
+      "researchQuery": "Sentomaru ST03-007 Games Fest CGC 10",
+      "visibleSoldRows": 9,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 15,
+      "itemId": "397443142191",
+      "title": "2025 Pokemon MEG EN Bulbasaur #133/132 Illustration Rare Holo PSA 9 Mint",
+      "askingPriceUsd": 50,
+      "researchQuery": "Bulbasaur 133/132 PSA 9",
+      "visibleSoldRows": 50,
+      "possiblyPageLimited": true
+    },
+    {
+      "sample": 16,
+      "itemId": "397978107159",
+      "title": "2023 Pokemon Paradox Rift Espathra 081 Two Pack Blister PSA 8",
+      "askingPriceUsd": 14.99,
+      "researchQuery": "Espathra 081 blister PSA 8",
+      "visibleSoldRows": 0,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 17,
+      "itemId": "397443138479",
+      "title": "2024 Pokemon Japanese SV8a Terastal Festival Flareon ex 022/187 RR PSA 10",
+      "askingPriceUsd": 50,
+      "researchQuery": "Flareon 022/187 PSA 10",
+      "visibleSoldRows": 30,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 18,
+      "itemId": "397777166035",
+      "title": "2019 Pokemon Hidden Fates Zorua SV25/SV94 Shiny Vault CGC 9 Mint Holo",
+      "askingPriceUsd": 20,
+      "researchQuery": "Zorua SV25 CGC 9",
+      "visibleSoldRows": 0,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 19,
+      "itemId": "397333090254",
+      "title": "2019 Pokemon Sun & Moon Detective Pikachu Slaking Holo 18/18 PSA 9",
+      "askingPriceUsd": 100,
+      "researchQuery": "Slaking 18/18 PSA 9",
+      "visibleSoldRows": 2,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 20,
+      "itemId": "397802495123",
+      "title": "2007 Pokemon Secret Wonders Weavile 40/132 Countdown Calendar Promo PSA 8 POP 6",
+      "askingPriceUsd": 200,
+      "researchQuery": "Weavile 40 calendar PSA 8",
+      "visibleSoldRows": 0,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 21,
+      "itemId": "397103446782",
+      "title": "Koga’s Beedrill Holo 9/132 Gym Challenge (2000) CGC 8 – Unlimited WotC Vintage",
+      "askingPriceUsd": 37,
+      "researchQuery": "Koga Beedrill 9/132 CGC 8",
+      "visibleSoldRows": 2,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 22,
+      "itemId": "397978107195",
+      "title": "2025 Pokemon Haunter 027 Mega Gengar ex Mega Battle Deck PSA 9",
+      "askingPriceUsd": 98.99,
+      "researchQuery": "Haunter 027 Mega Gengar PSA 9",
+      "visibleSoldRows": 50,
+      "possiblyPageLimited": true
+    },
+    {
+      "sample": 23,
+      "itemId": "397777166037",
+      "title": "2021 Pokemon Japanese 25th Anniversary Collection Kyogre 007/028 CGC Pristine 10",
+      "askingPriceUsd": 55,
+      "researchQuery": "Kyogre 007/028 CGC pristine 10",
+      "visibleSoldRows": 8,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 24,
+      "itemId": "397802495140",
+      "title": "2023 Pokemon Scarlet & Violet 151 Alakazam ex 201/165 SIR CGC Gem Mint 10",
+      "askingPriceUsd": 200,
+      "researchQuery": "Alakazam 201/165 CGC 10 -pristine",
+      "visibleSoldRows": 22,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 25,
+      "itemId": "397443138497",
+      "title": "2024 Pokémon JP SV8a Terastal Festival Vaporeon ex 031/187 PSA 10",
+      "askingPriceUsd": 50,
+      "researchQuery": "Vaporeon 031/187 PSA 10",
+      "visibleSoldRows": 40,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 26,
+      "itemId": "397282303050",
+      "title": "2023 Pokémon JPN sv4M Steelix AR 074/066 — CGC 10 Gem Mint (Future Flash)",
+      "askingPriceUsd": 30,
+      "researchQuery": "Steelix 074/066 CGC 10 -pristine",
+      "visibleSoldRows": 8,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 27,
+      "itemId": "397282303045",
+      "title": "2023 Pokémon Old Maid “Super High Tension” Tatsugiri – CGC 10 Gem Mint",
+      "askingPriceUsd": 19,
+      "researchQuery": "Tatsugiri Old Maid CGC 10",
+      "visibleSoldRows": 9,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 28,
+      "itemId": "397443138495",
+      "title": "2024 Pokemon JP SV8a Terastal Festival Leafeon ex 003/187 PSA 10",
+      "askingPriceUsd": 50,
+      "researchQuery": "Leafeon 003/187 PSA 10",
+      "visibleSoldRows": 48,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 29,
+      "itemId": "397978107189",
+      "title": "2023 Pokemon Crown Zenith Palkia VSTAR GG67/GG70 Secret PSA 9",
+      "askingPriceUsd": 149.99,
+      "researchQuery": "Palkia GG67 PSA 9",
+      "visibleSoldRows": 50,
+      "possiblyPageLimited": true
+    },
+    {
+      "sample": 30,
+      "itemId": "397443138525",
+      "title": "2022 Pokemon JP VSTAR Universe s12a Gengar 048/172 Holo CGC Pristine 10",
+      "askingPriceUsd": 60,
+      "researchQuery": "Gengar 048/172 CGC pristine 10",
+      "visibleSoldRows": 50,
+      "possiblyPageLimited": true
+    },
+    {
+      "sample": 31,
+      "itemId": "397443138474",
+      "title": "2021 JPN VMAX Climax 242/184 Galarian Moltres V CSR CGC Pristine 10",
+      "askingPriceUsd": 75,
+      "researchQuery": "Moltres 242/184 CGC pristine 10",
+      "visibleSoldRows": 12,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 32,
+      "itemId": "397978107155",
+      "title": "2022 Japanese Pokemon VSTAR Universe Leafeon VSTAR 210/172 CGC 9.5",
+      "askingPriceUsd": 87.99,
+      "researchQuery": "Leafeon 210/172 CGC 9.5",
+      "visibleSoldRows": 2,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 33,
+      "itemId": "397285478425",
+      "title": "2001 Pokémon JPN Krabby e-Card 1st Ed #010/128 CGC 9 Base Expansion Pack",
+      "askingPriceUsd": 19,
+      "researchQuery": "Krabby 010/128 1st CGC 9",
+      "visibleSoldRows": 0,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 34,
+      "itemId": "397469789209",
+      "title": "2025 Pokémon Prismatic Evolutions Buneary #083 Master Ball Reverse Holo PSA 10",
+      "askingPriceUsd": 215,
+      "researchQuery": "Buneary 083 Master Ball PSA 10",
+      "visibleSoldRows": 2,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 35,
+      "itemId": "396931194235",
+      "title": "Golbat No. 042 Holo Rare - RCG 9.5 MINT - Rocket Gang - Japanese",
+      "askingPriceUsd": 35,
+      "researchQuery": "Golbat Rocket RCG 9.5",
+      "visibleSoldRows": 0,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 36,
+      "itemId": "397443138542",
+      "title": "Pokemon TCG Classic JP Rapidash 005/032 CGC 10 Gem Mint Holo (CLL)",
+      "askingPriceUsd": 30,
+      "researchQuery": "Rapidash 005/032 CGC 10 -pristine",
+      "visibleSoldRows": 3,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 37,
+      "itemId": "397443138520",
+      "title": "2024 Pokémon JP SV7 Stellar Miracle Ledian 103/102 AR PSA 10 Gem Mint",
+      "askingPriceUsd": 25,
+      "researchQuery": "Ledian 103/102 PSA 10",
+      "visibleSoldRows": 5,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 38,
+      "itemId": "397285478486",
+      "title": "Makuhita 56/109 EX Ruby & Sapphire (2003) CGC 5 | e-Reader | English",
+      "askingPriceUsd": 15,
+      "researchQuery": "Makuhita 56/109 CGC 5",
+      "visibleSoldRows": 1,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 39,
+      "itemId": "397443138503",
+      "title": "2024 Pokémon SV8a JP Glaceon ex 041/187 RR PSA 10 Gem Mint Terastal Fest",
+      "askingPriceUsd": 50,
+      "researchQuery": "Glaceon 041/187 PSA 10",
+      "visibleSoldRows": 46,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 40,
+      "itemId": "397774081600",
+      "title": "2023 Pokemon SWSH Black Star Promo Galarian Zapdos SWSH283 Holo PSA 8",
+      "askingPriceUsd": 16,
+      "researchQuery": "Galarian Zapdos SWSH283 PSA 8",
+      "visibleSoldRows": 15,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 41,
+      "itemId": "397777166031",
+      "title": "2023 Pokemon Japanese sv1V Violet ex Greavard 087/078 AR CGC 10 Pristine",
+      "askingPriceUsd": 45,
+      "researchQuery": "Greavard 087/078 CGC pristine 10",
+      "visibleSoldRows": 14,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 42,
+      "itemId": "397443138531",
+      "title": "2025 Pokémon ME01 Mega Evolution Mega Lucario ex 160/132 PSA 9 Ultra Rare",
+      "askingPriceUsd": 65,
+      "researchQuery": "Lucario 160/132 PSA 9",
+      "visibleSoldRows": 50,
+      "possiblyPageLimited": true
+    },
+    {
+      "sample": 43,
+      "itemId": "397285478477",
+      "title": "2022 Pokémon Roserade TG02 Lost Origin Trainer Gallery — CGC 10 Gem Mint",
+      "askingPriceUsd": 50,
+      "researchQuery": "Roserade TG02 CGC 10 -pristine",
+      "visibleSoldRows": 5,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 44,
+      "itemId": "397777166043",
+      "title": "2021 Pokemon Crobat VMAX SWSH099 Black Star Promo Full Art CGC 10 Gem Mint",
+      "askingPriceUsd": 30,
+      "researchQuery": "Crobat SWSH099 CGC 10 -pristine",
+      "visibleSoldRows": 4,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 45,
+      "itemId": "397443138508",
+      "title": "2023 Pokémon JPN SV4a Shiny Treasure ex Palafin AR 339/190 CGC 10",
+      "askingPriceUsd": 35,
+      "researchQuery": "Palafin 339/190 CGC 10 -pristine",
+      "visibleSoldRows": 3,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 46,
+      "itemId": "397469784919",
+      "title": "2024 Pokemon SVP 129 Pecharunt Shrouded Fable ETB Promo CGC Pristine 10",
+      "askingPriceUsd": 70,
+      "researchQuery": "Pecharunt 129 CGC pristine 10",
+      "visibleSoldRows": 4,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 47,
+      "itemId": "397285478465",
+      "title": "Bellsprout 49/64 Jungle Unlimited 1999 Pokémon CGC 9 Mint WOTC",
+      "askingPriceUsd": 15,
+      "researchQuery": "Bellsprout 49/64 CGC 9 -1st",
+      "visibleSoldRows": 1,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 48,
+      "itemId": "397333090269",
+      "title": "Suicune ex 010/034 TCG Classic Blastoise Deck CGC 9 Mint Holo Pokémon Card",
+      "askingPriceUsd": 18,
+      "researchQuery": "Suicune 010/034 CGC 9",
+      "visibleSoldRows": 49,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 49,
+      "itemId": "397103449453",
+      "title": "1996 Pokémon Playing Cards Doduo Diamonds 7 #84 CGC 8.5 (Japanese Green Deck)",
+      "askingPriceUsd": 40,
+      "researchQuery": "Doduo playing diamonds CGC 8.5",
+      "visibleSoldRows": 0,
+      "possiblyPageLimited": false
+    },
+    {
+      "sample": 50,
+      "itemId": "396965315781",
+      "title": "Latias 195/172 - CGC 9.5 MINT+ - s12a VSTAR Universe AR - Japanese",
+      "askingPriceUsd": 30,
+      "researchQuery": "Latias 195/172 CGC 9.5",
+      "visibleSoldRows": 2,
+      "possiblyPageLimited": false
+    }
+  ]
+}

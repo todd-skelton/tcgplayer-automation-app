@@ -1,0 +1,60 @@
+{
+  "measuredAt": "2026-09-06T04:19:30.567Z",
+  "basis": "React Router static entry/root/route imports plus route manifest; gzip per asset. Lazy panel figures exclude shared dependencies.",
+  "before": {
+    "routes": {
+      "/pricer": {
+        "gzipBytes": 213690,
+        "slabModules": []
+      },
+      "/pending-inventory-pricer": {
+        "gzipBytes": 238016,
+        "slabModules": []
+      }
+    },
+    "lazySlab": {},
+    "workers": {
+      "continuous-pricing-scheduler.js": 347221,
+      "pricing-worker.js": 331348,
+      "publication-worker.js": 99896
+    }
+  },
+  "after": {
+    "routes": {
+      "/pricer": {
+        "gzipBytes": 214085,
+        "slabModules": []
+      },
+      "/pending-inventory-pricer": {
+        "gzipBytes": 239092,
+        "slabModules": []
+      },
+      "/slab-pricing": {
+        "gzipBytes": 377705,
+        "slabModules": [
+          "/assets/slab-pricing-VmGp0qvo.js",
+          "/assets/slab-pricing-BUh_9-l_.js"
+        ]
+      }
+    },
+    "lazySlab": {
+      "SlabCompReview": 7117,
+      "SlabPublicationPreview": 2087,
+      "SlabSupplyPanel": 3341
+    },
+    "workers": {
+      "continuous-pricing-scheduler.js": 347221,
+      "pricing-worker.js": 331348,
+      "publication-worker.js": 99896,
+      "slab-evidence-worker.js": 61609
+    }
+  },
+  "deltas": {
+    "/pricer": 395,
+    "/pending-inventory-pricer": 1076
+  },
+  "gates": {
+    "unrelatedSlabModules": 0,
+    "unrelatedRouteGrowthBudgetBytes": 4096
+  }
+}
