@@ -1,0 +1,20 @@
+{
+  "version": "grade-model-adoption-v1",
+  "declaredBeforeEvaluation": true,
+  "minimumTestCards": 30,
+  "minimumTestTransactions": 200,
+  "minimumCalibrationTransactions": 30,
+  "minimumPairedComparisons": 30,
+  "minimumSparseCoverage": 0.5,
+  "minimumLogErrorImprovementOverRatio": 0.1,
+  "maximumLogErrorRegressionAgainstDirect": 0.05,
+  "maximumMedianRelativeError": 0.25,
+  "intervalTargetCoverage": 0.8,
+  "minimumIntervalCoverage": 0.75,
+  "maximumIntervalCoverage": 0.9,
+  "maximumMedianIntervalRatio": 3,
+  "minimumTrainingCardsPerGradePair": 3,
+  "priorEffectiveSales": 3,
+  "halfLifeDays": 90,
+  "maximumAgeDays": 365
+}
