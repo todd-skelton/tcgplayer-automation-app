@@ -1,0 +1,65 @@
+{
+  "measuredAt": "2026-09-06T04:19:43.892Z",
+  "scope": "Local Docker Node 20 production builds on fresh empty databases, no provider credentials. HTTP render latency only; network market latency and production job contention are unmeasured.",
+  "results": {
+    "/": {
+      "before": {
+        "samples": 50,
+        "p50Ms": 32.579099999999926,
+        "p95Ms": 44.89589999999998,
+        "responseBytes": 44473
+      },
+      "after": {
+        "samples": 50,
+        "p50Ms": 32.93549999999982,
+        "p95Ms": 50.449499999999716,
+        "responseBytes": 44640
+      }
+    },
+    "/pricer": {
+      "before": {
+        "samples": 50,
+        "p50Ms": 28.149099999999635,
+        "p95Ms": 37.48080000000027,
+        "responseBytes": 52294
+      },
+      "after": {
+        "samples": 50,
+        "p50Ms": 27.563000000000102,
+        "p95Ms": 37.76970000000074,
+        "responseBytes": 52461
+      }
+    },
+    "/pending-inventory-pricer": {
+      "before": {
+        "samples": 50,
+        "p50Ms": 21.902399999999034,
+        "p95Ms": 27.343300000000454,
+        "responseBytes": 37927
+      },
+      "after": {
+        "samples": 50,
+        "p50Ms": 23.091700000000856,
+        "p95Ms": 28.176499999999578,
+        "responseBytes": 38328
+      }
+    }
+  },
+  "newRoutes": {
+    "/slab-pricing": {
+      "firstRequestMs": 39.725899999999456,
+      "p50Ms": 29.71860000000015,
+      "p95Ms": 37.987200000001394
+    },
+    "/slab-connections": {
+      "firstRequestMs": 49.01250000000073,
+      "p50Ms": 31.6171000000013,
+      "p95Ms": 34.41350000000057
+    },
+    "/api/slab-inventory?seller=acceptance-fixture&limit=25": {
+      "firstRequestMs": 17.71230000000105,
+      "p50Ms": 7.0049999999992,
+      "p95Ms": 9.017900000000736
+    }
+  }
+}

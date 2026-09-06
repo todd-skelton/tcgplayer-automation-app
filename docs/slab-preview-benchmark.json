@@ -1,0 +1,58 @@
+{
+  "measuredAt": "2026-09-06T04:21:42.213Z",
+  "node": "v24.15.0",
+  "platform": "win32",
+  "scope": "Local isolated PostgreSQL feature benchmark. HTTP/provider latency and accepted comp precision are not measured.",
+  "historicalSample": {
+    "listings": 50,
+    "researchQueries": 49,
+    "emptySearches": 8,
+    "visibleSoldRows": 800,
+    "confirmedIdentityCoverage": null,
+    "acceptedCompPrecision": null,
+    "priceError": null
+  },
+  "import50Ms": 84.64449999999988,
+  "inventory50": {
+    "samples": 30,
+    "p50Ms": 5.248700000000099,
+    "p95Ms": 6.128600000000006,
+    "pooledQueriesPerSample": 4
+  },
+  "coldFixtureRefreshMs": 164.09760000000006,
+  "fixtureWorkflows": 10,
+  "warmEvidence": {
+    "samples": 30,
+    "p50Ms": 10.564599999999928,
+    "p95Ms": 13.203899999999976,
+    "pooledQueriesPerSample": 5
+  },
+  "evidencePages": {
+    "samples": 30,
+    "p50Ms": 8.257299999999987,
+    "p95Ms": 13.703600000000051,
+    "pooledQueriesPerSample": 10
+  },
+  "import5000Ms": 591.2339999999999,
+  "largePage": {
+    "samples": 30,
+    "p50Ms": 7.127899999999954,
+    "p95Ms": 8.853700000000117,
+    "pooledQueriesPerSample": 2
+  },
+  "databaseBytes": 5267456,
+  "processMemory": {
+    "rss": 136790016,
+    "heapTotal": 95879168,
+    "heapUsed": 26949584,
+    "external": 6352126,
+    "arrayBuffers": 3664027
+  },
+  "remoteAttempts": 0,
+  "gates": {
+    "zeroRemoteRequests": true,
+    "coalescedGroups": true,
+    "maximumInventoryPage": 25,
+    "automationEnabled": false
+  }
+}
