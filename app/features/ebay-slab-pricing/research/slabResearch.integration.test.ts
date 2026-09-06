@@ -32,6 +32,10 @@ import {
 import { DEFAULT_SLAB_POLICY } from "../valuation/slabValuation";
 import type { SaleEvidence } from "../evidence/slabEvidence";
 import { loadSlabSupply } from "../supply/slabSupply.server";
+import {
+  preparePublicationPreview,
+  readPublicationPreview,
+} from "../publication/slabPublicationPreviews.server";
 
 dotenv.config({
   path: [".env.development.local", ".env.local", ".env.development", ".env"],
@@ -65,6 +69,7 @@ try {
     "030_add_slab_supply_observations.sql",
     "028_add_slab_comp_decisions.sql",
     "029_add_slab_recommendations.sql",
+    "031_add_slab_publication_previews.sql",
   ])
     await db.query(await readFile(`db/migrations/${migration}`, "utf8"));
   const candidate = parseAltCertificate(JSON.stringify(fixture))!;
@@ -117,11 +122,11 @@ try {
     /changed/,
   );
   const csv = [
-    "item_id,title,price,currency,quantity,state,format,grader,certificate_number",
+    "item_id,title,price,currency,quantity,state,format,grader,certificate_number,shipping_amount,shipping_currency",
     ...Array.from(
       { length: 50 },
       (_, i) =>
-        `${900000000000 + i},Workspace sample ${i + 1},100,USD,1,active,fixed-price,PSA,110185364`,
+        `${900000000000 + i},Workspace sample ${i + 1},100,USD,1,active,fixed-price,PSA,110185364,0,USD`,
     ),
   ].join("\n");
   await reconcileInventory(parseInventoryCsv(csv, "workspace-sample"), 0);
@@ -249,6 +254,43 @@ try {
   );
   assert.ok(recommendation.calculation.market.range);
   assert.equal(recommendation.calculation.market.count, 4);
+  const previewInput = {
+    intentId: randomUUID(),
+    inventoryId: first.items[0].id,
+    inventoryRevision: first.items[0].revision,
+    recommendationId: recommendation.id,
+    selection: "calculated" as const,
+    overrideReviewedAt: null,
+  };
+  const [preview, repeated] = await Promise.all([
+    preparePublicationPreview(previewInput),
+    preparePublicationPreview(previewInput),
+  ]);
+  assert.equal(preview.id, repeated.id);
+  assert.deepEqual(
+    preview.plan,
+    repeated.plan,
+    "Concurrent retries return the original immutable plan",
+  );
+  assert.deepEqual(preview.conflicts, []);
+  assert.equal(preview.canPublish, false);
+  assert.equal(
+    (await db.query("SELECT count(*)::int AS n FROM slab_publication_previews"))
+      .rows[0].n,
+    1,
+  );
+  await assert.rejects(
+    () =>
+      preparePublicationPreview({
+        ...previewInput,
+        inventoryId: first.items[1].id,
+      }),
+    /already used/,
+  );
+  assert.equal(
+    (await readPublicationPreview({ inventoryId: first.items[0].id }))!.id,
+    preview.id,
+  );
   const corrected = await slabIdentityService.confirm(
     candidate,
     confirmed.revision,
@@ -266,6 +308,11 @@ try {
   assert.equal(
     (await getSlabRecommendation(recommendation.id))!.current,
     false,
+  );
+  assert.ok(
+    (await readPublicationPreview({ id: preview.id }))!.conflicts.includes(
+      "recommendation-changed",
+    ),
   );
   const recalculated = await calculateSlabRecommendation(
     { ...input, identityRevision: corrected.revision },

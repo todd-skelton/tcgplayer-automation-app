@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import {
   Alert,
   Button,
@@ -26,6 +26,7 @@ import {
   words,
   type Json,
 } from "./slabClient";
+const PublicationPreview = lazy(() => import("./SlabPublicationPreview"));
 
 const costFields = [
   "currentAsk",
@@ -108,6 +109,7 @@ export function SlabRecommendationPanel({
     useState(reviewVersion);
   const [override, setOverride] = useState("");
   const [note, setNote] = useState("");
+  const [showPublication, setShowPublication] = useState(false);
   const action = useSlabAction();
   const calculation = recommendation?.calculation;
   const stale =
@@ -405,6 +407,32 @@ export function SlabRecommendationPanel({
                 Save reviewed ask
               </Button>
             </Stack>
+            {listing && recommendation && (
+              <>
+                <Button
+                  sx={{ alignSelf: "start" }}
+                  onClick={() => setShowPublication((v) => !v)}
+                >
+                  {showPublication
+                    ? "Hide price-change review"
+                    : "Review listing price change"}
+                </Button>
+                {showPublication && (
+                  <Suspense
+                    fallback={
+                      <Typography>Loading price-change review…</Typography>
+                    }
+                  >
+                    <PublicationPreview
+                      key={`${listing.id}:${listing.revision}:${recommendation.id}:${recommendation.override?.reviewedAt ?? ""}`}
+                      listing={listing}
+                      recommendation={recommendation}
+                      stale={!!stale || !canCalculate}
+                    />
+                  </Suspense>
+                )}
+              </>
+            )}
           </>
         )}
       </Stack>
