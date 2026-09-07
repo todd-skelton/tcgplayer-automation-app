@@ -20,6 +20,9 @@ const REQUIRED_COLUMNS = [
   "Gross Item Proceeds USD",
 ] as const;
 
+export const MAX_SELLER_ORDER_CSV_BYTES = 5 * 1024 * 1024;
+export const MAX_SELLER_ORDER_CSV_ROWS = 50_000;
+
 function requiredText(row: Record<string, string>, column: string, rowNumber: number): string {
   const value = row[column]?.trim();
   if (!value) throw new Error(`Row ${rowNumber}: ${column} is required.`);
@@ -70,12 +73,18 @@ export function parseSellerOrderCsv(
 ): SellerOrderObservation[] {
   const normalizedSellerKey = sellerKey.trim();
   if (!normalizedSellerKey) throw new Error("Seller key is required.");
+  if (Buffer.byteLength(csvText, "utf8") > MAX_SELLER_ORDER_CSV_BYTES) {
+    throw new Error("Seller order CSV exceeds the 5 MB limit.");
+  }
   const parsed = Papa.parse<Record<string, string>>(csvText, {
     header: true,
     skipEmptyLines: "greedy",
     transformHeader: (value) => value.trim(),
   });
   if (parsed.errors.length > 0) throw new Error(`CSV could not be parsed: ${parsed.errors[0]?.message}`);
+  if (parsed.data.length > MAX_SELLER_ORDER_CSV_ROWS) {
+    throw new Error(`Seller order CSV exceeds the ${MAX_SELLER_ORDER_CSV_ROWS} row limit.`);
+  }
   const fields = new Set(parsed.meta.fields ?? []);
   for (const required of REQUIRED_COLUMNS) {
     if (!fields.has(required)) throw new Error(`CSV is missing required column: ${required}.`);

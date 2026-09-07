@@ -88,7 +88,7 @@ function sanitizeRefunds(refunds: readonly unknown[]): SellerOrderRefundEvidence
                   : {}),
                 ...(typeof product.skuId === "string" ? { skuId: product.skuId } : {}),
               };
-            }),
+            }).sort((a, b) => stableJson(a).localeCompare(stableJson(b))),
           }
         : {}),
     };
@@ -140,7 +140,12 @@ export function fingerprintSellerOrder(
     orderFulfillment: value.orderFulfillment,
     grossItemProceeds: value.grossItemProceeds,
     lines: aggregateSellerOrderLines(value.lines),
-    refunds: value.refunds,
+    refunds: value.refunds.map((refund) => ({
+      ...refund,
+      ...(refund.products
+        ? { products: [...refund.products].sort((a, b) => stableJson(a).localeCompare(stableJson(b))) }
+        : {}),
+    })).sort((a, b) => stableJson(a).localeCompare(stableJson(b))),
   };
   return createHash("sha256").update(stableJson(revisionIdentity)).digest("hex");
 }

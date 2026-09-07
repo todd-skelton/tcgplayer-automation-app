@@ -89,10 +89,17 @@ export function spawnInheritedProcesses(processes) {
   };
 
   for (const processSpec of processes) {
-    const child = spawn(processSpec.command, processSpec.args, {
-      stdio: "inherit",
-      env: process.env,
-    });
+    let child;
+    try {
+      child = spawn(processSpec.command, processSpec.args, {
+        stdio: "inherit",
+        env: process.env,
+      });
+    } catch (error) {
+      console.error(`Failed to start command "${processSpec.command}".`, error);
+      stop("SIGTERM", 1);
+      return children;
+    }
     children.push(child);
     child.on("error", (error) => {
       console.error(`Failed to start command "${processSpec.command}".`, error);

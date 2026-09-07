@@ -677,6 +677,10 @@ export default function ShippingExportRoute() {
   };
 
   const handleImportHistoryFile = async (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Seller order CSV exceeds the 5 MB limit.");
+      return;
+    }
     const csvText = await file.text();
     await updateSellerOrderHistory({ action: "import_csv", csvText, fileName: file.name });
   };

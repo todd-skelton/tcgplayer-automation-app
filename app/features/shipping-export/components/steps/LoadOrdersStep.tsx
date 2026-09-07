@@ -88,8 +88,9 @@ export function LoadOrdersStep({
         </Typography>
         {historyCoverage && (
           <Alert severity={historyCoverage.status === "complete" ? "success" : "info"}>
-            API history: {historyCoverage.status.replace("_", " ")}; {historyCoverage.detailsRecorded}
-            {historyCoverage.expectedTotal === undefined ? "" : ` of ${historyCoverage.expectedTotal}`} details recorded.
+            API history: {historyCoverage.status.replace("_", " ")}; {historyCoverage.ordersObserved}
+            {historyCoverage.expectedTotal === undefined ? "" : ` of ${historyCoverage.expectedTotal}`} order summaries observed,
+            {` ${historyCoverage.detailsRecorded} details refreshed in this scan.`}
             {historyCoverage.error ? ` ${historyCoverage.error}` : ""}
           </Alert>
         )}

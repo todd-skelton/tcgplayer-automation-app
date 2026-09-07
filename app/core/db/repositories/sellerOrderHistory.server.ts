@@ -37,7 +37,10 @@ interface SyncRunRow {
   observedThrough: Date | null;
   gaps: Array<{
     orderNumber: string;
-    summary?: import("~/integrations/tcgplayer/client/search-seller-orders.server").SellerOrderSearchSummary;
+    summary?: Omit<
+      import("~/integrations/tcgplayer/client/search-seller-orders.server").SellerOrderSearchSummary,
+      "buyerName"
+    >;
   }>;
   error: string | null;
   claimToken: string | null;
@@ -130,7 +133,11 @@ export const sellerOrderHistoryRepository = {
       }
       // Imports fill history outside API coverage. They never replace a current
       // API observation because a file loaded later may describe an older state.
-      if (existing && observation.source === "file_import") {
+      if (
+        existing &&
+        observation.source === "file_import" &&
+        existing.latestSource === "tcgplayer_api"
+      ) {
         return { changed: false, orderId: existing.id, revision: existing.sourceRevision };
       }
 
@@ -366,6 +373,33 @@ export const sellerOrderHistoryRepository = {
     );
     if (!row) throw new Error("Seller order sync lease was lost.");
     return toCoverage(row, row.sellerKey);
+  },
+
+  async restartInconsistentApiRun(
+    runId: string,
+    claimToken: string,
+    message: string,
+  ): Promise<SellerOrderCoverage> {
+    return withTransaction(async (db) => {
+      const owned = await queryOne<SyncRunRow>(
+        `SELECT ${runColumns} FROM seller_order_sync_runs
+         WHERE id = $1 AND claim_token = $2 AND status = 'running' FOR UPDATE`,
+        [runId, claimToken],
+        db,
+      );
+      if (!owned) throw new Error("Seller order sync lease was lost.");
+      await execute(`DELETE FROM seller_order_sync_run_orders WHERE run_id = $1`, [runId], db);
+      const row = await queryOne<SyncRunRow>(
+        `UPDATE seller_order_sync_runs SET status = 'incomplete', next_offset = 0,
+           expected_total = NULL, pages_completed = 0, orders_observed = 0,
+           error = $3, claim_token = NULL, claim_expires_at = NULL, updated_at = NOW()
+         WHERE id = $1 AND claim_token = $2 RETURNING ${runColumns}`,
+        [runId, claimToken, message],
+        db,
+      );
+      if (!row) throw new Error("Seller order sync lease was lost.");
+      return toCoverage(row, row.sellerKey);
+    });
   },
 
   async getCoverage(sellerKey: string): Promise<SellerOrderCoverage> {

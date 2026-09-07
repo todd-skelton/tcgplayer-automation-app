@@ -1,7 +1,10 @@
 import { data } from "react-router";
 import { sellerOrderHistoryRepository } from "~/core/db";
 import { getShippingExportConfig } from "~/features/shipping-export/config/shippingExportConfig.server";
-import { importSellerOrderCsv } from "../services/sellerOrderFileImport.server";
+import {
+  importSellerOrderCsv,
+  MAX_SELLER_ORDER_CSV_BYTES,
+} from "../services/sellerOrderFileImport.server";
 import { synchronizeSellerOrders } from "../services/synchronizeSellerOrders.server";
 
 type Dependencies = {
@@ -59,6 +62,9 @@ export function createSellerOrderHistoryHandlers(overrides: Partial<Dependencies
         if (payload.action === "import_csv") {
           if (typeof payload.csvText !== "string" || !payload.csvText.trim()) {
             return data({ error: "A seller order CSV file is required." }, { status: 400 });
+          }
+          if (Buffer.byteLength(payload.csvText, "utf8") > MAX_SELLER_ORDER_CSV_BYTES) {
+            return data({ error: "Seller order CSV exceeds the 5 MB limit." }, { status: 413 });
           }
           const result = await dependencies.importCsv({
             sellerKey,

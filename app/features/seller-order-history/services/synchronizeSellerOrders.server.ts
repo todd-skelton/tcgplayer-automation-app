@@ -18,6 +18,21 @@ import type { SellerOrderSyncResult } from "../types/sellerOrderHistory";
 const SEARCH_RANGE = "LastThreeMonths" as const;
 const ORDER_DATE_SORT = [{ sortingType: "orderDate", direction: "ascending" }];
 
+function sanitizeSummary(summary: SellerOrderSearchSummary) {
+  return {
+    orderNumber: summary.orderNumber,
+    orderDate: summary.orderDate,
+    orderChannel: summary.orderChannel,
+    orderStatus: summary.orderStatus,
+    shippingType: summary.shippingType,
+    productAmount: summary.productAmount,
+    shippingAmount: summary.shippingAmount,
+    totalAmount: summary.totalAmount,
+    buyerPaid: summary.buyerPaid,
+    orderFulfillment: summary.orderFulfillment,
+  };
+}
+
 export interface SellerOrderSyncBudget {
   maxPages: number;
   maxDetails: number;
@@ -188,7 +203,10 @@ export async function synchronizeSellerOrders(
       const retryGaps = gaps.slice(0, detailBudget);
       const retry = await fetchAndRecordDetails({
         sellerKey: normalizedSellerKey,
-        summaries: retryGaps.map((gap) => gap.summary ?? ({
+        summaries: retryGaps.map((gap) => gap.summary ? {
+          ...gap.summary,
+          buyerName: "",
+        } : ({
           orderNumber: gap.orderNumber,
           orderDate: "",
           orderChannel: "",
@@ -206,7 +224,10 @@ export async function synchronizeSellerOrders(
       });
       retry.changed.forEach((number) => changedOrderNumbers.add(number));
       gaps = [
-        ...retry.gaps.map((summary) => ({ orderNumber: summary.orderNumber, summary })),
+        ...retry.gaps.map((summary) => ({
+          orderNumber: summary.orderNumber,
+          summary: sanitizeSummary(summary),
+        })),
         ...gaps.slice(retryGaps.length),
       ];
       detailBudget -= retryGaps.length;
@@ -229,7 +250,7 @@ export async function synchronizeSellerOrders(
 
     let coverage = await dependencies.repository.getCoverage(normalizedSellerKey);
     for (let page = 0; page < limits.maxPages && detailBudget > 0; page += 1) {
-      const size = Math.min(limits.pageSize, detailBudget);
+      const size = limits.pageSize;
       const response = await boundedRequest((signal) => dependencies.searchOrders({
           searchRange: SEARCH_RANGE,
           filters: { sellerKey: normalizedSellerKey },
@@ -240,10 +261,9 @@ export async function synchronizeSellerOrders(
       expectedTotal = response.totalOrders;
       if (response.orders.length === 0 && nextOffset < expectedTotal) {
         return {
-          coverage: await dependencies.repository.finishApiRun(
+          coverage: await dependencies.repository.restartInconsistentApiRun(
             run.id,
             claimToken,
-            false,
             `Search returned an empty page at offset ${nextOffset} before reported total ${expectedTotal}.`,
           ),
           changedOrderNumbers: [...changedOrderNumbers],
@@ -269,7 +289,10 @@ export async function synchronizeSellerOrders(
       detailResult.changed.forEach((number) => changedOrderNumbers.add(number));
       const gapsByOrder = new Map(gaps.map((gap) => [gap.orderNumber, gap]));
       for (const summary of [...detailResult.gaps, ...deferredSummaries]) {
-        gapsByOrder.set(summary.orderNumber, { orderNumber: summary.orderNumber, summary });
+        gapsByOrder.set(summary.orderNumber, {
+          orderNumber: summary.orderNumber,
+          summary: sanitizeSummary(summary),
+        });
       }
       gaps = [...gapsByOrder.values()];
       nextOffset += response.orders.length;
@@ -292,8 +315,8 @@ export async function synchronizeSellerOrders(
       });
       if (response.orders.length > 0 && coverage.ordersObserved === previousUniqueOrders) {
         return {
-          coverage: await dependencies.repository.finishApiRun(
-            run.id, claimToken, false,
+          coverage: await dependencies.repository.restartInconsistentApiRun(
+            run.id, claimToken,
             `Search repeated a page without new order identities at offset ${nextOffset - response.orders.length}.`,
           ),
           changedOrderNumbers: [...changedOrderNumbers],
@@ -301,6 +324,16 @@ export async function synchronizeSellerOrders(
       }
       complete = complete && coverage.ordersObserved >= expectedTotal;
       if (reachedEnd) {
+        if (gaps.length === 0 && coverage.ordersObserved < expectedTotal) {
+          return {
+            coverage: await dependencies.repository.restartInconsistentApiRun(
+              run.id,
+              claimToken,
+              `Search changed during pagination (${coverage.ordersObserved} unique orders for reported total ${expectedTotal}); restarting with overlap.`,
+            ),
+            changedOrderNumbers: [...changedOrderNumbers],
+          };
+        }
         return {
           coverage: await dependencies.repository.finishApiRun(
             run.id,

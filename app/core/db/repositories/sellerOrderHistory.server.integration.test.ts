@@ -83,6 +83,15 @@ try {
   assert.equal(importResult.importedOrders, 0);
   assert.equal((await sellerOrderHistoryRepository.findOrder(seller, "ORDER-1"))?.sourceRevision, 3);
 
+  const imported = (status: string, quantity: number) => importSellerOrderCsv({
+    sellerKey: seller,
+    csvText: `Order Number,Order Time,Status,SKU ID,Quantity,Gross Item Proceeds USD\nOLD-2,2025-01-01T00:00:00Z,${status},200,${quantity},${(quantity * 2).toFixed(2)}`,
+  });
+  assert.equal((await imported("Completed - Paid", 1)).importedOrders, 1);
+  assert.equal((await imported("Canceled", 2)).importedOrders, 1);
+  assert.equal((await imported("Canceled", 2)).importedOrders, 0);
+  assert.equal((await sellerOrderHistoryRepository.findOrder(seller, "OLD-2"))?.sourceRevision, 2);
+
   const syncSeller = `${seller}-sync`;
   let failB = true;
   const firstSync = await synchronizeSellerOrders(syncSeller, {

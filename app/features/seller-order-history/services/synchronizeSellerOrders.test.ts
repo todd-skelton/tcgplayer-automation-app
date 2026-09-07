@@ -70,6 +70,11 @@ function fakeRepository(initial: {
         state.status = complete ? "complete" : "incomplete"; state.error = error ?? null;
         return coverage();
       },
+      restartInconsistentApiRun: async (_id: string, _token: string, error: string) => {
+        seen.clear(); state.nextOffset = 0; state.expectedTotal = null;
+        state.ordersObserved = 0; state.status = "incomplete"; state.error = error;
+        return coverage();
+      },
     } as never,
   };
 }
@@ -118,6 +123,31 @@ function fakeRepository(initial: {
   });
   assert.equal(result.coverage.status, "incomplete");
   assert.match(result.coverage.error ?? "", /repeated a page/);
+  assert.equal(result.coverage.nextOffset, 0);
+}
+
+{
+  const fake = fakeRepository();
+  let shifted = true;
+  const scan = () => synchronizeSellerOrders("seller-a", {
+    maxPages: 1, maxDetails: 2, pageSize: 2, detailConcurrency: 2,
+  }, {
+    repository: fake.repository,
+    searchOrders: async (request) => ({
+      totalOrders: 4,
+      orders: request.from === 0
+        ? (shifted ? [summary("A"), summary("C")] : [summary("A"), summary("B")])
+        : [summary("C"), summary("D")],
+    }),
+    getOrder: async (number) => detail(number),
+  });
+  assert.equal((await scan()).coverage.nextOffset, 2);
+  const inconsistent = await scan();
+  assert.equal(inconsistent.coverage.nextOffset, 0);
+  assert.match(inconsistent.coverage.error ?? "", /restarting with overlap/);
+  shifted = false;
+  await scan();
+  assert.equal((await scan()).coverage.status, "complete");
 }
 
 {
@@ -129,6 +159,17 @@ function fakeRepository(initial: {
   });
   assert.equal(result.coverage.status, "incomplete");
   assert.match(result.coverage.error ?? "", /empty page/);
+}
+
+{
+  const fake = fakeRepository();
+  const privateSummary = { ...summary("PRIVATE-GAP"), buyerName: "DO-NOT-PERSIST" };
+  await synchronizeSellerOrders("seller-a", {}, {
+    repository: fake.repository,
+    searchOrders: async () => ({ totalOrders: 1, orders: [privateSummary] }),
+    getOrder: async () => { throw new Error("safe failure"); },
+  });
+  assert.equal(JSON.stringify(fake.state.gaps).includes("DO-NOT-PERSIST"), false);
 }
 
 {
