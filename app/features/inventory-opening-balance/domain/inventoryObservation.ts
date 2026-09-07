@@ -2,13 +2,15 @@ import { createHash } from "node:crypto";
 import Papa from "papaparse";
 
 export type InventoryObservationItem = {
-  sku: number; quantity: number; productLine: string; setName: string;
+  inventoryKey: string; identityKind: "standard_sku" | "unsupported"; sku: number | null;
+  quantity: number; productLine: string; setName: string;
   productName: string; condition: string; variant: string;
 };
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const MAX_ROWS = 50_000;
 const MAX_DATABASE_INTEGER = 2_147_483_647;
+const compareInventoryKeys=(left:string,right:string)=>left<right?-1:left>right?1:0;
 
 export function validateSellerPricingContext(html: string, expectedSellerKey: string): number {
   const keys = [...html.matchAll(/(["']?sellerKey["']?)\s*[:=]\s*["']([^"']+)["']/gi)]
@@ -27,26 +29,31 @@ export function parseCompleteInventoryExport(csv: string): InventoryObservationI
   if (parsed.data.length > MAX_ROWS) throw new Error("Inventory export exceeds 50,000 rows.");
   const required = ["TCGplayer Id", "Total Quantity", "Product Line", "Set Name", "Product Name", "Condition"];
   for (const column of required) if (!parsed.meta.fields?.includes(column)) throw new Error(`Inventory export is missing ${column}.`);
-  const seen = new Set<number>();
+  const seen = new Set<string>();
+  const seenSkus = new Set<number>();
   const items = parsed.data.map((row, index) => {
-    const sku = Number(row["TCGplayer Id"]);
+    const inventoryKey=row["TCGplayer Id"]?.trim()??"";
+    const numericIdentity=/^\d+$/.test(inventoryKey);
+    const sku = numericIdentity ? Number(inventoryKey) : null;
     const quantityText = row["Total Quantity"]?.trim();
     const quantity = Number(quantityText);
-    if (!Number.isInteger(sku) || sku <= 0 || sku > MAX_DATABASE_INTEGER || !/^\d+$/.test(quantityText ?? "") ||
+    if (!/^[\x21-\x7e]{1,100}$/.test(inventoryKey) || (sku!==null && (!Number.isInteger(sku) || sku <= 0 || sku > MAX_DATABASE_INTEGER)) ||
+        !/^\d+$/.test(quantityText ?? "") ||
         !Number.isInteger(quantity) || quantity > MAX_DATABASE_INTEGER) {
       throw new Error(`Inventory export row ${index + 2} has an invalid SKU or quantity.`);
     }
-    if (seen.has(sku)) throw new Error(`Inventory export repeats SKU ${sku}.`);
-    seen.add(sku);
+    if (seen.has(inventoryKey) || (sku!==null && seenSkus.has(sku))) throw new Error(`Inventory export repeats identity ${inventoryKey}.`);
+    seen.add(inventoryKey);
+    if(sku!==null) seenSkus.add(sku);
     return {
-      sku, quantity,
+      inventoryKey,identityKind:sku===null?"unsupported" as const:"standard_sku" as const,sku,quantity,
       productLine: row["Product Line"]?.trim() ?? "",
       setName: row["Set Name"]?.trim() ?? "",
       productName: row["Product Name"]?.trim() ?? "",
       condition: row.Condition?.trim() ?? "",
       variant: row["Printing"]?.trim() ?? row["Sku Variant"]?.trim() ?? "",
     };
-  }).sort((a, b) => a.sku - b.sku);
+  }).sort((a, b) => compareInventoryKeys(a.inventoryKey,b.inventoryKey));
   const totalQuantity = items.reduce((total, item) => total + item.quantity, 0);
   if (!Number.isSafeInteger(totalQuantity) || totalQuantity > MAX_DATABASE_INTEGER) {
     throw new Error("Inventory export total quantity exceeds the supported range.");
@@ -55,7 +62,16 @@ export function parseCompleteInventoryExport(csv: string): InventoryObservationI
 }
 
 export function quantityFingerprint(items: InventoryObservationItem[]): string {
-  return createHash("sha256").update(JSON.stringify(items.map(({ sku, quantity }) => [sku, quantity]))).digest("hex");
+  return createHash("sha256").update(JSON.stringify([...items]
+    .sort((a,b)=>compareInventoryKeys(a.inventoryKey,b.inventoryKey))
+    .map(({ inventoryKey, quantity }) => [inventoryKey, quantity]))).digest("hex");
+}
+
+export function supportedQuantityFingerprint(items: InventoryObservationItem[]): string {
+  return createHash("sha256").update(JSON.stringify(items
+    .filter((item)=>item.sku!==null)
+    .sort((a,b)=>(a.sku??0)-(b.sku??0))
+    .map(({sku,quantity})=>[sku,quantity]))).digest("hex");
 }
 
 export function contentFingerprint(content: string): string {

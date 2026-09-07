@@ -7,6 +7,7 @@ import {
   contentFingerprint,
   parseCompleteInventoryExport,
   quantityFingerprint,
+  supportedQuantityFingerprint,
 } from "../domain/inventoryObservation";
 import { validateSellerPricingContext } from "../domain/inventoryObservation";
 
@@ -20,7 +21,7 @@ type Dependencies = {
 };
 
 export async function captureInventoryObservation(
-  input: { requestId: string; sellerKey: string },
+  input: { requestId: string; sellerKey: string; purposeEvidence?: Record<string,unknown> },
   overrides: Partial<Dependencies> = {},
 ) {
   const dependencies: Dependencies = {
@@ -35,7 +36,7 @@ export async function captureInventoryObservation(
   const sellerKey = input.sellerKey.trim();
   if (!input.requestId.trim() || !sellerKey) throw new Error("Request ID and seller key are required.");
   const requestId=input.requestId.trim();
-  const claim=await dependencies.begin({requestId,sellerKey});
+  const claim=await dependencies.begin({requestId,sellerKey,...(input.purposeEvidence?{purposeEvidence:input.purposeEvidence}:{})});
   if (claim.state === "complete") return claim.observation;
   const abortController=new AbortController();
   const deadline=setTimeout(()=>abortController.abort(),150_000);
@@ -58,6 +59,7 @@ export async function captureInventoryObservation(
       status: stable ? "complete" : "unstable",
       startedAt, cutoffAt: dependencies.now(),
       quantityFingerprint: secondQuantityFingerprint,
+      supportedQuantityFingerprint:supportedQuantityFingerprint(secondItems),
       firstContentFingerprint: contentFingerprint(firstCsv),
       secondContentFingerprint: contentFingerprint(secondCsv),
       items: secondItems,

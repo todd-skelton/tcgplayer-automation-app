@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { parseCompleteInventoryExport, quantityFingerprint, validateSellerPricingContext } from "./inventoryObservation";
+import { parseCompleteInventoryExport, quantityFingerprint, supportedQuantityFingerprint, validateSellerPricingContext } from "./inventoryObservation";
 import { captureInventoryObservation } from "../services/captureInventoryObservation.server";
 
 const csv=(quantity:number,price="1.00")=>`TCGplayer Id,Product Line,Set Name,Product Name,Condition,Total Quantity,TCG Marketplace Price\n100,Game,Set,Card,Near Mint,${quantity},${price}`;
@@ -9,8 +9,14 @@ assert.throws(()=>validateSellerPricingContext(`sellerKey: 'seller-a'`,"seller-a
 const one=parseCompleteInventoryExport(csv(2));
 assert.equal(one[0]?.quantity,2);
 assert.equal(quantityFingerprint(one),quantityFingerprint(parseCompleteInventoryExport(csv(2,"9.99"))));
-assert.throws(()=>parseCompleteInventoryExport(`${csv(2)}\n100,Game,Set,Card,Near Mint,2,1.00`),/repeats SKU/);
+assert.throws(()=>parseCompleteInventoryExport(`${csv(2)}\n0100,Game,Set,Card,Near Mint,2,1.00`),/repeats identity/);
 assert.throws(()=>parseCompleteInventoryExport(csv(2_147_483_648)),/invalid SKU or quantity/);
+const withCustom=parseCompleteInventoryExport(`${csv(2)}\nC-3967723,Game,Set,Custom,Near Mint,1,4.00`);
+assert.deepEqual(withCustom.map(({inventoryKey,sku,identityKind})=>({inventoryKey,sku,identityKind})),[
+  {inventoryKey:"100",sku:100,identityKind:"standard_sku"},
+  {inventoryKey:"C-3967723",sku:null,identityKind:"unsupported"},
+]);
+assert.equal(supportedQuantityFingerprint(withCustom),supportedQuantityFingerprint(one));
 
 let recorded:any;
 const exports=[csv(2,"1.00"),csv(2,"1.25")];

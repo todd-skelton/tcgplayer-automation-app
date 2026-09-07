@@ -8,11 +8,16 @@ CREATE TABLE inventory_complete_observations (
   started_at TIMESTAMPTZ NOT NULL,
   cutoff_at TIMESTAMPTZ NOT NULL,
   quantity_fingerprint TEXT NOT NULL,
+  supported_quantity_fingerprint TEXT NOT NULL,
   first_content_fingerprint TEXT NOT NULL,
   second_content_fingerprint TEXT NOT NULL,
-  sku_count INTEGER NOT NULL CHECK (sku_count >= 0),
-  positive_sku_count INTEGER NOT NULL CHECK (positive_sku_count >= 0),
+  item_count INTEGER NOT NULL CHECK (item_count >= 0),
+  positive_item_count INTEGER NOT NULL CHECK (positive_item_count >= 0),
   total_quantity INTEGER NOT NULL CHECK (total_quantity >= 0),
+  supported_positive_sku_count INTEGER NOT NULL CHECK (supported_positive_sku_count >= 0),
+  supported_total_quantity INTEGER NOT NULL CHECK (supported_total_quantity >= 0),
+  unsupported_positive_item_count INTEGER NOT NULL CHECK (unsupported_positive_item_count >= 0),
+  unsupported_positive_quantity INTEGER NOT NULL CHECK (unsupported_positive_quantity >= 0),
   identity_evidence JSONB NOT NULL,
   error TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -22,16 +27,24 @@ CREATE INDEX inventory_complete_observations_seller_cutoff_idx
   ON inventory_complete_observations (seller_key, cutoff_at DESC, id DESC)
   WHERE status = 'complete';
 
+CREATE INDEX inventory_complete_observations_all_seller_cutoff_idx
+  ON inventory_complete_observations (seller_key, cutoff_at DESC, id DESC);
+
 CREATE TABLE inventory_complete_observation_items (
   observation_id BIGINT NOT NULL REFERENCES inventory_complete_observations(id) ON DELETE RESTRICT,
-  sku INTEGER NOT NULL CHECK (sku > 0),
+  inventory_key TEXT NOT NULL CHECK (length(trim(inventory_key)) > 0),
+  identity_kind TEXT NOT NULL CHECK (identity_kind IN ('standard_sku','unsupported')),
+  sku INTEGER CHECK (sku > 0),
   quantity INTEGER NOT NULL CHECK (quantity >= 0),
-  PRIMARY KEY (observation_id, sku)
+  PRIMARY KEY (observation_id, inventory_key),
+  UNIQUE (observation_id, sku),
+  CHECK ((identity_kind='standard_sku' AND sku IS NOT NULL) OR (identity_kind='unsupported' AND sku IS NULL))
 );
 
 CREATE TABLE inventory_complete_observation_requests (
   request_id TEXT PRIMARY KEY,
   seller_key TEXT NOT NULL CHECK (length(trim(seller_key)) > 0),
+  purpose_evidence JSONB NOT NULL DEFAULT '{"kind":"opening_observation"}'::jsonb,
   status TEXT NOT NULL CHECK (status IN ('capturing', 'complete', 'failed')),
   claim_token TEXT,
   claim_expires_at TIMESTAMPTZ,
@@ -43,7 +56,8 @@ CREATE TABLE inventory_complete_observation_requests (
     (status = 'capturing' AND claim_token IS NOT NULL AND claim_expires_at IS NOT NULL AND observation_id IS NULL)
     OR (status = 'complete' AND claim_token IS NULL AND claim_expires_at IS NULL AND observation_id IS NOT NULL)
     OR (status = 'failed' AND claim_token IS NULL AND claim_expires_at IS NULL AND observation_id IS NULL)
-  )
+  ),
+  CHECK (jsonb_typeof(purpose_evidence) = 'object')
 );
 
 CREATE TABLE inventory_observation_differences (
@@ -51,7 +65,8 @@ CREATE TABLE inventory_observation_differences (
   seller_key TEXT NOT NULL,
   previous_observation_id BIGINT NOT NULL REFERENCES inventory_complete_observations(id) ON DELETE RESTRICT,
   observation_id BIGINT NOT NULL REFERENCES inventory_complete_observations(id) ON DELETE RESTRICT,
-  sku INTEGER NOT NULL,
+  inventory_key TEXT NOT NULL,
+  sku INTEGER,
   quantity_delta INTEGER NOT NULL CHECK (quantity_delta <> 0),
   previous_quantity INTEGER NOT NULL CHECK (previous_quantity >= 0),
   observed_quantity INTEGER NOT NULL CHECK (observed_quantity >= 0),
@@ -59,11 +74,14 @@ CREATE TABLE inventory_observation_differences (
   acknowledgement_request_id TEXT UNIQUE,
   acknowledgement_note TEXT,
   acknowledged_at TIMESTAMPTZ,
-  UNIQUE (previous_observation_id, observation_id, sku)
+  UNIQUE (previous_observation_id, observation_id, inventory_key)
 );
 
 CREATE INDEX inventory_observation_differences_unresolved_idx
   ON inventory_observation_differences (observation_id, id) WHERE status = 'unresolved';
+
+CREATE INDEX inventory_observation_differences_seller_page_idx
+  ON inventory_observation_differences (seller_key, observation_id, id);
 
 CREATE TABLE inventory_opening_balance_runs (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -77,8 +95,17 @@ CREATE TABLE inventory_opening_balance_runs (
   status TEXT NOT NULL CHECK (status IN ('previewed', 'blocked', 'applied')),
   evidence_fingerprint TEXT NOT NULL,
   unresolved JSONB NOT NULL DEFAULT '[]'::jsonb,
+  limitations JSONB NOT NULL DEFAULT '[]'::jsonb,
+  apply_request_id TEXT UNIQUE,
+  validation_observation_id BIGINT REFERENCES inventory_complete_observations(id) ON DELETE RESTRICT,
+  validation_order_coverage_evidence JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  applied_at TIMESTAMPTZ
+  applied_at TIMESTAMPTZ,
+  CHECK (
+    status <> 'applied'
+    OR (apply_request_id IS NOT NULL AND validation_observation_id IS NOT NULL
+      AND validation_order_coverage_evidence IS NOT NULL AND applied_at IS NOT NULL)
+  )
 );
 
 CREATE UNIQUE INDEX inventory_opening_balance_one_applied_seller_idx
@@ -136,6 +163,14 @@ BEGIN
     OR OLD.receipt_kind IS DISTINCT FROM NEW.receipt_kind
     OR OLD.opening_balance_run_id IS DISTINCT FROM NEW.opening_balance_run_id
     OR OLD.fifo_precedence IS DISTINCT FROM NEW.fifo_precedence
+    OR (
+      OLD.receipt_kind = 'opening_balance'
+      AND (
+        OLD.product_line_id IS DISTINCT FROM NEW.product_line_id
+        OR OLD.set_id IS DISTINCT FROM NEW.set_id
+        OR OLD.product_id IS DISTINCT FROM NEW.product_id
+      )
+    )
   THEN RAISE EXCEPTION 'Inventory receipt evidence is immutable'; END IF;
   IF OLD.seller_key IS NOT NULL AND OLD.seller_key IS DISTINCT FROM NEW.seller_key
   THEN RAISE EXCEPTION 'Inventory receipt seller ownership cannot be reassigned'; END IF;

@@ -455,6 +455,7 @@ export const pendingInventoryRepository = {
       SET set_id = $1
       WHERE receipt.product_id = $2
         AND receipt.product_line_id = $3
+        AND receipt.receipt_kind = 'received'
         AND NOT EXISTS (
           SELECT 1 FROM inventory_receipt_batch_links link
           WHERE link.receipt_id = receipt.receipt_id
