@@ -147,7 +147,10 @@ try{
     requestId:applyInput.requestId,expectedFingerprint:preview.evidenceFingerprint});
   assert.equal(appliedReplay?.validationObservationId,currentValidation.id);
   assert.equal(appliedReplay?.unsupportedPositiveQuantity,2);
-  assert.equal((await repo.apply(applyInput)).status,"applied");
+  const directReplay=await repo.apply(applyInput);
+  assert.equal(directReplay.status,"applied");
+  assert.equal(directReplay.validationObservationId,currentValidation.id);
+  assert.equal(directReplay.unsupportedPositiveQuantity,2);
   await assert.rejects(()=>repo.apply({...applyInput,sellerKey:`${seller}-other`}),/not found/);
   const opening=await pool.query(`SELECT original_quantity,product_id,receipt_kind,fifo_precedence,intake_at,market_value FROM inventory_receipts WHERE opening_balance_run_id=$1`,[preview.id]);
   assert.deepEqual(opening.rows,[{original_quantity:5,product_id:9001,receipt_kind:"opening_balance",fifo_precedence:0,intake_at:null,market_value:null}]);

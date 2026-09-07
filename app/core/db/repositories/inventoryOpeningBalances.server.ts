@@ -429,10 +429,15 @@ export const inventoryOpeningBalancesRepository = {
   }) {
     return withTransaction(async (db) => {
       const run = await queryOne<any>(
-        `SELECT id::text AS id,seller_key AS "sellerKey",cutoff_at AS "cutoffAt",status,
-          evidence_fingerprint AS "evidenceFingerprint",observation_id::text AS "observationId",
-          apply_request_id AS "applyRequestId"
-         FROM inventory_opening_balance_runs WHERE id=$1 AND seller_key=$2 FOR UPDATE`,[input.runId,input.sellerKey.trim()],db);
+        `SELECT run.id::text AS id,run.seller_key AS "sellerKey",run.cutoff_at AS "cutoffAt",run.status,
+          run.evidence_fingerprint AS "evidenceFingerprint",run.observation_id::text AS "observationId",
+          run.apply_request_id AS "applyRequestId",
+          run.validation_observation_id::text AS "validationObservationId",
+          validation.unsupported_positive_item_count AS "unsupportedPositiveItemCount",
+          validation.unsupported_positive_quantity AS "unsupportedPositiveQuantity"
+         FROM inventory_opening_balance_runs run
+         LEFT JOIN inventory_complete_observations validation ON validation.id=run.validation_observation_id
+         WHERE run.id=$1 AND run.seller_key=$2 FOR UPDATE OF run`,[input.runId,input.sellerKey.trim()],db);
       if (!run) throw new Error("Opening balance preview was not found.");
       if (run.status === "applied") {
         if (run.evidenceFingerprint !== input.expectedFingerprint || run.applyRequestId !== input.requestId.trim()) {
