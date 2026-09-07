@@ -64,7 +64,8 @@ const pendingReceiptBalanceQuery = `WITH adjusted_receipts AS (
   JOIN pending_inventory pending ON pending.sku = receipt.sku
   LEFT JOIN inventory_receipt_adjustments adjustment
     ON adjustment.receipt_id = receipt.receipt_id
-  WHERE NOT EXISTS (
+  WHERE receipt.receipt_kind = 'received'
+    AND NOT EXISTS (
     SELECT 1 FROM inventory_receipt_batch_links linked
     WHERE linked.receipt_id = receipt.receipt_id
   )

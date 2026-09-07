@@ -1,6 +1,7 @@
 import { type RouteConfig, index } from "@react-router/dev/routes";
 
 export default [
+  { path: "/api/inventory-opening-balance", file: "features/inventory-opening-balance/routes/api.inventory-opening-balance.ts" },
   {
     path: "/api/seller-order-history",
     file: "features/seller-order-history/routes/api.seller-order-history.ts",
