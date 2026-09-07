@@ -48,6 +48,12 @@ The endpoint is `POST /api/inventory-opening-balance`. The seller may be omitted
    {"action":"list_differences","sellerKey":"seller-a","observationId":"123","afterId":"0","limit":100}
    ```
 
+   If apply reports a validation observation but says intervening standard-SKU differences remain unresolved, list the entire guarded interval, including intermediate captures:
+
+   ```json
+   {"action":"list_application_differences","sellerKey":"seller-a","runId":"67","validationObservationId":"130","afterId":"0","limit":100}
+   ```
+
    Unsupported custom listing identities are retained exactly as the export supplied them and excluded from standard-SKU FIFO. Inspect them before apply:
 
    ```json

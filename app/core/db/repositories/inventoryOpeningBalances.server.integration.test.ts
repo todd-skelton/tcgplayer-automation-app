@@ -95,6 +95,23 @@ try{
   const staleApplyInput={runId:preview.id,expectedFingerprint:preview.evidenceFingerprint,sellerKey:seller,
     requestId:`${seller}-apply`,validationObservationId:validation.id};
   await assert.rejects(()=>repo.apply(staleApplyInput),/newer seller inventory observation/);
+  const driftClaim=await repo.beginObservationCapture({requestId:`${seller}-hidden-drift`,sellerKey:seller});
+  if(driftClaim.state!=="claimed") throw new Error("Expected drift claim.");
+  const driftItems=[{...firstItems[0]!,quantity:6},firstItems[1]!];
+  const driftCutoff=new Date(validationCutoff.getTime()+15_000);
+  await repo.recordObservation({requestId:`${seller}-hidden-drift`,sellerKey:seller,claimToken:driftClaim.claimToken,
+    beforeIdentityDeclarationCount:2,afterIdentityDeclarationCount:2,status:"complete",
+    startedAt:new Date(driftCutoff.getTime()-2_000),cutoffAt:driftCutoff,
+    quantityFingerprint:quantityFingerprint(driftItems),supportedQuantityFingerprint:supportedQuantityFingerprint(driftItems),
+    firstContentFingerprint:"drift-a",secondContentFingerprint:"drift-b",items:driftItems});
+  const restoreClaim=await repo.beginObservationCapture({requestId:`${seller}-hidden-restore`,sellerKey:seller});
+  if(restoreClaim.state!=="claimed") throw new Error("Expected restore claim.");
+  const restoreCutoff=new Date(validationCutoff.getTime()+20_000);
+  await repo.recordObservation({requestId:`${seller}-hidden-restore`,sellerKey:seller,claimToken:restoreClaim.claimToken,
+    beforeIdentityDeclarationCount:2,afterIdentityDeclarationCount:2,status:"complete",
+    startedAt:new Date(restoreCutoff.getTime()-2_000),cutoffAt:restoreCutoff,
+    quantityFingerprint:quantityFingerprint(firstItems),supportedQuantityFingerprint:supportedQuantityFingerprint(firstItems),
+    firstContentFingerprint:"restore-a",secondContentFingerprint:"restore-b",items:firstItems});
   const currentClaim=await repo.beginObservationCapture({requestId:`${seller}-validation-current`,sellerKey:seller});
   if(currentClaim.state!=="claimed") throw new Error("Expected current validation claim.");
   const currentCutoff=new Date();
@@ -109,6 +126,16 @@ try{
     [seller,currentCutoff,new Date(currentCutoff.getTime()+1_000)]);
   const applyInput={runId:preview.id,expectedFingerprint:preview.evidenceFingerprint,sellerKey:seller,
     requestId:`${seller}-apply`,validationObservationId:currentValidation.id};
+  await assert.rejects(()=>repo.apply(applyInput),/differences must be acknowledged/);
+  const applicationDifferences=await repo.listApplicationDifferences({sellerKey:seller,runId:preview.id,
+    validationObservationId:currentValidation.id,limit:10});
+  assert.equal(applicationDifferences.length,2);
+  assert.equal((await repo.listApplicationDifferences({sellerKey:`${seller}-other`,runId:preview.id,
+    validationObservationId:currentValidation.id})).length,0);
+  for(const difference of applicationDifferences){
+    await repo.acknowledgeDifference({requestId:`${seller}-apply-ack-${difference.id}`,id:difference.id,
+      sellerKey:seller,note:"Reviewed intermediate standard-SKU observation."});
+  }
   await pool.query(`UPDATE skus SET product_id=9002 WHERE sku=99001`);
   await assert.rejects(()=>repo.apply(applyInput),/evidence changed/);
   await pool.query(`UPDATE skus SET product_id=9001 WHERE sku=99001`);
@@ -157,6 +184,18 @@ try{
   await repo.acknowledgeDifference(acknowledgement);
   await repo.acknowledgeDifference(acknowledgement);
   await assert.rejects(()=>repo.acknowledgeDifference({...acknowledgement,note:"Different evidence"}),/conflicts/);
+  for(let index=1;index<=3;index++){
+    const laterClaim=await repo.beginObservationCapture({requestId:`${seller}-later-${index}`,sellerKey:seller});
+    if(laterClaim.state!=="claimed") throw new Error("Expected later observation claim.");
+    const laterCutoff=new Date(Date.now()+3_000+index*1_000);
+    await repo.recordObservation({requestId:`${seller}-later-${index}`,sellerKey:seller,claimToken:laterClaim.claimToken,
+      beforeIdentityDeclarationCount:2,afterIdentityDeclarationCount:2,status:"complete",
+      startedAt:new Date(laterCutoff.getTime()-500),cutoffAt:laterCutoff,
+      quantityFingerprint:quantityFingerprint(nextItems),supportedQuantityFingerprint:supportedQuantityFingerprint(nextItems),
+      firstContentFingerprint:`later-${index}-a`,secondContentFingerprint:`later-${index}-b`,items:nextItems});
+  }
+  assert.deepEqual(await repo.listObservationItems({sellerKey:seller,observationId:currentValidation.id,unsupportedOnly:true}),
+    [{inventoryKey:"C-3967723",identityKind:"unsupported",sku:null,quantity:2}]);
   console.log("PASS opening balance applies once with unknown evidence and cannot enter pending batches");
 }finally{
   await pool.query(`DELETE FROM inventory_batch_intake_requests WHERE request_id LIKE $1`,[`${seller}%`]);

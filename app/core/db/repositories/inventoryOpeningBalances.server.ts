@@ -64,6 +64,30 @@ export const inventoryOpeningBalancesRepository = {
       ORDER BY id LIMIT $4`,[input.sellerKey.trim(),input.observationId,input.afterId??"0",limit]);
   },
 
+  async listApplicationDifferences(input: {
+    sellerKey:string;runId:string;validationObservationId:string;afterId?:string;limit?:number;
+  }) {
+    const limit=input.limit??100;
+    if(!Number.isInteger(limit)||limit<1||limit>200) throw new Error("Application difference page limit must be between 1 and 200.");
+    return query(`SELECT difference.id::text AS id,difference.observation_id::text AS "observationId",
+      difference.inventory_key AS "inventoryKey",difference.sku,
+      difference.previous_quantity AS "previousQuantity",difference.observed_quantity AS "observedQuantity",
+      difference.quantity_delta AS "quantityDelta",difference.status,
+      difference.acknowledgement_note AS "acknowledgementNote",
+      difference.acknowledged_at AS "acknowledgedAt"
+      FROM inventory_opening_balance_runs run
+      JOIN inventory_complete_observations validation
+        ON validation.id=$3 AND validation.seller_key=run.seller_key
+      JOIN inventory_complete_observations observation
+        ON observation.seller_key=run.seller_key
+        AND observation.cutoff_at>run.cutoff_at AND observation.cutoff_at<=validation.cutoff_at
+      JOIN inventory_observation_differences difference
+        ON difference.observation_id=observation.id AND difference.sku IS NOT NULL
+      WHERE run.id=$1 AND run.seller_key=$2 AND difference.id>$4::bigint
+      ORDER BY difference.id LIMIT $5`,
+      [input.runId,input.sellerKey.trim(),input.validationObservationId,input.afterId??"0",limit]);
+  },
+
   async listObservationItems(input: {
     sellerKey:string;observationId:string;afterInventoryKey?:string;limit?:number;unsupportedOnly?:boolean;
   }) {
@@ -253,7 +277,7 @@ export const inventoryOpeningBalancesRepository = {
             )
             AND NOT EXISTS (
               SELECT 1 FROM inventory_opening_balance_runs run
-              WHERE run.observation_id=old.id
+              WHERE run.observation_id=old.id OR run.validation_observation_id=old.id
             )
             AND old.id <> COALESCE((
               SELECT latest.id FROM inventory_complete_observations latest

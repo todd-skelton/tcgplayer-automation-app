@@ -10,6 +10,7 @@ export function createInventoryOpeningBalanceAction(dependencies = {
   apply: applyInventoryOpeningBalance,
   acknowledgeDifference: inventoryOpeningBalancesRepository.acknowledgeDifference,
   listDifferences: inventoryOpeningBalancesRepository.listDifferences,
+  listApplicationDifferences: inventoryOpeningBalancesRepository.listApplicationDifferences,
   listObservationItems: inventoryOpeningBalancesRepository.listObservationItems,
   listPreviewItems: inventoryOpeningBalancesRepository.listPreviewItems,
   getConfig: getShippingExportConfig,
@@ -40,6 +41,13 @@ export function createInventoryOpeningBalanceAction(dependencies = {
       if (payload.action === "list_differences") {
         if (typeof payload.observationId !== "string") return data({ error: "Observation ID is required." }, { status: 400 });
         return data({ differences: await dependencies.listDifferences({sellerKey,observationId:payload.observationId,
+          ...(typeof payload.afterId==="string"?{afterId:payload.afterId}:{}),
+          ...(typeof payload.limit==="number"?{limit:payload.limit}:{})}) });
+      }
+      if (payload.action === "list_application_differences") {
+        if (typeof payload.runId !== "string" || typeof payload.validationObservationId !== "string") return data({ error: "Run and validation observation IDs are required." }, { status: 400 });
+        return data({ differences: await dependencies.listApplicationDifferences({sellerKey,runId:payload.runId,
+          validationObservationId:payload.validationObservationId,
           ...(typeof payload.afterId==="string"?{afterId:payload.afterId}:{}),
           ...(typeof payload.limit==="number"?{limit:payload.limit}:{})}) });
       }
