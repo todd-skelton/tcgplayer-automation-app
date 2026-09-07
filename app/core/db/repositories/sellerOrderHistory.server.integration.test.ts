@@ -155,7 +155,7 @@ try {
   const unverifiedSeller = `${seller}-unverified`;
   const unverifiedPriority = await synchronizeSellerOrders(
     unverifiedSeller,
-    { maxPages: 1, maxDetails: 1, pageSize: 1, detailConcurrency: 1 },
+    { maxPages: 1, maxDetails: 1, pageSize: 2, detailConcurrency: 1 },
     {
       searchOrders: async () => ({ totalOrders: 0, orders: [] }),
       getOrder: async (orderNumber) => {

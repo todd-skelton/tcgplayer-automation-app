@@ -153,7 +153,15 @@ export async function synchronizeSellerOrders(
   positiveInteger(limits.maxDetails, "maxDetails");
   positiveInteger(limits.pageSize, "pageSize");
   positiveInteger(limits.detailConcurrency, "detailConcurrency");
-  if (limits.maxPages > 4 || limits.maxDetails > 100 || limits.pageSize > 500) {
+  if (limits.pageSize < 2) {
+    throw new Error("pageSize must be at least 2 so resumed scans can overlap.");
+  }
+  if (
+    limits.maxPages > 4 ||
+    limits.maxDetails > 100 ||
+    limits.pageSize > 500 ||
+    limits.detailConcurrency > 10
+  ) {
     throw new Error("Seller order sync budget exceeds the safe request limit.");
   }
   const dependencies = { ...defaultDependencies, ...overrides };

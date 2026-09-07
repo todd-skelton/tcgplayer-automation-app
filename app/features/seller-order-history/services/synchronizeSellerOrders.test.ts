@@ -23,7 +23,7 @@ function detail(orderNumber: string): SellerOrderDetail {
   const searches: Array<string | undefined> = [];
   let detailCalls = 0;
   await synchronizeSellerOrders("seller-a", {
-    maxPages: 1, maxDetails: 1, pageSize: 1, detailConcurrency: 1,
+    maxPages: 1, maxDetails: 1, pageSize: 2, detailConcurrency: 1,
   }, {
     repository: fake.repository,
     searchOrders: async (request) => {
@@ -158,23 +158,14 @@ function fakeRepository(initial: {
   assert.deepEqual(new Set(result.changedOrderNumbers), new Set(["A", "B", "C"]));
 }
 
-{
-  const fake = fakeRepository();
-  const offsets: number[] = [];
-  const orders = [summary("ONE-A"), summary("ONE-B"), summary("ONE-C")];
-  const result = await synchronizeSellerOrders("seller-a", {
-    maxPages: 4, maxDetails: 4, pageSize: 1, detailConcurrency: 1,
-  }, {
-    repository: fake.repository,
-    searchOrders: async (request) => {
-      offsets.push(request.from);
-      return { totalOrders: orders.length, orders: orders.slice(request.from, request.from + 1) };
-    },
-    getOrder: async (number) => detail(number),
-  });
-  assert.deepEqual(offsets, [0, 1, 2]);
-  assert.equal(result.coverage.status, "complete");
-}
+await assert.rejects(
+  () => synchronizeSellerOrders("seller-a", { pageSize: 1 }),
+  /at least 2/,
+);
+await assert.rejects(
+  () => synchronizeSellerOrders("seller-a", { detailConcurrency: 11 }),
+  /safe request limit/,
+);
 
 {
   const fake = fakeRepository({ nextOffset: 2, expectedTotal: 4, seen: ["A", "B"] });
