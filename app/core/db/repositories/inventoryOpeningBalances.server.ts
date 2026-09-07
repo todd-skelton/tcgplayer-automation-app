@@ -92,9 +92,14 @@ export const inventoryOpeningBalancesRepository = {
   },
 
   async findApplicationReplay(input: {runId:string;sellerKey:string;requestId:string;expectedFingerprint:string}) {
-    const run=await queryOne<any>(`SELECT id::text AS id,status,evidence_fingerprint AS "evidenceFingerprint",
-      apply_request_id AS "applyRequestId" FROM inventory_opening_balance_runs
-      WHERE id=$1 AND seller_key=$2`,[input.runId,input.sellerKey.trim()]);
+    const run=await queryOne<any>(`SELECT run.id::text AS id,run.status,
+      run.evidence_fingerprint AS "evidenceFingerprint",run.apply_request_id AS "applyRequestId",
+      run.validation_observation_id::text AS "validationObservationId",
+      validation.unsupported_positive_item_count AS "unsupportedPositiveItemCount",
+      validation.unsupported_positive_quantity AS "unsupportedPositiveQuantity"
+      FROM inventory_opening_balance_runs run
+      LEFT JOIN inventory_complete_observations validation ON validation.id=run.validation_observation_id
+      WHERE run.id=$1 AND run.seller_key=$2`,[input.runId,input.sellerKey.trim()]);
     if(!run) throw new Error("Opening balance preview was not found.");
     if(run.status!=="applied") {
       if(run.status!=="previewed" || run.evidenceFingerprint!==input.expectedFingerprint) {
@@ -453,8 +458,10 @@ export const inventoryOpeningBalancesRepository = {
         WHERE seller_key=$1 ORDER BY cutoff_at DESC,id DESC LIMIT 1`,[run.sellerKey],db);
       if(latest?.id!==validation.id) throw new Error("A newer seller inventory observation must be reconciled first.");
       const validationDifferences=await queryOne<{count:number}>(`SELECT COUNT(*)::int AS count
-        FROM inventory_observation_differences
-        WHERE observation_id=$1 AND status='unresolved' AND sku IS NOT NULL`,[validation.id],db);
+        FROM inventory_observation_differences difference
+        JOIN inventory_complete_observations observation ON observation.id=difference.observation_id
+        WHERE observation.seller_key=$1 AND observation.cutoff_at>$2 AND observation.cutoff_at<=$3
+          AND difference.status='unresolved' AND difference.sku IS NOT NULL`,[run.sellerKey,run.cutoffAt,validation.cutoffAt],db);
       if((validationDifferences?.count??0)>0) throw new Error("Current seller inventory differences must be acknowledged before apply.");
       const validationCoverage=await queryOne<any>(`SELECT id::text AS id,finished_at AS "finishedAt",
           observed_from AS "observedFrom",observed_through AS "observedThrough",
@@ -508,7 +515,11 @@ export const inventoryOpeningBalancesRepository = {
       await execute(`UPDATE inventory_opening_balance_runs SET status='applied',apply_request_id=$2,
         validation_observation_id=$3,validation_order_coverage_evidence=$4::jsonb,applied_at=NOW()
         WHERE id=$1`,[input.runId,input.requestId.trim(),validation.id,asJson(validationCoverage)],db);
-      return { ...run, status:"applied" };
+      return {
+        ...run,status:"applied",validationObservationId:validation.id,
+        unsupportedPositiveItemCount:validation.unsupportedPositiveItemCount,
+        unsupportedPositiveQuantity:validation.unsupportedPositiveQuantity,
+      };
     });
   },
 

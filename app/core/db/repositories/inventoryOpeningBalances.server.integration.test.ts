@@ -98,11 +98,12 @@ try{
   const currentClaim=await repo.beginObservationCapture({requestId:`${seller}-validation-current`,sellerKey:seller});
   if(currentClaim.state!=="claimed") throw new Error("Expected current validation claim.");
   const currentCutoff=new Date();
+  const currentItems=[firstItems[0]!,{...firstItems[1]!,quantity:2}];
   const currentValidation=await repo.recordObservation({requestId:`${seller}-validation-current`,sellerKey:seller,
     claimToken:currentClaim.claimToken,beforeIdentityDeclarationCount:2,afterIdentityDeclarationCount:2,status:"complete",
     startedAt:new Date(currentCutoff.getTime()-5_000),cutoffAt:currentCutoff,
-    quantityFingerprint:quantityFingerprint(firstItems),supportedQuantityFingerprint:supportedQuantityFingerprint(firstItems),firstContentFingerprint:"raw-current-a",secondContentFingerprint:"raw-current-b",
-    items:firstItems});
+    quantityFingerprint:quantityFingerprint(currentItems),supportedQuantityFingerprint:supportedQuantityFingerprint(currentItems),firstContentFingerprint:"raw-current-a",secondContentFingerprint:"raw-current-b",
+    items:currentItems});
   await pool.query(`INSERT INTO seller_order_sync_runs (seller_key,source,status,search_range,started_at,finished_at,next_offset,expected_total,pages_completed,orders_observed,details_recorded)
     VALUES ($1,'tcgplayer_api','complete','LastThreeMonths',$2,$3,0,0,1,0,0)`,
     [seller,currentCutoff,new Date(currentCutoff.getTime()+1_000)]);
@@ -113,6 +114,12 @@ try{
   await pool.query(`UPDATE skus SET product_id=9001 WHERE sku=99001`);
   const applied=await repo.apply(applyInput);
   assert.equal(applied.status,"applied");
+  assert.equal(applied.validationObservationId,currentValidation.id);
+  assert.equal(applied.unsupportedPositiveQuantity,2);
+  const appliedReplay=await repo.findApplicationReplay({runId:preview.id,sellerKey:seller,
+    requestId:applyInput.requestId,expectedFingerprint:preview.evidenceFingerprint});
+  assert.equal(appliedReplay?.validationObservationId,currentValidation.id);
+  assert.equal(appliedReplay?.unsupportedPositiveQuantity,2);
   assert.equal((await repo.apply(applyInput)).status,"applied");
   await assert.rejects(()=>repo.apply({...applyInput,sellerKey:`${seller}-other`}),/not found/);
   const opening=await pool.query(`SELECT original_quantity,product_id,receipt_kind,fifo_precedence,intake_at,market_value FROM inventory_receipts WHERE opening_balance_run_id=$1`,[preview.id]);
@@ -134,7 +141,7 @@ try{
 
   const nextClaim=await repo.beginObservationCapture({requestId:`${seller}-obs-next`,sellerKey:seller});
   if(nextClaim.state!=="claimed") throw new Error("Expected next observation claim.");
-  const nextItems=[{...firstItems[0]!,quantity:4},firstItems[1]!];
+  const nextItems=[{...firstItems[0]!,quantity:4},currentItems[1]!];
   const nextObservation=await repo.recordObservation({requestId:`${seller}-obs-next`,sellerKey:seller,claimToken:nextClaim.claimToken,
     beforeIdentityDeclarationCount:2,afterIdentityDeclarationCount:2,status:"complete",
     startedAt:new Date(Date.now()+1_000),cutoffAt:new Date(Date.now()+2_000),

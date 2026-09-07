@@ -64,7 +64,9 @@ The endpoint is `POST /api/inventory-opening-balance`. The seller may be omitted
    {"action":"apply","requestId":"opening-apply-2026-09-07","sellerKey":"seller-a","runId":"67","evidenceFingerprint":"<fingerprint returned by preview>"}
    ```
 
-Apply is idempotent for the same request, run, and fingerprint. It rejects changed current quantities, a newer unreviewed observation, missing post-revalidation order coverage, changed local evidence, or a different seller. Only one opening balance can be applied per seller.
+Apply is idempotent for the same request, run, and fingerprint. It rejects changed current standard-SKU quantities, a newer unstable observation, missing post-revalidation order coverage, changed local evidence, or a different seller. Only one opening balance can be applied per seller.
+
+The applied response records and returns `validationObservationId`, `unsupportedPositiveItemCount`, and `unsupportedPositiveQuantity`. Custom-listing quantities do not become standard-SKU lots, but their current identities and deltas remain inspectable through `list_observation_items` and `list_differences` for that validation observation.
 
 Applying an opening balance is the point after which an older application version must not be used to edit or batch inventory. Before application, migration rollback is safe because no opening receipts exist.
 
