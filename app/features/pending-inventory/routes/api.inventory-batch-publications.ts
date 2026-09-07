@@ -57,6 +57,73 @@ export async function action({
     if (!batchNumber) {
       return data({ error: "Invalid batch number" }, { status: 400 });
     }
+    if (request.method === "PATCH") {
+      const body = (await request.json()) as Record<string, unknown>;
+      const publicationId = Number(body.publicationId);
+      const itemId = Number(body.itemId);
+      const confirmedQuantity = Number(body.confirmedQuantity);
+      const sellerKey =
+        typeof body.sellerKey === "string" ? body.sellerKey.trim() : "";
+      const confirmedAt =
+        typeof body.confirmedAt === "string"
+          ? new Date(body.confirmedAt)
+          : new Date(Number.NaN);
+      const evidence = body.evidence;
+      if (
+        body.operation !== "confirm-ambiguous-item" ||
+        !Number.isSafeInteger(publicationId) ||
+        publicationId <= 0 ||
+        !Number.isSafeInteger(itemId) ||
+        itemId <= 0 ||
+        !Number.isInteger(confirmedQuantity) ||
+        confirmedQuantity <= 0 ||
+        !sellerKey ||
+        Number.isNaN(confirmedAt.getTime()) ||
+        confirmedAt > new Date() ||
+        !evidence ||
+        typeof evidence !== "object" ||
+        Array.isArray(evidence) ||
+        Object.keys(evidence).length === 0
+      ) {
+        return data(
+          { error: "A valid ambiguous confirmation is required" },
+          { status: 400 },
+        );
+      }
+
+      const publication =
+        await inventoryPublicationsRepository.findById(publicationId);
+      const item = publication?.items.find((candidate) => candidate.id === itemId);
+      if (
+        !publication ||
+        publication.batchNumber !== batchNumber ||
+        publication.sourceType !== "pending_inventory" ||
+        publication.sellerKey !== sellerKey ||
+        !item ||
+        item.status !== "ambiguous" ||
+        item.quantityDelta !== confirmedQuantity
+      ) {
+        return data(
+          { error: "Confirmation does not match the ambiguous publication item" },
+          { status: 409 },
+        );
+      }
+
+      await inventoryPublicationsRepository.saveItemOutcomes(publicationId, [
+        {
+          itemId,
+          status: "published",
+          confirmedAt,
+          confirmationEvidence: evidence as Record<string, unknown>,
+        },
+      ]);
+      await inventoryPublicationsRepository.recoverPublicationsWithSavedOutcomes();
+      return data(
+        await inventoryPublicationsRepository.findById(publicationId),
+        { status: 200 },
+      );
+    }
+
     if (request.method !== "POST") {
       return data({ error: "Method not allowed" }, { status: 405 });
     }

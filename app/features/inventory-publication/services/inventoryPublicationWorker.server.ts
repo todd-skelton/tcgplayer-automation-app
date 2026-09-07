@@ -373,6 +373,10 @@ function responseItemsBySku(
 export function buildMoveToLiveOutcomes(
   items: InventoryPublicationItem[],
   response: MoveStagedPricingImportResponse,
+  confirmation?: {
+    confirmedAt: Date;
+    evidence: Record<string, unknown>;
+  },
 ): InventoryPublicationItemOutcome[] {
   const confirmed = responseItemsBySku([
     ...response.Success,
@@ -406,6 +410,8 @@ export function buildMoveToLiveOutcomes(
       return {
         itemId: item.id,
         status: "published",
+        confirmedAt: confirmation?.confirmedAt,
+        confirmationEvidence: confirmation?.evidence,
       };
     }
     return {
@@ -416,6 +422,20 @@ export function buildMoveToLiveOutcomes(
         "TCGplayer did not return a move-to-live outcome for this item.",
     };
   });
+}
+
+async function saveConfirmedOutcomes(
+  dependencies: InventoryPublicationWorkerDependencies,
+  publicationId: number,
+  outcomes: InventoryPublicationItemOutcome[],
+): Promise<void> {
+  try {
+    await dependencies.saveItemOutcomes(publicationId, outcomes);
+  } catch {
+    // The Seller Portal response is already in memory. Retry only the local,
+    // idempotent transaction; never repeat move-to-live here.
+    await dependencies.saveItemOutcomes(publicationId, outcomes);
+  }
 }
 
 async function failBeforeMove(
@@ -603,8 +623,19 @@ export async function executeClaimedStagedPublication(
       productDetailMismatchSkus,
     );
     const response = await dependencies.move({ uploadId });
-    const acceptedOutcomes = buildMoveToLiveOutcomes(acceptedItems, response);
-    await dependencies.saveItemOutcomes(publication.id, acceptedOutcomes);
+    const confirmedAt = new Date();
+    const acceptedOutcomes = buildMoveToLiveOutcomes(acceptedItems, response, {
+      confirmedAt,
+      evidence: {
+        source: "seller_portal_move_to_live",
+        stagedPricingUploadId: uploadId,
+      },
+    });
+    await saveConfirmedOutcomes(
+      dependencies,
+      publication.id,
+      acceptedOutcomes,
+    );
     const allOutcomes = [...rejectedOutcomes, ...acceptedOutcomes];
 
     const hasAmbiguousItems = allOutcomes.some(
@@ -694,6 +725,7 @@ async function tick(state: WorkerState): Promise<void> {
   state.running = true;
 
   try {
+    await inventoryPublicationsRepository.recoverPublicationsWithSavedOutcomes();
     await inventoryPublicationsRepository.recoverExpiredClaims();
     const configuration = await inventoryPublicationSettingsRepository.get();
     if (

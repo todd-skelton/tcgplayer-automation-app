@@ -90,6 +90,8 @@ function createDependencies(
       ReturnType<InventoryPublicationWorkerDependencies["move"]>
     >;
     moveError?: Error;
+    saveFailures?: number;
+    completionTransitionFailures?: number;
   } = {},
 ): {
   dependencies: InventoryPublicationWorkerDependencies;
@@ -102,6 +104,9 @@ function createDependencies(
   const outcomes: InventoryPublicationItemOutcome[] = [];
   const markedItems: Array<{ status: string; errorCode: string }> = [];
   const projectedPublications: InventoryPublication[] = [];
+  let saveFailures = overrides.saveFailures ?? 0;
+  let completionTransitionFailures =
+    overrides.completionTransitionFailures ?? 0;
 
   return {
     calls,
@@ -154,6 +159,14 @@ function createDependencies(
       },
       transition: async (_publicationId, expectedStatus, nextStatus) => {
         calls.push(`transition:${expectedStatus}:${nextStatus}`);
+        if (
+          expectedStatus === "publishing" &&
+          nextStatus === "published" &&
+          completionTransitionFailures > 0
+        ) {
+          completionTransitionFailures -= 1;
+          throw new Error("local completion failed");
+        }
         return createPublication({
           status: nextStatus,
           items:
@@ -164,6 +177,10 @@ function createDependencies(
       },
       saveItemOutcomes: async (_publicationId, nextOutcomes) => {
         calls.push("save-outcomes");
+        if (saveFailures > 0) {
+          saveFailures -= 1;
+          throw new Error("local transaction failed");
+        }
         outcomes.push(...nextOutcomes);
       },
       markPlannedItems: async (_publicationId, status, errorCode) => {
@@ -202,7 +219,25 @@ const testCases: TestCase[] = [
         "save-outcomes",
         "transition:publishing:published",
       ]);
-      assert.deepEqual(outcomes, [{ itemId: 11, status: "published" }]);
+      assert.deepEqual(
+        outcomes.map((outcome) => ({
+          itemId: outcome.itemId,
+          status: outcome.status,
+          evidence: outcome.confirmationEvidence,
+          hasConfirmedAt: outcome.confirmedAt instanceof Date,
+        })),
+        [
+          {
+            itemId: 11,
+            status: "published",
+            evidence: {
+              source: "seller_portal_move_to_live",
+              stagedPricingUploadId: 16104570,
+            },
+            hasConfirmedAt: true,
+          },
+        ],
+      );
       assert.equal(projectedPublications.length, 1);
       assert.equal(projectedPublications[0]?.items[0]?.status, "published");
       assert.equal(
@@ -233,6 +268,38 @@ const testCases: TestCase[] = [
           errorCode: "staged_publication_rolled_back",
         },
       ]);
+    },
+  },
+  {
+    name: "a local outcome failure retries persistence without moving live twice",
+    run: async () => {
+      const { dependencies, calls, outcomes } = createDependencies({
+        saveFailures: 1,
+      });
+      await executeClaimedStagedPublication(
+        createPublication(),
+        "test-worker",
+        dependencies,
+      );
+      assert.equal(calls.filter((call) => call === "move").length, 1);
+      assert.equal(calls.filter((call) => call === "save-outcomes").length, 2);
+      assert.equal(outcomes[0]?.status, "published");
+    },
+  },
+  {
+    name: "saved outcomes survive a parent completion transition failure",
+    run: async () => {
+      const { dependencies, calls, outcomes } = createDependencies({
+        completionTransitionFailures: 1,
+      });
+      await executeClaimedStagedPublication(
+        createPublication(),
+        "test-worker",
+        dependencies,
+      );
+      assert.equal(calls.filter((call) => call === "move").length, 1);
+      assert.equal(outcomes[0]?.status, "published");
+      assert.ok(calls.includes("transition:publishing:ambiguous"));
     },
   },
   {

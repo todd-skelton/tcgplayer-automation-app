@@ -212,6 +212,16 @@ function createPublicationParams(
 ): CreateInventoryPublication {
   const sellerKey = targetSellerKey?.trim() || undefined;
 
+  if (
+    preview.sourceType === "pending_inventory" &&
+    items.some((item) => item.quantityDelta > 0) &&
+    !sellerKey
+  ) {
+    throw new Error(
+      "Select a target seller before publishing received inventory.",
+    );
+  }
+
   return {
     planningKey: createSelectedPlanningKey(preview.pricingJobId, selectedSkus),
     batchNumber: preview.batchNumber,
