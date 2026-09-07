@@ -585,7 +585,8 @@ export const inventoryBatchesRepository = {
           JOIN pending_inventory pending ON pending.sku = receipt.sku
           LEFT JOIN inventory_receipt_adjustments adjustment
             ON adjustment.receipt_id = receipt.receipt_id
-          WHERE NOT EXISTS (
+          WHERE receipt.receipt_kind = 'received'
+            AND NOT EXISTS (
             SELECT 1 FROM inventory_receipt_batch_links existing_link
             WHERE existing_link.receipt_id = receipt.receipt_id
           )
