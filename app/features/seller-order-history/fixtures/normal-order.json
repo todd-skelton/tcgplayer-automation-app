@@ -1,0 +1,27 @@
+{
+  "searchSummary": {
+    "orderNumber": "SYNTHETIC-ORDER-1001",
+    "orderDate": "2026-08-10T14:00:00.000Z",
+    "orderChannel": "TcgMarketplace",
+    "orderStatus": "Ready to Ship",
+    "shippingType": "Standard",
+    "productAmount": 12.5,
+    "shippingAmount": 0,
+    "totalAmount": 12.5,
+    "buyerPaid": true,
+    "orderFulfillment": "Normal"
+  },
+  "detailEvidence": {
+    "createdAt": "2026-08-10T14:00:00.440Z",
+    "status": "Ready to Ship",
+    "orderChannel": "TcgMarketplace",
+    "orderFulfillment": "Normal",
+    "orderNumber": "SYNTHETIC-ORDER-1001",
+    "refundStatus": "No Refund",
+    "productAmount": 12.5,
+    "products": [
+      { "name": "Synthetic Card", "unitPrice": 6.25, "extendedPrice": 12.5, "quantity": 2, "productId": "100", "skuId": "10001" }
+    ],
+    "refunds": []
+  }
+}

@@ -254,6 +254,7 @@ export interface ShippingLiveOrderLoadResponse {
   loadedOrderNumbers: string[];
   orders: TcgPlayerShippingOrder[];
   warnings?: string[];
+  historyCoverage?: import("~/features/seller-order-history/types/sellerOrderHistory").SellerOrderCoverage;
 }
 
 export interface ShippingPostageBatchLabelRequestItem {

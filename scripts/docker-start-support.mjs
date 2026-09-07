@@ -73,3 +73,45 @@ export function spawnInheritedProcess(command, args) {
 
   return child;
 }
+
+/** Runs sibling long-lived processes as one service and never leaves an orphan. */
+export function spawnInheritedProcesses(processes) {
+  const children = [];
+  let stopping = false;
+
+  const stop = (signal = "SIGTERM", exitCode = 0) => {
+    if (stopping) return;
+    stopping = true;
+    for (const child of children) {
+      if (!child.killed) child.kill(signal);
+    }
+    setTimeout(() => process.exit(exitCode), 1_000).unref();
+  };
+
+  for (const processSpec of processes) {
+    let child;
+    try {
+      child = spawn(processSpec.command, processSpec.args, {
+        stdio: "inherit",
+        env: process.env,
+      });
+    } catch (error) {
+      console.error(`Failed to start command "${processSpec.command}".`, error);
+      stop("SIGTERM", 1);
+      return children;
+    }
+    children.push(child);
+    child.on("error", (error) => {
+      console.error(`Failed to start command "${processSpec.command}".`, error);
+      stop("SIGTERM", 1);
+    });
+    child.on("exit", (code, signal) => {
+      if (!stopping) stop(signal ?? "SIGTERM", code ?? 1);
+    });
+  }
+
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    process.once(signal, () => stop(signal, 0));
+  }
+  return children;
+}

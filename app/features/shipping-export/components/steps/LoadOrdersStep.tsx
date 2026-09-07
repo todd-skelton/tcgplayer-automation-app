@@ -9,6 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { ShippingExportConfig, TcgPlayerShippingOrder } from "../../types/shippingExport";
+import type { SellerOrderCoverage } from "~/features/seller-order-history/types/sellerOrderHistory";
 
 interface LoadOrdersStepProps {
   config: ShippingExportConfig;
@@ -25,6 +26,10 @@ interface LoadOrdersStepProps {
   onLoadLiveOrders: () => void;
   onLoadSingleOrder: () => void;
   onContinue: () => void;
+  historyCoverage?: SellerOrderCoverage;
+  isUpdatingHistory?: boolean;
+  onCatchUpHistory?: () => void;
+  onImportHistoryFile?: (file: File) => void;
 }
 
 export function LoadOrdersStep({
@@ -42,6 +47,10 @@ export function LoadOrdersStep({
   onLoadLiveOrders,
   onLoadSingleOrder,
   onContinue,
+  historyCoverage,
+  isUpdatingHistory = false,
+  onCatchUpHistory,
+  onImportHistoryFile,
 }: LoadOrdersStepProps) {
   return (
     <Stack spacing={3}>
@@ -69,6 +78,45 @@ export function LoadOrdersStep({
           saved seller key or an override entered here.
         </Typography>
       </Box>
+
+      <Stack spacing={1.5}>
+        <Typography variant="subtitle1">Seller order history</Typography>
+        <Typography variant="body2" color="text.secondary">
+          History sync keeps orders after they leave the shipping queue. Each catch-up
+          advances a saved, bounded scan of TCGPlayer&apos;s verified LastThreeMonths view.
+          Import a USD CSV for older orders outside that API window.
+        </Typography>
+        {historyCoverage && (
+          <Alert severity={historyCoverage.status === "complete" ? "success" : "info"}>
+            API history: {historyCoverage.status.replace("_", " ")}; {historyCoverage.ordersObserved}
+            {historyCoverage.expectedTotal === undefined ? "" : ` of ${historyCoverage.expectedTotal}`} order summaries observed,
+            {` ${historyCoverage.detailsRecorded} details refreshed in this scan.`}
+            {historyCoverage.error ? ` ${historyCoverage.error}` : ""}
+          </Alert>
+        )}
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+          {onCatchUpHistory && (
+            <Button variant="outlined" onClick={onCatchUpHistory} disabled={isUpdatingHistory}>
+              {isUpdatingHistory ? "Updating History..." : "Catch Up Order History"}
+            </Button>
+          )}
+          {onImportHistoryFile && (
+            <Button component="label" variant="outlined" disabled={isUpdatingHistory}>
+              Import Older Order CSV
+              <input
+                hidden
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) onImportHistoryFile(file);
+                  event.target.value = "";
+                }}
+              />
+            </Button>
+          )}
+        </Stack>
+      </Stack>
 
       <Stack
         direction={{ xs: "column", md: "row" }}
