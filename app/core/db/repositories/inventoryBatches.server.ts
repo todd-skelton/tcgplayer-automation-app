@@ -55,6 +55,13 @@ interface CreateImportedBatchParams {
   items: CreateInventoryBatchItemInput[];
 }
 
+export class InventoryBatchRequestConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InventoryBatchRequestConflictError";
+  }
+}
+
 const batchSelect = `SELECT
   b.batch_number AS "batchNumber",
   b.status,
@@ -477,8 +484,32 @@ export const inventoryBatchesRepository = {
     );
   },
 
-  async createFromPendingInventory(): Promise<InventoryBatch | null> {
+  async createFromPendingInventory(
+    requestId: string,
+  ): Promise<InventoryBatch | null> {
     return withTransaction(async (client) => {
+      await execute(`SELECT pg_advisory_xact_lock(55, 0)`, [], client);
+
+      const repeated = await queryOne<{ batchNumber: number }>(
+        `SELECT batch_number AS "batchNumber"
+        FROM inventory_batch_intake_requests
+        WHERE request_id = $1`,
+        [requestId],
+        client,
+      );
+      if (repeated) {
+        const repeatedBatch = await inventoryBatchesRepository.findByBatchNumber(
+          repeated.batchNumber,
+          client,
+        );
+        if (!repeatedBatch) {
+          throw new InventoryBatchRequestConflictError(
+            `Request ID ${requestId} already created deleted batch ${repeated.batchNumber}`,
+          );
+        }
+        return repeatedBatch;
+      }
+
       const pendingRows = await query<{ sku: number }>(
         `SELECT sku
         FROM pending_inventory
@@ -493,16 +524,25 @@ export const inventoryBatchesRepository = {
       }
 
       const createdBatch = await queryOne<{ batchNumber: number }>(
-        `INSERT INTO inventory_batches (status, source_type, source_label)
-        VALUES ('pending', 'pending_inventory', 'Inventory Manager')
+        `INSERT INTO inventory_batches (
+          status, source_type, source_label, source_request_id
+        )
+        VALUES ('pending', 'pending_inventory', 'Inventory Manager', $1)
         RETURNING batch_number AS "batchNumber"`,
-        [],
+        [requestId],
         client,
       );
 
       if (!createdBatch) {
         throw new Error("Failed to create inventory batch");
       }
+
+      await execute(
+        `INSERT INTO inventory_batch_intake_requests (request_id, batch_number)
+        VALUES ($1, $2)`,
+        [requestId, createdBatch.batchNumber],
+        client,
+      );
 
       await execute(
         `INSERT INTO inventory_batch_items (
@@ -531,6 +571,32 @@ export const inventoryBatchesRepository = {
           created_at,
           updated_at
         FROM pending_inventory`,
+        [createdBatch.batchNumber],
+        client,
+      );
+
+      await execute(
+        `WITH adjusted_receipts AS (
+          SELECT
+            receipt.receipt_id,
+            receipt.original_quantity
+              + COALESCE(SUM(adjustment.quantity_delta), 0)::integer AS quantity
+          FROM inventory_receipts receipt
+          JOIN pending_inventory pending ON pending.sku = receipt.sku
+          LEFT JOIN inventory_receipt_adjustments adjustment
+            ON adjustment.receipt_id = receipt.receipt_id
+          WHERE NOT EXISTS (
+            SELECT 1 FROM inventory_receipt_batch_links existing_link
+            WHERE existing_link.receipt_id = receipt.receipt_id
+          )
+          GROUP BY receipt.receipt_id
+        )
+        INSERT INTO inventory_receipt_batch_links (
+          receipt_id, batch_number, linked_quantity
+        )
+        SELECT receipt_id, $1, quantity
+        FROM adjusted_receipts
+        WHERE quantity > 0`,
         [createdBatch.batchNumber],
         client,
       );

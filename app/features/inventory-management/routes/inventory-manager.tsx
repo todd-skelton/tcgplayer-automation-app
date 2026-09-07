@@ -10,6 +10,7 @@ import {
   Select,
   MenuItem,
   Chip,
+  Alert,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -34,6 +35,7 @@ export default function InventoryManagerRoute() {
     productLines,
     sets,
     pendingInventory,
+    error,
     selectedProductLineId,
     selectedSetId,
     searchScope,
@@ -45,7 +47,8 @@ export default function InventoryManagerRoute() {
     loadSets,
     loadSkusByCardNumber,
     loadPendingInventory,
-    updatePendingInventory,
+    adjustPendingInventory,
+    setPendingInventory,
     clearPendingInventory,
     createBatchFromPendingInventory,
     selectSet,
@@ -218,6 +221,12 @@ export default function InventoryManagerRoute() {
           Inventory Manager
         </Typography>
 
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
         <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
           <Typography variant="h6" gutterBottom>
             Filter Products
@@ -317,7 +326,8 @@ export default function InventoryManagerRoute() {
           <InventoryEntryTable
             skus={getFilteredSkus()}
             pendingInventory={pendingInventory}
-            onUpdateQuantity={updatePendingInventory}
+            onAdjustQuantity={adjustPendingInventory}
+            onSetQuantity={setPendingInventory}
             searchScope={searchScope}
             allSetsSearchTerm={allSetsSearchTerm}
             selectedCondition={selectedCondition}

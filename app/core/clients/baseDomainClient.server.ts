@@ -23,7 +23,12 @@ const RETRYABLE_STATUS_CODES = new Set([403, 429, 502, 503, 504]);
 export class RequestThrottler {
   private lastRequestStartTime = 0;
   private rateLimitedUntil = 0;
-  private readonly startQueue: Array<() => void> = [];
+  private readonly startQueue: Array<{
+    resolve: () => void;
+    reject: (error: Error) => void;
+    signal?: AbortSignal;
+    onAbort?: () => void;
+  }> = [];
   private isProcessingQueue = false;
   private consecutiveSuccesses = 0;
 
@@ -105,7 +110,10 @@ export class RequestThrottler {
    * Ensures requests are staggered by requestDelayMs, but allows up to
    * maxConcurrentRequests to be in-flight simultaneously.
    */
-  async waitToStart(): Promise<void> {
+  async waitToStart(signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted) {
+      throw new DOMException("Request was aborted", "AbortError");
+    }
     // Wait out any active rate limit cooldown first
     const now = Date.now();
     if (this.rateLimitedUntil > now) {
@@ -115,12 +123,28 @@ export class RequestThrottler {
           waitTime / 1000,
         )}s...`,
       );
-      await this.sleep(waitTime);
+      await Promise.race([
+        this.sleep(waitTime),
+        new Promise<never>((_, reject) => {
+          signal?.addEventListener(
+            "abort",
+            () => reject(new DOMException("Request was aborted", "AbortError")),
+            { once: true },
+          );
+        }),
+      ]);
     }
 
     // Queue this request and process sequentially to ensure proper staggering
-    await new Promise<void>((resolve) => {
-      this.startQueue.push(resolve);
+    await new Promise<void>((resolve, reject) => {
+      const entry: (typeof this.startQueue)[number] = { resolve, reject, signal };
+      entry.onAbort = () => {
+        const index = this.startQueue.indexOf(entry);
+        if (index >= 0) this.startQueue.splice(index, 1);
+        reject(new DOMException("Request was aborted", "AbortError"));
+      };
+      signal?.addEventListener("abort", entry.onAbort, { once: true });
+      this.startQueue.push(entry);
       void this.processQueue();
     });
   }
@@ -141,7 +165,13 @@ export class RequestThrottler {
 
       this.lastRequestStartTime = Date.now();
       const next = this.startQueue.shift();
-      next?.();
+      if (!next) continue;
+      if (next.onAbort) next.signal?.removeEventListener("abort", next.onAbort);
+      if (next.signal?.aborted) {
+        next.reject(new DOMException("Request was aborted", "AbortError"));
+      } else {
+        next.resolve();
+      }
     }
 
     this.isProcessingQueue = false;
@@ -162,23 +192,42 @@ export class RequestThrottler {
 // Concurrency Control (per-domain instance)
 // ============================================================================
 
-class ConcurrencyLimiter {
+export class ConcurrencyLimiter {
   private activeRequests = 0;
-  private readonly queue: Array<() => void> = [];
+  private readonly queue: Array<{
+    resolve: () => void;
+    reject: (error: Error) => void;
+    signal?: AbortSignal;
+    onAbort?: () => void;
+  }> = [];
 
-  async acquire(maxConcurrent: number): Promise<void> {
+  async acquire(maxConcurrent: number, signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted) {
+      throw new DOMException("Request was aborted", "AbortError");
+    }
     if (this.activeRequests < maxConcurrent) {
       this.activeRequests++;
       return;
     }
-    await new Promise<void>((resolve) => this.queue.push(resolve));
+    await new Promise<void>((resolve, reject) => {
+      const entry: (typeof this.queue)[number] = { resolve, reject, signal };
+      entry.onAbort = () => {
+        const index = this.queue.indexOf(entry);
+        if (index >= 0) this.queue.splice(index, 1);
+        reject(new DOMException("Request was aborted", "AbortError"));
+      };
+      signal?.addEventListener("abort", entry.onAbort, { once: true });
+      this.queue.push(entry);
+    });
     this.activeRequests++;
   }
 
   release(): void {
     this.activeRequests--;
     const next = this.queue.shift();
-    next?.();
+    if (!next) return;
+    if (next.onAbort) next.signal?.removeEventListener("abort", next.onAbort);
+    next.resolve();
   }
 }
 
@@ -252,7 +301,7 @@ export class DomainHttpClient {
   async get<TResponse, TParams = unknown>(
     path: string,
     params?: TParams,
-    options?: Pick<AxiosRequestConfig, "headers" | "responseType"> & {
+    options?: Pick<AxiosRequestConfig, "headers" | "responseType" | "timeout" | "signal"> & {
       retry?: boolean;
     },
   ): Promise<TResponse> {
@@ -264,6 +313,7 @@ export class DomainHttpClient {
         this.axiosClient.get<TResponse>(path, { params, ...requestOptions }),
       params ? { params } : undefined,
       retry ? MAX_RETRIES : 0,
+      requestOptions.signal as AbortSignal | undefined,
     );
   }
 
@@ -273,7 +323,7 @@ export class DomainHttpClient {
   async post<TResponse, TData = unknown>(
     path: string,
     data?: TData,
-    options?: Pick<AxiosRequestConfig, "headers" | "responseType"> & {
+    options?: Pick<AxiosRequestConfig, "headers" | "responseType" | "timeout" | "signal"> & {
       retry?: boolean;
     },
   ): Promise<TResponse> {
@@ -284,6 +334,7 @@ export class DomainHttpClient {
       () => this.axiosClient.post<TResponse>(path, data, requestOptions),
       data ? { data } : undefined,
       retry ? MAX_RETRIES : 0,
+      requestOptions.signal as AbortSignal | undefined,
     );
   }
 
@@ -296,6 +347,7 @@ export class DomainHttpClient {
     requestFn: () => Promise<AxiosResponse<T>>,
     logContext?: unknown,
     maxRetries: number = MAX_RETRIES,
+    signal?: AbortSignal,
   ): Promise<T> {
     // Get fresh config for each request execution (may have been updated by adaptive logic)
     const httpConfig = await getHttpConfig();
@@ -306,11 +358,14 @@ export class DomainHttpClient {
     let hasRecordedRateLimit = false;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      if (signal?.aborted) {
+        throw new DOMException("Request was aborted", "AbortError");
+      }
       domainConfig = await getDomainConfig(this.domainKey);
-      await this.limiter.acquire(domainConfig.maxConcurrentRequests);
+      await this.limiter.acquire(domainConfig.maxConcurrentRequests, signal);
 
       try {
-        await this.throttler.waitToStart();
+        await this.throttler.waitToStart(signal);
 
         if (attempt === 0) {
           console.log(
