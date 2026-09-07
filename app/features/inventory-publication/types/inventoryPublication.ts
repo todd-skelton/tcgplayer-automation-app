@@ -196,6 +196,19 @@ export interface InventoryPublicationItemOutcome {
   >;
   errorCode?: string | null;
   errorMessage?: string | null;
+  confirmedAt?: Date;
+  confirmationEvidence?: Record<string, unknown>;
+}
+
+export interface InventoryPublicationReceiptLink {
+  publicationItemId: number;
+  receiptId: number;
+  plannedQuantity: number;
+  targetSellerKey: string;
+  liveAt: Date | null;
+  activatedAt: Date | null;
+  confirmationEvidence: Record<string, unknown> | null;
+  intakeAt: Date | null;
 }
 
 export interface InventoryBatchPublicationPreviewItem {

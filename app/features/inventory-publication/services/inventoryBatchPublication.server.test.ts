@@ -367,6 +367,7 @@ const testCases: TestCase[] = [
         dependencies,
         now: NOW,
         selectedSkus: [5199433, 5199433],
+        targetSellerKey: "test-seller",
       });
 
       assert.match(
@@ -456,6 +457,18 @@ const testCases: TestCase[] = [
           selectedSkus: [],
         }),
         /Select at least one valid SKU/,
+      );
+    },
+  },
+  {
+    name: "received inventory requires a target seller before planning",
+    run: async () => {
+      await assert.rejects(
+        planInventoryBatchPublication(90, {
+          dependencies: createDependencies().dependencies,
+          now: NOW,
+        }),
+        /Select a target seller/,
       );
     },
   },

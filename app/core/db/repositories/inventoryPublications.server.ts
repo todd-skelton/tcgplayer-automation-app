@@ -3,6 +3,7 @@ import type {
   InventoryPublication,
   InventoryPublicationItem,
   InventoryPublicationItemOutcome,
+  InventoryPublicationReceiptLink,
   InventoryPublicationStatus,
 } from "~/features/inventory-publication/types/inventoryPublication";
 import { requireInventoryPublicationTransition } from "~/features/inventory-publication/services/inventoryPublicationState";
@@ -18,6 +19,41 @@ import {
 
 type InventoryPublicationRow = Omit<InventoryPublication, "items">;
 type InventoryPublicationItemRow = InventoryPublicationItem;
+
+function safeDatabaseId(value: number | string | null, name: string): number | null {
+  if (value === null) return null;
+  const id = Number(value);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    throw new Error(`${name} is outside the supported integer range.`);
+  }
+  return id;
+}
+
+function normalizePublicationRow(
+  row: InventoryPublicationRow,
+): InventoryPublicationRow {
+  return {
+    ...row,
+    id: safeDatabaseId(row.id as number | string, "Publication ID")!,
+    pricingJobId: safeDatabaseId(
+      row.pricingJobId as number | string | null,
+      "Pricing job ID",
+    ),
+  };
+}
+
+function normalizePublicationItem(
+  row: InventoryPublicationItemRow,
+): InventoryPublicationItem {
+  return {
+    ...row,
+    id: safeDatabaseId(row.id as number | string, "Publication item ID")!,
+    publicationId: safeDatabaseId(
+      row.publicationId as number | string,
+      "Publication ID",
+    )!,
+  };
+}
 
 export interface CreateOrFindInventoryPublicationResult {
   publication: InventoryPublication;
@@ -89,6 +125,26 @@ function validateCreateParams(params: CreateInventoryPublication): void {
     throw new RangeError("items must contain at least one publication item.");
   }
 
+  if (
+    params.sourceType === "pending_inventory" &&
+    params.items.some((item) => item.quantityDelta > 0) &&
+    params.method !== "staged_delta"
+  ) {
+    throw new RangeError(
+      "Received inventory can only be published with staged quantity deltas.",
+    );
+  }
+
+  if (
+    params.sourceType === "pending_inventory" &&
+    params.items.some((item) => item.quantityDelta > 0) &&
+    !params.sellerKey?.trim()
+  ) {
+    throw new RangeError(
+      "sellerKey is required for received inventory publication.",
+    );
+  }
+
   params.items.forEach((item, index) => {
     const prefix = `items[${index}]`;
     requireNonEmptyText(item.candidateKey, `${prefix}.candidateKey`);
@@ -124,17 +180,91 @@ function validateCreateParams(params: CreateInventoryPublication): void {
   });
 }
 
+async function linkPendingInventoryReceipts(
+  publicationId: number,
+  sellerKey: string,
+  executor: Queryable,
+): Promise<void> {
+  const items = await query<{
+    itemId: number;
+    batchNumber: number | null;
+    sku: number;
+    quantityDelta: number;
+  }>(
+    `SELECT
+      id AS "itemId",
+      batch_number AS "batchNumber",
+      sku,
+      quantity_delta AS "quantityDelta"
+    FROM inventory_publication_items
+    WHERE publication_id = $1 AND quantity_delta > 0`,
+    [publicationId],
+    executor,
+  );
+
+  for (const item of items) {
+    if (!item.batchNumber) {
+      throw new Error(
+        `Publication item ${item.itemId} cannot link receipts without a batch.`,
+      );
+    }
+
+    const receiptSummary = await queryOne<{
+      linkedQuantity: number;
+      mismatchedSellerCount: number;
+    }>(
+      `SELECT
+        COALESCE(SUM(link.linked_quantity), 0)::int AS "linkedQuantity",
+        COUNT(*) FILTER (
+          WHERE receipt.seller_key IS NOT NULL
+            AND receipt.seller_key <> $3
+        )::int AS "mismatchedSellerCount"
+      FROM inventory_receipt_batch_links link
+      JOIN inventory_receipts receipt ON receipt.receipt_id = link.receipt_id
+      WHERE link.batch_number = $1 AND receipt.sku = $2`,
+      [item.batchNumber, item.sku, sellerKey],
+      executor,
+    );
+    if ((receiptSummary?.mismatchedSellerCount ?? 0) > 0) {
+      throw new Error(
+        `SKU ${item.sku} has receipt lots assigned to a different seller.`,
+      );
+    }
+    if ((receiptSummary?.linkedQuantity ?? 0) !== item.quantityDelta) {
+      throw new Error(
+        `SKU ${item.sku} publication quantity ${item.quantityDelta} does not match linked receipt quantity ${receiptSummary?.linkedQuantity ?? 0}.`,
+      );
+    }
+
+    await execute(
+      `INSERT INTO inventory_publication_receipt_links (
+        publication_item_id,
+        receipt_id,
+        planned_quantity,
+        target_seller_key
+      )
+      SELECT $1, link.receipt_id, link.linked_quantity, $4
+      FROM inventory_receipt_batch_links link
+      JOIN inventory_receipts receipt ON receipt.receipt_id = link.receipt_id
+      WHERE link.batch_number = $2 AND receipt.sku = $3`,
+      [item.itemId, item.batchNumber, item.sku, sellerKey],
+      executor,
+    );
+  }
+}
+
 async function findItems(
   publicationId: number,
   executor?: Queryable,
 ): Promise<InventoryPublicationItem[]> {
-  return query<InventoryPublicationItemRow>(
+  const rows = await query<InventoryPublicationItemRow>(
     `${publicationItemSelect}
     WHERE publication_id = $1
     ORDER BY id`,
     [publicationId],
     executor,
   );
+  return rows.map(normalizePublicationItem);
 }
 
 async function attachItems(
@@ -142,8 +272,11 @@ async function attachItems(
   executor?: Queryable,
 ): Promise<InventoryPublication> {
   return {
-    ...publication,
-    items: await findItems(publication.id, executor),
+    ...normalizePublicationRow(publication),
+    items: await findItems(
+      safeDatabaseId(publication.id as number | string, "Publication ID")!,
+      executor,
+    ),
   };
 }
 
@@ -159,6 +292,66 @@ async function findByPlanningKey(
   );
 
   return publication ? attachItems(publication, executor) : null;
+}
+
+function plannedPublicationIdentity(
+  publication: InventoryPublication,
+): string {
+  return JSON.stringify({
+    batchNumber: publication.batchNumber,
+    pricingJobId: publication.pricingJobId,
+    method: publication.method,
+    sourceType: publication.sourceType,
+    sellerKey: publication.sellerKey,
+    items: publication.items.map((item) => ({
+      candidateKey: item.candidateKey,
+      inventoryDeltaKey: item.inventoryDeltaKey,
+      batchNumber: item.batchNumber,
+      sku: item.sku,
+      productId: item.productId,
+      productLine: item.productLine,
+      setName: item.setName,
+      productName: item.productName,
+      condition: item.condition,
+      previousPrice: item.previousPrice,
+      desiredPrice: item.desiredPrice,
+      quantityDelta: item.quantityDelta,
+      observedQuantity: item.observedQuantity,
+      desiredAbsoluteQuantity: item.desiredAbsoluteQuantity,
+      pricedAt: item.pricedAt.toISOString(),
+      eligibilityReasons: item.eligibilityReasons,
+    })),
+  });
+}
+
+function requestedPublicationIdentity(
+  params: CreateInventoryPublication,
+): string {
+  return JSON.stringify({
+    batchNumber: params.batchNumber ?? null,
+    pricingJobId: params.pricingJobId ?? null,
+    method: params.method,
+    sourceType: params.sourceType,
+    sellerKey: params.sellerKey?.trim() || null,
+    items: params.items.map((item) => ({
+      candidateKey: item.candidateKey,
+      inventoryDeltaKey: item.inventoryDeltaKey?.trim() || null,
+      batchNumber: item.batchNumber ?? params.batchNumber ?? null,
+      sku: item.sku,
+      productId: item.productId,
+      productLine: item.productLine,
+      setName: item.setName,
+      productName: item.productName,
+      condition: item.condition,
+      previousPrice: item.previousPrice ?? null,
+      desiredPrice: item.desiredPrice,
+      quantityDelta: item.quantityDelta,
+      observedQuantity: item.observedQuantity ?? null,
+      desiredAbsoluteQuantity: item.desiredAbsoluteQuantity ?? null,
+      pricedAt: item.pricedAt.toISOString(),
+      eligibilityReasons: item.eligibilityReasons ?? [],
+    })),
+  });
 }
 
 export const inventoryPublicationsRepository = {
@@ -304,7 +497,7 @@ export const inventoryPublicationsRepository = {
           params.pricingJobId ?? null,
           params.method,
           params.sourceType,
-          params.sellerKey ?? null,
+          params.sellerKey?.trim() || null,
           asJson(params.config ?? {}),
         ],
         client,
@@ -315,6 +508,15 @@ export const inventoryPublicationsRepository = {
         if (!existing) {
           throw new Error(
             `Inventory publication ${params.planningKey} could not be reloaded.`,
+          );
+        }
+
+        if (
+          plannedPublicationIdentity(existing) !==
+          requestedPublicationIdentity(params)
+        ) {
+          throw new Error(
+            `Inventory publication ${params.planningKey} already exists with different planning inputs.`,
           );
         }
 
@@ -367,6 +569,17 @@ export const inventoryPublicationsRepository = {
         values,
         client,
       );
+
+      if (
+        params.sourceType === "pending_inventory" &&
+        params.items.some((item) => item.quantityDelta > 0)
+      ) {
+        await linkPendingInventoryReceipts(
+          inserted.id,
+          params.sellerKey!.trim(),
+          client,
+        );
+      }
 
       return {
         publication: await attachItems(inserted, client),
@@ -593,36 +806,238 @@ export const inventoryPublicationsRepository = {
       return;
     }
 
+    const publication = await queryOne<{
+      sourceType: InventoryPublication["sourceType"];
+      method: InventoryPublication["method"];
+      sellerKey: string | null;
+    }>(
+      `SELECT source_type AS "sourceType", method, seller_key AS "sellerKey"
+      FROM inventory_publications
+      WHERE id = $1
+      FOR UPDATE`,
+      [publicationId],
+      executor,
+    );
+    if (!publication) {
+      throw new Error(`Inventory publication ${publicationId} not found.`);
+    }
+
     for (const outcome of outcomes) {
-      const updated = await execute(
+      const item = await queryOne<{
+        status: InventoryPublicationItem["status"];
+        quantityDelta: number;
+        publishedAt: Date | null;
+      }>(
+        `SELECT
+          status,
+          quantity_delta AS "quantityDelta",
+          published_at AS "publishedAt"
+        FROM inventory_publication_items
+        WHERE id = $1 AND publication_id = $2
+        FOR UPDATE`,
+        [outcome.itemId, publicationId],
+        executor,
+      );
+      if (!item) {
+        throw new Error(`Publication item ${outcome.itemId} not found.`);
+      }
+      const correction = item.status === "ambiguous" && outcome.status === "published";
+      const repeated = item.status === outcome.status;
+      if (item.status !== "planned" && !repeated && !correction) {
+        throw new Error(
+          `Publication item ${outcome.itemId} cannot change from ${item.status} to ${outcome.status}.`,
+        );
+      }
+
+      const activatesReceipts =
+        publication.sourceType === "pending_inventory" &&
+        publication.method === "staged_delta" &&
+        item.quantityDelta > 0 &&
+        outcome.status === "published";
+      if (
+        activatesReceipts &&
+        (!publication.sellerKey ||
+          !outcome.confirmedAt ||
+          !outcome.confirmationEvidence)
+      ) {
+        throw new Error(
+          `Publication item ${outcome.itemId} requires seller, confirmation time, and evidence before receipt activation.`,
+        );
+      }
+
+      await execute(
         `UPDATE inventory_publication_items
         SET status = $3,
             error_code = $4,
             error_message = $5,
             published_at = CASE
-              WHEN $3 = 'published' THEN NOW()
+              WHEN $3 = 'published' THEN COALESCE(published_at, $6)
               ELSE published_at
             END,
             updated_at = NOW()
         WHERE id = $1
           AND publication_id = $2
-          AND status = 'planned'`,
+          AND status = ANY($7::text[])`,
         [
           outcome.itemId,
           publicationId,
           outcome.status,
           outcome.errorCode ?? null,
           outcome.errorMessage ?? null,
+          outcome.confirmedAt ?? new Date(),
+          correction
+            ? ["planned", "ambiguous", "published"]
+            : ["planned", outcome.status],
         ],
         executor,
       );
 
-      if (updated !== 1) {
-        throw new Error(
-          `Publication item ${outcome.itemId} could not record ${outcome.status}.`,
+      if (activatesReceipts) {
+        const linked = await queryOne<{
+          plannedQuantity: number;
+          mismatchedSellerCount: number;
+          linkCount: number;
+          activatedCount: number;
+          conflictingEvidenceCount: number;
+        }>(
+          `SELECT
+            COALESCE(SUM(link.planned_quantity), 0)::int AS "plannedQuantity",
+            COUNT(*)::int AS "linkCount",
+            COUNT(*) FILTER (WHERE link.live_at IS NOT NULL)::int AS "activatedCount",
+            COUNT(*) FILTER (
+              WHERE receipt.seller_key IS NOT NULL
+                AND receipt.seller_key <> $2
+            )::int AS "mismatchedSellerCount",
+            COUNT(*) FILTER (
+              WHERE link.live_at IS NOT NULL
+                AND (
+                  link.live_at <> $3
+                  OR link.confirmation_evidence IS DISTINCT FROM $4::jsonb
+                )
+            )::int AS "conflictingEvidenceCount"
+          FROM inventory_publication_receipt_links link
+          JOIN inventory_receipts receipt ON receipt.receipt_id = link.receipt_id
+          WHERE link.publication_item_id = $1
+            AND link.target_seller_key = $2`,
+          [
+            outcome.itemId,
+            publication.sellerKey,
+            outcome.confirmedAt,
+            asJson(outcome.confirmationEvidence),
+          ],
+          executor,
+        );
+        if ((linked?.mismatchedSellerCount ?? 0) > 0) {
+          throw new Error(
+            `Publication item ${outcome.itemId} has receipts assigned to another seller.`,
+          );
+        }
+        if ((linked?.plannedQuantity ?? 0) !== item.quantityDelta) {
+          throw new Error(
+            `Publication item ${outcome.itemId} cannot activate ${item.quantityDelta} units from ${linked?.plannedQuantity ?? 0} linked units.`,
+          );
+        }
+        if (
+          repeated &&
+          ((linked?.activatedCount ?? 0) !== (linked?.linkCount ?? 0) ||
+            (linked?.conflictingEvidenceCount ?? 0) > 0 ||
+            item.publishedAt?.getTime() !== outcome.confirmedAt?.getTime())
+        ) {
+          throw new Error(
+            `Publication item ${outcome.itemId} already has different confirmation evidence.`,
+          );
+        }
+
+        await execute(
+          `UPDATE inventory_receipts receipt
+          SET seller_key = $2
+          FROM inventory_publication_receipt_links link
+          WHERE link.publication_item_id = $1
+            AND link.receipt_id = receipt.receipt_id
+            AND receipt.seller_key IS NULL`,
+          [outcome.itemId, publication.sellerKey],
+          executor,
+        );
+        await execute(
+          `UPDATE inventory_publication_receipt_links
+          SET live_at = COALESCE(live_at, $2),
+              activated_at = COALESCE(activated_at, NOW()),
+              confirmation_evidence = COALESCE(confirmation_evidence, $3::jsonb)
+          WHERE publication_item_id = $1`,
+          [
+            outcome.itemId,
+            outcome.confirmedAt,
+            asJson(outcome.confirmationEvidence),
+          ],
+          executor,
         );
       }
     }
+  },
+
+  async recoverPublicationsWithSavedOutcomes(): Promise<number> {
+    const recovered = await query<{ id: number }>(
+      `UPDATE inventory_publications publication
+      SET status = 'published',
+          published_at = COALESCE(
+            publication.published_at,
+            (SELECT MAX(item.published_at)
+             FROM inventory_publication_items item
+             WHERE item.publication_id = publication.id)
+          ),
+          completed_at = COALESCE(publication.completed_at, NOW()),
+          error_code = NULL,
+          error_message = NULL,
+          claimed_by = NULL,
+          claim_expires_at = NULL,
+          updated_at = NOW()
+      WHERE (
+          publication.status = 'ambiguous'
+          OR (
+            publication.status = 'publishing'
+            AND (
+              publication.claimed_by IS NULL
+              OR publication.claim_expires_at IS NULL
+              OR publication.claim_expires_at < NOW()
+            )
+          )
+        )
+        AND EXISTS (
+          SELECT 1 FROM inventory_publication_items item
+          WHERE item.publication_id = publication.id
+            AND item.status = 'published'
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM inventory_publication_items item
+          WHERE item.publication_id = publication.id
+            AND item.status IN ('planned', 'ambiguous')
+        )
+      RETURNING publication.id`,
+    );
+    return recovered.length;
+  },
+
+  async findReceiptLinks(
+    publicationItemId: number,
+    executor?: Queryable,
+  ): Promise<InventoryPublicationReceiptLink[]> {
+    return query<InventoryPublicationReceiptLink>(
+      `SELECT
+        link.publication_item_id AS "publicationItemId",
+        link.receipt_id AS "receiptId",
+        link.planned_quantity AS "plannedQuantity",
+        link.target_seller_key AS "targetSellerKey",
+        link.live_at AS "liveAt",
+        link.activated_at AS "activatedAt",
+        link.confirmation_evidence AS "confirmationEvidence",
+        receipt.intake_at AS "intakeAt"
+      FROM inventory_publication_receipt_links link
+      JOIN inventory_receipts receipt ON receipt.receipt_id = link.receipt_id
+      WHERE link.publication_item_id = $1
+      ORDER BY receipt.intake_at NULLS FIRST, receipt.receipt_id`,
+      [publicationItemId],
+      executor,
+    );
   },
 
   async markPlannedItems(
@@ -677,8 +1092,9 @@ export const inventoryPublicationsRepository = {
     };
   },
   async recoverExpiredClaims(): Promise<number> {
-    const recovered = await query<{ id: number }>(
-      `UPDATE inventory_publications
+    return withTransaction(async (client) => {
+      const recovered = await query<{ id: number }>(
+        `UPDATE inventory_publications
       SET status = CASE
             WHEN status = 'publishing' THEN 'ambiguous'
             WHEN staged_pricing_upload_id IS NOT NULL THEN 'ambiguous'
@@ -703,8 +1119,26 @@ export const inventoryPublicationsRepository = {
         AND claim_expires_at IS NOT NULL
         AND claim_expires_at < NOW()
       RETURNING id`,
-    );
-
-    return recovered.length;
+        [],
+        client,
+      );
+      if (recovered.length > 0) {
+        await execute(
+          `UPDATE inventory_publication_items item
+          SET status = 'ambiguous',
+              error_code = 'worker_lease_expired',
+              error_message = 'Worker lease expired after Seller Portal state may have changed.',
+              updated_at = NOW()
+          FROM inventory_publications publication
+          WHERE item.publication_id = publication.id
+            AND publication.id = ANY($1::bigint[])
+            AND publication.status = 'ambiguous'
+            AND item.status = 'planned'`,
+          [recovered.map((row) => row.id)],
+          client,
+        );
+      }
+      return recovered.length;
+    });
   },
 };
