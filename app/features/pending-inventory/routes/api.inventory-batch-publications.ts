@@ -15,6 +15,19 @@ function parseBatchNumber(rawValue: string | undefined): number | null {
   return Number.isInteger(batchNumber) && batchNumber > 0 ? batchNumber : null;
 }
 
+function canonicalEvidence(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalEvidence).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${canonicalEvidence(entry)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "undefined";
+}
+
 export async function loader({ params }: { params: { batchNumber?: string } }) {
   try {
     const batchNumber = parseBatchNumber(params.batchNumber);
@@ -100,12 +113,52 @@ export async function action({
         publication.sourceType !== "pending_inventory" ||
         publication.sellerKey !== sellerKey ||
         !item ||
-        item.status !== "ambiguous" ||
+        !["ambiguous", "published"].includes(item.status) ||
         item.quantityDelta !== confirmedQuantity
       ) {
         return data(
           { error: "Confirmation does not match the ambiguous publication item" },
           { status: 409 },
+        );
+      }
+
+      const receiptLinks =
+        await inventoryPublicationsRepository.findReceiptLinks(itemId);
+      const latestKnownIntake = receiptLinks.reduce<Date | null>(
+        (latest, link) =>
+          link.intakeAt && (!latest || link.intakeAt > latest)
+            ? link.intakeAt
+            : latest,
+        null,
+      );
+      if (
+        receiptLinks.length === 0 ||
+        (latestKnownIntake && confirmedAt < latestKnownIntake) ||
+        (publication.publishingAt && confirmedAt < publication.publishingAt)
+      ) {
+        return data(
+          { error: "Confirmation time precedes the publication or receipt evidence" },
+          { status: 409 },
+        );
+      }
+
+      if (item.status === "published") {
+        const exactReplay = receiptLinks.every(
+          (link) =>
+            link.liveAt?.getTime() === confirmedAt.getTime() &&
+            canonicalEvidence(link.confirmationEvidence) ===
+              canonicalEvidence(evidence),
+        );
+        if (!exactReplay) {
+          return data(
+            { error: "Confirmation conflicts with saved publication evidence" },
+            { status: 409 },
+          );
+        }
+        await inventoryPublicationsRepository.recoverPublicationsWithSavedOutcomes();
+        return data(
+          await inventoryPublicationsRepository.findById(publicationId),
+          { status: 200 },
         );
       }
 

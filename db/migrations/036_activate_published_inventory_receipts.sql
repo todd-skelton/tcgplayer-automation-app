@@ -36,6 +36,7 @@ WITH valid_items AS (
     AND item.quantity_delta > 0
     AND item.published_at IS NOT NULL
     AND publication.source_type = 'pending_inventory'
+    AND publication.method = 'staged_delta'
     AND publication.seller_key IS NOT NULL
   GROUP BY item.id, item.quantity_delta, publication.seller_key
   HAVING SUM(batch_link.linked_quantity) = item.quantity_delta
@@ -70,6 +71,7 @@ WITH valid_items AS (
     ON receipt.receipt_id = batch_link.receipt_id AND receipt.sku = item.sku
   WHERE item.quantity_delta > 0
     AND publication.source_type = 'pending_inventory'
+    AND publication.method = 'staged_delta'
     AND publication.seller_key IS NOT NULL
     AND (item.status <> 'published' OR item.published_at IS NOT NULL)
   GROUP BY

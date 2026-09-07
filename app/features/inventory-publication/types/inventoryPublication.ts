@@ -208,6 +208,7 @@ export interface InventoryPublicationReceiptLink {
   liveAt: Date | null;
   activatedAt: Date | null;
   confirmationEvidence: Record<string, unknown> | null;
+  intakeAt: Date | null;
 }
 
 export interface InventoryBatchPublicationPreviewItem {

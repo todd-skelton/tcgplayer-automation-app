@@ -3,6 +3,7 @@ import type {
   InventoryPublication,
   InventoryPublicationItem,
   InventoryPublicationItemOutcome,
+  InventoryPublicationReceiptLink,
   InventoryPublicationStatus,
 } from "~/features/inventory-publication/types/inventoryPublication";
 import { requireInventoryPublicationTransition } from "~/features/inventory-publication/services/inventoryPublicationState";
@@ -18,6 +19,41 @@ import {
 
 type InventoryPublicationRow = Omit<InventoryPublication, "items">;
 type InventoryPublicationItemRow = InventoryPublicationItem;
+
+function safeDatabaseId(value: number | string | null, name: string): number | null {
+  if (value === null) return null;
+  const id = Number(value);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    throw new Error(`${name} is outside the supported integer range.`);
+  }
+  return id;
+}
+
+function normalizePublicationRow(
+  row: InventoryPublicationRow,
+): InventoryPublicationRow {
+  return {
+    ...row,
+    id: safeDatabaseId(row.id as number | string, "Publication ID")!,
+    pricingJobId: safeDatabaseId(
+      row.pricingJobId as number | string | null,
+      "Pricing job ID",
+    ),
+  };
+}
+
+function normalizePublicationItem(
+  row: InventoryPublicationItemRow,
+): InventoryPublicationItem {
+  return {
+    ...row,
+    id: safeDatabaseId(row.id as number | string, "Publication item ID")!,
+    publicationId: safeDatabaseId(
+      row.publicationId as number | string,
+      "Publication ID",
+    )!,
+  };
+}
 
 export interface CreateOrFindInventoryPublicationResult {
   publication: InventoryPublication;
@@ -87,6 +123,16 @@ function validateCreateParams(params: CreateInventoryPublication): void {
 
   if (params.items.length === 0) {
     throw new RangeError("items must contain at least one publication item.");
+  }
+
+  if (
+    params.sourceType === "pending_inventory" &&
+    params.items.some((item) => item.quantityDelta > 0) &&
+    params.method !== "staged_delta"
+  ) {
+    throw new RangeError(
+      "Received inventory can only be published with staged quantity deltas.",
+    );
   }
 
   if (
@@ -211,13 +257,14 @@ async function findItems(
   publicationId: number,
   executor?: Queryable,
 ): Promise<InventoryPublicationItem[]> {
-  return query<InventoryPublicationItemRow>(
+  const rows = await query<InventoryPublicationItemRow>(
     `${publicationItemSelect}
     WHERE publication_id = $1
     ORDER BY id`,
     [publicationId],
     executor,
   );
+  return rows.map(normalizePublicationItem);
 }
 
 async function attachItems(
@@ -225,8 +272,11 @@ async function attachItems(
   executor?: Queryable,
 ): Promise<InventoryPublication> {
   return {
-    ...publication,
-    items: await findItems(publication.id, executor),
+    ...normalizePublicationRow(publication),
+    items: await findItems(
+      safeDatabaseId(publication.id as number | string, "Publication ID")!,
+      executor,
+    ),
   };
 }
 
@@ -758,9 +808,10 @@ export const inventoryPublicationsRepository = {
 
     const publication = await queryOne<{
       sourceType: InventoryPublication["sourceType"];
+      method: InventoryPublication["method"];
       sellerKey: string | null;
     }>(
-      `SELECT source_type AS "sourceType", seller_key AS "sellerKey"
+      `SELECT source_type AS "sourceType", method, seller_key AS "sellerKey"
       FROM inventory_publications
       WHERE id = $1
       FOR UPDATE`,
@@ -800,6 +851,7 @@ export const inventoryPublicationsRepository = {
 
       const activatesReceipts =
         publication.sourceType === "pending_inventory" &&
+        publication.method === "staged_delta" &&
         item.quantityDelta > 0 &&
         outcome.status === "published";
       if (
@@ -844,18 +896,35 @@ export const inventoryPublicationsRepository = {
         const linked = await queryOne<{
           plannedQuantity: number;
           mismatchedSellerCount: number;
+          linkCount: number;
+          activatedCount: number;
+          conflictingEvidenceCount: number;
         }>(
           `SELECT
             COALESCE(SUM(link.planned_quantity), 0)::int AS "plannedQuantity",
+            COUNT(*)::int AS "linkCount",
+            COUNT(*) FILTER (WHERE link.live_at IS NOT NULL)::int AS "activatedCount",
             COUNT(*) FILTER (
               WHERE receipt.seller_key IS NOT NULL
                 AND receipt.seller_key <> $2
-            )::int AS "mismatchedSellerCount"
+            )::int AS "mismatchedSellerCount",
+            COUNT(*) FILTER (
+              WHERE link.live_at IS NOT NULL
+                AND (
+                  link.live_at <> $3
+                  OR link.confirmation_evidence IS DISTINCT FROM $4::jsonb
+                )
+            )::int AS "conflictingEvidenceCount"
           FROM inventory_publication_receipt_links link
           JOIN inventory_receipts receipt ON receipt.receipt_id = link.receipt_id
           WHERE link.publication_item_id = $1
             AND link.target_seller_key = $2`,
-          [outcome.itemId, publication.sellerKey],
+          [
+            outcome.itemId,
+            publication.sellerKey,
+            outcome.confirmedAt,
+            asJson(outcome.confirmationEvidence),
+          ],
           executor,
         );
         if ((linked?.mismatchedSellerCount ?? 0) > 0) {
@@ -866,6 +935,16 @@ export const inventoryPublicationsRepository = {
         if ((linked?.plannedQuantity ?? 0) !== item.quantityDelta) {
           throw new Error(
             `Publication item ${outcome.itemId} cannot activate ${item.quantityDelta} units from ${linked?.plannedQuantity ?? 0} linked units.`,
+          );
+        }
+        if (
+          repeated &&
+          ((linked?.activatedCount ?? 0) !== (linked?.linkCount ?? 0) ||
+            (linked?.conflictingEvidenceCount ?? 0) > 0 ||
+            item.publishedAt?.getTime() !== outcome.confirmedAt?.getTime())
+        ) {
+          throw new Error(
+            `Publication item ${outcome.itemId} already has different confirmation evidence.`,
           );
         }
 
@@ -912,7 +991,17 @@ export const inventoryPublicationsRepository = {
           claimed_by = NULL,
           claim_expires_at = NULL,
           updated_at = NOW()
-      WHERE publication.status IN ('publishing', 'ambiguous')
+      WHERE (
+          publication.status = 'ambiguous'
+          OR (
+            publication.status = 'publishing'
+            AND (
+              publication.claimed_by IS NULL
+              OR publication.claim_expires_at IS NULL
+              OR publication.claim_expires_at < NOW()
+            )
+          )
+        )
         AND EXISTS (
           SELECT 1 FROM inventory_publication_items item
           WHERE item.publication_id = publication.id
@@ -926,6 +1015,29 @@ export const inventoryPublicationsRepository = {
       RETURNING publication.id`,
     );
     return recovered.length;
+  },
+
+  async findReceiptLinks(
+    publicationItemId: number,
+    executor?: Queryable,
+  ): Promise<InventoryPublicationReceiptLink[]> {
+    return query<InventoryPublicationReceiptLink>(
+      `SELECT
+        link.publication_item_id AS "publicationItemId",
+        link.receipt_id AS "receiptId",
+        link.planned_quantity AS "plannedQuantity",
+        link.target_seller_key AS "targetSellerKey",
+        link.live_at AS "liveAt",
+        link.activated_at AS "activatedAt",
+        link.confirmation_evidence AS "confirmationEvidence",
+        receipt.intake_at AS "intakeAt"
+      FROM inventory_publication_receipt_links link
+      JOIN inventory_receipts receipt ON receipt.receipt_id = link.receipt_id
+      WHERE link.publication_item_id = $1
+      ORDER BY receipt.intake_at NULLS FIRST, receipt.receipt_id`,
+      [publicationItemId],
+      executor,
+    );
   },
 
   async markPlannedItems(
@@ -980,8 +1092,9 @@ export const inventoryPublicationsRepository = {
     };
   },
   async recoverExpiredClaims(): Promise<number> {
-    const recovered = await query<{ id: number }>(
-      `UPDATE inventory_publications
+    return withTransaction(async (client) => {
+      const recovered = await query<{ id: number }>(
+        `UPDATE inventory_publications
       SET status = CASE
             WHEN status = 'publishing' THEN 'ambiguous'
             WHEN staged_pricing_upload_id IS NOT NULL THEN 'ambiguous'
@@ -1006,8 +1119,26 @@ export const inventoryPublicationsRepository = {
         AND claim_expires_at IS NOT NULL
         AND claim_expires_at < NOW()
       RETURNING id`,
-    );
-
-    return recovered.length;
+        [],
+        client,
+      );
+      if (recovered.length > 0) {
+        await execute(
+          `UPDATE inventory_publication_items item
+          SET status = 'ambiguous',
+              error_code = 'worker_lease_expired',
+              error_message = 'Worker lease expired after Seller Portal state may have changed.',
+              updated_at = NOW()
+          FROM inventory_publications publication
+          WHERE item.publication_id = publication.id
+            AND publication.id = ANY($1::bigint[])
+            AND publication.status = 'ambiguous'
+            AND item.status = 'planned'`,
+          [recovered.map((row) => row.id)],
+          client,
+        );
+      }
+      return recovered.length;
+    });
   },
 };
