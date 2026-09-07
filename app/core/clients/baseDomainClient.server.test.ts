@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  ConcurrencyLimiter,
   RequestThrottler,
 } from "./baseDomainClient.server";
 import {
@@ -64,6 +65,33 @@ const testCases: TestCase[] = [
         { requestDelayMs: 400, learnedMinDelayMs: 200 },
         { requestDelayMs: 300, learnedMinDelayMs: 200 },
       ]);
+    },
+  },
+  {
+    name: "aborted requests leave limiter and throttle queues",
+    run: async () => {
+      const limiter = new ConcurrencyLimiter();
+      await limiter.acquire(1);
+      const limiterAbort = new AbortController();
+      const waitingForLimiter = limiter.acquire(1, limiterAbort.signal);
+      limiterAbort.abort();
+      await assert.rejects(waitingForLimiter, { name: "AbortError" });
+      limiter.release();
+      await limiter.acquire(1);
+      limiter.release();
+
+      const delayedStarts: Array<() => void> = [];
+      const throttler = new RequestThrottler(
+        DOMAIN_KEYS.MP_GATEWAY,
+        async () => createDomainConfig({ requestDelayMs: 1_000 }),
+        async () => undefined,
+        () => new Promise<void>((resolve) => delayedStarts.push(resolve)),
+      );
+      await throttler.waitToStart();
+      const throttleAbort = new AbortController();
+      const waitingForThrottle = throttler.waitToStart(throttleAbort.signal);
+      throttleAbort.abort();
+      await assert.rejects(waitingForThrottle, { name: "AbortError" });
     },
   },
 ];

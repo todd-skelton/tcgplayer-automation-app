@@ -45,6 +45,7 @@ import {
   getQuantityKeyboardAction,
   type QuantityNavigationDirection,
 } from "./quantityKeyboard";
+import { finishQuantityEdit } from "../services/inventoryQuantityEdit";
 
 interface SkuWithDisplayInfo extends Sku {
   cardNumber?: string | null;
@@ -98,9 +99,15 @@ type AutosizedColumnField = "setName" | "sku";
 interface InventoryEntryTableProps {
   skus: SkuWithDisplayInfo[];
   pendingInventory: PendingInventoryEntry[];
-  onUpdateQuantity: (
+  onAdjustQuantity: (
+    sku: number,
+    quantityDelta: number,
+    metadata: { productLineId: number; setId: number; productId: number },
+  ) => void;
+  onSetQuantity: (
     sku: number,
     quantity: number,
+    expectedQuantity: number,
     metadata: { productLineId: number; setId: number; productId: number },
   ) => void;
   searchScope: "set" | "allSets";
@@ -263,7 +270,11 @@ interface QuantityGridCellProps {
   activeSku: SkuWithDisplayInfo | null;
   currentQty: number;
   selectedCondition: InventorySelectableCondition;
-  onQuantityChange: (sku: number, value: string) => void;
+  onQuantityCommit: (
+    sku: number,
+    quantity: number,
+    expectedQuantity: number,
+  ) => void;
   onQuickAdd: (
     activeSku: SkuWithDisplayInfo | null,
     amount: number,
@@ -287,7 +298,7 @@ const QuantityGridCell = React.memo(
     activeSku,
     currentQty,
     selectedCondition,
-    onQuantityChange,
+    onQuantityCommit,
     onQuickAdd,
     onFocusSearchInput,
     onFocusAdjacentQuantityInput,
@@ -298,6 +309,9 @@ const QuantityGridCell = React.memo(
     const quantityInputRef = useRef<HTMLInputElement | null>(null);
     const untouchedSinceFocusRef = useRef(true);
     const shouldReselectAfterSyncRef = useRef(false);
+    const editBaselineRef = useRef(currentQty);
+    const typedSinceFocusRef = useRef(false);
+    const editingSkuRef = useRef(activeSku?.sku);
 
     const selectQuantityInput = useCallback(() => {
       const input = quantityInputRef.current;
@@ -321,6 +335,17 @@ const QuantityGridCell = React.memo(
     );
 
     useEffect(() => {
+      if (editingSkuRef.current !== activeSku?.sku) {
+        editingSkuRef.current = activeSku?.sku;
+        typedSinceFocusRef.current = false;
+        editBaselineRef.current = currentQty;
+        setDisplayValue(currentQty.toString());
+        return;
+      }
+      if (typedSinceFocusRef.current) {
+        return;
+      }
+      editBaselineRef.current = currentQty;
       setDisplayValue(currentQty.toString());
 
       if (shouldReselectAfterSyncRef.current) {
@@ -337,8 +362,31 @@ const QuantityGridCell = React.memo(
       );
     }
 
+    const commitTypedQuantity = () => {
+      if (!typedSinceFocusRef.current) return;
+      typedSinceFocusRef.current = false;
+      const result = finishQuantityEdit(
+        activeSku.sku,
+        displayValue,
+        editBaselineRef.current,
+        true,
+      );
+      setDisplayValue(result.displayValue);
+      if (result.commit) {
+        onQuantityCommit(
+          result.commit.sku,
+          result.commit.quantity,
+          result.commit.expectedQuantity,
+        );
+      }
+      editBaselineRef.current = Number(result.displayValue);
+    };
+
     const applyKeyboardQuantityDelta = (amount: number) => {
-      const nextQty = Math.max(0, currentQty + amount);
+      const displayed = Number.parseInt(displayValue, 10);
+      const startingQuantity = Number.isFinite(displayed) ? displayed : currentQty;
+      commitTypedQuantity();
+      const nextQty = Math.max(0, startingQuantity + amount);
       untouchedSinceFocusRef.current = false;
       shouldReselectAfterSyncRef.current = true;
       setDisplayValue(nextQty.toString());
@@ -369,11 +417,13 @@ const QuantityGridCell = React.memo(
       event.stopPropagation();
 
       if (action.type === "change-condition") {
+        commitTypedQuantity();
         onChangeCondition(action.direction);
         return;
       }
 
       if (action.type === "move-focus") {
+        commitTypedQuantity();
         onFocusAdjacentQuantityInput(rowId, action.direction);
         return;
       }
@@ -382,6 +432,8 @@ const QuantityGridCell = React.memo(
         if (action.incrementQuantity) {
           untouchedSinceFocusRef.current = false;
           onQuickAdd(activeSku, 1, false);
+        } else {
+          commitTypedQuantity();
         }
 
         onFocusSearchInput();
@@ -396,7 +448,11 @@ const QuantityGridCell = React.memo(
         <Button
           size="small"
           onClick={() => {
-            const nextQty = Math.max(0, currentQty - 1);
+            const displayed = Number.parseInt(displayValue, 10);
+            const nextQty = Math.max(
+              0,
+              (Number.isFinite(displayed) ? displayed : currentQty) - 1,
+            );
             setDisplayValue(nextQty.toString());
             onQuickAdd(activeSku, -1);
           }}
@@ -414,14 +470,17 @@ const QuantityGridCell = React.memo(
           inputRef={handleQuantityInputRef}
           onFocus={() => {
             untouchedSinceFocusRef.current = true;
+            typedSinceFocusRef.current = false;
+            editBaselineRef.current = currentQty;
             selectQuantityInput();
           }}
+          onBlur={commitTypedQuantity}
           onKeyDown={handleQuantityKeyDown}
           onChange={(event) => {
             const nextValue = event.target.value;
             untouchedSinceFocusRef.current = false;
+            typedSinceFocusRef.current = true;
             setDisplayValue(nextValue);
-            onQuantityChange(activeSku.sku, nextValue);
           }}
           inputProps={{
             min: 0,
@@ -433,7 +492,8 @@ const QuantityGridCell = React.memo(
         <Button
           size="small"
           onClick={() => {
-            const nextQty = currentQty + 1;
+            const displayed = Number.parseInt(displayValue, 10);
+            const nextQty = (Number.isFinite(displayed) ? displayed : currentQty) + 1;
             setDisplayValue(nextQty.toString());
             onQuickAdd(activeSku, 1);
           }}
@@ -451,7 +511,7 @@ const QuantityGridCell = React.memo(
     previousProps.activeSku === nextProps.activeSku &&
     previousProps.currentQty === nextProps.currentQty &&
     previousProps.selectedCondition === nextProps.selectedCondition &&
-    previousProps.onQuantityChange === nextProps.onQuantityChange &&
+    previousProps.onQuantityCommit === nextProps.onQuantityCommit &&
     previousProps.onQuickAdd === nextProps.onQuickAdd &&
     previousProps.onFocusSearchInput === nextProps.onFocusSearchInput &&
     previousProps.onFocusAdjacentQuantityInput ===
@@ -465,7 +525,8 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
     ({
       skus,
       pendingInventory,
-      onUpdateQuantity,
+      onAdjustQuantity,
+      onSetQuantity,
       searchScope,
       allSetsSearchTerm,
       selectedCondition,
@@ -877,18 +938,16 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
         return getPendingQuantity(pendingInventoryRef.current, sku);
       }, []);
 
-      const handleQuantityChange = useCallback(
-        (sku: number, value: string) => {
-          const numValue = parseInt(value) || 0;
-
+      const handleQuantityCommit = useCallback(
+        (sku: number, quantity: number, expectedQuantity: number) => {
           try {
             const metadata = getSkuMetadata(sku);
-            onUpdateQuantity(sku, numValue, metadata);
+            onSetQuantity(sku, quantity, expectedQuantity, metadata);
           } catch (error) {
             console.error("Failed to get SKU metadata:", error);
           }
         },
-        [onUpdateQuantity, getSkuMetadata],
+        [onSetQuantity, getSkuMetadata],
       );
 
       const handleQuickAdd = useCallback(
@@ -901,12 +960,9 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
             return;
           }
 
-          const currentQty = getCurrentPendingQuantity(activeSku.sku);
-          const newQty = Math.max(0, currentQty + amount);
-
           try {
             const metadata = getSkuMetadata(activeSku.sku);
-            onUpdateQuantity(activeSku.sku, newQty, metadata);
+            onAdjustQuantity(activeSku.sku, amount, metadata);
           } catch (error) {
             console.error("Failed to get SKU metadata:", error);
           }
@@ -920,7 +976,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
             }, 0);
           }
         },
-        [getCurrentPendingQuantity, onUpdateQuantity, getSkuMetadata],
+        [onAdjustQuantity, getSkuMetadata],
       );
 
       const CustomToolbar = () => {
@@ -1148,7 +1204,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                   activeSku={activeSku}
                   currentQty={currentQty}
                   selectedCondition={selectedCondition}
-                onQuantityChange={handleQuantityChange}
+                onQuantityCommit={handleQuantityCommit}
                 onQuickAdd={handleQuickAdd}
                 onFocusSearchInput={focusSearchInput}
                 onFocusAdjacentQuantityInput={focusAdjacentQuantityInput}
@@ -1182,7 +1238,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
       focusAdjacentQuantityInput,
       focusSearchInput,
       getActiveSku,
-      handleQuantityChange,
+      handleQuantityCommit,
       handleQuickAdd,
       handleThumbnailClick,
       getCurrentPendingQuantity,

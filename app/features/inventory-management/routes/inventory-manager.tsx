@@ -45,7 +45,8 @@ export default function InventoryManagerRoute() {
     loadSets,
     loadSkusByCardNumber,
     loadPendingInventory,
-    updatePendingInventory,
+    adjustPendingInventory,
+    setPendingInventory,
     clearPendingInventory,
     createBatchFromPendingInventory,
     selectSet,
@@ -317,7 +318,8 @@ export default function InventoryManagerRoute() {
           <InventoryEntryTable
             skus={getFilteredSkus()}
             pendingInventory={pendingInventory}
-            onUpdateQuantity={updatePendingInventory}
+            onAdjustQuantity={adjustPendingInventory}
+            onSetQuantity={setPendingInventory}
             searchScope={searchScope}
             allSetsSearchTerm={allSetsSearchTerm}
             selectedCondition={selectedCondition}

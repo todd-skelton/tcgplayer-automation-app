@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import type { InventoryEntry, InventoryFilter } from "../types/inventoryEntry";
 import type { PendingInventoryEntry } from "../../pending-inventory/types/pendingInventory";
 import type { InventoryBatch } from "../../pending-inventory/types/inventoryBatch";
@@ -11,6 +11,7 @@ import {
   getPreviousInventoryCondition,
   type InventorySelectableCondition,
 } from "../../../core/utils/conditionOrder";
+import { InventoryMutationState } from "../services/inventoryMutationState";
 
 // Extended interface for SKUs with display information
 interface SkuWithDisplayInfo extends Sku {
@@ -61,9 +62,15 @@ export interface InventoryProcessorReturn extends InventoryProcessorState {
   setSearchScope: (searchScope: "set" | "allSets") => Promise<void>;
   loadCurrentInventory: () => Promise<void>;
   loadPendingInventory: () => Promise<void>;
-  updatePendingInventory: (
+  adjustPendingInventory: (
+    sku: number,
+    quantityDelta: number,
+    metadata: { productLineId: number; setId: number; productId: number }
+  ) => void;
+  setPendingInventory: (
     sku: number,
     quantity: number,
+    expectedQuantity: number,
     metadata: { productLineId: number; setId: number; productId: number }
   ) => void;
   clearPendingInventory: () => void;
@@ -79,6 +86,8 @@ export interface InventoryProcessorReturn extends InventoryProcessorState {
 
 export const useInventoryProcessor = (): InventoryProcessorReturn => {
   const baseProcessor = useProcessorBase();
+  const inventoryMutationQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const inventoryMutationState = useRef(new InventoryMutationState());
   const [state, setState] = useState<InventoryProcessorState>({
     productLines: [],
     sets: [],
@@ -280,56 +289,181 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     }
   }, []);
 
-  const updatePendingInventory = useCallback(
-    async (
-      sku: number,
-      quantity: number,
-      metadata: { productLineId: number; setId: number; productId: number }
-    ) => {
-      try {
-        const response = await fetch("/api/pending-inventory", {
+  const sendPendingMutation = useCallback(
+    async (body: Record<string, unknown>) => {
+      const send = () =>
+        fetch("/api/pending-inventory", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            method: "PUT",
-            sku,
-            quantity,
-            productLineId: metadata.productLineId,
-            setId: metadata.setId,
-            productId: metadata.productId,
-          }),
+          body: JSON.stringify(body),
         });
-
-        if (!response.ok) throw new Error("Failed to update pending inventory");
-
-        // Reload pending inventory to get the latest state
-        await loadPendingInventory();
-      } catch (error) {
-        baseProcessor.setError(`Failed to update pending inventory: ${error}`);
+      let response: Response;
+      try {
+        response = await send();
+      } catch {
+        response = await send();
       }
+      const payload = (await response.json()) as {
+        quantity?: number;
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to update pending inventory");
+      }
+      return payload;
     },
-    [loadPendingInventory]
+    [],
   );
 
-  const clearPendingInventory = useCallback(async () => {
-    try {
-      const response = await fetch("/api/pending-inventory", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method: "DELETE" }),
+  const queuePendingMutation = useCallback(
+    <T,>(work: () => Promise<T>): Promise<T> => {
+      inventoryMutationState.current.started();
+      const run = async () => {
+        try {
+          return await work();
+        } finally {
+          if (inventoryMutationState.current.finished()) {
+            await loadPendingInventory();
+          }
+        }
+      };
+      const queued = inventoryMutationQueue.current.then(run, run);
+      inventoryMutationQueue.current = queued.catch(() => undefined);
+      return queued;
+    },
+    [loadPendingInventory],
+  );
+
+  const updateLocalPendingQuantity = useCallback(
+    (
+      sku: number,
+      quantity: number,
+      metadata: { productLineId: number; setId: number; productId: number },
+    ) => {
+      setState((prev) => {
+        const existing = prev.pendingInventory.find((entry) => entry.sku === sku);
+        const withoutSku = prev.pendingInventory.filter((entry) => entry.sku !== sku);
+        if (quantity <= 0) {
+          return { ...prev, pendingInventory: withoutSku };
+        }
+        const now = new Date();
+        return {
+          ...prev,
+          pendingInventory: [
+            ...withoutSku,
+            {
+              sku,
+              quantity,
+              ...metadata,
+              createdAt: existing?.createdAt ?? now,
+              updatedAt: now,
+            },
+          ],
+        };
+      });
+    },
+    [],
+  );
+
+  const adjustPendingInventory = useCallback(
+    async (
+      sku: number,
+      quantityDelta: number,
+      metadata: { productLineId: number; setId: number; productId: number }
+    ) => {
+      if (quantityDelta === 0) return;
+      const requestId = crypto.randomUUID();
+      const mutationToken = inventoryMutationState.current.beginSku(sku);
+      setState((prev) => {
+        const current = prev.pendingInventory.find((entry) => entry.sku === sku)?.quantity ?? 0;
+        const next = Math.max(0, current + quantityDelta);
+        const existing = prev.pendingInventory.find((entry) => entry.sku === sku);
+        const withoutSku = prev.pendingInventory.filter((entry) => entry.sku !== sku);
+        if (next === 0) return { ...prev, pendingInventory: withoutSku };
+        const now = new Date();
+        return {
+          ...prev,
+          pendingInventory: [...withoutSku, {
+            sku, quantity: next, ...metadata,
+            createdAt: existing?.createdAt ?? now, updatedAt: now,
+          }],
+        };
       });
 
-      if (!response.ok) throw new Error("Failed to clear pending inventory");
+      void queuePendingMutation(async () => {
+        try {
+          const payload = await sendPendingMutation({
+            operation: quantityDelta > 0 ? "add" : "remove",
+            requestId,
+            sku,
+            quantity: Math.abs(quantityDelta),
+            ...metadata,
+          });
+          if (inventoryMutationState.current.canApplySku(mutationToken)) {
+            updateLocalPendingQuantity(sku, payload.quantity ?? 0, metadata);
+          }
+        } catch (error) {
+          baseProcessor.setError(`Failed to update pending inventory: ${error}`);
+          inventoryMutationState.current.failed();
+        }
+      });
+    },
+    [loadPendingInventory, queuePendingMutation, sendPendingMutation, updateLocalPendingQuantity],
+  );
 
-      // Update local state
-      setState((prev) => ({ ...prev, pendingInventory: [] }));
-    } catch (error) {
-      baseProcessor.setError(`Failed to clear pending inventory: ${error}`);
-    }
-  }, []);
-  const createBatchFromPendingInventory = useCallback(async () => {
+  const setPendingInventory = useCallback(
+    (
+      sku: number,
+      quantity: number,
+      expectedQuantity: number,
+      metadata: { productLineId: number; setId: number; productId: number },
+    ) => {
+      const requestId = crypto.randomUUID();
+      const mutationToken = inventoryMutationState.current.beginSku(sku);
+      updateLocalPendingQuantity(sku, quantity, metadata);
+      void queuePendingMutation(async () => {
+        try {
+          const payload = await sendPendingMutation({
+            operation: "set",
+            requestId,
+            sku,
+            quantity,
+            expectedQuantity,
+            ...metadata,
+          });
+          if (inventoryMutationState.current.canApplySku(mutationToken)) {
+            updateLocalPendingQuantity(sku, payload.quantity ?? 0, metadata);
+          }
+        } catch (error) {
+          baseProcessor.setError(`Failed to update pending inventory: ${error}`);
+          inventoryMutationState.current.failed();
+        }
+      });
+    },
+    [loadPendingInventory, queuePendingMutation, sendPendingMutation, updateLocalPendingQuantity],
+  );
+
+  const clearPendingInventory = useCallback(() => {
+    const requestId = crypto.randomUUID();
+    inventoryMutationState.current.beginBarrier();
+    setState((prev) => ({ ...prev, pendingInventory: [] }));
+    void queuePendingMutation(async () => {
+      try {
+        await sendPendingMutation({ operation: "clear", requestId });
+      } catch (error) {
+        baseProcessor.setError(`Failed to clear pending inventory: ${error}`);
+        inventoryMutationState.current.failed();
+      }
+    });
+  }, [loadPendingInventory, queuePendingMutation, sendPendingMutation]);
+  const createBatchFromPendingInventory = useCallback(() => {
+    const requestId = crypto.randomUUID();
+    const barrierVersion = inventoryMutationState.current.beginBarrier();
+    return queuePendingMutation(async () => {
     const response = await fetch("/api/inventory-batches", {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestId }),
     });
     const payload = (await response.json()) as InventoryBatch | { error?: string };
 
@@ -341,9 +475,12 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
       );
     }
 
-    setState((prev) => ({ ...prev, pendingInventory: [] }));
+    if (inventoryMutationState.current.canApplyBarrier(barrierVersion)) {
+      setState((prev) => ({ ...prev, pendingInventory: [] }));
+    }
     return payload as InventoryBatch;
-  }, []);
+    });
+  }, [queuePendingMutation]);
 
   const toggleSealedFilter = useCallback(
     (sealedFilter: "all" | "sealed" | "unsealed") => {
@@ -433,7 +570,8 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     setSearchScope,
     loadCurrentInventory,
     loadPendingInventory,
-    updatePendingInventory,
+    adjustPendingInventory,
+    setPendingInventory,
     clearPendingInventory,
     createBatchFromPendingInventory,
     toggleSealedFilter,

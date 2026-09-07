@@ -1,4 +1,6 @@
 import "../core/clients/baseDomainClient.server.test";
+import "../integrations/tcgplayer/client/get-price-points.server.test";
+import "../features/inventory-history/domain/receiptBalances.test";
 import "../features/ebay-slab-pricing/supply/sellerOutcomeCsv.test";
 import "../features/ebay-slab-pricing/maintenance/slabMaintenance.test";
 import "../features/ebay-slab-pricing/publication/slabPublication.test";
@@ -24,6 +26,8 @@ import "../features/inventory-publication/services/inventoryPublicationSettings.
 import "../integrations/tcgplayer/client/update-seller-inventory.server.test";
 import "../integrations/tcgplayer/client/staged-pricing-import.server.test";
 import "../features/inventory-management/components/quantityKeyboard.test";
+import "../features/inventory-management/services/inventoryQuantityEdit.test";
+import "../features/inventory-management/services/inventoryMutationState.test";
 import "../features/inventory-management/services/inventoryConverter.test";
 import "../features/shipping-export/config/shippingExportConfig.server.test";
 import "../features/shipping-export/config/shippingExportConfigFormData.test";
