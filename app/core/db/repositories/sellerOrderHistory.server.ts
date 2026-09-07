@@ -308,7 +308,8 @@ export const sellerOrderHistoryRepository = {
     runId: string;
     claimToken: string;
     nextOffset: number;
-    expectedTotal: number;
+    expectedTotal: number | null;
+    pageOffset?: number;
     pageOrderCount: number;
     pageCompleted: boolean;
     detailCount: number;
@@ -327,7 +328,7 @@ export const sellerOrderHistoryRepository = {
         await execute(
           `INSERT INTO seller_order_sync_run_orders (run_id, order_number, first_offset)
            VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
-          [input.runId, orderNumber, input.nextOffset - input.pageOrderCount + index],
+          [input.runId, orderNumber, (input.pageOffset ?? input.nextOffset) + index],
           db,
         );
       }

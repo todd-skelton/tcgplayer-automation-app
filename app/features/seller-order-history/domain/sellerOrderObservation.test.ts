@@ -47,6 +47,15 @@ const aggregate = aggregateSellerOrderLines(baseDetail.products);
 assert.deepEqual(aggregate.map((line) => ({ sku: line.skuId, quantity: line.quantity, proceeds: line.extendedPrice })), [
   { sku: "100", quantity: 2, proceeds: 12.5 },
 ]);
+const mixedProductIds = [
+  { ...baseDetail.products[0]!, productId: "", name: "" },
+  { ...baseDetail.products[0]!, productId: "10", name: "Card" },
+];
+assert.deepEqual(
+  aggregateSellerOrderLines(mixedProductIds),
+  aggregateSellerOrderLines([...mixedProductIds].reverse()),
+);
+assert.equal(aggregateSellerOrderLines(mixedProductIds)[0]?.productId, "10");
 
 const first = observeSellerOrder(" seller-a ", {
   orderNumber: "SYNTHETIC-1001", orderDate: "2026-08-10T14:00:00.000Z",
@@ -82,5 +91,23 @@ assert.throws(
     products: [{ ...baseDetail.products[0]!, extendedPrice: -1 }],
   }),
   /invalid price/,
+);
+const equivalentRefundTime = observeSellerOrder("seller-a", undefined, {
+  ...baseDetail,
+  refunds: [{
+    ...(baseDetail.refunds[0] as Record<string, unknown>),
+    createdAt: "2026-08-10T20:00:00-04:00",
+  }],
+});
+assert.equal(first.fingerprint, equivalentRefundTime.fingerprint);
+assert.throws(
+  () => observeSellerOrder("seller-a", undefined, {
+    ...baseDetail,
+    refunds: [{
+      ...(baseDetail.refunds[0] as Record<string, unknown>),
+      createdAt: "2026-08-11T00:00:00",
+    }],
+  }),
+  /refund createdAt must include a UTC offset/,
 );
 console.log("PASS seller order observations normalize lifecycle, stable SKU lines, time, and evidence");

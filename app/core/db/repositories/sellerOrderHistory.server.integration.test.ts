@@ -122,6 +122,8 @@ try {
   });
   assert.equal(unchanged.coverage.status, "complete");
   assert.equal(unchangedDetailCalls, 0);
+  assert.equal(unchanged.coverage.observedFrom, "2026-08-10T14:00:00.000Z");
+  assert.equal(unchanged.coverage.observedThrough, "2026-08-10T14:00:00.000Z");
 
   const changedDetailNumbers: string[] = [];
   const changedScan = await synchronizeSellerOrders(syncSeller, {}, {

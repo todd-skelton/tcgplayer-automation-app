@@ -102,13 +102,12 @@ function fakeRepository(initial: {
     repository: fake.repository,
     searchOrders: async (request) => {
       offsets.push(request.from);
-      return request.from === 0
-        ? { totalOrders: 3, orders: [summary("A"), summary("B")] }
-        : { totalOrders: 3, orders: [summary("C")] };
+      const orders = [summary("A"), summary("B"), summary("C")];
+      return { totalOrders: orders.length, orders: orders.slice(request.from, request.from + request.size) };
     },
     getOrder: async (number) => detail(number),
   });
-  assert.deepEqual(offsets, [0, 2]);
+  assert.deepEqual(offsets, [0, 1]);
   assert.equal(result.coverage.status, "complete");
   assert.equal(result.coverage.ordersObserved, 3);
   assert.deepEqual(new Set(result.changedOrderNumbers), new Set(["A", "B", "C"]));
@@ -128,26 +127,25 @@ function fakeRepository(initial: {
 
 {
   const fake = fakeRepository();
-  let shifted = true;
+  let orders = [summary("A"), summary("B"), summary("C"), summary("D")];
   const scan = () => synchronizeSellerOrders("seller-a", {
     maxPages: 1, maxDetails: 2, pageSize: 2, detailConcurrency: 2,
   }, {
     repository: fake.repository,
     searchOrders: async (request) => ({
-      totalOrders: 4,
-      orders: request.from === 0
-        ? (shifted ? [summary("A"), summary("C")] : [summary("A"), summary("B")])
-        : [summary("C"), summary("D")],
+      totalOrders: orders.length,
+      orders: orders.slice(request.from, request.from + request.size),
     }),
     getOrder: async (number) => detail(number),
   });
   assert.equal((await scan()).coverage.nextOffset, 2);
-  const inconsistent = await scan();
-  assert.equal(inconsistent.coverage.nextOffset, 0);
-  assert.match(inconsistent.coverage.error ?? "", /restarting with overlap/);
-  shifted = false;
-  await scan();
-  assert.equal((await scan()).coverage.status, "complete");
+  orders = [summary("B"), summary("C"), summary("D"), summary("E")];
+  const overlap = await scan();
+  assert.equal(overlap.coverage.nextOffset, 3);
+  assert.ok(overlap.changedOrderNumbers.includes("C"));
+  const completed = await scan();
+  assert.equal(completed.coverage.status, "complete");
+  assert.equal(fake.state.ordersObserved, 5);
 }
 
 {

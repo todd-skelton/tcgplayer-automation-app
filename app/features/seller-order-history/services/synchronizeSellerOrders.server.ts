@@ -72,11 +72,18 @@ async function boundedRequest<T>(
   timeoutMs = 10_000,
 ): Promise<T> {
   const controller = new AbortController();
+  let rejectOnAbort: ((error: Error) => void) | undefined;
+  const aborted = new Promise<never>((_, reject) => {
+    rejectOnAbort = reject;
+  });
+  const onAbort = () => rejectOnAbort?.(new Error("Seller order request timed out."));
+  controller.signal.addEventListener("abort", onAbort, { once: true });
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await request(controller.signal);
+    return await Promise.race([request(controller.signal), aborted]);
   } finally {
     clearTimeout(timeout);
+    controller.signal.removeEventListener("abort", onAbort);
   }
 }
 
@@ -159,7 +166,8 @@ export async function synchronizeSellerOrders(
   const changedOrderNumbers = new Set<string>();
   let detailBudget = limits.maxDetails;
   let nextOffset = run.nextOffset;
-  let expectedTotal = run.expectedTotal ?? 0;
+  let expectedTotal = run.expectedTotal;
+  let hasObservedSearchPage = run.pagesCompleted > 0;
   let gaps = [...(run.gaps ?? [])];
 
   try {
@@ -237,7 +245,8 @@ export async function synchronizeSellerOrders(
         observedTimes: retry.times, gaps, complete: false,
       });
       if (detailBudget === 0) {
-        const complete = nextOffset >= expectedTotal && gaps.length === 0;
+        const complete = hasObservedSearchPage && expectedTotal !== null &&
+          nextOffset >= expectedTotal && gaps.length === 0;
         return {
           coverage: await dependencies.repository.finishApiRun(
             run.id, claimToken, complete,
@@ -251,20 +260,24 @@ export async function synchronizeSellerOrders(
     let coverage = await dependencies.repository.getCoverage(normalizedSellerKey);
     for (let page = 0; page < limits.maxPages && detailBudget > 0; page += 1) {
       const size = limits.pageSize;
+      const overlap = nextOffset === 0
+        ? 0
+        : Math.min(25, Math.max(1, Math.floor(size / 10)));
+      const pageOffset = Math.max(0, nextOffset - overlap);
       const response = await boundedRequest((signal) => dependencies.searchOrders({
           searchRange: SEARCH_RANGE,
           filters: { sellerKey: normalizedSellerKey },
           sortBy: ORDER_DATE_SORT,
-          from: nextOffset,
+          from: pageOffset,
           size,
         }, { signal, retry: false }));
       expectedTotal = response.totalOrders;
-      if (response.orders.length === 0 && nextOffset < expectedTotal) {
+      if (response.orders.length === 0 && pageOffset < expectedTotal) {
         return {
           coverage: await dependencies.repository.restartInconsistentApiRun(
             run.id,
             claimToken,
-            `Search returned an empty page at offset ${nextOffset} before reported total ${expectedTotal}.`,
+            `Search returned an empty page at offset ${pageOffset} before reported total ${expectedTotal}.`,
           ),
           changedOrderNumbers: [...changedOrderNumbers],
         };
@@ -295,9 +308,10 @@ export async function synchronizeSellerOrders(
         });
       }
       gaps = [...gapsByOrder.values()];
-      nextOffset += response.orders.length;
+      nextOffset = Math.max(nextOffset, pageOffset + response.orders.length);
       detailBudget -= summariesToFetch.length;
-      const reachedEnd = response.orders.length === 0 || nextOffset >= expectedTotal;
+      const reachedEnd = response.orders.length < size || nextOffset >= expectedTotal;
+      hasObservedSearchPage = true;
       let complete = reachedEnd && gaps.length === 0;
       const previousUniqueOrders = coverage.ordersObserved;
       coverage = await dependencies.repository.saveApiProgress({
@@ -305,15 +319,23 @@ export async function synchronizeSellerOrders(
         claimToken,
         nextOffset,
         expectedTotal,
+        pageOffset,
         pageOrderCount: response.orders.length,
         pageCompleted: true,
         detailCount: detailResult.recorded,
-        observedTimes: detailResult.times,
+        observedTimes: [
+          ...detailResult.times,
+          ...response.orders.map((summary) => summary.orderDate),
+        ],
         gaps,
         complete,
         orderNumbers: response.orders.map((order) => order.orderNumber),
       });
-      if (response.orders.length > 0 && coverage.ordersObserved === previousUniqueOrders) {
+      if (
+        response.orders.length > 0 &&
+        coverage.ordersObserved === previousUniqueOrders &&
+        coverage.ordersObserved < expectedTotal
+      ) {
         return {
           coverage: await dependencies.repository.restartInconsistentApiRun(
             run.id, claimToken,

@@ -47,7 +47,8 @@ export function aggregateSellerOrderLines(
     bySku.set(skuId, previous
       ? {
           ...previous,
-          name: [previous.name, line.name].sort()[0] ?? "",
+          name: [previous.name, line.name].filter(Boolean).sort()[0] ?? "",
+          productId: previous.productId || line.productId,
           quantity: previous.quantity + line.quantity,
           extendedPrice: roundMoney(previous.extendedPrice + line.extendedPrice),
           unitPrice: roundMoney(
@@ -66,8 +67,8 @@ function sanitizeRefunds(refunds: readonly unknown[]): SellerOrderRefundEvidence
       ? value as Record<string, unknown>
       : {};
     return {
-      ...(typeof refund.createdAt === "string" && Number.isFinite(Date.parse(refund.createdAt))
-        ? { createdAt: new Date(refund.createdAt).toISOString() }
+      ...(typeof refund.createdAt === "string"
+        ? { createdAt: offsetTimestamp(refund.createdAt, "Seller order refund createdAt") }
         : {}),
       ...(typeof refund.type === "string" ? { type: refund.type } : {}),
       ...(typeof refund.amount === "number" ? { amount: refund.amount } : {}),
