@@ -10,6 +10,7 @@ export { categorySetsRepository } from "./repositories/categorySets.server";
 export { continuousPricingRepository } from "./repositories/continuousPricing.server";
 export { httpConfigRepository } from "./repositories/httpConfig.server";
 export { inventoryBatchesRepository } from "./repositories/inventoryBatches.server";
+export { inventoryFifoRepository } from "./repositories/inventoryFifo.server";
 export { inventoryOpeningBalancesRepository } from "./repositories/inventoryOpeningBalances.server";
 export { inventoryBatchPricingJobsRepository } from "./repositories/inventoryBatchPricingJobs.server";
 export { inventoryPublicationsRepository } from "./repositories/inventoryPublications.server";

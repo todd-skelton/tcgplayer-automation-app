@@ -4,6 +4,7 @@ import type {
   SellerOrderSource,
 } from "~/features/seller-order-history/types/sellerOrderHistory";
 import { aggregateSellerOrderLines } from "~/features/seller-order-history/domain/sellerOrderObservation";
+import { inventoryFifoRepository } from "./inventoryFifo.server";
 import {
   asJson,
   execute,
@@ -208,6 +209,7 @@ export const sellerOrderHistoryRepository = {
           asJson(observation.lines)],
         db,
       );
+      await inventoryFifoRepository.enqueueOrderRevision(orderId, db);
       return { changed: true, orderId, revision };
     };
     return executor ? perform(executor) : withTransaction(perform);

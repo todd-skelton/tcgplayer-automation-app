@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { asJson, execute, query, queryOne, withTransaction, type Queryable } from "../database.server";
 import { quantityFingerprint, supportedQuantityFingerprint, type InventoryObservationItem } from "~/features/inventory-opening-balance/domain/inventoryObservation";
+import { inventoryFifoRepository } from "./inventoryFifo.server";
 
 type ObservationInput = {
   requestId: string; sellerKey: string; status: "complete" | "unstable";
@@ -544,6 +545,10 @@ export const inventoryOpeningBalancesRepository = {
       await execute(`UPDATE inventory_opening_balance_runs SET status='applied',apply_request_id=$2,
         validation_observation_id=$3,validation_order_coverage_evidence=$4::jsonb,applied_at=NOW()
         WHERE id=$1`,[input.runId,input.requestId.trim(),validation.id,asJson(validationCoverage)],db);
+      const openingSkus=await query<{sku:number}>(`SELECT sku FROM inventory_opening_balance_items
+        WHERE run_id=$1 AND opening_quantity>0`,[input.runId],db);
+      await inventoryFifoRepository.enqueueSellerSkus(run.sellerKey,
+        openingSkus.map(({sku})=>({sku,affectedFrom:run.cutoffAt})),db);
       return {
         ...run,status:"applied",validationObservationId:validation.id,
         unsupportedPositiveItemCount:validation.unsupportedPositiveItemCount,
