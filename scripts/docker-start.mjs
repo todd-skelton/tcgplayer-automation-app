@@ -2,7 +2,7 @@ import path from "node:path";
 
 import {
   migrateWithRetry,
-  spawnInheritedProcess,
+  spawnInheritedProcesses,
 } from "./docker-start-support.mjs";
 
 async function main() {
@@ -13,7 +13,10 @@ async function main() {
       ? path.resolve("node_modules/.bin/react-router-serve.cmd")
       : path.resolve("node_modules/.bin/react-router-serve");
 
-  spawnInheritedProcess(serverBinary, ["./build/server/index.js"]);
+  spawnInheritedProcesses([
+    { command: process.execPath, args: [path.resolve("build/workers/seller-order-history-worker.js")] },
+    { command: serverBinary, args: ["./build/server/index.js"] },
+  ]);
 }
 
 main().catch((error) => {

@@ -76,6 +76,7 @@ import { PackStep } from "../components/steps/PackStep";
 import { ApplyTrackingStep } from "../components/steps/ApplyTrackingStep";
 import { NotifyStep } from "../components/steps/NotifyStep";
 import { ReturnFlowPanel } from "../components/ReturnFlowPanel";
+import type { SellerOrderCoverage } from "~/features/seller-order-history/types/sellerOrderHistory";
 
 const OUTBOUND_STEPS = [
   { key: "load-orders", label: "Load Orders" },
@@ -209,6 +210,8 @@ export default function ShippingExportRoute() {
   const [loadedSourceLabel, setLoadedSourceLabel] = useState("");
   const [loadWarnings, setLoadWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [historyCoverage, setHistoryCoverage] = useState<SellerOrderCoverage>();
+  const [isUpdatingHistory, setIsUpdatingHistory] = useState(false);
 
   // ── Shipment edit drawer ──────────────────────────────────────────────────
   const [selectedShipment, setSelectedShipment] = useState<EasyPostShipment | null>(null);
@@ -593,6 +596,7 @@ export default function ShippingExportRoute() {
       );
 
       setSellerKeyInput(liveOrderResponse.sellerKey);
+      setHistoryCoverage(liveOrderResponse.historyCoverage);
       void applyOrderSource(
         liveOrderResponse.orders,
         `Live seller orders: ${liveOrderResponse.sellerKey}`,
@@ -634,6 +638,7 @@ export default function ShippingExportRoute() {
       if (singleOrderResponse.sellerKey) {
         setSellerKeyInput(singleOrderResponse.sellerKey);
       }
+      setHistoryCoverage(singleOrderResponse.historyCoverage);
 
       setSingleOrderNumberInput(singleOrderResponse.loadedOrderNumbers[0] ?? normalizedOrderNumber);
       void applyOrderSource(
@@ -646,6 +651,34 @@ export default function ShippingExportRoute() {
     } finally {
       setIsLoadingSingleOrder(false);
     }
+  };
+
+  const updateSellerOrderHistory = async (
+    payload: { action: "catch_up"; orderNumbers: string[] } | { action: "import_csv"; csvText: string; fileName: string },
+  ) => {
+    setIsUpdatingHistory(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/seller-order-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sellerKey: sellerKeyInput.trim(), ...payload }),
+      });
+      const result = await readJsonResponse<{ coverage: SellerOrderCoverage }>(
+        response,
+        "Failed to update seller order history.",
+      );
+      setHistoryCoverage(result.coverage);
+    } catch (historyError) {
+      setError(String(historyError));
+    } finally {
+      setIsUpdatingHistory(false);
+    }
+  };
+
+  const handleImportHistoryFile = async (file: File) => {
+    const csvText = await file.text();
+    await updateSellerOrderHistory({ action: "import_csv", csvText, fileName: file.name });
   };
 
   // ── Handlers: pull sheet & packing slips ──────────────────────────────────
@@ -1198,6 +1231,13 @@ export default function ShippingExportRoute() {
                 onSingleOrderNumberChange={setSingleOrderNumberInput}
                 onLoadLiveOrders={() => void handleLoadLiveOrders()}
                 onLoadSingleOrder={() => void handleLoadSingleOrder()}
+                historyCoverage={historyCoverage}
+                isUpdatingHistory={isUpdatingHistory}
+                onCatchUpHistory={() => void updateSellerOrderHistory({
+                  action: "catch_up",
+                  orderNumbers: sourceOrders.map((order) => order["Order #"]),
+                })}
+                onImportHistoryFile={(file) => void handleImportHistoryFile(file)}
                 onContinue={() => setCurrentStep(1)}
               />
             )}

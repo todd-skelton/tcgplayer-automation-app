@@ -2,6 +2,10 @@ import { type RouteConfig, index } from "@react-router/dev/routes";
 
 export default [
   {
+    path: "/api/seller-order-history",
+    file: "features/seller-order-history/routes/api.seller-order-history.ts",
+  },
+  {
     path: "/api/slab-outcomes",
     file: "features/ebay-slab-pricing/routes/api.slab-outcomes.ts",
   },

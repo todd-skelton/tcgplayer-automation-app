@@ -3,6 +3,9 @@ import { build } from "esbuild";
 
 await build({
   entryPoints: {
+    "seller-order-history-worker": path.resolve(
+      "app/workers/seller-order-history-worker.server.ts",
+    ),
     "slab-evidence-worker": path.resolve(
       "app/workers/slab-evidence-worker.server.ts",
     ),

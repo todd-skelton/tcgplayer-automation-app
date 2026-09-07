@@ -19,6 +19,7 @@
     "start:slab-evidence-worker": "node build/workers/slab-evidence-worker.js",
     "start:publication-worker": "node build/workers/publication-worker.js",
     "start:continuous-pricing-scheduler": "node build/workers/continuous-pricing-scheduler.js",
+    "start:seller-order-history-worker": "node build/workers/seller-order-history-worker.js",
     "start": "node scripts/run-with-node-options.mjs react-router-serve ./build/server/index.js",
     "typecheck": "node scripts/run-with-node-options.mjs react-router typegen && node scripts/run-with-node-options.mjs tsc",
     "db:migrate": "node scripts/db-migrate.mjs",

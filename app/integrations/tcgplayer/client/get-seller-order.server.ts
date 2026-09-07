@@ -59,8 +59,11 @@ export interface SellerOrderDetail {
 
 export async function getSellerOrder(
   orderNumber: string,
+  options?: { signal?: AbortSignal; retry?: boolean },
 ): Promise<SellerOrderDetail> {
   return orderManagementApi.get<SellerOrderDetail>(
     `/orders/${encodeURIComponent(orderNumber)}?api-version=2.0`,
+    undefined,
+    options,
   );
 }

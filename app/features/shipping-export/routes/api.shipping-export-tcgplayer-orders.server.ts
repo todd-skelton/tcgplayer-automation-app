@@ -4,11 +4,13 @@ import {
   loadSellerShippingOrders,
   loadSingleSellerShippingOrder,
 } from "../services/tcgplayerSellerOrders.server";
+import { sellerOrderHistoryRepository } from "~/core/db";
 
 type ShippingTcgplayerOrdersActionDependencies = {
   getShippingExportConfig?: typeof getShippingExportConfig;
   loadSellerShippingOrders?: typeof loadSellerShippingOrders;
   loadSingleSellerShippingOrder?: typeof loadSingleSellerShippingOrder;
+  getHistoryCoverage?: typeof sellerOrderHistoryRepository.getCoverage;
 };
 
 export function createShippingTcgplayerOrdersAction(
@@ -20,6 +22,25 @@ export function createShippingTcgplayerOrdersAction(
     dependencies.loadSellerShippingOrders ?? loadSellerShippingOrders;
   const loadSingleOrder =
     dependencies.loadSingleSellerShippingOrder ?? loadSingleSellerShippingOrder;
+  const getHistoryCoverage = dependencies.getHistoryCoverage;
+
+  async function attachHistoryCoverage<T extends { warnings?: string[] }>(
+    sellerKey: string,
+    response: T,
+  ) {
+    if (!getHistoryCoverage) return response;
+    try {
+      return { ...response, historyCoverage: await getHistoryCoverage(sellerKey) };
+    } catch (error) {
+      return {
+        ...response,
+        warnings: [
+          ...(response.warnings ?? []),
+          `Seller order history status is unavailable: ${String(error)}`,
+        ],
+      };
+    }
+  }
 
   return async function action({ request }: { request: Request }) {
     if (request.method !== "POST") {
@@ -50,11 +71,11 @@ export function createShippingTcgplayerOrdersAction(
 
       if (providedOrderNumber) {
         const response = await loadSingleOrder(sellerKey, providedOrderNumber);
-        return data(response, { status: 200 });
+        return data(await attachHistoryCoverage(sellerKey, response), { status: 200 });
       }
 
       const response = await loadOrders(sellerKey);
-      return data(response, { status: 200 });
+      return data(await attachHistoryCoverage(sellerKey, response), { status: 200 });
     } catch (error) {
       return data({ error: String(error) }, { status: 500 });
     }

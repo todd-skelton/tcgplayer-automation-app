@@ -38,9 +38,11 @@ export interface SearchSellerOrdersResponse {
 
 export async function searchSellerOrders(
   request: SearchSellerOrdersRequest,
+  options?: { signal?: AbortSignal; retry?: boolean },
 ): Promise<SearchSellerOrdersResponse> {
   return orderManagementApi.post<SearchSellerOrdersResponse>(
     "/orders/search?api-version=2.0",
     request,
+    options,
   );
 }

@@ -1,0 +1,20 @@
+{
+  "orderNumber": "SYNTHETIC-ORDER-1001",
+  "createdAt": "2026-08-10T14:00:00.440Z",
+  "status": "Shipped - Delivered",
+  "refundStatus": "Partial Refund",
+  "products": [
+    { "name": "Synthetic Card", "unitPrice": 6.25, "extendedPrice": 6.25, "quantity": 1, "productId": "100", "skuId": "10001" },
+    { "name": "Synthetic Card", "unitPrice": 6.25, "extendedPrice": 6.25, "quantity": 1, "productId": "100", "skuId": "10001" }
+  ],
+  "refunds": [
+    {
+      "createdAt": "2026-08-15T15:30:00.000Z",
+      "type": "Partial",
+      "origin": "BuyerInitiated",
+      "amount": 3.25,
+      "shippingAmount": 0,
+      "products": [{ "amount": 3.25, "productId": "100", "skuId": "10001" }]
+    }
+  ]
+}

@@ -4,7 +4,7 @@ import { loadAppEnv } from "./load-local-env.mjs";
 
 import {
   migrateWithRetry,
-  spawnInheritedProcess,
+  spawnInheritedProcesses,
 } from "./docker-start-support.mjs";
 
 loadAppEnv("development");
@@ -169,11 +169,15 @@ async function main() {
     return;
   }
 
-  spawnInheritedProcess(process.execPath, [
-    path.resolve("scripts/run-with-node-options.mjs"),
-    "react-router",
-    "dev",
-    ...devServerArgs,
+  spawnInheritedProcesses([
+    {
+      command: process.execPath,
+      args: [path.resolve("node_modules/tsx/dist/cli.mjs"), path.resolve("app/workers/seller-order-history-worker.server.ts")],
+    },
+    {
+      command: process.execPath,
+      args: [path.resolve("scripts/run-with-node-options.mjs"), "react-router", "dev", ...devServerArgs],
+    },
   ]);
 }
 
