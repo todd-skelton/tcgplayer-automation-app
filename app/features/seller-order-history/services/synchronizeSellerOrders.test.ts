@@ -38,6 +38,29 @@ function detail(orderNumber: string): SellerOrderDetail {
   assert.equal(detailCalls, 1);
 }
 
+{
+  const fake = fakeRepository();
+  (fake.repository as any).findApiVerifiedOrderNumbers = async () => [];
+  let activeSearches = 0;
+  let peakSearches = 0;
+  const priorities = ["P1", "P2", "P3", "P4"];
+  await synchronizeSellerOrders("seller-a", {
+    maxPages: 1, maxDetails: 4, pageSize: 4, detailConcurrency: 2,
+  }, {
+    repository: fake.repository,
+    searchOrders: async (request) => {
+      activeSearches += 1;
+      peakSearches = Math.max(peakSearches, activeSearches);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      activeSearches -= 1;
+      return { totalOrders: 1, orders: [summary(request.query?.orderNumber ?? "") ] };
+    },
+    getOrder: async (number) => detail(number),
+  }, priorities);
+  assert.equal(peakSearches, 2);
+  assert.equal(activeSearches, 0);
+}
+
 function summary(orderNumber: string) {
   return {
     orderNumber, orderDate: "2026-08-10T14:00:00.000Z",

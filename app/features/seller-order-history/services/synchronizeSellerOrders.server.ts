@@ -187,18 +187,22 @@ export async function synchronizeSellerOrders(
       ),
     );
     const verifiedSummaries = new Map<string, SellerOrderSearchSummary>();
-    for (const orderNumber of requestedPriority) {
-      if (verifiedPriority.has(orderNumber)) continue;
-      const response = await boundedRequest((signal) => dependencies.searchOrders({
-        searchRange: SEARCH_RANGE,
-        query: { orderNumber },
-        filters: { sellerKey: normalizedSellerKey },
-        sortBy: ORDER_DATE_SORT,
-        from: 0,
-        size: 25,
-      }, { signal, retry: false }));
-      const match = response.orders.find((order) => order.orderNumber === orderNumber);
-      if (match) verifiedSummaries.set(orderNumber, match);
+    const verifyPriority = pLimit(limits.detailConcurrency);
+    const newlyVerified = await Promise.all(requestedPriority
+      .filter((orderNumber) => !verifiedPriority.has(orderNumber))
+      .map((orderNumber) => verifyPriority(async () => {
+        const response = await boundedRequest((signal) => dependencies.searchOrders({
+          searchRange: SEARCH_RANGE,
+          query: { orderNumber },
+          filters: { sellerKey: normalizedSellerKey },
+          sortBy: ORDER_DATE_SORT,
+          from: 0,
+          size: 25,
+        }, { signal, retry: false }));
+        return response.orders.find((order) => order.orderNumber === orderNumber);
+      })));
+    for (const summary of newlyVerified) {
+      if (summary) verifiedSummaries.set(summary.orderNumber, summary);
     }
     const priority = requestedPriority.filter(
       (orderNumber) => verifiedPriority.has(orderNumber) || verifiedSummaries.has(orderNumber),
