@@ -471,7 +471,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
         const batch = await createPendingInventoryBatch(requestId);
         pendingBatchRequestId.current = null;
         if (inventoryMutationState.current.canApplyBarrier(barrierVersion)) {
-          setState((prev) => ({ ...prev, pendingInventory: [] }));
+          await loadPendingInventory();
         }
         return batch;
       } catch (error) {
@@ -488,7 +488,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
         throw error;
       }
     });
-  }, [queuePendingMutation]);
+  }, [loadPendingInventory, queuePendingMutation]);
 
   const toggleSealedFilter = useCallback(
     (sealedFilter: "all" | "sealed" | "unsealed") => {

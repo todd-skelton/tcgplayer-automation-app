@@ -52,11 +52,17 @@ export async function createPendingInventoryBatch(
     }
 
     if (!response.ok) {
+      const uncertainStatus =
+        response.status === 408 ||
+        response.status === 425 ||
+        response.status === 429 ||
+        response.status >= 500;
+      if (uncertainStatus && attempt === 0) continue;
       throw new PendingBatchRequestError(
         "error" in payload && payload.error
           ? payload.error
           : `Batch creation failed with HTTP ${response.status}`,
-        "definitive",
+        uncertainStatus ? "uncertain" : "definitive",
       );
     }
 
