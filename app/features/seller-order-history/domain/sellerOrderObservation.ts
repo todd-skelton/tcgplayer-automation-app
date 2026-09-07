@@ -36,10 +36,18 @@ export function aggregateSellerOrderLines(
     if (!Number.isInteger(line.quantity) || line.quantity <= 0) {
       throw new Error(`Seller order ${skuId} has an invalid quantity.`);
     }
+    if (!Number.isFinite(line.unitPrice) || line.unitPrice < 0 ||
+        !Number.isFinite(line.extendedPrice) || line.extendedPrice < 0) {
+      throw new Error(`Seller order ${skuId} has an invalid price.`);
+    }
     const previous = bySku.get(skuId);
+    if (previous && previous.productId && line.productId && previous.productId !== line.productId) {
+      throw new Error(`Seller order SKU ${skuId} has conflicting product IDs.`);
+    }
     bySku.set(skuId, previous
       ? {
           ...previous,
+          name: [previous.name, line.name].sort()[0] ?? "",
           quantity: previous.quantity + line.quantity,
           extendedPrice: roundMoney(previous.extendedPrice + line.extendedPrice),
           unitPrice: roundMoney(
@@ -58,10 +66,11 @@ function sanitizeRefunds(refunds: readonly unknown[]): SellerOrderRefundEvidence
       ? value as Record<string, unknown>
       : {};
     return {
-      ...(typeof refund.createdAt === "string" ? { createdAt: refund.createdAt } : {}),
+      ...(typeof refund.createdAt === "string" && Number.isFinite(Date.parse(refund.createdAt))
+        ? { createdAt: new Date(refund.createdAt).toISOString() }
+        : {}),
       ...(typeof refund.type === "string" ? { type: refund.type } : {}),
       ...(typeof refund.amount === "number" ? { amount: refund.amount } : {}),
-      ...(typeof refund.reason === "string" ? { reason: refund.reason } : {}),
       ...(typeof refund.origin === "string" ? { origin: refund.origin } : {}),
       ...(typeof refund.shippingAmount === "number"
         ? { shippingAmount: refund.shippingAmount }
@@ -83,7 +92,7 @@ function sanitizeRefunds(refunds: readonly unknown[]): SellerOrderRefundEvidence
           }
         : {}),
     };
-  });
+  }).sort((a, b) => stableJson(a).localeCompare(stableJson(b)));
 }
 
 function stableJson(value: unknown): string {
@@ -96,10 +105,17 @@ function stableJson(value: unknown): string {
   return JSON.stringify(value);
 }
 
+function offsetTimestamp(value: string, label: string): string {
+  if (!/(?:Z|[+-]\d{2}:\d{2})$/i.test(value) || !Number.isFinite(Date.parse(value))) {
+    throw new Error(`${label} must include a UTC offset.`);
+  }
+  return new Date(value).toISOString();
+}
+
 export function fingerprintSellerOrderSummary(summary: SellerOrderSearchSummary): string {
   return createHash("sha256").update(stableJson({
     orderNumber: summary.orderNumber,
-    orderDate: summary.orderDate,
+    orderDate: offsetTimestamp(summary.orderDate, `Order ${summary.orderNumber} summary orderDate`),
     orderChannel: summary.orderChannel,
     orderStatus: summary.orderStatus,
     shippingType: summary.shippingType,
@@ -138,8 +154,12 @@ export function observeSellerOrder(
   const normalizedSellerKey = sellerKey.trim();
   if (!normalizedSellerKey) throw new Error("Seller key is required.");
   if (!detail.orderNumber.trim()) throw new Error("Order number is required.");
-  if (!Number.isFinite(Date.parse(detail.createdAt))) {
-    throw new Error(`Order ${detail.orderNumber} has an invalid createdAt timestamp.`);
+  const orderTime = offsetTimestamp(
+    detail.createdAt,
+    `Order ${detail.orderNumber} createdAt`,
+  );
+  if (!Number.isFinite(detail.transaction.productAmount) || detail.transaction.productAmount < 0) {
+    throw new Error(`Order ${detail.orderNumber} has invalid gross item proceeds.`);
   }
   const lines = detail.products.map((line) => ({
     name: line.name,
@@ -153,8 +173,10 @@ export function observeSellerOrder(
   const base = {
     sellerKey: normalizedSellerKey,
     orderNumber: detail.orderNumber.trim(),
-    orderTime: detail.createdAt,
-    ...(summary?.orderDate ? { summaryOrderTime: summary.orderDate } : {}),
+    orderTime,
+    ...(summary?.orderDate
+      ? { summaryOrderTime: offsetTimestamp(summary.orderDate, `Order ${detail.orderNumber} summary orderDate`) }
+      : {}),
     providerStatus: detail.status,
     lifecycle: normalizeSellerOrderLifecycle(detail.status),
     refundStatus: detail.refundStatus,

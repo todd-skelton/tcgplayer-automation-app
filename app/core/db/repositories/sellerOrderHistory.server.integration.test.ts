@@ -129,6 +129,23 @@ try {
   assert.deepEqual(changedDetailNumbers, ["B"]);
   assert.deepEqual(changedScan.changedOrderNumbers, ["B"]);
 
+  let unverifiedPriorityDetails = 0;
+  const unverifiedSeller = `${seller}-unverified`;
+  const unverifiedPriority = await synchronizeSellerOrders(
+    unverifiedSeller,
+    { maxPages: 1, maxDetails: 1, pageSize: 1, detailConcurrency: 1 },
+    {
+      searchOrders: async () => ({ totalOrders: 0, orders: [] }),
+      getOrder: async (orderNumber) => {
+        unverifiedPriorityDetails += 1;
+        return detail(orderNumber);
+      },
+    },
+    ["ORDER-1"],
+  );
+  assert.equal(unverifiedPriority.coverage.status, "complete");
+  assert.equal(unverifiedPriorityDetails, 0);
+
   const claimSeller = `${seller}-claim`;
   const one = await sellerOrderHistoryRepository.startOrResumeApiRun(claimSeller, crypto.randomUUID());
   const two = await sellerOrderHistoryRepository.startOrResumeApiRun(claimSeller, crypto.randomUUID());

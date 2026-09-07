@@ -39,12 +39,13 @@ function parsePositiveInteger(value: string, label: string): number {
   return number;
 }
 
-function parseMoney(value: string, label: string): number {
+function parseMoney(value: string, label: string, allowNegative = false): number {
   if (!/^-?\d+(?:\.\d{1,2})?$/.test(value)) {
     throw new Error(`${label} must be a USD amount with at most two decimal places.`);
   }
   const cents = Math.round(Number(value) * 100);
   if (!Number.isSafeInteger(cents)) throw new Error(`${label} is outside the supported range.`);
+  if (!allowNegative && cents < 0) throw new Error(`${label} cannot be negative.`);
   return cents / 100;
 }
 
@@ -57,7 +58,7 @@ function refundFromRow(row: Record<string, string>, rowNumber: number): SellerOr
   return {
     ...(type ? { type } : {}),
     ...(createdAt ? { createdAt: parseOffsetTimestamp(createdAt, `Row ${rowNumber}: Refund Created At`) } : {}),
-    ...(amount ? { amount: parseMoney(amount, `Row ${rowNumber}: Refund Amount USD`) } : {}),
+    ...(amount ? { amount: parseMoney(amount, `Row ${rowNumber}: Refund Amount USD`, true) } : {}),
     ...(origin ? { origin } : {}),
   };
 }

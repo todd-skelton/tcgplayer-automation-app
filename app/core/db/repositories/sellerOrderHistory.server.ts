@@ -42,6 +42,7 @@ interface SyncRunRow {
   error: string | null;
   claimToken: string | null;
   claimExpiresAt: Date | null;
+  updatedAt: Date;
 }
 
 const runColumns = `
@@ -51,7 +52,8 @@ const runColumns = `
   expected_total AS "expectedTotal", pages_completed AS "pagesCompleted",
   orders_observed AS "ordersObserved", details_recorded AS "detailsRecorded",
   observed_from AS "observedFrom", observed_through AS "observedThrough",
-  gaps, error, claim_token AS "claimToken", claim_expires_at AS "claimExpiresAt"`;
+  gaps, error, claim_token AS "claimToken", claim_expires_at AS "claimExpiresAt",
+  updated_at AS "updatedAt"`;
 
 function iso(value: Date | null): string | undefined {
   return value ? value.toISOString() : undefined;
@@ -75,7 +77,7 @@ function toCoverage(row: SyncRunRow | null, sellerKey: string): SellerOrderCover
     ...(row.searchRange ? { searchRange: row.searchRange } : {}),
     ...(iso(row.observedFrom) ? { observedFrom: iso(row.observedFrom) } : {}),
     ...(iso(row.observedThrough) ? { observedThrough: iso(row.observedThrough) } : {}),
-    lastAttemptAt: row.startedAt.toISOString(),
+    lastAttemptAt: row.updatedAt.toISOString(),
     ...(iso(row.finishedAt) ? { completedAt: iso(row.finishedAt) } : {}),
     ...(row.expectedTotal !== null ? { expectedTotal: row.expectedTotal } : {}),
     ordersObserved: row.ordersObserved,
@@ -279,6 +281,20 @@ export const sellerOrderHistoryRepository = {
       return !stored || stored.summaryFingerprint !== fingerprints.get(orderNumber) ||
         stored.detailObservedAt < staleBefore ? [orderNumber] : [];
     });
+  },
+
+  async findApiVerifiedOrderNumbers(
+    sellerKey: string,
+    orderNumbers: string[],
+  ): Promise<string[]> {
+    if (orderNumbers.length === 0) return [];
+    const rows = await query<{ orderNumber: string }>(
+      `SELECT order_number AS "orderNumber" FROM seller_orders
+       WHERE seller_key = $1 AND latest_source = 'tcgplayer_api'
+         AND order_number = ANY($2::text[])`,
+      [sellerKey.trim(), orderNumbers],
+    );
+    return rows.map((row) => row.orderNumber);
   },
 
   async saveApiProgress(input: {

@@ -22,4 +22,8 @@ assert.throws(
   () => parseSellerOrderCsv("seller-a", csv.replace("1.10", "1.101")),
   /two decimal places/,
 );
+assert.throws(
+  () => parseSellerOrderCsv("seller-a", csv.replace("1.10", "-0.10")),
+  /cannot be negative/,
+);
 console.log("PASS seller order CSV import validates offsets, USD, decimals, and duplicate SKU rows");

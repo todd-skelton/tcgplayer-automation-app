@@ -22,7 +22,6 @@ export interface SellerOrderRefundEvidence {
   createdAt?: string;
   type?: string;
   amount?: number;
-  reason?: string;
   origin?: string;
   shippingAmount?: number;
   products?: Array<{ amount?: number; productId?: string; skuId?: string }>;

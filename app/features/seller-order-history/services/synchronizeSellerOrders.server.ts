@@ -93,7 +93,9 @@ async function fetchAndRecordDetails(input: {
       const stored = await input.dependencies.repository.recordObservation(observation);
       return { orderNumber: detail.orderNumber, changed: stored.changed, time: detail.createdAt };
     } catch (error) {
-      console.warn(`Seller order ${summary.orderNumber} detail was not recorded:`, error);
+      console.warn(
+        `Seller order ${summary.orderNumber} detail was not recorded: ${String(error)}`,
+      );
       return { orderNumber: summary.orderNumber, changed: false };
     }
   })));
@@ -146,8 +148,16 @@ export async function synchronizeSellerOrders(
   let gaps = [...(run.gaps ?? [])];
 
   try {
-    const priority = [...new Set(priorityOrderNumbers.map((value) => value.trim()).filter(Boolean))]
-      .slice(0, detailBudget);
+    const requestedPriority = [...new Set(
+      priorityOrderNumbers.map((value) => value.trim()).filter(Boolean),
+    )].slice(0, detailBudget);
+    const verifiedPriority = new Set(
+      await dependencies.repository.findApiVerifiedOrderNumbers(
+        normalizedSellerKey,
+        requestedPriority,
+      ),
+    );
+    const priority = requestedPriority.filter((orderNumber) => verifiedPriority.has(orderNumber));
     if (priority.length > 0) {
       const priorityResult = await fetchAndRecordDetails({
         sellerKey: normalizedSellerKey,

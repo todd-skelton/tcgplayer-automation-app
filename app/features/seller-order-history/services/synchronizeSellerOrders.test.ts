@@ -58,6 +58,7 @@ function fakeRepository(initial: {
       recordObservation: async () => ({ changed: true, orderId: "1", revision: 1 }),
       findDetailsNeeded: async (_seller: string, summaries: Array<{ orderNumber: string }>) =>
         initial.needed ?? summaries.map((value) => value.orderNumber),
+      findApiVerifiedOrderNumbers: async (_seller: string, orderNumbers: string[]) => orderNumbers,
       saveApiProgress: async (input: any) => {
         input.orderNumbers?.forEach((value: string) => seen.add(value));
         state.nextOffset = input.nextOffset; state.expectedTotal = input.expectedTotal;

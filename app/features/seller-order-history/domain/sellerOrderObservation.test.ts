@@ -65,4 +65,22 @@ assert.equal(first.summaryOrderTime, "2026-08-10T14:00:00.000Z");
 assert.equal(first.fingerprint, reordered.fingerprint);
 assert.equal("reasonText" in first.refunds[0]!, false);
 assert.deepEqual(first.refunds[0]?.products, [{ amount: 1.25, productId: "10", skuId: "100" }]);
+assert.equal(
+  observeSellerOrder("seller-a", undefined, {
+    ...baseDetail,
+    createdAt: "2026-08-10T10:00:00.440-04:00",
+  }).orderTime,
+  baseDetail.createdAt,
+);
+assert.throws(
+  () => observeSellerOrder("seller-a", undefined, { ...baseDetail, createdAt: "2026-08-10T14:00:00" }),
+  /UTC offset/,
+);
+assert.throws(
+  () => observeSellerOrder("seller-a", undefined, {
+    ...baseDetail,
+    products: [{ ...baseDetail.products[0]!, extendedPrice: -1 }],
+  }),
+  /invalid price/,
+);
 console.log("PASS seller order observations normalize lifecycle, stable SKU lines, time, and evidence");
