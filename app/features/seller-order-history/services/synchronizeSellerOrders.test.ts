@@ -17,6 +17,27 @@ function detail(orderNumber: string): SellerOrderDetail {
   };
 }
 
+{
+  const fake = fakeRepository();
+  (fake.repository as any).findApiVerifiedOrderNumbers = async () => [];
+  const searches: Array<string | undefined> = [];
+  let detailCalls = 0;
+  await synchronizeSellerOrders("seller-a", {
+    maxPages: 1, maxDetails: 1, pageSize: 1, detailConcurrency: 1,
+  }, {
+    repository: fake.repository,
+    searchOrders: async (request) => {
+      searches.push(request.query?.orderNumber);
+      return request.query?.orderNumber === "NEW"
+        ? { totalOrders: 1, orders: [summary("NEW")] }
+        : { totalOrders: 0, orders: [] };
+    },
+    getOrder: async (number) => { detailCalls += 1; return detail(number); },
+  }, ["NEW"]);
+  assert.deepEqual(searches, ["NEW"]);
+  assert.equal(detailCalls, 1);
+}
+
 function summary(orderNumber: string) {
   return {
     orderNumber, orderDate: "2026-08-10T14:00:00.000Z",
@@ -56,6 +77,7 @@ function fakeRepository(initial: {
       },
       getCoverage: async () => coverage(),
       recordObservation: async () => ({ changed: true, orderId: "1", revision: 1 }),
+      recordApiObservation: async () => ({ changed: true, orderId: "1", revision: 1 }),
       findDetailsNeeded: async (_seller: string, summaries: Array<{ orderNumber: string }>) =>
         initial.needed ?? summaries.map((value) => value.orderNumber),
       findApiVerifiedOrderNumbers: async (_seller: string, orderNumbers: string[]) => orderNumbers,
@@ -111,6 +133,24 @@ function fakeRepository(initial: {
   assert.equal(result.coverage.status, "complete");
   assert.equal(result.coverage.ordersObserved, 3);
   assert.deepEqual(new Set(result.changedOrderNumbers), new Set(["A", "B", "C"]));
+}
+
+{
+  const fake = fakeRepository();
+  const offsets: number[] = [];
+  const orders = [summary("ONE-A"), summary("ONE-B"), summary("ONE-C")];
+  const result = await synchronizeSellerOrders("seller-a", {
+    maxPages: 4, maxDetails: 4, pageSize: 1, detailConcurrency: 1,
+  }, {
+    repository: fake.repository,
+    searchOrders: async (request) => {
+      offsets.push(request.from);
+      return { totalOrders: orders.length, orders: orders.slice(request.from, request.from + 1) };
+    },
+    getOrder: async (number) => detail(number),
+  });
+  assert.deepEqual(offsets, [0, 1, 2]);
+  assert.equal(result.coverage.status, "complete");
 }
 
 {

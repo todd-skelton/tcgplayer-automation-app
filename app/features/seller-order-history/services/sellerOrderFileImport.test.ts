@@ -26,4 +26,12 @@ assert.throws(
   () => parseSellerOrderCsv("seller-a", csv.replace("1.10", "-0.10")),
   /cannot be negative/,
 );
+const contradictoryRows = `Order Number,Order Time,Status,SKU ID,Quantity,Gross Item Proceeds USD,Order Channel
+OLD-2,2026-01-10T12:00:00Z,Completed - Paid,100,1,1.00,TcgMarketplace
+OLD-2,2026-01-10T12:00:00Z,Completed - Paid,101,1,1.00,`;
+for (const rows of [contradictoryRows, contradictoryRows.split("\n").slice(0, 1).concat(
+  contradictoryRows.split("\n").slice(1).reverse(),
+).join("\n")]) {
+  assert.throws(() => parseSellerOrderCsv("seller-a", rows), /disagree on order-level fields/);
+}
 console.log("PASS seller order CSV import validates offsets, USD, decimals, and duplicate SKU rows");

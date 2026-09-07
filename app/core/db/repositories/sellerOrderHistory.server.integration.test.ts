@@ -87,10 +87,14 @@ try {
     sellerKey: seller,
     csvText: `Order Number,Order Time,Status,SKU ID,Quantity,Gross Item Proceeds USD\nOLD-2,2025-01-01T00:00:00Z,${status},200,${quantity},${(quantity * 2).toFixed(2)}`,
   });
-  assert.equal((await imported("Completed - Paid", 1)).importedOrders, 1);
+  const importA = await imported("Completed - Paid", 1);
+  assert.equal(importA.importedOrders, 1);
   assert.equal((await imported("Canceled", 2)).importedOrders, 1);
-  assert.equal((await imported("Canceled", 2)).importedOrders, 0);
+  const repeatedA = await imported("Completed - Paid", 1);
+  assert.equal(repeatedA.importedOrders, 0);
+  assert.equal(repeatedA.duplicateFile, true);
   assert.equal((await sellerOrderHistoryRepository.findOrder(seller, "OLD-2"))?.sourceRevision, 2);
+  assert.equal((await sellerOrderHistoryRepository.findOrder(seller, "OLD-2"))?.lines[0]?.orderedQuantity, 2);
 
   const syncSeller = `${seller}-sync`;
   let failB = true;
@@ -139,6 +143,13 @@ try {
   assert.equal(changedScan.coverage.status, "complete");
   assert.deepEqual(changedDetailNumbers, ["B"]);
   assert.deepEqual(changedScan.changedOrderNumbers, ["B"]);
+  const retainedCheckpoints = await pool.query<{ count: number }>(
+    `SELECT COUNT(*)::int AS count FROM seller_order_sync_run_orders checkpoints
+     JOIN seller_order_sync_runs run ON run.id = checkpoints.run_id
+     WHERE run.seller_key = $1 AND run.status = 'complete'`,
+    [syncSeller],
+  );
+  assert.equal(retainedCheckpoints.rows[0]?.count, 0);
 
   let unverifiedPriorityDetails = 0;
   const unverifiedSeller = `${seller}-unverified`;
@@ -162,6 +173,25 @@ try {
   const two = await sellerOrderHistoryRepository.startOrResumeApiRun(claimSeller, crypto.randomUUID());
   assert.equal(one.acquired, true);
   assert.equal(two.acquired, false);
+
+  const staleSeller = `${seller}-stale`;
+  const staleToken = crypto.randomUUID();
+  const staleRun = await sellerOrderHistoryRepository.startOrResumeApiRun(staleSeller, staleToken);
+  await pool.query(
+    `UPDATE seller_order_sync_runs SET claim_expires_at = NOW() - INTERVAL '1 second'
+     WHERE id = $1`,
+    [staleRun.run.id],
+  );
+  await sellerOrderHistoryRepository.startOrResumeApiRun(staleSeller, crypto.randomUUID());
+  await assert.rejects(
+    () => sellerOrderHistoryRepository.recordApiObservation(
+      staleRun.run.id,
+      staleToken,
+      observeSellerOrder(staleSeller, summary("STALE"), detail("STALE")),
+    ),
+    /lease was lost/,
+  );
+  assert.equal(await sellerOrderHistoryRepository.findOrder(staleSeller, "STALE"), null);
 
   console.log("PASS seller order history repository preserves revisions, account isolation, import precedence, gaps, and leases");
 } finally {

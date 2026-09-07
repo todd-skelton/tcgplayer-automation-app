@@ -213,6 +213,32 @@ export const sellerOrderHistoryRepository = {
     return executor ? perform(executor) : withTransaction(perform);
   },
 
+  async recordApiObservation(
+    runId: string,
+    claimToken: string,
+    observation: SellerOrderObservation,
+  ): Promise<{ changed: boolean; orderId: string; revision: number }> {
+    return withTransaction(async (db) => {
+      const owned = await queryOne<{ id: string }>(
+        `SELECT id::text AS id FROM seller_order_sync_runs
+         WHERE id = $1 AND claim_token = $2 AND status = 'running'
+           AND claim_expires_at > NOW()
+         FOR UPDATE`,
+        [runId, claimToken],
+        db,
+      );
+      if (!owned) throw new Error("Seller order sync lease was lost.");
+      const result = await sellerOrderHistoryRepository.recordObservation(observation, db);
+      await execute(
+        `UPDATE seller_order_sync_runs SET claim_expires_at = NOW() + INTERVAL '2 minutes',
+           updated_at = NOW() WHERE id = $1 AND claim_token = $2`,
+        [runId, claimToken],
+        db,
+      );
+      return result;
+    });
+  },
+
   async startOrResumeApiRun(
     sellerKey: string,
     claimToken: string,
@@ -364,16 +390,33 @@ export const sellerOrderHistoryRepository = {
     complete: boolean,
     message?: string,
   ): Promise<SellerOrderCoverage> {
-    const row = await queryOne<SyncRunRow>(
-      `UPDATE seller_order_sync_runs SET status = $3,
-         finished_at = CASE WHEN $3 = 'complete' THEN NOW() ELSE NULL END,
-         error = $4, claim_token = NULL, claim_expires_at = NULL, updated_at = NOW()
-       WHERE id = $1 AND claim_token = $2 AND status = 'running'
-       RETURNING ${runColumns}`,
-      [runId, claimToken, complete ? "complete" : "incomplete", message ?? null],
-    );
-    if (!row) throw new Error("Seller order sync lease was lost.");
-    return toCoverage(row, row.sellerKey);
+    return withTransaction(async (db) => {
+      const row = await queryOne<SyncRunRow>(
+        `UPDATE seller_order_sync_runs SET status = $3,
+           finished_at = CASE WHEN $3 = 'complete' THEN NOW() ELSE NULL END,
+           error = $4, claim_token = NULL, claim_expires_at = NULL, updated_at = NOW()
+         WHERE id = $1 AND claim_token = $2 AND status = 'running'
+         RETURNING ${runColumns}`,
+        [runId, claimToken, complete ? "complete" : "incomplete", message ?? null],
+        db,
+      );
+      if (!row) throw new Error("Seller order sync lease was lost.");
+      if (complete) {
+        await execute(`DELETE FROM seller_order_sync_run_orders WHERE run_id = $1`, [runId], db);
+        await execute(
+          `DELETE FROM seller_order_sync_runs
+           WHERE seller_key = $1 AND source = 'tcgplayer_api' AND status = 'complete'
+             AND id NOT IN (
+               SELECT id FROM seller_order_sync_runs
+               WHERE seller_key = $1 AND source = 'tcgplayer_api' AND status = 'complete'
+               ORDER BY finished_at DESC, id DESC LIMIT 30
+             )`,
+          [row.sellerKey],
+          db,
+        );
+      }
+      return toCoverage(row, row.sellerKey);
+    });
   },
 
   async restartInconsistentApiRun(
@@ -413,20 +456,30 @@ export const sellerOrderHistoryRepository = {
     return toCoverage(row, sellerKey.trim());
   },
 
-  async recordImport(input: {
+  async importObservations(input: {
     sellerKey: string;
     fingerprint: string;
     fileName?: string;
-    orderCount: number;
-    lineCount: number;
-  }): Promise<boolean> {
-    return (await execute(
-      `INSERT INTO seller_order_imports (
-         seller_key, content_fingerprint, file_name, order_count, line_count
-       ) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
-      [input.sellerKey, input.fingerprint, input.fileName ?? null,
-        input.orderCount, input.lineCount],
-    )) > 0;
+    observations: SellerOrderObservation[];
+  }): Promise<{ recorded: boolean; importedOrders: number }> {
+    return withTransaction(async (db) => {
+      const claimed = await queryOne<{ id: string }>(
+        `INSERT INTO seller_order_imports (
+           seller_key, content_fingerprint, file_name, order_count, line_count
+         ) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING RETURNING id::text AS id`,
+        [input.sellerKey, input.fingerprint, input.fileName ?? null,
+          input.observations.length,
+          input.observations.reduce((sum, order) => sum + order.lines.length, 0)],
+        db,
+      );
+      if (!claimed) return { recorded: false, importedOrders: 0 };
+      let importedOrders = 0;
+      for (const observation of input.observations) {
+        const result = await sellerOrderHistoryRepository.recordObservation(observation, db);
+        if (result.changed) importedOrders += 1;
+      }
+      return { recorded: true, importedOrders };
+    });
   },
 
   async findOrder(sellerKey: string, orderNumber: string) {

@@ -20,6 +20,8 @@ async function run(): Promise<void> {
           result.coverage.error?.startsWith("Sync request budget reached")
         ) {
           delayMs = 2_000;
+        } else if (result.coverage.status === "complete") {
+          delayMs = 15 * 60_000;
         }
       }
     } catch (error) {

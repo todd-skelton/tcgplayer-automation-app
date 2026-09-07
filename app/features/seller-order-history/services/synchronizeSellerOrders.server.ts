@@ -97,6 +97,8 @@ async function fetchAndRecordDetails(input: {
   summaries: SellerOrderSearchSummary[];
   dependencies: SyncDependencies;
   concurrency: number;
+  runId: string;
+  claimToken: string;
 }): Promise<{ changed: string[]; recorded: number; gaps: SellerOrderSearchSummary[]; times: string[] }> {
   const limit = pLimit(input.concurrency);
   const results = await Promise.all(input.summaries.map((summary) => limit(async () => {
@@ -112,7 +114,11 @@ async function fetchAndRecordDetails(input: {
         detail,
         input.dependencies.now().toISOString(),
       );
-      const stored = await input.dependencies.repository.recordObservation(observation);
+      const stored = await input.dependencies.repository.recordApiObservation(
+        input.runId,
+        input.claimToken,
+        observation,
+      );
       return { orderNumber: detail.orderNumber, changed: stored.changed, time: detail.createdAt };
     } catch (error) {
       console.warn(
@@ -180,17 +186,35 @@ export async function synchronizeSellerOrders(
         requestedPriority,
       ),
     );
-    const priority = requestedPriority.filter((orderNumber) => verifiedPriority.has(orderNumber));
+    const verifiedSummaries = new Map<string, SellerOrderSearchSummary>();
+    for (const orderNumber of requestedPriority) {
+      if (verifiedPriority.has(orderNumber)) continue;
+      const response = await boundedRequest((signal) => dependencies.searchOrders({
+        searchRange: SEARCH_RANGE,
+        query: { orderNumber },
+        filters: { sellerKey: normalizedSellerKey },
+        sortBy: ORDER_DATE_SORT,
+        from: 0,
+        size: 25,
+      }, { signal, retry: false }));
+      const match = response.orders.find((order) => order.orderNumber === orderNumber);
+      if (match) verifiedSummaries.set(orderNumber, match);
+    }
+    const priority = requestedPriority.filter(
+      (orderNumber) => verifiedPriority.has(orderNumber) || verifiedSummaries.has(orderNumber),
+    );
     if (priority.length > 0) {
       const priorityResult = await fetchAndRecordDetails({
         sellerKey: normalizedSellerKey,
-        summaries: priority.map((orderNumber) => ({
-          orderNumber, orderDate: "", orderChannel: "", orderStatus: "",
-          buyerName: "", shippingType: "", productAmount: 0, shippingAmount: 0,
-          totalAmount: 0, buyerPaid: false, orderFulfillment: "",
-        })),
+        summaries: priority.map((orderNumber) => verifiedSummaries.get(orderNumber) ?? ({
+            orderNumber, orderDate: "", orderChannel: "", orderStatus: "",
+            buyerName: "", shippingType: "", productAmount: 0, shippingAmount: 0,
+            totalAmount: 0, buyerPaid: false, orderFulfillment: "",
+          })),
         dependencies,
         concurrency: limits.detailConcurrency,
+        runId: run.id,
+        claimToken,
       });
       priorityResult.changed.forEach((number) => changedOrderNumbers.add(number));
       const failedPriority = priorityResult.gaps.map((summary) => ({
@@ -229,6 +253,8 @@ export async function synchronizeSellerOrders(
         })),
         dependencies,
         concurrency: limits.detailConcurrency,
+        runId: run.id,
+        claimToken,
       });
       retry.changed.forEach((number) => changedOrderNumbers.add(number));
       gaps = [
@@ -262,7 +288,7 @@ export async function synchronizeSellerOrders(
       const size = limits.pageSize;
       const overlap = nextOffset === 0
         ? 0
-        : Math.min(25, Math.max(1, Math.floor(size / 10)));
+        : Math.min(size - 1, 25, Math.max(1, Math.floor(size / 10)));
       const pageOffset = Math.max(0, nextOffset - overlap);
       const response = await boundedRequest((signal) => dependencies.searchOrders({
           searchRange: SEARCH_RANGE,
@@ -298,6 +324,8 @@ export async function synchronizeSellerOrders(
         summaries: summariesToFetch,
         dependencies,
         concurrency: limits.detailConcurrency,
+        runId: run.id,
+        claimToken,
       });
       detailResult.changed.forEach((number) => changedOrderNumbers.add(number));
       const gapsByOrder = new Map(gaps.map((gap) => [gap.orderNumber, gap]));

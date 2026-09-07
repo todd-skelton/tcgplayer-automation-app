@@ -107,19 +107,29 @@ export function parseSellerOrderCsv(
     const proceeds = parseMoney(requiredText(row, "Gross Item Proceeds USD", rowNumber), `Row ${rowNumber}: Gross Item Proceeds USD`);
     const currency = row.Currency?.trim() || "USD";
     if (currency !== "USD") throw new Error(`Row ${rowNumber}: Currency must be USD.`);
+    const summaryOrderTime = row["Summary Order Time"]?.trim()
+      ? parseOffsetTimestamp(row["Summary Order Time"].trim(), `Row ${rowNumber}: Summary Order Time`)
+      : undefined;
+    const orderChannel = row["Order Channel"]?.trim() || undefined;
+    const orderFulfillment = row["Order Fulfillment"]?.trim() || undefined;
+    const refundStatus = row["Refund Status"]?.trim() || undefined;
     const existing = grouped.get(orderNumber);
-    if (existing && (existing.orderTime !== orderTime || existing.status !== status)) {
-      throw new Error(`Rows for order ${orderNumber} disagree on Order Time or Status.`);
+    if (existing && (
+      existing.orderTime !== orderTime || existing.status !== status ||
+      existing.summaryOrderTime !== summaryOrderTime ||
+      existing.orderChannel !== orderChannel ||
+      existing.orderFulfillment !== orderFulfillment ||
+      existing.refundStatus !== refundStatus
+    )) {
+      throw new Error(`Rows for order ${orderNumber} disagree on order-level fields.`);
     }
     const order = existing ?? {
       orderTime,
       status,
-      ...(row["Summary Order Time"]?.trim()
-        ? { summaryOrderTime: parseOffsetTimestamp(row["Summary Order Time"].trim(), `Row ${rowNumber}: Summary Order Time`) }
-        : {}),
-      ...(row["Order Channel"]?.trim() ? { orderChannel: row["Order Channel"].trim() } : {}),
-      ...(row["Order Fulfillment"]?.trim() ? { orderFulfillment: row["Order Fulfillment"].trim() } : {}),
-      ...(row["Refund Status"]?.trim() ? { refundStatus: row["Refund Status"].trim() } : {}),
+      ...(summaryOrderTime ? { summaryOrderTime } : {}),
+      ...(orderChannel ? { orderChannel } : {}),
+      ...(orderFulfillment ? { orderFulfillment } : {}),
+      ...(refundStatus ? { refundStatus } : {}),
       lines: [],
       refunds: [],
     };
@@ -164,20 +174,14 @@ export async function importSellerOrderCsv(input: {
 }) {
   const fingerprint = createHash("sha256").update(input.csvText).digest("hex");
   const observations = parseSellerOrderCsv(input.sellerKey, input.csvText);
-  let importedOrders = 0;
-  for (const observation of observations) {
-    const result = await sellerOrderHistoryRepository.recordObservation(observation);
-    if (result.changed) importedOrders += 1;
-  }
-  const recorded = await sellerOrderHistoryRepository.recordImport({
+  const imported = await sellerOrderHistoryRepository.importObservations({
     sellerKey: input.sellerKey.trim(), fingerprint, fileName: input.fileName,
-    orderCount: observations.length,
-    lineCount: observations.reduce((sum, order) => sum + order.lines.length, 0),
+    observations,
   });
   return {
-    importedOrders,
-    skippedOrders: observations.length - importedOrders,
+    importedOrders: imported.importedOrders,
+    skippedOrders: observations.length - imported.importedOrders,
     totalOrders: observations.length,
-    duplicateFile: !recorded,
+    duplicateFile: !imported.recorded,
   };
 }
