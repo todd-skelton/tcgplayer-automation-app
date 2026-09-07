@@ -10,6 +10,7 @@ import {
   Select,
   MenuItem,
   Chip,
+  Alert,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -34,6 +35,7 @@ export default function InventoryManagerRoute() {
     productLines,
     sets,
     pendingInventory,
+    error,
     selectedProductLineId,
     selectedSetId,
     searchScope,
@@ -218,6 +220,12 @@ export default function InventoryManagerRoute() {
         <Typography variant="h4" component="h1" gutterBottom>
           Inventory Manager
         </Typography>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
 
         <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
           <Typography variant="h6" gutterBottom>

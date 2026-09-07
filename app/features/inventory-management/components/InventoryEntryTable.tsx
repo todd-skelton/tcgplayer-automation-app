@@ -45,7 +45,10 @@ import {
   getQuantityKeyboardAction,
   type QuantityNavigationDirection,
 } from "./quantityKeyboard";
-import { finishQuantityEdit } from "../services/inventoryQuantityEdit";
+import {
+  adjustDisplayedQuantity,
+  finishQuantityEdit,
+} from "../services/inventoryQuantityEdit";
 
 interface SkuWithDisplayInfo extends Sku {
   cardNumber?: string | null;
@@ -383,14 +386,17 @@ const QuantityGridCell = React.memo(
     };
 
     const applyKeyboardQuantityDelta = (amount: number) => {
-      const displayed = Number.parseInt(displayValue, 10);
-      const startingQuantity = Number.isFinite(displayed) ? displayed : currentQty;
       commitTypedQuantity();
-      const nextQty = Math.max(0, startingQuantity + amount);
+      const adjustment = adjustDisplayedQuantity(
+        displayValue,
+        amount,
+      );
       untouchedSinceFocusRef.current = false;
       shouldReselectAfterSyncRef.current = true;
-      setDisplayValue(nextQty.toString());
-      onQuickAdd(activeSku, amount, false);
+      setDisplayValue(adjustment.displayValue);
+      if (adjustment.quantityDelta !== 0) {
+        onQuickAdd(activeSku, adjustment.quantityDelta, false);
+      }
     };
 
     const handleQuantityKeyDown = (
@@ -448,13 +454,14 @@ const QuantityGridCell = React.memo(
         <Button
           size="small"
           onClick={() => {
-            const displayed = Number.parseInt(displayValue, 10);
-            const nextQty = Math.max(
-              0,
-              (Number.isFinite(displayed) ? displayed : currentQty) - 1,
+            const adjustment = adjustDisplayedQuantity(
+              displayValue,
+              -1,
             );
-            setDisplayValue(nextQty.toString());
-            onQuickAdd(activeSku, -1);
+            setDisplayValue(adjustment.displayValue);
+            if (adjustment.quantityDelta !== 0) {
+              onQuickAdd(activeSku, adjustment.quantityDelta);
+            }
           }}
           color="secondary"
           variant="outlined"
@@ -492,10 +499,12 @@ const QuantityGridCell = React.memo(
         <Button
           size="small"
           onClick={() => {
-            const displayed = Number.parseInt(displayValue, 10);
-            const nextQty = (Number.isFinite(displayed) ? displayed : currentQty) + 1;
-            setDisplayValue(nextQty.toString());
-            onQuickAdd(activeSku, 1);
+            const adjustment = adjustDisplayedQuantity(
+              displayValue,
+              1,
+            );
+            setDisplayValue(adjustment.displayValue);
+            onQuickAdd(activeSku, adjustment.quantityDelta);
           }}
           color="primary"
           variant="outlined"

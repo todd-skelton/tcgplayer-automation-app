@@ -12,6 +12,10 @@ import {
   type InventorySelectableCondition,
 } from "../../../core/utils/conditionOrder";
 import { InventoryMutationState } from "../services/inventoryMutationState";
+import {
+  createPendingInventoryBatch,
+  PendingBatchRequestError,
+} from "../services/createPendingInventoryBatch";
 
 // Extended interface for SKUs with display information
 interface SkuWithDisplayInfo extends Sku {
@@ -88,6 +92,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
   const baseProcessor = useProcessorBase();
   const inventoryMutationQueue = useRef<Promise<unknown>>(Promise.resolve());
   const inventoryMutationState = useRef(new InventoryMutationState());
+  const pendingBatchRequestId = useRef<string | null>(null);
   const [state, setState] = useState<InventoryProcessorState>({
     productLines: [],
     sets: [],
@@ -457,28 +462,31 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     });
   }, [loadPendingInventory, queuePendingMutation, sendPendingMutation]);
   const createBatchFromPendingInventory = useCallback(() => {
-    const requestId = crypto.randomUUID();
+    const requestId = pendingBatchRequestId.current ?? crypto.randomUUID();
+    pendingBatchRequestId.current = requestId;
     const barrierVersion = inventoryMutationState.current.beginBarrier();
     return queuePendingMutation(async () => {
-    const response = await fetch("/api/inventory-batches", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ requestId }),
-    });
-    const payload = (await response.json()) as InventoryBatch | { error?: string };
-
-    if (!response.ok) {
-      throw new Error(
-        "error" in payload && payload.error
-          ? payload.error
-          : "Failed to create inventory batch",
-      );
-    }
-
-    if (inventoryMutationState.current.canApplyBarrier(barrierVersion)) {
-      setState((prev) => ({ ...prev, pendingInventory: [] }));
-    }
-    return payload as InventoryBatch;
+      baseProcessor.setError(null);
+      try {
+        const batch = await createPendingInventoryBatch(requestId);
+        pendingBatchRequestId.current = null;
+        if (inventoryMutationState.current.canApplyBarrier(barrierVersion)) {
+          setState((prev) => ({ ...prev, pendingInventory: [] }));
+        }
+        return batch;
+      } catch (error) {
+        if (
+          error instanceof PendingBatchRequestError &&
+          error.outcome === "definitive"
+        ) {
+          pendingBatchRequestId.current = null;
+        }
+        baseProcessor.setError(
+          `${error instanceof Error ? error.message : String(error)}. ` +
+            "Select Process & Price again to safely recover or retry this batch.",
+        );
+        throw error;
+      }
     });
   }, [queuePendingMutation]);
 

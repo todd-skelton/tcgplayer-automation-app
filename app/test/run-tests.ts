@@ -28,6 +28,7 @@ import "../integrations/tcgplayer/client/staged-pricing-import.server.test";
 import "../features/inventory-management/components/quantityKeyboard.test";
 import "../features/inventory-management/services/inventoryQuantityEdit.test";
 import "../features/inventory-management/services/inventoryMutationState.test";
+import "../features/inventory-management/services/createPendingInventoryBatch.test";
 import "../features/inventory-management/services/inventoryConverter.test";
 import "../features/shipping-export/config/shippingExportConfig.server.test";
 import "../features/shipping-export/config/shippingExportConfigFormData.test";
