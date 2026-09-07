@@ -497,7 +497,7 @@ export const inventoryPublicationsRepository = {
           params.pricingJobId ?? null,
           params.method,
           params.sourceType,
-          params.sellerKey ?? null,
+          params.sellerKey?.trim() || null,
           asJson(params.config ?? {}),
         ],
         client,

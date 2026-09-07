@@ -5,6 +5,18 @@ import { pendingInventoryRepository } from "./pendingInventory.server";
 import { inventoryPublicationsRepository } from "./inventoryPublications.server";
 import { action as publicationAction } from "~/features/pending-inventory/routes/api.inventory-batch-publications";
 
+const testDatabaseUrl = process.env.TEST_DATABASE_URL;
+if (!testDatabaseUrl) {
+  throw new Error("TEST_DATABASE_URL is required for this integration test.");
+}
+const testDatabaseName = new URL(testDatabaseUrl).pathname.replace(/^\/+/, "");
+if (!testDatabaseName.startsWith("tcgplayer_fifo_test_")) {
+  throw new Error(
+    "TEST_DATABASE_URL must name a disposable tcgplayer_fifo_test_* database.",
+  );
+}
+process.env.DATABASE_URL = testDatabaseUrl;
+
 const prefix = `publication-receipts-${Date.now()}`;
 const sellerKey = `${prefix}-seller`;
 const skuA = 9_200_001;
@@ -64,7 +76,7 @@ try {
     batchNumber: batch.batchNumber,
     method: "staged_delta" as const,
     sourceType: "pending_inventory" as const,
-    sellerKey,
+    sellerKey: ` ${sellerKey} `,
     items: [
       publicationItem(batch.batchNumber, skuA, 5),
       publicationItem(batch.batchNumber, skuB, 4),
@@ -73,6 +85,7 @@ try {
   const planned = await inventoryPublicationsRepository.createOrFindPlanned(params);
   const repeated = await inventoryPublicationsRepository.createOrFindPlanned(params);
   assert.equal(repeated.created, false);
+  assert.equal(repeated.publication.sellerKey, sellerKey);
   await assert.rejects(
     inventoryPublicationsRepository.createOrFindPlanned({
       ...params,

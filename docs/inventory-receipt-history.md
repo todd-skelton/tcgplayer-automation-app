@@ -59,3 +59,18 @@ sending `PATCH` to `/api/inventory-batches/{batchNumber}/publications`:
 
 The batch, seller, quantity, receipt chronology, and evidence must match. An
 exact retry is idempotent; conflicting time or evidence is rejected.
+
+Run the publication receipt integration test only against a disposable database
+whose name starts with `tcgplayer_fifo_test_`:
+
+```powershell
+$testDatabaseUrl='postgresql://postgres:postgres@localhost:5433/tcgplayer_fifo_test_publication'
+$env:TEST_DATABASE_URL=$testDatabaseUrl
+$env:DATABASE_URL=$testDatabaseUrl
+npm run db:migrate
+npx tsx app/core/db/repositories/inventoryPublicationReceipts.server.integration.test.ts
+```
+
+Set `DATABASE_URL` to the same disposable URL while applying migrations. The
+test refuses to run without the guarded `TEST_DATABASE_URL` because batch
+creation intentionally consumes the database's complete pending queue.
