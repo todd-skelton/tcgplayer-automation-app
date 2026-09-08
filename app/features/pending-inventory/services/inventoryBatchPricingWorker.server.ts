@@ -5,6 +5,7 @@ import {
   inventoryBatchesRepository,
   inventoryStrategyRepository,
 } from "~/core/db";
+import { forecastEvaluationsRepository } from "~/core/db/repositories/forecastEvaluations.server";
 import { PricedSkuToTcgPlayerListingConverter } from "~/features/file-upload/services/dataConverters";
 import { planAutomaticInventoryBatchPublication } from "~/features/inventory-publication/services/automaticInventoryBatchPublication.server";
 import { warmInventoryStrategy } from "~/features/inventory-strategy/services/inventoryStrategyWarmup.server";
@@ -155,10 +156,33 @@ async function processJob(
   }, HEARTBEAT_MS);
 
   try {
+    const correction = job.config.pricing.forecastCorrection;
+    const correctionBatch = correction
+      ? await inventoryBatchesRepository.findByBatchNumber(job.batchNumber)
+      : null;
+    const expectedSellerKey = correctionBatch &&
+      ["seller", "continuous", "strategy"].includes(correctionBatch.sourceType)
+      ? correctionBatch.sourceLabel
+      : undefined;
+    const supportedCorrection = correction
+      ? await forecastEvaluationsRepository.isCorrectionSupported(
+          correction,
+          undefined,
+          expectedSellerKey,
+        )
+      : true;
+    if (correction && !supportedCorrection) {
+      console.warn(
+        `Forecast correction ${correction.version} is no longer supported; pricing batch ${job.batchNumber} uses the uncorrected model.`,
+      );
+    }
+    const effectiveConfig = supportedCorrection
+      ? job.config
+      : { ...job.config, pricing: { ...job.config.pricing, forecastCorrection: null } };
     const result = await executeInventoryBatchPricingJob({
       batchNumber: job.batchNumber,
       mode: job.mode,
-      config: job.config,
+      config: effectiveConfig,
       onProgress: (progress) => {
         latestProgress = progress;
         const now = Date.now();

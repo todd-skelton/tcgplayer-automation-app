@@ -1,155 +1,128 @@
-import {
-  Box,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  ToggleButton,
-  ToggleButtonGroup,
-  Typography,
-} from "@mui/material";
-import { Fragment, useState } from "react";
-import type { PricingPolicyConfig } from "~/features/pricing/types/config";
-import {
-  DEFAULT_FORECAST_GRADING_HORIZON_DAYS,
-  FORECAST_GRADING_HORIZON_DAYS,
-  type ForecastGradingReport,
-} from "../types/inventoryStrategy";
+import { Alert, Box, Button, Chip, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
+import type { ForecastCorrection } from "~/core/types/pricingPolicy";
+import type { ForecastEvaluationReport } from "~/features/pricing/domain/forecastEvaluation";
 import { percentFormatter } from "./format";
-import { GRADED_FORECASTS } from "./verdict";
 
 export function ForecastGrading({
-  reports,
-  policyMethod,
+  report,
+  activeCorrection,
+  busy = false,
+  onActivate,
+  onRollback,
 }: {
-  reports: ForecastGradingReport[];
-  policyMethod: PricingPolicyConfig["method"];
+  report: ForecastEvaluationReport | null;
+  activeCorrection?: ForecastCorrection | null;
+  busy?: boolean;
+  onActivate?: (evaluationId: string) => void;
+  onRollback?: (correctionVersion: string) => void;
 }) {
-  const [gradingHorizonDays, setGradingHorizonDays] = useState(
-    DEFAULT_FORECAST_GRADING_HORIZON_DAYS,
-  );
-  const grading =
-    reports.find((report) => report.horizonDays === gradingHorizonDays) ??
-    reports[0];
-  if (!grading) return null;
-  const gradedForecasts = GRADED_FORECASTS.map(
-    ([label, key]) => [label, grading[key]] as const,
-  );
-  const gradedDecileCount = Math.max(
-    0,
-    ...gradedForecasts.map(([, grade]) => grade.deciles.length),
-  );
-
+  if (!report) return null;
+  const exclusions = Object.entries(report.coverage.exclusions).sort(([left], [right]) => left.localeCompare(right));
   return (
     <Paper variant="outlined" sx={{ mb: 3 }}>
       <Box sx={{ p: 2 }}>
-        <Typography variant="h6">Forecast grading</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Each forecast is graded over the SKUs that carried it, first priced
-          between {grading.horizonDays} and {2 * grading.horizonDays} days ago
-          and followed for {grading.horizonDays} days. Sold is the share of the
-          cohort that realized a sale within the horizon; expected is the share
-          the forecast implied. Brier score against realized sales, lower is
-          better; the base rate is the score of forecasting every SKU at its
-          cohort&apos;s sold share.
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Typography variant="h6">Forecast validation</Typography>
+          <Chip size="small" color={report.status === "eligible" ? "success" : "default"}
+            label={report.status === "eligible" ? "Correction eligible" : "No correction activated"} />
+          <Chip size="small" variant="outlined" label={`${report.policy.horizonDays}-day next sale`} />
+          {activeCorrection ? (
+            <Chip size="small" color="success" label={`Active ${activeCorrection.version}`} />
+          ) : null}
+        </Stack>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          One confirmed publication predicts the next verified seller/SKU sale transaction. A multi-unit
+          publication or order remains one observation. Repricing closes the previous forecast; inventory
+          disappearance never counts as a sale. Unsold observations require complete order history and
+          continuous marketplace exposure through the horizon.
         </Typography>
-        {gradedForecasts.map(([label, grade]) => (
-          <Typography
-            key={label}
-            variant="body2"
-            color="text.secondary"
-            sx={{ mt: 0.5 }}
-          >
-            {label}:{" "}
-            {grade.count > 0
-              ? `${grade.count.toLocaleString()} SKUs, ${percentFormatter.format(grade.soldShare)} sold against ${percentFormatter.format(grade.expectedShare)} expected, Brier ${grade.brier.toFixed(4)} against a base rate of ${(grade.soldShare * (1 - grade.soldShare)).toFixed(4)}.`
-              : `no SKU has carried this forecast for ${grading.horizonDays} days yet.`}
-          </Typography>
-        ))}
-        {grading.curve.count === 0 && policyMethod === "target-horizon" ? (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            The target-horizon policy pins the curve forecast, so its grading
-            waits for another policy.
-          </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          Frozen at {new Date(report.evaluatedAt).toLocaleString()} · training through {new Date(report.fitCutoff).toLocaleDateString()}
+          {" · "}held-out validation through {new Date(report.validationCutoff).toLocaleDateString()}
+          {" · "}newest {report.policy.reservedDays} days reserved.
+        </Typography>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+          <Chip size="small" variant="outlined" label={`${report.coverage.includedSpells.toLocaleString()} included spells`} />
+          <Chip size="small" variant="outlined" label={`${report.coverage.includedQuantity.toLocaleString()} represented units`} />
+          <Chip size="small" variant="outlined" label={`${percentFormatter.format(report.coverage.coverage)} overall coverage`} />
+          <Chip size="small" variant="outlined" label={`${report.coverage.excludedSpells.toLocaleString()} excluded spells`} />
+        </Stack>
+        {report.status === "abstained" ? (
+          <Alert severity="info" sx={{ mt: 1.5 }}>
+            The active forecast remains unchanged: {report.statusReasons.join(", ").replaceAll("_", " ")}.
+          </Alert>
         ) : null}
-        {grading.otherCalibrationCount > 0 ? (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            {grading.otherCalibrationCount.toLocaleString()} results carried a
-            buyer-choice forecast from an earlier calibration, which is not
-            graded.
-          </Typography>
-        ) : null}
-        <ToggleButtonGroup
-          size="small"
-          exclusive
-          value={gradingHorizonDays}
-          onChange={(_, horizonDays: number | null) => {
-            if (horizonDays !== null) setGradingHorizonDays(horizonDays);
-          }}
-          sx={{ mt: 2 }}
-        >
-          {FORECAST_GRADING_HORIZON_DAYS.map((horizonDays) => (
-            <ToggleButton key={horizonDays} value={horizonDays}>
-              {horizonDays} days
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
+        <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+          {activeCorrection ? (
+            <Button size="small" variant="outlined" disabled={busy || !onRollback}
+              onClick={() => onRollback?.(activeCorrection.version)}>
+              Roll back correction
+            </Button>
+          ) : (
+            <Button size="small" variant="outlined"
+              disabled={busy || report.status !== "eligible" || !report.evaluationId || !onActivate}
+              onClick={() => report.evaluationId && onActivate?.(report.evaluationId)}>
+              Activate eligible correction
+            </Button>
+          )}
+        </Stack>
       </Box>
-      {gradedDecileCount > 0 ? (
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell rowSpan={2}>Decile</TableCell>
-                {gradedForecasts.map(([label]) => (
-                  <TableCell key={label} align="center" colSpan={3}>
-                    {label} forecast
-                  </TableCell>
-                ))}
+      <TableContainer>
+        <Table size="small" aria-label="Frozen forecast model validation">
+          <TableHead><TableRow>
+            <TableCell>Forecast and version</TableCell><TableCell align="right">Training</TableCell>
+            <TableCell align="right">Validation</TableCell><TableCell align="right">Held-out Brier</TableCell>
+            <TableCell align="right">Held-out sold / expected</TableCell><TableCell align="right">Reserved</TableCell>
+          </TableRow></TableHead>
+          <TableBody>
+            {report.models.length === 0 ? (
+              <TableRow><TableCell colSpan={6}>No mature compatible forecast outcomes are available yet.</TableCell></TableRow>
+            ) : report.models.map((model) => (
+              <TableRow key={`${model.family}:${model.version}`}>
+                <TableCell>{model.family} · {model.version}</TableCell>
+                <TableCell align="right">{model.training.count.toLocaleString()}</TableCell>
+                <TableCell align="right">{model.validation.count.toLocaleString()}</TableCell>
+                <TableCell align="right">{model.validation.count ? model.validation.brier.toFixed(4) : "—"}</TableCell>
+                <TableCell align="right">{model.validation.count ? `${percentFormatter.format(model.validation.soldShare)} / ${percentFormatter.format(model.validation.expectedShare)}` : "—"}</TableCell>
+                <TableCell align="right">{model.reservedCount.toLocaleString()}</TableCell>
               </TableRow>
-              <TableRow>
-                {gradedForecasts.map(([label]) => (
-                  <Fragment key={label}>
-                    <TableCell align="right">Median days</TableCell>
-                    <TableCell align="right">Sold</TableCell>
-                    <TableCell align="right">Expected</TableCell>
-                  </Fragment>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {Array.from({ length: gradedDecileCount }, (_, index) => (
-                <TableRow key={index}>
-                  <TableCell>{index + 1}</TableCell>
-                  {gradedForecasts.map(([label, grade]) => {
-                    const decile = grade.deciles[index];
-                    return (
-                      <Fragment key={label}>
-                        <TableCell align="right">
-                          {decile?.medianDays.toFixed(0) ?? ""}
-                        </TableCell>
-                        <TableCell align="right">
-                          {decile
-                            ? percentFormatter.format(decile.soldShare)
-                            : ""}
-                        </TableCell>
-                        <TableCell align="right">
-                          {decile
-                            ? percentFormatter.format(decile.expectedShare)
-                            : ""}
-                        </TableCell>
-                      </Fragment>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      ) : null}
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      <Box sx={{ p: 2 }}>
+        <Typography variant="subtitle2">Paired model comparisons</Typography>
+        {report.pairedComparisons.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            No compatible held-out model pairs are available.
+          </Typography>
+        ) : (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+            {report.pairedComparisons.map((comparison) => {
+              const supported = comparison.validationCount >= report.policy.minimumPairedValidationCount &&
+                comparison.leftBrier !== null && comparison.rightBrier !== null;
+              return <Chip key={`${comparison.left}:${comparison.right}`} size="small"
+                color={supported ? "success" : "default"} variant="outlined"
+                label={supported
+                  ? `${comparison.left} Brier ${comparison.leftBrier!.toFixed(4)} · ${comparison.right} Brier ${comparison.rightBrier!.toFixed(4)} · ${comparison.validationCount} paired`
+                  : `${comparison.left} vs ${comparison.right}: ${comparison.validationCount} paired · need ${report.policy.minimumPairedValidationCount}`} />;
+            })}
+          </Stack>
+        )}
+        <Typography variant="subtitle2" sx={{ mt: 2 }}>Coverage and censoring</Typography>
+        {exclusions.length === 0 ? <Typography variant="body2" color="text.secondary">No spells were excluded.</Typography> : (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+            {exclusions.map(([reason, value]) => <Chip key={reason} size="small" variant="outlined"
+              label={`${reason.replaceAll("_", " ")}: ${value.spells} spells / ${value.quantity} units`} />)}
+          </Stack>
+        )}
+        {report.correction ? <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          Candidate {report.correction.version}: held-out Brier improvement {report.correction.validationBrierImprovement.toFixed(4)};
+          {" "}held-out coverage {percentFormatter.format(report.correction.validationCoverage)}. Product-line adjustments qualify
+          independently; {report.correction.productLines.filter((line) => line.eligible).length} of {report.correction.productLines.length}
+          {" "}lines meet the same predeclared sample, coverage, and improvement gates.
+        </Typography> : null}
+      </Box>
     </Paper>
   );
 }

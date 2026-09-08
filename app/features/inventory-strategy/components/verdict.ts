@@ -3,11 +3,8 @@ import {
   type CapitalCycleEconomics,
   type CapitalCyclePortfolio,
 } from "~/features/pricing/domain/capitalCycle";
-import type {
-  ForecastGradingReport,
-  GradedForecast,
-  InventoryStrategyHurdleScenario,
-} from "../types/inventoryStrategy";
+import type { InventoryStrategyHurdleScenario } from "../types/inventoryStrategy";
+import type { ForecastEvaluationReport } from "~/features/pricing/domain/forecastEvaluation";
 
 export interface HurdleReturn {
   scenario: InventoryStrategyHurdleScenario;
@@ -40,44 +37,35 @@ export function hurdleReturns(
     .sort((left, right) => right.dailyReturn - left.dailyReturn);
 }
 
-/** The graded forecasts by label and report field. */
-export const GRADED_FORECASTS = [
-  ["Curve", "curve"],
-  ["Buyer-choice", "buyerChoice"],
-  ["Condition-rate", "conditionRate"],
-] as const;
+export interface ForecastGradingOverview {
+  state: "unavailable" | "pending" | "scored";
+  label: string;
+}
 
-export type GradingStatus =
-  | {
-      graded: true;
-      /** The best-scoring forecast. */
-      label: string;
-      grade: GradedForecast;
-      baseRate: number;
-    }
-  | { graded: false; gradableAt: string | null };
-
-/** Whether any forecast has a grade at this horizon, else when the first one will. */
-export function gradingStatus(
-  report: ForecastGradingReport | undefined,
-): GradingStatus {
-  if (!report) return { graded: false, gradableAt: null };
-  const [best] = GRADED_FORECASTS.map(([label, key]) => ({
-    label,
-    grade: report[key],
-  }))
-    .filter(({ grade }) => grade.count > 0)
-    .sort((left, right) => left.grade.brier - right.grade.brier);
-  if (best) {
+/** A neutral summary; model comparisons remain on their exact paired cohorts. */
+export function forecastGradingOverview(
+  report: ForecastEvaluationReport | null | undefined,
+): ForecastGradingOverview {
+  if (!report) {
+    return { state: "unavailable", label: "Forecast validation has insufficient evidence" };
+  }
+  const scoredVersions = report.models.filter((model) => model.validation.count > 0).length;
+  if (scoredVersions === 0) {
     return {
-      graded: true,
-      label: best.label,
-      grade: best.grade,
-      baseRate: best.grade.soldShare * (1 - best.grade.soldShare),
+      state: "pending",
+      label: `Forecast validation reserved through ${new Date(report.validationCutoff).toLocaleDateString()}`,
     };
   }
-  const [gradableAt] = GRADED_FORECASTS.map(([, key]) => report[key].gradableAt)
-    .filter((value): value is string => value !== null)
-    .sort();
-  return { graded: false, gradableAt: gradableAt ?? null };
+  const comparisons = report.pairedComparisons ?? [];
+  const minimum = report.policy?.minimumPairedValidationCount ?? 20;
+  const qualified = comparisons.filter((comparison) =>
+    comparison.validationCount >= minimum &&
+    comparison.leftBrier !== null && comparison.rightBrier !== null).length;
+  const versions = `${scoredVersions} forecast ${scoredVersions === 1 ? "version" : "versions"} scored`;
+  return {
+    state: "scored",
+    label: comparisons.length === 0
+      ? `${versions} · no cross-model pair is available`
+      : `${versions} · ${qualified} of ${comparisons.length} pair ${comparisons.length === 1 ? "comparison meets" : "comparisons meet"} the ${minimum}-observation minimum`,
+  };
 }

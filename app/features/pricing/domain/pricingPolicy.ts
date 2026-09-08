@@ -3,6 +3,7 @@ import { PRICING_MODEL_VERSION } from "~/core/types/pricingPolicy";
 import { logSpacedHorizons } from "./horizonValueCurve";
 import { maximizeOverCandidates } from "./maximize";
 import type {
+  ForecastCorrection,
   PortfolioPricingPlan,
   PortfolioMatchStatus,
   PricingConstraint,
@@ -68,6 +69,7 @@ const clampPercentile = (value: number): number =>
 
 export function toPricingCurve(
   details: readonly PricingPercentileDetail[] | undefined,
+  correction?: ForecastCorrection,
 ): PricingCurvePoint[] {
   return (details ?? [])
     .filter(
@@ -83,16 +85,26 @@ export function toPricingCurve(
       const storeWinShare = isPositive(detail.storeWinShare)
         ? detail.storeWinShare
         : undefined;
+      const uncorrectedMedian = medianSellDays(
+        buyerIntervalDays,
+        storeWinShare,
+        detail.estimatedTimeToSellDays,
+      );
       return {
         percentile: detail.percentile,
         price: detail.suggestedPrice,
         buyerIntervalDays,
         storeWinShare,
-        estimatedMedianSellDays: medianSellDays(
-          buyerIntervalDays,
-          storeWinShare,
-          detail.estimatedTimeToSellDays,
-        ),
+        estimatedMedianSellDays:
+          uncorrectedMedian === undefined
+            ? undefined
+            : uncorrectedMedian * (correction?.medianDaysMultiplier ?? 1),
+        ...(correction
+          ? {
+              forecastCorrectionVersion: correction.version,
+              forecastCorrectionMultiplier: correction.medianDaysMultiplier,
+            }
+          : {}),
         qualifyingSalesCount: detail.salesCount,
         historyCapped: detail.historyCapped,
         listingsCount: detail.listingsCount,
@@ -149,6 +161,9 @@ function interpolate(
     upper.estimatedMedianSellDays,
     ratio,
   );
+  const corrected = Boolean(
+    lower.forecastCorrectionVersion || upper.forecastCorrectionVersion,
+  );
 
   return {
     percentile: clampPercentile(
@@ -157,11 +172,16 @@ function interpolate(
     price: roundCurrency(lower.price + (upper.price - lower.price) * ratio),
     buyerIntervalDays,
     storeWinShare,
-    estimatedMedianSellDays: medianSellDays(
-      buyerIntervalDays,
-      storeWinShare,
-      interpolatedMedian,
-    ),
+    estimatedMedianSellDays: corrected
+      ? interpolatedMedian
+      : medianSellDays(buyerIntervalDays, storeWinShare, interpolatedMedian),
+    ...(lower.forecastCorrectionVersion === upper.forecastCorrectionVersion &&
+    lower.forecastCorrectionMultiplier === upper.forecastCorrectionMultiplier
+      ? {
+          forecastCorrectionVersion: lower.forecastCorrectionVersion,
+          forecastCorrectionMultiplier: lower.forecastCorrectionMultiplier,
+        }
+      : {}),
     qualifyingSalesCount: mixOptional(
       lower.qualifyingSalesCount,
       upper.qualifyingSalesCount,
@@ -316,7 +336,9 @@ function horizonRatio(
     isPositive(lower.buyerIntervalDays) &&
     isPositive(upper.buyerIntervalDays) &&
     isPositive(lower.storeWinShare) &&
-    isPositive(upper.storeWinShare)
+    isPositive(upper.storeWinShare) &&
+    !lower.forecastCorrectionVersion &&
+    !upper.forecastCorrectionVersion
       ? (horizonDays * lower.storeWinShare -
           Math.LN2 * lower.buyerIntervalDays) /
         (Math.LN2 * (upper.buyerIntervalDays - lower.buyerIntervalDays) -
@@ -366,15 +388,25 @@ export function policyParameters(
   policy: PricingPolicy,
 ): Pick<
   PricingDecision,
-  "configuredPercentile" | "targetHorizonDays" | "dailyReturnHurdle"
+  "configuredPercentile" | "targetHorizonDays" | "dailyReturnHurdle" | "forecastCorrectionVersion"
 > {
   switch (policy.method) {
     case "percentile":
       return { configuredPercentile: policy.percentile };
     case "target-horizon":
-      return { targetHorizonDays: policy.horizonDays };
+      return {
+        targetHorizonDays: policy.horizonDays,
+        ...(policy.forecastCorrection
+          ? { forecastCorrectionVersion: policy.forecastCorrection.version }
+          : {}),
+      };
     case "profit-per-day":
-      return { dailyReturnHurdle: policy.dailyReturnHurdle };
+      return {
+        dailyReturnHurdle: policy.dailyReturnHurdle,
+        ...(policy.forecastCorrection
+          ? { forecastCorrectionVersion: policy.forecastCorrection.version }
+          : {}),
+      };
   }
 }
 

@@ -8,6 +8,9 @@ export interface PricingCurvePoint {
   historyCapped?: boolean;
   listingsCount?: number;
   supplyStatus?: PricingSupplyStatus;
+  /** Internal marker that keeps corrected medians through interpolation. */
+  forecastCorrectionVersion?: string;
+  forecastCorrectionMultiplier?: number;
 }
 
 export const PRICING_MODEL_VERSION = "pooled-supply-v1" as const;
@@ -19,7 +22,11 @@ export type PricingSupplyStatus =
 
 export type PricingPolicy =
   | { method: "percentile"; percentile: number }
-  | { method: "target-horizon"; horizonDays: number }
+  | {
+      method: "target-horizon";
+      horizonDays: number;
+      forecastCorrection?: ForecastCorrection;
+    }
   | {
       method: "profit-per-day";
       /** Fraction of capital earned per day when proceeds are redeployed. */
@@ -28,7 +35,20 @@ export type PricingPolicy =
       relativeOverhead: number;
       /** Overhead in dollars per unit sold. */
       staticOverheadPerUnit: number;
+      forecastCorrection?: ForecastCorrection;
     };
+
+/** A held-out correction applied to the curve's median waits at the policy seam. */
+export interface ForecastCorrection {
+  version: string;
+  /** Seller whose frozen evidence supports this correction. */
+  sellerKey: string;
+  sourceModelVersion: string;
+  medianDaysMultiplier: number;
+  evaluationId: string;
+  /** Supported line-specific refinements; absent lines use the overall fit. */
+  productLineMedianDaysMultipliers?: Record<number, number>;
+}
 
 /** The stored choice with its settings resolved; percentile stays per product line. */
 export type ActivePricingPolicy =
@@ -61,6 +81,7 @@ export interface PricingDecision {
   configuredPercentile?: number;
   targetHorizonDays?: number;
   dailyReturnHurdle?: number;
+  forecastCorrectionVersion?: string;
   /** Net proceeds at the selected price do not clear per-unit overhead. */
   unprofitable?: boolean;
   buyerIntervalDays?: number;

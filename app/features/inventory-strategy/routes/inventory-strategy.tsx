@@ -12,9 +12,11 @@ import {
 } from "react-router";
 import {
   inventoryBatchesRepository,
+  forecastEvaluationsRepository,
   inventoryPublicationSettingsRepository,
   pricingConfigRepository,
 } from "~/core/db";
+import { PRICING_MODEL_VERSION } from "~/core/types/pricingPolicy";
 import { refreshContinuousPricingInventory } from "~/features/continuous-pricing/services/continuousInventoryRefresh.server";
 import type { CapitalCycleEconomics } from "~/features/pricing/domain/capitalCycle";
 import { DEFAULT_CAPITAL_CYCLE_INPUTS } from "../components/capitalCycleInputs";
@@ -29,7 +31,6 @@ import { loadForecastGrading } from "../services/forecastGrading.server";
 import { loadInventoryStrategyDashboard } from "../services/inventoryStrategyDashboard.server";
 import { loadInventorySellingHistory } from "../services/inventorySellingHistory.server";
 import { queueInventoryStrategyAnalysis } from "../services/inventoryStrategyAnalysis.server";
-import { DEFAULT_FORECAST_GRADING_HORIZON_DAYS } from "../types/inventoryStrategy";
 import {
   DEFAULT_SELLING_HISTORY_SCOPE,
   SELLING_HISTORY_WINDOWS,
@@ -75,7 +76,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     pricingConfigRepository.get(),
   ]);
   const settings = publicationConfiguration.settings.continuousPricing;
-  const [dashboard, recentBatches, forecastGrading, sellingHistoryResult] = await Promise.all([
+  const [dashboard, recentBatches, forecastGradingResult, sellingHistoryResult] = await Promise.all([
     loadInventoryStrategyDashboard(settings.sellerKey, pricingConfig),
     settings.sellerKey
       ? inventoryBatchesRepository.findRecent({
@@ -83,7 +84,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
           limit: 10,
         })
       : [],
-    loadForecastGrading(settings.sellerKey),
+    loadForecastGrading(settings.sellerKey)
+      .then((report) => ({ report, error: null }))
+      .catch((error) => {
+        console.error("Forecast validation load failed", error);
+        return {
+          report: null,
+          error: "Forecast validation could not be loaded. Existing strategy analysis is still available.",
+        };
+      }),
     loadInventorySellingHistory(settings.sellerKey, {
       detailPage: historyPage,
       scope: historyScope,
@@ -105,14 +114,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
     settings,
     dashboard,
     latestAnalysis,
-    forecastGrading,
+    forecastGrading: forecastGradingResult.report,
+    forecastGradingError: forecastGradingResult.error,
+    activeCorrection: pricingConfig.pricing.forecastCorrection,
     sellingHistoryResult,
   });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
   try {
-    const payload = (await request.json()) as { intent?: string };
+    const payload = (await request.json()) as {
+      intent?: string;
+      evaluationId?: string;
+      correctionVersion?: string;
+    };
     const configuration = await inventoryPublicationSettingsRepository.get();
     const settings = configuration.settings.continuousPricing;
     if (!settings.sellerKey) {
@@ -143,6 +158,30 @@ export async function action({ request }: ActionFunctionArgs) {
       });
     }
 
+    if (payload.intent === "activate_forecast_correction") {
+      if (!payload.evaluationId) {
+        return data<ActionData>({ success: false, error: "Select an eligible evaluation." }, { status: 400 });
+      }
+      await forecastEvaluationsRepository.activate({
+        sellerKey: settings.sellerKey,
+        evaluationId: payload.evaluationId,
+        sourceModelVersion: `curve:${PRICING_MODEL_VERSION}`,
+      });
+      return data<ActionData>({ success: true, message: "Activated the held-out forecast correction for future pricing runs." });
+    }
+
+    if (payload.intent === "rollback_forecast_correction") {
+      if (!payload.correctionVersion) {
+        return data<ActionData>({ success: false, error: "No active correction was selected." }, { status: 400 });
+      }
+      await forecastEvaluationsRepository.rollback({
+        sellerKey: settings.sellerKey,
+        correctionVersion: payload.correctionVersion,
+        reason: "inventory_strategy_user_request",
+      });
+      return data<ActionData>({ success: true, message: "Rolled back to the uncorrected pricing forecast." });
+    }
+
     return data<ActionData>(
       { success: false, error: "Unsupported inventory strategy action." },
       { status: 400 },
@@ -161,6 +200,8 @@ export default function InventoryStrategyRoute() {
     dashboard,
     latestAnalysis,
     forecastGrading,
+    forecastGradingError,
+    activeCorrection,
     sellingHistoryResult,
   } =
     useLoaderData<typeof loader>();
@@ -210,9 +251,12 @@ export default function InventoryStrategyRoute() {
       void revalidate();
   }, [polledStatus, revalidate]);
 
-  const submit = (intent: "refresh_inventory" | "queue_analysis") =>
+  const submit = (
+    intent: "refresh_inventory" | "queue_analysis" | "activate_forecast_correction" | "rollback_forecast_correction",
+    details: { evaluationId?: string; correctionVersion?: string } = {},
+  ) =>
     fetcher.submit(
-      { intent } as unknown as Parameters<typeof fetcher.submit>[0],
+      { intent, ...details } as unknown as Parameters<typeof fetcher.submit>[0],
       { method: "post", encType: "application/json" },
     );
 
@@ -230,8 +274,9 @@ export default function InventoryStrategyRoute() {
           </Typography>
           <Typography color="text.secondary">
             Judge the active pricing policy against its alternatives and check
-            the forecasts behind it. Nothing here changes configuration or
-            publishes prices.
+            the forecasts behind it. Eligible forecast corrections can be
+            activated or rolled back here; prices are published only by the
+            normal pricing workflow.
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} alignItems="flex-start">
@@ -289,12 +334,7 @@ export default function InventoryStrategyRoute() {
       <StrategyVerdict
         dashboard={dashboard}
         economics={economics}
-        grading={
-          forecastGrading.find(
-            (report) =>
-              report.horizonDays === DEFAULT_FORECAST_GRADING_HORIZON_DAYS,
-          ) ?? forecastGrading[0]
-        }
+        grading={forecastGrading}
       />
       {navigation.state === "loading" ? (
         <LinearProgress aria-label="Loading selling history" sx={{ mb: 1 }} />
@@ -306,9 +346,17 @@ export default function InventoryStrategyRoute() {
       ) : sellingHistoryResult.report ? (
         <InventorySellingHistory report={sellingHistoryResult.report} />
       ) : null}
+      {forecastGradingError ? (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {forecastGradingError}
+        </Alert>
+      ) : null}
       <ForecastGrading
-        reports={forecastGrading}
-        policyMethod={dashboard.policy.method}
+        report={forecastGrading}
+        activeCorrection={activeCorrection}
+        busy={busy}
+        onActivate={(evaluationId) => submit("activate_forecast_correction", { evaluationId })}
+        onRollback={(correctionVersion) => submit("rollback_forecast_correction", { correctionVersion })}
       />
       <PolicyComparison comparisons={dashboard.overall.policyComparisons} />
       <HurdleSweep dashboard={dashboard} />

@@ -2,6 +2,7 @@ import { FILE_CONFIG, PRICING_CONSTANTS } from "~/core/constants/pricing";
 import type { PricingConfig, ProductLineSettings } from "~/core/types/pricing";
 import type {
   ActivePricingPolicy,
+  ForecastCorrection,
   PricingPolicy,
 } from "~/core/types/pricingPolicy";
 
@@ -15,7 +16,7 @@ export type PricingPolicyConfig =
 
 export type ProfitPerDaySettings = Omit<
   Extract<PricingPolicy, { method: "profit-per-day" }>,
-  "method"
+  "method" | "forecastCorrection"
 >;
 
 export interface PricingConfigSettings {
@@ -32,6 +33,8 @@ export interface PricingConfigSettings {
     low: number;
     high: number;
   };
+  /** Null keeps the published pricing model unchanged. */
+  forecastCorrection: ForecastCorrection | null;
 }
 
 export interface SupplyAnalysisConfig {
@@ -81,7 +84,38 @@ export const DEFAULT_PRICING_CONFIG: PricingConfigSettings = {
     low: PRICING_CONSTANTS.SUCCESS_RATE_THRESHOLD.LOW,
     high: PRICING_CONSTANTS.SUCCESS_RATE_THRESHOLD.HIGH,
   },
+  forecastCorrection: null,
 };
+
+function normalizeForecastCorrection(value: unknown): ForecastCorrection | null {
+  if (!value || typeof value !== "object") return null;
+  const correction = value as Partial<ForecastCorrection>;
+  return typeof correction.version === "string" && correction.version.length > 0 &&
+    typeof correction.sellerKey === "string" && correction.sellerKey.trim().length > 0 &&
+    typeof correction.sourceModelVersion === "string" && correction.sourceModelVersion.length > 0 &&
+    typeof correction.evaluationId === "string" && correction.evaluationId.length > 0 &&
+    typeof correction.medianDaysMultiplier === "number" &&
+    Number.isFinite(correction.medianDaysMultiplier) && correction.medianDaysMultiplier > 0
+    ? {
+        version: correction.version,
+        sellerKey: correction.sellerKey.trim(),
+        sourceModelVersion: correction.sourceModelVersion,
+        evaluationId: correction.evaluationId,
+        medianDaysMultiplier: correction.medianDaysMultiplier,
+        ...(correction.productLineMedianDaysMultipliers &&
+        typeof correction.productLineMedianDaysMultipliers === "object"
+          ? {
+              productLineMedianDaysMultipliers: Object.fromEntries(
+                Object.entries(correction.productLineMedianDaysMultipliers).filter(
+                  ([key, multiplier]) => Number.isInteger(Number(key)) &&
+                    typeof multiplier === "number" && Number.isFinite(multiplier) && multiplier > 0,
+                ),
+              ),
+            }
+          : {}),
+      }
+    : null;
+}
 
 export const DEFAULT_SUPPLY_ANALYSIS_CONFIG: SupplyAnalysisConfig = {
   enableSupplyAnalysis: true,
@@ -188,9 +222,12 @@ export function profitPerDayPolicy(
 export function activePricingPolicy(
   settings: PricingConfigSettings,
 ): ActivePricingPolicy {
-  return settings.policy.method === "profit-per-day"
+  const policy = settings.policy.method === "profit-per-day"
     ? profitPerDayPolicy(settings.profitPerDay)
     : settings.policy;
+  return policy.method === "percentile" || !settings.forecastCorrection
+    ? policy
+    : { ...policy, forecastCorrection: settings.forecastCorrection };
 }
 
 /** The active policy as it applies to one product line, honoring its hurdle. */
@@ -222,9 +259,14 @@ export function pricingCalculatorConfig(
   | "supplyAnalysisConfig"
   | "productLinePricingConfig"
 > {
+  const policy = activePricingPolicy(config.pricing);
+  const sellerBoundPolicy = policy.method !== "percentile" && policy.forecastCorrection &&
+    options.excludedSellerKey && policy.forecastCorrection.sellerKey !== options.excludedSellerKey
+    ? { ...policy, forecastCorrection: undefined }
+    : policy;
   return {
     percentile: config.productLinePricing.defaultPercentile,
-    policy: activePricingPolicy(config.pricing),
+    policy: sellerBoundPolicy,
     minPriceMultiplier: config.pricing.minPriceMultiplier,
     minPriceConstant: config.pricing.minPriceConstant,
     enableSupplyAnalysis: config.supplyAnalysis.enableSupplyAnalysis,
@@ -248,6 +290,7 @@ export function normalizeServerPricingConfig(value: unknown): ServerPricingConfi
         ...DEFAULT_PRICING_CONFIG.successRateThreshold,
         ...(raw.pricing?.successRateThreshold ?? {}),
       },
+      forecastCorrection: normalizeForecastCorrection(raw.pricing?.forecastCorrection),
     },
     supplyAnalysis: {
       ...DEFAULT_SUPPLY_ANALYSIS_CONFIG,

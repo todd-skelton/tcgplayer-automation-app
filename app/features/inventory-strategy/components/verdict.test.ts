@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
-import type {
-  ForecastGradingReport,
-  GradedForecast,
-  InventoryStrategyHurdleScenario,
-} from "../types/inventoryStrategy";
-import { gradingStatus, hurdleReturns } from "./verdict";
+import type { InventoryStrategyHurdleScenario } from "../types/inventoryStrategy";
+import type { ForecastEvaluationReport } from "~/features/pricing/domain/forecastEvaluation";
+import { forecastGradingOverview, hurdleReturns } from "./verdict";
 
 const scenario = (
   dailyReturnHurdle: number,
@@ -52,51 +49,52 @@ assert.ok(
   "the return grows the cost basis to the value over the median wait",
 );
 
-const grade = (
-  count: number,
-  brier: number,
-  gradableAt: string | null,
-): GradedForecast => ({
-  count,
-  soldShare: 0.25,
-  expectedShare: 0.3,
-  brier,
-  deciles: [],
-  gradableAt,
-});
 const report = (
-  curve: GradedForecast,
-  buyerChoice: GradedForecast,
-  conditionRate: GradedForecast,
-): ForecastGradingReport => ({
-  horizonDays: 21,
-  otherCalibrationCount: 0,
-  curve,
-  buyerChoice,
-  conditionRate,
+  models: ForecastEvaluationReport["models"],
+  pairedComparisons: ForecastEvaluationReport["pairedComparisons"] = [],
+): ForecastEvaluationReport => ({
+  validationCutoff: "2026-09-20T00:00:00.000Z",
+  policy: { minimumPairedValidationCount: 20 } as ForecastEvaluationReport["policy"],
+  models,
+  pairedComparisons,
+} as ForecastEvaluationReport);
+
+assert.deepEqual(forecastGradingOverview(undefined), {
+  state: "unavailable", label: "Forecast validation has insufficient evidence",
+});
+assert.match(forecastGradingOverview(report([])).label, /Forecast validation reserved through/);
+
+const curve = { family: "curve" as const, version: "curve:v1", training: {} as never,
+  validation: { count: 100, soldShare: 0.5, expectedShare: 0.5, brier: 0.2, calibrationError: 0 }, reservedCount: 0 };
+assert.deepEqual(forecastGradingOverview(report([curve])), {
+  state: "scored", label: "1 forecast version scored · no cross-model pair is available",
 });
 
-assert.deepEqual(gradingStatus(undefined), { graded: false, gradableAt: null });
-assert.deepEqual(
-  gradingStatus(
-    report(
-      grade(0, 0, "2026-09-25T00:00:00.000Z"),
-      grade(0, 0, "2026-09-20T00:00:00.000Z"),
-      grade(0, 0, null),
-    ),
-  ),
-  { graded: false, gradableAt: "2026-09-20T00:00:00.000Z" },
-  "before any grade, the earliest gradable forecast sets the date",
+const buyer = { family: "buyer-choice" as const, version: "buyer:v1", training: {} as never,
+  validation: { count: 30, soldShare: 0.5, expectedShare: 0.5, brier: 0.3, calibrationError: 0 }, reservedCount: 0 };
+const condition = { family: "condition-rate" as const, version: "condition:v1", training: {} as never,
+  validation: { count: 20, soldShare: 0.5, expectedShare: 0.5, brier: 0.01, calibrationError: 0 }, reservedCount: 0 };
+assert.equal(
+  forecastGradingOverview(report([curve, buyer], [
+    { left: curve.version, right: buyer.version, validationCount: 1, leftBrier: 0.4, rightBrier: 0.1 },
+  ])).label,
+  "2 forecast versions scored · 0 of 1 pair comparison meets the 20-observation minimum",
+  "a sparse pair is reported without selecting a model",
 );
-const graded = gradingStatus(
-  report(
-    grade(10, 0.2, "2026-08-01T00:00:00.000Z"),
-    grade(8, 0.15, "2026-08-01T00:00:00.000Z"),
-    grade(0, 0, "2026-09-25T00:00:00.000Z"),
-  ),
+assert.equal(
+  forecastGradingOverview(report([curve, buyer], [
+    { left: curve.version, right: buyer.version, validationCount: 20, leftBrier: 0.2, rightBrier: 0.15 },
+  ])).label,
+  "2 forecast versions scored · 1 of 1 pair comparison meets the 20-observation minimum",
 );
-assert.ok(graded.graded);
-assert.equal(graded.label, "Buyer-choice", "the lowest Brier score leads");
-assert.ok(Math.abs(graded.baseRate - 0.1875) < 1e-12);
+assert.equal(
+  forecastGradingOverview(report([curve, buyer, condition], [
+    { left: curve.version, right: buyer.version, validationCount: 30, leftBrier: 0.2, rightBrier: 0.3 },
+    { left: curve.version, right: condition.version, validationCount: 20, leftBrier: 0.4, rightBrier: 0.01 },
+    { left: buyer.version, right: condition.version, validationCount: 20, leftBrier: 0.4, rightBrier: 0.01 },
+  ])).label,
+  "3 forecast versions scored · 3 of 3 pair comparisons meet the 20-observation minimum",
+  "three compatible pairs produce a neutral overview rather than a global winner",
+);
 
-console.log("PASS strategy verdict ranks hurdles and reads the grading status");
+console.log("PASS strategy verdict ranks hurdles and summarizes forecast comparisons neutrally");

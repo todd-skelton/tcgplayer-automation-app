@@ -1,10 +1,10 @@
 import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
 import type { CapitalCycleEconomics } from "~/features/pricing/domain/capitalCycle";
 import type {
-  ForecastGradingReport,
   InventoryStrategyDashboard,
   InventoryStrategyProductLine,
 } from "../types/inventoryStrategy";
+import type { ForecastEvaluationReport } from "~/features/pricing/domain/forecastEvaluation";
 import { describePricingPolicy } from "~/features/pricing/components/policyLabel";
 import { profitPerDayPolicy } from "~/features/pricing/types/config";
 import { cyclePortfolio } from "./capitalCycleInputs";
@@ -15,9 +15,8 @@ import {
   formatDays,
   formatDelta,
   formatHurdle,
-  percentFormatter,
 } from "./format";
-import { gradingStatus, hurdleReturns, type HurdleReturn } from "./verdict";
+import { forecastGradingOverview, hurdleReturns, type HurdleReturn } from "./verdict";
 
 function formatReturn(dailyReturn: number): string {
   return `${(dailyReturn * 100).toFixed(2)}%/day`;
@@ -43,16 +42,6 @@ function policyLabel(dashboard: InventoryStrategyDashboard): string {
   return ownHurdles === 0
     ? label
     : `${label}, ${ownHurdles} product ${ownHurdles === 1 ? "line" : "lines"} at their own`;
-}
-
-function gradingLabel(report: ForecastGradingReport | undefined): string {
-  const status = gradingStatus(report);
-  if (status.graded) {
-    return `Forecasts graded: ${status.label} ${percentFormatter.format(status.grade.soldShare)} sold against ${percentFormatter.format(status.grade.expectedShare)} expected, Brier ${status.grade.brier.toFixed(3)} against ${status.baseRate.toFixed(3)}`;
-  }
-  return status.gradableAt
-    ? `Forecasts ungraded until ${new Date(status.gradableAt).toLocaleDateString()}`
-    : "No forecasts recorded yet";
 }
 
 /** What the best hurdle offers over the configured one. */
@@ -130,7 +119,7 @@ export function StrategyVerdict({
 }: {
   dashboard: InventoryStrategyDashboard;
   economics: CapitalCycleEconomics;
-  grading: ForecastGradingReport | undefined;
+  grading: ForecastEvaluationReport | null;
 }) {
   const { overall } = dashboard;
   const active = overall.policyComparisons.find(
@@ -146,7 +135,7 @@ export function StrategyVerdict({
     returns[0],
     returns.find(({ scenario }) => scenario.configured),
   );
-  const status = gradingStatus(grading);
+  const gradingOverview = forecastGradingOverview(grading);
 
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
@@ -162,8 +151,8 @@ export function StrategyVerdict({
         <Chip
           size="small"
           variant="outlined"
-          color={status.graded ? "success" : "default"}
-          label={gradingLabel(grading)}
+          color={gradingOverview.state === "scored" ? "success" : "default"}
+          label={gradingOverview.label}
         />
       </Stack>
       <Box

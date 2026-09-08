@@ -4,6 +4,7 @@ import {
   normalizeServerPricingConfig,
 } from "~/features/pricing/types/config";
 import { asJson, execute, queryOne, type Queryable } from "../database.server";
+import { forecastEvaluationsRepository } from "./forecastEvaluations.server";
 
 type PricingConfigRow = ServerPricingConfig & {
   updatedAt: Date;
@@ -26,8 +27,23 @@ export const pricingConfigRepository = {
     );
 
     if (config) {
+      const normalized = normalizeServerPricingConfig(config);
+      if (
+        normalized.pricing.forecastCorrection &&
+        !(await forecastEvaluationsRepository.isCorrectionSupported(
+          normalized.pricing.forecastCorrection,
+          executor,
+        ))
+      ) {
+        if (!executor) {
+          await forecastEvaluationsRepository.fallbackUnsupportedCorrection(
+            normalized.pricing.forecastCorrection,
+          );
+        }
+        normalized.pricing.forecastCorrection = null;
+      }
       return {
-        ...normalizeServerPricingConfig(config),
+        ...normalized,
         updatedAt: config.updatedAt,
       };
     }

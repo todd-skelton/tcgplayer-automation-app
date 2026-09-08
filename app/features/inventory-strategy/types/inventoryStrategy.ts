@@ -1,5 +1,4 @@
 import type { PersistedPricingDetails } from "~/core/types/pricing";
-import type { ForecastGrade } from "~/features/pricing/domain/forecastGrading";
 import type { HorizonValueCurve } from "~/features/pricing/domain/horizonValueCurve";
 import type {
   PricingPolicyConfig,
@@ -136,42 +135,6 @@ export interface InventoryStrategyProductLine {
   policyComparisons: InventoryStrategyPolicyComparison[];
   hurdleSweep: InventoryStrategyHurdleScenario[];
   horizonModel: InventoryStrategyHorizonModel | null;
-}
-
-export const FORECAST_GRADING_HORIZON_DAYS = [14, 21, 28];
-export const DEFAULT_FORECAST_GRADING_HORIZON_DAYS = 21;
-
-/** One continuous pricing result with the sell-time forecasts it recorded. */
-export interface ForecastGradingRecord {
-  sku: number;
-  pricedAt: Date;
-  quantity: number | null;
-  basis: string | null;
-  method: string | null;
-  curveMedianSellDays: number | null;
-  buyerChoiceMedianSellDays: number | null;
-  buyerChoiceCalibration: string | null;
-  conditionRateMedianSellDays: number | null;
-  conditionRateMethod: string | null;
-}
-
-/** One forecast's grade, with when its first cohort completes at the horizon. */
-export interface GradedForecast extends ForecastGrade {
-  /** When the first result carrying this forecast is a horizon old; null before any result carried it. */
-  gradableAt: string | null;
-}
-
-/**
- * Every forecast graded against realized sales over one horizon, each over
- * the SKUs that carried it.
- */
-export interface ForecastGradingReport {
-  horizonDays: number;
-  /** Results whose buyer-choice forecast came from an earlier calibration. */
-  otherCalibrationCount: number;
-  curve: GradedForecast;
-  buyerChoice: GradedForecast;
-  conditionRate: GradedForecast;
 }
 
 export interface InventoryStrategyDashboard {
