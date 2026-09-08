@@ -14,7 +14,7 @@ const pool=getPool();
 const seller=`fifo-${Date.now()}`;
 const cutoff=new Date("2026-09-07T12:00:00Z");
 
-async function addOrder(number:string,time:string,quantity:number,sellerKey=seller,lifecycle="ready_to_ship"){
+async function addOrder(number:string,time:string,quantity:number,sellerKey=seller,lifecycle="ready_to_ship",skuId="99001"){
   const inserted=await pool.query(`INSERT INTO seller_orders
     (seller_key,order_number,order_time,lifecycle,provider_status,gross_item_proceeds,source_fingerprint,
      first_observed_at,last_observed_at,detail_observed_at,latest_source)
@@ -22,7 +22,7 @@ async function addOrder(number:string,time:string,quantity:number,sellerKey=sell
     [sellerKey,number,time,lifecycle]);
   const id=inserted.rows[0]!.id as string;
   await pool.query(`INSERT INTO seller_order_lines
-    (order_id,sku_id,product_name,ordered_quantity,gross_item_proceeds) VALUES ($1,'99001','Synthetic', $2,1)`,[id,quantity]);
+    (order_id,sku_id,product_name,ordered_quantity,gross_item_proceeds) VALUES ($1,$2,'Synthetic',$3,1)`,[id,skuId,quantity]);
   await pool.query(`INSERT INTO seller_order_revisions
     (order_id,revision_number,source_fingerprint,source,observed_at,order_time,provider_status,lifecycle,line_evidence)
     VALUES ($1,1,'fp','tcgplayer_api',NOW(),$2,$3,$3,'[]')`,[id,time,lifecycle]);
@@ -56,6 +56,16 @@ try{
     [`${seller}-opening-mutation`,seller,opening.rows[0]!.id]);
   await pool.query(`INSERT INTO inventory_opening_balance_items (run_id,sku,opening_quantity,receipt_id)
     VALUES ($1,99001,3,$2)`,[opening.rows[0]!.id,receipt.rows[0]!.receipt_id]);
+  await pool.query(`INSERT INTO inventory_pending_mutations
+    (request_id,mutation_type,sku,requested_quantity,product_line_id,set_id,product_id,quantity_delta,resulting_quantity)
+    VALUES ($1,'opening',99002,2,1,1,1,2,2)`,[`${seller}-opening-mutation-2`]);
+  const receipt2=await pool.query(`INSERT INTO inventory_receipts
+    (request_id,sku,original_quantity,product_line_id,set_id,product_id,seller_key,intake_at,market_value,
+     market_provenance,receipt_kind,opening_balance_run_id,fifo_precedence)
+    VALUES ($1,99002,2,1,1,1,$2,NULL,NULL,'unavailable','opening_balance',$3,0) RETURNING receipt_id`,
+    [`${seller}-opening-mutation-2`,seller,opening.rows[0]!.id]);
+  await pool.query(`INSERT INTO inventory_opening_balance_items (run_id,sku,opening_quantity,receipt_id)
+    VALUES ($1,99002,2,$2)`,[opening.rows[0]!.id,receipt2.rows[0]!.receipt_id]);
 
   await addOrder("PRE","2026-09-07T11:59:59Z",1);
   const firstOrder=await addOrder("A","2026-09-07T12:00:00Z",2);
@@ -77,6 +87,28 @@ try{
   await repo.processNextReplay();
   assert.deepEqual((await repo.findOrderAllocation(seller,"B")).map((line:any)=>[line.state,line.matchedQuantity,line.unmatchedQuantity]),[["partial",1,1]]);
   assert.equal((await repo.findOrderAllocation(seller,"C"))[0]?.unmatchedQuantity,0);
+  const correctionOrder=await addOrder("Q-A","2026-09-07T12:10:00Z",2,seller,"ready_to_ship","99002");
+  await addOrder("Q-B","2026-09-07T12:11:00Z",1,seller,"ready_to_ship","99002");
+  await repo.processNextReplay(seller);
+  assert.equal((await repo.findOrderAllocation(seller,"Q-B"))[0]?.unmatchedQuantity,1);
+  await pool.query(`UPDATE seller_order_lines SET ordered_quantity=1 WHERE order_id=$1 AND sku_id='99002'`,[correctionOrder]);
+  await pool.query(`UPDATE seller_orders SET source_revision=2 WHERE id=$1`,[correctionOrder]);
+  await pool.query(`INSERT INTO seller_order_revisions
+    (order_id,revision_number,source_fingerprint,source,observed_at,order_time,provider_status,lifecycle,line_evidence)
+    VALUES ($1,2,'fp-2','tcgplayer_api','2026-09-07T12:12:00Z','2026-09-07T12:10:00Z',
+      'ready_to_ship','ready_to_ship','[{"skuId":"99002","quantity":1}]')`,[correctionOrder]);
+  await repo.enqueueOrderRevision(correctionOrder);
+  assert.match((await repo.processNextReplay(seller) as any).reason,/order_quantity_decrease_requires_correction/);
+  const correctionLine=(await repo.findOrderAllocation(seller,"Q-A"))[0]!;
+  await repo.recordQuantityCorrection({requestId:`${seller}-quantity-correction`,sellerKey:seller,orderNumber:"Q-A",
+    skuId:"99002",sourceOrderRevision:2,availableAt:new Date("2026-09-07T12:12:00Z"),
+    evidence:{kind:"provider_quantity_correction"},sourceAllocations:[{
+      supplyKey:correctionLine.allocations[0].supplyKey,receiptId:correctionLine.allocations[0].receiptId,quantity:1}]});
+  await repo.processNextReplay(seller);
+  assert.equal((await repo.findOrderAllocation(seller,"Q-B"))[0]?.unmatchedQuantity,1);
+  await addOrder("Q-C","2026-09-07T12:13:00Z",1,seller,"ready_to_ship","99002");
+  await repo.processNextReplay(seller);
+  assert.equal((await repo.findOrderAllocation(seller,"Q-C"))[0]?.matchedQuantity,1);
   const revisionCount=await pool.query(`SELECT COUNT(*)::int AS count FROM inventory_fifo_revisions`);
   assert.equal(await repo.processNextReplay(),null);
   assert.equal((await pool.query(`SELECT COUNT(*)::int AS count FROM inventory_fifo_revisions`)).rows[0]!.count,revisionCount.rows[0]!.count);
