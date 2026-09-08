@@ -8,6 +8,7 @@ import type {
   InventoryBatchItem,
   InventoryBatchResult,
 } from "~/features/pending-inventory/types/inventoryBatch";
+import type { PersistedPricingDetails } from "~/core/types/pricing";
 import {
   createInventoryDeltaKey,
   createPricingCandidateKey,
@@ -20,6 +21,7 @@ import {
   type InventoryPublicationEligibilityReason,
   type InventoryPublicationItemStatus,
   type InventoryPublicationPolicy,
+  type InventoryPublicationForecastEvidence,
   type InventoryPublicationSourceType,
 } from "../types/inventoryPublication";
 
@@ -40,6 +42,32 @@ export interface InventoryBatchPublicationPreviewItem {
   reasons: InventoryPublicationEligibilityReason[];
   candidateKey: string;
   inventoryDeltaKey: string | null;
+  forecastEvidence: InventoryPublicationForecastEvidence | null;
+}
+
+export function snapshotPublicationForecastEvidence(
+  details: PersistedPricingDetails | null,
+): InventoryPublicationForecastEvidence | null {
+  if (!details) return null;
+  return {
+    source: "publication_candidate",
+    schemaVersion: details.schemaVersion,
+    pricedAt: details.pricedAt,
+    ...(details.pricingModelVersion
+      ? { pricingModelVersion: details.pricingModelVersion }
+      : {}),
+    ...(details.policy ? { policy: details.policy } : {}),
+    ...(details.decision ? { decision: details.decision } : {}),
+    ...(details.buyerChoiceForecast
+      ? { buyerChoiceForecast: details.buyerChoiceForecast }
+      : {}),
+    ...(details.conditionRateForecast
+      ? { conditionRateForecast: details.conditionRateForecast }
+      : {}),
+    ...(details.estimatedTimeToSellDays !== undefined
+      ? { estimatedTimeToSellDays: details.estimatedTimeToSellDays }
+      : {}),
+  };
 }
 
 export interface InventoryBatchPublicationPreview {
@@ -253,6 +281,7 @@ function createPublicationParams(
       desiredPrice: item.desiredPrice,
       quantityDelta: item.quantityDelta,
       pricedAt: item.pricedAt,
+      forecastEvidence: item.forecastEvidence,
       eligibilityReasons: [],
       status: "planned",
     })),
@@ -412,6 +441,9 @@ export async function previewInventoryBatchPublication(
       reasons,
       candidateKey,
       inventoryDeltaKey,
+      forecastEvidence: snapshotPublicationForecastEvidence(
+        result.pricingDetails,
+      ),
     };
   });
 

@@ -1,11 +1,13 @@
-import { Alert, Box, Button, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, LinearProgress, Stack, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import {
   data,
   useFetcher,
   useLoaderData,
+  useNavigation,
   useRevalidator,
   type ActionFunctionArgs,
+  type LoaderFunctionArgs,
   type MetaFunction,
 } from "react-router";
 import {
@@ -18,14 +20,21 @@ import type { CapitalCycleEconomics } from "~/features/pricing/domain/capitalCyc
 import { DEFAULT_CAPITAL_CYCLE_INPUTS } from "../components/capitalCycleInputs";
 import { ForecastGrading } from "../components/ForecastGrading";
 import { HorizonCurve } from "../components/HorizonCurve";
+import { InventorySellingHistory } from "../components/InventorySellingHistory";
 import { HurdleSweep } from "../components/HurdleSweep";
 import { PercentileExplorer } from "../components/PercentileExplorer";
 import { PolicyComparison } from "../components/PolicyComparison";
 import { StrategyVerdict } from "../components/StrategyVerdict";
 import { loadForecastGrading } from "../services/forecastGrading.server";
 import { loadInventoryStrategyDashboard } from "../services/inventoryStrategyDashboard.server";
+import { loadInventorySellingHistory } from "../services/inventorySellingHistory.server";
 import { queueInventoryStrategyAnalysis } from "../services/inventoryStrategyAnalysis.server";
 import { DEFAULT_FORECAST_GRADING_HORIZON_DAYS } from "../types/inventoryStrategy";
+import {
+  DEFAULT_SELLING_HISTORY_SCOPE,
+  SELLING_HISTORY_WINDOWS,
+  type SellingHistoryScope,
+} from "../types/inventorySellingHistory";
 
 type ActionData =
   | { success: true; message: string }
@@ -40,13 +49,33 @@ export const meta: MetaFunction = () => [
   },
 ];
 
-export async function loader() {
+export async function loader({ request }: LoaderFunctionArgs) {
+  const searchParams = new URL(request.url).searchParams;
+  const requestedHistoryPage = Number.parseInt(
+    searchParams.get("historyPage") ?? "1",
+    10,
+  );
+  const historyPage = Number.isInteger(requestedHistoryPage)
+    ? Math.max(1, requestedHistoryPage)
+    : 1;
+  const requestedWindowDays = Number.parseInt(
+    searchParams.get("historyDays") ?? "",
+    10,
+  );
+  const historyScope: SellingHistoryScope = {
+    windowDays: SELLING_HISTORY_WINDOWS.includes(
+      requestedWindowDays as SellingHistoryScope["windowDays"],
+    )
+      ? (requestedWindowDays as SellingHistoryScope["windowDays"])
+      : DEFAULT_SELLING_HISTORY_SCOPE.windowDays,
+    productLine: searchParams.get("historyProductLine")?.trim() || null,
+  };
   const [publicationConfiguration, pricingConfig] = await Promise.all([
     inventoryPublicationSettingsRepository.get(),
     pricingConfigRepository.get(),
   ]);
   const settings = publicationConfiguration.settings.continuousPricing;
-  const [dashboard, recentBatches, forecastGrading] = await Promise.all([
+  const [dashboard, recentBatches, forecastGrading, sellingHistoryResult] = await Promise.all([
     loadInventoryStrategyDashboard(settings.sellerKey, pricingConfig),
     settings.sellerKey
       ? inventoryBatchesRepository.findRecent({
@@ -55,12 +84,30 @@ export async function loader() {
         })
       : [],
     loadForecastGrading(settings.sellerKey),
+    loadInventorySellingHistory(settings.sellerKey, {
+      detailPage: historyPage,
+      scope: historyScope,
+    })
+      .then((report) => ({ report, error: null }))
+      .catch((error) => {
+        console.error("Inventory selling history load failed", error);
+        return {
+          report: null,
+          error: "Selling history could not be loaded. Existing strategy analysis is still available.",
+        };
+      }),
   ]);
   const latestAnalysis =
     recentBatches.find((batch) => batch.sourceLabel === settings.sellerKey) ??
     null;
 
-  return data({ settings, dashboard, latestAnalysis, forecastGrading });
+  return data({
+    settings,
+    dashboard,
+    latestAnalysis,
+    forecastGrading,
+    sellingHistoryResult,
+  });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -109,8 +156,15 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function InventoryStrategyRoute() {
-  const { settings, dashboard, latestAnalysis, forecastGrading } =
+  const {
+    settings,
+    dashboard,
+    latestAnalysis,
+    forecastGrading,
+    sellingHistoryResult,
+  } =
     useLoaderData<typeof loader>();
+  const navigation = useNavigation();
   const fetcher = useFetcher<ActionData>();
   const analysisFetcher = useFetcher<{
     batchNumber?: number;
@@ -242,6 +296,16 @@ export default function InventoryStrategyRoute() {
           ) ?? forecastGrading[0]
         }
       />
+      {navigation.state === "loading" ? (
+        <LinearProgress aria-label="Loading selling history" sx={{ mb: 1 }} />
+      ) : null}
+      {sellingHistoryResult.error ? (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {sellingHistoryResult.error}
+        </Alert>
+      ) : sellingHistoryResult.report ? (
+        <InventorySellingHistory report={sellingHistoryResult.report} />
+      ) : null}
       <ForecastGrading
         reports={forecastGrading}
         policyMethod={dashboard.policy.method}

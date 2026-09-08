@@ -15,6 +15,7 @@ import {
   planInventoryBatchPublication,
   planInventoryBatchPublications,
   previewInventoryBatchPublication,
+  snapshotPublicationForecastEvidence,
 } from "./inventoryBatchPublication.server";
 
 type TestCase = {
@@ -24,6 +25,41 @@ type TestCase = {
 
 const NOW = new Date("2026-08-05T12:00:00.000Z");
 const PRICED_AT = new Date("2026-08-05T11:30:00.000Z");
+
+assert.deepEqual(
+  snapshotPublicationForecastEvidence({
+    schemaVersion: 2,
+    pricedAt: PRICED_AT.toISOString(),
+    pricingModelVersion: "model-v2",
+    marketplacePrice: 24.99,
+    decision: {
+      method: "target-horizon",
+      selectedPrice: 24.99,
+      targetHorizonDays: 30,
+      estimatedMedianSellDays: 28,
+      constraint: "none",
+      basis: "modeled",
+      forecastStatus: "interpolated",
+    },
+  }),
+  {
+    source: "publication_candidate",
+    schemaVersion: 2,
+    pricedAt: PRICED_AT.toISOString(),
+    pricingModelVersion: "model-v2",
+    decision: {
+      method: "target-horizon",
+      selectedPrice: 24.99,
+      targetHorizonDays: 30,
+      estimatedMedianSellDays: 28,
+      constraint: "none",
+      basis: "modeled",
+      forecastStatus: "interpolated",
+    },
+  },
+  "publication evidence keeps only the supplied forecast and version fields",
+);
+assert.equal(snapshotPublicationForecastEvidence(null), null);
 
 function createRow(): TcgPlayerListing {
   return {
@@ -175,6 +211,8 @@ function createPublication(
       desiredAbsoluteQuantity: item.desiredAbsoluteQuantity ?? null,
       pricedAt: item.pricedAt,
       eligibilityReasons: item.eligibilityReasons ?? [],
+      forecastEvidence: item.forecastEvidence ?? null,
+      forecastEvidenceProvenance: item.forecastEvidence ? "recorded" : "unknown",
       status: item.status ?? "planned",
       errorCode: null,
       errorMessage: null,
