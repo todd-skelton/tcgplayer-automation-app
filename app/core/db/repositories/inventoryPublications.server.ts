@@ -179,6 +179,14 @@ function validateCreateParams(params: CreateInventoryPublication): void {
     if (!Number.isFinite(item.desiredPrice) || item.desiredPrice <= 0) {
       throw new RangeError(`${prefix}.desiredPrice must be positive.`);
     }
+    if (
+      item.forecastEvidence &&
+      item.forecastEvidence.source !== "publication_candidate"
+    ) {
+      throw new RangeError(
+        `${prefix}.forecastEvidence must come from the publication candidate.`,
+      );
+    }
 
     const inventoryDeltaKey = item.inventoryDeltaKey?.trim() || null;
     if (item.quantityDelta === 0 && inventoryDeltaKey) {
@@ -334,7 +342,12 @@ function plannedPublicationIdentity(
       desiredAbsoluteQuantity: item.desiredAbsoluteQuantity,
       pricedAt: item.pricedAt.toISOString(),
       eligibilityReasons: item.eligibilityReasons,
-      forecastEvidence: canonicalJson(item.forecastEvidence),
+      forecastEvidence: canonicalJson(
+        item.forecastEvidence?.source ===
+          "historical_pricing_result_exact_match"
+          ? null
+          : item.forecastEvidence,
+      ),
     })),
   });
 }
@@ -390,6 +403,7 @@ export const inventoryPublicationsRepository = {
           AND result.priced_at=item.priced_at
         WHERE publication.seller_key=$1
           AND item.forecast_evidence IS NULL AND item.status='published'
+          AND item.quantity_delta>0
           AND result.result_status='successful'
           AND result.pricing_details_json IS NOT NULL
           AND item.candidate_key='pricing-result:'||result.batch_number::text||':'||

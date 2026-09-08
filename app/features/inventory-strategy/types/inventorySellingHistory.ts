@@ -96,7 +96,8 @@ export interface SellingHistorySummary {
     | "estimable"
     | "not_reached"
     | "competing_removals"
-    | "unsettled_outcomes";
+    | "unsettled_outcomes"
+    | "uncertain_presence";
   sellThrough: SellThroughHorizon[];
 }
 

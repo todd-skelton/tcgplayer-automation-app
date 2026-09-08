@@ -12,6 +12,12 @@ const { execute, getPool, queryOne } = await import("../database.server");
 const { inventoryPublicationsRepository } = await import(
   "./inventoryPublications.server"
 );
+const { inventorySellingHistoryRepository } = await import(
+  "./inventorySellingHistory.server"
+);
+type CreateInventoryPublication = import(
+  "~/features/inventory-publication/types/inventoryPublication"
+).CreateInventoryPublication;
 
 const prefix = `strategy-history-${Date.now()}`;
 const sellerKey = `${prefix}-seller`;
@@ -61,8 +67,9 @@ async function createLegacyPublication(
   batchNumber: number,
   sku: number,
   desiredPrice: number,
+  quantityDelta = 1,
 ) {
-  const result = await inventoryPublicationsRepository.createOrFindPlanned({
+  const params: CreateInventoryPublication = {
     planningKey: `${prefix}:${sku}`,
     batchNumber,
     method: "staged_delta",
@@ -70,7 +77,7 @@ async function createLegacyPublication(
     sellerKey,
     items: [{
       candidateKey: `pricing-result:${batchNumber}:${sku}:${pricedAt.toISOString()}`,
-      inventoryDeltaKey: `${prefix}:delta:${sku}`,
+      inventoryDeltaKey: quantityDelta === 0 ? null : `${prefix}:delta:${sku}`,
       batchNumber,
       sku,
       productId: sku,
@@ -79,10 +86,11 @@ async function createLegacyPublication(
       productName: `Card ${sku}`,
       condition: "Near Mint",
       desiredPrice,
-      quantityDelta: 1,
+      quantityDelta,
       pricedAt,
     }],
-  });
+  };
+  const result = await inventoryPublicationsRepository.createOrFindPlanned(params);
   const publicationId = result.publication.id;
   const itemId = result.publication.items[0].id;
   await execute(
@@ -92,7 +100,7 @@ async function createLegacyPublication(
   await inventoryPublicationsRepository.saveItemOutcomes(publicationId, [
     { itemId, status: "published", confirmedAt: pricedAt },
   ]);
-  return { publicationId, itemId };
+  return { publicationId, itemId, params };
 }
 
 try {
@@ -100,6 +108,13 @@ try {
   const exact = await createLegacyPublication(exactBatch, 9_640_101, 24.99);
   const mismatchBatch = await createBatchResult(9_640_102, 12.5, 45);
   const mismatch = await createLegacyPublication(mismatchBatch, 9_640_102, 12.51);
+  const repricingBatch = await createBatchResult(9_640_103, 9.99, 18);
+  const repricing = await createLegacyPublication(
+    repricingBatch,
+    9_640_103,
+    9.99,
+    0,
+  );
 
   assert.equal(
     await inventoryPublicationsRepository.backfillSupportedForecastEvidence(
@@ -114,9 +129,31 @@ try {
   assert.equal(exactItem.forecastEvidenceProvenance, "recorded");
   assert.equal(exactItem.forecastEvidence?.source, "historical_pricing_result_exact_match");
   assert.equal(exactItem.forecastEvidence?.decision?.estimatedMedianSellDays, 28);
+  assert.equal(
+    (await inventoryPublicationsRepository.createOrFindPlanned(exact.params)).created,
+    false,
+    "an omitted legacy forecast remains the request identity after backfill",
+  );
+  await assert.rejects(
+    inventoryPublicationsRepository.createOrFindPlanned({
+      ...exact.params,
+      items: exact.params.items.map((item) => ({
+        ...item,
+        forecastEvidence: {
+          source: "publication_candidate" as const,
+          schemaVersion: 2,
+          pricedAt: pricedAt.toISOString(),
+          pricingModelVersion: "different-supplied-model",
+        },
+      })),
+    }),
+    /different planning inputs/,
+  );
   const mismatchItem = (await inventoryPublicationsRepository.findById(mismatch.publicationId))!.items[0];
   assert.equal(mismatchItem.forecastEvidence, null);
   assert.equal(mismatchItem.forecastEvidenceProvenance, "unknown");
+  const repricingItem = (await inventoryPublicationsRepository.findById(repricing.publicationId))!.items[0];
+  assert.equal(repricingItem.forecastEvidence, null);
 
   await execute(
     `UPDATE inventory_batch_results SET pricing_details_json=jsonb_set(
@@ -131,6 +168,20 @@ try {
     inventoryPublicationsRepository.backfillSupportedForecastEvidence(sellerKey, 0),
     /limit must be between 1 and 1000/,
   );
+  await execute(
+    `INSERT INTO inventory_fifo_replay_queue
+      (seller_key,sku,affected_from,status,generation,hold_reason)
+    VALUES
+      ($1,9640201,$2,'held',1,'unexplained_inventory_difference:1:observed_-1:expected_-1'),
+      ($1,9640202,$2,'held',1,'unexplained_inventory_difference:2:observed_-2:expected_-1')`,
+    [sellerKey, pricedAt],
+  );
+  const historyEvidence = await inventorySellingHistoryRepository.findEvidence(
+    sellerKey,
+    { windowDays: 180, productLine: null },
+  );
+  assert.equal(historyEvidence.unresolvedRemoval.quantity, 1);
+  assert.deepEqual(historyEvidence.unresolvedRemoval.affectedSkus, [9_640_202]);
   console.log("PASS publication forecast backfill is exact, bounded, and immutable");
 } finally {
   await getPool().end();

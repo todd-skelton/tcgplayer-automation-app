@@ -134,7 +134,11 @@ function summarize(
     : null;
   const competingRemovals = removedQuantity > 0 || hasUnresolvedRemoval;
   const unsettledOutcomes = known.some((episode) => unsettledSkus.has(episode.sku));
-  const percentileUnavailable = competingRemovals || unsettledOutcomes;
+  const uncertainPresence = knownRemaining.some(({ episode }) =>
+    uncertainSkus.has(episode.sku),
+  );
+  const percentileUnavailable =
+    competingRemovals || unsettledOutcomes || uncertainPresence;
   const survivalObservations = percentileUnavailable
     ? []
     : [
@@ -166,6 +170,8 @@ function summarize(
     p90DaysToSale,
     percentileStatus: unsettledOutcomes
       ? "unsettled_outcomes"
+      : uncertainPresence
+        ? "uncertain_presence"
       : competingRemovals
       ? "competing_removals"
       : medianDaysToSale !== null || p90DaysToSale !== null

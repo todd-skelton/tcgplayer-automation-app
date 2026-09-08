@@ -11,3 +11,7 @@ ALTER TABLE inventory_publication_items
 
 CREATE INDEX inventory_fifo_revision_allocations_supply_idx
   ON inventory_fifo_revision_allocations (supply_key, revision_id);
+
+CREATE INDEX inventory_publication_items_forecast_backfill_idx
+  ON inventory_publication_items (publication_id, id)
+  WHERE status = 'published' AND quantity_delta > 0 AND forecast_evidence IS NULL;

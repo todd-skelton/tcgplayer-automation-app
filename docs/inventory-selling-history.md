@@ -53,20 +53,27 @@ unavailable until the survival curve reaches it. Known stock removals are a
 competing outcome rather than ordinary censoring, so the report abstains from
 full-cohort percentiles whenever removals are present. The sold-only average is
 labeled for its sold population and is not presented as expected wait for all
-inventory.
+inventory. Full-cohort percentiles also remain unavailable when remaining
+quantity has no inventory-presence evidence through the report cutoff.
 
 ## Forecast evidence and coverage
 
 Forward publication planning copies only forecast, pricing policy, and model
 fields supplied by the exact pricing candidate. Receipt activation binds that
-immutable snapshot to the confirmed quantity. Historical evidence is backfilled
-in batches of at most 500 only when batch, SKU, result time, candidate key, and
-published price match an existing successful pricing result. Unsupported rows
-remain `unknown`; current prices and models are never used to reconstruct an
-old forecast.
+immutable snapshot to the confirmed quantity. Historical positive-quantity
+publication evidence is backfilled in batches of at most 500 only when batch,
+SKU, result time, candidate key, and published price match an existing
+successful pricing result. Price-only repricing rows remain unknown. Unsupported
+rows also remain `unknown`; current prices and models are never used to
+reconstruct an old forecast.
 
 Legacy publications without receipt links remain outside selling cohorts.
 Inventory Strategy reports their quantity and the subset with preserved exact
 forecast evidence, alongside unknown opening quantity, order freshness and
 gaps, pending or held FIFO quantities, and unresolved removals. Cost and price
 coverage do not gate listed-date metrics.
+
+Unresolved removal coverage reuses the shared FIFO reconciliation result. Only
+the negative residual between an observed inventory change and its expected
+publication, sale, restock, and correction flow is a removal; an explained
+inventory decrease is not reclassified by this report.

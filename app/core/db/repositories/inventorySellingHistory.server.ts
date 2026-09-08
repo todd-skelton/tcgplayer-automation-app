@@ -252,17 +252,21 @@ export const inventorySellingHistoryRepository = {
         [seller, analysisFrom, asOf, scope.productLine],
       ),
       queryOne<{ quantity: number; affectedSkus: number[] }>(
-        `SELECT COALESCE(SUM(ABS(difference.quantity_delta)),0)::int AS quantity,
-          COALESCE(array_agg(DISTINCT difference.sku) FILTER (WHERE difference.sku IS NOT NULL),'{}') AS "affectedSkus"
-        FROM inventory_observation_differences difference
-        JOIN inventory_complete_observations observation ON observation.id=difference.observation_id
-        JOIN inventory_opening_balance_runs opening
-          ON opening.seller_key=difference.seller_key AND opening.status='applied'
-        LEFT JOIN skus catalog ON catalog.sku=difference.sku
-        WHERE difference.seller_key=$1 AND difference.quantity_delta<0
-          AND observation.cutoff_at>opening.cutoff_at
-          AND difference.status IN ('unresolved','acknowledged')
-          AND ($2::text IS NULL OR COALESCE(catalog.product_line_name,'Unknown')=$2)`,
+        `WITH held AS (
+          SELECT replay.sku,
+            substring(replay.hold_reason FROM 'observed_(-?[0-9]+)')::int AS observed,
+            substring(replay.hold_reason FROM 'expected_(-?[0-9]+)')::int AS expected
+          FROM inventory_fifo_replay_queue replay
+          LEFT JOIN skus catalog ON catalog.sku=replay.sku
+          WHERE replay.seller_key=$1 AND replay.status='held'
+            AND replay.hold_reason ~ '^unexplained_inventory_difference:[0-9]+:observed_-?[0-9]+:expected_-?[0-9]+$'
+            AND ($2::text IS NULL OR COALESCE(catalog.product_line_name,'Unknown')=$2)
+        ), removals AS (
+          SELECT sku,GREATEST(expected-observed,0)::int AS quantity FROM held
+        )
+        SELECT COALESCE(SUM(quantity),0)::int AS quantity,
+          COALESCE(array_agg(DISTINCT sku) FILTER (WHERE quantity>0),'{}') AS "affectedSkus"
+        FROM removals`,
         [seller, scope.productLine],
       ),
     ]);

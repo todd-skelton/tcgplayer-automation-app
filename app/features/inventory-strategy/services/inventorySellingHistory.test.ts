@@ -166,6 +166,43 @@ if (removed.status === "ready") {
   );
 }
 
+const majoritySoldOutcomes = [{
+  episodeKey: "receipt:3",
+  kind: "sale" as const,
+  quantity: 6,
+  happenedAt: day(10),
+  orderNumber: "D",
+  orderLineId: "4",
+  source: "seller_order" as const,
+}];
+const fullyObserved = buildInventorySellingHistoryReport(
+  evidence({
+    episodes: [episodes[2]],
+    episodeCount: 1,
+    outcomes: majoritySoldOutcomes,
+    outcomeCount: 1,
+  }),
+);
+assert.equal(fullyObserved.status, "ready");
+if (fullyObserved.status === "ready") {
+  assert.equal(fullyObserved.overall.medianDaysToSale, 10);
+  assert.equal(fullyObserved.overall.percentileStatus, "estimable");
+}
+const stalePresence = buildInventorySellingHistoryReport(
+  evidence({
+    inventoryObservedAt: day(5),
+    episodes: [episodes[2]],
+    episodeCount: 1,
+    outcomes: majoritySoldOutcomes,
+    outcomeCount: 1,
+  }),
+);
+assert.equal(stalePresence.status, "ready");
+if (stalePresence.status === "ready") {
+  assert.equal(stalePresence.overall.medianDaysToSale, null);
+  assert.equal(stalePresence.overall.percentileStatus, "uncertain_presence");
+}
+
 const futurePublication = buildInventorySellingHistoryReport(
   evidence({
     episodes: [{ ...episodes[2], listedAt: day(31) }],
