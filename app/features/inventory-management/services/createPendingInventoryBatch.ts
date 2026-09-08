@@ -6,6 +6,15 @@ type BatchFetch = (
   init: RequestInit,
 ) => Promise<BatchResponse>;
 
+export interface PurchaseCostAtIntake {
+  purchaseReference: string;
+  totalAmount: string;
+  provenance: "actual" | "estimated";
+  allocationRule: "quantity" | "frozen_market";
+  purchasedAt?: string;
+  currency: string;
+}
+
 export class PendingBatchRequestError extends Error {
   constructor(
     message: string,
@@ -22,15 +31,18 @@ function errorMessage(error: unknown): string {
 
 export async function createPendingInventoryBatch(
   requestId: string,
-  send: BatchFetch = fetch,
+  purchaseCostOrSend?: PurchaseCostAtIntake | BatchFetch,
+  explicitSend: BatchFetch = fetch,
 ): Promise<InventoryBatch> {
+  const purchaseCost = typeof purchaseCostOrSend === "function" ? undefined : purchaseCostOrSend;
+  const send = typeof purchaseCostOrSend === "function" ? purchaseCostOrSend : explicitSend;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     let response: BatchResponse;
     try {
       response = await send("/api/inventory-batches", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId }),
+        body: JSON.stringify({ requestId, ...(purchaseCost ? { purchaseCost } : {}) }),
       });
     } catch (error) {
       if (attempt === 0) continue;

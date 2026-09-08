@@ -1,6 +1,12 @@
 import "../core/clients/baseDomainClient.server.test";
 import "../integrations/tcgplayer/client/get-price-points.server.test";
 import "../features/inventory-history/domain/receiptBalances.test";
+import "../features/inventory-economics/domain/money.test";
+import "../features/inventory-economics/domain/orderEconomics.test";
+import "../features/inventory-economics/domain/postage.test";
+import "../features/inventory-economics/services/purchaseCostFileImport.test";
+import "../features/inventory-economics/routes/api.inventory-economics.test";
+import "../features/inventory-economics/routes/inventory-economics.test";
 import "../features/inventory-history/routes/api.inventory-history-diagnostics.test";
 import "../features/inventory-history/services/inventoryHistoryWorkerPolicy.test";
 import "../features/inventory-opening-balance/domain/inventoryObservation.test";

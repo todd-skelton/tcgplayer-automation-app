@@ -27,6 +27,16 @@ export interface SellerOrderRefundEvidence {
   products?: Array<{ amount?: number; productId?: string; skuId?: string }>;
 }
 
+export interface SellerOrderTransactionEvidence {
+  productAmount: number;
+  shippingAmount: number;
+  grossAmount: number;
+  feeAmount: number;
+  netAmount: number;
+  directFeeAmount: number;
+  taxes: Array<{ code: string; amount: number }>;
+}
+
 export interface SellerOrderObservation {
   sellerKey: string;
   orderNumber: string;
@@ -38,6 +48,8 @@ export interface SellerOrderObservation {
   orderChannel?: string;
   orderFulfillment?: string;
   grossItemProceeds: number;
+  transaction?: SellerOrderTransactionEvidence;
+  transactionCoverageReason?: string;
   lines: SellerOrderLineEvidence[];
   refunds: SellerOrderRefundEvidence[];
   source: SellerOrderSource;

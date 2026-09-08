@@ -72,6 +72,15 @@ assert.equal(first.sellerKey, "seller-a");
 assert.equal(first.orderTime, baseDetail.createdAt);
 assert.equal(first.summaryOrderTime, "2026-08-10T14:00:00.000Z");
 assert.equal(first.fingerprint, reordered.fingerprint);
+assert.notEqual(first.fingerprint, observeSellerOrder("seller-a",undefined,{
+  ...baseDetail,transaction:{...baseDetail.transaction,feeAmount:1,netAmount:11.5},
+}).fingerprint);
+const optionalTransaction = observeSellerOrder("seller-a",undefined,{
+  ...baseDetail,transaction:{ productAmount:12.5 } as SellerOrderDetail["transaction"],
+});
+assert.equal(optionalTransaction.grossItemProceeds,12.5);
+assert.equal(optionalTransaction.transaction,undefined);
+assert.equal(optionalTransaction.transactionCoverageReason,"provider_transaction_fields_unavailable");
 assert.equal("reasonText" in first.refunds[0]!, false);
 assert.deepEqual(first.refunds[0]?.products, [{ amount: 1.25, productId: "10", skuId: "100" }]);
 assert.equal(

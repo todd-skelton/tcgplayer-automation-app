@@ -16,6 +16,9 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  TextField,
+  Checkbox,
+  FormControlLabel,
 } from "@mui/material";
 import { useNavigate } from "react-router";
 import { useInventoryProcessor } from "../hooks/useInventoryProcessor";
@@ -63,6 +66,11 @@ export default function InventoryManagerRoute() {
 
   const [clearDialogOpen, setClearDialogOpen] = React.useState(false);
   const [isCreatingBatch, setIsCreatingBatch] = React.useState(false);
+  const [includePurchaseCost, setIncludePurchaseCost] = React.useState(false);
+  const [purchaseReference, setPurchaseReference] = React.useState("");
+  const [purchaseTotal, setPurchaseTotal] = React.useState("");
+  const [purchaseEstimated, setPurchaseEstimated] = React.useState(false);
+  const [purchaseDate, setPurchaseDate] = React.useState("");
   const filtersRef = useRef<InventoryFiltersRef>(null);
 
   const preserveFocusAcrossConditionChange = useCallback(
@@ -161,7 +169,11 @@ export default function InventoryManagerRoute() {
     setIsCreatingBatch(true);
 
     try {
-      const batch = await createBatchFromPendingInventory();
+      const batch = await createBatchFromPendingInventory(includePurchaseCost ? {
+        purchaseReference: purchaseReference.trim(), totalAmount: purchaseTotal.trim(),
+        provenance: purchaseEstimated ? "estimated" : "actual", allocationRule: "quantity",
+        ...(purchaseDate ? { purchasedAt: purchaseDate } : {}), currency: "USD",
+      } : undefined);
       navigate(`/pending-inventory-pricer?batch=${batch.batchNumber}`);
     } catch (error) {
       console.error("Failed to create batch:", error);
@@ -345,6 +357,27 @@ export default function InventoryManagerRoute() {
             }}
             sealedFilter={sealedFilter}
           />
+          {pendingInventory.length > 0 && (
+            <Stack spacing={2} sx={{ mt: 3, maxWidth: 760 }}>
+              <FormControlLabel control={<Checkbox checked={includePurchaseCost}
+                onChange={(event) => setIncludePurchaseCost(event.target.checked)} />}
+                label="Record optional purchase cost with this batch" />
+              {includePurchaseCost && <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                <TextField label="Purchase reference" value={purchaseReference} required
+                  onChange={(event) => setPurchaseReference(event.target.value)} />
+                <TextField label="Purchase total (USD)" value={purchaseTotal} required
+                  inputMode="decimal" onChange={(event) => setPurchaseTotal(event.target.value)} />
+                <TextField label="Purchase date" type="date" value={purchaseDate}
+                  slotProps={{ inputLabel: { shrink: true } }} onChange={(event) => setPurchaseDate(event.target.value)} />
+                <FormControlLabel control={<Checkbox checked={purchaseEstimated}
+                  onChange={(event) => setPurchaseEstimated(event.target.checked)} />}
+                  label="Estimated" />
+              </Stack>}
+              <Typography variant="caption" color="text.secondary">
+                Cost is optional. Quantity allocation preserves the purchase total across these receipt lots; market value is never used as actual cost.
+              </Typography>
+            </Stack>
+          )}
         </Paper>
       </Box>
 

@@ -64,4 +64,17 @@ for (const status of [408, 500]) {
   assert.equal(attempts, 2);
 }
 
+let intakeBody: Record<string, unknown> | undefined;
+await createPendingInventoryBatch("batch-with-cost", {
+  purchaseReference:"invoice-1",totalAmount:"0.00",provenance:"actual",
+  allocationRule:"quantity",currency:"USD",
+}, async (_url,init) => {
+  intakeBody = JSON.parse(String(init.body)) as Record<string, unknown>;
+  return { ok:true,status:201,json:async()=>({batchNumber:73}) };
+});
+assert.deepEqual(intakeBody, { requestId:"batch-with-cost",purchaseCost:{
+  purchaseReference:"invoice-1",totalAmount:"0.00",provenance:"actual",
+  allocationRule:"quantity",currency:"USD",
+} });
+
 console.log("PASS uncertain batch responses retry one durable request and remain recoverable");
