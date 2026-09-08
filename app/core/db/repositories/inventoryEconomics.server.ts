@@ -439,15 +439,16 @@ export const inventoryEconomicsRepository = {
     return { targets:rows.slice(0,10000),complete:rows.length <= 10000 };
   },
 
-  async findWorkspaceEvidence(sellerKey: string, limit = 100) {
+  async findWorkspaceEvidence(sellerKey: string, limit = 100, executor?:Queryable) {
     const seller = sellerKey.trim();
     const orders = await query<{
-      id: string; orderNumber: string; orderTime: Date; currency: string; lifecycle: string;
+      id: string; orderNumber: string; orderTime: Date; currency: string; lifecycle: string; sourceFingerprint: string;
       refundStatus: string | null; transactionEvidence: unknown; grossItemCents: number;
       orderedQuantity: number;
       grossShippingCents: number | null; grossOrderCents: number | null; platformFeeCents: number | null;
       providerNetCents: number | null; directFeeCents: number | null; refunds: Array<{ amount?: number }>;
     }>(`SELECT orders.id::text AS id,orders.order_number AS "orderNumber",orders.order_time AS "orderTime",orders.currency,
+        orders.source_fingerprint AS "sourceFingerprint",
         orders.lifecycle,orders.refund_status AS "refundStatus",orders.transaction_evidence AS "transactionEvidence",
         (SELECT COALESCE(SUM(line.ordered_quantity),0)::int FROM seller_order_lines line WHERE line.order_id=orders.id) AS "orderedQuantity",
         ROUND(orders.gross_item_proceeds*100)::float8 AS "grossItemCents",
@@ -458,8 +459,10 @@ export const inventoryEconomicsRepository = {
         ROUND(orders.direct_fee_amount*100)::float8 AS "directFeeCents",revision.refund_evidence AS refunds
       FROM seller_orders orders JOIN seller_order_revisions revision
         ON revision.order_id=orders.id AND revision.revision_number=orders.source_revision
-      WHERE orders.seller_key=$1 ORDER BY orders.order_time DESC,orders.id DESC LIMIT $2`, [seller, limit]);
-    const orderNumbers = orders.map((order) => order.orderNumber);
+      WHERE orders.seller_key=$1 ORDER BY orders.order_time DESC,orders.id DESC LIMIT $2`, [seller, limit + 1],executor);
+    const ordersComplete = orders.length <= limit;
+    const selectedOrders = orders.slice(0,limit);
+    const orderNumbers = selectedOrders.map((order) => order.orderNumber);
     const postageRows = orderNumbers.length ? await query<{
       id: string; providerIdentity: string; orderNumbers: string[]; currency: string | null; rateCents: number | null; direction: string;
       linkedSellers: string[]; linkedOrderCount: number;
@@ -473,10 +476,10 @@ export const inventoryEconomicsRepository = {
       FROM shipping_postage_purchases purchase
       WHERE purchase.mode='production' AND purchase.status='purchased'
         AND purchase.order_numbers && $1::text[]
-      ORDER BY purchase.created_at,purchase.id LIMIT 10001`, [orderNumbers]) : [];
+      ORDER BY purchase.created_at,purchase.id LIMIT 10001`, [orderNumbers],executor) : [];
     const postageComplete = postageRows.length <= 10000;
     const postage = postageRows.slice(0,10000);
-    const allocationRows = orders.length ? await query<{
+    const allocationRows = selectedOrders.length ? await query<{
       orderId: string; receiptId: number; quantity: number; originalQuantity: number;
       allocatedCostCents: number | null; costProvenance: "actual" | "estimated" | null;
       costCurrency: string | null;
@@ -509,7 +512,7 @@ export const inventoryEconomicsRepository = {
         JOIN inventory_fifo_revision_allocations recent_allocation
           ON recent_allocation.revision_id=recent_fifo.current_revision_id
         WHERE recent_fifo.order_id=ANY($2::bigint[])
-      ) LIMIT 10001`, [seller, orders.map((order) => order.id)]) : [];
+      ) LIMIT 10001`, [seller, selectedOrders.map((order) => order.id)],executor) : [];
     const allocationsComplete = allocationRows.length <= 10000;
     const allocations = allocationRows.slice(0,10000);
     const relevantExpenseRows = orderNumbers.length ? await query<OrderExpenseSummary>(
@@ -524,7 +527,7 @@ export const inventoryEconomicsRepository = {
        JOIN LATERAL (SELECT * FROM inventory_order_expense_entries candidate WHERE candidate.series_id=series.id
          ORDER BY sequence DESC LIMIT 1) entry ON true
        WHERE series.seller_key=$1 AND entry.order_numbers && $2::text[]
-       ORDER BY entry.expense_at,entry.id LIMIT 10001`,[seller,orderNumbers]) : [];
+       ORDER BY entry.expense_at,entry.id LIMIT 10001`,[seller,orderNumbers],executor) : [];
     const relevantExpensesComplete = relevantExpenseRows.length <= 10000;
     const relevantOrderExpenses = relevantExpenseRows.slice(0,10000);
     const uncostedBatches = await query<{ batchNumber: number; sourceLabel: string; receiptCount: number }>(
@@ -549,9 +552,9 @@ export const inventoryEconomicsRepository = {
        GROUP BY batch.batch_number,batch.source_label
        HAVING BOOL_AND(receipt.seller_key IS NULL OR receipt.seller_key=$1)
          AND COUNT(DISTINCT link.receipt_id) FILTER (WHERE current_cost.receipt_id IS NULL)>0
-       ORDER BY batch.batch_number DESC LIMIT $2`, [seller,limit],
+       ORDER BY batch.batch_number DESC LIMIT $2`, [seller,limit],executor,
     );
-    return { orders, postage, postageComplete, allocations, allocationsComplete,
+    return { orders:selectedOrders, ordersComplete, postage, postageComplete, allocations, allocationsComplete,
       relevantOrderExpenses, relevantExpensesComplete, uncostedBatches };
   },
 };

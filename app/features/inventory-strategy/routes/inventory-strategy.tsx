@@ -23,6 +23,7 @@ import { DEFAULT_CAPITAL_CYCLE_INPUTS } from "../components/capitalCycleInputs";
 import { ForecastGrading } from "../components/ForecastGrading";
 import { HorizonCurve } from "../components/HorizonCurve";
 import { InventorySellingHistory } from "../components/InventorySellingHistory";
+import { ReinvestmentTurnaround } from "../components/ReinvestmentTurnaround";
 import { HurdleSweep } from "../components/HurdleSweep";
 import { PercentileExplorer } from "../components/PercentileExplorer";
 import { PolicyComparison } from "../components/PolicyComparison";
@@ -30,6 +31,7 @@ import { StrategyVerdict } from "../components/StrategyVerdict";
 import { loadForecastGrading } from "../services/forecastGrading.server";
 import { loadInventoryStrategyDashboard } from "../services/inventoryStrategyDashboard.server";
 import { loadInventorySellingHistory } from "../services/inventorySellingHistory.server";
+import { loadReinvestmentTurnaroundWithRecovery } from "../services/reinvestmentTurnaround.server";
 import { queueInventoryStrategyAnalysis } from "../services/inventoryStrategyAnalysis.server";
 import {
   DEFAULT_SELLING_HISTORY_SCOPE,
@@ -76,7 +78,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     pricingConfigRepository.get(),
   ]);
   const settings = publicationConfiguration.settings.continuousPricing;
-  const [dashboard, recentBatches, forecastGradingResult, sellingHistoryResult] = await Promise.all([
+  const [dashboard, recentBatches, forecastGradingResult, sellingHistoryResult, reinvestmentResult] = await Promise.all([
     loadInventoryStrategyDashboard(settings.sellerKey, pricingConfig),
     settings.sellerKey
       ? inventoryBatchesRepository.findRecent({
@@ -105,6 +107,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
           error: "Selling history could not be loaded. Existing strategy analysis is still available.",
         };
       }),
+    loadReinvestmentTurnaroundWithRecovery(settings.sellerKey),
   ]);
   const latestAnalysis =
     recentBatches.find((batch) => batch.sourceLabel === settings.sellerKey) ??
@@ -118,6 +121,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     forecastGradingError: forecastGradingResult.error,
     activeCorrection: pricingConfig.pricing.forecastCorrection,
     sellingHistoryResult,
+    reinvestmentResult,
   });
 }
 
@@ -203,6 +207,7 @@ export default function InventoryStrategyRoute() {
     forecastGradingError,
     activeCorrection,
     sellingHistoryResult,
+    reinvestmentResult,
   } =
     useLoaderData<typeof loader>();
   const navigation = useNavigation();
@@ -336,6 +341,8 @@ export default function InventoryStrategyRoute() {
         economics={economics}
         grading={forecastGrading}
       />
+      <ReinvestmentTurnaround report={reinvestmentResult.report} error={reinvestmentResult.error}
+        loading={navigation.state === "loading"}/>
       {navigation.state === "loading" ? (
         <LinearProgress aria-label="Loading selling history" sx={{ mb: 1 }} />
       ) : null}
