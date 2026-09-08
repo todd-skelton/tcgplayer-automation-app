@@ -20,7 +20,7 @@ function sourceLabel(value: string) {
 
 export function IntakeHistorySummary({
   sourceOrders,
-  label = "Intake history",
+  label = "Order",
   compact = false,
 }: {
   sourceOrders: TcgPlayerShippingOrder[];
@@ -32,8 +32,7 @@ export function IntakeHistorySummary({
   const delta = intakeDeltaAmount(comparison);
   const percent = intakeDeltaPercent(comparison);
   const uniqueOrders = [...new Map(sourceOrders.map((order) => [order["Order #"], order])).values()];
-  const statusCount = comparison.pendingLineCount + comparison.heldLineCount
-    + comparison.mismatchLineCount + comparison.unavailableLineCount;
+  const reviewCount = comparison.heldLineCount + comparison.mismatchLineCount;
 
   return (
     <Stack spacing={compact ? 0.5 : 1} sx={{ minWidth: 0 }}>
@@ -58,7 +57,9 @@ export function IntakeHistorySummary({
         <Chip size="small" variant="outlined" label={`Intake price ${coverage(comparison.priceKnownQuantity, comparison.orderedQuantity)}`} />
         <Chip size="small" variant="outlined" label={`Intake date ${coverage(comparison.dateKnownQuantity, comparison.orderedQuantity)}`} />
         {comparison.estimatedPriceQuantity > 0 && <Chip size="small" color="warning" variant="outlined" label={`${comparison.estimatedPriceQuantity} estimated price units`} />}
-        {statusCount > 0 && <Chip size="small" color="warning" label={`${statusCount} history ${statusCount === 1 ? "line needs" : "lines need"} review`} />}
+        {comparison.pendingLineCount > 0 && <Chip size="small" color="info" variant="outlined" label={`${comparison.pendingLineCount} allocation ${comparison.pendingLineCount === 1 ? "line" : "lines"} pending`} />}
+        {comparison.unavailableLineCount > 0 && <Chip size="small" variant="outlined" label={`${comparison.unavailableLineCount} history ${comparison.unavailableLineCount === 1 ? "line" : "lines"} unavailable`} />}
+        {reviewCount > 0 && <Chip size="small" color="warning" label={`${reviewCount} history ${reviewCount === 1 ? "line needs" : "lines need"} review`} />}
       </Stack>
       <Box component="details" sx={{ maxWidth: "100%" }}>
         <Box component="summary" sx={{ cursor: "pointer", color: "text.secondary", typography: "caption" }}>

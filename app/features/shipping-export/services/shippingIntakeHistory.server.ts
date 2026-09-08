@@ -1,12 +1,12 @@
 import { inventoryFifoRepository } from "~/core/db";
 import type {
-  OrderLineItem,
   ShippingIntakeHistoryStatus,
   ShippingIntakeLineHistory,
   ShippingIntakeLot,
   ShippingIntakePriceProvenance,
   TcgPlayerShippingOrder,
 } from "../types/shippingExport";
+import { shippingInventorySkuId } from "./shippingOrderIdentity";
 
 type AllocationRow = {
   orderNumber: string;
@@ -15,6 +15,7 @@ type AllocationRow = {
   currentSourceOrderRevision: number;
   skuId: string;
   currentOrderedQuantity: number;
+  persistedSoldTotal: number;
   state: string | null;
   holdReason: string | null;
   allocatedOrderedQuantity: number | null;
@@ -48,15 +49,10 @@ type FindAllocations = typeof inventoryFifoRepository.findShippingOrderAllocatio
 
 const MAX_ORDERS = 500;
 
-function exactSkuIdentity(line: OrderLineItem): string | null {
-  if (line.inventorySkuId?.trim()) return line.inventorySkuId.trim();
-  return line.skuId === undefined ? null : String(line.skuId);
-}
-
 function groupedShippingLines(order: TcgPlayerShippingOrder) {
   const grouped = new Map<string, { quantity: number; soldTotal: number }>();
   for (const line of order.products ?? []) {
-    const skuId = exactSkuIdentity(line);
+    const skuId = shippingInventorySkuId(line);
     if (!skuId) continue;
     const previous = grouped.get(skuId) ?? { quantity: 0, soldTotal: 0 };
     grouped.set(skuId, {
@@ -70,7 +66,7 @@ function groupedShippingLines(order: TcgPlayerShippingOrder) {
 function unidentifiedShippingQuantity(order: TcgPlayerShippingOrder): number {
   if (!order.products?.length) return 0;
   const productQuantity = order.products.reduce((sum, line) => sum + line.quantity, 0);
-  const unidentified = order.products.filter((line) => !exactSkuIdentity(line)).reduce((sum, line) => sum + line.quantity, 0);
+  const unidentified = order.products.filter((line) => !shippingInventorySkuId(line)).reduce((sum, line) => sum + line.quantity, 0);
   return unidentified + Math.max(0, order["Item Count"] - productQuantity);
 }
 
@@ -89,6 +85,7 @@ function unavailableLine(skuId: string, order: TcgPlayerShippingOrder, quantity:
     currentSourceOrderRevision: 0,
     orderTime: order["Order Date"],
     orderedQuantity: quantity,
+    soldTotal: null,
     matchedQuantity: 0,
     unmatchedQuantity: quantity,
     priceKnownQuantity: 0,
@@ -168,6 +165,7 @@ function currentLineHistory(row: AllocationRow, shippingQuantity: number): Shipp
     currentSourceOrderRevision: row.currentSourceOrderRevision,
     orderTime,
     orderedQuantity: shippingQuantity,
+    soldTotal: row.persistedSoldTotal,
     matchedQuantity: row.matchedQuantity ?? 0,
     unmatchedQuantity: row.unmatchedQuantity ?? shippingQuantity,
     priceKnownQuantity: row.priceKnownQuantity ?? 0,
@@ -208,8 +206,23 @@ export async function enrichShippingOrdersWithIntakeHistory(
       : [...(persisted?.values() ?? [])].map((row) => currentLineHistory(row, row.currentOrderedQuantity));
     const unidentifiedQuantity = unidentifiedShippingQuantity(order);
     if (unidentifiedQuantity) lines.push(unavailableLine("unidentified", order, unidentifiedQuantity));
+    if (!order.products?.length) {
+      const persistedQuantity = lines.reduce((sum, line) => sum + line.orderedQuantity, 0);
+      const persistedSoldTotal = lines.reduce((sum, line) => sum + (line.soldTotal ?? 0), 0);
+      if (persistedQuantity < order["Item Count"]) {
+        lines.push(unavailableLine("unidentified", order, order["Item Count"] - persistedQuantity));
+      }
+      if (persistedQuantity > order["Item Count"]
+        || (persistedQuantity === order["Item Count"]
+          && Math.round(persistedSoldTotal * 100) !== Math.round(order["Value Of Products"] * 100))) {
+        for (const line of lines) {
+          line.status = "mismatch";
+          line.statusReason = "Persisted SKU quantities or sale proceeds do not match the shipping order total.";
+        }
+      }
+    }
     if (!lines.length && order["Item Count"] > 0) lines.push(unavailableLine("unidentified", order, order["Item Count"]));
-    return { ...order, intakeHistory: { orderNumber: order["Order #"], lines, refreshedAt } };
+    return { ...order, intakeHistory: { orderNumber: order["Order #"], sellerKey: sellerKey.trim(), lines, refreshedAt } };
   });
 }
 

@@ -1,6 +1,7 @@
 import type { ShippingIntakeLineHistory, TcgPlayerShippingOrder } from "../types/shippingExport";
 import { getOrderNumbersForShipmentReference } from "./shippingExportUtils";
 import type { ShipmentToOrderMap } from "../types/shippingExport";
+import { shippingInventorySkuId } from "./shippingOrderIdentity";
 
 export interface IntakeComparison {
   soldTotal: number;
@@ -42,15 +43,10 @@ const empty = (): IntakeComparison => ({
   lotCount: 0,
 });
 
-function shippingSkuId(line: NonNullable<TcgPlayerShippingOrder["products"]>[number]): string | null {
-  if (line.inventorySkuId) return line.inventorySkuId;
-  return line.skuId === undefined ? null : String(line.skuId);
-}
-
 function soldBySku(order: TcgPlayerShippingOrder) {
   const result = new Map<string, { quantity: number; soldTotal: number }>();
   for (const line of order.products ?? []) {
-    const skuId = shippingSkuId(line);
+    const skuId = shippingInventorySkuId(line);
     if (!skuId) continue;
     const previous = result.get(skuId) ?? { quantity: 0, soldTotal: 0 };
     result.set(skuId, {
@@ -75,14 +71,16 @@ export function compareOrderToIntake(order: TcgPlayerShippingOrder): IntakeCompa
     : order["Value Of Products"];
   const sold = soldBySku(order);
   const historyLines = order.intakeHistory?.lines ?? [];
+  result.orderedQuantity = order["Item Count"];
+  if (!historyLines.length && result.orderedQuantity > 0) result.unavailableLineCount = 1;
   const historyQuantity = historyLines.reduce((sum, line) => sum + line.orderedQuantity, 0);
   const fallbackSoldPrice = historyQuantity ? result.soldTotal / historyQuantity : 0;
   for (const line of historyLines) {
-    result.orderedQuantity += line.orderedQuantity;
     statusCount(result, line);
     if (line.status !== "current") continue;
     const sale = sold.get(line.skuId);
-    const averageSoldPrice = sale?.quantity ? sale.soldTotal / sale.quantity : fallbackSoldPrice;
+    const averageSoldPrice = sale?.quantity ? sale.soldTotal / sale.quantity
+      : line.soldTotal !== null && line.orderedQuantity ? line.soldTotal / line.orderedQuantity : fallbackSoldPrice;
     result.matchedQuantity += line.matchedQuantity;
     result.priceKnownQuantity += line.priceKnownQuantity;
     result.dateKnownQuantity += line.dateKnownQuantity;

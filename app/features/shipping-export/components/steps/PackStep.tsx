@@ -52,6 +52,7 @@ import type {
   OrderLineItem,
   ShipmentToOrderMap,
   ShippingPostagePurchaseEntry,
+  ShippingIntakeLineHistory,
   TcgPlayerShippingOrder,
 } from "../../types/shippingExport";
 
@@ -61,23 +62,31 @@ type FallbackRow = {
   quantity: number;
   /** Comparison for just this row, so sold and market cells can be shown per card. */
   comparison: MarketComparison | null;
+  intakeHistory: ShippingIntakeLineHistory | null;
 };
 
 function findLineForSku(lines: OrderLineItem[], skuId: number): OrderLineItem | undefined {
   return lines.find((line) => line.skuId === skuId);
 }
 
-function buildPriceBadgesBySku(lines: OrderLineItem[]): Record<number, PullSheetPriceBadge> {
+function buildPriceBadgesBySku(order: TcgPlayerShippingOrder): Record<number, PullSheetPriceBadge> {
   const badges: Record<number, PullSheetPriceBadge> = {};
-
-  for (const line of lines) {
-    if (line.skuId === undefined || badges[line.skuId]) {
-      continue;
-    }
-
-    badges[line.skuId] = {
-      soldPrice: line.unitPrice,
-      ...(line.marketPrice !== undefined ? { marketPrice: line.marketPrice } : {}),
+  const histories = new Map((order.intakeHistory?.lines ?? []).map((line) => [line.skuId, line]));
+  const grouped = new Map<number, { quantity: number; sold: number; marketQuantity: number; market: number }>();
+  for (const line of order.products ?? []) {
+    if (line.skuId === undefined) continue;
+    const value = grouped.get(line.skuId) ?? { quantity: 0, sold: 0, marketQuantity: 0, market: 0 };
+    value.quantity += line.quantity; value.sold += line.unitPrice * line.quantity;
+    if (line.marketPrice !== undefined) { value.marketQuantity += line.quantity; value.market += line.marketPrice * line.quantity; }
+    grouped.set(line.skuId, value);
+  }
+  for (const [sku, value] of grouped) {
+    const history = histories.get(String(sku));
+    badges[sku] = { soldPrice: value.sold / value.quantity,
+      ...(value.marketQuantity === value.quantity ? { marketPrice: value.market / value.quantity } : {}),
+      ...(history ? { intakeMarketTotal: history.intakeMarketTotal, intakeOrderedQuantity: history.orderedQuantity,
+        intakePriceKnownQuantity: history.priceKnownQuantity, intakeDateKnownQuantity: history.dateKnownQuantity,
+        intakeWeightedDaysHeld: history.weightedDaysHeld, intakeStatus: history.status } : {}),
     };
   }
 
@@ -88,9 +97,14 @@ function buildFallbackRowsFromPullSheet(
   orderNumber: string,
   items: PullSheetItem[],
   lines: OrderLineItem[],
+  histories: Map<string, ShippingIntakeLineHistory>,
 ): FallbackRow[] {
+  const shownHistory = new Set<string>();
   return items.map((item, index) => {
     const line = findLineForSku(lines, item.skuId);
+    const history = histories.get(String(item.skuId));
+    const intakeHistory = history && !shownHistory.has(history.skuId) ? history : null;
+    if (history) shownHistory.add(history.skuId);
 
     return {
       key: `${orderNumber}-${item.skuId}-${index}`,
@@ -99,11 +113,12 @@ function buildFallbackRowsFromPullSheet(
       comparison: line
         ? compareLinesToMarket([{ ...line, quantity: item.quantity }])
         : null,
+      intakeHistory,
     };
   });
 }
 
-function buildFallbackRowsFromLines(orderNumber: string, lines: OrderLineItem[]): FallbackRow[] {
+function buildFallbackRowsFromLines(orderNumber: string, lines: OrderLineItem[], histories: Map<string, ShippingIntakeLineHistory>): FallbackRow[] {
   const linesByName = new Map<string, { index: number; lines: OrderLineItem[] }>();
 
   lines.forEach((line, index) => {
@@ -117,12 +132,27 @@ function buildFallbackRowsFromLines(orderNumber: string, lines: OrderLineItem[])
     linesByName.set(line.name, { index, lines: [line] });
   });
 
-  return Array.from(linesByName.entries()).map(([name, group]) => ({
-    key: `${orderNumber}-${name}-${group.index}`,
-    name,
-    quantity: group.lines.reduce((sum, line) => sum + line.quantity, 0),
-    comparison: compareLinesToMarket(group.lines),
-  }));
+  const shownHistory = new Set<string>();
+  return Array.from(linesByName.entries()).map(([name, group]) => {
+    const skuId = group.lines[0]?.inventorySkuId ?? (group.lines[0]?.skuId === undefined ? null : String(group.lines[0].skuId));
+    const history = skuId ? histories.get(skuId) : undefined;
+    const intakeHistory = history && !shownHistory.has(history.skuId) ? history : null;
+    if (history) shownHistory.add(history.skuId);
+    return { key: `${orderNumber}-${name}-${group.index}`, name,
+      quantity: group.lines.reduce((sum, line) => sum + line.quantity, 0),
+      comparison: compareLinesToMarket(group.lines), intakeHistory };
+  });
+}
+
+function SkuIntakeFigures({ history }: { history: ShippingIntakeLineHistory | null }) {
+  if (!history) return <Typography variant="caption" color="text.secondary">—</Typography>;
+  return <Stack spacing={0.25}>
+    <Typography variant="caption">{history.priceKnownQuantity ? formatUsd(history.intakeMarketTotal ?? 0) : "Unavailable"}</Typography>
+    <Typography variant="caption" color={history.status === "current" ? "text.secondary" : "warning.main"}>
+      {history.priceKnownQuantity}/{history.orderedQuantity} priced · {history.weightedDaysHeld === null ? "age unavailable" : `${history.weightedDaysHeld.toFixed(1)} days`}
+      {history.status === "current" ? "" : ` · ${history.status}`}
+    </Typography>
+  </Stack>;
 }
 
 function MarketFigure({
@@ -165,6 +195,7 @@ interface PackStepProps {
   onOrderPacked: (reference: string, packed: boolean) => void;
   onBack: () => void;
   onContinue: () => void;
+  initialViewMode?: ViewMode;
 }
 
 type ViewMode = "card" | "list";
@@ -181,9 +212,10 @@ export function PackStep({
   onOrderPacked,
   onBack,
   onContinue,
+  initialViewMode = "card",
 }: PackStepProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [viewMode, setViewMode] = useState<ViewMode>("card");
+  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
 
   const totalShipments = shipmentReferences.length;
   const currentReference = shipmentReferences[currentIndex] ?? null;
@@ -229,8 +261,9 @@ export function PackStep({
               <TableCell>Card</TableCell>
               <TableCell align="right">Qty</TableCell>
               <TableCell align="right">Sold</TableCell>
-              <TableCell align="right">Market</TableCell>
-              <TableCell align="right">vs Market</TableCell>
+              <TableCell align="right">Current market</TableCell>
+              <TableCell align="right">vs current market</TableCell>
+              <TableCell>SKU intake market / age</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -249,6 +282,7 @@ export function PackStep({
                 <TableCell align="right">
                   {row.comparison ? <MarketDeltaChip comparison={row.comparison} /> : "-"}
                 </TableCell>
+                <TableCell><SkuIntakeFigures history={row.intakeHistory} /></TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -263,17 +297,18 @@ export function PackStep({
       order["Order #"],
     );
     const orderLineItems = order.products ?? [];
+    const histories = new Map((order.intakeHistory?.lines ?? []).map((line) => [line.skuId, line]));
     const fallbackRows =
       orderPullSheetItems.length > 0
-        ? buildFallbackRowsFromPullSheet(order["Order #"], orderPullSheetItems, orderLineItems)
-        : buildFallbackRowsFromLines(order["Order #"], orderLineItems);
+        ? buildFallbackRowsFromPullSheet(order["Order #"], orderPullSheetItems, orderLineItems, histories)
+        : buildFallbackRowsFromLines(order["Order #"], orderLineItems, histories);
 
     return {
       order,
       orderPullSheetItems,
       fallbackRows,
       comparison: compareOrderToMarket(order),
-      priceBadgesBySku: buildPriceBadgesBySku(orderLineItems),
+      priceBadgesBySku: buildPriceBadgesBySku(order),
     };
   });
 
@@ -490,11 +525,11 @@ export function PackStep({
                           </Typography>
                         </Box>
 
-                        <MarketFigure label="Market" comparison={shipmentComparison} />
+                        <MarketFigure label="Current market" comparison={shipmentComparison} />
 
                         <Box sx={{ minWidth: 128 }}>
                           <Typography variant="body2" color="text.secondary">
-                            vs Market
+                            vs current market
                           </Typography>
                           <Box sx={{ mt: 0.25 }}>
                             <MarketDeltaChip comparison={shipmentComparison} showAmount />
@@ -725,7 +760,7 @@ export function PackStep({
                 <TableCell>Method</TableCell>
                 <TableCell align="right">Items</TableCell>
                 <TableCell align="right">Value</TableCell>
-                <TableCell>vs Market</TableCell>
+                <TableCell>vs current market</TableCell>
                 <TableCell>Intake history</TableCell>
                 <TableCell>Postage</TableCell>
               </TableRow>

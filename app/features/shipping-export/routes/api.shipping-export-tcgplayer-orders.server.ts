@@ -47,9 +47,14 @@ export function createShippingTcgplayerOrdersAction(
 
   async function attachIntakeHistory<T extends { orders: Awaited<ReturnType<typeof loadSellerShippingOrders>>["orders"]; warnings?: string[] }>(
     sellerKey: string,
+    configuredSellerKey: string,
     response: T,
   ) {
     if (!enrichIntakeHistory) return response;
+    if (!configuredSellerKey || sellerKey !== configuredSellerKey) return {
+      ...response,
+      warnings: [...(response.warnings ?? []), "Intake history is unavailable because this order load does not match the configured seller."],
+    };
     try {
       return { ...response, orders: await enrichIntakeHistory(response.orders, sellerKey) };
     } catch (error) {
@@ -86,12 +91,12 @@ export function createShippingTcgplayerOrdersAction(
 
       if (providedOrderNumber) {
         const response = await loadSingleOrder(sellerKey, providedOrderNumber);
-        const withIntake = await attachIntakeHistory(sellerKey, response);
+        const withIntake = await attachIntakeHistory(sellerKey, config.defaultSellerKey.trim(), response);
         return data(await attachHistoryCoverage(sellerKey, withIntake), { status: 200 });
       }
 
       const response = await loadOrders(sellerKey);
-      const withIntake = await attachIntakeHistory(sellerKey, response);
+      const withIntake = await attachIntakeHistory(sellerKey, config.defaultSellerKey.trim(), response);
       return data(await attachHistoryCoverage(sellerKey, withIntake), { status: 200 });
     } catch (error) {
       return data({ error: String(error) }, { status: 500 });

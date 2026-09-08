@@ -6,6 +6,7 @@ function history(overrides: Partial<ShippingIntakeLineHistory> = {}): ShippingIn
   return {
     skuId: "9001", status: "current", allocationRevisionId: "1", allocatedSourceOrderRevision: 1,
     currentSourceOrderRevision: 1, orderTime: "2026-08-01T12:00:00.000Z", orderedQuantity: 3,
+    soldTotal: 20,
     matchedQuantity: 3, unmatchedQuantity: 0, priceKnownQuantity: 2, dateKnownQuantity: 1,
     recordedPriceQuantity: 1, estimatedPriceQuantity: 1, intakeMarketTotal: 8,
     weightedDaysHeld: 40, minimumDaysHeld: 40, maximumDaysHeld: 40, lots: [], ...overrides,
@@ -20,7 +21,7 @@ function order(line = history()): TcgPlayerShippingOrder {
     "Tracking #": "", Carrier: "", products: [
       { name: "same SKU lower sale", quantity: 2, unitPrice: 5, skuId: 9001, inventorySkuId: "9001" },
       { name: "same SKU higher sale", quantity: 1, unitPrice: 10, skuId: 9001, inventorySkuId: "9001" },
-    ], intakeHistory: { orderNumber: "A", refreshedAt: "2026-08-01T12:01:00.000Z", lines: [line] },
+    ], intakeHistory: { orderNumber: "A", sellerKey: "seller", refreshedAt: "2026-08-01T12:01:00.000Z", lines: [line] },
   };
 }
 
@@ -46,5 +47,20 @@ const held = compareOrdersToIntake([order(history({ status: "held" }))]);
 assert.equal(held.priceKnownQuantity, 0);
 assert.equal(held.heldLineCount, 1);
 assert.equal(intakeDeltaAmount(held), null);
+
+const noProducts = { ...order(), products: undefined, "Item Count": 2, "Value Of Products": 22,
+  intakeHistory: { orderNumber: "A", sellerKey: "seller", refreshedAt: "now", lines: [
+    history({ skuId: "9001", orderedQuantity: 1, soldTotal: 2, matchedQuantity: 1, priceKnownQuantity: 1,
+      dateKnownQuantity: 0, recordedPriceQuantity: 1, estimatedPriceQuantity: 0, intakeMarketTotal: 1,
+      weightedDaysHeld: null, minimumDaysHeld: null, maximumDaysHeld: null }),
+    history({ skuId: "9002", orderedQuantity: 1, soldTotal: 20, matchedQuantity: 1, priceKnownQuantity: 0,
+      dateKnownQuantity: 0, recordedPriceQuantity: 0, estimatedPriceQuantity: 0, intakeMarketTotal: null,
+      weightedDaysHeld: null, minimumDaysHeld: null, maximumDaysHeld: null }),
+  ] } };
+assert.equal(compareOrdersToIntake([noProducts]).comparableSoldTotal, 2);
+
+const whitespaceSku = order();
+whitespaceSku.products![0]!.inventorySkuId = " 9001 ";
+assert.equal(compareOrdersToIntake([whitespaceSku]).comparableSoldTotal, 40 / 3);
 
 console.log("PASS intake comparison de-duplicates orders and preserves SKU-weighted sale, price, date, and zero-value coverage");

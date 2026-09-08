@@ -103,14 +103,14 @@ export function mapSellerOrderDetailToShippingOrder(
     "Shipping Fee Paid": order.transaction.shippingAmount,
     "Tracking #": order.trackingNumbers?.[0]?.trim() ?? "",
     Carrier: "",
-    products: order.products.map((p) => ({
-      name: p.name,
-      quantity: p.quantity,
-      unitPrice: p.unitPrice,
-      skuId: canonicalNumericSku(p.skuId),
-      inventorySkuId: p.skuId,
-      productId: Number.parseInt(p.productId, 10) || undefined,
-    })),
+    products: order.products.map((p) => {
+      const inventorySkuId = p.skuId.trim();
+      return {
+        name: p.name, quantity: p.quantity, unitPrice: p.unitPrice,
+        skuId: canonicalNumericSku(inventorySkuId), inventorySkuId,
+        productId: Number.parseInt(p.productId, 10) || undefined,
+      };
+    }),
   };
 }
 

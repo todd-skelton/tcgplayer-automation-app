@@ -13,6 +13,7 @@ function order(products?: TcgPlayerShippingOrder["products"]): TcgPlayerShipping
 const allocations = async () => [{
   orderNumber: "A", currentOrderTime: sale, allocatedOrderTime: sale, currentSourceOrderRevision: 1,
   skuId: "9001", currentOrderedQuantity: 3, state: "allocated", holdReason: null,
+  persistedSoldTotal: 20,
   allocatedOrderedQuantity: 3, matchedQuantity: 3, unmatchedQuantity: 0, priceKnownQuantity: 3,
   dateKnownQuantity: 3, intakeMarketTotal: 14, weightedDaysHeld: 130 / 3, revisionId: "10",
   allocatedSourceOrderRevision: 1, replayStatus: null, queueHoldReason: null, allocationPending: false,

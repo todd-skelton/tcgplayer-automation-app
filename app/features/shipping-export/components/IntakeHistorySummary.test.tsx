@@ -6,9 +6,10 @@ import type { TcgPlayerShippingOrder } from "../types/shippingExport";
 const order = {
   "Order #": "A", "Value Of Products": 10, "Item Count": 1,
   products: [{ name: "Card", quantity: 1, unitPrice: 10, skuId: 1, inventorySkuId: "1" }],
-  intakeHistory: { orderNumber: "A", refreshedAt: "2026-08-01T12:00:00.000Z", lines: [{
+  intakeHistory: { orderNumber: "A", sellerKey: "seller", refreshedAt: "2026-08-01T12:00:00.000Z", lines: [{
     skuId: "1", status: "current", allocationRevisionId: "1", allocatedSourceOrderRevision: 1,
     currentSourceOrderRevision: 1, orderTime: "2026-08-01T12:00:00.000Z", orderedQuantity: 1,
+    soldTotal: 10,
     matchedQuantity: 1, unmatchedQuantity: 0, priceKnownQuantity: 1, dateKnownQuantity: 1,
     recordedPriceQuantity: 1, estimatedPriceQuantity: 0, intakeMarketTotal: 0, weightedDaysHeld: 10,
     minimumDaysHeld: 10, maximumDaysHeld: 10, lots: [{ supplyKey: "receipt:1", receiptId: 1, quantity: 1,

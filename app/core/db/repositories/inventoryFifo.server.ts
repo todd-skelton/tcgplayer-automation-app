@@ -808,7 +808,8 @@ export const inventoryFifoRepository={
         WHERE orders.seller_key=$1 AND orders.order_number=ANY($2::text[])
       ) SELECT orders.order_number AS "orderNumber",orders.order_time AS "currentOrderTime",
         orders.source_revision AS "currentSourceOrderRevision",current_line.sku_id AS "skuId",
-        current_line.ordered_quantity::int AS "currentOrderedQuantity",fifo.state,fifo.hold_reason AS "holdReason",
+        current_line.ordered_quantity::int AS "currentOrderedQuantity",current_line.gross_item_proceeds::float8 AS "persistedSoldTotal",
+        fifo.state,fifo.hold_reason AS "holdReason",
         fifo.order_time AS "allocatedOrderTime",fifo.ordered_quantity::int AS "allocatedOrderedQuantity",fifo.matched_quantity::int AS "matchedQuantity",
         fifo.unmatched_quantity::int AS "unmatchedQuantity",fifo.price_known_quantity::int AS "priceKnownQuantity",
         fifo.date_known_quantity::int AS "dateKnownQuantity",fifo.intake_market_total::float8 AS "intakeMarketTotal",

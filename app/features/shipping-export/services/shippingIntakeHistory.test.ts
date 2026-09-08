@@ -7,13 +7,13 @@ const source = [{
   State: "", PostalCode: "", Country: "US", "Order Date": "2026-08-01T12:00:00.000Z", "Product Weight": 0,
   "Shipping Method": "Standard", "Item Count": 1, "Value Of Products": 9, "Shipping Fee Paid": 0,
   "Tracking #": "", Carrier: "", products: [{ name: "Card", quantity: 1, unitPrice: 9, skuId: 9001, inventorySkuId: "9001" }],
-  intakeHistory: { orderNumber: "A", refreshedAt: "stale", lines: [] },
+  intakeHistory: { orderNumber: "A", sellerKey: "seller-a", refreshedAt: "stale", lines: [] },
 }] satisfies TcgPlayerShippingOrder[];
 
 let sent: any;
 const refreshed = await refreshShippingIntakeHistory(source, "seller-a", async (_url, init) => {
   sent = JSON.parse(String(init?.body));
-  return new Response(JSON.stringify({ histories: [{ orderNumber: "A", refreshedAt: "fresh", lines: [] }] }),
+  return new Response(JSON.stringify({ histories: [{ orderNumber: "A", sellerKey: "seller-a", refreshedAt: "fresh", lines: [] }] }),
     { status: 200, headers: { "Content-Type": "application/json" } });
 });
 assert.equal(refreshed[0]?.intakeHistory?.refreshedAt, "fresh");

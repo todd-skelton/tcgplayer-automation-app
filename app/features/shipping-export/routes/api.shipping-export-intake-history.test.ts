@@ -19,10 +19,10 @@ assert.equal(called, false);
 const success = await createShippingIntakeHistoryAction({ getConfig: configured, enrich: async (orders, sellerKey) => {
   assert.equal(sellerKey, "seller-a");
   assert.equal(orders[0]?.FirstName, "");
-  return orders.map((value) => ({ ...value, intakeHistory: { orderNumber: value["Order #"], refreshedAt: "now", lines: [] } }));
+  return orders.map((value) => ({ ...value, intakeHistory: { orderNumber: value["Order #"], sellerKey, refreshedAt: "now", lines: [] } }));
 } })({ request: request({ sellerKey: "seller-a", orders: [order] }) });
 assert.equal(success.init?.status ?? 200, 200);
-assert.deepEqual(success.data, { histories: [{ orderNumber: "A", refreshedAt: "now", lines: [] }] });
+assert.deepEqual(success.data, { histories: [{ orderNumber: "A", sellerKey: "seller-a", refreshedAt: "now", lines: [] }] });
 
 const oversized = await createShippingIntakeHistoryAction({ getConfig: configured, enrich: async () => [] })(
   { request: request({ sellerKey: "seller-a", orders: Array.from({ length: 501 }, () => order) }) },

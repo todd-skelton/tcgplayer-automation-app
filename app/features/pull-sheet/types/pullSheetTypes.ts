@@ -37,4 +37,11 @@ export interface PullSheetItem {
 export interface PullSheetPriceBadge {
   soldPrice: number;
   marketPrice?: number;
+  /** Shipping-only SKU aggregate. Kept optional for non-shipping pull sheets. */
+  intakeMarketTotal?: number | null;
+  intakeOrderedQuantity?: number;
+  intakePriceKnownQuantity?: number;
+  intakeDateKnownQuantity?: number;
+  intakeWeightedDaysHeld?: number | null;
+  intakeStatus?: string;
 }

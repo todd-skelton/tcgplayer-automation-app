@@ -39,9 +39,10 @@ const PRICE_TONE_COLORS: Record<MarketDeltaTone, string> = {
 function PriceBadgeLine({ badge }: { badge: PullSheetPriceBadge }) {
   const percent = percentAboveMarket(badge.soldPrice, badge.marketPrice);
   const tone = getMarketDeltaTone(percent);
-  const marketLabel = percent === null ? "" : `Mkt ${formatUsd(badge.marketPrice ?? 0)} | `;
-  const percentLabel = percent === null ? "No market" : formatSignedPercent(percent);
+  const marketLabel = percent === null ? "" : `Current ${formatUsd(badge.marketPrice ?? 0)} | `;
+  const percentLabel = percent === null ? "Current unavailable" : formatSignedPercent(percent);
 
+  const intakeAvailable = (badge.intakePriceKnownQuantity ?? 0) > 0;
   return (
     <Typography
       variant="caption"
@@ -57,6 +58,16 @@ function PriceBadgeLine({ badge }: { badge: PullSheetPriceBadge }) {
       <Box component="span" sx={{ color: PRICE_TONE_COLORS[tone], fontWeight: 700 }}>
         {percentLabel}
       </Box>
+      {badge.intakeOrderedQuantity !== undefined && (
+        <>
+          <br />
+          SKU intake {intakeAvailable ? formatUsd(badge.intakeMarketTotal ?? 0) : "unavailable"}
+          {` · price ${badge.intakePriceKnownQuantity ?? 0}/${badge.intakeOrderedQuantity}`}
+          {` · age ${badge.intakeWeightedDaysHeld === null || badge.intakeWeightedDaysHeld === undefined ? "unavailable" : `${badge.intakeWeightedDaysHeld.toFixed(1)}d`}`}
+          {` (${badge.intakeDateKnownQuantity ?? 0}/${badge.intakeOrderedQuantity} dated)`}
+          {badge.intakeStatus && badge.intakeStatus !== "current" ? ` · ${badge.intakeStatus}` : ""}
+        </>
+      )}
     </Typography>
   );
 }

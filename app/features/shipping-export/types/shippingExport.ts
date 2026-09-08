@@ -94,6 +94,8 @@ export interface ShippingIntakeLineHistory {
   currentSourceOrderRevision: number;
   orderTime: string;
   orderedQuantity: number;
+  /** Persisted aggregate sale proceeds for this exact SKU, used when shipping has no product rows. */
+  soldTotal: number | null;
   matchedQuantity: number;
   unmatchedQuantity: number;
   priceKnownQuantity: number;
@@ -109,6 +111,7 @@ export interface ShippingIntakeLineHistory {
 
 export interface ShippingOrderIntakeHistory {
   orderNumber: string;
+  sellerKey: string;
   lines: ShippingIntakeLineHistory[];
   refreshedAt: string;
 }

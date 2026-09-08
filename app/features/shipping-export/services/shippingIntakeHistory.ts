@@ -34,6 +34,9 @@ export async function refreshShippingIntakeHistory(
     body: JSON.stringify({ sellerKey, orders: orders.map(requestOrder) }),
   });
   const payload = await readJsonResponse<ShippingIntakeHistoryResponse>(response, "Failed to refresh intake history.");
+  if (payload.histories.some((history) => history.sellerKey !== sellerKey.trim())) {
+    throw new Error("Intake history response seller does not match the loaded workflow.");
+  }
   const byOrder = new Map(payload.histories.map((history) => [history.orderNumber, history]));
   return orders.map((order) => ({ ...order, intakeHistory: byOrder.get(order["Order #"]) }));
 }
