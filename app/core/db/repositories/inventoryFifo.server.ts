@@ -654,14 +654,19 @@ export const inventoryFifoRepository={
       const line=await queryOne<any>(`SELECT saved.id::text AS id,saved.ordered_quantity AS "previousQuantity",
           saved.matched_quantity AS "previousMatchedQuantity",
           saved.source_order_revision AS "previousSourceRevision",COALESCE(current_line.ordered_quantity,0)::int AS "currentQuantity",
-          orders.source_revision AS "currentSourceRevision",revision.observed_at AS "revisionObservedAt"
+          orders.source_revision AS "currentSourceRevision",revision.observed_at AS "revisionObservedAt",
+          (SELECT COUNT(*)::int FROM inventory_stock_dispositions disposition
+            WHERE disposition.order_id=orders.id AND disposition.order_line_sku_id=saved.order_line_sku_id
+              AND NOT EXISTS (SELECT 1 FROM inventory_stock_disposition_corrections corrected
+                WHERE corrected.disposition_id=disposition.id)) AS "activeDispositionCount"
         FROM seller_orders orders JOIN inventory_fifo_lines saved ON saved.order_id=orders.id AND saved.order_line_sku_id=$3
         LEFT JOIN seller_order_lines current_line ON current_line.order_id=orders.id AND current_line.sku_id=saved.order_line_sku_id
         JOIN seller_order_revisions revision ON revision.order_id=orders.id AND revision.revision_number=orders.source_revision
         WHERE orders.id=$1 AND orders.seller_key=$2`,[target.orderId,input.sellerKey,input.skuId],db);
       const released=Math.max(0,(line?.previousMatchedQuantity??0)-(line?.currentQuantity??0));
       if(!line||line.currentSourceRevision!==input.sourceOrderRevision||line.previousSourceRevision>=input.sourceOrderRevision||
-          released<=0||input.availableAt<line.revisionObservedAt)throw new Error("Quantity correction source revision is stale or not a decrease.");
+          line.activeDispositionCount>0||released<=0||input.availableAt<line.revisionObservedAt)
+        throw new Error("Quantity correction source revision is stale, disposition-backed, or not a decrease.");
       const allocations=await query<any>(`SELECT allocation.supply_key AS "supplyKey",allocation.receipt_id AS "receiptId",
           allocation.allocated_quantity AS quantity FROM inventory_fifo_revision_allocations allocation
         JOIN inventory_fifo_lines saved ON saved.current_revision_id=allocation.revision_id
