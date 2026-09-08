@@ -325,6 +325,14 @@ export const inventoryFifoRepository={
           AND current_line.sku_id=line.order_line_sku_id
         WHERE line.seller_key=$1 AND line.sku=$2 AND current_line.order_id IS NULL`,[queued.sellerKey,queued.sku],db);
       const demand=[...current,...removed];
+      const amendedLineAddition=await queryOne<{lineId:string}>(`SELECT saved.id::text AS "lineId"
+        FROM inventory_fifo_lines saved JOIN seller_orders orders ON orders.id=saved.order_id
+        JOIN seller_order_revisions initial ON initial.order_id=orders.id AND initial.revision_number=1
+        WHERE saved.seller_key=$1 AND saved.sku=$2 AND saved.current_revision_id IS NULL
+          AND orders.source_revision>1 AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(initial.line_evidence) evidence
+            WHERE evidence->>'skuId'=saved.order_line_sku_id) LIMIT 1`,[queued.sellerKey,queued.sku],db);
+      if(amendedLineAddition)return holdQueue(queued.sellerKey,queued.sku,
+        `order_line_addition_requires_correction:${amendedLineAddition.lineId}`,db);
       const unresolvedQuantityChange=await queryOne<{lineId:string;direction:string}>(`SELECT saved.id::text AS "lineId",
           CASE WHEN COALESCE(current_line.ordered_quantity,0)>saved.ordered_quantity THEN 'increase' ELSE 'decrease' END AS direction
         FROM inventory_fifo_lines saved
