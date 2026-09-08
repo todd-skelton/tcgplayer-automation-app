@@ -111,6 +111,14 @@ try {
   await pool.query(`UPDATE inventory_publications SET status='published',published_at=$2,completed_at=$2 WHERE id=$1`,
     [planned.publication.id, publishedAt]);
 
+  const historicalBase = { sellerKey: seller, orderNumber: `${seller}-historical`,
+    orderTime: new Date(openingCutoff.getTime() - 1).toISOString(), providerStatus: "Completed - Paid",
+    lifecycle: "completed_paid" as const, orderChannel: "TcgMarketplace", orderFulfillment: "Normal",
+    grossItemProceeds: 56, refunds: [], source: "tcgplayer_api" as const,
+    lines: [{ name: "Rollout Card", unitPrice: 8, extendedPrice: 56, quantity: 7, productId: String(productId), skuId: String(sku) }] };
+  await sellerOrderHistoryRepository.recordObservation({ ...historicalBase,
+    observedAt: new Date(now + 65_000).toISOString(), fingerprint: fingerprintSellerOrder(historicalBase) });
+
   const orderBase = { sellerKey: seller, orderNumber: `${seller}-order`, orderTime: soldAt.toISOString(),
     providerStatus: "Ready to Ship", lifecycle: "ready_to_ship" as const, orderChannel: "TcgMarketplace",
     orderFulfillment: "Normal", grossItemProceeds: 24, refunds: [], source: "tcgplayer_api" as const,
@@ -135,16 +143,24 @@ try {
   assert.match(failedMarket.warning ?? "", /market comparisons are unavailable/i);
   assert.equal(compareOrderToIntake(failedMarket.orders[0]!).intakeMarketTotal, 14);
 
-  const conservation = await pool.query(`SELECT
-    (SELECT COALESCE(SUM(original_quantity),0)::int FROM inventory_receipts WHERE seller_key=$1 AND receipt_kind='received') AS received,
-    (SELECT COALESCE(SUM(allocation.allocated_quantity),0)::int FROM inventory_fifo_revision_allocations allocation
-      JOIN inventory_fifo_lines line ON line.current_revision_id=allocation.revision_id WHERE line.seller_key=$1) AS allocated`, [seller]);
-  assert.deepEqual(conservation.rows[0], { received: 3, allocated: 3 });
+  const conservation = await pool.query(`WITH quantities AS (
+    SELECT
+      (SELECT COALESCE(SUM(original_quantity),0)::int FROM inventory_receipts
+        WHERE seller_key=$1 AND receipt_kind='received') AS received,
+      (SELECT COALESCE(SUM(adjustment.quantity_delta),0)::int FROM inventory_receipt_adjustments adjustment
+        JOIN inventory_receipts receipt ON receipt.receipt_id=adjustment.receipt_id
+        WHERE receipt.seller_key=$1 AND receipt.receipt_kind='received') AS adjusted,
+      (SELECT COALESCE(SUM(allocation.allocated_quantity),0)::int FROM inventory_fifo_revision_allocations allocation
+        JOIN inventory_fifo_lines line ON line.current_revision_id=allocation.revision_id WHERE line.seller_key=$1) AS allocated
+  ) SELECT received,adjusted,allocated,(received+adjusted-allocated)::int AS remaining FROM quantities`, [seller]);
+  assert.deepEqual(conservation.rows[0], { received: 3, adjusted: 0, allocated: 3, remaining: 0 });
   const diagnostics = await inventoryHistoryDiagnosticsRepository.get(seller);
   assert.equal(diagnostics.openingBalance.status, "applied");
   assert.equal(diagnostics.orderCoverage.status, "complete");
-  assert.equal(diagnostics.fifo.matchedQuantity, 3);
-  assert.equal(diagnostics.fifo.unmatchedQuantity, 0);
+  assert.equal(diagnostics.fifo.settledMatchedQuantity, 3);
+  assert.equal(diagnostics.fifo.settledUnmatchedQuantity, 0);
+  assert.equal(diagnostics.fifo.settledOrderedQuantity, 3);
+  assert.equal(diagnostics.fifo.lines.excludedPreCutoff, 1);
   assert.equal(diagnostics.receivedLots.missingMarketSnapshotQuantity, 0);
   assert.equal(diagnostics.publications.failed, 0);
 

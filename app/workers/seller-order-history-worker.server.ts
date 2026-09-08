@@ -1,14 +1,22 @@
 import { getShippingExportConfig } from "../features/shipping-export/config/shippingExportConfig.server";
 import { synchronizeSellerOrders } from "../features/seller-order-history/services/synchronizeSellerOrders.server";
 import { inventoryFifoRepository } from "../core/db/index.server";
+import { inventoryHistoryWorkerEnabled } from "../features/inventory-history/services/inventoryHistoryWorkerPolicy";
 
 let stopping = false;
 let nextHistorySyncAt=0;
 
 async function run(): Promise<void> {
   console.log(`[seller-order-history-worker] starting pid=${process.pid}`);
+  if (!inventoryHistoryWorkerEnabled()) {
+    console.log("[seller-order-history-worker] synchronization and FIFO replay are paused by configuration");
+  }
   while (!stopping) {
     let delayMs = 60_000;
+    if (!inventoryHistoryWorkerEnabled()) {
+      await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+      continue;
+    }
     let sellerKey="";
     try{sellerKey=(await getShippingExportConfig()).defaultSellerKey.trim();}
     catch(error){console.error("[seller-order-history-worker] seller configuration failed:",String(error));}

@@ -89,8 +89,8 @@ Treat these as separate rollout axes:
 
 - `orderCoverage.status` must be `complete` with no gaps for the protected cutover. `observedFrom` and `observedThrough` state the observed window; they do not promise older coverage.
 - `openingBalance.status` must be `applied` before forward allocation is trusted. Preserve the run, validation observation, cutoff, and unsupported counts.
-- `fifo.queue.pending` and `processing` should drain. `held`, line holds, unmatched quantity, and unsupported identities remain visible until evidence resolves them.
-- `stockDifferences` reports unresolved seller-export movements. An acknowledgement alone does not alter the number.
+- `fifo.queue.pending` and `processing` should drain. `held`, line holds, `settledUnmatchedQuantity`, and unsupported identities remain visible until evidence resolves them. Settled quantity and price/date coverage include only allocated, partial, and unmatched forward lines. Pending and held quantities are separate because their saved projections are not current. `lines.excludedPreCutoff` is historical demand already separated by the opening boundary.
+- `stockDifferences.observedCount` reports all captured seller-export quantity changes, with review status split into unacknowledged and acknowledged counts. Acknowledgement changes only that review status: the observation remains in these totals, changes no stock, and does not clear a FIFO discrepancy hold.
 - `receivedLots.missingMarketSnapshotQuantity` and `missingIntakeDateQuantity` are independent. Known market value USD 0 remains known.
 - `publications.active` should return to zero. Compare ambiguous, failed, and retried counts with the pre-rollout baseline and inspect changes.
 
@@ -98,15 +98,19 @@ Archive a sanitized diagnostics response and the browser/latency observations wi
 
 ## Disable and rollback
 
-If forward capture or reconciliation is unhealthy, stop the rollout before applying an opening balance. Leave the database and its evidence tables in place. The receipt projection remains compatible with the prior inventory workflow.
+If forward capture or reconciliation is unhealthy, pause the history worker by setting `INVENTORY_HISTORY_WORKER_ENABLED=false` in the application environment and restarting the current application image. The worker process remains healthy but performs neither external order synchronization nor local FIFO replay. Current market and shipping operations remain available, and existing history is read-only. Leave the database and its evidence tables in place.
 
-After an opening balance is applied, never down-migrate or delete opening receipts, order revisions, publication links, FIFO revisions, dispositions, corrections, or observations. To restore the prior user experience, stop the current containers and start the recorded prior application image against the migrated database. This disables the new display and synchronization code while preserving additive evidence for investigation and a later retry. Confirm Inventory Manager and shipping load before resuming operations. Do not restore an old database backup over newer postage, order, inventory, or publication activity.
+Before an opening balance is applied, reverting the application image is safe only if no receipt, publication, order-history, or inventory-observation evidence was recorded after the rollback point and relevant inventory writes remain paused. Otherwise keep the current image and repair forward.
+
+After an opening balance is applied, keep the current receipt-aware writers. Never run an older Inventory Manager, batch, or publication writer against the cut-over seller, and never down-migrate or delete opening receipts, order revisions, publication links, FIFO revisions, dispositions, corrections, or observations. Pause the worker, keep inventory receipt/publication writes paused, and repair forward with the current image. Shipping remains usable without history enrichment. Do not restore an old database backup over newer postage, order, inventory, or publication activity.
 
 When resuming, deploy the current image, verify diagnostics, continue the existing order scan/checkpoint, and replay the existing FIFO queue. Reuse committed operation request IDs so recovery returns the existing result. Create new request IDs only for new evidence or intent.
 
+After the defined rollback window, securely remove raw database dumps and sanitized clones according to the application's backup policy. Retain only the backup hash and allowlisted, sanitized verification results. The final deployment record must identify the commit and image digest, confirm the seller-order-history worker started after deployment and after one restart, and show that its latest scan timestamp advanced.
+
 ## Repository acceptance test
 
-The cross-slice scenario refuses to load the database pool unless both URLs are identical and the database name starts with `tcgplayer_fifo_test_`. It applies a zero-stock opening boundary, receives two lots, batches and confirms them live, records one sale, replays FIFO, enriches shipping, and verifies three units conserved with a USD 14 intake market total and 43.333333 weighted days held. It repeats durable operations and injects a current-market failure.
+The cross-slice scenario refuses to load the database pool unless both URLs are identical and the database name starts with `tcgplayer_fifo_test_`. It applies a zero-stock opening boundary, receives two lots, batches and confirms them live, records one sale, replays FIFO, enriches shipping, and verifies received 3 + adjusted 0 = allocated 3 + remaining 0 with a USD 14 intake market total and 43.333333 weighted days held. It repeats durable operations and injects a current-market failure.
 
 ```powershell
 $env:TEST_DATABASE_URL = 'postgresql://postgres:postgres@localhost:5433/tcgplayer_fifo_test_rollout_61'

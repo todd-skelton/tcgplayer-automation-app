@@ -15,15 +15,28 @@ export interface InventoryHistoryDiagnostics {
   };
   fifo: {
     queue: { pending: number; processing: number; held: number };
-    lines: { allocated: number; pending: number; held: number; unsupported: number };
-    orderedQuantity: number;
-    matchedQuantity: number;
-    unmatchedQuantity: number;
+    lines: {
+      allocated: number;
+      partial: number;
+      unmatched: number;
+      pending: number;
+      held: number;
+      unsupported: number;
+      excludedPreCutoff: number;
+      removed: number;
+    };
+    settledOrderedQuantity: number;
+    settledMatchedQuantity: number;
+    settledUnmatchedQuantity: number;
+    pendingQuantity: number;
+    heldQuantity: number;
     priceUnavailableQuantity: number;
     dateUnavailableQuantity: number;
   };
   stockDifferences: {
-    unresolvedCount: number;
+    observedCount: number;
+    unacknowledgedCount: number;
+    acknowledgedCount: number;
     affectedSkuCount: number;
     absoluteQuantity: number;
   };

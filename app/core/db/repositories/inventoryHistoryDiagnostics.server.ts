@@ -13,15 +13,23 @@ type DiagnosticRow = {
   queueProcessing: number;
   queueHeld: number;
   linesAllocated: number;
+  linesPartial: number;
+  linesUnmatched: number;
   linesPending: number;
   linesHeld: number;
   linesUnsupported: number;
-  orderedQuantity: number;
-  matchedQuantity: number;
-  unmatchedQuantity: number;
+  linesExcludedPreCutoff: number;
+  linesRemoved: number;
+  settledOrderedQuantity: number;
+  settledMatchedQuantity: number;
+  settledUnmatchedQuantity: number;
+  pendingQuantity: number;
+  heldQuantity: number;
   priceUnavailableQuantity: number;
   dateUnavailableQuantity: number;
-  unresolvedDifferenceCount: number;
+  observedDifferenceCount: number;
+  unacknowledgedDifferenceCount: number;
+  acknowledgedDifferenceCount: number;
   unresolvedDifferenceSkuCount: number;
   unresolvedDifferenceQuantity: number;
   receiptCount: number;
@@ -62,19 +70,28 @@ export const inventoryHistoryDiagnosticsRepository = {
           FROM inventory_fifo_replay_queue WHERE seller_key=$1
         ), fifo AS (
           SELECT COUNT(*) FILTER (WHERE state='allocated')::int AS "linesAllocated",
+            COUNT(*) FILTER (WHERE state='partial')::int AS "linesPartial",
+            COUNT(*) FILTER (WHERE state='unmatched')::int AS "linesUnmatched",
             COUNT(*) FILTER (WHERE state='pending')::int AS "linesPending",
             COUNT(*) FILTER (WHERE state='held')::int AS "linesHeld",
             COUNT(*) FILTER (WHERE state='unsupported')::int AS "linesUnsupported",
-            COALESCE(SUM(ordered_quantity),0)::int AS "orderedQuantity",
-            COALESCE(SUM(matched_quantity),0)::int AS "matchedQuantity",
-            COALESCE(SUM(unmatched_quantity),0)::int AS "unmatchedQuantity",
-            COALESCE(SUM(matched_quantity-price_known_quantity),0)::int AS "priceUnavailableQuantity",
-            COALESCE(SUM(matched_quantity-date_known_quantity),0)::int AS "dateUnavailableQuantity"
+            COUNT(*) FILTER (WHERE state='excluded_pre_cutoff')::int AS "linesExcludedPreCutoff",
+            COUNT(*) FILTER (WHERE state='removed')::int AS "linesRemoved",
+            COALESCE(SUM(ordered_quantity) FILTER (WHERE state IN ('allocated','partial','unmatched')),0)::int AS "settledOrderedQuantity",
+            COALESCE(SUM(matched_quantity) FILTER (WHERE state IN ('allocated','partial','unmatched')),0)::int AS "settledMatchedQuantity",
+            COALESCE(SUM(unmatched_quantity) FILTER (WHERE state IN ('allocated','partial','unmatched')),0)::int AS "settledUnmatchedQuantity",
+            COALESCE(SUM(ordered_quantity) FILTER (WHERE state='pending'),0)::int AS "pendingQuantity",
+            COALESCE(SUM(ordered_quantity) FILTER (WHERE state='held'),0)::int AS "heldQuantity",
+            COALESCE(SUM(matched_quantity-price_known_quantity) FILTER (WHERE state IN ('allocated','partial','unmatched')),0)::int AS "priceUnavailableQuantity",
+            COALESCE(SUM(matched_quantity-date_known_quantity) FILTER (WHERE state IN ('allocated','partial','unmatched')),0)::int AS "dateUnavailableQuantity"
           FROM inventory_fifo_lines WHERE seller_key=$1
         ), differences AS (
-          SELECT COUNT(*)::int AS "unresolvedDifferenceCount",COUNT(DISTINCT sku)::int AS "unresolvedDifferenceSkuCount",
+          SELECT COUNT(*)::int AS "observedDifferenceCount",
+            COUNT(*) FILTER (WHERE status='unresolved')::int AS "unacknowledgedDifferenceCount",
+            COUNT(*) FILTER (WHERE status='acknowledged')::int AS "acknowledgedDifferenceCount",
+            COUNT(DISTINCT sku)::int AS "unresolvedDifferenceSkuCount",
             COALESCE(SUM(ABS(quantity_delta)),0)::int AS "unresolvedDifferenceQuantity"
-          FROM inventory_observation_differences WHERE seller_key=$1 AND status='unresolved'
+          FROM inventory_observation_differences WHERE seller_key=$1
         ), receipts AS (
           SELECT COUNT(*)::int AS "receiptCount",COALESCE(SUM(original_quantity),0)::int AS "receivedQuantity",
             COALESCE(SUM(original_quantity) FILTER (WHERE market_value IS NULL),0)::int AS "missingMarketSnapshotQuantity",
@@ -110,12 +127,17 @@ export const inventoryHistoryDiagnosticsRepository = {
       },
       fifo: {
         queue: { pending: count(row.queuePending), processing: count(row.queueProcessing), held: count(row.queueHeld) },
-        lines: { allocated: count(row.linesAllocated), pending: count(row.linesPending), held: count(row.linesHeld), unsupported: count(row.linesUnsupported) },
-        orderedQuantity: count(row.orderedQuantity), matchedQuantity: count(row.matchedQuantity),
-        unmatchedQuantity: count(row.unmatchedQuantity), priceUnavailableQuantity: count(row.priceUnavailableQuantity),
+        lines: { allocated: count(row.linesAllocated), partial: count(row.linesPartial), unmatched: count(row.linesUnmatched),
+          pending: count(row.linesPending), held: count(row.linesHeld), unsupported: count(row.linesUnsupported),
+          excludedPreCutoff: count(row.linesExcludedPreCutoff), removed: count(row.linesRemoved) },
+        settledOrderedQuantity: count(row.settledOrderedQuantity), settledMatchedQuantity: count(row.settledMatchedQuantity),
+        settledUnmatchedQuantity: count(row.settledUnmatchedQuantity), pendingQuantity: count(row.pendingQuantity),
+        heldQuantity: count(row.heldQuantity), priceUnavailableQuantity: count(row.priceUnavailableQuantity),
         dateUnavailableQuantity: count(row.dateUnavailableQuantity),
       },
-      stockDifferences: { unresolvedCount: count(row.unresolvedDifferenceCount), affectedSkuCount: count(row.unresolvedDifferenceSkuCount), absoluteQuantity: count(row.unresolvedDifferenceQuantity) },
+      stockDifferences: { observedCount: count(row.observedDifferenceCount),
+        unacknowledgedCount: count(row.unacknowledgedDifferenceCount), acknowledgedCount: count(row.acknowledgedDifferenceCount),
+        affectedSkuCount: count(row.unresolvedDifferenceSkuCount), absoluteQuantity: count(row.unresolvedDifferenceQuantity) },
       receivedLots: { receiptCount: count(row.receiptCount), receivedQuantity: count(row.receivedQuantity),
         missingMarketSnapshotQuantity: count(row.missingMarketSnapshotQuantity), missingIntakeDateQuantity: count(row.missingIntakeDateQuantity) },
       publications: { planned: count(row.publicationsPlanned), active: count(row.publicationsActive), ambiguous: count(row.publicationsAmbiguous),
