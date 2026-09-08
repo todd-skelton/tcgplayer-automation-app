@@ -127,6 +127,8 @@ const testCases: TestCase[] = [
       const html = renderPullSheetStep();
 
       assert.match(html, /Pull Sheet Workspace/);
+      assert.match(html, /Pull sheet intake market/);
+      assert.match(html, /Receipt lots and history status/);
       assert.match(html, /Card View/);
       assert.match(html, /Grid View/);
       assert.match(html, /12345_in_400x400\.jpg/);

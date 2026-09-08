@@ -262,12 +262,12 @@ const testCases: TestCase[] = [
         ],
       });
 
-      assert.match(html, />Market</);
-      assert.match(html, />vs Market</);
+      assert.match(html, />Current market</);
+      assert.match(html, />vs current market</);
       assert.match(html, /\$4\.00/);
       assert.match(html, /\+25\.0% \(\+\$1\.00\)/);
       assert.match(html, /Sold \$5\.00/);
-      assert.match(html, /Mkt \$4\.00/);
+      assert.match(html, /Current \$4\.00/);
       assert.match(html, /\+25\.0%/);
     },
   },
@@ -290,12 +290,23 @@ const testCases: TestCase[] = [
       });
 
       assert.match(html, />Sold</);
-      assert.match(html, />Market</);
+      assert.match(html, />Current market</);
       assert.match(html, /\$6\.00/);
       assert.match(html, /\$8\.00/);
       assert.match(html, /-25\.0%/);
-      assert.match(html, /No market/);
+      assert.match(html, /Current market unavailable/);
       assert.match(html, /1 of 2 lines priced/);
+    },
+  },
+  {
+    name: "PackStep keeps intake history available in card and list layouts",
+    run: () => {
+      const card = renderPackStep();
+      const list = renderPackStep({ initialViewMode: "list" });
+      assert.match(card, /Order intake market/);
+      assert.match(card, /Receipt lots and history status/);
+      assert.match(list, />Intake history</);
+      assert.match(list, /Shipment intake market/);
     },
   },
 ];

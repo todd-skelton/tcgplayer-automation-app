@@ -799,6 +799,40 @@ export const inventoryFifoRepository={
       ORDER BY identities."skuId"`,[sellerKey.trim(),orderNumber.trim()]);
   },
 
+  async findShippingOrderAllocations(sellerKey:string,orderNumbers:string[]){
+    const normalized=[...new Set(orderNumbers.map((value)=>value.trim()).filter(Boolean))];
+    if(!normalized.length)return [];
+    if(normalized.length>500)throw new Error("Shipping intake history is limited to 500 orders per request.");
+    return query(`WITH target_orders AS (
+        SELECT orders.* FROM seller_orders orders
+        WHERE orders.seller_key=$1 AND orders.order_number=ANY($2::text[])
+      ) SELECT orders.order_number AS "orderNumber",orders.order_time AS "currentOrderTime",
+        orders.source_revision AS "currentSourceOrderRevision",current_line.sku_id AS "skuId",
+        current_line.ordered_quantity::int AS "currentOrderedQuantity",current_line.gross_item_proceeds::float8 AS "persistedSoldTotal",
+        fifo.state,fifo.hold_reason AS "holdReason",
+        fifo.order_time AS "allocatedOrderTime",fifo.ordered_quantity::int AS "allocatedOrderedQuantity",fifo.matched_quantity::int AS "matchedQuantity",
+        fifo.unmatched_quantity::int AS "unmatchedQuantity",fifo.price_known_quantity::int AS "priceKnownQuantity",
+        fifo.date_known_quantity::int AS "dateKnownQuantity",fifo.intake_market_total::float8 AS "intakeMarketTotal",
+        fifo.weighted_days_held::float8 AS "weightedDaysHeld",fifo.current_revision_id::text AS "revisionId",
+        fifo.source_order_revision AS "allocatedSourceOrderRevision",queue.status AS "replayStatus",
+        queue.hold_reason AS "queueHoldReason",
+        (fifo.id IS NULL OR queue.generation IS NOT NULL OR fifo.source_order_revision<>orders.source_revision) AS "allocationPending",
+        COALESCE((SELECT jsonb_agg(jsonb_build_object(
+          'supplyKey',allocation.supply_key,'receiptId',allocation.receipt_id,'quantity',allocation.allocated_quantity,
+          'availableAt',allocation.available_at,'dispositionId',allocation.disposition_id::text,
+          'quantityCorrectionId',allocation.quantity_correction_id::text,'receiptKind',receipt.receipt_kind,
+          'intakeAt',receipt.intake_at,'marketValue',receipt.market_value::float8,
+          'marketProvenance',receipt.market_provenance,'marketCalculatedAt',receipt.market_calculated_at)
+          ORDER BY allocation.available_at,allocation.supply_key)
+          FROM inventory_fifo_revision_allocations allocation
+          JOIN inventory_receipts receipt ON receipt.receipt_id=allocation.receipt_id
+          WHERE allocation.revision_id=fifo.current_revision_id),'[]'::jsonb) AS lots
+      FROM target_orders orders JOIN seller_order_lines current_line ON current_line.order_id=orders.id
+      LEFT JOIN inventory_fifo_lines fifo ON fifo.order_id=orders.id AND fifo.order_line_sku_id=current_line.sku_id
+      LEFT JOIN inventory_fifo_replay_queue queue ON queue.seller_key=orders.seller_key AND queue.sku=fifo.sku
+      ORDER BY orders.order_number,current_line.sku_id`,[sellerKey.trim(),normalized]);
+  },
+
   async listLineRevisions(input:{sellerKey:string;lineId:string;afterRevision?:number;limit?:number}){
     const limit=input.limit??50;
     if(!Number.isInteger(limit)||limit<1||limit>100)throw new Error("Revision limit must be between 1 and 100.");

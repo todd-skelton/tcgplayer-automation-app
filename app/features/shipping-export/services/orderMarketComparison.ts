@@ -135,19 +135,19 @@ export function compareShipmentToMarket(
   );
 }
 
-/** "8.4% above market", "3.1% below market", "At market", or "No market price". */
+/** "8.4% above current market", "3.1% below current market", or unavailable. */
 export function describeMarketDelta(comparison: MarketComparison): string {
   const percent = getMarketDeltaPercent(comparison);
 
   switch (getMarketDeltaTone(percent)) {
     case "unavailable":
-      return "No market price";
+      return "No current market price";
     case "at":
-      return "At market";
+      return "At current market";
     case "above":
-      return `${Math.abs(percent ?? 0).toFixed(1)}% above market`;
+      return `${Math.abs(percent ?? 0).toFixed(1)}% above current market`;
     case "below":
-      return `${Math.abs(percent ?? 0).toFixed(1)}% below market`;
+      return `${Math.abs(percent ?? 0).toFixed(1)}% below current market`;
   }
 }
 

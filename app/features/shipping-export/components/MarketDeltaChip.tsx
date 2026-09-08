@@ -48,14 +48,15 @@ export function MarketDeltaChip({
 
     return (
       <Tooltip title="No market price was available for these lines.">
-        <Chip label="No market" size="small" variant="outlined" />
+        <Chip label="Current market unavailable" size="small" variant="outlined" />
       </Tooltip>
     );
   }
 
-  const label = showAmount
+  const deltaLabel = showAmount
     ? `${formatSignedPercent(percent)} (${formatSignedUsd(amount)})`
     : formatSignedPercent(percent);
+  const label = `Current ${deltaLabel}`;
   const coverage = describeMarketCoverage(comparison);
   const title = coverage
     ? `${describeMarketDelta(comparison)} · ${coverage}`
@@ -68,7 +69,7 @@ export function MarketDeltaChip({
         size="small"
         variant="outlined"
         color={TONE_COLORS[tone]}
-        aria-label={`Sold versus market: ${title}`}
+        aria-label={`Sold versus current market: ${title}`}
       />
     </Tooltip>
   );

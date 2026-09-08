@@ -92,6 +92,7 @@ const testCases: TestCase[] = [
             quantity: 1,
             unitPrice: 10.01,
             skuId: 3191391,
+            inventorySkuId: "3191391",
             productId: 121234,
           },
         ],

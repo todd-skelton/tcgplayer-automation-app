@@ -60,6 +60,12 @@ function normalizeOrderStatus(status: string): string {
   return status.trim().replace(/\s+/g, "").toLowerCase();
 }
 
+function canonicalNumericSku(value: string): number | undefined {
+  if (!/^[1-9]\d{0,9}$/.test(value)) return undefined;
+  const sku = Number(value);
+  return Number.isSafeInteger(sku) && sku <= 2_147_483_647 ? sku : undefined;
+}
+
 function getSingleOrderWarnings(order: SellerOrderDetail): string[] {
   const normalizedStatus = normalizeOrderStatus(order.status);
 
@@ -97,13 +103,14 @@ export function mapSellerOrderDetailToShippingOrder(
     "Shipping Fee Paid": order.transaction.shippingAmount,
     "Tracking #": order.trackingNumbers?.[0]?.trim() ?? "",
     Carrier: "",
-    products: order.products.map((p) => ({
-      name: p.name,
-      quantity: p.quantity,
-      unitPrice: p.unitPrice,
-      skuId: Number.parseInt(p.skuId, 10) || undefined,
-      productId: Number.parseInt(p.productId, 10) || undefined,
-    })),
+    products: order.products.map((p) => {
+      const inventorySkuId = p.skuId.trim();
+      return {
+        name: p.name, quantity: p.quantity, unitPrice: p.unitPrice,
+        skuId: canonicalNumericSku(inventorySkuId), inventorySkuId,
+        productId: Number.parseInt(p.productId, 10) || undefined,
+      };
+    }),
   };
 }
 

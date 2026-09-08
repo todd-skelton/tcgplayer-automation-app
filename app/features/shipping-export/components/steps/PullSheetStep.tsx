@@ -24,6 +24,7 @@ import type {
   TcgPlayerShippingOrder,
 } from "../../types/shippingExport";
 import { MarketDeltaChip } from "../MarketDeltaChip";
+import { IntakeHistorySummary } from "../IntakeHistorySummary";
 
 interface PullSheetStepProps {
   sourceOrders: TcgPlayerShippingOrder[];
@@ -132,6 +133,10 @@ export function PullSheetStep({
           <Chip label={`${parcelCount} Parcel`} size="small" variant="outlined" />
         )}
       </Stack>
+
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <IntakeHistorySummary sourceOrders={sourceOrders} label="Pull sheet" compact />
+      </Paper>
 
       <Paper variant="outlined" sx={{ p: 2.5 }}>
         <Stack spacing={2}>

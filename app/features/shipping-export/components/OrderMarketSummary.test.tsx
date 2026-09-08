@@ -69,8 +69,8 @@ const testCases: TestCase[] = [
       assert.match(html, /\$22\.00/);
       assert.match(html, /\$20\.00/);
       assert.match(html, /\+10\.0% · \+\$2\.00/);
-      assert.match(html, /10\.0% above market/);
-      assert.match(html, /Every line has a market price/);
+      assert.match(html, /10\.0% above current market/);
+      assert.match(html, /Every line has a current market price/);
     },
   },
   {
@@ -90,7 +90,7 @@ const testCases: TestCase[] = [
 
       assert.match(partial, /1 of 2 lines priced/);
       assert.match(partial, /-20\.0% · -\$1\.00/);
-      assert.match(partial, /20\.0% below market/);
+      assert.match(partial, /20\.0% below current market/);
 
       const unavailable = renderToStaticMarkup(
         <OrderMarketSummary
@@ -102,7 +102,7 @@ const testCases: TestCase[] = [
       );
 
       assert.match(unavailable, /Not available/);
-      assert.match(unavailable, /No market price/);
+      assert.match(unavailable, /No current market price/);
     },
   },
 ];

@@ -5,12 +5,14 @@ import {
   loadSingleSellerShippingOrder,
 } from "../services/tcgplayerSellerOrders.server";
 import { sellerOrderHistoryRepository } from "~/core/db";
+import { enrichShippingOrdersWithIntakeHistory } from "../services/shippingIntakeHistory.server";
 
 type ShippingTcgplayerOrdersActionDependencies = {
   getShippingExportConfig?: typeof getShippingExportConfig;
   loadSellerShippingOrders?: typeof loadSellerShippingOrders;
   loadSingleSellerShippingOrder?: typeof loadSingleSellerShippingOrder;
   getHistoryCoverage?: typeof sellerOrderHistoryRepository.getCoverage;
+  enrichIntakeHistory?: typeof enrichShippingOrdersWithIntakeHistory;
 };
 
 export function createShippingTcgplayerOrdersAction(
@@ -23,6 +25,7 @@ export function createShippingTcgplayerOrdersAction(
   const loadSingleOrder =
     dependencies.loadSingleSellerShippingOrder ?? loadSingleSellerShippingOrder;
   const getHistoryCoverage = dependencies.getHistoryCoverage;
+  const enrichIntakeHistory = dependencies.enrichIntakeHistory;
 
   async function attachHistoryCoverage<T extends { warnings?: string[] }>(
     sellerKey: string,
@@ -39,6 +42,23 @@ export function createShippingTcgplayerOrdersAction(
           `Seller order history status is unavailable: ${String(error)}`,
         ],
       };
+    }
+  }
+
+  async function attachIntakeHistory<T extends { orders: Awaited<ReturnType<typeof loadSellerShippingOrders>>["orders"]; warnings?: string[] }>(
+    sellerKey: string,
+    configuredSellerKey: string,
+    response: T,
+  ) {
+    if (!enrichIntakeHistory) return response;
+    if (!configuredSellerKey || sellerKey !== configuredSellerKey) return {
+      ...response,
+      warnings: [...(response.warnings ?? []), "Intake history is unavailable because this order load does not match the configured seller."],
+    };
+    try {
+      return { ...response, orders: await enrichIntakeHistory(response.orders, sellerKey) };
+    } catch (error) {
+      return { ...response, warnings: [...(response.warnings ?? []), `Intake history is unavailable: ${String(error)}`] };
     }
   }
 
@@ -71,11 +91,13 @@ export function createShippingTcgplayerOrdersAction(
 
       if (providedOrderNumber) {
         const response = await loadSingleOrder(sellerKey, providedOrderNumber);
-        return data(await attachHistoryCoverage(sellerKey, response), { status: 200 });
+        const withIntake = await attachIntakeHistory(sellerKey, config.defaultSellerKey.trim(), response);
+        return data(await attachHistoryCoverage(sellerKey, withIntake), { status: 200 });
       }
 
       const response = await loadOrders(sellerKey);
-      return data(await attachHistoryCoverage(sellerKey, response), { status: 200 });
+      const withIntake = await attachIntakeHistory(sellerKey, config.defaultSellerKey.trim(), response);
+      return data(await attachHistoryCoverage(sellerKey, withIntake), { status: 200 });
     } catch (error) {
       return data({ error: String(error) }, { status: 500 });
     }

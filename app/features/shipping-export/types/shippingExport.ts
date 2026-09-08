@@ -57,8 +57,63 @@ export interface OrderLineItem {
   unitPrice: number;
   skuId?: number;
   productId?: number;
+  /** Exact provider inventory identity; only canonical numeric values are FIFO eligible. */
+  inventorySkuId?: string;
   /** Current TCGPlayer market price for the SKU, when one was available at load time. */
   marketPrice?: number;
+}
+
+export type ShippingIntakeHistoryStatus =
+  | "current"
+  | "pending"
+  | "held"
+  | "mismatch"
+  | "unavailable";
+
+export type ShippingIntakePriceProvenance = "recorded" | "estimated" | "unknown";
+
+export interface ShippingIntakeLot {
+  supplyKey: string;
+  receiptId: number;
+  quantity: number;
+  availableAt: string;
+  sourceKind: "opening_balance" | "received" | "physical_restock" | "quantity_correction";
+  intakeAt: string | null;
+  daysHeld: number | null;
+  intakeMarketValue: number | null;
+  priceProvenance: ShippingIntakePriceProvenance;
+}
+
+/** One persisted seller-order SKU aggregate. Provider rows with the same SKU share this history once. */
+export interface ShippingIntakeLineHistory {
+  skuId: string;
+  status: ShippingIntakeHistoryStatus;
+  statusReason?: string;
+  allocationRevisionId: string | null;
+  allocatedSourceOrderRevision: number | null;
+  currentSourceOrderRevision: number;
+  orderTime: string;
+  orderedQuantity: number;
+  /** Persisted aggregate sale proceeds for this exact SKU, used when shipping has no product rows. */
+  soldTotal: number | null;
+  matchedQuantity: number;
+  unmatchedQuantity: number;
+  priceKnownQuantity: number;
+  dateKnownQuantity: number;
+  recordedPriceQuantity: number;
+  estimatedPriceQuantity: number;
+  intakeMarketTotal: number | null;
+  weightedDaysHeld: number | null;
+  minimumDaysHeld: number | null;
+  maximumDaysHeld: number | null;
+  lots: ShippingIntakeLot[];
+}
+
+export interface ShippingOrderIntakeHistory {
+  orderNumber: string;
+  sellerKey: string;
+  lines: ShippingIntakeLineHistory[];
+  refreshedAt: string;
 }
 
 export interface TcgPlayerShippingOrder {
@@ -80,6 +135,7 @@ export interface TcgPlayerShippingOrder {
   "Tracking #": string;
   Carrier: string;
   products?: OrderLineItem[];
+  intakeHistory?: ShippingOrderIntakeHistory;
 }
 
 export type OutboundWorkflowStep =
@@ -255,6 +311,18 @@ export interface ShippingLiveOrderLoadResponse {
   orders: TcgPlayerShippingOrder[];
   warnings?: string[];
   historyCoverage?: import("~/features/seller-order-history/types/sellerOrderHistory").SellerOrderCoverage;
+}
+
+export interface ShippingIntakeHistoryRequestOrder {
+  orderNumber: string;
+  orderDate: string;
+  itemCount: number;
+  valueOfProducts: number;
+  products: Array<Pick<OrderLineItem, "quantity" | "unitPrice" | "skuId" | "inventorySkuId">>;
+}
+
+export interface ShippingIntakeHistoryResponse {
+  histories: ShippingOrderIntakeHistory[];
 }
 
 export interface ShippingPostageBatchLabelRequestItem {

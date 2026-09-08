@@ -77,6 +77,7 @@ import { ApplyTrackingStep } from "../components/steps/ApplyTrackingStep";
 import { NotifyStep } from "../components/steps/NotifyStep";
 import { ReturnFlowPanel } from "../components/ReturnFlowPanel";
 import type { SellerOrderCoverage } from "~/features/seller-order-history/types/sellerOrderHistory";
+import { refreshShippingIntakeHistory, withoutShippingIntakeHistory } from "../services/shippingIntakeHistory";
 
 const OUTBOUND_STEPS = [
   { key: "load-orders", label: "Load Orders" },
@@ -264,6 +265,11 @@ export default function ShippingExportRoute() {
 
   /** Only the newest postage lookup may write results, so a slow older one cannot overwrite them. */
   const postageLookupSequenceRef = useRef(0);
+  /** Fences saved restore and remote loads so an older response cannot replace a newer order source. */
+  const orderSourceSequenceRef = useRef(0);
+  const intakeRefreshSequenceRef = useRef(0);
+  const sourceOrdersRef = useRef(sourceOrders);
+  sourceOrdersRef.current = sourceOrders;
 
   // ── Derived values ────────────────────────────────────────────────────────
   const availableLabelSizes = getAllLabelSizes().filter((labelSize) =>
@@ -275,6 +281,7 @@ export default function ShippingExportRoute() {
   );
   const shipmentReferencesKey = shipmentReferences.join("|");
   const orderedWorkflowOrderNumbersKey = orderedWorkflowOrderNumbers.join("|");
+  const sourceOrderNumbersKey = sourceOrders.map((order) => order["Order #"]).join("|");
   const hasPackPullSheetSourceData = sourceOrders.some(
     (order) => (order.products?.length ?? 0) > 0,
   );
@@ -406,7 +413,11 @@ export default function ShippingExportRoute() {
     nextSourceOrders: TcgPlayerShippingOrder[],
     nextSourceLabel: string,
     nextWarnings: string[] = [],
+    expectedSequence?: number,
   ): Promise<boolean> => {
+    if (expectedSequence !== undefined && expectedSequence !== orderSourceSequenceRef.current) return Promise.resolve(false);
+    if (expectedSequence === undefined) orderSourceSequenceRef.current += 1;
+    intakeRefreshSequenceRef.current += 1;
     const nextState = buildShippingWorkflowOrderState(nextSourceOrders, config);
 
     setSourceOrders(nextState.sourceOrders);
@@ -460,16 +471,35 @@ export default function ShippingExportRoute() {
   );
 
   const restoreSavedWorkflow = async (saved: SavedShippingWorkflow) => {
+    const restoreSequence = ++orderSourceSequenceRef.current;
     if (saved.sellerKey) {
       setSellerKeyInput(saved.sellerKey);
+    }
+
+    let restoredOrders = withoutShippingIntakeHistory(saved.sourceOrders);
+    const restoredWarnings = [...saved.loadWarnings];
+    const refreshSequence = ++intakeRefreshSequenceRef.current;
+    try {
+      const configuredSeller = config.defaultSellerKey.trim();
+      if (!configuredSeller || saved.sellerKey.trim() !== configuredSeller) {
+        throw new Error("The saved workflow seller does not match Shipping Configuration.");
+      }
+      restoredOrders = await refreshShippingIntakeHistory(saved.sourceOrders, configuredSeller);
+      if (refreshSequence !== intakeRefreshSequenceRef.current) throw new Error("A newer intake history refresh replaced this one.");
+    } catch (historyError) {
+      restoredWarnings.push(`Saved intake history was cleared because it could not be refreshed: ${String(historyError)}`);
+    }
+    if (restoreSequence !== orderSourceSequenceRef.current) {
+      throw new Error("A newer order load replaced the saved workflow.");
     }
 
     // Waits for the postage lookup so labels are present, or its failure shown,
     // before the saved step renders.
     const isCurrent = await applyOrderSource(
-      saved.sourceOrders,
+      restoredOrders,
       saved.loadedSourceLabel,
-      saved.loadWarnings,
+      restoredWarnings,
+      restoreSequence,
     );
 
     if (!isCurrent) {
@@ -487,6 +517,34 @@ export default function ShippingExportRoute() {
     input: savedWorkflowInput,
     onRestore: restoreSavedWorkflow,
   });
+
+  useEffect(() => {
+    if (!sourceOrders.length) return;
+    const refresh = async () => {
+      const sourceSnapshot = sourceOrdersRef.current;
+      const expectedOrders = sourceSnapshot.map((order) => order["Order #"]).join("|");
+      const expectedSequence = orderSourceSequenceRef.current;
+      const refreshSequence = ++intakeRefreshSequenceRef.current;
+      try {
+        const refreshed = await refreshShippingIntakeHistory(sourceSnapshot, sellerKeyInput.trim());
+        if (expectedSequence !== orderSourceSequenceRef.current || refreshSequence !== intakeRefreshSequenceRef.current) return;
+        setSourceOrders((current) => current.map((order) => order["Order #"]).join("|") === expectedOrders ? refreshed : current);
+        const histories = new Map(refreshed.map((order) => [order["Order #"], order.intakeHistory]));
+        setOrders((current) => current.map((order) => ({ ...order, intakeHistory: histories.get(order["Order #"]) })));
+      } catch (refreshError) {
+        if (expectedSequence !== orderSourceSequenceRef.current || refreshSequence !== intakeRefreshSequenceRef.current) return;
+        setSourceOrders((current) => current.map((order) => order["Order #"]).join("|") === expectedOrders
+          ? withoutShippingIntakeHistory(current) : current);
+        setOrders((current) => withoutShippingIntakeHistory(current));
+        const warning = `Intake history refresh failed: ${String(refreshError)}`;
+        setLoadWarnings((current) => current.includes(warning) ? current : [...current, warning]);
+      }
+    };
+    const onFocus = () => void refresh();
+    window.addEventListener("focus", onFocus);
+    const interval = window.setInterval(() => void refresh(), 5 * 60_000);
+    return () => { window.removeEventListener("focus", onFocus); window.clearInterval(interval); };
+  }, [sellerKeyInput, sourceOrderNumbersKey]);
 
   // ── Handlers: load orders ─────────────────────────────────────────────────
   useEffect(() => {
@@ -580,6 +638,7 @@ export default function ShippingExportRoute() {
   ]);
 
   const handleLoadLiveOrders = async () => {
+    const loadSequence = ++orderSourceSequenceRef.current;
     setIsLoadingLiveOrders(true);
     setError(null);
 
@@ -594,6 +653,7 @@ export default function ShippingExportRoute() {
         response,
         "Failed to load live seller orders.",
       );
+      if (loadSequence !== orderSourceSequenceRef.current) return;
 
       setSellerKeyInput(liveOrderResponse.sellerKey);
       setHistoryCoverage(liveOrderResponse.historyCoverage);
@@ -601,6 +661,7 @@ export default function ShippingExportRoute() {
         liveOrderResponse.orders,
         `Live seller orders: ${liveOrderResponse.sellerKey}`,
         liveOrderResponse.warnings ?? [],
+        loadSequence,
       );
     } catch (loadError) {
       setError(String(loadError));
@@ -617,6 +678,7 @@ export default function ShippingExportRoute() {
       return;
     }
 
+    const loadSequence = ++orderSourceSequenceRef.current;
     setIsLoadingSingleOrder(true);
     setError(null);
 
@@ -634,6 +696,7 @@ export default function ShippingExportRoute() {
         response,
         "Failed to load the requested TCGPlayer order.",
       );
+      if (loadSequence !== orderSourceSequenceRef.current) return;
 
       if (singleOrderResponse.sellerKey) {
         setSellerKeyInput(singleOrderResponse.sellerKey);
@@ -645,6 +708,7 @@ export default function ShippingExportRoute() {
         singleOrderResponse.orders,
         `Single TCGPlayer order: ${singleOrderResponse.loadedOrderNumbers[0] ?? normalizedOrderNumber}`,
         singleOrderResponse.warnings ?? [],
+        loadSequence,
       );
     } catch (loadError) {
       setError(String(loadError));
@@ -656,6 +720,8 @@ export default function ShippingExportRoute() {
   const updateSellerOrderHistory = async (
     payload: { action: "catch_up"; orderNumbers: string[] } | { action: "import_csv"; csvText: string; fileName: string },
   ) => {
+    const sourceSequence = orderSourceSequenceRef.current;
+    const refreshSequence = ++intakeRefreshSequenceRef.current;
     setIsUpdatingHistory(true);
     setError(null);
     try {
@@ -669,6 +735,20 @@ export default function ShippingExportRoute() {
         "Failed to update seller order history.",
       );
       setHistoryCoverage(result.coverage);
+      if (sourceOrders.length && sourceSequence === orderSourceSequenceRef.current) {
+        try {
+          const refreshed = await refreshShippingIntakeHistory(sourceOrders, sellerKeyInput.trim());
+          if (sourceSequence !== orderSourceSequenceRef.current || refreshSequence !== intakeRefreshSequenceRef.current) return;
+          const histories = new Map(refreshed.map((order) => [order["Order #"], order.intakeHistory]));
+          setSourceOrders(refreshed);
+          setOrders((current) => current.map((order) => ({ ...order, intakeHistory: histories.get(order["Order #"]) })));
+        } catch (refreshError) {
+          if (sourceSequence !== orderSourceSequenceRef.current || refreshSequence !== intakeRefreshSequenceRef.current) return;
+          setSourceOrders((current) => withoutShippingIntakeHistory(current));
+          setOrders((current) => withoutShippingIntakeHistory(current));
+          setLoadWarnings((current) => [...current, `Intake history is unavailable after catch-up: ${String(refreshError)}`]);
+        }
+      }
     } catch (historyError) {
       setError(String(historyError));
     } finally {

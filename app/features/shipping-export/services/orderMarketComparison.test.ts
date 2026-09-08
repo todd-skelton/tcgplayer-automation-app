@@ -121,7 +121,7 @@ const testCases: TestCase[] = [
       assert.equal(comparison.soldTotal, 42.5);
       assert.equal(comparison.lineCount, 0);
       assert.equal(getMarketDeltaPercent(comparison), null);
-      assert.equal(describeMarketDelta(comparison), "No market price");
+      assert.equal(describeMarketDelta(comparison), "No current market price");
       assert.equal(describeMarketCoverage(comparison), "No line items");
     },
   },
@@ -142,7 +142,7 @@ const testCases: TestCase[] = [
       assert.equal(comparison.soldTotal, 16);
       assert.equal(comparison.comparableMarketTotal, 16);
       assert.equal(getMarketDeltaAmount(comparison), 0);
-      assert.equal(describeMarketDelta(comparison), "At market");
+      assert.equal(describeMarketDelta(comparison), "At current market");
       assert.equal(describeMarketCoverage(comparison), null);
     },
   },
@@ -170,7 +170,7 @@ const testCases: TestCase[] = [
       assert.equal(comparison.soldTotal, 21);
       assert.equal(comparison.comparableMarketTotal, 20);
       assertClose(getMarketDeltaPercent(comparison), 5);
-      assert.equal(describeMarketDelta(comparison), "5.0% above market");
+      assert.equal(describeMarketDelta(comparison), "5.0% above current market");
     },
   },
   {
@@ -183,7 +183,7 @@ const testCases: TestCase[] = [
       );
 
       assertClose(getMarketDeltaPercent(comparison), -20);
-      assert.equal(describeMarketDelta(comparison), "20.0% below market");
+      assert.equal(describeMarketDelta(comparison), "20.0% below current market");
     },
   },
   {

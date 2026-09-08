@@ -14,6 +14,7 @@ import {
   getMarketDeltaPercent,
 } from "../services/orderMarketComparison";
 import type { TcgPlayerShippingOrder } from "../types/shippingExport";
+import { IntakeHistorySummary } from "./IntakeHistorySummary";
 
 interface OrderMarketSummaryProps {
   sourceOrders: TcgPlayerShippingOrder[];
@@ -79,7 +80,7 @@ export function OrderMarketSummary({ sourceOrders, shipmentCount }: OrderMarketS
       : `${formatSignedPercent(deltaPercent)} · ${formatSignedUsd(deltaAmount)}`;
   const marketDetail =
     coverage ??
-    (comparison.lineCount > 0 ? "Every line has a market price" : "No line items to price");
+    (comparison.lineCount > 0 ? "Every line has a current market price" : "No line items to price");
 
   return (
     <Paper variant="outlined" sx={{ px: 2.5, py: 1.5, mb: 3 }}>
@@ -111,19 +112,22 @@ export function OrderMarketSummary({ sourceOrders, shipmentCount }: OrderMarketS
           detail="Product value, before shipping"
         />
         <SummaryMetric
-          label="Market"
+          label="Current market"
           value={formatUsd(comparison.comparableMarketTotal)}
           detail={marketDetail}
           detailColor={coverage ? "warning.main" : "text.secondary"}
         />
         <SummaryMetric
-          label="Sold vs market"
+          label="Sold vs current market"
           value={deltaValue}
           valueColor={TONE_TEXT_COLORS[tone]}
           detail={describeMarketDelta(comparison)}
           detailColor={TONE_TEXT_COLORS[tone]}
         />
       </Stack>
+      <Box sx={{ mt: 1.5, pt: 1.5, borderTop: 1, borderColor: "divider" }}>
+        <IntakeHistorySummary sourceOrders={sourceOrders} label="Order load" />
+      </Box>
     </Paper>
   );
 }
