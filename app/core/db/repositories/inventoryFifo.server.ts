@@ -280,6 +280,23 @@ export const inventoryFifoRepository={
           AND current_line.sku_id=line.order_line_sku_id
         WHERE line.seller_key=$1 AND line.sku=$2 AND current_line.order_id IS NULL`,[queued.sellerKey,queued.sku],db);
       const demand=[...current,...removed];
+      const dispositionRows=await query<any>(`SELECT disposition.id::text AS id,disposition.order_id::text AS "orderId",
+        disposition.order_line_sku_id AS "skuId",disposition.disposition_type AS type,mapping.receipt_id AS "receiptId",
+        mapping.source_supply_key AS "sourceSupplyKey",mapping.quantity,
+        'restock:'||disposition.id::text||':'||mapping.source_supply_key AS "restockSupplyKey",
+        EXISTS (SELECT 1 FROM inventory_stock_disposition_corrections correction
+          WHERE correction.disposition_id=disposition.id) AS corrected FROM inventory_stock_dispositions disposition
+        JOIN inventory_stock_disposition_receipts mapping ON mapping.disposition_id=disposition.id
+        WHERE disposition.seller_key=$1 AND disposition.sku=$2`,[queued.sellerKey,queued.sku],db);
+      const dispositionEdgeBySupply=new Map(dispositionRows.map((row)=>[row.restockSupplyKey,row]));
+      const excludedOrigins=(supplyKey:string)=>{
+        const origins=new Set<string>();const visited=new Set<string>();let current=supplyKey;
+        while(!visited.has(current)){
+          visited.add(current);const edge=dispositionEdgeBySupply.get(current);if(!edge)break;
+          origins.add(`${edge.orderId}:${edge.skuId}`);current=edge.sourceSupplyKey;
+        }
+        return [...origins].sort();
+      };
       const lots=await query<any>(`WITH raw_supply AS (
         SELECT 'receipt:'||receipt.receipt_id::text AS "supplyKey",
           receipt.receipt_id AS "receiptId",NULL::text AS "dispositionId",receipt.original_quantity AS quantity,
@@ -314,7 +331,7 @@ export const inventoryFifoRepository={
         FROM raw_supply`,[queued.sellerKey,queued.sku,opening.cutoffAt],db);
       const supplies:FifoSupplyLot[]=lots.filter((row)=>row.quantity>0).map((row)=>({
         supplyKey:row.supplyKey,receiptId:row.receiptId,dispositionId:row.dispositionId,
-        excludedLineKey:row.excludedLineKey,
+        excludedLineKeys:excludedOrigins(row.supplyKey),
         quantity:row.quantity,availableAt:(row.availableAt as Date).toISOString(),fifoPrecedence:row.fifoPrecedence,
         intakeAt:row.intakeAt?(row.intakeAt as Date).toISOString():null,
         marketValueTenThousandths:row.marketValue===null?null:Math.round(Number(row.marketValue)*10_000),
@@ -332,13 +349,6 @@ export const inventoryFifoRepository={
             OR EXISTS (SELECT 1 FROM inventory_fifo_lines line WHERE line.order_id=orders.id AND line.sku=$2))`,
         [queued.sellerKey,queued.sku],db);
       const shippedOrders=new Set(shipped.map((row)=>row.orderId));
-      const dispositionRows=await query<any>(`SELECT disposition.id::text AS id,disposition.order_id::text AS "orderId",
-        disposition.order_line_sku_id AS "skuId",disposition.disposition_type AS type,mapping.receipt_id AS "receiptId",
-        mapping.source_supply_key AS "sourceSupplyKey",mapping.quantity,
-        EXISTS (SELECT 1 FROM inventory_stock_disposition_corrections correction
-          WHERE correction.disposition_id=disposition.id) AS corrected FROM inventory_stock_dispositions disposition
-        JOIN inventory_stock_disposition_receipts mapping ON mapping.disposition_id=disposition.id
-        WHERE disposition.seller_key=$1 AND disposition.sku=$2`,[queued.sellerKey,queued.sku],db);
       const dispositionsByLine=new Map<string,typeof dispositionRows>();
       for(const disposition of dispositionRows){
         const lineKey=`${disposition.orderId}:${disposition.skuId}`;
@@ -418,9 +428,15 @@ export const inventoryFifoRepository={
         [input.sellerKey,input.orderNumber,input.skuId],db);
       const sku=standardInventorySku(input.skuId);
       if(!order||sku===null||order.sourceRevision!==input.sourceOrderRevision||input.availableAt<order.orderTime)throw new Error("Disposition order evidence is stale or unsupported.");
-      const pendingReplay=await queryOne<{status:string}>(`SELECT status FROM inventory_fifo_replay_queue
-        WHERE seller_key=$1 AND sku=$2 FOR UPDATE`,[input.sellerKey,sku],db);
-      if(pendingReplay)throw new Error("FIFO allocation must be current before recording a disposition.");
+      const reserved=await queryOne<{sellerKey:string}>(`INSERT INTO inventory_fifo_replay_queue
+          (seller_key,sku,affected_from,status,generation,claim_token,claim_expires_at)
+        VALUES ($1,$2,$3,'processing',1,$4,NOW()+INTERVAL '5 minutes')
+        ON CONFLICT (seller_key,sku) DO UPDATE SET status='processing',claim_token=EXCLUDED.claim_token,
+          claim_expires_at=EXCLUDED.claim_expires_at,hold_reason=NULL,updated_at=NOW()
+        WHERE inventory_fifo_replay_queue.status='held' AND inventory_fifo_replay_queue.hold_reason IN
+          ('cancellation_requires_disposition','canceled_after_shipping_requires_restock')
+        RETURNING seller_key AS "sellerKey"`,[input.sellerKey,sku,order.orderTime,randomUUID()],db);
+      if(!reserved)throw new Error("FIFO allocation must be current before recording a disposition.");
       await db.query(`SELECT pg_advisory_xact_lock(hashtext($1))`,[`fifo:${input.sellerKey}:${sku}`]);
       const line=await queryOne<{id:string;orderTime:Date;sourceOrderRevision:number;orderedQuantity:number;matchedQuantity:number}>(`SELECT id::text AS id,
         order_time AS "orderTime",source_order_revision AS "sourceOrderRevision",
@@ -458,7 +474,8 @@ export const inventoryFifoRepository={
         SELECT $1,x."supplyKey",x."receiptId",x.quantity FROM jsonb_to_recordset($2::jsonb)
           AS x("supplyKey" text,"receiptId" integer,quantity integer)`,
         [disposition.id,asJson(input.sourceAllocations)],db);
-      await enqueue(input.sellerKey,sku,order.orderTime,db);
+      await execute(`UPDATE inventory_fifo_replay_queue SET status='pending',claim_token=NULL,claim_expires_at=NULL,
+        hold_reason=NULL,updated_at=NOW() WHERE seller_key=$1 AND sku=$2`,[input.sellerKey,sku],db);
       return {id:disposition.id,repeated:false};
     });
   },
@@ -522,7 +539,8 @@ export const inventoryFifoRepository={
       line.hold_reason AS "holdReason",COALESCE(current_line.ordered_quantity,line.ordered_quantity,0)::int AS "orderedQuantity",
       COALESCE(line.matched_quantity,0)::int AS "matchedQuantity",
       COALESCE(line.unmatched_quantity,current_line.ordered_quantity,0)::int AS "unmatchedQuantity",
-      line.price_known_quantity AS "priceKnownQuantity",line.date_known_quantity AS "dateKnownQuantity",
+      COALESCE(line.price_known_quantity,0)::int AS "priceKnownQuantity",
+      COALESCE(line.date_known_quantity,0)::int AS "dateKnownQuantity",
       line.intake_market_total::float8 AS "intakeMarketTotal",line.weighted_days_held::float8 AS "weightedDaysHeld",
       line.current_revision_id::text AS "revisionId",orders.source_revision AS "sourceOrderRevision",
       line.source_order_revision AS "allocatedSourceOrderRevision",queue.status AS "replayStatus",

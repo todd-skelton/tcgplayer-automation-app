@@ -47,7 +47,7 @@ assert.throws(()=>allocateInventoryFifo([
 const noSelfReturn=allocateInventoryFifo([
   {lineKey:"origin",orderId:"6",orderNumber:"F",orderTime:sale,quantity:1},
   {lineKey:"next",orderId:"7",orderNumber:"G",orderTime:sale,quantity:1},
-],[lot({supplyKey:"returned",receiptId:9,quantity:1,excludedLineKey:"origin"})]);
+],[lot({supplyKey:"returned",receiptId:9,quantity:1,excludedLineKeys:["origin"]})]);
 assert.equal(noSelfReturn[0]?.unmatchedQuantity,1);
 assert.equal(noSelfReturn[1]?.allocations[0]?.supplyKey,"returned");
 

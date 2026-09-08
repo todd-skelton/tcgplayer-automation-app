@@ -2,7 +2,7 @@ export type FifoSupplyLot = {
   supplyKey: string;
   receiptId: number;
   dispositionId: string | null;
-  excludedLineKey?: string | null;
+  excludedLineKeys?: readonly string[];
   quantity: number;
   availableAt: string;
   fifoPrecedence: 0 | 1;
@@ -120,7 +120,7 @@ export function allocateInventoryFifo(
     const excludedLots:FifoSupplyLot[]=[];
     while(needed>0&&eligible.size){
       const lot=eligible.peek()!;
-      if(lot.excludedLineKey===line.lineKey){excludedLots.push(eligible.pop()!);continue;}
+      if(lot.excludedLineKeys?.includes(line.lineKey)){excludedLots.push(eligible.pop()!);continue;}
       const available=remaining.get(lot.supplyKey)??0;
       if(available<=0){eligible.pop();continue;}
       const quantity=Math.min(available,needed);
