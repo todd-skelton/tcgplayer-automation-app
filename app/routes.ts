@@ -146,6 +146,10 @@ export default [
     file: "features/inventory-publication/routes/api.inventory-publication-health.ts",
   },
   {
+    path: "/api/inventory-history-diagnostics",
+    file: "features/inventory-history/routes/api.inventory-history-diagnostics.ts",
+  },
+  {
     path: "/api/convert-to-pricer-sku",
     file: "features/file-upload/routes/api.convert-to-pricer-sku.ts",
   },

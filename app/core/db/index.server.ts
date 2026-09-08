@@ -11,6 +11,7 @@ export { continuousPricingRepository } from "./repositories/continuousPricing.se
 export { httpConfigRepository } from "./repositories/httpConfig.server";
 export { inventoryBatchesRepository } from "./repositories/inventoryBatches.server";
 export { inventoryFifoRepository } from "./repositories/inventoryFifo.server";
+export { inventoryHistoryDiagnosticsRepository } from "./repositories/inventoryHistoryDiagnostics.server";
 export { inventoryOpeningBalancesRepository } from "./repositories/inventoryOpeningBalances.server";
 export { inventoryBatchPricingJobsRepository } from "./repositories/inventoryBatchPricingJobs.server";
 export { inventoryPublicationsRepository } from "./repositories/inventoryPublications.server";
