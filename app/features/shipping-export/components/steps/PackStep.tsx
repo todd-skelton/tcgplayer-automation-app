@@ -150,6 +150,7 @@ function SkuIntakeFigures({ history }: { history: ShippingIntakeLineHistory | nu
     <Typography variant="caption">{history.priceKnownQuantity ? formatUsd(history.intakeMarketTotal ?? 0) : "Unavailable"}</Typography>
     <Typography variant="caption" color={history.status === "current" ? "text.secondary" : "warning.main"}>
       {history.priceKnownQuantity}/{history.orderedQuantity} priced · {history.weightedDaysHeld === null ? "age unavailable" : `${history.weightedDaysHeld.toFixed(1)} days`}
+      {` · ${history.dateKnownQuantity}/${history.orderedQuantity} dated`}
       {history.status === "current" ? "" : ` · ${history.status}`}
     </Typography>
   </Stack>;

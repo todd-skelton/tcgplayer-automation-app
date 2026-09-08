@@ -61,7 +61,7 @@ function PriceBadgeLine({ badge }: { badge: PullSheetPriceBadge }) {
       {badge.intakeOrderedQuantity !== undefined && (
         <>
           <br />
-          SKU intake {intakeAvailable ? formatUsd(badge.intakeMarketTotal ?? 0) : "unavailable"}
+          Intake total {intakeAvailable ? formatUsd(badge.intakeMarketTotal ?? 0) : "unavailable"}
           {` · price ${badge.intakePriceKnownQuantity ?? 0}/${badge.intakeOrderedQuantity}`}
           {` · age ${badge.intakeWeightedDaysHeld === null || badge.intakeWeightedDaysHeld === undefined ? "unavailable" : `${badge.intakeWeightedDaysHeld.toFixed(1)}d`}`}
           {` (${badge.intakeDateKnownQuantity ?? 0}/${badge.intakeOrderedQuantity} dated)`}
