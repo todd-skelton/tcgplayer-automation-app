@@ -59,6 +59,21 @@ function publicationItem(
     desiredPrice: 4.25,
     quantityDelta: quantity,
     pricedAt: new Date("2026-08-10T11:00:00.000Z"),
+    forecastEvidence: {
+      source: "publication_candidate" as const,
+      schemaVersion: 2,
+      pricingModelVersion: "integration-model-v2",
+      pricedAt: "2026-08-10T11:00:00.000Z",
+      decision: {
+        method: "target-horizon" as const,
+        selectedPrice: 4.25,
+        targetHorizonDays: 30,
+        estimatedMedianSellDays: 24,
+        constraint: "none" as const,
+        basis: "modeled" as const,
+        forecastStatus: "interpolated" as const,
+      },
+    },
   };
 }
 
@@ -86,6 +101,10 @@ try {
   const repeated = await inventoryPublicationsRepository.createOrFindPlanned(params);
   assert.equal(repeated.created, false);
   assert.equal(repeated.publication.sellerKey, sellerKey);
+  assert.equal(
+    repeated.publication.items[0].forecastEvidence?.decision?.estimatedMedianSellDays,
+    24,
+  );
   await assert.rejects(
     inventoryPublicationsRepository.createOrFindPlanned({
       ...params,
@@ -290,6 +309,12 @@ try {
       { sku: skuA, quantity: 5, liveAt: confirmedAtA.toISOString() },
       { sku: skuB, quantity: 4, liveAt: confirmedAtB.toISOString() },
     ],
+  );
+  assert.equal(
+    (await inventoryPublicationsRepository.findById(publicationId))?.items[0]
+      .forecastEvidence?.decision?.estimatedMedianSellDays,
+    24,
+    "activation retries never replace the publication-time forecast",
   );
 
   const priceOnly = await inventoryPublicationsRepository.createOrFindPlanned({

@@ -31,6 +31,8 @@ function createItem(
     desiredAbsoluteQuantity: null,
     pricedAt: NOW,
     eligibilityReasons: [],
+    forecastEvidence: null,
+    forecastEvidenceProvenance: "unknown",
     status,
     errorCode: null,
     errorMessage: null,

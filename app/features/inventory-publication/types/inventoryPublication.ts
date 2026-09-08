@@ -1,3 +1,4 @@
+import type { PersistedPricingDetails } from "../../../core/types/pricing";
 import type { PricingDecision } from "../../../core/types/pricingPolicy";
 
 export type InventoryPublicationSourceType =
@@ -123,6 +124,8 @@ export interface InventoryPublicationItem {
   desiredAbsoluteQuantity: number | null;
   pricedAt: Date;
   eligibilityReasons: InventoryPublicationEligibilityReason[];
+  forecastEvidence: InventoryPublicationForecastEvidence | null;
+  forecastEvidenceProvenance: "recorded" | "estimated" | "unknown";
   status: InventoryPublicationItemStatus;
   errorCode: string | null;
   errorMessage: string | null;
@@ -174,8 +177,24 @@ export interface CreateInventoryPublicationItem {
   desiredAbsoluteQuantity?: number | null;
   pricedAt: Date;
   eligibilityReasons?: InventoryPublicationEligibilityReason[];
+  forecastEvidence?: InventoryPublicationForecastEvidence | null;
   status?: InventoryPublicationItemStatus;
 }
+
+/** Forecast fields that were actually present on the pricing candidate. */
+export type InventoryPublicationForecastEvidence = Pick<
+  PersistedPricingDetails,
+  | "schemaVersion"
+  | "pricingModelVersion"
+  | "pricedAt"
+  | "policy"
+  | "decision"
+  | "buyerChoiceForecast"
+  | "conditionRateForecast"
+  | "estimatedTimeToSellDays"
+> & {
+  source: "publication_candidate" | "historical_pricing_result_exact_match";
+};
 
 export interface CreateInventoryPublication {
   planningKey: string;
@@ -228,6 +247,7 @@ export interface InventoryBatchPublicationPreviewItem {
   reasons: InventoryPublicationEligibilityReason[];
   candidateKey: string;
   inventoryDeltaKey: string | null;
+  forecastEvidence: InventoryPublicationForecastEvidence | null;
 }
 
 export interface InventoryBatchPublicationPreview {

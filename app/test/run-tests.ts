@@ -21,6 +21,9 @@ import "../features/inventory-publication/services/inventoryPublicationPolicy.te
 import "../features/continuous-pricing/services/continuousPricingSettings.test";
 import "../features/continuous-pricing/services/continuousMarketPrices.server.test";
 import "../features/inventory-strategy/services/inventoryStrategy.test";
+import "../features/inventory-strategy/services/inventorySellingHistory.test";
+import "../features/inventory-strategy/services/inventorySellingHistory.server.test";
+import "../features/inventory-strategy/components/InventorySellingHistory.test";
 import "../features/inventory-strategy/services/inventoryStrategyDashboard.server.test";
 import "../features/inventory-strategy/services/versionedCache.test";
 import "../features/inventory-strategy/components/verdict.test";

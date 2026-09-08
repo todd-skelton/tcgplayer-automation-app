@@ -21,6 +21,17 @@ import { inventoryFifoRepository } from "./inventoryFifo.server";
 type InventoryPublicationRow = Omit<InventoryPublication, "items">;
 type InventoryPublicationItemRow = InventoryPublicationItem;
 
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
 function safeDatabaseId(value: number | string | null, name: string): number | null {
   if (value === null) return null;
   const id = Number(value);
@@ -105,6 +116,8 @@ const publicationItemSelect = `SELECT
   desired_absolute_quantity AS "desiredAbsoluteQuantity",
   priced_at AS "pricedAt",
   eligibility_reasons AS "eligibilityReasons",
+  forecast_evidence AS "forecastEvidence",
+  forecast_evidence_provenance AS "forecastEvidenceProvenance",
   status,
   error_code AS "errorCode",
   error_message AS "errorMessage",
@@ -321,6 +334,7 @@ function plannedPublicationIdentity(
       desiredAbsoluteQuantity: item.desiredAbsoluteQuantity,
       pricedAt: item.pricedAt.toISOString(),
       eligibilityReasons: item.eligibilityReasons,
+      forecastEvidence: canonicalJson(item.forecastEvidence),
     })),
   });
 }
@@ -351,11 +365,60 @@ function requestedPublicationIdentity(
       desiredAbsoluteQuantity: item.desiredAbsoluteQuantity ?? null,
       pricedAt: item.pricedAt.toISOString(),
       eligibilityReasons: item.eligibilityReasons ?? [],
+      forecastEvidence: canonicalJson(item.forecastEvidence ?? null),
     })),
   });
 }
 
 export const inventoryPublicationsRepository = {
+  async backfillSupportedForecastEvidence(
+    sellerKey: string,
+    limit = 500,
+  ): Promise<number> {
+    const seller = sellerKey.trim();
+    if (!seller) throw new Error("Seller key is required for forecast evidence backfill.");
+    if (!Number.isInteger(limit) || limit < 1 || limit > 1_000) {
+      throw new Error("Forecast evidence backfill limit must be between 1 and 1000.");
+    }
+    const rows = await query<{ id: number }>(
+      `WITH supported AS (
+        SELECT item.id,result.pricing_details_json
+        FROM inventory_publication_items item
+        JOIN inventory_publications publication ON publication.id=item.publication_id
+        JOIN inventory_batch_results result
+          ON result.batch_number=item.batch_number AND result.sku=item.sku
+          AND result.priced_at=item.priced_at
+        WHERE publication.seller_key=$1
+          AND item.forecast_evidence IS NULL AND item.status='published'
+          AND result.result_status='successful'
+          AND result.pricing_details_json IS NOT NULL
+          AND item.candidate_key='pricing-result:'||result.batch_number::text||':'||
+            result.sku::text||':'||to_char(result.priced_at AT TIME ZONE 'UTC',
+              'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+          AND jsonb_typeof(result.pricing_details_json->'schemaVersion')='number'
+          AND result.pricing_details_json->>'pricedAt'=to_char(
+            result.priced_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+          AND result.pricing_details_json->>'marketplacePrice' ~ '^[0-9]+(\.[0-9]+)?$'
+          AND (result.pricing_details_json->>'marketplacePrice')::numeric(12,2)=item.desired_price
+        ORDER BY item.id LIMIT $2
+      )
+      UPDATE inventory_publication_items item SET
+        forecast_evidence=jsonb_strip_nulls(jsonb_build_object(
+          'source','historical_pricing_result_exact_match',
+          'schemaVersion',supported.pricing_details_json->'schemaVersion',
+          'pricingModelVersion',supported.pricing_details_json->'pricingModelVersion',
+          'pricedAt',supported.pricing_details_json->'pricedAt',
+          'policy',supported.pricing_details_json->'policy',
+          'decision',supported.pricing_details_json->'decision',
+          'buyerChoiceForecast',supported.pricing_details_json->'buyerChoiceForecast',
+          'conditionRateForecast',supported.pricing_details_json->'conditionRateForecast',
+          'estimatedTimeToSellDays',supported.pricing_details_json->'estimatedTimeToSellDays')),
+        forecast_evidence_provenance='recorded',updated_at=NOW()
+      FROM supported WHERE item.id=supported.id RETURNING item.id`,
+      [seller, limit],
+    );
+    return rows.length;
+  },
   async findById(
     publicationId: number,
     executor?: Queryable,
@@ -524,7 +587,7 @@ export const inventoryPublicationsRepository = {
         return { publication: existing, created: false };
       }
 
-      const placeholders = createValuesPlaceholders(params.items.length, 18);
+      const placeholders = createValuesPlaceholders(params.items.length, 20);
       const values = params.items.flatMap((item) => [
         inserted.id,
         item.candidateKey,
@@ -543,6 +606,8 @@ export const inventoryPublicationsRepository = {
         item.desiredAbsoluteQuantity ?? null,
         item.pricedAt,
         item.eligibilityReasons ?? [],
+        item.forecastEvidence ? asJson(item.forecastEvidence) : null,
+        item.forecastEvidence ? "recorded" : "unknown",
         item.status ?? "planned",
       ]);
 
@@ -565,6 +630,8 @@ export const inventoryPublicationsRepository = {
           desired_absolute_quantity,
           priced_at,
           eligibility_reasons,
+          forecast_evidence,
+          forecast_evidence_provenance,
           status
         ) VALUES ${placeholders}`,
         values,
