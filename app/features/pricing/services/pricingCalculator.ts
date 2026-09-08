@@ -311,7 +311,6 @@ export class PricingCalculator {
           storeWinShare: percentile.storeWinShare,
           supplyStatus: percentile.supplyStatus,
         }));
-        const curve = toPricingCurve(pricedItem.percentiles);
         const percentilePolicy = {
           method: "percentile" as const,
           percentile: effectivePercentile,
@@ -320,6 +319,20 @@ export class PricingCalculator {
           config.policy && config.policy.method !== "percentile"
             ? productLinePricingPolicy(config.policy, productLineSettings)
             : percentilePolicy;
+        const curve = toPricingCurve(
+          pricedItem.percentiles,
+          activePolicy.method === "percentile"
+            ? undefined
+            : activePolicy.forecastCorrection
+              ? {
+                  ...activePolicy.forecastCorrection,
+                  medianDaysMultiplier:
+                    activePolicy.forecastCorrection.productLineMedianDaysMultipliers?.[
+                      pricerSku.productLineId
+                    ] ?? activePolicy.forecastCorrection.medianDaysMultiplier,
+                }
+              : undefined,
+        );
         const pricePoint = pricePointsMap.get(pricerSku.sku) ?? null;
         const references = {
           marketPrice: pricePoint?.marketPrice,

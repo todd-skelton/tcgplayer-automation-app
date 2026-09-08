@@ -3,11 +3,11 @@ import {
   type CapitalCycleEconomics,
   type CapitalCyclePortfolio,
 } from "~/features/pricing/domain/capitalCycle";
+import type { InventoryStrategyHurdleScenario } from "../types/inventoryStrategy";
 import type {
-  ForecastGradingReport,
-  GradedForecast,
-  InventoryStrategyHurdleScenario,
-} from "../types/inventoryStrategy";
+  ForecastEvaluationReport,
+  ForecastScore,
+} from "~/features/pricing/domain/forecastEvaluation";
 
 export interface HurdleReturn {
   scenario: InventoryStrategyHurdleScenario;
@@ -40,32 +40,26 @@ export function hurdleReturns(
     .sort((left, right) => right.dailyReturn - left.dailyReturn);
 }
 
-/** The graded forecasts by label and report field. */
-export const GRADED_FORECASTS = [
-  ["Curve", "curve"],
-  ["Buyer-choice", "buyerChoice"],
-  ["Condition-rate", "conditionRate"],
-] as const;
-
 export type GradingStatus =
   | {
       graded: true;
       /** The best-scoring forecast. */
       label: string;
-      grade: GradedForecast;
+      grade: ForecastScore;
       baseRate: number;
     }
   | { graded: false; gradableAt: string | null };
 
-/** Whether any forecast has a grade at this horizon, else when the first one will. */
+/** The best held-out model score, or the frozen validation boundary. */
 export function gradingStatus(
-  report: ForecastGradingReport | undefined,
+  report: ForecastEvaluationReport | null | undefined,
 ): GradingStatus {
   if (!report) return { graded: false, gradableAt: null };
-  const [best] = GRADED_FORECASTS.map(([label, key]) => ({
-    label,
-    grade: report[key],
-  }))
+  const [best] = report.models
+    .map((model) => ({
+      label: `${model.family} (${model.version})`,
+      grade: model.validation,
+    }))
     .filter(({ grade }) => grade.count > 0)
     .sort((left, right) => left.grade.brier - right.grade.brier);
   if (best) {
@@ -76,8 +70,5 @@ export function gradingStatus(
       baseRate: best.grade.soldShare * (1 - best.grade.soldShare),
     };
   }
-  const [gradableAt] = GRADED_FORECASTS.map(([, key]) => report[key].gradableAt)
-    .filter((value): value is string => value !== null)
-    .sort();
-  return { graded: false, gradableAt: gradableAt ?? null };
+  return { graded: false, gradableAt: report.validationCutoff };
 }

@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
-import type {
-  ForecastGradingReport,
-  GradedForecast,
-  InventoryStrategyHurdleScenario,
-} from "../types/inventoryStrategy";
+import type { InventoryStrategyHurdleScenario } from "../types/inventoryStrategy";
+import type { ForecastEvaluationReport } from "~/features/pricing/domain/forecastEvaluation";
 import { gradingStatus, hurdleReturns } from "./verdict";
 
 const scenario = (
@@ -52,51 +49,27 @@ assert.ok(
   "the return grows the cost basis to the value over the median wait",
 );
 
-const grade = (
-  count: number,
-  brier: number,
-  gradableAt: string | null,
-): GradedForecast => ({
-  count,
-  soldShare: 0.25,
-  expectedShare: 0.3,
-  brier,
-  deciles: [],
-  gradableAt,
-});
-const report = (
-  curve: GradedForecast,
-  buyerChoice: GradedForecast,
-  conditionRate: GradedForecast,
-): ForecastGradingReport => ({
-  horizonDays: 21,
-  otherCalibrationCount: 0,
-  curve,
-  buyerChoice,
-  conditionRate,
-});
+const report = (models: ForecastEvaluationReport["models"]): ForecastEvaluationReport => ({
+  validationCutoff: "2026-09-20T00:00:00.000Z",
+  models,
+} as ForecastEvaluationReport);
 
 assert.deepEqual(gradingStatus(undefined), { graded: false, gradableAt: null });
 assert.deepEqual(
   gradingStatus(
-    report(
-      grade(0, 0, "2026-09-25T00:00:00.000Z"),
-      grade(0, 0, "2026-09-20T00:00:00.000Z"),
-      grade(0, 0, null),
-    ),
+    report([]),
   ),
   { graded: false, gradableAt: "2026-09-20T00:00:00.000Z" },
-  "before any grade, the earliest gradable forecast sets the date",
+  "before any grade, the frozen validation boundary is shown",
 );
 const graded = gradingStatus(
-  report(
-    grade(10, 0.2, "2026-08-01T00:00:00.000Z"),
-    grade(8, 0.15, "2026-08-01T00:00:00.000Z"),
-    grade(0, 0, "2026-09-25T00:00:00.000Z"),
-  ),
+  report([
+    { family: "curve", version: "curve:v1", training: {} as never, validation: { count: 10, soldShare: 0.25, expectedShare: 0.3, brier: 0.2, calibrationError: 0.05 }, reservedCount: 0 },
+    { family: "buyer-choice", version: "choice:v1", training: {} as never, validation: { count: 8, soldShare: 0.25, expectedShare: 0.3, brier: 0.15, calibrationError: 0.05 }, reservedCount: 0 },
+  ]),
 );
 assert.ok(graded.graded);
-assert.equal(graded.label, "Buyer-choice", "the lowest Brier score leads");
+assert.equal(graded.label, "buyer-choice (choice:v1)", "the lowest Brier score leads");
 assert.ok(Math.abs(graded.baseRate - 0.1875) < 1e-12);
 
 console.log("PASS strategy verdict ranks hurdles and reads the grading status");

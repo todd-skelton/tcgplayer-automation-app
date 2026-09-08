@@ -1,158 +1,46 @@
-import { inventoryStrategyRepository } from "~/core/db";
-import { BUYER_CHOICE_CALIBRATION } from "~/features/pricing/algorithms/buyerChoiceSellTime";
-import { CONDITION_RATE_METHOD } from "~/features/pricing/algorithms/conditionSaleRate";
+import { forecastEvaluationsRepository } from "~/core/db";
 import {
-  buildCohort,
-  gradeForecast,
-  type ForecastGrade,
-  type ForecastRecord,
-} from "~/features/pricing/domain/forecastGrading";
-import {
-  FORECAST_GRADING_HORIZON_DAYS,
-  type ForecastGradingRecord,
-  type ForecastGradingReport,
-  type GradedForecast,
-} from "../types/inventoryStrategy";
+  FORECAST_EVALUATION_POLICY,
+  evaluateForecastEvidence,
+  type ForecastEvaluationEvidence,
+  type ForecastEvaluationReport,
+} from "~/features/pricing/domain/forecastEvaluation";
 import { createVersionedCache } from "./versionedCache";
 
-const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
-const NO_GRADE: ForecastGrade = {
-  count: 0,
-  soldShare: 0,
-  expectedShare: 0,
-  brier: 0,
-  deciles: [],
-};
-
-export interface ForecastGradingSource {
-  /** Changes whenever the inventory or its curves change, as every priced batch does. */
-  findSnapshotVersion(sellerKey: string): Promise<string>;
-  findForecastGradingRecords(
-    sellerKey: string,
-    since: Date,
-  ): Promise<ForecastGradingRecord[]>;
-  findInStockSkus(sellerKey: string): Promise<number[]>;
+export interface ForecastEvaluationSource {
+  findEvidenceVersion(sellerKey: string): Promise<string>;
+  findMaterialEvidenceVersion(sellerKey: string): Promise<string>;
+  findEvidence(sellerKey: string): Promise<ForecastEvaluationEvidence>;
+  save(report: ForecastEvaluationReport): Promise<{ id: string; created: boolean }>;
 }
 
-const reports =
-  createVersionedCache<ForecastGradingReport[]>("Forecast grading");
+const reports = createVersionedCache<ForecastEvaluationReport>("Forecast evaluation");
 
-/**
- * The seller's forecast grading, regraded after each priced batch and at
- * least hourly as the cohort windows move, serving the last report while the
- * next one builds.
- */
+/** Evaluates and persists one result for each frozen source-evidence version. */
 export async function loadForecastGrading(
   sellerKey: string,
-  source: ForecastGradingSource = inventoryStrategyRepository,
-  now: Date = new Date(),
-): Promise<ForecastGradingReport[]> {
-  if (!sellerKey) return gradeForecasts(sellerKey, source, now);
-  return reports.read(
-    sellerKey,
-    "",
-    [
-      await source.findSnapshotVersion(sellerKey),
-      Math.floor(now.getTime() / HOUR_MS),
-    ].join("|"),
-    () => gradeForecasts(sellerKey, source, now),
-  );
-}
-
-/**
- * Grades the curve, buyer-choice, and condition-rate forecasts at each
- * horizon, each over its own newest complete cohort: SKUs priced under
- * continuous pricing within the last two horizons whose first result carrying
- * that forecast is at least one horizon old. Results priced under the target-horizon policy carry no curve
- * forecast, because that policy pins it to the horizon.
- */
-async function gradeForecasts(
-  sellerKey: string,
-  source: ForecastGradingSource,
-  now: Date,
-): Promise<ForecastGradingReport[]> {
-  const since = new Date(
-    now.getTime() - 2 * Math.max(...FORECAST_GRADING_HORIZON_DAYS) * DAY_MS,
-  );
-  const [rows, inStock] = sellerKey
-    ? await Promise.all([
-        source.findForecastGradingRecords(sellerKey, since),
-        source.findInStockSkus(sellerKey),
-      ])
-    : [[], []];
-  let otherCalibrationCount = 0;
-  const records: ForecastRecord[] = [];
-  for (const row of rows) {
-    if (row.quantity === null) continue;
-    const forecasts: Record<string, number> = {};
-    const curveDays = row.curveMedianSellDays ?? 0;
-    if (
-      row.basis === "modeled" &&
-      row.method !== "target-horizon" &&
-      curveDays > 0
-    ) {
-      forecasts.curve = curveDays;
-    }
-    const buyerChoiceDays = row.buyerChoiceMedianSellDays ?? 0;
-    if (row.buyerChoiceCalibration === BUYER_CHOICE_CALIBRATION.name) {
-      if (buyerChoiceDays > 0) forecasts["buyer-choice"] = buyerChoiceDays;
-    } else if (row.buyerChoiceCalibration !== null) {
-      otherCalibrationCount += 1;
-    }
-    const conditionRateDays = row.conditionRateMedianSellDays ?? 0;
-    if (
-      row.conditionRateMethod === CONDITION_RATE_METHOD &&
-      conditionRateDays > 0
-    ) {
-      forecasts["condition-rate"] = conditionRateDays;
-    }
-    records.push({
-      sku: row.sku,
-      pricedAt: row.pricedAt.getTime(),
-      quantity: row.quantity,
-      forecasts,
-    });
-  }
-  const inStockSkus = new Set(inStock);
-  const firstCarriedAt = (name: string) =>
-    records.reduce<number | undefined>(
-      (earliest, record) =>
-        record.forecasts[name] > 0 &&
-        (earliest === undefined || record.pricedAt < earliest)
-          ? record.pricedAt
-          : earliest,
-      undefined,
-    );
-  return FORECAST_GRADING_HORIZON_DAYS.map((horizonDays) => {
-    const windowStart = now.getTime() - 2 * horizonDays * DAY_MS;
-    const windowRecords = records.filter(
-      (record) => record.pricedAt >= windowStart,
-    );
-    const grade = (name: string): GradedForecast => {
-      const cohort = buildCohort(
-        windowRecords,
-        [name],
-        inStockSkus,
-        horizonDays,
-      );
-      const carriedAt = firstCarriedAt(name);
-      return {
-        ...(cohort.length === 0
-          ? NO_GRADE
-          : gradeForecast(cohort, name, horizonDays)),
-        gradableAt:
-          carriedAt === undefined
-            ? null
-            : new Date(carriedAt + horizonDays * DAY_MS).toISOString(),
-      };
+  source: ForecastEvaluationSource = forecastEvaluationsRepository,
+): Promise<ForecastEvaluationReport | null> {
+  const seller = sellerKey.trim();
+  if (!seller) return null;
+  const version = await source.findEvidenceVersion(seller);
+  const report = await reports.read(seller, "", version, async () => {
+    const report = {
+      ...evaluateForecastEvidence(await source.findEvidence(seller)),
+      materialEvidenceVersion: await source.findMaterialEvidenceVersion(seller),
     };
-    return {
-      horizonDays,
-      otherCalibrationCount,
-      curve: grade("curve"),
-      buyerChoice: grade("buyer-choice"),
-      conditionRate: grade("condition-rate"),
-    };
+    const saved = await source.save(report);
+    return { ...report, evaluationId: saved.id };
   });
+  return Date.now() - Date.parse(report.evaluatedAt) >
+    FORECAST_EVALUATION_POLICY.maximumEvidenceAgeDays * 86_400_000
+    ? {
+        ...report,
+        status: "abstained",
+        statusReasons: ["evidence_is_stale"],
+        correction: report.correction
+          ? { ...report.correction, eligible: false, reasons: ["evidence_is_stale"] }
+          : null,
+      }
+    : report;
 }
