@@ -83,6 +83,12 @@ export interface PurchaseCostSummary {
   batchNumbers: number[];
   purchasedAt?: string;
   recordedAt: string;
+  isCurrent: boolean;
+  historyCount: number;
+  historyComplete: boolean;
+  correctsEntryId?: string;
+  correctionReason?: string;
+  evidenceIdentity: string;
 }
 
 export interface FundingAdjustmentSummary {
@@ -96,6 +102,12 @@ export interface FundingAdjustmentSummary {
   effectiveAt: string;
   purchaseReference?: string;
   recordedAt: string;
+  isCurrent: boolean;
+  historyCount: number;
+  historyComplete: boolean;
+  correctsEntryId?: string;
+  correctionReason?: string;
+  evidenceIdentity: string;
 }
 
 export interface OrderExpenseSummary {
@@ -110,6 +122,13 @@ export interface OrderExpenseSummary {
   expenseAt: string;
   basis: OrderExpenseBasis;
   recordedAt: string;
+  isCurrent: boolean;
+  historyCount: number;
+  historyComplete: boolean;
+  correctsEntryId?: string;
+  correctionReason?: string;
+  evidenceIdentity: string;
+  financialSourceFingerprint?: string;
 }
 
 export type EconomicsCoverage = "actual" | "estimated" | "unknown";
@@ -132,6 +151,9 @@ export interface OrderEconomicsSummary {
   expenseCoverage: EconomicsCoverage;
   costCoverage: EconomicsCoverage;
   missing: string[];
+  orderedQuantity: number;
+  settledQuantity: number;
+  costKnownQuantity: number;
 }
 
 export interface InventoryEconomicsWorkspace {
@@ -142,4 +164,13 @@ export interface InventoryEconomicsWorkspace {
   orderExpenses: OrderExpenseSummary[];
   orders: OrderEconomicsSummary[];
   uncostedBatches: Array<{ batchNumber: number; sourceLabel: string; receiptCount: number }>;
+}
+
+export interface PurchaseAllocationTarget {
+  receiptId: number;
+  sku: number;
+  itemLabel: string;
+  originalQuantity: number;
+  batchNumbers: number[];
+  intakeAt: string | null;
 }

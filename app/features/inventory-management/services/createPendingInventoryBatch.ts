@@ -10,7 +10,7 @@ export interface PurchaseCostAtIntake {
   purchaseReference: string;
   totalAmount: string;
   provenance: "actual" | "estimated";
-  allocationRule: "quantity" | "frozen_market";
+  allocationRule: "quantity";
   purchasedAt?: string;
   currency: string;
 }

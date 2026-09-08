@@ -38,7 +38,7 @@ export async function action({ request }: { request: Request }) {
       if (!sellerKey) return data({ error: "Configure a default shipping seller before recording purchase cost." }, { status: 409 });
       const reference = typeof value.purchaseReference === "string" ? value.purchaseReference.trim() : "";
       const provenance = value.provenance === "estimated" ? "estimated" : value.provenance === "actual" ? "actual" : null;
-      const allocationRule = value.allocationRule === "frozen_market" ? "frozen_market" : value.allocationRule === "quantity" ? "quantity" : null;
+      const allocationRule = value.allocationRule === "quantity" ? "quantity" : null;
       if (!reference || !provenance || !allocationRule) return data({ error: "Purchase reference, provenance, and allocation rule are required." }, { status: 400 });
       purchaseCost = { requestId:`${requestId}:purchase-cost`,sellerKey,purchaseReference:reference,
         currency:typeof value.currency === "string" ? value.currency.trim() : "USD",

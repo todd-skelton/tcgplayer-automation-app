@@ -48,6 +48,13 @@ CREATE TABLE inventory_purchase_cost_allocations (
   PRIMARY KEY (entry_id, receipt_id)
 );
 
+CREATE TABLE inventory_purchase_receipt_ownership (
+  receipt_id INTEGER PRIMARY KEY REFERENCES inventory_receipts(receipt_id) ON DELETE RESTRICT,
+  series_id BIGINT NOT NULL REFERENCES inventory_purchase_cost_series(id) ON DELETE RESTRICT,
+  currency TEXT NOT NULL CHECK (currency ~ '^[A-Z]{3}$'),
+  recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE INDEX inventory_purchase_cost_allocations_receipt_idx
   ON inventory_purchase_cost_allocations (receipt_id, entry_id);
 
@@ -103,12 +110,15 @@ CREATE TABLE inventory_order_expense_entries (
   order_numbers TEXT[] NOT NULL CHECK (cardinality(order_numbers) > 0),
   expense_at DATE NOT NULL,
   basis TEXT NOT NULL CHECK (basis IN ('additional_expense','original_net_refund_adjustment','already_adjusted_net')),
+  financial_source_fingerprint TEXT,
   corrects_entry_id BIGINT UNIQUE REFERENCES inventory_order_expense_entries(id) ON DELETE RESTRICT,
   correction_reason TEXT,
   evidence JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(evidence) = 'object'),
   recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (series_id, sequence),
   CHECK ((expense_type = 'refund_settlement') OR basis = 'additional_expense'),
+  CHECK ((expense_type = 'refund_settlement') = (financial_source_fingerprint IS NOT NULL)),
+  CHECK (financial_source_fingerprint IS NULL OR length(financial_source_fingerprint) = 64),
   CHECK ((corrects_entry_id IS NULL) = (correction_reason IS NULL))
 );
 
@@ -130,6 +140,10 @@ FOR EACH ROW EXECUTE FUNCTION preserve_inventory_economics_evidence();
 
 CREATE TRIGGER inventory_purchase_cost_allocations_are_immutable
 BEFORE UPDATE OR DELETE ON inventory_purchase_cost_allocations
+FOR EACH ROW EXECUTE FUNCTION preserve_inventory_economics_evidence();
+
+CREATE TRIGGER inventory_purchase_receipt_ownership_is_immutable
+BEFORE UPDATE OR DELETE ON inventory_purchase_receipt_ownership
 FOR EACH ROW EXECUTE FUNCTION preserve_inventory_economics_evidence();
 
 CREATE TRIGGER inventory_funding_entries_are_immutable

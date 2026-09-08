@@ -28,6 +28,28 @@ function parseBatchNumbers(value: unknown): number[] {
   }
   return numbers;
 }
+function parseExplicitAllocations(value: unknown) {
+  if (!Array.isArray(value) || !value.length) {
+    throw new Error("Explicit allocation requires an amount for every selected receipt.");
+  }
+  const seen = new Set<number>();
+  return value.map((item, index) => {
+    if (!item || typeof item !== "object") throw new Error(`Explicit allocation ${index + 1} is invalid.`);
+    const allocation = item as Record<string, unknown>;
+    const receiptId = Number(allocation.receiptId);
+    if (!Number.isInteger(receiptId) || receiptId <= 0 || seen.has(receiptId)) {
+      throw new Error("Explicit allocations require unique receipt selections.");
+    }
+    seen.add(receiptId);
+    const amountCents = allocation.amountCents === undefined
+      ? dollarsToCents(allocation.amount,`Receipt allocation ${index + 1}`)
+      : allocation.amountCents;
+    if (!Number.isSafeInteger(amountCents) || (amountCents as number) < 0) {
+      throw new Error(`Receipt allocation ${index + 1} must be nonnegative whole cents.`);
+    }
+    return { receiptId, amountCents:amountCents as number };
+  });
+}
 
 export function createInventoryEconomicsHandlers(dependencies = {
   getConfig: getShippingExportConfig,
@@ -35,6 +57,7 @@ export function createInventoryEconomicsHandlers(dependencies = {
   recordPurchaseCost: inventoryEconomicsRepository.recordPurchaseCost,
   recordFundingAdjustment: inventoryEconomicsRepository.recordFundingAdjustment,
   recordOrderExpense: inventoryEconomicsRepository.recordOrderExpense,
+  findPurchaseAllocationTargets: inventoryEconomicsRepository.findPurchaseAllocationTargets,
   importPurchaseCosts: importPurchaseCostCsv,
 }) {
   const configuredSeller = async () => {
@@ -54,16 +77,23 @@ export function createInventoryEconomicsHandlers(dependencies = {
         const payload = await request.json() as Record<string, unknown>;
         const requestId = text(payload.requestId, "Request ID");
         const currency = text(payload.currency ?? "USD", "Currency");
+        if (payload.action === "find_purchase_allocation_targets") {
+          const result = await dependencies.findPurchaseAllocationTargets(sellerKey,parseBatchNumbers(payload.batchNumbers));
+          return data({ purchaseAllocationTargets:result.targets,purchaseAllocationTargetsComplete:result.complete });
+        }
         if (payload.action === "record_purchase_cost") {
+          const allocationRule = choice(payload.allocationRule,["quantity","frozen_market","explicit"] as const,"Allocation rule");
           const result = await dependencies.recordPurchaseCost({
             requestId,sellerKey,currency,
             purchaseReference:text(payload.purchaseReference,"Purchase reference"),
             totalAmountCents:dollarsToCents(payload.totalAmount,"Purchase total"),
             provenance:choice(payload.provenance,["actual","estimated"] as const,"Provenance"),
-            source:"manual",allocationRule:choice(payload.allocationRule,["quantity","frozen_market","explicit"] as const,"Allocation rule"),
+            source:"manual",allocationRule,
             batchNumbers:parseBatchNumbers(payload.batchNumbers),purchasedAt:optionalText(payload.purchasedAt),
             marketObservedAt:optionalText(payload.marketObservedAt),correctsEntryId:optionalText(payload.correctsEntryId),
             correctionReason:optionalText(payload.correctionReason),
+            ...(allocationRule === "explicit"
+              ? { explicitAllocations:parseExplicitAllocations(payload.explicitAllocations) } : {}),
           });
           return data({ result, workspace: await dependencies.loadWorkspace(sellerKey) });
         }

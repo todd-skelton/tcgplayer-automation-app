@@ -53,7 +53,16 @@ function normalizeInstant(value: string | undefined, label: string): string | nu
 }
 
 function fingerprint(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+  return createHash("sha256").update(stableJson(value)).digest("hex");
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 async function findRepeatedRequest(requestId: string, requestFingerprint: string, table: string, db: Queryable) {
@@ -128,6 +137,15 @@ export const inventoryEconomicsRepository = {
       const explicitAllocations = (input.explicitAllocations ?? [])
         .map((value) => ({ receiptId: value.receiptId, amountCents: value.amountCents }))
         .sort((a, b) => a.receiptId - b.receiptId);
+      if (input.allocationRule === "explicit") {
+        if (!explicitAllocations.length || explicitAllocations.some((value)=>!Number.isInteger(value.receiptId) || value.receiptId <= 0) ||
+            new Set(explicitAllocations.map((value)=>value.receiptId)).size !== explicitAllocations.length) {
+          throw new Error("Explicit allocations require each receipt exactly once.");
+        }
+        explicitAllocations.forEach((value)=>safeCents(value.amountCents,`Receipt ${value.receiptId} allocation`));
+      } else if (explicitAllocations.length) {
+        throw new Error("Explicit receipt amounts require the explicit allocation rule.");
+      }
       const requestFingerprint = fingerprint({ sellerKey,purchaseReference,currency,totalAmountCents:input.totalAmountCents,
         provenance:input.provenance,source:input.source,allocationRule:input.allocationRule,batchNumbers,purchasedAt,
         marketObservedAt,correctsEntryId:input.correctsEntryId ?? null,
@@ -138,6 +156,22 @@ export const inventoryEconomicsRepository = {
       const correction = await nextCorrection(
         "inventory_purchase_cost_entries", series.id, input.correctsEntryId, input.correctionReason, db,
       );
+      const receiptIds = await query<{ receiptId: number }>(
+        `SELECT receipt.receipt_id AS "receiptId" FROM inventory_receipts receipt
+         WHERE EXISTS (SELECT 1 FROM inventory_receipt_batch_links link
+           WHERE link.receipt_id=receipt.receipt_id AND link.batch_number=ANY($1::int[]))
+         ORDER BY receipt.receipt_id LIMIT 10001 FOR UPDATE`,[batchNumbers],db);
+      if (!receiptIds.length) throw new Error("No receipt lots were found for the selected batches.");
+      if (receiptIds.length > 10000) throw new Error("A purchase cost is limited to 10,000 receipt lots.");
+      await execute(`UPDATE inventory_receipts SET seller_key=$1
+        WHERE receipt_id=ANY($2::int[]) AND seller_key IS NULL`,[sellerKey,receiptIds.map((row)=>row.receiptId)],db);
+      await execute(`INSERT INTO inventory_purchase_receipt_ownership (receipt_id,series_id,currency)
+        SELECT x."receiptId",$1,$2 FROM jsonb_to_recordset($3::jsonb) AS x("receiptId" integer)
+        ON CONFLICT DO NOTHING`,[series.id,currency,asJson(receiptIds)],db);
+      const conflictingOwner = await queryOne(`SELECT 1 FROM inventory_purchase_receipt_ownership
+        WHERE receipt_id=ANY($1::int[]) AND (series_id<>$2 OR currency<>$3) LIMIT 1`,
+        [receiptIds.map((row)=>row.receiptId),series.id,currency],db);
+      if (conflictingOwner) throw new Error("A receipt lot already belongs to another purchase or currency.");
       const receipts = await query<ReceiptTargetRow>(
         `SELECT receipt.receipt_id AS "receiptId",receipt.original_quantity AS "originalQuantity",
           SUM(link.linked_quantity)::int AS "linkedQuantity",receipt.market_value::float8 AS "marketValue",
@@ -171,8 +205,8 @@ export const inventoryEconomicsRepository = {
         const targets = receipts.map((receipt) => ({
           id: String(receipt.receiptId),
           weight: input.allocationRule === "quantity"
-            ? receipt.linkedQuantity
-            : receipt.marketValue === null ? Number.NaN : receipt.marketValue * receipt.linkedQuantity,
+            ? receipt.originalQuantity
+            : receipt.marketValue === null ? Number.NaN : receipt.marketValue * receipt.originalQuantity,
         }));
         if (targets.some((target) => !Number.isFinite(target.weight))) {
           throw new Error("Frozen market allocation requires market evidence for every receipt.");
@@ -195,13 +229,11 @@ export const inventoryEconomicsRepository = {
           asJson({ allocationRule: input.allocationRule, batchNumbers })], db,
       );
       if (!inserted) throw new Error("Failed to record purchase cost.");
-      for (const allocation of allocations) {
-        await execute(
-          `INSERT INTO inventory_purchase_cost_allocations
-            (entry_id,receipt_id,allocated_amount_cents,allocation_weight) VALUES ($1,$2,$3,$4)`,
-          [inserted.id,allocation.receiptId,allocation.amountCents,allocation.weight], db,
-        );
-      }
+      await execute(`INSERT INTO inventory_purchase_cost_allocations
+        (entry_id,receipt_id,allocated_amount_cents,allocation_weight)
+        SELECT $1,x."receiptId",x."amountCents",x.weight
+        FROM jsonb_to_recordset($2::jsonb) AS x("receiptId" integer,"amountCents" bigint,weight numeric)`,
+        [inserted.id,asJson(allocations)],db);
       return { entryId: inserted.id, repeated: false };
     };
     return executor ? perform(executor) : withTransaction(perform);
@@ -217,6 +249,12 @@ export const inventoryEconomicsRepository = {
       const effectiveAt = normalizeDate(input.effectiveAt,"Effective date");
       const purchaseReference = input.adjustmentType === "purchase_funding"
         ? normalizeReference(input.purchaseReference ?? "", "Purchase reference") : null;
+      if (purchaseReference && !await queryOne(`SELECT 1 FROM inventory_purchase_cost_series series
+        JOIN inventory_purchase_cost_entries entry ON entry.series_id=series.id
+        WHERE series.seller_key=$1 AND series.purchase_reference=$2 AND series.currency=$3 LIMIT 1`,
+        [sellerKey,purchaseReference,currency],db)) {
+        throw new Error("Purchase funding must reference a recorded purchase for the same seller and currency.");
+      }
       const requestFingerprint = fingerprint({ sellerKey,reference,currency,adjustmentType:input.adjustmentType,
         amountCents:input.amountCents,provenance:input.provenance,effectiveAt,purchaseReference,
         correctsEntryId:input.correctsEntryId ?? null,correctionReason:input.correctionReason?.trim() ?? null });
@@ -251,17 +289,25 @@ export const inventoryEconomicsRepository = {
         throw new Error("A refund settlement must identify exactly one order.");
       }
       const expenseAt = normalizeDate(input.expenseAt,"Expense date");
-      const requestFingerprint = fingerprint({ sellerKey,reference,currency,expenseType:input.expenseType,
-        amountCents:input.amountCents,provenance:input.provenance,orderNumbers,expenseAt,basis:input.basis,
-        correctsEntryId:input.correctsEntryId ?? null,correctionReason:input.correctionReason?.trim() ?? null });
-      const repeated = await findRepeatedRequest(requestId, requestFingerprint, "inventory_order_expense_entries", db);
-      if (repeated) return { entryId: repeated.id, repeated: true };
-      const knownOrders = await query<{ orderNumber: string }>(
-        `SELECT order_number AS "orderNumber" FROM seller_orders
-         WHERE seller_key=$1 AND order_number=ANY($2::text[])`,
+      const knownOrders = await query<{ orderNumber: string; currency: string; transactionEvidence: unknown; refundEvidence: unknown }>(
+        `SELECT orders.order_number AS "orderNumber",orders.transaction_evidence AS "transactionEvidence",
+          orders.currency,revision.refund_evidence AS "refundEvidence" FROM seller_orders orders
+         JOIN seller_order_revisions revision ON revision.order_id=orders.id AND revision.revision_number=orders.source_revision
+         WHERE orders.seller_key=$1 AND orders.order_number=ANY($2::text[]) FOR SHARE OF orders,revision`,
         [sellerKey, orderNumbers], db,
       );
       if (knownOrders.length !== orderNumbers.length) throw new Error("Every expense order must belong to the configured seller.");
+      if (knownOrders.some((order) => order.currency !== currency)) {
+        throw new Error("Expense currency must match every selected order.");
+      }
+      const financialSourceFingerprint = input.expenseType === "refund_settlement"
+        ? fingerprint({ transaction:knownOrders[0].transactionEvidence,refunds:knownOrders[0].refundEvidence }) : null;
+      const requestFingerprint = fingerprint({ sellerKey,reference,currency,expenseType:input.expenseType,
+        amountCents:input.amountCents,provenance:input.provenance,orderNumbers,expenseAt,basis:input.basis,
+        financialSourceFingerprint,correctsEntryId:input.correctsEntryId ?? null,
+        correctionReason:input.correctionReason?.trim() ?? null });
+      const repeated = await findRepeatedRequest(requestId, requestFingerprint, "inventory_order_expense_entries", db);
+      if (repeated) return { entryId: repeated.id, repeated: true };
       if (input.expenseType !== "refund_settlement" && input.basis !== "additional_expense") {
         throw new Error("Only refund settlements may specify a net basis.");
       }
@@ -270,10 +316,10 @@ export const inventoryEconomicsRepository = {
       const row = await queryOne<{ id: string }>(
         `INSERT INTO inventory_order_expense_entries
           (series_id,request_id,request_fingerprint,sequence,expense_type,amount_cents,provenance,order_numbers,expense_at,basis,
-           corrects_entry_id,correction_reason)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id::text AS id`,
+           financial_source_fingerprint,corrects_entry_id,correction_reason)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id::text AS id`,
         [series.id,requestId,requestFingerprint,correction.sequence,input.expenseType,input.amountCents,input.provenance,
-          orderNumbers,expenseAt,input.basis,
+          orderNumbers,expenseAt,input.basis,financialSourceFingerprint,
           correction.correctsEntryId,correction.reason], db,
       );
       if (!row) throw new Error("Failed to record order expense.");
@@ -284,51 +330,131 @@ export const inventoryEconomicsRepository = {
 
   async listPurchaseCosts(sellerKey: string, limit = 100): Promise<PurchaseCostSummary[]> {
     return query<PurchaseCostSummary>(
-      `SELECT entry.id::text AS id,entry.sequence AS version,series.purchase_reference AS "purchaseReference",series.currency,
+      `WITH selected_series AS (
+        SELECT series.id,MAX(entry.recorded_at) AS latest_recorded_at
+        FROM inventory_purchase_cost_series series
+        JOIN inventory_purchase_cost_entries entry ON entry.series_id=series.id
+        WHERE series.seller_key=$1 GROUP BY series.id
+        ORDER BY latest_recorded_at DESC,series.id DESC LIMIT $2
+      ), history AS (
+        SELECT entry.*,ROW_NUMBER() OVER (PARTITION BY entry.series_id ORDER BY entry.sequence DESC) AS history_rank,
+          COUNT(*) OVER (PARTITION BY entry.series_id)::int AS history_count,
+          selected.latest_recorded_at
+        FROM selected_series selected
+        JOIN inventory_purchase_cost_entries entry ON entry.series_id=selected.id
+      )
+      SELECT entry.id::text AS id,entry.sequence AS version,series.purchase_reference AS "purchaseReference",series.currency,
         entry.total_amount_cents::float8 AS "totalAmountCents",entry.provenance,entry.source,
         entry.allocation_rule AS "allocationRule",entry.batch_numbers AS "batchNumbers",
-        entry.purchased_at::text AS "purchasedAt",entry.recorded_at AS "recordedAt"
+        entry.purchased_at::text AS "purchasedAt",entry.recorded_at AS "recordedAt",
+        entry.history_rank=1 AS "isCurrent",entry.history_count AS "historyCount",
+        entry.history_count<=25 AS "historyComplete",
+        entry.corrects_entry_id::text AS "correctsEntryId",entry.correction_reason AS "correctionReason",
+        entry.request_fingerprint AS "evidenceIdentity"
        FROM inventory_purchase_cost_series series
-       JOIN LATERAL (SELECT * FROM inventory_purchase_cost_entries e WHERE e.series_id=series.id ORDER BY sequence DESC LIMIT 1) entry ON true
-       WHERE series.seller_key=$1 ORDER BY entry.recorded_at DESC,entry.id DESC LIMIT $2`,
+       JOIN history entry ON entry.series_id=series.id
+       WHERE entry.history_rank<=25
+       ORDER BY entry.latest_recorded_at DESC,series.id DESC,entry.sequence DESC`,
       [sellerKey.trim(), limit],
     );
   },
 
   async listFundingAdjustments(sellerKey: string, limit = 100): Promise<FundingAdjustmentSummary[]> {
     return query<FundingAdjustmentSummary>(
-      `SELECT entry.id::text AS id,entry.sequence AS version,series.adjustment_reference AS "adjustmentReference",series.currency,
+      `WITH selected_series AS (
+        SELECT series.id,MAX(entry.recorded_at) AS latest_recorded_at
+        FROM inventory_funding_series series
+        JOIN inventory_funding_entries entry ON entry.series_id=series.id
+        WHERE series.seller_key=$1 GROUP BY series.id
+        ORDER BY latest_recorded_at DESC,series.id DESC LIMIT $2
+      ), history AS (
+        SELECT entry.*,ROW_NUMBER() OVER (PARTITION BY entry.series_id ORDER BY entry.sequence DESC) AS history_rank,
+          COUNT(*) OVER (PARTITION BY entry.series_id)::int AS history_count,
+          selected.latest_recorded_at
+        FROM selected_series selected
+        JOIN inventory_funding_entries entry ON entry.series_id=selected.id
+      )
+      SELECT entry.id::text AS id,entry.sequence AS version,series.adjustment_reference AS "adjustmentReference",series.currency,
         entry.adjustment_type AS "adjustmentType",entry.amount_cents::float8 AS "amountCents",
         entry.provenance,entry.effective_at::text AS "effectiveAt",entry.purchase_reference AS "purchaseReference",
-        entry.recorded_at AS "recordedAt"
+        entry.recorded_at AS "recordedAt",
+        entry.history_rank=1 AS "isCurrent",entry.history_count AS "historyCount",
+        entry.history_count<=25 AS "historyComplete",
+        entry.corrects_entry_id::text AS "correctsEntryId",entry.correction_reason AS "correctionReason",
+        entry.request_fingerprint AS "evidenceIdentity"
        FROM inventory_funding_series series
-       JOIN LATERAL (SELECT * FROM inventory_funding_entries e WHERE e.series_id=series.id ORDER BY sequence DESC LIMIT 1) entry ON true
-       WHERE series.seller_key=$1 ORDER BY entry.effective_at DESC,entry.id DESC LIMIT $2`,
+       JOIN history entry ON entry.series_id=series.id
+       WHERE entry.history_rank<=25
+       ORDER BY entry.latest_recorded_at DESC,series.id DESC,entry.sequence DESC`,
       [sellerKey.trim(), limit],
     );
   },
 
   async listOrderExpenses(sellerKey: string, limit = 100): Promise<OrderExpenseSummary[]> {
     return query<OrderExpenseSummary>(
-      `SELECT entry.id::text AS id,entry.sequence AS version,series.expense_reference AS "expenseReference",series.currency,
+      `WITH selected_series AS (
+        SELECT series.id,MAX(entry.recorded_at) AS latest_recorded_at
+        FROM inventory_order_expense_series series
+        JOIN inventory_order_expense_entries entry ON entry.series_id=series.id
+        WHERE series.seller_key=$1 GROUP BY series.id
+        ORDER BY latest_recorded_at DESC,series.id DESC LIMIT $2
+      ), history AS (
+        SELECT entry.*,ROW_NUMBER() OVER (PARTITION BY entry.series_id ORDER BY entry.sequence DESC) AS history_rank,
+          COUNT(*) OVER (PARTITION BY entry.series_id)::int AS history_count,
+          selected.latest_recorded_at
+        FROM selected_series selected
+        JOIN inventory_order_expense_entries entry ON entry.series_id=selected.id
+      )
+      SELECT entry.id::text AS id,entry.sequence AS version,series.expense_reference AS "expenseReference",series.currency,
         entry.expense_type AS "expenseType",entry.amount_cents::float8 AS "amountCents",entry.provenance,
         entry.order_numbers AS "orderNumbers",entry.expense_at::text AS "expenseAt",entry.basis,
-        entry.recorded_at AS "recordedAt"
+        entry.recorded_at AS "recordedAt",
+        entry.history_rank=1 AS "isCurrent",entry.history_count AS "historyCount",
+        entry.history_count<=25 AS "historyComplete",
+        entry.corrects_entry_id::text AS "correctsEntryId",entry.correction_reason AS "correctionReason",
+        entry.request_fingerprint AS "evidenceIdentity",entry.financial_source_fingerprint AS "financialSourceFingerprint"
        FROM inventory_order_expense_series series
-       JOIN LATERAL (SELECT * FROM inventory_order_expense_entries e WHERE e.series_id=series.id ORDER BY sequence DESC LIMIT 1) entry ON true
-       WHERE series.seller_key=$1 ORDER BY entry.expense_at DESC,entry.id DESC LIMIT $2`,
+       JOIN history entry ON entry.series_id=series.id
+       WHERE entry.history_rank<=25
+       ORDER BY entry.latest_recorded_at DESC,series.id DESC,entry.sequence DESC`,
       [sellerKey.trim(), limit],
     );
+  },
+
+  async findPurchaseAllocationTargets(sellerKey: string, batchNumbers: number[]) {
+    const seller = normalizeReference(sellerKey,"Seller key");
+    const batches = [...new Set(batchNumbers)].sort((a,b)=>a-b);
+    if (!batches.length || batches.length > 100 ||
+        batches.some(batchNumber=>!Number.isInteger(batchNumber) || batchNumber <= 0)) {
+      throw new Error("Purchase allocations require 1 to 100 positive batch numbers.");
+    }
+    const rows = await query<{
+      receiptId: number; sku: number; itemLabel: string; originalQuantity: number;
+      batchNumbers: number[]; intakeAt: string | null;
+    }>(`SELECT receipt.receipt_id AS "receiptId",receipt.sku,receipt.original_quantity AS "originalQuantity",
+        COALESCE(sku.product_name || CASE WHEN sku.condition<>'' THEN ' · '||sku.condition ELSE '' END,
+          'SKU '||receipt.sku::text) AS "itemLabel",
+        ARRAY_AGG(link.batch_number ORDER BY link.batch_number) AS "batchNumbers",
+        receipt.intake_at AS "intakeAt"
+      FROM inventory_receipts receipt
+      JOIN inventory_receipt_batch_links link ON link.receipt_id=receipt.receipt_id
+      LEFT JOIN skus sku ON sku.sku=receipt.sku
+      WHERE link.batch_number=ANY($1::int[]) AND (receipt.seller_key IS NULL OR receipt.seller_key=$2)
+      GROUP BY receipt.receipt_id,receipt.sku,receipt.original_quantity,sku.product_name,sku.condition,receipt.intake_at
+      ORDER BY receipt.intake_at NULLS LAST,receipt.receipt_id LIMIT 10001`,[batches,seller]);
+    return { targets:rows.slice(0,10000),complete:rows.length <= 10000 };
   },
 
   async findWorkspaceEvidence(sellerKey: string, limit = 100) {
     const seller = sellerKey.trim();
     const orders = await query<{
-      id: string; orderNumber: string; orderTime: Date; currency: string; grossItemCents: number;
+      id: string; orderNumber: string; orderTime: Date; currency: string; lifecycle: string;
+      refundStatus: string | null; transactionEvidence: unknown; grossItemCents: number;
       orderedQuantity: number;
       grossShippingCents: number | null; grossOrderCents: number | null; platformFeeCents: number | null;
       providerNetCents: number | null; directFeeCents: number | null; refunds: Array<{ amount?: number }>;
     }>(`SELECT orders.id::text AS id,orders.order_number AS "orderNumber",orders.order_time AS "orderTime",orders.currency,
+        orders.lifecycle,orders.refund_status AS "refundStatus",orders.transaction_evidence AS "transactionEvidence",
         (SELECT COALESCE(SUM(line.ordered_quantity),0)::int FROM seller_order_lines line WHERE line.order_id=orders.id) AS "orderedQuantity",
         ROUND(orders.gross_item_proceeds*100)::float8 AS "grossItemCents",
         ROUND(orders.gross_shipping_proceeds*100)::float8 AS "grossShippingCents",
@@ -360,24 +486,27 @@ export const inventoryEconomicsRepository = {
       orderId: string; receiptId: number; quantity: number; originalQuantity: number;
       allocatedCostCents: number | null; costProvenance: "actual" | "estimated" | null;
       costCurrency: string | null;
+      fifoState: string; replayStatus: string | null;
       dispositionId: string | null; quantityCorrectionId: string | null;
     }>(`WITH latest_cost AS (
         SELECT DISTINCT ON (allocation.receipt_id) allocation.receipt_id,
           allocation.allocated_amount_cents,entry.provenance,series.currency
-        FROM inventory_purchase_cost_allocations allocation
-        JOIN inventory_purchase_cost_entries entry ON entry.id=allocation.entry_id
+        FROM inventory_purchase_receipt_ownership ownership
+        JOIN inventory_purchase_cost_entries entry ON entry.series_id=ownership.series_id
+        JOIN inventory_purchase_cost_allocations allocation ON allocation.entry_id=entry.id AND allocation.receipt_id=ownership.receipt_id
         JOIN inventory_purchase_cost_series series ON series.id=entry.series_id
         WHERE series.seller_key=$1
         ORDER BY allocation.receipt_id,entry.sequence DESC
       ) SELECT fifo.order_id::text AS "orderId",allocation.receipt_id AS "receiptId",
         allocation.allocated_quantity::int AS quantity,receipt.original_quantity::int AS "originalQuantity",
         latest_cost.allocated_amount_cents::float8 AS "allocatedCostCents",latest_cost.provenance AS "costProvenance",
-        latest_cost.currency AS "costCurrency",
+        latest_cost.currency AS "costCurrency",fifo.state AS "fifoState",replay.status AS "replayStatus",
         allocation.disposition_id::text AS "dispositionId",allocation.quantity_correction_id::text AS "quantityCorrectionId"
       FROM inventory_fifo_lines fifo
       JOIN inventory_fifo_revision_allocations allocation ON allocation.revision_id=fifo.current_revision_id
       JOIN inventory_receipts receipt ON receipt.receipt_id=allocation.receipt_id
       LEFT JOIN latest_cost ON latest_cost.receipt_id=allocation.receipt_id
+      LEFT JOIN inventory_fifo_replay_queue replay ON replay.seller_key=fifo.seller_key AND replay.sku=fifo.sku
       WHERE allocation.receipt_id IN (
         SELECT recent_allocation.receipt_id FROM inventory_fifo_lines recent_fifo
         JOIN inventory_fifo_revision_allocations recent_allocation
@@ -386,6 +515,21 @@ export const inventoryEconomicsRepository = {
       ) LIMIT 10001`, [seller, orders.map((order) => order.id)]) : [];
     const allocationsComplete = allocationRows.length <= 10000;
     const allocations = allocationRows.slice(0,10000);
+    const relevantExpenseRows = orderNumbers.length ? await query<OrderExpenseSummary>(
+      `SELECT entry.id::text AS id,entry.sequence AS version,series.expense_reference AS "expenseReference",series.currency,
+        entry.expense_type AS "expenseType",entry.amount_cents::float8 AS "amountCents",entry.provenance,
+        entry.order_numbers AS "orderNumbers",entry.expense_at::text AS "expenseAt",entry.basis,
+        entry.recorded_at AS "recordedAt",true AS "isCurrent",1 AS "historyCount",true AS "historyComplete",
+        entry.corrects_entry_id::text AS "correctsEntryId",
+        entry.correction_reason AS "correctionReason",entry.request_fingerprint AS "evidenceIdentity",
+        entry.financial_source_fingerprint AS "financialSourceFingerprint"
+       FROM inventory_order_expense_series series
+       JOIN LATERAL (SELECT * FROM inventory_order_expense_entries candidate WHERE candidate.series_id=series.id
+         ORDER BY sequence DESC LIMIT 1) entry ON true
+       WHERE series.seller_key=$1 AND entry.order_numbers && $2::text[]
+       ORDER BY entry.expense_at,entry.id LIMIT 10001`,[seller,orderNumbers]) : [];
+    const relevantExpensesComplete = relevantExpenseRows.length <= 10000;
+    const relevantOrderExpenses = relevantExpenseRows.slice(0,10000);
     const uncostedBatches = await query<{ batchNumber: number; sourceLabel: string; receiptCount: number }>(
       `SELECT batch.batch_number AS "batchNumber",batch.source_label AS "sourceLabel",COUNT(DISTINCT link.receipt_id)::int AS "receiptCount"
        FROM inventory_batches batch JOIN inventory_receipt_batch_links link ON link.batch_number=batch.batch_number
@@ -393,8 +537,9 @@ export const inventoryEconomicsRepository = {
        LEFT JOIN inventory_purchase_cost_entries cost ON batch.batch_number=ANY(cost.batch_numbers)
        WHERE cost.id IS NULL GROUP BY batch.batch_number,batch.source_label
        HAVING BOOL_AND(receipt.seller_key IS NULL OR receipt.seller_key=$1)
-       ORDER BY batch.batch_number DESC LIMIT $2`, [seller,limit],
+      ORDER BY batch.batch_number DESC LIMIT $2`, [seller,limit],
     );
-    return { orders, postage, postageComplete, allocations, allocationsComplete, uncostedBatches };
+    return { orders, postage, postageComplete, allocations, allocationsComplete,
+      relevantOrderExpenses, relevantExpensesComplete, uncostedBatches };
   },
 };

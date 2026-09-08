@@ -12,7 +12,16 @@ assert.match(renderToStaticMarkup(<RecentRecords title="Funding adjustments" emp
 const success = { ...empty,orders:[{ orderNumber:"SYNTHETIC-1",currency:"USD",grossItemCents:1000,
   grossOrderCents:1000,providerNetCents:900,postageCents:100,otherExpenseCents:0,acquisitionCostCents:400,
   reusableCashCents:800,realizedProfitCents:400,proceedsCoverage:"actual" as const,expenseCoverage:"actual" as const,
-  costCoverage:"actual" as const,missing:[] }] };
+  costCoverage:"actual" as const,missing:[],orderedQuantity:1,settledQuantity:1,costKnownQuantity:1 }] };
 const markup = renderToStaticMarkup(<InventoryEconomicsOrderTable workspace={success} />);
 assert.match(markup,/SYNTHETIC-1/); assert.match(markup,/Realized profit/); assert.match(markup,/actual proceeds/);
-console.log("PASS inventory economics UI renders loading, empty, error, and success states");
+assert.match(markup,/1 ordered, 1 settled, 1 cost known/);
+const historyMarkup = renderToStaticMarkup(<RecentRecords title="Purchase costs" empty="None" rows={[
+  {key:"2",primary:"Invoice version 2",secondary:"current",correct:()=>undefined,
+    historyCount:2,historyComplete:true,
+    history:[{key:"1",primary:"Invoice version 1",secondary:"superseded; correction reason"}]},
+]} />);
+assert.equal((historyMarkup.match(/>Correct</g) ?? []).length,1);
+assert.match(historyMarkup,/version 1/);
+assert.match(historyMarkup,/View correction history \(2 versions\)/);
+console.log("PASS inventory economics UI renders states, independent coverage, and correction history");
