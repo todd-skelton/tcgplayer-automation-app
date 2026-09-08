@@ -1,7 +1,13 @@
-ALTER TABLE seller_order_revisions ADD COLUMN order_time TIMESTAMPTZ;
-UPDATE seller_order_revisions revision SET order_time=orders.order_time
+ALTER TABLE seller_order_revisions
+  ADD COLUMN order_time TIMESTAMPTZ,
+  ADD COLUMN order_time_evidence TEXT NOT NULL DEFAULT 'unknown'
+    CHECK (order_time_evidence IN ('detail_canonical','summary_only','unknown'));
+UPDATE seller_order_revisions revision SET
+  order_time=CASE WHEN revision.revision_number=orders.source_revision
+    THEN orders.order_time ELSE revision.summary_order_time END,
+  order_time_evidence=CASE WHEN revision.revision_number=orders.source_revision THEN 'detail_canonical'
+    WHEN revision.summary_order_time IS NOT NULL THEN 'summary_only' ELSE 'unknown' END
 FROM seller_orders orders WHERE orders.id=revision.order_id;
-ALTER TABLE seller_order_revisions ALTER COLUMN order_time SET NOT NULL;
 
 CREATE TABLE inventory_stock_dispositions (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

@@ -226,6 +226,14 @@ export const inventoryFifoRepository={
       const opening=await queryOne<{cutoffAt:Date}>(`SELECT cutoff_at AS "cutoffAt" FROM inventory_opening_balance_runs
         WHERE seller_key=$1 AND status='applied'`,[queued.sellerKey],db);
       if(!opening)return holdQueue(queued.sellerKey,queued.sku,"missing_applied_opening_balance",db);
+      const unknownInitialOrderTime=await queryOne<{orderId:string}>(`SELECT orders.id::text AS "orderId"
+        FROM seller_orders orders JOIN seller_order_revisions revision
+          ON revision.order_id=orders.id AND revision.revision_number=1
+        CROSS JOIN LATERAL jsonb_array_elements(revision.line_evidence) evidence
+        WHERE orders.seller_key=$1 AND revision.order_time IS NULL AND evidence->>'skuId'=$2::text LIMIT 1`,
+        [queued.sellerKey,queued.sku],db);
+      if(unknownInitialOrderTime)return holdQueue(queued.sellerKey,queued.sku,
+        `historical_order_time_unknown:${unknownInitialOrderTime.orderId}`,db);
       const externalDifferences=await query<{id:string;observedDelta:number;expectedDelta:number}>(`SELECT difference.id::text AS id,
         difference.quantity_delta AS "observedDelta",
         (
@@ -670,7 +678,9 @@ export const inventoryFifoRepository={
       const allocations=await query<any>(`SELECT allocation.supply_key AS "supplyKey",allocation.receipt_id AS "receiptId",
           allocation.allocated_quantity AS quantity FROM inventory_fifo_revision_allocations allocation
         JOIN inventory_fifo_lines saved ON saved.current_revision_id=allocation.revision_id
-        WHERE saved.id=$1 ORDER BY allocation.available_at DESC,allocation.supply_key DESC`,[line.id],db);
+        JOIN inventory_receipts receipt ON receipt.receipt_id=allocation.receipt_id
+        WHERE saved.id=$1 ORDER BY receipt.fifo_precedence DESC,receipt.intake_at DESC NULLS LAST,
+          receipt.receipt_id DESC,allocation.supply_key DESC`,[line.id],db);
       let needed=Math.min(released,allocations.reduce((sum,row)=>sum+row.quantity,0));
       const expected:Array<{supplyKey:string;receiptId:number;quantity:number}>=[];
       for(const allocation of allocations){if(needed<=0)break;const quantity=Math.min(needed,allocation.quantity);
@@ -707,7 +717,8 @@ export const inventoryFifoRepository={
           AND identities."skuId"::bigint BETWEEN 1 AND 2147483647 THEN identities."skuId"::integer END) AS sku,
       COALESCE(line.state,CASE WHEN identities."skuId"~'^[1-9][0-9]{0,9}$'
         AND identities."skuId"::bigint BETWEEN 1 AND 2147483647 THEN 'pending' ELSE 'unsupported' END) AS state,
-      line.hold_reason AS "holdReason",COALESCE(current_line.ordered_quantity,line.ordered_quantity,0)::int AS "orderedQuantity",
+      line.hold_reason AS "holdReason",COALESCE(line.ordered_quantity,current_line.ordered_quantity,0)::int AS "orderedQuantity",
+      COALESCE(current_line.ordered_quantity,0)::int AS "currentOrderedQuantity",
       COALESCE(line.matched_quantity,0)::int AS "matchedQuantity",
       COALESCE(line.unmatched_quantity,current_line.ordered_quantity,0)::int AS "unmatchedQuantity",
       COALESCE(line.price_known_quantity,0)::int AS "priceKnownQuantity",
