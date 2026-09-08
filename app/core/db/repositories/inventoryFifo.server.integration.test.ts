@@ -24,8 +24,8 @@ async function addOrder(number:string,time:string,quantity:number,sellerKey=sell
   await pool.query(`INSERT INTO seller_order_lines
     (order_id,sku_id,product_name,ordered_quantity,gross_item_proceeds) VALUES ($1,'99001','Synthetic', $2,1)`,[id,quantity]);
   await pool.query(`INSERT INTO seller_order_revisions
-    (order_id,revision_number,source_fingerprint,source,observed_at,provider_status,lifecycle,line_evidence)
-    VALUES ($1,1,'fp','tcgplayer_api',NOW(),$2,$2,'[]')`,[id,lifecycle]);
+    (order_id,revision_number,source_fingerprint,source,observed_at,order_time,provider_status,lifecycle,line_evidence)
+    VALUES ($1,1,'fp','tcgplayer_api',NOW(),$2,$3,$3,'[]')`,[id,time,lifecycle]);
   await repo.enqueueOrderRevision(id);
   return id;
 }

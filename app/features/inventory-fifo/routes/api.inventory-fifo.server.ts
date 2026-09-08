@@ -48,6 +48,16 @@ export function createInventoryFifoAction(dependencies={repository:inventoryFifo
           dispositionId:payload.dispositionId,sourceOrderRevision:payload.sourceOrderRevision,
           confirmedAt:new Date(payload.confirmedAt),evidence:payload.evidence as Record<string,unknown>})});
       }
+      if(payload.action==="record_quantity_correction"){
+        if(typeof payload.requestId!=="string"||typeof payload.orderNumber!=="string"||typeof payload.skuId!=="string"||
+          typeof payload.sourceOrderRevision!=="number"||typeof payload.availableAt!=="string"||!hasOffset(payload.availableAt)||
+          !payload.evidence||typeof payload.evidence!=="object"||Array.isArray(payload.evidence)||!Array.isArray(payload.sourceAllocations))
+          throw new Error("Complete quantity correction identity, time, source allocations, and evidence are required.");
+        return data({result:await dependencies.repository.recordQuantityCorrection({requestId:payload.requestId,sellerKey,
+          orderNumber:payload.orderNumber,skuId:payload.skuId,sourceOrderRevision:payload.sourceOrderRevision,
+          availableAt:new Date(payload.availableAt),evidence:payload.evidence as Record<string,unknown>,
+          sourceAllocations:payload.sourceAllocations as Array<{supplyKey:string;receiptId:number;quantity:number}>})});
+      }
       if(payload.action==="replay")return data({result:await dependencies.repository.processNextReplay(sellerKey)});
       throw new Error("Unknown inventory FIFO action.");
     }catch(error){return data({error:String(error)},{status:409});}

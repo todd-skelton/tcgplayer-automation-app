@@ -199,11 +199,11 @@ export const sellerOrderHistoryRepository = {
       await execute(
         `INSERT INTO seller_order_revisions (
            order_id, revision_number, source_fingerprint, source, observed_at,
-           summary_order_time,
+           order_time, summary_order_time,
            provider_status, lifecycle, refund_status, refund_evidence, line_evidence
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb)`,
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb)`,
         [orderId, revision, observation.fingerprint, observation.source,
-          observation.observedAt, observation.summaryOrderTime ?? null,
+          observation.observedAt, observation.orderTime, observation.summaryOrderTime ?? null,
           observation.providerStatus, observation.lifecycle,
           observation.refundStatus ?? null, asJson(observation.refunds),
           asJson(observation.lines)],

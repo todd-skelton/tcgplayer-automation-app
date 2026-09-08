@@ -1,3 +1,8 @@
+ALTER TABLE seller_order_revisions ADD COLUMN order_time TIMESTAMPTZ;
+UPDATE seller_order_revisions revision SET order_time=orders.order_time
+FROM seller_orders orders WHERE orders.id=revision.order_id;
+ALTER TABLE seller_order_revisions ALTER COLUMN order_time SET NOT NULL;
+
 CREATE TABLE inventory_stock_dispositions (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   request_id TEXT NOT NULL UNIQUE,
@@ -23,6 +28,9 @@ CREATE TABLE inventory_stock_disposition_receipts (
   PRIMARY KEY (disposition_id, source_supply_key)
 );
 
+CREATE INDEX inventory_stock_dispositions_seller_sku_idx
+  ON inventory_stock_dispositions (seller_key, sku, available_at, id);
+
 CREATE TABLE inventory_stock_disposition_corrections (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   request_id TEXT NOT NULL UNIQUE,
@@ -32,6 +40,32 @@ CREATE TABLE inventory_stock_disposition_corrections (
   evidence JSONB NOT NULL CHECK (jsonb_typeof(evidence) = 'object'),
   confirmed_at TIMESTAMPTZ NOT NULL,
   recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE inventory_order_quantity_corrections (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  request_id TEXT NOT NULL UNIQUE,
+  seller_key TEXT NOT NULL CHECK (length(trim(seller_key)) > 0),
+  order_id BIGINT NOT NULL REFERENCES seller_orders(id) ON DELETE RESTRICT,
+  order_line_sku_id TEXT NOT NULL CHECK (length(trim(order_line_sku_id)) > 0),
+  sku INTEGER NOT NULL CHECK (sku > 0),
+  previous_quantity INTEGER NOT NULL CHECK (previous_quantity > 0),
+  corrected_quantity INTEGER NOT NULL CHECK (corrected_quantity >= 0),
+  released_quantity INTEGER NOT NULL CHECK (released_quantity > 0),
+  source_order_revision INTEGER NOT NULL CHECK (source_order_revision > 1),
+  available_at TIMESTAMPTZ NOT NULL,
+  evidence JSONB NOT NULL CHECK (jsonb_typeof(evidence)='object'),
+  recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (order_id, order_line_sku_id, source_order_revision),
+  CHECK (released_quantity<=previous_quantity-corrected_quantity)
+);
+
+CREATE TABLE inventory_order_quantity_correction_allocations (
+  correction_id BIGINT NOT NULL REFERENCES inventory_order_quantity_corrections(id) ON DELETE RESTRICT,
+  source_supply_key TEXT NOT NULL CHECK (length(trim(source_supply_key)) > 0),
+  receipt_id INTEGER NOT NULL REFERENCES inventory_receipts(receipt_id) ON DELETE RESTRICT,
+  quantity INTEGER NOT NULL CHECK (quantity > 0),
+  PRIMARY KEY (correction_id, source_supply_key)
 );
 
 CREATE TABLE inventory_fifo_lines (
@@ -93,9 +127,11 @@ CREATE TABLE inventory_fifo_revision_allocations (
   supply_key TEXT NOT NULL,
   receipt_id INTEGER NOT NULL REFERENCES inventory_receipts(receipt_id) ON DELETE RESTRICT,
   disposition_id BIGINT REFERENCES inventory_stock_dispositions(id) ON DELETE RESTRICT,
+  quantity_correction_id BIGINT REFERENCES inventory_order_quantity_corrections(id) ON DELETE RESTRICT,
   allocated_quantity INTEGER NOT NULL CHECK (allocated_quantity > 0),
   available_at TIMESTAMPTZ NOT NULL,
-  PRIMARY KEY (revision_id, supply_key)
+  PRIMARY KEY (revision_id, supply_key),
+  CHECK (num_nonnulls(disposition_id,quantity_correction_id)<=1)
 );
 
 ALTER TABLE inventory_fifo_lines
@@ -122,6 +158,9 @@ CREATE TABLE inventory_fifo_replay_queue (
 
 CREATE INDEX inventory_fifo_replay_queue_pending_idx
   ON inventory_fifo_replay_queue (updated_at, seller_key, sku) WHERE status='pending';
+
+CREATE INDEX inventory_observation_differences_fifo_idx
+  ON inventory_observation_differences (seller_key, sku, observation_id) WHERE sku IS NOT NULL;
 
 -- Existing order history predates the replay queue. Seed each seller/SKU once;
 -- later order, opening, publication, and disposition transactions maintain the queue.

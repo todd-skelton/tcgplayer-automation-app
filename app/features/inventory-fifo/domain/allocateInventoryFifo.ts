@@ -2,6 +2,7 @@ export type FifoSupplyLot = {
   supplyKey: string;
   receiptId: number;
   dispositionId: string | null;
+  quantityCorrectionId?: string | null;
   excludedLineKeys?: readonly string[];
   quantity: number;
   availableAt: string;
@@ -22,6 +23,7 @@ export type FifoAllocation = {
   supplyKey: string;
   receiptId: number;
   dispositionId: string | null;
+  quantityCorrectionId: string | null;
   quantity: number;
   availableAt: string;
 };
@@ -128,6 +130,7 @@ export function allocateInventoryFifo(
       needed-=quantity;
       allocations.push({
         supplyKey:lot.supplyKey,receiptId:lot.receiptId,dispositionId:lot.dispositionId,
+        quantityCorrectionId:lot.quantityCorrectionId??null,
         quantity,availableAt:lot.availableAt,
       });
       if(lot.marketValueTenThousandths!==null){

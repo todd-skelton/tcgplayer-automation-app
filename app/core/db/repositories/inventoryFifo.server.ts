@@ -32,7 +32,8 @@ type SavedLine={
   sellerKey:string;orderId:string;skuId:string;sku:number|null;orderTime:Date;orderedQuantity:number;
   sourceOrderRevision:number;state:string;holdReason:string|null;matchedQuantity:number;unmatchedQuantity:number;
   priceKnownQuantity:number;dateKnownQuantity:number;intakeMarketTotal:string|null;weightedDaysHeld:string|null;
-  allocations:Array<{supplyKey:string;receiptId:number;dispositionId:string|null;quantity:number;availableAt:string}>;
+  allocations:Array<{supplyKey:string;receiptId:number;dispositionId:string|null;quantityCorrectionId:string|null;
+    quantity:number;availableAt:string}>;
 };
 
 function lineFingerprint(value:SavedLine){
@@ -42,7 +43,8 @@ function lineFingerprint(value:SavedLine){
     matchedQuantity:value.matchedQuantity,unmatchedQuantity:value.unmatchedQuantity,
     priceKnownQuantity:value.priceKnownQuantity,dateKnownQuantity:value.dateKnownQuantity,
     intakeMarketTotal:value.intakeMarketTotal,weightedDaysHeld:value.weightedDaysHeld,
-    allocations:value.allocations.map((allocation)=>[allocation.supplyKey,allocation.receiptId,allocation.dispositionId,allocation.quantity,allocation.availableAt]),
+    allocations:value.allocations.map((allocation)=>[allocation.supplyKey,allocation.receiptId,allocation.dispositionId,
+      allocation.quantityCorrectionId,allocation.quantity,allocation.availableAt]),
   })).digest("hex");
 }
 
@@ -77,10 +79,10 @@ async function saveLine(value:SavedLine,triggerReason:string,db:Queryable){
       value.intakeMarketTotal,value.weightedDaysHeld,fingerprint],db);
   if(!revision)throw new Error("Failed to create FIFO revision.");
   if(value.allocations.length)await execute(`INSERT INTO inventory_fifo_revision_allocations
-      (revision_id,supply_key,receipt_id,disposition_id,allocated_quantity,available_at)
-    SELECT $1,x."supplyKey",x."receiptId",x."dispositionId"::bigint,x.quantity,x."availableAt"::timestamptz
+      (revision_id,supply_key,receipt_id,disposition_id,quantity_correction_id,allocated_quantity,available_at)
+    SELECT $1,x."supplyKey",x."receiptId",x."dispositionId"::bigint,x."quantityCorrectionId"::bigint,x.quantity,x."availableAt"::timestamptz
     FROM jsonb_to_recordset($2::jsonb) AS x(
-      "supplyKey" text,"receiptId" integer,"dispositionId" text,quantity integer,"availableAt" text)`,
+      "supplyKey" text,"receiptId" integer,"dispositionId" text,"quantityCorrectionId" text,quantity integer,"availableAt" text)`,
     [revision.id,asJson(value.allocations)],db);
   await execute(`UPDATE inventory_fifo_lines SET sku=$2,order_time=$3,ordered_quantity=$4,source_order_revision=$5,
       state=$6,hold_reason=$7,matched_quantity=$8,unmatched_quantity=$9,price_known_quantity=$10,
@@ -125,10 +127,10 @@ async function saveLines(values:SavedLine[],triggerReason:string,db:Queryable){
     ...allocation,revisionId:revisionByLine.get(value.lineId),
   })));
   if(allocations.length)await execute(`INSERT INTO inventory_fifo_revision_allocations
-      (revision_id,supply_key,receipt_id,disposition_id,allocated_quantity,available_at)
-    SELECT x."revisionId"::bigint,x."supplyKey",x."receiptId",x."dispositionId"::bigint,x.quantity,x."availableAt"::timestamptz
+      (revision_id,supply_key,receipt_id,disposition_id,quantity_correction_id,allocated_quantity,available_at)
+    SELECT x."revisionId"::bigint,x."supplyKey",x."receiptId",x."dispositionId"::bigint,x."quantityCorrectionId"::bigint,x.quantity,x."availableAt"::timestamptz
     FROM jsonb_to_recordset($1::jsonb) AS x("revisionId" text,"supplyKey" text,"receiptId" integer,
-      "dispositionId" text,quantity integer,"availableAt" text)`,[asJson(allocations)],db);
+      "dispositionId" text,"quantityCorrectionId" text,quantity integer,"availableAt" text)`,[asJson(allocations)],db);
   await execute(`UPDATE inventory_fifo_lines line SET sku=x.sku,order_time=x."orderTime"::timestamptz,
       ordered_quantity=x."orderedQuantity",source_order_revision=x."sourceOrderRevision",state=x.state,
       hold_reason=x."holdReason",matched_quantity=x."matchedQuantity",unmatched_quantity=x."unmatchedQuantity",
@@ -241,28 +243,12 @@ export const inventoryFifoRepository={
               ON revision.order_id=orders.id AND revision.revision_number=1
             CROSS JOIN LATERAL jsonb_array_elements(revision.line_evidence) evidence
             WHERE orders.seller_key=difference.seller_key
-              AND orders.order_time>=previous.cutoff_at AND orders.order_time<observation.cutoff_at
+              AND revision.order_time>=previous.cutoff_at AND revision.order_time<observation.cutoff_at
               AND evidence->>'skuId'=difference.sku::text),0)
-          + COALESCE((SELECT SUM(
-              prior.quantity-current.quantity-CASE WHEN prior.quantity>current.quantity
-                THEN LEAST(prior.quantity-current.quantity,correction.quantity) ELSE 0 END)::int
-            FROM seller_order_revisions revision
-            JOIN seller_orders orders ON orders.id=revision.order_id
-            JOIN seller_order_revisions prior_revision ON prior_revision.order_id=revision.order_id
-              AND prior_revision.revision_number=revision.revision_number-1
-            CROSS JOIN LATERAL (SELECT COALESCE(SUM((item->>'quantity')::int),0)::int AS quantity
-              FROM jsonb_array_elements(prior_revision.line_evidence) item
-              WHERE item->>'skuId'=difference.sku::text) prior
-            CROSS JOIN LATERAL (SELECT COALESCE(SUM((item->>'quantity')::int),0)::int AS quantity
-              FROM jsonb_array_elements(revision.line_evidence) item
-              WHERE item->>'skuId'=difference.sku::text) current
-            CROSS JOIN LATERAL (SELECT COALESCE(SUM(disposition.quantity),0)::int AS quantity
-              FROM inventory_stock_dispositions disposition
-              JOIN inventory_stock_disposition_corrections corrected ON corrected.disposition_id=disposition.id
-              WHERE disposition.order_id=orders.id AND disposition.sku=difference.sku
-                AND corrected.source_order_revision=revision.revision_number) correction
-            WHERE orders.seller_key=difference.seller_key AND revision.revision_number>1
-              AND revision.observed_at>=previous.cutoff_at AND revision.observed_at<observation.cutoff_at),0)
+          + COALESCE((SELECT SUM(correction.released_quantity)::int
+            FROM inventory_order_quantity_corrections correction
+            WHERE correction.seller_key=difference.seller_key AND correction.sku=difference.sku
+              AND correction.available_at>=previous.cutoff_at AND correction.available_at<observation.cutoff_at),0)
         )::int AS "expectedDelta"
         FROM inventory_observation_differences difference
         JOIN inventory_complete_observations observation ON observation.id=difference.observation_id
@@ -297,6 +283,19 @@ export const inventoryFifoRepository={
         LIMIT 1`,[queued.sellerKey,queued.sku],db);
       if(invalidatedCorrection)return holdQueue(queued.sellerKey,queued.sku,
         `return_correction_invalidated:${invalidatedCorrection.id}`,db);
+      const invalidatedCancellation=await queryOne<{id:string}>(`SELECT disposition.id::text AS id
+        FROM inventory_stock_dispositions disposition JOIN seller_orders orders ON orders.id=disposition.order_id
+        WHERE disposition.seller_key=$1 AND disposition.sku=$2 AND disposition.disposition_type='unfulfilled_cancellation'
+          AND orders.lifecycle<>'canceled' LIMIT 1`,[queued.sellerKey,queued.sku],db);
+      if(invalidatedCancellation)return holdQueue(queued.sellerKey,queued.sku,
+        `unfulfilled_cancellation_invalidated:${invalidatedCancellation.id}`,db);
+      const invalidatedQuantityCorrection=await queryOne<{id:string}>(`SELECT correction.id::text AS id
+        FROM inventory_order_quantity_corrections correction JOIN seller_orders orders ON orders.id=correction.order_id
+        LEFT JOIN seller_order_lines line ON line.order_id=orders.id AND line.sku_id=correction.order_line_sku_id
+        WHERE correction.seller_key=$1 AND correction.sku=$2 AND orders.source_revision>correction.source_order_revision
+          AND COALESCE(line.ordered_quantity,0)<>correction.corrected_quantity LIMIT 1`,[queued.sellerKey,queued.sku],db);
+      if(invalidatedQuantityCorrection)return holdQueue(queued.sellerKey,queued.sku,
+        `order_quantity_correction_invalidated:${invalidatedQuantityCorrection.id}`,db);
 
       const current=await query<any>(`SELECT orders.id::text AS "orderId",orders.order_number AS "orderNumber",
         orders.order_time AS "orderTime",orders.lifecycle,orders.source_revision AS "sourceRevision",
@@ -311,6 +310,26 @@ export const inventoryFifoRepository={
           AND current_line.sku_id=line.order_line_sku_id
         WHERE line.seller_key=$1 AND line.sku=$2 AND current_line.order_id IS NULL`,[queued.sellerKey,queued.sku],db);
       const demand=[...current,...removed];
+      const unresolvedQuantityChange=await queryOne<{lineId:string;direction:string}>(`SELECT saved.id::text AS "lineId",
+          CASE WHEN COALESCE(current_line.ordered_quantity,0)>saved.ordered_quantity THEN 'increase' ELSE 'decrease' END AS direction
+        FROM inventory_fifo_lines saved
+        LEFT JOIN seller_order_lines current_line ON current_line.order_id=saved.order_id
+          AND current_line.sku_id=saved.order_line_sku_id
+        JOIN seller_orders orders ON orders.id=saved.order_id
+        WHERE saved.seller_key=$1 AND saved.sku=$2
+          AND COALESCE(current_line.ordered_quantity,0)<>saved.ordered_quantity
+          AND (COALESCE(current_line.ordered_quantity,0)>saved.ordered_quantity
+            OR COALESCE(current_line.ordered_quantity,0)<saved.matched_quantity)
+          AND NOT EXISTS (SELECT 1 FROM inventory_order_quantity_corrections correction
+            WHERE correction.order_id=saved.order_id AND correction.order_line_sku_id=saved.order_line_sku_id
+              AND correction.source_order_revision=orders.source_revision)
+          AND NOT EXISTS (SELECT 1 FROM inventory_stock_dispositions disposition
+            JOIN inventory_stock_disposition_corrections correction ON correction.disposition_id=disposition.id
+            WHERE disposition.order_id=saved.order_id AND disposition.order_line_sku_id=saved.order_line_sku_id
+              AND correction.source_order_revision=orders.source_revision)
+        ORDER BY orders.order_time,orders.order_number LIMIT 1`,[queued.sellerKey,queued.sku],db);
+      if(unresolvedQuantityChange)return holdQueue(queued.sellerKey,queued.sku,
+        `order_quantity_${unresolvedQuantityChange.direction}_requires_correction:${unresolvedQuantityChange.lineId}`,db);
       const dispositionRows=await query<any>(`SELECT disposition.id::text AS id,disposition.order_id::text AS "orderId",
         disposition.order_line_sku_id AS "skuId",disposition.disposition_type AS type,mapping.receipt_id AS "receiptId",
         mapping.source_supply_key AS "sourceSupplyKey",mapping.quantity,
@@ -319,7 +338,15 @@ export const inventoryFifoRepository={
           WHERE correction.disposition_id=disposition.id) AS corrected FROM inventory_stock_dispositions disposition
         JOIN inventory_stock_disposition_receipts mapping ON mapping.disposition_id=disposition.id
         WHERE disposition.seller_key=$1 AND disposition.sku=$2`,[queued.sellerKey,queued.sku],db);
-      const dispositionEdgeBySupply=new Map(dispositionRows.map((row)=>[row.restockSupplyKey,row]));
+      const quantityCorrectionRows=await query<any>(`SELECT correction.id::text AS id,correction.order_id::text AS "orderId",
+        correction.order_line_sku_id AS "skuId",mapping.receipt_id AS "receiptId",
+        mapping.source_supply_key AS "sourceSupplyKey",mapping.quantity,
+        'quantity-correction:'||correction.id::text||':'||mapping.source_supply_key AS "restockSupplyKey"
+        FROM inventory_order_quantity_corrections correction
+        JOIN inventory_order_quantity_correction_allocations mapping ON mapping.correction_id=correction.id
+        WHERE correction.seller_key=$1 AND correction.sku=$2`,[queued.sellerKey,queued.sku],db);
+      const dispositionEdgeBySupply=new Map([...dispositionRows,...quantityCorrectionRows]
+        .map((row)=>[row.restockSupplyKey,row]));
       const excludedOrigins=(supplyKey:string)=>{
         const origins=new Set<string>();const visited=new Set<string>();let current=supplyKey;
         while(!visited.has(current)){
@@ -330,38 +357,54 @@ export const inventoryFifoRepository={
       };
       const lots=await query<any>(`WITH raw_supply AS (
         SELECT 'receipt:'||receipt.receipt_id::text AS "supplyKey",
-          receipt.receipt_id AS "receiptId",NULL::text AS "dispositionId",receipt.original_quantity AS quantity,
+          receipt.receipt_id AS "receiptId",NULL::text AS "dispositionId",NULL::text AS "quantityCorrectionId",
+          receipt.original_quantity AS quantity,
           opening.cutoff_at AS "availableAt",receipt.fifo_precedence AS "fifoPrecedence",
           receipt.intake_at AS "intakeAt",receipt.market_value::text AS "marketValue",NULL::text AS "excludedLineKey"
         FROM inventory_receipts receipt JOIN inventory_opening_balance_runs opening
           ON opening.id=receipt.opening_balance_run_id AND opening.status='applied'
         WHERE receipt.seller_key=$1 AND receipt.sku=$2 AND receipt.receipt_kind='opening_balance'
         UNION ALL
-        SELECT 'receipt:'||receipt.receipt_id::text,receipt.receipt_id,NULL::text,link.planned_quantity,
+        SELECT 'receipt:'||receipt.receipt_id::text,receipt.receipt_id,NULL::text,NULL::text,link.planned_quantity,
           link.live_at,receipt.fifo_precedence,receipt.intake_at,receipt.market_value::text,NULL::text
         FROM inventory_receipts receipt JOIN inventory_publication_receipt_links link ON link.receipt_id=receipt.receipt_id
         WHERE receipt.seller_key=$1 AND link.target_seller_key=$1 AND receipt.sku=$2
           AND receipt.receipt_kind='received' AND link.live_at IS NOT NULL AND link.live_at>=$3
         UNION ALL
         SELECT 'restock:'||disposition.id::text||':'||mapping.source_supply_key,mapping.receipt_id,
-          disposition.id::text,mapping.quantity,disposition.available_at,receipt.fifo_precedence,
+          disposition.id::text,NULL::text,mapping.quantity,disposition.available_at,receipt.fifo_precedence,
           receipt.intake_at,receipt.market_value::text,disposition.order_id::text||':'||disposition.order_line_sku_id
         FROM inventory_stock_dispositions disposition
         JOIN inventory_stock_disposition_receipts mapping ON mapping.disposition_id=disposition.id
         JOIN inventory_receipts receipt ON receipt.receipt_id=mapping.receipt_id
         WHERE disposition.seller_key=$1 AND disposition.sku=$2
-      ) SELECT raw_supply."supplyKey",raw_supply."receiptId",raw_supply."dispositionId",
+        UNION ALL
+        SELECT 'quantity-correction:'||correction.id::text||':'||mapping.source_supply_key,mapping.receipt_id,
+          NULL::text,correction.id::text,mapping.quantity,correction.available_at,receipt.fifo_precedence,
+          receipt.intake_at,receipt.market_value::text,correction.order_id::text||':'||correction.order_line_sku_id
+        FROM inventory_order_quantity_corrections correction
+        JOIN inventory_order_quantity_correction_allocations mapping ON mapping.correction_id=correction.id
+        JOIN inventory_receipts receipt ON receipt.receipt_id=mapping.receipt_id
+        WHERE correction.seller_key=$1 AND correction.sku=$2
+      ) SELECT raw_supply."supplyKey",raw_supply."receiptId",raw_supply."dispositionId",raw_supply."quantityCorrectionId",
           raw_supply.quantity-COALESCE((SELECT SUM(mapping.quantity)::int
-            FROM inventory_stock_disposition_receipts mapping
-            JOIN inventory_stock_dispositions disposition ON disposition.id=mapping.disposition_id
-            JOIN inventory_stock_disposition_corrections correction ON correction.disposition_id=disposition.id
-            WHERE mapping.source_supply_key=raw_supply."supplyKey"
-              AND disposition.seller_key=$1 AND disposition.sku=$2),0) AS quantity,
+            FROM (
+              SELECT mapping.source_supply_key,mapping.quantity,disposition.seller_key,disposition.sku
+              FROM inventory_stock_disposition_receipts mapping
+              JOIN inventory_stock_dispositions disposition ON disposition.id=mapping.disposition_id
+              JOIN inventory_stock_disposition_corrections correction ON correction.disposition_id=disposition.id
+              UNION ALL
+              SELECT mapping.source_supply_key,mapping.quantity,correction.seller_key,correction.sku
+              FROM inventory_order_quantity_correction_allocations mapping
+              JOIN inventory_order_quantity_corrections correction ON correction.id=mapping.correction_id
+            ) mapping WHERE mapping.source_supply_key=raw_supply."supplyKey"
+              AND mapping.seller_key=$1 AND mapping.sku=$2),0) AS quantity,
           raw_supply."availableAt",raw_supply."fifoPrecedence",raw_supply."intakeAt",raw_supply."marketValue",
           raw_supply."excludedLineKey"
         FROM raw_supply`,[queued.sellerKey,queued.sku,opening.cutoffAt],db);
       const supplies:FifoSupplyLot[]=lots.filter((row)=>row.quantity>0).map((row)=>({
         supplyKey:row.supplyKey,receiptId:row.receiptId,dispositionId:row.dispositionId,
+        quantityCorrectionId:row.quantityCorrectionId,
         excludedLineKeys:excludedOrigins(row.supplyKey),
         quantity:row.quantity,availableAt:(row.availableAt as Date).toISOString(),fifoPrecedence:row.fifoPrecedence,
         intakeAt:row.intakeAt?(row.intakeAt as Date).toISOString():null,
@@ -438,12 +481,13 @@ export const inventoryFifoRepository={
           input.sourceAllocations.reduce((sum,value)=>sum+value.quantity,0)!==input.quantity||
           !input.sourceAllocations.length||supplyKeys.size!==input.sourceAllocations.length||
           Object.keys(input.evidence).length===0)throw new Error("Complete disposition evidence is required.");
-      const existing=await queryOne<any>(`SELECT disposition.id::text AS id,disposition.seller_key AS "sellerKey",
-        orders.order_number AS "orderNumber",disposition.order_line_sku_id AS "skuId",disposition.disposition_type AS type,
-        disposition.quantity,disposition.source_order_revision AS "sourceOrderRevision",disposition.available_at AS "availableAt",
-        disposition.evidence FROM inventory_stock_dispositions disposition JOIN seller_orders orders ON orders.id=disposition.order_id
-        WHERE disposition.request_id=$1`,[input.requestId],db);
-      if(existing){
+      const findReplay=async()=>{
+        const existing=await queryOne<any>(`SELECT disposition.id::text AS id,disposition.seller_key AS "sellerKey",
+          orders.order_number AS "orderNumber",disposition.order_line_sku_id AS "skuId",disposition.disposition_type AS type,
+          disposition.quantity,disposition.source_order_revision AS "sourceOrderRevision",disposition.available_at AS "availableAt",
+          disposition.evidence FROM inventory_stock_dispositions disposition JOIN seller_orders orders ON orders.id=disposition.order_id
+          WHERE disposition.request_id=$1`,[input.requestId],db);
+        if(!existing)return null;
         const mappings=await query<any>(`SELECT source_supply_key AS "supplyKey",receipt_id AS "receiptId",quantity
           FROM inventory_stock_disposition_receipts WHERE disposition_id=$1 ORDER BY source_supply_key`,[existing.id],db);
         if(existing.sellerKey!==input.sellerKey||existing.orderNumber!==input.orderNumber||existing.skuId!==input.skuId||
@@ -451,7 +495,8 @@ export const inventoryFifoRepository={
           existing.availableAt.toISOString()!==input.availableAt.toISOString()||canonicalEvidence(existing.evidence)!==canonicalEvidence(input.evidence)||
           JSON.stringify(mappings)!==JSON.stringify([...input.sourceAllocations].sort((a,b)=>a.supplyKey<b.supplyKey?-1:a.supplyKey>b.supplyKey?1:0)))throw new Error("Disposition request ID conflicts.");
         return {id:existing.id,repeated:true};
-      }
+      };
+      const replay=await findReplay();if(replay)return replay;
       const order=await queryOne<any>(`SELECT orders.id::text AS id,orders.order_time AS "orderTime",orders.lifecycle,
         orders.source_revision AS "sourceRevision" FROM seller_orders orders
         JOIN seller_order_lines line ON line.order_id=orders.id
@@ -466,8 +511,11 @@ export const inventoryFifoRepository={
           claim_expires_at=EXCLUDED.claim_expires_at,hold_reason=NULL,updated_at=NOW()
         WHERE inventory_fifo_replay_queue.status='held' AND inventory_fifo_replay_queue.hold_reason IN
           ('cancellation_requires_disposition','canceled_after_shipping_requires_restock')
+          OR inventory_fifo_replay_queue.status='held'
+            AND inventory_fifo_replay_queue.hold_reason LIKE 'unexplained_inventory_difference:%'
         RETURNING seller_key AS "sellerKey"`,[input.sellerKey,sku,order.orderTime,randomUUID()],db);
-      if(!reserved)throw new Error("FIFO allocation must be current before recording a disposition.");
+      if(!reserved){const raced=await findReplay();if(raced)return raced;
+        throw new Error("FIFO allocation must be current before recording a disposition.");}
       await db.query(`SELECT pg_advisory_xact_lock(hashtext($1))`,[`fifo:${input.sellerKey}:${sku}`]);
       const line=await queryOne<{id:string;orderTime:Date;sourceOrderRevision:number;orderedQuantity:number;matchedQuantity:number}>(`SELECT id::text AS id,
         order_time AS "orderTime",source_order_revision AS "sourceOrderRevision",
@@ -515,18 +563,20 @@ export const inventoryFifoRepository={
     sourceOrderRevision:number;confirmedAt:Date;evidence:Record<string,unknown>}){
     return withTransaction(async(db)=>{
       input={...input,requestId:input.requestId.trim(),sellerKey:input.sellerKey.trim(),dispositionId:input.dispositionId.trim()};
-      const existing=await queryOne<any>(`SELECT correction.id::text AS id,correction.disposition_id::text AS "dispositionId",
-        disposition.seller_key AS "sellerKey",
-        correction.source_order_revision AS "sourceOrderRevision",correction.confirmed_at AS "confirmedAt",correction.evidence
-        FROM inventory_stock_disposition_corrections correction JOIN inventory_stock_dispositions disposition
-          ON disposition.id=correction.disposition_id WHERE correction.request_id=$1`,[input.requestId],db);
-      if(existing){
+      const findReplay=async()=>{
+        const existing=await queryOne<any>(`SELECT correction.id::text AS id,correction.disposition_id::text AS "dispositionId",
+          disposition.seller_key AS "sellerKey",correction.source_order_revision AS "sourceOrderRevision",
+          correction.confirmed_at AS "confirmedAt",correction.evidence
+          FROM inventory_stock_disposition_corrections correction JOIN inventory_stock_dispositions disposition
+            ON disposition.id=correction.disposition_id WHERE correction.request_id=$1`,[input.requestId],db);
+        if(!existing)return null;
         if(existing.sellerKey!==input.sellerKey||existing.dispositionId!==input.dispositionId||
           existing.sourceOrderRevision!==input.sourceOrderRevision||
           existing.confirmedAt.toISOString()!==input.confirmedAt.toISOString()||canonicalEvidence(existing.evidence)!==canonicalEvidence(input.evidence))
           throw new Error("Disposition correction request ID conflicts.");
         return {id:existing.id,repeated:true};
-      }
+      };
+      const replay=await findReplay();if(replay)return replay;
       if(!Object.keys(input.evidence).length)throw new Error("Disposition correction evidence is required.");
       const target=await queryOne<{sku:number;orderTime:Date}>(`SELECT disposition.sku,orders.order_time AS "orderTime"
         FROM inventory_stock_dispositions disposition JOIN seller_orders orders ON orders.id=disposition.order_id
@@ -534,6 +584,7 @@ export const inventoryFifoRepository={
       if(!target)throw new Error("Disposition correction evidence is stale or predates the disposition.");
       await enqueue(input.sellerKey,target.sku,target.orderTime,db);
       await db.query(`SELECT pg_advisory_xact_lock(hashtext($1))`,[`fifo:${input.sellerKey}:${target.sku}`]);
+      const raced=await findReplay();if(raced)return raced;
       const disposition=await queryOne<any>(`SELECT disposition.id::text AS id,disposition.seller_key AS "sellerKey",disposition.sku,
         disposition.available_at AS "availableAt",disposition.quantity,
         disposition.source_order_revision AS "dispositionSourceRevision",
@@ -561,6 +612,85 @@ export const inventoryFifoRepository={
     });
   },
 
+  async recordQuantityCorrection(input:{requestId:string;sellerKey:string;orderNumber:string;skuId:string;
+    sourceOrderRevision:number;availableAt:Date;evidence:Record<string,unknown>;
+    sourceAllocations:Array<{supplyKey:string;receiptId:number;quantity:number}>}){
+    return withTransaction(async(db)=>{
+      input={...input,requestId:input.requestId.trim(),sellerKey:input.sellerKey.trim(),
+        orderNumber:input.orderNumber.trim(),skuId:input.skuId.trim()};
+      const findReplay=async()=>{
+        const existing=await queryOne<any>(`SELECT correction.id::text AS id,correction.seller_key AS "sellerKey",
+          orders.order_number AS "orderNumber",correction.order_line_sku_id AS "skuId",
+          correction.source_order_revision AS "sourceOrderRevision",correction.available_at AS "availableAt",
+          correction.evidence FROM inventory_order_quantity_corrections correction
+          JOIN seller_orders orders ON orders.id=correction.order_id WHERE correction.request_id=$1`,[input.requestId],db);
+        if(!existing)return null;
+        const mappings=await query<any>(`SELECT source_supply_key AS "supplyKey",receipt_id AS "receiptId",quantity
+          FROM inventory_order_quantity_correction_allocations WHERE correction_id=$1 ORDER BY source_supply_key`,[existing.id],db);
+        if(existing.sellerKey!==input.sellerKey||existing.orderNumber!==input.orderNumber||existing.skuId!==input.skuId||
+            existing.sourceOrderRevision!==input.sourceOrderRevision||existing.availableAt.toISOString()!==input.availableAt.toISOString()||
+            canonicalEvidence(existing.evidence)!==canonicalEvidence(input.evidence)||
+            JSON.stringify(mappings)!==JSON.stringify([...input.sourceAllocations].sort((a,b)=>a.supplyKey<b.supplyKey?-1:a.supplyKey>b.supplyKey?1:0)))
+          throw new Error("Quantity correction request ID conflicts.");
+        return {id:existing.id,repeated:true};
+      };
+      const replay=await findReplay();if(replay)return replay;
+      if(!input.requestId||!Object.keys(input.evidence).length||!input.sourceAllocations.length||
+          new Set(input.sourceAllocations.map((value)=>value.supplyKey)).size!==input.sourceAllocations.length)
+        throw new Error("Complete quantity correction evidence and source allocations are required.");
+      const sku=standardInventorySku(input.skuId);if(sku===null)throw new Error("Quantity correction SKU is unsupported.");
+      const target=await queryOne<{orderId:string;orderTime:Date}>(`SELECT orders.id::text AS "orderId",orders.order_time AS "orderTime"
+        FROM seller_orders orders WHERE orders.seller_key=$1 AND orders.order_number=$2`,[input.sellerKey,input.orderNumber],db);
+      if(!target)throw new Error("Quantity correction order was not found.");
+      const reserved=await queryOne<{sellerKey:string}>(`UPDATE inventory_fifo_replay_queue SET status='processing',
+          claim_token=$3,claim_expires_at=NOW()+INTERVAL '5 minutes',hold_reason=NULL,updated_at=NOW()
+        WHERE seller_key=$1 AND sku=$2 AND status='held'
+          AND (hold_reason LIKE 'order_quantity_decrease_requires_correction:%'
+            OR hold_reason LIKE 'unexplained_inventory_difference:%')
+        RETURNING seller_key AS "sellerKey"`,[input.sellerKey,sku,randomUUID()],db);
+      if(!reserved){const raced=await findReplay();if(raced)return raced;
+        throw new Error("FIFO must hold an unresolved quantity decrease before correction.");}
+      await db.query(`SELECT pg_advisory_xact_lock(hashtext($1))`,[`fifo:${input.sellerKey}:${sku}`]);
+      const line=await queryOne<any>(`SELECT saved.id::text AS id,saved.ordered_quantity AS "previousQuantity",
+          saved.matched_quantity AS "previousMatchedQuantity",
+          saved.source_order_revision AS "previousSourceRevision",COALESCE(current_line.ordered_quantity,0)::int AS "currentQuantity",
+          orders.source_revision AS "currentSourceRevision",revision.observed_at AS "revisionObservedAt"
+        FROM seller_orders orders JOIN inventory_fifo_lines saved ON saved.order_id=orders.id AND saved.order_line_sku_id=$3
+        LEFT JOIN seller_order_lines current_line ON current_line.order_id=orders.id AND current_line.sku_id=saved.order_line_sku_id
+        JOIN seller_order_revisions revision ON revision.order_id=orders.id AND revision.revision_number=orders.source_revision
+        WHERE orders.id=$1 AND orders.seller_key=$2`,[target.orderId,input.sellerKey,input.skuId],db);
+      const released=Math.max(0,(line?.previousMatchedQuantity??0)-(line?.currentQuantity??0));
+      if(!line||line.currentSourceRevision!==input.sourceOrderRevision||line.previousSourceRevision>=input.sourceOrderRevision||
+          released<=0||input.availableAt<line.revisionObservedAt)throw new Error("Quantity correction source revision is stale or not a decrease.");
+      const allocations=await query<any>(`SELECT allocation.supply_key AS "supplyKey",allocation.receipt_id AS "receiptId",
+          allocation.allocated_quantity AS quantity FROM inventory_fifo_revision_allocations allocation
+        JOIN inventory_fifo_lines saved ON saved.current_revision_id=allocation.revision_id
+        WHERE saved.id=$1 ORDER BY allocation.available_at DESC,allocation.supply_key DESC`,[line.id],db);
+      let needed=Math.min(released,allocations.reduce((sum,row)=>sum+row.quantity,0));
+      const expected:Array<{supplyKey:string;receiptId:number;quantity:number}>=[];
+      for(const allocation of allocations){if(needed<=0)break;const quantity=Math.min(needed,allocation.quantity);
+        expected.push({supplyKey:allocation.supplyKey,receiptId:allocation.receiptId,quantity});needed-=quantity;}
+      const supplied=[...input.sourceAllocations].sort((a,b)=>a.supplyKey>b.supplyKey?1:a.supplyKey<b.supplyKey?-1:0);
+      const expectedSorted=[...expected].sort((a,b)=>a.supplyKey>b.supplyKey?1:a.supplyKey<b.supplyKey?-1:0);
+      if(!expected.length||JSON.stringify(supplied)!==JSON.stringify(expectedSorted))
+        throw new Error("Quantity correction must release the newest exact active allocation segments.");
+      const correction=await queryOne<{id:string}>(`INSERT INTO inventory_order_quantity_corrections
+          (request_id,seller_key,order_id,order_line_sku_id,sku,previous_quantity,corrected_quantity,
+           released_quantity,source_order_revision,available_at,evidence)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb) RETURNING id::text AS id`,
+        [input.requestId,input.sellerKey,target.orderId,input.skuId,sku,line.previousQuantity,line.currentQuantity,
+          expected.reduce((sum,value)=>sum+value.quantity,0),input.sourceOrderRevision,input.availableAt,asJson(input.evidence)],db);
+      if(!correction)throw new Error("Failed to record quantity correction.");
+      await execute(`INSERT INTO inventory_order_quantity_correction_allocations
+          (correction_id,source_supply_key,receipt_id,quantity)
+        SELECT $1,x."supplyKey",x."receiptId",x.quantity FROM jsonb_to_recordset($2::jsonb)
+          AS x("supplyKey" text,"receiptId" integer,quantity integer)`,[correction.id,asJson(expected)],db);
+      await execute(`UPDATE inventory_fifo_replay_queue SET status='pending',claim_token=NULL,claim_expires_at=NULL,
+        hold_reason=NULL,updated_at=NOW() WHERE seller_key=$1 AND sku=$2`,[input.sellerKey,sku],db);
+      return {id:correction.id,repeated:false};
+    });
+  },
+
   async findOrderAllocation(sellerKey:string,orderNumber:string){
     return query(`WITH target_order AS (
         SELECT * FROM seller_orders WHERE seller_key=$1 AND order_number=$2
@@ -585,6 +715,7 @@ export const inventoryFifoRepository={
         OR queue.generation IS NOT NULL OR line.source_order_revision<>orders.source_revision) AS "allocationPending",
       COALESCE((SELECT jsonb_agg(jsonb_build_object('supplyKey',allocation.supply_key,
         'receiptId',allocation.receipt_id,'dispositionId',allocation.disposition_id::text,
+        'quantityCorrectionId',allocation.quantity_correction_id::text,
         'quantity',allocation.allocated_quantity,'availableAt',allocation.available_at) ORDER BY allocation.supply_key)
         FROM inventory_fifo_revision_allocations allocation WHERE allocation.revision_id=line.current_revision_id),'[]'::jsonb) AS allocations
       FROM target_order orders CROSS JOIN identities
@@ -610,6 +741,7 @@ export const inventoryFifoRepository={
       revision.weighted_days_held::float8 AS "weightedDaysHeld",revision.recorded_at AS "recordedAt",
       COALESCE((SELECT jsonb_agg(jsonb_build_object('supplyKey',allocation.supply_key,
         'receiptId',allocation.receipt_id,'dispositionId',allocation.disposition_id::text,
+        'quantityCorrectionId',allocation.quantity_correction_id::text,
         'quantity',allocation.allocated_quantity,'availableAt',allocation.available_at) ORDER BY allocation.supply_key)
         FROM inventory_fifo_revision_allocations allocation WHERE allocation.revision_id=revision.id),'[]'::jsonb) AS allocations
       FROM inventory_fifo_revisions revision JOIN inventory_fifo_lines line ON line.id=revision.line_id
