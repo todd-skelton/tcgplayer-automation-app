@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { allocateAmountCents } from "~/features/inventory-economics/domain/money";
+import { normalizePurchaseCostDetails } from "~/features/inventory-economics/domain/purchaseCostDetails";
 import type {
   FundingAdjustmentInput,
   FundingAdjustmentSummary,
@@ -19,6 +20,8 @@ interface ReceiptTargetRow {
   marketValue: number | null;
   sellerKey: string | null;
 }
+
+export class InventoryEconomicsConflictError extends Error {}
 
 function safeCents(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label} must be nonnegative whole cents.`);
@@ -44,14 +47,6 @@ function normalizeDate(value: string | undefined, label: string): string | null 
   return value;
 }
 
-function normalizeInstant(value: string | undefined, label: string): string | null {
-  if (value === undefined) return null;
-  if (!/(?:Z|[+-]\d{2}:\d{2})$/i.test(value) || !Number.isFinite(Date.parse(value))) {
-    throw new Error(`${label} must be an ISO timestamp with a UTC offset.`);
-  }
-  return new Date(value).toISOString();
-}
-
 function fingerprint(value: unknown): string {
   return createHash("sha256").update(stableJson(value)).digest("hex");
 }
@@ -73,7 +68,7 @@ async function findRepeatedRequest(requestId: string, requestFingerprint: string
     [requestId], db,
   );
   if (repeated && repeated.requestFingerprint !== requestFingerprint) {
-    throw new Error("Request ID was already used for different inventory economics evidence.");
+    throw new InventoryEconomicsConflictError("Request ID was already used for different inventory economics evidence.");
   }
   return repeated;
 }
@@ -110,11 +105,11 @@ async function nextCorrection(
     [seriesId], db,
   );
   if (!current) {
-    if (correctsEntryId || correctionReason) throw new Error("An initial entry cannot be a correction.");
+    if (correctsEntryId || correctionReason) throw new InventoryEconomicsConflictError("An initial entry cannot be a correction.");
     return { sequence: 1, correctsEntryId: null, reason: null };
   }
   if (!correctsEntryId || correctsEntryId !== current.id) {
-    throw new Error(`A correction must reference the current entry ${current.id}.`);
+    throw new InventoryEconomicsConflictError(`A correction must reference the current entry ${current.id}.`);
   }
   const reason = normalizeReference(correctionReason ?? "", "Correction reason");
   return { sequence: current.sequence + 1, correctsEntryId, reason };
@@ -123,17 +118,14 @@ async function nextCorrection(
 export const inventoryEconomicsRepository = {
   async recordPurchaseCost(input: PurchaseCostInput, executor?: Queryable) {
     const perform = async (db: Queryable) => {
-      const requestId = normalizeReference(input.requestId, "Request ID");
-      const sellerKey = normalizeReference(input.sellerKey, "Seller key");
-      const purchaseReference = normalizeReference(input.purchaseReference, "Purchase reference");
-      const currency = normalizeCurrency(input.currency);
-      safeCents(input.totalAmountCents, "Purchase total");
+      input = { ...input,...normalizePurchaseCostDetails({...input}) };
+      const { requestId,sellerKey,purchaseReference,currency } = input;
       const batchNumbers = [...new Set(input.batchNumbers)].sort((a, b) => a - b);
       if (!batchNumbers.length || batchNumbers.length > 100 || batchNumbers.some((value) => !Number.isInteger(value) || value <= 0)) {
         throw new Error("Purchase costs require 1 to 100 positive batch numbers.");
       }
-      const purchasedAt = normalizeDate(input.purchasedAt,"Purchase date");
-      const marketObservedAt = normalizeInstant(input.marketObservedAt,"Market evidence instant");
+      const purchasedAt = input.purchasedAt ?? null;
+      const marketObservedAt = input.marketObservedAt ?? null;
       const explicitAllocations = (input.explicitAllocations ?? [])
         .map((value) => ({ receiptId: value.receiptId, amountCents: value.amountCents }))
         .sort((a, b) => a.receiptId - b.receiptId);
@@ -171,7 +163,9 @@ export const inventoryEconomicsRepository = {
       const conflictingOwner = await queryOne(`SELECT 1 FROM inventory_purchase_receipt_ownership
         WHERE receipt_id=ANY($1::int[]) AND (series_id<>$2 OR currency<>$3) LIMIT 1`,
         [receiptIds.map((row)=>row.receiptId),series.id,currency],db);
-      if (conflictingOwner) throw new Error("A receipt lot already belongs to another purchase or currency.");
+      if (conflictingOwner) {
+        throw new InventoryEconomicsConflictError("A receipt lot already belongs to another purchase or currency.");
+      }
       const receipts = await query<ReceiptTargetRow>(
         `SELECT receipt.receipt_id AS "receiptId",receipt.original_quantity AS "originalQuantity",
           SUM(link.linked_quantity)::int AS "linkedQuantity",receipt.market_value::float8 AS "marketValue",
@@ -488,15 +482,18 @@ export const inventoryEconomicsRepository = {
       costCurrency: string | null;
       fifoState: string; replayStatus: string | null;
       dispositionId: string | null; quantityCorrectionId: string | null;
-    }>(`WITH latest_cost AS (
-        SELECT DISTINCT ON (allocation.receipt_id) allocation.receipt_id,
-          allocation.allocated_amount_cents,entry.provenance,series.currency
+    }>(`WITH current_entry AS (
+        SELECT DISTINCT ON (entry.series_id) entry.id,entry.series_id,entry.provenance
+        FROM inventory_purchase_cost_entries entry
+        ORDER BY entry.series_id,entry.sequence DESC
+      ), latest_cost AS (
+        SELECT allocation.receipt_id,allocation.allocated_amount_cents,current.provenance,series.currency
         FROM inventory_purchase_receipt_ownership ownership
-        JOIN inventory_purchase_cost_entries entry ON entry.series_id=ownership.series_id
-        JOIN inventory_purchase_cost_allocations allocation ON allocation.entry_id=entry.id AND allocation.receipt_id=ownership.receipt_id
-        JOIN inventory_purchase_cost_series series ON series.id=entry.series_id
+        JOIN current_entry current ON current.series_id=ownership.series_id
+        JOIN inventory_purchase_cost_allocations allocation
+          ON allocation.entry_id=current.id AND allocation.receipt_id=ownership.receipt_id
+        JOIN inventory_purchase_cost_series series ON series.id=current.series_id
         WHERE series.seller_key=$1
-        ORDER BY allocation.receipt_id,entry.sequence DESC
       ) SELECT fifo.order_id::text AS "orderId",allocation.receipt_id AS "receiptId",
         allocation.allocated_quantity::int AS quantity,receipt.original_quantity::int AS "originalQuantity",
         latest_cost.allocated_amount_cents::float8 AS "allocatedCostCents",latest_cost.provenance AS "costProvenance",
@@ -531,13 +528,28 @@ export const inventoryEconomicsRepository = {
     const relevantExpensesComplete = relevantExpenseRows.length <= 10000;
     const relevantOrderExpenses = relevantExpenseRows.slice(0,10000);
     const uncostedBatches = await query<{ batchNumber: number; sourceLabel: string; receiptCount: number }>(
-      `SELECT batch.batch_number AS "batchNumber",batch.source_label AS "sourceLabel",COUNT(DISTINCT link.receipt_id)::int AS "receiptCount"
+      `WITH current_entry AS (
+        SELECT DISTINCT ON (entry.series_id) entry.id,entry.series_id
+        FROM inventory_purchase_cost_entries entry
+        ORDER BY entry.series_id,entry.sequence DESC
+      ), current_cost AS (
+        SELECT allocation.receipt_id
+        FROM inventory_purchase_receipt_ownership ownership
+        JOIN current_entry current ON current.series_id=ownership.series_id
+        JOIN inventory_purchase_cost_allocations allocation
+          ON allocation.entry_id=current.id AND allocation.receipt_id=ownership.receipt_id
+        JOIN inventory_purchase_cost_series series ON series.id=current.series_id
+        WHERE series.seller_key=$1
+      )
+      SELECT batch.batch_number AS "batchNumber",batch.source_label AS "sourceLabel",
+        (COUNT(DISTINCT link.receipt_id) FILTER (WHERE current_cost.receipt_id IS NULL))::int AS "receiptCount"
        FROM inventory_batches batch JOIN inventory_receipt_batch_links link ON link.batch_number=batch.batch_number
        JOIN inventory_receipts receipt ON receipt.receipt_id=link.receipt_id
-       LEFT JOIN inventory_purchase_cost_entries cost ON batch.batch_number=ANY(cost.batch_numbers)
-       WHERE cost.id IS NULL GROUP BY batch.batch_number,batch.source_label
+       LEFT JOIN current_cost ON current_cost.receipt_id=receipt.receipt_id
+       GROUP BY batch.batch_number,batch.source_label
        HAVING BOOL_AND(receipt.seller_key IS NULL OR receipt.seller_key=$1)
-      ORDER BY batch.batch_number DESC LIMIT $2`, [seller,limit],
+         AND COUNT(DISTINCT link.receipt_id) FILTER (WHERE current_cost.receipt_id IS NULL)>0
+       ORDER BY batch.batch_number DESC LIMIT $2`, [seller,limit],
     );
     return { orders, postage, postageComplete, allocations, allocationsComplete,
       relevantOrderExpenses, relevantExpensesComplete, uncostedBatches };
