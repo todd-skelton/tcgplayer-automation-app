@@ -286,13 +286,14 @@ export const inventoryFifoRepository={
                 WHERE correction.disposition_id=disposition.id)
           ) LIMIT 1`,[queued.sellerKey,queued.sku],db);
       if(reductionConflict)return holdQueue(queued.sellerKey,queued.sku,`quantity_reduction_after_restock:${reductionConflict.lineId}`,db);
-      const invalidatedCorrection=await queryOne<{id:string}>(`SELECT correction.id::text AS id
+      const invalidatedCorrection=await queryOne<{id:string}>(`SELECT MIN(correction.id)::text AS id
         FROM inventory_stock_dispositions disposition
         JOIN inventory_stock_disposition_corrections correction ON correction.disposition_id=disposition.id
         LEFT JOIN seller_order_lines current_line ON current_line.order_id=disposition.order_id
           AND current_line.sku_id=disposition.order_line_sku_id
         WHERE disposition.seller_key=$1 AND disposition.sku=$2
-          AND disposition.source_ordered_quantity-COALESCE(current_line.ordered_quantity,0)<disposition.quantity
+        GROUP BY disposition.order_id,disposition.order_line_sku_id,current_line.ordered_quantity
+        HAVING MAX(disposition.source_ordered_quantity)-COALESCE(current_line.ordered_quantity,0)<SUM(disposition.quantity)
         LIMIT 1`,[queued.sellerKey,queued.sku],db);
       if(invalidatedCorrection)return holdQueue(queued.sellerKey,queued.sku,
         `return_correction_invalidated:${invalidatedCorrection.id}`,db);
@@ -537,13 +538,18 @@ export const inventoryFifoRepository={
         disposition.available_at AS "availableAt",disposition.quantity,
         disposition.source_order_revision AS "dispositionSourceRevision",
         disposition.source_ordered_quantity AS "sourceOrderedQuantity",orders.order_time AS "orderTime",
-        orders.source_revision AS "currentSourceRevision",COALESCE(line.ordered_quantity,0)::int AS "currentQuantity"
+        orders.source_revision AS "currentSourceRevision",COALESCE(line.ordered_quantity,0)::int AS "currentQuantity",
+        (SELECT COALESCE(SUM(other.quantity),0)::int FROM inventory_stock_dispositions other
+          JOIN inventory_stock_disposition_corrections other_correction ON other_correction.disposition_id=other.id
+          WHERE other.order_id=disposition.order_id AND other.order_line_sku_id=disposition.order_line_sku_id
+            AND other_correction.source_order_revision=$3) AS "alreadyCorrectedQuantity"
         FROM inventory_stock_dispositions disposition JOIN seller_orders orders ON orders.id=disposition.order_id
         LEFT JOIN seller_order_lines line ON line.order_id=orders.id AND line.sku_id=disposition.order_line_sku_id
-        WHERE disposition.id=$1 AND disposition.seller_key=$2 FOR UPDATE OF disposition,orders`,[input.dispositionId,input.sellerKey],db);
+        WHERE disposition.id=$1 AND disposition.seller_key=$2 FOR UPDATE OF disposition`,
+        [input.dispositionId,input.sellerKey,input.sourceOrderRevision],db);
       if(!disposition||disposition.currentSourceRevision!==input.sourceOrderRevision||
           input.sourceOrderRevision<=disposition.dispositionSourceRevision||
-          disposition.sourceOrderedQuantity-disposition.currentQuantity<disposition.quantity||
+          disposition.sourceOrderedQuantity-disposition.currentQuantity<disposition.alreadyCorrectedQuantity+disposition.quantity||
           input.confirmedAt<disposition.availableAt)
         throw new Error("Disposition correction evidence is stale or predates the disposition.");
       const row=await queryOne<{id:string}>(`INSERT INTO inventory_stock_disposition_corrections

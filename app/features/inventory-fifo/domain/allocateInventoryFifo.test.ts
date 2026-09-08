@@ -29,6 +29,17 @@ assert.equal(split[0]?.allocations[0]?.supplyKey,"opening");
 assert.equal(split[0]?.dateKnownQuantity,1);
 assert.equal(split[0]?.priceKnownQuantity,1);
 
+const ties=allocateInventoryFifo([
+  {lineKey:"order-b",orderId:"2",orderNumber:"B",orderTime:sale,quantity:1},
+  {lineKey:"order-a",orderId:"1",orderNumber:"A",orderTime:sale,quantity:1},
+],[
+  lot({supplyKey:"receipt-2",receiptId:2,quantity:1}),
+  lot({supplyKey:"receipt-1",receiptId:1,quantity:1}),
+]);
+assert.deepEqual(ties.map((line)=>[line.lineKey,line.allocations[0]?.supplyKey]),[
+  ["order-a","receipt-1"],["order-b","receipt-2"],
+]);
+
 const precise=allocateInventoryFifo([
   {lineKey:"fractional",orderId:"4",orderNumber:"C",orderTime:sale,quantity:100},
   {lineKey:"zero",orderId:"5",orderNumber:"D",orderTime:sale,quantity:1},
