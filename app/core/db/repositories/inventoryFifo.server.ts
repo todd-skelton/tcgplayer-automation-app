@@ -240,8 +240,7 @@ export const inventoryFifoRepository={
             FROM seller_orders orders JOIN seller_order_lines line ON line.order_id=orders.id
             WHERE orders.seller_key=difference.seller_key
               AND orders.order_time>=previous.cutoff_at AND orders.order_time<observation.cutoff_at
-              AND line.sku_id~'^[1-9][0-9]{0,9}$'
-              AND line.sku_id::bigint=difference.sku),0)
+              AND line.sku_id=difference.sku::text),0)
         )::int AS "expectedDelta"
         FROM inventory_observation_differences difference
         JOIN inventory_complete_observations observation ON observation.id=difference.observation_id
@@ -270,8 +269,7 @@ export const inventoryFifoRepository={
         orders.order_time AS "orderTime",orders.lifecycle,orders.source_revision AS "sourceRevision",
         line.sku_id AS "skuId",line.ordered_quantity AS quantity
         FROM seller_orders orders JOIN seller_order_lines line ON line.order_id=orders.id
-        WHERE orders.seller_key=$1 AND line.sku_id~'^[1-9][0-9]{0,9}$'
-          AND line.sku_id::bigint=$2`,[queued.sellerKey,queued.sku],db);
+        WHERE orders.seller_key=$1 AND line.sku_id=$2::text`,[queued.sellerKey,queued.sku],db);
       const removed=await query<any>(`SELECT line.order_id::text AS "orderId",orders.order_number AS "orderNumber",
         orders.order_time AS "orderTime",orders.lifecycle,orders.source_revision AS "sourceRevision",
         line.order_line_sku_id AS "skuId",0::int AS quantity
@@ -345,7 +343,7 @@ export const inventoryFifoRepository={
         FROM seller_order_revisions revision JOIN seller_orders orders ON orders.id=revision.order_id
         WHERE orders.seller_key=$1 AND revision.lifecycle IN ('shipped_in_transit','shipped_delivered')
           AND (EXISTS (SELECT 1 FROM seller_order_lines line WHERE line.order_id=orders.id
-              AND line.sku_id~'^[1-9][0-9]{0,9}$' AND line.sku_id::bigint=$2)
+              AND line.sku_id=$2::text)
             OR EXISTS (SELECT 1 FROM inventory_fifo_lines line WHERE line.order_id=orders.id AND line.sku=$2))`,
         [queued.sellerKey,queued.sku],db);
       const shippedOrders=new Set(shipped.map((row)=>row.orderId));
