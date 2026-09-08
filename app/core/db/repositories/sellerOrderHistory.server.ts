@@ -150,14 +150,24 @@ export const sellerOrderHistoryRepository = {
              order_time = $2, summary_order_time = COALESCE($3, summary_order_time), lifecycle = $4,
              provider_status = $5, refund_status = $6, order_channel = $7,
              order_fulfillment = $8, gross_item_proceeds = $9,
-             source_revision = $10, source_fingerprint = $11,
-             summary_fingerprint = COALESCE($12, summary_fingerprint),
-             last_observed_at = $13, detail_observed_at = $13, latest_source = $14
+             gross_shipping_proceeds = $10, gross_order_proceeds = $11,
+             platform_fee_amount = $12, provider_net_proceeds = $13,
+             direct_fee_amount = $14, transaction_evidence = $15::jsonb,
+             source_revision = $16, source_fingerprint = $17,
+             summary_fingerprint = COALESCE($18, summary_fingerprint),
+             last_observed_at = $19, detail_observed_at = $19, latest_source = $20
            WHERE id = $1`,
           [orderId, observation.orderTime, observation.summaryOrderTime ?? null,
             observation.lifecycle, observation.providerStatus,
             observation.refundStatus ?? null, observation.orderChannel ?? null,
             observation.orderFulfillment ?? null, observation.grossItemProceeds,
+            observation.transaction?.shippingAmount ?? null,
+            observation.transaction?.grossAmount ?? null,
+            observation.transaction?.feeAmount ?? null,
+            observation.transaction?.netAmount ?? null,
+            observation.transaction?.directFeeAmount ?? null,
+            observation.transaction ? asJson(observation.transaction)
+              : observation.transactionCoverageReason ? asJson({ coverageReason: observation.transactionCoverageReason }) : null,
             revision, observation.fingerprint, observation.summaryFingerprint ?? null,
             observation.observedAt, observation.source],
           db,
@@ -168,16 +178,25 @@ export const sellerOrderHistoryRepository = {
           `INSERT INTO seller_orders (
              seller_key, order_number, order_time, summary_order_time, lifecycle,
              provider_status, refund_status, order_channel, order_fulfillment,
-             gross_item_proceeds, source_revision, source_fingerprint, summary_fingerprint,
+             gross_item_proceeds, gross_shipping_proceeds, gross_order_proceeds,
+             platform_fee_amount, provider_net_proceeds, direct_fee_amount, transaction_evidence,
+             source_revision, source_fingerprint, summary_fingerprint,
              first_observed_at, last_observed_at, detail_observed_at, latest_source
-           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,1,$11,$12,$13,$13,$13,$14)
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,1,$17,$18,$19,$19,$19,$20)
            RETURNING id::text AS id`,
           [observation.sellerKey, observation.orderNumber, observation.orderTime,
             observation.summaryOrderTime ?? null, observation.lifecycle,
             observation.providerStatus, observation.refundStatus ?? null,
             observation.orderChannel ?? null, observation.orderFulfillment ?? null,
-            observation.grossItemProceeds, observation.fingerprint,
-            observation.summaryFingerprint ?? null,
+            observation.grossItemProceeds,
+            observation.transaction?.shippingAmount ?? null,
+            observation.transaction?.grossAmount ?? null,
+            observation.transaction?.feeAmount ?? null,
+            observation.transaction?.netAmount ?? null,
+            observation.transaction?.directFeeAmount ?? null,
+            observation.transaction ? asJson(observation.transaction)
+              : observation.transactionCoverageReason ? asJson({ coverageReason: observation.transactionCoverageReason }) : null,
+            observation.fingerprint, observation.summaryFingerprint ?? null,
             observation.observedAt, observation.source],
           db,
         );
@@ -200,13 +219,15 @@ export const sellerOrderHistoryRepository = {
         `INSERT INTO seller_order_revisions (
            order_id, revision_number, source_fingerprint, source, observed_at,
            order_time, order_time_evidence, summary_order_time,
-           provider_status, lifecycle, refund_status, refund_evidence, line_evidence
-         ) VALUES ($1,$2,$3,$4,$5,$6,'detail_canonical',$7,$8,$9,$10,$11::jsonb,$12::jsonb)`,
+           provider_status, lifecycle, refund_status, refund_evidence, line_evidence,
+           transaction_evidence
+         ) VALUES ($1,$2,$3,$4,$5,$6,'detail_canonical',$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13::jsonb)`,
         [orderId, revision, observation.fingerprint, observation.source,
           observation.observedAt, observation.orderTime, observation.summaryOrderTime ?? null,
           observation.providerStatus, observation.lifecycle,
           observation.refundStatus ?? null, asJson(observation.refunds),
-          asJson(observation.lines)],
+          asJson(observation.lines), observation.transaction ? asJson(observation.transaction)
+            : observation.transactionCoverageReason ? asJson({ coverageReason: observation.transactionCoverageReason }) : null],
         db,
       );
       await inventoryFifoRepository.enqueueOrderRevision(orderId, db);

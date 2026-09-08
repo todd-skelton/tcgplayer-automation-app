@@ -15,6 +15,7 @@ import { InventoryMutationState } from "../services/inventoryMutationState";
 import {
   createPendingInventoryBatch,
   PendingBatchRequestError,
+  type PurchaseCostAtIntake,
 } from "../services/createPendingInventoryBatch";
 
 // Extended interface for SKUs with display information
@@ -78,7 +79,7 @@ export interface InventoryProcessorReturn extends InventoryProcessorState {
     metadata: { productLineId: number; setId: number; productId: number }
   ) => void;
   clearPendingInventory: () => void;
-  createBatchFromPendingInventory: () => Promise<InventoryBatch>;
+  createBatchFromPendingInventory: (purchaseCost?: PurchaseCostAtIntake) => Promise<InventoryBatch>;
   toggleSealedFilter: (sealedFilter: "all" | "sealed" | "unsealed") => void;
   setSelectedLanguages: (languages: string[]) => void;
   setSelectedCondition: (condition: InventorySelectableCondition) => void;
@@ -461,14 +462,14 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
       }
     });
   }, [loadPendingInventory, queuePendingMutation, sendPendingMutation]);
-  const createBatchFromPendingInventory = useCallback(() => {
+  const createBatchFromPendingInventory = useCallback((purchaseCost?: PurchaseCostAtIntake) => {
     const requestId = pendingBatchRequestId.current ?? crypto.randomUUID();
     pendingBatchRequestId.current = requestId;
     const barrierVersion = inventoryMutationState.current.beginBarrier();
     return queuePendingMutation(async () => {
       baseProcessor.setError(null);
       try {
-        const batch = await createPendingInventoryBatch(requestId);
+        const batch = await createPendingInventoryBatch(requestId, purchaseCost);
         pendingBatchRequestId.current = null;
         if (inventoryMutationState.current.canApplyBarrier(barrierVersion)) {
           await loadPendingInventory();

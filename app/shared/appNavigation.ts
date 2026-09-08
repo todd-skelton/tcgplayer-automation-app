@@ -12,6 +12,7 @@ import StorageIcon from "@mui/icons-material/Storage";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import ViewListIcon from "@mui/icons-material/ViewList";
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 
 export interface NavigationItem {
   label: string;
@@ -45,6 +46,7 @@ export const primaryNavigationItems: NavigationItem[] = [
     to: "/inventory-strategy",
     icon: QueryStatsIcon,
   },
+  { label: "Inventory Economics", to: "/inventory-economics", icon: AccountBalanceWalletIcon },
   {
     label: "Price Matrix",
     to: "/product-price-matrix",
@@ -127,6 +129,14 @@ export const dashboardCards: DashboardCard[] = [
     to: "/inventory-strategy",
     icon: QueryStatsIcon,
     color: "info.dark",
+  },
+  {
+    title: "Inventory Economics",
+    label: "Inventory Economics",
+    description: "Track acquisition cost, reusable proceeds, and inventory funding",
+    to: "/inventory-economics",
+    icon: AccountBalanceWalletIcon,
+    color: "warning.dark",
   },
   {
     title: "Pull Sheet",

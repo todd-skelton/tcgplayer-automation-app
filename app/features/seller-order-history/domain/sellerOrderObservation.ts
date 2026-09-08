@@ -140,6 +140,8 @@ export function fingerprintSellerOrder(
     orderChannel: value.orderChannel,
     orderFulfillment: value.orderFulfillment,
     grossItemProceeds: value.grossItemProceeds,
+    transaction: value.transaction,
+    transactionCoverageReason: value.transactionCoverageReason,
     lines: aggregateSellerOrderLines(value.lines),
     refunds: value.refunds.map((refund) => ({
       ...refund,
@@ -167,6 +169,12 @@ export function observeSellerOrder(
   if (!Number.isFinite(detail.transaction.productAmount) || detail.transaction.productAmount < 0) {
     throw new Error(`Order ${detail.orderNumber} has invalid gross item proceeds.`);
   }
+  const rawTransaction = detail.transaction as Partial<typeof detail.transaction>;
+  const hasCompleteTransactionEvidence =
+    Number.isFinite(rawTransaction.shippingAmount) && Number.isFinite(rawTransaction.grossAmount) &&
+    Number.isFinite(rawTransaction.feeAmount) && Number.isFinite(rawTransaction.netAmount) &&
+    Number.isFinite(rawTransaction.directFeeAmount) && Array.isArray(rawTransaction.taxes) &&
+    rawTransaction.taxes.every((tax) => typeof tax?.code === "string" && Number.isFinite(tax.amount));
   const lines = detail.products.map((line) => ({
     name: line.name,
     unitPrice: line.unitPrice,
@@ -189,6 +197,15 @@ export function observeSellerOrder(
     orderChannel: detail.orderChannel,
     orderFulfillment: detail.orderFulfillment,
     grossItemProceeds: detail.transaction.productAmount,
+    ...(hasCompleteTransactionEvidence ? { transaction: {
+      productAmount: detail.transaction.productAmount,
+      shippingAmount: rawTransaction.shippingAmount!,
+      grossAmount: rawTransaction.grossAmount!,
+      feeAmount: rawTransaction.feeAmount!,
+      netAmount: rawTransaction.netAmount!,
+      directFeeAmount: rawTransaction.directFeeAmount!,
+      taxes: rawTransaction.taxes!.map((tax) => ({ code: tax.code, amount: tax.amount })),
+    }} : { transactionCoverageReason: "provider_transaction_fields_unavailable" }),
     lines,
     refunds,
     source: "tcgplayer_api" as const,

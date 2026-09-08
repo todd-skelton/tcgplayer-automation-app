@@ -486,8 +486,9 @@ export const inventoryBatchesRepository = {
 
   async createFromPendingInventory(
     requestId: string,
+    executor?: Queryable,
   ): Promise<InventoryBatch | null> {
-    return withTransaction(async (client) => {
+    const perform = async (client: Queryable) => {
       await execute(`SELECT pg_advisory_xact_lock(55, 0)`, [], client);
 
       const repeated = await queryOne<{ batchNumber: number }>(
@@ -608,7 +609,8 @@ export const inventoryBatchesRepository = {
         createdBatch.batchNumber,
         client,
       );
-    });
+    };
+    return executor ? perform(executor) : withTransaction(perform);
   },
 
   async createImportedBatch(
