@@ -268,6 +268,12 @@ export const inventoryOpeningBalancesRepository = {
            USING (inventory_key)
          WHERE COALESCE(current.quantity,0)<>COALESCE(old.quantity,0)`,
         [input.sellerKey,previous.id,row.id],db);
+      if(previous&&input.status==="complete"){
+        const changedSkus=await query<{sku:number}>(`SELECT DISTINCT sku FROM inventory_observation_differences
+          WHERE observation_id=$1 AND sku IS NOT NULL ORDER BY sku`,[row.id],db);
+        await inventoryFifoRepository.enqueueSellerSkus(input.sellerKey,
+          changedSkus.map(({sku})=>({sku,affectedFrom:previous.cutoffAt})),db);
+      }
       await execute(`DELETE FROM inventory_complete_observation_items item
         WHERE item.observation_id IN (
           SELECT old.id FROM inventory_complete_observations old
@@ -545,10 +551,25 @@ export const inventoryOpeningBalancesRepository = {
       await execute(`UPDATE inventory_opening_balance_runs SET status='applied',apply_request_id=$2,
         validation_observation_id=$3,validation_order_coverage_evidence=$4::jsonb,applied_at=NOW()
         WHERE id=$1`,[input.runId,input.requestId.trim(),validation.id,asJson(validationCoverage)],db);
-      const openingSkus=await query<{sku:number}>(`SELECT sku FROM inventory_opening_balance_items
-        WHERE run_id=$1 AND opening_quantity>0`,[input.runId],db);
+      const openingSkus=await query<{sku:number;affectedFrom:Date}>(`WITH affected AS (
+          SELECT sku,$2::timestamptz AS "affectedFrom" FROM inventory_opening_balance_items WHERE run_id=$1
+          UNION ALL
+          SELECT line.sku_id::bigint::integer,MIN(orders.order_time) FROM seller_orders orders
+            JOIN seller_order_lines line ON line.order_id=orders.id
+            WHERE orders.seller_key=$3 AND line.sku_id~'^[1-9][0-9]{0,9}$'
+              AND line.sku_id::bigint BETWEEN 1 AND 2147483647
+            GROUP BY line.sku_id::bigint
+          UNION ALL
+          SELECT receipt.sku,MIN(link.live_at) FROM inventory_publication_receipt_links link
+            JOIN inventory_receipts receipt ON receipt.receipt_id=link.receipt_id
+            WHERE link.target_seller_key=$3 AND link.live_at IS NOT NULL AND link.live_at>=$2
+            GROUP BY receipt.sku
+          UNION ALL
+          SELECT sku,affected_from FROM inventory_fifo_replay_queue WHERE seller_key=$3
+        ) SELECT sku,MIN("affectedFrom") AS "affectedFrom" FROM affected GROUP BY sku`,
+        [input.runId,run.cutoffAt,run.sellerKey],db);
       await inventoryFifoRepository.enqueueSellerSkus(run.sellerKey,
-        openingSkus.map(({sku})=>({sku,affectedFrom:run.cutoffAt})),db);
+        openingSkus,db);
       return {
         ...run,status:"applied",validationObservationId:validation.id,
         unsupportedPositiveItemCount:validation.unsupportedPositiveItemCount,

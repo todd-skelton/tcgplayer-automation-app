@@ -8,6 +8,7 @@ CREATE TABLE inventory_stock_dispositions (
   disposition_type TEXT NOT NULL CHECK (disposition_type IN ('unfulfilled_cancellation','physical_restock')),
   quantity INTEGER NOT NULL CHECK (quantity > 0),
   source_order_revision INTEGER NOT NULL CHECK (source_order_revision > 0),
+  source_ordered_quantity INTEGER NOT NULL CHECK (source_ordered_quantity > 0),
   available_at TIMESTAMPTZ NOT NULL,
   evidence JSONB NOT NULL CHECK (jsonb_typeof(evidence) = 'object'),
   recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -16,9 +17,10 @@ CREATE TABLE inventory_stock_dispositions (
 
 CREATE TABLE inventory_stock_disposition_receipts (
   disposition_id BIGINT NOT NULL REFERENCES inventory_stock_dispositions(id) ON DELETE RESTRICT,
+  source_supply_key TEXT NOT NULL CHECK (length(trim(source_supply_key)) > 0),
   receipt_id INTEGER NOT NULL REFERENCES inventory_receipts(receipt_id) ON DELETE RESTRICT,
   quantity INTEGER NOT NULL CHECK (quantity > 0),
-  PRIMARY KEY (disposition_id, receipt_id)
+  PRIMARY KEY (disposition_id, source_supply_key)
 );
 
 CREATE TABLE inventory_stock_disposition_corrections (
@@ -128,6 +130,6 @@ SELECT orders.seller_key,line.sku_id::bigint::integer,MIN(orders.order_time),'pe
 FROM seller_orders orders
 JOIN seller_order_lines line ON line.order_id=orders.id
 JOIN inventory_opening_balance_runs opening ON opening.seller_key=orders.seller_key AND opening.status='applied'
-WHERE line.sku_id~'^[0-9]+$' AND length(line.sku_id)<=10
+WHERE line.sku_id~'^[1-9][0-9]{0,9}$'
   AND line.sku_id::bigint BETWEEN 1 AND 2147483647
 GROUP BY orders.seller_key,line.sku_id::bigint;

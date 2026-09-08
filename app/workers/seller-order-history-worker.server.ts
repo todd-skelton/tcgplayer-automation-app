@@ -9,8 +9,10 @@ async function run(): Promise<void> {
   console.log(`[seller-order-history-worker] starting pid=${process.pid}`);
   while (!stopping) {
     let delayMs = 60_000;
+    let sellerKey="";
+    try{sellerKey=(await getShippingExportConfig()).defaultSellerKey.trim();}
+    catch(error){console.error("[seller-order-history-worker] seller configuration failed:",String(error));}
     if(Date.now()>=nextHistorySyncAt)try {
-      const sellerKey = (await getShippingExportConfig()).defaultSellerKey.trim();
       if (sellerKey) {
         const result = await synchronizeSellerOrders(sellerKey);
         console.log(
@@ -32,7 +34,7 @@ async function run(): Promise<void> {
     }
     try{
       let fifoReplays=0;
-      while(fifoReplays<25&&await inventoryFifoRepository.processNextReplay())fifoReplays++;
+      while(sellerKey&&fifoReplays<25&&await inventoryFifoRepository.processNextReplay(sellerKey))fifoReplays++;
       if(fifoReplays)console.log(`[seller-order-history-worker] fifo replays=${fifoReplays}`);
       if(fifoReplays===25)delayMs=2_000;
     }catch(error){

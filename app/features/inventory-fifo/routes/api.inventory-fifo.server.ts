@@ -17,18 +17,24 @@ export function createInventoryFifoAction(dependencies={repository:inventoryFifo
         return data({lines:await dependencies.repository.findOrderAllocation(sellerKey,payload.orderNumber)});
       }
       if(payload.action==="list_holds")return data({holds:await dependencies.repository.listHolds(sellerKey)});
+      if(payload.action==="list_revisions"){
+        if(typeof payload.lineId!=="string")throw new Error("FIFO line ID is required.");
+        return data({revisions:await dependencies.repository.listLineRevisions({sellerKey,lineId:payload.lineId,
+          ...(typeof payload.afterRevision==="number"?{afterRevision:payload.afterRevision}:{}),
+          ...(typeof payload.limit==="number"?{limit:payload.limit}:{})})});
+      }
       if(payload.action==="record_disposition"){
         if(typeof payload.requestId!=="string"||typeof payload.orderNumber!=="string"||typeof payload.skuId!=="string"||
           (payload.dispositionType!=="unfulfilled_cancellation"&&payload.dispositionType!=="physical_restock")||
           typeof payload.quantity!=="number"||typeof payload.sourceOrderRevision!=="number"||
           typeof payload.availableAt!=="string"||!hasOffset(payload.availableAt)||
-          !payload.evidence||typeof payload.evidence!=="object"||Array.isArray(payload.evidence)||!Array.isArray(payload.receiptQuantities))
+          !payload.evidence||typeof payload.evidence!=="object"||Array.isArray(payload.evidence)||!Array.isArray(payload.sourceAllocations))
           throw new Error("Complete disposition identity, quantity, availability, lineage, and evidence are required.");
         return data({result:await dependencies.repository.recordDisposition({
           requestId:payload.requestId,sellerKey,orderNumber:payload.orderNumber,skuId:payload.skuId,
           dispositionType:payload.dispositionType,quantity:payload.quantity,sourceOrderRevision:payload.sourceOrderRevision,
           availableAt:new Date(payload.availableAt),evidence:payload.evidence as Record<string,unknown>,
-          receiptQuantities:payload.receiptQuantities as Array<{receiptId:number;quantity:number}>,
+          sourceAllocations:payload.sourceAllocations as Array<{supplyKey:string;receiptId:number;quantity:number}>,
         })});
       }
       if(payload.action==="supersede_disposition"){
@@ -40,8 +46,9 @@ export function createInventoryFifoAction(dependencies={repository:inventoryFifo
           dispositionId:payload.dispositionId,sourceOrderRevision:payload.sourceOrderRevision,
           confirmedAt:new Date(payload.confirmedAt),evidence:payload.evidence as Record<string,unknown>})});
       }
-      if(payload.action==="replay")return data({result:await dependencies.repository.processNextReplay()});
+      if(payload.action==="replay")return data({result:await dependencies.repository.processNextReplay(sellerKey)});
       throw new Error("Unknown inventory FIFO action.");
     }catch(error){return data({error:String(error)},{status:409});}
   };
 }
+

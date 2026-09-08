@@ -8,6 +8,8 @@ if(process.env.DATABASE_URL!==testUrl)throw new Error("DATABASE_URL must exactly
 
 const {getPool}=await import("../database.server");
 const {inventoryFifoRepository:repo}=await import("./inventoryFifo.server");
+const {inventoryOpeningBalancesRepository:openingRepo}=await import("./inventoryOpeningBalances.server");
+const {quantityFingerprint,supportedQuantityFingerprint}=await import("~/features/inventory-opening-balance/domain/inventoryObservation");
 const pool=getPool();
 const seller=`fifo-${Date.now()}`;
 const cutoff=new Date("2026-09-07T12:00:00Z");
@@ -41,6 +43,9 @@ try{
      validation_observation_id,validation_order_coverage_evidence,applied_at)
     VALUES ($1,$2,$3,$4,'applied','opening-fp',$5,$3,'{}',NOW()) RETURNING id::text AS id`,
     [`${seller}-opening`,seller,observation.rows[0]!.id,cutoff,`${seller}-apply`]);
+  await pool.query(`INSERT INTO inventory_complete_observation_items
+    (observation_id,inventory_key,identity_kind,sku,quantity) VALUES ($1,'99001','standard_sku',99001,3)`,
+    [observation.rows[0]!.id]);
   await pool.query(`INSERT INTO inventory_pending_mutations
     (request_id,mutation_type,sku,requested_quantity,product_line_id,set_id,product_id,quantity_delta,resulting_quantity)
     VALUES ($1,'opening',99001,3,1,1,1,3,3)`,[`${seller}-opening-mutation`]);
@@ -54,20 +59,24 @@ try{
 
   await addOrder("PRE","2026-09-07T11:59:59Z",1);
   const firstOrder=await addOrder("A","2026-09-07T12:00:00Z",2);
-  await addOrder("B","2026-09-07T12:03:00Z",2);
+  await addOrder("B","2026-09-07T12:01:00Z",2);
+  await addOrder("C","2026-09-07T12:05:00Z",1);
   const otherOrder=await addOrder("OTHER","2026-09-07T12:01:00Z",1,`${seller}-other`);
   while(await repo.processNextReplay()){}
   assert.deepEqual((await repo.findOrderAllocation(seller,"PRE")).map((line:any)=>[line.state,line.matchedQuantity]),[["excluded_pre_cutoff",0]]);
   assert.deepEqual((await repo.findOrderAllocation(seller,"A")).map((line:any)=>[line.state,line.matchedQuantity]),[["allocated",2]]);
   assert.deepEqual((await repo.findOrderAllocation(seller,"B")).map((line:any)=>[line.state,line.matchedQuantity,line.unmatchedQuantity]),[["partial",1,1]]);
+  assert.equal((await repo.findOrderAllocation(seller,"C"))[0]?.unmatchedQuantity,1);
   assert.equal((await repo.findOrderAllocation(seller,"OTHER")).length,0);
-  assert.equal((await repo.findOrderAllocation(`${seller}-other`,"OTHER")).length,0);
+  assert.deepEqual((await repo.findOrderAllocation(`${seller}-other`,"OTHER")).map((line:any)=>
+    [line.state,line.allocationPending]),[["pending",true]]);
 
   await repo.recordDisposition({requestId:`${seller}-restock`,sellerKey:seller,orderNumber:"A",skuId:"99001",
     dispositionType:"physical_restock",quantity:1,sourceOrderRevision:1,availableAt:new Date("2026-09-07T12:02:00Z"),
-    evidence:{kind:"physical_return",reference:"synthetic"},receiptQuantities:[{receiptId:receipt.rows[0]!.receipt_id,quantity:1}]});
+    evidence:{kind:"physical_return",reference:"synthetic"},sourceAllocations:[{supplyKey:`receipt:${receipt.rows[0]!.receipt_id}`,receiptId:receipt.rows[0]!.receipt_id,quantity:1}]});
   await repo.processNextReplay();
-  assert.deepEqual((await repo.findOrderAllocation(seller,"B")).map((line:any)=>[line.state,line.matchedQuantity,line.unmatchedQuantity]),[["allocated",2,0]]);
+  assert.deepEqual((await repo.findOrderAllocation(seller,"B")).map((line:any)=>[line.state,line.matchedQuantity,line.unmatchedQuantity]),[["partial",1,1]]);
+  assert.equal((await repo.findOrderAllocation(seller,"C"))[0]?.unmatchedQuantity,0);
   const revisionCount=await pool.query(`SELECT COUNT(*)::int AS count FROM inventory_fifo_revisions`);
   assert.equal(await repo.processNextReplay(),null);
   assert.equal((await pool.query(`SELECT COUNT(*)::int AS count FROM inventory_fifo_revisions`)).rows[0]!.count,revisionCount.rows[0]!.count);
@@ -86,7 +95,25 @@ try{
     sourceOrderRevision:2,confirmedAt:new Date("2026-09-07T12:04:00Z"),evidence:{kind:"provider_quantity_correction"}});
   await repo.processNextReplay();
   assert.equal((await repo.listHolds(seller)).queue.length,0);
-  assert.equal((await repo.findOrderAllocation(seller,"B"))[0]?.unmatchedQuantity,0);
+  assert.equal((await repo.findOrderAllocation(seller,"B"))[0]?.unmatchedQuantity,1);
+  assert.equal((await repo.findOrderAllocation(seller,"C"))[0]?.unmatchedQuantity,0);
+  const differenceItems=[{inventoryKey:"99001",identityKind:"standard_sku" as const,sku:99001,quantity:2,
+    productLine:"",setName:"",productName:"",condition:"",variant:""}];
+  const differenceClaim=await openingRepo.beginObservationCapture({requestId:`${seller}-difference`,sellerKey:seller});
+  if(differenceClaim.state!=="claimed")throw new Error("Expected inventory difference claim.");
+  const difference=await openingRepo.recordObservation({requestId:`${seller}-difference`,sellerKey:seller,
+    claimToken:differenceClaim.claimToken,status:"complete",startedAt:new Date("2026-09-08T00:00:00Z"),
+    cutoffAt:new Date("2026-09-08T00:00:01Z"),quantityFingerprint:quantityFingerprint(differenceItems),
+    supportedQuantityFingerprint:supportedQuantityFingerprint(differenceItems),firstContentFingerprint:"difference-a",
+    secondContentFingerprint:"difference-b",beforeIdentityDeclarationCount:2,afterIdentityDeclarationCount:2,items:differenceItems});
+  const differenceReplay=await repo.processNextReplay(seller);
+  assert.equal(differenceReplay?.status,"held");
+  assert.match((differenceReplay as any).reason,/unexplained_inventory_difference/);
+  const differenceId=(await pool.query(`SELECT id::text AS id FROM inventory_observation_differences
+    WHERE observation_id=$1 AND sku=99001`,[difference.id])).rows[0]!.id;
+  await openingRepo.acknowledgeDifference({requestId:`${seller}-ack`,id:differenceId,sellerKey:seller,note:"Reviewed; no stock disposition."});
+  assert.equal((await repo.listHolds(seller)).queue[0]?.status,"held");
   assert.ok(otherOrder);
   console.log("PASS FIFO repository conserves opening supply, dates restocks, isolates sellers, replays once, and holds ambiguous reductions");
 }finally{await pool.end();}
+
