@@ -44,6 +44,13 @@ assert.throws(()=>allocateInventoryFifo([
   {lineKey:"bad-time",orderId:"6",orderNumber:"E",orderTime:"2026-09-07T00:00:00",quantity:1},
 ],[]),/UTC offset/);
 
+const noSelfReturn=allocateInventoryFifo([
+  {lineKey:"origin",orderId:"6",orderNumber:"F",orderTime:sale,quantity:1},
+  {lineKey:"next",orderId:"7",orderNumber:"G",orderTime:sale,quantity:1},
+],[lot({supplyKey:"returned",receiptId:9,quantity:1,excludedLineKey:"origin"})]);
+assert.equal(noSelfReturn[0]?.unmatchedQuantity,1);
+assert.equal(noSelfReturn[1]?.allocations[0]?.supplyKey,"returned");
+
 const volume=20_000;
 const many=allocateInventoryFifo(Array.from({length:volume},(_,index)=>({
   lineKey:`line-${index}`,orderId:String(index+1),orderNumber:String(index).padStart(8,"0"),

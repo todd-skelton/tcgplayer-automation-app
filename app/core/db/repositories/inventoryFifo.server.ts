@@ -94,17 +94,6 @@ async function saveLine(value:SavedLine,triggerReason:string,db:Queryable){
 async function saveLines(values:SavedLine[],triggerReason:string,db:Queryable){
   if(!values.length)return 0;
   const prepared=values.map((value)=>({...value,orderTime:value.orderTime.toISOString(),fingerprint:lineFingerprint(value)}));
-  await execute(`INSERT INTO inventory_fifo_lines
-      (seller_key,order_id,order_line_sku_id,sku,order_time,ordered_quantity,source_order_revision,state,hold_reason,
-       matched_quantity,unmatched_quantity,price_known_quantity,date_known_quantity,intake_market_total,weighted_days_held)
-    SELECT x."sellerKey",x."orderId"::bigint,x."skuId",x.sku,x."orderTime"::timestamptz,x."orderedQuantity",
-      x."sourceOrderRevision",x.state,x."holdReason",x."matchedQuantity",x."unmatchedQuantity",
-      x."priceKnownQuantity",x."dateKnownQuantity",x."intakeMarketTotal"::numeric,x."weightedDaysHeld"::numeric
-    FROM jsonb_to_recordset($1::jsonb) AS x("sellerKey" text,"orderId" text,"skuId" text,sku integer,
-      "orderTime" text,"orderedQuantity" integer,"sourceOrderRevision" integer,state text,"holdReason" text,
-      "matchedQuantity" integer,"unmatchedQuantity" integer,"priceKnownQuantity" integer,"dateKnownQuantity" integer,
-      "intakeMarketTotal" text,"weightedDaysHeld" text)
-    ON CONFLICT (order_id,order_line_sku_id) DO NOTHING`,[asJson(prepared)],db);
   const current=await query<{lineId:string;orderId:string;skuId:string;revisionNumber:number;fingerprint:string|null}>(`SELECT line.id::text AS "lineId",
       line.order_id::text AS "orderId",line.order_line_sku_id AS "skuId",COALESCE(revision.revision_number,0)::int AS "revisionNumber",
       revision.source_fingerprint AS fingerprint
@@ -169,6 +158,15 @@ export const inventoryFifoRepository={
         FROM seller_order_lines WHERE order_id=$1`,[orderId],db);
       const existing=await query<{skuId:string;sku:number|null}>(`SELECT order_line_sku_id AS "skuId",sku
         FROM inventory_fifo_lines WHERE order_id=$1`,[orderId],db);
+      const supported=current.map((line)=>({...line,sku:standardInventorySku(line.skuId)}))
+        .filter((line):line is typeof line&{sku:number}=>line.sku!==null);
+      if(supported.length)await execute(`INSERT INTO inventory_fifo_lines
+          (seller_key,order_id,order_line_sku_id,sku,order_time,ordered_quantity,source_order_revision,state,
+           matched_quantity,unmatched_quantity,price_known_quantity,date_known_quantity)
+        SELECT $1,$2::bigint,x."skuId",x.sku,$3::timestamptz,x.quantity,$4,'pending',0,x.quantity,0,0
+        FROM jsonb_to_recordset($5::jsonb) AS x("skuId" text,sku integer,quantity integer)
+        ON CONFLICT (order_id,order_line_sku_id) DO NOTHING`,
+        [order.sellerKey,orderId,order.orderTime,order.sourceRevision,asJson(supported)],db);
       const numeric=new Map<number,string>();
       for(const line of [...current,...existing]){
         const sku="sku" in line&&line.sku!==null?line.sku:standardInventorySku(line.skuId);
@@ -286,20 +284,20 @@ export const inventoryFifoRepository={
         SELECT 'receipt:'||receipt.receipt_id::text AS "supplyKey",
           receipt.receipt_id AS "receiptId",NULL::text AS "dispositionId",receipt.original_quantity AS quantity,
           opening.cutoff_at AS "availableAt",receipt.fifo_precedence AS "fifoPrecedence",
-          receipt.intake_at AS "intakeAt",receipt.market_value::text AS "marketValue"
+          receipt.intake_at AS "intakeAt",receipt.market_value::text AS "marketValue",NULL::text AS "excludedLineKey"
         FROM inventory_receipts receipt JOIN inventory_opening_balance_runs opening
           ON opening.id=receipt.opening_balance_run_id AND opening.status='applied'
         WHERE receipt.seller_key=$1 AND receipt.sku=$2 AND receipt.receipt_kind='opening_balance'
         UNION ALL
         SELECT 'receipt:'||receipt.receipt_id::text,receipt.receipt_id,NULL::text,link.planned_quantity,
-          link.live_at,receipt.fifo_precedence,receipt.intake_at,receipt.market_value::text
+          link.live_at,receipt.fifo_precedence,receipt.intake_at,receipt.market_value::text,NULL::text
         FROM inventory_receipts receipt JOIN inventory_publication_receipt_links link ON link.receipt_id=receipt.receipt_id
         WHERE receipt.seller_key=$1 AND link.target_seller_key=$1 AND receipt.sku=$2
           AND receipt.receipt_kind='received' AND link.live_at IS NOT NULL AND link.live_at>=$3
         UNION ALL
         SELECT 'restock:'||disposition.id::text||':'||mapping.source_supply_key,mapping.receipt_id,
           disposition.id::text,mapping.quantity,disposition.available_at,receipt.fifo_precedence,
-          receipt.intake_at,receipt.market_value::text
+          receipt.intake_at,receipt.market_value::text,disposition.order_id::text||':'||disposition.order_line_sku_id
         FROM inventory_stock_dispositions disposition
         JOIN inventory_stock_disposition_receipts mapping ON mapping.disposition_id=disposition.id
         JOIN inventory_receipts receipt ON receipt.receipt_id=mapping.receipt_id
@@ -311,10 +309,12 @@ export const inventoryFifoRepository={
             JOIN inventory_stock_disposition_corrections correction ON correction.disposition_id=disposition.id
             WHERE mapping.source_supply_key=raw_supply."supplyKey"
               AND disposition.seller_key=$1 AND disposition.sku=$2),0) AS quantity,
-          raw_supply."availableAt",raw_supply."fifoPrecedence",raw_supply."intakeAt",raw_supply."marketValue"
+          raw_supply."availableAt",raw_supply."fifoPrecedence",raw_supply."intakeAt",raw_supply."marketValue",
+          raw_supply."excludedLineKey"
         FROM raw_supply`,[queued.sellerKey,queued.sku,opening.cutoffAt],db);
       const supplies:FifoSupplyLot[]=lots.filter((row)=>row.quantity>0).map((row)=>({
         supplyKey:row.supplyKey,receiptId:row.receiptId,dispositionId:row.dispositionId,
+        excludedLineKey:row.excludedLineKey,
         quantity:row.quantity,availableAt:(row.availableAt as Date).toISOString(),fifoPrecedence:row.fifoPrecedence,
         intakeAt:row.intakeAt?(row.intakeAt as Date).toISOString():null,
         marketValueTenThousandths:row.marketValue===null?null:Math.round(Number(row.marketValue)*10_000),

@@ -2,6 +2,7 @@ export type FifoSupplyLot = {
   supplyKey: string;
   receiptId: number;
   dispositionId: string | null;
+  excludedLineKey?: string | null;
   quantity: number;
   availableAt: string;
   fifoPrecedence: 0 | 1;
@@ -116,8 +117,10 @@ export function allocateInventoryFifo(
     let dateKnownQuantity=0;
     let weightedDayQuantity=0;
     const allocations:FifoAllocation[]=[];
+    const excludedLots:FifoSupplyLot[]=[];
     while(needed>0&&eligible.size){
       const lot=eligible.peek()!;
+      if(lot.excludedLineKey===line.lineKey){excludedLots.push(eligible.pop()!);continue;}
       const available=remaining.get(lot.supplyKey)??0;
       if(available<=0){eligible.pop();continue;}
       const quantity=Math.min(available,needed);
@@ -138,6 +141,7 @@ export function allocateInventoryFifo(
       }
       if(available===quantity)eligible.pop();
     }
+    for(const lot of excludedLots)eligible.push(lot);
     const matchedQuantity=line.quantity-needed;
     return {
       lineKey:line.lineKey,allocations,requestedQuantity:line.quantity,matchedQuantity,

@@ -43,7 +43,7 @@ CREATE TABLE inventory_fifo_lines (
   order_time TIMESTAMPTZ NOT NULL,
   ordered_quantity INTEGER NOT NULL CHECK (ordered_quantity >= 0),
   source_order_revision INTEGER NOT NULL CHECK (source_order_revision > 0),
-  state TEXT NOT NULL CHECK (state IN ('allocated','partial','unmatched','held','unsupported','excluded_pre_cutoff','removed')),
+  state TEXT NOT NULL CHECK (state IN ('pending','allocated','partial','unmatched','held','unsupported','excluded_pre_cutoff','removed')),
   hold_reason TEXT,
   matched_quantity INTEGER NOT NULL CHECK (matched_quantity >= 0),
   unmatched_quantity INTEGER NOT NULL CHECK (unmatched_quantity >= 0),
@@ -123,13 +123,20 @@ CREATE TABLE inventory_fifo_replay_queue (
 CREATE INDEX inventory_fifo_replay_queue_pending_idx
   ON inventory_fifo_replay_queue (updated_at, seller_key, sku) WHERE status='pending';
 
--- Existing order history predates the replay queue. Seed each applied seller/SKU once;
+-- Existing order history predates the replay queue. Seed each seller/SKU once;
 -- later order, opening, publication, and disposition transactions maintain the queue.
+INSERT INTO inventory_fifo_lines
+  (seller_key,order_id,order_line_sku_id,sku,order_time,ordered_quantity,source_order_revision,state,
+   matched_quantity,unmatched_quantity,price_known_quantity,date_known_quantity)
+SELECT orders.seller_key,orders.id,line.sku_id,line.sku_id::bigint::integer,orders.order_time,
+  line.ordered_quantity,orders.source_revision,'pending',0,line.ordered_quantity,0,0
+FROM seller_orders orders JOIN seller_order_lines line ON line.order_id=orders.id
+WHERE line.sku_id~'^[1-9][0-9]{0,9}$' AND line.sku_id::bigint BETWEEN 1 AND 2147483647;
+
 INSERT INTO inventory_fifo_replay_queue (seller_key,sku,affected_from,status,generation)
 SELECT orders.seller_key,line.sku_id::bigint::integer,MIN(orders.order_time),'pending',1
 FROM seller_orders orders
 JOIN seller_order_lines line ON line.order_id=orders.id
-JOIN inventory_opening_balance_runs opening ON opening.seller_key=orders.seller_key AND opening.status='applied'
 WHERE line.sku_id~'^[1-9][0-9]{0,9}$'
   AND line.sku_id::bigint BETWEEN 1 AND 2147483647
 GROUP BY orders.seller_key,line.sku_id::bigint;
