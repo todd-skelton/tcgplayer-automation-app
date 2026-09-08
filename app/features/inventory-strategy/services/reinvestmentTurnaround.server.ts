@@ -29,8 +29,11 @@ function identity(value:unknown):string {
 }
 
 function publicationTranches(row:ReinvestmentPurchaseSourceRow):ReinvestmentPublicationTranche[] {
-  if (row.allocatedAmountCents===0) return [];
   const validLinkedQuantity=row.plannedQuantity!==null && row.plannedQuantity>0 && row.plannedQuantity<=row.originalQuantity;
+  if (row.allocatedAmountCents===0) return [{receiptId:row.receiptId,amountCents:0,quantity:row.originalQuantity,
+    ...(validLinkedQuantity && row.publicationItemId?{publicationItemId:row.publicationItemId}:{}),
+    ...(row.liveAt?{publishedAt:row.liveAt.toISOString()}:{}),publicationState:row.liveAt?"confirmed":validLinkedQuantity?"waiting":"unsupported",
+    ...(row.publicationIdentity?{publicationIdentity:identity(row.publicationIdentity)}:{})}];
   if (!validLinkedQuantity) return [{receiptId:row.receiptId,amountCents:row.allocatedAmountCents,
     quantity:row.originalQuantity,publicationState:"unsupported"}];
   const targets=[{id:"linked",weight:row.plannedQuantity!},

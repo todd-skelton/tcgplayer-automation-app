@@ -50,4 +50,44 @@ assert.equal(cents.currencies[0].completedDollarWeightedMeanDays,15);
 const beforeSale=allocateReinvestmentTurnaround({...input,asOf:"2025-12-31T00:00:00.000Z"});
 assert.equal(beforeSale.coverage.eligibleOrderCount,0);
 assert.equal(beforeSale.currencies.length,0);
+
+const openingOnly=allocateReinvestmentTurnaround({...input,sales:[],purchases:[],fundingAdjustments:[{
+  adjustmentReference:"opening",currency:"USD",adjustmentType:"opening_cash",amountCents:10_000,
+  effectiveAt:"2026-01-01",provenance:"actual",sourceIdentity:"opening-source"}]});
+assert.equal(openingOnly.currencies[0].outsideFundingSuppliedCents,10_000);
+assert.equal(openingOnly.currencies[0].outsideAvailableCents,10_000);
+
+const deficit=allocateReinvestmentTurnaround({...input,sales:[{...input.sales[0],amountCents:-10_000}],purchases:[],
+  fundingAdjustments:[{adjustmentReference:"outside",currency:"USD",adjustmentType:"external_contribution",amountCents:4_000,
+    effectiveAt:"2026-01-02",provenance:"actual",sourceIdentity:"outside-source"}]});
+assert.equal(deficit.currencies[0].outsideDeficitSettlementCents,4_000);
+assert.equal(deficit.currencies[0].outstandingNegativeDeficitCents,6_000);
+assert.equal(deficit.currencies[0].outsideAvailableCents,0);
+
+const outsidePurchase=allocateReinvestmentTurnaround({...input,sales:[{...input.sales[0],amountCents:-4_000}],
+  purchases:[{...input.purchases[0],totalAmountCents:3_000,purchasedAt:"2026-01-03",
+    tranches:[{...input.purchases[0].tranches[0],amountCents:3_000}]}],fundingAdjustments:[{
+      adjustmentReference:"outside",currency:"USD",adjustmentType:"external_contribution",amountCents:10_000,
+      effectiveAt:"2026-01-02",provenance:"actual",sourceIdentity:"outside-source"}]});
+assert.equal(outsidePurchase.currencies[0].outsideDeficitSettlementCents,4_000);
+assert.equal(outsidePurchase.currencies[0].outsideFundingUsedCents,3_000);
+assert.equal(outsidePurchase.currencies[0].outsideAvailableCents,3_000);
+
+const outsideReserve=allocateReinvestmentTurnaround({...input,sales:[],purchases:[],fundingAdjustments:[
+  {adjustmentReference:"outside",currency:"USD",adjustmentType:"external_contribution",amountCents:10_000,
+    effectiveAt:"2026-01-01",provenance:"actual",sourceIdentity:"outside-source"},
+  {adjustmentReference:"reserve",currency:"USD",adjustmentType:"reserve",amountCents:4_000,
+    effectiveAt:"2026-01-02",provenance:"actual",sourceIdentity:"reserve-source"},
+  {adjustmentReference:"release",currency:"USD",adjustmentType:"reserve_release",amountCents:2_000,
+    effectiveAt:"2026-01-03",provenance:"actual",sourceIdentity:"release-source"},
+]});
+assert.equal(outsideReserve.currencies[0].outsideReservedOrWithdrawnCents,2_000);
+assert.equal(outsideReserve.currencies[0].outsideAvailableCents,8_000);
+
+const zeroCost=allocateReinvestmentTurnaround({...input,sales:[],purchases:[{...input.purchases[0],totalAmountCents:0,
+  tranches:[{...input.purchases[0].tranches[0],amountCents:0}]}]});
+assert.equal(zeroCost.coverage.purchaseCount,1);
+assert.equal(zeroCost.coverage.costedReceiptCount,1);
+assert.equal(zeroCost.samples.length,0);
+assert.equal(zeroCost.excluded.some((value)=>value.reason.includes("after the effective")),false);
 console.log("PASS pooled reinvestment attribution preserves cents, timing, partial publication, and rebuild identity");

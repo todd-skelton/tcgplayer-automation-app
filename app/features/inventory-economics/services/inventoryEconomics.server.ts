@@ -151,7 +151,7 @@ export async function loadInventoryEconomicsWorkspace(sellerKey: string): Promis
 
 export interface CompleteReusableProceeds {
   sales:Array<{orderNumber:string;soldAt:string;currency:string;amountCents:number;
-    provenance:"actual"|"estimated";sourceIdentity:string}>;
+    provenance:"actual"|"estimated";sourceIdentity:string;sourceIdentities:string[]}>;
   unknownProceedsOrderCount:number;
   unknownProceedsSoldAt:string[];
   sourceEvidenceIdentities:string[];
@@ -171,8 +171,14 @@ export async function loadCompleteReusableProceeds(sellerKey:string,executor?:Qu
   let unknownProceedsOrderCount=0;
   for (let index=0;index<summaries.length;index+=1) {
     const summary=summaries[index]; const order=evidence.orders[index];
-    const sourceIdentity=createHash("sha256").update(stableJson({order:order.sourceFingerprint,
-      financial:financialFingerprint(order),cash:summary.reusableCashCents??null,proceeds:summary.proceedsCoverage,
+    const expenseIdentities=evidence.relevantOrderExpenses.filter((expense)=>expense.currency===order.currency &&
+      expense.orderNumbers.includes(order.orderNumber)).map((expense)=>expense.evidenceIdentity);
+    const postageIdentities=evidence.postage.filter((purchase)=>purchase.orderNumbers.includes(order.orderNumber))
+      .flatMap((purchase)=>[purchase.providerIdentity,
+        createHash("sha256").update(stableJson(purchase)).digest("hex")]);
+    const sourceIdentities=[order.sourceFingerprint,financialFingerprint(order),...expenseIdentities,...postageIdentities].sort();
+    const sourceIdentity=createHash("sha256").update(stableJson({sources:sourceIdentities,
+      cash:summary.reusableCashCents??null,proceeds:summary.proceedsCoverage,
       expenses:summary.expenseCoverage,missing:summary.missing})).digest("hex");
     sourceEvidenceIdentities.push(sourceIdentity);
     if (summary.reusableCashCents===undefined) { unknownProceedsOrderCount+=1;
@@ -180,7 +186,7 @@ export async function loadCompleteReusableProceeds(sellerKey:string,executor?:Qu
     sales.push({orderNumber:summary.orderNumber,soldAt:order.orderTime.toISOString(),currency:summary.currency,
       amountCents:summary.reusableCashCents,
       provenance:summary.proceedsCoverage==="estimated"||summary.expenseCoverage==="estimated"?"estimated":"actual",
-      sourceIdentity});
+      sourceIdentity,sourceIdentities});
   }
   return {sales,unknownProceedsOrderCount,unknownProceedsSoldAt,sourceEvidenceIdentities:sourceEvidenceIdentities.sort()};
 }

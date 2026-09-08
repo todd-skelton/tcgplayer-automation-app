@@ -51,8 +51,17 @@ export function ReinvestmentTurnaround({report,error,loading=false}:{
               reserved/withdrawn {money(summary.reservedOrWithdrawnCents,summary.currency)}; outside funding used {money(summary.outsideFundingUsedCents,summary.currency)};
               unresolved purchase cost {money(summary.unresolvedPurchaseCostCents,summary.currency)}.
             </Typography>
+            <Typography color="text.secondary" variant="body2">
+              Outside funding supplied {money(summary.outsideFundingSuppliedCents,summary.currency)};
+              outside cash used to settle deficits {money(summary.outsideDeficitSettlementCents,summary.currency)};
+              outside cash available {money(summary.outsideAvailableCents,summary.currency)};
+              held/withdrawn {money(summary.outsideReservedOrWithdrawnCents,summary.currency)}. Outstanding negative deficit {money(summary.outstandingNegativeDeficitCents,summary.currency)};
+              unsupported funding adjustments {money(summary.unsupportedFundingAdjustmentCents,summary.currency)}.
+            </Typography>
           </Paper>)}
         </Stack>
+        <Typography variant="body2" sx={{mb:2}}>Known replacement purchases: {report.coverage.purchaseCount}; costed received lots: {report.coverage.costedReceiptCount};
+          unknown-cost received lots: {report.coverage.unknownCostReceiptCount}.</Typography>
         <Paper variant="outlined" sx={{overflowX:"auto",mb:2}}>
           <Table size="small" aria-label="Reinvestment attribution samples">
             <TableHead><TableRow><TableCell>Sale → purchase</TableCell><TableCell>Amount</TableCell><TableCell>State</TableCell>

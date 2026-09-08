@@ -31,6 +31,7 @@ import "../features/inventory-strategy/services/inventoryStrategy.test";
 import "../features/inventory-strategy/domain/allocateReinvestmentTurnaround.test";
 import "../features/inventory-strategy/components/ReinvestmentTurnaround.test";
 import "../features/inventory-strategy/routes/api.reinvestment-turnaround.test";
+import "../features/inventory-strategy/services/reinvestmentTurnaround.server.test";
 import "../features/inventory-strategy/services/inventorySellingHistory.test";
 import "../features/inventory-strategy/services/inventorySellingHistory.server.test";
 import "../features/inventory-strategy/components/InventorySellingHistory.test";

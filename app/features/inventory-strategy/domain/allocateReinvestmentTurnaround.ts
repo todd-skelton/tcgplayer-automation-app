@@ -20,6 +20,7 @@ interface MoneyBucket {
   soldAt?: string;
   provenance: "actual" | "estimated";
   sourceIdentity: string;
+  sourceIdentities: string[];
 }
 
 interface CurrencyState {
@@ -32,6 +33,9 @@ interface CurrencyState {
   reservedOrWithdrawnCents: number;
   unsupportedFundingAdjustmentCents: number;
   outsideFundingUsedCents: number;
+  outsideFundingSuppliedCents: number;
+  outsideDeficitSettlementCents: number;
+  outsideReservedOrWithdrawnCents: number;
   unresolvedPurchaseCostCents: number;
 }
 
@@ -95,9 +99,10 @@ function sortProceeds(buckets:MoneyBucket[]):void {
   buckets.sort((left,right)=>instant(left.soldAt!,"Sale time")-instant(right.soldAt!,"Sale time")||left.id.localeCompare(right.id));
 }
 
-function settleDeficit(state:CurrencyState,amountCents:number):number {
+function settleDeficit(state:CurrencyState,amountCents:number,pool:"proceeds"|"outside"):number {
   const settled=Math.min(state.negativeDeficitCents,amountCents);
   state.negativeDeficitCents-=settled;
+  if (pool==="outside") state.outsideDeficitSettlementCents+=settled;
   return amountCents-settled;
 }
 
@@ -114,6 +119,16 @@ function demandsForPurchase(purchase: ReplacementPurchase, asOf: string): Purcha
   const tranches = splitTranches(purchase);
   const knownFunding = [...purchase.funding].sort((left,right)=>
     left.effectiveAt.localeCompare(right.effectiveAt) || left.adjustmentReference.localeCompare(right.adjustmentReference));
+  if (purchase.totalAmountCents===0) {
+    const funding=knownFunding[0];
+    if (funding) return tranches.map((tranche)=>({purchase,tranche,fundingAt:dateStart(funding.effectiveAt),
+      timingBasis:"known_funding",amountCents:0,fundingProvenance:funding.provenance,
+      fundingAdjustmentReference:funding.adjustmentReference,fundingSourceIdentity:funding.sourceIdentity}));
+    if (purchase.purchasedAt) return tranches.map((tranche)=>({purchase,tranche,fundingAt:dateStart(purchase.purchasedAt!),
+      timingBasis:"known_purchase",amountCents:0,fundingProvenance:purchase.costProvenance}));
+    return tranches.map((tranche)=>({purchase,tranche,fundingAt:tranche.publishedAt??asOf,
+      timingBasis:"sale_to_publication_inference",amountCents:0,fundingProvenance:"inferred"}));
+  }
   if (knownFunding.length) {
     let remainingCost=purchase.totalAmountCents;
     const remainingTrancheCents=tranches.map((tranche)=>tranche.amountCents);
@@ -173,7 +188,12 @@ function summary(currency: string,state: CurrencyState,samples: ReinvestmentTurn
   return {currency,eligibleProceedsCents:state.eligibleProceedsCents,negativeProceedsCents:state.negativeProceedsCents,
     completedCents,waitingCents,unallocatedProceedsCents:available,reservedOrWithdrawnCents:state.reservedOrWithdrawnCents,
     unsupportedFundingAdjustmentCents:state.unsupportedFundingAdjustmentCents,
-    outsideFundingUsedCents:state.outsideFundingUsedCents,unresolvedPurchaseCostCents:state.unresolvedPurchaseCostCents,
+    outsideFundingUsedCents:state.outsideFundingUsedCents,outsideFundingSuppliedCents:state.outsideFundingSuppliedCents,
+    outsideDeficitSettlementCents:state.outsideDeficitSettlementCents,
+    outsideAvailableCents:state.outside.reduce((sum,bucket)=>sum+bucket.amountCents,0),
+    outsideReservedOrWithdrawnCents:state.outsideReservedOrWithdrawnCents,
+    outstandingNegativeDeficitCents:state.negativeDeficitCents,
+    unresolvedPurchaseCostCents:state.unresolvedPurchaseCostCents,
     reinvestedPercent:state.eligibleProceedsCents?reinvested/state.eligibleProceedsCents*100:null,
     completionCoveragePercent:reinvested?completedCents/reinvested*100:null,
     completedDollarWeightedMeanDays:weightedDays(completed,"turnaroundDays"),
@@ -190,7 +210,8 @@ export function allocateReinvestmentTurnaround(input: ReinvestmentTurnaroundInpu
   const states=new Map<string,CurrencyState>();
   const getState=(currency:string)=>{ let state=states.get(currency); if (!state) { state={proceeds:[],outside:[],reserves:[],eligibleProceedsCents:0,
     negativeProceedsCents:0,negativeDeficitCents:0,reservedOrWithdrawnCents:0,unsupportedFundingAdjustmentCents:0,
-    outsideFundingUsedCents:0,unresolvedPurchaseCostCents:0}; states.set(currency,state); } return state; };
+    outsideFundingUsedCents:0,outsideFundingSuppliedCents:0,outsideDeficitSettlementCents:0,
+    outsideReservedOrWithdrawnCents:0,unresolvedPurchaseCostCents:0}; states.set(currency,state); } return state; };
   const samples:ReinvestmentTurnaroundSample[]=[];
   const samplesByKey=new Map<string,ReinvestmentTurnaroundSample>();
   const events:Array<{at:string;rank:number;id:string;run:()=>void}>=[];
@@ -202,7 +223,7 @@ export function allocateReinvestmentTurnaround(input: ReinvestmentTurnaroundInpu
       instant(publishedAt,"Publication time")>=instant(bucket.soldAt!,"Sale time");
     const end=completed?instant(publishedAt!,"Publication time"):asOfMilliseconds;
     const elapsed=Math.max(0,(end-instant(bucket.soldAt!,"Sale time"))/DAY_MILLISECONDS);
-    const sourceIdentities=[bucket.sourceIdentity,purchase.costSourceIdentity,
+    const sourceIdentities=[...bucket.sourceIdentities,purchase.costSourceIdentity,
       ...(demand.tranche.publicationIdentity?[demand.tranche.publicationIdentity]:[]),
       ...(demand.fundingSourceIdentity?[demand.fundingSourceIdentity]:[])].sort();
     const sampleKey=createHash("sha256").update(stableJson({rule:REINVESTMENT_TURNAROUND_RULE_VERSION,currency:purchase.currency,
@@ -235,9 +256,11 @@ export function allocateReinvestmentTurnaround(input: ReinvestmentTurnaroundInpu
     const state=getState(adjustment.currency);
     if (adjustment.adjustmentType==="opening_cash" || adjustment.adjustmentType==="external_contribution") {
       events.push({at,rank:0,id:`adjustment:${adjustment.adjustmentReference}`,run:()=>{
-        const amountCents=settleDeficit(state,adjustment.amountCents);
+        state.outsideFundingSuppliedCents+=adjustment.amountCents;
+        const amountCents=settleDeficit(state,adjustment.amountCents,"outside");
         if (amountCents) state.outside.push({id:adjustment.adjustmentReference,
-          amountCents,provenance:adjustment.provenance,sourceIdentity:adjustment.sourceIdentity});
+          amountCents,provenance:adjustment.provenance,sourceIdentity:adjustment.sourceIdentity,
+          sourceIdentities:[adjustment.sourceIdentity]});
       }});
     } else if (adjustment.adjustmentType==="reserve_release") {
       events.push({at,rank:0,id:`adjustment:${adjustment.adjustmentReference}`,run:()=>{
@@ -245,10 +268,11 @@ export function allocateReinvestmentTurnaround(input: ReinvestmentTurnaroundInpu
         while (remaining>0 && state.reserves.length) {
           const held=state.reserves[0]; const amountCents=Math.min(remaining,held.amountCents);
           const target=held.pool==="proceeds"?state.proceeds:state.outside;
-          const releasedCents=settleDeficit(state,amountCents);
+          const releasedCents=settleDeficit(state,amountCents,held.pool);
           if (releasedCents) target.push({id:held.id,amountCents:releasedCents,soldAt:held.soldAt,
-            provenance:held.provenance,sourceIdentity:held.sourceIdentity});
+            provenance:held.provenance,sourceIdentity:held.sourceIdentity,sourceIdentities:held.sourceIdentities});
           held.amountCents-=amountCents; remaining-=amountCents; state.reservedOrWithdrawnCents-=amountCents;
+          if (held.pool==="outside") state.outsideReservedOrWithdrawnCents-=amountCents;
           if (held.amountCents===0) state.reserves.shift();
         }
         sortProceeds(state.proceeds);
@@ -261,6 +285,7 @@ export function allocateReinvestmentTurnaround(input: ReinvestmentTurnaroundInpu
         const fromOutside=consume(state.outside,adjustment.amountCents-proceedsCents);
         const removedCents=proceedsCents+fromOutside.reduce((sum,value)=>sum+value.amountCents,0);
         state.reservedOrWithdrawnCents+=removedCents;
+        state.outsideReservedOrWithdrawnCents+=fromOutside.reduce((sum,value)=>sum+value.amountCents,0);
         state.unsupportedFundingAdjustmentCents+=adjustment.amountCents-removedCents;
         if (adjustment.adjustmentType==="reserve") {
           state.reserves.push(...fromProceeds.map(({bucket,amountCents})=>({...bucket,amountCents,pool:"proceeds" as const})),
@@ -278,18 +303,22 @@ export function allocateReinvestmentTurnaround(input: ReinvestmentTurnaroundInpu
     const state=getState(sale.currency);
     events.push({at:sale.soldAt,rank:3,id:`sale:${sale.orderNumber}`,run:()=>{
       if (sale.amountCents>0) { state.eligibleProceedsCents+=sale.amountCents;
-        const amountCents=settleDeficit(state,sale.amountCents);
+        const amountCents=settleDeficit(state,sale.amountCents,"proceeds");
         if (amountCents) state.proceeds.push({id:sale.orderNumber,amountCents,soldAt:sale.soldAt,
-          provenance:sale.provenance,sourceIdentity:sale.sourceIdentity}); }
+          provenance:sale.provenance,sourceIdentity:sale.sourceIdentity,
+          sourceIdentities:sale.sourceIdentities??[sale.sourceIdentity]}); }
       else if (sale.amountCents<0) { const reduction=-sale.amountCents; state.negativeProceedsCents+=reduction;
         const consumed=consume(state.proceeds,reduction).reduce((sum,value)=>sum+value.amountCents,0);
         let remaining=reduction-consumed;
         while (remaining>0 && state.reserves.length) {
           const held=state.reserves[0]; const amountCents=Math.min(remaining,held.amountCents);
           held.amountCents-=amountCents; remaining-=amountCents; state.reservedOrWithdrawnCents-=amountCents;
+          if (held.pool==="outside") { state.outsideReservedOrWithdrawnCents-=amountCents;
+            state.outsideDeficitSettlementCents+=amountCents; }
           if (held.amountCents===0) state.reserves.shift();
         }
         const outside=consume(state.outside,remaining).reduce((sum,value)=>sum+value.amountCents,0);
+        state.outsideDeficitSettlementCents+=outside;
         state.negativeDeficitCents+=remaining-outside; }
     }});
   }

@@ -66,7 +66,12 @@ export const inventoryReinvestmentRepository = {
         LEFT JOIN inventory_publication_receipt_links link ON link.receipt_id=receipt.receipt_id
           AND link.target_seller_key=series.seller_key
         LEFT JOIN inventory_publication_items item ON item.id=link.publication_item_id
-        WHERE series.seller_key=$1
+        WHERE series.seller_key=$1 AND receipt.receipt_kind='received'
+          AND NOT EXISTS (
+            SELECT 1 FROM inventory_purchase_cost_allocations invalid_allocation
+            JOIN inventory_receipts invalid_receipt ON invalid_receipt.receipt_id=invalid_allocation.receipt_id
+            WHERE invalid_allocation.entry_id=current.id AND invalid_receipt.receipt_kind<>'received'
+          )
         ORDER BY series.currency,current.purchased_at NULLS LAST,series.purchase_reference,allocation.receipt_id
         LIMIT 10001`,[seller],executor);
     const loadFunding=()=>query<ReinvestmentFundingSourceRow>(`WITH current_funding AS (
@@ -86,7 +91,11 @@ export const inventoryReinvestmentRepository = {
           SELECT allocation.receipt_id FROM inventory_purchase_cost_series series
           JOIN current_cost current ON current.series_id=series.id
           JOIN inventory_purchase_cost_allocations allocation ON allocation.entry_id=current.id
-          WHERE series.seller_key=$1
+          WHERE series.seller_key=$1 AND NOT EXISTS (
+            SELECT 1 FROM inventory_purchase_cost_allocations invalid_allocation
+            JOIN inventory_receipts invalid_receipt ON invalid_receipt.receipt_id=invalid_allocation.receipt_id
+            WHERE invalid_allocation.entry_id=current.id AND invalid_receipt.receipt_kind<>'received'
+          )
         ) SELECT jsonb_build_object('receiptId',receipt.receipt_id,'quantity',receipt.original_quantity,
             'sellerKey',receipt.seller_key,'intakeAt',receipt.intake_at,'recordedAt',receipt.recorded_at,
             'sourceEvidence',receipt.source_evidence,'intendedSeller',(
@@ -96,6 +105,7 @@ export const inventoryReinvestmentRepository = {
           FROM inventory_receipts receipt
           WHERE (receipt.seller_key=$1 OR EXISTS (SELECT 1 FROM inventory_publication_receipt_links intended
               WHERE intended.receipt_id=receipt.receipt_id AND intended.target_seller_key=$1))
+            AND receipt.receipt_kind='received'
             AND NOT EXISTS (SELECT 1 FROM costed WHERE costed.receipt_id=receipt.receipt_id)
           ORDER BY receipt.receipt_id LIMIT 10001`,[seller],executor);
     const [purchaseRows,fundingRows,unknownCostRows]=executor

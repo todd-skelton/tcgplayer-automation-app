@@ -11,6 +11,7 @@ export interface ReusableSaleProceeds {
   amountCents: number;
   provenance: ReinvestmentMoneyProvenance;
   sourceIdentity: string;
+  sourceIdentities?: string[];
 }
 
 export interface ReinvestmentPublicationTranche {
@@ -95,6 +96,11 @@ export interface ReinvestmentCurrencySummary {
   reservedOrWithdrawnCents: number;
   unsupportedFundingAdjustmentCents: number;
   outsideFundingUsedCents: number;
+  outsideFundingSuppliedCents: number;
+  outsideDeficitSettlementCents: number;
+  outsideAvailableCents: number;
+  outsideReservedOrWithdrawnCents: number;
+  outstandingNegativeDeficitCents: number;
   unresolvedPurchaseCostCents: number;
   reinvestedPercent: number | null;
   completionCoveragePercent: number | null;
