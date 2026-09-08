@@ -43,6 +43,7 @@ import "../features/shipping-export/components/steps/PullSheetStep.test";
 import "../features/shipping-export/components/steps/ApplyTrackingStep.test";
 import "../features/shipping-export/components/steps/NotifyStep.test";
 import "../features/shipping-export/components/OrderMarketSummary.test";
+import "../features/shipping-export/components/IntakeHistorySummary.test";
 import "../features/shipping-export/routes/api.shipping-export-batch-labels.test";
 import "../features/shipping-export/routes/api.shipping-export-packing-slips-export.test";
 import "../features/shipping-export/routes/api.shipping-export-postage-lookups.test";
@@ -51,6 +52,7 @@ import "../features/shipping-export/routes/api.shipping-export-pull-sheet-export
 import "../features/shipping-export/routes/api.shipping-export-tcgplayer-tracking.test";
 import "../features/shipping-export/routes/api.shipping-export-tcgplayer-shipped-messages.test";
 import "../features/shipping-export/routes/api.shipping-export-tcgplayer-orders.test";
+import "../features/shipping-export/routes/api.shipping-export-intake-history.test";
 import "../features/shipping-export/services/easyPostPostage.server.test";
 import "../features/shipping-export/services/shippingExportUtils.test";
 import "../features/shipping-export/services/savedShippingWorkflow.test";
@@ -60,6 +62,9 @@ import "../features/shipping-export/services/tcgplayerShippedMessages.server.tes
 import "../features/shipping-export/services/tcgplayerSellerOrders.server.test";
 import "../features/shipping-export/services/orderMarketPrices.server.test";
 import "../features/shipping-export/services/orderMarketComparison.test";
+import "../features/shipping-export/services/orderIntakeComparison.test";
+import "../features/shipping-export/services/shippingIntakeHistory.server.test";
+import "../features/shipping-export/services/shippingIntakeHistory.test";
 import "../features/pull-sheet/utils/pullSheetItems.test";
 import "../features/product-price-matrix/services/productPriceMatrix.server.test";
 import "../features/product-price-matrix/services/conditionLadder.test";

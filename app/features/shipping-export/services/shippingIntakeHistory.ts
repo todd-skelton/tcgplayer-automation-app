@@ -1,0 +1,39 @@
+import { readJsonResponse } from "~/core/utils/readJsonResponse";
+import type {
+  ShippingIntakeHistoryRequestOrder,
+  ShippingIntakeHistoryResponse,
+  TcgPlayerShippingOrder,
+} from "../types/shippingExport";
+
+function requestOrder(order: TcgPlayerShippingOrder): ShippingIntakeHistoryRequestOrder {
+  return {
+    orderNumber: order["Order #"],
+    orderDate: order["Order Date"],
+    itemCount: order["Item Count"],
+    products: (order.products ?? []).map((line) => ({
+      quantity: line.quantity,
+      ...(line.skuId === undefined ? {} : { skuId: line.skuId }),
+      ...(line.inventorySkuId === undefined ? {} : { inventorySkuId: line.inventorySkuId }),
+    })),
+  };
+}
+
+export function withoutShippingIntakeHistory(orders: TcgPlayerShippingOrder[]): TcgPlayerShippingOrder[] {
+  return orders.map(({ intakeHistory: _history, ...order }) => order);
+}
+
+export async function refreshShippingIntakeHistory(
+  orders: TcgPlayerShippingOrder[],
+  sellerKey: string,
+  fetcher: typeof fetch = fetch,
+): Promise<TcgPlayerShippingOrder[]> {
+  if (!orders.length) return orders;
+  const response = await fetcher("/api/shipping-export/intake-history", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sellerKey, orders: orders.map(requestOrder) }),
+  });
+  const payload = await readJsonResponse<ShippingIntakeHistoryResponse>(response, "Failed to refresh intake history.");
+  const byOrder = new Map(payload.histories.map((history) => [history.orderNumber, history]));
+  return orders.map((order) => ({ ...order, intakeHistory: byOrder.get(order["Order #"]) }));
+}

@@ -40,6 +40,7 @@ import {
 } from "../../services/orderMarketComparison";
 import { getOrderNumbersForShipmentReference } from "../../services/shippingExportUtils";
 import { MarketDeltaChip } from "../MarketDeltaChip";
+import { IntakeHistorySummary } from "../IntakeHistorySummary";
 import type {
   PackPullSheetLoadStatus,
   PackPullSheetShipmentMatch,
@@ -500,6 +501,10 @@ export function PackStep({
                           </Box>
                         </Box>
 
+                        <Box sx={{ minWidth: 260, flex: "1 1 260px" }}>
+                          <IntakeHistorySummary sourceOrders={mergedOrders} label="Shipment" compact />
+                        </Box>
+
                         <Box sx={{ minWidth: 128 }}>
                           <Typography variant="body2" color="text.secondary">
                             Method
@@ -642,6 +647,7 @@ export function PackStep({
                                     items={orderPullSheetItems}
                                     priceBadgesBySku={priceBadgesBySku}
                                   />
+                                  <IntakeHistorySummary sourceOrders={[order]} label="Order" compact />
                                 </Stack>
                               </Box>
                             ),
@@ -690,6 +696,7 @@ export function PackStep({
                                   </Stack>
                                 </Stack>
                                 {renderFallbackPullSheetTable(fallbackRows)}
+                                <IntakeHistorySummary sourceOrders={[order]} label="Order" compact />
                               </Stack>
                             </Box>
                           ))}
@@ -719,6 +726,7 @@ export function PackStep({
                 <TableCell align="right">Items</TableCell>
                 <TableCell align="right">Value</TableCell>
                 <TableCell>vs Market</TableCell>
+                <TableCell>Intake history</TableCell>
                 <TableCell>Postage</TableCell>
               </TableRow>
             </TableHead>
@@ -791,6 +799,9 @@ export function PackStep({
                     </TableCell>
                     <TableCell>
                       <MarketDeltaChip comparison={compareOrdersToMarket(rowOrders)} />
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 280 }}>
+                      <IntakeHistorySummary sourceOrders={rowOrders} label="Shipment" compact />
                     </TableCell>
                     <TableCell>
                       {purchase ? (

@@ -32,6 +32,7 @@ import type {
 import type { EasyPostEnvironmentStatus } from "../../types/shippingExport";
 import { compareShipmentToMarket } from "../../services/orderMarketComparison";
 import { MarketDeltaChip } from "../MarketDeltaChip";
+import { IntakeHistorySummary } from "../IntakeHistorySummary";
 
 interface BuyPostageStepProps {
   config: ShippingExportConfig;
@@ -183,6 +184,8 @@ export function BuyPostageStep({
                 shipmentToOrderMap,
                 shipment.reference,
               );
+              const shipmentOrderNumbers = new Set(shipmentToOrderMap[shipment.reference] ?? [shipment.reference]);
+              const shipmentSourceOrders = sourceOrders.filter((sourceOrder) => shipmentOrderNumbers.has(sourceOrder["Order #"]));
               const purchaseEntry = outboundPurchaseResultsByReference[shipment.reference];
               const returnPurchaseEntry = returnPurchaseResultsByReference[shipment.reference];
               const isBuyingOutbound = purchasingActionKey === `outbound:${shipment.reference}`;
@@ -214,6 +217,9 @@ export function BuyPostageStep({
                       </Typography>
                       <MarketDeltaChip comparison={marketComparison} hideWhenUnavailable />
                     </Stack>
+                    <Box sx={{ mt: 1 }}>
+                      <IntakeHistorySummary sourceOrders={shipmentSourceOrders} label="Shipment" compact />
+                    </Box>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">{shipment.service}</Typography>

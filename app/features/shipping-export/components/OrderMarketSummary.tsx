@@ -14,6 +14,7 @@ import {
   getMarketDeltaPercent,
 } from "../services/orderMarketComparison";
 import type { TcgPlayerShippingOrder } from "../types/shippingExport";
+import { IntakeHistorySummary } from "./IntakeHistorySummary";
 
 interface OrderMarketSummaryProps {
   sourceOrders: TcgPlayerShippingOrder[];
@@ -124,6 +125,9 @@ export function OrderMarketSummary({ sourceOrders, shipmentCount }: OrderMarketS
           detailColor={TONE_TEXT_COLORS[tone]}
         />
       </Stack>
+      <Box sx={{ mt: 1.5, pt: 1.5, borderTop: 1, borderColor: "divider" }}>
+        <IntakeHistorySummary sourceOrders={sourceOrders} label="Order load" />
+      </Box>
     </Paper>
   );
 }
