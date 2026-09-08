@@ -7,6 +7,7 @@ const evidence: ForecastEvaluationEvidence = {
   evaluatedAt: "2026-09-01T00:00:00.000Z",
   orderHistory: {
     runId: "1", status: "complete", coveredFrom: "2026-01-01T00:00:00.000Z",
+    coveredThrough: "2026-09-01T00:00:00.000Z",
     cutoffAt: "2026-09-01T00:00:00.000Z", gaps: [],
   },
   spells: [], orderRevisions: [], exposure: [], fifo: [],
@@ -26,5 +27,21 @@ assert.equal(first?.status, "abstained");
 assert.equal(evidenceReads, 1, "unchanged frozen evidence is evaluated once");
 assert.equal(saves, 1, "unchanged frozen evidence is persisted once");
 assert.equal(await loadForecastGrading("", source), null);
+
+let tornMaterial = "material-before";
+let tornSaves = 0;
+await assert.rejects(
+  loadForecastGrading("torn-seller", {
+    findEvidenceVersion: async () => "frozen-source-torn",
+    findMaterialEvidenceVersion: async () => tornMaterial,
+    findEvidence: async () => {
+      tornMaterial = "material-after";
+      return { ...evidence, sellerKey: "torn-seller" };
+    },
+    save: async () => { tornSaves += 1; return { id: "2", created: true }; },
+  }),
+  /changed while its snapshot was being read/,
+);
+assert.equal(tornSaves, 0, "a torn evidence/material read is never persisted");
 
 console.log("PASS forecast evaluation loads and persists one result per frozen evidence version");

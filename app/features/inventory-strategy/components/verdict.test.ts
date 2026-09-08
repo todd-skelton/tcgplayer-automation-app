@@ -49,9 +49,14 @@ assert.ok(
   "the return grows the cost basis to the value over the median wait",
 );
 
-const report = (models: ForecastEvaluationReport["models"]): ForecastEvaluationReport => ({
+const report = (
+  models: ForecastEvaluationReport["models"],
+  pairedComparisons: ForecastEvaluationReport["pairedComparisons"] = [],
+): ForecastEvaluationReport => ({
   validationCutoff: "2026-09-20T00:00:00.000Z",
+  policy: { minimumPairedValidationCount: 20 } as ForecastEvaluationReport["policy"],
   models,
+  pairedComparisons,
 } as ForecastEvaluationReport);
 
 assert.deepEqual(gradingStatus(undefined), { graded: false, gradableAt: null });
@@ -66,10 +71,17 @@ const graded = gradingStatus(
   report([
     { family: "curve", version: "curve:v1", training: {} as never, validation: { count: 10, soldShare: 0.25, expectedShare: 0.3, brier: 0.2, calibrationError: 0.05 }, reservedCount: 0 },
     { family: "buyer-choice", version: "choice:v1", training: {} as never, validation: { count: 8, soldShare: 0.25, expectedShare: 0.3, brier: 0.15, calibrationError: 0.05 }, reservedCount: 0 },
-  ]),
+  ], [{ left: "curve:v1", right: "choice:v1", validationCount: 20, leftBrier: 0.2, rightBrier: 0.15 }]),
 );
 assert.ok(graded.graded);
 assert.equal(graded.label, "buyer-choice (choice:v1)", "the lowest Brier score leads");
 assert.ok(Math.abs(graded.baseRate - 0.1875) < 1e-12);
+
+const unpaired = gradingStatus(report([
+  { family: "curve", version: "curve:v1", training: {} as never, validation: { count: 100, soldShare: 0.5, expectedShare: 0.5, brier: 0.2, calibrationError: 0 }, reservedCount: 0 },
+  { family: "buyer-choice", version: "buyer:tiny", training: {} as never, validation: { count: 1, soldShare: 1, expectedShare: 1, brier: 0.1, calibrationError: 0 }, reservedCount: 0 },
+], [{ left: "curve:v1", right: "buyer:tiny", validationCount: 1, leftBrier: 0.4, rightBrier: 0.1 }]));
+assert.equal(unpaired.graded, false, "an undersized paired cohort cannot select a cross-model winner");
+assert.equal(unpaired.graded ? false : unpaired.unpairedModels, true);
 
 console.log("PASS strategy verdict ranks hurdles and reads the grading status");

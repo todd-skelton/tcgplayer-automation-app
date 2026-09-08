@@ -46,6 +46,7 @@ function baseEvidence(spells: PublicationForecastSpell[]): ForecastEvaluationEvi
     const published = Date.parse(item.publishedAt);
     return Array.from({ length: 4 }, (_, index) => ({
       observationId: `${item.publicationItemId}:${index}`,
+      publicationItemId: item.publicationItemId,
       sku: item.sku,
       observedAt: new Date(published + (index + 1) * 6 * DAY).toISOString(),
       quantity: item.quantity,
@@ -53,7 +54,7 @@ function baseEvidence(spells: PublicationForecastSpell[]): ForecastEvaluationEvi
   });
   return {
     sellerKey: "synthetic-seller", evaluatedAt: new Date(evaluatedAt).toISOString(),
-    orderHistory: { runId: "1", status: "complete", coveredFrom: iso(365), cutoffAt: new Date(evaluatedAt).toISOString(), gaps: [] },
+    orderHistory: { runId: "1", status: "complete", coveredFrom: iso(365), coveredThrough: iso(0), cutoffAt: iso(0), gaps: [] },
     spells, orderRevisions: [], exposure,
     fifo: [...new Set(spells.map((item) => item.sku))].map((sku) => ({ sku, state: "settled", revisionIds: [`fifo:${sku}:1`], latestRecordedAt: iso(30) })),
   };
@@ -70,12 +71,26 @@ evidence.orderRevisions.push(
   { orderId: "older-stock-order", orderNumber: "O1", revision: 1, observedAt: iso(74), orderTime: iso(75), orderTimeEvidence: "detail_canonical", lifecycle: "completed_paid", source: "tcgplayer_api", sku: 1, quantity: 1 },
   { orderId: "multi-unit-order", orderNumber: "O2", revision: 1, observedAt: iso(74), orderTime: iso(75), orderTimeEvidence: "detail_canonical", lifecycle: "completed_paid", source: "tcgplayer_api", sku: 3, quantity: 3 },
 );
+evidence.fifo.find((value) => value.sku === 1)!.settledOrderIds = ["older-stock-order"];
+evidence.fifo.find((value) => value.sku === 3)!.settledOrderIds = ["multi-unit-order"];
 const report = evaluateForecastEvidence(evidence);
 assert.equal(report.coverage.exclusions.repriced_before_horizon?.spells, 1);
 assert.equal(report.observations.find((item) => item.publicationItemId === "2")?.sold, true, "sale after repricing grades only the new spell");
 assert.equal(report.observations.find((item) => item.publicationItemId === "4")?.orderEvidence?.quantity, 3);
 assert.equal(report.observations.filter((item) => item.publicationItemId === "4").length, 1, "one multi-unit order is one event");
 assert.equal(report.observations.find((item) => item.publicationItemId === "3")?.sold, false, "supported exposure is unsold; disappearance is never a sale");
+
+const missingFifo = baseEvidence([spell(40, 40, 80)]);
+missingFifo.fifo = [];
+missingFifo.orderRevisions.push({
+  orderId: "unsettled-order", orderNumber: "O-unsettled", revision: 1,
+  observedAt: iso(74), orderTime: iso(75), orderTimeEvidence: "detail_canonical",
+  lifecycle: "completed_paid", source: "tcgplayer_api", sku: 40, quantity: 1,
+});
+const missingFifoReport = evaluateForecastEvidence(missingFifo);
+assert.equal(missingFifoReport.observations.length, 0);
+assert.equal(missingFifoReport.coverage.exclusions.fifo_unavailable?.spells, 1,
+  "a verified sale requires an attributable settled FIFO revision");
 
 const removed = spell(5, 4, 80);
 const removedEvidence = baseEvidence([removed]);
@@ -174,5 +189,11 @@ assert.ok(
     (eligible.models.find((model) => model.version === "curve:pooled-supply-v1")?.training.count ?? 0),
   "corrected history is not pooled into the raw runtime model",
 );
+
+const splitBoundary = baseEvidence([spell(900, 9900, 120)]);
+const splitBoundaryReport = evaluateForecastEvidence(splitBoundary);
+assert.equal(splitBoundaryReport.coverage.includedSpells, 0);
+assert.equal(splitBoundaryReport.coverage.exclusions.outcome_after_split_cutoff?.spells, 1,
+  "an outcome crossing the fit boundary is excluded instead of inflating coverage");
 
 console.log("PASS forecast evaluation uses frozen next-sale evidence, chronology, and explicit censoring");

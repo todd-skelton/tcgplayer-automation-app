@@ -11,6 +11,11 @@ export interface ForecastEvaluationSource {
   findEvidenceVersion(sellerKey: string): Promise<string>;
   findMaterialEvidenceVersion(sellerKey: string): Promise<string>;
   findEvidence(sellerKey: string): Promise<ForecastEvaluationEvidence>;
+  findEvidenceSnapshot?(sellerKey: string): Promise<{
+    evidenceVersion: string;
+    materialEvidenceVersion: string;
+    evidence: ForecastEvaluationEvidence;
+  }>;
   save(report: ForecastEvaluationReport): Promise<{ id: string; created: boolean }>;
 }
 
@@ -25,9 +30,30 @@ export async function loadForecastGrading(
   if (!seller) return null;
   const version = await source.findEvidenceVersion(seller);
   const report = await reports.read(seller, "", version, async () => {
+    const snapshot = source.findEvidenceSnapshot
+      ? await source.findEvidenceSnapshot(seller)
+      : await (async () => {
+          const materialBefore = await source.findMaterialEvidenceVersion(seller);
+          const evidence = await source.findEvidence(seller);
+          const [evidenceAfter, materialAfter] = await Promise.all([
+            source.findEvidenceVersion(seller),
+            source.findMaterialEvidenceVersion(seller),
+          ]);
+          if (evidenceAfter !== version || materialAfter !== materialBefore) {
+            throw new Error("Forecast evidence changed while its snapshot was being read.");
+          }
+          return {
+            evidenceVersion: evidenceAfter,
+            materialEvidenceVersion: materialAfter,
+            evidence,
+          };
+        })();
+    if (snapshot.evidenceVersion !== version) {
+      throw new Error("Forecast evidence changed before its snapshot was frozen.");
+    }
     const report = {
-      ...evaluateForecastEvidence(await source.findEvidence(seller)),
-      materialEvidenceVersion: await source.findMaterialEvidenceVersion(seller),
+      ...evaluateForecastEvidence(snapshot.evidence),
+      materialEvidenceVersion: snapshot.materialEvidenceVersion,
     };
     const saved = await source.save(report);
     return { ...report, evaluationId: saved.id };

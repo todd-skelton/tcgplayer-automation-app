@@ -53,6 +53,8 @@ export interface SellerSkuOrderRevision {
 
 export interface InventoryExposureObservation {
   observationId: string;
+  /** The publication spell whose confirmed positive quantity anchors this observation. */
+  publicationItemId?: string;
   sku: number;
   observedAt: string;
   quantity: number;
@@ -61,6 +63,8 @@ export interface InventoryExposureObservation {
 export interface FifoSettlementEvidence {
   sku: number;
   state: "settled" | "pending" | "held" | "unavailable";
+  /** Seller orders with a recorded terminal FIFO replay for this SKU. */
+  settledOrderIds?: string[];
   revisionIds: string[];
   latestRecordedAt: string | null;
 }
@@ -72,6 +76,8 @@ export interface ForecastEvaluationEvidence {
     runId: string | null;
     status: "complete" | "incomplete" | "running" | "not_started";
     coveredFrom: string | null;
+    /** End of the exact contiguous order-search interval. */
+    coveredThrough: string | null;
     cutoffAt: string | null;
     gaps: string[];
   };
@@ -109,6 +115,7 @@ export type ForecastExclusionReason =
   | "stock_removed"
   | "exposure_unavailable"
   | "correlated_sku_cross_split"
+  | "outcome_after_split_cutoff"
   | "source_limit";
 
 export interface EvaluatedForecastSpell {
@@ -373,12 +380,16 @@ export function evaluateForecastEvidence(
     evidence.orderHistory.gaps.length === 0 &&
     orderCutoff !== null;
   const fifoBySku = new Map(evidence.fifo.map((value) => [value.sku, value]));
-  const exposureBySku = new Map<number, InventoryExposureObservation[]>();
+  const exposureBySpell = new Map<string, InventoryExposureObservation[]>();
   for (const observation of evidence.exposure) {
     if ((milliseconds(observation.observedAt) ?? Infinity) > evaluatedAt) continue;
-    exposureBySku.set(observation.sku, [...(exposureBySku.get(observation.sku) ?? []), observation]);
+    const spellKey = observation.publicationItemId ?? `sku:${observation.sku}`;
+    exposureBySpell.set(spellKey, [
+      ...(exposureBySpell.get(spellKey) ?? []),
+      observation,
+    ]);
   }
-  for (const observations of exposureBySku.values()) {
+  for (const observations of exposureBySpell.values()) {
     observations.sort((left, right) => (milliseconds(left.observedAt) ?? 0) - (milliseconds(right.observedAt) ?? 0));
   }
   const ordersBySku = new Map<number, SellerSkuOrderRevision[]>();
@@ -423,11 +434,9 @@ export function evaluateForecastEvidence(
       continue;
     }
     const fifo = fifoBySku.get(spell.sku);
-    if (!fifo || fifo.state === "unavailable") { exclude("fifo_unavailable", spell.quantity); continue; }
-    if (fifo.state === "pending") { exclude("fifo_pending", spell.quantity); continue; }
-    if (fifo.state === "held") { exclude("fifo_held", spell.quantity); continue; }
     const nextPublishedAt = milliseconds(spell.nextPublishedAt);
-    const exposureObservations = exposureBySku.get(spell.sku) ?? [];
+    const exposureObservations = exposureBySpell.get(spell.publicationItemId) ??
+      exposureBySpell.get(`sku:${spell.sku}`) ?? [];
     const firstRemovalAt = exposureObservations
       .filter((observation) => observation.quantity <= 0)
       .map((observation) => milliseconds(observation.observedAt) ?? Infinity)
@@ -443,6 +452,16 @@ export function evaluateForecastEvidence(
       return order.lifecycle !== "canceled" && order.lifecycle !== "unknown" && orderTime >= publishedAt && orderTime < spellEndsAt;
     });
     if (sale) {
+      if (!fifo || fifo.state === "unavailable") {
+        exclude("fifo_unavailable", spell.quantity);
+        continue;
+      }
+      if (fifo.state === "pending") { exclude("fifo_pending", spell.quantity); continue; }
+      if (fifo.state === "held") { exclude("fifo_held", spell.quantity); continue; }
+      if (!fifo.settledOrderIds?.includes(sale.orderId)) {
+        exclude("fifo_unavailable", spell.quantity);
+        continue;
+      }
       const split: ForecastSplit = publishedAt < fitCutoff ? "training" : publishedAt < validationCutoff ? "validation" : "reserved";
       preliminary.push({
         publicationItemId: spell.publicationItemId, sku: spell.sku, productLine: spell.productLine,
@@ -483,18 +502,29 @@ export function evaluateForecastEvidence(
       publicationItemId: spell.publicationItemId, sku: spell.sku, productLine: spell.productLine,
       quantity: spell.quantity, publishedAt: new Date(publishedAt).toISOString(),
       horizonEndsAt: new Date(horizonEndsAt).toISOString(), split, sold: false, soldAt: null,
-      orderEvidence: null, fifoRevisionIds: fifo.revisionIds,
-      fifoLatestRecordedAt: fifo.latestRecordedAt,
+      orderEvidence: null, fifoRevisionIds: fifo?.revisionIds ?? [],
+      fifoLatestRecordedAt: fifo?.latestRecordedAt ?? null,
       exposureObservationIds: observations.map((observation) => observation.observationId),
       forecasts: read.forecasts,
       forecastHash: hash({ publicationItemId: spell.publicationItemId, publishedAt: spell.publishedAt, desiredPrice: spell.desiredPrice, evidence: spell.forecastEvidence }),
     });
   }
 
-  // Keep seller/SKU clusters in one split. The earliest supported spell owns
-  // the cluster; later spells in another time block are excluded.
+  const chronological = preliminary.filter((observation) => {
+    const outcomeAt = milliseconds(observation.soldAt ?? observation.horizonEndsAt)!;
+    const cutoff = observation.split === "training"
+      ? fitCutoff
+      : observation.split === "validation"
+        ? validationCutoff
+        : Infinity;
+    if (outcomeAt <= cutoff) return true;
+    exclude("outcome_after_split_cutoff", observation.quantity);
+    return false;
+  });
+  // Keep seller/SKU clusters in one score-eligible split. An embargoed spell
+  // cannot claim the SKU and exclude a later mature outcome.
   const splitBySku = new Map<number, ForecastSplit>();
-  const observations = preliminary.filter((observation) => {
+  const observations = chronological.filter((observation) => {
     const assigned = splitBySku.get(observation.sku);
     if (!assigned) { splitBySku.set(observation.sku, observation.split); return true; }
     if (assigned === observation.split) return true;

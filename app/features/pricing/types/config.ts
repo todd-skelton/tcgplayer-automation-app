@@ -91,12 +91,14 @@ function normalizeForecastCorrection(value: unknown): ForecastCorrection | null 
   if (!value || typeof value !== "object") return null;
   const correction = value as Partial<ForecastCorrection>;
   return typeof correction.version === "string" && correction.version.length > 0 &&
+    typeof correction.sellerKey === "string" && correction.sellerKey.trim().length > 0 &&
     typeof correction.sourceModelVersion === "string" && correction.sourceModelVersion.length > 0 &&
     typeof correction.evaluationId === "string" && correction.evaluationId.length > 0 &&
     typeof correction.medianDaysMultiplier === "number" &&
     Number.isFinite(correction.medianDaysMultiplier) && correction.medianDaysMultiplier > 0
     ? {
         version: correction.version,
+        sellerKey: correction.sellerKey.trim(),
         sourceModelVersion: correction.sourceModelVersion,
         evaluationId: correction.evaluationId,
         medianDaysMultiplier: correction.medianDaysMultiplier,
@@ -257,9 +259,14 @@ export function pricingCalculatorConfig(
   | "supplyAnalysisConfig"
   | "productLinePricingConfig"
 > {
+  const policy = activePricingPolicy(config.pricing);
+  const sellerBoundPolicy = policy.method !== "percentile" && policy.forecastCorrection &&
+    options.excludedSellerKey && policy.forecastCorrection.sellerKey !== options.excludedSellerKey
+    ? { ...policy, forecastCorrection: undefined }
+    : policy;
   return {
     percentile: config.productLinePricing.defaultPercentile,
-    policy: activePricingPolicy(config.pricing),
+    policy: sellerBoundPolicy,
     minPriceMultiplier: config.pricing.minPriceMultiplier,
     minPriceConstant: config.pricing.minPriceConstant,
     enableSupplyAnalysis: config.supplyAnalysis.enableSupplyAnalysis,

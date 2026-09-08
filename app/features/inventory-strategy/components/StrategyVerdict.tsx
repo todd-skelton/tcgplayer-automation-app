@@ -50,6 +50,9 @@ function gradingLabel(report: ForecastEvaluationReport | null): string {
   if (status.graded) {
     return `Forecasts graded: ${status.label} ${percentFormatter.format(status.grade.soldShare)} sold against ${percentFormatter.format(status.grade.expectedShare)} expected, Brier ${status.grade.brier.toFixed(3)} against ${status.baseRate.toFixed(3)}`;
   }
+  if (status.unpairedModels) {
+    return "Forecast models have held-out scores, but their shared cohort is below the comparison minimum";
+  }
   return status.gradableAt
     ? `Forecast validation reserved through ${new Date(status.gradableAt).toLocaleDateString()}`
     : "Forecast validation has insufficient evidence";

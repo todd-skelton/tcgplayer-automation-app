@@ -157,8 +157,19 @@ async function processJob(
 
   try {
     const correction = job.config.pricing.forecastCorrection;
+    const correctionBatch = correction
+      ? await inventoryBatchesRepository.findByBatchNumber(job.batchNumber)
+      : null;
+    const expectedSellerKey = correctionBatch &&
+      ["seller", "continuous", "strategy"].includes(correctionBatch.sourceType)
+      ? correctionBatch.sourceLabel
+      : undefined;
     const supportedCorrection = correction
-      ? await forecastEvaluationsRepository.isCorrectionSupported(correction)
+      ? await forecastEvaluationsRepository.isCorrectionSupported(
+          correction,
+          undefined,
+          expectedSellerKey,
+        )
       : true;
     if (correction && !supportedCorrection) {
       console.warn(

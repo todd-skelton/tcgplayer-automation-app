@@ -48,20 +48,36 @@ export type GradingStatus =
       grade: ForecastScore;
       baseRate: number;
     }
-  | { graded: false; gradableAt: string | null };
+  | { graded: false; gradableAt: string | null; unpairedModels?: boolean };
 
 /** The best held-out model score, or the frozen validation boundary. */
 export function gradingStatus(
   report: ForecastEvaluationReport | null | undefined,
 ): GradingStatus {
   if (!report) return { graded: false, gradableAt: null };
-  const [best] = report.models
+  const candidates = report.models
     .map((model) => ({
+      version: model.version,
       label: `${model.family} (${model.version})`,
       grade: model.validation,
     }))
-    .filter(({ grade }) => grade.count > 0)
-    .sort((left, right) => left.grade.brier - right.grade.brier);
+    .filter(({ grade }) => grade.count > 0);
+  const comparison = [...(report.pairedComparisons ?? [])]
+    .filter((value) =>
+      value.validationCount >= (report.policy?.minimumPairedValidationCount ?? 20) &&
+      value.leftBrier !== null && value.rightBrier !== null)
+    .sort((left, right) => right.validationCount - left.validationCount ||
+      left.left.localeCompare(right.left) || left.right.localeCompare(right.right))[0];
+  const pairedWinner = comparison
+    ? comparison.leftBrier! <= comparison.rightBrier! ? comparison.left : comparison.right
+    : null;
+  if (candidates.length > 1 && !pairedWinner) {
+    return { graded: false, gradableAt: report.validationCutoff, unpairedModels: true };
+  }
+  const best = (pairedWinner
+    ? candidates.filter((candidate) => candidate.version === pairedWinner)
+    : candidates
+  ).sort((left, right) => right.grade.count - left.grade.count || left.version.localeCompare(right.version))[0];
   if (best) {
     return {
       graded: true,

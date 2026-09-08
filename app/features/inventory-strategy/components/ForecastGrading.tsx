@@ -91,7 +91,22 @@ export function ForecastGrading({
         </Table>
       </TableContainer>
       <Box sx={{ p: 2 }}>
-        <Typography variant="subtitle2">Coverage and censoring</Typography>
+        <Typography variant="subtitle2">Paired model comparisons</Typography>
+        {report.pairedComparisons.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            No compatible held-out model pairs are available.
+          </Typography>
+        ) : (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+            {report.pairedComparisons.map((comparison) => {
+              const supported = comparison.validationCount >= report.policy.minimumPairedValidationCount;
+              return <Chip key={`${comparison.left}:${comparison.right}`} size="small"
+                color={supported ? "success" : "default"} variant="outlined"
+                label={`${comparison.left} vs ${comparison.right}: ${comparison.validationCount} paired · ${supported ? "comparable" : `need ${report.policy.minimumPairedValidationCount}`}`} />;
+            })}
+          </Stack>
+        )}
+        <Typography variant="subtitle2" sx={{ mt: 2 }}>Coverage and censoring</Typography>
         {exclusions.length === 0 ? <Typography variant="body2" color="text.secondary">No spells were excluded.</Typography> : (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
             {exclusions.map(([reason, value]) => <Chip key={reason} size="small" variant="outlined"

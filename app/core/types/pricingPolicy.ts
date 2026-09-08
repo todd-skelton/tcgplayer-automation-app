@@ -41,6 +41,8 @@ export type PricingPolicy =
 /** A held-out correction applied to the curve's median waits at the policy seam. */
 export interface ForecastCorrection {
   version: string;
+  /** Seller whose frozen evidence supports this correction. */
+  sellerKey: string;
   sourceModelVersion: string;
   medianDaysMultiplier: number;
   evaluationId: string;
