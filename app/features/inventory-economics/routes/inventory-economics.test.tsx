@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
-import { InventoryEconomicsOrderTable, InventoryEconomicsStatus, RecentRecords } from "./inventory-economics";
+import {
+  InventoryEconomicsOrderTable, InventoryEconomicsStatus, marketInputForRule, marketInstantForCommand, RecentRecords,
+} from "./inventory-economics";
 import type { InventoryEconomicsWorkspace } from "../types/inventoryEconomics";
 
 assert.match(renderToStaticMarkup(<InventoryEconomicsStatus loading />), /Loading inventory economics/);
@@ -24,4 +26,11 @@ const historyMarkup = renderToStaticMarkup(<RecentRecords title="Purchase costs"
 assert.equal((historyMarkup.match(/>Correct</g) ?? []).length,1);
 assert.match(historyMarkup,/version 1/);
 assert.match(historyMarkup,/View correction history \(2 versions\)/);
+const localMarketInstant = "2026-08-02T12:00";
+const serializedMarketInstant = marketInstantForCommand("frozen_market",localMarketInstant);
+assert.equal(new Date(serializedMarketInstant!).getHours(),12);
+assert.equal(marketInstantForCommand("quantity",localMarketInstant),undefined);
+assert.equal(marketInputForRule("quantity",localMarketInstant),"");
+assert.equal(marketInputForRule("explicit",localMarketInstant),"");
+assert.equal(marketInputForRule("frozen_market",localMarketInstant),localMarketInstant);
 console.log("PASS inventory economics UI renders states, independent coverage, and correction history");

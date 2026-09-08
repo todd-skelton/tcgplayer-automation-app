@@ -60,8 +60,9 @@ export function normalizePurchaseCostDetails(input: Record<string,unknown>): Nor
       input.allocationRule !== "explicit") {
     throw new Error("Purchase allocation rule is invalid.");
   }
-  const marketObservedAt = instant(input.marketObservedAt);
-  if ((input.allocationRule === "frozen_market") !== (marketObservedAt !== undefined)) {
+  const marketObservedAt = input.allocationRule === "frozen_market"
+    ? instant(input.marketObservedAt) : undefined;
+  if (input.allocationRule === "frozen_market" && marketObservedAt === undefined) {
     throw new Error("Frozen market allocation requires a market evidence instant.");
   }
   const correctsEntryId = optionalText(input.correctsEntryId,"Corrected entry");

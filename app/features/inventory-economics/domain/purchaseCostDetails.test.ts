@@ -17,5 +17,12 @@ assert.throws(()=>normalizePurchaseCostDetails({...details,requestId:"r".repeat(
 assert.throws(()=>normalizePurchaseCostDetails({...details,currency:"US"}),/three-letter/);
 assert.throws(()=>normalizePurchaseCostDetails({...details,purchasedAt:42}),/must be text/);
 assert.throws(()=>normalizePurchaseCostDetails({...details,allocationRule:"frozen_market"}),/market evidence instant/);
+assert.equal("marketObservedAt" in normalizePurchaseCostDetails({...details,marketObservedAt:"stale"}),false);
+assert.equal("marketObservedAt" in normalizePurchaseCostDetails({
+  ...details,allocationRule:"explicit",marketObservedAt:"stale",
+}),false);
+assert.equal(normalizePurchaseCostDetails({
+  ...details,allocationRule:"frozen_market",marketObservedAt:"2026-08-02T12:00:00-05:00",
+}).marketObservedAt,"2026-08-02T17:00:00.000Z");
 
-console.log("PASS purchase details normalize currency and reject incomplete pre-write evidence");
+console.log("PASS purchase details require frozen evidence and ignore it for other rules");

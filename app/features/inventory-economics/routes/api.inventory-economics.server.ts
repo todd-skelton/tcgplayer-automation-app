@@ -90,7 +90,9 @@ export function createInventoryEconomicsHandlers(dependencies = {
             provenance:choice(payload.provenance,["actual","estimated"] as const,"Provenance"),
             source:"manual",allocationRule,
             batchNumbers:parseBatchNumbers(payload.batchNumbers),purchasedAt:optionalText(payload.purchasedAt),
-            marketObservedAt:optionalText(payload.marketObservedAt),correctsEntryId:optionalText(payload.correctsEntryId),
+            ...(allocationRule === "frozen_market"
+              ? { marketObservedAt:optionalText(payload.marketObservedAt) } : {}),
+            correctsEntryId:optionalText(payload.correctsEntryId),
             correctionReason:optionalText(payload.correctionReason),
             ...(allocationRule === "explicit"
               ? { explicitAllocations:parseExplicitAllocations(payload.explicitAllocations) } : {}),

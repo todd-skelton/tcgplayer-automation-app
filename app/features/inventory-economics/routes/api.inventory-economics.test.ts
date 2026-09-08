@@ -37,11 +37,17 @@ assert.equal(((targetResponse.data as {purchaseAllocationTargets:Array<{itemLabe
 const explicitResponse = await handlers.action({ request:new Request("http://localhost/api/inventory-economics",{
   method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ action:"record_purchase_cost",
     requestId:"request-2",currency:"USD",purchaseReference:"invoice-2",totalAmount:"11.00",
-    provenance:"actual",allocationRule:"explicit",batchNumbers:"7",
+    provenance:"actual",allocationRule:"explicit",batchNumbers:"7",marketObservedAt:"stale-value",
     explicitAllocations:[{receiptId:10,amountCents:1000},{receiptId:11,amount:"1.00"}] }) }) });
 assert.equal(explicitResponse.init?.status,undefined);
 assert.deepEqual((purchaseInputs[0] as {explicitAllocations:unknown}).explicitAllocations,
   [{receiptId:10,amountCents:1000},{receiptId:11,amountCents:100}]);
+assert.equal("marketObservedAt" in (purchaseInputs[0] as Record<string,unknown>),false);
+await handlers.action({ request:new Request("http://localhost/api/inventory-economics",{
+  method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ action:"record_purchase_cost",
+    requestId:"request-quantity",currency:"USD",purchaseReference:"invoice-quantity",totalAmount:"1.00",
+    provenance:"actual",allocationRule:"quantity",batchNumbers:"7",marketObservedAt:"stale-value" }) }) });
+assert.equal("marketObservedAt" in (purchaseInputs[1] as Record<string,unknown>),false);
 const duplicateResponse = await handlers.action({ request:new Request("http://localhost/api/inventory-economics",{
   method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ action:"record_purchase_cost",
     requestId:"request-3",currency:"USD",purchaseReference:"invoice-3",totalAmount:"11.00",

@@ -15,6 +15,12 @@ const today = () => new Date().toISOString().slice(0, 10);
 const errorMessage = (value: unknown) => value instanceof Error ? value.message : String(value);
 const money = (cents: number | undefined, currency = "USD") => cents === undefined
   ? "Unknown" : new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
+export function marketInstantForCommand(allocationRule:string,localValue:string): string | undefined {
+  return allocationRule === "frozen_market" && localValue ? new Date(localValue).toISOString() : undefined;
+}
+export function marketInputForRule(allocationRule:string,currentValue:string): string {
+  return allocationRule === "frozen_market" ? currentValue : "";
+}
 const priorVersion = <T extends {id:string;version:number}>(entry: {correctsEntryId?:string}, entries: T[]) =>
   entry.correctsEntryId ? entries.find(value=>value.id===entry.correctsEntryId)?.version ?? "prior" : undefined;
 const purchaseDetails = (record:PurchaseCostSummary,entries:PurchaseCostSummary[]) => [
@@ -125,10 +131,12 @@ export default function InventoryEconomicsRoute() {
           <TextField label="Total amount (USD)" value={purchase.totalAmount} onChange={e=>setPurchase({...purchase,totalAmount:e.target.value})} />
           <Stack direction="row" spacing={2}><Select fullWidth inputProps={{"aria-label":"Purchase cost provenance"}} value={purchase.provenance} onChange={e=>setPurchase({...purchase,provenance:e.target.value})}><MenuItem value="actual">Actual</MenuItem><MenuItem value="estimated">Estimated</MenuItem></Select>
             <Select fullWidth inputProps={{"aria-label":"Purchase cost allocation rule"}} value={purchase.allocationRule} onChange={e=>{
-              setPurchase({...purchase,allocationRule:e.target.value}); setExplicitTargets(null); setExplicitAmounts({});
+              setPurchase({...purchase,allocationRule:e.target.value,
+                marketObservedAt:marketInputForRule(e.target.value,purchase.marketObservedAt)});
+              setExplicitTargets(null); setExplicitAmounts({});
             }}><MenuItem value="quantity">By quantity</MenuItem><MenuItem value="frozen_market">Frozen market weights</MenuItem><MenuItem value="explicit">Set each item amount</MenuItem></Select></Stack>
           <TextField label="Purchase date" type="date" slotProps={{inputLabel:{shrink:true}}} value={purchase.purchasedAt} onChange={e=>setPurchase({...purchase,purchasedAt:e.target.value})} />
-          {purchase.allocationRule === "frozen_market" && <TextField label="Market evidence instant" type="datetime-local" slotProps={{inputLabel:{shrink:true}}} value={purchase.marketObservedAt.slice(0,16)} onChange={e=>setPurchase({...purchase,marketObservedAt:e.target.value ? new Date(e.target.value).toISOString() : ""})} />}
+          {purchase.allocationRule === "frozen_market" && <TextField label="Market evidence instant" type="datetime-local" slotProps={{inputLabel:{shrink:true}}} value={purchase.marketObservedAt} onChange={e=>setPurchase({...purchase,marketObservedAt:e.target.value})} />}
           {purchase.allocationRule === "explicit" && <Paper variant="outlined" sx={{p:1.5}}>
             <Typography variant="subtitle2">Amount for each acquired item</Typography>
             <Button size="small" sx={{mt:1}} disabled={saving || !purchase.batchNumbers.trim()}
@@ -148,6 +156,7 @@ export default function InventoryEconomicsRoute() {
           {purchase.correctsEntryId && <TextField label="Correction reason" required value={purchase.correctionReason} onChange={e=>setPurchase({...purchase,correctionReason:e.target.value})} />}
           {purchase.correctsEntryId && <Button onClick={()=>setPurchase({...purchase,correctsEntryId:"",correctionReason:""})}>Cancel correction</Button>}
           <Button variant="contained" disabled={saving || !explicitReady} onClick={() => void submit({action:"record_purchase_cost",...purchase,
+            marketObservedAt:marketInstantForCommand(purchase.allocationRule,purchase.marketObservedAt),
             ...(purchase.allocationRule === "explicit" ? { explicitAllocations:(explicitTargets ?? []).map(target=>({
               receiptId:target.receiptId,amount:explicitAmounts[target.receiptId] ?? "",
             })) } : {})},"Purchase cost recorded.")}>Record purchase cost</Button>
