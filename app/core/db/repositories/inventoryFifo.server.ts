@@ -226,6 +226,12 @@ export const inventoryFifoRepository={
       const opening=await queryOne<{cutoffAt:Date}>(`SELECT cutoff_at AS "cutoffAt" FROM inventory_opening_balance_runs
         WHERE seller_key=$1 AND status='applied'`,[queued.sellerKey],db);
       if(!opening)return holdQueue(queued.sellerKey,queued.sku,"missing_applied_opening_balance",db);
+      const changedOrderTime=await queryOne<{lineId:string}>(`SELECT saved.id::text AS "lineId"
+        FROM inventory_fifo_lines saved JOIN seller_orders orders ON orders.id=saved.order_id
+        WHERE saved.seller_key=$1 AND saved.sku=$2 AND saved.current_revision_id IS NOT NULL
+          AND saved.order_time IS DISTINCT FROM orders.order_time LIMIT 1`,[queued.sellerKey,queued.sku],db);
+      if(changedOrderTime)return holdQueue(queued.sellerKey,queued.sku,
+        `order_time_change_requires_reconciliation:${changedOrderTime.lineId}`,db);
       const unknownInitialOrderTime=await queryOne<{orderId:string}>(`SELECT orders.id::text AS "orderId"
         FROM seller_orders orders JOIN seller_order_revisions revision
           ON revision.order_id=orders.id AND revision.revision_number=1
