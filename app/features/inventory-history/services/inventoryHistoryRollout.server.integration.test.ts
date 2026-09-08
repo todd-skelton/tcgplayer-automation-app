@@ -164,7 +164,19 @@ try {
   assert.equal(diagnostics.receivedLots.missingMarketSnapshotQuantity, 0);
   assert.equal(diagnostics.publications.failed, 0);
 
-  console.log("PASS rollout flow conserves three received units and reports $14 intake market, 43.333 days held, idempotent recovery, and market fail-open");
+  await pool.query(`INSERT INTO inventory_fifo_replay_queue (seller_key,sku,affected_from,status,generation)
+    VALUES ($1,$2,$3,'pending',1)`, [seller, sku, soldAt]);
+  const pendingDiagnostics = await inventoryHistoryDiagnosticsRepository.get(seller);
+  assert.equal(pendingDiagnostics.fifo.settledOrderedQuantity, 0);
+  assert.equal(pendingDiagnostics.fifo.pendingOrProcessingQuantity, 3);
+  assert.equal(pendingDiagnostics.fifo.queuedLineProjections.pending, 1);
+  await pool.query(`UPDATE inventory_fifo_replay_queue SET status='held',hold_reason='synthetic_review' WHERE seller_key=$1 AND sku=$2`, [seller, sku]);
+  const heldDiagnostics = await inventoryHistoryDiagnosticsRepository.get(seller);
+  assert.equal(heldDiagnostics.fifo.settledOrderedQuantity, 0);
+  assert.equal(heldDiagnostics.fifo.heldQuantity, 3);
+  assert.equal(heldDiagnostics.fifo.queuedLineProjections.held, 1);
+
+  console.log("PASS rollout flow conserves three received units and reports $14 intake market, 43.333 days held, replay freshness, idempotent recovery, and market fail-open");
 } finally {
   await pool.query(`DELETE FROM inventory_fifo_revision_allocations WHERE revision_id IN
     (SELECT revision.id FROM inventory_fifo_revisions revision JOIN inventory_fifo_lines line ON line.id=revision.line_id WHERE line.seller_key=$1)`, [seller]);

@@ -20,10 +20,13 @@ type DiagnosticRow = {
   linesUnsupported: number;
   linesExcludedPreCutoff: number;
   linesRemoved: number;
+  queuedLinesPending: number;
+  queuedLinesProcessing: number;
+  queuedLinesHeld: number;
   settledOrderedQuantity: number;
   settledMatchedQuantity: number;
   settledUnmatchedQuantity: number;
-  pendingQuantity: number;
+  pendingOrProcessingQuantity: number;
   heldQuantity: number;
   priceUnavailableQuantity: number;
   dateUnavailableQuantity: number;
@@ -77,14 +80,19 @@ export const inventoryHistoryDiagnosticsRepository = {
             COUNT(*) FILTER (WHERE state='unsupported')::int AS "linesUnsupported",
             COUNT(*) FILTER (WHERE state='excluded_pre_cutoff')::int AS "linesExcludedPreCutoff",
             COUNT(*) FILTER (WHERE state='removed')::int AS "linesRemoved",
-            COALESCE(SUM(ordered_quantity) FILTER (WHERE state IN ('allocated','partial','unmatched')),0)::int AS "settledOrderedQuantity",
-            COALESCE(SUM(matched_quantity) FILTER (WHERE state IN ('allocated','partial','unmatched')),0)::int AS "settledMatchedQuantity",
-            COALESCE(SUM(unmatched_quantity) FILTER (WHERE state IN ('allocated','partial','unmatched')),0)::int AS "settledUnmatchedQuantity",
-            COALESCE(SUM(ordered_quantity) FILTER (WHERE state='pending'),0)::int AS "pendingQuantity",
-            COALESCE(SUM(ordered_quantity) FILTER (WHERE state='held'),0)::int AS "heldQuantity",
-            COALESCE(SUM(matched_quantity-price_known_quantity) FILTER (WHERE state IN ('allocated','partial','unmatched')),0)::int AS "priceUnavailableQuantity",
-            COALESCE(SUM(matched_quantity-date_known_quantity) FILTER (WHERE state IN ('allocated','partial','unmatched')),0)::int AS "dateUnavailableQuantity"
-          FROM inventory_fifo_lines WHERE seller_key=$1
+            COUNT(*) FILTER (WHERE replay.status='pending' AND line.state NOT IN ('excluded_pre_cutoff','removed','unsupported'))::int AS "queuedLinesPending",
+            COUNT(*) FILTER (WHERE replay.status='processing' AND line.state NOT IN ('excluded_pre_cutoff','removed','unsupported'))::int AS "queuedLinesProcessing",
+            COUNT(*) FILTER (WHERE replay.status='held' AND line.state NOT IN ('excluded_pre_cutoff','removed','unsupported'))::int AS "queuedLinesHeld",
+            COALESCE(SUM(line.ordered_quantity) FILTER (WHERE replay.status IS NULL AND line.state IN ('allocated','partial','unmatched')),0)::int AS "settledOrderedQuantity",
+            COALESCE(SUM(line.matched_quantity) FILTER (WHERE replay.status IS NULL AND line.state IN ('allocated','partial','unmatched')),0)::int AS "settledMatchedQuantity",
+            COALESCE(SUM(line.unmatched_quantity) FILTER (WHERE replay.status IS NULL AND line.state IN ('allocated','partial','unmatched')),0)::int AS "settledUnmatchedQuantity",
+            COALESCE(SUM(line.ordered_quantity) FILTER (WHERE (replay.status IN ('pending','processing') AND line.state NOT IN ('excluded_pre_cutoff','removed','unsupported')) OR (replay.status IS NULL AND line.state='pending')),0)::int AS "pendingOrProcessingQuantity",
+            COALESCE(SUM(line.ordered_quantity) FILTER (WHERE (replay.status='held' AND line.state NOT IN ('excluded_pre_cutoff','removed','unsupported')) OR (replay.status IS NULL AND line.state='held')),0)::int AS "heldQuantity",
+            COALESCE(SUM(line.matched_quantity-line.price_known_quantity) FILTER (WHERE replay.status IS NULL AND line.state IN ('allocated','partial','unmatched')),0)::int AS "priceUnavailableQuantity",
+            COALESCE(SUM(line.matched_quantity-line.date_known_quantity) FILTER (WHERE replay.status IS NULL AND line.state IN ('allocated','partial','unmatched')),0)::int AS "dateUnavailableQuantity"
+          FROM inventory_fifo_lines line
+          LEFT JOIN inventory_fifo_replay_queue replay ON replay.seller_key=line.seller_key AND replay.sku=line.sku
+          WHERE line.seller_key=$1
         ), differences AS (
           SELECT COUNT(*)::int AS "observedDifferenceCount",
             COUNT(*) FILTER (WHERE status='unresolved')::int AS "unacknowledgedDifferenceCount",
@@ -130,8 +138,10 @@ export const inventoryHistoryDiagnosticsRepository = {
         lines: { allocated: count(row.linesAllocated), partial: count(row.linesPartial), unmatched: count(row.linesUnmatched),
           pending: count(row.linesPending), held: count(row.linesHeld), unsupported: count(row.linesUnsupported),
           excludedPreCutoff: count(row.linesExcludedPreCutoff), removed: count(row.linesRemoved) },
+        queuedLineProjections: { pending: count(row.queuedLinesPending), processing: count(row.queuedLinesProcessing),
+          held: count(row.queuedLinesHeld) },
         settledOrderedQuantity: count(row.settledOrderedQuantity), settledMatchedQuantity: count(row.settledMatchedQuantity),
-        settledUnmatchedQuantity: count(row.settledUnmatchedQuantity), pendingQuantity: count(row.pendingQuantity),
+        settledUnmatchedQuantity: count(row.settledUnmatchedQuantity), pendingOrProcessingQuantity: count(row.pendingOrProcessingQuantity),
         heldQuantity: count(row.heldQuantity), priceUnavailableQuantity: count(row.priceUnavailableQuantity),
         dateUnavailableQuantity: count(row.dateUnavailableQuantity),
       },

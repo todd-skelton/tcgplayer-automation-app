@@ -25,10 +25,11 @@ export interface InventoryHistoryDiagnostics {
       excludedPreCutoff: number;
       removed: number;
     };
+    queuedLineProjections: { pending: number; processing: number; held: number };
     settledOrderedQuantity: number;
     settledMatchedQuantity: number;
     settledUnmatchedQuantity: number;
-    pendingQuantity: number;
+    pendingOrProcessingQuantity: number;
     heldQuantity: number;
     priceUnavailableQuantity: number;
     dateUnavailableQuantity: number;

@@ -89,7 +89,7 @@ Treat these as separate rollout axes:
 
 - `orderCoverage.status` must be `complete` with no gaps for the protected cutover. `observedFrom` and `observedThrough` state the observed window; they do not promise older coverage.
 - `openingBalance.status` must be `applied` before forward allocation is trusted. Preserve the run, validation observation, cutoff, and unsupported counts.
-- `fifo.queue.pending` and `processing` should drain. `held`, line holds, `settledUnmatchedQuantity`, and unsupported identities remain visible until evidence resolves them. Settled quantity and price/date coverage include only allocated, partial, and unmatched forward lines. Pending and held quantities are separate because their saved projections are not current. `lines.excludedPreCutoff` is historical demand already separated by the opening boundary.
+- `fifo.queue.pending` and `processing` should drain. `held`, line holds, `settledUnmatchedQuantity`, and unsupported identities remain visible until evidence resolves them. Settled quantity and price/date coverage include only allocated, partial, and unmatched forward lines whose SKU has no replay row. `pendingOrProcessingQuantity`, `heldQuantity`, and `queuedLineProjections` expose saved lines made stale by queue work. `lines.excludedPreCutoff` is historical demand already separated by the opening boundary.
 - `stockDifferences.observedCount` reports all captured seller-export quantity changes, with review status split into unacknowledged and acknowledged counts. Acknowledgement changes only that review status: the observation remains in these totals, changes no stock, and does not clear a FIFO discrepancy hold.
 - `receivedLots.missingMarketSnapshotQuantity` and `missingIntakeDateQuantity` are independent. Known market value USD 0 remains known.
 - `publications.active` should return to zero. Compare ambiguous, failed, and retried counts with the pre-rollout baseline and inspect changes.
@@ -98,7 +98,7 @@ Archive a sanitized diagnostics response and the browser/latency observations wi
 
 ## Disable and rollback
 
-If forward capture or reconciliation is unhealthy, pause the history worker by setting `INVENTORY_HISTORY_WORKER_ENABLED=false` in the application environment and restarting the current application image. The worker process remains healthy but performs neither external order synchronization nor local FIFO replay. Current market and shipping operations remain available, and existing history is read-only. Leave the database and its evidence tables in place.
+If forward capture or reconciliation is unhealthy, pause the history worker by setting `INVENTORY_HISTORY_WORKER_ENABLED=false` in the application environment and restarting the current application image. The worker process remains healthy but performs neither external order synchronization nor local FIFO replay. This flag does not disable manual seller-history, opening-balance, or FIFO actions and does not disable Inventory Manager or publication writers; operators must stop those actions separately. Current market and shipping operations remain available, and existing history reads remain available. Leave the database and its evidence tables in place.
 
 Before an opening balance is applied, reverting the application image is safe only if no receipt, publication, order-history, or inventory-observation evidence was recorded after the rollback point and relevant inventory writes remain paused. Otherwise keep the current image and repair forward.
 
