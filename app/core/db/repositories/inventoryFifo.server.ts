@@ -229,7 +229,8 @@ export const inventoryFifoRepository={
       const changedOrderTime=await queryOne<{lineId:string}>(`SELECT saved.id::text AS "lineId"
         FROM inventory_fifo_lines saved JOIN seller_orders orders ON orders.id=saved.order_id
         WHERE saved.seller_key=$1 AND saved.sku=$2 AND saved.current_revision_id IS NOT NULL
-          AND saved.order_time IS DISTINCT FROM orders.order_time LIMIT 1`,[queued.sellerKey,queued.sku],db);
+          AND saved.order_time IS DISTINCT FROM orders.order_time
+          AND (saved.order_time>=$3 OR orders.order_time>=$3) LIMIT 1`,[queued.sellerKey,queued.sku,opening.cutoffAt],db);
       if(changedOrderTime)return holdQueue(queued.sellerKey,queued.sku,
         `order_time_change_requires_reconciliation:${changedOrderTime.lineId}`,db);
       const unknownInitialOrderTime=await queryOne<{orderId:string}>(`SELECT orders.id::text AS "orderId"
@@ -335,8 +336,9 @@ export const inventoryFifoRepository={
         FROM inventory_fifo_lines saved JOIN seller_orders orders ON orders.id=saved.order_id
         JOIN seller_order_revisions initial ON initial.order_id=orders.id AND initial.revision_number=1
         WHERE saved.seller_key=$1 AND saved.sku=$2 AND saved.current_revision_id IS NULL
-          AND orders.source_revision>1 AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(initial.line_evidence) evidence
-            WHERE evidence->>'skuId'=saved.order_line_sku_id) LIMIT 1`,[queued.sellerKey,queued.sku],db);
+          AND orders.order_time>=$3 AND orders.source_revision>1
+          AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(initial.line_evidence) evidence
+            WHERE evidence->>'skuId'=saved.order_line_sku_id) LIMIT 1`,[queued.sellerKey,queued.sku,opening.cutoffAt],db);
       if(amendedLineAddition)return holdQueue(queued.sellerKey,queued.sku,
         `order_line_addition_requires_correction:${amendedLineAddition.lineId}`,db);
       const unresolvedQuantityChange=await queryOne<{lineId:string;direction:string}>(`SELECT saved.id::text AS "lineId",
@@ -346,6 +348,7 @@ export const inventoryFifoRepository={
           AND current_line.sku_id=saved.order_line_sku_id
         JOIN seller_orders orders ON orders.id=saved.order_id
         WHERE saved.seller_key=$1 AND saved.sku=$2
+          AND orders.order_time>=$3
           AND COALESCE(current_line.ordered_quantity,0)<>saved.ordered_quantity
           AND (COALESCE(current_line.ordered_quantity,0)>saved.ordered_quantity
             OR COALESCE(current_line.ordered_quantity,0)<saved.matched_quantity)
@@ -356,7 +359,7 @@ export const inventoryFifoRepository={
             JOIN inventory_stock_disposition_corrections correction ON correction.disposition_id=disposition.id
             WHERE disposition.order_id=saved.order_id AND disposition.order_line_sku_id=saved.order_line_sku_id
               AND correction.source_order_revision=orders.source_revision)
-        ORDER BY orders.order_time,orders.order_number LIMIT 1`,[queued.sellerKey,queued.sku],db);
+        ORDER BY orders.order_time,orders.order_number LIMIT 1`,[queued.sellerKey,queued.sku,opening.cutoffAt],db);
       if(unresolvedQuantityChange)return holdQueue(queued.sellerKey,queued.sku,
         `order_quantity_${unresolvedQuantityChange.direction}_requires_correction:${unresolvedQuantityChange.lineId}`,db);
       const dispositionRows=await query<any>(`SELECT disposition.id::text AS id,disposition.order_id::text AS "orderId",
