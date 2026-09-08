@@ -579,14 +579,18 @@ export const inventoryFifoRepository={
       ORDER BY revision.revision_number LIMIT $4`,[input.lineId,input.sellerKey.trim(),after,limit]);
   },
 
-  async listHolds(sellerKey:string){
+  async listHolds(sellerKey:string,options:{afterSku?:number;limit?:number}={}){
+    const afterSku=options.afterSku??0;const limit=options.limit??100;
+    if(!Number.isInteger(afterSku)||afterSku<0||!Number.isInteger(limit)||limit<1||limit>200)
+      throw new Error("FIFO hold page must use a nonnegative SKU cursor and a limit between 1 and 200.");
     const queue=await query(`SELECT seller_key AS "sellerKey",sku,status,affected_from AS "affectedFrom",
       hold_reason AS "holdReason",updated_at AS "updatedAt"
-      FROM inventory_fifo_replay_queue WHERE seller_key=$1 ORDER BY sku`,[sellerKey.trim()]);
+      FROM inventory_fifo_replay_queue WHERE seller_key=$1 AND sku>$2 ORDER BY sku LIMIT $3`,[sellerKey.trim(),afterSku,limit]);
     const lines=await query(`SELECT orders.order_number AS "orderNumber",line.order_line_sku_id AS "skuId",line.sku,
       line.hold_reason AS "holdReason",line.updated_at AS "updatedAt" FROM inventory_fifo_lines line
       JOIN seller_orders orders ON orders.id=line.order_id WHERE line.seller_key=$1 AND line.state='held'
-      ORDER BY orders.order_time,orders.order_number,line.order_line_sku_id`,[sellerKey.trim()]);
+        AND line.sku>$2 ORDER BY line.sku,orders.order_time,orders.order_number,line.order_line_sku_id LIMIT $3`,
+      [sellerKey.trim(),afterSku,limit]);
     return {queue,lines};
   },
 };

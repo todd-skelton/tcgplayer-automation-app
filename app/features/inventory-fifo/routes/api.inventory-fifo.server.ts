@@ -16,7 +16,9 @@ export function createInventoryFifoAction(dependencies={repository:inventoryFifo
         if(typeof payload.orderNumber!=="string"||!payload.orderNumber.trim())throw new Error("Order number is required.");
         return data({lines:await dependencies.repository.findOrderAllocation(sellerKey,payload.orderNumber)});
       }
-      if(payload.action==="list_holds")return data({holds:await dependencies.repository.listHolds(sellerKey)});
+      if(payload.action==="list_holds")return data({holds:await dependencies.repository.listHolds(sellerKey,{
+        ...(typeof payload.afterSku==="number"?{afterSku:payload.afterSku}:{}),
+        ...(typeof payload.limit==="number"?{limit:payload.limit}:{})})});
       if(payload.action==="list_revisions"){
         if(typeof payload.lineId!=="string")throw new Error("FIFO line ID is required.");
         return data({revisions:await dependencies.repository.listLineRevisions({sellerKey,lineId:payload.lineId,
