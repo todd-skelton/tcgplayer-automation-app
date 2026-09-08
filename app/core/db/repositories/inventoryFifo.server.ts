@@ -625,14 +625,20 @@ export const inventoryFifoRepository={
         (SELECT COALESCE(SUM(other.quantity),0)::int FROM inventory_stock_dispositions other
           JOIN inventory_stock_disposition_corrections other_correction ON other_correction.disposition_id=other.id
           WHERE other.order_id=disposition.order_id AND other.order_line_sku_id=disposition.order_line_sku_id
-            AND other_correction.source_order_revision=$3) AS "alreadyCorrectedQuantity"
+            AND other_correction.source_order_revision=$3) AS "alreadyCorrectedQuantity",
+        (SELECT COALESCE(SUM(quantity_correction.released_quantity),0)::int
+          FROM inventory_order_quantity_corrections quantity_correction
+          WHERE quantity_correction.order_id=disposition.order_id
+            AND quantity_correction.order_line_sku_id=disposition.order_line_sku_id
+            AND quantity_correction.source_order_revision=$3) AS "alreadyQuantityCorrected"
         FROM inventory_stock_dispositions disposition JOIN seller_orders orders ON orders.id=disposition.order_id
         LEFT JOIN seller_order_lines line ON line.order_id=orders.id AND line.sku_id=disposition.order_line_sku_id
         WHERE disposition.id=$1 AND disposition.seller_key=$2 FOR UPDATE OF disposition`,
         [input.dispositionId,input.sellerKey,input.sourceOrderRevision],db);
       if(!disposition||disposition.currentSourceRevision!==input.sourceOrderRevision||
           input.sourceOrderRevision<=disposition.dispositionSourceRevision||
-          disposition.sourceOrderedQuantity-disposition.currentQuantity<disposition.alreadyCorrectedQuantity+disposition.quantity||
+          disposition.sourceOrderedQuantity-disposition.currentQuantity<
+            disposition.alreadyCorrectedQuantity+disposition.alreadyQuantityCorrected+disposition.quantity||
           input.confirmedAt<disposition.availableAt)
         throw new Error("Disposition correction evidence is stale or predates the disposition.");
       const row=await queryOne<{id:string}>(`INSERT INTO inventory_stock_disposition_corrections
@@ -690,14 +696,20 @@ export const inventoryFifoRepository={
           (SELECT COUNT(*)::int FROM inventory_stock_dispositions disposition
             WHERE disposition.order_id=orders.id AND disposition.order_line_sku_id=saved.order_line_sku_id
               AND NOT EXISTS (SELECT 1 FROM inventory_stock_disposition_corrections corrected
-                WHERE corrected.disposition_id=disposition.id)) AS "activeDispositionCount"
+                WHERE corrected.disposition_id=disposition.id)) AS "activeDispositionCount",
+          (SELECT COALESCE(SUM(disposition.quantity),0)::int FROM inventory_stock_dispositions disposition
+            JOIN inventory_stock_disposition_corrections corrected ON corrected.disposition_id=disposition.id
+            WHERE disposition.order_id=orders.id AND disposition.order_line_sku_id=saved.order_line_sku_id
+              AND corrected.source_order_revision=orders.source_revision) AS "claimedDispositionCorrectionQuantity"
         FROM seller_orders orders JOIN inventory_fifo_lines saved ON saved.order_id=orders.id AND saved.order_line_sku_id=$3
         LEFT JOIN seller_order_lines current_line ON current_line.order_id=orders.id AND current_line.sku_id=saved.order_line_sku_id
         JOIN seller_order_revisions revision ON revision.order_id=orders.id AND revision.revision_number=orders.source_revision
         WHERE orders.id=$1 AND orders.seller_key=$2`,[target.orderId,input.sellerKey,input.skuId],db);
       const released=Math.max(0,(line?.previousMatchedQuantity??0)-(line?.currentQuantity??0));
       if(!line||line.currentSourceRevision!==input.sourceOrderRevision||line.previousSourceRevision>=input.sourceOrderRevision||
-          line.activeDispositionCount>0||released<=0||input.availableAt<line.revisionObservedAt)
+          line.activeDispositionCount>0||released<=0||
+          line.previousQuantity-line.currentQuantity<released+line.claimedDispositionCorrectionQuantity||
+          input.availableAt<line.revisionObservedAt)
         throw new Error("Quantity correction source revision is stale, disposition-backed, or not a decrease.");
       const allocations=await query<any>(`SELECT allocation.supply_key AS "supplyKey",allocation.receipt_id AS "receiptId",
           allocation.allocated_quantity AS quantity FROM inventory_fifo_revision_allocations allocation
