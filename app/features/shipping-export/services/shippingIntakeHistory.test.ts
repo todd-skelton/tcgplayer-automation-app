@@ -18,7 +18,7 @@ const refreshed = await refreshShippingIntakeHistory(source, "seller-a", async (
 });
 assert.equal(refreshed[0]?.intakeHistory?.refreshedAt, "fresh");
 assert.deepEqual(sent, { sellerKey: "seller-a", orders: [{ orderNumber: "A", orderDate: "2026-08-01T12:00:00.000Z",
-  itemCount: 1, products: [{ quantity: 1, skuId: 9001, inventorySkuId: "9001" }] }] });
+  itemCount: 1, valueOfProducts: 9, products: [{ quantity: 1, unitPrice: 9, skuId: 9001, inventorySkuId: "9001" }] }] });
 assert.equal(JSON.stringify(sent).includes("Private"), false);
 assert.equal(withoutShippingIntakeHistory(source)[0]?.intakeHistory, undefined);
 

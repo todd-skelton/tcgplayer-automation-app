@@ -41,6 +41,7 @@ import {
 import { getOrderNumbersForShipmentReference } from "../../services/shippingExportUtils";
 import { MarketDeltaChip } from "../MarketDeltaChip";
 import { IntakeHistorySummary } from "../IntakeHistorySummary";
+import { shippingInventorySkuId } from "../../services/shippingOrderIdentity";
 import type {
   PackPullSheetLoadStatus,
   PackPullSheetShipmentMatch,
@@ -65,8 +66,16 @@ type FallbackRow = {
   intakeHistory: ShippingIntakeLineHistory | null;
 };
 
-function findLineForSku(lines: OrderLineItem[], skuId: number): OrderLineItem | undefined {
-  return lines.find((line) => line.skuId === skuId);
+function compareSkuQuantityToCurrentMarket(lines: OrderLineItem[], skuId: number, quantity: number): MarketComparison | null {
+  const matching = lines.filter((line) => line.skuId === skuId);
+  const totalQuantity = matching.reduce((sum, line) => sum + line.quantity, 0);
+  if (!totalQuantity) return null;
+  const soldPrice = matching.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0) / totalQuantity;
+  const marketQuantity = matching.filter((line) => line.marketPrice !== undefined).reduce((sum, line) => sum + line.quantity, 0);
+  const marketPrice = marketQuantity === totalQuantity
+    ? matching.reduce((sum, line) => sum + (line.marketPrice ?? 0) * line.quantity, 0) / totalQuantity : undefined;
+  return compareLinesToMarket([{ name: matching[0]?.name ?? "", quantity, unitPrice: soldPrice,
+    ...(marketPrice === undefined ? {} : { marketPrice }) }]);
 }
 
 function buildPriceBadgesBySku(order: TcgPlayerShippingOrder): Record<number, PullSheetPriceBadge> {
@@ -101,7 +110,6 @@ function buildFallbackRowsFromPullSheet(
 ): FallbackRow[] {
   const shownHistory = new Set<string>();
   return items.map((item, index) => {
-    const line = findLineForSku(lines, item.skuId);
     const history = histories.get(String(item.skuId));
     const intakeHistory = history && !shownHistory.has(history.skuId) ? history : null;
     if (history) shownHistory.add(history.skuId);
@@ -110,35 +118,35 @@ function buildFallbackRowsFromPullSheet(
       key: `${orderNumber}-${item.skuId}-${index}`,
       name: item.productName,
       quantity: item.quantity,
-      comparison: line
-        ? compareLinesToMarket([{ ...line, quantity: item.quantity }])
-        : null,
+      comparison: compareSkuQuantityToCurrentMarket(lines, item.skuId, item.quantity),
       intakeHistory,
     };
   });
 }
 
 function buildFallbackRowsFromLines(orderNumber: string, lines: OrderLineItem[], histories: Map<string, ShippingIntakeLineHistory>): FallbackRow[] {
-  const linesByName = new Map<string, { index: number; lines: OrderLineItem[] }>();
+  const groups = new Map<string, { index: number; name: string; lines: OrderLineItem[] }>();
 
   lines.forEach((line, index) => {
-    const group = linesByName.get(line.name);
+    const identity = shippingInventorySkuId(line);
+    const key = identity ? `sku:${identity}` : `name:${line.name}`;
+    const group = groups.get(key);
 
     if (group) {
       group.lines.push(line);
       return;
     }
 
-    linesByName.set(line.name, { index, lines: [line] });
+    groups.set(key, { index, name: line.name, lines: [line] });
   });
 
   const shownHistory = new Set<string>();
-  return Array.from(linesByName.entries()).map(([name, group]) => {
-    const skuId = group.lines[0]?.inventorySkuId ?? (group.lines[0]?.skuId === undefined ? null : String(group.lines[0].skuId));
+  return Array.from(groups.values()).map((group) => {
+    const skuId = group.lines[0] ? shippingInventorySkuId(group.lines[0]) : null;
     const history = skuId ? histories.get(skuId) : undefined;
     const intakeHistory = history && !shownHistory.has(history.skuId) ? history : null;
     if (history) shownHistory.add(history.skuId);
-    return { key: `${orderNumber}-${name}-${group.index}`, name,
+    return { key: `${orderNumber}-${skuId ?? group.name}-${group.index}`, name: group.name,
       quantity: group.lines.reduce((sum, line) => sum + line.quantity, 0),
       comparison: compareLinesToMarket(group.lines), intakeHistory };
   });

@@ -10,8 +10,10 @@ function requestOrder(order: TcgPlayerShippingOrder): ShippingIntakeHistoryReque
     orderNumber: order["Order #"],
     orderDate: order["Order Date"],
     itemCount: order["Item Count"],
+    valueOfProducts: order["Value Of Products"],
     products: (order.products ?? []).map((line) => ({
       quantity: line.quantity,
+      unitPrice: line.unitPrice,
       ...(line.skuId === undefined ? {} : { skuId: line.skuId }),
       ...(line.inventorySkuId === undefined ? {} : { inventorySkuId: line.inventorySkuId }),
     })),

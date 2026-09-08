@@ -6,7 +6,7 @@ Age is frozen from each receipt's intake time to the persisted order time. The p
 
 The server attaches history only when seller, order number, exact raw SKU, aggregate SKU quantity, allocation source revision, and persisted FIFO totals agree. Repeated provider rows for a SKU share one SKU aggregate. Pending, held, mismatched, unsupported, and unidentified quantities remain visible and do not contribute stale intake totals. Combined shipments de-duplicate external order numbers.
 
-`POST /api/shipping-export/intake-history` refreshes up to 500 saved orders using only order number, order date, item count, raw SKU identity, and quantity. It is bound to the seller saved in Shipping Configuration. Saved workflows refresh locally on restore, window focus, and every five minutes. A failed refresh removes the saved analytics and leaves shipping operations available.
+`POST /api/shipping-export/intake-history` refreshes up to 500 saved orders using only order number, order date, item count, product value, raw SKU identity, quantity, and unit price. It sends no buyer, address, card-name, or tracking data and is bound to the seller saved in Shipping Configuration. Saved workflows refresh locally on restore, window focus, and every five minutes. A failed refresh removes the saved analytics and leaves shipping operations available.
 
 The guarded repository integration requires an explicit disposable database:
 

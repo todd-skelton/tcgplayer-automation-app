@@ -7,7 +7,7 @@ const request = (body: unknown) => new Request("http://localhost/api/shipping-ex
   method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
 });
 const order = { orderNumber: "A", orderDate: "2026-08-01T12:00:00.000Z", itemCount: 1,
-  products: [{ inventorySkuId: "9001", skuId: 9001, quantity: 1 }] };
+  valueOfProducts: 5, products: [{ inventorySkuId: "9001", skuId: 9001, quantity: 1, unitPrice: 5 }] };
 
 let called = false;
 const mismatched = await createShippingIntakeHistoryAction({ getConfig: configured, enrich: async () => {

@@ -100,12 +100,19 @@ function unavailableLine(skuId: string, order: TcgPlayerShippingOrder, quantity:
   };
 }
 
-function historyStatus(row: AllocationRow, shippingQuantity: number): {
+function historyStatus(row: AllocationRow, shippingQuantity: number, shippingEvidence?: { orderTime: string; soldTotal: number }): {
   status: ShippingIntakeHistoryStatus;
   reason?: string;
 } {
   if (row.currentOrderedQuantity !== shippingQuantity) {
     return { status: "mismatch", reason: `Shipping has ${shippingQuantity} units; order history has ${row.currentOrderedQuantity}.` };
+  }
+  if (shippingEvidence) {
+    const shippingTime = Date.parse(shippingEvidence.orderTime);
+    if (!Number.isFinite(shippingTime) || shippingTime !== row.currentOrderTime.getTime()
+      || Math.round(shippingEvidence.soldTotal * 100) !== Math.round(row.persistedSoldTotal * 100)) {
+      return { status: "mismatch", reason: "Shipping order time or SKU sale proceeds do not match current persisted order history." };
+    }
   }
   if (row.state === "held" || row.replayStatus === "held") {
     return { status: "held", reason: row.queueHoldReason ?? row.holdReason ?? "FIFO allocation needs review." };
@@ -119,8 +126,8 @@ function historyStatus(row: AllocationRow, shippingQuantity: number): {
   return { status: "current" };
 }
 
-function currentLineHistory(row: AllocationRow, shippingQuantity: number): ShippingIntakeLineHistory {
-  let state = historyStatus(row, shippingQuantity);
+function currentLineHistory(row: AllocationRow, shippingQuantity: number, shippingEvidence?: { orderTime: string; soldTotal: number }): ShippingIntakeLineHistory {
+  let state = historyStatus(row, shippingQuantity, shippingEvidence);
   const allocationTime = row.allocatedOrderTime ?? row.currentOrderTime;
   const orderTime = allocationTime.toISOString();
   const lots: ShippingIntakeLot[] = row.lots.map((lot) => {
@@ -201,7 +208,8 @@ export async function enrichShippingOrdersWithIntakeHistory(
     const lines = grouped.size
       ? [...grouped.entries()].map(([skuId, values]) => {
         const row = persisted?.get(skuId);
-        return row ? currentLineHistory(row, values.quantity) : unavailableLine(skuId, order, values.quantity);
+        return row ? currentLineHistory(row, values.quantity, { orderTime: order["Order Date"], soldTotal: values.soldTotal })
+          : unavailableLine(skuId, order, values.quantity);
       })
       : [...(persisted?.values() ?? [])].map((row) => currentLineHistory(row, row.currentOrderedQuantity));
     const unidentifiedQuantity = unidentifiedShippingQuantity(order);

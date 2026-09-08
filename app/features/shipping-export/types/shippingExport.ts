@@ -317,7 +317,8 @@ export interface ShippingIntakeHistoryRequestOrder {
   orderNumber: string;
   orderDate: string;
   itemCount: number;
-  products: Array<Pick<OrderLineItem, "quantity" | "skuId" | "inventorySkuId">>;
+  valueOfProducts: number;
+  products: Array<Pick<OrderLineItem, "quantity" | "unitPrice" | "skuId" | "inventorySkuId">>;
 }
 
 export interface ShippingIntakeHistoryResponse {

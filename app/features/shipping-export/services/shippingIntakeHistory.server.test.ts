@@ -41,10 +41,11 @@ assert.equal(line.lots[0]?.priceProvenance, "recorded");
 const persistedOnly = await enrichShippingOrdersWithIntakeHistory([order()], "seller", allocations as never);
 assert.deepEqual(persistedOnly[0]!.intakeHistory!.lines.map((value) => value.skuId), ["9001"]);
 
+const partialAllocations = async () => (await allocations()).map((row) => ({ ...row, persistedSoldTotal: 15 }));
 const unidentified = await enrichShippingOrdersWithIntakeHistory([order([
   { name: "known", quantity: 3, unitPrice: 5, inventorySkuId: "9001", skuId: 9001 },
   { name: "unknown", quantity: 1, unitPrice: 5 },
-])], "seller", allocations as never);
+])], "seller", partialAllocations as never);
 assert.deepEqual(unidentified[0]!.intakeHistory!.lines.map((value) => [value.skuId, value.orderedQuantity, value.status]),
   [["9001", 3, "current"], ["unidentified", 1, "unavailable"]]);
 
@@ -52,5 +53,9 @@ const overcounted = order([{ name: "too many", quantity: 3, unitPrice: 5, invent
 overcounted["Item Count"] = 2;
 const overcountedResult = await enrichShippingOrdersWithIntakeHistory([overcounted], "seller", allocations as never);
 assert.equal(overcountedResult[0]!.intakeHistory!.lines[0]!.status, "mismatch");
+
+const staleShipping = order([{ name: "stale", quantity: 3, unitPrice: 5, inventorySkuId: "9001", skuId: 9001 }]);
+const staleResult = await enrichShippingOrdersWithIntakeHistory([staleShipping], "seller", allocations as never);
+assert.equal(staleResult[0]!.intakeHistory!.lines[0]!.status, "mismatch");
 
 console.log("PASS shipping intake enrichment uses one SKU aggregate, persisted-order fallback, explicit provenance, and unavailable identity coverage");
