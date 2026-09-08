@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { inventoryEconomicsRepository } from "~/core/db";
+import type { Queryable } from "~/core/db/database.server";
 import { allocateAmountCents } from "../domain/money";
 import { calculateOrderEconomics } from "../domain/orderEconomics";
 import { allocatePurchasedPostage } from "../domain/postage";
@@ -13,7 +14,7 @@ function stableJson(value: unknown): string {
     return `{${Object.keys(object).sort().map((key)=>`${JSON.stringify(key)}:${stableJson(object[key])}`).join(",")}}`; }
   return JSON.stringify(value);
 }
-function financialFingerprint(order: Evidence["orders"][number]): string {
+export function financialFingerprint(order: Evidence["orders"][number]): string {
   return createHash("sha256").update(stableJson({transaction:order.transactionEvidence,refunds:order.refunds})).digest("hex");
 }
 function refundEvidence(refundStatus: string | null, refunds: unknown) {
@@ -86,26 +87,12 @@ function allocateReceiptCosts(evidence: Evidence) {
   return { byOrder,settledByOrder };
 }
 
-export async function loadInventoryEconomicsWorkspace(sellerKey: string): Promise<InventoryEconomicsWorkspace> {
-  const seller = sellerKey.trim();
-  const [purchaseCosts, fundingAdjustments, orderExpenses, evidence] = await Promise.all([
-    inventoryEconomicsRepository.listPurchaseCosts(seller),
-    inventoryEconomicsRepository.listFundingAdjustments(seller),
-    inventoryEconomicsRepository.listOrderExpenses(seller),
-    inventoryEconomicsRepository.findWorkspaceEvidence(seller),
-  ]);
+export function calculateInventoryEconomicsOrders(sellerKey:string,evidence: Evidence) {
   const expensesByOrder = allocateSharedExpenses(evidence.relevantOrderExpenses);
   const costEvidence = allocateReceiptCosts(evidence);
   const postageByOrder = evidence.postageComplete
-    ? allocatePurchasedPostage(seller, "USD", evidence.postage) : new Map<string,number>();
-  return {
-    sellerKey: seller,
-    generatedAt: new Date().toISOString(),
-    purchaseCosts,
-    fundingAdjustments,
-    orderExpenses,
-    uncostedBatches: evidence.uncostedBatches,
-    orders: evidence.orders.map((order) => {
+    ? allocatePurchasedPostage(sellerKey, "USD", evidence.postage) : new Map<string,number>();
+  return evidence.orders.map((order) => {
       const expenses = expensesByOrder.get(`${order.currency}\u0000${order.orderNumber}`) ?? [];
       const settlement = expenses.find((expense) => expense.type === "refund_settlement" &&
         expense.financialSourceFingerprint === financialFingerprint(order));
@@ -140,6 +127,66 @@ export async function loadInventoryEconomicsWorkspace(sellerKey: string): Promis
         ...(cost ? { acquisitionCostCents: cost.cents } : {}),
         acquisitionCostCoverage: cost ? cost.provenance : "unknown",
       });
-    }),
+    });
+}
+
+export async function loadInventoryEconomicsWorkspace(sellerKey: string): Promise<InventoryEconomicsWorkspace> {
+  const seller = sellerKey.trim();
+  const [purchaseCosts, fundingAdjustments, orderExpenses, evidence] = await Promise.all([
+    inventoryEconomicsRepository.listPurchaseCosts(seller),
+    inventoryEconomicsRepository.listFundingAdjustments(seller),
+    inventoryEconomicsRepository.listOrderExpenses(seller),
+    inventoryEconomicsRepository.findWorkspaceEvidence(seller),
+  ]);
+  return {
+    sellerKey: seller,
+    generatedAt: new Date().toISOString(),
+    purchaseCosts,
+    fundingAdjustments,
+    orderExpenses,
+    uncostedBatches:evidence.uncostedBatches,
+    orders:calculateInventoryEconomicsOrders(seller,evidence),
   };
+}
+
+export interface CompleteReusableProceeds {
+  sales:Array<{orderNumber:string;soldAt:string;currency:string;amountCents:number;
+    provenance:"actual"|"estimated";sourceIdentity:string;sourceIdentities:string[]}>;
+  unknownProceedsOrderCount:number;
+  unknownProceedsSoldAt:string[];
+  sourceEvidenceIdentities:string[];
+}
+
+/** Complete current-version proceeds evidence for pooled reinvestment, independent of the 100-order workspace view. */
+export async function loadCompleteReusableProceeds(sellerKey:string,executor?:Queryable):Promise<CompleteReusableProceeds> {
+  const seller=sellerKey.trim();
+  const evidence=await inventoryEconomicsRepository.findWorkspaceEvidence(seller,10_000,executor);
+  if (!evidence.ordersComplete) throw new Error("Seller orders exceed the 10,000-order complete-evidence fence.");
+  if (!evidence.postageComplete) throw new Error("Relevant postage exceeds the 10,000-row complete-evidence fence.");
+  if (!evidence.relevantExpensesComplete) throw new Error("Relevant order expenses exceed the 10,000-row complete-evidence fence.");
+  const summaries=calculateInventoryEconomicsOrders(seller,evidence);
+  const sales:CompleteReusableProceeds["sales"]=[];
+  const sourceEvidenceIdentities:string[]=[];
+  const unknownProceedsSoldAt:string[]=[];
+  let unknownProceedsOrderCount=0;
+  for (let index=0;index<summaries.length;index+=1) {
+    const summary=summaries[index]; const order=evidence.orders[index];
+    const expenseIdentities=evidence.relevantOrderExpenses.filter((expense)=>expense.currency===order.currency &&
+      expense.orderNumbers.includes(order.orderNumber)).map((expense)=>expense.evidenceIdentity);
+    const postageIdentities=evidence.postage.filter((purchase)=>purchase.orderNumbers.includes(order.orderNumber))
+      .flatMap((purchase)=>[purchase.providerIdentity,
+        createHash("sha256").update(stableJson(purchase)).digest("hex")]);
+    const sourceIdentities=[order.sourceFingerprint,financialFingerprint(order),...expenseIdentities,...postageIdentities].sort();
+    const sourceIdentity=createHash("sha256").update(stableJson({sources:sourceIdentities,
+      cash:summary.reusableCashCents??null,proceeds:summary.proceedsCoverage,
+      expenses:summary.expenseCoverage,missing:summary.missing})).digest("hex");
+    sourceEvidenceIdentities.push(sourceIdentity);
+    if (summary.reusableCashCents===undefined) { unknownProceedsOrderCount+=1;
+      unknownProceedsSoldAt.push(order.orderTime.toISOString()); continue; }
+    sales.push({orderNumber:summary.orderNumber,soldAt:order.orderTime.toISOString(),currency:summary.currency,
+      amountCents:summary.reusableCashCents,
+      provenance:summary.proceedsCoverage==="estimated"||summary.expenseCoverage==="estimated"?"estimated":"actual",
+      sourceIdentity,sourceIdentities});
+  }
+  return {sales,unknownProceedsOrderCount,unknownProceedsSoldAt,sourceEvidenceIdentities:sourceEvidenceIdentities.sort()};
 }

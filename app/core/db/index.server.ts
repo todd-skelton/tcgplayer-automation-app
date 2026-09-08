@@ -14,6 +14,7 @@ export { inventoryBatchesRepository } from "./repositories/inventoryBatches.serv
 export { inventoryFifoRepository } from "./repositories/inventoryFifo.server";
 export { inventoryHistoryDiagnosticsRepository } from "./repositories/inventoryHistoryDiagnostics.server";
 export { inventoryEconomicsRepository } from "./repositories/inventoryEconomics.server";
+export { inventoryReinvestmentRepository } from "./repositories/inventoryReinvestment.server";
 export { inventoryOpeningBalancesRepository } from "./repositories/inventoryOpeningBalances.server";
 export { inventoryBatchPricingJobsRepository } from "./repositories/inventoryBatchPricingJobs.server";
 export { inventoryPublicationsRepository } from "./repositories/inventoryPublications.server";
