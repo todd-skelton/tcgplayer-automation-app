@@ -25,7 +25,8 @@ async function addOrder(number:string,time:string,quantity:number,sellerKey=sell
     (order_id,sku_id,product_name,ordered_quantity,gross_item_proceeds) VALUES ($1,$2,'Synthetic',$3,1)`,[id,skuId,quantity]);
   await pool.query(`INSERT INTO seller_order_revisions
     (order_id,revision_number,source_fingerprint,source,observed_at,order_time,provider_status,lifecycle,line_evidence)
-    VALUES ($1,1,'fp','tcgplayer_api',NOW(),$2,$3,$3,'[]')`,[id,time,lifecycle]);
+    VALUES ($1,1,'fp','tcgplayer_api',NOW(),$2,$3,$3,$4::jsonb)`,
+    [id,time,lifecycle,JSON.stringify([{skuId,quantity}])]);
   await repo.enqueueOrderRevision(id);
   return id;
 }
@@ -66,12 +67,31 @@ try{
     [`${seller}-opening-mutation-2`,seller,opening.rows[0]!.id]);
   await pool.query(`INSERT INTO inventory_opening_balance_items (run_id,sku,opening_quantity,receipt_id)
     VALUES ($1,99002,2,$2)`,[opening.rows[0]!.id,receipt2.rows[0]!.receipt_id]);
+  await pool.query(`INSERT INTO inventory_pending_mutations
+    (request_id,mutation_type,sku,requested_quantity,product_line_id,set_id,product_id,quantity_delta,resulting_quantity)
+    VALUES ($1,'opening',99003,3,1,1,1,3,3)`,[`${seller}-opening-mutation-3`]);
+  const receipt3=await pool.query(`INSERT INTO inventory_receipts
+    (request_id,sku,original_quantity,product_line_id,set_id,product_id,seller_key,intake_at,market_value,
+     market_provenance,receipt_kind,opening_balance_run_id,fifo_precedence)
+    VALUES ($1,99003,3,1,1,1,$2,NULL,NULL,'unavailable','opening_balance',$3,0) RETURNING receipt_id`,
+    [`${seller}-opening-mutation-3`,seller,opening.rows[0]!.id]);
+  await pool.query(`INSERT INTO inventory_opening_balance_items (run_id,sku,opening_quantity,receipt_id)
+    VALUES ($1,99003,3,$2)`,[opening.rows[0]!.id,receipt3.rows[0]!.receipt_id]);
 
   await addOrder("PRE","2026-09-07T11:59:59Z",1);
   const firstOrder=await addOrder("A","2026-09-07T12:00:00Z",2);
   await addOrder("B","2026-09-07T12:01:00Z",2);
   await addOrder("C","2026-09-07T12:05:00Z",1);
   const otherOrder=await addOrder("OTHER","2026-09-07T12:01:00Z",1,`${seller}-other`);
+  const pendingAmendment=await addOrder("PENDING-A","2026-09-07T12:20:00Z",3,seller,"ready_to_ship","99003");
+  await addOrder("PENDING-B","2026-09-07T12:21:00Z",1,seller,"ready_to_ship","99003");
+  await pool.query(`UPDATE seller_order_lines SET ordered_quantity=2 WHERE order_id=$1 AND sku_id='99003'`,[pendingAmendment]);
+  await pool.query(`UPDATE seller_orders SET source_revision=2 WHERE id=$1`,[pendingAmendment]);
+  await pool.query(`INSERT INTO seller_order_revisions
+    (order_id,revision_number,source_fingerprint,source,observed_at,order_time,provider_status,lifecycle,line_evidence)
+    VALUES ($1,2,'pending-amendment-2','tcgplayer_api','2026-09-07T12:22:00Z','2026-09-07T12:20:00Z',
+      'ready_to_ship','ready_to_ship','[{"skuId":"99003","quantity":2}]')`,[pendingAmendment]);
+  await repo.enqueueOrderRevision(pendingAmendment);
   while(await repo.processNextReplay()){}
   assert.deepEqual((await repo.findOrderAllocation(seller,"PRE")).map((line:any)=>[line.state,line.matchedQuantity]),[["excluded_pre_cutoff",0]]);
   assert.deepEqual((await repo.findOrderAllocation(seller,"A")).map((line:any)=>[line.state,line.matchedQuantity]),[["allocated",2]]);
@@ -80,6 +100,19 @@ try{
   assert.equal((await repo.findOrderAllocation(seller,"OTHER")).length,0);
   assert.deepEqual((await repo.findOrderAllocation(`${seller}-other`,"OTHER")).map((line:any)=>
     [line.state,line.allocationPending]),[["pending",true]]);
+  const pendingHeld=(await repo.findOrderAllocation(seller,"PENDING-A"))[0]!;
+  assert.deepEqual([pendingHeld.state,pendingHeld.orderedQuantity,pendingHeld.currentOrderedQuantity,
+    pendingHeld.matchedQuantity],["held",3,2,3]);
+  assert.equal((await repo.findOrderAllocation(seller,"PENDING-B"))[0]?.matchedQuantity,0);
+  await repo.recordQuantityCorrection({requestId:`${seller}-pending-quantity-correction`,sellerKey:seller,
+    orderNumber:"PENDING-A",skuId:"99003",sourceOrderRevision:2,availableAt:new Date("2026-09-07T12:22:00Z"),
+    evidence:{kind:"provider_quantity_correction"},sourceAllocations:[{
+      supplyKey:pendingHeld.allocations[0].supplyKey,receiptId:pendingHeld.allocations[0].receiptId,quantity:1}]});
+  await repo.processNextReplay(seller);
+  assert.equal((await repo.findOrderAllocation(seller,"PENDING-B"))[0]?.matchedQuantity,0);
+  await addOrder("PENDING-C","2026-09-07T12:23:00Z",1,seller,"ready_to_ship","99003");
+  await repo.processNextReplay(seller);
+  assert.equal((await repo.findOrderAllocation(seller,"PENDING-C"))[0]?.matchedQuantity,1);
 
   await repo.recordDisposition({requestId:`${seller}-restock`,sellerKey:seller,orderNumber:"A",skuId:"99001",
     dispositionType:"physical_restock",quantity:1,sourceOrderRevision:1,availableAt:new Date("2026-09-07T12:02:00Z"),

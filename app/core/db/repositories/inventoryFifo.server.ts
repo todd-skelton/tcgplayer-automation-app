@@ -228,7 +228,7 @@ export const inventoryFifoRepository={
       if(!opening)return holdQueue(queued.sellerKey,queued.sku,"missing_applied_opening_balance",db);
       const changedOrderTime=await queryOne<{lineId:string}>(`SELECT saved.id::text AS "lineId"
         FROM inventory_fifo_lines saved JOIN seller_orders orders ON orders.id=saved.order_id
-        WHERE saved.seller_key=$1 AND saved.sku=$2 AND saved.current_revision_id IS NOT NULL
+        WHERE saved.seller_key=$1 AND saved.sku=$2
           AND saved.order_time IS DISTINCT FROM orders.order_time
           AND (saved.order_time>=$3 OR orders.order_time>=$3) LIMIT 1`,[queued.sellerKey,queued.sku,opening.cutoffAt],db);
       if(changedOrderTime)return holdQueue(queued.sellerKey,queued.sku,
@@ -331,7 +331,7 @@ export const inventoryFifoRepository={
         LEFT JOIN seller_order_lines current_line ON current_line.order_id=line.order_id
           AND current_line.sku_id=line.order_line_sku_id
         WHERE line.seller_key=$1 AND line.sku=$2 AND current_line.order_id IS NULL`,[queued.sellerKey,queued.sku],db);
-      const demand=[...current,...removed];
+      let demand=[...current,...removed];
       const amendedLineAddition=await queryOne<{lineId:string}>(`SELECT saved.id::text AS "lineId"
         FROM inventory_fifo_lines saved JOIN seller_orders orders ON orders.id=saved.order_id
         JOIN seller_order_revisions initial ON initial.order_id=orders.id AND initial.revision_number=1
@@ -341,8 +341,12 @@ export const inventoryFifoRepository={
             WHERE evidence->>'skuId'=saved.order_line_sku_id) LIMIT 1`,[queued.sellerKey,queued.sku,opening.cutoffAt],db);
       if(amendedLineAddition)return holdQueue(queued.sellerKey,queued.sku,
         `order_line_addition_requires_correction:${amendedLineAddition.lineId}`,db);
-      const unresolvedQuantityChange=await queryOne<{lineId:string;direction:string}>(`SELECT saved.id::text AS "lineId",
-          CASE WHEN COALESCE(current_line.ordered_quantity,0)>saved.ordered_quantity THEN 'increase' ELSE 'decrease' END AS direction
+      const unresolvedQuantityChange=await queryOne<{lineId:string;orderId:string;skuId:string;direction:string;
+          needsInitialProjection:boolean;previousQuantity:number;previousOrderTime:Date;previousSourceRevision:number}>(`SELECT saved.id::text AS "lineId",
+          saved.order_id::text AS "orderId",saved.order_line_sku_id AS "skuId",
+          CASE WHEN COALESCE(current_line.ordered_quantity,0)>saved.ordered_quantity THEN 'increase' ELSE 'decrease' END AS direction,
+          saved.current_revision_id IS NULL AS "needsInitialProjection",saved.ordered_quantity AS "previousQuantity",
+          saved.order_time AS "previousOrderTime",saved.source_order_revision AS "previousSourceRevision"
         FROM inventory_fifo_lines saved
         LEFT JOIN seller_order_lines current_line ON current_line.order_id=saved.order_id
           AND current_line.sku_id=saved.order_line_sku_id
@@ -351,7 +355,8 @@ export const inventoryFifoRepository={
           AND orders.order_time>=$3
           AND COALESCE(current_line.ordered_quantity,0)<>saved.ordered_quantity
           AND (COALESCE(current_line.ordered_quantity,0)>saved.ordered_quantity
-            OR COALESCE(current_line.ordered_quantity,0)<saved.matched_quantity)
+            OR COALESCE(current_line.ordered_quantity,0)<saved.matched_quantity
+            OR saved.current_revision_id IS NULL)
           AND NOT EXISTS (SELECT 1 FROM inventory_order_quantity_corrections correction
             WHERE correction.order_id=saved.order_id AND correction.order_line_sku_id=saved.order_line_sku_id
               AND correction.source_order_revision=orders.source_revision)
@@ -360,8 +365,13 @@ export const inventoryFifoRepository={
             WHERE disposition.order_id=saved.order_id AND disposition.order_line_sku_id=saved.order_line_sku_id
               AND correction.source_order_revision=orders.source_revision)
         ORDER BY orders.order_time,orders.order_number LIMIT 1`,[queued.sellerKey,queued.sku,opening.cutoffAt],db);
-      if(unresolvedQuantityChange)return holdQueue(queued.sellerKey,queued.sku,
+      const initialDecrease=unresolvedQuantityChange?.direction==="decrease"&&unresolvedQuantityChange.needsInitialProjection
+        ?unresolvedQuantityChange:null;
+      if(unresolvedQuantityChange&&!initialDecrease)return holdQueue(queued.sellerKey,queued.sku,
         `order_quantity_${unresolvedQuantityChange.direction}_requires_correction:${unresolvedQuantityChange.lineId}`,db);
+      if(initialDecrease)demand=demand.map((row)=>row.orderId===initialDecrease.orderId&&row.skuId===initialDecrease.skuId
+        ?{...row,quantity:initialDecrease.previousQuantity,orderTime:initialDecrease.previousOrderTime,
+          sourceRevision:initialDecrease.previousSourceRevision}:row);
       const dispositionRows=await query<any>(`SELECT disposition.id::text AS id,disposition.order_id::text AS "orderId",
         disposition.order_line_sku_id AS "skuId",disposition.disposition_type AS type,mapping.receipt_id AS "receiptId",
         mapping.source_supply_key AS "sourceSupplyKey",mapping.quantity,
@@ -489,6 +499,9 @@ export const inventoryFifoRepository={
             state="held";holdReason=shippedOrders.has(row.orderId)?"canceled_after_shipping_requires_restock":"cancellation_requires_disposition";
           }
         }else if(!supportedLifecycles.has(row.lifecycle)){state="held";holdReason="unknown_order_lifecycle";}
+        if(initialDecrease&&row.orderId===initialDecrease.orderId&&row.skuId===initialDecrease.skuId){
+          state="held";holdReason=`order_quantity_decrease_requires_correction:${initialDecrease.lineId}`;
+        }
         replayLines.push({sellerKey:queued.sellerKey,orderId:row.orderId,skuId:row.skuId,sku:queued.sku,
           orderTime:row.orderTime,orderedQuantity:row.quantity,sourceOrderRevision:row.sourceRevision,state,holdReason,
           matchedQuantity:result.matchedQuantity,unmatchedQuantity:result.unmatchedQuantity,
@@ -498,6 +511,8 @@ export const inventoryFifoRepository={
           allocations:result.allocations});
       }
       const changedLines=await saveLines(replayLines,"seller_sku_replay",db);
+      if(initialDecrease)return holdQueue(queued.sellerKey,queued.sku,
+        `order_quantity_decrease_requires_correction:${initialDecrease.lineId}`,db);
       await execute(`DELETE FROM inventory_fifo_replay_queue WHERE seller_key=$1 AND sku=$2`,[queued.sellerKey,queued.sku],db);
       return {status:"complete" as const,sellerKey:queued.sellerKey,sku:queued.sku,changedLines};
     });
