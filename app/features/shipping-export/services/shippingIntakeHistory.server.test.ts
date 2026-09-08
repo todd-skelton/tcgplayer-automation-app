@@ -48,4 +48,9 @@ const unidentified = await enrichShippingOrdersWithIntakeHistory([order([
 assert.deepEqual(unidentified[0]!.intakeHistory!.lines.map((value) => [value.skuId, value.orderedQuantity, value.status]),
   [["9001", 3, "current"], ["unidentified", 1, "unavailable"]]);
 
+const overcounted = order([{ name: "too many", quantity: 3, unitPrice: 5, inventorySkuId: "9001", skuId: 9001 }]);
+overcounted["Item Count"] = 2;
+const overcountedResult = await enrichShippingOrdersWithIntakeHistory([overcounted], "seller", allocations as never);
+assert.equal(overcountedResult[0]!.intakeHistory!.lines[0]!.status, "mismatch");
+
 console.log("PASS shipping intake enrichment uses one SKU aggregate, persisted-order fallback, explicit provenance, and unavailable identity coverage");

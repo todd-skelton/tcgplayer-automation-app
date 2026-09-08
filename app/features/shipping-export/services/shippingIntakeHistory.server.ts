@@ -206,6 +206,13 @@ export async function enrichShippingOrdersWithIntakeHistory(
       : [...(persisted?.values() ?? [])].map((row) => currentLineHistory(row, row.currentOrderedQuantity));
     const unidentifiedQuantity = unidentifiedShippingQuantity(order);
     if (unidentifiedQuantity) lines.push(unavailableLine("unidentified", order, unidentifiedQuantity));
+    const productQuantity = order.products?.reduce((sum, line) => sum + line.quantity, 0) ?? 0;
+    if (order.products?.length && productQuantity > order["Item Count"]) {
+      for (const line of lines) {
+        line.status = "mismatch";
+        line.statusReason = `Shipping product rows have ${productQuantity} units; the order total has ${order["Item Count"]}.`;
+      }
+    }
     if (!order.products?.length) {
       const persistedQuantity = lines.reduce((sum, line) => sum + line.orderedQuantity, 0);
       const persistedSoldTotal = lines.reduce((sum, line) => sum + (line.soldTotal ?? 0), 0);
