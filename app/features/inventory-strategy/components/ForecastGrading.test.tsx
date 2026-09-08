@@ -32,6 +32,32 @@ assert.match(markup, /active forecast remains unchanged/i);
 assert.match(markup, /stock removed: 1 spell/);
 assert.match(markup, /curve:pooled-supply-v1/);
 assert.match(markup, /No compatible held-out model pairs/);
+const comparisonMarkup = renderToStaticMarkup(<ForecastGrading report={{
+  ...report,
+  models: [
+    { family: "curve", version: "curve:v1", training: score, validation: { ...score, count: 30, brier: 0.2 }, reservedCount: 0 },
+    { family: "buyer-choice", version: "buyer:v1", training: score, validation: { ...score, count: 30, brier: 0.3 }, reservedCount: 0 },
+    { family: "condition-rate", version: "condition:v1", training: score, validation: { ...score, count: 20, brier: 0.01 }, reservedCount: 0 },
+  ],
+  pairedComparisons: [
+    { left: "curve:v1", right: "buyer:v1", validationCount: 30, leftBrier: 0.2, rightBrier: 0.3 },
+    { left: "curve:v1", right: "condition:v1", validationCount: 20, leftBrier: 0.4, rightBrier: 0.01 },
+    { left: "buyer:v1", right: "condition:v1", validationCount: 20, leftBrier: 0.4, rightBrier: 0.01 },
+  ],
+}} />);
+assert.match(comparisonMarkup, /curve · curve:v1/);
+assert.match(comparisonMarkup, /buyer-choice · buyer:v1/);
+assert.match(comparisonMarkup, /condition-rate · condition:v1/);
+assert.match(comparisonMarkup, /curve:v1 Brier 0.2000 · buyer:v1 Brier 0.3000 · 30 paired/);
+assert.match(comparisonMarkup, /curve:v1 Brier 0.4000 · condition:v1 Brier 0.0100 · 20 paired/);
+assert.match(comparisonMarkup, /buyer:v1 Brier 0.4000 · condition:v1 Brier 0.0100 · 20 paired/);
+const sparseMarkup = renderToStaticMarkup(<ForecastGrading report={{
+  ...report,
+  pairedComparisons: [
+    { left: "curve:v1", right: "buyer:tiny", validationCount: 1, leftBrier: 0.4, rightBrier: 0.1 },
+  ],
+}} />);
+assert.match(sparseMarkup, /curve:v1 vs buyer:tiny: 1 paired · need 20/);
 const eligibleMarkup = renderToStaticMarkup(
   <ForecastGrading
     report={{ ...report, status: "eligible", statusReasons: [], evaluationId: "42" }}

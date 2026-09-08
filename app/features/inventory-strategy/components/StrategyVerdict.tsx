@@ -15,9 +15,8 @@ import {
   formatDays,
   formatDelta,
   formatHurdle,
-  percentFormatter,
 } from "./format";
-import { gradingStatus, hurdleReturns, type HurdleReturn } from "./verdict";
+import { forecastGradingOverview, hurdleReturns, type HurdleReturn } from "./verdict";
 
 function formatReturn(dailyReturn: number): string {
   return `${(dailyReturn * 100).toFixed(2)}%/day`;
@@ -43,19 +42,6 @@ function policyLabel(dashboard: InventoryStrategyDashboard): string {
   return ownHurdles === 0
     ? label
     : `${label}, ${ownHurdles} product ${ownHurdles === 1 ? "line" : "lines"} at their own`;
-}
-
-function gradingLabel(report: ForecastEvaluationReport | null): string {
-  const status = gradingStatus(report);
-  if (status.graded) {
-    return `Forecasts graded: ${status.label} ${percentFormatter.format(status.grade.soldShare)} sold against ${percentFormatter.format(status.grade.expectedShare)} expected, Brier ${status.grade.brier.toFixed(3)} against ${status.baseRate.toFixed(3)}`;
-  }
-  if (status.unpairedModels) {
-    return "Forecast models have held-out scores, but their shared cohort is below the comparison minimum";
-  }
-  return status.gradableAt
-    ? `Forecast validation reserved through ${new Date(status.gradableAt).toLocaleDateString()}`
-    : "Forecast validation has insufficient evidence";
 }
 
 /** What the best hurdle offers over the configured one. */
@@ -149,7 +135,7 @@ export function StrategyVerdict({
     returns[0],
     returns.find(({ scenario }) => scenario.configured),
   );
-  const status = gradingStatus(grading);
+  const gradingOverview = forecastGradingOverview(grading);
 
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
@@ -165,8 +151,8 @@ export function StrategyVerdict({
         <Chip
           size="small"
           variant="outlined"
-          color={status.graded ? "success" : "default"}
-          label={gradingLabel(grading)}
+          color={gradingOverview.state === "scored" ? "success" : "default"}
+          label={gradingOverview.label}
         />
       </Stack>
       <Box

@@ -99,10 +99,13 @@ export function ForecastGrading({
         ) : (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
             {report.pairedComparisons.map((comparison) => {
-              const supported = comparison.validationCount >= report.policy.minimumPairedValidationCount;
+              const supported = comparison.validationCount >= report.policy.minimumPairedValidationCount &&
+                comparison.leftBrier !== null && comparison.rightBrier !== null;
               return <Chip key={`${comparison.left}:${comparison.right}`} size="small"
                 color={supported ? "success" : "default"} variant="outlined"
-                label={`${comparison.left} vs ${comparison.right}: ${comparison.validationCount} paired · ${supported ? "comparable" : `need ${report.policy.minimumPairedValidationCount}`}`} />;
+                label={supported
+                  ? `${comparison.left} Brier ${comparison.leftBrier!.toFixed(4)} · ${comparison.right} Brier ${comparison.rightBrier!.toFixed(4)} · ${comparison.validationCount} paired`
+                  : `${comparison.left} vs ${comparison.right}: ${comparison.validationCount} paired · need ${report.policy.minimumPairedValidationCount}`} />;
             })}
           </Stack>
         )}
