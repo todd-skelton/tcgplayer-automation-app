@@ -236,11 +236,33 @@ export const inventoryFifoRepository={
           + COALESCE((SELECT SUM(disposition.quantity)::int FROM inventory_stock_dispositions disposition
             WHERE disposition.seller_key=difference.seller_key AND disposition.sku=difference.sku
               AND disposition.available_at>=previous.cutoff_at AND disposition.available_at<observation.cutoff_at),0)
-          - COALESCE((SELECT SUM(line.ordered_quantity)::int
-            FROM seller_orders orders JOIN seller_order_lines line ON line.order_id=orders.id
+          - COALESCE((SELECT SUM((evidence->>'quantity')::int)::int
+            FROM seller_orders orders JOIN seller_order_revisions revision
+              ON revision.order_id=orders.id AND revision.revision_number=1
+            CROSS JOIN LATERAL jsonb_array_elements(revision.line_evidence) evidence
             WHERE orders.seller_key=difference.seller_key
               AND orders.order_time>=previous.cutoff_at AND orders.order_time<observation.cutoff_at
-              AND line.sku_id=difference.sku::text),0)
+              AND evidence->>'skuId'=difference.sku::text),0)
+          + COALESCE((SELECT SUM(
+              prior.quantity-current.quantity-CASE WHEN prior.quantity>current.quantity
+                THEN LEAST(prior.quantity-current.quantity,correction.quantity) ELSE 0 END)::int
+            FROM seller_order_revisions revision
+            JOIN seller_orders orders ON orders.id=revision.order_id
+            JOIN seller_order_revisions prior_revision ON prior_revision.order_id=revision.order_id
+              AND prior_revision.revision_number=revision.revision_number-1
+            CROSS JOIN LATERAL (SELECT COALESCE(SUM((item->>'quantity')::int),0)::int AS quantity
+              FROM jsonb_array_elements(prior_revision.line_evidence) item
+              WHERE item->>'skuId'=difference.sku::text) prior
+            CROSS JOIN LATERAL (SELECT COALESCE(SUM((item->>'quantity')::int),0)::int AS quantity
+              FROM jsonb_array_elements(revision.line_evidence) item
+              WHERE item->>'skuId'=difference.sku::text) current
+            CROSS JOIN LATERAL (SELECT COALESCE(SUM(disposition.quantity),0)::int AS quantity
+              FROM inventory_stock_dispositions disposition
+              JOIN inventory_stock_disposition_corrections corrected ON corrected.disposition_id=disposition.id
+              WHERE disposition.order_id=orders.id AND disposition.sku=difference.sku
+                AND corrected.source_order_revision=revision.revision_number) correction
+            WHERE orders.seller_key=difference.seller_key AND revision.revision_number>1
+              AND revision.observed_at>=previous.cutoff_at AND revision.observed_at<observation.cutoff_at),0)
         )::int AS "expectedDelta"
         FROM inventory_observation_differences difference
         JOIN inventory_complete_observations observation ON observation.id=difference.observation_id
@@ -264,6 +286,16 @@ export const inventoryFifoRepository={
                 WHERE correction.disposition_id=disposition.id)
           ) LIMIT 1`,[queued.sellerKey,queued.sku],db);
       if(reductionConflict)return holdQueue(queued.sellerKey,queued.sku,`quantity_reduction_after_restock:${reductionConflict.lineId}`,db);
+      const invalidatedCorrection=await queryOne<{id:string}>(`SELECT correction.id::text AS id
+        FROM inventory_stock_dispositions disposition
+        JOIN inventory_stock_disposition_corrections correction ON correction.disposition_id=disposition.id
+        LEFT JOIN seller_order_lines current_line ON current_line.order_id=disposition.order_id
+          AND current_line.sku_id=disposition.order_line_sku_id
+        WHERE disposition.seller_key=$1 AND disposition.sku=$2
+          AND disposition.source_ordered_quantity-COALESCE(current_line.ordered_quantity,0)<disposition.quantity
+        LIMIT 1`,[queued.sellerKey,queued.sku],db);
+      if(invalidatedCorrection)return holdQueue(queued.sellerKey,queued.sku,
+        `return_correction_invalidated:${invalidatedCorrection.id}`,db);
 
       const current=await query<any>(`SELECT orders.id::text AS "orderId",orders.order_number AS "orderNumber",
         orders.order_time AS "orderTime",orders.lifecycle,orders.source_revision AS "sourceRevision",
@@ -344,7 +376,7 @@ export const inventoryFifoRepository={
         WHERE orders.seller_key=$1 AND revision.lifecycle IN ('shipped_in_transit','shipped_delivered')
           AND (EXISTS (SELECT 1 FROM seller_order_lines line WHERE line.order_id=orders.id
               AND line.sku_id=$2::text)
-            OR EXISTS (SELECT 1 FROM inventory_fifo_lines line WHERE line.order_id=orders.id AND line.sku=$2))`,
+            OR EXISTS (SELECT 1 FROM inventory_fifo_lines line WHERE line.order_id=orders.id AND line.sku=$2::integer))`,
         [queued.sellerKey,queued.sku],db);
       const shippedOrders=new Set(shipped.map((row)=>row.orderId));
       const dispositionsByLine=new Map<string,typeof dispositionRows>();
