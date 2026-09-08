@@ -24,6 +24,13 @@ const success = await createShippingIntakeHistoryAction({ getConfig: configured,
 assert.equal(success.init?.status ?? 200, 200);
 assert.deepEqual(success.data, { histories: [{ orderNumber: "A", sellerKey: "seller-a", refreshedAt: "now", lines: [] }] });
 
+const unidentified = await createShippingIntakeHistoryAction({ getConfig: configured, enrich: async (orders) => {
+  assert.equal(orders[0]?.products?.[0]?.skuId, undefined);
+  return [];
+} })({ request: request({ sellerKey: "seller-a", orders: [{ ...order,
+  products: [{ quantity: 1, unitPrice: 5 }] }] }) });
+assert.equal(unidentified.init?.status ?? 200, 200);
+
 const oversized = await createShippingIntakeHistoryAction({ getConfig: configured, enrich: async () => [] })(
   { request: request({ sellerKey: "seller-a", orders: Array.from({ length: 501 }, () => order) }) },
 );

@@ -12,12 +12,13 @@ function parseOrders(value: unknown): ShippingIntakeHistoryRequestOrder[] {
     const order = item as Partial<ShippingIntakeHistoryRequestOrder>;
     if (typeof order.orderNumber !== "string" || !order.orderNumber.trim() || typeof order.orderDate !== "string"
       || !Number.isInteger(order.itemCount) || (order.itemCount ?? -1) < 0 || !Number.isFinite(order.valueOfProducts)
+      || (order.valueOfProducts ?? -1) < 0
       || !Array.isArray(order.products)) throw new Error("History order identity is incomplete.");
     const products = order.products.map((product) => {
       if (!product || typeof product !== "object") throw new Error("History product identity is incomplete.");
       const line = product as ShippingIntakeHistoryRequestOrder["products"][number];
-      if (!Number.isInteger(line.quantity) || line.quantity <= 0 || !Number.isFinite(line.unitPrice)
-        || (line.skuId === undefined && typeof line.inventorySkuId !== "string")) throw new Error("History product identity is incomplete.");
+      if (!Number.isInteger(line.quantity) || line.quantity <= 0 || !Number.isFinite(line.unitPrice) || line.unitPrice < 0)
+        throw new Error("History product quantity or sale value is incomplete.");
       return line;
     });
     return { orderNumber: order.orderNumber.trim(), orderDate: order.orderDate, itemCount: order.itemCount as number,
