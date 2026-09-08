@@ -297,11 +297,18 @@ export const inventoryFifoRepository={
           AND orders.lifecycle<>'canceled' LIMIT 1`,[queued.sellerKey,queued.sku],db);
       if(invalidatedCancellation)return holdQueue(queued.sellerKey,queued.sku,
         `unfulfilled_cancellation_invalidated:${invalidatedCancellation.id}`,db);
+      const invalidatedDispositionChronology=await queryOne<{id:string}>(`SELECT disposition.id::text AS id
+        FROM inventory_stock_dispositions disposition JOIN seller_orders orders ON orders.id=disposition.order_id
+        WHERE disposition.seller_key=$1 AND disposition.sku=$2 AND orders.order_time>disposition.available_at LIMIT 1`,
+        [queued.sellerKey,queued.sku],db);
+      if(invalidatedDispositionChronology)return holdQueue(queued.sellerKey,queued.sku,
+        `stock_disposition_chronology_invalidated:${invalidatedDispositionChronology.id}`,db);
       const invalidatedQuantityCorrection=await queryOne<{id:string}>(`SELECT correction.id::text AS id
         FROM inventory_order_quantity_corrections correction JOIN seller_orders orders ON orders.id=correction.order_id
         LEFT JOIN seller_order_lines line ON line.order_id=orders.id AND line.sku_id=correction.order_line_sku_id
         WHERE correction.seller_key=$1 AND correction.sku=$2 AND orders.source_revision>correction.source_order_revision
-          AND COALESCE(line.ordered_quantity,0)<>correction.corrected_quantity LIMIT 1`,[queued.sellerKey,queued.sku],db);
+          AND (COALESCE(line.ordered_quantity,0)>correction.corrected_quantity
+            OR orders.order_time>correction.available_at) LIMIT 1`,[queued.sellerKey,queued.sku],db);
       if(invalidatedQuantityCorrection)return holdQueue(queued.sellerKey,queued.sku,
         `order_quantity_correction_invalidated:${invalidatedQuantityCorrection.id}`,db);
 
