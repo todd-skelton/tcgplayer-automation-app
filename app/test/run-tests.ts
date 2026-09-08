@@ -3,6 +3,7 @@ import "../integrations/tcgplayer/client/get-price-points.server.test";
 import "../features/inventory-history/domain/receiptBalances.test";
 import "../features/inventory-opening-balance/domain/inventoryObservation.test";
 import "../features/inventory-opening-balance/services/applyInventoryOpeningBalance.test";
+import "../features/inventory-fifo/domain/allocateInventoryFifo.test";
 import "../features/seller-order-history/domain/sellerOrderObservation.test";
 import "../features/seller-order-history/services/sellerOrderFileImport.test";
 import "../features/seller-order-history/services/synchronizeSellerOrders.test";

@@ -16,6 +16,7 @@ import {
   withTransaction,
   type Queryable,
 } from "../database.server";
+import { inventoryFifoRepository } from "./inventoryFifo.server";
 
 type InventoryPublicationRow = Omit<InventoryPublication, "items">;
 type InventoryPublicationItemRow = InventoryPublicationItem;
@@ -825,11 +826,12 @@ export const inventoryPublicationsRepository = {
     for (const outcome of outcomes) {
       const item = await queryOne<{
         status: InventoryPublicationItem["status"];
+        sku: number;
         quantityDelta: number;
         publishedAt: Date | null;
       }>(
         `SELECT
-          status,
+          status, sku,
           quantity_delta AS "quantityDelta",
           published_at AS "publishedAt"
         FROM inventory_publication_items
@@ -971,6 +973,14 @@ export const inventoryPublicationsRepository = {
           ],
           executor,
         );
+        if (!repeated) {
+          await inventoryFifoRepository.enqueueSellerSku(
+            publication.sellerKey!,
+            item.sku,
+            outcome.confirmedAt!,
+            executor,
+          );
+        }
       }
     }
   },
