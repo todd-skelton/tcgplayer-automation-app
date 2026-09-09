@@ -86,6 +86,7 @@ const postSellerPortalForm: SellerPortalFormPost = <TResponse>(
 export type StagedPricingInitializationErrorCode =
   | "staged_initialization_authentication_required"
   | "staged_initialization_challenge"
+  | "staged_initialization_http_failed"
   | "staged_initialization_rejected"
   | "staged_initialization_response_invalid"
   | "staged_initialization_transport_failed";
@@ -387,6 +388,12 @@ export async function initializeStagedPricingImport(
       throw new StagedPricingInitializationError(
         "staged_initialization_rejected",
         `Seller Portal rejected staged pricing initialization (${diagnostics}; transport=${code}).`,
+      );
+    }
+    if (status !== null) {
+      throw new StagedPricingInitializationError(
+        "staged_initialization_http_failed",
+        `Seller Portal returned an HTTP failure during staged pricing initialization (${diagnostics}; transport=${code}).`,
       );
     }
     throw new StagedPricingInitializationError(

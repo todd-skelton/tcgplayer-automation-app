@@ -403,7 +403,17 @@ const testCases: TestCase[] = [
         {
           status: 500,
           response: { StagedPricingUploadId: 16104570 },
-          code: "staged_initialization_transport_failed",
+          code: "staged_initialization_http_failed",
+        },
+        {
+          status: 502,
+          response: "private upstream failure",
+          metadata: {
+            status: 502,
+            contentType: "text",
+            redirected: false,
+          },
+          code: "staged_initialization_http_failed",
         },
       ];
 
@@ -420,7 +430,8 @@ const testCases: TestCase[] = [
           (error: unknown) =>
             error instanceof StagedPricingInitializationError &&
             error.code === testCase.code &&
-            !error.message.includes("private"),
+            !error.message.includes("private") &&
+            !error.message.includes("before a response was confirmed"),
         );
       }
     },
