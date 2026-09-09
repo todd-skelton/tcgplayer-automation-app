@@ -218,6 +218,12 @@ assert.match(unavailable, /Selling history is unavailable: history bounds exceed
 assert.match(unavailable, /Order history: incomplete/);
 assert.match(unavailable, /History window/);
 assert.match(unavailable, /Last 730 days/);
+const missingSeller = render({
+  status:"unavailable",sellerKey:"",scope:{windowDays:180,productLine:null},
+  availableProductLines:[],reason:"seller_not_configured",
+  orderCoverage:{sellerKey:"",source:"tcgplayer_api",status:"not_started",ordersObserved:0,detailsRecorded:0,gaps:[]},
+});
+assert.doesNotMatch(missingSeller, /Historical publication estimate/);
 const unknownConfirmation = render({
   ...ready,
   historicalPublicationEstimate: {
@@ -236,5 +242,23 @@ const unknownConfirmation = render({
 });
 assert.match(unknownConfirmation.replace(/<[^>]*>/g, ""), /Date: unknown · assignment: unavailable/);
 assert.doesNotMatch(unknownConfirmation, /Date: recorded confirmation/);
+
+const conflicted = render({
+  ...ready,
+  historicalPublicationEstimate: {
+    ...ready.historicalPublicationEstimate,
+    summary: {
+      ...ready.historicalPublicationEstimate.summary,
+      unsupportedAdditionCount: 1,
+      unsupportedAdditionQuantity: 3,
+      conflictedSkuCount: 1,
+    },
+    conflicts: [{ sku:44, reasons:["order_lifecycle_unsettled"], quantityDifference:null }],
+    conflictCount: 1,
+  },
+});
+assert.match(conflicted, /1 affected SKU.*need review/);
+assert.match(conflicted, /1 Order status is uncertain/);
+assert.match(conflicted, /SKU 44/);
 
 console.log("PASS inventory selling history presents available, empty, unavailable, and bounded detail states");

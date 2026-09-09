@@ -138,8 +138,8 @@ function orderDemands(
 
   for (const rows of demands.values()) rows.sort((left, right) =>
     left.orderedAt.localeCompare(right.orderedAt) ||
-    left.orderId.localeCompare(right.orderId) ||
-    left.orderNumber.localeCompare(right.orderNumber));
+    left.orderNumber.localeCompare(right.orderNumber) ||
+    left.orderId.localeCompare(right.orderId));
   return { demands, conflicts };
 }
 
@@ -161,6 +161,9 @@ function publicationReasons(
     confirmed < cutoffTime &&
     (publishing === null || publishing <= confirmed);
   return [
+    ...(addition.skuProductLineCount !== 1
+      ? ["publication_identity_conflict" as const]
+      : []),
     ...(!validPublication ? ["publication_evidence_invalid" as const] : []),
     ...(confirmed !== null && confirmed < coverageStartTime
       ? ["source_bounds_exceeded" as const]
@@ -327,7 +330,8 @@ export function estimateHistoricalPublicationHistory(
       (left.kind === right.kind
         ? left.kind === "addition"
           ? left.addition.publicationItemId - (right as typeof left).addition.publicationItemId
-          : left.demand.orderId.localeCompare((right as typeof left).demand.orderId)
+          : left.demand.orderNumber.localeCompare((right as typeof left).demand.orderNumber) ||
+            left.demand.orderId.localeCompare((right as typeof left).demand.orderId)
         : left.kind === "addition" ? -1 : 1));
     let olderRemaining = olderQuantity;
     let underflow = false;

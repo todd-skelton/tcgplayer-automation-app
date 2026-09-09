@@ -71,10 +71,11 @@ async function createPublication(input: {
   confirmedAt?: Date | null;
   parentStatus?: string;
 }) {
+  const identity = `${input.seller}:${input.sku}:${input.productLine}`;
   const batch = await queryOne<{ batchNumber: number }>(
     `INSERT INTO inventory_batches (status,source_type,source_label,created_at)
     VALUES ('priced','pending_inventory',$1,$2) RETURNING batch_number AS "batchNumber"`,
-    [`${prefix}:${input.sku}`, new Date("2026-08-20T00:00:00.000Z")],
+    [`${prefix}:${identity}`, new Date("2026-08-20T00:00:00.000Z")],
   );
   assert.ok(batch);
   await execute(
@@ -88,7 +89,7 @@ async function createPublication(input: {
       (planning_key,batch_number,method,source_type,seller_key,status,publishing_at,created_at)
     VALUES ($1,$2,'staged_delta','pending_inventory',$3,$4,$5,$6) RETURNING id::text AS id`,
     [
-      `${prefix}:publication:${input.sku}`, batch.batchNumber, input.seller,
+      `${prefix}:publication:${identity}`, batch.batchNumber, input.seller,
       input.parentStatus ?? "published", new Date("2026-08-21T00:00:00.000Z"),
       new Date("2026-08-20T00:00:00.000Z"),
     ],
@@ -103,7 +104,7 @@ async function createPublication(input: {
        set_name,product_name,condition,desired_price,quantity_delta,priced_at,status,published_at,created_at)
     VALUES ($1,$2,$3,$4,$5,$5,$6,'Set',$7,'Near Mint',1.00,$8,$9,'published',$10,$11)`,
     [
-      publication.id, `${prefix}:candidate:${input.sku}`, `${prefix}:delta:${input.sku}`,
+      publication.id, `${prefix}:candidate:${identity}`, `${prefix}:delta:${identity}`,
       batch.batchNumber, input.sku, input.productLine, `Card ${input.sku}`, input.quantity,
       new Date("2026-08-20T12:00:00.000Z"), confirmedAt,
       new Date("2026-08-20T00:00:00.000Z"),
@@ -168,6 +169,8 @@ try {
   assert.equal(source.historicalPublicationEvidence.coverageComplete, true);
   assert.equal(source.historicalPublicationEvidence.additionCount, 4);
   assert.equal(source.historicalPublicationEvidence.additions.length, 4);
+  assert.ok(source.historicalPublicationEvidence.additions.every((row) =>
+    row.skuProductLineCount === 1));
   assert.equal(source.historicalPublicationEvidence.orderRevisionCount, 4);
   assert.deepEqual(source.availableProductLines, ["Magic", "Pokemon"]);
   const estimate = estimateHistoricalPublicationHistory(source.historicalPublicationEvidence);
@@ -201,6 +204,29 @@ try {
   assert.equal(invalid.historicalPublicationEvidence.coverageComplete, false);
   assert.equal(estimateHistoricalPublicationHistory(invalid.historicalPublicationEvidence).reason,
     "order_coverage_incomplete");
+
+  const crossLineSeller = `${prefix}:cross-line-seller`;
+  await createOpening(crossLineSeller, coverage);
+  await createPublication({ seller:crossLineSeller, sku:9020, quantity:1, productLine:"Pokemon" });
+  await createPublication({ seller:crossLineSeller, sku:9020, quantity:1, productLine:"Magic" });
+  const crossLineAll = await inventorySellingHistoryRepository.findEvidence(
+    crossLineSeller,
+    { windowDays:180, productLine:null },
+  );
+  assert.deepEqual(crossLineAll.historicalPublicationEvidence.additions.map((row) =>
+    row.skuProductLineCount), [2,2]);
+  assert.ok(estimateHistoricalPublicationHistory(crossLineAll.historicalPublicationEvidence)
+    .cohorts.every((row) => row.reasons.includes("publication_identity_conflict")));
+  const crossLineScoped = await inventorySellingHistoryRepository.findEvidence(
+    crossLineSeller,
+    { windowDays:180, productLine:"Pokemon" },
+  );
+  assert.equal(crossLineScoped.historicalPublicationEvidence.additions.length, 1);
+  assert.equal(crossLineScoped.historicalPublicationEvidence.additions[0].skuProductLineCount, 2,
+    "the complete seller/SKU identity check runs before product-line filtering");
+  const scopedEstimate = estimateHistoricalPublicationHistory(crossLineScoped.historicalPublicationEvidence);
+  assert.deepEqual(scopedEstimate.cohorts[0].reasons, ["publication_identity_conflict"]);
+  assert.equal(scopedEstimate.summary.reconstructedOlderQuantity, 0);
 
   console.log("PASS historical publication repository preserves scoped facts and validated opening authority");
 } finally {

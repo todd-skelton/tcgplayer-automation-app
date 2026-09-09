@@ -59,6 +59,7 @@ assert.deepEqual(calls, ["backfill:seller:500", "find:seller"]);
 calls.length = 0;
 const missingSeller = await loadInventorySellingHistory("", {}, source);
 assert.equal(missingSeller.status, "unavailable");
+assert.equal("historicalPublicationEstimate" in missingSeller, false);
 assert.deepEqual(calls, []);
 
 console.log("PASS inventory selling history loads bounded evidence for one seller");

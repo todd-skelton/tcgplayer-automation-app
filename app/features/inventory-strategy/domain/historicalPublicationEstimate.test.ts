@@ -25,6 +25,7 @@ function addition(
     inventoryDeltaKey: `batch:${publicationItemId}:${sku}`,
     batchItemCount: 1,
     batchAddToQuantity: quantity,
+    skuProductLineCount: 1,
     publishingAt: new Date(Date.parse(day(confirmedDay)) - 60_000).toISOString(),
     confirmedAt: day(confirmedDay),
     forecastEvidence: null,
@@ -221,5 +222,42 @@ const absentOpeningMeansZero = estimateHistoricalPublicationHistory(evidence(
 ));
 assert.equal(absentOpeningMeansZero.summary.estimatedAdditionQuantity, 1);
 assert.equal(absentOpeningMeansZero.cohorts[0].estimatedRemainingAtCutoff, 0);
+
+const earlyLot = addition(19, 140, 1, 2);
+const lateLot = addition(20, 140, 1, 3);
+const zOrder = revision("10", 4, [{ skuId: "140", quantity: 1 }]);
+zOrder.orderNumber = "Z-ORDER";
+const aOrder = revision("20", 4, [{ skuId: "140", quantity: 1 }]);
+aOrder.orderNumber = "A-ORDER";
+const equalTime = evidence([earlyLot, lateLot], [], [zOrder, aOrder]);
+const equalTimeEstimate = estimateHistoricalPublicationHistory(equalTime);
+assert.equal(equalTimeEstimate.cohorts[0].allocations[0].orderNumber, "A-ORDER");
+assert.deepEqual(
+  estimateHistoricalPublicationHistory(equalTime),
+  equalTimeEstimate,
+  "equal-time order replay is deterministic",
+);
+
+const publicationOrderTie = estimateHistoricalPublicationHistory(evidence(
+  [addition(21, 150, 1, 2)],
+  [],
+  [revision("21", 2, [{ skuId: "150", quantity: 1 }])],
+));
+assert.deepEqual(publicationOrderTie.conflicts[0].reasons, ["event_time_tie"]);
+
+const crossLinePokemon = { ...addition(22, 160, 1, 2), productLine:"Pokemon", skuProductLineCount:2 };
+const crossLineMagic = { ...addition(23, 160, 1, 3), productLine:"Magic", skuProductLineCount:2 };
+const crossLineAll = estimateHistoricalPublicationHistory(evidence(
+  [crossLinePokemon, crossLineMagic],
+  [],
+));
+assert.ok(crossLineAll.cohorts.every((row) =>
+  row.reasons.includes("publication_identity_conflict")));
+const crossLineScoped = estimateHistoricalPublicationHistory(evidence(
+  [crossLinePokemon],
+  [],
+));
+assert.deepEqual(crossLineScoped.cohorts[0].reasons, ["publication_identity_conflict"]);
+assert.equal(crossLineScoped.summary.reconstructedOlderQuantity, 0);
 
 console.log("PASS historical publication estimates preserve facts and fail closed on ambiguous lineage");

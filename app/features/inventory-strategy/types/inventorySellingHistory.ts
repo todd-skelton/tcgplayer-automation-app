@@ -14,6 +14,7 @@ export type HistoricalPublicationEstimateReason =
   | "order_coverage_incomplete"
   | "source_bounds_exceeded"
   | "publication_evidence_invalid"
+  | "publication_identity_conflict"
   | "source_read_failed"
   | "order_history_changed"
   | "order_lifecycle_unsettled"
@@ -33,6 +34,7 @@ export interface HistoricalPublicationAdditionEvidence {
   inventoryDeltaKey: string | null;
   batchItemCount: number;
   batchAddToQuantity: number | null;
+  skuProductLineCount: number;
   publishingAt: string | null;
   confirmedAt: string | null;
   forecastEvidence: InventoryPublicationForecastEvidence | null;
@@ -253,7 +255,7 @@ export type InventorySellingHistoryReport =
         | "order_coverage_incomplete"
         | "history_bounds_exceeded";
       orderCoverage: SellerOrderCoverage;
-      historicalPublicationEstimate: HistoricalPublicationEstimate;
+      historicalPublicationEstimate?: HistoricalPublicationEstimate;
     }
   | {
       status: "ready";

@@ -54,6 +54,7 @@ function historicalReasonLabel(value: string): string {
     order_coverage_incomplete: "Order coverage is incomplete",
     source_bounds_exceeded: "Historical evidence exceeds safe limits",
     publication_evidence_invalid: "Publication evidence is incomplete",
+    publication_identity_conflict: "Publication product line is inconsistent for this SKU",
     source_read_failed: "Historical evidence could not be read",
     order_history_changed: "Order quantity, SKU, or time changed",
     order_lifecycle_unsettled: "Order status is uncertain",
@@ -204,6 +205,13 @@ function Coverage({ report }: { report: Extract<InventorySellingHistoryReport, {
 }
 
 function HistoricalPublicationHistory({ estimate }: { estimate: HistoricalPublicationEstimate }) {
+  const conflictReasonCounts = new Map<string, number>();
+  for (const conflict of estimate.conflicts) for (const reason of conflict.reasons) {
+    conflictReasonCounts.set(reason, (conflictReasonCounts.get(reason) ?? 0) + 1);
+  }
+  const conflictReasonSummary = [...conflictReasonCounts]
+    .map(([reason, count]) => `${quantity(count)} ${historicalReasonLabel(reason)}`)
+    .join(" · ");
   return (
     <Box sx={{ mt: 3 }}>
       <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
@@ -276,9 +284,14 @@ function HistoricalPublicationHistory({ estimate }: { estimate: HistoricalPublic
             </Box>
           )}
           {estimate.conflictCount > 0 && (
-            <Typography variant="caption" color="warning.main" component="div" sx={{ mt: 1 }}>
-              {quantity(estimate.conflictCount)} SKU reconciliation conflict{estimate.conflictCount === 1 ? "" : "s"}: {estimate.conflicts.map((conflict) => `SKU ${conflict.sku} (${conflict.reasons.map(historicalReasonLabel).join(", ")})`).join("; ")}{estimate.conflicts.length < estimate.conflictCount ? "; additional conflicts omitted from this bounded view" : ""}.
-            </Typography>
+            <Box component="details" sx={{ mt: 1 }}>
+              <Box component="summary" sx={{ cursor: "pointer", typography: "caption", color: "warning.main" }}>
+                {quantity(estimate.conflictCount)} affected SKU{estimate.conflictCount === 1 ? "" : "s"} need review{conflictReasonSummary ? ` · ${conflictReasonSummary}` : ""}
+              </Box>
+              <Typography variant="caption" color="warning.main" component="div" sx={{ mt: 0.5 }}>
+                {estimate.conflicts.map((conflict) => `SKU ${conflict.sku} (${conflict.reasons.map(historicalReasonLabel).join(", ")})`).join("; ")}{estimate.conflicts.length < estimate.conflictCount ? "; additional conflicts omitted from this bounded view" : ""}.
+              </Typography>
+            </Box>
           )}
         </>
       )}
@@ -455,7 +468,9 @@ export function InventorySellingHistory({ report }: { report: InventorySellingHi
           Selling history is unavailable: {statusLabel(report.reason)}.
         </Typography>
         <Chip size="small" variant="outlined" sx={{ mt: 1 }} label={`Order history: ${statusLabel(report.orderCoverage.status)}`} />
-        <HistoricalPublicationHistory estimate={report.historicalPublicationEstimate} />
+        {report.historicalPublicationEstimate && (
+          <HistoricalPublicationHistory estimate={report.historicalPublicationEstimate} />
+        )}
       </Paper>
     );
   }

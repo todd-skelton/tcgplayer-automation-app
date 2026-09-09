@@ -55,15 +55,6 @@ export async function loadInventorySellingHistory(
       availableProductLines: [],
       reason: "seller_not_configured",
       orderCoverage: noCoverage(""),
-      historicalPublicationEstimate: {
-        status:"unavailable",reason:"source_read_failed",cutoffAt:null,
-        summary:{publicationItemCount:0,publicationQuantity:0,confirmedAdditionCount:0,
-          confirmedAdditionQuantity:0,estimatedAdditionCount:0,estimatedAdditionQuantity:0,
-          unsupportedAdditionCount:0,unsupportedAdditionQuantity:0,estimatedSoldQuantity:0,
-          estimatedRemainingAtCutoff:0,reconstructedOlderQuantity:0,
-          reconstructedOlderRemainingAtCutoff:0,supportedSkuCount:0,conflictedSkuCount:0},
-        cohorts:[],cohortCount:0,conflicts:[],conflictCount:0,
-      },
     };
   }
   await dataSource.backfillSupportedForecastEvidence(seller, 500);
