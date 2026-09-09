@@ -164,6 +164,9 @@ function publicationReasons(
     ...(addition.skuProductLineCount !== 1
       ? ["publication_identity_conflict" as const]
       : []),
+    ...(addition.linkedPreCutoffPublicationCount > 0
+      ? ["mixed_publication_receipt_sources" as const]
+      : []),
     ...(!validPublication ? ["publication_evidence_invalid" as const] : []),
     ...(confirmed !== null && confirmed < coverageStartTime
       ? ["source_bounds_exceeded" as const]

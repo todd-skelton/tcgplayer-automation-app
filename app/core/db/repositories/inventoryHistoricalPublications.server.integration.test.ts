@@ -70,8 +70,9 @@ async function createPublication(input: {
   productLine: string;
   confirmedAt?: Date | null;
   parentStatus?: string;
+  key?: string;
 }) {
-  const identity = `${input.seller}:${input.sku}:${input.productLine}`;
+  const identity = `${input.seller}:${input.sku}:${input.productLine}:${input.key ?? "only"}`;
   const batch = await queryOne<{ batchNumber: number }>(
     `INSERT INTO inventory_batches (status,source_type,source_label,created_at)
     VALUES ('priced','pending_inventory',$1,$2) RETURNING batch_number AS "batchNumber"`,
@@ -98,11 +99,12 @@ async function createPublication(input: {
   const confirmedAt = input.confirmedAt === undefined
     ? new Date("2026-08-21T00:01:00.000Z")
     : input.confirmedAt;
-  await execute(
+  const item = await queryOne<{ id: string }>(
     `INSERT INTO inventory_publication_items
       (publication_id,candidate_key,inventory_delta_key,batch_number,sku,product_id,product_line,
        set_name,product_name,condition,desired_price,quantity_delta,priced_at,status,published_at,created_at)
-    VALUES ($1,$2,$3,$4,$5,$5,$6,'Set',$7,'Near Mint',1.00,$8,$9,'published',$10,$11)`,
+    VALUES ($1,$2,$3,$4,$5,$5,$6,'Set',$7,'Near Mint',1.00,$8,$9,'published',$10,$11)
+    RETURNING id::text AS id`,
     [
       publication.id, `${prefix}:candidate:${identity}`, `${prefix}:delta:${identity}`,
       batch.batchNumber, input.sku, input.productLine, `Card ${input.sku}`, input.quantity,
@@ -110,9 +112,45 @@ async function createPublication(input: {
       new Date("2026-08-20T00:00:00.000Z"),
     ],
   );
+  assert.ok(item);
+  return item.id;
 }
 
-async function createOrder(seller: string, sku: number) {
+async function linkPublication(input: {
+  seller: string;
+  sku: number;
+  publicationItemId: string;
+  quantity: number;
+  key: string;
+}) {
+  const requestId = `${prefix}:receipt:${input.seller}:${input.sku}:${input.key}`;
+  await execute(
+    `INSERT INTO inventory_pending_mutations
+      (request_id,mutation_type,sku,requested_quantity,product_line_id,set_id,product_id,
+       quantity_delta,resulting_quantity)
+    VALUES ($1,'add',$2,$3,1,1,$2,$3,$3)`,
+    [requestId, input.sku, input.quantity],
+  );
+  const receipt = await queryOne<{ id: number }>(
+    `INSERT INTO inventory_receipts
+      (request_id,sku,original_quantity,product_line_id,set_id,product_id,seller_key,intake_at,market_provenance)
+    VALUES ($1,$2,$3,1,1,$2,$4,$5,'unavailable') RETURNING receipt_id AS id`,
+    [requestId, input.sku, input.quantity, input.seller, new Date("2026-08-20T00:00:00.000Z")],
+  );
+  assert.ok(receipt);
+  await execute(
+    `INSERT INTO inventory_publication_receipt_links
+      (publication_item_id,receipt_id,planned_quantity,target_seller_key,live_at,activated_at,
+       confirmation_evidence)
+    VALUES ($1,$2,$3,$4,$5,$5,'{"source":"historical-publication-test"}'::jsonb)`,
+    [
+      input.publicationItemId, receipt.id, input.quantity, input.seller,
+      new Date("2026-08-21T00:01:00.000Z"),
+    ],
+  );
+}
+
+async function createOrder(seller: string, sku: number, quantity = 1) {
   const order = await queryOne<{ id: string }>(
     `INSERT INTO seller_orders
       (seller_key,order_number,order_time,lifecycle,provider_status,gross_item_proceeds,
@@ -126,10 +164,10 @@ async function createOrder(seller: string, sku: number) {
   await execute(
     `INSERT INTO seller_order_lines
       (order_id,sku_id,product_name,ordered_quantity,gross_item_proceeds)
-    VALUES ($1,$2,'Card',1,1.00)`,
-    [order.id, String(sku)],
+    VALUES ($1,$2,'Card',$3,1.00)`,
+    [order.id, String(sku), quantity],
   );
-  const lines = JSON.stringify([{ skuId: String(sku), quantity: 1 }]);
+  const lines = JSON.stringify([{ skuId: String(sku), quantity }]);
   await execute(
     `INSERT INTO seller_order_revisions
       (order_id,revision_number,source_fingerprint,source,observed_at,order_time,
@@ -171,6 +209,8 @@ try {
   assert.equal(source.historicalPublicationEvidence.additions.length, 4);
   assert.ok(source.historicalPublicationEvidence.additions.every((row) =>
     row.skuProductLineCount === 1));
+  assert.ok(source.historicalPublicationEvidence.additions.every((row) =>
+    row.linkedPreCutoffPublicationCount === 0));
   assert.equal(source.historicalPublicationEvidence.orderRevisionCount, 4);
   assert.deepEqual(source.availableProductLines, ["Magic", "Pokemon"]);
   const estimate = estimateHistoricalPublicationHistory(source.historicalPublicationEvidence);
@@ -227,6 +267,45 @@ try {
   const scopedEstimate = estimateHistoricalPublicationHistory(crossLineScoped.historicalPublicationEvidence);
   assert.deepEqual(scopedEstimate.cohorts[0].reasons, ["publication_identity_conflict"]);
   assert.equal(scopedEstimate.summary.reconstructedOlderQuantity, 0);
+
+  const mixedSeller = `${prefix}:mixed-source-seller`;
+  await createOpening(mixedSeller, coverage);
+  const linkedSameSku = await createPublication({
+    seller:mixedSeller, sku:9030, quantity:1, productLine:"Pokemon", key:"linked",
+  });
+  await linkPublication({
+    seller:mixedSeller, sku:9030, publicationItemId:linkedSameSku, quantity:1, key:"same-sku",
+  });
+  await createPublication({
+    seller:mixedSeller, sku:9030, quantity:1, productLine:"Pokemon", key:"unlinked",
+  });
+  const linkedOtherSku = await createPublication({
+    seller:mixedSeller, sku:9031, quantity:1, productLine:"Pokemon", key:"linked",
+  });
+  await linkPublication({
+    seller:mixedSeller, sku:9031, publicationItemId:linkedOtherSku, quantity:1, key:"other-sku",
+  });
+  await createPublication({
+    seller:mixedSeller, sku:9032, quantity:1, productLine:"Pokemon", key:"unlinked",
+  });
+  await createOrder(mixedSeller, 9030, 2);
+  await createOrder(mixedSeller, 9032);
+  const mixedSource = await inventorySellingHistoryRepository.findEvidence(
+    mixedSeller,
+    { windowDays:180, productLine:null },
+  );
+  assert.deepEqual(mixedSource.historicalPublicationEvidence.additions.map((row) => [
+    row.sku,
+    row.linkedPreCutoffPublicationCount,
+  ]), [[9030,1],[9032,0]],
+  "linked publications are excluded from legacy counts but detected for the same candidate SKU");
+  const mixedEstimate = estimateHistoricalPublicationHistory(mixedSource.historicalPublicationEvidence);
+  assert.deepEqual(mixedEstimate.cohorts.find((row) => row.sku === 9030)?.reasons,
+    ["mixed_publication_receipt_sources"]);
+  assert.equal(mixedEstimate.cohorts.find((row) => row.sku === 9032)?.attributionProvenance,
+    "estimated_closed_flow", "a receipt-linked publication for another SKU does not block the candidate");
+  assert.equal(mixedEstimate.summary.reconstructedOlderQuantity, 0,
+    "hidden linked supply is not reconstructed as older stock");
 
   console.log("PASS historical publication repository preserves scoped facts and validated opening authority");
 } finally {

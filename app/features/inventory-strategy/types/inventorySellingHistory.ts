@@ -15,6 +15,7 @@ export type HistoricalPublicationEstimateReason =
   | "source_bounds_exceeded"
   | "publication_evidence_invalid"
   | "publication_identity_conflict"
+  | "mixed_publication_receipt_sources"
   | "source_read_failed"
   | "order_history_changed"
   | "order_lifecycle_unsettled"
@@ -35,6 +36,7 @@ export interface HistoricalPublicationAdditionEvidence {
   batchItemCount: number;
   batchAddToQuantity: number | null;
   skuProductLineCount: number;
+  linkedPreCutoffPublicationCount: number;
   publishingAt: string | null;
   confirmedAt: string | null;
   forecastEvidence: InventoryPublicationForecastEvidence | null;

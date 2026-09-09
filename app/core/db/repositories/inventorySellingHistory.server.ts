@@ -105,6 +105,7 @@ async function historicalPublicationEvidence(
         publication.source_type AS "sourceType",publication.method,item.inventory_delta_key AS "inventoryDeltaKey",
         batch_match.item_count AS "batchItemCount",batch_match.add_to_quantity AS "batchAddToQuantity",
         sku_identity.product_line_count AS "skuProductLineCount",
+        linked_history.publication_count AS "linkedPreCutoffPublicationCount",
         publication.publishing_at AS "publishingAt",item.published_at AS "confirmedAt",
         item.forecast_evidence AS "forecastEvidence",
         item.forecast_evidence_provenance AS "forecastEvidenceProvenance",COUNT(*) OVER()::int AS "totalCount"
@@ -126,6 +127,17 @@ async function historicalPublicationEvidence(
           AND NOT EXISTS (SELECT 1 FROM inventory_publication_receipt_links sibling_link
             WHERE sibling_link.publication_item_id=sibling.id)
       ) sku_identity ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT COUNT(DISTINCT sibling.id)::int AS publication_count
+        FROM inventory_publication_items sibling
+        JOIN inventory_publications sibling_publication
+          ON sibling_publication.id=sibling.publication_id
+        JOIN inventory_publication_receipt_links sibling_link
+          ON sibling_link.publication_item_id=sibling.id
+        WHERE sibling_publication.seller_key=$1 AND sibling.sku=item.sku
+          AND sibling.status='published' AND sibling.quantity_delta>0
+          AND sibling.published_at<$2
+      ) linked_history ON TRUE
       WHERE publication.seller_key=$1 AND item.status='published' AND item.quantity_delta>0
         AND item.created_at<$2
         AND NOT EXISTS (SELECT 1 FROM inventory_publication_receipt_links link

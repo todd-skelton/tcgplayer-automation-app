@@ -55,6 +55,7 @@ function historicalReasonLabel(value: string): string {
     source_bounds_exceeded: "Historical evidence exceeds safe limits",
     publication_evidence_invalid: "Publication evidence is incomplete",
     publication_identity_conflict: "Publication product line is inconsistent for this SKU",
+    mixed_publication_receipt_sources: "This SKU mixes linked and unlinked publication history",
     source_read_failed: "Historical evidence could not be read",
     order_history_changed: "Order quantity, SKU, or time changed",
     order_lifecycle_unsettled: "Order status is uncertain",

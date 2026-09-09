@@ -26,6 +26,7 @@ function addition(
     batchItemCount: 1,
     batchAddToQuantity: quantity,
     skuProductLineCount: 1,
+    linkedPreCutoffPublicationCount: 0,
     publishingAt: new Date(Date.parse(day(confirmedDay)) - 60_000).toISOString(),
     confirmedAt: day(confirmedDay),
     forecastEvidence: null,
@@ -259,5 +260,20 @@ const crossLineScoped = estimateHistoricalPublicationHistory(evidence(
 ));
 assert.deepEqual(crossLineScoped.cohorts[0].reasons, ["publication_identity_conflict"]);
 assert.equal(crossLineScoped.summary.reconstructedOlderQuantity, 0);
+
+const mixedSources = estimateHistoricalPublicationHistory(evidence(
+  [
+    {
+      ...addition(24, 170, 1, 2),
+      linkedPreCutoffPublicationCount: 1,
+    },
+  ],
+  [],
+  [revision("24", 3, [{ skuId:"170", quantity:2 }])],
+));
+assert.deepEqual(mixedSources.cohorts[0].reasons, ["mixed_publication_receipt_sources"]);
+assert.equal(mixedSources.summary.estimatedAdditionQuantity, 0);
+assert.equal(mixedSources.summary.reconstructedOlderQuantity, 0,
+  "a hidden receipt-linked sibling cannot be reconstructed as older stock");
 
 console.log("PASS historical publication estimates preserve facts and fail closed on ambiguous lineage");
