@@ -35,6 +35,18 @@ const source = {
       olderPublicationQuantity: 0,
       awaitingCutoffQuantity: 0,
       unresolvedRemoval: { quantity: 0, affectedSkus: [] },
+      historicalPublicationEvidence: {
+        sourceAvailable: true,
+        cutoffAt: "2026-09-08T00:00:00.000Z",
+        coverageStartsAt: "2026-06-12T00:00:00.000Z",
+        coverageComplete: true,
+        validatedAt: "2026-09-08T00:00:00.000Z",
+        additions: [],
+        additionCount: 0,
+        openingQuantities: [],
+        orderRevisions: [],
+        orderRevisionCount: 0,
+      },
     };
   },
 };

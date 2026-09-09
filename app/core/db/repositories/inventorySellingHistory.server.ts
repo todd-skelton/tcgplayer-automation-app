@@ -1,4 +1,7 @@
 import type {
+  HistoricalOrderRevisionEvidence,
+  HistoricalPublicationAdditionEvidence,
+  HistoricalPublicationEstimateEvidence,
   SellingHistoryEpisodeEvidence,
   SellingHistoryOutcomeEvidence,
   SellingHistorySourceEvidence,
@@ -30,6 +33,165 @@ const toOutcome = ({ totalCount: _totalCount, ...row }: CountedOutcome) => ({
   happenedAt: row.happenedAt.toISOString(),
 });
 
+const HISTORICAL_PUBLICATION_LIMIT = 5_000;
+const HISTORICAL_ORDER_REVISION_LIMIT = 20_000;
+// Opening application could only follow complete LastThreeMonths API scans. The
+// scan rows are retention-bounded, so the applied opening's copied attestations
+// are the durable authority. Eighty-eight days is a conservative lower bound
+// for any three-calendar-month search ending at validation completion.
+const HISTORICAL_COVERAGE_MARGIN_DAYS = 88;
+
+type OpeningHistoryAnchor = {
+  observationId: string;
+  cutoffAt: Date;
+  validationCutoffAt: Date | null;
+  observationStatus: string;
+  quantitySemantics: string;
+  orderCoverageEvidence: unknown;
+  validationOrderCoverageEvidence: unknown;
+};
+
+function coverageAttestation(value: unknown, notBefore: Date): { finishedAt: Date } | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  const finishedAt = typeof row.finishedAt === "string" ? new Date(row.finishedAt) : null;
+  const validCount = (field: string) => Number.isSafeInteger(row[field]) && Number(row[field]) >= 0;
+  return typeof row.id === "string" && row.id.length > 0 && finishedAt &&
+    Number.isFinite(finishedAt.getTime()) && finishedAt >= notBefore &&
+    validCount("ordersObserved") && validCount("detailsRecorded")
+      ? { finishedAt }
+      : null;
+}
+
+async function historicalPublicationEvidence(
+  seller: string,
+  productLine: string | null,
+): Promise<HistoricalPublicationEstimateEvidence> {
+  const anchor = await queryOne<OpeningHistoryAnchor>(
+    `SELECT run.observation_id::text AS "observationId",run.cutoff_at AS "cutoffAt",
+      validation.cutoff_at AS "validationCutoffAt",observation.status AS "observationStatus",
+      observation.quantity_semantics AS "quantitySemantics",
+      run.order_coverage_evidence AS "orderCoverageEvidence",
+      run.validation_order_coverage_evidence AS "validationOrderCoverageEvidence"
+    FROM inventory_opening_balance_runs run
+    JOIN inventory_complete_observations observation ON observation.id=run.observation_id
+      AND observation.seller_key=run.seller_key
+    LEFT JOIN inventory_complete_observations validation ON validation.id=run.validation_observation_id
+      AND validation.seller_key=run.seller_key
+    WHERE run.seller_key=$1 AND run.status='applied'`,
+    [seller],
+  );
+  if (!anchor) return {
+    sourceAvailable:true,cutoffAt:null,coverageStartsAt:null,coverageComplete:false,validatedAt:null,
+    additions:[],additionCount:0,
+    openingQuantities:[],orderRevisions:[],orderRevisionCount:0,
+  };
+
+  const firstCoverage = coverageAttestation(anchor.orderCoverageEvidence, anchor.cutoffAt);
+  const validationCoverage = anchor.validationCutoffAt
+    ? coverageAttestation(anchor.validationOrderCoverageEvidence, anchor.validationCutoffAt)
+    : null;
+  const coverageComplete = anchor.observationStatus === "complete" &&
+    anchor.quantitySemantics === "sellable_excludes_reserved" &&
+    anchor.validationCutoffAt !== null && anchor.validationCutoffAt >= anchor.cutoffAt &&
+    firstCoverage !== null && validationCoverage !== null;
+  const coverageStartsAt = validationCoverage
+    ? new Date(validationCoverage.finishedAt.getTime() - HISTORICAL_COVERAGE_MARGIN_DAYS * 86_400_000)
+    : null;
+
+  const additionRows = await query<HistoricalPublicationAdditionEvidence & { totalCount: number }>(
+      `SELECT item.id::int AS "publicationItemId",item.sku,item.product_line AS "productLine",
+        item.product_name AS "productName",item.quantity_delta AS quantity,
+        publication.source_type AS "sourceType",publication.method,item.inventory_delta_key AS "inventoryDeltaKey",
+        batch_match.item_count AS "batchItemCount",batch_match.add_to_quantity AS "batchAddToQuantity",
+        publication.publishing_at AS "publishingAt",item.published_at AS "confirmedAt",
+        item.forecast_evidence AS "forecastEvidence",
+        item.forecast_evidence_provenance AS "forecastEvidenceProvenance",COUNT(*) OVER()::int AS "totalCount"
+      FROM inventory_publication_items item
+      JOIN inventory_publications publication ON publication.id=item.publication_id
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int AS item_count,MAX(batch_item.add_to_quantity)::int AS add_to_quantity
+        FROM inventory_batch_items batch_item
+        WHERE batch_item.batch_number=item.batch_number AND batch_item.sku=item.sku
+      ) batch_match ON TRUE
+      WHERE publication.seller_key=$1 AND item.status='published' AND item.quantity_delta>0
+        AND item.created_at<$2
+        AND NOT EXISTS (SELECT 1 FROM inventory_publication_receipt_links link
+          WHERE link.publication_item_id=item.id)
+        AND ($3::text IS NULL OR item.product_line=$3)
+      ORDER BY item.published_at NULLS LAST,item.id LIMIT $4`,
+      [seller, anchor.cutoffAt, productLine, HISTORICAL_PUBLICATION_LIMIT],
+    );
+  const additionCount = additionRows[0]?.totalCount ?? 0;
+  const additions = additionRows.map(({ totalCount: _totalCount, ...row }) => ({
+    ...row,
+    publishingAt: row.publishingAt ? new Date(row.publishingAt).toISOString() : null,
+    confirmedAt: row.confirmedAt ? new Date(row.confirmedAt).toISOString() : null,
+  }));
+  const skus = [...new Set(additions.map((row) => row.sku))];
+  if (skus.length === 0) return {
+    sourceAvailable:true,cutoffAt:anchor.cutoffAt.toISOString(),coverageStartsAt:coverageStartsAt?.toISOString()??null,
+    validatedAt:validationCoverage?.finishedAt.toISOString()??null,
+    coverageComplete,additions:[],additionCount,
+    openingQuantities:[],orderRevisions:[],orderRevisionCount:0,
+  };
+
+  const [openingQuantities, orderRows] = await Promise.all([
+    query<{ sku: number; quantity: number }>(
+      `SELECT sku,quantity FROM inventory_complete_observation_items
+      WHERE observation_id=$1 AND sku=ANY($2::int[]) ORDER BY sku`,
+      [anchor.observationId, skus],
+    ),
+    query<HistoricalOrderRevisionEvidence & { totalCount: number }>(
+      `WITH relevant_orders AS (
+        SELECT DISTINCT revision.order_id
+        FROM seller_order_revisions revision
+        JOIN seller_orders orders ON orders.id=revision.order_id
+        CROSS JOIN LATERAL jsonb_array_elements(revision.line_evidence) line
+        WHERE orders.seller_key=$1 AND COALESCE(revision.order_time,orders.order_time)>=$2
+          AND COALESCE(revision.order_time,orders.order_time)<$3
+          AND (line->>'skuId')=ANY($4::text[])
+      )
+      SELECT revision.order_id::text AS "orderId",orders.order_number AS "orderNumber",
+        revision.revision_number AS "revisionNumber",revision.observed_at AS "observedAt",
+        revision.order_time AS "orderTime",
+        revision.order_time_evidence AS "orderTimeEvidence",revision.lifecycle,
+        revision.line_evidence AS lines,COUNT(*) OVER()::int AS "totalCount"
+      FROM relevant_orders relevant
+      JOIN seller_order_revisions revision ON revision.order_id=relevant.order_id
+      JOIN seller_orders orders ON orders.id=revision.order_id
+      ORDER BY revision.order_id,revision.revision_number LIMIT $5`,
+      [seller, coverageStartsAt ?? anchor.cutoffAt, anchor.cutoffAt, skus.map(String), HISTORICAL_ORDER_REVISION_LIMIT],
+    ),
+  ]);
+  const orderRevisionCount = orderRows[0]?.totalCount ?? 0;
+  return {
+    sourceAvailable:true,cutoffAt:anchor.cutoffAt.toISOString(),coverageStartsAt:coverageStartsAt?.toISOString()??null,
+    validatedAt:validationCoverage?.finishedAt.toISOString()??null,
+    coverageComplete,additions,additionCount,openingQuantities,
+    orderRevisions:orderRows.map(({totalCount:_totalCount,...row})=>({
+      ...row,observedAt:new Date(row.observedAt).toISOString(),
+      orderTime:row.orderTime?new Date(row.orderTime).toISOString():null,
+    })),orderRevisionCount,
+  };
+}
+
+async function safeHistoricalPublicationEvidence(
+  seller: string,
+  productLine: string | null,
+): Promise<HistoricalPublicationEstimateEvidence> {
+  try {
+    return await historicalPublicationEvidence(seller, productLine);
+  } catch (error) {
+    console.error("Historical publication evidence is unavailable:", error);
+    return {
+      sourceAvailable:false,cutoffAt:null,coverageStartsAt:null,coverageComplete:false,
+      validatedAt:null,additions:[],additionCount:0,openingQuantities:[],orderRevisions:[],
+      orderRevisionCount:0,
+    };
+  }
+}
+
 export const inventorySellingHistoryRepository = {
   async findEvidence(
     sellerKey: string,
@@ -56,7 +218,7 @@ export const inventorySellingHistoryRepository = {
       asOf.getTime() - scope.windowDays * 86_400_000,
     );
 
-    const [episodes, outcomes, productLineRows, projection, unresolvedRemoval] = await Promise.all([
+    const [episodes, outcomes, productLineRows, projection, unresolvedRemoval, historicalPublication] = await Promise.all([
       query<CountedEpisode>(
         `WITH all_episodes AS (
           SELECT 'receipt:'||receipt.receipt_id::text AS "episodeKey",
@@ -173,12 +335,21 @@ export const inventorySellingHistoryRepository = {
         [seller, analysisFrom, asOf, scope.productLine, INVENTORY_SELLING_HISTORY_OUTCOME_LIMIT],
       ),
       query<{ productLine: string }>(
-        `SELECT DISTINCT item.product_line AS "productLine"
-        FROM inventory_publication_receipt_links link
-        JOIN inventory_publication_items item ON item.id=link.publication_item_id
-        WHERE link.target_seller_key=$1 AND link.live_at IS NOT NULL
-          AND link.live_at >= $2 AND link.live_at <= $3
-        ORDER BY item.product_line LIMIT 100`,
+        `SELECT DISTINCT source."productLine" FROM (
+          SELECT item.product_line AS "productLine"
+          FROM inventory_publication_receipt_links link
+          JOIN inventory_publication_items item ON item.id=link.publication_item_id
+          WHERE link.target_seller_key=$1 AND link.live_at IS NOT NULL
+            AND link.live_at >= $2 AND link.live_at <= $3
+          UNION ALL
+          SELECT item.product_line
+          FROM inventory_publication_items item
+          JOIN inventory_publications publication ON publication.id=item.publication_id
+          WHERE publication.seller_key=$1 AND item.status='published' AND item.quantity_delta>0
+            AND item.created_at >= $2 AND item.created_at <= $3
+            AND NOT EXISTS (SELECT 1 FROM inventory_publication_receipt_links link
+              WHERE link.publication_item_id=item.id)
+        ) source ORDER BY source."productLine" LIMIT 100`,
         [seller, new Date(asOf.getTime() - 730 * 86_400_000), asOf],
       ),
       queryOne<{ pendingQuantity: number; heldQuantity: number; affectedSkus: number[]; openingUnknownQuantity: number; legacyUnlinkedQuantity: number; legacyUnlinkedForecastQuantity: number; olderPublicationQuantity: number; awaitingCutoffQuantity: number }>(
@@ -269,6 +440,7 @@ export const inventorySellingHistoryRepository = {
         FROM removals`,
         [seller, scope.productLine],
       ),
+      safeHistoricalPublicationEvidence(seller, scope.productLine),
     ]);
 
     return {
@@ -295,6 +467,7 @@ export const inventorySellingHistoryRepository = {
       olderPublicationQuantity: projection?.olderPublicationQuantity ?? 0,
       awaitingCutoffQuantity: projection?.awaitingCutoffQuantity ?? 0,
       unresolvedRemoval: unresolvedRemoval ?? { quantity: 0, affectedSkus: [] },
+      historicalPublicationEvidence: historicalPublication,
     };
   },
 };

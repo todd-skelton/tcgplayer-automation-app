@@ -78,6 +78,46 @@ const ready: InventorySellingHistoryReport = {
     olderPublicationQuantity: 3,
     awaitingCutoffQuantity: 2,
   },
+  historicalPublicationEstimate: {
+    status: "ready",
+    cutoffAt: "2026-09-08T00:00:00.000Z",
+    summary: {
+      publicationItemCount: 1,
+      publicationQuantity: 3,
+      confirmedAdditionCount: 1,
+      confirmedAdditionQuantity: 3,
+      estimatedAdditionCount: 1,
+      estimatedAdditionQuantity: 3,
+      unsupportedAdditionCount: 0,
+      unsupportedAdditionQuantity: 0,
+      estimatedSoldQuantity: 2,
+      estimatedRemainingAtCutoff: 1,
+      reconstructedOlderQuantity: 1,
+      reconstructedOlderRemainingAtCutoff: 0,
+      supportedSkuCount: 1,
+      conflictedSkuCount: 0,
+    },
+    cohorts: [{
+      publicationItemId: 91,
+      sku: 44,
+      productLine: "Pokémon",
+      productName: "Pikachu",
+      quantity: 3,
+      publishingAt: "2026-07-31T23:59:00.000Z",
+      confirmedAt: "2026-08-01T00:00:00.000Z",
+      dateProvenance: "recorded_confirmation",
+      attributionProvenance: "estimated_closed_flow",
+      estimatedSoldQuantity: 2,
+      estimatedRemainingAtCutoff: 1,
+      reasons: [],
+      forecastEvidence: null,
+      forecastEvidenceProvenance: "unknown",
+      allocations: [{ orderId: "10", orderNumber: "1001", orderedAt: "2026-08-14T00:00:00.000Z", quantity: 2, listedDaysLowerBound: 13, listedDaysUpperBound: 13.001 }],
+    }],
+    cohortCount: 1,
+    conflicts: [],
+    conflictCount: 0,
+  },
 };
 
 function render(report: InventorySellingHistoryReport, entry = "/inventory-strategy?historyPage=2&other=kept") {
@@ -103,6 +143,11 @@ assert.match(success, /Last 180 days/);
 assert.match(success, /Pokémon/);
 assert.match(success, /older publication excluded by window/);
 assert.match(success, /awaiting cutoff/);
+assert.match(success, /Historical publication estimate/);
+assert.match(success, /Uploaded units/);
+assert.match(success, /publication item 91/);
+assert.match(success, /Estimated FIFO attribution/);
+assert.match(success, /listed at least 13\.0 days/);
 assert.doesNotMatch(success, /profit|cost basis|intake-to-sale days held/i);
 
 const openingOnly = render({
@@ -158,7 +203,7 @@ assert.match(paginated, /pagination navigation/);
 assert.match(paginated, /page 2/i);
 
 const empty = render({ ...ready, overall: { ...summary, cohortQuantity: 0 }, productLines: [], details: [], detailTotal: 0 });
-assert.match(empty, /No published listing cohorts are available/);
+assert.match(empty, /No receipt-linked publication cohorts are available/);
 
 const unavailable = render({
   status: "unavailable",
@@ -167,10 +212,29 @@ const unavailable = render({
   availableProductLines: ["Magic", "Pokémon"],
   reason: "history_bounds_exceeded",
   orderCoverage,
+  historicalPublicationEstimate: ready.historicalPublicationEstimate,
 });
 assert.match(unavailable, /Selling history is unavailable: history bounds exceeded/);
 assert.match(unavailable, /Order history: incomplete/);
 assert.match(unavailable, /History window/);
 assert.match(unavailable, /Last 730 days/);
+const unknownConfirmation = render({
+  ...ready,
+  historicalPublicationEstimate: {
+    ...ready.historicalPublicationEstimate,
+    cohorts: [{
+      ...ready.historicalPublicationEstimate.cohorts[0],
+      confirmedAt: null,
+      dateProvenance: "unknown",
+      attributionProvenance: "unsupported",
+      estimatedSoldQuantity: null,
+      estimatedRemainingAtCutoff: null,
+      reasons: ["publication_evidence_invalid"],
+      allocations: [],
+    }],
+  },
+});
+assert.match(unknownConfirmation.replace(/<[^>]*>/g, ""), /Date: unknown · assignment: unavailable/);
+assert.doesNotMatch(unknownConfirmation, /Date: recorded confirmation/);
 
 console.log("PASS inventory selling history presents available, empty, unavailable, and bounded detail states");

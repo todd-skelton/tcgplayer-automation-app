@@ -8,6 +8,7 @@ import {
   type SellingHistorySourceEvidence,
   type SellingHistorySummary,
 } from "../types/inventorySellingHistory";
+import { estimateHistoricalPublicationHistory } from "../domain/historicalPublicationEstimate";
 
 const DAY_MS = 86_400_000;
 const DETAIL_LIMIT = 50;
@@ -258,6 +259,9 @@ export function buildInventorySellingHistoryReport(
   evidence: SellingHistorySourceEvidence,
   detailPage = 1,
 ): InventorySellingHistoryReport {
+  const historicalPublicationEstimate = estimateHistoricalPublicationHistory(
+    evidence.historicalPublicationEvidence,
+  );
   const unavailable = (
     reason: Extract<
       InventorySellingHistoryReport,
@@ -270,6 +274,7 @@ export function buildInventorySellingHistoryReport(
     availableProductLines: evidence.availableProductLines,
     reason,
     orderCoverage: evidence.orderCoverage,
+    historicalPublicationEstimate,
   });
   if (evidence.orderCoverage.sellerKey !== evidence.sellerKey)
     return unavailable("seller_not_configured");
@@ -362,5 +367,6 @@ export function buildInventorySellingHistoryReport(
       olderPublicationQuantity: evidence.olderPublicationQuantity,
       awaitingCutoffQuantity: evidence.awaitingCutoffQuantity,
     },
+    historicalPublicationEstimate,
   };
 }

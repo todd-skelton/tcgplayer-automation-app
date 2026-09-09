@@ -9,6 +9,117 @@ export interface SellingHistoryScope {
   productLine: string | null;
 }
 
+export type HistoricalPublicationEstimateReason =
+  | "opening_coverage_missing"
+  | "order_coverage_incomplete"
+  | "source_bounds_exceeded"
+  | "publication_evidence_invalid"
+  | "source_read_failed"
+  | "order_history_changed"
+  | "order_lifecycle_unsettled"
+  | "order_time_unknown"
+  | "event_time_tie"
+  | "quantity_conflict"
+  | "temporal_underflow";
+
+export interface HistoricalPublicationAdditionEvidence {
+  publicationItemId: number;
+  sku: number;
+  productLine: string;
+  productName: string;
+  quantity: number;
+  sourceType: string;
+  method: string;
+  inventoryDeltaKey: string | null;
+  batchItemCount: number;
+  batchAddToQuantity: number | null;
+  publishingAt: string | null;
+  confirmedAt: string | null;
+  forecastEvidence: InventoryPublicationForecastEvidence | null;
+  forecastEvidenceProvenance: "recorded" | "estimated" | "unknown";
+}
+
+export interface HistoricalOrderRevisionEvidence {
+  orderId: string;
+  orderNumber: string;
+  revisionNumber: number;
+  observedAt: string;
+  orderTime: string | null;
+  orderTimeEvidence: string;
+  lifecycle: string;
+  lines: Array<{ skuId: string; quantity: number }>;
+}
+
+export interface HistoricalPublicationEstimateEvidence {
+  sourceAvailable: boolean;
+  cutoffAt: string | null;
+  coverageStartsAt: string | null;
+  coverageComplete: boolean;
+  validatedAt: string | null;
+  additions: HistoricalPublicationAdditionEvidence[];
+  additionCount: number;
+  openingQuantities: Array<{ sku: number; quantity: number }>;
+  orderRevisions: HistoricalOrderRevisionEvidence[];
+  orderRevisionCount: number;
+}
+
+export interface HistoricalPublicationEstimateAllocation {
+  orderId: string;
+  orderNumber: string;
+  orderedAt: string;
+  quantity: number;
+  listedDaysLowerBound: number;
+  listedDaysUpperBound: number | null;
+}
+
+export interface HistoricalPublicationEstimateCohort {
+  publicationItemId: number;
+  sku: number;
+  productLine: string;
+  productName: string;
+  quantity: number;
+  publishingAt: string | null;
+  confirmedAt: string | null;
+  dateProvenance: "recorded_confirmation" | "unknown";
+  attributionProvenance: "estimated_closed_flow" | "unsupported";
+  estimatedSoldQuantity: number | null;
+  estimatedRemainingAtCutoff: number | null;
+  reasons: HistoricalPublicationEstimateReason[];
+  allocations: HistoricalPublicationEstimateAllocation[];
+  forecastEvidence: InventoryPublicationForecastEvidence | null;
+  forecastEvidenceProvenance: "recorded" | "estimated" | "unknown";
+}
+
+export interface HistoricalPublicationEstimate {
+  status: "ready" | "no_data" | "unavailable";
+  reason?: HistoricalPublicationEstimateReason;
+  cutoffAt: string | null;
+  summary: {
+    publicationItemCount: number;
+    publicationQuantity: number;
+    confirmedAdditionCount: number;
+    confirmedAdditionQuantity: number;
+    estimatedAdditionCount: number;
+    estimatedAdditionQuantity: number;
+    unsupportedAdditionCount: number;
+    unsupportedAdditionQuantity: number;
+    estimatedSoldQuantity: number;
+    estimatedRemainingAtCutoff: number;
+    reconstructedOlderQuantity: number;
+    reconstructedOlderRemainingAtCutoff: number;
+    supportedSkuCount: number;
+    conflictedSkuCount: number;
+  };
+  cohorts: HistoricalPublicationEstimateCohort[];
+  cohortCount: number;
+  conflicts: Array<{
+    sku: number;
+    reasons: HistoricalPublicationEstimateReason[];
+    quantityDifference: number | null;
+  }>;
+  conflictCount: number;
+}
+
 export const DEFAULT_SELLING_HISTORY_SCOPE: SellingHistoryScope = {
   windowDays: 180,
   productLine: null,
@@ -70,6 +181,7 @@ export interface SellingHistorySourceEvidence {
     quantity: number;
     affectedSkus: number[];
   };
+  historicalPublicationEvidence: HistoricalPublicationEstimateEvidence;
 }
 
 export interface SellThroughHorizon {
@@ -141,6 +253,7 @@ export type InventorySellingHistoryReport =
         | "order_coverage_incomplete"
         | "history_bounds_exceeded";
       orderCoverage: SellerOrderCoverage;
+      historicalPublicationEstimate: HistoricalPublicationEstimate;
     }
   | {
       status: "ready";
@@ -167,4 +280,5 @@ export type InventorySellingHistoryReport =
         olderPublicationQuantity: number;
         awaitingCutoffQuantity: number;
       };
+      historicalPublicationEstimate: HistoricalPublicationEstimate;
     };
