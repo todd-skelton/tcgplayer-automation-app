@@ -2,6 +2,7 @@ import {
   REINVESTMENT_TURNAROUND_RULE_VERSION,
   type ReinvestmentTurnaroundReport,
   type ReinvestmentTurnaroundSample,
+  type UnsupportedPurchaseFunding,
 } from "../types/reinvestmentTurnaround";
 import {
   DEFAULT_TURNAROUND_SETTING,
@@ -65,6 +66,18 @@ function weightedP90(samples: ReinvestmentTurnaroundSample[]): number | null {
   return ordered.at(-1)?.turnaroundDays ?? null;
 }
 
+function isUnsupportedPurchaseFunding(value:unknown):value is UnsupportedPurchaseFunding {
+  if (!value || typeof value!=="object") return false;
+  const item=value as Partial<UnsupportedPurchaseFunding>;
+  return (item.kind==="orphan" || item.kind==="above_current_cost") &&
+    typeof item.adjustmentReference==="string" && item.adjustmentReference.length>0 &&
+    (item.purchaseReference===null || typeof item.purchaseReference==="string") &&
+    typeof item.currency==="string" && /^[A-Z]{3}$/.test(item.currency) &&
+    typeof item.amountCents==="number" && Number.isSafeInteger(item.amountCents) && item.amountCents>=0 &&
+    typeof item.effectiveAt==="string" && instant(item.effectiveAt)!==null &&
+    typeof item.sourceIdentity==="string" && item.sourceIdentity.length>0;
+}
+
 function settingFor(
   sellerKey: string,
   productLineId: number | null,
@@ -99,9 +112,14 @@ function evaluate(
     unknownProceeds?: Array<{ soldAt: string | null }>;
     unknownCosts?: Array<{ receiptId: number; productLineId: number; occurredAt: string | null }>;
   };
+  const rawUnsupported=(report as ReinvestmentTurnaroundReport & {unsupportedPurchaseFunding?:unknown})
+    .unsupportedPurchaseFunding;
+  const hasUnsupportedFundingContract=Array.isArray(rawUnsupported) && rawUnsupported.every(isUnsupportedPurchaseFunding);
+  const unsupportedPurchaseFunding=hasUnsupportedFundingContract ? rawUnsupported : [];
   const orderCoverage = report.orderCoverage;
   if (recoveryError) reasons.push("Current evidence could not be rebuilt; a saved recovery report cannot select observed mode.");
-  if (report.ruleVersion !== REINVESTMENT_TURNAROUND_RULE_VERSION || !rawCoverage.unknownProceeds || !rawCoverage.unknownCosts) {
+  if (report.ruleVersion !== REINVESTMENT_TURNAROUND_RULE_VERSION || !rawCoverage.unknownProceeds || !rawCoverage.unknownCosts ||
+      !hasUnsupportedFundingContract) {
     reasons.push("The saved report predates the observed-turnaround evidence contract.");
   }
   if (report.sellerKey !== sellerKey) reasons.push("The saved report belongs to a different seller.");
@@ -138,14 +156,20 @@ function evaluate(
     summary.outstandingNegativeDeficitCents,
     summary.unresolvedPurchaseCostCents,
   ].some((amount) => amount !== 0));
-  if (currency.length !== 1 || currency[0]?.currency !== "USD") {
+  const currentUnsupported=asOf===null?[]:unsupportedPurchaseFunding.filter((item)=>
+    item.amountCents>0 && instant(item.effectiveAt)!<=asOf);
+  const financialCurrencies=new Set([...currency.map((summary)=>summary.currency),...currentUnsupported.map((item)=>item.currency)]);
+  if (financialCurrencies.size !== 1 || !financialCurrencies.has("USD")) {
     reasons.push("Observed strategy timing requires one complete USD proceeds pool; currencies are never mixed.");
   }
-  const usd = currency.length === 1 && currency[0]?.currency === "USD" ? currency[0] : null;
+  const usd = currency.find((summary)=>summary.currency==="USD")??null;
   if (usd && (usd.waitingCents > 0 || usd.unallocatedProceedsCents > 0 || usd.unresolvedPurchaseCostCents > 0 ||
       usd.unsupportedFundingAdjustmentCents > 0 || usd.outstandingNegativeDeficitCents > 0 ||
       usd.reinvestedPercent !== 100 || usd.completionCoveragePercent !== 100)) {
     reasons.push("Known proceeds remain waiting, unallocated, unresolved, unsupported, withdrawn, reserved, or otherwise incomplete.");
+  }
+  if (currentUnsupported.some((item)=>item.amountCents>0)) {
+    reasons.push("Current purchase funding remains unsupported by a matching purchase cost.");
   }
   const cohortStart = asOf === null ? null : asOf - TURNAROUND_EVIDENCE_POLICY.observationDays * DAY;
   const unknownProceeds = rawCoverage.unknownProceeds ?? [];
@@ -234,6 +258,9 @@ function evaluate(
     oldestUnallocatedDays: usd?.oldestUnallocatedDays ?? null,
     unresolvedPurchaseCostCents: usd?.unresolvedPurchaseCostCents ?? 0,
     unsupportedFundingAdjustmentCents: usd?.unsupportedFundingAdjustmentCents ?? 0,
+    unsupportedPurchaseFunding:[...currentUnsupported.reduce((amounts,item)=>
+      amounts.set(item.currency,(amounts.get(item.currency)??0)+item.amountCents),new Map<string,number>())]
+      .map(([currency,amountCents])=>({currency,amountCents})),
     reinvestedPercent: usd?.reinvestedPercent ?? null,
     completionCoveragePercent: usd?.completionCoveragePercent ?? null,
     historicalUnknownProceedsCount: historicalUnknownProceeds,

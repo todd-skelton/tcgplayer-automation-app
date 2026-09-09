@@ -9,6 +9,7 @@ import type {
   ReinvestmentTurnaroundSample,
   ReplacementPurchase,
   ReusableSaleProceeds,
+  UnsupportedPurchaseFunding,
 } from "../types/reinvestmentTurnaround";
 import { REINVESTMENT_TURNAROUND_RULE_VERSION } from "../types/reinvestmentTurnaround";
 
@@ -115,10 +116,26 @@ function splitTranches(purchase: ReplacementPurchase): ReinvestmentPublicationTr
     left.receiptId-right.receiptId || (left.publicationItemId??"").localeCompare(right.publicationItemId??""));
 }
 
+function sortedPurchaseFunding(purchase:ReplacementPurchase):ReplacementPurchase["funding"] {
+  return [...purchase.funding].sort((left,right)=>
+    left.effectiveAt.localeCompare(right.effectiveAt) || left.adjustmentReference.localeCompare(right.adjustmentReference));
+}
+
+export function unsupportedPurchaseFundingFor(purchase:ReplacementPurchase):UnsupportedPurchaseFunding[] {
+  let remainingCost=purchase.totalAmountCents;
+  return sortedPurchaseFunding(purchase).flatMap((funding)=>{
+    const supportedCents=Math.min(funding.amountCents,remainingCost);
+    remainingCost-=supportedCents;
+    const amountCents=funding.amountCents-supportedCents;
+    return amountCents>0?[{kind:"above_current_cost" as const,adjustmentReference:funding.adjustmentReference,
+      purchaseReference:purchase.purchaseReference,currency:purchase.currency,amountCents,
+      effectiveAt:funding.effectiveAt,sourceIdentity:funding.sourceIdentity}]:[];
+  });
+}
+
 function demandsForPurchase(purchase: ReplacementPurchase, asOf: string): PurchaseDemand[] {
   const tranches = splitTranches(purchase);
-  const knownFunding = [...purchase.funding].sort((left,right)=>
-    left.effectiveAt.localeCompare(right.effectiveAt) || left.adjustmentReference.localeCompare(right.adjustmentReference));
+  const knownFunding = sortedPurchaseFunding(purchase);
   if (purchase.totalAmountCents===0) {
     const funding=knownFunding[0];
     if (funding) return tranches.map((tranche)=>({purchase,tranche,fundingAt:dateStart(funding.effectiveAt),
@@ -400,7 +417,8 @@ export function allocateReinvestmentTurnaround(input: ReinvestmentTurnaroundInpu
       }
       return result;
     }),
-    samples,excluded,coverage:{observedOrderCount:eligibleSaleCount+unknownProceedsOrderCount,eligibleOrderCount:eligibleSaleCount,
+    samples,unsupportedPurchaseFunding:input.unsupportedPurchaseFunding,excluded,
+    coverage:{observedOrderCount:eligibleSaleCount+unknownProceedsOrderCount,eligibleOrderCount:eligibleSaleCount,
       unknownProceedsOrderCount,purchaseCount:observedPurchaseCount,costedReceiptCount,unknownCostReceiptCount,
       unknownProceeds:(input.unknownProceedsSoldAt??[]).map((soldAt)=>({soldAt})),
       unknownCosts:(input.unknownCostReceipts??[]).map((value)=>({...value}))},

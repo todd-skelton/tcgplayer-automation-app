@@ -42,6 +42,16 @@ export interface ReplacementPurchase {
   tranches: ReinvestmentPublicationTranche[];
 }
 
+export interface UnsupportedPurchaseFunding {
+  kind: "orphan" | "above_current_cost";
+  adjustmentReference: string;
+  purchaseReference: string | null;
+  currency: string;
+  amountCents: number;
+  effectiveAt: string;
+  sourceIdentity: string;
+}
+
 export interface ReinvestmentFundingAdjustment {
   adjustmentReference: string;
   currency: string;
@@ -57,6 +67,7 @@ export interface ReinvestmentTurnaroundInput {
   asOf: string;
   sales: ReusableSaleProceeds[];
   purchases: ReplacementPurchase[];
+  unsupportedPurchaseFunding: UnsupportedPurchaseFunding[];
   fundingAdjustments: ReinvestmentFundingAdjustment[];
   unknownProceedsOrderCount: number;
   unknownProceedsSoldAt?: Array<string | null>;
@@ -145,6 +156,7 @@ export interface ReinvestmentTurnaroundReport {
   datePrecision: "timestamp_sales_date_funding";
   currencies: ReinvestmentCurrencySummary[];
   samples: ReinvestmentTurnaroundSample[];
+  unsupportedPurchaseFunding: UnsupportedPurchaseFunding[];
   excluded: Array<{ reason: string; count: number; amountCents?: number; currency?: string }>;
   coverage: {
     observedOrderCount: number;

@@ -14,7 +14,7 @@ const selection: TurnaroundSelection = {
     observationFrom: "2026-08-15T00:00:00.000Z", observationThrough: "2026-09-03T00:00:00.000Z",
     completedPurchaseCount: 20, completedCents: 200_000, waitingCents: 0, oldestWaitingDays: null,
     eligibleProceedsCents: 200_000, unallocatedProceedsCents: 0, oldestUnallocatedDays: null, unresolvedPurchaseCostCents: 0,
-    unsupportedFundingAdjustmentCents: 0, reinvestedPercent: 100, completionCoveragePercent: 100,
+    unsupportedFundingAdjustmentCents: 0, unsupportedPurchaseFunding: [], reinvestedPercent: 100, completionCoveragePercent: 100,
     historicalUnknownProceedsCount: 1, historicalUnknownCostCount: 0,
     typicalDays: 14, slowerDays: 20, actualProceedsPercent: 100, actualCostPercent: 100,
     knownFundingPercent: 100, orderCoverageFinishedAt: "2026-09-08T17:30:00.000Z",
@@ -38,7 +38,9 @@ assert.match(html, /not coverage boundaries/);
 
 const fallback = renderToStaticMarkup(<TurnaroundInputs selection={{ ...selection, effectiveDays: 28,
   effectiveSource: "manual-fallback", fallbackReasons: ["Known proceeds remain waiting."],
-  evidence: { ...selection.evidence!, waitingCents: 4_000 } }} productLine="Line" busy={false} onSave={() => undefined} />);
+  evidence: { ...selection.evidence!, waitingCents: 4_000,
+    unsupportedPurchaseFunding:[{currency:"EUR",amountCents:2_000}] } }} productLine="Line" busy={false} onSave={() => undefined} />);
 assert.match(fallback, /Manual fallback retained/);
 assert.match(fallback, /Waiting \$40\.00/);
+assert.match(fallback, /Unsupported purchase funding €20\.00 EUR/);
 console.log("PASS turnaround controls render observed, substituted, and fallback evidence states");

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { allocateReinvestmentTurnaround } from "./allocateReinvestmentTurnaround";
 import type { ReinvestmentTurnaroundInput } from "../types/reinvestmentTurnaround";
 
-const input:ReinvestmentTurnaroundInput={sellerKey:"synthetic-turnaround",asOf:"2026-01-21T00:00:00.000Z",unknownProceedsOrderCount:0,unknownCostReceiptCount:0,sourceEvidenceIdentities:[],
+const input:ReinvestmentTurnaroundInput={sellerKey:"synthetic-turnaround",asOf:"2026-01-21T00:00:00.000Z",unknownProceedsOrderCount:0,unknownCostReceiptCount:0,sourceEvidenceIdentities:[],unsupportedPurchaseFunding:[],
   sales:[{orderNumber:"sale-1",soldAt:"2026-01-01T00:00:00.000Z",currency:"USD",amountCents:10_000,provenance:"actual",sourceIdentity:"sale-source"}],
   fundingAdjustments:[],purchases:[{purchaseReference:"replacement",currency:"USD",totalAmountCents:10_000,costProvenance:"actual",
     costSourceIdentity:"cost-source",funding:[],tranches:[

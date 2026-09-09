@@ -11,6 +11,10 @@ function percent(value: number | null | undefined): string {
   return value == null ? "unavailable" : `${value.toFixed(0)}%`;
 }
 
+function money(amountCents:number,currency:string):string {
+  return new Intl.NumberFormat("en-US",{style:"currency",currency}).format(amountCents/100);
+}
+
 export function TurnaroundInputs({
   selection,
   productLine,
@@ -100,6 +104,8 @@ export function TurnaroundInputs({
               label={`Unresolved cost ${currencyFormatter.format(evidence.unresolvedPurchaseCostCents / 100)}`} />
             <Chip variant="outlined" color={evidence.unsupportedFundingAdjustmentCents ? "warning" : "default"}
               label={`Unsupported funding ${currencyFormatter.format(evidence.unsupportedFundingAdjustmentCents / 100)}`} />
+            {evidence.unsupportedPurchaseFunding.map((item)=><Chip key={item.currency} variant="outlined" color="warning"
+              label={`Unsupported purchase funding ${money(item.amountCents,item.currency)} ${item.currency}`} />)}
           </Stack>
           <Typography variant="body2" color="text.secondary">
             {evidence.attribution === "seller-substituted-for-sparse-line"

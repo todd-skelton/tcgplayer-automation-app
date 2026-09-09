@@ -30,6 +30,7 @@ export interface TurnaroundEvidenceSummary {
   oldestUnallocatedDays: number | null;
   unresolvedPurchaseCostCents: number;
   unsupportedFundingAdjustmentCents: number;
+  unsupportedPurchaseFunding: Array<{ currency: string; amountCents: number }>;
   reinvestedPercent: number | null;
   completionCoveragePercent: number | null;
   historicalUnknownProceedsCount: number;
