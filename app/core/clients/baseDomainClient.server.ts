@@ -54,7 +54,7 @@ function getSafeResponseMetadata<T>(
   };
 }
 
-export function observeSafeHttpResponse<T>(
+function observeSafeHttpResponse<T>(
   response: AxiosResponse<T>,
   observer?: (metadata: SafeHttpResponseMetadata) => void,
 ): void {
@@ -384,13 +384,20 @@ export class DomainHttpClient {
       "POST",
       path,
       async () => {
-        const response = await this.axiosClient.post<TResponse>(
-          path,
-          data,
-          requestOptions,
-        );
-        observeSafeHttpResponse(response, observeResponse);
-        return response;
+        try {
+          const response = await this.axiosClient.post<TResponse>(
+            path,
+            data,
+            requestOptions,
+          );
+          observeSafeHttpResponse(response, observeResponse);
+          return response;
+        } catch (error) {
+          if (axios.isAxiosError<TResponse>(error) && error.response) {
+            observeSafeHttpResponse(error.response, observeResponse);
+          }
+          throw error;
+        }
       },
       data ? { data } : undefined,
       retry ? MAX_RETRIES : 0,

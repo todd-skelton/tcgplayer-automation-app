@@ -222,6 +222,10 @@ function getTransportCode(error: unknown): string {
     : "other";
 }
 
+function getTransportResponse(error: unknown): unknown {
+  return (error as { response?: { data?: unknown } } | null)?.response?.data;
+}
+
 function requireNonEmptyText(value: string, name: string): void {
   if (value.trim().length === 0) {
     throw new RangeError(`${name} must not be empty.`);
@@ -343,12 +347,13 @@ export async function initializeStagedPricingImport(
   fileName: string,
   post: SellerPortalFormPost = postSellerPortalForm,
 ): Promise<number> {
+  const form = buildInitializeStagedPricingImportForm(fileName);
   let metadata: SafeHttpResponseMetadata | null = null;
   let response: unknown;
   try {
     response = await post<unknown>(
       PATHS.initialize,
-      buildInitializeStagedPricingImportForm(fileName),
+      form,
       (observedMetadata) => {
         metadata = observedMetadata;
       },
@@ -356,15 +361,37 @@ export async function initializeStagedPricingImport(
   } catch (error) {
     const status = getTransportStatus(error);
     const code = getTransportCode(error);
-    if (status === 401 || status === 403) {
+    const failedResponse = getTransportResponse(error);
+    const failedMetadata =
+      metadata ??
+      (status === null
+        ? null
+        : { status, contentType: null, redirected: null });
+    const diagnostics = responseDiagnostics(failedResponse, failedMetadata);
+    if (isChallengeResponse(failedResponse)) {
+      throw new StagedPricingInitializationError(
+        "staged_initialization_challenge",
+        `Seller Portal challenged the staged pricing initialization request (${diagnostics}; transport=${code}).`,
+      );
+    }
+    if (isLoginResponse(failedResponse, failedMetadata)) {
       throw new StagedPricingInitializationError(
         "staged_initialization_authentication_required",
-        `Seller Portal required authentication for staged pricing initialization (status=${status}; transport=${code}).`,
+        `Seller Portal required authentication for staged pricing initialization (${diagnostics}; transport=${code}).`,
+      );
+    }
+    if (
+      isExplicitProviderRejection(failedResponse) ||
+      (status !== null && status >= 400 && status < 500)
+    ) {
+      throw new StagedPricingInitializationError(
+        "staged_initialization_rejected",
+        `Seller Portal rejected staged pricing initialization (${diagnostics}; transport=${code}).`,
       );
     }
     throw new StagedPricingInitializationError(
       "staged_initialization_transport_failed",
-      `Seller Portal staged pricing initialization failed before a response was confirmed (status=${status ?? "unknown"}; transport=${code}).`,
+      `Seller Portal staged pricing initialization failed before a response was confirmed (${diagnostics}; transport=${code}).`,
     );
   }
   const diagnostics = responseDiagnostics(response, metadata);

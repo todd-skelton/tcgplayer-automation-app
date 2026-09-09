@@ -56,6 +56,29 @@ function rejectedPost(error: unknown): SellerPortalFormPost {
   };
 }
 
+function rejectedHttpPost(
+  status: number,
+  response: unknown,
+  metadata: SafeHttpResponseMetadata = {
+    status,
+    contentType: "json",
+    redirected: false,
+  },
+): SellerPortalFormPost {
+  return async <TResponse>(
+    _path: string,
+    _form: URLSearchParams,
+    observeResponse?: (metadata: SafeHttpResponseMetadata) => void,
+  ): Promise<TResponse> => {
+    observeResponse?.(metadata);
+    throw {
+      isAxiosError: true,
+      code: status >= 500 ? "ERR_BAD_RESPONSE" : "ERR_BAD_REQUEST",
+      response: { status, data: response },
+    };
+  };
+}
+
 const testCases: TestCase[] = [
   {
     name: "staged pricing forms preserve the verified minimal import contract",
@@ -241,6 +264,16 @@ const testCases: TestCase[] = [
   {
     name: "staged pricing initialization accepts only the observed safe numeric identity",
     run: async () => {
+      let invalidFilePostCalls = 0;
+      await assert.rejects(
+        initializeStagedPricingImport(" ", async <TResponse>() => {
+          invalidFilePostCalls += 1;
+          return {} as TResponse;
+        }),
+        RangeError,
+      );
+      assert.equal(invalidFilePostCalls, 0);
+
       assert.equal(
         await initializeStagedPricingImport(
           "observed-contract.csv",
@@ -275,7 +308,7 @@ const testCases: TestCase[] = [
     },
   },
   {
-        name: "staged pricing initialization classifies login, challenge, and rejection without body text",
+    name: "staged pricing initialization classifies login, challenge, and rejection without body text",
     run: async () => {
       const cases: Array<{
         response: unknown;
@@ -334,6 +367,60 @@ const testCases: TestCase[] = [
             error instanceof StagedPricingInitializationError &&
             error.code === testCase.code &&
             !error.message.includes(testCase.secret),
+        );
+      }
+    },
+  },
+  {
+    name: "staged pricing initialization classifies rejected HTTP bodies without accepting their IDs",
+    run: async () => {
+      const cases: Array<{
+        status: number;
+        response: unknown;
+        metadata?: SafeHttpResponseMetadata;
+        code: StagedPricingInitializationError["code"];
+      }> = [
+        {
+          status: 400,
+          response: { Success: false, Messages: ["private"] },
+          code: "staged_initialization_rejected",
+        },
+        {
+          status: 403,
+          response: "<html><div>Verify you are human private</div></html>",
+          metadata: {
+            status: 403,
+            contentType: "html",
+            redirected: false,
+          },
+          code: "staged_initialization_challenge",
+        },
+        {
+          status: 400,
+          response: { StagedPricingUploadId: 16104570 },
+          code: "staged_initialization_rejected",
+        },
+        {
+          status: 500,
+          response: { StagedPricingUploadId: 16104570 },
+          code: "staged_initialization_transport_failed",
+        },
+      ];
+
+      for (const testCase of cases) {
+        await assert.rejects(
+          initializeStagedPricingImport(
+            "rejected-http.csv",
+            rejectedHttpPost(
+              testCase.status,
+              testCase.response,
+              testCase.metadata,
+            ),
+          ),
+          (error: unknown) =>
+            error instanceof StagedPricingInitializationError &&
+            error.code === testCase.code &&
+            !error.message.includes("private"),
         );
       }
     },
