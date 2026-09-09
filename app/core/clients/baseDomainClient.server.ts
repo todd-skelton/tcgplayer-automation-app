@@ -16,6 +16,57 @@ import {
 const MAX_RETRIES = 3;
 const RETRYABLE_STATUS_CODES = new Set([403, 429, 502, 503, 504]);
 
+export interface SafeHttpResponseMetadata {
+  status: number;
+  contentType: "json" | "html" | "text" | "other" | null;
+  redirected: boolean | null;
+}
+
+function classifyContentType(
+  value: unknown,
+): SafeHttpResponseMetadata["contentType"] {
+  if (typeof value !== "string") return null;
+  const mediaType = value.split(";", 1)[0]?.trim().toLowerCase();
+  if (mediaType === "application/json" || mediaType?.endsWith("+json")) {
+    return "json";
+  }
+  if (mediaType === "text/html") return "html";
+  if (mediaType?.startsWith("text/")) return "text";
+  return "other";
+}
+
+function getSafeResponseMetadata<T>(
+  response: AxiosResponse<T>,
+): SafeHttpResponseMetadata {
+  const contentType = response.headers["content-type"];
+  const redirectCount = (
+    response.request as
+      | { _redirectable?: { _redirectCount?: unknown } }
+      | null
+      | undefined
+  )?._redirectable?._redirectCount;
+
+  return {
+    status: response.status,
+    contentType: classifyContentType(contentType),
+    redirected:
+      typeof redirectCount === "number" ? redirectCount > 0 : null,
+  };
+}
+
+export function observeSafeHttpResponse<T>(
+  response: AxiosResponse<T>,
+  observer?: (metadata: SafeHttpResponseMetadata) => void,
+): void {
+  if (!observer) return;
+  try {
+    observer(getSafeResponseMetadata(response));
+  } catch {
+    // Diagnostics cannot turn a successful provider response into a failed
+    // stateful request.
+  }
+}
+
 // ============================================================================
 // Rate Limiting & Throttling (per-domain instance)
 // ============================================================================
@@ -325,13 +376,22 @@ export class DomainHttpClient {
     data?: TData,
     options?: Pick<AxiosRequestConfig, "headers" | "responseType" | "timeout" | "signal"> & {
       retry?: boolean;
+      observeResponse?: (metadata: SafeHttpResponseMetadata) => void;
     },
   ): Promise<TResponse> {
-    const { retry = true, ...requestOptions } = options ?? {};
+    const { retry = true, observeResponse, ...requestOptions } = options ?? {};
     return this.executeWithRetry(
       "POST",
       path,
-      () => this.axiosClient.post<TResponse>(path, data, requestOptions),
+      async () => {
+        const response = await this.axiosClient.post<TResponse>(
+          path,
+          data,
+          requestOptions,
+        );
+        observeSafeHttpResponse(response, observeResponse);
+        return response;
+      },
       data ? { data } : undefined,
       retry ? MAX_RETRIES : 0,
       requestOptions.signal as AbortSignal | undefined,

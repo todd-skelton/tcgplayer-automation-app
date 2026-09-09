@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import type { AxiosResponse } from "axios";
 import {
   ConcurrencyLimiter,
+  observeSafeHttpResponse,
   RequestThrottler,
 } from "./baseDomainClient.server";
 import {
@@ -30,6 +32,33 @@ function createDomainConfig(
 }
 
 const testCases: TestCase[] = [
+  {
+    name: "response observers receive bounded metadata and cannot fail a request",
+    run: () => {
+      const response = {
+        status: 200,
+        headers: {
+          "content-type": "application/private+json; account=do-not-retain",
+        },
+        request: { _redirectable: { _redirectCount: 1 } },
+      } as unknown as AxiosResponse<unknown>;
+      let observed: unknown;
+
+      assert.doesNotThrow(() =>
+        observeSafeHttpResponse(response, (metadata) => {
+          observed = metadata;
+          throw new Error("observer failed");
+        }),
+      );
+      assert.deepEqual(observed, {
+        status: 200,
+        contentType: "json",
+        redirected: true,
+      });
+      assert.ok(!JSON.stringify(observed).includes("account"));
+      assert.ok(!JSON.stringify(observed).includes("private"));
+    },
+  },
   {
     name: "RequestThrottler.recordSuccess uses the latest persisted delay between success thresholds",
     run: async () => {

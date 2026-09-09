@@ -5,6 +5,7 @@ import {
 } from "~/core/db";
 import {
   finalizeStagedPricingImport,
+  getStagedPricingInitializationErrorCode,
   initializeStagedPricingImport,
   moveStagedPricingImportToLive,
   rollbackStagedPricingImport,
@@ -287,6 +288,12 @@ function buildProductDetailMismatchOutcomes(
 }
 
 export function isSellerPortalAuthenticationFailure(error: unknown): boolean {
+  if (
+    getStagedPricingInitializationErrorCode(error) ===
+    "staged_initialization_authentication_required"
+  ) {
+    return true;
+  }
   const candidate = error as { response?: { status?: unknown } };
   const status = Number(candidate?.response?.status);
   if (status === 401 || status === 403) {
@@ -495,15 +502,18 @@ async function failBeforeMove(
     }
   }
 
+  const initializationErrorCode =
+    getStagedPricingInitializationErrorCode(error) ??
+    "staged_initialization_failed";
   await dependencies.markPlannedItems(
     publication.id,
     "failed",
-    "staged_initialization_failed",
+    initializationErrorCode,
     originalMessage,
   );
   await dependencies.transition(publication.id, currentStatus, "failed", {
     workerId,
-    errorCode: "staged_initialization_failed",
+    errorCode: initializationErrorCode,
     errorMessage: originalMessage,
   });
 }

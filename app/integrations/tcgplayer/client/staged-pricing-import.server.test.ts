@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import type { SafeHttpResponseMetadata } from "~/core/clients/baseDomainClient.server";
 import {
   buildFinalizeStagedPricingImportForm,
   buildInitializeStagedPricingImportForm,
@@ -9,6 +10,7 @@ import {
   initializeStagedPricingImport,
   moveStagedPricingImportToLive,
   rollbackStagedPricingImport,
+  StagedPricingInitializationError,
   STAGED_PRICING_IMPORT_CHUNK_SIZE,
   type SellerPortalFormPost,
   type StagedPricingUpdate,
@@ -28,6 +30,30 @@ const update: StagedPricingUpdate = {
 
 function postResponse(response: unknown): SellerPortalFormPost {
   return async <TResponse>(): Promise<TResponse> => response as TResponse;
+}
+
+function observedPostResponse(
+  response: unknown,
+  metadata: SafeHttpResponseMetadata = {
+    status: 200,
+    contentType: "json",
+    redirected: false,
+  },
+): SellerPortalFormPost {
+  return async <TResponse>(
+    _path: string,
+    _form: URLSearchParams,
+    observeResponse?: (metadata: SafeHttpResponseMetadata) => void,
+  ): Promise<TResponse> => {
+    observeResponse?.(metadata);
+    return response as TResponse;
+  };
+}
+
+function rejectedPost(error: unknown): SellerPortalFormPost {
+  return async <TResponse>(): Promise<TResponse> => {
+    throw error;
+  };
 }
 
 const testCases: TestCase[] = [
@@ -209,6 +235,141 @@ const testCases: TestCase[] = [
           postResponse({ success: false }),
         ),
         /did not finalize staged pricing upload 16104570/,
+      );
+    },
+  },
+  {
+    name: "staged pricing initialization accepts only the observed safe numeric identity",
+    run: async () => {
+      assert.equal(
+        await initializeStagedPricingImport(
+          "observed-contract.csv",
+          observedPostResponse({ StagedPricingUploadId: 16104570 }),
+        ),
+        16104570,
+      );
+
+      const invalidResponses: unknown[] = [
+        { StagedPricingUploadId: "16104570" },
+        {},
+        { StagedPricingUploadId: null },
+        { StagedPricingUploadId: 0 },
+        { StagedPricingUploadId: -1 },
+        { StagedPricingUploadId: 1.5 },
+        { StagedPricingUploadId: Number.MAX_SAFE_INTEGER + 1 },
+        "<html><body>Unexpected response</body></html>",
+      ];
+      for (const response of invalidResponses) {
+        await assert.rejects(
+          initializeStagedPricingImport(
+            "invalid-contract.csv",
+            observedPostResponse(response),
+          ),
+          (error: unknown) =>
+            error instanceof StagedPricingInitializationError &&
+            error.code === "staged_initialization_response_invalid" &&
+            error.message.includes("status=200") &&
+            !error.message.includes("Unexpected response"),
+        );
+      }
+    },
+  },
+  {
+        name: "staged pricing initialization classifies login, challenge, and rejection without body text",
+    run: async () => {
+      const cases: Array<{
+        response: unknown;
+        metadata?: SafeHttpResponseMetadata;
+        code: StagedPricingInitializationError["code"];
+        secret: string;
+      }> = [
+        {
+          response:
+            '<!doctype html><html><form action="/login">Sign in private</form></html>',
+          metadata: {
+            status: 200,
+            contentType: "html",
+            redirected: true,
+          },
+          code: "staged_initialization_authentication_required",
+          secret: "private",
+        },
+        {
+          response:
+            "<!doctype html><html><div>Verify you are human private</div></html>",
+          metadata: {
+            status: 200,
+            contentType: "html",
+            redirected: false,
+          },
+          code: "staged_initialization_challenge",
+          secret: "private",
+        },
+        {
+          response: {
+            Success: false,
+            Messages: ["private provider explanation"],
+          },
+          code: "staged_initialization_rejected",
+          secret: "private provider explanation",
+        },
+        {
+          response: {
+            StagedPricingUploadId: 16104570,
+            success: false,
+            error: "private contradictory response",
+          },
+          code: "staged_initialization_rejected",
+          secret: "private contradictory response",
+        },
+      ];
+
+      for (const testCase of cases) {
+        await assert.rejects(
+          initializeStagedPricingImport(
+            "classified-contract.csv",
+            observedPostResponse(testCase.response, testCase.metadata),
+          ),
+          (error: unknown) =>
+            error instanceof StagedPricingInitializationError &&
+            error.code === testCase.code &&
+            !error.message.includes(testCase.secret),
+        );
+      }
+    },
+  },
+  {
+    name: "staged pricing initialization sanitizes transport failures and preserves their phase",
+    run: async () => {
+      await assert.rejects(
+        initializeStagedPricingImport(
+          "transport-failure.csv",
+          rejectedPost({
+            name: "AxiosError",
+            code: "ECONNABORTED",
+            message: "private request details",
+            config: { headers: { Cookie: "private cookie" } },
+          }),
+        ),
+        (error: unknown) =>
+          error instanceof StagedPricingInitializationError &&
+          error.code === "staged_initialization_transport_failed" &&
+          error.message.includes("before a response was confirmed") &&
+          error.message.includes("transport=ECONNABORTED") &&
+          !error.message.includes("private"),
+      );
+      await assert.rejects(
+        initializeStagedPricingImport(
+          "authentication-failure.csv",
+          rejectedPost({
+            code: "ERR_BAD_REQUEST",
+            response: { status: 401, data: "private response" },
+          }),
+        ),
+        (error: unknown) =>
+          error instanceof StagedPricingInitializationError &&
+          error.code === "staged_initialization_authentication_required" &&
+          !error.message.includes("private"),
       );
     },
   },
