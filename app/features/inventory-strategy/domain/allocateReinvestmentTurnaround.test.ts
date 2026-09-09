@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { allocateReinvestmentTurnaround } from "./allocateReinvestmentTurnaround";
 import type { ReinvestmentTurnaroundInput } from "../types/reinvestmentTurnaround";
 
-const input:ReinvestmentTurnaroundInput={sellerKey:"synthetic-turnaround",asOf:"2026-01-21T00:00:00.000Z",unknownProceedsOrderCount:0,unknownCostReceiptCount:0,sourceEvidenceIdentities:[],
+const input:ReinvestmentTurnaroundInput={sellerKey:"synthetic-turnaround",asOf:"2026-01-21T00:00:00.000Z",unknownProceedsOrderCount:0,unknownCostReceiptCount:0,sourceEvidenceIdentities:[],unsupportedPurchaseFunding:[],
   sales:[{orderNumber:"sale-1",soldAt:"2026-01-01T00:00:00.000Z",currency:"USD",amountCents:10_000,provenance:"actual",sourceIdentity:"sale-source"}],
   fundingAdjustments:[],purchases:[{purchaseReference:"replacement",currency:"USD",totalAmountCents:10_000,costProvenance:"actual",
     costSourceIdentity:"cost-source",funding:[],tranches:[
-      {receiptId:1,amountCents:6_000,quantity:6,publishedAt:"2026-01-11T00:00:00.000Z",publicationState:"confirmed",publicationIdentity:"pub-1"},
-      {receiptId:2,amountCents:4_000,quantity:4,publishedAt:"2026-01-21T00:00:00.000Z",publicationState:"confirmed",publicationIdentity:"pub-2"},
+      {receiptId:1,productLineId:1,amountCents:6_000,quantity:6,publishedAt:"2026-01-11T00:00:00.000Z",publicationState:"confirmed",publicationIdentity:"pub-1"},
+      {receiptId:2,productLineId:1,amountCents:4_000,quantity:4,publishedAt:"2026-01-21T00:00:00.000Z",publicationState:"confirmed",publicationIdentity:"pub-2"},
     ]}]};
 const completed=allocateReinvestmentTurnaround(input);
 assert.equal(completed.currencies[0].completedCents,10_000);

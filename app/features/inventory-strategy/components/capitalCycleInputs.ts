@@ -8,13 +8,12 @@ import type { InventoryStrategyProductLine } from "../types/inventoryStrategy";
 /** Cycle inputs the reader can vary; overhead comes from the profit-per-day settings. */
 export type CapitalCycleInputs = Pick<
   CapitalCycleEconomics,
-  "costBasisShareOfMarket" | "costBasisDiscountPerUnit" | "turnaroundDays"
+  "costBasisShareOfMarket" | "costBasisDiscountPerUnit"
 >;
 
 export const DEFAULT_CAPITAL_CYCLE_INPUTS: CapitalCycleInputs = {
   costBasisShareOfMarket: 0.72,
   costBasisDiscountPerUnit: 0.3,
-  turnaroundDays: 28,
 };
 
 export const CAPITAL_CYCLE_FIELDS: NumberFieldDescriptor<CapitalCycleInputs>[] =
@@ -30,12 +29,6 @@ export const CAPITAL_CYCLE_FIELDS: NumberFieldDescriptor<CapitalCycleInputs>[] =
       label: "Cost basis discount per unit",
       step: 0.01,
       helperText: "Dollars off the cost basis for every unit bought",
-    },
-    {
-      key: "turnaroundDays",
-      label: "Turnaround days",
-      step: 1,
-      helperText: "Days from a sale until the proceeds are relisted",
     },
   ];
 

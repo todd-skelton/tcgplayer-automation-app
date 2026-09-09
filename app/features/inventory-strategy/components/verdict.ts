@@ -14,7 +14,7 @@ export interface HurdleReturn {
 
 /**
  * Each hurdle whose portfolio, sold for its value after its median wait,
- * grows the capital at risk, fastest compounding first.
+ * has the highest simplified modeled daily return on capital at risk.
  */
 export function hurdleReturns(
   sweep: readonly InventoryStrategyHurdleScenario[],

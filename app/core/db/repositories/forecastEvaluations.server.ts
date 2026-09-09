@@ -160,7 +160,8 @@ export const forecastEvaluationsRepository = {
        FROM seller_order_sync_runs WHERE seller_key=$1 AND source='tcgplayer_api'
        ORDER BY started_at DESC,id DESC LIMIT 1`, [seller], executor,
     );
-    const evaluatedAt = run?.finishedAt ?? run?.updatedAt ?? new Date(0);
+    if (!run) throw new Error("Forecast validation requires seller order-sync evidence with a real observation time.");
+    const evaluatedAt = run.finishedAt ?? run.updatedAt;
     const completedRuns = run?.status === "complete"
       ? await query<{ observedFrom: Date | null; observedThrough: Date | null }>(
           `SELECT observed_from AS "observedFrom",observed_through AS "observedThrough"

@@ -1,4 +1,4 @@
-export const REINVESTMENT_TURNAROUND_RULE_VERSION = "pooled-proceeds/v1";
+export const REINVESTMENT_TURNAROUND_RULE_VERSION = "pooled-proceeds/v2";
 
 export type ReinvestmentMoneyProvenance = "actual" | "estimated";
 export type ReinvestmentTimingBasis = "known_purchase" | "known_funding" | "sale_to_publication_inference";
@@ -16,6 +16,7 @@ export interface ReusableSaleProceeds {
 
 export interface ReinvestmentPublicationTranche {
   receiptId: number;
+  productLineId: number;
   publicationItemId?: string;
   amountCents: number;
   quantity: number;
@@ -41,6 +42,16 @@ export interface ReplacementPurchase {
   tranches: ReinvestmentPublicationTranche[];
 }
 
+export interface UnsupportedPurchaseFunding {
+  kind: "orphan" | "above_current_cost";
+  adjustmentReference: string;
+  purchaseReference: string | null;
+  currency: string;
+  amountCents: number;
+  effectiveAt: string;
+  sourceIdentity: string;
+}
+
 export interface ReinvestmentFundingAdjustment {
   adjustmentReference: string;
   currency: string;
@@ -56,12 +67,34 @@ export interface ReinvestmentTurnaroundInput {
   asOf: string;
   sales: ReusableSaleProceeds[];
   purchases: ReplacementPurchase[];
+  unsupportedPurchaseFunding: UnsupportedPurchaseFunding[];
   fundingAdjustments: ReinvestmentFundingAdjustment[];
   unknownProceedsOrderCount: number;
-  unknownProceedsSoldAt?: string[];
+  unknownProceedsSoldAt?: Array<string | null>;
   unknownCostReceiptCount: number;
   unknownCostOccurredAt?: Array<string|null>;
+  unknownCostReceipts?: Array<{
+    receiptId: number;
+    productLineId: number;
+    occurredAt: string | null;
+  }>;
+  orderCoverage?: ReinvestmentOrderCoverage | null;
   sourceEvidenceIdentities: string[];
+}
+
+export interface ReinvestmentOrderCoverage {
+  runId: string;
+  source: "tcgplayer_api";
+  status: "complete";
+  searchRange: string | null;
+  finishedAt: string;
+  nextOffset: number;
+  expectedTotal: number | null;
+  ordersObserved: number;
+  detailsRecorded: number;
+  observedFrom: string | null;
+  observedThrough: string | null;
+  gaps: string[];
 }
 
 export interface ReinvestmentTurnaroundSample {
@@ -70,6 +103,7 @@ export interface ReinvestmentTurnaroundSample {
   orderNumber: string;
   purchaseReference: string;
   receiptId: number;
+  productLineId: number;
   amountCents: number;
   soldAt: string;
   fundingAt: string;
@@ -122,6 +156,7 @@ export interface ReinvestmentTurnaroundReport {
   datePrecision: "timestamp_sales_date_funding";
   currencies: ReinvestmentCurrencySummary[];
   samples: ReinvestmentTurnaroundSample[];
+  unsupportedPurchaseFunding: UnsupportedPurchaseFunding[];
   excluded: Array<{ reason: string; count: number; amountCents?: number; currency?: string }>;
   coverage: {
     observedOrderCount: number;
@@ -130,6 +165,13 @@ export interface ReinvestmentTurnaroundReport {
     purchaseCount: number;
     costedReceiptCount: number;
     unknownCostReceiptCount: number;
+    unknownProceeds: Array<{ soldAt: string | null }>;
+    unknownCosts: Array<{
+      receiptId: number;
+      productLineId: number;
+      occurredAt: string | null;
+    }>;
   };
+  orderCoverage: ReinvestmentOrderCoverage | null;
   convention: string[];
 }

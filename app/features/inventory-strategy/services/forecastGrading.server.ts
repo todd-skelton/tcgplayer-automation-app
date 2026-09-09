@@ -55,6 +55,10 @@ export async function loadForecastGrading(
       ...evaluateForecastEvidence(snapshot.evidence),
       materialEvidenceVersion: snapshot.materialEvidenceVersion,
     };
+    if ([report.evaluatedAt, report.fitCutoff, report.validationCutoff]
+      .some((value) => !Number.isFinite(Date.parse(value)) || Date.parse(value) <= 0)) {
+      throw new Error("Forecast validation evidence dates are unavailable.");
+    }
     const saved = await source.save(report);
     return { ...report, evaluationId: saved.id };
   });

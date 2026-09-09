@@ -3,7 +3,7 @@ import { inventoryReinvestmentRepository } from "~/core/db";
 import type { Queryable } from "~/core/db/database.server";
 import { allocateAmountCents } from "~/features/inventory-economics/domain/money";
 import { loadCompleteReusableProceeds } from "~/features/inventory-economics/services/inventoryEconomics.server";
-import { allocateReinvestmentTurnaround } from "../domain/allocateReinvestmentTurnaround";
+import { allocateReinvestmentTurnaround, unsupportedPurchaseFundingFor } from "../domain/allocateReinvestmentTurnaround";
 import type {
   ReinvestmentPublicationTranche,
   ReinvestmentTurnaroundInput,
@@ -30,20 +30,24 @@ function identity(value:unknown):string {
 
 function publicationTranches(row:ReinvestmentPurchaseSourceRow):ReinvestmentPublicationTranche[] {
   const validLinkedQuantity=row.plannedQuantity!==null && row.plannedQuantity>0 && row.plannedQuantity<=row.originalQuantity;
-  if (row.allocatedAmountCents===0) return [{receiptId:row.receiptId,amountCents:0,quantity:row.originalQuantity,
+  if (row.allocatedAmountCents===0) return [{receiptId:row.receiptId,productLineId:row.productLineId,
+    amountCents:0,quantity:row.originalQuantity,
     ...(validLinkedQuantity && row.publicationItemId?{publicationItemId:row.publicationItemId}:{}),
     ...(row.liveAt?{publishedAt:row.liveAt.toISOString()}:{}),publicationState:row.liveAt?"confirmed":validLinkedQuantity?"waiting":"unsupported",
     ...(row.publicationIdentity?{publicationIdentity:identity(row.publicationIdentity)}:{})}];
-  if (!validLinkedQuantity) return [{receiptId:row.receiptId,amountCents:row.allocatedAmountCents,
+  if (!validLinkedQuantity) return [{receiptId:row.receiptId,productLineId:row.productLineId,
+    amountCents:row.allocatedAmountCents,
     quantity:row.originalQuantity,publicationState:"unsupported"}];
   const targets=[{id:"linked",weight:row.plannedQuantity!},
     ...(row.originalQuantity>row.plannedQuantity!?[{id:"remaining",weight:row.originalQuantity-row.plannedQuantity!}]:[])];
   const amounts=new Map(allocateAmountCents(row.allocatedAmountCents,targets).map((value)=>[value.id,value.amountCents]));
   const publicationIdentity=identity(row.publicationIdentity);
-  return [{receiptId:row.receiptId,publicationItemId:row.publicationItemId!,amountCents:amounts.get("linked")!,
+  return [{receiptId:row.receiptId,productLineId:row.productLineId,
+    publicationItemId:row.publicationItemId!,amountCents:amounts.get("linked")!,
     quantity:row.plannedQuantity!,...(row.liveAt?{publishedAt:row.liveAt.toISOString()}:{}),
     publicationState:row.liveAt?"confirmed":"waiting",publicationIdentity},
-    ...(amounts.has("remaining")?[{receiptId:row.receiptId,amountCents:amounts.get("remaining")!,
+    ...(amounts.has("remaining")?[{receiptId:row.receiptId,productLineId:row.productLineId,
+      amountCents:amounts.get("remaining")!,
       quantity:row.originalQuantity-row.plannedQuantity!,publicationState:"unsupported" as const}]:[])];
 }
 
@@ -52,7 +56,7 @@ export function buildReinvestmentInput(
   asOf:string,
   proceeds:Awaited<ReturnType<typeof loadCompleteReusableProceeds>>,
   evidence:ReinvestmentSourceEvidence,
-):{input:ReinvestmentTurnaroundInput;orphanFunding:ReinvestmentFundingSourceRow[]} {
+):{input:ReinvestmentTurnaroundInput} {
   const purchaseFunding=new Map<string,ReinvestmentFundingSourceRow[]>();
   for (const row of evidence.fundingRows.filter((value)=>value.adjustmentType==="purchase_funding")) {
     const key=`${row.currency}\u0000${row.purchaseReference??""}`;
@@ -77,7 +81,14 @@ export function buildReinvestmentInput(
   const sourceEvidenceIdentities=[...evidence.purchaseRows.map((row)=>identity(row)),
     ...evidence.fundingRows.map((row)=>row.sourceIdentity),...evidence.unknownCostReceipts.map((row)=>identity(row.identity)),
     ...proceeds.sourceEvidenceIdentities].sort();
-  return {input:{sellerKey,asOf,sales:proceeds.sales,purchases:[...purchasesByKey.values()],
+  const purchases=[...purchasesByKey.values()];
+  const unsupportedPurchaseFunding=[...orphanFunding.map((row)=>({kind:"orphan" as const,
+    adjustmentReference:row.adjustmentReference,purchaseReference:row.purchaseReference,currency:row.currency,
+    amountCents:row.amountCents,effectiveAt:row.effectiveAt,sourceIdentity:row.sourceIdentity})),
+    ...purchases.flatMap(unsupportedPurchaseFundingFor)]
+    .sort((left,right)=>left.effectiveAt.localeCompare(right.effectiveAt)||left.currency.localeCompare(right.currency)||
+      left.adjustmentReference.localeCompare(right.adjustmentReference));
+  return {input:{sellerKey,asOf,sales:proceeds.sales,purchases,unsupportedPurchaseFunding,
     fundingAdjustments:evidence.fundingRows.filter((row):row is ReinvestmentFundingSourceRow &
       {adjustmentType:Exclude<ReinvestmentFundingSourceRow["adjustmentType"],"purchase_funding">}=>row.adjustmentType!=="purchase_funding").map((row)=>({
       adjustmentReference:row.adjustmentReference,currency:row.currency,adjustmentType:row.adjustmentType,
@@ -85,20 +96,22 @@ export function buildReinvestmentInput(
     unknownProceedsOrderCount:proceeds.unknownProceedsOrderCount,unknownCostReceiptCount:evidence.unknownCostReceiptCount,
     unknownProceedsSoldAt:proceeds.unknownProceedsSoldAt,
     unknownCostOccurredAt:evidence.unknownCostReceipts.map((row)=>row.occurredAt?.toISOString()??null),
-    sourceEvidenceIdentities},orphanFunding};
+    unknownCostReceipts:evidence.unknownCostReceipts.map((row)=>({receiptId:row.receiptId,
+      productLineId:row.productLineId,occurredAt:row.occurredAt?.toISOString()??null})),
+    orderCoverage:evidence.orderCoverage,
+    sourceEvidenceIdentities}};
 }
 
 async function rebuild(sellerKey:string,asOf:string,db:Queryable):Promise<ReinvestmentTurnaroundReport> {
   const proceeds=await loadCompleteReusableProceeds(sellerKey,db);
   const evidence=await inventoryReinvestmentRepository.findSourceEvidence(sellerKey,db);
-  const {input,orphanFunding}=buildReinvestmentInput(sellerKey,asOf,proceeds,evidence);
+  const {input}=buildReinvestmentInput(sellerKey,asOf,proceeds,evidence);
   const report=allocateReinvestmentTurnaround(input);
-  if (orphanFunding.length) report.excluded.push({reason:"Purchase-funding evidence without a matching current purchase cost",
-    count:orphanFunding.length,amountCents:orphanFunding.reduce((sum,value)=>sum+value.amountCents,0)});
-  for (const purchase of input.purchases) {
-    const funding=purchase.funding.reduce((sum,value)=>sum+value.amountCents,0);
-    if (funding>purchase.totalAmountCents) report.excluded.push({reason:`Purchase funding above current cost for ${purchase.purchaseReference}`,
-      count:1,amountCents:funding-purchase.totalAmountCents,currency:purchase.currency});
+  for (const unsupported of input.unsupportedPurchaseFunding) {
+    report.excluded.push({reason:unsupported.kind==="orphan"
+      ? "Purchase-funding evidence without a matching current purchase cost"
+      : `Purchase funding above current cost for ${unsupported.purchaseReference}`,
+      count:1,amountCents:unsupported.amountCents,currency:unsupported.currency});
   }
   return inventoryReinvestmentRepository.saveRebuild(report,db);
 }
@@ -111,7 +124,7 @@ export async function loadReinvestmentTurnaround(
   const seller=sellerKey.trim();
   const effectiveAsOf=asOf??new Date(Math.floor(Date.now()/3_600_000)*3_600_000);
   if (!seller) return allocateReinvestmentTurnaround({sellerKey:"",asOf:effectiveAsOf.toISOString(),sales:[],purchases:[],
-    fundingAdjustments:[],unknownProceedsOrderCount:0,unknownCostReceiptCount:0,sourceEvidenceIdentities:[]});
+    unsupportedPurchaseFunding:[],fundingAdjustments:[],unknownProceedsOrderCount:0,unknownCostReceiptCount:0,sourceEvidenceIdentities:[]});
   if (Number.isNaN(effectiveAsOf.getTime())) throw new Error("Reinvestment report as-of time is invalid.");
   return inventoryReinvestmentRepository.withRebuildLock(seller,(db)=>rebuild(seller,effectiveAsOf.toISOString(),db));
 }

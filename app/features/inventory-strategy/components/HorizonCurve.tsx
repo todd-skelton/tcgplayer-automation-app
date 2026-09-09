@@ -17,6 +17,7 @@ import {
 import { useMemo, useState } from "react";
 import {
   bestCapitalCycle,
+  capitalCycleAtHorizon,
   type CapitalCycle,
   type CapitalCycleEconomics,
 } from "~/features/pricing/domain/capitalCycle";
@@ -39,6 +40,10 @@ import {
   sampleHorizonPoints,
   type HorizonPoint,
 } from "./horizonPoints";
+import { selectTurnaround } from "../domain/turnaroundStrategy";
+import type { ReinvestmentTurnaroundReport } from "../types/reinvestmentTurnaround";
+import type { TurnaroundMode, TurnaroundSetting } from "../types/turnaroundStrategy";
+import { TurnaroundInputs } from "./TurnaroundInputs";
 
 const CHART_SAMPLE_COUNT = 80;
 
@@ -75,7 +80,7 @@ function cycleSummary(
     return "No profitable cycle on all listed inventory at these inputs.";
   if (cycle.dailyReturn === undefined)
     return "The best cycle on all listed inventory puts no capital at risk at these inputs, so it has no rate of return.";
-  return `The best cycle on all listed inventory compounds capital at ${(cycle.dailyReturn * 100).toFixed(2)}% per day.`;
+  return `The simplified full-reinvestment model gives the best cycle on all listed inventory a modeled capital return of ${(cycle.dailyReturn * 100).toFixed(2)}% per day.`;
 }
 
 function fitLabel(productLine: InventoryStrategyProductLine): string {
@@ -117,11 +122,23 @@ export function HorizonCurve({
   economics,
   cycleInputs,
   onCycleInputsChange,
+  turnaroundSettings,
+  turnaroundReport,
+  turnaroundRecoveryError,
+  turnaroundSettingsError,
+  turnaroundBusy = false,
+  onTurnaroundSave,
 }: {
   dashboard: InventoryStrategyDashboard;
-  economics: CapitalCycleEconomics;
+  economics: Omit<CapitalCycleEconomics, "turnaroundDays">;
   cycleInputs: CapitalCycleInputs;
   onCycleInputsChange: (inputs: CapitalCycleInputs) => void;
+  turnaroundSettings: TurnaroundSetting[];
+  turnaroundReport: ReinvestmentTurnaroundReport | null;
+  turnaroundRecoveryError?: string | null;
+  turnaroundSettingsError?: string | null;
+  turnaroundBusy?: boolean;
+  onTurnaroundSave: (productLineId: number | null, mode: TurnaroundMode, manualTurnaroundDays: number) => void;
 }) {
   const theme = useTheme();
   const [selectedKey, setSelectedKey] = useState(dashboard.overall.key);
@@ -134,15 +151,30 @@ export function HorizonCurve({
     dashboard.policy.method === "target-horizon"
       ? dashboard.policy.horizonDays
       : null;
+  const turnaroundByKey = useMemo(
+    () => Object.fromEntries(allProductLines.map((productLine) => [
+      productLine.key,
+      selectTurnaround(dashboard.sellerKey, productLine.productLineId, turnaroundSettings,
+        turnaroundReport, turnaroundRecoveryError),
+    ])),
+    [allProductLines, dashboard.sellerKey, turnaroundRecoveryError, turnaroundReport, turnaroundSettings],
+  );
+  const economicsByKey = useMemo(
+    () => Object.fromEntries(allProductLines.map((productLine) => [
+      productLine.key,
+      { ...economics, turnaroundDays: turnaroundByKey[productLine.key].effectiveDays },
+    ])),
+    [allProductLines, economics, turnaroundByKey],
+  );
   const bestCycles = useMemo(
     () =>
       Object.fromEntries(
         allProductLines.map((productLine) => [
           productLine.key,
-          productLineBestCycle(productLine, economics),
+          productLineBestCycle(productLine, economicsByKey[productLine.key]),
         ]),
       ),
-    [allProductLines, economics],
+    [allProductLines, economicsByKey],
   );
   const selected =
     allProductLines.find((productLine) => productLine.key === selectedKey) ??
@@ -150,6 +182,18 @@ export function HorizonCurve({
   const model = selected.horizonModel;
   const curve = model?.curve ?? null;
   const portfolio = cyclePortfolio(selected);
+  const comparisonHorizonDays = activeHorizonDays ?? 20;
+  const selectedTurnaround = turnaroundByKey[selected.key];
+  const cycleWithTurnaround = (turnaroundDays: number | null | undefined) =>
+    curve && turnaroundDays !== null && turnaroundDays !== undefined
+      ? capitalCycleAtHorizon(curve, portfolio, { ...economics, turnaroundDays }, comparisonHorizonDays)
+      : null;
+  const turnaroundComparison = curve ? {
+    horizonDays: comparisonHorizonDays,
+    effective: cycleWithTurnaround(selectedTurnaround.effectiveDays)!,
+    typical: cycleWithTurnaround(selectedTurnaround.evidence?.typicalDays),
+    slower: cycleWithTurnaround(selectedTurnaround.evidence?.slowerDays),
+  } : null;
   const pointAt = (
     productLine: InventoryStrategyProductLine,
     days: number | null | undefined,
@@ -158,7 +202,7 @@ export function HorizonCurve({
       ? horizonPoint(
           productLine.horizonModel.curve,
           cyclePortfolio(productLine),
-          economics,
+          economicsByKey[productLine.key],
           days,
         )
       : undefined;
@@ -167,7 +211,7 @@ export function HorizonCurve({
       ? [
           {
             label,
-            point: horizonPoint(curve, portfolio, economics, horizonDays),
+            point: horizonPoint(curve, portfolio, economicsByKey[selected.key], horizonDays),
             color,
           },
         ]
@@ -193,7 +237,7 @@ export function HorizonCurve({
           curve,
           model,
           portfolio,
-          economics,
+          economicsByKey[selected.key],
           CHART_SAMPLE_COUNT,
         )
       : [];
@@ -202,7 +246,7 @@ export function HorizonCurve({
         ...marks.map(({ label, point }) => ({ label, point })),
         ...INVENTORY_STRATEGY_HORIZON_DAYS.map((horizonDays) => ({
           label: `${horizonDays} days`,
-          point: horizonPoint(curve, portfolio, economics, horizonDays),
+          point: horizonPoint(curve, portfolio, economicsByKey[selected.key], horizonDays),
         })),
       ].sort((left, right) => left.point.horizonDays - right.point.horizonDays)
     : [];
@@ -215,7 +259,8 @@ export function HorizonCurve({
           Physical value with every modeled SKU priced to sell within one target
           horizon, on a fitted log-logistic curve, and the profit per day of a
           sell-and-rebuy cycle at that horizon: overhead off the sale, the cost
-          basis recovered, divided by horizon plus turnaround. The knee is where
+          basis recovered, divided by horizon plus turnaround under a simplified
+          full-reinvestment assumption. The knee is where
           gain per doubling of horizon slows fastest; the best cycle is the
           horizon with the most profit per day. Horizons shorter than most
           SKUs&apos; fastest sell time overstate how quickly a cycle completes.
@@ -294,6 +339,15 @@ export function HorizonCurve({
             </Typography>
           )}
         </Stack>
+        <TurnaroundInputs
+          selection={turnaroundByKey[selected.key]}
+          productLine={selected.productLine}
+          busy={turnaroundBusy}
+          settingsError={turnaroundSettingsError}
+          scenarioComparison={turnaroundComparison}
+          onSave={(mode, manualTurnaroundDays) =>
+            onTurnaroundSave(selected.productLineId, mode, manualTurnaroundDays)}
+        />
         {points.length > 0 ? (
           <Box sx={{ mt: 2 }}>
             <HorizonChart

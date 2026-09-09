@@ -9,6 +9,7 @@ import type {
   ReinvestmentTurnaroundSample,
   ReplacementPurchase,
   ReusableSaleProceeds,
+  UnsupportedPurchaseFunding,
 } from "../types/reinvestmentTurnaround";
 import { REINVESTMENT_TURNAROUND_RULE_VERSION } from "../types/reinvestmentTurnaround";
 
@@ -115,10 +116,26 @@ function splitTranches(purchase: ReplacementPurchase): ReinvestmentPublicationTr
     left.receiptId-right.receiptId || (left.publicationItemId??"").localeCompare(right.publicationItemId??""));
 }
 
+function sortedPurchaseFunding(purchase:ReplacementPurchase):ReplacementPurchase["funding"] {
+  return [...purchase.funding].sort((left,right)=>
+    left.effectiveAt.localeCompare(right.effectiveAt) || left.adjustmentReference.localeCompare(right.adjustmentReference));
+}
+
+export function unsupportedPurchaseFundingFor(purchase:ReplacementPurchase):UnsupportedPurchaseFunding[] {
+  let remainingCost=purchase.totalAmountCents;
+  return sortedPurchaseFunding(purchase).flatMap((funding)=>{
+    const supportedCents=Math.min(funding.amountCents,remainingCost);
+    remainingCost-=supportedCents;
+    const amountCents=funding.amountCents-supportedCents;
+    return amountCents>0?[{kind:"above_current_cost" as const,adjustmentReference:funding.adjustmentReference,
+      purchaseReference:purchase.purchaseReference,currency:purchase.currency,amountCents,
+      effectiveAt:funding.effectiveAt,sourceIdentity:funding.sourceIdentity}]:[];
+  });
+}
+
 function demandsForPurchase(purchase: ReplacementPurchase, asOf: string): PurchaseDemand[] {
   const tranches = splitTranches(purchase);
-  const knownFunding = [...purchase.funding].sort((left,right)=>
-    left.effectiveAt.localeCompare(right.effectiveAt) || left.adjustmentReference.localeCompare(right.adjustmentReference));
+  const knownFunding = sortedPurchaseFunding(purchase);
   if (purchase.totalAmountCents===0) {
     const funding=knownFunding[0];
     if (funding) return tranches.map((tranche)=>({purchase,tranche,fundingAt:dateStart(funding.effectiveAt),
@@ -228,6 +245,7 @@ export function allocateReinvestmentTurnaround(input: ReinvestmentTurnaroundInpu
       ...(demand.fundingSourceIdentity?[demand.fundingSourceIdentity]:[])].sort();
     const sampleKey=createHash("sha256").update(stableJson({rule:REINVESTMENT_TURNAROUND_RULE_VERSION,currency:purchase.currency,
       sale:bucket.id,purchase:purchase.purchaseReference,receipt:demand.tranche.receiptId,
+      productLineId:demand.tranche.productLineId,
       publication:demand.tranche.publicationItemId??null,fundingAt:demand.fundingAt,
       publishedAt:publishedAt??null,sources:sourceIdentities})).digest("hex");
     const prior=samplesByKey.get(sampleKey);
@@ -235,7 +253,8 @@ export function allocateReinvestmentTurnaround(input: ReinvestmentTurnaroundInpu
       ? `${prior.amountCents} cents of pooled ${bucket.provenance} proceeds were attributed to ${purchase.purchaseReference} and its first confirmed supported publication.`
       : `${prior.amountCents} cents of pooled ${bucket.provenance} proceeds were attributed to ${purchase.purchaseReference}; supported publication is still waiting.`; return; }
     const sample:ReinvestmentTurnaroundSample={sampleKey,currency:purchase.currency,orderNumber:bucket.id,purchaseReference:purchase.purchaseReference,
-      receiptId:demand.tranche.receiptId,amountCents,soldAt:bucket.soldAt!,fundingAt:demand.fundingAt,
+      receiptId:demand.tranche.receiptId,productLineId:demand.tranche.productLineId,
+      amountCents,soldAt:bucket.soldAt!,fundingAt:demand.fundingAt,
       ...(completed?{publishedAt,turnaroundDays:elapsed}:{waitingAgeDays:elapsed}),state:completed?"completed":"waiting",
       timingBasis:demand.timingBasis,proceedsProvenance:bucket.provenance,costProvenance:purchase.costProvenance,
       fundingProvenance:demand.fundingProvenance,
@@ -368,7 +387,8 @@ export function allocateReinvestmentTurnaround(input: ReinvestmentTurnaroundInpu
   events.sort(compareIdentity).forEach((event)=>event.run());
   samples.sort((left,right)=>left.currency.localeCompare(right.currency)||left.soldAt.localeCompare(right.soldAt)||left.sampleKey.localeCompare(right.sampleKey));
   const sourceFingerprint=createHash("sha256").update(stableJson({ruleVersion:REINVESTMENT_TURNAROUND_RULE_VERSION,input})).digest("hex");
-  const futureUnknownProceeds=(input.unknownProceedsSoldAt??[]).filter((soldAt)=>instant(soldAt,"Unknown-proceeds sale time")>asOfMilliseconds).length;
+  const futureUnknownProceeds=(input.unknownProceedsSoldAt??[]).filter((soldAt)=>soldAt!==null &&
+    instant(soldAt,"Unknown-proceeds sale time")>asOfMilliseconds).length;
   const unknownProceedsOrderCount=Math.max(0,input.unknownProceedsOrderCount-futureUnknownProceeds);
   const futureUnknownCosts=(input.unknownCostOccurredAt??[]).filter((occurredAt)=>occurredAt!==null &&
     instant(occurredAt,"Unknown-cost receipt occurrence")>asOfMilliseconds).length;
@@ -397,8 +417,12 @@ export function allocateReinvestmentTurnaround(input: ReinvestmentTurnaroundInpu
       }
       return result;
     }),
-    samples,excluded,coverage:{observedOrderCount:eligibleSaleCount+unknownProceedsOrderCount,eligibleOrderCount:eligibleSaleCount,
-      unknownProceedsOrderCount,purchaseCount:observedPurchaseCount,costedReceiptCount,unknownCostReceiptCount},
+    samples,unsupportedPurchaseFunding:input.unsupportedPurchaseFunding,excluded,
+    coverage:{observedOrderCount:eligibleSaleCount+unknownProceedsOrderCount,eligibleOrderCount:eligibleSaleCount,
+      unknownProceedsOrderCount,purchaseCount:observedPurchaseCount,costedReceiptCount,unknownCostReceiptCount,
+      unknownProceeds:(input.unknownProceedsSoldAt??[]).map((soldAt)=>({soldAt})),
+      unknownCosts:(input.unknownCostReceipts??[]).map((value)=>({...value}))},
+    orderCoverage:input.orderCoverage??null,
     convention:[
       "Financial pooled attribution is an estimate; it is separate from physical FIFO and does not prove bank cash availability.",
       "Outside and opening cash funds purchases before sale proceeds. A reserve retains its original source and sale age; only held reserve can be released. Reserves, withdrawals, and negative proceeds make sale proceeds unavailable first.",

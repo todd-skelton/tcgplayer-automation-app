@@ -64,10 +64,11 @@ export function ReinvestmentTurnaround({report,error,loading=false}:{
           unknown-cost received lots: {report.coverage.unknownCostReceiptCount}.</Typography>
         <Paper variant="outlined" sx={{overflowX:"auto",mb:2}}>
           <Table size="small" aria-label="Reinvestment attribution samples">
-            <TableHead><TableRow><TableCell>Sale → purchase</TableCell><TableCell>Amount</TableCell><TableCell>State</TableCell>
+            <TableHead><TableRow><TableCell>Sale → purchase</TableCell><TableCell>Product line</TableCell><TableCell>Amount</TableCell><TableCell>State</TableCell>
               <TableCell>Timing</TableCell><TableCell>Days</TableCell><TableCell>Provenance</TableCell></TableRow></TableHead>
-            <TableBody>{report.samples.length===0?<TableRow><TableCell colSpan={6}>No sale proceeds are attributed to current purchase costs.</TableCell></TableRow>:
+            <TableBody>{report.samples.length===0?<TableRow><TableCell colSpan={7}>No sale proceeds are attributed to current purchase costs.</TableCell></TableRow>:
               visibleSamples.map((sample)=><TableRow key={sample.sampleKey}><TableCell>{sample.orderNumber} → {sample.purchaseReference}</TableCell>
+                <TableCell>{sample.productLineId?`ID ${sample.productLineId}`:"Unavailable"}</TableCell>
                 <TableCell>{money(sample.amountCents,sample.currency)}</TableCell><TableCell>{sample.state}</TableCell>
                 <TableCell>{sample.timingBasis.replaceAll("_"," ")}</TableCell>
                 <TableCell>{days(sample.turnaroundDays??sample.waitingAgeDays??null)}</TableCell>
@@ -83,6 +84,11 @@ export function ReinvestmentTurnaround({report,error,loading=false}:{
       <Accordion><AccordionSummary expandIcon={<ExpandMoreIcon/>}><Typography>Method, freshness, and sample explanations</Typography></AccordionSummary>
         <AccordionDetails><Typography variant="body2" sx={{mb:1}}>Effective as of {new Date(report.asOf).toLocaleString()} · rule {report.ruleVersion} · source {report.sourceFingerprint.slice(0,12)}.
           This is a current-corrected view; recorded-at history is not presented as historical knowledge.</Typography>
+          <Typography variant="body2" sx={{mb:1}}>
+            {report.orderCoverage
+              ? `Latest complete ${report.orderCoverage.searchRange??"unscoped"} Seller Portal scan finished ${new Date(report.orderCoverage.finishedAt).toLocaleString()}; ${report.orderCoverage.ordersObserved} orders observed, ${report.orderCoverage.detailsRecorded} details fetched in this run. Observed order dates ${report.orderCoverage.observedFrom?new Date(report.orderCoverage.observedFrom).toLocaleDateString():"unavailable"}–${report.orderCoverage.observedThrough?new Date(report.orderCoverage.observedThrough).toLocaleDateString():"unavailable"} are observations, not scan coverage boundaries.`
+              : "No complete Seller Portal order-scan evidence is attached to this saved report."}
+          </Typography>
           {report.convention.map((line)=><Typography variant="body2" key={line}>• {line}</Typography>)}
           {visibleSamples.map((sample)=><Typography variant="body2" key={`explain-${sample.sampleKey}`} sx={{mt:1}}>{sample.explanation}</Typography>)}
         </AccordionDetails></Accordion>

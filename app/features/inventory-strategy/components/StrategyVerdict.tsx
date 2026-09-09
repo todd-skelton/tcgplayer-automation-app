@@ -52,13 +52,13 @@ function alternative(
   if (!best) {
     return {
       value: "None",
-      detail: "No hurdle on the ladder grows the capital at these inputs",
+      detail: "No hurdle on the ladder has a positive modeled daily return at these inputs",
     };
   }
   if (best.scenario.configured) {
     return {
       value: "Configured hurdle",
-      detail: `Compounds fastest on the ladder at ${formatReturn(best.dailyReturn)}`,
+      detail: `Highest simplified full-reinvestment return on the ladder at ${formatReturn(best.dailyReturn)}`,
     };
   }
   const change =
@@ -155,6 +155,9 @@ export function StrategyVerdict({
           label={gradingOverview.label}
         />
       </Stack>
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+        Capital returns are simplified modeled comparisons that assume all net proceeds are reinvested after the effective turnaround. They are not observed portfolio growth or a partial-cash-flow simulation.
+      </Typography>
       <Box
         sx={{
           display: "grid",
