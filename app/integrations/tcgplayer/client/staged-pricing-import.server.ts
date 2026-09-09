@@ -1,4 +1,5 @@
 import { sellerPortal } from "~/core/clients";
+import type { SafeHttpResponseMetadata } from "~/core/clients/baseDomainClient.server";
 
 const PRICING_TYPE = "Pricing";
 const FORM_HEADERS = {
@@ -66,6 +67,7 @@ export interface MoveStagedPricingImportResponse {
 export type SellerPortalFormPost = <TResponse>(
   path: string,
   form: URLSearchParams,
+  observeResponse?: (metadata: SafeHttpResponseMetadata) => void,
 ) => Promise<TResponse>;
 
 // These stateful requests can carry signed quantity deltas. Never replay an
@@ -73,11 +75,157 @@ export type SellerPortalFormPost = <TResponse>(
 const postSellerPortalForm: SellerPortalFormPost = <TResponse>(
   path: string,
   form: URLSearchParams,
+  observeResponse?: (metadata: SafeHttpResponseMetadata) => void,
 ): Promise<TResponse> =>
   sellerPortal.post<TResponse, URLSearchParams>(path, form, {
     headers: FORM_HEADERS,
     retry: false,
+    observeResponse,
   });
+
+export type StagedPricingInitializationErrorCode =
+  | "staged_initialization_authentication_required"
+  | "staged_initialization_challenge"
+  | "staged_initialization_http_failed"
+  | "staged_initialization_rejected"
+  | "staged_initialization_response_invalid"
+  | "staged_initialization_transport_failed";
+
+export class StagedPricingInitializationError extends Error {
+  readonly name = "StagedPricingInitializationError";
+
+  constructor(
+    readonly code: StagedPricingInitializationErrorCode,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+export function getStagedPricingInitializationErrorCode(
+  error: unknown,
+): StagedPricingInitializationErrorCode | null {
+  return error instanceof StagedPricingInitializationError ? error.code : null;
+}
+
+function valueKind(value: unknown): string {
+  if (value === undefined) return "missing";
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  return typeof value;
+}
+
+function responseKind(value: unknown): string {
+  if (typeof value === "string" && /<html\b|<!doctype\s+html/i.test(value)) {
+    return "html";
+  }
+  return valueKind(value);
+}
+
+function knownFieldShape(response: unknown): string {
+  if (response === null || Array.isArray(response) || typeof response !== "object") {
+    return "none";
+  }
+  const record = response as Record<string, unknown>;
+  const fields = [
+    "StagedPricingUploadId",
+    "Success",
+    "success",
+    "Error",
+    "Errors",
+    "error",
+    "errors",
+    "Message",
+    "Messages",
+  ].flatMap((name) =>
+    Object.hasOwn(record, name) ? [`${name}:${valueKind(record[name])}`] : [],
+  );
+  return fields.length > 0 ? fields.join(",") : "none";
+}
+
+function metadataShape(metadata: SafeHttpResponseMetadata | null): string {
+  if (!metadata) return "status=unknown; contentType=unknown; redirected=unknown";
+  return [
+    `status=${metadata.status}`,
+    `contentType=${metadata.contentType ?? "unknown"}`,
+    `redirected=${metadata.redirected === null ? "unknown" : String(metadata.redirected)}`,
+  ].join("; ");
+}
+
+function responseDiagnostics(
+  response: unknown,
+  metadata: SafeHttpResponseMetadata | null,
+): string {
+  return `${metadataShape(metadata)}; response=${responseKind(response)}; fields=${knownFieldShape(response)}`;
+}
+
+function hasExplicitProviderError(value: unknown): boolean {
+  if (value === true) return true;
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  return value !== null && typeof value === "object" && Object.keys(value).length > 0;
+}
+
+function isExplicitProviderRejection(response: unknown): boolean {
+  if (response === null || Array.isArray(response) || typeof response !== "object") {
+    return false;
+  }
+  const record = response as Record<string, unknown>;
+  if (record.Success === false || record.success === false) return true;
+  return ["Error", "Errors", "error", "errors"].some(
+    (name) => Object.hasOwn(record, name) && hasExplicitProviderError(record[name]),
+  );
+}
+
+function isLoginResponse(
+  response: unknown,
+  metadata: SafeHttpResponseMetadata | null,
+): boolean {
+  if (metadata?.status === 401 || metadata?.status === 403) return true;
+  if (typeof response !== "string" || responseKind(response) !== "html") return false;
+  return /<form\b[^>]*(login|sign.?in)|\b(login|sign in|authentication)\b/i.test(
+    response,
+  );
+}
+
+function isChallengeResponse(response: unknown): boolean {
+  return (
+    typeof response === "string" &&
+    responseKind(response) === "html" &&
+    /captcha|cf-chl-|challenge-platform|verify you are human|access denied/i.test(
+      response,
+    )
+  );
+}
+
+const SAFE_TRANSPORT_CODES = new Set([
+  "ECONNABORTED",
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "ENOTFOUND",
+  "ETIMEDOUT",
+  "ERR_CANCELED",
+  "ERR_NETWORK",
+]);
+
+function getTransportStatus(error: unknown): number | null {
+  const status = (error as { response?: { status?: unknown } } | null)?.response
+    ?.status;
+  return typeof status === "number" && Number.isInteger(status)
+    ? status
+    : null;
+}
+
+function getTransportCode(error: unknown): string {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === "string" && SAFE_TRANSPORT_CODES.has(code)
+    ? code
+    : "other";
+}
+
+function getTransportResponse(error: unknown): unknown {
+  return (error as { response?: { data?: unknown } } | null)?.response?.data;
+}
 
 function requireNonEmptyText(value: string, name: string): void {
   if (value.trim().length === 0) {
@@ -200,15 +348,95 @@ export async function initializeStagedPricingImport(
   fileName: string,
   post: SellerPortalFormPost = postSellerPortalForm,
 ): Promise<number> {
-  const response = await post<{ StagedPricingUploadId: number }>(
-    PATHS.initialize,
-    buildInitializeStagedPricingImportForm(fileName),
-  );
-  requirePositiveInteger(
-    response.StagedPricingUploadId,
-    "StagedPricingUploadId",
-  );
-  return response.StagedPricingUploadId;
+  const form = buildInitializeStagedPricingImportForm(fileName);
+  let metadata: SafeHttpResponseMetadata | null = null;
+  let response: unknown;
+  try {
+    response = await post<unknown>(
+      PATHS.initialize,
+      form,
+      (observedMetadata) => {
+        metadata = observedMetadata;
+      },
+    );
+  } catch (error) {
+    const status = getTransportStatus(error);
+    const code = getTransportCode(error);
+    const failedResponse = getTransportResponse(error);
+    const failedMetadata =
+      metadata ??
+      (status === null
+        ? null
+        : { status, contentType: null, redirected: null });
+    const diagnostics = responseDiagnostics(failedResponse, failedMetadata);
+    if (isChallengeResponse(failedResponse)) {
+      throw new StagedPricingInitializationError(
+        "staged_initialization_challenge",
+        `Seller Portal challenged the staged pricing initialization request (${diagnostics}; transport=${code}).`,
+      );
+    }
+    if (isLoginResponse(failedResponse, failedMetadata)) {
+      throw new StagedPricingInitializationError(
+        "staged_initialization_authentication_required",
+        `Seller Portal required authentication for staged pricing initialization (${diagnostics}; transport=${code}).`,
+      );
+    }
+    if (
+      isExplicitProviderRejection(failedResponse) ||
+      (status !== null && status >= 400 && status < 500)
+    ) {
+      throw new StagedPricingInitializationError(
+        "staged_initialization_rejected",
+        `Seller Portal rejected staged pricing initialization (${diagnostics}; transport=${code}).`,
+      );
+    }
+    if (status !== null) {
+      throw new StagedPricingInitializationError(
+        "staged_initialization_http_failed",
+        `Seller Portal returned an HTTP failure during staged pricing initialization (${diagnostics}; transport=${code}).`,
+      );
+    }
+    throw new StagedPricingInitializationError(
+      "staged_initialization_transport_failed",
+      `Seller Portal staged pricing initialization failed before a response was confirmed (${diagnostics}; transport=${code}).`,
+    );
+  }
+  const diagnostics = responseDiagnostics(response, metadata);
+
+  if (isChallengeResponse(response)) {
+    throw new StagedPricingInitializationError(
+      "staged_initialization_challenge",
+      `Seller Portal challenged the staged pricing initialization request (${diagnostics}).`,
+    );
+  }
+  if (isLoginResponse(response, metadata)) {
+    throw new StagedPricingInitializationError(
+      "staged_initialization_authentication_required",
+      `Seller Portal required authentication for staged pricing initialization (${diagnostics}).`,
+    );
+  }
+  if (isExplicitProviderRejection(response)) {
+    throw new StagedPricingInitializationError(
+      "staged_initialization_rejected",
+      `Seller Portal rejected staged pricing initialization (${diagnostics}).`,
+    );
+  }
+
+  const uploadId =
+    response !== null && !Array.isArray(response) && typeof response === "object"
+      ? (response as Record<string, unknown>).StagedPricingUploadId
+      : undefined;
+  if (
+    typeof uploadId !== "number" ||
+    !Number.isSafeInteger(uploadId) ||
+    uploadId <= 0
+  ) {
+    throw new StagedPricingInitializationError(
+      "staged_initialization_response_invalid",
+      `Seller Portal returned an invalid staged pricing initialization response (${diagnostics}).`,
+    );
+  }
+  return uploadId;
 }
 
 export async function uploadStagedPricingChunk(

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import type { AxiosResponse } from "axios";
 import {
   ConcurrencyLimiter,
+  DomainHttpClient,
   RequestThrottler,
 } from "./baseDomainClient.server";
 import {
@@ -30,6 +32,113 @@ function createDomainConfig(
 }
 
 const testCases: TestCase[] = [
+  {
+    name: "DomainHttpClient.post exposes bounded metadata without changing request behavior",
+    run: async () => {
+      const client = new DomainHttpClient(
+        DOMAIN_KEYS.MP_SEARCH_API,
+        "https://synthetic.invalid",
+      );
+      let requestOptions: unknown;
+      let maxRetries: number | undefined;
+      let observed: unknown;
+      const internals = client as unknown as {
+        axiosClient: {
+          post<T>(
+            path: string,
+            data: unknown,
+            options: unknown,
+          ): Promise<AxiosResponse<T>>;
+        };
+        executeWithRetry<T>(
+          method: string,
+          path: string,
+          request: () => Promise<AxiosResponse<T>>,
+          logContext: unknown,
+          retries: number,
+        ): Promise<T>;
+      };
+      internals.axiosClient = {
+        async post<T>(_path: string, _data: unknown, options: unknown) {
+          requestOptions = options;
+          return {
+            status: 200,
+            statusText: "OK",
+            headers: {
+              "content-type":
+                "application/private+json; account=do-not-retain",
+            },
+            request: { _redirectable: { _redirectCount: 1 } },
+            config: { headers: {} },
+            data: { StagedPricingUploadId: 16104570 } as T,
+          } as AxiosResponse<T>;
+        },
+      };
+      internals.executeWithRetry = async <T>(
+        _method: string,
+        _path: string,
+        request: () => Promise<AxiosResponse<T>>,
+        _logContext: unknown,
+        retries: number,
+      ) => {
+        maxRetries = retries;
+        return (await request()).data;
+      };
+
+      const result = await client.post<{ StagedPricingUploadId: number }>(
+        "/synthetic-initialize",
+        new URLSearchParams({ filename: "synthetic.csv", type: "Pricing" }),
+        {
+          retry: false,
+          observeResponse(metadata) {
+            observed = metadata;
+            throw new Error("synthetic observer failure");
+          },
+        },
+      );
+
+      assert.deepEqual(result, { StagedPricingUploadId: 16104570 });
+      assert.equal(maxRetries, 0);
+      assert.deepEqual(requestOptions, {});
+      assert.deepEqual(observed, {
+        status: 200,
+        contentType: "json",
+        redirected: true,
+      });
+      assert.ok(!JSON.stringify(observed).includes("account"));
+      assert.ok(!JSON.stringify(observed).includes("private"));
+
+      internals.axiosClient = {
+        async post<T>() {
+          throw Object.assign(new Error("synthetic rejected response"), {
+            isAxiosError: true,
+            response: {
+              status: 403,
+              headers: { "content-type": "text/html; private=discard" },
+              request: { _redirectable: { _redirectCount: 0 } },
+              config: { headers: {} },
+              data: "private body",
+            } as AxiosResponse<T>,
+          });
+        },
+      };
+      observed = undefined;
+      await assert.rejects(
+        client.post("/synthetic-rejection", undefined, {
+          retry: false,
+          observeResponse(metadata) {
+            observed = metadata;
+          },
+        }),
+        /synthetic rejected response/,
+      );
+      assert.deepEqual(observed, {
+        status: 403,
+        contentType: "html",
+        redirected: false,
+      });
+    },
+  },
   {
     name: "RequestThrottler.recordSuccess uses the latest persisted delay between success thresholds",
     run: async () => {

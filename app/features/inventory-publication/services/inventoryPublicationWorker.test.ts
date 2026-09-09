@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { StagedPricingInitializationError } from "~/integrations/tcgplayer/client/staged-pricing-import.server";
 import type {
   InventoryPublication,
   InventoryPublicationItem,
@@ -94,6 +95,7 @@ function createDependencies(
     moveError?: Error;
     saveFailures?: number;
     completionTransitionFailures?: number;
+    initializeError?: Error;
   } = {},
 ): {
   dependencies: InventoryPublicationWorkerDependencies;
@@ -101,11 +103,13 @@ function createDependencies(
   outcomes: InventoryPublicationItemOutcome[];
   markedItems: Array<{ status: string; errorCode: string }>;
   projectedPublications: InventoryPublication[];
+  portalFailures: unknown[];
 } {
   const calls: string[] = [];
   const outcomes: InventoryPublicationItemOutcome[] = [];
   const markedItems: Array<{ status: string; errorCode: string }> = [];
   const projectedPublications: InventoryPublication[] = [];
+  const portalFailures: unknown[] = [];
   let saveFailures = overrides.saveFailures ?? 0;
   let completionTransitionFailures =
     overrides.completionTransitionFailures ?? 0;
@@ -115,9 +119,13 @@ function createDependencies(
     outcomes,
     markedItems,
     projectedPublications,
+    portalFailures,
     dependencies: {
       initialize: async () => {
         calls.push("initialize");
+        if (overrides.initializeError) {
+          throw overrides.initializeError;
+        }
         return 16104570;
       },
       upload: async ({ updates }) => {
@@ -192,6 +200,10 @@ function createDependencies(
       },
       recordPublishedPrices: async (publication) => {
         projectedPublications.push(publication);
+      },
+      recordPortalFailure: async (error) => {
+        calls.push("record-portal-failure");
+        portalFailures.push(error);
       },
     },
   };
@@ -504,6 +516,50 @@ const testCases: TestCase[] = [
         isSellerPortalAuthenticationFailure(new Error("timeout")),
         false,
       );
+      assert.equal(
+        isSellerPortalAuthenticationFailure(
+          new StagedPricingInitializationError(
+            "staged_initialization_authentication_required",
+            "Sanitized authentication failure.",
+          ),
+        ),
+        true,
+      );
+    },
+  },
+  {
+    name: "classified initialization failure stops before every downstream provider call",
+    run: async () => {
+      const initializeError = new StagedPricingInitializationError(
+        "staged_initialization_response_invalid",
+        "Seller Portal returned an invalid staged pricing initialization response.",
+      );
+      const { dependencies, calls, markedItems, portalFailures } =
+        createDependencies({ initializeError });
+
+      await executeClaimedStagedPublication(
+        createPublication(),
+        "test-worker",
+        dependencies,
+      );
+
+      assert.deepEqual(calls, [
+        "initialize",
+        "record-portal-failure",
+        "mark-items:failed",
+        "transition:staging:failed",
+      ]);
+      assert.deepEqual(markedItems, [
+        {
+          status: "failed",
+          errorCode: "staged_initialization_response_invalid",
+        },
+      ]);
+      assert.deepEqual(portalFailures, [initializeError]);
+      assert.ok(!calls.includes("rollback"));
+      assert.ok(!calls.includes("upload:1"));
+      assert.ok(!calls.includes("finalize:1"));
+      assert.ok(!calls.includes("move"));
     },
   },
 ];
