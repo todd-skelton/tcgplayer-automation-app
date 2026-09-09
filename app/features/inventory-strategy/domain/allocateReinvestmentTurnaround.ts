@@ -228,6 +228,7 @@ export function allocateReinvestmentTurnaround(input: ReinvestmentTurnaroundInpu
       ...(demand.fundingSourceIdentity?[demand.fundingSourceIdentity]:[])].sort();
     const sampleKey=createHash("sha256").update(stableJson({rule:REINVESTMENT_TURNAROUND_RULE_VERSION,currency:purchase.currency,
       sale:bucket.id,purchase:purchase.purchaseReference,receipt:demand.tranche.receiptId,
+      productLineId:demand.tranche.productLineId,
       publication:demand.tranche.publicationItemId??null,fundingAt:demand.fundingAt,
       publishedAt:publishedAt??null,sources:sourceIdentities})).digest("hex");
     const prior=samplesByKey.get(sampleKey);
@@ -235,7 +236,8 @@ export function allocateReinvestmentTurnaround(input: ReinvestmentTurnaroundInpu
       ? `${prior.amountCents} cents of pooled ${bucket.provenance} proceeds were attributed to ${purchase.purchaseReference} and its first confirmed supported publication.`
       : `${prior.amountCents} cents of pooled ${bucket.provenance} proceeds were attributed to ${purchase.purchaseReference}; supported publication is still waiting.`; return; }
     const sample:ReinvestmentTurnaroundSample={sampleKey,currency:purchase.currency,orderNumber:bucket.id,purchaseReference:purchase.purchaseReference,
-      receiptId:demand.tranche.receiptId,amountCents,soldAt:bucket.soldAt!,fundingAt:demand.fundingAt,
+      receiptId:demand.tranche.receiptId,productLineId:demand.tranche.productLineId,
+      amountCents,soldAt:bucket.soldAt!,fundingAt:demand.fundingAt,
       ...(completed?{publishedAt,turnaroundDays:elapsed}:{waitingAgeDays:elapsed}),state:completed?"completed":"waiting",
       timingBasis:demand.timingBasis,proceedsProvenance:bucket.provenance,costProvenance:purchase.costProvenance,
       fundingProvenance:demand.fundingProvenance,
@@ -368,7 +370,8 @@ export function allocateReinvestmentTurnaround(input: ReinvestmentTurnaroundInpu
   events.sort(compareIdentity).forEach((event)=>event.run());
   samples.sort((left,right)=>left.currency.localeCompare(right.currency)||left.soldAt.localeCompare(right.soldAt)||left.sampleKey.localeCompare(right.sampleKey));
   const sourceFingerprint=createHash("sha256").update(stableJson({ruleVersion:REINVESTMENT_TURNAROUND_RULE_VERSION,input})).digest("hex");
-  const futureUnknownProceeds=(input.unknownProceedsSoldAt??[]).filter((soldAt)=>instant(soldAt,"Unknown-proceeds sale time")>asOfMilliseconds).length;
+  const futureUnknownProceeds=(input.unknownProceedsSoldAt??[]).filter((soldAt)=>soldAt!==null &&
+    instant(soldAt,"Unknown-proceeds sale time")>asOfMilliseconds).length;
   const unknownProceedsOrderCount=Math.max(0,input.unknownProceedsOrderCount-futureUnknownProceeds);
   const futureUnknownCosts=(input.unknownCostOccurredAt??[]).filter((occurredAt)=>occurredAt!==null &&
     instant(occurredAt,"Unknown-cost receipt occurrence")>asOfMilliseconds).length;
@@ -398,7 +401,10 @@ export function allocateReinvestmentTurnaround(input: ReinvestmentTurnaroundInpu
       return result;
     }),
     samples,excluded,coverage:{observedOrderCount:eligibleSaleCount+unknownProceedsOrderCount,eligibleOrderCount:eligibleSaleCount,
-      unknownProceedsOrderCount,purchaseCount:observedPurchaseCount,costedReceiptCount,unknownCostReceiptCount},
+      unknownProceedsOrderCount,purchaseCount:observedPurchaseCount,costedReceiptCount,unknownCostReceiptCount,
+      unknownProceeds:(input.unknownProceedsSoldAt??[]).map((soldAt)=>({soldAt})),
+      unknownCosts:(input.unknownCostReceipts??[]).map((value)=>({...value}))},
+    orderCoverage:input.orderCoverage??null,
     convention:[
       "Financial pooled attribution is an estimate; it is separate from physical FIFO and does not prove bank cash availability.",
       "Outside and opening cash funds purchases before sale proceeds. A reserve retains its original source and sale age; only held reserve can be released. Reserves, withdrawals, and negative proceeds make sale proceeds unavailable first.",

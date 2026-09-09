@@ -5,9 +5,9 @@ import { buildReinvestmentInput } from "./reinvestmentTurnaround.server";
 const {input}=buildReinvestmentInput("synthetic-zero-cost","2026-01-10T00:00:00.000Z",{
   sales:[],unknownProceedsOrderCount:0,unknownProceedsSoldAt:[],sourceEvidenceIdentities:[],
 },{purchaseRows:[{purchaseReference:"free-replacement",currency:"USD",totalAmountCents:0,costProvenance:"actual",
-  purchasedAt:"2026-01-01",costSourceIdentity:"zero-cost-source",receiptId:42,allocatedAmountCents:0,
+  purchasedAt:"2026-01-01",costSourceIdentity:"zero-cost-source",receiptId:42,productLineId:1,allocatedAmountCents:0,
   originalQuantity:1,publicationItemId:null,plannedQuantity:null,liveAt:null,publicationState:null,publicationIdentity:null}],
-  fundingRows:[],unknownCostReceiptCount:0,unknownCostReceipts:[]});
+  fundingRows:[],unknownCostReceiptCount:0,unknownCostReceipts:[],orderCoverage:null});
 assert.equal(input.purchases[0].tranches.length,1);
 assert.equal(input.purchases[0].tranches[0].amountCents,0);
 const report=allocateReinvestmentTurnaround(input);

@@ -21,6 +21,7 @@ export { inventoryPublicationsRepository } from "./repositories/inventoryPublica
 export { inventoryPublicationSettingsRepository } from "./repositories/inventoryPublicationSettings.server";
 export { inventorySellingHistoryRepository } from "./repositories/inventorySellingHistory.server";
 export { inventoryStrategyRepository } from "./repositories/inventoryStrategy.server";
+export { inventoryStrategyTurnaroundRepository } from "./repositories/inventoryStrategyTurnaround.server";
 export { pendingInventoryRepository } from "./repositories/pendingInventory.server";
 export { pricingConfigRepository } from "./repositories/pricingConfig.server";
 export { productLinesRepository } from "./repositories/productLines.server";

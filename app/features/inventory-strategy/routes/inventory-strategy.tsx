@@ -14,12 +14,14 @@ import {
   inventoryBatchesRepository,
   forecastEvaluationsRepository,
   inventoryPublicationSettingsRepository,
+  inventoryStrategyTurnaroundRepository,
   pricingConfigRepository,
 } from "~/core/db";
 import { PRICING_MODEL_VERSION } from "~/core/types/pricingPolicy";
 import { refreshContinuousPricingInventory } from "~/features/continuous-pricing/services/continuousInventoryRefresh.server";
 import type { CapitalCycleEconomics } from "~/features/pricing/domain/capitalCycle";
 import { DEFAULT_CAPITAL_CYCLE_INPUTS } from "../components/capitalCycleInputs";
+import { selectTurnaround } from "../domain/turnaroundStrategy";
 import { ForecastGrading } from "../components/ForecastGrading";
 import { HorizonCurve } from "../components/HorizonCurve";
 import { InventorySellingHistory } from "../components/InventorySellingHistory";
@@ -38,6 +40,7 @@ import {
   SELLING_HISTORY_WINDOWS,
   type SellingHistoryScope,
 } from "../types/inventorySellingHistory";
+import type { TurnaroundMode } from "../types/turnaroundStrategy";
 
 type ActionData =
   | { success: true; message: string }
@@ -78,7 +81,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     pricingConfigRepository.get(),
   ]);
   const settings = publicationConfiguration.settings.continuousPricing;
-  const [dashboard, recentBatches, forecastGradingResult, sellingHistoryResult, reinvestmentResult] = await Promise.all([
+  const [dashboard, recentBatches, forecastGradingResult, sellingHistoryResult, reinvestmentResult, turnaroundSettingsResult] = await Promise.all([
     loadInventoryStrategyDashboard(settings.sellerKey, pricingConfig),
     settings.sellerKey
       ? inventoryBatchesRepository.findRecent({
@@ -108,6 +111,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
         };
       }),
     loadReinvestmentTurnaroundWithRecovery(settings.sellerKey),
+    inventoryStrategyTurnaroundRepository.findForSeller(settings.sellerKey)
+      .then((turnaroundSettings) => ({ turnaroundSettings, error: null }))
+      .catch((error) => {
+        console.error("Inventory Strategy turnaround settings load failed", error);
+        return { turnaroundSettings: [], error: "Saved turnaround settings could not be loaded; using the 28-day manual fallback." };
+      }),
   ]);
   const latestAnalysis =
     recentBatches.find((batch) => batch.sourceLabel === settings.sellerKey) ??
@@ -122,6 +131,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     activeCorrection: pricingConfig.pricing.forecastCorrection,
     sellingHistoryResult,
     reinvestmentResult,
+    turnaroundSettingsResult,
   });
 }
 
@@ -131,6 +141,10 @@ export async function action({ request }: ActionFunctionArgs) {
       intent?: string;
       evaluationId?: string;
       correctionVersion?: string;
+      sellerKey?: string;
+      productLineId?: number | null;
+      mode?: TurnaroundMode;
+      manualTurnaroundDays?: number;
     };
     const configuration = await inventoryPublicationSettingsRepository.get();
     const settings = configuration.settings.continuousPricing;
@@ -139,6 +153,22 @@ export async function action({ request }: ActionFunctionArgs) {
         { success: false, error: "Configure a seller key first." },
         { status: 400 },
       );
+    }
+
+    if (payload.intent === "save_turnaround") {
+      if (payload.sellerKey !== settings.sellerKey ||
+          (payload.productLineId !== null && !Number.isSafeInteger(payload.productLineId)) ||
+          (payload.mode !== "manual" && payload.mode !== "observed") ||
+          typeof payload.manualTurnaroundDays !== "number") {
+        return data<ActionData>({ success: false, error: "Turnaround settings are invalid or stale." }, { status: 400 });
+      }
+      await inventoryStrategyTurnaroundRepository.saveForConfiguredSeller({
+        sellerKey: payload.sellerKey,
+        productLineId: payload.productLineId ?? null,
+        mode: payload.mode,
+        manualTurnaroundDays: payload.manualTurnaroundDays,
+      });
+      return data<ActionData>({ success: true, message: "Saved the turnaround source and manual fallback." });
     }
 
     if (payload.intent === "refresh_inventory") {
@@ -208,6 +238,7 @@ export default function InventoryStrategyRoute() {
     activeCorrection,
     sellingHistoryResult,
     reinvestmentResult,
+    turnaroundSettingsResult,
   } =
     useLoaderData<typeof loader>();
   const navigation = useNavigation();
@@ -218,13 +249,22 @@ export default function InventoryStrategyRoute() {
   }>();
   const { revalidate } = useRevalidator();
   const [cycleInputs, setCycleInputs] = useState(DEFAULT_CAPITAL_CYCLE_INPUTS);
-  const economics = useMemo<CapitalCycleEconomics>(
+  const baseEconomics = useMemo<Omit<CapitalCycleEconomics, "turnaroundDays">>(
     () => ({
       ...cycleInputs,
       relativeOverhead: dashboard.profitPerDay.relativeOverhead,
       staticOverheadPerUnit: dashboard.profitPerDay.staticOverheadPerUnit,
     }),
     [cycleInputs, dashboard.profitPerDay],
+  );
+  const sellerTurnaround = useMemo(
+    () => selectTurnaround(dashboard.sellerKey, null, turnaroundSettingsResult.turnaroundSettings,
+      reinvestmentResult.report, reinvestmentResult.error),
+    [dashboard.sellerKey, reinvestmentResult.error, reinvestmentResult.report, turnaroundSettingsResult.turnaroundSettings],
+  );
+  const economics = useMemo<CapitalCycleEconomics>(
+    () => ({ ...baseEconomics, turnaroundDays: sellerTurnaround.effectiveDays }),
+    [baseEconomics, sellerTurnaround.effectiveDays],
   );
   const busy = fetcher.state !== "idle";
   const analysisActive =
@@ -257,8 +297,9 @@ export default function InventoryStrategyRoute() {
   }, [polledStatus, revalidate]);
 
   const submit = (
-    intent: "refresh_inventory" | "queue_analysis" | "activate_forecast_correction" | "rollback_forecast_correction",
-    details: { evaluationId?: string; correctionVersion?: string } = {},
+    intent: "refresh_inventory" | "queue_analysis" | "activate_forecast_correction" | "rollback_forecast_correction" | "save_turnaround",
+    details: { evaluationId?: string; correctionVersion?: string; sellerKey?: string; productLineId?: number | null;
+      mode?: TurnaroundMode; manualTurnaroundDays?: number } = {},
   ) =>
     fetcher.submit(
       { intent, ...details } as unknown as Parameters<typeof fetcher.submit>[0],
@@ -369,9 +410,16 @@ export default function InventoryStrategyRoute() {
       <HurdleSweep dashboard={dashboard} />
       <HorizonCurve
         dashboard={dashboard}
-        economics={economics}
+        economics={baseEconomics}
         cycleInputs={cycleInputs}
         onCycleInputsChange={setCycleInputs}
+        turnaroundSettings={turnaroundSettingsResult.turnaroundSettings}
+        turnaroundReport={reinvestmentResult.report}
+        turnaroundRecoveryError={reinvestmentResult.error}
+        turnaroundSettingsError={turnaroundSettingsResult.error}
+        turnaroundBusy={busy || !settings.sellerKey}
+        onTurnaroundSave={(productLineId, mode, manualTurnaroundDays) =>
+          submit("save_turnaround", { sellerKey: dashboard.sellerKey, productLineId, mode, manualTurnaroundDays })}
       />
       <PercentileExplorer dashboard={dashboard} />
 

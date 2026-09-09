@@ -30,20 +30,24 @@ function identity(value:unknown):string {
 
 function publicationTranches(row:ReinvestmentPurchaseSourceRow):ReinvestmentPublicationTranche[] {
   const validLinkedQuantity=row.plannedQuantity!==null && row.plannedQuantity>0 && row.plannedQuantity<=row.originalQuantity;
-  if (row.allocatedAmountCents===0) return [{receiptId:row.receiptId,amountCents:0,quantity:row.originalQuantity,
+  if (row.allocatedAmountCents===0) return [{receiptId:row.receiptId,productLineId:row.productLineId,
+    amountCents:0,quantity:row.originalQuantity,
     ...(validLinkedQuantity && row.publicationItemId?{publicationItemId:row.publicationItemId}:{}),
     ...(row.liveAt?{publishedAt:row.liveAt.toISOString()}:{}),publicationState:row.liveAt?"confirmed":validLinkedQuantity?"waiting":"unsupported",
     ...(row.publicationIdentity?{publicationIdentity:identity(row.publicationIdentity)}:{})}];
-  if (!validLinkedQuantity) return [{receiptId:row.receiptId,amountCents:row.allocatedAmountCents,
+  if (!validLinkedQuantity) return [{receiptId:row.receiptId,productLineId:row.productLineId,
+    amountCents:row.allocatedAmountCents,
     quantity:row.originalQuantity,publicationState:"unsupported"}];
   const targets=[{id:"linked",weight:row.plannedQuantity!},
     ...(row.originalQuantity>row.plannedQuantity!?[{id:"remaining",weight:row.originalQuantity-row.plannedQuantity!}]:[])];
   const amounts=new Map(allocateAmountCents(row.allocatedAmountCents,targets).map((value)=>[value.id,value.amountCents]));
   const publicationIdentity=identity(row.publicationIdentity);
-  return [{receiptId:row.receiptId,publicationItemId:row.publicationItemId!,amountCents:amounts.get("linked")!,
+  return [{receiptId:row.receiptId,productLineId:row.productLineId,
+    publicationItemId:row.publicationItemId!,amountCents:amounts.get("linked")!,
     quantity:row.plannedQuantity!,...(row.liveAt?{publishedAt:row.liveAt.toISOString()}:{}),
     publicationState:row.liveAt?"confirmed":"waiting",publicationIdentity},
-    ...(amounts.has("remaining")?[{receiptId:row.receiptId,amountCents:amounts.get("remaining")!,
+    ...(amounts.has("remaining")?[{receiptId:row.receiptId,productLineId:row.productLineId,
+      amountCents:amounts.get("remaining")!,
       quantity:row.originalQuantity-row.plannedQuantity!,publicationState:"unsupported" as const}]:[])];
 }
 
@@ -85,6 +89,9 @@ export function buildReinvestmentInput(
     unknownProceedsOrderCount:proceeds.unknownProceedsOrderCount,unknownCostReceiptCount:evidence.unknownCostReceiptCount,
     unknownProceedsSoldAt:proceeds.unknownProceedsSoldAt,
     unknownCostOccurredAt:evidence.unknownCostReceipts.map((row)=>row.occurredAt?.toISOString()??null),
+    unknownCostReceipts:evidence.unknownCostReceipts.map((row)=>({receiptId:row.receiptId,
+      productLineId:row.productLineId,occurredAt:row.occurredAt?.toISOString()??null})),
+    orderCoverage:evidence.orderCoverage,
     sourceEvidenceIdentities},orphanFunding};
 }
 

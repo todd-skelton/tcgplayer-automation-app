@@ -1,5 +1,6 @@
 import { asJson, execute, getPool, query, queryOne, type Queryable } from "../database.server";
 import type { ReinvestmentTurnaroundReport } from "~/features/inventory-strategy/types/reinvestmentTurnaround";
+import type { ReinvestmentOrderCoverage } from "~/features/inventory-strategy/types/reinvestmentTurnaround";
 
 const COMPLETE_SOURCE_LIMIT = 10_000;
 
@@ -11,6 +12,7 @@ export interface ReinvestmentPurchaseSourceRow {
   purchasedAt: string | null;
   costSourceIdentity: string;
   receiptId: number;
+  productLineId: number;
   allocatedAmountCents: number;
   originalQuantity: number;
   publicationItemId: string | null;
@@ -35,7 +37,13 @@ export interface ReinvestmentSourceEvidence {
   purchaseRows: ReinvestmentPurchaseSourceRow[];
   fundingRows: ReinvestmentFundingSourceRow[];
   unknownCostReceiptCount: number;
-  unknownCostReceipts: Array<{identity:unknown;occurredAt:Date|null}>;
+  unknownCostReceipts: Array<{
+    receiptId:number;
+    productLineId:number;
+    identity:unknown;
+    occurredAt:Date|null;
+  }>;
+  orderCoverage: ReinvestmentOrderCoverage | null;
 }
 
 function assertComplete<T>(rows:T[], source:string):T[] {
@@ -53,7 +61,8 @@ export const inventoryReinvestmentRepository = {
         ) SELECT series.purchase_reference AS "purchaseReference",series.currency,
           current.total_amount_cents::float8 AS "totalAmountCents",current.provenance AS "costProvenance",
           current.purchased_at::text AS "purchasedAt",current.request_fingerprint AS "costSourceIdentity",
-          allocation.receipt_id AS "receiptId",allocation.allocated_amount_cents::float8 AS "allocatedAmountCents",
+          allocation.receipt_id AS "receiptId",receipt.product_line_id AS "productLineId",
+          allocation.allocated_amount_cents::float8 AS "allocatedAmountCents",
           receipt.original_quantity AS "originalQuantity",link.publication_item_id::text AS "publicationItemId",
           link.planned_quantity AS "plannedQuantity",link.live_at AS "liveAt",item.status AS "publicationState",
           CASE WHEN link.publication_item_id IS NULL THEN NULL ELSE jsonb_build_object(
@@ -84,7 +93,7 @@ export const inventoryReinvestmentRepository = {
         FROM inventory_funding_series series JOIN current_funding current ON current.series_id=series.id
         WHERE series.seller_key=$1
         ORDER BY series.currency,current.effective_at,series.adjustment_reference LIMIT 10001`,[seller],executor);
-    const loadUnknownCost=()=>query<{identity:unknown;occurredAt:Date|null}>(`WITH current_cost AS (
+    const loadUnknownCost=()=>query<{receiptId:number;productLineId:number;identity:unknown;occurredAt:Date|null}>(`WITH current_cost AS (
           SELECT DISTINCT ON (entry.series_id) entry.id,entry.series_id
           FROM inventory_purchase_cost_entries entry ORDER BY entry.series_id,entry.sequence DESC
         ), costed AS (
@@ -96,7 +105,9 @@ export const inventoryReinvestmentRepository = {
             JOIN inventory_receipts invalid_receipt ON invalid_receipt.receipt_id=invalid_allocation.receipt_id
             WHERE invalid_allocation.entry_id=current.id AND invalid_receipt.receipt_kind<>'received'
           )
-        ) SELECT jsonb_build_object('receiptId',receipt.receipt_id,'quantity',receipt.original_quantity,
+        ) SELECT receipt.receipt_id AS "receiptId",receipt.product_line_id AS "productLineId",
+          jsonb_build_object('receiptId',receipt.receipt_id,'productLineId',receipt.product_line_id,
+            'quantity',receipt.original_quantity,
             'sellerKey',receipt.seller_key,'intakeAt',receipt.intake_at,'recordedAt',receipt.recorded_at,
             'sourceEvidence',receipt.source_evidence,'intendedSeller',(
               SELECT intended.target_seller_key FROM inventory_publication_receipt_links intended
@@ -108,13 +119,32 @@ export const inventoryReinvestmentRepository = {
             AND receipt.receipt_kind='received'
             AND NOT EXISTS (SELECT 1 FROM costed WHERE costed.receipt_id=receipt.receipt_id)
           ORDER BY receipt.receipt_id LIMIT 10001`,[seller],executor);
-    const [purchaseRows,fundingRows,unknownCostRows]=executor
-      ? [await loadPurchases(),await loadFunding(),await loadUnknownCost()] as const
-      : await Promise.all([loadPurchases(),loadFunding(),loadUnknownCost()]);
+    const loadOrderCoverage=async()=>{
+      const row=await queryOne<{
+        runId:string;searchRange:string|null;finishedAt:Date;nextOffset:number;expectedTotal:number|null;
+        ordersObserved:number;detailsRecorded:number;observedFrom:Date|null;observedThrough:Date|null;
+        gaps:Array<{orderNumber?:string}>;
+      }>(`SELECT id::text AS "runId",search_range AS "searchRange",finished_at AS "finishedAt",
+          next_offset AS "nextOffset",expected_total AS "expectedTotal",orders_observed AS "ordersObserved",
+          details_recorded AS "detailsRecorded",observed_from AS "observedFrom",observed_through AS "observedThrough",gaps
+        FROM seller_order_sync_runs
+        WHERE seller_key=$1 AND source='tcgplayer_api' AND status='complete' AND finished_at IS NOT NULL
+        ORDER BY finished_at DESC,id DESC LIMIT 1`,[seller],executor);
+      return row?{
+        runId:row.runId,source:"tcgplayer_api" as const,status:"complete" as const,
+        searchRange:row.searchRange,finishedAt:row.finishedAt.toISOString(),nextOffset:row.nextOffset,
+        expectedTotal:row.expectedTotal,ordersObserved:row.ordersObserved,detailsRecorded:row.detailsRecorded,
+        observedFrom:row.observedFrom?.toISOString()??null,observedThrough:row.observedThrough?.toISOString()??null,
+        gaps:(row.gaps??[]).map((gap)=>gap.orderNumber??"<missing order number>"),
+      }:null;
+    };
+    const [purchaseRows,fundingRows,unknownCostRows,orderCoverage]=executor
+      ? [await loadPurchases(),await loadFunding(),await loadUnknownCost(),await loadOrderCoverage()] as const
+      : await Promise.all([loadPurchases(),loadFunding(),loadUnknownCost(),loadOrderCoverage()]);
     const unknownCost=assertComplete(unknownCostRows,"Unknown-cost receipt evidence");
     return {purchaseRows:assertComplete(purchaseRows,"Current purchase/publication evidence"),
       fundingRows:assertComplete(fundingRows,"Current funding evidence"),unknownCostReceiptCount:unknownCost.length,
-      unknownCostReceipts:unknownCost};
+      unknownCostReceipts:unknownCost,orderCoverage};
   },
 
   async findCurrentReport(sellerKey:string):Promise<ReinvestmentTurnaroundReport|null> {

@@ -18,6 +18,7 @@ export function ValidatedNumberField({
   isValid,
   onCommit,
   size,
+  disabled = false,
 }: {
   label: string;
   value: number;
@@ -26,6 +27,7 @@ export function ValidatedNumberField({
   isValid: (value: number) => boolean;
   onCommit: (value: number) => void;
   size?: TextFieldProps["size"];
+  disabled?: boolean;
 }) {
   const [text, setText] = useState(String(value));
   const meansValue = (input: string) => input !== "" && Number(input) === value;
@@ -49,6 +51,7 @@ export function ValidatedNumberField({
       }}
       inputProps={{ step }}
       helperText={helperText}
+      disabled={disabled}
     />
   );
 }

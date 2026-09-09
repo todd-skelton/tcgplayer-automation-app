@@ -44,4 +44,21 @@ await assert.rejects(
 );
 assert.equal(tornSaves, 0, "a torn evidence/material read is never persisted");
 
+let missingDateSaves = 0;
+await assert.rejects(
+  loadForecastGrading("missing-date-seller", {
+    findEvidenceVersion: async () => "frozen-source-missing-date",
+    findMaterialEvidenceVersion: async () => "material-missing-date",
+    findEvidence: async () => ({
+      ...evidence,
+      sellerKey: "missing-date-seller",
+      evaluatedAt: new Date(0).toISOString(),
+      orderHistory: { runId: null, status: "not_started", coveredFrom: null, coveredThrough: null, cutoffAt: null, gaps: [] },
+    }),
+    save: async () => { missingDateSaves += 1; return { id: "3", created: true }; },
+  }),
+  /dates are unavailable/,
+);
+assert.equal(missingDateSaves, 0, "missing evidence time must not become a saved epoch-dated evaluation");
+
 console.log("PASS forecast evaluation loads and persists one result per frozen evidence version");
