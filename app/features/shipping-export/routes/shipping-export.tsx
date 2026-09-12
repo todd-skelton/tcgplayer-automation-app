@@ -15,8 +15,6 @@ import {
 import { data, Link, type MetaFunction, useLoaderData } from "react-router";
 import Papa from "papaparse";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { PullSheetItem } from "~/features/pull-sheet/types/pullSheetTypes";
-import { loadPullSheetItemsFromCsvText } from "~/features/pull-sheet/utils/pullSheetItems";
 import { getEasyPostEnvironmentStatus } from "../config/easyPostConfig.server";
 import { getShippingExportConfig } from "../config/shippingExportConfig.server";
 import {
@@ -34,10 +32,7 @@ import {
   getShipmentsForLabelSize,
   mapOrderToShipment,
 } from "../services/shippingExportUtils";
-import {
-  allocatePullSheetItemsToShipments,
-  type PackPullSheetLoadStatus,
-} from "../services/packPullSheet";
+import { useShippingPullSheet } from "../hooks/useShippingPullSheet";
 import { readJsonResponse, readResponseError } from "~/core/utils/readJsonResponse";
 import {
   type SavedShippingWorkflow,
@@ -151,27 +146,6 @@ function getFileNameFromContentDisposition(
   return fallbackFileName;
 }
 
-async function fetchShippingExportPullSheetCsv(
-  orderNumbers: string[],
-): Promise<string> {
-  const response = await fetch("/api/shipping-export/pull-sheet-export", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      orderNumbers,
-      timezoneOffset: -new Date().getTimezoneOffset() / 60,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      await readResponseError(response, "Failed to generate pull sheet export."),
-    );
-  }
-
-  return response.text();
-}
-
 export const meta: MetaFunction = () => {
   return [
     { title: "Shipping Workflow" },
@@ -232,10 +206,6 @@ export default function ShippingExportRoute() {
   const [isLoadingExistingPostage, setIsLoadingExistingPostage] = useState(false);
   const [isLoadingLiveOrders, setIsLoadingLiveOrders] = useState(false);
   const [isLoadingSingleOrder, setIsLoadingSingleOrder] = useState(false);
-  const [isGeneratingPullSheet, setIsGeneratingPullSheet] = useState(false);
-  const [pullSheetItems, setPullSheetItems] = useState<PullSheetItem[]>([]);
-  const [pullSheetOrderIds, setPullSheetOrderIds] = useState<string[]>([]);
-  const [pullSheetError, setPullSheetError] = useState<string | null>(null);
   const [packingSlipAction, setPackingSlipAction] = useState<"download" | "open" | null>(null);
   const [generatingBatchLabelSize, setGeneratingBatchLabelSize] = useState<LabelSize | null>(null);
   const [purchasingLabelSize, setPurchasingLabelSize] = useState<LabelSize | null>(null);
@@ -247,11 +217,6 @@ export default function ShippingExportRoute() {
 
   // ── Pack step state ───────────────────────────────────────────────────────
   const [packedOrderNumbers, setPackedOrderNumbers] = useState<Set<string>>(new Set());
-  const [packPullSheetStatus, setPackPullSheetStatus] =
-    useState<PackPullSheetLoadStatus>("idle");
-  const [packPullSheetError, setPackPullSheetError] = useState<string | null>(null);
-  const [packPullSheetMatchesByReference, setPackPullSheetMatchesByReference] =
-    useState<ReturnType<typeof allocatePullSheetItemsToShipments>>({});
 
   // ── Return flow state ─────────────────────────────────────────────────────
   const [returnFlowType, setReturnFlowType] = useState<ReturnFlowType>("round-trip");
@@ -279,11 +244,20 @@ export default function ShippingExportRoute() {
     shipmentReferences,
     shipmentToOrderMap,
   );
-  const shipmentReferencesKey = shipmentReferences.join("|");
-  const orderedWorkflowOrderNumbersKey = orderedWorkflowOrderNumbers.join("|");
   const sourceOrderNumbersKey = sourceOrders.map((order) => order["Order #"]).join("|");
-  const hasPackPullSheetSourceData = sourceOrders.some(
-    (order) => (order.products?.length ?? 0) > 0,
+  const {
+    isGeneratingPullSheet,
+    pullSheetItems,
+    pullSheetOrderIds,
+    pullSheetError,
+    packPullSheetStatus,
+    packPullSheetError,
+    packPullSheetMatchesByReference,
+  } = useShippingPullSheet(
+    orderedWorkflowOrderNumbers,
+    sourceOrders,
+    shipmentReferences,
+    shipmentToOrderMap,
   );
   const { updates: trackingApplyItems, alreadyTrackedCount } = buildTrackingApplyItems(
     shipments,
@@ -433,13 +407,6 @@ export default function ShippingExportRoute() {
     setTrackingApplyResults([]);
     setShippedMessageResults([]);
     setPackedOrderNumbers(new Set());
-    setIsGeneratingPullSheet(false);
-    setPullSheetItems([]);
-    setPullSheetOrderIds([]);
-    setPullSheetError(null);
-    setPackPullSheetStatus("idle");
-    setPackPullSheetError(null);
-    setPackPullSheetMatchesByReference({});
     setError(null);
     return loadExistingPostage(nextState.shipments, nextState.shipmentToOrderMap);
   };
@@ -547,96 +514,6 @@ export default function ShippingExportRoute() {
   }, [sellerKeyInput, sourceOrderNumbersKey]);
 
   // ── Handlers: load orders ─────────────────────────────────────────────────
-  useEffect(() => {
-    let isActive = true;
-
-    if (orderedWorkflowOrderNumbers.length === 0) {
-      setIsGeneratingPullSheet(false);
-      setPullSheetItems([]);
-      setPullSheetOrderIds([]);
-      setPullSheetError(null);
-      setPackPullSheetStatus("idle");
-      setPackPullSheetError(null);
-      setPackPullSheetMatchesByReference({});
-
-      return () => {
-        isActive = false;
-      };
-    }
-
-    const loadPullSheet = async () => {
-      setIsGeneratingPullSheet(true);
-      setPullSheetItems([]);
-      setPullSheetOrderIds([]);
-      setPullSheetError(null);
-
-      if (hasPackPullSheetSourceData) {
-        setPackPullSheetStatus("loading");
-      } else {
-        setPackPullSheetStatus("idle");
-      }
-      setPackPullSheetError(null);
-      setPackPullSheetMatchesByReference({});
-
-      try {
-        const csvText = await fetchShippingExportPullSheetCsv(
-          orderedWorkflowOrderNumbers,
-        );
-        const result = await loadPullSheetItemsFromCsvText(csvText);
-
-        if (!isActive) {
-          return;
-        }
-
-        setPullSheetItems(result.items);
-        setPullSheetOrderIds(result.orderIds);
-
-        if (hasPackPullSheetSourceData) {
-          const matches = allocatePullSheetItemsToShipments(
-            shipmentReferences,
-            sourceOrders,
-            shipmentToOrderMap,
-            result.items,
-          );
-
-          setPackPullSheetMatchesByReference(matches);
-          setPackPullSheetStatus("ready");
-        }
-      } catch (pullSheetLoadError) {
-        if (!isActive) {
-          return;
-        }
-
-        const nextError = String(pullSheetLoadError);
-        setPullSheetItems([]);
-        setPullSheetOrderIds([]);
-        setPullSheetError(nextError);
-
-        if (hasPackPullSheetSourceData) {
-          setPackPullSheetStatus("error");
-          setPackPullSheetError(nextError);
-          setPackPullSheetMatchesByReference({});
-        }
-      } finally {
-        if (isActive) {
-          setIsGeneratingPullSheet(false);
-        }
-      }
-    };
-
-    void loadPullSheet();
-
-    return () => {
-      isActive = false;
-    };
-  }, [
-    hasPackPullSheetSourceData,
-    orderedWorkflowOrderNumbersKey,
-    shipmentReferencesKey,
-    shipmentToOrderMap,
-    sourceOrders,
-  ]);
-
   const handleLoadLiveOrders = async () => {
     const loadSequence = ++orderSourceSequenceRef.current;
     setIsLoadingLiveOrders(true);

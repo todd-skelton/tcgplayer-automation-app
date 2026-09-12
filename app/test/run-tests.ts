@@ -122,3 +122,6 @@ import "../features/ebay-slab-pricing/inventory/slabInventory.test";
 import "../features/ebay-slab-pricing/research/slabResearch.test";
 import "../features/ebay-slab-pricing/model/gradeModel.test";
 import "../features/ebay-slab-pricing/supply/supplyContext.test";
+
+// Hook tests replace fetch temporarily; run after the service test modules settle.
+await import("../features/shipping-export/hooks/useShippingPullSheet.test");
