@@ -122,3 +122,4 @@ import "../features/ebay-slab-pricing/inventory/slabInventory.test";
 import "../features/ebay-slab-pricing/research/slabResearch.test";
 import "../features/ebay-slab-pricing/model/gradeModel.test";
 import "../features/ebay-slab-pricing/supply/supplyContext.test";
+import "../features/ebay-slab-pricing/inventory/ebaySellerInventoryProvider.test";
