@@ -30,6 +30,7 @@ import "../features/continuous-pricing/services/continuousMarketPrices.server.te
 import "../features/inventory-strategy/services/inventoryStrategy.test";
 import "../features/inventory-strategy/domain/allocateReinvestmentTurnaround.test";
 import "../features/inventory-strategy/domain/turnaroundStrategy.test";
+import "../features/inventory-strategy/domain/historicalPublicationEstimate.test";
 import "../features/inventory-strategy/components/ReinvestmentTurnaround.test";
 import "../features/inventory-strategy/components/TurnaroundInputs.test";
 import "../features/inventory-strategy/routes/api.reinvestment-turnaround.test";

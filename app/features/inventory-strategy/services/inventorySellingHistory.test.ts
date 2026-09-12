@@ -33,6 +33,18 @@ function evidence(
     olderPublicationQuantity: 0,
     awaitingCutoffQuantity: 0,
     unresolvedRemoval: { quantity: 0, affectedSkus: [] },
+    historicalPublicationEvidence: {
+      sourceAvailable: true,
+      cutoffAt: day(20),
+      coverageStartsAt: day(-80),
+      coverageComplete: true,
+      validatedAt: day(20),
+      additions: [],
+      additionCount: 0,
+      openingQuantities: [],
+      orderRevisions: [],
+      orderRevisionCount: 0,
+    },
     ...overrides,
   };
 }
@@ -232,6 +244,21 @@ const narrowed = buildInventorySellingHistoryReport(
   evidence({ scope: { windowDays: 180, productLine: "Magic" } }),
 );
 assert.equal(narrowed.status, "ready");
+
+const historicalReadFailure = buildInventorySellingHistoryReport(evidence({
+  episodes: [episodes[2]],
+  episodeCount: 1,
+  historicalPublicationEvidence: {
+    ...evidence().historicalPublicationEvidence,
+    sourceAvailable: false,
+  },
+}));
+assert.equal(historicalReadFailure.status, "ready");
+if (historicalReadFailure.status === "ready") {
+  assert.equal(historicalReadFailure.overall.cohortQuantity, 10);
+  assert.equal(historicalReadFailure.historicalPublicationEstimate.status, "unavailable");
+  assert.equal(historicalReadFailure.historicalPublicationEstimate.reason, "source_read_failed");
+}
 
 const returned = buildInventorySellingHistoryReport(
   evidence({

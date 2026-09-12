@@ -19,6 +19,7 @@ import {
 import { useSearchParams } from "react-router";
 import {
   SELLING_HISTORY_WINDOWS,
+  type HistoricalPublicationEstimate,
   type InventorySellingHistoryReport,
   type SellingHistorySummary,
 } from "../types/inventorySellingHistory";
@@ -45,6 +46,25 @@ function range(value: string | undefined): string | null {
 
 function statusLabel(value: string): string {
   return value.replaceAll("_", " ");
+}
+
+function historicalReasonLabel(value: string): string {
+  const labels: Record<string, string> = {
+    opening_coverage_missing: "Opening inventory evidence is unavailable",
+    order_coverage_incomplete: "Order coverage is incomplete",
+    source_bounds_exceeded: "Historical evidence exceeds safe limits",
+    publication_evidence_invalid: "Publication evidence is incomplete",
+    publication_identity_conflict: "Publication product line is inconsistent for this SKU",
+    mixed_publication_receipt_sources: "This SKU mixes linked and unlinked publication history",
+    source_read_failed: "Historical evidence could not be read",
+    order_history_changed: "Order quantity, SKU, or time changed",
+    order_lifecycle_unsettled: "Order status is uncertain",
+    order_time_unknown: "Order time is unavailable",
+    event_time_tie: "Order and publication order is uncertain",
+    quantity_conflict: "Recorded quantities do not reconcile",
+    temporal_underflow: "A sale precedes enough recorded stock",
+  };
+  return labels[value] ?? statusLabel(value);
 }
 
 function Stat({
@@ -182,6 +202,101 @@ function Coverage({ report }: { report: Extract<InventorySellingHistoryReport, {
         </Typography>
       )}
     </Stack>
+  );
+}
+
+function HistoricalPublicationHistory({ estimate }: { estimate: HistoricalPublicationEstimate }) {
+  const conflictReasonCounts = new Map<string, number>();
+  for (const conflict of estimate.conflicts) for (const reason of conflict.reasons) {
+    conflictReasonCounts.set(reason, (conflictReasonCounts.get(reason) ?? 0) + 1);
+  }
+  const conflictReasonSummary = [...conflictReasonCounts]
+    .map(([reason, count]) => `${quantity(count)} ${historicalReasonLabel(reason)}`)
+    .join(" · ");
+  return (
+    <Box sx={{ mt: 3 }}>
+      <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+        <Typography variant="h6">Historical publication estimate</Typography>
+        <Chip size="small" color="warning" variant="outlined" label="Estimated FIFO attribution" />
+      </Stack>
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+        Confirmed quantity-addition uploads are reconciled to seller orders and the fixed opening balance
+        {estimate.cutoffAt ? ` at ${date(estimate.cutoffAt)}` : ""}. Confirmation time records when the app received
+        Seller Portal success; the provider live instant is bounded by the publishing request and that confirmation.
+        Sale and remaining-quantity assignments assume no unrecorded inventory movement and do not change physical FIFO or current metrics.
+      </Typography>
+      {estimate.status === "no_data" ? (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+          No historical quantity-addition publications are available before the opening cutoff.
+        </Typography>
+      ) : (
+        <>
+          <Box sx={{ mt: 1.5, display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" }, gap: 2 }}>
+            <Stat label="Uploaded units" value={unitLabel(estimate.summary.publicationQuantity)} detail={`${quantity(estimate.summary.confirmedAdditionCount)} of ${quantity(estimate.summary.publicationItemCount)} uploads with confirmation time`} />
+            <Stat label="Estimated attribution" value={unitLabel(estimate.summary.estimatedAdditionQuantity)} detail={`${unitLabel(estimate.summary.estimatedSoldQuantity)} sold · ${unitLabel(estimate.summary.estimatedRemainingAtCutoff)} remaining at cutoff`} />
+            <Stat label="Estimated older stock" value={unitLabel(estimate.summary.reconstructedOlderQuantity)} detail={`${unitLabel(estimate.summary.reconstructedOlderRemainingAtCutoff)} remaining at cutoff`} />
+            <Stat label="Needs review" value={unitLabel(estimate.summary.unsupportedAdditionQuantity)} detail={`${quantity(estimate.summary.conflictedSkuCount)} affected SKUs`} />
+          </Box>
+          {estimate.status === "unavailable" && (
+            <Typography variant="body2" color="warning.main" sx={{ mt: 1.5 }}>
+              Historical attribution is unavailable: {historicalReasonLabel(estimate.reason ?? "source_bounds_exceeded")}. The confirmed uploads remain shown as recorded facts.
+            </Typography>
+          )}
+          {estimate.cohorts.length > 0 && (
+            <Box component="details" sx={{ mt: 1.5 }}>
+              <Box component="summary" sx={{ cursor: "pointer", typography: "body2", color: "text.secondary" }}>
+                Inspect historical publication items ({estimate.cohorts.length === estimate.cohortCount
+                  ? `all ${quantity(estimate.cohortCount)}`
+                  : `showing ${quantity(estimate.cohorts.length)} of ${quantity(estimate.cohortCount)}`})
+              </Box>
+              <TableContainer sx={{ mt: 1, overflowX: "auto" }}>
+                <Table size="small" aria-label="Historical publication estimate details">
+                  <TableHead><TableRow>
+                    <TableCell>Publication</TableCell><TableCell>Recorded confirmation</TableCell>
+                    <TableCell align="right">Quantity / estimated sold / estimated remaining</TableCell><TableCell>Evidence</TableCell>
+                  </TableRow></TableHead>
+                  <TableBody>{estimate.cohorts.map((cohort) => (
+                    <TableRow key={cohort.publicationItemId}>
+                      <TableCell>
+                        <Typography variant="body2">{cohort.productName}</Typography>
+                        <Typography variant="caption" color="text.secondary">{cohort.productLine} · SKU {cohort.sku} · publication item {cohort.publicationItemId}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{date(cohort.confirmedAt)}</Typography>
+                        <Typography variant="caption" color="text.secondary">provider live window {cohort.publishingAt ? `${date(cohort.publishingAt)} to ` : "ending "}{date(cohort.confirmedAt)}</Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        {unitLabel(cohort.quantity)} / {cohort.estimatedSoldQuantity === null ? "Unavailable" : unitLabel(cohort.estimatedSoldQuantity)} / {cohort.estimatedRemainingAtCutoff === null ? "Unavailable" : unitLabel(cohort.estimatedRemainingAtCutoff)}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption" component="div">Date: {cohort.dateProvenance === "recorded_confirmation" ? "recorded confirmation" : "unknown"} · assignment: {cohort.attributionProvenance === "estimated_closed_flow" ? "estimated FIFO" : "unavailable"}</Typography>
+                        <Typography variant="caption" component="div">Forecast baseline: {cohort.forecastEvidenceProvenance}{cohort.forecastEvidence?.pricingModelVersion ? ` · model ${cohort.forecastEvidence.pricingModelVersion}` : ""}</Typography>
+                        {cohort.reasons.length > 0 && <Typography variant="caption" color="warning.main" component="div">Unavailable: {cohort.reasons.map(historicalReasonLabel).join("; ")}</Typography>}
+                        {cohort.allocations.map((allocation) => (
+                          <Typography key={`${allocation.orderId}:${allocation.orderedAt}`} variant="caption" color="text.secondary" component="div">
+                            Order {allocation.orderNumber}: {unitLabel(allocation.quantity)} · listed at least {days(allocation.listedDaysLowerBound)}{allocation.listedDaysUpperBound === null ? "" : ` and at most ${days(allocation.listedDaysUpperBound)}`}
+                          </Typography>
+                        ))}
+                      </TableCell>
+                    </TableRow>
+                  ))}</TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+          {estimate.conflictCount > 0 && (
+            <Box component="details" sx={{ mt: 1 }}>
+              <Box component="summary" sx={{ cursor: "pointer", typography: "caption", color: "warning.main" }}>
+                {quantity(estimate.conflictCount)} affected SKU{estimate.conflictCount === 1 ? "" : "s"} need review{conflictReasonSummary ? ` · ${conflictReasonSummary}` : ""}
+              </Box>
+              <Typography variant="caption" color="warning.main" component="div" sx={{ mt: 0.5 }}>
+                {estimate.conflicts.map((conflict) => `SKU ${conflict.sku} (${conflict.reasons.map(historicalReasonLabel).join(", ")})`).join("; ")}{estimate.conflicts.length < estimate.conflictCount ? "; additional conflicts omitted from this bounded view" : ""}.
+              </Typography>
+            </Box>
+          )}
+        </>
+      )}
+    </Box>
   );
 }
 
@@ -354,6 +469,9 @@ export function InventorySellingHistory({ report }: { report: InventorySellingHi
           Selling history is unavailable: {statusLabel(report.reason)}.
         </Typography>
         <Chip size="small" variant="outlined" sx={{ mt: 1 }} label={`Order history: ${statusLabel(report.orderCoverage.status)}`} />
+        {report.historicalPublicationEstimate && (
+          <HistoricalPublicationHistory estimate={report.historicalPublicationEstimate} />
+        )}
       </Paper>
     );
   }
@@ -371,7 +489,7 @@ export function InventorySellingHistory({ report }: { report: InventorySellingHi
       </Typography>
       {noEvidence ? (
         <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-          No published listing cohorts are available in this analysis window yet.
+          No receipt-linked publication cohorts are available in this analysis window. Historical uploads may still appear below.
         </Typography>
       ) : (
         <>
@@ -387,6 +505,7 @@ export function InventorySellingHistory({ report }: { report: InventorySellingHi
           )}
         </>
       )}
+      <HistoricalPublicationHistory estimate={report.historicalPublicationEstimate} />
       <Coverage report={report} />
     </Paper>
   );

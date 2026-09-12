@@ -35,6 +35,18 @@ const source = {
       olderPublicationQuantity: 0,
       awaitingCutoffQuantity: 0,
       unresolvedRemoval: { quantity: 0, affectedSkus: [] },
+      historicalPublicationEvidence: {
+        sourceAvailable: true,
+        cutoffAt: "2026-09-08T00:00:00.000Z",
+        coverageStartsAt: "2026-06-12T00:00:00.000Z",
+        coverageComplete: true,
+        validatedAt: "2026-09-08T00:00:00.000Z",
+        additions: [],
+        additionCount: 0,
+        openingQuantities: [],
+        orderRevisions: [],
+        orderRevisionCount: 0,
+      },
     };
   },
 };
@@ -47,6 +59,7 @@ assert.deepEqual(calls, ["backfill:seller:500", "find:seller"]);
 calls.length = 0;
 const missingSeller = await loadInventorySellingHistory("", {}, source);
 assert.equal(missingSeller.status, "unavailable");
+assert.equal("historicalPublicationEstimate" in missingSeller, false);
 assert.deepEqual(calls, []);
 
 console.log("PASS inventory selling history loads bounded evidence for one seller");
