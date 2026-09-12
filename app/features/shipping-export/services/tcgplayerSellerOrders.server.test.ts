@@ -114,6 +114,37 @@ const testCases: TestCase[] = [
     },
   },
   {
+    name: "mapSellerOrderDetailToShippingOrder reads structured tracking records",
+    run: () => {
+      const order = mapSellerOrderDetailToShippingOrder(
+        createSellerOrderDetail({
+          trackingNumbers: [{ trackingNumber: " 9400136208192278220374 " }],
+        }),
+      );
+
+      assert.equal(order["Tracking #"], "9400136208192278220374");
+    },
+  },
+  {
+    name: "mapSellerOrderDetailToShippingOrder skips unusable tracking entries",
+    run: () => {
+      const invalidEntries = [null, undefined, 123, false, {}, { trackingNumber: 123 }, "   "];
+      for (const trackingNumbers of [undefined, null, [], invalidEntries]) {
+        const order = mapSellerOrderDetailToShippingOrder(
+          createSellerOrderDetail({ trackingNumbers }),
+        );
+        assert.equal(order["Tracking #"], "");
+      }
+
+      const order = mapSellerOrderDetailToShippingOrder(
+        createSellerOrderDetail({
+          trackingNumbers: [...invalidEntries, " 9400136208192278220374 "],
+        }),
+      );
+      assert.equal(order["Tracking #"], "9400136208192278220374");
+    },
+  },
+  {
     name: "mapSellerOrderDetailToShippingOrder sums quantities and handles single-token names",
     run: () => {
       const order = mapSellerOrderDetailToShippingOrder(
@@ -366,6 +397,7 @@ const testCases: TestCase[] = [
             return createSellerOrderDetail({
               orderNumber: "ORD-1001",
               status: "Shipped",
+              trackingNumbers: [{ trackingNumber: " 9400136208192278220374 " }],
             });
           },
         },
@@ -392,6 +424,7 @@ const testCases: TestCase[] = [
       assert.deepEqual(response.loadedOrderNumbers, ["ORD-1001"]);
       assert.equal(response.orders.length, 1);
       assert.equal(response.orders[0].products?.[0].marketPrice, 12.25);
+      assert.equal(response.orders[0]["Tracking #"], "9400136208192278220374");
       assert.deepEqual(response.warnings, [
         'Order ORD-1001 is currently "Shipped", not "Ready to Ship". Review it before buying postage.',
       ]);
