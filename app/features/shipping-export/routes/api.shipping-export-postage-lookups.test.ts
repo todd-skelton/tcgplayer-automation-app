@@ -48,7 +48,7 @@ const testCases: TestCase[] = [
       let capturedOrderNumbers: string[] = [];
       const action = createShippingPostageLookupsAction({
         postagePurchasesRepository: {
-          async findLatestSuccessfulOutboundByOrderNumbers(orderNumbers) {
+          async findLatestSuccessfulByOrderNumbers(_direction, orderNumbers) {
             capturedOrderNumbers = orderNumbers;
             return [createPurchasedRecord()];
           },
@@ -77,11 +77,14 @@ const testCases: TestCase[] = [
       assert.equal(parsed.status, 200);
       assert.deepEqual(capturedOrderNumbers, ["1001"]);
       assert.deepEqual(parsed.body, {
+        direction: "outbound",
         results: [
           {
             shipmentReference: "1001",
             mode: "production",
+            direction: "outbound",
             labelSize: "4x6",
+            purchasedAt: "2026-04-11T00:00:00.000Z",
             result: {
               reference: "1001",
               orderNumbers: ["1001"],
@@ -106,7 +109,7 @@ const testCases: TestCase[] = [
     run: async () => {
       const action = createShippingPostageLookupsAction({
         postagePurchasesRepository: {
-          async findLatestSuccessfulOutboundByOrderNumbers() {
+          async findLatestSuccessfulByOrderNumbers() {
             return [
               createPurchasedRecord({
                 shipmentReference: "1001",
@@ -138,6 +141,7 @@ const testCases: TestCase[] = [
       const parsed = await parseActionResult(result);
       assert.equal(parsed.status, 200);
       assert.deepEqual(parsed.body, {
+        direction: "outbound",
         results: [],
       });
     },
@@ -147,7 +151,7 @@ const testCases: TestCase[] = [
     run: async () => {
       const action = createShippingPostageLookupsAction({
         postagePurchasesRepository: {
-          async findLatestSuccessfulOutboundByOrderNumbers() {
+          async findLatestSuccessfulByOrderNumbers() {
             return [
               createPurchasedRecord({
                 id: 2,
@@ -197,11 +201,92 @@ const testCases: TestCase[] = [
     },
   },
   {
+    name: "shipping postage lookup queries return labels when direction is return",
+    run: async () => {
+      let capturedDirection: string | null = null;
+      const action = createShippingPostageLookupsAction({
+        postagePurchasesRepository: {
+          async findLatestSuccessfulByOrderNumbers(direction) {
+            capturedDirection = direction;
+            return [
+              createPurchasedRecord({
+                direction: "return",
+                labelPdfUrl: "https://example.com/return.pdf",
+              }),
+            ];
+          },
+        },
+      });
+
+      const result = await action({
+        request: new Request(
+          "http://localhost/api/shipping-export/postage-lookups",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              direction: "return",
+              shipments: [
+                {
+                  shipmentReference: "1001",
+                  orderNumbers: ["1001"],
+                },
+              ],
+            }),
+          },
+        ),
+      });
+
+      const parsed = await parseActionResult(result);
+      const body = parsed.body as {
+        direction: string;
+        results: Array<{ direction: string; result: { labelPdfUrl?: string } }>;
+      };
+      assert.equal(parsed.status, 200);
+      assert.equal(capturedDirection, "return");
+      assert.equal(body.direction, "return");
+      assert.equal(body.results[0].direction, "return");
+      assert.equal(body.results[0].result.labelPdfUrl, "https://example.com/return.pdf");
+    },
+  },
+  {
+    name: "shipping postage lookup rejects unknown directions",
+    run: async () => {
+      const action = createShippingPostageLookupsAction({
+        postagePurchasesRepository: {
+          async findLatestSuccessfulByOrderNumbers() {
+            return [];
+          },
+        },
+      });
+
+      const result = await action({
+        request: new Request(
+          "http://localhost/api/shipping-export/postage-lookups",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              direction: "sideways",
+              shipments: [{ shipmentReference: "1001", orderNumbers: ["1001"] }],
+            }),
+          },
+        ),
+      });
+
+      const parsed = await parseActionResult(result);
+      assert.equal(parsed.status, 400);
+      assert.deepEqual(parsed.body, {
+        error: "direction must be either outbound or return.",
+      });
+    },
+  },
+  {
     name: "shipping postage lookup rejects invalid payloads",
     run: async () => {
       const action = createShippingPostageLookupsAction({
         postagePurchasesRepository: {
-          async findLatestSuccessfulOutboundByOrderNumbers() {
+          async findLatestSuccessfulByOrderNumbers() {
             return [];
           },
         },

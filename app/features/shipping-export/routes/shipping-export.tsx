@@ -224,6 +224,7 @@ export default function ShippingExportRoute() {
   const [returnOrder, setReturnOrder] = useState<TcgPlayerShippingOrder | null>(null);
   const [returnShipment, setReturnShipment] = useState<EasyPostShipment | null>(null);
   const [isLoadingReturnOrder, setIsLoadingReturnOrder] = useState(false);
+  const [isLoadingReturnLabels, setIsLoadingReturnLabels] = useState(false);
   const [isPurchasingReturn, setIsPurchasingReturn] = useState(false);
   const [outboundReturnPurchaseEntry, setOutboundReturnPurchaseEntry] = useState<ShippingPostagePurchaseEntry | null>(null);
   const [returnOnlyPurchaseEntry, setReturnOnlyPurchaseEntry] = useState<ShippingPostagePurchaseEntry | null>(null);
@@ -963,6 +964,48 @@ export default function ShippingExportRoute() {
   };
 
   // ── Handler: return flow ──────────────────────────────────────────────────
+  const lookupSavedPostageForOrder = async (
+    direction: ShippingPostageDirection,
+    orderNumber: string,
+  ): Promise<ShippingPostagePurchaseEntry | null> => {
+    const response = await fetch("/api/shipping-export/postage-lookups", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        direction,
+        shipments: [{ shipmentReference: orderNumber, orderNumbers: [orderNumber] }],
+      }),
+    });
+
+    const lookupResponse = await readJsonResponse<ShippingPostageLookupResponse>(
+      response,
+      `Failed to load saved ${direction} postage.`,
+    );
+    const entry = lookupResponse.results[0];
+
+    return entry
+      ? { mode: entry.mode, result: entry.result, purchasedAt: entry.purchasedAt }
+      : null;
+  };
+
+  const loadSavedReturnFlowLabels = async (orderNumber: string) => {
+    setIsLoadingReturnLabels(true);
+
+    try {
+      const [savedOutbound, savedReturn] = await Promise.all([
+        lookupSavedPostageForOrder("outbound", orderNumber),
+        lookupSavedPostageForOrder("return", orderNumber),
+      ]);
+
+      setOutboundReturnPurchaseEntry(savedOutbound);
+      setReturnOnlyPurchaseEntry(savedReturn);
+    } catch (lookupError) {
+      setError(String(lookupError));
+    } finally {
+      setIsLoadingReturnLabels(false);
+    }
+  };
+
   const handleLookupReturnOrder = async () => {
     const normalizedOrderNumber = singleOrderNumberInput.trim();
 
@@ -997,6 +1040,7 @@ export default function ShippingExportRoute() {
       if (loadedOrder) {
         const shipmentForOrder = mapOrderToShipment(loadedOrder, config);
         setReturnShipment(shipmentForOrder);
+        await loadSavedReturnFlowLabels(loadedOrder["Order #"]);
       }
     } catch (loadError) {
       setError(String(loadError));
@@ -1009,8 +1053,6 @@ export default function ShippingExportRoute() {
     if (!returnShipment || isPurchasingReturn) return;
 
     setIsPurchasingReturn(true);
-    setOutboundReturnPurchaseEntry(null);
-    setReturnOnlyPurchaseEntry(null);
     setError(null);
 
     const orderNumbers = returnOrder ? [returnOrder["Order #"]] : [returnShipment.reference];
@@ -1042,7 +1084,11 @@ export default function ShippingExportRoute() {
         const outboundResult = outboundPayload.results[0];
 
         if (outboundResult) {
-          setOutboundReturnPurchaseEntry({ mode: outboundPayload.mode, result: outboundResult });
+          setOutboundReturnPurchaseEntry({
+            mode: outboundPayload.mode,
+            result: outboundResult,
+            purchasedAt: new Date().toISOString(),
+          });
         }
       }
 
@@ -1066,7 +1112,11 @@ export default function ShippingExportRoute() {
       const returnResult = returnPayload.results[0];
 
       if (returnResult) {
-        setReturnOnlyPurchaseEntry({ mode: returnPayload.mode, result: returnResult });
+        setReturnOnlyPurchaseEntry({
+          mode: returnPayload.mode,
+          result: returnResult,
+          purchasedAt: new Date().toISOString(),
+        });
       }
     } catch (purchaseError) {
       setError(String(purchaseError));
@@ -1320,15 +1370,12 @@ export default function ShippingExportRoute() {
             outboundReturnPurchaseEntry={outboundReturnPurchaseEntry}
             returnOnlyPurchaseEntry={returnOnlyPurchaseEntry}
             isLoadingReturnOrder={isLoadingReturnOrder}
+            isLoadingReturnLabels={isLoadingReturnLabels}
             isPurchasingReturn={isPurchasingReturn}
             onOrderNumberChange={setSingleOrderNumberInput}
             onLookupOrder={() => void handleLookupReturnOrder()}
             onReturnFlowTypeChange={setReturnFlowType}
-            onReturnServiceChange={(service) => {
-              setReturnService(service);
-              setOutboundReturnPurchaseEntry(null);
-              setReturnOnlyPurchaseEntry(null);
-            }}
+            onReturnServiceChange={setReturnService}
             onBuyLabels={() => void handleBuyReturnFlowLabels()}
           />
         </Paper>

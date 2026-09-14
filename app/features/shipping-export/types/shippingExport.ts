@@ -192,6 +192,7 @@ export interface ShippingPostageLookupRequestItem {
 }
 
 export interface ShippingPostageLookupRequest {
+  direction?: ShippingPostageDirection;
   shipments: ShippingPostageLookupRequestItem[];
 }
 
@@ -242,6 +243,8 @@ export interface ShippingPostagePurchaseResponse {
 export interface ShippingPostagePurchaseEntry {
   mode: EasyPostMode;
   result: ShippingPostagePurchaseResult;
+  /** ISO timestamp of the purchase, when known. */
+  purchasedAt?: string;
 }
 
 export interface ShippingTrackingApplyRequestItem {
@@ -296,11 +299,14 @@ export interface ShippingShippedMessageResponse {
 export interface ShippingPostageLookupResult {
   shipmentReference: string;
   mode: EasyPostMode;
+  direction: ShippingPostageDirection;
   labelSize: LabelSize;
+  purchasedAt: string;
   result: ShippingPostagePurchaseResult;
 }
 
 export interface ShippingPostageLookupResponse {
+  direction: ShippingPostageDirection;
   results: ShippingPostageLookupResult[];
 }
 
