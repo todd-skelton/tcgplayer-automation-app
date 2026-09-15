@@ -87,3 +87,68 @@ const settle = () => new Promise((resolve) => setImmediate(resolve));
   assert.equal(recordCalls, 0);
   console.log("PASS an empty response records nothing");
 }
+{
+  const fiveSales = Array.from({ length: 5 }, (_, index) => ({
+    ...sale,
+    purchasePrice: 4 + index,
+  }));
+  const recorded: Sale[][] = [];
+  let checks = 0;
+  const result = await fetchLatestSalesAndRecord(
+    { id: 676046 },
+    { conditions: [] },
+    100,
+    {
+      fetch: async () => fiveSales,
+      record: async (_productId, sales) => {
+        recorded.push(sales);
+      },
+      assertFullHistory: async () => {
+        checks += 1;
+      },
+    },
+  );
+  await settle();
+  assert.deepEqual(result, fiveSales);
+  assert.equal(checks, 1);
+  assert.deepEqual(recorded, [fiveSales]);
+  console.log(
+    "PASS a product with exactly five sales is checked once and then priced as usual",
+  );
+}
+
+{
+  const fiveSales = Array.from({ length: 5 }, () => sale);
+  let recordCalls = 0;
+  await assert.rejects(
+    fetchLatestSalesAndRecord({ id: 676046 }, { conditions: [] }, 100, {
+      fetch: async () => fiveSales,
+      record: async () => {
+        recordCalls += 1;
+      },
+      assertFullHistory: async () => {
+        throw new Error("signed out");
+      },
+    }),
+    { message: "signed out" },
+  );
+  await settle();
+  assert.equal(recordCalls, 0);
+  console.log("PASS five sales from a signed-out session fail the fetch before recording");
+}
+
+{
+  let checks = 0;
+  for (const count of [0, 1, 4, 6, 25]) {
+    await fetchLatestSalesAndRecord({ id: 676046 }, { conditions: [] }, 100, {
+      fetch: async () => Array.from({ length: count }, () => sale),
+      record: async () => undefined,
+      assertFullHistory: async () => {
+        checks += 1;
+      },
+    });
+  }
+  await settle();
+  assert.equal(checks, 0);
+  console.log("PASS any other sale count is trusted without a check");
+}

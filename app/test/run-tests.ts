@@ -100,6 +100,7 @@ import "../features/pricing/domain/capitalCycle.test";
 import "../features/pricing/domain/maximize.test";
 import "../features/pricing/services/supplyAnalysisService.test";
 import "../features/pricing/services/productSalesLedger.server.test";
+import "../features/pricing/services/salesHistoryAccess.server.test";
 import "../features/pricing/services/productWeeklySalesLedger.server.test";
 import "../features/pricing/services/productListingSnapshotsLedger.server.test";
 import "../features/pricing/evaluation/conditionLadderForwardTest.test";
