@@ -698,6 +698,25 @@ export const continuousPricingRepository = {
     );
   },
 
+  /** Brings a batch's SKUs due again after a delay, sooner if already due. */
+  async retryBatchItemsAfter(
+    batchNumber: number,
+    delayMinutes: number,
+    executor?: Queryable,
+  ): Promise<number> {
+    return execute(
+      `UPDATE continuous_pricing_inventory
+      SET next_price_at = LEAST(
+            next_price_at,
+            NOW() + ($2 * INTERVAL '1 minute')
+          ),
+          updated_at = NOW()
+      WHERE last_batch_number = $1`,
+      [batchNumber, delayMinutes],
+      executor,
+    );
+  },
+
   async recordBatchCompleted(
     batchNumber: number,
     executor?: Queryable,

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { BUYER_CHOICE_CALIBRATION } from "../algorithms/buyerChoiceSellTime";
 import { PricingCalculator } from "./pricingCalculator";
+import { SalesHistoryUnavailableError } from "./salesHistoryAccess";
 
 const calculator = new PricingCalculator();
 const result = await calculator.calculatePrices(
@@ -663,3 +664,39 @@ for (const policy of [
 console.log(
   "PASS a hopeless curve holds the reference price under every policy",
 );
+{
+  const skus = [1, 2, 3].map((sku) => ({
+    sku,
+    quantity: 1,
+    currentPrice: 5,
+    productLineId: 1,
+    setId: 2,
+    productId: 3,
+  }));
+  const ordinary = await calculator.calculatePrices(skus, {
+    percentile: 65,
+    suggestedPriceResolver: async () => {
+      throw new Error("sku broke");
+    },
+  });
+  assert.equal(ordinary.stats.errors, 3);
+  assert.deepEqual(
+    ordinary.pricedItems.map((item) => item.errors),
+    [["sku broke"], ["sku broke"], ["sku broke"]],
+    "an ordinary failure stays with its SKU",
+  );
+
+  let resolved = 0;
+  await assert.rejects(
+    calculator.calculatePrices(skus, {
+      percentile: 65,
+      suggestedPriceResolver: async () => {
+        resolved += 1;
+        throw new SalesHistoryUnavailableError("signed out");
+      },
+    }),
+    (error: unknown) => error instanceof SalesHistoryUnavailableError,
+  );
+  assert.equal(resolved, 1, "the run stops at the first SKU without history");
+  console.log("PASS missing sales history stops the run instead of failing each SKU");
+}

@@ -34,6 +34,7 @@ import {
   toPricingCurve,
 } from "../domain/pricingPolicy";
 import { productLinePricingPolicy } from "../types/config";
+import { SalesHistoryUnavailableError } from "./salesHistoryAccess";
 
 function roundCurrency(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
@@ -508,6 +509,8 @@ export class PricingCalculator {
 
         pricedItems.push(pricedItem);
       } catch (error: any) {
+        // Without sales history no SKU can be priced, so the run stops.
+        if (error instanceof SalesHistoryUnavailableError) throw error;
         const errorItem: PricingResult = {
           sku: pricerSku.sku,
           quantity: pricerSku.quantity,

@@ -9,6 +9,7 @@ import { forecastEvaluationsRepository } from "~/core/db/repositories/forecastEv
 import { PricedSkuToTcgPlayerListingConverter } from "~/features/file-upload/services/dataConverters";
 import { planAutomaticInventoryBatchPublication } from "~/features/inventory-publication/services/automaticInventoryBatchPublication.server";
 import { warmInventoryStrategy } from "~/features/inventory-strategy/services/inventoryStrategyWarmup.server";
+import { SalesHistoryUnavailableError } from "~/features/pricing/services/salesHistoryAccess";
 import type {
   PersistedPricingDetails,
   ProcessingProgress,
@@ -23,6 +24,7 @@ const HEARTBEAT_MS = 2_000;
 const POLL_MS = 1_000;
 const PROGRESS_FLUSH_MS = 1_000;
 const PRICING_DETAILS_SCHEMA_VERSION = 2;
+const SALES_HISTORY_RETRY_MINUTES = 15;
 
 interface WorkerState {
   started: boolean;
@@ -260,6 +262,13 @@ async function processJob(
       message,
       latestProgress,
     );
+    if (error instanceof SalesHistoryUnavailableError) {
+      // The session, not the SKUs, failed: try them again once it is renewed.
+      await continuousPricingRepository.retryBatchItemsAfter(
+        job.batchNumber,
+        SALES_HISTORY_RETRY_MINUTES,
+      );
+    }
   } finally {
     clearInterval(heartbeat);
   }

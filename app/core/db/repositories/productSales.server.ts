@@ -103,6 +103,24 @@ export const productSalesRepository = {
     return rows.map(toRecordedSale);
   },
 
+  /** The product with the most sales recorded since a moment, if any. */
+  async findBusiestProduct(
+    since: Date,
+    executor?: Queryable,
+  ): Promise<number | undefined> {
+    const rows = await query<{ productId: number }>(
+      `SELECT product_id AS "productId"
+      FROM product_sales
+      WHERE order_date >= $1
+      GROUP BY product_id
+      ORDER BY COUNT(*) DESC, product_id
+      LIMIT 1`,
+      [since],
+      executor,
+    );
+    return rows[0]?.productId;
+  },
+
   /** Every recorded sale on or after a moment, oldest first. */
   async findSince(since: Date, executor?: Queryable): Promise<RecordedSale[]> {
     const rows = await query<ProductSaleRow>(
