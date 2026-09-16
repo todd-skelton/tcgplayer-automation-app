@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   getAdjacentVisibleQuantityRowId,
+  getConditionShortcutDirection,
   getQuantityKeyboardAction,
 } from "./quantityKeyboard";
 
@@ -127,6 +128,52 @@ const testCases: TestCase[] = [
           untouchedSinceFocus: true,
         }),
         { type: "change-condition", direction: "next" },
+      );
+    },
+  },
+  {
+    name: "cmd arrows change condition on Mac while ctrl+cmd together do nothing",
+    run: () => {
+      assert.deepEqual(
+        getQuantityKeyboardAction({
+          key: "ArrowUp",
+          code: "ArrowUp",
+          ctrlKey: false,
+          altKey: false,
+          metaKey: true,
+          untouchedSinceFocus: true,
+        }),
+        { type: "change-condition", direction: "previous" },
+      );
+
+      assert.equal(
+        getConditionShortcutDirection({
+          key: "ArrowDown",
+          ctrlKey: false,
+          altKey: false,
+          metaKey: true,
+        }),
+        "next",
+      );
+
+      assert.equal(
+        getConditionShortcutDirection({
+          key: "ArrowDown",
+          ctrlKey: true,
+          altKey: false,
+          metaKey: true,
+        }),
+        null,
+      );
+
+      assert.equal(
+        getConditionShortcutDirection({
+          key: "ArrowDown",
+          ctrlKey: false,
+          altKey: false,
+          metaKey: false,
+        }),
+        null,
       );
     },
   },

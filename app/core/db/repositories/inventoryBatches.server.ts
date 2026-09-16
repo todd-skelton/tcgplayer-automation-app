@@ -524,6 +524,10 @@ export const inventoryBatchesRepository = {
         return null;
       }
 
+      // Only the rows locked above belong to this batch; anything added while
+      // this transaction runs stays in the queue for the next one.
+      const lockedSkus = pendingRows.map((row) => row.sku);
+
       const createdBatch = await queryOne<{ batchNumber: number }>(
         `INSERT INTO inventory_batches (
           status, source_type, source_label, source_request_id
@@ -571,8 +575,9 @@ export const inventoryBatchesRepository = {
           NULL,
           created_at,
           updated_at
-        FROM pending_inventory`,
-        [createdBatch.batchNumber],
+        FROM pending_inventory
+        WHERE sku = ANY($2::int[])`,
+        [createdBatch.batchNumber, lockedSkus],
         client,
       );
 
@@ -587,6 +592,7 @@ export const inventoryBatchesRepository = {
           LEFT JOIN inventory_receipt_adjustments adjustment
             ON adjustment.receipt_id = receipt.receipt_id
           WHERE receipt.receipt_kind = 'received'
+            AND pending.sku = ANY($2::int[])
             AND NOT EXISTS (
             SELECT 1 FROM inventory_receipt_batch_links existing_link
             WHERE existing_link.receipt_id = receipt.receipt_id
@@ -599,11 +605,15 @@ export const inventoryBatchesRepository = {
         SELECT receipt_id, $1, quantity
         FROM adjusted_receipts
         WHERE quantity > 0`,
-        [createdBatch.batchNumber],
+        [createdBatch.batchNumber, lockedSkus],
         client,
       );
 
-      await execute(`DELETE FROM pending_inventory`, [], client);
+      await execute(
+        `DELETE FROM pending_inventory WHERE sku = ANY($1::int[])`,
+        [lockedSkus],
+        client,
+      );
 
       return inventoryBatchesRepository.findByBatchNumber(
         createdBatch.batchNumber,
