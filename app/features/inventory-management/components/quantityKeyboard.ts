@@ -9,14 +9,40 @@ export type QuantityKeyboardAction =
   | { type: "submit"; incrementQuantity: boolean }
   | { type: "none" };
 
-interface QuantityKeyboardInput {
+interface ConditionShortcutInput {
   key: string;
-  code?: string;
   ctrlKey: boolean;
   altKey: boolean;
   metaKey: boolean;
+}
+
+interface QuantityKeyboardInput extends ConditionShortcutInput {
+  code?: string;
   untouchedSinceFocus: boolean;
 }
+
+// Ctrl+Arrow on Windows/Linux; Cmd+Arrow on Mac, where macOS reserves Ctrl+Arrow.
+export const getConditionShortcutDirection = ({
+  key,
+  ctrlKey,
+  altKey,
+  metaKey,
+}: ConditionShortcutInput): QuantityNavigationDirection | null => {
+  const hasSinglePrimaryModifier = (ctrlKey || metaKey) && !(ctrlKey && metaKey);
+  if (!hasSinglePrimaryModifier || altKey) {
+    return null;
+  }
+
+  if (key === "ArrowUp") {
+    return "previous";
+  }
+
+  if (key === "ArrowDown") {
+    return "next";
+  }
+
+  return null;
+};
 
 export const getQuantityKeyboardAction = ({
   key,
@@ -26,12 +52,14 @@ export const getQuantityKeyboardAction = ({
   metaKey,
   untouchedSinceFocus,
 }: QuantityKeyboardInput): QuantityKeyboardAction => {
-  if (ctrlKey && !altKey && !metaKey && key === "ArrowUp") {
-    return { type: "change-condition", direction: "previous" };
-  }
-
-  if (ctrlKey && !altKey && !metaKey && key === "ArrowDown") {
-    return { type: "change-condition", direction: "next" };
+  const conditionDirection = getConditionShortcutDirection({
+    key,
+    ctrlKey,
+    altKey,
+    metaKey,
+  });
+  if (conditionDirection) {
+    return { type: "change-condition", direction: conditionDirection };
   }
 
   if (!ctrlKey && !altKey && !metaKey && key === "ArrowUp") {
