@@ -6,7 +6,7 @@ import {
   Typography,
 } from "@mui/material";
 import { Link, type MetaFunction } from "react-router";
-import { dashboardCards } from "../shared/appNavigation";
+import { primaryNavigationItems } from "../shared/appNavigation";
 
 export const meta: MetaFunction = () => {
   return [
@@ -39,12 +39,12 @@ export default function DashboardRoute() {
           gap: 3,
         }}
       >
-        {dashboardCards.map((card) => {
-          const Icon = card.icon;
+        {primaryNavigationItems.map((item) => {
+          const Icon = item.icon;
 
           return (
             <Card
-              key={card.to}
+              key={item.to}
               elevation={2}
               sx={{
                 transition: "box-shadow 0.2s, transform 0.2s",
@@ -56,7 +56,7 @@ export default function DashboardRoute() {
             >
               <CardActionArea
                 component={Link}
-                to={card.to}
+                to={item.to}
                 sx={{ height: "100%", p: 1 }}
               >
                 <CardContent
@@ -67,12 +67,12 @@ export default function DashboardRoute() {
                     gap: 1,
                   }}
                 >
-                  <Icon sx={{ fontSize: 40, color: card.color }} />
+                  <Icon sx={{ fontSize: 40, color: "primary.main" }} />
                   <Typography variant="h6" component="h2" fontWeight={600}>
-                    {card.title}
+                    {item.label}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {card.description}
+                    {item.description}
                   </Typography>
                 </CardContent>
               </CardActionArea>

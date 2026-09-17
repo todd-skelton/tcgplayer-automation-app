@@ -6,6 +6,7 @@ import type {
   PricerSku,
   PricingPercentileDetail,
   PricingConfig,
+  ProductDisplayInfo,
   SuggestedPriceResolver,
 } from "../../../core/types/pricing";
 import { forecastBuyerChoice } from "../algorithms/buyerChoiceSellTime";
@@ -19,7 +20,6 @@ import {
 import { PRICING_CONSTANTS } from "../../../core/constants/pricing";
 import type { PricingPolicy } from "../../../core/types/pricingPolicy";
 import type { PricePoint } from "../../../integrations/tcgplayer/client/get-price-points.server";
-import type { ProductDisplayInfo } from "../../../shared/services/dataEnrichmentService";
 import type {
   PortfolioPricingPlan,
   PricingCurvePoint,

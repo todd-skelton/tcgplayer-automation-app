@@ -1,55 +1,10 @@
-import type {
-  PricerSku,
-  PricedSku,
-  TcgPlayerListing,
-} from "../../../core/types/pricing";
-import type { Listing } from "../../../integrations/tcgplayer/client/get-search-results.server";
-import type { SellerInventoryItem } from "../../inventory-management/services/inventoryConverter";
-
-/**
- * Base interface for converters that transform input data to PricerSku format
- */
-export interface InputConverter<TInput> {
-  convertToPricerSkus(input: TInput[]): PricerSku[] | Promise<PricerSku[]>;
-}
+import type { PricedSku, TcgPlayerListing } from "../../../core/types/pricing";
 
 /**
  * Base interface for converters that transform PricedSku data to output format
  */
 export interface OutputConverter<TOutput> {
   convertFromPricedSkus(pricedSkus: PricedSku[]): TOutput[];
-}
-
-/**
- * Converts CSV TcgPlayerListing data to PricerSku format
- * Enhanced version that looks up missing performance metadata
- */
-export class CsvToPricerSkuConverter
-  implements InputConverter<TcgPlayerListing>
-{
-  async convertToPricerSkus(
-    listings: TcgPlayerListing[],
-  ): Promise<PricerSku[]> {
-    // Use server-side API to avoid client-side database imports
-    const response = await fetch("/api/convert-to-pricer-sku", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        listings: listings,
-        type: "csv",
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response
-        .json()
-        .catch(() => ({ error: "Unknown error" }));
-      throw new Error(errorData.error || "Failed to convert CSV to PricerSku");
-    }
-
-    const result = await response.json();
-    return result.pricerSkus;
-  }
 }
 
 /**
@@ -91,40 +46,3 @@ export class PricedSkuToTcgPlayerListingConverter
     });
   }
 }
-
-/**
- * Converts seller inventory to PricerSku format
- * Enhanced version that looks up missing performance metadata
- * Deduplicates SKUs to prevent processing the same item multiple times
- * Uses product line information to avoid ambiguous cross-line lookups
- */
-export class SellerInventoryToPricerSkuConverter
-  implements InputConverter<SellerInventoryItem>
-{
-  async convertToPricerSkus(
-    inventory: SellerInventoryItem[],
-  ): Promise<PricerSku[]> {
-    // Use server-side API to avoid client-side database imports
-    const response = await fetch("/api/convert-to-pricer-sku", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        listings: inventory,
-        type: "seller-inventory",
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response
-        .json()
-        .catch(() => ({ error: "Unknown error" }));
-      throw new Error(
-        errorData.error || "Failed to convert seller inventory to PricerSku",
-      );
-    }
-
-    const result = await response.json();
-    return result.pricerSkus;
-  }
-}
-

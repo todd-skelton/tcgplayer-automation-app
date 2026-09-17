@@ -20,7 +20,7 @@ import { getPricePoints } from "~/integrations/tcgplayer/client/get-price-points
 import { PricingCalculator } from "~/features/pricing/services/pricingCalculator";
 import { PricingBatchApiCache } from "~/features/pricing/services/pricingBatchApiCache.server";
 import { resolveSuggestedPrice } from "~/features/pricing/services/suggestedPriceResolver.server";
-import type { ProductDisplayInfo } from "~/shared/services/dataEnrichmentService";
+import type { ProductDisplayInfo } from "~/core/types/pricing";
 import type {
   InventoryBatchItem,
   InventoryBatchPricingMode,

@@ -1,166 +1,116 @@
 import type { SvgIconComponent } from "@mui/icons-material";
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import BatchPredictionIcon from "@mui/icons-material/BatchPrediction";
 import HttpIcon from "@mui/icons-material/Http";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import LoopIcon from "@mui/icons-material/Loop";
-import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import PriceCheckIcon from "@mui/icons-material/PriceCheck";
-import SettingsIcon from "@mui/icons-material/Settings";
 import PublishIcon from "@mui/icons-material/Publish";
+import QueryStatsIcon from "@mui/icons-material/QueryStats";
+import SettingsIcon from "@mui/icons-material/Settings";
 import StorageIcon from "@mui/icons-material/Storage";
-import StorefrontIcon from "@mui/icons-material/Storefront";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
 import ViewListIcon from "@mui/icons-material/ViewList";
-import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 
 export interface NavigationItem {
   label: string;
   to: string;
   icon: SvgIconComponent;
-}
-
-export interface DashboardCard extends NavigationItem {
-  title: string;
   description: string;
-  color: string;
 }
 
 export const primaryNavigationItems: NavigationItem[] = [
-  { label: "Slab Pricing", to: "/slab-pricing", icon: PriceCheckIcon },
-  { label: "CSV Pricer", to: "/pricer", icon: UploadFileIcon },
-  { label: "Seller Pricer", to: "/seller-pricer", icon: StorefrontIcon },
-  { label: "Inventory", to: "/inventory-manager", icon: Inventory2Icon },
+  {
+    label: "Inventory",
+    to: "/inventory-manager",
+    icon: Inventory2Icon,
+    description: "Add new inventory and freeze it into a pricing batch",
+  },
   {
     label: "Batch Pricer",
     to: "/pending-inventory-pricer",
     icon: BatchPredictionIcon,
+    description: "Create, price, publish, and download inventory batches",
   },
   {
     label: "Continuous Pricing",
     to: "/continuous-pricing",
     icon: LoopIcon,
+    description: "Automatic repricing runs for live inventory",
+  },
+  {
+    label: "Slab Pricing",
+    to: "/slab-pricing",
+    icon: PriceCheckIcon,
+    description: "Research and price graded cards for eBay",
+  },
+  {
+    label: "Price Matrix",
+    to: "/product-price-matrix",
+    icon: PriceCheckIcon,
+    description: "Compare one product across conditions and variants",
   },
   {
     label: "Inventory Strategy",
     to: "/inventory-strategy",
     icon: QueryStatsIcon,
+    description: "Turnaround, reinvestment, and percentile strategy",
   },
-  { label: "Inventory Economics", to: "/inventory-economics", icon: AccountBalanceWalletIcon },
   {
-    label: "Price Matrix",
-    to: "/product-price-matrix",
-    icon: PriceCheckIcon,
+    label: "Inventory Economics",
+    to: "/inventory-economics",
+    icon: AccountBalanceWalletIcon,
+    description: "Estimated cost, proceeds, and realized profit by order",
   },
-  { label: "Pull Sheet", to: "/pull-sheet", icon: ViewListIcon },
+  {
+    label: "Pull Sheet",
+    to: "/pull-sheet",
+    icon: ViewListIcon,
+    description: "Upload and view pull sheets",
+  },
   {
     label: "Shipping Export",
     to: "/shipping-export",
     icon: LocalShippingIcon,
+    description: "Review shipments, buy postage, and notify buyers",
   },
-  { label: "Data Mgmt", to: "/data-management", icon: StorageIcon },
+  {
+    label: "Data Mgmt",
+    to: "/data-management",
+    icon: StorageIcon,
+    description: "Refresh product lines, sets, products, and SKUs",
+  },
 ];
 
 export const settingsNavigationItems: NavigationItem[] = [
-  { label: "Slab data connections", to: "/slab-connections", icon: HttpIcon },
-  { label: "Configuration", to: "/configuration", icon: SettingsIcon },
+  {
+    label: "Configuration",
+    to: "/configuration",
+    icon: SettingsIcon,
+    description: "Pricing rules and defaults",
+  },
   {
     label: "Inventory Publication",
     to: "/publication-configuration",
     icon: PublishIcon,
+    description: "Automatic publication and guardrails",
   },
   {
     label: "Shipping Configuration",
     to: "/shipping-configuration",
     icon: LocalShippingIcon,
+    description: "Postage and shipping defaults",
   },
   {
     label: "HTTP Configuration",
     to: "/http-configuration",
     icon: HttpIcon,
-  },
-];
-
-export const dashboardCards: DashboardCard[] = [
-  {
-    title: "CSV Pricer",
-    label: "CSV Pricer",
-    description: "Upload and price TCGPlayer CSV export files",
-    to: "/pricer",
-    icon: UploadFileIcon,
-    color: "primary.main",
+    description: "TCGPlayer authentication and rate limits",
   },
   {
-    title: "Seller Inventory Pricer",
-    label: "Seller Pricer",
-    description: "Fetch and price all listings for a specific seller",
-    to: "/seller-pricer",
-    icon: StorefrontIcon,
-    color: "secondary.main",
-  },
-  {
-    title: "Inventory Manager",
-    label: "Inventory",
-    description: "Add new inventory items to your collection",
-    to: "/inventory-manager",
-    icon: Inventory2Icon,
-    color: "success.main",
-  },
-  {
-    title: "Inventory Batch Pricer",
-    label: "Batch Pricer",
-    description: "Manage frozen batches, repricing, and downloads",
-    to: "/pending-inventory-pricer",
-    icon: BatchPredictionIcon,
-    color: "info.main",
-  },
-  {
-    title: "Product Price Matrix",
-    label: "Price Matrix",
-    description: "Compare one product across conditions and variants",
-    to: "/product-price-matrix",
-    icon: PriceCheckIcon,
-    color: "success.dark",
-  },
-  {
-    title: "Inventory Strategy",
-    label: "Inventory Strategy",
-    description: "Compare portfolio value and selling time across percentiles",
-    to: "/inventory-strategy",
-    icon: QueryStatsIcon,
-    color: "info.dark",
-  },
-  {
-    title: "Inventory Economics",
-    label: "Inventory Economics",
-    description: "Track acquisition cost, reusable proceeds, and inventory funding",
-    to: "/inventory-economics",
-    icon: AccountBalanceWalletIcon,
-    color: "warning.dark",
-  },
-  {
-    title: "Pull Sheet",
-    label: "Pull Sheet",
-    description: "Upload and view pull sheets with grid and table views",
-    to: "/pull-sheet",
-    icon: ViewListIcon,
-    color: "warning.main",
-  },
-  {
-    title: "Shipping Export",
-    label: "Shipping Export",
-    description:
-      "Review shipments, buy EasyPost postage, or export fallback CSVs",
-    to: "/shipping-export",
-    icon: LocalShippingIcon,
-    color: "error.main",
-  },
-  {
-    title: "Data Management",
-    label: "Data Mgmt",
-    description: "Fetch and manage product lines, categories, and SKU data",
-    to: "/data-management",
-    icon: StorageIcon,
-    color: "text.secondary",
+    label: "Slab data connections",
+    to: "/slab-connections",
+    icon: HttpIcon,
+    description: "eBay research and Alt credentials",
   },
 ];

@@ -20,7 +20,7 @@ This plan is durable: it defines the operating model, invariants, rollout order,
 
 ### Manual pricing
 
-The Batch Pricer is the operator workspace for batches created from Pending Inventory, Seller Pricer, and CSV Pricer. Its default collection is bounded to the newest 100 manual batches. A direct batch URL remains available after a batch falls outside that window.
+The Batch Pricer is the operator workspace for batches created from Pending Inventory, seller snapshots, and CSV uploads. Its default collection is bounded to the newest 100 manual batches. A direct batch URL remains available after a batch falls outside that window.
 
 Automatic continuous batches do not appear in the manual selector. Continuous Pricing owns a compact, bounded recent-run history for automatic work.
 

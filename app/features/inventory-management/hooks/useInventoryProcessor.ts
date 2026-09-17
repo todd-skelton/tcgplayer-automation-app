@@ -50,7 +50,6 @@ export interface InventoryProcessorReturn extends InventoryProcessorState {
   error: string | null;
   warning: string | null;
   success: string | null;
-  summary: any;
 
   // Methods
   setError: (error: string | null) => void;

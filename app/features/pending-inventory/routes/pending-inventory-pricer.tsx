@@ -27,6 +27,7 @@ import { Link, useSearchParams } from "react-router";
 import { useInventoryBatchPublication } from "../../inventory-publication/hooks/useInventoryBatchPublication";
 import { ProgressIndicator } from "../../pricing/components";
 import { InventoryBatchSummaryComponent } from "../components/InventoryBatchSummary";
+import { NewInventoryBatchForm } from "../components/NewInventoryBatchForm";
 import { summarizeLatestInventoryPublicationRun } from "../components/inventoryPublicationRunSummary";
 import { useInventoryBatchProcessor } from "../hooks/useInventoryBatchProcessor";
 import type {
@@ -182,6 +183,7 @@ export default function PendingInventoryPricerRoute() {
     processBatch,
     deleteBatch,
     downloadBatchResults,
+    loadBatches,
     loadBatch,
     setError,
     setSuccess,
@@ -322,6 +324,11 @@ export default function PendingInventoryPricerRoute() {
     await loadBatch(batchNumber);
   };
 
+  const handleBatchCreated = async (batch: InventoryBatch) => {
+    await loadBatches();
+    await handleSelectBatch(batch.batchNumber);
+  };
+
   const handleProcessBatch = async (mode: InventoryBatchPricingMode) => {
     if (!selectedBatch) {
       setError("Select a batch first");
@@ -391,6 +398,10 @@ export default function PendingInventoryPricerRoute() {
       </Typography>
 
       <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
+        <NewInventoryBatchForm onCreated={handleBatchCreated} />
+      </Paper>
+
+      <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
         <Stack spacing={3}>
           <Box>
             <Typography variant="h6" gutterBottom>
@@ -398,9 +409,9 @@ export default function PendingInventoryPricerRoute() {
             </Typography>
             <Typography variant="body2" color="text.secondary">
               The newest 100 manual batches are shown here. Each is a frozen
-              snapshot from Inventory Manager, Seller Pricer, or CSV Pricer.
-              Automatic run history is kept on Continuous Pricing, and a direct
-              batch link remains available for older manual batches.
+              snapshot from Inventory Manager, a seller snapshot, or a CSV
+              upload. Automatic run history is kept on Continuous Pricing, and
+              a direct batch link remains available for older manual batches.
             </Typography>
           </Box>
 
@@ -459,10 +470,8 @@ export default function PendingInventoryPricerRoute() {
             </FormControl>
           ) : (
             <Alert severity="info">
-              No inventory batches exist yet. Create one from the{" "}
-              <Link to="/inventory-manager">Inventory Manager</Link>,{" "}
-              <Link to="/seller-pricer">Seller Pricer</Link>, or{" "}
-              <Link to="/pricer">CSV Pricer</Link>.
+              No inventory batches exist yet. Create one above or from the{" "}
+              <Link to="/inventory-manager">Inventory Manager</Link>.
             </Alert>
           )}
 
