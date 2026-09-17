@@ -8,7 +8,7 @@ export const STRATEGY_ASSUMPTIONS = [
   "An order with no refund status and no refund records had no refund.",
   "A refund without a recorded settlement reduces net proceeds by the refund's share of the gross order; a canceled order returns nothing.",
   "An order without purchased postage cost the seller's median purchased postage, or the default first-class rate when none was purchased.",
-  "A lot without an intake market price is valued at the SKU's market price when the seller's inventory was first observed, else its current market price.",
+  "A lot without an intake market price is valued at the SKU's market price when the seller's inventory was first observed, else its current market price, else the seller's own listed price.",
   "Every purchase is funded on its purchase date; outside funding entries are optional.",
 ] as const;
 
