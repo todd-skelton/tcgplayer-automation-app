@@ -46,12 +46,38 @@ try {
     purchaseReference: `${prefix}-invoice`, currency: "USD", totalAmountCents: 123, provenance: "actual",
     source: "intake", allocationRule: "quantity", batchNumbers: [entered.batchNumber] });
 
-  const batchNumbers = [priced.batchNumber, unquoted.batchNumber, entered.batchNumber];
+  const floored = await seedBatch("floored", [
+    { quantity: 1, market: 4, intakeAt: "2026-09-05T12:00:00Z" },
+    { quantity: 2, market: 0.1, intakeAt: "2026-09-05T12:00:00Z" },
+  ]);
+  const flooredV1 = await inventoryEconomicsRepository.recordPurchaseCost({
+    requestId: `estimated-purchase-cost:market-rate-v1:batch-${floored.batchNumber}`, sellerKey,
+    purchaseReference: `estimated:batch-${floored.batchNumber}`, currency: "USD", totalAmountCents: 270,
+    provenance: "estimated", source: "intake", allocationRule: "explicit", batchNumbers: [floored.batchNumber],
+    purchasedAt: "2026-09-05",
+    explicitAllocations: [{ receiptId: floored.receiptIds[0], amountCents: 270 }, { receiptId: floored.receiptIds[1], amountCents: 0 }] });
+  const steady = await seedBatch("steady", [{ quantity: 1, market: 4, intakeAt: "2026-09-06T12:00:00Z" }]);
+  await inventoryEconomicsRepository.recordPurchaseCost({
+    requestId: `estimated-purchase-cost:market-rate-v1:batch-${steady.batchNumber}`, sellerKey,
+    purchaseReference: `estimated:batch-${steady.batchNumber}`, currency: "USD", totalAmountCents: 270,
+    provenance: "estimated", source: "intake", allocationRule: "explicit", batchNumbers: [steady.batchNumber],
+    purchasedAt: "2026-09-06", explicitAllocations: [{ receiptId: steady.receiptIds[0], amountCents: 270 }] });
+
+  const batchNumbers = [priced.batchNumber, unquoted.batchNumber, entered.batchNumber, floored.batchNumber, steady.batchNumber];
   const first = await recordEstimatedPurchaseCosts(sellerKey, { batchNumbers });
-  assert.deepEqual(first.recorded.map((entry) => [entry.batchNumber, entry.totalAmountCents, entry.unitCount]),
-    [[priced.batchNumber, 1440, 5]]);
+  assert.deepEqual(first.recorded.map((entry) => [entry.batchNumber, entry.totalAmountCents, entry.unitCount, entry.correctsEntryId ?? null]),
+    [[priced.batchNumber, 1407, 5, null], [floored.batchNumber, 226, 3, flooredV1.entryId]]);
   assert.deepEqual(first.repeated, []);
+  assert.deepEqual(first.unchanged, [steady.batchNumber]);
   assert.deepEqual(first.marketUnavailable, [{ batchNumber: unquoted.batchNumber, receiptIds: unquoted.receiptIds }]);
+  const correction = await query<{ receiptId: number; amountCents: number }>(
+    `SELECT receipt_id AS "receiptId",allocated_amount_cents::int AS "amountCents" FROM inventory_purchase_cost_allocations
+     WHERE entry_id=$1 ORDER BY receipt_id`, [first.recorded[1].entryId]);
+  assert.deepEqual(correction, [{ receiptId: floored.receiptIds[0], amountCents: 270 }, { receiptId: floored.receiptIds[1], amountCents: -44 }]);
+  const history = (await inventoryEconomicsRepository.listPurchaseCosts(sellerKey))
+    .filter((entry) => entry.purchaseReference === `estimated:batch-${floored.batchNumber}`);
+  assert.deepEqual(history.map((entry) => [entry.version, entry.isCurrent, entry.totalAmountCents, entry.correctionReason ?? null]),
+    [[2, true, 226, "Re-estimated under rule market-rate-v2"], [1, false, 270, null]]);
 
   const entry = await queryOne<{ purchaseReference: string; provenance: string; allocationRule: string; purchasedAt: string | null; totalAmountCents: number }>(
     `SELECT series.purchase_reference AS "purchaseReference",entry.provenance,entry.allocation_rule AS "allocationRule",
@@ -60,25 +86,26 @@ try {
      JOIN inventory_purchase_cost_series series ON series.id=entry.series_id
      WHERE entry.id=$1`, [first.recorded[0].entryId]);
   assert.deepEqual(entry, { purchaseReference: `estimated:batch-${priced.batchNumber}`, provenance: "estimated",
-    allocationRule: "explicit", purchasedAt: "2026-09-01", totalAmountCents: 1440 });
+    allocationRule: "explicit", purchasedAt: "2026-09-01", totalAmountCents: 1407 });
   const allocations = await query<{ receiptId: number; amountCents: number }>(
     `SELECT receipt_id AS "receiptId",allocated_amount_cents::int AS "amountCents" FROM inventory_purchase_cost_allocations
      WHERE entry_id=$1 ORDER BY receipt_id`, [first.recorded[0].entryId]);
   assert.deepEqual(allocations, [
     { receiptId: priced.receiptIds[0], amountCents: 1440 },
-    { receiptId: priced.receiptIds[1], amountCents: 0 },
+    { receiptId: priced.receiptIds[1], amountCents: -33 },
   ]);
 
   const second = await recordEstimatedPurchaseCosts(sellerKey, { batchNumbers });
   assert.deepEqual(second.recorded, []);
-  assert.deepEqual(second.repeated, []);
+  assert.deepEqual(second.repeated, [priced.batchNumber, floored.batchNumber]);
+  assert.deepEqual(second.unchanged, [steady.batchNumber]);
   assert.deepEqual(second.marketUnavailable.map((batch) => batch.batchNumber), [unquoted.batchNumber]);
   const enteredEntries = await query<{ provenance: string }>(
     `SELECT entry.provenance FROM inventory_purchase_cost_entries entry
      JOIN inventory_purchase_cost_allocations allocation ON allocation.entry_id=entry.id
      WHERE allocation.receipt_id=$1`, [entered.receiptIds[0]]);
   assert.deepEqual(enteredEntries, [{ provenance: "actual" }]);
-  console.log("PASS estimated purchase costs are recorded once per uncosted priced batch and never replace entered cost");
+  console.log("PASS estimated purchase costs are recorded once, corrected when the rule changes them, and never replace entered cost");
 } finally {
   await getPool().end();
 }

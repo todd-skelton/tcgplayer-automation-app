@@ -16,6 +16,18 @@ assert.equal(report.coverage.costedReceiptCount,1);
 assert.equal(report.coverage.unknownCostReceiptCount,0);
 assert.equal(report.samples.length,0);
 
+const signed=buildReinvestmentInput("synthetic-signed-cost","2026-01-10T00:00:00.000Z",{
+  sales:[],unknownProceedsOrderCount:0,unknownProceedsSoldAt:[],sourceEvidenceIdentities:[],
+},{purchaseRows:[600,300,-90].map((allocatedAmountCents,index)=>({purchaseReference:"estimated:batch-1",currency:"USD",
+  totalAmountCents:810,costProvenance:"estimated" as const,purchasedAt:"2026-01-01",costSourceIdentity:"estimate",
+  receiptId:index+1,productLineId:1,allocatedAmountCents,originalQuantity:1,publicationItemId:null,plannedQuantity:null,
+  liveAt:null,publicationState:null,publicationIdentity:null})),
+  fundingRows:[],unknownCostReceiptCount:0,unknownCostReceipts:[],orderCoverage:null}).input;
+assert.equal(signed.purchases[0].totalAmountCents,810);
+assert.deepEqual(signed.purchases[0].tranches.map((tranche)=>[tranche.receiptId,tranche.amountCents]),[[1,540],[2,270],[3,0]],
+  "a lot that cost less than nothing carries no capital and offsets the other lots");
+assert.equal(allocateReinvestmentTurnaround(signed).coverage.costedReceiptCount,3);
+
 const purchaseRow={purchaseReference:"replacement",currency:"USD",totalAmountCents:10_000,costProvenance:"actual" as const,
   purchasedAt:"2026-01-01",costSourceIdentity:"cost",receiptId:1,productLineId:1,allocatedAmountCents:10_000,
   originalQuantity:1,publicationItemId:null,plannedQuantity:null,liveAt:null,publicationState:null,publicationIdentity:null};

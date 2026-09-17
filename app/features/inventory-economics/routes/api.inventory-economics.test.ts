@@ -21,7 +21,7 @@ const handlers = createInventoryEconomicsHandlers({
   importPurchaseCosts: async () => ({ rows:1,repeated:false }),
   recordEstimatedPurchaseCosts: async (sellerKey,options) => {
     estimateInputs.push({sellerKey,batchNumbers:options?.batchNumbers});
-    return { rule:{} as never,recorded:[],repeated:[3],marketUnavailable:[] };
+    return { rule:{} as never,recorded:[],repeated:[3],unchanged:[],marketUnavailable:[] };
   },
 });
 const loaded = await handlers.loader();

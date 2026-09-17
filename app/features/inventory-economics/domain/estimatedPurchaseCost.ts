@@ -3,11 +3,12 @@ import type { PurchaseCostInput } from "../types/inventoryEconomics";
 /**
  * Estimated acquisition cost when no actual purchase price was recorded:
  * a share of the TCG market price observed at intake, less a fixed amount
- * per unit, never below zero. The rule version is part of every request ID
- * so a later rule change records new entries instead of silently repeating.
+ * per unit. A unit worth less than the deduction carries a negative cost:
+ * the seller effectively paid to have it taken. The rule version is part of
+ * every request ID so a rule change re-estimates instead of silently repeating.
  */
 export const ESTIMATED_PURCHASE_COST_RULE = {
-  version: "market-rate-v1",
+  version: "market-rate-v2",
   marketRate: 0.75,
   perUnitDeductionCents: 30,
   currency: "USD",
@@ -37,7 +38,7 @@ export function estimateUnitCostCents(marketValue: number): number {
   }
   const marketCents = Math.round(marketValue * 100);
   const share = Math.round(marketCents * ESTIMATED_PURCHASE_COST_RULE.marketRate);
-  return Math.max(0, share - ESTIMATED_PURCHASE_COST_RULE.perUnitDeductionCents);
+  return share - ESTIMATED_PURCHASE_COST_RULE.perUnitDeductionCents;
 }
 
 export function estimatedPurchaseCostRequestId(batchNumber: number): string {
