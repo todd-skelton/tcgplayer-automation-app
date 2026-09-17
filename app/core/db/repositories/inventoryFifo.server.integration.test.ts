@@ -110,9 +110,23 @@ try{
       supplyKey:pendingHeld.allocations[0].supplyKey,receiptId:pendingHeld.allocations[0].receiptId,quantity:1}]});
   await repo.processNextReplay(seller);
   assert.equal((await repo.findOrderAllocation(seller,"PENDING-B"))[0]?.matchedQuantity,0);
+  await addOrder("CANCEL-UNSHIPPED","2026-09-07T12:22:30Z",1,seller,"canceled","99003");
+  await repo.processNextReplay(seller);
+  assert.deepEqual((await repo.findOrderAllocation(seller,"CANCEL-UNSHIPPED")).map((line:any)=>[line.state,line.matchedQuantity,line.allocations.length]),
+    [["canceled_unfulfilled",0,0]],"a cancellation that never shipped consumed no stock");
   await addOrder("PENDING-C","2026-09-07T12:23:00Z",1,seller,"ready_to_ship","99003");
   await repo.processNextReplay(seller);
-  assert.equal((await repo.findOrderAllocation(seller,"PENDING-C"))[0]?.matchedQuantity,1);
+  assert.equal((await repo.findOrderAllocation(seller,"PENDING-C"))[0]?.matchedQuantity,1,"the last unit was still there for the next order");
+
+  const returned=await addOrder("CANCEL-SHIPPED","2026-09-07T12:26:00Z",1,seller,"canceled","99004");
+  await pool.query(`INSERT INTO seller_order_revisions
+    (order_id,revision_number,source_fingerprint,source,observed_at,order_time,provider_status,lifecycle,line_evidence)
+    VALUES ($1,2,'fp-shipped','tcgplayer_api','2026-09-07T12:27:00Z','2026-09-07T12:26:00Z','shipped_in_transit','shipped_in_transit','[{"skuId":"99004","quantity":1}]')`,[returned]);
+  await pool.query(`UPDATE seller_orders SET source_revision=2 WHERE id=$1`,[returned]);
+  await repo.enqueueOrderRevision(returned);
+  await repo.processNextReplay(seller);
+  assert.deepEqual((await repo.findOrderAllocation(seller,"CANCEL-SHIPPED")).map((line:any)=>[line.state,line.matchedQuantity]),
+    [["unmatched",0]],"a return keeps its sale; with no 99004 stock it is simply unmatched, not held");
 
   await repo.recordDisposition({requestId:`${seller}-restock`,sellerKey:seller,orderNumber:"A",skuId:"99001",
     dispositionType:"physical_restock",quantity:1,sourceOrderRevision:1,availableAt:new Date("2026-09-07T12:02:00Z"),

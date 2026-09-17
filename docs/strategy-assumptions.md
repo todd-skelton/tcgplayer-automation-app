@@ -9,6 +9,7 @@ Inventory Economics and Inventory Strategy exist to give a directional sense of 
 3. Postage. An order without a purchased label is assumed to have cost the seller's median purchased postage; if nothing has been purchased yet, the default first-class rate (`DEFAULT_POSTAGE_CENTS`). Canceled orders that never shipped carry no postage. Purchased postage still takes precedence.
 4. Acquisition cost. Every lot is costed by the estimated purchase cost rule (see `docs/estimated-purchase-costs.md`). A lot without an intake market price, such as opening-balance stock, is valued at the SKU's TCG market price for the week the seller's inventory was first observed, else its current market price, else the seller's own listed price (a market-derived price, and the only figure some slow SKUs have). Migration 047 gathers opening-balance lots into one `opening_balance` batch per seller so the rule can reach them.
 5. Funding. Every purchase is funded on its purchase date (the earliest intake date of its batch). Funding entries remain available for recording outside cash, but nothing requires them.
+6. Cancellations. A canceled order that never shipped never consumed stock (the seller puts it straight back in the portal). A canceled order that shipped is a return that comes back as new intake in a later batch, so the original sale stands in FIFO and the returned card is costed again when it is published. A recorded disposition takes precedence.
 
 ## Observed turnaround
 
