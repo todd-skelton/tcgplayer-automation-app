@@ -55,10 +55,10 @@ export async function action({ request }: { request: Request }) {
     if (!requestId || requestId.length > 200) {
       return data({ error: "requestId is required" }, { status: 400 });
     }
+    const sellerKey = (await getShippingExportConfig()).defaultSellerKey.trim();
     let purchaseCost;
     if (body?.purchaseCost) {
       const value = body.purchaseCost;
-      const sellerKey = (await getShippingExportConfig()).defaultSellerKey.trim();
       if (!sellerKey) return data({ error: "Configure a default shipping seller before recording purchase cost." }, { status: 409 });
       try { purchaseCost=parseIntakePurchaseCost(value,requestId,sellerKey); }
       catch (error) {
@@ -66,9 +66,7 @@ export async function action({ request }: { request: Request }) {
       }
     }
 
-    const batch = purchaseCost
-      ? await createPendingInventoryBatchWithCost(requestId,purchaseCost)
-      : await inventoryBatchesRepository.createFromPendingInventory(requestId);
+    const batch = await createPendingInventoryBatchWithCost(requestId,purchaseCost,sellerKey || null);
     if (!batch) {
       return data(
         { error: "No pending inventory items available to batch" },

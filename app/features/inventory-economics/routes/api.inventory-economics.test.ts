@@ -6,6 +6,7 @@ const workspace = { sellerKey:"configured-seller",generatedAt:"2026-09-08T00:00:
 const fundingInputs: unknown[] = [];
 const purchaseInputs: unknown[] = [];
 const targetInputs: number[][] = [];
+const estimateInputs: Array<{sellerKey:string;batchNumbers?:number[]}> = [];
 const handlers = createInventoryEconomicsHandlers({
   getConfig: async () => ({ defaultSellerKey:" configured-seller " }) as never,
   loadWorkspace: async (sellerKey) => ({ ...workspace,sellerKey }),
@@ -18,9 +19,17 @@ const handlers = createInventoryEconomicsHandlers({
       batchNumbers,intakeAt:"2026-08-02T00:00:00Z"}],complete:true};
   },
   importPurchaseCosts: async () => ({ rows:1,repeated:false }),
+  recordEstimatedPurchaseCosts: async (sellerKey,options) => {
+    estimateInputs.push({sellerKey,batchNumbers:options?.batchNumbers});
+    return { rule:{} as never,recorded:[],repeated:[3],marketUnavailable:[] };
+  },
 });
 const loaded = await handlers.loader();
-assert.equal((loaded.data as {workspace:typeof workspace}).workspace.sellerKey,"configured-seller");
+const estimateResponse = await handlers.action({ request:new Request("http://localhost/api/inventory-economics",{
+  method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+    action:"record_estimated_purchase_costs",batchNumbers:"3",sellerKey:"attacker-seller" }) }) });
+assert.deepEqual(estimateInputs,[{sellerKey:"configured-seller",batchNumbers:[3]}]);
+assert.deepEqual((estimateResponse.data as {result:{repeated:number[]}}).result.repeated,[3]);assert.equal((loaded.data as {workspace:typeof workspace}).workspace.sellerKey,"configured-seller");
 const response = await handlers.action({ request:new Request("http://localhost/api/inventory-economics",{
   method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ action:"record_funding",
     requestId:"request-1",sellerKey:"attacker-seller",currency:"USD",adjustmentReference:"capital-1",
