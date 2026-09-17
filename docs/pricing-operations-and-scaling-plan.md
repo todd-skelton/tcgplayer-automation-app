@@ -106,7 +106,7 @@ Realized sales over the four weeks to 2026-09-03 showed the curve's sell-time fo
 
 Every modeled result with observed listings now records that forecast at the listed price as `buyerChoiceForecast`, tagged with the calibration that produced it, beside the curve's own forecast. Its inputs are read from the persisted curve, so a refit needs no new data. Pricing does not read it.
 
-The curve's buyer interval pools sales of every condition, and held out against the following month that pooled rate ranked which slow SKUs would sell barely better than chance, while the SKU's own yearly sale rate ranked them well. Every modeled result now also records `conditionRateForecast`: the median wait at the listed price from a year of the SKU's own weekly sales, weighted toward the last quarter, read from the annual price history that pricing fetches once per product. Pricing does not read it either. The inventory strategy page grades all three forecasts against realized sales of the continuously priced inventory over the newest complete cohort, at a 14, 21, or 28 day horizon. The policy adopts the better forecast only after that comparison, and a randomized price test must follow, because realized sales cover only the prices already listed.
+The curve's buyer interval pools sales of every condition, and held out against the following month that pooled rate ranked which slow SKUs would sell barely better than chance, while the SKU's own yearly sale rate ranked them well. Every modeled result now also records `conditionRateForecast`: the median wait at the listed price from a year of the SKU's own weekly sales, weighted toward the last quarter, read from the annual price history that pricing fetches once per product. Pricing does not read it either. All three forecasts are recorded against realized sales of the continuously priced inventory; the grading view was removed from the inventory strategy page because no cohort had matured. The policy adopts a better forecast only after such a comparison, and a randomized price test must follow, because realized sales cover only the prices already listed.
 
 ## Price floor
 
@@ -127,16 +127,14 @@ The ledgers exist so that condition normalization can be tested forward on direc
 
 ## Inventory strategy page
 
-The page exists to judge the active pricing policy and the forecasts behind it, in this order:
+The page answers three questions, in this order: which hurdle to price at, how fast capital turns, and how fast inventory sells.
 
-- A verdict header names the active policy and its parameter, its modeled physical value against the listed value, its median and P90 wait, the hurdle on the sweep whose portfolio compounds fastest under the capital-cycle inputs and what switching would change, and modeled coverage with curve freshness. A chip reports the best graded forecast's realized sold share against its expected share and Brier score, or the date the first forecast becomes gradable.
-- Forecast grading follows directly, one summary line per forecast and a decile table once a cohort exists.
-- The policy comparison lists the current listed prices, the active policy, and the benchmarks. The target-horizon row appears only while that policy is active; the value-matched calibration is gone.
+- A verdict header names the active policy and its parameter, its modeled physical value against the listed value, its median and P90 wait, the hurdle on the sweep whose portfolio compounds fastest under the assumed cost basis and capital turnaround, and modeled coverage with curve freshness. The cost basis is the estimated purchase cost rule (75% of intake market less 30 cents a unit).
 - The hurdle sweep evaluates the profit-per-day policy at a ladder of daily return hurdles per product line, the configured hurdle shaded, since the hurdle is the only parameter the active policy has.
-- The horizon curve draws the selected product line's fitted log-logistic curve as value and cycle profit per day against horizon, with the knee, best cycle, and active horizon marked, a crosshair tooltip, and a table twin on demand, above a compact per-line table of fit, floor and ceiling, knee, and best cycle.
-- The percentile explorer holds the scenario builder and the full matrix for the percentile policy, collapsed and unmounted until opened.
+- Capital turnaround shows the typical and slower (p90) days from a sale until its proceeds are back on sale, the evidence behind it, and the seller-wide source setting: observed, or manual days used as a fallback when the observed evidence is thin.
+- Selling history shows sold units, time listed before sale, sell-through by age, and the per-product-line breakdown for a chosen window.
 
-The dashboard and the grading are served from a versioned cache that returns the last build at once when only the inventory or its curves moved and rebuilds in the background; a changed pricing configuration waits for its build. The pricing worker warms both after every batch that recorded curves.
+Forecast grading, the policy comparison, the horizon curve, and the percentile explorer were removed from the page; the forecasts and ledgers behind them are still recorded. The dashboard is served from a versioned cache that returns the last build at once when only the inventory or its curves moved and rebuilds in the background; a changed pricing configuration waits for its build. The pricing worker warms it after every batch that recorded curves.
 
 ## Execution record
 

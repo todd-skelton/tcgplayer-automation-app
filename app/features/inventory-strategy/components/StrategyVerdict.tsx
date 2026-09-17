@@ -4,10 +4,8 @@ import type {
   InventoryStrategyDashboard,
   InventoryStrategyProductLine,
 } from "../types/inventoryStrategy";
-import type { ForecastEvaluationReport } from "~/features/pricing/domain/forecastEvaluation";
 import { describePricingPolicy } from "~/features/pricing/components/policyLabel";
 import { profitPerDayPolicy } from "~/features/pricing/types/config";
-import { cyclePortfolio } from "./capitalCycleInputs";
 import {
   currencyFormatter,
   formatAge,
@@ -16,7 +14,7 @@ import {
   formatDelta,
   formatHurdle,
 } from "./format";
-import { forecastGradingOverview, hurdleReturns, type HurdleReturn } from "./verdict";
+import { cyclePortfolio, hurdleReturns, type HurdleReturn } from "./verdict";
 
 function formatReturn(dailyReturn: number): string {
   return `${(dailyReturn * 100).toFixed(2)}%/day`;
@@ -109,17 +107,15 @@ function Stat({
 }
 
 /**
- * The active policy, what it is expected to produce, the best hurdle the
- * sweep offers instead, and whether the forecasts behind it are graded.
+ * The active policy, what it is expected to produce, and the best hurdle
+ * the sweep offers instead.
  */
 export function StrategyVerdict({
   dashboard,
   economics,
-  grading,
 }: {
   dashboard: InventoryStrategyDashboard;
   economics: CapitalCycleEconomics;
-  grading: ForecastEvaluationReport | null;
 }) {
   const { overall } = dashboard;
   const active = overall.policyComparisons.find(
@@ -135,7 +131,6 @@ export function StrategyVerdict({
     returns[0],
     returns.find(({ scenario }) => scenario.configured),
   );
-  const gradingOverview = forecastGradingOverview(grading);
 
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
@@ -148,15 +143,10 @@ export function StrategyVerdict({
       >
         <Typography variant="h6">{policyLabel(dashboard)}</Typography>
         <Chip size="small" color="success" variant="outlined" label="Active" />
-        <Chip
-          size="small"
-          variant="outlined"
-          color={gradingOverview.state === "scored" ? "success" : "default"}
-          label={gradingOverview.label}
-        />
       </Stack>
       <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-        Capital returns are simplified modeled comparisons that assume all net proceeds are reinvested after the effective turnaround. They are not observed portfolio growth or a partial-cash-flow simulation.
+        Modeled returns assume net proceeds are reinvested after the capital
+        turnaround below; they are directional, not observed growth.
       </Typography>
       <Box
         sx={{
@@ -182,7 +172,7 @@ export function StrategyVerdict({
               ? `${active.estimatedTime.medianDays.toFixed(1)} / ${active.estimatedTime.p90Days.toFixed(1)} days`
               : "Not modeled"
           }
-          detail="Median / P90 for the next sale, weighted by units"
+          detail="Median / P90 until the next sale, weighted by units; not liquidation of every unit"
         />
         <Stat label="Best hurdle" value={best.value} detail={best.detail} />
         <Stat
