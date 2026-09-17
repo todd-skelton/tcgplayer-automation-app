@@ -3,6 +3,7 @@ import { inventoryEconomicsRepository } from "~/core/db";
 import { getShippingExportConfig } from "~/features/shipping-export/config/shippingExportConfig.server";
 import { dollarsToCents } from "../domain/money";
 import { loadInventoryEconomicsWorkspace } from "../services/inventoryEconomics.server";
+import { recordEstimatedPurchaseCosts } from "../services/estimatedPurchaseCosts.server";
 import { importPurchaseCostCsv, MAX_PURCHASE_COST_CSV_BYTES } from "../services/purchaseCostFileImport.server";
 
 function text(value: unknown, label: string): string {
@@ -59,6 +60,7 @@ export function createInventoryEconomicsHandlers(dependencies = {
   recordOrderExpense: inventoryEconomicsRepository.recordOrderExpense,
   findPurchaseAllocationTargets: inventoryEconomicsRepository.findPurchaseAllocationTargets,
   importPurchaseCosts: importPurchaseCostCsv,
+  recordEstimatedPurchaseCosts,
 }) {
   const configuredSeller = async () => {
     const sellerKey = (await dependencies.getConfig()).defaultSellerKey.trim();
@@ -75,6 +77,11 @@ export function createInventoryEconomicsHandlers(dependencies = {
       try {
         const sellerKey = await configuredSeller();
         const payload = await request.json() as Record<string, unknown>;
+        if (payload.action === "record_estimated_purchase_costs") {
+          const result = await dependencies.recordEstimatedPurchaseCosts(sellerKey,
+            payload.batchNumbers === undefined ? {} : { batchNumbers:parseBatchNumbers(payload.batchNumbers) });
+          return data({ result, workspace: await dependencies.loadWorkspace(sellerKey) });
+        }
         const requestId = text(payload.requestId, "Request ID");
         const currency = text(payload.currency ?? "USD", "Currency");
         if (payload.action === "find_purchase_allocation_targets") {

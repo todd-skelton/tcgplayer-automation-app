@@ -439,6 +439,51 @@ export const inventoryEconomicsRepository = {
     return { targets:rows.slice(0,10000),complete:rows.length <= 10000 };
   },
 
+  /**
+   * Received lots linked to batches whose lots have no purchase cost yet, grouped by batch.
+   * A batch is returned only when none of its lots belong to any purchase, so an estimate
+   * never competes with an entered cost.
+   */
+  async findUncostedBatchReceipts(sellerKey: string, options: { batchNumbers?: number[]; limit?: number } = {}, executor?: Queryable) {
+    const seller = normalizeReference(sellerKey,"Seller key");
+    const limit = options.limit ?? 100;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 1000) throw new Error("Batch limit must be between 1 and 1000.");
+    const batchNumbers = options.batchNumbers === undefined ? null : [...new Set(options.batchNumbers)];
+    if (batchNumbers && (!batchNumbers.length || batchNumbers.some((value) => !Number.isInteger(value) || value <= 0))) {
+      throw new Error("Batch numbers must be positive integers.");
+    }
+    const rows = await query<{
+      batchNumber: number; receiptId: number; originalQuantity: number; marketValue: number | null; intakeAt: Date | null;
+    }>(`WITH uncosted AS (
+        SELECT link.batch_number
+        FROM inventory_receipt_batch_links link
+        JOIN inventory_receipts receipt ON receipt.receipt_id=link.receipt_id
+        WHERE receipt.receipt_kind='received'
+          AND (receipt.seller_key IS NULL OR receipt.seller_key=$1)
+          AND ($2::int[] IS NULL OR link.batch_number=ANY($2::int[]))
+        GROUP BY link.batch_number
+        HAVING NOT EXISTS (
+          SELECT 1 FROM inventory_receipt_batch_links owned
+          JOIN inventory_purchase_receipt_ownership ownership ON ownership.receipt_id=owned.receipt_id
+          WHERE owned.batch_number=link.batch_number)
+        ORDER BY link.batch_number LIMIT $3)
+      SELECT link.batch_number AS "batchNumber",receipt.receipt_id AS "receiptId",
+        receipt.original_quantity AS "originalQuantity",receipt.market_value::float8 AS "marketValue",
+        receipt.intake_at AS "intakeAt"
+      FROM uncosted
+      JOIN inventory_receipt_batch_links link ON link.batch_number=uncosted.batch_number
+      JOIN inventory_receipts receipt ON receipt.receipt_id=link.receipt_id
+      ORDER BY link.batch_number,receipt.receipt_id`,[seller,batchNumbers,limit],executor);
+    const batches = new Map<number, Array<{ receiptId: number; originalQuantity: number; marketValue: number | null; intakeAt: string | null }>>();
+    for (const row of rows) {
+      const receipts = batches.get(row.batchNumber) ?? [];
+      receipts.push({ receiptId: row.receiptId, originalQuantity: row.originalQuantity, marketValue: row.marketValue,
+        intakeAt: row.intakeAt ? row.intakeAt.toISOString() : null });
+      batches.set(row.batchNumber, receipts);
+    }
+    return [...batches].map(([batchNumber, receipts]) => ({ batchNumber, receipts }));
+  },
+
   async findWorkspaceEvidence(sellerKey: string, limit = 100, executor?:Queryable) {
     const seller = sellerKey.trim();
     const orders = await query<{
