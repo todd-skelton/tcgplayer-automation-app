@@ -461,11 +461,6 @@ export const inventoryFifoRepository={
         intakeAt:row.intakeAt?(row.intakeAt as Date).toISOString():null,
         marketValueTenThousandths:row.marketValue===null?null:Math.round(Number(row.marketValue)*10_000),
       }));
-      const allocatable:FifoOrderLine[]=demand.filter((row)=>row.quantity>0&&row.orderTime>=historyFrom).map((row)=>({
-        lineKey:`${row.orderId}:${row.skuId}`,orderId:row.orderId,orderNumber:row.orderNumber,
-        orderTime:(row.orderTime as Date).toISOString(),quantity:row.quantity,
-      }));
-      const results=new Map(allocateInventoryFifo(allocatable,supplies).map((result)=>[result.lineKey,result]));
       const shipped=await query<{orderId:string}>(`SELECT DISTINCT revision.order_id::text AS "orderId"
         FROM seller_order_revisions revision JOIN seller_orders orders ON orders.id=revision.order_id
         WHERE orders.seller_key=$1 AND revision.lifecycle IN ('shipped_in_transit','shipped_delivered')
@@ -479,6 +474,17 @@ export const inventoryFifoRepository={
         const lineKey=`${disposition.orderId}:${disposition.skuId}`;
         dispositionsByLine.set(lineKey,[...(dispositionsByLine.get(lineKey)??[]),disposition]);
       }
+      // A canceled order that never shipped never consumed stock: the seller puts it straight back in the
+      // portal. A canceled order that shipped is a return; it comes back as new intake in a later batch,
+      // so its sale stands. Recorded dispositions still take precedence over either assumption.
+      const unfulfilledCancellation=(row:any)=>row.lifecycle==="canceled"&&!shippedOrders.has(row.orderId)&&
+        !dispositionsByLine.has(`${row.orderId}:${row.skuId}`);
+      const allocatable:FifoOrderLine[]=demand.filter((row)=>row.quantity>0&&row.orderTime>=historyFrom&&
+        !unfulfilledCancellation(row)).map((row)=>({
+        lineKey:`${row.orderId}:${row.skuId}`,orderId:row.orderId,orderNumber:row.orderNumber,
+        orderTime:(row.orderTime as Date).toISOString(),quantity:row.quantity,
+      }));
+      const results=new Map(allocateInventoryFifo(allocatable,supplies).map((result)=>[result.lineKey,result]));
       for(const disposition of dispositionRows){
         if(disposition.corrected)continue;
         const result=results.get(`${disposition.orderId}:${disposition.skuId}`);
@@ -499,7 +505,11 @@ export const inventoryFifoRepository={
         let holdReason:string|null=null;
         if(row.quantity===0){state="removed";result={...result,unmatchedQuantity:0};}
         else if(row.orderTime<historyFrom){state="excluded_pre_cutoff";result={...result,matchedQuantity:0,unmatchedQuantity:row.quantity,allocations:[],priceKnownQuantity:0,intakeMarketTotalCents:null,dateKnownQuantity:0,weightedDaysHeld:null};}
-        else if(row.lifecycle==="canceled"){
+        else if(unfulfilledCancellation(row)){
+          state="canceled_unfulfilled";
+          result={...result,matchedQuantity:0,unmatchedQuantity:row.quantity,allocations:[],priceKnownQuantity:0,intakeMarketTotalCents:null,dateKnownQuantity:0,weightedDaysHeld:null};
+        }
+        else if(row.lifecycle==="canceled"&&dispositionsByLine.has(key)){
           const lineDispositions=dispositionsByLine.get(key)??[];
           const restored=lineDispositions.reduce((sum,value)=>sum+value.quantity,0);
           const restorationProven=restored>=row.quantity&&lineDispositions.every((value)=>
@@ -507,7 +517,7 @@ export const inventoryFifoRepository={
           if(!restorationProven){
             state="held";holdReason=shippedOrders.has(row.orderId)?"canceled_after_shipping_requires_restock":"cancellation_requires_disposition";
           }
-        }else if(!supportedLifecycles.has(row.lifecycle)){state="held";holdReason="unknown_order_lifecycle";}
+        }else if(row.lifecycle!=="canceled"&&!supportedLifecycles.has(row.lifecycle)){state="held";holdReason="unknown_order_lifecycle";}
         const initialDecrease=initialDecreases.get(key);
         if(initialDecrease){
           state="held";holdReason=`order_quantity_decrease_requires_correction:${initialDecrease.lineId}`;
