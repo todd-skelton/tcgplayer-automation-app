@@ -99,21 +99,24 @@ assert.equal(capitalCycle(100, 20, { marketValue: 100, unitCount: 1 }, {
 const recentUnknown = structuredClone(report);
 recentUnknown.coverage.unknownProceeds.push({ soldAt: "2026-09-01T00:00:00.000Z" });
 recentUnknown.coverage.unknownProceedsOrderCount += 1;
-assert.equal(selectTurnaround(sellerKey, null, observed, recentUnknown, null, now).effectiveSource, "manual-fallback");
+const recentUnknownSelection = selectTurnaround(sellerKey, null, observed, recentUnknown, null, now);
+assert.equal(recentUnknownSelection.effectiveSource, "observed-seller", "orders without proceeds are left out, not blocking");
+assert.match(recentUnknownSelection.evidence?.limitations.join(" ") ?? "", /lack proceeds evidence/i);
 
 const waiting = structuredClone(report);
 waiting.currencies[0].waitingCents = 1;
 waiting.currencies[0].completionCoveragePercent = 99;
-assert.match(selectTurnaround(sellerKey, null, observed, waiting, null, now).fallbackReasons.join(" "), /incomplete/i);
+const waitingSelection = selectTurnaround(sellerKey, null, observed, waiting, null, now);
+assert.equal(waitingSelection.effectiveSource, "observed-seller", "waiting proceeds are noted, not blocking");
+assert.match(waitingSelection.evidence?.limitations.join(" ") ?? "", /still waiting/i);
 
 const currentExcess = structuredClone(report);
 currentExcess.unsupportedPurchaseFunding = [{kind:"above_current_cost",adjustmentReference:"excess",
   purchaseReference:"purchase-1",currency:"USD",amountCents:2_000,effectiveAt:"2026-09-01",sourceIdentity:"excess"}];
 const excessSelection=selectTurnaround(sellerKey,null,observed,currentExcess,null,now);
-assert.equal(excessSelection.effectiveSource,"manual-fallback");
-assert.equal(excessSelection.effectiveDays,28);
+assert.equal(excessSelection.effectiveSource,"observed-seller","excess funding is ignored, not blocking");
 assert.deepEqual(excessSelection.evidence?.unsupportedPurchaseFunding,[{currency:"USD",amountCents:2_000}]);
-assert.match(excessSelection.fallbackReasons.join(" "),/purchase funding remains unsupported/i);
+assert.match(excessSelection.evidence?.limitations.join(" ") ?? "",/exceeds its matching purchase cost/i);
 
 const futureExcess = structuredClone(currentExcess);
 futureExcess.unsupportedPurchaseFunding[0].effectiveAt="2026-09-09";
@@ -154,11 +157,15 @@ const oldReport=structuredClone(report) as ReinvestmentTurnaroundReport;
 Object.assign(oldReport,{ruleVersion:"pooled-proceeds/v1"});
 assert.equal(selectTurnaround(sellerKey,null,observed,oldReport,null,now).effectiveSource,"manual-fallback");
 
-const poorLine = structuredClone(report);
-poorLine.samples = poorLine.samples.slice(0, 2).map((value) => ({ ...value, proceedsProvenance: "estimated" }));
-assert.equal(selectTurnaround(sellerKey, lineId, observed, poorLine, null, now).effectiveSource, "manual-fallback");
-assert.match(selectTurnaround(sellerKey, lineId, observed, poorLine, null, now).fallbackReasons.join(" "), /less than 80%/i);
+const estimatedLine = structuredClone(report);
+estimatedLine.samples = estimatedLine.samples.map((value) => ({ ...value, proceedsProvenance: "estimated", costProvenance: "estimated" }));
+const estimatedSelection = selectTurnaround(sellerKey, null, observed, estimatedLine, null, now);
+assert.equal(estimatedSelection.effectiveSource, "observed-seller", "estimated cost and proceeds are enough for strategy");
+assert.equal(estimatedSelection.evidence?.confidence, "medium");
+const sparseLine = structuredClone(report);
+sparseLine.samples = sparseLine.samples.slice(0, 2);
+assert.equal(selectTurnaround(sellerKey, lineId, observed, sparseLine, null, now).effectiveSource, "manual-fallback");
 
 assert.equal(selectTurnaround(sellerKey, null, observed, report, "rebuild failed", now).effectiveSource, "manual-fallback");
 assert.equal(selectTurnaround("another-seller", null, [{ ...observed[0], sellerKey: "another-seller" }], report, null, now).effectiveSource, "manual-fallback");
-console.log("PASS observed turnaround selects only complete, fresh, seller-scoped evidence with explicit fallback");
+console.log("PASS observed turnaround selects fresh, seller-scoped evidence and notes assumed gaps instead of blocking");

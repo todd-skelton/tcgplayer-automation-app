@@ -76,6 +76,14 @@ const canceled = calculateOrderEconomics({
 });
 assert.equal(canceled.reusableCashCents, undefined);
 assert.match(canceled.missing.join(" "), /final sale settlement/);
+const canceledAssumed = calculateOrderEconomics({
+  ...completeOrder,
+  orderNumber: "SYNTHETIC-ORDER-CANCELED-ASSUMED",
+  lifecycle: "canceled",
+  refundSettlement: { amountCents: 0, provenance: "estimated", basis: "already_adjusted_net" },
+});
+assert.equal(canceledAssumed.reusableCashCents, 0 - (completeOrder.postageCents ?? 0), "an assumed final settlement makes a canceled order estimated");
+assert.equal(canceledAssumed.proceedsCoverage, "estimated");
 
 const partialCost = calculateOrderEconomics({
   ...completeOrder,

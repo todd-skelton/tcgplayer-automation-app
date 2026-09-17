@@ -4,6 +4,7 @@ import type { Queryable } from "~/core/db/database.server";
 import { allocateAmountCents } from "../domain/money";
 import { calculateOrderEconomics } from "../domain/orderEconomics";
 import { allocatePurchasedPostage } from "../domain/postage";
+import { assumePostageCents, assumeRefundSettlement, refundEvidence } from "../domain/strategyAssumptions";
 import type { InventoryEconomicsWorkspace, OrderExpenseSummary } from "../types/inventoryEconomics";
 
 type Evidence = Awaited<ReturnType<typeof inventoryEconomicsRepository.findWorkspaceEvidence>>;
@@ -17,20 +18,6 @@ function stableJson(value: unknown): string {
 export function financialFingerprint(order: Evidence["orders"][number]): string {
   return createHash("sha256").update(stableJson({transaction:order.transactionEvidence,refunds:order.refunds})).digest("hex");
 }
-function refundEvidence(refundStatus: string | null, refunds: unknown) {
-  const noRefund = refundStatus?.trim().toLowerCase() === "no refund";
-  if (!Array.isArray(refunds)) return { status:"unknown" as const };
-  if (noRefund && refunds.length === 0) return { status:"none" as const };
-  if (!refunds.length) return { status:"unknown" as const };
-  const amounts = refunds.map((refund) =>
-    refund && typeof refund === "object" ? (refund as { amount?: unknown }).amount : undefined);
-  if (amounts.some((amount) => typeof amount !== "number" || !Number.isFinite(amount) || amount < 0 ||
-      !Number.isSafeInteger(Math.round(amount * 100)) || Math.abs(amount * 100 - Math.round(amount * 100)) > 1e-7)) {
-    return { status:"unknown" as const };
-  }
-  return { status:"known" as const,cents:(amounts as number[]).reduce((sum,amount)=>sum+Math.round(amount*100),0) };
-}
-
 function allocateSharedExpenses(expenses: readonly OrderExpenseSummary[]) {
   const byOrder = new Map<string, Array<{ amountCents: number; provenance: "actual" | "estimated"; type: string; basis: string; financialSourceFingerprint?: string }>>();
   for (const expense of expenses) {
@@ -92,6 +79,7 @@ export function calculateInventoryEconomicsOrders(sellerKey:string,evidence: Evi
   const costEvidence = allocateReceiptCosts(evidence);
   const postageByOrder = evidence.postageComplete
     ? allocatePurchasedPostage(sellerKey, "USD", evidence.postage) : new Map<string,number>();
+  const assumedPostageCents = assumePostageCents([...postageByOrder.values()]);
   return evidence.orders.map((order) => {
       const expenses = expensesByOrder.get(`${order.currency}\u0000${order.orderNumber}`) ?? [];
       const settlement = expenses.find((expense) => expense.type === "refund_settlement" &&
@@ -102,9 +90,17 @@ export function calculateInventoryEconomicsOrders(sellerKey:string,evidence: Evi
       const settledQuantity = costEvidence.settledByOrder.get(order.id) ?? 0;
       const cost = rawCost && rawCost.quantity === order.orderedQuantity && settledQuantity === order.orderedQuantity &&
         rawCost.currency === order.currency ? rawCost : undefined;
-      const postageCents = postageByOrder.get(order.orderNumber);
       const hasExplicitFulfillment = expenses.some((expense) => expense.type === "fulfillment");
+      const purchasedPostageCents = postageByOrder.get(order.orderNumber);
+      const postageCents = purchasedPostageCents ?? (hasExplicitFulfillment ? undefined : order.lifecycle === "canceled" ? 0 : assumedPostageCents);
       const refund = refundEvidence(order.refundStatus,order.refunds);
+      const refundSettlement = settlement
+        ? { amountCents: settlement.amountCents, provenance: settlement.provenance,
+            basis: settlement.basis as "original_net_refund_adjustment" | "already_adjusted_net" }
+        : refund.status === "known" || order.lifecycle === "canceled"
+          ? assumeRefundSettlement({ lifecycle: order.lifecycle, refundGrossCents: refund.status === "known" ? refund.cents : 0,
+              grossOrderCents: order.grossOrderCents, providerNetCents: order.providerNetCents })
+          : undefined;
       return calculateOrderEconomics({
         orderNumber: order.orderNumber,
         currency: order.currency,
@@ -117,11 +113,10 @@ export function calculateInventoryEconomicsOrders(sellerKey:string,evidence: Evi
         ...(order.providerNetCents !== null ? { providerNetCents: order.providerNetCents } : {}),
         ...(order.directFeeCents !== null ? { directFeeCents: order.directFeeCents } : {}),
         refundEvidence:refund.status,...(refund.status === "known" ? { refundGrossCents:refund.cents } : {}),
-        ...(settlement ? { refundSettlement: { amountCents: settlement.amountCents,
-          provenance: settlement.provenance, basis: settlement.basis as "original_net_refund_adjustment" | "already_adjusted_net" } } : {}),
+        ...(refundSettlement ? { refundSettlement } : {}),
         ...(postageCents !== undefined ? { postageCents } : {}),
-        postageCoverage: postageCents !== undefined ? "actual"
-          : hasExplicitFulfillment ? (expenses.some((expense) => expense.provenance === "estimated") ? "estimated" : "actual") : "unknown",
+        postageCoverage: purchasedPostageCents !== undefined ? "actual"
+          : hasExplicitFulfillment ? (expenses.some((expense) => expense.provenance === "estimated") ? "estimated" : "actual") : "estimated",
         expenseEvidenceComplete:evidence.relevantExpensesComplete,
         otherExpenses,
         ...(cost ? { acquisitionCostCents: cost.cents } : {}),

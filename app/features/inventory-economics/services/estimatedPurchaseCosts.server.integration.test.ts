@@ -63,10 +63,19 @@ try {
     provenance: "estimated", source: "intake", allocationRule: "explicit", batchNumbers: [steady.batchNumber],
     purchasedAt: "2026-09-06", explicitAllocations: [{ receiptId: steady.receiptIds[0], amountCents: 270 }] });
 
-  const batchNumbers = [priced.batchNumber, unquoted.batchNumber, entered.batchNumber, floored.batchNumber, steady.batchNumber];
+  const observed = await seedBatch("first-observed", [{ quantity: 2, market: null, intakeAt: "2026-09-07T12:00:00Z" }]);
+  const observedSku = await queryOne<{ sku: number }>(`SELECT sku FROM inventory_receipts WHERE receipt_id=$1`, [observed.receiptIds[0]]);
+  await execute(`INSERT INTO continuous_pricing_inventory
+    (seller_key,sku,product_id,product_line_id,set_id,product_line,set_name,product_name,condition,quantity,last_observed_at,created_at,market_price)
+    VALUES ($1,$2,1,1,1,'Line','Set','Card','Near Mint',2,'2026-08-06T00:00:00Z','2026-08-06T00:00:00Z',9.00)`, [sellerKey, observedSku!.sku]);
+  await execute(`INSERT INTO product_weekly_sales (sku_id,product_id,condition,week_start,transactions,quantity,tcg_market_price)
+    VALUES ($1,1,'Near Mint','2026-08-03',1,1,4.00),($1,1,'Near Mint','2026-08-10',1,1,6.00)`, [observedSku!.sku]);
+
+  const batchNumbers = [priced.batchNumber, unquoted.batchNumber, entered.batchNumber, floored.batchNumber, steady.batchNumber, observed.batchNumber];
   const first = await recordEstimatedPurchaseCosts(sellerKey, { batchNumbers });
   assert.deepEqual(first.recorded.map((entry) => [entry.batchNumber, entry.totalAmountCents, entry.unitCount, entry.correctsEntryId ?? null]),
-    [[priced.batchNumber, 1407, 5, null], [floored.batchNumber, 226, 3, flooredV1.entryId]]);
+    [[priced.batchNumber, 1407, 5, null], [floored.batchNumber, 226, 3, flooredV1.entryId],
+      [observed.batchNumber, 540, 2, null]]);
   assert.deepEqual(first.repeated, []);
   assert.deepEqual(first.unchanged, [steady.batchNumber]);
   assert.deepEqual(first.marketUnavailable, [{ batchNumber: unquoted.batchNumber, receiptIds: unquoted.receiptIds }]);
@@ -97,7 +106,7 @@ try {
 
   const second = await recordEstimatedPurchaseCosts(sellerKey, { batchNumbers });
   assert.deepEqual(second.recorded, []);
-  assert.deepEqual(second.repeated, [priced.batchNumber, floored.batchNumber]);
+  assert.deepEqual(second.repeated, [priced.batchNumber, floored.batchNumber, observed.batchNumber]);
   assert.deepEqual(second.unchanged, [steady.batchNumber]);
   assert.deepEqual(second.marketUnavailable.map((batch) => batch.batchNumber), [unquoted.batchNumber]);
   const enteredEntries = await query<{ provenance: string }>(

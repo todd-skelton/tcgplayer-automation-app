@@ -5,6 +5,7 @@ import "../features/inventory-economics/domain/money.test";
 import "../features/inventory-economics/domain/orderEconomics.test";
 import "../features/inventory-economics/domain/postage.test";
 import "../features/inventory-economics/domain/purchaseCostDetails.test";
+import "../features/inventory-economics/domain/strategyAssumptions.test";
 import "../features/inventory-economics/domain/estimatedPurchaseCost.test";
 import "../features/inventory-economics/services/purchaseCostFileImport.test";
 import "../features/inventory-economics/services/estimatedPurchaseCosts.server.test";

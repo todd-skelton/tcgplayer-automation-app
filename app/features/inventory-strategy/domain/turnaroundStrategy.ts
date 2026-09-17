@@ -17,7 +17,6 @@ export const TURNAROUND_EVIDENCE_POLICY = {
   maximumOrderCoverageAgeHours: 24,
   minimumCompletedPurchases: 20,
   minimumSaleSpanDays: 14,
-  minimumProvenancePercent: 80,
   supportedOrderSearchRange: "LastThreeMonths",
 } as const;
 
@@ -106,6 +105,8 @@ function evaluate(
 ): Evaluation {
   if (!report) return { status: "ineligible", reasons: ["No saved reinvestment evidence is available."], evidence: null };
   const reasons: string[] = [];
+  // Evidence gaps that strategy fills by assumption; they are reported, never blocking.
+  const notes: string[] = [];
   const nowMs = now.getTime();
   const asOf = instant(report.asOf);
   const rawCoverage = report.coverage as ReinvestmentTurnaroundReport["coverage"] & {
@@ -127,17 +128,17 @@ function evaluate(
     reasons.push("The report as-of time is missing, future, or older than 24 hours.");
   }
   if (!orderCoverage) {
-    reasons.push("A recent complete Seller Portal order scan is unavailable.");
+    notes.push("No complete Seller Portal order scan is available; proceeds are taken from the orders observed.");
   } else {
     const finishedAt = instant(orderCoverage.finishedAt);
     if (orderCoverage.status !== "complete" || orderCoverage.source !== "tcgplayer_api" ||
         orderCoverage.searchRange !== TURNAROUND_EVIDENCE_POLICY.supportedOrderSearchRange ||
         orderCoverage.expectedTotal === null || orderCoverage.nextOffset < orderCoverage.expectedTotal ||
         orderCoverage.ordersObserved < orderCoverage.expectedTotal || orderCoverage.gaps.length > 0) {
-      reasons.push("The latest Seller Portal order scan does not satisfy its complete LastThreeMonths contract.");
+      notes.push("The latest Seller Portal order scan is incomplete; proceeds are taken from the orders observed.");
     }
     if (finishedAt === null || finishedAt > nowMs || nowMs - finishedAt > TURNAROUND_EVIDENCE_POLICY.maximumOrderCoverageAgeHours * HOUR) {
-      reasons.push("The complete Seller Portal order scan is older than 24 hours.");
+      notes.push("The Seller Portal order scan is older than 24 hours.");
     }
   }
   const currency = report.currencies.filter((summary) => [
@@ -166,10 +167,10 @@ function evaluate(
   if (usd && (usd.waitingCents > 0 || usd.unallocatedProceedsCents > 0 || usd.unresolvedPurchaseCostCents > 0 ||
       usd.unsupportedFundingAdjustmentCents > 0 || usd.outstandingNegativeDeficitCents > 0 ||
       usd.reinvestedPercent !== 100 || usd.completionCoveragePercent !== 100)) {
-    reasons.push("Known proceeds remain waiting, unallocated, unresolved, unsupported, withdrawn, reserved, or otherwise incomplete.");
+    notes.push("Some proceeds are still waiting, unallocated, or otherwise outside completed cycles; only completed cycles are measured.");
   }
   if (currentUnsupported.some((item)=>item.amountCents>0)) {
-    reasons.push("Current purchase funding remains unsupported by a matching purchase cost.");
+    notes.push("Some purchase funding exceeds its matching purchase cost and is ignored.");
   }
   const cohortStart = asOf === null ? null : asOf - TURNAROUND_EVIDENCE_POLICY.observationDays * DAY;
   const unknownProceeds = rawCoverage.unknownProceeds ?? [];
@@ -184,14 +185,14 @@ function evaluate(
     return soldAt !== null && soldAt < cohortStart;
   }).length;
   if (missingUnknownProceedsDates > 0 || recentUnknownProceeds > 0) {
-    reasons.push("Recent or undated orders lack complete reusable-proceeds evidence.");
+    notes.push("Some recent orders lack proceeds evidence and are left out.");
   }
 
   const allScopedSamples = report.samples.filter((sample) => sample.currency === "USD" &&
     (productLineId === null || sample.productLineId === productLineId));
   const completedLifetime = allScopedSamples.filter((sample) => sample.state === "completed");
   const waitingLifetime = allScopedSamples.filter((sample) => sample.state === "waiting");
-  if (waitingLifetime.length > 0) reasons.push("The selected cohort has sale proceeds still waiting for publication.");
+  if (waitingLifetime.length > 0) notes.push("Some sale proceeds are still waiting for publication and are not yet cycles.");
   const recentUnknownCosts = (rawCoverage.unknownCosts ?? []).filter((item) => {
     if (productLineId !== null && item.productLineId !== productLineId) return false;
     const occurredAt = instant(item.occurredAt);
@@ -203,7 +204,7 @@ function evaluate(
     const occurredAt = instant(item.occurredAt);
     return occurredAt !== null && occurredAt < cohortStart;
   }).length;
-  if (recentUnknownCosts.length > 0) reasons.push("The selected cohort has recent or undated received inventory without supported cost.");
+  if (recentUnknownCosts.length > 0) notes.push("Some recent received inventory has no cost yet and is left out.");
 
   const completed = cohortStart === null || asOf === null ? [] : completedLifetime.filter((sample) => {
     const soldAt = instant(sample.soldAt);
@@ -229,17 +230,15 @@ function evaluate(
   const actualProceedsPercent = weightedPercent(completed, (sample) => sample.proceedsProvenance === "actual");
   const actualCostPercent = weightedPercent(completed, (sample) => sample.costProvenance === "actual");
   const knownFundingPercent = weightedPercent(completed, (sample) => sample.fundingProvenance !== "inferred");
-  const provenanceBad = completed.length > 0 && [actualProceedsPercent, actualCostPercent, knownFundingPercent]
-    .some((value) => value === null || value < TURNAROUND_EVIDENCE_POLICY.minimumProvenancePercent);
-  if (provenanceBad) reasons.push("Actual proceeds, actual cost, or known funding covers less than 80% of the selected cohort.");
   if (latestPublication !== null && nowMs - latestPublication > TURNAROUND_EVIDENCE_POLICY.observationDays * DAY) {
-    reasons.push("The selected cohort has no recently completed replacement publication.");
+    notes.push("The selected cohort has no recently completed replacement publication.");
   }
 
   const limitations = [
-    "Funding is a pooled financial attribution, not a physical replacement link or proof of bank cash availability.",
-    "Typical is a completed dollar-weighted mean; it is selected only when known money is complete.",
+    "Costs, proceeds, and funding dates are estimated by the strategy assumptions where evidence is missing; figures are directional.",
+    "Typical is a completed dollar-weighted mean of the last 90 days of cycles.",
     "Slower is the completed dollar-weighted p90 scenario, not a confidence bound.",
+    ...notes,
   ];
   const evidence: TurnaroundEvidenceSummary = {
     scope: productLineId === null ? "seller" : "product-line",
@@ -273,9 +272,9 @@ function evaluate(
     orderCoverageFinishedAt: orderCoverage?.finishedAt ?? null,
     orderObservedFrom: orderCoverage?.observedFrom ?? null,
     orderObservedThrough: orderCoverage?.observedThrough ?? null,
-    confidence: purchases >= 40 && actualProceedsPercent === 100 && actualCostPercent === 100 && knownFundingPercent === 100
+    confidence: purchases >= 40
       ? "high"
-      : purchases >= TURNAROUND_EVIDENCE_POLICY.minimumCompletedPurchases && !provenanceBad
+      : purchases >= TURNAROUND_EVIDENCE_POLICY.minimumCompletedPurchases
         ? "medium"
         : completed.length > 0 ? "low" : "unavailable",
     limitations,
@@ -302,7 +301,7 @@ function evaluate(
   }
   if (sparse) reasons.push(`Observed mode needs 20 completed purchases spanning at least 14 sale days; this cohort has ${purchases} across ${spanDays.toFixed(1)} days.`);
   if (reasons.length > 0) {
-    evidence.confidence = provenanceBad ? "low" : "unavailable";
+    evidence.confidence = "unavailable";
     return { status: "ineligible", reasons, evidence };
   }
   return { status: "eligible", reasons: [], evidence };

@@ -17,12 +17,14 @@ export function assertCurrency(value: unknown): string {
   return value.trim();
 }
 
+/** Splits a signed whole-cent total across weighted targets; a negative total is split by magnitude and keeps its sign. */
 export function allocateAmountCents(
   totalAmountCents: number,
   targets: readonly WeightedAmountTarget[],
 ): AllocatedAmount[] {
-  if (!Number.isSafeInteger(totalAmountCents) || totalAmountCents < 0) {
-    throw new Error("Total amount must be nonnegative whole cents.");
+  if (!Number.isSafeInteger(totalAmountCents)) throw new Error("Total amount must be whole cents.");
+  if (totalAmountCents < 0) {
+    return allocateAmountCents(-totalAmountCents, targets).map((share) => ({ ...share, amountCents: -share.amountCents }));
   }
   if (targets.length === 0) throw new Error("At least one allocation target is required.");
   const normalized = targets.map((target) => {

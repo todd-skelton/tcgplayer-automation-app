@@ -50,8 +50,7 @@ export function calculateOrderEconomics(
   if (evidence.postageCoverage === "unknown") missing.push("postage expense");
   if (!evidence.expenseEvidenceComplete) missing.push("complete order expense history");
   if (evidence.acquisitionCostCoverage === "unknown") missing.push("acquisition cost");
-  const explicitlyFinal = evidence.refundSettlement?.basis === "already_adjusted_net" &&
-    evidence.refundSettlement.provenance === "actual";
+  const explicitlyFinal = evidence.refundSettlement?.basis === "already_adjusted_net";
   if (evidence.lifecycle === "canceled" && !explicitlyFinal) missing.push("verified final sale settlement");
 
   const hasEstimatedExpense =

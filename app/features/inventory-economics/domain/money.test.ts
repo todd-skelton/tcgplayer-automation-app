@@ -16,6 +16,8 @@ assert.deepEqual(allocated, [
   { id: "receipt-3", amountCents: 33 },
 ]);
 assert.equal(allocated.reduce((sum, value) => sum + value.amountCents, 0), 100);
+assert.deepEqual(allocateAmountCents(-33, [{ id: "a", weight: 2 }, { id: "b", weight: 1 }]),
+  [{ id: "a", amountCents: -22 }, { id: "b", amountCents: -11 }], "a negative total is split by magnitude and keeps its sign");
 const large = allocateAmountCents(9_007_199_254_740_920, [
   { id: "a", weight: 72 }, { id: "b", weight: 3 }, { id: "c", weight: 7 },
 ]);

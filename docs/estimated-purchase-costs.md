@@ -13,7 +13,7 @@ Entries carry provenance `estimated`, source `intake`, request ID `estimated-pur
 - Automatically when a pending-inventory batch is created without an entered cost and a default shipping seller is configured. An entered cost is always recorded instead of the estimate.
 - On demand through `POST /api/inventory-economics` with `{"action":"record_estimated_purchase_costs"}` and an optional `batchNumbers` list. This is the backfill path: it walks every batch of the seller whose received lots have no purchase cost allocation and records one estimate per batch.
 
-Both paths are idempotent. A batch with an entered cost is never touched; a batch already estimated under the current rule is reported as `repeated`, and one estimated under an earlier rule with identical amounts as `unchanged`. A batch with a lot that has no intake market quote is reported under `marketUnavailable` and left uncosted rather than partially estimated.
+Both paths are idempotent. A batch with an entered cost is never touched; a batch already estimated under the current rule is reported as `repeated`, and one estimated under an earlier rule with identical amounts as `unchanged`. A lot with no intake market quote takes the SKU's market price when the seller's inventory was first observed, else its current market price; a batch with a lot that has none of these is reported under `marketUnavailable` and left uncosted rather than partially estimated. Opening-balance lots are gathered into one `opening_balance` batch per seller (migration 047) so they can be estimated the same way.
 
 ## Negative costs
 
@@ -21,4 +21,4 @@ The ledger stores the signed estimate: per-lot allocations and the batch total m
 
 ## What estimates do not do
 
-Estimated costs are labeled estimated everywhere they appear and never replace an entered cost. Inventory Strategy observed turnaround still requires at least 80% of completed dollars to carry actual cost, so estimates alone do not enable automatic turnaround selection.
+Estimated costs are labeled estimated everywhere they appear and never replace an entered cost. Strategy treats estimated cost as sufficient (see `docs/strategy-assumptions.md`); nothing requires an actual cost.
