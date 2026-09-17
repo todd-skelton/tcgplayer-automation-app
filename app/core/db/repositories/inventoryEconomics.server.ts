@@ -459,6 +459,8 @@ export const inventoryEconomicsRepository = {
    * batches whose lots have no purchase cost yet (`currentEstimate` null) and batches whose
    * lots all belong to the batch's own estimated purchase, returned with the current entry
    * so a changed rule can correct it. A batch touching an entered cost is never returned.
+   * A lot without an intake market takes the SKU's market when the seller's inventory was
+   * first observed, else its current market, so opening-balance stock can be estimated.
    */
   async findEstimableBatchReceipts(sellerKey: string, options: { batchNumbers?: number[]; limit?: number } = {}, executor?: Queryable) {
     const seller = normalizeReference(sellerKey,"Seller key");
@@ -477,7 +479,7 @@ export const inventoryEconomicsRepository = {
         JOIN inventory_receipts receipt ON receipt.receipt_id=link.receipt_id
         LEFT JOIN inventory_purchase_receipt_ownership ownership ON ownership.receipt_id=receipt.receipt_id
         LEFT JOIN inventory_purchase_cost_series series ON series.id=ownership.series_id
-        WHERE receipt.receipt_kind='received'
+        WHERE receipt.receipt_kind IN ('received','opening_balance')
           AND (receipt.seller_key IS NULL OR receipt.seller_key=$1)
           AND ($2::int[] IS NULL OR link.batch_number=ANY($2::int[]))
       ), estimable AS (
@@ -497,7 +499,16 @@ export const inventoryEconomicsRepository = {
         FROM inventory_purchase_cost_entries entry ORDER BY entry.series_id,entry.sequence DESC
       )
       SELECT link.batch_number AS "batchNumber",receipt.receipt_id AS "receiptId",
-        receipt.original_quantity AS "originalQuantity",receipt.market_value::float8 AS "marketValue",
+        receipt.original_quantity AS "originalQuantity",
+        COALESCE(receipt.market_value,
+          (SELECT weekly.tcg_market_price FROM product_weekly_sales weekly
+           JOIN continuous_pricing_inventory observed ON observed.seller_key=$1 AND observed.sku=receipt.sku
+           WHERE weekly.sku_id=receipt.sku AND weekly.tcg_market_price IS NOT NULL
+             AND weekly.week_start<=observed.created_at::date
+           ORDER BY weekly.week_start DESC LIMIT 1),
+          (SELECT observed.market_price FROM continuous_pricing_inventory observed
+           WHERE observed.seller_key=$1 AND observed.sku=receipt.sku AND observed.market_price IS NOT NULL LIMIT 1)
+        )::float8 AS "marketValue",
         receipt.intake_at AS "intakeAt",current.id::text AS "entryId",current.request_id AS "requestId",
         allocation.allocated_amount_cents::float8 AS "allocatedAmountCents"
       FROM estimable
