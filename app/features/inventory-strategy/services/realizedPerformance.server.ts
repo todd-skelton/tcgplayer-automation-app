@@ -1,12 +1,12 @@
 import { inventoryEconomicsRepository } from "~/core/db";
 import { calculateInventoryEconomicsOrders } from "~/features/inventory-economics/services/inventoryEconomics.server";
 import {
+  PERFORMANCE_WINDOWS,
   summarizeRealizedPerformance,
   type RealizedPerformance,
   type SoldUnitLine,
 } from "../domain/realizedPerformance";
 
-export const PERFORMANCE_WINDOWS = [30, 90] as const;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**

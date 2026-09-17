@@ -26,10 +26,11 @@ import { RealizedPerformance } from "../components/RealizedPerformance";
 import { StrategyVerdict } from "../components/StrategyVerdict";
 import { cyclePortfolio, hurdleReturns, STRATEGY_COST_BASIS } from "../components/verdict";
 import { improvementLevers } from "../domain/improvementLevers";
+import { PERFORMANCE_WINDOWS } from "../domain/realizedPerformance";
 import { selectTurnaround } from "../domain/turnaroundStrategy";
 import { loadInventoryStrategyDashboard } from "../services/inventoryStrategyDashboard.server";
 import { loadInventorySellingHistory } from "../services/inventorySellingHistory.server";
-import { loadRealizedPerformanceWithRecovery, PERFORMANCE_WINDOWS } from "../services/realizedPerformance.server";
+import { loadRealizedPerformanceWithRecovery } from "../services/realizedPerformance.server";
 import { loadReinvestmentTurnaroundWithRecovery } from "../services/reinvestmentTurnaround.server";
 import { queueInventoryStrategyAnalysis } from "../services/inventoryStrategyAnalysis.server";
 import {

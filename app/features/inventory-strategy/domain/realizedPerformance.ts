@@ -45,6 +45,9 @@ export interface RealizedPerformance {
   windows: PerformanceWindow[];
 }
 
+/** Trailing windows the page reports. */
+export const PERFORMANCE_WINDOWS = [30, 90] as const;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function summarize(productLine: string, lines: SoldUnitLine[], coveredDays: number): PerformanceSummary {
