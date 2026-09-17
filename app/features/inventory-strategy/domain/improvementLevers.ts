@@ -96,7 +96,7 @@ export function improvementLevers(input: LeverInput): Lever[] {
   if (input.totalUnits > 0 && input.modeledUnits / input.totalUnits < 0.9) {
     levers.push({
       title: `${(input.totalUnits - input.modeledUnits).toLocaleString()} listed units have no forecast`,
-      detail: "The hurdle sweep and verdict only see modeled units. Queue a fresh analysis so the rest are priced by the policy.",
+      detail: "These SKUs had no usable sales history when priced, so they follow the market or listing reference instead of the policy. The hurdle sweep and verdict leave them out.",
     });
   }
 
