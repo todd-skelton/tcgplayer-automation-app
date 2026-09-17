@@ -94,15 +94,13 @@ assert.match(success, /Sold-only average/);
 assert.match(success, /it is not an expected wait for all inventory/);
 assert.match(success, /Unavailable: not reached/);
 assert.match(success, /Age-eligible sell-through/);
-assert.match(success, /showing 1 of 3/);
-assert.match(success, /original opening quantity with unknown listed date/);
+assert.match(success, /with an unknown listed date are excluded from timing/);
 assert.match(success, /History gaps: August import pending/);
-assert.match(success, /Order 1001/);
+assert.doesNotMatch(success, /Order 1001/, "lot and order details are no longer rendered");
+assert.doesNotMatch(success, /showing 1 of 3/);
 assert.match(success, /History window/);
 assert.match(success, /Last 180 days/);
 assert.match(success, /Pokémon/);
-assert.match(success, /older publication excluded by window/);
-assert.match(success, /awaiting cutoff/);
 assert.doesNotMatch(success, /profit|cost basis|intake-to-sale days held/i);
 
 const openingOnly = render({
@@ -137,8 +135,7 @@ const openingOnly = render({
 const openingText = openingOnly.replace(/<[^>]*>/g, "");
 assert.match(openingText, /Ledger expected remaining7 units/);
 assert.match(openingText, /0 units with known age · 0 units uncertain presence · 7 units unknown listed date/);
-assert.match(openingText, /7 units original opening quantity with unknown listed date/);
-assert.match(openingText, /4 units legacy unlinked · 3 units with preserved forecast evidence/);
+assert.match(openingText, /7 units with an unknown listed date are excluded from timing/);
 
 const unsettled = render({
   ...ready,
@@ -152,10 +149,6 @@ const unsettled = render({
   },
 });
 assert.match(unsettled.replace(/<[^>]*>/g, ""), /Unavailable: unsettled outcomes/);
-
-const paginated = render({ ...ready, detailPageCount: 2 });
-assert.match(paginated, /pagination navigation/);
-assert.match(paginated, /page 2/i);
 
 const empty = render({ ...ready, overall: { ...summary, cohortQuantity: 0 }, productLines: [], details: [], detailTotal: 0 });
 assert.match(empty, /No published listing cohorts are available/);

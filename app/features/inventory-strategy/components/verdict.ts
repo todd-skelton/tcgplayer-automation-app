@@ -3,8 +3,29 @@ import {
   type CapitalCycleEconomics,
   type CapitalCyclePortfolio,
 } from "~/features/pricing/domain/capitalCycle";
-import type { InventoryStrategyHurdleScenario } from "../types/inventoryStrategy";
-import type { ForecastEvaluationReport } from "~/features/pricing/domain/forecastEvaluation";
+import { ESTIMATED_PURCHASE_COST_RULE } from "~/features/inventory-economics/domain/estimatedPurchaseCost";
+import type {
+  InventoryStrategyHurdleScenario,
+  InventoryStrategyProductLine,
+} from "../types/inventoryStrategy";
+
+/** The cost basis the strategy assumes: the same rule that estimates purchase costs. */
+export const STRATEGY_COST_BASIS: Pick<
+  CapitalCycleEconomics,
+  "costBasisShareOfMarket" | "costBasisDiscountPerUnit"
+> = {
+  costBasisShareOfMarket: ESTIMATED_PURCHASE_COST_RULE.marketRate,
+  costBasisDiscountPerUnit: ESTIMATED_PURCHASE_COST_RULE.perUnitDeductionCents / 100,
+};
+
+export function cyclePortfolio(
+  productLine: InventoryStrategyProductLine,
+): CapitalCyclePortfolio {
+  return {
+    marketValue: productLine.estimatedMarketValue,
+    unitCount: productLine.unitCount,
+  };
+}
 
 export interface HurdleReturn {
   scenario: InventoryStrategyHurdleScenario;
@@ -35,37 +56,4 @@ export function hurdleReturns(
         : [{ scenario, dailyReturn }];
     })
     .sort((left, right) => right.dailyReturn - left.dailyReturn);
-}
-
-export interface ForecastGradingOverview {
-  state: "unavailable" | "pending" | "scored";
-  label: string;
-}
-
-/** A neutral summary; model comparisons remain on their exact paired cohorts. */
-export function forecastGradingOverview(
-  report: ForecastEvaluationReport | null | undefined,
-): ForecastGradingOverview {
-  if (!report) {
-    return { state: "unavailable", label: "Forecast validation has insufficient evidence" };
-  }
-  const scoredVersions = report.models.filter((model) => model.validation.count > 0).length;
-  if (scoredVersions === 0) {
-    return {
-      state: "pending",
-      label: `Forecast validation reserved through ${new Date(report.validationCutoff).toLocaleDateString()}`,
-    };
-  }
-  const comparisons = report.pairedComparisons ?? [];
-  const minimum = report.policy?.minimumPairedValidationCount ?? 20;
-  const qualified = comparisons.filter((comparison) =>
-    comparison.validationCount >= minimum &&
-    comparison.leftBrier !== null && comparison.rightBrier !== null).length;
-  const versions = `${scoredVersions} forecast ${scoredVersions === 1 ? "version" : "versions"} scored`;
-  return {
-    state: "scored",
-    label: comparisons.length === 0
-      ? `${versions} · no cross-model pair is available`
-      : `${versions} · ${qualified} of ${comparisons.length} pair ${comparisons.length === 1 ? "comparison meets" : "comparisons meet"} the ${minimum}-observation minimum`,
-  };
 }

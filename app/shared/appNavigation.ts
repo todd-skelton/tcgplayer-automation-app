@@ -54,7 +54,7 @@ export const primaryNavigationItems: NavigationItem[] = [
     label: "Inventory Strategy",
     to: "/inventory-strategy",
     icon: QueryStatsIcon,
-    description: "Turnaround, reinvestment, and percentile strategy",
+    description: "Pricing hurdle, capital turnaround, and selling speed",
   },
   {
     label: "Inventory Economics",

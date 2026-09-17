@@ -1,5 +1,5 @@
 import { Alert, Box, Button, LinearProgress, Stack, Typography } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import {
   data,
   useFetcher,
@@ -12,25 +12,18 @@ import {
 } from "react-router";
 import {
   inventoryBatchesRepository,
-  forecastEvaluationsRepository,
   inventoryPublicationSettingsRepository,
   inventoryStrategyTurnaroundRepository,
   pricingConfigRepository,
 } from "~/core/db";
-import { PRICING_MODEL_VERSION } from "~/core/types/pricingPolicy";
 import { refreshContinuousPricingInventory } from "~/features/continuous-pricing/services/continuousInventoryRefresh.server";
 import type { CapitalCycleEconomics } from "~/features/pricing/domain/capitalCycle";
-import { DEFAULT_CAPITAL_CYCLE_INPUTS } from "../components/capitalCycleInputs";
-import { selectTurnaround } from "../domain/turnaroundStrategy";
-import { ForecastGrading } from "../components/ForecastGrading";
-import { HorizonCurve } from "../components/HorizonCurve";
-import { InventorySellingHistory } from "../components/InventorySellingHistory";
-import { ReinvestmentTurnaround } from "../components/ReinvestmentTurnaround";
+import { CapitalTurnaround } from "../components/CapitalTurnaround";
 import { HurdleSweep } from "../components/HurdleSweep";
-import { PercentileExplorer } from "../components/PercentileExplorer";
-import { PolicyComparison } from "../components/PolicyComparison";
+import { InventorySellingHistory } from "../components/InventorySellingHistory";
 import { StrategyVerdict } from "../components/StrategyVerdict";
-import { loadForecastGrading } from "../services/forecastGrading.server";
+import { STRATEGY_COST_BASIS } from "../components/verdict";
+import { selectTurnaround } from "../domain/turnaroundStrategy";
 import { loadInventoryStrategyDashboard } from "../services/inventoryStrategyDashboard.server";
 import { loadInventorySellingHistory } from "../services/inventorySellingHistory.server";
 import { loadReinvestmentTurnaroundWithRecovery } from "../services/reinvestmentTurnaround.server";
@@ -50,20 +43,12 @@ export const meta: MetaFunction = () => [
   { title: "Inventory Strategy" },
   {
     name: "description",
-    content:
-      "Judge the active pricing policy against its alternatives and the forecasts behind it.",
+    content: "Choose the pricing hurdle and see how fast capital turns.",
   },
 ];
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const searchParams = new URL(request.url).searchParams;
-  const requestedHistoryPage = Number.parseInt(
-    searchParams.get("historyPage") ?? "1",
-    10,
-  );
-  const historyPage = Number.isInteger(requestedHistoryPage)
-    ? Math.max(1, requestedHistoryPage)
-    : 1;
   const requestedWindowDays = Number.parseInt(
     searchParams.get("historyDays") ?? "",
     10,
@@ -81,7 +66,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     pricingConfigRepository.get(),
   ]);
   const settings = publicationConfiguration.settings.continuousPricing;
-  const [dashboard, recentBatches, forecastGradingResult, sellingHistoryResult, reinvestmentResult, turnaroundSettingsResult] = await Promise.all([
+  const [dashboard, recentBatches, sellingHistoryResult, reinvestmentResult, turnaroundSettingsResult] = await Promise.all([
     loadInventoryStrategyDashboard(settings.sellerKey, pricingConfig),
     settings.sellerKey
       ? inventoryBatchesRepository.findRecent({
@@ -89,19 +74,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
           limit: 10,
         })
       : [],
-    loadForecastGrading(settings.sellerKey)
-      .then((report) => ({ report, error: null }))
-      .catch((error) => {
-        console.error("Forecast validation load failed", error);
-        return {
-          report: null,
-          error: "Forecast validation could not be loaded. Existing strategy analysis is still available.",
-        };
-      }),
-    loadInventorySellingHistory(settings.sellerKey, {
-      detailPage: historyPage,
-      scope: historyScope,
-    })
+    loadInventorySellingHistory(settings.sellerKey, { scope: historyScope })
       .then((report) => ({ report, error: null }))
       .catch((error) => {
         console.error("Inventory selling history load failed", error);
@@ -126,9 +99,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     settings,
     dashboard,
     latestAnalysis,
-    forecastGrading: forecastGradingResult.report,
-    forecastGradingError: forecastGradingResult.error,
-    activeCorrection: pricingConfig.pricing.forecastCorrection,
     sellingHistoryResult,
     reinvestmentResult,
     turnaroundSettingsResult,
@@ -139,10 +109,7 @@ export async function action({ request }: ActionFunctionArgs) {
   try {
     const payload = (await request.json()) as {
       intent?: string;
-      evaluationId?: string;
-      correctionVersion?: string;
       sellerKey?: string;
-      productLineId?: number | null;
       mode?: TurnaroundMode;
       manualTurnaroundDays?: number;
     };
@@ -157,18 +124,17 @@ export async function action({ request }: ActionFunctionArgs) {
 
     if (payload.intent === "save_turnaround") {
       if (payload.sellerKey !== settings.sellerKey ||
-          (payload.productLineId !== null && !Number.isSafeInteger(payload.productLineId)) ||
           (payload.mode !== "manual" && payload.mode !== "observed") ||
           typeof payload.manualTurnaroundDays !== "number") {
         return data<ActionData>({ success: false, error: "Turnaround settings are invalid or stale." }, { status: 400 });
       }
       await inventoryStrategyTurnaroundRepository.saveForConfiguredSeller({
         sellerKey: payload.sellerKey,
-        productLineId: payload.productLineId ?? null,
+        productLineId: null,
         mode: payload.mode,
         manualTurnaroundDays: payload.manualTurnaroundDays,
       });
-      return data<ActionData>({ success: true, message: "Saved the turnaround source and manual fallback." });
+      return data<ActionData>({ success: true, message: "Saved the turnaround source and manual days." });
     }
 
     if (payload.intent === "refresh_inventory") {
@@ -192,30 +158,6 @@ export async function action({ request }: ActionFunctionArgs) {
       });
     }
 
-    if (payload.intent === "activate_forecast_correction") {
-      if (!payload.evaluationId) {
-        return data<ActionData>({ success: false, error: "Select an eligible evaluation." }, { status: 400 });
-      }
-      await forecastEvaluationsRepository.activate({
-        sellerKey: settings.sellerKey,
-        evaluationId: payload.evaluationId,
-        sourceModelVersion: `curve:${PRICING_MODEL_VERSION}`,
-      });
-      return data<ActionData>({ success: true, message: "Activated the held-out forecast correction for future pricing runs." });
-    }
-
-    if (payload.intent === "rollback_forecast_correction") {
-      if (!payload.correctionVersion) {
-        return data<ActionData>({ success: false, error: "No active correction was selected." }, { status: 400 });
-      }
-      await forecastEvaluationsRepository.rollback({
-        sellerKey: settings.sellerKey,
-        correctionVersion: payload.correctionVersion,
-        reason: "inventory_strategy_user_request",
-      });
-      return data<ActionData>({ success: true, message: "Rolled back to the uncorrected pricing forecast." });
-    }
-
     return data<ActionData>(
       { success: false, error: "Unsupported inventory strategy action." },
       { status: 400 },
@@ -233,14 +175,10 @@ export default function InventoryStrategyRoute() {
     settings,
     dashboard,
     latestAnalysis,
-    forecastGrading,
-    forecastGradingError,
-    activeCorrection,
     sellingHistoryResult,
     reinvestmentResult,
     turnaroundSettingsResult,
-  } =
-    useLoaderData<typeof loader>();
+  } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const fetcher = useFetcher<ActionData>();
   const analysisFetcher = useFetcher<{
@@ -248,23 +186,19 @@ export default function InventoryStrategyRoute() {
     status?: string;
   }>();
   const { revalidate } = useRevalidator();
-  const [cycleInputs, setCycleInputs] = useState(DEFAULT_CAPITAL_CYCLE_INPUTS);
-  const baseEconomics = useMemo<Omit<CapitalCycleEconomics, "turnaroundDays">>(
-    () => ({
-      ...cycleInputs,
-      relativeOverhead: dashboard.profitPerDay.relativeOverhead,
-      staticOverheadPerUnit: dashboard.profitPerDay.staticOverheadPerUnit,
-    }),
-    [cycleInputs, dashboard.profitPerDay],
-  );
   const sellerTurnaround = useMemo(
     () => selectTurnaround(dashboard.sellerKey, null, turnaroundSettingsResult.turnaroundSettings,
       reinvestmentResult.report, reinvestmentResult.error),
     [dashboard.sellerKey, reinvestmentResult.error, reinvestmentResult.report, turnaroundSettingsResult.turnaroundSettings],
   );
   const economics = useMemo<CapitalCycleEconomics>(
-    () => ({ ...baseEconomics, turnaroundDays: sellerTurnaround.effectiveDays }),
-    [baseEconomics, sellerTurnaround.effectiveDays],
+    () => ({
+      ...STRATEGY_COST_BASIS,
+      relativeOverhead: dashboard.profitPerDay.relativeOverhead,
+      staticOverheadPerUnit: dashboard.profitPerDay.staticOverheadPerUnit,
+      turnaroundDays: sellerTurnaround.effectiveDays,
+    }),
+    [dashboard.profitPerDay, sellerTurnaround.effectiveDays],
   );
   const busy = fetcher.state !== "idle";
   const analysisActive =
@@ -297,9 +231,8 @@ export default function InventoryStrategyRoute() {
   }, [polledStatus, revalidate]);
 
   const submit = (
-    intent: "refresh_inventory" | "queue_analysis" | "activate_forecast_correction" | "rollback_forecast_correction" | "save_turnaround",
-    details: { evaluationId?: string; correctionVersion?: string; sellerKey?: string; productLineId?: number | null;
-      mode?: TurnaroundMode; manualTurnaroundDays?: number } = {},
+    intent: "refresh_inventory" | "queue_analysis" | "save_turnaround",
+    details: { sellerKey?: string; mode?: TurnaroundMode; manualTurnaroundDays?: number } = {},
   ) =>
     fetcher.submit(
       { intent, ...details } as unknown as Parameters<typeof fetcher.submit>[0],
@@ -319,10 +252,8 @@ export default function InventoryStrategyRoute() {
             Inventory Strategy
           </Typography>
           <Typography color="text.secondary">
-            Judge the active pricing policy against its alternatives and check
-            the forecasts behind it. Eligible forecast corrections can be
-            activated or rolled back here; prices are published only by the
-            normal pricing workflow.
+            Which hurdle to price at, how fast capital turns, and how fast
+            inventory sells. Prices are published only by the pricing workflow.
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} alignItems="flex-start">
@@ -377,13 +308,16 @@ export default function InventoryStrategyRoute() {
         </Alert>
       )}
 
-      <StrategyVerdict
-        dashboard={dashboard}
-        economics={economics}
-        grading={forecastGrading}
+      <StrategyVerdict dashboard={dashboard} economics={economics} />
+      <HurdleSweep dashboard={dashboard} />
+      <CapitalTurnaround
+        selection={sellerTurnaround}
+        busy={busy || !settings.sellerKey}
+        error={reinvestmentResult.error}
+        settingsError={turnaroundSettingsResult.error}
+        onSave={(mode, manualTurnaroundDays) =>
+          submit("save_turnaround", { sellerKey: dashboard.sellerKey, mode, manualTurnaroundDays })}
       />
-      <ReinvestmentTurnaround report={reinvestmentResult.report} error={reinvestmentResult.error}
-        loading={navigation.state === "loading"}/>
       {navigation.state === "loading" ? (
         <LinearProgress aria-label="Loading selling history" sx={{ mb: 1 }} />
       ) : null}
@@ -394,40 +328,6 @@ export default function InventoryStrategyRoute() {
       ) : sellingHistoryResult.report ? (
         <InventorySellingHistory report={sellingHistoryResult.report} />
       ) : null}
-      {forecastGradingError ? (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {forecastGradingError}
-        </Alert>
-      ) : null}
-      <ForecastGrading
-        report={forecastGrading}
-        activeCorrection={activeCorrection}
-        busy={busy}
-        onActivate={(evaluationId) => submit("activate_forecast_correction", { evaluationId })}
-        onRollback={(correctionVersion) => submit("rollback_forecast_correction", { correctionVersion })}
-      />
-      <PolicyComparison comparisons={dashboard.overall.policyComparisons} />
-      <HurdleSweep dashboard={dashboard} />
-      <HorizonCurve
-        dashboard={dashboard}
-        economics={baseEconomics}
-        cycleInputs={cycleInputs}
-        onCycleInputsChange={setCycleInputs}
-        turnaroundSettings={turnaroundSettingsResult.turnaroundSettings}
-        turnaroundReport={reinvestmentResult.report}
-        turnaroundRecoveryError={reinvestmentResult.error}
-        turnaroundSettingsError={turnaroundSettingsResult.error}
-        turnaroundBusy={busy || !settings.sellerKey}
-        onTurnaroundSave={(productLineId, mode, manualTurnaroundDays) =>
-          submit("save_turnaround", { sellerKey: dashboard.sellerKey, productLineId, mode, manualTurnaroundDays })}
-      />
-      <PercentileExplorer dashboard={dashboard} />
-
-      <Alert severity="info" sx={{ mt: 3 }}>
-        Expected wait estimates the next sale/listing position, not liquidation
-        of every unit. Median and P75 are weighted by your current unit
-        quantities.
-      </Alert>
     </Box>
   );
 }

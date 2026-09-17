@@ -1,6 +1,6 @@
 # Inventory Strategy observed turnaround
 
-Inventory Strategy keeps a saved manual turnaround for each seller and optional product line. Observed mode changes only the strategy comparison inputs. It never changes a pricing hurdle, activates a forecast correction, or publishes a price.
+Inventory Strategy keeps a saved turnaround source and manual days for each seller; the page edits the seller-wide setting, and product-line rows in the settings table are no longer edited from the UI. Observed mode changes only the strategy comparison inputs. It never changes a pricing hurdle or publishes a price.
 
 The observed estimator is deliberately small. It reads the immutable `pooled-proceeds/v2` report, uses completed USD samples whose sales occurred in the report's trailing 90-day cohort, and calculates:
 
@@ -10,7 +10,7 @@ The observed estimator is deliberately small. It reads the immutable `pooled-pro
 Automatic selection requires a report no more than 24 hours old for the same seller and rule version, a single USD proceeds pool, and a cohort of at least 5 distinct completed replacement purchases whose sale dates span at least 14 days. Order-scan completeness, waiting or unallocated proceeds, unsupported funding, unknown proceeds or cost on some orders, and estimated provenance are reported as notes on the evidence and do not withhold selection; see `docs/strategy-assumptions.md` for the assumptions that fill those gaps.
 A product-line cohort means pooled proceeds attributed to replacement receipts carrying that immutable receipt product-line ID. It does not mean that the sold cards came from the same line or that the replacement was physically linked by FIFO. A line with only sparse evidence may visibly use an eligible seller-wide estimate. A line with stale, incomplete, unknown-cost, or poor-provenance evidence keeps its manual fallback.
 
-The capital-cycle output remains a simplified full-reinvestment comparison. Typical, slower, and effective turnaround scenarios use the same displayed sell horizon so their cycle days and modeled profit per day can be compared. The calculation does not measure portfolio growth or simulate partial cash flows.
+The capital-cycle output remains a simplified full-reinvestment comparison that feeds the verdict's best-hurdle ranking. The page shows the typical and slower days, the evidence count and confidence, waiting proceeds, and the effective turnaround in use. The calculation does not measure portfolio growth or simulate partial cash flows.
 
 ## G0: smaller shape chosen
 

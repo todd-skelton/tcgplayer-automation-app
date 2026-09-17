@@ -4,7 +4,6 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
-  Pagination,
   Paper,
   Select,
   Stack,
@@ -37,10 +36,6 @@ function days(value: number | null): string {
 
 function date(value: string | null | undefined): string {
   return value ? new Date(value).toLocaleString() : "Unknown";
-}
-
-function range(value: string | undefined): string | null {
-  return value ? value.replaceAll("_", " ") : null;
 }
 
 function statusLabel(value: string): string {
@@ -150,29 +145,16 @@ function SellThrough({ summary }: { summary: SellingHistorySummary }) {
 }
 
 function Coverage({ report }: { report: Extract<InventorySellingHistoryReport, { status: "ready" }> }) {
-  const { coverage, orderCoverage, overall } = report;
+  const { orderCoverage, overall } = report;
   const gaps = orderCoverage.gaps.filter(Boolean);
-  const rangeLabel = range(orderCoverage.searchRange);
+  const unknownListed = overall.unknownListedDateQuantity;
   return (
-    <Stack spacing={0.75} sx={{ mt: 2 }}>
-      <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
-        <Chip size="small" variant="outlined" label={`Order history: ${statusLabel(orderCoverage.status)}`} />
-        <Chip size="small" variant="outlined" label={`Known listed dates ${unitLabel(overall.knownListedDateQuantity)} of ${unitLabel(overall.cohortQuantity)}`} />
-        {overall.unknownListedDateQuantity > 0 && <Chip size="small" color="warning" variant="outlined" label={`${unitLabel(overall.unknownListedDateQuantity)} unknown listed date`} />}
-        {coverage.openingUnknownQuantity > 0 && <Chip size="small" color="warning" variant="outlined" label={`${unitLabel(coverage.openingUnknownQuantity)} original opening quantity with unknown listed date`} />}
-        {coverage.pendingProjectionQuantity > 0 && <Chip size="small" color="info" variant="outlined" label={`${unitLabel(coverage.pendingProjectionQuantity)} pending`} />}
-        {coverage.heldProjectionQuantity > 0 && <Chip size="small" color="warning" variant="outlined" label={`${unitLabel(coverage.heldProjectionQuantity)} held`} />}
-        {coverage.unresolvedRemovalQuantity > 0 && <Chip size="small" color="warning" variant="outlined" label={`${unitLabel(coverage.unresolvedRemovalQuantity)} unresolved removal`} />}
-        {coverage.legacyUnlinkedQuantity > 0 && <Chip size="small" variant="outlined" label={`${unitLabel(coverage.legacyUnlinkedQuantity)} legacy unlinked${coverage.legacyUnlinkedForecastQuantity > 0 ? ` · ${unitLabel(coverage.legacyUnlinkedForecastQuantity)} with preserved forecast evidence` : ""}`} />}
-        {coverage.olderPublicationQuantity > 0 && <Chip size="small" variant="outlined" label={`${unitLabel(coverage.olderPublicationQuantity)} older publication excluded by window`} />}
-        {coverage.awaitingCutoffQuantity > 0 && <Chip size="small" variant="outlined" label={`${unitLabel(coverage.awaitingCutoffQuantity)} awaiting cutoff`} />}
-      </Stack>
+    <Stack spacing={0.5} sx={{ mt: 2 }}>
       <Typography variant="caption" color="text.secondary">
-        {rangeLabel ? `Order search: ${rangeLabel}. ` : ""}
-        Observed {orderCoverage.observedThrough ? `through ${date(orderCoverage.observedThrough)}` : "through an unknown date"}
-        {orderCoverage.lastAttemptAt ? ` · Last sync attempt ${date(orderCoverage.lastAttemptAt)}` : ""}
-        {orderCoverage.completedAt ? ` · Completed ${date(orderCoverage.completedAt)}` : ""}
-        {orderCoverage.expectedTotal !== undefined ? ` · ${quantity(orderCoverage.ordersObserved)} of ${quantity(orderCoverage.expectedTotal)} orders observed` : ` · ${quantity(orderCoverage.ordersObserved)} orders observed`}
+        Order history {statusLabel(orderCoverage.status)}
+        {orderCoverage.observedThrough ? ` through ${date(orderCoverage.observedThrough)}` : ""}
+        {` · ${unitLabel(overall.knownListedDateQuantity)} of ${unitLabel(overall.cohortQuantity)} with a known listed date`}
+        {unknownListed > 0 ? ` · ${unitLabel(unknownListed)} with an unknown listed date are excluded from timing` : ""}
       </Typography>
       {(gaps.length > 0 || orderCoverage.error) && (
         <Typography variant="caption" color="warning.main">
@@ -224,7 +206,6 @@ function ScopeControls({ report }: { report: InventorySellingHistoryReport }) {
     } else {
       nextSearchParams.set(key, value);
     }
-    nextSearchParams.set("historyPage", "1");
     setSearchParams(nextSearchParams);
   };
 
@@ -267,82 +248,6 @@ function ScopeControls({ report }: { report: InventorySellingHistoryReport }) {
   );
 }
 
-function Details({ report }: { report: Extract<InventorySellingHistoryReport, { status: "ready" }> }) {
-  const shown = report.details.length;
-  const total = report.detailTotal;
-  return (
-    <Box component="details" sx={{ mt: 2, maxWidth: "100%" }}>
-      <Box component="summary" sx={{ cursor: "pointer", typography: "body2", color: "text.secondary" }}>
-        Inspect publication lots and allocated orders ({shown === total ? `all ${quantity(shown)}` : `showing ${quantity(shown)} of ${quantity(total)}`})
-      </Box>
-      <TableContainer sx={{ mt: 1, overflowX: "auto" }}>
-        <Table size="small" aria-label="Publication lot and order details">
-          <TableHead>
-            <TableRow>
-              <TableCell>Lot</TableCell>
-              <TableCell align="right">Published</TableCell>
-              <TableCell align="right">Sold / removed / remaining</TableCell>
-              <TableCell>Orders and forecast baseline</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {report.details.map((detail) => (
-              <TableRow key={detail.episodeKey}>
-                <TableCell>
-                  <Typography variant="body2">{detail.productName}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {detail.productLine} · SKU {detail.sku} · receipt {detail.receiptId} · {statusLabel(detail.kind)}
-                  </Typography>
-                </TableCell>
-                <TableCell align="right">
-                  <Typography variant="body2">{detail.listedAt ? date(detail.listedAt) : "Unknown"}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {detail.remainingAgeDays === null ? "Remaining age unavailable" : `Remaining age ${days(detail.remainingAgeDays)}`}
-                  </Typography>
-                </TableCell>
-                <TableCell align="right">
-                  {unitLabel(detail.soldQuantity)} / {unitLabel(detail.removedQuantity)} / {unitLabel(detail.ledgerRemainingQuantity)}
-                  {detail.presenceUncertain && <Typography variant="caption" color="warning.main" component="div">Remaining presence uncertain</Typography>}
-                </TableCell>
-                <TableCell>
-                  <Typography variant="caption" component="div">
-                    Forecast baseline: {detail.forecastEvidenceProvenance}
-                    {detail.forecastEvidence?.pricingModelVersion ? ` · model ${detail.forecastEvidence.pricingModelVersion}` : ""}
-                    {detail.forecastEvidence?.estimatedTimeToSellDays !== undefined && detail.forecastEvidence.estimatedTimeToSellDays !== null ? ` · recorded estimate ${detail.forecastEvidence.estimatedTimeToSellDays.toFixed(1)} days` : ""}
-                  </Typography>
-                  {detail.orders.length ? detail.orders.map((order) => (
-                    <Typography key={`${order.orderNumber}:${order.soldAt}`} variant="caption" color="text.secondary" component="div">
-                      Order {order.orderNumber}: {unitLabel(order.quantity)} sold {date(order.soldAt)}{order.listedDays === null ? " · listed time unavailable" : ` · ${days(order.listedDays)} listed`}
-                    </Typography>
-                  )) : <Typography variant="caption" color="text.secondary">No allocated sale orders in this lot.</Typography>}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Box>
-  );
-}
-
-function DetailPageControl({ page, pageCount }: { page: number; pageCount: number }) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  return (
-    <Stack direction="row" justifyContent="center" sx={{ mt: 1.5 }}>
-      <Pagination
-        count={pageCount}
-        page={page}
-        size="small"
-        onChange={(_, nextPage) => {
-          const nextSearchParams = new URLSearchParams(searchParams);
-          nextSearchParams.set("historyPage", String(nextPage));
-          setSearchParams(nextSearchParams);
-        }}
-      />
-    </Stack>
-  );
-}
-
 /** Observed listing exposure and sales outcomes for the current seller. */
 export function InventorySellingHistory({ report }: { report: InventorySellingHistoryReport }) {
   if (report.status === "unavailable") {
@@ -378,13 +283,6 @@ export function InventorySellingHistory({ report }: { report: InventorySellingHi
           <Box sx={{ mt: 2 }}><Summary summary={report.overall} /></Box>
           <SellThrough summary={report.overall} />
           <ProductLines report={report} />
-          <Details report={report} />
-          {report.detailPageCount > 1 && (
-            <DetailPageControl
-              page={report.detailPage}
-              pageCount={report.detailPageCount}
-            />
-          )}
         </>
       )}
       <Coverage report={report} />

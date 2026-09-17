@@ -31,12 +31,9 @@ export function HurdleSweep({
       <Box sx={{ p: 2 }}>
         <Typography variant="h6">Hurdle sweep</Typography>
         <Typography variant="body2" color="text.secondary">
-          Profit per day prices each SKU where its net proceeds, discounted at
-          the daily return hurdle over its expected wait, are highest. Each cell
-          shows the physical value at that hurdle, the median and P90 wait, and
-          how many SKUs it raises and lowers against their listed prices. The
-          shaded cell is the hurdle the product line is configured with; all
-          listed inventory applies one hurdle to every product line.
+          Listed value, median / P90 wait, and SKUs raised / lowered against
+          current prices at each daily return hurdle. The shaded cell is the
+          configured hurdle.
         </Typography>
       </Box>
       <TableContainer>
