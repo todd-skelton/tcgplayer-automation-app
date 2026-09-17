@@ -1,5 +1,5 @@
 import { Alert, Box, Button, LinearProgress, Stack, Typography } from "@mui/material";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   data,
   useFetcher,
@@ -20,12 +20,16 @@ import { refreshContinuousPricingInventory } from "~/features/continuous-pricing
 import type { CapitalCycleEconomics } from "~/features/pricing/domain/capitalCycle";
 import { CapitalTurnaround } from "../components/CapitalTurnaround";
 import { HurdleSweep } from "../components/HurdleSweep";
+import { ImprovementLevers } from "../components/ImprovementLevers";
 import { InventorySellingHistory } from "../components/InventorySellingHistory";
+import { RealizedPerformance } from "../components/RealizedPerformance";
 import { StrategyVerdict } from "../components/StrategyVerdict";
-import { STRATEGY_COST_BASIS } from "../components/verdict";
+import { cyclePortfolio, hurdleReturns, STRATEGY_COST_BASIS } from "../components/verdict";
+import { improvementLevers } from "../domain/improvementLevers";
 import { selectTurnaround } from "../domain/turnaroundStrategy";
 import { loadInventoryStrategyDashboard } from "../services/inventoryStrategyDashboard.server";
 import { loadInventorySellingHistory } from "../services/inventorySellingHistory.server";
+import { loadRealizedPerformanceWithRecovery, PERFORMANCE_WINDOWS } from "../services/realizedPerformance.server";
 import { loadReinvestmentTurnaroundWithRecovery } from "../services/reinvestmentTurnaround.server";
 import { queueInventoryStrategyAnalysis } from "../services/inventoryStrategyAnalysis.server";
 import {
@@ -43,7 +47,7 @@ export const meta: MetaFunction = () => [
   { title: "Inventory Strategy" },
   {
     name: "description",
-    content: "Choose the pricing hurdle and see how fast capital turns.",
+    content: "How the pricing strategy is performing and what to change.",
   },
 ];
 
@@ -66,7 +70,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     pricingConfigRepository.get(),
   ]);
   const settings = publicationConfiguration.settings.continuousPricing;
-  const [dashboard, recentBatches, sellingHistoryResult, reinvestmentResult, turnaroundSettingsResult] = await Promise.all([
+  const [dashboard, recentBatches, sellingHistoryResult, reinvestmentResult, turnaroundSettingsResult, performanceResult] = await Promise.all([
     loadInventoryStrategyDashboard(settings.sellerKey, pricingConfig),
     settings.sellerKey
       ? inventoryBatchesRepository.findRecent({
@@ -90,6 +94,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         console.error("Inventory Strategy turnaround settings load failed", error);
         return { turnaroundSettings: [], error: "Saved turnaround settings could not be loaded; using the 28-day manual fallback." };
       }),
+    loadRealizedPerformanceWithRecovery(settings.sellerKey),
   ]);
   const latestAnalysis =
     recentBatches.find((batch) => batch.sourceLabel === settings.sellerKey) ??
@@ -102,6 +107,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     sellingHistoryResult,
     reinvestmentResult,
     turnaroundSettingsResult,
+    performanceResult,
   });
 }
 
@@ -178,7 +184,9 @@ export default function InventoryStrategyRoute() {
     sellingHistoryResult,
     reinvestmentResult,
     turnaroundSettingsResult,
+    performanceResult,
   } = useLoaderData<typeof loader>();
+  const [performanceWindow, setPerformanceWindow] = useState<number>(PERFORMANCE_WINDOWS[0]);
   const navigation = useNavigation();
   const fetcher = useFetcher<ActionData>();
   const analysisFetcher = useFetcher<{
@@ -200,6 +208,22 @@ export default function InventoryStrategyRoute() {
     }),
     [dashboard.profitPerDay, sellerTurnaround.effectiveDays],
   );
+  const levers = useMemo(() => {
+    const returns = hurdleReturns(dashboard.overall.hurdleSweep, cyclePortfolio(dashboard.overall), economics);
+    const window = performanceResult.report?.windows.find((candidate) => candidate.windowDays === performanceWindow)
+      ?? performanceResult.report?.windows[0];
+    return improvementLevers({
+      configuredHurdle: dashboard.profitPerDay.dailyReturnHurdle,
+      best: returns[0],
+      configured: returns.find(({ scenario }) => scenario.configured),
+      overall: window?.overall ?? null,
+      productLines: window?.productLines ?? [],
+      waitingCents: sellerTurnaround.evidence?.waitingCents ?? 0,
+      oldestWaitingDays: sellerTurnaround.evidence?.oldestWaitingDays ?? null,
+      modeledUnits: dashboard.overall.modeledUnitCount,
+      totalUnits: dashboard.overall.unitCount,
+    });
+  }, [dashboard, economics, performanceResult.report, performanceWindow, sellerTurnaround.evidence]);
   const busy = fetcher.state !== "idle";
   const analysisActive =
     latestAnalysis?.status === "queued" || latestAnalysis?.status === "pricing";
@@ -252,8 +276,10 @@ export default function InventoryStrategyRoute() {
             Inventory Strategy
           </Typography>
           <Typography color="text.secondary">
-            Which hurdle to price at, how fast capital turns, and how fast
-            inventory sells. Prices are published only by the pricing workflow.
+            How the current pricing strategy is doing and what to change: realized
+            margin and profit per day, the hurdle to price at, how fast capital
+            turns, and how fast inventory sells. Prices are published only by
+            the pricing workflow.
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} alignItems="flex-start">
@@ -308,6 +334,14 @@ export default function InventoryStrategyRoute() {
         </Alert>
       )}
 
+      <RealizedPerformance
+        report={performanceResult.report}
+        error={performanceResult.error}
+        windowDays={performanceWindow}
+        onWindowChange={setPerformanceWindow}
+        configuredHurdle={dashboard.profitPerDay.dailyReturnHurdle}
+      />
+      <ImprovementLevers levers={levers} />
       <StrategyVerdict dashboard={dashboard} economics={economics} />
       <HurdleSweep dashboard={dashboard} />
       <CapitalTurnaround

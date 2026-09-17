@@ -35,6 +35,9 @@ import "../features/inventory-strategy/domain/allocateReinvestmentTurnaround.tes
 import "../features/inventory-strategy/domain/turnaroundStrategy.test";
 import "../features/inventory-strategy/domain/purchaseCapital.test";
 import "../features/inventory-strategy/components/CapitalTurnaround.test";
+import "../features/inventory-strategy/components/RealizedPerformance.test";
+import "../features/inventory-strategy/domain/realizedPerformance.test";
+import "../features/inventory-strategy/domain/improvementLevers.test";
 import "../features/inventory-strategy/routes/api.reinvestment-turnaround.test";
 import "../features/inventory-strategy/services/reinvestmentTurnaround.server.test";
 import "../features/inventory-strategy/services/inventorySellingHistory.test";
