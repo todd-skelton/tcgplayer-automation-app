@@ -19,7 +19,7 @@ The implementation adds one seller/product-line settings table, adds only the el
 The following were intentionally not built:
 
 - a second order, receipt, funding, or allocation ledger, because the existing immutable report already owns that evidence;
-- a survival estimator, because automatic selection is withheld until known money is complete;
+- a survival estimator, because completed cycles are enough for a directional typical and p90;
 - a partial-cash-flow or bank-balance simulation, because this comparison remains a full-reinvestment model;
 - another scheduler, cache, or event system, because the existing report rebuild and source fingerprint already invalidate corrections;
 - pricing or forecast writes, because turnaround settings are reporting inputs only;

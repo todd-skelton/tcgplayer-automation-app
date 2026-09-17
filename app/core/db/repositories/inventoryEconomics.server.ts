@@ -622,31 +622,7 @@ export const inventoryEconomicsRepository = {
        ORDER BY entry.expense_at,entry.id LIMIT 10001`,[seller,orderNumbers],executor) : [];
     const relevantExpensesComplete = relevantExpenseRows.length <= 10000;
     const relevantOrderExpenses = relevantExpenseRows.slice(0,10000);
-    const uncostedBatches = await query<{ batchNumber: number; sourceLabel: string; receiptCount: number }>(
-      `WITH current_entry AS (
-        SELECT DISTINCT ON (entry.series_id) entry.id,entry.series_id
-        FROM inventory_purchase_cost_entries entry
-        ORDER BY entry.series_id,entry.sequence DESC
-      ), current_cost AS (
-        SELECT allocation.receipt_id
-        FROM inventory_purchase_receipt_ownership ownership
-        JOIN current_entry current ON current.series_id=ownership.series_id
-        JOIN inventory_purchase_cost_allocations allocation
-          ON allocation.entry_id=current.id AND allocation.receipt_id=ownership.receipt_id
-        JOIN inventory_purchase_cost_series series ON series.id=current.series_id
-        WHERE series.seller_key=$1
-      )
-      SELECT batch.batch_number AS "batchNumber",batch.source_label AS "sourceLabel",
-        (COUNT(DISTINCT link.receipt_id) FILTER (WHERE current_cost.receipt_id IS NULL))::int AS "receiptCount"
-       FROM inventory_batches batch JOIN inventory_receipt_batch_links link ON link.batch_number=batch.batch_number
-       JOIN inventory_receipts receipt ON receipt.receipt_id=link.receipt_id
-       LEFT JOIN current_cost ON current_cost.receipt_id=receipt.receipt_id
-       GROUP BY batch.batch_number,batch.source_label
-       HAVING BOOL_AND(receipt.seller_key IS NULL OR receipt.seller_key=$1)
-         AND COUNT(DISTINCT link.receipt_id) FILTER (WHERE current_cost.receipt_id IS NULL)>0
-       ORDER BY batch.batch_number DESC LIMIT $2`, [seller,limit],executor,
-    );
     return { orders:selectedOrders, ordersComplete, postage, postageComplete, allocations, allocationsComplete,
-      relevantOrderExpenses, relevantExpensesComplete, uncostedBatches };
+      relevantOrderExpenses, relevantExpensesComplete };
   },
 };

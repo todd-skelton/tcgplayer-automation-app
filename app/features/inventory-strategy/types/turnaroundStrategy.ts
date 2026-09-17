@@ -28,18 +28,10 @@ export interface TurnaroundEvidenceSummary {
   eligibleProceedsCents: number;
   unallocatedProceedsCents: number;
   oldestUnallocatedDays: number | null;
-  unresolvedPurchaseCostCents: number;
-  unsupportedFundingAdjustmentCents: number;
-  unsupportedPurchaseFunding: Array<{ currency: string; amountCents: number }>;
   reinvestedPercent: number | null;
   completionCoveragePercent: number | null;
-  historicalUnknownProceedsCount: number;
-  historicalUnknownCostCount: number;
   typicalDays: number | null;
   slowerDays: number | null;
-  actualProceedsPercent: number | null;
-  actualCostPercent: number | null;
-  knownFundingPercent: number | null;
   orderCoverageFinishedAt: string | null;
   orderObservedFrom: string | null;
   orderObservedThrough: string | null;

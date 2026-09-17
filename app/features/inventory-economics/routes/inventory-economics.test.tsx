@@ -8,7 +8,7 @@ import type { InventoryEconomicsWorkspace } from "../types/inventoryEconomics";
 assert.match(renderToStaticMarkup(<InventoryEconomicsStatus loading />), /Loading inventory economics/);
 assert.match(renderToStaticMarkup(<InventoryEconomicsStatus error="Synthetic load failure" onRetry={() => undefined} />), /Synthetic load failure/);
 const empty: InventoryEconomicsWorkspace = { sellerKey:"synthetic-seller",generatedAt:"2026-09-08T00:00:00Z",
-  purchaseCosts:[],fundingAdjustments:[],orderExpenses:[],orders:[],uncostedBatches:[] };
+  purchaseCosts:[],fundingAdjustments:[],orderExpenses:[],orders:[] };
 assert.match(renderToStaticMarkup(<InventoryEconomicsOrderTable workspace={empty} />), /No captured seller orders yet/);
 assert.match(renderToStaticMarkup(<RecentRecords title="Funding adjustments" empty="No funding adjustments." rows={[]} />), /No funding adjustments/);
 const success = { ...empty,orders:[{ orderNumber:"SYNTHETIC-1",currency:"USD",grossItemCents:1000,

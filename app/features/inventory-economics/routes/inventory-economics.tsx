@@ -229,7 +229,6 @@ export default function InventoryEconomicsRoute() {
       }))} />
     </Stack>
 
-    {workspace.uncostedBatches.length > 0 && <Alert severity="info" sx={{ mb:3 }}>{workspace.uncostedBatches.length} recent batch(es) have unknown acquisition cost. Unknown cost is not zero.</Alert>}
     <InventoryEconomicsOrderTable workspace={workspace} />
   </Box>;
 }

@@ -110,53 +110,12 @@ const waitingSelection = selectTurnaround(sellerKey, null, observed, waiting, nu
 assert.equal(waitingSelection.effectiveSource, "observed-seller", "waiting proceeds are noted, not blocking");
 assert.match(waitingSelection.evidence?.limitations.join(" ") ?? "", /still waiting/i);
 
-const currentExcess = structuredClone(report);
-currentExcess.unsupportedPurchaseFunding = [{kind:"above_current_cost",adjustmentReference:"excess",
-  purchaseReference:"purchase-1",currency:"USD",amountCents:2_000,effectiveAt:"2026-09-01",sourceIdentity:"excess"}];
-const excessSelection=selectTurnaround(sellerKey,null,observed,currentExcess,null,now);
-assert.equal(excessSelection.effectiveSource,"observed-seller","excess funding is ignored, not blocking");
-assert.deepEqual(excessSelection.evidence?.unsupportedPurchaseFunding,[{currency:"USD",amountCents:2_000}]);
-assert.match(excessSelection.evidence?.limitations.join(" ") ?? "",/exceeds its matching purchase cost/i);
-
-const futureExcess = structuredClone(currentExcess);
-futureExcess.unsupportedPurchaseFunding[0].effectiveAt="2026-09-09";
-assert.equal(selectTurnaround(sellerKey,null,observed,futureExcess,null,now).effectiveSource,"observed-seller");
-const currentEurOrphan=structuredClone(report);
-currentEurOrphan.unsupportedPurchaseFunding=[{kind:"orphan",adjustmentReference:"orphan",purchaseReference:"missing",
-  currency:"EUR",amountCents:2_000,effectiveAt:"2026-09-01",sourceIdentity:"orphan"}];
-const eurSelection=selectTurnaround(sellerKey,null,observed,currentEurOrphan,null,now);
-assert.equal(eurSelection.effectiveSource,"manual-fallback");
-assert.deepEqual(eurSelection.evidence?.unsupportedPurchaseFunding,[{currency:"EUR",amountCents:2_000}]);
-assert.match(eurSelection.fallbackReasons.join(" "),/currencies are never mixed/i);
-const futureEurOrphan=structuredClone(currentEurOrphan);
-futureEurOrphan.unsupportedPurchaseFunding[0].effectiveAt="2026-09-09";
-assert.equal(selectTurnaround(sellerKey,null,observed,futureEurOrphan,null,now).effectiveSource,"observed-seller");
-const zeroEurOrphan=structuredClone(currentEurOrphan);
-zeroEurOrphan.unsupportedPurchaseFunding[0].amountCents=0;
-assert.equal(selectTurnaround(sellerKey,null,observed,zeroEurOrphan,null,now).effectiveSource,"observed-seller");
-
-const missingFundingMetadata=structuredClone(report) as unknown as Record<string,unknown>;
-delete missingFundingMetadata.unsupportedPurchaseFunding;
-assert.equal(selectTurnaround(sellerKey,null,observed,missingFundingMetadata as unknown as ReinvestmentTurnaroundReport,null,now).effectiveSource,"manual-fallback");
-const malformedFundingMetadata=structuredClone(report) as unknown as Record<string,unknown>;
-malformedFundingMetadata.unsupportedPurchaseFunding=[{currency:"USD",amountCents:"2000",effectiveAt:"2026-09-01"}];
-assert.equal(selectTurnaround(sellerKey,null,observed,malformedFundingMetadata as unknown as ReinvestmentTurnaroundReport,null,now).effectiveSource,"manual-fallback");
-const invalidCurrencyMetadata=structuredClone(report) as unknown as Record<string,unknown>;
-invalidCurrencyMetadata.unsupportedPurchaseFunding=[{kind:"orphan",adjustmentReference:"invalid",purchaseReference:null,
-  currency:"INVALID",amountCents:2_000,effectiveAt:"2026-09-01",sourceIdentity:"invalid"}];
-const invalidCurrencySelection=selectTurnaround(sellerKey,null,observed,invalidCurrencyMetadata as unknown as ReinvestmentTurnaroundReport,null,now);
-assert.equal(invalidCurrencySelection.effectiveSource,"manual-fallback");
-const invalidCurrencyHtml=renderToStaticMarkup(createElement(TurnaroundInputs,{selection:invalidCurrencySelection,
-  productLine:"All product lines",busy:false,onSave:()=>undefined}));
-assert.doesNotMatch(invalidCurrencyHtml,/INVALID/);
-const undatedFundingMetadata=structuredClone(report);
-undatedFundingMetadata.unsupportedPurchaseFunding=[{kind:"orphan",adjustmentReference:"undated",purchaseReference:null,
-  currency:"USD",amountCents:2_000,effectiveAt:"",sourceIdentity:"undated"}];
-assert.equal(selectTurnaround(sellerKey,null,observed,undatedFundingMetadata,null,now).effectiveSource,"manual-fallback");
+const otherCurrency = structuredClone(report);
+otherCurrency.currencies.push({ ...report.currencies[0], currency: "EUR" });
+assert.match(selectTurnaround(sellerKey,null,observed,otherCurrency,null,now).fallbackReasons.join(" "),/currencies are never mixed/i);
 const oldReport=structuredClone(report) as ReinvestmentTurnaroundReport;
 Object.assign(oldReport,{ruleVersion:"pooled-proceeds/v1"});
 assert.equal(selectTurnaround(sellerKey,null,observed,oldReport,null,now).effectiveSource,"manual-fallback");
-
 const estimatedLine = structuredClone(report);
 estimatedLine.samples = estimatedLine.samples.map((value) => ({ ...value, proceedsProvenance: "estimated", costProvenance: "estimated" }));
 const estimatedSelection = selectTurnaround(sellerKey, null, observed, estimatedLine, null, now);

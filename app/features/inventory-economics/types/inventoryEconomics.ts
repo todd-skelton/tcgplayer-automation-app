@@ -163,7 +163,6 @@ export interface InventoryEconomicsWorkspace {
   fundingAdjustments: FundingAdjustmentSummary[];
   orderExpenses: OrderExpenseSummary[];
   orders: OrderEconomicsSummary[];
-  uncostedBatches: Array<{ batchNumber: number; sourceLabel: string; receiptCount: number }>;
 }
 
 export interface PurchaseAllocationTarget {

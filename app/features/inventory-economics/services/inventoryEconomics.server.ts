@@ -139,7 +139,6 @@ export async function loadInventoryEconomicsWorkspace(sellerKey: string): Promis
     purchaseCosts,
     fundingAdjustments,
     orderExpenses,
-    uncostedBatches:evidence.uncostedBatches,
     orders:calculateInventoryEconomicsOrders(seller,evidence),
   };
 }
