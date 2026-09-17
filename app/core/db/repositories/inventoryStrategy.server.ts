@@ -173,4 +173,52 @@ export const inventoryStrategyRepository = {
       executor,
     );
   },
+
+  /**
+   * New-inventory batches are priced before a seller is known, so their curves
+   * are recorded once the SKUs are published to that seller.
+   */
+  async recordPublishedInventory(
+    sellerKey: string,
+    batchNumber: number,
+    skus: number[],
+    executor?: Queryable,
+  ): Promise<number> {
+    if (skus.length === 0) return 0;
+    return execute(
+      `INSERT INTO inventory_strategy_pricing_curves (
+        seller_key,
+        sku,
+        batch_number,
+        pricing_details_json,
+        priced_at,
+        updated_at
+      )
+      SELECT
+        $1,
+        result.sku,
+        result.batch_number,
+        result.pricing_details_json,
+        result.priced_at,
+        NOW()
+      FROM inventory_batch_results result
+      WHERE result.batch_number = $2
+        AND result.sku = ANY($3::int[])
+        AND result.result_status = 'successful'
+        AND result.pricing_details_json IS NOT NULL
+        AND CASE
+          WHEN jsonb_typeof(result.pricing_details_json->'percentiles') = 'array'
+          THEN jsonb_array_length(result.pricing_details_json->'percentiles') > 0
+          ELSE FALSE
+        END
+      ON CONFLICT (seller_key, sku) DO UPDATE SET
+        batch_number = EXCLUDED.batch_number,
+        pricing_details_json = EXCLUDED.pricing_details_json,
+        priced_at = EXCLUDED.priced_at,
+        updated_at = NOW()
+      WHERE inventory_strategy_pricing_curves.priced_at <= EXCLUDED.priced_at`,
+      [sellerKey, batchNumber, skus],
+      executor,
+    );
+  },
 };

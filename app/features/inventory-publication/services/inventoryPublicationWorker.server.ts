@@ -2,6 +2,7 @@ import {
   continuousPricingRepository,
   inventoryPublicationSettingsRepository,
   inventoryPublicationsRepository,
+  inventoryStrategyRepository,
 } from "~/core/db";
 import {
   finalizeStagedPricingImport,
@@ -154,6 +155,15 @@ const defaultDependencies: InventoryPublicationWorkerDependencies = {
         ),
         continuousPricing.minimumIntervalMinutes,
       );
+      if (publication.batchNumber !== null) {
+        await inventoryStrategyRepository.recordPublishedInventory(
+          publication.sellerKey,
+          publication.batchNumber,
+          publication.items
+            .filter((item) => publishedIds.has(item.id))
+            .map((item) => item.sku),
+        );
+      }
       return;
     }
 
