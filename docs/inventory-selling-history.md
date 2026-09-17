@@ -67,12 +67,17 @@ successful pricing result. Price-only repricing rows remain unknown. Unsupported
 rows also remain `unknown`; current prices and models are never used to
 reconstruct an old forecast.
 
-Legacy publications without receipt links remain outside selling cohorts.
-Inventory Strategy reports their quantity and the subset with preserved exact
-forecast evidence, alongside unknown opening quantity, order freshness and
-gaps, pending or held FIFO quantities, and unresolved removals. Cost and price
-coverage do not gate listed-date metrics.
-
+Publications confirmed before the opening cutoff are backfilled as receipt lots
+with their publication time and the market price of their pricing result (see
+[listing history coverage](inventory-fifo.md#listing-history-coverage)), so
+they form cohorts and receive sale outcomes from FIFO on both sides of the
+cutoff. Unknown opening quantity counts only units that predate the first
+covered publication of their SKU. Legacy publications that could not be
+balanced remain outside selling cohorts. Inventory Strategy reports their
+quantity and the subset with preserved exact forecast evidence, alongside
+unknown opening quantity, order freshness and gaps, pending or held FIFO
+quantities, and unresolved removals. Cost and price coverage do not gate
+listed-date metrics.
 Unresolved removal coverage reuses the shared FIFO reconciliation result. Only
 the negative residual between an observed inventory change and its expected
 publication, sale, restock, and correction flow is a removal; an explained

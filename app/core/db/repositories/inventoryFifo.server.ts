@@ -226,11 +226,16 @@ export const inventoryFifoRepository={
       const opening=await queryOne<{cutoffAt:Date}>(`SELECT cutoff_at AS "cutoffAt" FROM inventory_opening_balance_runs
         WHERE seller_key=$1 AND status='applied'`,[queued.sellerKey],db);
       if(!opening)return holdQueue(queued.sellerKey,queued.sku,"missing_applied_opening_balance",db);
+      // Backfilled listing history moves this SKU's forward boundary back to its first
+      // covered publication; every other SKU starts at the opening cutoff.
+      const coverage=await queryOne<{coveredFrom:Date}>(`SELECT covered_from AS "coveredFrom"
+        FROM inventory_listing_history_coverage WHERE seller_key=$1 AND sku=$2`,[queued.sellerKey,queued.sku],db);
+      const historyFrom=coverage?.coveredFrom??opening.cutoffAt;
       const changedOrderTime=await queryOne<{lineId:string}>(`SELECT saved.id::text AS "lineId"
         FROM inventory_fifo_lines saved JOIN seller_orders orders ON orders.id=saved.order_id
         WHERE saved.seller_key=$1 AND saved.sku=$2
           AND saved.order_time IS DISTINCT FROM orders.order_time
-          AND (saved.order_time>=$3 OR orders.order_time>=$3) LIMIT 1`,[queued.sellerKey,queued.sku,opening.cutoffAt],db);
+          AND (saved.order_time>=$3 OR orders.order_time>=$3) LIMIT 1`,[queued.sellerKey,queued.sku,historyFrom],db);
       if(changedOrderTime)return holdQueue(queued.sellerKey,queued.sku,
         `order_time_change_requires_reconciliation:${changedOrderTime.lineId}`,db);
       const unknownInitialOrderTime=await queryOne<{orderId:string}>(`SELECT orders.id::text AS "orderId"
@@ -338,7 +343,7 @@ export const inventoryFifoRepository={
         WHERE saved.seller_key=$1 AND saved.sku=$2 AND saved.current_revision_id IS NULL
           AND orders.order_time>=$3 AND orders.source_revision>1
           AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(initial.line_evidence) evidence
-            WHERE evidence->>'skuId'=saved.order_line_sku_id) LIMIT 1`,[queued.sellerKey,queued.sku,opening.cutoffAt],db);
+            WHERE evidence->>'skuId'=saved.order_line_sku_id) LIMIT 1`,[queued.sellerKey,queued.sku,historyFrom],db);
       if(amendedLineAddition)return holdQueue(queued.sellerKey,queued.sku,
         `order_line_addition_requires_correction:${amendedLineAddition.lineId}`,db);
       const unresolvedQuantityChanges=await query<{lineId:string;orderId:string;skuId:string;direction:string;
@@ -364,7 +369,7 @@ export const inventoryFifoRepository={
             JOIN inventory_stock_disposition_corrections correction ON correction.disposition_id=disposition.id
             WHERE disposition.order_id=saved.order_id AND disposition.order_line_sku_id=saved.order_line_sku_id
               AND correction.source_order_revision=orders.source_revision)
-        ORDER BY orders.order_time,orders.order_number`,[queued.sellerKey,queued.sku,opening.cutoffAt],db);
+        ORDER BY orders.order_time,orders.order_number`,[queued.sellerKey,queued.sku,historyFrom],db);
       const blockingQuantityChange=unresolvedQuantityChanges.find((change)=>
         change.direction!=="decrease"||!change.needsInitialProjection);
       if(blockingQuantityChange)return holdQueue(queued.sellerKey,queued.sku,
@@ -403,11 +408,12 @@ export const inventoryFifoRepository={
       const lots=await query<any>(`WITH raw_supply AS (
         SELECT 'receipt:'||receipt.receipt_id::text AS "supplyKey",
           receipt.receipt_id AS "receiptId",NULL::text AS "dispositionId",NULL::text AS "quantityCorrectionId",
-          receipt.original_quantity AS quantity,
-          opening.cutoff_at AS "availableAt",receipt.fifo_precedence AS "fifoPrecedence",
+          COALESCE(coverage.unknown_quantity,receipt.original_quantity) AS quantity,
+          COALESCE(coverage.covered_from,opening.cutoff_at) AS "availableAt",receipt.fifo_precedence AS "fifoPrecedence",
           receipt.intake_at AS "intakeAt",receipt.market_value::text AS "marketValue",NULL::text AS "excludedLineKey"
         FROM inventory_receipts receipt JOIN inventory_opening_balance_runs opening
           ON opening.id=receipt.opening_balance_run_id AND opening.status='applied'
+        LEFT JOIN inventory_listing_history_coverage coverage ON coverage.opening_receipt_id=receipt.receipt_id
         WHERE receipt.seller_key=$1 AND receipt.sku=$2 AND receipt.receipt_kind='opening_balance'
         UNION ALL
         SELECT 'receipt:'||receipt.receipt_id::text,receipt.receipt_id,NULL::text,NULL::text,link.planned_quantity,
@@ -446,7 +452,7 @@ export const inventoryFifoRepository={
               AND mapping.seller_key=$1 AND mapping.sku=$2),0) AS quantity,
           raw_supply."availableAt",raw_supply."fifoPrecedence",raw_supply."intakeAt",raw_supply."marketValue",
           raw_supply."excludedLineKey"
-        FROM raw_supply`,[queued.sellerKey,queued.sku,opening.cutoffAt],db);
+        FROM raw_supply`,[queued.sellerKey,queued.sku,historyFrom],db);
       const supplies:FifoSupplyLot[]=lots.filter((row)=>row.quantity>0).map((row)=>({
         supplyKey:row.supplyKey,receiptId:row.receiptId,dispositionId:row.dispositionId,
         quantityCorrectionId:row.quantityCorrectionId,
@@ -455,7 +461,7 @@ export const inventoryFifoRepository={
         intakeAt:row.intakeAt?(row.intakeAt as Date).toISOString():null,
         marketValueTenThousandths:row.marketValue===null?null:Math.round(Number(row.marketValue)*10_000),
       }));
-      const allocatable:FifoOrderLine[]=demand.filter((row)=>row.quantity>0&&row.orderTime>=opening.cutoffAt).map((row)=>({
+      const allocatable:FifoOrderLine[]=demand.filter((row)=>row.quantity>0&&row.orderTime>=historyFrom).map((row)=>({
         lineKey:`${row.orderId}:${row.skuId}`,orderId:row.orderId,orderNumber:row.orderNumber,
         orderTime:(row.orderTime as Date).toISOString(),quantity:row.quantity,
       }));
@@ -492,7 +498,7 @@ export const inventoryFifoRepository={
         let state=result.matchedQuantity===row.quantity?"allocated":result.matchedQuantity?"partial":"unmatched";
         let holdReason:string|null=null;
         if(row.quantity===0){state="removed";result={...result,unmatchedQuantity:0};}
-        else if(row.orderTime<opening.cutoffAt){state="excluded_pre_cutoff";result={...result,matchedQuantity:0,unmatchedQuantity:row.quantity,allocations:[],priceKnownQuantity:0,intakeMarketTotalCents:null,dateKnownQuantity:0,weightedDaysHeld:null};}
+        else if(row.orderTime<historyFrom){state="excluded_pre_cutoff";result={...result,matchedQuantity:0,unmatchedQuantity:row.quantity,allocations:[],priceKnownQuantity:0,intakeMarketTotalCents:null,dateKnownQuantity:0,weightedDaysHeld:null};}
         else if(row.lifecycle==="canceled"){
           const lineDispositions=dispositionsByLine.get(key)??[];
           const restored=lineDispositions.reduce((sum,value)=>sum+value.quantity,0);
