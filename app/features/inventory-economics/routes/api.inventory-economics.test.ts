@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createInventoryEconomicsHandlers } from "./api.inventory-economics.server";
 
 const workspace = { sellerKey:"configured-seller",generatedAt:"2026-09-08T00:00:00Z",
-  purchaseCosts:[],fundingAdjustments:[],orderExpenses:[],orders:[],uncostedBatches:[] };
+  purchaseCosts:[],fundingAdjustments:[],orderExpenses:[],orders:[] };
 const fundingInputs: unknown[] = [];
 const purchaseInputs: unknown[] = [];
 const targetInputs: number[][] = [];

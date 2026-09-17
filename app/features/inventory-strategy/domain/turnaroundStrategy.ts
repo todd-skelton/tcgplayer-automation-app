@@ -2,7 +2,6 @@ import {
   REINVESTMENT_TURNAROUND_RULE_VERSION,
   type ReinvestmentTurnaroundReport,
   type ReinvestmentTurnaroundSample,
-  type UnsupportedPurchaseFunding,
 } from "../types/reinvestmentTurnaround";
 import {
   DEFAULT_TURNAROUND_SETTING,
@@ -36,15 +35,6 @@ function instant(value: string | null | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function weightedPercent(
-  samples: ReinvestmentTurnaroundSample[],
-  predicate: (sample: ReinvestmentTurnaroundSample) => boolean,
-): number | null {
-  const total = samples.reduce((sum, sample) => sum + sample.amountCents, 0);
-  if (!total) return null;
-  return samples.reduce((sum, sample) => sum + (predicate(sample) ? sample.amountCents : 0), 0) / total * 100;
-}
-
 function weightedMean(samples: ReinvestmentTurnaroundSample[]): number | null {
   const total = samples.reduce((sum, sample) => sum + sample.amountCents, 0);
   return total
@@ -64,18 +54,6 @@ function weightedP90(samples: ReinvestmentTurnaroundSample[]): number | null {
     if (cumulative >= target) return sample.turnaroundDays ?? null;
   }
   return ordered.at(-1)?.turnaroundDays ?? null;
-}
-
-function isUnsupportedPurchaseFunding(value:unknown):value is UnsupportedPurchaseFunding {
-  if (!value || typeof value!=="object") return false;
-  const item=value as Partial<UnsupportedPurchaseFunding>;
-  return (item.kind==="orphan" || item.kind==="above_current_cost") &&
-    typeof item.adjustmentReference==="string" && item.adjustmentReference.length>0 &&
-    (item.purchaseReference===null || typeof item.purchaseReference==="string") &&
-    typeof item.currency==="string" && /^[A-Z]{3}$/.test(item.currency) &&
-    typeof item.amountCents==="number" && Number.isSafeInteger(item.amountCents) && item.amountCents>=0 &&
-    typeof item.effectiveAt==="string" && instant(item.effectiveAt)!==null &&
-    typeof item.sourceIdentity==="string" && item.sourceIdentity.length>0;
 }
 
 function settingFor(
@@ -110,24 +88,13 @@ function evaluate(
   const notes: string[] = [];
   const nowMs = now.getTime();
   const asOf = instant(report.asOf);
-  const rawCoverage = report.coverage as ReinvestmentTurnaroundReport["coverage"] & {
-    unknownProceeds?: Array<{ soldAt: string | null }>;
-    unknownCosts?: Array<{ receiptId: number; productLineId: number; occurredAt: string | null }>;
-  };
-  const rawUnsupported=(report as ReinvestmentTurnaroundReport & {unsupportedPurchaseFunding?:unknown})
-    .unsupportedPurchaseFunding;
-  const hasUnsupportedFundingContract=Array.isArray(rawUnsupported) && rawUnsupported.every(isUnsupportedPurchaseFunding);
-  const unsupportedPurchaseFunding=hasUnsupportedFundingContract ? rawUnsupported : [];
-  const orderCoverage = report.orderCoverage;
   if (recoveryError) reasons.push("Current evidence could not be rebuilt; a saved recovery report cannot select observed mode.");
-  if (report.ruleVersion !== REINVESTMENT_TURNAROUND_RULE_VERSION || !rawCoverage.unknownProceeds || !rawCoverage.unknownCosts ||
-      !hasUnsupportedFundingContract) {
-    reasons.push("The saved report predates the observed-turnaround evidence contract.");
-  }
+  if (report.ruleVersion !== REINVESTMENT_TURNAROUND_RULE_VERSION) reasons.push("The saved report predates the current reinvestment rule.");
   if (report.sellerKey !== sellerKey) reasons.push("The saved report belongs to a different seller.");
   if (asOf === null || asOf > nowMs || nowMs - asOf > TURNAROUND_EVIDENCE_POLICY.maximumReportAgeHours * HOUR) {
     reasons.push("The report as-of time is missing, future, or older than 24 hours.");
   }
+  const orderCoverage = report.orderCoverage;
   if (!orderCoverage) {
     notes.push("No complete Seller Portal order scan is available; proceeds are taken from the orders observed.");
   } else {
@@ -142,71 +109,26 @@ function evaluate(
       notes.push("The Seller Portal order scan is older than 24 hours.");
     }
   }
-  const currency = report.currencies.filter((summary) => [
-    summary.eligibleProceedsCents,
-    summary.negativeProceedsCents,
-    summary.completedCents,
-    summary.waitingCents,
-    summary.unallocatedProceedsCents,
-    summary.reservedOrWithdrawnCents,
-    summary.unsupportedFundingAdjustmentCents,
-    summary.outsideFundingUsedCents,
-    summary.outsideFundingSuppliedCents,
-    summary.outsideDeficitSettlementCents,
-    summary.outsideAvailableCents,
-    summary.outsideReservedOrWithdrawnCents,
-    summary.outstandingNegativeDeficitCents,
-    summary.unresolvedPurchaseCostCents,
-  ].some((amount) => amount !== 0));
-  const currentUnsupported=asOf===null?[]:unsupportedPurchaseFunding.filter((item)=>
-    item.amountCents>0 && instant(item.effectiveAt)!<=asOf);
-  const financialCurrencies=new Set([...currency.map((summary)=>summary.currency),...currentUnsupported.map((item)=>item.currency)]);
-  if (financialCurrencies.size !== 1 || !financialCurrencies.has("USD")) {
-    reasons.push("Observed strategy timing requires one complete USD proceeds pool; currencies are never mixed.");
+  const currencies = report.currencies.filter((summary) =>
+    summary.eligibleProceedsCents !== 0 || summary.completedCents !== 0 || summary.waitingCents !== 0 ||
+    summary.unallocatedProceedsCents !== 0 || summary.outsideFundingSuppliedCents !== 0);
+  if (currencies.length !== 1 || currencies[0].currency !== "USD") {
+    reasons.push("Observed strategy timing requires one USD proceeds pool; currencies are never mixed.");
   }
-  const usd = currency.find((summary)=>summary.currency==="USD")??null;
-  if (usd && (usd.waitingCents > 0 || usd.unallocatedProceedsCents > 0 || usd.unresolvedPurchaseCostCents > 0 ||
-      usd.unsupportedFundingAdjustmentCents > 0 || usd.outstandingNegativeDeficitCents > 0 ||
+  const usd = currencies.find((summary) => summary.currency === "USD") ?? null;
+  if (usd && (usd.waitingCents > 0 || usd.unallocatedProceedsCents > 0 ||
       usd.reinvestedPercent !== 100 || usd.completionCoveragePercent !== 100)) {
-    notes.push("Some proceeds are still waiting, unallocated, or otherwise outside completed cycles; only completed cycles are measured.");
+    notes.push("Some proceeds are still waiting or unallocated; only completed cycles are measured.");
   }
-  if (currentUnsupported.some((item)=>item.amountCents>0)) {
-    notes.push("Some purchase funding exceeds its matching purchase cost and is ignored.");
-  }
-  const cohortStart = asOf === null ? null : asOf - TURNAROUND_EVIDENCE_POLICY.observationDays * DAY;
-  const unknownProceeds = rawCoverage.unknownProceeds ?? [];
-  const missingUnknownProceedsDates = Math.max(0, rawCoverage.unknownProceedsOrderCount - unknownProceeds.length) +
-    unknownProceeds.filter((item) => item.soldAt === null || instant(item.soldAt) === null).length;
-  const recentUnknownProceeds = cohortStart === null || asOf === null ? 0 : unknownProceeds.filter((item) => {
-    const soldAt = instant(item.soldAt);
-    return soldAt !== null && soldAt >= cohortStart && soldAt <= asOf;
-  }).length;
-  const historicalUnknownProceeds = cohortStart === null ? 0 : unknownProceeds.filter((item) => {
-    const soldAt = instant(item.soldAt);
-    return soldAt !== null && soldAt < cohortStart;
-  }).length;
-  if (missingUnknownProceedsDates > 0 || recentUnknownProceeds > 0) {
-    notes.push("Some recent orders lack proceeds evidence and are left out.");
-  }
+  if (report.coverage.unknownProceedsOrderCount > 0) notes.push("Some orders lack proceeds evidence and are left out.");
+  if (report.coverage.unknownCostReceiptCount > 0) notes.push("Some received inventory has no cost yet and is left out.");
 
+  const cohortStart = asOf === null ? null : asOf - TURNAROUND_EVIDENCE_POLICY.observationDays * DAY;
   const allScopedSamples = report.samples.filter((sample) => sample.currency === "USD" &&
     (productLineId === null || sample.productLineId === productLineId));
   const completedLifetime = allScopedSamples.filter((sample) => sample.state === "completed");
   const waitingLifetime = allScopedSamples.filter((sample) => sample.state === "waiting");
   if (waitingLifetime.length > 0) notes.push("Some sale proceeds are still waiting for publication and are not yet cycles.");
-  const recentUnknownCosts = (rawCoverage.unknownCosts ?? []).filter((item) => {
-    if (productLineId !== null && item.productLineId !== productLineId) return false;
-    const occurredAt = instant(item.occurredAt);
-    return occurredAt === null || cohortStart === null || asOf === null ||
-      (occurredAt >= cohortStart && occurredAt <= asOf);
-  });
-  const historicalUnknownCosts = cohortStart === null ? 0 : (rawCoverage.unknownCosts ?? []).filter((item) => {
-    if (productLineId !== null && item.productLineId !== productLineId) return false;
-    const occurredAt = instant(item.occurredAt);
-    return occurredAt !== null && occurredAt < cohortStart;
-  }).length;
-  if (recentUnknownCosts.length > 0) notes.push("Some recent received inventory has no cost yet and is left out.");
-
   const completed = cohortStart === null || asOf === null ? [] : completedLifetime.filter((sample) => {
     const soldAt = instant(sample.soldAt);
     return soldAt !== null && soldAt >= cohortStart && soldAt <= asOf;
@@ -228,19 +150,10 @@ function evaluate(
   const observationFrom = soldTimes.length ? Math.min(...soldTimes) : null;
   const observationThrough = soldTimes.length ? Math.max(...soldTimes) : null;
   const latestPublication = publishedTimes.length ? Math.max(...publishedTimes) : null;
-  const actualProceedsPercent = weightedPercent(completed, (sample) => sample.proceedsProvenance === "actual");
-  const actualCostPercent = weightedPercent(completed, (sample) => sample.costProvenance === "actual");
-  const knownFundingPercent = weightedPercent(completed, (sample) => sample.fundingProvenance !== "inferred");
   if (latestPublication !== null && nowMs - latestPublication > TURNAROUND_EVIDENCE_POLICY.observationDays * DAY) {
     notes.push("The selected cohort has no recently completed replacement publication.");
   }
 
-  const limitations = [
-    "Costs, proceeds, and funding dates are estimated by the strategy assumptions where evidence is missing; figures are directional.",
-    "Typical is a completed dollar-weighted mean of the last 90 days of cycles.",
-    "Slower is the completed dollar-weighted p90 scenario, not a confidence bound.",
-    ...notes,
-  ];
   const evidence: TurnaroundEvidenceSummary = {
     scope: productLineId === null ? "seller" : "product-line",
     sourceProductLineId: productLineId,
@@ -256,20 +169,10 @@ function evaluate(
     eligibleProceedsCents: usd?.eligibleProceedsCents ?? 0,
     unallocatedProceedsCents: usd?.unallocatedProceedsCents ?? 0,
     oldestUnallocatedDays: usd?.oldestUnallocatedDays ?? null,
-    unresolvedPurchaseCostCents: usd?.unresolvedPurchaseCostCents ?? 0,
-    unsupportedFundingAdjustmentCents: usd?.unsupportedFundingAdjustmentCents ?? 0,
-    unsupportedPurchaseFunding:[...currentUnsupported.reduce((amounts,item)=>
-      amounts.set(item.currency,(amounts.get(item.currency)??0)+item.amountCents),new Map<string,number>())]
-      .map(([currency,amountCents])=>({currency,amountCents})),
     reinvestedPercent: usd?.reinvestedPercent ?? null,
     completionCoveragePercent: usd?.completionCoveragePercent ?? null,
-    historicalUnknownProceedsCount: historicalUnknownProceeds,
-    historicalUnknownCostCount: historicalUnknownCosts,
     typicalDays: weightedMean(completed),
     slowerDays: weightedP90(completed),
-    actualProceedsPercent,
-    actualCostPercent,
-    knownFundingPercent,
     orderCoverageFinishedAt: orderCoverage?.finishedAt ?? null,
     orderObservedFrom: orderCoverage?.observedFrom ?? null,
     orderObservedThrough: orderCoverage?.observedThrough ?? null,
@@ -278,11 +181,16 @@ function evaluate(
       : purchases >= TURNAROUND_EVIDENCE_POLICY.minimumCompletedPurchases
         ? "medium"
         : completed.length > 0 ? "low" : "unavailable",
-    limitations,
+    limitations: [
+      "Costs, proceeds, and funding dates are estimated by the strategy assumptions where evidence is missing; figures are directional.",
+      "Typical is a completed dollar-weighted mean of the last 90 days of cycles.",
+      "Slower is the completed dollar-weighted p90 scenario, not a confidence bound.",
+      ...notes,
+    ],
   };
   const noRecentCompleted = completed.length === 0;
   if (productLineId !== null && noRecentCompleted && completedLifetime.length === 0 &&
-      waitingLifetime.length === 0 && recentUnknownCosts.length === 0 && reasons.length === 0) {
+      waitingLifetime.length === 0 && reasons.length === 0) {
     return { status: "sparse", reasons: ["This product line has no attributed replacement cycles."], evidence };
   }
   if (productLineId !== null && noRecentCompleted && completedLifetime.length > 0) {
@@ -307,7 +215,6 @@ function evaluate(
   }
   return { status: "eligible", reasons: [], evidence };
 }
-
 export function selectTurnaround(
   sellerKey: string,
   productLineId: number | null,

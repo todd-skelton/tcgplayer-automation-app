@@ -11,10 +11,6 @@ function percent(value: number | null | undefined): string {
   return value == null ? "unavailable" : `${value.toFixed(0)}%`;
 }
 
-function money(amountCents:number,currency:string):string {
-  return new Intl.NumberFormat("en-US",{style:"currency",currency}).format(amountCents/100);
-}
-
 export function TurnaroundInputs({
   selection,
   productLine,
@@ -100,12 +96,6 @@ export function TurnaroundInputs({
               label={`Unallocated ${currencyFormatter.format(evidence.unallocatedProceedsCents / 100)}`} />
             {evidence.oldestUnallocatedDays !== null ? <Chip variant="outlined" color="warning"
               label={`Oldest unallocated lower bound ${evidence.oldestUnallocatedDays.toFixed(1)} days`} /> : null}
-            <Chip variant="outlined" color={evidence.unresolvedPurchaseCostCents ? "warning" : "default"}
-              label={`Unresolved cost ${currencyFormatter.format(evidence.unresolvedPurchaseCostCents / 100)}`} />
-            <Chip variant="outlined" color={evidence.unsupportedFundingAdjustmentCents ? "warning" : "default"}
-              label={`Unsupported funding ${currencyFormatter.format(evidence.unsupportedFundingAdjustmentCents / 100)}`} />
-            {evidence.unsupportedPurchaseFunding.map((item)=><Chip key={item.currency} variant="outlined" color="warning"
-              label={`Unsupported purchase funding ${money(item.amountCents,item.currency)} ${item.currency}`} />)}
           </Stack>
           <Typography variant="body2" color="text.secondary">
             {evidence.attribution === "seller-substituted-for-sparse-line"
@@ -115,9 +105,7 @@ export function TurnaroundInputs({
                 : "Seller-wide pooled replacement timing."}
             {" "}Evidence as of {date(evidence.reportAsOf)}; 90-day sale cohort {date(evidence.observationFrom)}–{date(evidence.observationThrough)};
             order scan completed {date(evidence.orderCoverageFinishedAt)}. Observed order dates {date(evidence.orderObservedFrom)}–{date(evidence.orderObservedThrough)}
-            are observations, not coverage boundaries. Provenance by dollars: actual proceeds {percent(evidence.actualProceedsPercent)},
-            actual cost {percent(evidence.actualCostPercent)}, known funding {percent(evidence.knownFundingPercent)}. Source {evidence.sourceFingerprint.slice(0, 12)}.
-            {" "}Excluded historical unknowns outside the cohort: {evidence.historicalUnknownProceedsCount} proceeds and {evidence.historicalUnknownCostCount} costs.
+            are observations, not coverage boundaries. Source {evidence.sourceFingerprint.slice(0, 12)}.
           </Typography>
           {evidence.limitations.map((limitation) => (
             <Typography key={limitation} variant="caption" color="text.secondary">• {limitation}</Typography>
