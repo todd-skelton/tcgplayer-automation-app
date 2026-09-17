@@ -23,8 +23,23 @@ interface ReceiptTargetRow {
 
 export class InventoryEconomicsConflictError extends Error {}
 
+export interface EstimableBatchReceipts {
+  batchNumber: number;
+  /** Current estimated purchase entry owning every lot of the batch, or null when the batch is uncosted. */
+  currentEstimate: { entryId: string; requestId: string } | null;
+  receipts: Array<{
+    receiptId: number; originalQuantity: number; marketValue: number | null; intakeAt: string | null;
+    /** Lot cost under the current estimate, or null when the batch is uncosted. */
+    allocatedAmountCents: number | null;
+  }>;
+}
 function safeCents(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label} must be nonnegative whole cents.`);
+}
+
+/** Explicit lot costs are signed: a lot worth less than its handling deduction costs less than nothing. */
+function signedCents(value: number, label: string): void {
+  if (!Number.isSafeInteger(value)) throw new Error(`${label} must be whole cents.`);
 }
 
 function normalizeReference(value: string, label: string): string {
@@ -134,7 +149,7 @@ export const inventoryEconomicsRepository = {
             new Set(explicitAllocations.map((value)=>value.receiptId)).size !== explicitAllocations.length) {
           throw new Error("Explicit allocations require each receipt exactly once.");
         }
-        explicitAllocations.forEach((value)=>safeCents(value.amountCents,`Receipt ${value.receiptId} allocation`));
+        explicitAllocations.forEach((value)=>signedCents(value.amountCents,`Receipt ${value.receiptId} allocation`));
       } else if (explicitAllocations.length) {
         throw new Error("Explicit receipt amounts require the explicit allocation rule.");
       }
@@ -189,7 +204,7 @@ export const inventoryEconomicsRepository = {
         }
         allocations = receipts.map((receipt) => {
           const amountCents = explicit.get(receipt.receiptId)!;
-          safeCents(amountCents, `Receipt ${receipt.receiptId} allocation`);
+          signedCents(amountCents, `Receipt ${receipt.receiptId} allocation`);
           return { receiptId: receipt.receiptId, amountCents, weight: amountCents };
         });
         if (allocations.reduce((sum, value) => sum + value.amountCents, 0) !== input.totalAmountCents) {
@@ -440,11 +455,12 @@ export const inventoryEconomicsRepository = {
   },
 
   /**
-   * Received lots linked to batches whose lots have no purchase cost yet, grouped by batch.
-   * A batch is returned only when none of its lots belong to any purchase, so an estimate
-   * never competes with an entered cost.
+   * Received lots of batches that may carry an estimated purchase cost, grouped by batch:
+   * batches whose lots have no purchase cost yet (`currentEstimate` null) and batches whose
+   * lots all belong to the batch's own estimated purchase, returned with the current entry
+   * so a changed rule can correct it. A batch touching an entered cost is never returned.
    */
-  async findUncostedBatchReceipts(sellerKey: string, options: { batchNumbers?: number[]; limit?: number } = {}, executor?: Queryable) {
+  async findEstimableBatchReceipts(sellerKey: string, options: { batchNumbers?: number[]; limit?: number } = {}, executor?: Queryable) {
     const seller = normalizeReference(sellerKey,"Seller key");
     const limit = options.limit ?? 100;
     if (!Number.isInteger(limit) || limit < 1 || limit > 1000) throw new Error("Batch limit must be between 1 and 1000.");
@@ -454,36 +470,53 @@ export const inventoryEconomicsRepository = {
     }
     const rows = await query<{
       batchNumber: number; receiptId: number; originalQuantity: number; marketValue: number | null; intakeAt: Date | null;
-    }>(`WITH uncosted AS (
-        SELECT link.batch_number
+      entryId: string | null; requestId: string | null; allocatedAmountCents: number | null;
+    }>(`WITH batch_lot AS (
+        SELECT link.batch_number,receipt.receipt_id,ownership.series_id,series.purchase_reference,series.seller_key AS owner
         FROM inventory_receipt_batch_links link
         JOIN inventory_receipts receipt ON receipt.receipt_id=link.receipt_id
+        LEFT JOIN inventory_purchase_receipt_ownership ownership ON ownership.receipt_id=receipt.receipt_id
+        LEFT JOIN inventory_purchase_cost_series series ON series.id=ownership.series_id
         WHERE receipt.receipt_kind='received'
           AND (receipt.seller_key IS NULL OR receipt.seller_key=$1)
           AND ($2::int[] IS NULL OR link.batch_number=ANY($2::int[]))
-        GROUP BY link.batch_number
+      ), estimable AS (
+        SELECT batch_number,max(series_id) AS series_id
+        FROM batch_lot
+        GROUP BY batch_number
         HAVING NOT EXISTS (
           SELECT 1 FROM inventory_receipt_batch_links owned
           JOIN inventory_purchase_receipt_ownership ownership ON ownership.receipt_id=owned.receipt_id
-          WHERE owned.batch_number=link.batch_number)
-        ORDER BY link.batch_number LIMIT $3)
+          JOIN inventory_purchase_cost_series series ON series.id=ownership.series_id
+          WHERE owned.batch_number=batch_lot.batch_number
+            AND (series.seller_key<>$1 OR series.purchase_reference<>'estimated:batch-'||batch_lot.batch_number))
+          AND count(DISTINCT series_id)<=1
+        ORDER BY batch_number LIMIT $3
+      ), current_entry AS (
+        SELECT DISTINCT ON (entry.series_id) entry.id,entry.series_id,entry.request_id
+        FROM inventory_purchase_cost_entries entry ORDER BY entry.series_id,entry.sequence DESC
+      )
       SELECT link.batch_number AS "batchNumber",receipt.receipt_id AS "receiptId",
         receipt.original_quantity AS "originalQuantity",receipt.market_value::float8 AS "marketValue",
-        receipt.intake_at AS "intakeAt"
-      FROM uncosted
-      JOIN inventory_receipt_batch_links link ON link.batch_number=uncosted.batch_number
+        receipt.intake_at AS "intakeAt",current.id::text AS "entryId",current.request_id AS "requestId",
+        allocation.allocated_amount_cents::float8 AS "allocatedAmountCents"
+      FROM estimable
+      JOIN inventory_receipt_batch_links link ON link.batch_number=estimable.batch_number
       JOIN inventory_receipts receipt ON receipt.receipt_id=link.receipt_id
+      LEFT JOIN current_entry current ON current.series_id=estimable.series_id
+      LEFT JOIN inventory_purchase_cost_allocations allocation
+        ON allocation.entry_id=current.id AND allocation.receipt_id=receipt.receipt_id
       ORDER BY link.batch_number,receipt.receipt_id`,[seller,batchNumbers,limit],executor);
-    const batches = new Map<number, Array<{ receiptId: number; originalQuantity: number; marketValue: number | null; intakeAt: string | null }>>();
+    const batches = new Map<number, EstimableBatchReceipts>();
     for (const row of rows) {
-      const receipts = batches.get(row.batchNumber) ?? [];
-      receipts.push({ receiptId: row.receiptId, originalQuantity: row.originalQuantity, marketValue: row.marketValue,
-        intakeAt: row.intakeAt ? row.intakeAt.toISOString() : null });
-      batches.set(row.batchNumber, receipts);
+      const batch = batches.get(row.batchNumber) ?? { batchNumber: row.batchNumber, currentEstimate: null, receipts: [] };
+      if (row.entryId && row.requestId) batch.currentEstimate = { entryId: row.entryId, requestId: row.requestId };
+      batch.receipts.push({ receiptId: row.receiptId, originalQuantity: row.originalQuantity, marketValue: row.marketValue,
+        intakeAt: row.intakeAt ? row.intakeAt.toISOString() : null, allocatedAmountCents: row.allocatedAmountCents });
+      batches.set(row.batchNumber, batch);
     }
-    return [...batches].map(([batchNumber, receipts]) => ({ batchNumber, receipts }));
+    return [...batches.values()];
   },
-
   async findWorkspaceEvidence(sellerKey: string, limit = 100, executor?:Queryable) {
     const seller = sellerKey.trim();
     const orders = await query<{

@@ -380,7 +380,7 @@ export default function InventoryManagerRoute() {
                   label="Estimated" />
               </Stack>}
               <Typography variant="caption" color="text.secondary">
-                Cost is optional. Quantity allocation preserves the purchase total across these receipt lots. Without an entered cost, an estimated cost of 75% of each item's intake market price minus $0.30 per unit is recorded and labeled estimated.
+                Cost is optional. Quantity allocation preserves the purchase total across these receipt lots. Without an entered cost, an estimated cost of 75% of each item's intake market price minus $0.30 per unit is recorded and labeled estimated; an item worth less than $0.40 counts as negative cost.
               </Typography>
             </Stack>
           )}

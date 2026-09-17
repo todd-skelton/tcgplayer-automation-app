@@ -46,8 +46,8 @@ function instant(value: unknown): string | undefined {
 export function normalizePurchaseCostDetails(input: Record<string,unknown>): NormalizedPurchaseCostDetails {
   const currency = requiredText(input.currency,"Currency").toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) throw new Error("Currency must be a three-letter code.");
-  if (!Number.isSafeInteger(input.totalAmountCents) || (input.totalAmountCents as number) < 0) {
-    throw new Error("Purchase total must be nonnegative whole cents.");
+  if (!Number.isSafeInteger(input.totalAmountCents)) {
+    throw new Error("Purchase total must be whole cents.");
   }
   if (input.provenance !== "actual" && input.provenance !== "estimated") {
     throw new Error("Purchase provenance is invalid.");

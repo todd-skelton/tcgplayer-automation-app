@@ -4,6 +4,7 @@ import type { Queryable } from "~/core/db/database.server";
 import { allocateAmountCents } from "~/features/inventory-economics/domain/money";
 import { loadCompleteReusableProceeds } from "~/features/inventory-economics/services/inventoryEconomics.server";
 import { allocateReinvestmentTurnaround, unsupportedPurchaseFundingFor } from "../domain/allocateReinvestmentTurnaround";
+import { purchaseCapital } from "../domain/purchaseCapital";
 import type {
   ReinvestmentPublicationTranche,
   ReinvestmentTurnaroundInput,
@@ -62,20 +63,26 @@ export function buildReinvestmentInput(
     const key=`${row.currency}\u0000${row.purchaseReference??""}`;
     purchaseFunding.set(key,[...(purchaseFunding.get(key)??[]),row]);
   }
-  const purchasesByKey=new Map<string,ReplacementPurchase>();
+  const rowsByKey=new Map<string,ReinvestmentPurchaseSourceRow[]>();
   for (const row of evidence.purchaseRows) {
     const key=`${row.currency}\u0000${row.purchaseReference}`;
-    let purchase=purchasesByKey.get(key);
-    if (!purchase) {
-      const funding=purchaseFunding.get(key)??[];
-      purchase={purchaseReference:row.purchaseReference,currency:row.currency,totalAmountCents:row.totalAmountCents,
-        costProvenance:row.costProvenance,costSourceIdentity:row.costSourceIdentity,
-        ...(row.purchasedAt?{purchasedAt:row.purchasedAt}:{}),funding:funding.map((value)=>({
-          adjustmentReference:value.adjustmentReference,amountCents:value.amountCents,effectiveAt:value.effectiveAt,
-          provenance:value.provenance,sourceIdentity:value.sourceIdentity})),tranches:[]};
-      purchasesByKey.set(key,purchase); purchaseFunding.delete(key);
+    rowsByKey.set(key,[...(rowsByKey.get(key)??[]),row]);
+  }
+  const purchasesByKey=new Map<string,ReplacementPurchase>();
+  for (const [key,rows] of rowsByKey) {
+    const [first]=rows;
+    const funding=purchaseFunding.get(key)??[];
+    const capital=purchaseCapital(rows.map((row)=>({receiptId:row.receiptId,amountCents:row.allocatedAmountCents})));
+    const purchase:ReplacementPurchase={purchaseReference:first.purchaseReference,currency:first.currency,
+      totalAmountCents:capital.totalAmountCents,
+      costProvenance:first.costProvenance,costSourceIdentity:first.costSourceIdentity,
+      ...(first.purchasedAt?{purchasedAt:first.purchasedAt}:{}),funding:funding.map((value)=>({
+        adjustmentReference:value.adjustmentReference,amountCents:value.amountCents,effectiveAt:value.effectiveAt,
+        provenance:value.provenance,sourceIdentity:value.sourceIdentity})),tranches:[]};
+    for (const row of rows) {
+      purchase.tranches.push(...publicationTranches({...row,allocatedAmountCents:capital.lotAmountCents.get(row.receiptId)!}));
     }
-    purchase.tranches.push(...publicationTranches(row));
+    purchasesByKey.set(key,purchase); purchaseFunding.delete(key);
   }
   const orphanFunding=[...purchaseFunding.values()].flat();
   const sourceEvidenceIdentities=[...evidence.purchaseRows.map((row)=>identity(row)),

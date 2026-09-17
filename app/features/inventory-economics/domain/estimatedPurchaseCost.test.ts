@@ -8,9 +8,9 @@ import {
 assert.equal(ESTIMATED_PURCHASE_COST_RULE.marketRate, 0.75);
 assert.equal(estimateUnitCostCents(10), 720, "75% of $10.00 less $0.30 is $7.20");
 assert.equal(estimateUnitCostCents(0.4), 0, "75% of $0.40 is exactly the deduction");
-assert.equal(estimateUnitCostCents(0.39), 0, "estimates never go below zero");
+assert.equal(estimateUnitCostCents(0.39), -1, "a unit below the deduction carries a negative cost");
 assert.equal(estimateUnitCostCents(1.234), 62, "market is rounded to cents before the share");
-assert.equal(estimateUnitCostCents(0), 0);
+assert.equal(estimateUnitCostCents(0), -30, "a worthless unit costs minus the full deduction");
 assert.throws(() => estimateUnitCostCents(-1), /nonnegative/);
 
 const estimated = estimateBatchPurchaseCost("seller-a", 12, [
@@ -20,11 +20,11 @@ const estimated = estimateBatchPurchaseCost("seller-a", 12, [
 assert.equal(estimated.status, "estimated");
 if (estimated.status === "estimated") {
   assert.deepEqual(estimated.estimate.purchaseCost, {
-    requestId: "estimated-purchase-cost:market-rate-v1:batch-12",
+    requestId: "estimated-purchase-cost:market-rate-v2:batch-12",
     sellerKey: "seller-a",
     purchaseReference: "estimated:batch-12",
     currency: "USD",
-    totalAmountCents: 2160,
+    totalAmountCents: 2145,
     provenance: "estimated",
     source: "intake",
     allocationRule: "explicit",
@@ -32,7 +32,7 @@ if (estimated.status === "estimated") {
     purchasedAt: "2026-08-10",
     explicitAllocations: [
       { receiptId: 5, amountCents: 2160 },
-      { receiptId: 7, amountCents: 0 },
+      { receiptId: 7, amountCents: -15 },
     ],
   });
   assert.equal(estimated.estimate.unitCount, 4);
