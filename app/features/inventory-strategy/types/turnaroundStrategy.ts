@@ -9,7 +9,7 @@ export interface TurnaroundSetting {
 }
 
 export const DEFAULT_TURNAROUND_SETTING = {
-  mode: "manual",
+  mode: "observed",
   manualTurnaroundDays: 28,
 } as const satisfies Pick<TurnaroundSetting, "mode" | "manualTurnaroundDays">;
 
