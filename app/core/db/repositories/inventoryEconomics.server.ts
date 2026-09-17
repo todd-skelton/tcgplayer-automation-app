@@ -460,7 +460,8 @@ export const inventoryEconomicsRepository = {
    * lots all belong to the batch's own estimated purchase, returned with the current entry
    * so a changed rule can correct it. A batch touching an entered cost is never returned.
    * A lot without an intake market takes the SKU's market when the seller's inventory was
-   * first observed, else its current market, so opening-balance stock can be estimated.
+   * first observed, else its current market, else the seller's own listed price, so
+   * opening-balance stock can be estimated.
    */
   async findEstimableBatchReceipts(sellerKey: string, options: { batchNumbers?: number[]; limit?: number } = {}, executor?: Queryable) {
     const seller = normalizeReference(sellerKey,"Seller key");
@@ -507,7 +508,9 @@ export const inventoryEconomicsRepository = {
              AND weekly.week_start<=observed.created_at::date
            ORDER BY weekly.week_start DESC LIMIT 1),
           (SELECT observed.market_price FROM continuous_pricing_inventory observed
-           WHERE observed.seller_key=$1 AND observed.sku=receipt.sku AND observed.market_price IS NOT NULL LIMIT 1)
+           WHERE observed.seller_key=$1 AND observed.sku=receipt.sku AND observed.market_price IS NOT NULL LIMIT 1),
+          (SELECT observed.current_price FROM continuous_pricing_inventory observed
+           WHERE observed.seller_key=$1 AND observed.sku=receipt.sku AND observed.current_price IS NOT NULL LIMIT 1)
         )::float8 AS "marketValue",
         receipt.intake_at AS "intakeAt",current.id::text AS "entryId",current.request_id AS "requestId",
         allocation.allocated_amount_cents::float8 AS "allocatedAmountCents"
