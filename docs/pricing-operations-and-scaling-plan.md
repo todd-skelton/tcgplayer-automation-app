@@ -127,8 +127,10 @@ The ledgers exist so that condition normalization can be tested forward on direc
 
 ## Inventory strategy page
 
-The page answers three questions, in this order: which hurdle to price at, how fast capital turns, and how fast inventory sells.
+The page answers, in this order: how the current strategy is doing, what to change, which hurdle to price at, how fast capital turns, and how fast inventory sells.
 
+- Realized performance leads: profit per day, margin over net proceeds (and over cost), return on capital as profit over cost-days against the configured hurdle, and units sold, over a 30 or 90 day window, overall and by product line. It is built from every sold unit under a current FIFO allocation, at its share of the order's net proceeds and its lot's current cost (see `docs/strategy-assumptions.md`).
+- How to improve lists the levers the numbers support: a better hurdle on the ladder, whether realized return clears the hurdle, product lines below or well above it, proceeds not yet republished, and unmodeled units.
 - A verdict header names the active policy and its parameter, its modeled physical value against the listed value, its median and P90 wait, the hurdle on the sweep whose portfolio compounds fastest under the assumed cost basis and capital turnaround, and modeled coverage with curve freshness. The cost basis is the estimated purchase cost rule (75% of intake market less 30 cents a unit).
 - The hurdle sweep evaluates the profit-per-day policy at a ladder of daily return hurdles per product line, the configured hurdle shaded, since the hurdle is the only parameter the active policy has.
 - Capital turnaround shows the typical and slower (p90) days from a sale until its proceeds are back on sale, the evidence behind it, and the seller-wide source setting: observed, or manual days used as a fallback when the observed evidence is thin.

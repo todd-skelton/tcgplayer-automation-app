@@ -23,6 +23,17 @@ interface ReceiptTargetRow {
 
 export class InventoryEconomicsConflictError extends Error {}
 
+export interface SoldUnitRow {
+  orderNumber: string;
+  soldAt: Date;
+  productLine: string;
+  quantity: number;
+  grossCents: number;
+  orderGrossCents: number;
+  costCents: number | null;
+  heldSince: Date;
+}
+
 export interface EstimableBatchReceipts {
   batchNumber: number;
   /** Current estimated purchase entry owning every lot of the batch, or null when the batch is uncosted. */
@@ -531,6 +542,47 @@ export const inventoryEconomicsRepository = {
     }
     return [...batches.values()];
   },
+  /**
+   * Every unit sold under a current FIFO allocation with its share of the
+   * order line's gross, its share of the lot's current cost, and when the lot
+   * was received. Opening-balance lots are held since the seller's inventory
+   * was first observed.
+   */
+  async findSoldUnits(sellerKey: string, executor?: Queryable): Promise<SoldUnitRow[]> {
+    const seller = sellerKey.trim();
+    if (!seller) return [];
+    return query<SoldUnitRow>(`WITH current_entry AS (
+        SELECT DISTINCT ON (entry.series_id) entry.id,entry.series_id,entry.provenance
+        FROM inventory_purchase_cost_entries entry
+        ORDER BY entry.series_id,entry.sequence DESC
+      ), latest_cost AS (
+        SELECT allocation.receipt_id,allocation.allocated_amount_cents,current.provenance,series.currency
+        FROM inventory_purchase_receipt_ownership ownership
+        JOIN current_entry current ON current.series_id=ownership.series_id
+        JOIN inventory_purchase_cost_allocations allocation
+          ON allocation.entry_id=current.id AND allocation.receipt_id=ownership.receipt_id
+        JOIN inventory_purchase_cost_series series ON series.id=current.series_id
+        WHERE series.seller_key=$1 AND series.currency='USD'
+      ) SELECT orders.order_number AS "orderNumber",orders.order_time AS "soldAt",
+        COALESCE(product_line.product_line_name,'Product line '||receipt.product_line_id) AS "productLine",
+        allocation.allocated_quantity::int AS quantity,
+        ROUND(line.gross_item_proceeds*100*allocation.allocated_quantity/line.ordered_quantity)::float8 AS "grossCents",
+        ROUND(orders.gross_item_proceeds*100)::float8 AS "orderGrossCents",
+        CASE WHEN latest_cost.receipt_id IS NULL THEN NULL
+          ELSE ROUND(latest_cost.allocated_amount_cents::numeric*allocation.allocated_quantity/receipt.original_quantity)::float8 END AS "costCents",
+        COALESCE(receipt.intake_at,receipt.market_observed_at,receipt.recorded_at) AS "heldSince"
+      FROM inventory_fifo_lines fifo
+      JOIN seller_orders orders ON orders.id=fifo.order_id
+      JOIN seller_order_lines line ON line.order_id=fifo.order_id AND line.sku_id=fifo.order_line_sku_id
+      JOIN inventory_fifo_revision_allocations allocation ON allocation.revision_id=fifo.current_revision_id
+        AND allocation.disposition_id IS NULL AND allocation.quantity_correction_id IS NULL
+      JOIN inventory_receipts receipt ON receipt.receipt_id=allocation.receipt_id
+      LEFT JOIN product_lines product_line ON product_line.product_line_id=receipt.product_line_id
+      LEFT JOIN latest_cost ON latest_cost.receipt_id=allocation.receipt_id
+      WHERE fifo.seller_key=$1 AND fifo.state IN ('allocated','partial') AND orders.currency='USD'
+      ORDER BY orders.order_time DESC`, [seller], executor);
+  },
+
   async findWorkspaceEvidence(sellerKey: string, limit = 100, executor?:Queryable) {
     const seller = sellerKey.trim();
     const orders = await query<{
