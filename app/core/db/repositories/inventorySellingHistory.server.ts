@@ -192,10 +192,12 @@ export const inventorySellingHistoryRepository = {
           ,COALESCE(array_agg(DISTINCT line.sku) FILTER (
             WHERE line.sku IS NOT NULL AND (replay.seller_key IS NOT NULL OR
               line.state IN ('pending','held'))),'{}') AS "affectedSkus",
-          (SELECT COALESCE(SUM(receipt.original_quantity),0)::int
+          (SELECT COALESCE(SUM(COALESCE(coverage.unknown_quantity,receipt.original_quantity)),0)::int
             FROM inventory_receipts receipt
             JOIN inventory_opening_balance_runs opening
               ON opening.id=receipt.opening_balance_run_id AND opening.status='applied'
+            LEFT JOIN inventory_listing_history_coverage coverage
+              ON coverage.opening_receipt_id=receipt.receipt_id
             LEFT JOIN skus opening_catalog ON opening_catalog.sku=receipt.sku
             WHERE receipt.seller_key=$1 AND receipt.receipt_kind='opening_balance'
               AND ($4::text IS NULL OR COALESCE(opening_catalog.product_line_name,'Unknown')=$4)) AS "openingUnknownQuantity"
