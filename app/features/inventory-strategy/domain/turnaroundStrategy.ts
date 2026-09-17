@@ -15,7 +15,8 @@ export const TURNAROUND_EVIDENCE_POLICY = {
   observationDays: 90,
   maximumReportAgeHours: 24,
   maximumOrderCoverageAgeHours: 24,
-  minimumCompletedPurchases: 20,
+  minimumCompletedPurchases: 5,
+  confidentCompletedPurchases: 20,
   minimumSaleSpanDays: 14,
   supportedOrderSearchRange: "LastThreeMonths",
 } as const;
@@ -272,7 +273,7 @@ function evaluate(
     orderCoverageFinishedAt: orderCoverage?.finishedAt ?? null,
     orderObservedFrom: orderCoverage?.observedFrom ?? null,
     orderObservedThrough: orderCoverage?.observedThrough ?? null,
-    confidence: purchases >= 40
+    confidence: purchases >= TURNAROUND_EVIDENCE_POLICY.confidentCompletedPurchases
       ? "high"
       : purchases >= TURNAROUND_EVIDENCE_POLICY.minimumCompletedPurchases
         ? "medium"
@@ -295,11 +296,11 @@ function evaluate(
   if (sparse && reasons.length === 0 && productLineId !== null) {
     return {
       status: "sparse",
-      reasons: [`This product line needs 20 completed purchases spanning at least 14 sale days; it has ${purchases} across ${spanDays.toFixed(1)} days.`],
+      reasons: [`This product line needs ${TURNAROUND_EVIDENCE_POLICY.minimumCompletedPurchases} completed purchases spanning at least ${TURNAROUND_EVIDENCE_POLICY.minimumSaleSpanDays} sale days; it has ${purchases} across ${spanDays.toFixed(1)} days.`],
       evidence,
     };
   }
-  if (sparse) reasons.push(`Observed mode needs 20 completed purchases spanning at least 14 sale days; this cohort has ${purchases} across ${spanDays.toFixed(1)} days.`);
+  if (sparse) reasons.push(`Observed mode needs ${TURNAROUND_EVIDENCE_POLICY.minimumCompletedPurchases} completed purchases spanning at least ${TURNAROUND_EVIDENCE_POLICY.minimumSaleSpanDays} sale days; this cohort has ${purchases} across ${spanDays.toFixed(1)} days.`);
   if (reasons.length > 0) {
     evidence.confidence = "unavailable";
     return { status: "ineligible", reasons, evidence };

@@ -161,9 +161,9 @@ const estimatedLine = structuredClone(report);
 estimatedLine.samples = estimatedLine.samples.map((value) => ({ ...value, proceedsProvenance: "estimated", costProvenance: "estimated" }));
 const estimatedSelection = selectTurnaround(sellerKey, null, observed, estimatedLine, null, now);
 assert.equal(estimatedSelection.effectiveSource, "observed-seller", "estimated cost and proceeds are enough for strategy");
-assert.equal(estimatedSelection.evidence?.confidence, "medium");
+assert.equal(estimatedSelection.evidence?.confidence, "high", "20 completed purchases is high confidence");
 const sparseLine = structuredClone(report);
-sparseLine.samples = sparseLine.samples.slice(0, 2);
+sparseLine.samples = sparseLine.samples.slice(0, 4);
 assert.equal(selectTurnaround(sellerKey, lineId, observed, sparseLine, null, now).effectiveSource, "manual-fallback");
 
 assert.equal(selectTurnaround(sellerKey, null, observed, report, "rebuild failed", now).effectiveSource, "manual-fallback");
