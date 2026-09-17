@@ -1,9 +1,5 @@
 import { useState, useRef } from "react";
-import type {
-  ProcessingProgress,
-  ProcessingSummary,
-} from "../../../core/types/pricing";
-import type { PipelineResult } from "../../pricing/services/pricingOrchestrator";
+import type { ProcessingProgress } from "../../../core/types/pricing";
 import {
   useSupplyAnalysisConfig,
   useProductLinePricingConfig,
@@ -15,8 +11,6 @@ export interface ProcessorBaseState {
   error: string | null;
   warning: string | null;
   success: string | null;
-  summary: ProcessingSummary | null;
-  exportInfo: PipelineResult["exportInfo"] | null;
 }
 
 export const useProcessorBase = () => {
@@ -25,10 +19,6 @@ export const useProcessorBase = () => {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [summary, setSummary] = useState<ProcessingSummary | null>(null);
-  const [exportInfo, setExportInfo] = useState<
-    PipelineResult["exportInfo"] | null
-  >(null);
   const isCancelledRef = useRef(false);
 
   // Supply analysis configuration from localStorage
@@ -42,16 +32,12 @@ export const useProcessorBase = () => {
     setIsProcessing(false);
     setProgress(null);
     setWarning(null);
-    setSummary(null);
-    setExportInfo(null);
   };
 
   const resetState = () => {
     setError(null);
     setWarning(null);
     setSuccess(null);
-    setSummary(null);
-    setExportInfo(null);
     isCancelledRef.current = false;
   };
 
@@ -71,8 +57,6 @@ export const useProcessorBase = () => {
     error,
     warning,
     success,
-    summary,
-    exportInfo,
     isCancelledRef,
 
     // Configuration
@@ -85,8 +69,6 @@ export const useProcessorBase = () => {
     setError,
     setWarning,
     setSuccess,
-    setSummary,
-    setExportInfo,
 
     // Actions
     handleCancel,

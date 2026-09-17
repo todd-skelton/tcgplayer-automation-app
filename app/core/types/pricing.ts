@@ -51,6 +51,16 @@ export interface ProcessingProgress {
   phaseStartTime?: number; // Timestamp when phase started (for elapsed time)
 }
 
+/** Catalog fields shown next to a priced SKU. */
+export interface ProductDisplayInfo {
+  sku: number;
+  productLine?: string;
+  setName?: string;
+  productName?: string;
+  condition?: string;
+  variant?: string;
+}
+
 export interface ProcessingSummary {
   totalRows: number;
   processedRows: number;

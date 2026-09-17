@@ -22,7 +22,7 @@ async function inspect(directory) {
     root = manifest.routes.root;
   const routes = {};
   for (const routePath of [
-    "/pricer",
+    "/inventory-manager",
     "/pending-inventory-pricer",
     "/slab-pricing",
   ]) {
@@ -63,7 +63,7 @@ async function inspect(directory) {
 const before = await inspect(baseline),
   after = await inspect(current);
 const deltas = Object.fromEntries(
-  ["/pricer", "/pending-inventory-pricer"].map((route) => [
+  ["/inventory-manager", "/pending-inventory-pricer"].map((route) => [
     route,
     after.routes[route].gzipBytes - before.routes[route].gzipBytes,
   ]),

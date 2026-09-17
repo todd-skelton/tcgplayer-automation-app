@@ -21,7 +21,7 @@ async function read(address, route) {
   return { ms: performance.now() - start, bytes: Buffer.byteLength(body) };
 }
 const results = {};
-for (const route of ["/", "/pricer", "/pending-inventory-pricer"]) {
+for (const route of ["/", "/inventory-manager", "/pending-inventory-pricer"]) {
   for (let i = 0; i < 5; i++) {
     await read(baselineUrl, route);
     await read(currentUrl, route);

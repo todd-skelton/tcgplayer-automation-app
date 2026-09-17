@@ -61,14 +61,6 @@ export default [
   },
   index("routes/dashboard.tsx"),
   {
-    path: "/pricer",
-    file: "features/pricing/routes/pricer.tsx",
-  },
-  {
-    path: "/seller-pricer",
-    file: "features/seller-management/routes/seller-pricer.tsx",
-  },
-  {
     path: "/inventory-manager",
     file: "features/inventory-management/routes/inventory-manager.tsx",
   },
@@ -151,10 +143,6 @@ export default [
   {
     path: "/api/inventory-history-diagnostics",
     file: "features/inventory-history/routes/api.inventory-history-diagnostics.ts",
-  },
-  {
-    path: "/api/convert-to-pricer-sku",
-    file: "features/file-upload/routes/api.convert-to-pricer-sku.ts",
   },
   {
     path: "/api/inventory/product-lines",
