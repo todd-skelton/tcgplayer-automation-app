@@ -21,6 +21,7 @@ import type {
   InventoryPublicationItemOutcome,
   InventoryPublicationStatus,
 } from "../types/inventoryPublication";
+import { planNextQueuedIntakePublication } from './queuedIntakePublication.server';
 
 const LEASE_MS = 30_000;
 const HEARTBEAT_MS = 5_000;
@@ -757,6 +758,11 @@ async function tick(state: WorkerState): Promise<void> {
       return;
     }
 
+    try {
+      await planNextQueuedIntakePublication(configuration.settings.policy);
+    } catch (error) {
+      console.error('Queued intake publication planning failed; existing publications can continue:', error);
+    }
     const publication = await inventoryPublicationsRepository.claimNextPlanned(
       state.workerId,
       LEASE_MS,

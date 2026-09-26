@@ -28,8 +28,9 @@ export async function createPendingInventoryBatchWithCost(
   purchaseCost:NormalizedPurchaseCostDetails | undefined,
   estimateForSeller:string | null,
   dependencies:PendingBatchWithCostDependencies=defaultDependencies,
+  executor?:Queryable,
 ):Promise<InventoryBatch | null> {
-  return dependencies.transaction(async (executor)=>{
+  const perform = async (executor:Queryable)=>{
     const batch = await dependencies.createBatch(requestId,executor);
     if (!batch) return batch;
     if (purchaseCost) {
@@ -42,5 +43,6 @@ export async function createPendingInventoryBatchWithCost(
         estimateForSeller,{ batchNumbers:[batch.batchNumber] },undefined,executor);
     }
     return batch;
-  });
+  };
+  return executor ? perform(executor) : dependencies.transaction(perform);
 }

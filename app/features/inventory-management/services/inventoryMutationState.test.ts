@@ -13,7 +13,9 @@ assert.equal(state.canApplySku(skuB), true);
 assert.equal(state.finished(), true, "a failed SKU reloads after the whole queue drains");
 
 const beforeBatch = state.beginSku(1);
+const snapshotBeforeBatch = state.snapshotRevision();
 const batch = state.beginBarrier();
+assert.notEqual(state.snapshotRevision(), snapshotBeforeBatch, 'a late snapshot cannot restore already queued quantities');
 assert.equal(state.canApplySku(beforeBatch), false);
 assert.equal(state.canApplyBarrier(batch), true);
 state.beginBarrier();

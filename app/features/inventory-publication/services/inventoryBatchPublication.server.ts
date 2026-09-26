@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { Queryable } from '~/core/db/database.server';
 import {
   inventoryBatchesRepository,
   inventoryPublicationsRepository,
@@ -102,20 +103,23 @@ interface InventoryBatchPublicationDependencies {
   >;
 }
 
-const defaultDependencies: InventoryBatchPublicationDependencies = {
+export function inventoryBatchPublicationDependencies(executor?: Queryable): InventoryBatchPublicationDependencies {
+  return {
   findBatch: (batchNumber) =>
-    inventoryBatchesRepository.findByBatchNumber(batchNumber),
+    inventoryBatchesRepository.findByBatchNumber(batchNumber, executor),
   findItems: (batchNumber) =>
-    inventoryBatchesRepository.findItems(batchNumber, "all"),
+    inventoryBatchesRepository.findItems(batchNumber, "all", executor),
   findSuccessfulResults: (batchNumber) =>
-    inventoryBatchesRepository.findResults(batchNumber, "successful"),
+    inventoryBatchesRepository.findResults(batchNumber, "successful", executor),
   findInventoryDeltaStatuses: (keys) =>
-    inventoryPublicationsRepository.findInventoryDeltaStatuses(keys),
+    inventoryPublicationsRepository.findInventoryDeltaStatuses(keys, executor),
   findExistingPricingCandidateKeys: (keys) =>
-    inventoryPublicationsRepository.findExistingPricingCandidateKeys(keys),
+    inventoryPublicationsRepository.findExistingPricingCandidateKeys(keys, executor),
   createPublication: (params) =>
-    inventoryPublicationsRepository.createOrFindPlanned(params),
-};
+    inventoryPublicationsRepository.createOrFindPlanned(params, executor),
+  };
+}
+const defaultDependencies = inventoryBatchPublicationDependencies();
 
 function parsePrice(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {

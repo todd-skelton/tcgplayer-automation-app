@@ -530,10 +530,11 @@ export const inventoryPublicationsRepository = {
 
   async createOrFindPlanned(
     params: CreateInventoryPublication,
+    executor?: Queryable,
   ): Promise<CreateOrFindInventoryPublicationResult> {
     validateCreateParams(params);
 
-    return withTransaction(async (client) => {
+    const perform = async (client: Queryable) => {
       const inserted = await queryOne<InventoryPublicationRow>(
         `INSERT INTO inventory_publications (
           planning_key,
@@ -667,7 +668,8 @@ export const inventoryPublicationsRepository = {
         publication: await attachItems(inserted, client),
         created: true,
       };
-    });
+    };
+    return executor ? perform(executor) : withTransaction(perform);
   },
 
   async claimNextPlanned(

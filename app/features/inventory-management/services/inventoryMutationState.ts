@@ -9,6 +9,9 @@ export class InventoryMutationState {
   private needsReload = false;
   private readonly skuVersions = new Map<number, number>();
   private barrierVersion = 0;
+  private revision = 0;
+
+  snapshotRevision(): number { return this.revision; }
 
   started(): void {
     this.pendingCount += 1;
@@ -28,12 +31,14 @@ export class InventoryMutationState {
   }
 
   beginSku(sku: number): SkuMutationToken {
+    this.revision += 1;
     const skuVersion = (this.skuVersions.get(sku) ?? 0) + 1;
     this.skuVersions.set(sku, skuVersion);
     return { sku, skuVersion, barrierVersion: this.barrierVersion };
   }
 
   beginBarrier(): number {
+    this.revision += 1;
     this.barrierVersion += 1;
     return this.barrierVersion;
   }

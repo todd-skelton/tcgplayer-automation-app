@@ -1,4 +1,6 @@
 import type { InventoryBatch } from "~/features/pending-inventory/types/inventoryBatch";
+import type { InventoryIntakeWorkflow } from '../types/inventoryIntakeRun';
+import type { IntakeQuantity } from './intakeSnapshot';
 
 type BatchResponse = Pick<Response, "ok" | "status" | "json">;
 type BatchFetch = (
@@ -33,16 +35,18 @@ export async function createPendingInventoryBatch(
   requestId: string,
   purchaseCostOrSend?: PurchaseCostAtIntake | BatchFetch,
   explicitSend: BatchFetch = fetch,
+  workflow?: InventoryIntakeWorkflow,
+  snapshot?: { expectedInventory: IntakeQuantity[]; expectedSellerKey: string },
 ): Promise<InventoryBatch> {
   const purchaseCost = typeof purchaseCostOrSend === "function" ? undefined : purchaseCostOrSend;
   const send = typeof purchaseCostOrSend === "function" ? purchaseCostOrSend : explicitSend;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     let response: BatchResponse;
     try {
-      response = await send("/api/inventory-batches", {
+      response = await send(workflow ? '/api/inventory-intake-runs' : "/api/inventory-batches", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId, ...(purchaseCost ? { purchaseCost } : {}) }),
+        body: JSON.stringify({ requestId, ...(purchaseCost ? { purchaseCost } : {}), ...(workflow ? { workflow, ...snapshot } : {}) }),
       });
     } catch (error) {
       if (attempt === 0) continue;
