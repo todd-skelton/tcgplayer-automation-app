@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { parseIntakePurchaseCost } from "./api.inventory-batches";
+import { parseIntakePurchaseCost } from '../services/intakePurchaseCost.server';
 
 const valid = { purchaseReference:" invoice ",totalAmount:"0.00",provenance:"actual",
   allocationRule:"quantity",currency:" usd ",purchasedAt:"" };

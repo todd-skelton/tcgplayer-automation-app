@@ -2,6 +2,8 @@
 
 This app now uses PostgreSQL for server-side storage. The repo includes checked-in SQL migrations and Docker Compose workflows for development databases and production.
 
+Inventory Manager supports background pricing and per-batch publication while entering new stock. See [Inventory intake queue](docs/inventory-intake-queue.md) for handoff, recovery, and rollout safeguards.
+
 ## Requirements
 
 - Node.js 20

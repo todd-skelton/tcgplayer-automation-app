@@ -135,8 +135,10 @@ export const inventoryBatchPricingJobsRepository = {
     batchNumber: number,
     mode: InventoryBatchPricingMode,
     config: ServerPricingConfig,
+    executor?: Queryable,
   ): Promise<InventoryBatchPricingJob> {
-    return withTransaction(async (client) => {
+    const perform = async (client: Queryable) => {
+      await execute(`SELECT batch_number FROM inventory_batches WHERE batch_number = $1 FOR UPDATE`, [batchNumber], client);
       const existing = await queryOne<InventoryBatchPricingJobRow>(
         `${jobSelect}
         WHERE batch_number = $1
@@ -211,7 +213,8 @@ export const inventoryBatchPricingJobsRepository = {
       );
 
       return inserted;
-    });
+    };
+    return executor ? perform(executor) : withTransaction(perform);
   },
 
   async requeueExpiredJobs(executor?: Queryable): Promise<number> {

@@ -1,4 +1,7 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import type { InventoryIntakeWorkflow } from '../types/inventoryIntakeRun';
+import { intakeSnapshot } from '../services/intakeSnapshot';
+import { PENDING_INTAKE_REQUEST_KEY, readPendingIntakeRequest, type PendingIntakeRequest } from '../services/pendingIntakeRequest';
 import type { InventoryEntry, InventoryFilter } from "../types/inventoryEntry";
 import type { PendingInventoryEntry } from "../../pending-inventory/types/pendingInventory";
 import type { InventoryBatch } from "../../pending-inventory/types/inventoryBatch";
@@ -78,7 +81,9 @@ export interface InventoryProcessorReturn extends InventoryProcessorState {
     metadata: { productLineId: number; setId: number; productId: number }
   ) => void;
   clearPendingInventory: () => void;
-  createBatchFromPendingInventory: (purchaseCost?: PurchaseCostAtIntake) => Promise<InventoryBatch>;
+  createBatchFromPendingInventory: (purchaseCost?: PurchaseCostAtIntake, workflow?: InventoryIntakeWorkflow, expectedSellerKey?: string) => Promise<InventoryBatch>;
+  intakeBlocked: boolean;
+  hasPendingIntakeRequest: boolean;
   toggleSealedFilter: (sealedFilter: "all" | "sealed" | "unsealed") => void;
   setSelectedLanguages: (languages: string[]) => void;
   setSelectedCondition: (condition: InventorySelectableCondition) => void;
@@ -92,7 +97,20 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
   const baseProcessor = useProcessorBase();
   const inventoryMutationQueue = useRef<Promise<unknown>>(Promise.resolve());
   const inventoryMutationState = useRef(new InventoryMutationState());
-  const pendingBatchRequestId = useRef<string | null>(null);
+  const pendingBatchRequest = useRef<PendingIntakeRequest | null>(null);
+  const handoffRunning = useRef(false);
+  const mutationFailed = useRef(false);
+  const [intakeBlocked, setIntakeBlocked] = useState(true);
+  const [hasPendingIntakeRequest, setHasPendingIntakeRequest] = useState(false);
+  useEffect(() => {
+    try {
+      pendingBatchRequest.current = readPendingIntakeRequest(sessionStorage);
+      setHasPendingIntakeRequest(Boolean(pendingBatchRequest.current));
+      setIntakeBlocked(Boolean(pendingBatchRequest.current));
+    } catch (error) {
+      baseProcessor.setError(String(error));
+    }
+  }, []);
   const [state, setState] = useState<InventoryProcessorState>({
     productLines: [],
     sets: [],
@@ -284,11 +302,14 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
   }, []); // Remove setError dependency
 
   const loadPendingInventory = useCallback(async () => {
+    const revision = inventoryMutationState.current.snapshotRevision();
     try {
       const response = await fetch("/api/pending-inventory");
       if (!response.ok) throw new Error("Failed to load pending inventory");
       const pendingInventory = await response.json();
-      setState((prev) => ({ ...prev, pendingInventory }));
+      if (inventoryMutationState.current.snapshotRevision() === revision) {
+        setState((prev) => ({ ...prev, pendingInventory }));
+      }
     } catch (error) {
       baseProcessor.setError(`Failed to load pending inventory: ${error}`);
     }
@@ -377,6 +398,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
       metadata: { productLineId: number; setId: number; productId: number }
     ) => {
       if (quantityDelta === 0) return;
+      if (handoffRunning.current || pendingBatchRequest.current) return;
       const requestId = crypto.randomUUID();
       const mutationToken = inventoryMutationState.current.beginSku(sku);
       setState((prev) => {
@@ -410,6 +432,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
         } catch (error) {
           baseProcessor.setError(`Failed to update pending inventory: ${error}`);
           inventoryMutationState.current.failed();
+          mutationFailed.current = true;
         }
       });
     },
@@ -423,6 +446,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
       expectedQuantity: number,
       metadata: { productLineId: number; setId: number; productId: number },
     ) => {
+      if (handoffRunning.current || pendingBatchRequest.current) return;
       const requestId = crypto.randomUUID();
       const mutationToken = inventoryMutationState.current.beginSku(sku);
       updateLocalPendingQuantity(sku, quantity, metadata);
@@ -442,6 +466,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
         } catch (error) {
           baseProcessor.setError(`Failed to update pending inventory: ${error}`);
           inventoryMutationState.current.failed();
+          mutationFailed.current = true;
         }
       });
     },
@@ -449,6 +474,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
   );
 
   const clearPendingInventory = useCallback(() => {
+    if (handoffRunning.current || pendingBatchRequest.current) return;
     const requestId = crypto.randomUUID();
     inventoryMutationState.current.beginBarrier();
     setState((prev) => ({ ...prev, pendingInventory: [] }));
@@ -458,37 +484,57 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
       } catch (error) {
         baseProcessor.setError(`Failed to clear pending inventory: ${error}`);
         inventoryMutationState.current.failed();
+        mutationFailed.current = true;
       }
     });
   }, [loadPendingInventory, queuePendingMutation, sendPendingMutation]);
-  const createBatchFromPendingInventory = useCallback((purchaseCost?: PurchaseCostAtIntake) => {
-    const requestId = pendingBatchRequestId.current ?? crypto.randomUUID();
-    pendingBatchRequestId.current = requestId;
-    const barrierVersion = inventoryMutationState.current.beginBarrier();
+  const createBatchFromPendingInventory = useCallback((purchaseCost?: PurchaseCostAtIntake, workflow: InventoryIntakeWorkflow = 'price_only', expectedSellerKey = '') => {
+    if (handoffRunning.current) return Promise.reject(new Error('An inventory handoff is already running.'));
+    handoffRunning.current = true;
+    setIntakeBlocked(true);
+    inventoryMutationState.current.beginBarrier();
     return queuePendingMutation(async () => {
       baseProcessor.setError(null);
       try {
-        const batch = await createPendingInventoryBatch(requestId, purchaseCost);
-        pendingBatchRequestId.current = null;
-        if (inventoryMutationState.current.canApplyBarrier(barrierVersion)) {
+        if (mutationFailed.current && !pendingBatchRequest.current) {
+          mutationFailed.current = false;
           await loadPendingInventory();
+          throw new PendingBatchRequestError('An inventory edit failed. Check the saved quantities before queuing again', 'definitive');
         }
+        const request = pendingBatchRequest.current ?? { requestId: crypto.randomUUID(), workflow, purchaseCost,
+          expectedInventory: intakeSnapshot(state.pendingInventory), expectedSellerKey };
+        // Persist before sending, and retain the exact options until a definite outcome.
+        sessionStorage.setItem(PENDING_INTAKE_REQUEST_KEY, JSON.stringify(request));
+        pendingBatchRequest.current = request;
+        setHasPendingIntakeRequest(true);
+        const batch = await createPendingInventoryBatch(request.requestId, request.purchaseCost, fetch, request.workflow, request);
+        sessionStorage.removeItem(PENDING_INTAKE_REQUEST_KEY);
+        pendingBatchRequest.current = null;
+        setHasPendingIntakeRequest(false);
+        setState((prev) => ({ ...prev, pendingInventory: [] }));
+        await loadPendingInventory();
         return batch;
       } catch (error) {
         if (
           error instanceof PendingBatchRequestError &&
           error.outcome === "definitive"
         ) {
-          pendingBatchRequestId.current = null;
+          sessionStorage.removeItem(PENDING_INTAKE_REQUEST_KEY);
+          pendingBatchRequest.current = null;
+          setHasPendingIntakeRequest(false);
+          await loadPendingInventory();
         }
         baseProcessor.setError(
           `${error instanceof Error ? error.message : String(error)}. ` +
-            "Select Process & Price again to safely recover or retry this batch.",
+            "Review the queue status and recover or retry the request before adding more inventory.",
         );
         throw error;
+      } finally {
+        handoffRunning.current = false;
+        setIntakeBlocked(Boolean(pendingBatchRequest.current));
       }
     });
-  }, [loadPendingInventory, queuePendingMutation]);
+  }, [loadPendingInventory, queuePendingMutation, state.pendingInventory]);
 
   const toggleSealedFilter = useCallback(
     (sealedFilter: "all" | "sealed" | "unsealed") => {
@@ -582,6 +628,8 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
     setPendingInventory,
     clearPendingInventory,
     createBatchFromPendingInventory,
+    intakeBlocked,
+    hasPendingIntakeRequest,
     toggleSealedFilter,
     setSelectedLanguages,
     setSelectedCondition,

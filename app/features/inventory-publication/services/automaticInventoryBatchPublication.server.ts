@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
+import { queryOne } from '~/core/db/database.server';
 import { normalizeServerPricingConfig } from "~/features/pricing/types/config";
 import {
   inventoryBatchesRepository,
@@ -31,6 +32,11 @@ export type AutomaticInventoryBatchPublicationResult =
 export async function planAutomaticInventoryBatchPublication(
   batchNumber: number,
 ): Promise<AutomaticInventoryBatchPublicationResult> {
+  // Queue actions carry their own durable publication permission. In particular,
+  // a pricing-only action must never inherit source-wide automatic publication.
+  if (await queryOne('SELECT request_id FROM inventory_intake_runs WHERE batch_number = $1', [batchNumber])) {
+    return { planned: false, reason: 'automatic_publication_unavailable' };
+  }
   const [batch, configuration] = await Promise.all([
     inventoryBatchesRepository.findByBatchNumber(batchNumber),
     inventoryPublicationSettingsRepository.get(),

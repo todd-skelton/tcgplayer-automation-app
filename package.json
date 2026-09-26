@@ -11,7 +11,7 @@
     "dev:logs": "docker compose logs -f",
     "dev:db": "docker compose exec postgres psql -U postgres -d tcgplayer_automation",
     "dev:db:refresh": "node scripts/dev-db-refresh.mjs",
-    "test": "tsx app/test/run-tests.ts",
+    "test": "tsx app/test/run-tests.ts && tsx app/features/inventory-management/hooks/useInventoryProcessor.test.tsx",
     "benchmark:slab-preview": "tsx app/features/ebay-slab-pricing/evaluation/benchmarkSlabPreview.server.ts",
     "evaluate:slab-grades": "tsx app/features/ebay-slab-pricing/model/evaluateGradeModel.server.ts",
     "build": "node scripts/run-with-node-options.mjs react-router build && node scripts/build-workers.mjs",

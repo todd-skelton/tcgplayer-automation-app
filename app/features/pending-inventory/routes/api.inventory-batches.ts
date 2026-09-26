@@ -2,31 +2,9 @@ import { data } from "react-router";
 import { inventoryBatchesRepository } from "~/core/db";
 import { InventoryBatchRequestConflictError } from "~/core/db/repositories/inventoryBatches.server";
 import { InventoryEconomicsConflictError } from "~/core/db/repositories/inventoryEconomics.server";
-import { dollarsToCents } from "~/features/inventory-economics/domain/money";
-import { normalizePurchaseCostDetails } from "~/features/inventory-economics/domain/purchaseCostDetails";
+import { parseIntakePurchaseCost } from '../services/intakePurchaseCost.server';
 import { createPendingInventoryBatchWithCost } from "../services/createPendingInventoryBatchWithCost.server";
 import { getShippingExportConfig } from "~/features/shipping-export/config/shippingExportConfig.server";
-
-export function parseIntakePurchaseCost(
-  value:Record<string,unknown>,
-  requestId:string,
-  sellerKey:string,
-) {
-  if (value.allocationRule !== "quantity") {
-    throw new Error("Intake purchase cost supports quantity allocation.");
-  }
-  return normalizePurchaseCostDetails({
-    requestId:`${requestId}:purchase-cost`,
-    sellerKey,
-    purchaseReference:value.purchaseReference,
-    currency:value.currency === undefined ? "USD" : value.currency,
-    totalAmountCents:dollarsToCents(value.totalAmount,"Purchase total"),
-    provenance:value.provenance,
-    source:"intake",
-    allocationRule:value.allocationRule,
-    purchasedAt:value.purchasedAt,
-  });
-}
 
 export async function loader() {
   try {

@@ -20,7 +20,9 @@ import {
   Checkbox,
   FormControlLabel,
 } from "@mui/material";
-import { useNavigate } from "react-router";
+import { Link } from "react-router";
+import { InventoryIntakeProgress } from '../components/InventoryIntakeProgress';
+import type { InventoryIntakeWorkflow, IntakePublicationTarget } from '../types/inventoryIntakeRun';
 import { useInventoryProcessor } from "../hooks/useInventoryProcessor";
 import {
   InventoryFilters,
@@ -34,12 +36,15 @@ import {
 } from "../../../core/utils/conditionOrder";
 
 export default function InventoryManagerRoute() {
-  const navigate = useNavigate();
   const {
     productLines,
     sets,
     pendingInventory,
     error,
+    success,
+    setSuccess,
+    intakeBlocked,
+    hasPendingIntakeRequest,
     selectedProductLineId,
     selectedSetId,
     searchScope,
@@ -67,6 +72,9 @@ export default function InventoryManagerRoute() {
 
   const [clearDialogOpen, setClearDialogOpen] = React.useState(false);
   const [isCreatingBatch, setIsCreatingBatch] = React.useState(false);
+  const [queueRefreshKey, setQueueRefreshKey] = React.useState(0);
+  const [intakeTarget, setIntakeTarget] = React.useState<IntakePublicationTarget | null>(null);
+  const entryFocus = useRef<HTMLElement | null>(null);
   const [includePurchaseCost, setIncludePurchaseCost] = React.useState(false);
   const [purchaseReference, setPurchaseReference] = React.useState("");
   const [purchaseTotal, setPurchaseTotal] = React.useState("");
@@ -166,7 +174,7 @@ export default function InventoryManagerRoute() {
     setClearDialogOpen(false);
   };
 
-  const handleCreateBatch = async () => {
+  const handleCreateBatch = async (workflow: InventoryIntakeWorkflow = 'price_only') => {
     setIsCreatingBatch(true);
 
     try {
@@ -174,12 +182,21 @@ export default function InventoryManagerRoute() {
         purchaseReference: purchaseReference.trim(), totalAmount: purchaseTotal.trim(),
         provenance: purchaseEstimated ? "estimated" : "actual", allocationRule: "quantity",
         ...(purchaseDate ? { purchasedAt: purchaseDate } : {}), currency: "USD",
-      } : undefined);
-      navigate(`/pending-inventory-pricer?batch=${batch.batchNumber}`);
+      } : undefined, workflow, intakeTarget?.sellerKey ?? '');
+      setSuccess(`Batch ${batch.batchNumber} queued. You can keep adding inventory.`);
+      setQueueRefreshKey(value => value + 1);
+      setIncludePurchaseCost(false);
+      setPurchaseReference('');
+      setPurchaseTotal('');
+      setPurchaseDate('');
+      setPurchaseEstimated(false);
     } catch (error) {
       console.error("Failed to create batch:", error);
     } finally {
       setIsCreatingBatch(false);
+      window.requestAnimationFrame(() => {
+        if (entryFocus.current?.isConnected) entryFocus.current.focus({ preventScroll: true });
+      });
     }
   };
 
@@ -245,6 +262,12 @@ export default function InventoryManagerRoute() {
           </Alert>
         )}
 
+        {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>{success}</Alert>}
+        {hasPendingIntakeRequest && <Alert severity="warning" sx={{ mb: 2 }}
+          action={<Button disabled={isCreatingBatch} onClick={() => void handleCreateBatch()}>Recover Queue Request</Button>}>
+          A queue request has not been confirmed. Recover the original request before entering more inventory. Its original pricing, publication, and cost choices are preserved.
+        </Alert>}
+        <InventoryIntakeProgress refreshKey={queueRefreshKey} onTarget={setIntakeTarget} />
         <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
           <Typography variant="h6" gutterBottom>
             Filter Products
@@ -268,7 +291,7 @@ export default function InventoryManagerRoute() {
       </Box>
 
       <Box sx={{ width: "100%", px: 3, mb: 3 }}>
-        <Paper sx={{ p: 3 }} elevation={3}>
+        <Paper component="fieldset" disabled={intakeBlocked || isCreatingBatch} sx={{ p: 3, m: 0, minWidth: 0, border: 0 }} elevation={3}>
           <Box
             sx={{
               display: "flex",
@@ -315,18 +338,22 @@ export default function InventoryManagerRoute() {
               {pendingInventory.length > 0 && (
                 <Stack direction="row" spacing={2} alignItems="center">
                   <Typography variant="body2" color="primary">
-                    {getPendingTotal()} live items across{" "}
+                    {getPendingTotal()} unqueued units across{" "}
                     {pendingInventory.length} SKUs
                   </Typography>
                   <Button
-                    variant="contained"
+                    variant="outlined"
                     color="primary"
                     size="small"
-                    onClick={() => void handleCreateBatch()}
-                    disabled={isCreatingBatch}
+                    onPointerDown={() => { entryFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
+                    onClick={() => void handleCreateBatch('publish')}
+                    disabled={isCreatingBatch || !intakeTarget?.canPublish}
                   >
-                    {isCreatingBatch ? "Creating Batch..." : "Process & Price"}
+                    {isCreatingBatch ? "Saving & Queuing..." : "Queue Pricing & Publishing"}
                   </Button>
+                  <Button variant="contained" size="small" disabled={isCreatingBatch || !intakeTarget}
+                    onPointerDown={() => { entryFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
+                    onClick={() => void handleCreateBatch('price_only')}>Queue Pricing Only</Button>
                   <Button
                     variant="outlined"
                     color="secondary"
@@ -341,6 +368,12 @@ export default function InventoryManagerRoute() {
             </Stack>
           </Box>
 
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Queuing hands off the displayed quantities. If the shared queue changes, you must review it again. New additions go into the next batch.
+            Pricing &amp; Publishing authorizes eligible results to go live for seller {intakeTarget?.sellerKey || '(not configured)'}, subject to publication safety controls.
+            Pricing Only waits for manual publication. <Link to="/pending-inventory-pricer">Open Batch Pricer</Link>.
+          </Typography>
+          {intakeTarget?.publishingUnavailableReason && <Alert severity="warning" sx={{ mb: 2 }}>{intakeTarget.publishingUnavailableReason} <Link to="/publication-configuration">Publication settings</Link>.</Alert>}
           <InventoryEntryTable
             skus={getFilteredSkus()}
             pendingInventory={pendingInventory}
@@ -368,6 +401,7 @@ export default function InventoryManagerRoute() {
               <FormControlLabel control={<Checkbox checked={includePurchaseCost}
                 onChange={(event) => setIncludePurchaseCost(event.target.checked)} />}
                 label="Record optional purchase cost with this batch" />
+              {includePurchaseCost && <Alert severity="info">Enter only the cost for this handoff, not the full purchase if you are splitting it across batches. Cost fields clear after a confirmed handoff.</Alert>}
               {includePurchaseCost && <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                 <TextField label="Purchase reference" value={purchaseReference} required
                   onChange={(event) => setPurchaseReference(event.target.value)} />
