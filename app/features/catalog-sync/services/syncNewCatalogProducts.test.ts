@@ -116,11 +116,15 @@ function fakeCatalog() {
 
   assert.deepEqual(
     catalog.calls.searched,
-    ["new-set", "promo-set", "broken-details-set", "short-search-set"],
-    "the unchanged set is never searched",
+    ["new-set", "promo-set", "unchanged-set", "broken-details-set", "short-search-set"],
+    "every set is searched once before its count is trusted",
   );
-  assert.deepEqual(catalog.calls.fetched.sort(), [101, 102, 202, 203, 401, 402, 501]);
-  assert.deepEqual(Object.fromEntries(catalog.verified), { 10: 2, 20: 3 });
+  assert.deepEqual(
+    catalog.calls.fetched.sort(),
+    [101, 102, 202, 203, 401, 402, 501],
+    "a set whose products are all stored is searched but fetches nothing",
+  );
+  assert.deepEqual(Object.fromEntries(catalog.verified), { 10: 2, 20: 3, 30: 1 });
   assert.equal(catalog.setProducts.get(101), 10, "new products are filed under their set");
   assert.equal(catalog.setProducts.get(202), 20, "a misfiled product moves to its listed set");
   assert.equal(catalog.setProducts.has(402), false, "a product without details is not filed");
@@ -141,7 +145,7 @@ function fakeCatalog() {
   assert.deepEqual(result.unmatchedSets.map((set) => set.urlName), ["unknown-set"]);
 
   const summary = describeCatalogSync(result);
-  assert.match(summary, /^Pokemon: 14 listed products in 6 sets\.\nUnchanged sets: 1\. Synced sets: 4 \(verified: 2, not verified: 2\)\./);
+  assert.match(summary, /^Pokemon: 14 listed products in 6 sets\.\nUnchanged sets: 0\. Synced sets: 5 \(verified: 3, not verified: 2\)\./);
   assert.match(summary, /New products: 5\. New SKUs: 15\. Repaired products: 1\./);
   assert.doesNotMatch(summary, /WARNING/);
   assert.match(summary, /- broken-details-set: 1 new, 3 SKUs .* NOT VERIFIED/);
@@ -185,6 +189,19 @@ function fakeCatalog() {
   assert.equal(failed?.problem, "search unavailable");
   assert.equal(catalog.verified.get(20), 3, "one failing set does not stop the others");
   console.log("PASS a failing set is reported without stopping the sync");
+}
+
+{
+  const catalog = fakeCatalog();
+  catalog.listings.set("unchanged-set", [searchProduct(301, 30), searchProduct(302, 30)]);
+  catalog.listedCounts.set("unchanged-set", 2);
+  catalog.products.set(399, { setId: 30, skuCount: 3 });
+  catalog.setProducts.set(399, 30);
+  await syncNewCatalogProducts(3, catalog.dependencies);
+  assert.equal(catalog.calls.fetched.includes(302), true, "a stale row cannot hide a listed product that was never stored");
+  assert.equal(catalog.verified.get(30), 2);
+  assert.equal(catalog.setProducts.get(399), 30, "stale rows are left in place");
+  console.log("PASS matching counts do not hide a missing product on the first sync");
 }
 
 {
