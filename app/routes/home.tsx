@@ -31,6 +31,8 @@ import {
 } from "../core/db";
 import { getHttpConfig } from "../core/config/httpConfig.server";
 import { getAllProducts } from "../integrations/tcgplayer/client/get-search-results.server";
+import { describeCatalogSync } from "../features/catalog-sync/domain/catalogSyncSummary";
+import { syncNewCatalogProducts } from "../features/catalog-sync/services/syncNewCatalogProducts.server";
 import type { SetProduct } from "../shared/data-types/setProduct";
 import {
   fetchAllProductLines,
@@ -58,6 +60,22 @@ export async function action({ request }: LoaderFunctionArgs) {
   const formData = await request.formData();
 
   const actionType = formData.get("actionType");
+
+  if (actionType === "syncNewProducts") {
+    try {
+      const categoryId = Number(formData.get("categoryId"));
+
+      if (!categoryId) {
+        return data({ error: "Missing product line" }, { status: 400 });
+      }
+
+      const result = await syncNewCatalogProducts(categoryId);
+      return data({ message: describeCatalogSync(result) }, { status: 200 });
+    } catch (error) {
+      console.error("[syncNewProducts] Error:", error);
+      return data({ error: String(error) }, { status: 500 });
+    }
+  }
 
   if (actionType === "fetchAllCategory3Data") {
     try {
@@ -311,11 +329,13 @@ export async function loader() {
 
 export default function Home() {
   const refreshProductLinesFetcher = useFetcher<typeof action>();
+  const syncNewProductsFetcher = useFetcher<typeof action>();
   const syncProductLineFetcher = useFetcher<typeof action>();
   const repairProductFetcher = useFetcher<typeof action>();
   const hydrateSetFetcher = useFetcher<typeof action>();
   const { productLines, hasAuthCookie } = useLoaderData<typeof loader>();
 
+  const [newProductsLineId, setNewProductsLineId] = useState<number | "">("");
   const [selectedProductLineId, setSelectedProductLineId] = useState<
     number | ""
   >("");
@@ -333,6 +353,13 @@ export default function Home() {
     if (!firstProductLine) {
       return;
     }
+
+    setNewProductsLineId((currentValue) => {
+      const stillValid = productLines.some(
+        (productLine) => productLine.productLineId === currentValue,
+      );
+      return stillValid ? currentValue : firstProductLine.productLineId;
+    });
 
     setSelectedProductLineId((currentValue) => {
       const stillValid = productLines.some(
@@ -434,8 +461,63 @@ export default function Home() {
         </MaintenanceActionCard>
 
         <MaintenanceActionCard
-          title="Sync one product line"
-          description="Rebuild sets, set products, products, and SKUs for a selected category when you need full coverage."
+          title="Sync new products"
+          description="Compare every set's product count with TCGplayer, then fetch only the sets that changed and only their missing products and SKUs."
+        >
+          <syncNewProductsFetcher.Form method="post">
+            <input type="hidden" name="actionType" value="syncNewProducts" />
+            <Stack spacing={2}>
+              <FormControl fullWidth>
+                <InputLabel id="sync-new-products-line-label">Product line</InputLabel>
+                <Select
+                  labelId="sync-new-products-line-label"
+                  name="categoryId"
+                  value={newProductsLineId}
+                  label="Product line"
+                  onChange={(event) =>
+                    setNewProductsLineId(Number(event.target.value))
+                  }
+                >
+                  {productLines.map((productLine) => (
+                    <MenuItem
+                      key={productLine.productLineId}
+                      value={productLine.productLineId}
+                    >
+                      {productLine.productLineName}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <Typography variant="body2" color="text.secondary">
+                Use this after new sets release or when promo sets grow. New
+                SKUs on products you already have are not detected; use Repair
+                one product for those.
+              </Typography>
+
+              <Button
+                type="submit"
+                variant="contained"
+                size="large"
+                disabled={
+                  !newProductsLineId || syncNewProductsFetcher.state !== "idle"
+                }
+              >
+                {syncNewProductsFetcher.state === "idle"
+                  ? "Sync New Products"
+                  : "Syncing New Products..."}
+              </Button>
+            </Stack>
+          </syncNewProductsFetcher.Form>
+          <ActionFeedback
+            fetcher={syncNewProductsFetcher}
+            idleMessage="Unchanged sets are skipped after two quick TCGplayer requests: the set list and the per-set counts."
+          />
+        </MaintenanceActionCard>
+
+        <MaintenanceActionCard
+          title="Check every product in a product line"
+          description="Walk every stored product in a category, fetching sets with no products and products with no SKUs. Slow on large product lines."
         >
           <syncProductLineFetcher.Form method="post">
             <input type="hidden" name="actionType" value="fetchAllCategory3Data" />
@@ -478,14 +560,14 @@ export default function Home() {
                 }
               >
                 {syncProductLineFetcher.state === "idle"
-                  ? "Sync Product Line"
-                  : "Syncing Product Line..."}
+                  ? "Check Every Product"
+                  : "Checking Every Product..."}
               </Button>
             </Stack>
           </syncProductLineFetcher.Form>
           <ActionFeedback
             fetcher={syncProductLineFetcher}
-            idleMessage="Use this for the heavy-duty refresh when a whole category needs reconciliation."
+            idleMessage="Use Sync new products first; this full pass is the fallback when a whole category needs reconciliation."
           />
         </MaintenanceActionCard>
 

@@ -129,6 +129,7 @@ export async function fetchAndUpsertProductsAndSkus(
 
   let productCount = 0;
   let totalSkus = 0;
+  let skusInserted = 0;
   let setChanges = 0;
   let skusUpdated = 0;
   let setProductsUpdated = 0;
@@ -264,6 +265,7 @@ export async function fetchAndUpsertProductsAndSkus(
 
         if (skusToInsert.length > 0) {
           await skusRepository.insertMany(skusToInsert);
+          skusInserted += skusToInsert.length;
         }
       },
     )) {
@@ -273,6 +275,7 @@ export async function fetchAndUpsertProductsAndSkus(
     return {
       productCount,
       totalSkus,
+      skusInserted,
       setChanges,
       skusUpdated,
       setProductsUpdated,

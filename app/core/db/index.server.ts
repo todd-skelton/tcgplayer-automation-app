@@ -7,6 +7,7 @@ export {
 } from "./database.server";
 export { categoryFiltersRepository } from "./repositories/categoryFilters.server";
 export { categorySetsRepository } from "./repositories/categorySets.server";
+export { categorySetSyncsRepository } from "./repositories/categorySetSyncs.server";
 export { continuousPricingRepository } from "./repositories/continuousPricing.server";
 export { forecastEvaluationsRepository } from "./repositories/forecastEvaluations.server";
 export { httpConfigRepository } from "./repositories/httpConfig.server";

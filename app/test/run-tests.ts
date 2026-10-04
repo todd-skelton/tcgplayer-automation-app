@@ -1,4 +1,6 @@
 import "../core/clients/baseDomainClient.server.test";
+import "../features/catalog-sync/domain/catalogSyncPlan.test";
+import "../features/catalog-sync/services/syncNewCatalogProducts.test";
 import "../integrations/tcgplayer/client/get-price-points.server.test";
 import "../features/inventory-history/domain/receiptBalances.test";
 import "../features/inventory-economics/domain/money.test";
