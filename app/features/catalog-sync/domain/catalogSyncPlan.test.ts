@@ -42,7 +42,8 @@ function listed(productId: number, setNameId = 10): SetProduct {
 
   assert.equal(sync(21, 0, null), true, "a new set syncs");
   assert.equal(sync(66, 44, null), true, "a growing promo set syncs");
-  assert.equal(sync(109, 109, null), false, "a matching set is skipped without a verified count");
+  assert.equal(sync(343, 343, null), true, "matching counts are checked once: a stale row can hide a missing product");
+  assert.equal(sync(343, 343, 343), false, "a verified set is skipped while its count holds");
   assert.equal(sync(891, 893, null), true, "stale extra rows sync once so new products cannot hide behind them");
   assert.equal(sync(891, 893, 891), false, "a verified set with stale extras is skipped while its count holds");
   assert.equal(sync(892, 893, 891), true, "growth behind stale extras still syncs");

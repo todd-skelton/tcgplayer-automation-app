@@ -59,18 +59,16 @@ export function matchListedSets(
 }
 
 /**
- * A set needs syncing when TCGplayer lists more products than are stored, or
- * when its listed count moved since the last verified sync. Without a verified
- * count the stored count is the baseline, so a set that already matches is
- * skipped. The verified count stops stale extra rows, which keep a stored count
- * above the listed count, from hiding newly listed products.
+ * A set needs syncing until it has been verified once, and afterwards whenever
+ * its listed count moves or fewer products are stored than listed. Matching
+ * stored and listed counts alone prove nothing: a stale stored row can offset a
+ * listed product that was never stored.
  */
 export function needsSync(counts: SetCounts): boolean {
-  const baseline = counts.verifiedProductCount ?? counts.storedProductCount;
-
   return (
-    counts.storedProductCount < counts.listedProductCount ||
-    counts.listedProductCount !== baseline
+    counts.verifiedProductCount === null ||
+    counts.listedProductCount !== counts.verifiedProductCount ||
+    counts.storedProductCount < counts.listedProductCount
   );
 }
 
