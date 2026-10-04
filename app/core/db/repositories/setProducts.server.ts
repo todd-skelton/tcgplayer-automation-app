@@ -91,6 +91,34 @@ export const setProductsRepository = {
     );
   },
 
+  /**
+   * Counts, per set in a category, the set products whose details and SKUs are
+   * stored under that same set.
+   */
+  async countStoredBySet(
+    categoryId: number,
+    executor?: Queryable,
+  ): Promise<Map<number, number>> {
+    const rows = await query<{ setNameId: number; productCount: number }>(
+      `SELECT
+        sp.set_name_id AS "setNameId",
+        count(*)::int AS "productCount"
+      FROM set_products sp
+      INNER JOIN category_sets cs
+        ON cs.set_name_id = sp.set_name_id
+      INNER JOIN products p
+        ON p.product_id = sp.product_id
+        AND p.set_id = sp.set_name_id
+      WHERE cs.category_id = $1
+        AND jsonb_array_length(p.skus_json) > 0
+      GROUP BY sp.set_name_id`,
+      [categoryId],
+      executor,
+    );
+
+    return new Map(rows.map((row) => [row.setNameId, row.productCount]));
+  },
+
   async findByCardNumber(
     productLineId: number,
     cardNumber: string,

@@ -4,6 +4,8 @@ This app now uses PostgreSQL for server-side storage. The repo includes checked-
 
 Inventory Manager supports background pricing and per-batch publication while entering new stock. See [Inventory intake queue](docs/inventory-intake-queue.md) for handoff, recovery, and rollout safeguards.
 
+Data Management can sync only the products TCGplayer added since the last sync, using per-set counts instead of a full product line pass. See [Sync new products](docs/catalog-sync.md).
+
 ## Requirements
 
 - Node.js 20

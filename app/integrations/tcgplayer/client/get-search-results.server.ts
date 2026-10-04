@@ -19,7 +19,7 @@ export interface Filters {
 
 export interface Term {
   productLineName: string[];
-  setName: string[];
+  setName?: string[];
 }
 
 export interface Range {}
@@ -277,10 +277,13 @@ export async function getProducts(
   return data;
 }
 
+/** The search API rejects pages larger than 50 results. */
+const MAX_PAGE_SIZE = 50;
+
 export async function getAllProducts(
   body: Omit<GetProductsRequestBody, "from">,
 ): Promise<Product[]> {
-  const size = (body.size ?? 24) > 24 ? 24 : body.size || 24;
+  const size = Math.min(body.size || 24, MAX_PAGE_SIZE);
   let from = 0;
   let listings: Product[] = [];
   let total = 0;
@@ -289,9 +292,35 @@ export async function getAllProducts(
     const { results } = await getProducts({ ...body, from, size });
     const page = results[0];
     if (from === 0) total = page.totalResults;
+    if (page.results.length === 0) break;
     listings.push(...page.results);
     from += size;
   } while (listings.length < total);
 
   return listings;
+}
+
+export type SetProductCounts = {
+  totalProductCount: number;
+  sets: SetName[];
+};
+
+/**
+ * Counts every product in a product line by set with one request, using the
+ * set name aggregation that accompanies search results.
+ */
+export async function getSetProductCounts(
+  productLineUrlName: string,
+): Promise<SetProductCounts> {
+  const { results } = await getProducts({
+    from: 0,
+    size: 0,
+    filters: { term: { productLineName: [productLineUrlName] } },
+  });
+  const page = results[0];
+
+  return {
+    totalProductCount: page.totalResults,
+    sets: page.aggregations.setName,
+  };
 }
