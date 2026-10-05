@@ -24,11 +24,6 @@ import type {
   ProductPriceMatrixResponse,
 } from "../types/productPriceMatrix";
 
-const percentFormatter = new Intl.NumberFormat("en-US", {
-  style: "percent",
-  maximumFractionDigits: 0,
-});
-
 function parsePrice(value: string): number | null {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
@@ -50,10 +45,9 @@ function nextWorse(conditions: Condition[], condition: Condition): Condition {
 }
 
 /**
- * Turns a condition dispute into a number: what the buyer paid, less the
- * share of that price the received condition would still sell for. The
- * sell-at ladder decides; the market ladder shows how far that sits from
- * TCGplayer's own view.
+ * Turns a condition dispute into a number: what the buyer paid, less what
+ * the received condition would sell for. The sell-at ladder decides; the
+ * market ladder shows how far that sits from TCGplayer's own view.
  */
 export function ConditionRefundHelper({
   matrix,
@@ -106,7 +100,6 @@ export function ConditionRefundHelper({
   const refundFrom = (price: "ladderPrice" | "marketLadderPrice") =>
     estimateRefund({
       pricePaid: paid,
-      soldConditionPrice: sold?.[price] ?? null,
       receivedConditionPrice: received?.[price] ?? null,
     });
   const bySellAt = refundFrom("ladderPrice");
@@ -122,7 +115,7 @@ export function ConditionRefundHelper({
           <Typography variant="h6">Condition dispute</Typography>
           <Typography variant="body2" color="text.secondary">
             The refund that leaves the buyer paying what the received condition
-            would sell for, as a share of what they paid.
+            would sell for.
           </Typography>
         </Box>
 
@@ -199,7 +192,7 @@ export function ConditionRefundHelper({
           <Alert severity="warning">
             {paid === null
               ? "Enter the price the buyer paid."
-              : "One of these conditions has no sell-at price, so the refund cannot be sized from what you would sell at."}
+              : `${receivedCondition} has no sell-at price, so the refund cannot be sized from what you would sell at.`}
           </Alert>
         ) : (
           <Stack
@@ -214,17 +207,17 @@ export function ConditionRefundHelper({
               <Typography variant="h4" fontWeight={700}>
                 {formatOptionalUsd(bySellAt.refund)}
               </Typography>
-              {bySellAt.retainedShare >= 1 ? (
+              {bySellAt.refund === 0 ? (
                 <Typography variant="body2" color="warning.main">
-                  Your pricing puts {receivedCondition} at or above{" "}
-                  {soldCondition} for this card, so it sees no loss in the
-                  downgrade. Lean on the market refund or take the card back.
+                  Your pricing puts {receivedCondition} at or above the{" "}
+                  {formatOptionalUsd(paid)} the buyer paid, so it sees no loss
+                  in the downgrade. Lean on the market refund or take the card
+                  back.
                 </Typography>
               ) : (
                 <Typography variant="body2" color="text.secondary">
                   Buyer keeps paying {formatOptionalUsd(bySellAt.netPrice)},
-                  which is {percentFormatter.format(bySellAt.retainedShare)} of{" "}
-                  {formatOptionalUsd(paid)}.
+                  what {receivedCondition} would sell for.
                 </Typography>
               )}
               <Typography variant="body2" color="text.secondary">

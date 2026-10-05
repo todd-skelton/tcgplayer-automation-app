@@ -121,50 +121,40 @@ const testCases: TestCase[] = [
     },
   },
   {
-    name: "refund leaves the buyer paying the received condition's share of the price",
+    name: "refund leaves the buyer paying what the received condition would sell for",
     run: () => {
       const estimate = estimateRefund({
-        pricePaid: 12,
-        soldConditionPrice: 10,
-        receivedConditionPrice: 7.5,
+        pricePaid: 48.61,
+        receivedConditionPrice: 34.99,
       });
 
-      assert.deepEqual(estimate, {
-        retainedShare: 0.75,
-        refund: 3,
-        netPrice: 9,
-      });
+      assert.deepEqual(estimate, { refund: 13.62, netPrice: 34.99 });
     },
   },
   {
-    name: "refund is zero when the received condition is worth as much or more",
+    name: "refund is zero when the received condition sells for what the buyer paid or more",
     run: () => {
       const estimate = estimateRefund({
         pricePaid: 12,
-        soldConditionPrice: 10,
-        receivedConditionPrice: 10.5,
+        receivedConditionPrice: 12.5,
       });
 
-      assert.deepEqual(estimate, { retainedShare: 1, refund: 0, netPrice: 12 });
+      assert.deepEqual(estimate, { refund: 0, netPrice: 12 });
     },
   },
   {
     name: "refund is unavailable without a positive price on every input",
     run: () => {
       assert.equal(
-        estimateRefund({ pricePaid: null, soldConditionPrice: 10, receivedConditionPrice: 5 }),
+        estimateRefund({ pricePaid: null, receivedConditionPrice: 5 }),
         null,
       );
       assert.equal(
-        estimateRefund({ pricePaid: 0, soldConditionPrice: 10, receivedConditionPrice: 5 }),
+        estimateRefund({ pricePaid: 0, receivedConditionPrice: 5 }),
         null,
       );
       assert.equal(
-        estimateRefund({ pricePaid: 12, soldConditionPrice: null, receivedConditionPrice: 5 }),
-        null,
-      );
-      assert.equal(
-        estimateRefund({ pricePaid: 12, soldConditionPrice: 10, receivedConditionPrice: null }),
+        estimateRefund({ pricePaid: 12, receivedConditionPrice: null }),
         null,
       );
     },
