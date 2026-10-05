@@ -58,40 +58,29 @@ export function buildConditionLadder(
 export interface RefundInput {
   /** What the buyer paid for the condition they ordered. */
   pricePaid: number | null;
-  /** Ladder price of the condition sold. */
-  soldConditionPrice: number | null;
   /** Ladder price of the condition the buyer received. */
   receivedConditionPrice: number | null;
 }
 
 export interface RefundEstimate {
-  /** Share of the sold condition's value the received condition keeps. */
-  retainedShare: number;
   refund: number;
   /** What the buyer keeps paying after the refund. */
   netPrice: number;
 }
 
 /**
- * The partial refund that leaves the buyer paying the received condition's
- * share of what they paid for the sold condition. Never negative: a received
- * condition priced at or above the sold one earns no refund.
+ * The partial refund that leaves the buyer paying what the received condition
+ * would sell for. Never negative: a received condition priced at or above what
+ * the buyer paid earns no refund.
  */
 export function estimateRefund(input: RefundInput): RefundEstimate | null {
-  if (
-    !isPositive(input.pricePaid) ||
-    !isPositive(input.soldConditionPrice) ||
-    !isPositive(input.receivedConditionPrice)
-  ) {
+  if (!isPositive(input.pricePaid) || !isPositive(input.receivedConditionPrice)) {
     return null;
   }
-  const retainedShare = Math.min(
-    1,
-    input.receivedConditionPrice / input.soldConditionPrice,
+  const refund = roundCurrency(
+    Math.max(0, input.pricePaid - input.receivedConditionPrice),
   );
-  const refund = roundCurrency(input.pricePaid * (1 - retainedShare));
   return {
-    retainedShare,
     refund,
     netPrice: roundCurrency(input.pricePaid - refund),
   };
