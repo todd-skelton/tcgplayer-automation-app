@@ -2,6 +2,7 @@ import { getShippingExportConfig } from "../features/shipping-export/config/ship
 import { synchronizeSellerOrders } from "../features/seller-order-history/services/synchronizeSellerOrders.server";
 import { inventoryFifoRepository } from "../core/db/index.server";
 import { inventoryHistoryWorkerEnabled } from "../features/inventory-history/services/inventoryHistoryWorkerPolicy";
+import { recordMissingEstimatedPurchaseCosts } from "../features/inventory-economics/services/estimatedPurchaseCosts.server";
 
 let stopping = false;
 let nextHistorySyncAt=0;
@@ -47,6 +48,14 @@ async function run(): Promise<void> {
       if(fifoReplays===25)delayMs=2_000;
     }catch(error){
       console.error("[seller-order-history-worker] FIFO cycle failed:",String(error));
+    }
+    try{
+      const estimates=sellerKey?await recordMissingEstimatedPurchaseCosts(sellerKey):null;
+      if(estimates?.recorded.length){
+        console.log(`[seller-order-history-worker] estimated purchase costs batches=${estimates.recorded.map((entry)=>entry.batchNumber).join(",")}`);
+      }
+    }catch(error){
+      console.error("[seller-order-history-worker] estimated purchase cost cycle failed:",String(error));
     }
     if(nextHistorySyncAt>Date.now())delayMs=Math.min(delayMs,Math.max(2_000,nextHistorySyncAt-Date.now()));
     await new Promise<void>((resolve) => setTimeout(resolve, delayMs));

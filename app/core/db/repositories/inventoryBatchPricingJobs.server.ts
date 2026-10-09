@@ -79,6 +79,32 @@ export function getBatchSourcePriority(
 }
 
 export const inventoryBatchPricingJobsRepository = {
+  /**
+   * Each distinct pricing configuration and pricing model version that
+   * completed a pricing job since `since`, with when it was first used.
+   */
+  async findPricingConfigurationHistory(
+    since: Date,
+    executor?: Queryable,
+  ): Promise<Array<{ firstPricedAt: Date; config: unknown; modelVersion: string | null }>> {
+    return query(
+      `WITH completed AS (
+        SELECT job.created_at, job.config_json - 'updatedAt' AS config,
+          (SELECT result.pricing_details_json->>'pricingModelVersion' FROM inventory_batch_results result
+           WHERE result.batch_number = job.batch_number AND result.pricing_details_json IS NOT NULL
+           LIMIT 1) AS model_version
+        FROM inventory_batch_pricing_jobs job
+        WHERE job.status = 'completed' AND job.created_at >= $1
+      )
+      SELECT DISTINCT ON (config, model_version)
+        created_at AS "firstPricedAt", config, model_version AS "modelVersion"
+      FROM completed
+      ORDER BY config, model_version, created_at`,
+      [since],
+      executor,
+    );
+  },
+
   async findLatestByBatchNumber(
     batchNumber: number,
     executor?: Queryable,

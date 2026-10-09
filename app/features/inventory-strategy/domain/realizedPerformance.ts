@@ -4,12 +4,18 @@ export interface SoldUnitLine {
   soldAt: string;
   productLine: string;
   quantity: number;
+  /** The units' share of the order line's gross item sales. */
+  grossCents: number;
   /** Net proceeds after fees, postage, and refunds; null when the order's economics are unknown. */
   netProceedsCents: number | null;
   /** Estimated or actual acquisition cost; null when the lot is uncosted. */
   costCents: number | null;
   /** Days between receiving the lot and the sale. */
   daysHeld: number;
+  /** The lot's market value at intake for these units, the basis of an estimated cost. */
+  intakeMarketCents: number | null;
+  /** TCG market price for these units in the latest traded week before the sale. */
+  saleMarketCents: number | null;
 }
 
 export interface PerformanceSummary {
@@ -17,6 +23,10 @@ export interface PerformanceSummary {
   unitsSold: number;
   /** Units whose proceeds and cost are both known; every money figure covers only these. */
   includedUnits: number;
+  /** Gross item sales of every sold unit, included or not. */
+  grossCents: number;
+  /** Gross item sales of the included units: how much of the selling the money figures cover. */
+  includedGrossCents: number;
   proceedsCents: number;
   costCents: number;
   profitCents: number;
@@ -50,7 +60,8 @@ export const PERFORMANCE_WINDOWS = [30, 90] as const;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function summarize(productLine: string, lines: SoldUnitLine[], coveredDays: number): PerformanceSummary {
+/** Margin, profit per day, and return on capital of sold units spread over the days they cover. */
+export function summarizeSoldUnits(productLine: string, lines: readonly SoldUnitLine[], coveredDays: number): PerformanceSummary {
   const included = lines.filter((line) => line.netProceedsCents !== null && line.costCents !== null);
   const unitsSold = lines.reduce((sum, line) => sum + line.quantity, 0);
   const includedUnits = included.reduce((sum, line) => sum + line.quantity, 0);
@@ -64,6 +75,8 @@ function summarize(productLine: string, lines: SoldUnitLine[], coveredDays: numb
     productLine,
     unitsSold,
     includedUnits,
+    grossCents: lines.reduce((sum, line) => sum + line.grossCents, 0),
+    includedGrossCents: included.reduce((sum, line) => sum + line.grossCents, 0),
     proceedsCents,
     costCents,
     profitCents,
@@ -101,9 +114,9 @@ export function summarizeRealizedPerformance(
     return {
       windowDays,
       coveredDays,
-      overall: summarize("All product lines", inWindow, coveredDays),
+      overall: summarizeSoldUnits("All product lines", inWindow, coveredDays),
       productLines: [...byLine.entries()]
-        .map(([productLine, productLineLines]) => summarize(productLine, productLineLines, coveredDays))
+        .map(([productLine, productLineLines]) => summarizeSoldUnits(productLine, productLineLines, coveredDays))
         .sort((left, right) => right.proceedsCents - left.proceedsCents || left.productLine.localeCompare(right.productLine)),
     };
   });

@@ -9,7 +9,8 @@ const scenario = (dailyReturnHurdle: number, physicalValue: number, medianDays: 
   estimatedTime: { medianDays, p75Days: medianDays * 2, p90Days: medianDays * 3 },
 });
 const summary = (overrides: Partial<PerformanceSummary>): PerformanceSummary => ({
-  productLine: "All", unitsSold: 50, includedUnits: 50, proceedsCents: 100_000, costCents: 75_000, profitCents: 25_000,
+  productLine: "All", unitsSold: 50, includedUnits: 50, grossCents: 125_000, includedGrossCents: 125_000,
+  proceedsCents: 100_000, costCents: 75_000, profitCents: 25_000,
   marginPercent: 25, markupPercent: 33, profitPerDayCents: 800, dailyReturnPercent: 1.2, averageDaysHeld: 12, ...overrides,
 });
 
