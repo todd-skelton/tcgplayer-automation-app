@@ -22,6 +22,7 @@ import { CapitalTurnaround } from "../components/CapitalTurnaround";
 import { HurdleSweep } from "../components/HurdleSweep";
 import { ImprovementLevers } from "../components/ImprovementLevers";
 import { InventorySellingHistory } from "../components/InventorySellingHistory";
+import { MarginTrend } from "../components/MarginTrend";
 import { RealizedPerformance } from "../components/RealizedPerformance";
 import { StrategyVerdict } from "../components/StrategyVerdict";
 import { cyclePortfolio, hurdleReturns, STRATEGY_COST_BASIS } from "../components/verdict";
@@ -342,6 +343,7 @@ export default function InventoryStrategyRoute() {
         onWindowChange={setPerformanceWindow}
         configuredHurdle={dashboard.profitPerDay.dailyReturnHurdle}
       />
+      <MarginTrend trend={performanceResult.marginTrend} />
       <ImprovementLevers levers={levers} />
       <StrategyVerdict dashboard={dashboard} economics={economics} />
       <HurdleSweep dashboard={dashboard} />

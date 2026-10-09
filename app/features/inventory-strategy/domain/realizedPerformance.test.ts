@@ -3,8 +3,8 @@ import { summarizeRealizedPerformance, type SoldUnitLine } from "./realizedPerfo
 
 const now = new Date("2026-09-17T00:00:00.000Z");
 const line = (overrides: Partial<SoldUnitLine>): SoldUnitLine => ({
-  orderNumber: "A", soldAt: "2026-09-10T00:00:00.000Z", productLine: "Pokemon", quantity: 1,
-  netProceedsCents: 1000, costCents: 750, daysHeld: 10, ...overrides,
+  orderNumber: "A", soldAt: "2026-09-10T00:00:00.000Z", productLine: "Pokemon", quantity: 1, grossCents: 1250,
+  netProceedsCents: 1000, costCents: 750, daysHeld: 10, intakeMarketCents: null, saleMarketCents: null, ...overrides,
 });
 
 const report = summarizeRealizedPerformance([
@@ -22,6 +22,8 @@ assert.equal(ninety.coveredDays, 90);
 
 assert.equal(thirty.overall.unitsSold, 7);
 assert.equal(thirty.overall.includedUnits, 4, "the uncosted lot is counted as sold but excluded from money");
+assert.equal(thirty.overall.grossCents, 5000, "gross sales count every sold lot");
+assert.equal(thirty.overall.includedGrossCents, 3750, "the uncosted lot's sales are not covered by the money figures");
 assert.equal(thirty.overall.proceedsCents, 3500);
 assert.equal(thirty.overall.costCents, 2350);
 assert.equal(thirty.overall.profitCents, 1150);

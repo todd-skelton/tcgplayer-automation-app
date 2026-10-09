@@ -90,6 +90,7 @@ export function RealizedPerformance({
   const overall = window?.overall;
   const hurdlePercent = configuredHurdle * 100;
   const excludedUnits = overall ? overall.unitsSold - overall.includedUnits : 0;
+  const excludedGrossCents = overall ? overall.grossCents - overall.includedGrossCents : 0;
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
       <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -157,7 +158,7 @@ export function RealizedPerformance({
             <Stat
               label="Sold"
               value={`${overall.unitsSold.toLocaleString()} units`}
-              detail={`${money(overall.proceedsCents)} net proceeds · ${money(overall.costCents)} cost${excludedUnits > 0 ? ` · ${excludedUnits.toLocaleString()} units without cost or proceeds excluded` : ""}`}
+              detail={`${money(overall.proceedsCents)} net proceeds · ${money(overall.costCents)} cost${excludedUnits > 0 ? ` · ${excludedUnits.toLocaleString()} units (${money(excludedGrossCents)} of ${money(overall.grossCents)} in sales) without cost or proceeds excluded` : ""}`}
             />
           </Box>
           <ProductLines lines={window!.productLines} />

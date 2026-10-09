@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { recordEstimatedPurchaseCosts } from "./estimatedPurchaseCosts.server";
+import { recordEstimatedPurchaseCosts, recordMissingEstimatedPurchaseCosts } from "./estimatedPurchaseCosts.server";
 
 const recorded: Array<{ requestId: string; totalAmountCents: number; batchNumbers: number[]; correctsEntryId?: string; correctionReason?: string }> = [];
 const lot = (receiptId: number, originalQuantity: number, marketValue: number | null, allocatedAmountCents: number | null = null) =>
@@ -37,3 +37,18 @@ assert.deepEqual(recorded, [
     correctsEntryId: "6-v1", correctionReason: "Re-estimated under rule market-rate-v2" },
 ]);
 console.log("PASS estimated purchase costs are recorded once per batch and corrected when the rule changes them");
+
+const swept: Array<{ sellerKey: string; batchNumbers?: number[] }> = [];
+const sweep = (uncosted: number[]) => recordMissingEstimatedPurchaseCosts("seller-a", {
+  findUncostedBatchNumbers: async () => uncosted,
+  recordEstimatedPurchaseCosts: async (sellerKey, options = {}) => {
+    swept.push({ sellerKey, ...(options.batchNumbers ? { batchNumbers: options.batchNumbers } : {}) });
+    return { ...run, recorded: [] };
+  },
+});
+assert.equal(await sweep([]), null, "nothing is estimated when every batch is costed");
+assert.deepEqual(swept, []);
+assert.ok(await sweep([2733, 3536]));
+assert.deepEqual(swept, [{ sellerKey: "seller-a", batchNumbers: [2733, 3536] }],
+  "only batches with an uncosted lot are estimated, never the whole ledger");
+console.log("PASS missing estimated purchase costs are retried for uncosted batches only");

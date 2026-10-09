@@ -67,3 +67,27 @@ export async function recordEstimatedPurchaseCosts(
   }
   return run;
 }
+
+export interface MissingEstimatedPurchaseCostDependencies {
+  findUncostedBatchNumbers: typeof inventoryEconomicsRepository.findUncostedBatchNumbers;
+  recordEstimatedPurchaseCosts: typeof recordEstimatedPurchaseCosts;
+}
+
+const missingCostDependencies: MissingEstimatedPurchaseCostDependencies = {
+  findUncostedBatchNumbers: inventoryEconomicsRepository.findUncostedBatchNumbers,
+  recordEstimatedPurchaseCosts,
+};
+
+/**
+ * Estimates every batch that still has an uncosted lot. A batch is estimated
+ * when it is created, but a card without a market price at intake leaves it
+ * uncosted until pricing records the card's weekly market or publication
+ * records its listed price; repeating this picks it up once either exists.
+ */
+export async function recordMissingEstimatedPurchaseCosts(
+  sellerKey: string,
+  dependencies: MissingEstimatedPurchaseCostDependencies = missingCostDependencies,
+): Promise<EstimatedPurchaseCostRun | null> {
+  const batchNumbers = await dependencies.findUncostedBatchNumbers(sellerKey);
+  return batchNumbers.length ? dependencies.recordEstimatedPurchaseCosts(sellerKey, { batchNumbers }) : null;
+}

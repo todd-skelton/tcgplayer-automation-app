@@ -23,6 +23,28 @@ interface ReceiptTargetRow {
 
 export class InventoryEconomicsConflictError extends Error {}
 
+/**
+ * Unit market value of a receipt lot (alias `receipt`, seller as `$1`): the
+ * TCG market price observed at intake, else the SKU's latest weekly market
+ * price on or before intake (or before the seller's inventory was first
+ * observed, for lots without an intake), else its current market price, else
+ * the seller's own listed price. Estimated costs and margin drivers share it.
+ */
+const LOT_MARKET_VALUE_SQL = `COALESCE(receipt.market_value,
+  (SELECT weekly.tcg_market_price FROM product_weekly_sales weekly
+   WHERE weekly.sku_id=receipt.sku AND weekly.tcg_market_price IS NOT NULL
+     AND weekly.week_start<=COALESCE(receipt.intake_at::date,
+       (SELECT observed.created_at::date FROM continuous_pricing_inventory observed
+        WHERE observed.seller_key=$1 AND observed.sku=receipt.sku))
+   ORDER BY weekly.week_start DESC LIMIT 1),
+  (SELECT observed.market_price FROM continuous_pricing_inventory observed
+   WHERE observed.seller_key=$1 AND observed.sku=receipt.sku AND observed.market_price IS NOT NULL LIMIT 1),
+  (SELECT observed.current_price FROM continuous_pricing_inventory observed
+   WHERE observed.seller_key=$1 AND observed.sku=receipt.sku AND observed.current_price IS NOT NULL LIMIT 1))`;
+
+/** Days a weekly market price stays current for the sale it is compared with. */
+const SALE_MARKET_LOOKBACK_DAYS = 35;
+
 export interface SoldUnitRow {
   orderNumber: string;
   soldAt: Date;
@@ -32,6 +54,10 @@ export interface SoldUnitRow {
   orderGrossCents: number;
   costCents: number | null;
   heldSince: Date;
+  /** Lot market value at intake for the sold quantity, the basis of its estimated cost. */
+  intakeMarketCents: number | null;
+  /** TCG market price in the latest traded week up to the sale, for the sold quantity. */
+  saleMarketCents: number | null;
 }
 
 export interface EstimableBatchReceipts {
@@ -470,9 +496,8 @@ export const inventoryEconomicsRepository = {
    * batches whose lots have no purchase cost yet (`currentEstimate` null) and batches whose
    * lots all belong to the batch's own estimated purchase, returned with the current entry
    * so a changed rule can correct it. A batch touching an entered cost is never returned.
-   * A lot without an intake market takes the SKU's market when the seller's inventory was
-   * first observed, else its current market, else the seller's own listed price, so
-   * opening-balance stock can be estimated.
+   * A lot without an intake market takes the fallbacks of `LOT_MARKET_VALUE_SQL`, so
+   * opening-balance stock and cards without a market quote at intake can be estimated.
    */
   async findEstimableBatchReceipts(sellerKey: string, options: { batchNumbers?: number[]; limit?: number } = {}, executor?: Queryable) {
     const seller = normalizeReference(sellerKey,"Seller key");
@@ -512,17 +537,7 @@ export const inventoryEconomicsRepository = {
       )
       SELECT link.batch_number AS "batchNumber",receipt.receipt_id AS "receiptId",
         receipt.original_quantity AS "originalQuantity",
-        COALESCE(receipt.market_value,
-          (SELECT weekly.tcg_market_price FROM product_weekly_sales weekly
-           JOIN continuous_pricing_inventory observed ON observed.seller_key=$1 AND observed.sku=receipt.sku
-           WHERE weekly.sku_id=receipt.sku AND weekly.tcg_market_price IS NOT NULL
-             AND weekly.week_start<=observed.created_at::date
-           ORDER BY weekly.week_start DESC LIMIT 1),
-          (SELECT observed.market_price FROM continuous_pricing_inventory observed
-           WHERE observed.seller_key=$1 AND observed.sku=receipt.sku AND observed.market_price IS NOT NULL LIMIT 1),
-          (SELECT observed.current_price FROM continuous_pricing_inventory observed
-           WHERE observed.seller_key=$1 AND observed.sku=receipt.sku AND observed.current_price IS NOT NULL LIMIT 1)
-        )::float8 AS "marketValue",
+        ${LOT_MARKET_VALUE_SQL}::float8 AS "marketValue",
         receipt.intake_at AS "intakeAt",current.id::text AS "entryId",current.request_id AS "requestId",
         allocation.allocated_amount_cents::float8 AS "allocatedAmountCents"
       FROM estimable
@@ -543,10 +558,28 @@ export const inventoryEconomicsRepository = {
     return [...batches.values()];
   },
   /**
+   * Batches of the seller with a received or opening-balance lot that no
+   * purchase cost owns: the batches an estimate has not reached yet.
+   */
+  async findUncostedBatchNumbers(sellerKey: string, executor?: Queryable): Promise<number[]> {
+    const seller = normalizeReference(sellerKey,"Seller key");
+    const rows = await query<{ batchNumber: number }>(`SELECT DISTINCT link.batch_number AS "batchNumber"
+      FROM inventory_receipt_batch_links link
+      JOIN inventory_receipts receipt ON receipt.receipt_id=link.receipt_id
+      WHERE receipt.receipt_kind IN ('received','opening_balance')
+        AND (receipt.seller_key IS NULL OR receipt.seller_key=$1)
+        AND NOT EXISTS (SELECT 1 FROM inventory_purchase_receipt_ownership ownership
+          WHERE ownership.receipt_id=receipt.receipt_id)
+      ORDER BY 1 LIMIT 100`,[seller],executor);
+    return rows.map((row) => row.batchNumber);
+  },
+  /**
    * Every unit sold under a current FIFO allocation with its share of the
    * order line's gross, its share of the lot's current cost, and when the lot
    * was received. Opening-balance lots are held since the seller's inventory
-   * was first observed.
+   * was first observed. Market values price the sold quantity at the lot's
+   * intake market and at the TCG market of the latest traded week before the
+   * sale, so margin can be split into pricing, market movement, and fees.
    */
   async findSoldUnits(sellerKey: string, executor?: Queryable): Promise<SoldUnitRow[]> {
     const seller = sellerKey.trim();
@@ -570,7 +603,13 @@ export const inventoryEconomicsRepository = {
         ROUND(orders.gross_item_proceeds*100)::float8 AS "orderGrossCents",
         CASE WHEN latest_cost.receipt_id IS NULL THEN NULL
           ELSE ROUND(latest_cost.allocated_amount_cents::numeric*allocation.allocated_quantity/receipt.original_quantity)::float8 END AS "costCents",
-        COALESCE(receipt.intake_at,receipt.market_observed_at,receipt.recorded_at) AS "heldSince"
+        COALESCE(receipt.intake_at,receipt.market_observed_at,receipt.recorded_at) AS "heldSince",
+        ROUND(${LOT_MARKET_VALUE_SQL}*100*allocation.allocated_quantity)::float8 AS "intakeMarketCents",
+        ROUND((SELECT weekly.tcg_market_price FROM product_weekly_sales weekly
+          WHERE weekly.sku_id=receipt.sku AND weekly.tcg_market_price IS NOT NULL
+            AND weekly.week_start<=orders.order_time::date
+            AND weekly.week_start>orders.order_time::date-${SALE_MARKET_LOOKBACK_DAYS}
+          ORDER BY weekly.week_start DESC LIMIT 1)*100*allocation.allocated_quantity)::float8 AS "saleMarketCents"
       FROM inventory_fifo_lines fifo
       JOIN seller_orders orders ON orders.id=fifo.order_id
       JOIN seller_order_lines line ON line.order_id=fifo.order_id AND line.sku_id=fifo.order_line_sku_id
