@@ -195,6 +195,67 @@ console.log(
   "PASS fixed target horizon becomes active with percentile benchmark",
 );
 
+const correctedHorizonResult = await calculator.calculatePrices(
+  [
+    {
+      sku: 458,
+      quantity: 1,
+      currentPrice: 20,
+      productLineId: 1,
+      setId: 2,
+      productId: 3,
+    },
+  ],
+  {
+    percentile: 65,
+    policy: {
+      method: "target-horizon",
+      horizonDays: 20,
+      forecastCorrection: {
+        version: "time-in-stock-v1@2026-10-11T00:00:00.000Z",
+        sellerKey: "store",
+        medianDaysMultiplier: 1.5,
+        productLineMedianDaysMultipliers: { 1: 2 },
+      },
+    },
+    suggestedPriceResolver: async () => ({
+      suggestedPrice: 14,
+      percentiles: [
+        {
+          percentile: 5,
+          price: 10,
+          estimatedTimeToSellMs: 10 * 24 * 60 * 60 * 1000,
+          supplyStatus: "observed",
+        },
+        {
+          percentile: 65,
+          price: 14,
+          estimatedTimeToSellMs: 30 * 24 * 60 * 60 * 1000,
+          supplyStatus: "observed",
+        },
+      ],
+    }),
+  },
+);
+
+assert.equal(
+  correctedHorizonResult.pricedItems[0]?.price,
+  10,
+  "the product line's multiplier doubles forecast waits, so the 20-day price drops",
+);
+assert.equal(
+  correctedHorizonResult.pricedItems[0]?.pricingDecision?.forecastCorrectionMultiplier,
+  2,
+);
+assert.equal(
+  correctedHorizonResult.pricedItems[0]?.pricingDecision?.forecastCorrectionVersion,
+  "time-in-stock-v1@2026-10-11T00:00:00.000Z",
+);
+
+console.log(
+  "PASS a forecast correction stretches waits by the product line's multiplier and is recorded on the decision",
+);
+
 const targetUnavailableResult = await calculator.calculatePrices(
   [
     {

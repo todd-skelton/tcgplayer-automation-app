@@ -35,6 +35,7 @@ import {
   isValidProfitPerDaySetting,
   type ProfitPerDaySettings,
 } from "../types/config";
+import { ForecastCorrectionPanel } from "~/features/forecast-correction/components/ForecastCorrectionPanel";
 import { ShippingThresholdSnapsPanel } from "~/features/shipping-thresholds/components/ShippingThresholdSnapsPanel";
 
 const PROFIT_PER_DAY_FIELDS: NumberFieldDescriptor<ProfitPerDaySettings>[] = [
@@ -615,6 +616,13 @@ export default function ConfigurationRoute() {
         settings={config.pricing.shippingThresholdSnaps}
         onChange={(shippingThresholdSnaps) =>
           updatePricingConfig({ shippingThresholdSnaps })
+        }
+      />
+
+      <ForecastCorrectionPanel
+        settings={config.pricing.forecastCorrection}
+        onChange={(forecastCorrection) =>
+          updatePricingConfig({ forecastCorrection })
         }
       />
 

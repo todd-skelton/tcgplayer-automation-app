@@ -5,6 +5,7 @@ export default [
   { path: "/inventory-economics", file: "features/inventory-economics/routes/inventory-economics.tsx" },
   { path: "/api/inventory-economics", file: "features/inventory-economics/routes/api.inventory-economics.ts" },
   { path: "/api/shipping-thresholds", file: "features/shipping-thresholds/routes/api.shipping-thresholds.ts" },
+  { path: "/api/forecast-correction", file: "features/forecast-correction/routes/api.forecast-correction.ts" },
   { path: "/api/inventory-reinvestment-turnaround", file: "features/inventory-strategy/routes/api.reinvestment-turnaround.ts" },
   { path: "/api/inventory-fifo", file: "features/inventory-fifo/routes/api.inventory-fifo.ts" },
   { path: "/api/shipping-export/intake-history", file: "features/shipping-export/routes/api.shipping-export-intake-history.ts" },

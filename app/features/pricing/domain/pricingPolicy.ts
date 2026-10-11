@@ -4,6 +4,7 @@ import { logSpacedHorizons } from "./horizonValueCurve";
 import { maximizeOverCandidates } from "./maximize";
 import { considerShippingThresholdSnap } from "./shippingThresholdSnap";
 import type {
+  ActivePricingPolicy,
   ForecastCorrection,
   PortfolioPricingPlan,
   PortfolioMatchStatus,
@@ -389,26 +390,41 @@ export function policyParameters(
   policy: PricingPolicy,
 ): Pick<
   PricingDecision,
-  "configuredPercentile" | "targetHorizonDays" | "dailyReturnHurdle" | "forecastCorrectionVersion"
+  | "configuredPercentile"
+  | "targetHorizonDays"
+  | "dailyReturnHurdle"
+  | "forecastCorrectionVersion"
+  | "forecastCorrectionMultiplier"
 > {
-  switch (policy.method) {
-    case "percentile":
-      return { configuredPercentile: policy.percentile };
-    case "target-horizon":
-      return {
-        targetHorizonDays: policy.horizonDays,
-        ...(policy.forecastCorrection
-          ? { forecastCorrectionVersion: policy.forecastCorrection.version }
-          : {}),
-      };
-    case "profit-per-day":
-      return {
-        dailyReturnHurdle: policy.dailyReturnHurdle,
-        ...(policy.forecastCorrection
-          ? { forecastCorrectionVersion: policy.forecastCorrection.version }
-          : {}),
-      };
+  if (policy.method === "percentile") {
+    return { configuredPercentile: policy.percentile };
   }
+  const correction = policy.forecastCorrection
+    ? {
+        forecastCorrectionVersion: policy.forecastCorrection.version,
+        forecastCorrectionMultiplier: policy.forecastCorrection.medianDaysMultiplier,
+      }
+    : {};
+  return policy.method === "target-horizon"
+    ? { targetHorizonDays: policy.horizonDays, ...correction }
+    : { dailyReturnHurdle: policy.dailyReturnHurdle, ...correction };
+}
+
+/** The policy with its forecast correction narrowed to one product line's multiplier. */
+export function productLineCorrectedPolicy<Policy extends ActivePricingPolicy>(
+  policy: Policy,
+  productLineId: number,
+): Policy {
+  if (policy.method === "percentile" || !policy.forecastCorrection) return policy;
+  const { productLineMedianDaysMultipliers, ...correction } = policy.forecastCorrection;
+  return {
+    ...policy,
+    forecastCorrection: {
+      ...correction,
+      medianDaysMultiplier:
+        productLineMedianDaysMultipliers?.[productLineId] ?? correction.medianDaysMultiplier,
+    },
+  };
 }
 
 function pointAtPrice(
