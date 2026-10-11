@@ -1,3 +1,8 @@
+import type {
+  ShippingThresholdSnap,
+  ShippingThresholdSnapPolicy,
+} from "./shippingThresholds";
+
 export interface PricingCurvePoint {
   percentile: number;
   price: number;
@@ -36,6 +41,8 @@ export type PricingPolicy =
       /** Overhead in dollars per unit sold. */
       staticOverheadPerUnit: number;
       forecastCorrection?: ForecastCorrection;
+      /** Considers listing just under a shipping threshold when it returns more. */
+      shippingThresholdSnap?: ShippingThresholdSnapPolicy;
     };
 
 /** A held-out correction applied to the curve's median waits at the policy seam. */
@@ -92,6 +99,8 @@ export interface PricingDecision {
   listingsCount?: number;
   supplyStatus?: PricingSupplyStatus;
   constraint: PricingConstraint;
+  /** The shipping threshold snap considered for this price, and whether it was taken. */
+  shippingThresholdSnap?: ShippingThresholdSnap;
   basis: PricingDecisionBasis;
   forecastStatus: PricingForecastStatus;
   planId?: string;

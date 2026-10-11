@@ -35,6 +35,7 @@ import {
   isValidProfitPerDaySetting,
   type ProfitPerDaySettings,
 } from "../types/config";
+import { ShippingThresholdSnapsPanel } from "~/features/shipping-thresholds/components/ShippingThresholdSnapsPanel";
 
 const PROFIT_PER_DAY_FIELDS: NumberFieldDescriptor<ProfitPerDaySettings>[] = [
   {
@@ -609,6 +610,13 @@ export default function ConfigurationRoute() {
           )}
         </Stack>
       </Paper>
+
+      <ShippingThresholdSnapsPanel
+        settings={config.pricing.shippingThresholdSnaps}
+        onChange={(shippingThresholdSnaps) =>
+          updatePricingConfig({ shippingThresholdSnaps })
+        }
+      />
 
       {/* Supply Analysis Configuration */}
       <Paper sx={{ p: 3, mb: 3 }} elevation={3}>

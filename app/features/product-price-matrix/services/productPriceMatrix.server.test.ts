@@ -212,6 +212,7 @@ function createFakeCalculator(pricesBySku: Record<number, number>) {
 
 function createDependencies(sellerKey = "store") {
   return {
+    loadShippingCostModel: async () => undefined,
     pricingConfigRepository: {
       get: async () => ({
         ...DEFAULT_SERVER_PRICING_CONFIG,
@@ -390,9 +391,17 @@ const testCases: TestCase[] = [
     name: "product matrix action prices conditions under the active policy beside the store's listings",
     run: async () => {
       const calculator = createFakeCalculator({ 1002: 3, 1001: 3.4, 1003: 5 });
+      const costModel = {
+        learnedAt: "2026-10-11T00:00:00.000Z",
+        evidenceWindowDays: 90,
+        orderCount: 0,
+        tiers: [],
+        baskets: [],
+      };
       const action = createProductPriceMatrixAction({
         ...createDependencies(),
         createPricingCalculator: calculator.factory,
+        loadShippingCostModel: async () => costModel,
       });
 
       const result = await action({
@@ -412,7 +421,14 @@ const testCases: TestCase[] = [
       assert.equal(parsed.status, 200);
       assert.equal(calculator.calls.length, 1);
       const config = calculator.calls[0];
-      assert.deepEqual(config.policy, {
+      assert.equal(config.policy?.method, "profit-per-day");
+      const { shippingThresholdSnap, ...policy } = config.policy as Extract<
+        NonNullable<typeof config.policy>,
+        { method: "profit-per-day" }
+      >;
+      // The matrix prices with the learned shipping costs, snapping as listings would.
+      assert.equal(shippingThresholdSnap?.costModel, costModel);
+      assert.deepEqual(policy, {
         method: "profit-per-day",
         dailyReturnHurdle: 0.005,
         relativeOverhead: 0.15,
@@ -428,7 +444,7 @@ const testCases: TestCase[] = [
       });
       // The header names the policy as it applies to this product line.
       assert.deepEqual(parsed.body.policy, {
-        ...config.policy,
+        ...policy,
         dailyReturnHurdle: 0.01,
       });
       // Only the in-stock listing is handed to the calculator as the current price.
