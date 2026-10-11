@@ -13,6 +13,7 @@ import type { PricingResult } from "~/features/pricing/services/pricingCalculato
 import { PricingCalculator } from "~/features/pricing/services/pricingCalculator";
 import { PricingBatchApiCache } from "~/features/pricing/services/pricingBatchApiCache.server";
 import { resolveSuggestedPrice } from "~/features/pricing/services/suggestedPriceResolver.server";
+import { forecastCorrectionForPricing } from "~/features/forecast-correction/services/forecastCorrection.server";
 import { shippingCostModelForPricing } from "~/features/shipping-thresholds/services/shippingThresholds.server";
 import {
   activePricingPolicy,
@@ -94,6 +95,7 @@ interface ProductPriceMatrixDependencies {
   getPricePoints?: PricePointsClient;
   createPricingCalculator?: PricingCalculatorFactory;
   loadShippingCostModel?: typeof shippingCostModelForPricing;
+  loadForecastCorrection?: typeof forecastCorrectionForPricing;
 }
 
 function getDependencies(dependencies: ProductPriceMatrixDependencies = {}) {
@@ -116,6 +118,8 @@ function getDependencies(dependencies: ProductPriceMatrixDependencies = {}) {
       dependencies.createPricingCalculator ?? (() => new PricingCalculator()),
     loadShippingCostModel:
       dependencies.loadShippingCostModel ?? shippingCostModelForPricing,
+    loadForecastCorrection:
+      dependencies.loadForecastCorrection ?? forecastCorrectionForPricing,
   };
 }
 
@@ -490,6 +494,7 @@ export function createProductPriceMatrixAction(
     getPricePoints,
     createPricingCalculator,
     loadShippingCostModel,
+    loadForecastCorrection,
   } = getDependencies(dependencies);
 
   /**
@@ -599,6 +604,7 @@ export function createProductPriceMatrixAction(
             ...pricingCalculatorConfig(config, {
               excludedSellerKey: store.sellerKey,
               shippingCostModel: await loadShippingCostModel(config.pricing),
+              forecastCorrection: await loadForecastCorrection(config.pricing),
             }),
             suggestedPriceResolver: (input) =>
               resolveSuggestedPrice(input, { batchApiCache }),

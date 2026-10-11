@@ -46,6 +46,20 @@ export const DEFAULT_SHIPPING_THRESHOLD_SNAP_SETTINGS: ShippingThresholdSnapSett
 export const isValidSnapRange = (value: number): boolean =>
   value > 0 && value <= 0.5;
 
+/** Correcting the curve's sell-time forecasts by how the seller's own listings have sold. */
+export interface ForecastCorrectionSettings {
+  enabled: boolean;
+  /** Trailing days of listings and sales the correction learns from. */
+  evidenceWindowDays: number;
+}
+
+export const FORECAST_EVIDENCE_WINDOW_DAYS = [28, 56, 84] as const;
+
+export const DEFAULT_FORECAST_CORRECTION_SETTINGS: ForecastCorrectionSettings = {
+  enabled: false,
+  evidenceWindowDays: 56,
+};
+
 export interface PricingConfigSettings {
   policy: PricingPolicyConfig;
   profitPerDay: ProfitPerDaySettings;
@@ -62,8 +76,8 @@ export interface PricingConfigSettings {
     low: number;
     high: number;
   };
-  /** Null keeps the published pricing model unchanged. */
-  forecastCorrection: ForecastCorrection | null;
+  /** Applies to the target-horizon and profit-per-day policies. */
+  forecastCorrection: ForecastCorrectionSettings;
 }
 
 export interface SupplyAnalysisConfig {
@@ -114,37 +128,24 @@ export const DEFAULT_PRICING_CONFIG: PricingConfigSettings = {
     low: PRICING_CONSTANTS.SUCCESS_RATE_THRESHOLD.LOW,
     high: PRICING_CONSTANTS.SUCCESS_RATE_THRESHOLD.HIGH,
   },
-  forecastCorrection: null,
+  forecastCorrection: DEFAULT_FORECAST_CORRECTION_SETTINGS,
 };
 
-function normalizeForecastCorrection(value: unknown): ForecastCorrection | null {
-  if (!value || typeof value !== "object") return null;
-  const correction = value as Partial<ForecastCorrection>;
-  return typeof correction.version === "string" && correction.version.length > 0 &&
-    typeof correction.sellerKey === "string" && correction.sellerKey.trim().length > 0 &&
-    typeof correction.sourceModelVersion === "string" && correction.sourceModelVersion.length > 0 &&
-    typeof correction.evaluationId === "string" && correction.evaluationId.length > 0 &&
-    typeof correction.medianDaysMultiplier === "number" &&
-    Number.isFinite(correction.medianDaysMultiplier) && correction.medianDaysMultiplier > 0
-    ? {
-        version: correction.version,
-        sellerKey: correction.sellerKey.trim(),
-        sourceModelVersion: correction.sourceModelVersion,
-        evaluationId: correction.evaluationId,
-        medianDaysMultiplier: correction.medianDaysMultiplier,
-        ...(correction.productLineMedianDaysMultipliers &&
-        typeof correction.productLineMedianDaysMultipliers === "object"
-          ? {
-              productLineMedianDaysMultipliers: Object.fromEntries(
-                Object.entries(correction.productLineMedianDaysMultipliers).filter(
-                  ([key, multiplier]) => Number.isInteger(Number(key)) &&
-                    typeof multiplier === "number" && Number.isFinite(multiplier) && multiplier > 0,
-                ),
-              ),
-            }
-          : {}),
-      }
-    : null;
+/**
+ * Forecast correction settings from stored config. Configs saved before
+ * corrections were learned from recent sales read as the defaults.
+ */
+export function normalizeForecastCorrectionSettings(
+  value: unknown,
+): ForecastCorrectionSettings {
+  const raw = (value ?? {}) as Partial<Record<keyof ForecastCorrectionSettings, unknown>>;
+  const defaults = DEFAULT_FORECAST_CORRECTION_SETTINGS;
+  return {
+    enabled: typeof raw.enabled === "boolean" ? raw.enabled : defaults.enabled,
+    evidenceWindowDays: FORECAST_EVIDENCE_WINDOW_DAYS.find(
+      (days) => days === raw.evidenceWindowDays,
+    ) ?? defaults.evidenceWindowDays,
+  };
 }
 
 export const DEFAULT_SUPPLY_ANALYSIS_CONFIG: SupplyAnalysisConfig = {
@@ -279,12 +280,15 @@ export function profitPerDayPolicy(
 export function activePricingPolicy(
   settings: PricingConfigSettings,
 ): ActivePricingPolicy {
-  const policy = settings.policy.method === "profit-per-day"
+  return settings.policy.method === "profit-per-day"
     ? profitPerDayPolicy(settings.profitPerDay)
     : settings.policy;
-  return policy.method === "percentile" || !settings.forecastCorrection
-    ? policy
-    : { ...policy, forecastCorrection: settings.forecastCorrection };
+}
+
+/** True when pricing under these settings would apply a learned forecast correction. */
+export function correctsForecasts(settings: PricingConfigSettings): boolean {
+  return settings.policy.method !== "percentile" &&
+    normalizeForecastCorrectionSettings(settings.forecastCorrection).enabled;
 }
 
 /** The active policy as it applies to one product line, honoring its hurdle. */
@@ -313,7 +317,11 @@ export function snapsShippingThresholds(settings: PricingConfigSettings): boolea
 
 export function pricingCalculatorConfig(
   config: ServerPricingConfig,
-  options: { excludedSellerKey?: string; shippingCostModel?: ShippingCostModel } = {},
+  options: {
+    excludedSellerKey?: string;
+    shippingCostModel?: ShippingCostModel;
+    forecastCorrection?: ForecastCorrection;
+  } = {},
 ): Pick<
   PricingConfig,
   | "percentile"
@@ -325,9 +333,15 @@ export function pricingCalculatorConfig(
   | "productLinePricingConfig"
 > {
   const policy = activePricingPolicy(config.pricing);
-  const sellerBoundPolicy = policy.method !== "percentile" && policy.forecastCorrection &&
-    options.excludedSellerKey && policy.forecastCorrection.sellerKey !== options.excludedSellerKey
-    ? { ...policy, forecastCorrection: undefined }
+  // A correction describes how one seller's listings sell, so it applies
+  // only when pricing that seller's inventory or intake bound for it.
+  const correction = options.forecastCorrection &&
+    correctsForecasts(config.pricing) &&
+    (!options.excludedSellerKey || options.forecastCorrection.sellerKey === options.excludedSellerKey)
+    ? options.forecastCorrection
+    : undefined;
+  const sellerBoundPolicy = policy.method !== "percentile" && correction
+    ? { ...policy, forecastCorrection: correction }
     : policy;
   const snaps = normalizeShippingThresholdSnapSettings(
     config.pricing.shippingThresholdSnaps,
@@ -373,7 +387,7 @@ export function normalizeServerPricingConfig(value: unknown): ServerPricingConfi
         ...DEFAULT_PRICING_CONFIG.successRateThreshold,
         ...(raw.pricing?.successRateThreshold ?? {}),
       },
-      forecastCorrection: normalizeForecastCorrection(raw.pricing?.forecastCorrection),
+      forecastCorrection: normalizeForecastCorrectionSettings(raw.pricing?.forecastCorrection),
     },
     supplyAnalysis: {
       ...DEFAULT_SUPPLY_ANALYSIS_CONFIG,

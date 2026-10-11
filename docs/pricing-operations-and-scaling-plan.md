@@ -108,6 +108,8 @@ Every modeled result with observed listings now records that forecast at the lis
 
 The curve's buyer interval pools sales of every condition, and held out against the following month that pooled rate ranked which slow SKUs would sell barely better than chance, while the SKU's own yearly sale rate ranked them well. Every modeled result now also records `conditionRateForecast`: the median wait at the listed price from a year of the SKU's own weekly sales, weighted toward the last quarter, read from the annual price history that pricing fetches once per product. Pricing does not read it either. All three forecasts are recorded against realized sales of the continuously priced inventory; the grading view was removed from the inventory strategy page because no cohort had matured. The policy adopts a better forecast only after such a comparison, and a randomized price test must follow, because realized sales cover only the prices already listed.
 
+The curve's own forecast can be corrected by how the store's listings sold: each published price is followed while in stock until replaced or sold out, and a median-days multiplier learned from those sales is applied, overall and per product line, only when it forecasts a held-out final quarter of the window better. It is off by default; see [Sell-time forecast correction](forecast-correction.md).
+
 ## Price floor
 
 The floor was market price less the fee. Realized sales showed it held liquid cards above where they trade, because the market price is a trailing average, and it was also the only thing stopping the model from listing a near-mint card at a damaged price when the card had no near-mint sales and the curve was built from other conditions. Three changes replace it:

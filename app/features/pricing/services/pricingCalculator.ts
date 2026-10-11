@@ -28,6 +28,7 @@ import type {
 import {
   netProceedsAtPrice,
   policyParameters,
+  productLineCorrectedPolicy,
   forecastsWithinYear,
   resolveValueMatchedPortfolioPlan,
   selectPricingDecision,
@@ -318,21 +319,16 @@ export class PricingCalculator {
         };
         const activePolicy =
           config.policy && config.policy.method !== "percentile"
-            ? productLinePricingPolicy(config.policy, productLineSettings)
+            ? productLineCorrectedPolicy(
+                productLinePricingPolicy(config.policy, productLineSettings),
+                pricerSku.productLineId,
+              )
             : percentilePolicy;
         const curve = toPricingCurve(
           pricedItem.percentiles,
           activePolicy.method === "percentile"
             ? undefined
-            : activePolicy.forecastCorrection
-              ? {
-                  ...activePolicy.forecastCorrection,
-                  medianDaysMultiplier:
-                    activePolicy.forecastCorrection.productLineMedianDaysMultipliers?.[
-                      pricerSku.productLineId
-                    ] ?? activePolicy.forecastCorrection.medianDaysMultiplier,
-                }
-              : undefined,
+            : activePolicy.forecastCorrection,
         );
         const pricePoint = pricePointsMap.get(pricerSku.sku) ?? null;
         const references = {

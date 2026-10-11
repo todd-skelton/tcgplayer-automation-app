@@ -45,15 +45,18 @@ export type PricingPolicy =
       shippingThresholdSnap?: ShippingThresholdSnapPolicy;
     };
 
-/** A held-out correction applied to the curve's median waits at the policy seam. */
+/**
+ * How much longer or shorter the seller's listings took to sell than the
+ * curve forecast, learned from recent sales and applied to the curve's median
+ * waits at the policy seam.
+ */
 export interface ForecastCorrection {
+  /** The learning method and when it learned this correction. */
   version: string;
-  /** Seller whose frozen evidence supports this correction. */
+  /** Seller whose sales it was learned from. */
   sellerKey: string;
-  sourceModelVersion: string;
   medianDaysMultiplier: number;
-  evaluationId: string;
-  /** Supported line-specific refinements; absent lines use the overall fit. */
+  /** Product lines whose own multiplier passed its held-out check; others use the overall one. */
   productLineMedianDaysMultipliers?: Record<number, number>;
 }
 
@@ -89,6 +92,8 @@ export interface PricingDecision {
   targetHorizonDays?: number;
   dailyReturnHurdle?: number;
   forecastCorrectionVersion?: string;
+  /** Multiplier the forecast correction applied to this product line's median days to sell. */
+  forecastCorrectionMultiplier?: number;
   /** Net proceeds at the selected price do not clear per-unit overhead. */
   unprofitable?: boolean;
   buyerIntervalDays?: number;

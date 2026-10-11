@@ -20,6 +20,7 @@ import { getPricePoints } from "~/integrations/tcgplayer/client/get-price-points
 import { PricingCalculator } from "~/features/pricing/services/pricingCalculator";
 import { PricingBatchApiCache } from "~/features/pricing/services/pricingBatchApiCache.server";
 import { resolveSuggestedPrice } from "~/features/pricing/services/suggestedPriceResolver.server";
+import { forecastCorrectionForPricing } from "~/features/forecast-correction/services/forecastCorrection.server";
 import { shippingCostModelForPricing } from "~/features/shipping-thresholds/services/shippingThresholds.server";
 import type { ProductDisplayInfo } from "~/core/types/pricing";
 import type {
@@ -563,6 +564,7 @@ export async function executeInventoryBatchPricingJob({
           ? batch.sourceLabel
           : undefined,
         shippingCostModel: await shippingCostModelForPricing(config.pricing),
+        forecastCorrection: await forecastCorrectionForPricing(config.pricing),
       }),
       suggestedPriceResolver: resolveSuggestedPriceWithBatchCache,
       isCancelled,
