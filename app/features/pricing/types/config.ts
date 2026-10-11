@@ -5,6 +5,10 @@ import type {
   ForecastCorrection,
   PricingPolicy,
 } from "~/core/types/pricingPolicy";
+import {
+  SHIPPING_THRESHOLDS,
+  type ShippingCostModel,
+} from "~/core/types/shippingThresholds";
 
 export type { ActivePricingPolicy, ProductLineSettings };
 
@@ -16,12 +20,37 @@ export type PricingPolicyConfig =
 
 export type ProfitPerDaySettings = Omit<
   Extract<PricingPolicy, { method: "profit-per-day" }>,
-  "method" | "forecastCorrection"
+  "method" | "forecastCorrection" | "shippingThresholdSnap"
 >;
+
+/** Listing just under the shipping thresholds when the learned shipping costs make it pay. */
+export interface ShippingThresholdSnapSettings {
+  enabled: boolean;
+  /** Thresholds to consider listing one cent under. */
+  thresholds: number[];
+  /** A price up to this fraction above a threshold may be snapped just under it. */
+  snapRange: number;
+  /** Trailing days of orders the shipping cost model learns from. */
+  evidenceWindowDays: number;
+}
+
+export const SHIPPING_EVIDENCE_WINDOW_DAYS = [30, 60, 90, 180, 365] as const;
+
+export const DEFAULT_SHIPPING_THRESHOLD_SNAP_SETTINGS: ShippingThresholdSnapSettings = {
+  enabled: true,
+  thresholds: [...SHIPPING_THRESHOLDS],
+  snapRange: 0.1,
+  evidenceWindowDays: 90,
+};
+
+export const isValidSnapRange = (value: number): boolean =>
+  value > 0 && value <= 0.5;
 
 export interface PricingConfigSettings {
   policy: PricingPolicyConfig;
   profitPerDay: ProfitPerDaySettings;
+  /** Applies to the profit-per-day policy. */
+  shippingThresholdSnaps: ShippingThresholdSnapSettings;
   defaultPercentile: number;
   percentileStep: number;
   minPercentile: number;
@@ -73,6 +102,7 @@ export const DEFAULT_PROFIT_PER_DAY_SETTINGS: ProfitPerDaySettings = {
 export const DEFAULT_PRICING_CONFIG: PricingConfigSettings = {
   policy: { method: "percentile" },
   profitPerDay: DEFAULT_PROFIT_PER_DAY_SETTINGS,
+  shippingThresholdSnaps: DEFAULT_SHIPPING_THRESHOLD_SNAP_SETTINGS,
   defaultPercentile: PRICING_CONSTANTS.DEFAULT_PERCENTILE,
   percentileStep: PRICING_CONSTANTS.PERCENTILE_STEP,
   minPercentile: PRICING_CONSTANTS.MIN_PERCENTILE,
@@ -186,6 +216,33 @@ function normalizeProfitPerDaySettings(value: unknown): ProfitPerDaySettings {
   return settings;
 }
 
+/**
+ * Snap settings from stored config. Pricing jobs keep the config they were
+ * queued with, so configs saved before snaps existed read as the defaults.
+ */
+export function normalizeShippingThresholdSnapSettings(
+  value: unknown,
+): ShippingThresholdSnapSettings {
+  const raw = (value ?? {}) as Partial<Record<keyof ShippingThresholdSnapSettings, unknown>>;
+  const defaults = DEFAULT_SHIPPING_THRESHOLD_SNAP_SETTINGS;
+  return {
+    enabled: typeof raw.enabled === "boolean" ? raw.enabled : defaults.enabled,
+    thresholds: Array.isArray(raw.thresholds)
+      ? SHIPPING_THRESHOLDS.filter((threshold) =>
+          (raw.thresholds as unknown[]).includes(threshold),
+        )
+      : defaults.thresholds,
+    snapRange:
+      typeof raw.snapRange === "number" && Number.isFinite(raw.snapRange) &&
+      isValidSnapRange(raw.snapRange)
+        ? raw.snapRange
+        : defaults.snapRange,
+    evidenceWindowDays: SHIPPING_EVIDENCE_WINDOW_DAYS.find(
+      (days) => days === raw.evidenceWindowDays,
+    ) ?? defaults.evidenceWindowDays,
+  };
+}
+
 function normalizeProductLineSettings(
   value: unknown,
 ): Record<number, ProductLineSettings> {
@@ -243,12 +300,20 @@ export function productLinePricingPolicy<Policy extends ActivePricingPolicy>(
 
 /**
  * The calculator settings every pricing run derives from the stored config:
- * the active policy, the price floor, supply analysis, and per-product-line
- * percentiles. Callers add their own resolver, progress, and cancellation.
+ * the active policy, the price floor, supply analysis, per-product-line
+ * percentiles, and shipping threshold snaps when a learned shipping cost
+ * model is supplied. Callers add their own resolver, progress, and cancellation.
  */
+/** True when pricing under these settings would consider threshold snaps. */
+export function snapsShippingThresholds(settings: PricingConfigSettings): boolean {
+  const snaps = normalizeShippingThresholdSnapSettings(settings.shippingThresholdSnaps);
+  return settings.policy.method === "profit-per-day" && snaps.enabled &&
+    snaps.thresholds.length > 0;
+}
+
 export function pricingCalculatorConfig(
   config: ServerPricingConfig,
-  options: { excludedSellerKey?: string } = {},
+  options: { excludedSellerKey?: string; shippingCostModel?: ShippingCostModel } = {},
 ): Pick<
   PricingConfig,
   | "percentile"
@@ -264,9 +329,24 @@ export function pricingCalculatorConfig(
     options.excludedSellerKey && policy.forecastCorrection.sellerKey !== options.excludedSellerKey
     ? { ...policy, forecastCorrection: undefined }
     : policy;
+  const snaps = normalizeShippingThresholdSnapSettings(
+    config.pricing.shippingThresholdSnaps,
+  );
+  const snappingPolicy =
+    sellerBoundPolicy.method === "profit-per-day" && snaps.enabled &&
+    snaps.thresholds.length > 0 && options.shippingCostModel
+      ? {
+          ...sellerBoundPolicy,
+          shippingThresholdSnap: {
+            thresholds: snaps.thresholds,
+            snapRange: snaps.snapRange,
+            costModel: options.shippingCostModel,
+          },
+        }
+      : sellerBoundPolicy;
   return {
     percentile: config.productLinePricing.defaultPercentile,
-    policy: sellerBoundPolicy,
+    policy: snappingPolicy,
     minPriceMultiplier: config.pricing.minPriceMultiplier,
     minPriceConstant: config.pricing.minPriceConstant,
     enableSupplyAnalysis: config.supplyAnalysis.enableSupplyAnalysis,
@@ -286,6 +366,9 @@ export function normalizeServerPricingConfig(value: unknown): ServerPricingConfi
       ...(raw.pricing ?? {}),
       policy: normalizePricingPolicy(raw.pricing?.policy),
       profitPerDay: normalizeProfitPerDaySettings(raw.pricing?.profitPerDay),
+      shippingThresholdSnaps: normalizeShippingThresholdSnapSettings(
+        raw.pricing?.shippingThresholdSnaps,
+      ),
       successRateThreshold: {
         ...DEFAULT_PRICING_CONFIG.successRateThreshold,
         ...(raw.pricing?.successRateThreshold ?? {}),

@@ -2,6 +2,7 @@ import type { PricingPercentileDetail } from "~/core/types/pricing";
 import { PRICING_MODEL_VERSION } from "~/core/types/pricingPolicy";
 import { logSpacedHorizons } from "./horizonValueCurve";
 import { maximizeOverCandidates } from "./maximize";
+import { considerShippingThresholdSnap } from "./shippingThresholdSnap";
 import type {
   ForecastCorrection,
   PortfolioPricingPlan,
@@ -459,7 +460,30 @@ export function selectPricingDecision(
     price: requestedPoint.price,
     constraint: "none" as const,
   };
-  const selectedPrice = roundCurrency(constrained.price);
+  const policyPrice = roundCurrency(constrained.price);
+  const shippingThresholdSnap =
+    policy.method === "profit-per-day" && policy.shippingThresholdSnap
+      ? considerShippingThresholdSnap({
+          policyPrice,
+          snap: policy.shippingThresholdSnap,
+          dailyReturnHurdle: policy.dailyReturnHurdle,
+          overheadRate: policy.relativeOverhead,
+          netProceeds: (price) => netProceedsAtPrice(price, policy),
+          sellDays: (price) => {
+            const point = pointAtPrice(curve, price);
+            return point?.supplyStatus === "observed"
+              ? point.estimatedMedianSellDays
+              : undefined;
+          },
+          allowed: (price) =>
+            !applyConstraint ||
+            roundCurrency(applyConstraint(price).price) <= price,
+        })
+      : undefined;
+  const selectedPrice =
+    shippingThresholdSnap?.outcome === "snapped"
+      ? shippingThresholdSnap.snapPrice
+      : policyPrice;
   const { minimumPrice, maximumPrice } = prepare(curve);
   const finalPoint = pointAtPrice(curve, selectedPrice) ?? requestedPoint;
   const forecastStatus =
@@ -488,6 +512,7 @@ export function selectPricingDecision(
     listingsCount: finalPoint.listingsCount,
     supplyStatus: finalPoint.supplyStatus,
     constraint: constrained.constraint,
+    ...(shippingThresholdSnap ? { shippingThresholdSnap } : {}),
     basis: "modeled",
     forecastStatus,
   };

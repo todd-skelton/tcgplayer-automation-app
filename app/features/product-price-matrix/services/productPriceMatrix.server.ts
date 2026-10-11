@@ -13,6 +13,7 @@ import type { PricingResult } from "~/features/pricing/services/pricingCalculato
 import { PricingCalculator } from "~/features/pricing/services/pricingCalculator";
 import { PricingBatchApiCache } from "~/features/pricing/services/pricingBatchApiCache.server";
 import { resolveSuggestedPrice } from "~/features/pricing/services/suggestedPriceResolver.server";
+import { shippingCostModelForPricing } from "~/features/shipping-thresholds/services/shippingThresholds.server";
 import {
   activePricingPolicy,
   pricingCalculatorConfig,
@@ -92,6 +93,7 @@ interface ProductPriceMatrixDependencies {
   continuousPricingRepository?: ContinuousPricingRepository;
   getPricePoints?: PricePointsClient;
   createPricingCalculator?: PricingCalculatorFactory;
+  loadShippingCostModel?: typeof shippingCostModelForPricing;
 }
 
 function getDependencies(dependencies: ProductPriceMatrixDependencies = {}) {
@@ -112,6 +114,8 @@ function getDependencies(dependencies: ProductPriceMatrixDependencies = {}) {
     getPricePoints: dependencies.getPricePoints ?? defaultGetPricePoints,
     createPricingCalculator:
       dependencies.createPricingCalculator ?? (() => new PricingCalculator()),
+    loadShippingCostModel:
+      dependencies.loadShippingCostModel ?? shippingCostModelForPricing,
   };
 }
 
@@ -485,6 +489,7 @@ export function createProductPriceMatrixAction(
     continuousPricingRepository,
     getPricePoints,
     createPricingCalculator,
+    loadShippingCostModel,
   } = getDependencies(dependencies);
 
   /**
@@ -593,6 +598,7 @@ export function createProductPriceMatrixAction(
           {
             ...pricingCalculatorConfig(config, {
               excludedSellerKey: store.sellerKey,
+              shippingCostModel: await loadShippingCostModel(config.pricing),
             }),
             suggestedPriceResolver: (input) =>
               resolveSuggestedPrice(input, { batchApiCache }),
