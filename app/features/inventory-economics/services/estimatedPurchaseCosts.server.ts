@@ -1,9 +1,13 @@
 import { inventoryEconomicsRepository } from "~/core/db";
-import type { Queryable } from "~/core/db/database.server";
+import { withTransaction, type Queryable } from "~/core/db/database.server";
 import {
   DEFAULT_ESTIMATED_COST_RATE,
   ESTIMATED_PURCHASE_COST_RULE,
   estimateBatchPurchaseCost,
+  estimatedPurchaseCostCorrectionRequestId,
+  isEstimateRecordedFor,
+  describeEstimatedCostRate,
+  type EstimatedCostRate,
 } from "../domain/estimatedPurchaseCost";
 
 export interface EstimatedPurchaseCostDependencies {
@@ -29,8 +33,8 @@ export interface EstimatedPurchaseCostRun {
 /**
  * Records the estimated purchase cost for every batch of the seller whose lots
  * have no purchase cost, at the batch's own cost rate when it overrides the
- * default, and corrects estimates recorded under an earlier rule when the
- * current rule changes their amounts. Safe to repeat, and an entered cost is
+ * default, and corrects estimates recorded under an earlier rule or rate when
+ * the current one changes their amounts. Safe to repeat, and an entered cost is
  * never replaced.
  */
 export async function recordEstimatedPurchaseCosts(
@@ -53,13 +57,14 @@ export async function recordEstimatedPurchaseCosts(
     let purchaseCost = result.estimate.purchaseCost;
     const current = batch.currentEstimate;
     if (current) {
-      if (current.requestId === purchaseCost.requestId) { run.repeated.push(batch.batchNumber); continue; }
+      if (isEstimateRecordedFor(current.requestId, purchaseCost.requestId)) { run.repeated.push(batch.batchNumber); continue; }
       const unchanged = purchaseCost.explicitAllocations!.every((allocation) =>
         batch.receipts.find((receipt) => receipt.receiptId === allocation.receiptId)?.allocatedAmountCents === allocation.amountCents);
       if (unchanged) { run.unchanged.push(batch.batchNumber); continue; }
       purchaseCost = { ...purchaseCost, correctsEntryId: current.entryId,
+        requestId: estimatedPurchaseCostCorrectionRequestId(purchaseCost.requestId, current.entryId),
         correctionReason: batch.costRate
-          ? `Re-estimated under rule ${ESTIMATED_PURCHASE_COST_RULE.version} at the batch's cost rate`
+          ? `Re-estimated under rule ${ESTIMATED_PURCHASE_COST_RULE.version} at ${describeEstimatedCostRate(batch.costRate)}`
           : `Re-estimated under rule ${ESTIMATED_PURCHASE_COST_RULE.version}` };
     }
     const saved = await dependencies.recordPurchaseCost(purchaseCost, executor);
@@ -71,6 +76,43 @@ export async function recordEstimatedPurchaseCosts(
     });
   }
   return run;
+}
+
+/** The batch has no estimate whose rate could change: an entered purchase cost owns it, or it has no received cards for the seller. */
+export class BatchCostRateUnavailableError extends Error {}
+
+export interface BatchCostRateChangeDependencies extends EstimatedPurchaseCostDependencies {
+  transaction: <T>(work: (executor: Queryable) => Promise<T>) => Promise<T>;
+  saveBatchEstimatedCostRate: typeof inventoryEconomicsRepository.saveBatchEstimatedCostRate;
+}
+
+const rateChangeDependencies: BatchCostRateChangeDependencies = {
+  ...defaultDependencies,
+  transaction: withTransaction,
+  saveBatchEstimatedCostRate: inventoryEconomicsRepository.saveBatchEstimatedCostRate,
+};
+
+/**
+ * Changes the rate a batch's purchase cost is estimated at and re-estimates
+ * the batch, recording a correction when its amounts change. An entered
+ * purchase cost is never replaced.
+ */
+export async function changeBatchEstimatedCostRate(
+  sellerKey: string,
+  batchNumber: number,
+  rate: EstimatedCostRate,
+  dependencies: BatchCostRateChangeDependencies = rateChangeDependencies,
+): Promise<EstimatedPurchaseCostRun> {
+  return dependencies.transaction(async (executor) => {
+    const [batch] = await dependencies.findEstimableBatchReceipts(sellerKey, { batchNumbers: [batchNumber] }, executor);
+    if (!batch) {
+      throw new BatchCostRateUnavailableError(
+        `Batch ${batchNumber} has an entered purchase cost or no received cards for seller ${sellerKey}, so it has no estimate to change.`,
+      );
+    }
+    await dependencies.saveBatchEstimatedCostRate(batchNumber, rate, executor);
+    return recordEstimatedPurchaseCosts(sellerKey, { batchNumbers: [batchNumber] }, dependencies, executor);
+  });
 }
 
 export interface MissingEstimatedPurchaseCostDependencies {

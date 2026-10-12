@@ -4,6 +4,10 @@ import {
   estimateBatchPurchaseCost,
   estimateUnitCostCents,
   estimatedPurchaseCostRequestId,
+  estimatedPurchaseCostCorrectionRequestId,
+  describeEstimatedCostRate,
+  isEstimateRecordedFor,
+  marketPercentOf,
   parseEstimatedCostRate,
 } from "./estimatedPurchaseCost";
 
@@ -80,4 +84,13 @@ const atRate = estimateBatchPurchaseCost("seller-a", 12, [
 ], sixtyLessFifty);
 assert.equal(atRate.status === "estimated" && atRate.estimate.purchaseCost.totalAmountCents, 1650);
 assert.equal(atRate.status === "estimated" && atRate.estimate.purchaseCost.provenance, "estimated");
+assert.equal(marketPercentOf({ marketRate: 0.07, perUnitDeductionCents: 0 }), "7", "7% reads back as entered, not 7.000000000000001");
+assert.equal(marketPercentOf({ marketRate: 0.3333, perUnitDeductionCents: 0 }), "33.33");
+assert.equal(describeEstimatedCostRate(sixtyLessFifty), "60% of market less $0.50 per card");
+const rateId = estimatedPurchaseCostRequestId(12, sixtyLessFifty);
+assert.equal(estimatedPurchaseCostCorrectionRequestId(rateId, "41"), `${rateId}:corrects-41`);
+assert.ok(isEstimateRecordedFor(rateId, rateId));
+assert.ok(isEstimateRecordedFor(`${rateId}:corrects-41`, rateId));
+assert.ok(!isEstimateRecordedFor(rateId, estimatedPurchaseCostRequestId(12)), "a rate's estimate is not the default estimate");
+assert.ok(!isEstimateRecordedFor(`${estimatedPurchaseCostRequestId(120)}:corrects-4`, estimatedPurchaseCostRequestId(12)));
 console.log("PASS a batch's cost rate overrides the percent of market and amount per card");

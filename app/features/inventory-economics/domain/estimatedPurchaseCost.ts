@@ -51,6 +51,16 @@ export function parseEstimatedCostRate(input: { marketPercent?: unknown; perCard
   return { marketRate: Math.round(Number(percent) * 100) / 10_000, perUnitDeductionCents };
 }
 
+/** The rate's percent of market, as entered: up to two decimals. */
+export function marketPercentOf(rate: EstimatedCostRate): string {
+  return String(Math.round(rate.marketRate * 10_000) / 100);
+}
+
+/** Names a rate the way it is entered, for example "60% of market less $0.50 per card". */
+export function describeEstimatedCostRate(rate: EstimatedCostRate): string {
+  return `${marketPercentOf(rate)}% of market less $${(rate.perUnitDeductionCents / 100).toFixed(2)} per card`;
+}
+
 export interface EstimatedCostReceipt {
   receiptId: number;
   originalQuantity: number;
@@ -90,6 +100,19 @@ export function estimatedPurchaseCostRequestId(
   return isDefaultRate(rate)
     ? base
     : `${base}:market-${rate.marketRate}-less-${rate.perUnitDeductionCents}c`;
+}
+
+/**
+ * A correction names the entry it corrects, so returning a batch to an earlier
+ * rate records a new entry instead of reusing that rate's spent request ID.
+ */
+export function estimatedPurchaseCostCorrectionRequestId(requestId: string, correctsEntryId: string): string {
+  return `${requestId}:corrects-${correctsEntryId}`;
+}
+
+/** Whether the current estimate entry was recorded for this request, directly or as a correction. */
+export function isEstimateRecordedFor(currentRequestId: string, requestId: string): boolean {
+  return currentRequestId === requestId || currentRequestId.startsWith(`${requestId}:corrects-`);
 }
 
 export function estimatedPurchaseReference(batchNumber: number): string {

@@ -12,6 +12,11 @@ export interface PendingIntakeRequest {
   expectedSellerKey: string;
 }
 
+const isEstimatedCostRateAtIntake = (value: unknown): value is EstimatedCostRateAtIntake =>
+  Boolean(value) && typeof value === "object" &&
+  typeof (value as EstimatedCostRateAtIntake).marketPercent === "string" &&
+  typeof (value as EstimatedCostRateAtIntake).perCardDeduction === "string";
+
 export function readPendingIntakeRequest(
   storage: Pick<Storage, "getItem">,
 ): PendingIntakeRequest | null {
@@ -22,7 +27,8 @@ export function readPendingIntakeRequest(
     !request.requestId ||
     !["price_only", "publish"].includes(request.workflow) ||
     !isIntakeSnapshot(request.expectedInventory) ||
-    typeof request.expectedSellerKey !== "string"
+    typeof request.expectedSellerKey !== "string" ||
+    (request.estimatedCostRate !== undefined && !isEstimatedCostRateAtIntake(request.estimatedCostRate))
   ) {
     throw new Error(
       "The saved queue request is invalid. Review recent batches before clearing browser session data.",

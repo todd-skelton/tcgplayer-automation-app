@@ -7,8 +7,9 @@ import type { InventoryBatch } from "../types/inventoryBatch";
 
 interface PendingBatchWithCostDependencies {
   transaction: <T>(work:(executor:Queryable)=>Promise<T>)=>Promise<T>;
-  createBatch:(requestId:string,executor?:Queryable,estimatedCostRate?:EstimatedCostRate)=>Promise<InventoryBatch | null>;
+  createBatch:(requestId:string,executor?:Queryable)=>Promise<InventoryBatch | null>;
   recordPurchaseCost:typeof inventoryEconomicsRepository.recordPurchaseCost;
+  saveBatchEstimatedCostRate:typeof inventoryEconomicsRepository.saveBatchEstimatedCostRate;
   recordEstimatedPurchaseCosts:typeof recordEstimatedPurchaseCosts;
 }
 
@@ -23,6 +24,7 @@ const defaultDependencies: PendingBatchWithCostDependencies = {
   transaction:withTransaction,
   createBatch:inventoryBatchesRepository.createFromPendingInventory,
   recordPurchaseCost:inventoryEconomicsRepository.recordPurchaseCost,
+  saveBatchEstimatedCostRate:inventoryEconomicsRepository.saveBatchEstimatedCostRate,
   recordEstimatedPurchaseCosts,
 };
 
@@ -45,8 +47,11 @@ export async function createPendingInventoryBatchWithCost(
     throw new Error("A cost rate needs a seller to record the estimated cost for.");
   }
   const perform = async (executor:Queryable)=>{
-    const batch = await dependencies.createBatch(requestId,executor,cost.estimatedCostRate);
+    const batch = await dependencies.createBatch(requestId,executor);
     if (!batch) return batch;
+    if (cost.estimatedCostRate) {
+      await dependencies.saveBatchEstimatedCostRate(batch.batchNumber,cost.estimatedCostRate,executor);
+    }
     if (cost.purchaseCost) {
       await dependencies.recordPurchaseCost({
         ...cost.purchaseCost,

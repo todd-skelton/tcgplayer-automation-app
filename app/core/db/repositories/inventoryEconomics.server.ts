@@ -544,10 +544,10 @@ export const inventoryEconomicsRepository = {
         ${LOT_MARKET_VALUE_SQL}::float8 AS "marketValue",
         receipt.intake_at AS "intakeAt",current.id::text AS "entryId",current.request_id AS "requestId",
         allocation.allocated_amount_cents::float8 AS "allocatedAmountCents",
-        batch.estimated_cost_market_rate::float8 AS "costMarketRate",
-        batch.estimated_cost_per_unit_deduction_cents AS "costPerUnitDeductionCents"
+        rate.market_rate::float8 AS "costMarketRate",
+        rate.per_unit_deduction_cents AS "costPerUnitDeductionCents"
       FROM estimable
-      JOIN inventory_batches batch ON batch.batch_number=estimable.batch_number
+      LEFT JOIN inventory_batch_estimated_cost_rates rate ON rate.batch_number=estimable.batch_number
       JOIN inventory_receipt_batch_links link ON link.batch_number=estimable.batch_number
       JOIN inventory_receipts receipt ON receipt.receipt_id=link.receipt_id
       LEFT JOIN current_entry current ON current.series_id=estimable.series_id
@@ -567,6 +567,15 @@ export const inventoryEconomicsRepository = {
       batches.set(row.batchNumber, batch);
     }
     return [...batches.values()];
+  },
+  /** Saves the rate a batch's purchase cost is estimated at, replacing any earlier rate. */
+  async saveBatchEstimatedCostRate(batchNumber: number, rate: EstimatedCostRate, executor?: Queryable): Promise<void> {
+    if (!Number.isInteger(batchNumber) || batchNumber <= 0) throw new Error("Batch number must be a positive integer.");
+    await execute(`INSERT INTO inventory_batch_estimated_cost_rates (batch_number,market_rate,per_unit_deduction_cents)
+      VALUES ($1,$2,$3)
+      ON CONFLICT (batch_number) DO UPDATE SET market_rate=EXCLUDED.market_rate,
+        per_unit_deduction_cents=EXCLUDED.per_unit_deduction_cents,updated_at=NOW()`,
+      [batchNumber,rate.marketRate,rate.perUnitDeductionCents],executor);
   },
   /**
    * Batches of the seller with a received or opening-balance lot that no
