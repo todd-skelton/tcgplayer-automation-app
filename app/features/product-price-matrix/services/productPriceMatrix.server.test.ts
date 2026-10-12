@@ -213,7 +213,6 @@ function createFakeCalculator(pricesBySku: Record<number, number>) {
 function createDependencies(sellerKey = "store") {
   return {
     loadShippingCostModel: async () => undefined,
-    loadForecastCorrection: async () => undefined,
     pricingConfigRepository: {
       get: async () => ({
         ...DEFAULT_SERVER_PRICING_CONFIG,

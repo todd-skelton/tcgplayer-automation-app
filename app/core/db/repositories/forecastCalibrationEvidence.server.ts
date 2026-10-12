@@ -1,10 +1,10 @@
-import type { ListedPrice, SkuSale } from "~/features/forecast-correction/domain/forecastCorrectionModel";
+import type { ListedPrice, SkuSale } from "~/features/forecast-calibration/domain/forecastCalibrationModel";
 import { query, queryOne, type Queryable } from "../database.server";
 
 /** Listings counted before this much ahead of the window still need the sales since their count. */
 const COUNT_LEAD_MS = 86_400_000;
 
-export const forecastCorrectionEvidenceRepository = {
+export const forecastCalibrationEvidenceRepository = {
   /** The span the latest complete, gapless order history sync covers. */
   async findOrderHistoryCoverage(
     sellerKey: string,
@@ -23,7 +23,7 @@ export const forecastCorrectionEvidenceRepository = {
   /**
    * Prices published in the window with a modeled sell-time forecast from the
    * given pricing model, the stock counted for them, and when the SKU's next
-   * price replaced them. Medians are read back before any correction.
+   * price replaced them.
    */
   async findListedPrices(
     sellerKey: string,
@@ -34,28 +34,22 @@ export const forecastCorrectionEvidenceRepository = {
   ): Promise<ListedPrice[]> {
     return query<ListedPrice>(
       `WITH published AS (
-        SELECT item.sku,catalog.product_line_id AS "productLineId",item.product_line AS "productLine",
-          item.published_at AS "listedAt",
+        SELECT item.sku,item.published_at AS "listedAt",
           LEAD(item.published_at) OVER (PARTITION BY item.sku ORDER BY item.published_at,item.id) AS "replacedAt",
           batch_item.total_quantity+GREATEST(batch_item.add_to_quantity,0) AS quantity,
           batch_item.created_at AS "countedAt",
           item.forecast_evidence->>'pricingModelVersion' AS "pricingModelVersion",
           item.forecast_evidence->'decision'->>'basis' AS basis,
           CASE WHEN jsonb_typeof(item.forecast_evidence->'decision'->'estimatedMedianSellDays')='number'
-            THEN (item.forecast_evidence->'decision'->>'estimatedMedianSellDays')::float8 END AS "medianSellDays",
-          CASE WHEN jsonb_typeof(item.forecast_evidence->'decision'->'forecastCorrectionMultiplier')='number'
-            THEN (item.forecast_evidence->'decision'->>'forecastCorrectionMultiplier')::float8 END AS "correctionMultiplier"
+            THEN (item.forecast_evidence->'decision'->>'estimatedMedianSellDays')::float8 END AS "medianSellDays"
         FROM inventory_publication_items item
         JOIN inventory_publications publication ON publication.id=item.publication_id
         LEFT JOIN inventory_batch_items batch_item
           ON batch_item.batch_number=item.batch_number AND batch_item.sku=item.sku
-        LEFT JOIN skus catalog ON catalog.sku=item.sku
         WHERE publication.seller_key=$1 AND item.status='published'
           AND item.published_at>=$2 AND item.published_at<$3
       )
-      SELECT sku,"productLineId","productLine","listedAt","replacedAt",quantity,"countedAt",
-        "medianSellDays"/CASE WHEN "correctionMultiplier">0 THEN "correctionMultiplier" ELSE 1 END
-          AS "forecastMedianSellDays"
+      SELECT sku,"listedAt","replacedAt",quantity,"countedAt","medianSellDays" AS "forecastMedianSellDays"
       FROM published
       WHERE quantity>0 AND "countedAt" IS NOT NULL AND basis='modeled'
         AND "pricingModelVersion"=$4 AND "medianSellDays">0

@@ -13,9 +13,6 @@ export interface PricingCurvePoint {
   historyCapped?: boolean;
   listingsCount?: number;
   supplyStatus?: PricingSupplyStatus;
-  /** Internal marker that keeps corrected medians through interpolation. */
-  forecastCorrectionVersion?: string;
-  forecastCorrectionMultiplier?: number;
 }
 
 export const PRICING_MODEL_VERSION = "pooled-supply-v1" as const;
@@ -30,7 +27,6 @@ export type PricingPolicy =
   | {
       method: "target-horizon";
       horizonDays: number;
-      forecastCorrection?: ForecastCorrection;
     }
   | {
       method: "profit-per-day";
@@ -40,25 +36,9 @@ export type PricingPolicy =
       relativeOverhead: number;
       /** Overhead in dollars per unit sold. */
       staticOverheadPerUnit: number;
-      forecastCorrection?: ForecastCorrection;
       /** Considers listing just under a shipping threshold when it returns more. */
       shippingThresholdSnap?: ShippingThresholdSnapPolicy;
     };
-
-/**
- * How much longer or shorter the seller's listings took to sell than the
- * curve forecast, learned from recent sales and applied to the curve's median
- * waits at the policy seam.
- */
-export interface ForecastCorrection {
-  /** The learning method and when it learned this correction. */
-  version: string;
-  /** Seller whose sales it was learned from. */
-  sellerKey: string;
-  medianDaysMultiplier: number;
-  /** Product lines whose own multiplier passed its held-out check; others use the overall one. */
-  productLineMedianDaysMultipliers?: Record<number, number>;
-}
 
 /** The stored choice with its settings resolved; percentile stays per product line. */
 export type ActivePricingPolicy =
@@ -91,9 +71,6 @@ export interface PricingDecision {
   configuredPercentile?: number;
   targetHorizonDays?: number;
   dailyReturnHurdle?: number;
-  forecastCorrectionVersion?: string;
-  /** Multiplier the forecast correction applied to this product line's median days to sell. */
-  forecastCorrectionMultiplier?: number;
   /** Net proceeds at the selected price do not clear per-unit overhead. */
   unprofitable?: boolean;
   buyerIntervalDays?: number;

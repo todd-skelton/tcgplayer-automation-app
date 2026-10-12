@@ -35,7 +35,7 @@ import {
   isValidProfitPerDaySetting,
   type ProfitPerDaySettings,
 } from "../types/config";
-import { ForecastCorrectionPanel } from "~/features/forecast-correction/components/ForecastCorrectionPanel";
+import { ForecastCalibrationPanel } from "~/features/forecast-calibration/components/ForecastCalibrationPanel";
 import { ShippingThresholdSnapsPanel } from "~/features/shipping-thresholds/components/ShippingThresholdSnapsPanel";
 
 const PROFIT_PER_DAY_FIELDS: NumberFieldDescriptor<ProfitPerDaySettings>[] = [
@@ -619,10 +619,11 @@ export default function ConfigurationRoute() {
         }
       />
 
-      <ForecastCorrectionPanel
-        settings={config.pricing.forecastCorrection}
-        onChange={(forecastCorrection) =>
-          updatePricingConfig({ forecastCorrection })
+      <ForecastCalibrationPanel
+        dailyReturnHurdle={
+          config.pricing.policy.method === "profit-per-day"
+            ? config.pricing.profitPerDay.dailyReturnHurdle
+            : undefined
         }
       />
 
