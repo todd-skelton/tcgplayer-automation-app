@@ -19,7 +19,15 @@ import {
   TextField,
   Checkbox,
   FormControlLabel,
+  Radio,
+  RadioGroup,
 } from "@mui/material";
+import {
+  DEFAULT_ESTIMATED_COST_RATE,
+  describeEstimatedCostRate,
+  marketPercentOf,
+} from "~/features/inventory-economics/domain/estimatedPurchaseCost";
+import { CostRateFields, readCostRateInput, type CostRateInput } from "../components/CostRateFields";
 import { Link } from "react-router";
 import { InventoryIntakeProgress } from '../components/InventoryIntakeProgress';
 import type { InventoryIntakeWorkflow, IntakePublicationTarget } from '../types/inventoryIntakeRun';
@@ -34,6 +42,13 @@ import {
   INVENTORY_CONDITION_ORDER,
   type InventorySelectableCondition,
 } from "../../../core/utils/conditionOrder";
+
+type IntakeCostMethod = "estimate" | "cost_rate" | "purchase_total";
+
+const DEFAULT_COST_RATE_INPUT: CostRateInput = {
+  marketPercent: marketPercentOf(DEFAULT_ESTIMATED_COST_RATE),
+  perCardDeduction: (DEFAULT_ESTIMATED_COST_RATE.perUnitDeductionCents / 100).toFixed(2),
+};
 
 export default function InventoryManagerRoute() {
   const {
@@ -75,12 +90,18 @@ export default function InventoryManagerRoute() {
   const [queueRefreshKey, setQueueRefreshKey] = React.useState(0);
   const [intakeTarget, setIntakeTarget] = React.useState<IntakePublicationTarget | null>(null);
   const entryFocus = useRef<HTMLElement | null>(null);
-  const [includePurchaseCost, setIncludePurchaseCost] = React.useState(false);
+  const [costMethod, setCostMethod] = React.useState<IntakeCostMethod>("estimate");
+  const [costRateInput, setCostRateInput] = React.useState(DEFAULT_COST_RATE_INPUT);
   const [purchaseReference, setPurchaseReference] = React.useState("");
   const [purchaseTotal, setPurchaseTotal] = React.useState("");
   const [purchaseEstimated, setPurchaseEstimated] = React.useState(false);
   const [purchaseDate, setPurchaseDate] = React.useState("");
   const filtersRef = useRef<InventoryFiltersRef>(null);
+  const costRate = readCostRateInput(costRateInput);
+  const costRateBlocksQueue = costMethod === "cost_rate" && !costRate.valid;
+  const queuedCost = costMethod === "purchase_total" ? "the entered purchase total"
+    : costMethod === "cost_rate" && costRate.valid ? `an estimate at ${describeEstimatedCostRate(costRate.rate)}`
+    : `an estimate at the default ${describeEstimatedCostRate(DEFAULT_ESTIMATED_COST_RATE)}`;
 
   const preserveFocusAcrossConditionChange = useCallback(
     (changeCondition: () => void) => {
@@ -176,16 +197,25 @@ export default function InventoryManagerRoute() {
 
   const handleCreateBatch = async (workflow: InventoryIntakeWorkflow = 'price_only') => {
     setIsCreatingBatch(true);
+    // Recovery resends the saved request with its original cost choice, not the one on screen.
+    const recovering = hasPendingIntakeRequest;
 
     try {
-      const batch = await createBatchFromPendingInventory(includePurchaseCost ? {
+      const batch = await createBatchFromPendingInventory(costMethod === "purchase_total" ? {
         purchaseReference: purchaseReference.trim(), totalAmount: purchaseTotal.trim(),
         provenance: purchaseEstimated ? "estimated" : "actual", allocationRule: "quantity",
         ...(purchaseDate ? { purchasedAt: purchaseDate } : {}), currency: "USD",
-      } : undefined, workflow, intakeTarget?.sellerKey ?? '');
-      setSuccess(`Batch ${batch.batchNumber} queued. You can keep adding inventory.`);
+      } : undefined, workflow, intakeTarget?.sellerKey ?? '', costMethod === "cost_rate" ? {
+        marketPercent: costRateInput.marketPercent.trim(), perCardDeduction: costRateInput.perCardDeduction.trim(),
+      } : undefined);
       setQueueRefreshKey(value => value + 1);
-      setIncludePurchaseCost(false);
+      if (recovering) {
+        setSuccess(`Batch ${batch.batchNumber} queued with its original cost choice. You can keep adding inventory.`);
+        return;
+      }
+      setSuccess(`Batch ${batch.batchNumber} queued with ${queuedCost}. You can keep adding inventory.`);
+      // A cost rate describes the whole lot, so it stays for the next handoff; a total belongs to one.
+      if (costMethod === "purchase_total") setCostMethod("estimate");
       setPurchaseReference('');
       setPurchaseTotal('');
       setPurchaseDate('');
@@ -347,11 +377,11 @@ export default function InventoryManagerRoute() {
                     size="small"
                     onPointerDown={() => { entryFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
                     onClick={() => void handleCreateBatch('publish')}
-                    disabled={isCreatingBatch || !intakeTarget?.canPublish}
+                    disabled={isCreatingBatch || costRateBlocksQueue || !intakeTarget?.canPublish}
                   >
                     {isCreatingBatch ? "Saving & Queuing..." : "Queue Pricing & Publishing"}
                   </Button>
-                  <Button variant="contained" size="small" disabled={isCreatingBatch || !intakeTarget}
+                  <Button variant="contained" size="small" disabled={isCreatingBatch || costRateBlocksQueue || !intakeTarget}
                     onPointerDown={() => { entryFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
                     onClick={() => void handleCreateBatch('price_only')}>Queue Pricing Only</Button>
                   <Button
@@ -374,6 +404,47 @@ export default function InventoryManagerRoute() {
             Pricing Only waits for manual publication. <Link to="/pending-inventory-pricer">Open Batch Pricer</Link>.
           </Typography>
           {intakeTarget?.publishingUnavailableReason && <Alert severity="warning" sx={{ mb: 2 }}>{intakeTarget.publishingUnavailableReason} <Link to="/publication-configuration">Publication settings</Link>.</Alert>}
+          <Box component="section" aria-labelledby="batch-cost-heading" sx={{ mb: 2, p: 2, border: 1, borderColor: "divider", borderRadius: 1 }}>
+            <FormControl>
+              <Typography id="batch-cost-heading" variant="subtitle2">Cost of the next batch</Typography>
+              <RadioGroup row value={costMethod} aria-labelledby="batch-cost-heading"
+                onChange={(event) => setCostMethod(event.target.value as IntakeCostMethod)}>
+                <FormControlLabel value="estimate" control={<Radio size="small" />}
+                  label={`Default estimate: ${describeEstimatedCostRate(DEFAULT_ESTIMATED_COST_RATE)}`} />
+                <FormControlLabel value="cost_rate" control={<Radio size="small" />} label="My own rate" />
+                <FormControlLabel value="purchase_total" control={<Radio size="small" />} label="Purchase total" />
+              </RadioGroup>
+            </FormControl>
+            {costMethod === "cost_rate" && (
+              <Stack spacing={1} sx={{ mt: 1 }}>
+                <CostRateFields value={costRateInput} onChange={setCostRateInput} />
+                <Typography variant="caption" color="text.secondary">
+                  The rate stays selected for later batches of this lot until you change it or reload the page. It also costs cards whose market price is found after intake, and you can change a queued batch's rate in Background inventory batches.
+                </Typography>
+              </Stack>
+            )}
+            {costMethod === "purchase_total" && (
+              <Stack spacing={1} sx={{ mt: 1 }}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <TextField label="Purchase reference" value={purchaseReference} required size="small"
+                    onChange={(event) => setPurchaseReference(event.target.value)} />
+                  <TextField label="Purchase total (USD)" value={purchaseTotal} required size="small"
+                    inputMode="decimal" onChange={(event) => setPurchaseTotal(event.target.value)} />
+                  <TextField label="Purchase date" type="date" value={purchaseDate} size="small"
+                    slotProps={{ inputLabel: { shrink: true } }} onChange={(event) => setPurchaseDate(event.target.value)} />
+                  <FormControlLabel control={<Checkbox checked={purchaseEstimated}
+                    onChange={(event) => setPurchaseEstimated(event.target.checked)} />}
+                    label="Estimated" />
+                </Stack>
+                <Typography variant="caption" color="text.secondary">
+                  Enter only this handoff's share if the purchase is split across batches. It is split across the cards by quantity and clears after the batch is queued.
+                </Typography>
+              </Stack>
+            )}
+            <Typography variant="caption" component="p" color="text.secondary" sx={{ mt: 1 }}>
+              Cost feeds margins and Inventory Economics; pricing does not use it. Estimates use each card's market price at intake, so a card worth less than the amount per card counts as negative cost.
+            </Typography>
+          </Box>
           <InventoryEntryTable
             skus={getFilteredSkus()}
             pendingInventory={pendingInventory}
@@ -396,28 +467,6 @@ export default function InventoryManagerRoute() {
             }}
             sealedFilter={sealedFilter}
           />
-          {pendingInventory.length > 0 && (
-            <Stack spacing={2} sx={{ mt: 3, maxWidth: 760 }}>
-              <FormControlLabel control={<Checkbox checked={includePurchaseCost}
-                onChange={(event) => setIncludePurchaseCost(event.target.checked)} />}
-                label="Record optional purchase cost with this batch" />
-              {includePurchaseCost && <Alert severity="info">Enter only the cost for this handoff, not the full purchase if you are splitting it across batches. Cost fields clear after a confirmed handoff.</Alert>}
-              {includePurchaseCost && <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                <TextField label="Purchase reference" value={purchaseReference} required
-                  onChange={(event) => setPurchaseReference(event.target.value)} />
-                <TextField label="Purchase total (USD)" value={purchaseTotal} required
-                  inputMode="decimal" onChange={(event) => setPurchaseTotal(event.target.value)} />
-                <TextField label="Purchase date" type="date" value={purchaseDate}
-                  slotProps={{ inputLabel: { shrink: true } }} onChange={(event) => setPurchaseDate(event.target.value)} />
-                <FormControlLabel control={<Checkbox checked={purchaseEstimated}
-                  onChange={(event) => setPurchaseEstimated(event.target.checked)} />}
-                  label="Estimated" />
-              </Stack>}
-              <Typography variant="caption" color="text.secondary">
-                Cost is optional. Quantity allocation preserves the purchase total across these receipt lots. Without an entered cost, an estimated cost of 75% of each item's intake market price minus $0.30 per unit is recorded and labeled estimated; an item worth less than $0.40 counts as negative cost.
-              </Typography>
-            </Stack>
-          )}
         </Paper>
       </Box>
 

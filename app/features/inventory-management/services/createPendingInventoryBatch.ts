@@ -17,6 +17,12 @@ export interface PurchaseCostAtIntake {
   currency: string;
 }
 
+/** The estimated cost's rate for this batch, as entered: percent of market and dollars less per card. */
+export interface EstimatedCostRateAtIntake {
+  marketPercent: string;
+  perCardDeduction: string;
+}
+
 export class PendingBatchRequestError extends Error {
   constructor(
     message: string,
@@ -36,7 +42,11 @@ export async function createPendingInventoryBatch(
   purchaseCostOrSend?: PurchaseCostAtIntake | BatchFetch,
   explicitSend: BatchFetch = fetch,
   workflow?: InventoryIntakeWorkflow,
-  snapshot?: { expectedInventory: IntakeQuantity[]; expectedSellerKey: string },
+  snapshot?: {
+    expectedInventory: IntakeQuantity[];
+    expectedSellerKey: string;
+    estimatedCostRate?: EstimatedCostRateAtIntake;
+  },
 ): Promise<InventoryBatch> {
   const purchaseCost = typeof purchaseCostOrSend === "function" ? undefined : purchaseCostOrSend;
   const send = typeof purchaseCostOrSend === "function" ? purchaseCostOrSend : explicitSend;

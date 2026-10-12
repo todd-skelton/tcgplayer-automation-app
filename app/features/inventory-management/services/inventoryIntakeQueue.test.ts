@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createPendingInventoryBatch } from "./createPendingInventoryBatch";
 import { readPendingIntakeRequest } from "./pendingIntakeRequest";
 import {
+  intakeRunCost,
   intakeRunStatus,
   type InventoryIntakeRun,
 } from "../types/inventoryIntakeRun";
@@ -27,6 +28,13 @@ assert.equal(readPendingIntakeRequest({ getItem: () => null }), null);
 assert.throws(
   () => readPendingIntakeRequest({ getItem: () => '{"workflow":"unknown"}' }),
   /invalid/,
+);
+const atRate = { ...request, purchaseCost: undefined, estimatedCostRate: { marketPercent: "60", perCardDeduction: "0.50" } };
+assert.deepEqual(readPendingIntakeRequest({ getItem: () => JSON.stringify(atRate) }), JSON.parse(JSON.stringify(atRate)));
+assert.throws(
+  () => readPendingIntakeRequest({ getItem: () => JSON.stringify({ ...atRate, estimatedCostRate: { marketPercent: 60 } }) }),
+  /invalid/,
+  "a saved request with a malformed cost rate is not recovered",
 );
 let calls = 0;
 await createPendingInventoryBatch(
@@ -55,6 +63,10 @@ const run: InventoryIntakeRun = {
   publishingCount: 0,
   reviewCount: 0,
   createdAt: "",
+  recordedCostCents: 1650,
+  uncostedLotCount: 0,
+  hasEnteredCost: false,
+  costRate: null,
 };
 assert.equal(intakeRunStatus(run), "Queued");
 assert.equal(intakeRunStatus({ ...run, pricingStatus: "pricing" }), "Pricing");
@@ -93,6 +105,13 @@ assert.equal(
   }),
   "Priced; review before publishing",
 );
+assert.equal(intakeRunCost(run), "Cost $16.50 estimated at the default 75% of market less $0.30 per card");
+assert.equal(
+  intakeRunCost({ ...run, costRate: { marketRate: 0.6, perUnitDeductionCents: 50 } }),
+  "Cost $16.50 estimated at 60% of market less $0.50 per card",
+);
+assert.equal(intakeRunCost({ ...run, hasEnteredCost: true, recordedCostCents: 1200 }), "Cost $12.00 entered");
+assert.match(intakeRunCost({ ...run, recordedCostCents: null, uncostedLotCount: 2 }), /^Cost not recorded yet; it will be estimated at the default/);
 console.log(
   "PASS queued intake retains permission and cost through lost responses and displays distinct pricing/publication outcomes",
 );

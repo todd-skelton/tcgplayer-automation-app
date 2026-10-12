@@ -18,6 +18,7 @@ import { InventoryMutationState } from "../services/inventoryMutationState";
 import {
   createPendingInventoryBatch,
   PendingBatchRequestError,
+  type EstimatedCostRateAtIntake,
   type PurchaseCostAtIntake,
 } from "../services/createPendingInventoryBatch";
 
@@ -81,7 +82,7 @@ export interface InventoryProcessorReturn extends InventoryProcessorState {
     metadata: { productLineId: number; setId: number; productId: number }
   ) => void;
   clearPendingInventory: () => void;
-  createBatchFromPendingInventory: (purchaseCost?: PurchaseCostAtIntake, workflow?: InventoryIntakeWorkflow, expectedSellerKey?: string) => Promise<InventoryBatch>;
+  createBatchFromPendingInventory: (purchaseCost?: PurchaseCostAtIntake, workflow?: InventoryIntakeWorkflow, expectedSellerKey?: string, estimatedCostRate?: EstimatedCostRateAtIntake) => Promise<InventoryBatch>;
   intakeBlocked: boolean;
   hasPendingIntakeRequest: boolean;
   toggleSealedFilter: (sealedFilter: "all" | "sealed" | "unsealed") => void;
@@ -488,7 +489,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
       }
     });
   }, [loadPendingInventory, queuePendingMutation, sendPendingMutation]);
-  const createBatchFromPendingInventory = useCallback((purchaseCost?: PurchaseCostAtIntake, workflow: InventoryIntakeWorkflow = 'price_only', expectedSellerKey = '') => {
+  const createBatchFromPendingInventory = useCallback((purchaseCost?: PurchaseCostAtIntake, workflow: InventoryIntakeWorkflow = 'price_only', expectedSellerKey = '', estimatedCostRate?: EstimatedCostRateAtIntake) => {
     if (handoffRunning.current) return Promise.reject(new Error('An inventory handoff is already running.'));
     handoffRunning.current = true;
     setIntakeBlocked(true);
@@ -502,6 +503,7 @@ export const useInventoryProcessor = (): InventoryProcessorReturn => {
           throw new PendingBatchRequestError('An inventory edit failed. Check the saved quantities before queuing again', 'definitive');
         }
         const request = pendingBatchRequest.current ?? { requestId: crypto.randomUUID(), workflow, purchaseCost,
+          ...(estimatedCostRate ? { estimatedCostRate } : {}),
           expectedInventory: intakeSnapshot(state.pendingInventory), expectedSellerKey };
         // Persist before sending, and retain the exact options until a definite outcome.
         sessionStorage.setItem(PENDING_INTAKE_REQUEST_KEY, JSON.stringify(request));

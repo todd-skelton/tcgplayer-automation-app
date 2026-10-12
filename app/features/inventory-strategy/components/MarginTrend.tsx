@@ -111,7 +111,7 @@ export function MarginTrend({ trend }: { trend: MarginTrendReport | null }) {
       <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
         Each week's realized margin (thin line) and the margin over the trailing {TRAILING_MARGIN_WEEKS} weeks (bold line).
         Hollow points are weeks still in progress or with less than {COSTED_SALES_THRESHOLD * 100}% of sales costed.
-        Estimated costs are {rule.marketRate * 100}% of the market price at intake less {currencyFormatter.format(rule.perUnitDeductionCents / 100)} a card,
+        Estimated costs are {rule.marketRate * 100}% of the market price at intake less {currencyFormatter.format(rule.perUnitDeductionCents / 100)} a card unless a batch was given its own rate,
         so margin follows three ratios: the sale price against the market when it sold, how the market moved since intake,
         and what fees, postage, and refunds leave of the sale.
       </Typography>

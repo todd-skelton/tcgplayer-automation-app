@@ -10,6 +10,11 @@ export function dollarsToCents(value: unknown, label = "Amount"): number {
   return cents;
 }
 
+/** Signed whole cents as US dollars, for example "-$0.20". */
+export function formatCents(cents: number): string {
+  return `${cents < 0 ? "-" : ""}$${(Math.abs(cents) / 100).toFixed(2)}`;
+}
+
 export function assertCurrency(value: unknown): string {
   if (typeof value !== "string" || !/^[A-Z]{3}$/.test(value.trim())) {
     throw new Error("Currency must be a three-letter uppercase code.");

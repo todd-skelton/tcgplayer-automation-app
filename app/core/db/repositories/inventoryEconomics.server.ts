@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { allocateAmountCents } from "~/features/inventory-economics/domain/money";
+import type { EstimatedCostRate } from "~/features/inventory-economics/domain/estimatedPurchaseCost";
 import { normalizePurchaseCostDetails } from "~/features/inventory-economics/domain/purchaseCostDetails";
 import type {
   FundingAdjustmentInput,
@@ -64,6 +65,8 @@ export interface EstimableBatchReceipts {
   batchNumber: number;
   /** Current estimated purchase entry owning every lot of the batch, or null when the batch is uncosted. */
   currentEstimate: { entryId: string; requestId: string } | null;
+  /** The rate the batch overrides its estimate with, or null for the default rule. */
+  costRate: EstimatedCostRate | null;
   receipts: Array<{
     receiptId: number; originalQuantity: number; marketValue: number | null; intakeAt: string | null;
     /** Lot cost under the current estimate, or null when the batch is uncosted. */
@@ -510,6 +513,7 @@ export const inventoryEconomicsRepository = {
     const rows = await query<{
       batchNumber: number; receiptId: number; originalQuantity: number; marketValue: number | null; intakeAt: Date | null;
       entryId: string | null; requestId: string | null; allocatedAmountCents: number | null;
+      costMarketRate: number | null; costPerUnitDeductionCents: number | null;
     }>(`WITH batch_lot AS (
         SELECT link.batch_number,receipt.receipt_id,ownership.series_id,series.purchase_reference,series.seller_key AS owner
         FROM inventory_receipt_batch_links link
@@ -539,8 +543,11 @@ export const inventoryEconomicsRepository = {
         receipt.original_quantity AS "originalQuantity",
         ${LOT_MARKET_VALUE_SQL}::float8 AS "marketValue",
         receipt.intake_at AS "intakeAt",current.id::text AS "entryId",current.request_id AS "requestId",
-        allocation.allocated_amount_cents::float8 AS "allocatedAmountCents"
+        allocation.allocated_amount_cents::float8 AS "allocatedAmountCents",
+        rate.market_rate::float8 AS "costMarketRate",
+        rate.per_unit_deduction_cents AS "costPerUnitDeductionCents"
       FROM estimable
+      LEFT JOIN inventory_batch_estimated_cost_rates rate ON rate.batch_number=estimable.batch_number
       JOIN inventory_receipt_batch_links link ON link.batch_number=estimable.batch_number
       JOIN inventory_receipts receipt ON receipt.receipt_id=link.receipt_id
       LEFT JOIN current_entry current ON current.series_id=estimable.series_id
@@ -549,13 +556,26 @@ export const inventoryEconomicsRepository = {
       ORDER BY link.batch_number,receipt.receipt_id`,[seller,batchNumbers,limit],executor);
     const batches = new Map<number, EstimableBatchReceipts>();
     for (const row of rows) {
-      const batch = batches.get(row.batchNumber) ?? { batchNumber: row.batchNumber, currentEstimate: null, receipts: [] };
+      const batch = batches.get(row.batchNumber) ?? {
+        batchNumber: row.batchNumber, currentEstimate: null, receipts: [],
+        costRate: row.costMarketRate === null || row.costPerUnitDeductionCents === null ? null
+          : { marketRate: row.costMarketRate, perUnitDeductionCents: row.costPerUnitDeductionCents },
+      };
       if (row.entryId && row.requestId) batch.currentEstimate = { entryId: row.entryId, requestId: row.requestId };
       batch.receipts.push({ receiptId: row.receiptId, originalQuantity: row.originalQuantity, marketValue: row.marketValue,
         intakeAt: row.intakeAt ? row.intakeAt.toISOString() : null, allocatedAmountCents: row.allocatedAmountCents });
       batches.set(row.batchNumber, batch);
     }
     return [...batches.values()];
+  },
+  /** Saves the rate a batch's purchase cost is estimated at, replacing any earlier rate. */
+  async saveBatchEstimatedCostRate(batchNumber: number, rate: EstimatedCostRate, executor?: Queryable): Promise<void> {
+    if (!Number.isInteger(batchNumber) || batchNumber <= 0) throw new Error("Batch number must be a positive integer.");
+    await execute(`INSERT INTO inventory_batch_estimated_cost_rates (batch_number,market_rate,per_unit_deduction_cents)
+      VALUES ($1,$2,$3)
+      ON CONFLICT (batch_number) DO UPDATE SET market_rate=EXCLUDED.market_rate,
+        per_unit_deduction_cents=EXCLUDED.per_unit_deduction_cents,updated_at=NOW()`,
+      [batchNumber,rate.marketRate,rate.perUnitDeductionCents],executor);
   },
   /**
    * Batches of the seller with a received or opening-balance lot that no

@@ -9,7 +9,9 @@ import {
   Typography,
 } from "@mui/material";
 import { Link } from "react-router";
+import { ChangeCostRateDialog } from "./ChangeCostRateDialog";
 import {
+  intakeRunCost,
   intakeRunStatus,
   type InventoryIntakeRun,
   type IntakePublicationTarget,
@@ -25,6 +27,8 @@ export function InventoryIntakeProgress({
   const [runs, setRuns] = useState<InventoryIntakeRun[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
+  const [changingRate, setChangingRate] = useState<InventoryIntakeRun | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
@@ -59,7 +63,7 @@ export function InventoryIntakeProgress({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [refreshKey, onTarget]);
+  }, [refreshKey, reloadKey, onTarget]);
 
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
@@ -86,7 +90,7 @@ export function InventoryIntakeProgress({
       <Stack
         spacing={1}
         aria-live="polite"
-        sx={{ maxHeight: 240, overflowY: "auto" }}
+        sx={{ maxHeight: 320, overflowY: "auto" }}
       >
         {runs.map((run) => (
           <Box key={run.batchNumber}>
@@ -114,6 +118,16 @@ export function InventoryIntakeProgress({
                   : "Pricing only"}
               </Typography>
             </Stack>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ pl: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                {intakeRunCost(run)}
+              </Typography>
+              {!run.hasEnteredCost && (
+                <Button size="small" onClick={() => setChangingRate(run)}>
+                  Change rate
+                </Button>
+              )}
+            </Stack>
             {(run.planningError || run.pricingError) && (
               <Alert severity="warning">
                 {run.planningError || run.pricingError}
@@ -122,6 +136,17 @@ export function InventoryIntakeProgress({
           </Box>
         ))}
       </Stack>
+      {changingRate && (
+        <ChangeCostRateDialog
+          batchNumber={changingRate.batchNumber}
+          currentRate={changingRate.costRate}
+          onClose={() => setChangingRate(null)}
+          onChanged={() => {
+            setChangingRate(null);
+            setReloadKey((value) => value + 1);
+          }}
+        />
+      )}
     </Paper>
   );
 }

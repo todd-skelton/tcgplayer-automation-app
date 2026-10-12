@@ -7,6 +7,7 @@ const fundingInputs: unknown[] = [];
 const purchaseInputs: unknown[] = [];
 const targetInputs: number[][] = [];
 const estimateInputs: Array<{sellerKey:string;batchNumbers?:number[]}> = [];
+const rateChanges: unknown[] = [];
 const handlers = createInventoryEconomicsHandlers({
   getConfig: async () => ({ defaultSellerKey:" configured-seller " }) as never,
   loadWorkspace: async (sellerKey) => ({ ...workspace,sellerKey }),
@@ -23,7 +24,18 @@ const handlers = createInventoryEconomicsHandlers({
     estimateInputs.push({sellerKey,batchNumbers:options?.batchNumbers});
     return { rule:{} as never,recorded:[],repeated:[3],unchanged:[],marketUnavailable:[] };
   },
+  changeBatchEstimatedCostRate: async (sellerKey,batchNumber,rate) => {
+    rateChanges.push({sellerKey,batchNumber,rate});
+    return { rule:{} as never,recorded:[],repeated:[],unchanged:[],marketUnavailable:[] };
+  },
 });
+const changeRate = (body: Record<string,unknown>) => handlers.action({ request:new Request("http://localhost/api/inventory-economics",{
+  method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ action:"change_estimated_cost_rate",...body }) }) });
+assert.equal((await changeRate({ batchNumber:12,marketPercent:"60",perCardDeduction:"0.50",sellerKey:"attacker-seller" })).init?.status,undefined);
+assert.equal((await changeRate({ batchNumber:12,marketPercent:"120",perCardDeduction:"0.50" })).init?.status,409);
+assert.equal((await changeRate({ batchNumber:0,marketPercent:"60",perCardDeduction:"0.50" })).init?.status,409);
+assert.deepEqual(rateChanges,[{sellerKey:"configured-seller",batchNumber:12,rate:{marketRate:0.6,perUnitDeductionCents:50}}],
+  "only a valid rate for a valid batch reaches the configured seller's estimate");
 const loaded = await handlers.loader();
 const estimateResponse = await handlers.action({ request:new Request("http://localhost/api/inventory-economics",{
   method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({

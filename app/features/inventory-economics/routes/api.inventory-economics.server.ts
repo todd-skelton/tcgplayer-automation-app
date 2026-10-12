@@ -3,7 +3,8 @@ import { inventoryEconomicsRepository } from "~/core/db";
 import { getShippingExportConfig } from "~/features/shipping-export/config/shippingExportConfig.server";
 import { dollarsToCents } from "../domain/money";
 import { loadInventoryEconomicsWorkspace } from "../services/inventoryEconomics.server";
-import { recordEstimatedPurchaseCosts } from "../services/estimatedPurchaseCosts.server";
+import { parseEstimatedCostRate } from "../domain/estimatedPurchaseCost";
+import { changeBatchEstimatedCostRate, recordEstimatedPurchaseCosts } from "../services/estimatedPurchaseCosts.server";
 import { importPurchaseCostCsv, MAX_PURCHASE_COST_CSV_BYTES } from "../services/purchaseCostFileImport.server";
 
 function text(value: unknown, label: string): string {
@@ -61,6 +62,7 @@ export function createInventoryEconomicsHandlers(dependencies = {
   findPurchaseAllocationTargets: inventoryEconomicsRepository.findPurchaseAllocationTargets,
   importPurchaseCosts: importPurchaseCostCsv,
   recordEstimatedPurchaseCosts,
+  changeBatchEstimatedCostRate,
 }) {
   const configuredSeller = async () => {
     const sellerKey = (await dependencies.getConfig()).defaultSellerKey.trim();
@@ -81,6 +83,12 @@ export function createInventoryEconomicsHandlers(dependencies = {
           const result = await dependencies.recordEstimatedPurchaseCosts(sellerKey,
             payload.batchNumbers === undefined ? {} : { batchNumbers:parseBatchNumbers(payload.batchNumbers) });
           return data({ result, workspace: await dependencies.loadWorkspace(sellerKey) });
+        }
+        if (payload.action === "change_estimated_cost_rate") {
+          const [batchNumber] = parseBatchNumbers([payload.batchNumber]);
+          const result = await dependencies.changeBatchEstimatedCostRate(sellerKey, batchNumber,
+            parseEstimatedCostRate({ marketPercent: payload.marketPercent, perCardDeduction: payload.perCardDeduction }));
+          return data({ result });
         }
         const requestId = text(payload.requestId, "Request ID");
         const currency = text(payload.currency ?? "USD", "Currency");

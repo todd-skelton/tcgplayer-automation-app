@@ -3,6 +3,12 @@ import {
   ESTIMATED_PURCHASE_COST_RULE,
   estimateBatchPurchaseCost,
   estimateUnitCostCents,
+  estimatedPurchaseCostRequestId,
+  estimatedPurchaseCostCorrectionRequestId,
+  describeEstimatedCostRate,
+  isEstimateRecordedFor,
+  marketPercentOf,
+  parseEstimatedCostRate,
 } from "./estimatedPurchaseCost";
 
 assert.equal(ESTIMATED_PURCHASE_COST_RULE.marketRate, 0.75);
@@ -57,3 +63,34 @@ assert.deepEqual(
 assert.throws(() => estimateBatchPurchaseCost("seller-a", 15, []), /at least one receipt/);
 
 console.log("PASS estimated purchase cost rule");
+
+const sixtyLessFifty = parseEstimatedCostRate({ marketPercent: "60", perCardDeduction: "0.50" });
+assert.deepEqual(sixtyLessFifty, { marketRate: 0.6, perUnitDeductionCents: 50 });
+assert.deepEqual(parseEstimatedCostRate({ marketPercent: " 62.5 ", perCardDeduction: "0" }), { marketRate: 0.625, perUnitDeductionCents: 0 });
+assert.equal(parseEstimatedCostRate({ marketPercent: "33.33", perCardDeduction: "0" }).marketRate, 0.3333);
+for (const marketPercent of ["", "-5", "101", "60.125", "abc", undefined]) {
+  assert.throws(() => parseEstimatedCostRate({ marketPercent, perCardDeduction: "0.30" }), /Percent of market/);
+}
+assert.throws(() => parseEstimatedCostRate({ marketPercent: "60", perCardDeduction: "-0.10" }), /nonnegative/);
+assert.throws(() => parseEstimatedCostRate({ marketPercent: "60", perCardDeduction: "100.01" }), /at most \$100/);
+assert.equal(estimateUnitCostCents(10, sixtyLessFifty), 550, "60% of $10.00 less $0.50 is $5.50");
+assert.equal(estimatedPurchaseCostRequestId(12), "estimated-purchase-cost:market-rate-v2:batch-12");
+assert.equal(estimatedPurchaseCostRequestId(12, { marketRate: 0.75, perUnitDeductionCents: 30 }),
+  "estimated-purchase-cost:market-rate-v2:batch-12", "the default rate entered by hand is the default estimate");
+assert.equal(estimatedPurchaseCostRequestId(12, sixtyLessFifty),
+  "estimated-purchase-cost:market-rate-v2:batch-12:market-0.6-less-50c");
+const atRate = estimateBatchPurchaseCost("seller-a", 12, [
+  { receiptId: 5, originalQuantity: 3, marketValue: 10, intakeAt: null },
+], sixtyLessFifty);
+assert.equal(atRate.status === "estimated" && atRate.estimate.purchaseCost.totalAmountCents, 1650);
+assert.equal(atRate.status === "estimated" && atRate.estimate.purchaseCost.provenance, "estimated");
+assert.equal(marketPercentOf({ marketRate: 0.07, perUnitDeductionCents: 0 }), "7", "7% reads back as entered, not 7.000000000000001");
+assert.equal(marketPercentOf({ marketRate: 0.3333, perUnitDeductionCents: 0 }), "33.33");
+assert.equal(describeEstimatedCostRate(sixtyLessFifty), "60% of market less $0.50 per card");
+const rateId = estimatedPurchaseCostRequestId(12, sixtyLessFifty);
+assert.equal(estimatedPurchaseCostCorrectionRequestId(rateId, "41"), `${rateId}:corrects-41`);
+assert.ok(isEstimateRecordedFor(rateId, rateId));
+assert.ok(isEstimateRecordedFor(`${rateId}:corrects-41`, rateId));
+assert.ok(!isEstimateRecordedFor(rateId, estimatedPurchaseCostRequestId(12)), "a rate's estimate is not the default estimate");
+assert.ok(!isEstimateRecordedFor(`${estimatedPurchaseCostRequestId(120)}:corrects-4`, estimatedPurchaseCostRequestId(12)));
+console.log("PASS a batch's cost rate overrides the percent of market and amount per card");

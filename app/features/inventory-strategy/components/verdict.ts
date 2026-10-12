@@ -9,7 +9,7 @@ import type {
   InventoryStrategyProductLine,
 } from "../types/inventoryStrategy";
 
-/** The cost basis the strategy assumes: the same rule that estimates purchase costs. */
+/** The cost basis the strategy assumes: the default rule that estimates purchase costs, not any batch's own rate. */
 export const STRATEGY_COST_BASIS: Pick<
   CapitalCycleEconomics,
   "costBasisShareOfMarket" | "costBasisDiscountPerUnit"
