@@ -5,7 +5,7 @@ export const FORECAST_CALIBRATION_WINDOW_DAYS = [28, 56, 84] as const;
 export const DEFAULT_FORECAST_CALIBRATION_WINDOW_DAYS = 56;
 
 export const FORECAST_CALIBRATION_POLICY = {
-  /** The latest share of the window is held out to check the multiplier learned before it. */
+  /** The latest share of the window is held out to check the ratio measured before it. */
   heldOutShare: 0.25,
   /** Pseudo-sales exactly as forecast that steady a thin sample. */
   priorSales: 20,
@@ -43,8 +43,8 @@ export interface TimeInStock {
 }
 
 /**
- * Whether the multiplier learned before the held-out part forecast the
- * held-out sales better than the forecasts as they are.
+ * Whether the actual days per forecast day measured before the held-out part
+ * forecast the held-out sales better than the forecasts as they are.
  */
 export type HeldOutCheck = "confirmed" | "not_confirmed" | "too_few_sales";
 
@@ -58,14 +58,14 @@ export interface ForecastCalibrationReport {
   through: string;
   earlier: TimeInStock;
   heldOut: TimeInStock;
-  /** Learned from the earlier part only, and checked against the held-out part. */
-  earlierMultiplier: number;
+  /** Measured over the earlier part only, and checked against the held-out part. */
+  earlierActualDaysPerForecastDay: number;
   heldOutCheck: HeldOutCheck;
   /**
-   * Days listings took to sell per forecast day, learned from the whole
-   * window: above 1 they sold slower than forecast.
+   * Days listings took to sell per forecast day over the whole window: above
+   * 1 they sold slower than forecast.
    */
-  sellTimeMultiplier: number;
+  actualDaysPerForecastDay: number;
 }
 
 const EMPTY_TIME: TimeInStock = { listings: 0, inStockDays: 0, sales: 0, forecastSales: 0 };
@@ -79,7 +79,7 @@ const addTime = (left: TimeInStock, right: TimeInStock): TimeInStock => ({
 
 const totalTime = (prices: readonly TimeInStock[]): TimeInStock => prices.reduce(addTime, EMPTY_TIME);
 
-const roundMultiplier = (value: number): number => Math.round(value * 1000) / 1000;
+const roundRatio = (value: number): number => Math.round(value * 1000) / 1000;
 
 /**
  * One price's time in stock, from listing until it was replaced, sold out, or
@@ -122,23 +122,23 @@ export function measureListedPrice(
  * Days to sell per forecast day that best explain the sales seen, with
  * pseudo-sales exactly as forecast steadying thin samples.
  */
-export function sellTimeMultiplier(time: TimeInStock): number {
+export function actualDaysPerForecastDay(time: TimeInStock): number {
   const { priorSales } = FORECAST_CALIBRATION_POLICY;
   return (time.forecastSales + priorSales) / (time.sales + priorSales);
 }
 
-/** How likely the sales seen are under a multiplier, up to a constant; higher fits better. */
-export function salesLikelihood(time: TimeInStock, multiplier: number): number {
-  return -time.sales * Math.log(multiplier) - time.forecastSales / multiplier;
+/** How likely the sales seen are if listings take this many days per forecast day, up to a constant; higher fits better. */
+export function salesLikelihood(time: TimeInStock, daysPerForecastDay: number): number {
+  return -time.sales * Math.log(daysPerForecastDay) - time.forecastSales / daysPerForecastDay;
 }
 
 /**
  * The daily return a hurdle applied over forecast days earns over the days
  * listings actually take. Discounting e^(-hurdle x forecast days) equals
- * e^(-(hurdle / multiplier) x actual days).
+ * e^(-(hurdle / actual days per forecast day) x actual days).
  */
-export function actualDaysHurdle(forecastDaysHurdle: number, multiplier: number): number {
-  return forecastDaysHurdle / multiplier;
+export function actualDaysHurdle(forecastDaysHurdle: number, daysPerForecastDay: number): number {
+  return forecastDaysHurdle / daysPerForecastDay;
 }
 
 /** Sales seen or forecast, whichever is larger: either is enough to show a forecast is off. */
@@ -157,7 +157,7 @@ function salesBySku(sales: readonly SkuSale[]): Map<number, SkuSale[]> {
 
 /**
  * Measures how much longer or shorter the store's listings took to sell than
- * the curve forecast. The multiplier learned before the held-out part is
+ * the curve forecast. The ratio measured before the held-out part is
  * confirmed only when it forecasts the held-out sales better than the
  * forecasts as they are.
  */
@@ -189,12 +189,12 @@ export function learnForecastCalibration(input: {
     }));
   const earlier = totalTime(measured.filter((price) => !price.heldOut).map((price) => price.time));
   const heldOut = totalTime(measured.filter((price) => price.heldOut).map((price) => price.time));
-  const earlierMultiplier = sellTimeMultiplier(earlier);
+  const earlierRatio = actualDaysPerForecastDay(earlier);
   const { minimumSales } = FORECAST_CALIBRATION_POLICY;
   const heldOutCheck: HeldOutCheck =
     evidenceSales(earlier) < minimumSales.earlier || evidenceSales(heldOut) < minimumSales.heldOut
       ? "too_few_sales"
-      : salesLikelihood(heldOut, earlierMultiplier) > salesLikelihood(heldOut, 1)
+      : salesLikelihood(heldOut, earlierRatio) > salesLikelihood(heldOut, 1)
         ? "confirmed"
         : "not_confirmed";
   return {
@@ -206,8 +206,8 @@ export function learnForecastCalibration(input: {
     through: input.through.toISOString(),
     earlier,
     heldOut,
-    earlierMultiplier: roundMultiplier(earlierMultiplier),
+    earlierActualDaysPerForecastDay: roundRatio(earlierRatio),
     heldOutCheck,
-    sellTimeMultiplier: roundMultiplier(sellTimeMultiplier(addTime(earlier, heldOut))),
+    actualDaysPerForecastDay: roundRatio(actualDaysPerForecastDay(addTime(earlier, heldOut))),
   };
 }

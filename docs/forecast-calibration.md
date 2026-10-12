@@ -22,14 +22,15 @@ therefore follows time in stock:
    took, because the forecast is of buyers arriving. A forecast median of
    `m` days expects `ln 2 / m` sales per day in stock.
 
-## The sell-time multiplier
+## Actual days per forecast day
 
-The multiplier is sales forecast divided by sales seen, so 1.4x means listings
-took 40% longer to sell than forecast. Twenty pseudo-sales exactly as forecast
-steady thin samples.
+Actual days per forecast day is sales forecast divided by sales seen, so 1.4
+means listings took 40% longer to sell than forecast (they sold at 71% of the
+forecast rate). Twenty pseudo-sales exactly as forecast steady thin samples.
+It is a measurement only; nothing applies it to forecasts or prices.
 
 The latest quarter of the window (28, 56, or 84 days; 56 by default) is held
-out. The multiplier learned from the earlier three quarters is confirmed when
+out. The ratio measured over the earlier three quarters is confirmed when
 it forecasts the held-out sales better than the forecasts as they are (a
 higher Poisson likelihood), with at least 40 sales seen or forecast, whichever
 is larger, earlier and 15 held out. The window ends where the latest complete
@@ -38,12 +39,12 @@ old.
 
 ## Using it with the daily return hurdle
 
-A multiplier on every forecast is the same as a change to the profit-per-day
-hurdle: discounting `e^(-hurdle x forecast days)` equals discounting
-`e^(-(hurdle / multiplier) x actual days)`. So the configured hurdle asks
-`hurdle / multiplier` per day listings actually take, and the report shows
-that figure. To ask a given return per actual day, set the hurdle to that
-return times the multiplier.
+Listings taking a steady `r` actual days per forecast day is the same as a
+change to the profit-per-day hurdle: discounting `e^(-hurdle x forecast days)`
+equals discounting `e^(-(hurdle / r) x actual days)`. So the configured hurdle
+asks `hurdle / r` per day listings actually take, and the report shows that
+figure. To ask a given return per actual day, set the hurdle to that return
+times `r`.
 
 ## Why pricing does not apply it
 
@@ -51,13 +52,13 @@ Applying a learned multiplier, overall or per product line, was tried and
 retired. Per-product-line multipliers fit the gap but did not explain it:
 the slow lines were the ones where the store lists cheap cards in thin sets,
 and cheap cards mostly sell as add-ons to larger orders from the same set.
-One overall multiplier is better expressed as the hurdle, which the operator
-sets directly. A cause found later, such as how deeply the store stocks a
-set, belongs in the curve's forecast rather than a multiplier on it.
+One overall ratio is better expressed as the hurdle, which the operator sets
+directly. A cause found later, such as how deeply the store stocks a set,
+belongs in the curve's forecast rather than a multiplier on it.
 
 ## Limits
 
-- Only prices that were listed are measured. The multiplier says how far off
+- Only prices that were listed are measured. The ratio says how far off
   the forecasts were at the prices chosen, not how sales would change at
   prices never tried.
 - Stock is the count taken for the pricing run. Copies received between

@@ -19,7 +19,7 @@ import {
   DEFAULT_FORECAST_CALIBRATION_WINDOW_DAYS,
   FORECAST_CALIBRATION_WINDOW_DAYS,
   actualDaysHurdle,
-  sellTimeMultiplier,
+  actualDaysPerForecastDay,
   type ForecastCalibrationReport,
   type HeldOutCheck,
   type TimeInStock,
@@ -31,12 +31,12 @@ interface ForecastCalibrationPanelProps {
 }
 
 const CHECK_LABELS: Record<HeldOutCheck, string> = {
-  confirmed: "confirmed on the held-out sales",
-  not_confirmed: "not confirmed: it did not forecast the held-out sales better",
-  too_few_sales: "not confirmed: too few sales to check",
+  confirmed: "The earlier weeks' rate held up on the held-out weeks.",
+  not_confirmed: "Not confirmed: the earlier weeks' rate did not forecast the held-out weeks better.",
+  too_few_sales: "Not confirmed: too few sales to check against held-out weeks.",
 };
 
-const multiplier = (value: number) => `${value.toFixed(2)}x`;
+const ratio = (value: number) => value.toFixed(2);
 const percent = (value: number) => `${(value * 100).toFixed(2)}%`;
 const date = (value: string) => new Date(value).toLocaleDateString();
 
@@ -48,7 +48,7 @@ function TimeRow({ label, time }: { label: string; time: TimeInStock }) {
       <TableCell align="right">{time.inStockDays.toFixed(0)}</TableCell>
       <TableCell align="right">{time.sales.toLocaleString()}</TableCell>
       <TableCell align="right">{time.forecastSales.toFixed(1)}</TableCell>
-      <TableCell align="right">{multiplier(sellTimeMultiplier(time))}</TableCell>
+      <TableCell align="right">{ratio(actualDaysPerForecastDay(time))}</TableCell>
     </TableRow>
   );
 }
@@ -82,11 +82,12 @@ export function ForecastCalibrationPanel({ dailyReturnHurdle }: ForecastCalibrat
         How the store&apos;s own listings sold against the days to sell the
         pricing curve forecast for them. Every published price is followed
         while it was in stock, until it was replaced or sold out, and each
-        order counts as one sale. The multiplier is days actually taken per
-        forecast day; it is checked by learning it from the earlier three
-        quarters of the window and testing it on the latest quarter. Pricing
-        uses the forecasts as they are; this report shows how far off they
-        run so the daily return hurdle can account for it.
+        order counts as one sale. Actual days per forecast day above 1 means
+        listings sold slower than forecast; it is measured over the earlier
+        three quarters of the window and checked on the latest quarter. This
+        is a report only: pricing uses the forecasts as they are, and the
+        report shows how far off they run so the daily return hurdle can
+        account for it.
       </Typography>
       <Stack spacing={2}>
         <Box>
@@ -108,14 +109,15 @@ export function ForecastCalibrationPanel({ dailyReturnHurdle }: ForecastCalibrat
         {report && whole && (
           <>
             <Alert severity={report.heldOutCheck === "confirmed" ? "info" : "warning"}>
-              Listings took {multiplier(report.sellTimeMultiplier)} the forecast days to sell;
-              the multiplier is {CHECK_LABELS[report.heldOutCheck]}.
+              Listings sold at {(100 / report.actualDaysPerForecastDay).toFixed(0)}% of the
+              forecast rate, taking {ratio(report.actualDaysPerForecastDay)} actual days per
+              forecast day. {CHECK_LABELS[report.heldOutCheck]}
               {dailyReturnHurdle !== undefined && (
                 <>
                   {" "}The {percent(dailyReturnHurdle)} daily return hurdle applies over forecast
-                  days, so it asks {percent(actualDaysHurdle(dailyReturnHurdle, report.sellTimeMultiplier))} per
+                  days, so it asks {percent(actualDaysHurdle(dailyReturnHurdle, report.actualDaysPerForecastDay))} per
                   day listings actually take. To ask a given return per actual day, set the hurdle
-                  to that return times {report.sellTimeMultiplier.toFixed(2)}.
+                  to that return times {ratio(report.actualDaysPerForecastDay)}.
                 </>
               )}
             </Alert>
@@ -132,7 +134,7 @@ export function ForecastCalibrationPanel({ dailyReturnHurdle }: ForecastCalibrat
                     <TableCell align="right">Days in stock</TableCell>
                     <TableCell align="right">Sales seen</TableCell>
                     <TableCell align="right">Sales forecast</TableCell>
-                    <TableCell align="right">Multiplier</TableCell>
+                    <TableCell align="right">Actual days per forecast day</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>

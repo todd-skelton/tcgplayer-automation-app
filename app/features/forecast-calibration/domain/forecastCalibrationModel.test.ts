@@ -3,7 +3,7 @@ import {
   actualDaysHurdle,
   learnForecastCalibration,
   measureListedPrice,
-  sellTimeMultiplier,
+  actualDaysPerForecastDay,
   type ListedPrice,
   type SkuSale,
 } from "./forecastCalibrationModel";
@@ -53,16 +53,16 @@ const sold = (at: number, quantity = 1, sku = 1): SkuSale => ({ sku, soldAt: day
 }
 
 {
-  close(sellTimeMultiplier({ listings: 1, inStockDays: 1, sales: 50, forecastSales: 100 }), 120 / 70);
-  close(sellTimeMultiplier({ listings: 1, inStockDays: 1, sales: 0, forecastSales: 0 }), 1);
-  close(sellTimeMultiplier({ listings: 1, inStockDays: 1, sales: 0, forecastSales: 500 }), 26);
+  close(actualDaysPerForecastDay({ listings: 1, inStockDays: 1, sales: 50, forecastSales: 100 }), 120 / 70);
+  close(actualDaysPerForecastDay({ listings: 1, inStockDays: 1, sales: 0, forecastSales: 0 }), 1);
+  close(actualDaysPerForecastDay({ listings: 1, inStockDays: 1, sales: 0, forecastSales: 500 }), 26);
   close(actualDaysHurdle(0.005, 1.25), 0.004);
   const forecastDays = 10;
   close(
     Math.exp(-0.005 * forecastDays),
     Math.exp(-actualDaysHurdle(0.005, 1.25) * forecastDays * 1.25),
   );
-  console.log("PASS sell-time multipliers lean on pseudo-sales as forecast, and the hurdle converts to actual days");
+  console.log("PASS actual days per forecast day lean on pseudo-sales as forecast, and the hurdle converts to actual days");
 }
 
 /**
@@ -103,16 +103,16 @@ function market(salesPerForecast: (listedDay: number) => number) {
   assert.equal(report.earlier.sales, 60);
   close(report.earlier.forecastSales, 120);
   assert.equal(report.heldOut.sales, 20);
-  assert.equal(report.earlierMultiplier, Math.round((140 / 80) * 1000) / 1000);
+  assert.equal(report.earlierActualDaysPerForecastDay, Math.round((140 / 80) * 1000) / 1000);
   assert.equal(report.heldOutCheck, "confirmed");
-  assert.equal(report.sellTimeMultiplier, Math.round((180 / 100) * 1000) / 1000);
+  assert.equal(report.actualDaysPerForecastDay, Math.round((180 / 100) * 1000) / 1000);
   console.log("PASS listings that sell at half the forecast rate show close to twice the forecast days, confirmed on held-out sales");
 }
 
 {
   const report = market((listedDay) => (listedDay < 30 ? 0.5 : 1));
   assert.equal(report.heldOutCheck, "not_confirmed");
-  console.log("PASS a multiplier the held-out sales contradict is not confirmed");
+  console.log("PASS a ratio the held-out sales contradict is not confirmed");
 }
 
 {
