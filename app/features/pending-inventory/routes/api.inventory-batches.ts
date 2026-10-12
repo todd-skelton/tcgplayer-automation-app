@@ -44,7 +44,7 @@ export async function action({ request }: { request: Request }) {
       }
     }
 
-    const batch = await createPendingInventoryBatchWithCost(requestId,purchaseCost,sellerKey || null);
+    const batch = await createPendingInventoryBatchWithCost(requestId,{ purchaseCost,estimateForSeller:sellerKey || null });
     if (!batch) {
       return data(
         { error: "No pending inventory items available to batch" },

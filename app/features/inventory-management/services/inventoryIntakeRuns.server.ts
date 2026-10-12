@@ -17,6 +17,7 @@ import {
 import { InventoryBatchRequestConflictError } from "~/core/db/repositories/inventoryBatches.server";
 import { createPendingInventoryBatchWithCost } from "~/features/pending-inventory/services/createPendingInventoryBatchWithCost.server";
 import { parseIntakePurchaseCost } from "~/features/pending-inventory/services/intakePurchaseCost.server";
+import { parseEstimatedCostRate } from "~/features/inventory-economics/domain/estimatedPurchaseCost";
 import { intakeSnapshot, type IntakeQuantity } from "./intakeSnapshot";
 import type {
   InventoryIntakeRun,
@@ -52,12 +53,16 @@ export async function queueInventoryIntake(input: {
   requestId: string;
   workflow: InventoryIntakeWorkflow;
   purchaseCost?: Record<string, unknown>;
+  /** Percent of market and amount less per card the estimated cost uses instead of the default rule. */
+  estimatedCostRate?: Record<string, unknown>;
   expectedInventory: IntakeQuantity[];
   expectedSellerKey: string;
 }) {
   const requestDetails = {
     workflow: input.workflow,
     purchaseCost: input.purchaseCost ?? null,
+    // Kept only when given, so requests saved before cost rates existed still match on retry.
+    ...(input.estimatedCostRate ? { estimatedCostRate: input.estimatedCostRate } : {}),
     expectedInventory: intakeSnapshot(input.expectedInventory),
     expectedSellerKey: input.expectedSellerKey,
   };
@@ -105,19 +110,26 @@ export async function queueInventoryIntake(input: {
       );
     if (input.workflow === "publish" && !target.canPublish)
       throw new InventoryIntakeInputError(target.publishingUnavailableReason!);
-    if ((input.workflow === "publish" || input.purchaseCost) && !sellerKey) {
+    if ((input.workflow === "publish" || input.purchaseCost || input.estimatedCostRate) && !sellerKey) {
       throw new InventoryIntakeInputError(
         "Configure a default shipping seller before queuing publication or purchase cost.",
       );
     }
-    let cost;
+    if (input.purchaseCost && input.estimatedCostRate) {
+      throw new InventoryIntakeInputError("Enter a purchase total or a cost rate, not both.");
+    }
+    let purchaseCost;
+    let estimatedCostRate;
     try {
-      cost = input.purchaseCost
+      purchaseCost = input.purchaseCost
         ? parseIntakePurchaseCost(
             input.purchaseCost,
             input.requestId,
             sellerKey,
           )
+        : undefined;
+      estimatedCostRate = input.estimatedCostRate
+        ? parseEstimatedCostRate(input.estimatedCostRate)
         : undefined;
     } catch (error) {
       throw new InventoryIntakeInputError(
@@ -126,8 +138,7 @@ export async function queueInventoryIntake(input: {
     }
     const batch = await createPendingInventoryBatchWithCost(
       input.requestId,
-      cost,
-      sellerKey || null,
+      { purchaseCost, estimatedCostRate, estimateForSeller: sellerKey || null },
       undefined,
       client,
     );

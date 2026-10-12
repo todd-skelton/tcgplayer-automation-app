@@ -52,7 +52,11 @@ export async function action({ request }: { request: Request }) {
     (body.purchaseCost !== undefined &&
       (!body.purchaseCost ||
         typeof body.purchaseCost !== "object" ||
-        Array.isArray(body.purchaseCost)))
+        Array.isArray(body.purchaseCost))) ||
+    (body.estimatedCostRate !== undefined &&
+      (!body.estimatedCostRate ||
+        typeof body.estimatedCostRate !== "object" ||
+        Array.isArray(body.estimatedCostRate)))
   ) {
     return data(
       { error: "A request ID and valid queue options are required." },
@@ -74,10 +78,16 @@ export async function action({ request }: { request: Request }) {
           .filter((key) => body.purchaseCost[key] !== undefined)
           .map((key) => [key, body.purchaseCost[key]]),
       );
+    const estimatedCostRate =
+      body.estimatedCostRate && {
+        marketPercent: body.estimatedCostRate.marketPercent,
+        perCardDeduction: body.estimatedCostRate.perCardDeduction,
+      };
     const batch = await queueInventoryIntake({
       requestId: body.requestId.trim(),
       workflow: body.workflow,
       purchaseCost,
+      estimatedCostRate,
       expectedInventory: body.expectedInventory,
       expectedSellerKey: body.expectedSellerKey,
     });

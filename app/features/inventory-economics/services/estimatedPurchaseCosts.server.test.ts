@@ -6,14 +6,14 @@ const lot = (receiptId: number, originalQuantity: number, marketValue: number | 
   ({ receiptId, originalQuantity, marketValue, intakeAt: receiptId === 1 ? "2026-08-01T00:00:00Z" : null, allocatedAmountCents });
 const run = await recordEstimatedPurchaseCosts("seller-a", {}, {
   findEstimableBatchReceipts: async () => [
-    { batchNumber: 3, currentEstimate: null, receipts: [lot(1, 2, 2), lot(2, 1, 0.1)] },
-    { batchNumber: 4, currentEstimate: null, receipts: [lot(3, 1, null)] },
-    { batchNumber: 5, currentEstimate: null, receipts: [lot(4, 1, 8)] },
-    { batchNumber: 6, currentEstimate: { entryId: "6-v1", requestId: "estimated-purchase-cost:market-rate-v1:batch-6" },
+    { batchNumber: 3, currentEstimate: null, costRate: null, receipts: [lot(1, 2, 2), lot(2, 1, 0.1)] },
+    { batchNumber: 4, currentEstimate: null, costRate: null, receipts: [lot(3, 1, null)] },
+    { batchNumber: 5, currentEstimate: null, costRate: null, receipts: [lot(4, 1, 8)] },
+    { batchNumber: 6, currentEstimate: { entryId: "6-v1", requestId: "estimated-purchase-cost:market-rate-v1:batch-6" }, costRate: null,
       receipts: [lot(5, 1, 8, 570), lot(6, 2, 0.2, 0)] },
-    { batchNumber: 7, currentEstimate: { entryId: "7-v1", requestId: "estimated-purchase-cost:market-rate-v1:batch-7" },
+    { batchNumber: 7, currentEstimate: { entryId: "7-v1", requestId: "estimated-purchase-cost:market-rate-v1:batch-7" }, costRate: null,
       receipts: [lot(7, 1, 8, 570)] },
-    { batchNumber: 8, currentEstimate: { entryId: "8-v2", requestId: "estimated-purchase-cost:market-rate-v2:batch-8" },
+    { batchNumber: 8, currentEstimate: { entryId: "8-v2", requestId: "estimated-purchase-cost:market-rate-v2:batch-8" }, costRate: null,
       receipts: [lot(8, 1, 8, 570)] },
   ],
   recordPurchaseCost: async (input) => {
@@ -37,6 +37,24 @@ assert.deepEqual(recorded, [
     correctsEntryId: "6-v1", correctionReason: "Re-estimated under rule market-rate-v2" },
 ]);
 console.log("PASS estimated purchase costs are recorded once per batch and corrected when the rule changes them");
+
+const atRate: Array<{ requestId: string; totalAmountCents: number }> = [];
+const rateRun = await recordEstimatedPurchaseCosts("seller-a", { batchNumbers: [9, 10] }, {
+  findEstimableBatchReceipts: async () => [
+    { batchNumber: 9, currentEstimate: null, costRate: { marketRate: 0.6, perUnitDeductionCents: 50 }, receipts: [lot(9, 2, 10)] },
+    { batchNumber: 10, currentEstimate: { entryId: "10-v2", requestId: "estimated-purchase-cost:market-rate-v2:batch-10:market-0.6-less-50c" },
+      costRate: { marketRate: 0.6, perUnitDeductionCents: 50 }, receipts: [lot(10, 1, 10, 550)] },
+  ],
+  recordPurchaseCost: async (input) => {
+    atRate.push({ requestId: input.requestId, totalAmountCents: input.totalAmountCents });
+    return { entryId: `entry-${input.batchNumbers[0]}`, repeated: false };
+  },
+});
+assert.deepEqual(atRate, [
+  { requestId: "estimated-purchase-cost:market-rate-v2:batch-9:market-0.6-less-50c", totalAmountCents: 1100 },
+], "a batch with its own rate is estimated at that rate, including when its market arrives after intake");
+assert.deepEqual(rateRun.repeated, [10], "a batch already estimated at its rate is not re-estimated at the default");
+console.log("PASS a batch's own cost rate survives later estimate sweeps");
 
 const swept: Array<{ sellerKey: string; batchNumbers?: number[] }> = [];
 const sweep = (uncosted: number[]) => recordMissingEstimatedPurchaseCosts("seller-a", {

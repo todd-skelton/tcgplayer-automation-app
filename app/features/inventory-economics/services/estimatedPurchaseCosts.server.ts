@@ -1,6 +1,7 @@
 import { inventoryEconomicsRepository } from "~/core/db";
 import type { Queryable } from "~/core/db/database.server";
 import {
+  DEFAULT_ESTIMATED_COST_RATE,
   ESTIMATED_PURCHASE_COST_RULE,
   estimateBatchPurchaseCost,
 } from "../domain/estimatedPurchaseCost";
@@ -27,9 +28,10 @@ export interface EstimatedPurchaseCostRun {
 
 /**
  * Records the estimated purchase cost for every batch of the seller whose lots
- * have no purchase cost, and corrects estimates recorded under an earlier rule
- * when the current rule changes their amounts. Safe to repeat, and an entered
- * cost is never replaced.
+ * have no purchase cost, at the batch's own cost rate when it overrides the
+ * default, and corrects estimates recorded under an earlier rule when the
+ * current rule changes their amounts. Safe to repeat, and an entered cost is
+ * never replaced.
  */
 export async function recordEstimatedPurchaseCosts(
   sellerKey: string,
@@ -42,7 +44,8 @@ export async function recordEstimatedPurchaseCosts(
   };
   const batches = await dependencies.findEstimableBatchReceipts(sellerKey, options, executor);
   for (const batch of batches) {
-    const result = estimateBatchPurchaseCost(sellerKey, batch.batchNumber, batch.receipts);
+    const rate = batch.costRate ?? DEFAULT_ESTIMATED_COST_RATE;
+    const result = estimateBatchPurchaseCost(sellerKey, batch.batchNumber, batch.receipts, rate);
     if (result.status === "market_unavailable") {
       run.marketUnavailable.push({ batchNumber: result.batchNumber, receiptIds: result.receiptIds });
       continue;
@@ -55,7 +58,9 @@ export async function recordEstimatedPurchaseCosts(
         batch.receipts.find((receipt) => receipt.receiptId === allocation.receiptId)?.allocatedAmountCents === allocation.amountCents);
       if (unchanged) { run.unchanged.push(batch.batchNumber); continue; }
       purchaseCost = { ...purchaseCost, correctsEntryId: current.entryId,
-        correctionReason: `Re-estimated under rule ${ESTIMATED_PURCHASE_COST_RULE.version}` };
+        correctionReason: batch.costRate
+          ? `Re-estimated under rule ${ESTIMATED_PURCHASE_COST_RULE.version} at the batch's cost rate`
+          : `Re-estimated under rule ${ESTIMATED_PURCHASE_COST_RULE.version}` };
     }
     const saved = await dependencies.recordPurchaseCost(purchaseCost, executor);
     if (saved.repeated) run.repeated.push(batch.batchNumber);

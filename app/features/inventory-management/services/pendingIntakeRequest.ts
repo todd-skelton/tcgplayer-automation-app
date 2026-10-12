@@ -1,4 +1,4 @@
-import type { PurchaseCostAtIntake } from "./createPendingInventoryBatch";
+import type { EstimatedCostRateAtIntake, PurchaseCostAtIntake } from "./createPendingInventoryBatch";
 import type { InventoryIntakeWorkflow } from "../types/inventoryIntakeRun";
 import { isIntakeSnapshot, type IntakeQuantity } from "./intakeSnapshot";
 
@@ -7,6 +7,7 @@ export interface PendingIntakeRequest {
   requestId: string;
   workflow: InventoryIntakeWorkflow;
   purchaseCost?: PurchaseCostAtIntake;
+  estimatedCostRate?: EstimatedCostRateAtIntake;
   expectedInventory: IntakeQuantity[];
   expectedSellerKey: string;
 }

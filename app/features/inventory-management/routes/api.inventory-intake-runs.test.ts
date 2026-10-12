@@ -47,6 +47,8 @@ assert.equal(
   400,
 );
 assert.equal(await status({ ...payload, purchaseCost: [] }, json), 400);
+assert.equal(await status({ ...payload, estimatedCostRate: [] }, json), 400);
+assert.equal(await status({ ...payload, estimatedCostRate: "60" }, json), 400);
 assert.equal(
   await status({ ...payload, padding: "x".repeat(256_001) }, json),
   413,

@@ -19,7 +19,14 @@ import {
   TextField,
   Checkbox,
   FormControlLabel,
+  Radio,
+  RadioGroup,
 } from "@mui/material";
+import {
+  DEFAULT_ESTIMATED_COST_RATE,
+  estimateUnitCostCents,
+  parseEstimatedCostRate,
+} from "~/features/inventory-economics/domain/estimatedPurchaseCost";
 import { Link } from "react-router";
 import { InventoryIntakeProgress } from '../components/InventoryIntakeProgress';
 import type { InventoryIntakeWorkflow, IntakePublicationTarget } from '../types/inventoryIntakeRun';
@@ -34,6 +41,22 @@ import {
   INVENTORY_CONDITION_ORDER,
   type InventorySelectableCondition,
 } from "../../../core/utils/conditionOrder";
+
+type IntakeCostMethod = "estimate" | "cost_rate" | "purchase_total";
+
+const DEFAULT_MARKET_PERCENT = String(DEFAULT_ESTIMATED_COST_RATE.marketRate * 100);
+const DEFAULT_PER_CARD_DEDUCTION = (DEFAULT_ESTIMATED_COST_RATE.perUnitDeductionCents / 100).toFixed(2);
+
+const formatCents = (cents: number) =>
+  `${cents < 0 ? "-" : ""}$${(Math.abs(cents) / 100).toFixed(2)}`;
+
+function readCostRate(marketPercent: string, perCardDeduction: string) {
+  try {
+    return { valid: true as const, rate: parseEstimatedCostRate({ marketPercent, perCardDeduction }) };
+  } catch (error) {
+    return { valid: false as const, message: error instanceof Error ? error.message : String(error) };
+  }
+}
 
 export default function InventoryManagerRoute() {
   const {
@@ -75,12 +98,16 @@ export default function InventoryManagerRoute() {
   const [queueRefreshKey, setQueueRefreshKey] = React.useState(0);
   const [intakeTarget, setIntakeTarget] = React.useState<IntakePublicationTarget | null>(null);
   const entryFocus = useRef<HTMLElement | null>(null);
-  const [includePurchaseCost, setIncludePurchaseCost] = React.useState(false);
+  const [costMethod, setCostMethod] = React.useState<IntakeCostMethod>("estimate");
+  const [costMarketPercent, setCostMarketPercent] = React.useState(DEFAULT_MARKET_PERCENT);
+  const [costPerCardDeduction, setCostPerCardDeduction] = React.useState(DEFAULT_PER_CARD_DEDUCTION);
   const [purchaseReference, setPurchaseReference] = React.useState("");
   const [purchaseTotal, setPurchaseTotal] = React.useState("");
   const [purchaseEstimated, setPurchaseEstimated] = React.useState(false);
   const [purchaseDate, setPurchaseDate] = React.useState("");
   const filtersRef = useRef<InventoryFiltersRef>(null);
+  const costRate = readCostRate(costMarketPercent, costPerCardDeduction);
+  const costRateBlocksQueue = costMethod === "cost_rate" && !costRate.valid;
 
   const preserveFocusAcrossConditionChange = useCallback(
     (changeCondition: () => void) => {
@@ -178,14 +205,17 @@ export default function InventoryManagerRoute() {
     setIsCreatingBatch(true);
 
     try {
-      const batch = await createBatchFromPendingInventory(includePurchaseCost ? {
+      const batch = await createBatchFromPendingInventory(costMethod === "purchase_total" ? {
         purchaseReference: purchaseReference.trim(), totalAmount: purchaseTotal.trim(),
         provenance: purchaseEstimated ? "estimated" : "actual", allocationRule: "quantity",
         ...(purchaseDate ? { purchasedAt: purchaseDate } : {}), currency: "USD",
-      } : undefined, workflow, intakeTarget?.sellerKey ?? '');
+      } : undefined, workflow, intakeTarget?.sellerKey ?? '', costMethod === "cost_rate" ? {
+        marketPercent: costMarketPercent.trim(), perCardDeduction: costPerCardDeduction.trim(),
+      } : undefined);
       setSuccess(`Batch ${batch.batchNumber} queued. You can keep adding inventory.`);
       setQueueRefreshKey(value => value + 1);
-      setIncludePurchaseCost(false);
+      // A cost rate describes the whole lot, so it stays for the next handoff; a total belongs to one.
+      if (costMethod === "purchase_total") setCostMethod("estimate");
       setPurchaseReference('');
       setPurchaseTotal('');
       setPurchaseDate('');
@@ -347,11 +377,11 @@ export default function InventoryManagerRoute() {
                     size="small"
                     onPointerDown={() => { entryFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
                     onClick={() => void handleCreateBatch('publish')}
-                    disabled={isCreatingBatch || !intakeTarget?.canPublish}
+                    disabled={isCreatingBatch || costRateBlocksQueue || !intakeTarget?.canPublish}
                   >
                     {isCreatingBatch ? "Saving & Queuing..." : "Queue Pricing & Publishing"}
                   </Button>
-                  <Button variant="contained" size="small" disabled={isCreatingBatch || !intakeTarget}
+                  <Button variant="contained" size="small" disabled={isCreatingBatch || costRateBlocksQueue || !intakeTarget}
                     onPointerDown={() => { entryFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
                     onClick={() => void handleCreateBatch('price_only')}>Queue Pricing Only</Button>
                   <Button
@@ -398,11 +428,34 @@ export default function InventoryManagerRoute() {
           />
           {pendingInventory.length > 0 && (
             <Stack spacing={2} sx={{ mt: 3, maxWidth: 760 }}>
-              <FormControlLabel control={<Checkbox checked={includePurchaseCost}
-                onChange={(event) => setIncludePurchaseCost(event.target.checked)} />}
-                label="Record optional purchase cost with this batch" />
-              {includePurchaseCost && <Alert severity="info">Enter only the cost for this handoff, not the full purchase if you are splitting it across batches. Cost fields clear after a confirmed handoff.</Alert>}
-              {includePurchaseCost && <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+              <FormControl>
+                <Typography variant="subtitle2">Cost of this batch</Typography>
+                <RadioGroup value={costMethod}
+                  onChange={(event) => setCostMethod(event.target.value as IntakeCostMethod)}>
+                  <FormControlLabel value="estimate" control={<Radio />}
+                    label={`Estimate at ${DEFAULT_MARKET_PERCENT}% of market less $${DEFAULT_PER_CARD_DEDUCTION} per card`} />
+                  <FormControlLabel value="cost_rate" control={<Radio />}
+                    label="Estimate at my own percent of market and amount per card" />
+                  <FormControlLabel value="purchase_total" control={<Radio />}
+                    label="Enter the purchase total" />
+                </RadioGroup>
+              </FormControl>
+              {costMethod === "cost_rate" && <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }}>
+                <TextField label="Percent of market" value={costMarketPercent} required inputMode="decimal"
+                  error={!costRate.valid} helperText={costRate.valid ? undefined : costRate.message}
+                  slotProps={{ input: { endAdornment: "%" } }}
+                  onChange={(event) => setCostMarketPercent(event.target.value)} />
+                <TextField label="Less per card (USD)" value={costPerCardDeduction} required inputMode="decimal"
+                  onChange={(event) => setCostPerCardDeduction(event.target.value)} />
+                {costRate.valid && <Typography variant="body2" color="text.secondary">
+                  A $1.00 card costs {formatCents(estimateUnitCostCents(1, costRate.rate))}; a $10.00 card costs {formatCents(estimateUnitCostCents(10, costRate.rate))}.
+                </Typography>}
+              </Stack>}
+              {costMethod === "cost_rate" && <Typography variant="caption" color="text.secondary">
+                The rate stays set for the next batch until you choose another option, and it applies to every card in the batch, including cards whose market price is found after intake.
+              </Typography>}
+              {costMethod === "purchase_total" && <Alert severity="info">Enter only the cost for this handoff, not the full purchase if you are splitting it across batches. Cost fields clear after a confirmed handoff.</Alert>}
+              {costMethod === "purchase_total" && <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                 <TextField label="Purchase reference" value={purchaseReference} required
                   onChange={(event) => setPurchaseReference(event.target.value)} />
                 <TextField label="Purchase total (USD)" value={purchaseTotal} required
@@ -414,7 +467,7 @@ export default function InventoryManagerRoute() {
                   label="Estimated" />
               </Stack>}
               <Typography variant="caption" color="text.secondary">
-                Cost is optional. Quantity allocation preserves the purchase total across these receipt lots. Without an entered cost, an estimated cost of 75% of each item's intake market price minus $0.30 per unit is recorded and labeled estimated; an item worth less than $0.40 counts as negative cost.
+                Estimates use each card's intake market price and are labeled estimated; a card worth less than the amount per card counts as negative cost. A purchase total is split across the cards by quantity.
               </Typography>
             </Stack>
           )}

@@ -10,6 +10,7 @@ import type {
   InventoryBatchSummary,
   InventoryBatchSourceType,
 } from "~/features/pending-inventory/types/inventoryBatch";
+import type { EstimatedCostRate } from "~/features/inventory-economics/domain/estimatedPurchaseCost";
 import {
   createValuesPlaceholders,
   execute,
@@ -484,9 +485,11 @@ export const inventoryBatchesRepository = {
     );
   },
 
+  /** Creates a batch from the pending queue; a cost rate overrides how its purchase cost is estimated. */
   async createFromPendingInventory(
     requestId: string,
     executor?: Queryable,
+    estimatedCostRate?: EstimatedCostRate,
   ): Promise<InventoryBatch | null> {
     const perform = async (client: Queryable) => {
       await execute(`SELECT pg_advisory_xact_lock(55, 0)`, [], client);
@@ -530,11 +533,16 @@ export const inventoryBatchesRepository = {
 
       const createdBatch = await queryOne<{ batchNumber: number }>(
         `INSERT INTO inventory_batches (
-          status, source_type, source_label, source_request_id
+          status, source_type, source_label, source_request_id,
+          estimated_cost_market_rate, estimated_cost_per_unit_deduction_cents
         )
-        VALUES ('pending', 'pending_inventory', 'Inventory Manager', $1)
+        VALUES ('pending', 'pending_inventory', 'Inventory Manager', $1, $2, $3)
         RETURNING batch_number AS "batchNumber"`,
-        [requestId],
+        [
+          requestId,
+          estimatedCostRate?.marketRate ?? null,
+          estimatedCostRate?.perUnitDeductionCents ?? null,
+        ],
         client,
       );
 
