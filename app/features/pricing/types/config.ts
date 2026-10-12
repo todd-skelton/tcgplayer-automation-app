@@ -2,7 +2,6 @@ import { FILE_CONFIG, PRICING_CONSTANTS } from "~/core/constants/pricing";
 import type { PricingConfig, ProductLineSettings } from "~/core/types/pricing";
 import type {
   ActivePricingPolicy,
-  ForecastCorrection,
   PricingPolicy,
 } from "~/core/types/pricingPolicy";
 import {
@@ -20,7 +19,7 @@ export type PricingPolicyConfig =
 
 export type ProfitPerDaySettings = Omit<
   Extract<PricingPolicy, { method: "profit-per-day" }>,
-  "method" | "forecastCorrection" | "shippingThresholdSnap"
+  "method" | "shippingThresholdSnap"
 >;
 
 /** Listing just under the shipping thresholds when the learned shipping costs make it pay. */
@@ -46,20 +45,6 @@ export const DEFAULT_SHIPPING_THRESHOLD_SNAP_SETTINGS: ShippingThresholdSnapSett
 export const isValidSnapRange = (value: number): boolean =>
   value > 0 && value <= 0.5;
 
-/** Correcting the curve's sell-time forecasts by how the seller's own listings have sold. */
-export interface ForecastCorrectionSettings {
-  enabled: boolean;
-  /** Trailing days of listings and sales the correction learns from. */
-  evidenceWindowDays: number;
-}
-
-export const FORECAST_EVIDENCE_WINDOW_DAYS = [28, 56, 84] as const;
-
-export const DEFAULT_FORECAST_CORRECTION_SETTINGS: ForecastCorrectionSettings = {
-  enabled: false,
-  evidenceWindowDays: 56,
-};
-
 export interface PricingConfigSettings {
   policy: PricingPolicyConfig;
   profitPerDay: ProfitPerDaySettings;
@@ -76,8 +61,6 @@ export interface PricingConfigSettings {
     low: number;
     high: number;
   };
-  /** Applies to the target-horizon and profit-per-day policies. */
-  forecastCorrection: ForecastCorrectionSettings;
 }
 
 export interface SupplyAnalysisConfig {
@@ -128,25 +111,7 @@ export const DEFAULT_PRICING_CONFIG: PricingConfigSettings = {
     low: PRICING_CONSTANTS.SUCCESS_RATE_THRESHOLD.LOW,
     high: PRICING_CONSTANTS.SUCCESS_RATE_THRESHOLD.HIGH,
   },
-  forecastCorrection: DEFAULT_FORECAST_CORRECTION_SETTINGS,
 };
-
-/**
- * Forecast correction settings from stored config. Configs saved before
- * corrections were learned from recent sales read as the defaults.
- */
-export function normalizeForecastCorrectionSettings(
-  value: unknown,
-): ForecastCorrectionSettings {
-  const raw = (value ?? {}) as Partial<Record<keyof ForecastCorrectionSettings, unknown>>;
-  const defaults = DEFAULT_FORECAST_CORRECTION_SETTINGS;
-  return {
-    enabled: typeof raw.enabled === "boolean" ? raw.enabled : defaults.enabled,
-    evidenceWindowDays: FORECAST_EVIDENCE_WINDOW_DAYS.find(
-      (days) => days === raw.evidenceWindowDays,
-    ) ?? defaults.evidenceWindowDays,
-  };
-}
 
 export const DEFAULT_SUPPLY_ANALYSIS_CONFIG: SupplyAnalysisConfig = {
   enableSupplyAnalysis: true,
@@ -285,12 +250,6 @@ export function activePricingPolicy(
     : settings.policy;
 }
 
-/** True when pricing under these settings would apply a learned forecast correction. */
-export function correctsForecasts(settings: PricingConfigSettings): boolean {
-  return settings.policy.method !== "percentile" &&
-    normalizeForecastCorrectionSettings(settings.forecastCorrection).enabled;
-}
-
 /** The active policy as it applies to one product line, honoring its hurdle. */
 export function productLinePricingPolicy<Policy extends ActivePricingPolicy>(
   policy: Policy,
@@ -320,7 +279,6 @@ export function pricingCalculatorConfig(
   options: {
     excludedSellerKey?: string;
     shippingCostModel?: ShippingCostModel;
-    forecastCorrection?: ForecastCorrection;
   } = {},
 ): Pick<
   PricingConfig,
@@ -333,31 +291,21 @@ export function pricingCalculatorConfig(
   | "productLinePricingConfig"
 > {
   const policy = activePricingPolicy(config.pricing);
-  // A correction describes how one seller's listings sell, so it applies
-  // only when pricing that seller's inventory or intake bound for it.
-  const correction = options.forecastCorrection &&
-    correctsForecasts(config.pricing) &&
-    (!options.excludedSellerKey || options.forecastCorrection.sellerKey === options.excludedSellerKey)
-    ? options.forecastCorrection
-    : undefined;
-  const sellerBoundPolicy = policy.method !== "percentile" && correction
-    ? { ...policy, forecastCorrection: correction }
-    : policy;
   const snaps = normalizeShippingThresholdSnapSettings(
     config.pricing.shippingThresholdSnaps,
   );
   const snappingPolicy =
-    sellerBoundPolicy.method === "profit-per-day" && snaps.enabled &&
+    policy.method === "profit-per-day" && snaps.enabled &&
     snaps.thresholds.length > 0 && options.shippingCostModel
       ? {
-          ...sellerBoundPolicy,
+          ...policy,
           shippingThresholdSnap: {
             thresholds: snaps.thresholds,
             snapRange: snaps.snapRange,
             costModel: options.shippingCostModel,
           },
         }
-      : sellerBoundPolicy;
+      : policy;
   return {
     percentile: config.productLinePricing.defaultPercentile,
     policy: snappingPolicy,
@@ -374,10 +322,14 @@ export function pricingCalculatorConfig(
 
 export function normalizeServerPricingConfig(value: unknown): ServerPricingConfig {
   const raw = (value ?? {}) as Partial<ServerPricingConfig>;
+  // Configs saved while sell-time forecast corrections could apply to pricing
+  // still carry their retired setting; dropping it keeps them comparable.
+  const { forecastCorrection: _retired, ...storedPricing } = (raw.pricing ?? {}) as
+    Partial<PricingConfigSettings> & { forecastCorrection?: unknown };
   return {
     pricing: {
       ...DEFAULT_PRICING_CONFIG,
-      ...(raw.pricing ?? {}),
+      ...storedPricing,
       policy: normalizePricingPolicy(raw.pricing?.policy),
       profitPerDay: normalizeProfitPerDaySettings(raw.pricing?.profitPerDay),
       shippingThresholdSnaps: normalizeShippingThresholdSnapSettings(
@@ -387,7 +339,6 @@ export function normalizeServerPricingConfig(value: unknown): ServerPricingConfi
         ...DEFAULT_PRICING_CONFIG.successRateThreshold,
         ...(raw.pricing?.successRateThreshold ?? {}),
       },
-      forecastCorrection: normalizeForecastCorrectionSettings(raw.pricing?.forecastCorrection),
     },
     supplyAnalysis: {
       ...DEFAULT_SUPPLY_ANALYSIS_CONFIG,

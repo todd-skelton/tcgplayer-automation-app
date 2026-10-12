@@ -1,7 +1,5 @@
 import assert from "node:assert/strict";
-import type { ForecastCorrection } from "~/core/types/pricingPolicy";
 import type { ShippingCostModel } from "~/core/types/shippingThresholds";
-import { productLineCorrectedPolicy } from "../domain/pricingPolicy";
 import {
   DEFAULT_PROFIT_PER_DAY_SETTINGS,
   DEFAULT_SERVER_PRICING_CONFIG,
@@ -129,50 +127,10 @@ const off = pricingCalculatorConfig({
 assert.ok(off?.method === "profit-per-day" && !off.shippingThresholdSnap);
 console.log("PASS shipping threshold snaps are configured safely and only attach with a learned model");
 
-const correction: ForecastCorrection = {
-  version: "time-in-stock-v1@2026-10-11T00:00:00.000Z",
-  sellerKey: "store",
-  medianDaysMultiplier: 1.4,
-  productLineMedianDaysMultipliers: { 2: 3 },
-};
-assert.deepEqual(normalizeServerPricingConfig({}).pricing.forecastCorrection, { enabled: false, evidenceWindowDays: 56 });
-assert.deepEqual(
-  normalizeServerPricingConfig({ pricing: { forecastCorrection: { ...correction, evaluationId: "459" } } }).pricing.forecastCorrection,
-  { enabled: false, evidenceWindowDays: 56 },
-  "a correction stored by the retired evaluator reads as corrections off",
-);
-assert.deepEqual(
-  normalizeServerPricingConfig({ pricing: { forecastCorrection: { enabled: true, evidenceWindowDays: 30 } } }).pricing.forecastCorrection,
-  { enabled: true, evidenceWindowDays: 56 },
-  "an unsupported window falls back",
-);
-const correcting = {
-  ...profitConfig,
-  pricing: { ...profitConfig.pricing, forecastCorrection: { enabled: true, evidenceWindowDays: 56 } },
-};
-const corrected = pricingCalculatorConfig(correcting, { excludedSellerKey: "store", forecastCorrection: correction }).policy;
-assert.equal(corrected?.method === "profit-per-day" && corrected.forecastCorrection, correction);
-const intake = pricingCalculatorConfig(correcting, { forecastCorrection: correction }).policy;
-assert.equal(intake?.method === "profit-per-day" && intake.forecastCorrection, correction,
-  "intake bound for the store is priced with the store's correction");
-const otherSeller = pricingCalculatorConfig(correcting, { excludedSellerKey: "other", forecastCorrection: correction }).policy;
-assert.ok(otherSeller?.method === "profit-per-day" && !otherSeller.forecastCorrection,
-  "another seller's inventory is not priced with this seller's correction");
-const turnedOff = pricingCalculatorConfig(profitConfig, { excludedSellerKey: "store", forecastCorrection: correction }).policy;
-assert.ok(turnedOff?.method === "profit-per-day" && !turnedOff.forecastCorrection);
-const percentile = pricingCalculatorConfig({
-  ...correcting,
-  pricing: { ...correcting.pricing, policy: { method: "percentile" as const } },
-}, { forecastCorrection: correction }).policy;
-assert.equal(percentile?.method, "percentile");
-assert.deepEqual(
-  productLineCorrectedPolicy({ ...profitPerDayPolicy, forecastCorrection: correction }, 2).forecastCorrection,
-  { version: correction.version, sellerKey: "store", medianDaysMultiplier: 3 },
-);
-assert.equal(
-  productLineCorrectedPolicy({ ...profitPerDayPolicy, forecastCorrection: correction }, 3).forecastCorrection?.medianDaysMultiplier,
-  1.4,
-  "a product line without its own multiplier uses the overall one",
-);
-console.log("PASS forecast corrections apply only when turned on, to the seller they were learned from");
+const retired = normalizeServerPricingConfig({
+  pricing: { forecastCorrection: { enabled: true, evidenceWindowDays: 56 } },
+}).pricing;
+assert.ok(!("forecastCorrection" in retired),
+  "a config saved while forecast corrections could apply reads without the retired setting");
+console.log("PASS retired forecast correction settings are dropped from stored configs");
 

@@ -23,12 +23,6 @@ function describeChange(previous: PricingConfigurationUse, current: PricingConfi
   const changes: string[] = [];
   const policy = describePricingPolicy(activePricingPolicy(after.pricing));
   if (policy !== describePricingPolicy(activePricingPolicy(before.pricing))) changes.push(`Policy: ${policy}`);
-  const correction = after.pricing.forecastCorrection;
-  if (correction.enabled !== before.pricing.forecastCorrection.enabled) {
-    changes.push(correction.enabled ? "Sell-time forecast correction turned on" : "Sell-time forecast correction turned off");
-  } else if (correction.enabled && correction.evidenceWindowDays !== before.pricing.forecastCorrection.evidenceWindowDays) {
-    changes.push(`Sell-time forecast correction learns from the last ${correction.evidenceWindowDays} days`);
-  }
   if (json(before.productLinePricing) !== json(after.productLinePricing)) {
     changes.push(`Product line settings (default ${formatPercentile(after.productLinePricing.defaultPercentile)} percentile)`);
   }

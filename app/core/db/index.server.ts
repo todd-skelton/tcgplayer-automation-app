@@ -9,7 +9,7 @@ export { categoryFiltersRepository } from "./repositories/categoryFilters.server
 export { categorySetsRepository } from "./repositories/categorySets.server";
 export { categorySetSyncsRepository } from "./repositories/categorySetSyncs.server";
 export { continuousPricingRepository } from "./repositories/continuousPricing.server";
-export { forecastCorrectionEvidenceRepository } from "./repositories/forecastCorrectionEvidence.server";
+export { forecastCalibrationEvidenceRepository } from "./repositories/forecastCalibrationEvidence.server";
 export { httpConfigRepository } from "./repositories/httpConfig.server";
 export { inventoryBatchesRepository } from "./repositories/inventoryBatches.server";
 export { inventoryFifoRepository } from "./repositories/inventoryFifo.server";
