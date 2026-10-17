@@ -69,6 +69,7 @@ import "../features/inventory-management/services/nextBatchCost.test";
 import "../features/inventory-management/components/QueueBar.test";
 import "../features/inventory-management/components/BackgroundBatches.test";
 import "../features/inventory-management/components/InventoryFilters.test";
+import "../../scripts/releasePlan.test.mjs";
 import "../features/inventory-management/routes/api.inventory-intake-runs.test";
 import "../features/inventory-management/services/inventoryConverter.test";
 import "../features/shipping-export/config/shippingExportConfig.server.test";
