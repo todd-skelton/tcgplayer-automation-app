@@ -1,6 +1,6 @@
 # Production Docker Deployment
 
-The production stack runs the app and PostgreSQL together. The app container waits for the database, applies SQL migrations during startup, and then starts serving traffic.
+The production stack runs the app and PostgreSQL together. The app container waits for the database, applies SQL migrations during startup, and then starts serving traffic. An nginx proxy owns port `3001` and forwards requests to the app.
 
 ## Quick Start
 
@@ -14,11 +14,32 @@ The guarded `npm run prod:*` commands are the supported production entrypoints w
 
 Those `prod:*` commands now route through a cross-platform Node wrapper, so the same npm commands work from Windows and Unix-like shells without separate `.bat` and `.sh` entrypoints.
 
-`prod:deploy` builds the new image while the running stack keeps serving, then replaces only the containers whose image changed. The app is unavailable only while its new container starts and applies migrations, and a failed build leaves the running stack untouched.
+## Releases Without Downtime
+
+The app runs in one of two slots, `app-blue` or `app-green`. `prod:deploy` (no-cache build) and `prod:update` (cached build) release the same way:
+
+1. Build the image while the running slot keeps serving. A failed build changes nothing.
+2. Start the idle slot, which applies pending migrations, and wait for its health check.
+3. Point the proxy at the new slot and reload nginx. Requests already in flight finish on the old slot.
+4. Replace the background workers with the new image, then stop the old slot after its in-flight requests finish.
+
+If the new slot never becomes healthy, the release stops it and the old slot keeps serving.
+
+`deploy/nginx/active/active.conf` records which slot receives traffic. It is written by the release and ignored by git.
+
+### Migrations
+
+While the new slot migrates, the old slot is still serving against the migrated schema. The release only keeps it serving when that is safe:
+
+- With no pending migrations, the old slot always keeps serving.
+- Each pending migration must start with an `-- online: <why the running release keeps working>` line, and must not drop or rename a table or column, change a column type, set `NOT NULL`, or add a `NOT NULL` column without a default.
+- Otherwise the release stops the old slot and the workers before migrating, and the app is down until the new slot is healthy, about half a minute.
+
+Mark a migration online only when the previous release keeps working against it: adding tables, adding nullable or defaulted columns, adding indexes, and widening constraints usually qualify. Split a breaking change into an online expand migration now and the contracting migration in a later release.
 
 This starts:
 
-- The app on `http://localhost:3001`
+- The proxy on `http://localhost:3001` and the app in the active slot
 - PostgreSQL in a sidecar container
 - Persistent database storage in the `postgres-data` Docker volume
 
@@ -66,13 +87,12 @@ Source guard behavior:
 Direct Docker Compose commands:
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
-docker compose -f docker-compose.prod.yml down
-docker compose -f docker-compose.prod.yml logs -f
-docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml --profile "*" down
+docker compose -f docker-compose.prod.yml --profile "*" logs -f
+docker compose -f docker-compose.prod.yml --profile "*" ps
 ```
 
-Direct `docker compose` commands bypass the source guard. Use the `npm run prod:*` wrappers if you need the `origin/master` enforcement.
+Direct `docker compose` commands bypass the source guard. Use the `npm run prod:*` wrappers if you need the `origin/master` enforcement. The app slots sit behind compose profiles, so pass `--profile "*"` to include them, and release through `npm run prod:deploy` rather than `up --build`, which would not switch the proxy.
 
 ## Refresh Dev Data From Production
 
@@ -114,7 +134,7 @@ These commands remove containers and the old shared network only. The named Post
 Run migrations manually:
 
 ```bash
-docker compose -f docker-compose.prod.yml run --rm app npm run db:migrate
+docker compose -f docker-compose.prod.yml run --rm --no-deps app-blue npm run db:migrate
 ```
 
 ## Persistence

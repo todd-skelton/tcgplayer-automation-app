@@ -9,3 +9,6 @@
 .env
 .env.local
 .env.*.local
+
+# Which production app slot receives traffic; written by scripts/prod.mjs
+/deploy/nginx/active/

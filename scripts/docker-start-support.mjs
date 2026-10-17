@@ -2,6 +2,8 @@ import { spawn } from "node:child_process";
 
 const DEFAULT_RETRIES = 30;
 const DEFAULT_DELAY_MS = 2000;
+// Stays under the production stop_grace_period so Docker never has to kill a draining server.
+const CHILD_EXIT_TIMEOUT_MS = 25_000;
 
 export function getDatabaseStartupConfig() {
   return {
@@ -77,15 +79,24 @@ export function spawnInheritedProcess(command, args) {
 /** Runs sibling long-lived processes as one service and never leaves an orphan. */
 export function spawnInheritedProcesses(processes) {
   const children = [];
+  const running = new Set();
   let stopping = false;
+  let exitCode = 0;
 
-  const stop = (signal = "SIGTERM", exitCode = 0) => {
+  const exitWhenChildrenStop = () => {
+    if (stopping && running.size === 0) process.exit(exitCode);
+  };
+
+  // Waits for every child to finish (a web server finishes in-flight requests first).
+  const stop = (signal = "SIGTERM", code = 0) => {
     if (stopping) return;
     stopping = true;
+    exitCode = code;
     for (const child of children) {
-      if (!child.killed) child.kill(signal);
+      if (running.has(child)) child.kill(signal);
     }
-    setTimeout(() => process.exit(exitCode), 1_000).unref();
+    setTimeout(() => process.exit(exitCode), CHILD_EXIT_TIMEOUT_MS).unref();
+    exitWhenChildrenStop();
   };
 
   for (const processSpec of processes) {
@@ -101,12 +112,15 @@ export function spawnInheritedProcesses(processes) {
       return children;
     }
     children.push(child);
+    running.add(child);
     child.on("error", (error) => {
       console.error(`Failed to start command "${processSpec.command}".`, error);
       stop("SIGTERM", 1);
     });
     child.on("exit", (code, signal) => {
+      running.delete(child);
       if (!stopping) stop(signal ?? "SIGTERM", code ?? 1);
+      exitWhenChildrenStop();
     });
   }
 

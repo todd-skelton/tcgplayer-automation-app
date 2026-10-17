@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
+import path from "node:path";
 import { loadAppEnv } from "./load-local-env.mjs";
+import { pendingMigrationNames, planRelease } from "./releasePlan.mjs";
 
 const composeArgs = ["compose", "-f", "docker-compose.prod.yml"];
 loadAppEnv("production");
@@ -164,6 +166,20 @@ async function assertProductionSource() {
   console.log("Production source check passed.");
 }
 
+const allSlotsComposeArgs = [...composeArgs, "--profile", "*"];
+const PUBLIC_URL = "http://localhost:3001";
+const PROXY_CONTAINER = "tcgplayer-automation-proxy-prod";
+const POSTGRES_CONTAINER = "tcgplayer-postgres-prod";
+// The single app container from before the proxy; removed by the first release that adds the proxy.
+const LEGACY_APP_CONTAINER = "tcgplayer-automation-prod";
+const WORKER_SERVICES = ["pricing-worker", "publication-worker", "slab-evidence-worker", "pricing-scheduler"];
+const SLOTS = {
+  blue: { service: "app-blue", container: "tcgplayer-automation-prod-blue" },
+  green: { service: "app-green", container: "tcgplayer-automation-prod-green" },
+};
+const ACTIVE_SLOT_FILE = path.resolve("deploy", "nginx", "active", "active.conf");
+const HEALTH_TIMEOUT_MS = 5 * 60_000;
+
 async function listContainerNames(all = false) {
   const args = ["ps", "--format", "{{.Names}}"];
 
@@ -172,106 +188,235 @@ async function listContainerNames(all = false) {
   }
 
   const result = await run("docker", args);
-  return result.stdout
-    .split(/\r?\n/)
-    .map((name) => name.trim())
-    .filter(Boolean);
+  return new Set(
+    result.stdout
+      .split(/\r?\n/)
+      .map((name) => name.trim())
+      .filter(Boolean),
+  );
 }
 
-async function isContainerPresent(name, all = false) {
-  const containerNames = await listContainerNames(all);
-  return containerNames.includes(name);
+async function readActiveSlot() {
+  try {
+    const conf = await fs.readFile(ACTIVE_SLOT_FILE, "utf8");
+    return conf.match(/set \$app_color (blue|green);/)?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeActiveSlot(color) {
+  await fs.mkdir(path.dirname(ACTIVE_SLOT_FILE), { recursive: true });
+  await fs.writeFile(
+    ACTIVE_SLOT_FILE,
+    `set $app_upstream ${SLOTS[color].service}:3000;\nset $app_color ${color};\n`,
+  );
+}
+
+/** The app container serving production now: a slot color, "legacy", or null. */
+async function findLiveApp(running) {
+  const active = await readActiveSlot();
+  if (active && running.has(SLOTS[active].container)) return active;
+  const runningSlot = Object.keys(SLOTS).find((color) => running.has(SLOTS[color].container));
+  if (runningSlot) return runningSlot;
+  return running.has(LEGACY_APP_CONTAINER) ? "legacy" : null;
+}
+
+function liveContainer(live) {
+  return live === "legacy" ? LEGACY_APP_CONTAINER : SLOTS[live].container;
+}
+
+async function findPendingMigrations() {
+  const migrationsDir = path.resolve("db", "migrations");
+  const files = await fs.readdir(migrationsDir);
+  const applied = await run(
+    "docker",
+    ["exec", POSTGRES_CONTAINER, "psql", "-U", "postgres", "-d", "tcgplayer_automation", "-tAc",
+      "SELECT name FROM schema_migrations"],
+    { allowFailure: true },
+  );
+  if (applied.code !== 0) {
+    throw new Error(`Could not read applied migrations from ${POSTGRES_CONTAINER}: ${applied.stderr || applied.stdout}`);
+  }
+  const names = pendingMigrationNames(files, applied.stdout.split(/\r?\n/).map((name) => name.trim()).filter(Boolean));
+  return Promise.all(
+    names.map(async (name) => ({ name, sql: await fs.readFile(path.join(migrationsDir, name), "utf8") })),
+  );
+}
+
+async function waitForHealthy(container) {
+  const deadline = Date.now() + HEALTH_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const state = await run(
+      "docker",
+      ["inspect", "--format", "{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}", container],
+      { allowFailure: true },
+    );
+    const [status, health] = state.stdout.split(" ");
+    if (status === "running" && health === "healthy") return;
+    // A crash at startup, such as a failed migration, shows up as a restart loop.
+    if (state.code !== 0 || ["exited", "dead", "restarting"].includes(status) || health === "unhealthy") {
+      throw new Error(`${container} did not become healthy (${state.stdout || state.stderr}).`);
+    }
+    await sleep(1_000);
+  }
+  throw new Error(`${container} did not become healthy within ${HEALTH_TIMEOUT_MS / 60_000} minutes.`);
+}
+
+/** Waits until requests through the public port reach the given slot. */
+async function verifyTraffic(color) {
+  const deadline = Date.now() + 30_000;
+  let last = "no response";
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(`${PUBLIC_URL}/`, { signal: AbortSignal.timeout(5_000) });
+      const served = response.headers.get("x-app-color");
+      if (response.ok && served === color) return;
+      last = `status ${response.status} from ${served ?? "no slot"}`;
+    } catch (error) {
+      last = error instanceof Error ? error.message : String(error);
+    }
+    await sleep(500);
+  }
+  throw new Error(`Traffic on ${PUBLIC_URL} did not reach the ${color} slot (${last}).`);
+}
+
+async function removeLegacyApp() {
+  if (!(await listContainerNames(true)).has(LEGACY_APP_CONTAINER)) return;
+  console.log("Moving port 3001 from the single app container to the proxy (one time)...");
+  await run("docker", ["stop", "-t", "30", LEGACY_APP_CONTAINER], { stdio: "inherit" });
+  await run("docker", ["rm", LEGACY_APP_CONTAINER], { stdio: "inherit" });
+}
+
+/** Points the proxy at a slot. A reload lets requests already in flight finish on the old slot. */
+async function routeTrafficTo(color) {
+  await writeActiveSlot(color);
+  if ((await listContainerNames()).has(PROXY_CONTAINER)) {
+    await run("docker", ["exec", PROXY_CONTAINER, "nginx", "-t"], { stdio: "inherit" });
+    await run("docker", ["exec", PROXY_CONTAINER, "nginx", "-s", "reload"], { stdio: "inherit" });
+  } else {
+    await removeLegacyApp();
+  }
+  // Starts the proxy, or recreates it if its definition changed; otherwise a no-op.
+  await run("docker", [...composeArgs, "up", "-d", "--no-deps", "proxy"], { stdio: "inherit" });
+  await verifyTraffic(color);
+}
+
+/**
+ * Builds the image, starts it in the idle slot, and moves traffic once it is
+ * healthy. The running app keeps serving through the switch unless a pending
+ * migration could break it (see scripts/releasePlan.mjs); then it stops first.
+ */
+async function release({ noCache }) {
+  await fs.mkdir("logs", { recursive: true });
+
+  const live = await findLiveApp(await listContainerNames());
+  const target = live === "blue" ? "green" : "blue";
+  const slot = SLOTS[target];
+
+  // Build while the current stack keeps serving; a failed build leaves production untouched.
+  console.log(`Building production image for the ${target} slot...`);
+  await run("docker", [...composeArgs, "build", ...(noCache ? ["--no-cache"] : []), slot.service], { stdio: "inherit" });
+
+  await run("docker", [...composeArgs, "up", "-d", "--wait", "postgres"], { stdio: "inherit" });
+  const plan = live ? planRelease(await findPendingMigrations()) : { mode: "overlap", reasons: [] };
+
+  if (live && plan.mode === "stop_first") {
+    console.log("Stopping the running app before migrating, because the previous release may break against:");
+    for (const reason of plan.reasons) console.log(`  - ${reason}`);
+    await run("docker", [...composeArgs, "stop", ...WORKER_SERVICES], { stdio: "inherit" });
+    await run("docker", ["stop", "-t", "30", liveContainer(live)], { stdio: "inherit" });
+  } else if (live) {
+    console.log(`Keeping the ${live} app serving while the ${target} slot starts.`);
+  }
+
+  console.log(`Starting the ${target} slot and applying migrations...`);
+  await run("docker", [...composeArgs, "up", "-d", "--no-deps", "--force-recreate", slot.service], { stdio: "inherit" });
+  try {
+    await waitForHealthy(slot.container);
+  } catch (error) {
+    if (live && plan.mode === "overlap") {
+      await run("docker", [...composeArgs, "rm", "-s", "-f", slot.service], { stdio: "inherit" });
+      throw new Error(`${error.message}\nRelease stopped; the ${live} app is still serving.`, { cause: error });
+    }
+    throw new Error(
+      `${error.message}\nProduction is down: the previous app was stopped before migrating.` +
+        "\nCheck logs with: docker compose -f docker-compose.prod.yml --profile \"*\" logs",
+      { cause: error },
+    );
+  }
+
+  console.log(`Routing traffic to the ${target} slot...`);
+  await routeTrafficTo(target);
+
+  console.log("Replacing workers with the new image...");
+  await run("docker", [...composeArgs, "up", "-d", "--no-deps", ...WORKER_SERVICES], { stdio: "inherit" });
+
+  if (live && live !== "legacy") {
+    console.log(`Stopping the ${live} slot after its in-flight requests finish...`);
+    await run("docker", [...composeArgs, "rm", "-s", "-f", SLOTS[live].service], { stdio: "inherit" });
+  }
+
+  console.log("");
+  console.log(`Production release successful; the ${target} slot is serving ${PUBLIC_URL}.`);
+  console.log("Status: npm run prod:status");
+  console.log("Logs: npm run prod:logs");
 }
 
 async function deploy() {
-  await fs.mkdir("logs", { recursive: true });
-
-  // Build while the current stack keeps serving; a failed build leaves production untouched.
-  console.log("Building production image...");
-  await run("docker", [...composeArgs, "build", "--no-cache"], { stdio: "inherit" });
-
-  // Recreates only the containers whose image or configuration changed.
-  console.log("Replacing production containers with the new image...");
-  await run("docker", [...composeArgs, "up", "-d", "--remove-orphans"], { stdio: "inherit" });
-
-  console.log("Waiting for application to start...");
-  await sleep(10_000);
-
-  if (!(await isContainerPresent("tcgplayer-automation-prod"))) {
-    throw new Error(
-      "Production deployment failed.\nCheck logs with: docker compose -f docker-compose.prod.yml logs",
-    );
-  }
-
-  console.log("Production deployment successful.");
-  console.log("");
-  console.log("Production app is running at: http://localhost:3001");
-  console.log("Container status: docker ps --format \"{{.Names}}\"");
-  console.log("View logs: docker compose -f docker-compose.prod.yml logs -f");
-  console.log("Stop production: docker compose -f docker-compose.prod.yml down");
-  console.log("");
-  console.log("Development can still run on: http://localhost:5173 (npm run dev, npm run dev:host, npm run dev:app, or npm run dev:docker)");
+  await release({ noCache: true });
 }
 
 async function update() {
-  console.log("Updating production deployment...");
-  console.log("Rebuilding production image...");
-  await run("docker", [...composeArgs, "build"], { stdio: "inherit" });
-
-  console.log("Restarting production container...");
-  await run("docker", [...composeArgs, "up", "-d"], { stdio: "inherit" });
-
-  console.log("Waiting for restart...");
-  await sleep(5_000);
-
-  if (!(await isContainerPresent("tcgplayer-automation-prod"))) {
-    throw new Error(
-      "Production update failed.\nCheck logs with: docker compose -f docker-compose.prod.yml logs",
-    );
-  }
-
-  console.log("Production updated successfully.");
-  console.log("Production app is running at: http://localhost:3001");
+  console.log("Updating production with a cached build...");
+  await release({ noCache: false });
 }
 
 async function start() {
   console.log("Starting production...");
+  const color = (await readActiveSlot()) ?? "blue";
+  await run("docker", [...composeArgs, "up", "-d", "--wait", "postgres"], { stdio: "inherit" });
+  await run("docker", [...composeArgs, "up", "-d", "--no-deps", SLOTS[color].service], { stdio: "inherit" });
+  await waitForHealthy(SLOTS[color].container);
+  await writeActiveSlot(color);
   await run("docker", [...composeArgs, "up", "-d"], { stdio: "inherit" });
-  console.log("Production started at http://localhost:3001");
+  console.log(`Production started at ${PUBLIC_URL} on the ${color} slot`);
 }
 
 async function stop() {
   console.log("Stopping production...");
-  await run("docker", [...composeArgs, "down"], { stdio: "inherit" });
+  await run("docker", [...allSlotsComposeArgs, "down"], { stdio: "inherit" });
   console.log("Production stopped");
 }
 
 async function restart() {
   console.log("Restarting production...");
-  await run("docker", [...composeArgs, "restart"], { stdio: "inherit" });
+  await run("docker", [...allSlotsComposeArgs, "restart"], { stdio: "inherit" });
   console.log("Production restarted");
 }
 
 async function logs() {
   console.log("Showing production logs...");
-  await run("docker", [...composeArgs, "logs", "-f"], { stdio: "inherit" });
+  await run("docker", [...allSlotsComposeArgs, "logs", "-f"], { stdio: "inherit" });
 }
 
 async function status() {
-  console.log("Production status:");
-  await run("docker", [...composeArgs, "ps"], { stdio: "inherit" });
+  console.log(`Production status (traffic goes to the ${(await readActiveSlot()) ?? "unknown"} slot):`);
+  await run("docker", [...allSlotsComposeArgs, "ps"], { stdio: "inherit" });
 }
 
 async function shell() {
-  console.log("Connecting to production container...");
-  await run("docker", ["exec", "-it", "tcgplayer-automation-prod", "sh"], {
+  const color = await readActiveSlot();
+  if (!color) throw new Error("No active production slot recorded. Run npm run prod:deploy first.");
+  console.log(`Connecting to the ${color} production app container...`);
+  await run("docker", ["exec", "-it", SLOTS[color].container, "sh"], {
     stdio: "inherit",
   });
 }
 
 async function clean() {
   console.log("Cleaning up production containers and images...");
-  await run("docker", [...composeArgs, "down"], { stdio: "inherit" });
+  await run("docker", [...allSlotsComposeArgs, "down"], { stdio: "inherit" });
   await run("docker", ["image", "prune", "-f"], { stdio: "inherit" });
   console.log("Cleanup complete");
 }
@@ -314,9 +459,6 @@ async function main() {
       await deploy();
       break;
     case "update":
-      if (!(await isContainerPresent("tcgplayer-automation-prod", true))) {
-        throw new Error("No existing production container found. Run npm run prod:deploy first.");
-      }
       await assertProductionSource();
       await update();
       break;
