@@ -186,16 +186,13 @@ async function isContainerPresent(name, all = false) {
 async function deploy() {
   await fs.mkdir("logs", { recursive: true });
 
-  if (await isContainerPresent("tcgplayer-automation-prod")) {
-    console.log("Stopping existing production container...");
-    await run("docker", [...composeArgs, "down"], { stdio: "inherit" });
-  }
-
+  // Build while the current stack keeps serving; a failed build leaves production untouched.
   console.log("Building production image...");
   await run("docker", [...composeArgs, "build", "--no-cache"], { stdio: "inherit" });
 
-  console.log("Starting production container...");
-  await run("docker", [...composeArgs, "up", "-d"], { stdio: "inherit" });
+  // Recreates only the containers whose image or configuration changed.
+  console.log("Replacing production containers with the new image...");
+  await run("docker", [...composeArgs, "up", "-d", "--remove-orphans"], { stdio: "inherit" });
 
   console.log("Waiting for application to start...");
   await sleep(10_000);

@@ -14,6 +14,8 @@ The guarded `npm run prod:*` commands are the supported production entrypoints w
 
 Those `prod:*` commands now route through a cross-platform Node wrapper, so the same npm commands work from Windows and Unix-like shells without separate `.bat` and `.sh` entrypoints.
 
+`prod:deploy` builds the new image while the running stack keeps serving, then replaces only the containers whose image changed. The app is unavailable only while its new container starts and applies migrations, and a failed build leaves the running stack untouched.
+
 This starts:
 
 - The app on `http://localhost:3001`
