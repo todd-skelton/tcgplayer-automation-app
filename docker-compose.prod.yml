@@ -75,7 +75,8 @@ services:
       - ./deploy/nginx/active:/etc/nginx/active:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/proxy-health"]
+      # nginx listens on IPv4 only, and localhost resolves to ::1 first in this image.
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/proxy-health"]
       interval: 30s
       timeout: 5s
       retries: 3
