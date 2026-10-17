@@ -1,36 +1,7 @@
 import { InputAdornment, Stack, TextField, Typography } from "@mui/material";
-import {
-  estimateUnitCostCents,
-  parseEstimatedCostRate,
-  type EstimatedCostRate,
-} from "~/features/inventory-economics/domain/estimatedPurchaseCost";
+import { estimateUnitCostCents } from "~/features/inventory-economics/domain/estimatedPurchaseCost";
 import { formatCents } from "~/features/inventory-economics/domain/money";
-
-/** A cost rate as typed: percent of market and dollars less per card. */
-export interface CostRateInput {
-  marketPercent: string;
-  perCardDeduction: string;
-}
-
-const errorOf = (input: CostRateInput): string | undefined => {
-  try {
-    parseEstimatedCostRate(input);
-    return undefined;
-  } catch (error) {
-    return error instanceof Error ? error.message : String(error);
-  }
-};
-
-/** The parsed rate, or each field's own error. */
-export function readCostRateInput(input: CostRateInput):
-  | { valid: true; rate: EstimatedCostRate }
-  | { valid: false; marketPercentError?: string; perCardDeductionError?: string } {
-  const marketPercentError = errorOf({ ...input, perCardDeduction: "0" });
-  const perCardDeductionError = errorOf({ ...input, marketPercent: "0" });
-  return marketPercentError || perCardDeductionError
-    ? { valid: false, marketPercentError, perCardDeductionError }
-    : { valid: true, rate: parseEstimatedCostRate(input) };
-}
+import { readCostRateInput, type CostRateInput } from "../services/costRateInput";
 
 /** Percent of market and amount less per card, with what the rate makes a $1 and a $10 card cost. */
 export function CostRateFields({
