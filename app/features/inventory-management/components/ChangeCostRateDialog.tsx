@@ -13,7 +13,8 @@ import {
   marketPercentOf,
   type EstimatedCostRate,
 } from "~/features/inventory-economics/domain/estimatedPurchaseCost";
-import { CostRateFields, readCostRateInput } from "./CostRateFields";
+import { CostRateFields } from "./CostRateFields";
+import { readCostRateInput } from "../services/costRateInput";
 
 const inputOf = (rate: EstimatedCostRate) => ({
   marketPercent: marketPercentOf(rate),

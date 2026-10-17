@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { createPendingInventoryBatch } from "./createPendingInventoryBatch";
 import { readPendingIntakeRequest } from "./pendingIntakeRequest";
 import {
+  describeIntakeRunSummary,
   intakeRunCost,
   intakeRunStatus,
+  summarizeIntakeRuns,
   type InventoryIntakeRun,
 } from "../types/inventoryIntakeRun";
 
@@ -112,6 +114,23 @@ assert.equal(
 );
 assert.equal(intakeRunCost({ ...run, hasEnteredCost: true, recordedCostCents: 1200 }), "Cost $12.00 entered");
 assert.match(intakeRunCost({ ...run, recordedCostCents: null, uncostedLotCount: 2 }), /^Cost not recorded yet; it will be estimated at the default/);
+const settled = { ...run, pricingStatus: "completed" as const, planningStatus: "planned" as const };
+assert.deepEqual(
+  summarizeIntakeRuns([
+    run,
+    { ...run, pricingStatus: "pricing" },
+    { ...run, pricingStatus: "failed" },
+    { ...settled, publishedCount: 1, reviewCount: 1 },
+    { ...settled, publishedCount: 2 },
+    { ...settled, workflow: "price_only", planningStatus: "waiting" },
+    { ...run, planningError: "Plan could not be built" },
+  ]),
+  { running: 3, needsAttention: 3 },
+  "queued and pricing batches are running; failures, reviews, and errors need attention; settled batches are neither",
+);
+assert.equal(describeIntakeRunSummary({ running: 0, needsAttention: 0 }), "none running");
+assert.equal(describeIntakeRunSummary({ running: 2, needsAttention: 1 }), "2 running, 1 needs review");
+assert.equal(describeIntakeRunSummary({ running: 0, needsAttention: 2 }), "2 need review");
 console.log(
   "PASS queued intake retains permission and cost through lost responses and displays distinct pricing/publication outcomes",
 );

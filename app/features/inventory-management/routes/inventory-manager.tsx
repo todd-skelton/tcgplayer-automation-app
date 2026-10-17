@@ -1,54 +1,42 @@
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Box,
-  Typography,
-  Paper,
-  Button,
-  Stack,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Chip,
   Alert,
+  Box,
+  Button,
   Dialog,
-  DialogTitle,
+  DialogActions,
   DialogContent,
   DialogContentText,
-  DialogActions,
-  TextField,
-  Checkbox,
-  FormControlLabel,
-  Radio,
-  RadioGroup,
+  DialogTitle,
+  Paper,
+  Snackbar,
+  Stack,
+  Typography,
 } from "@mui/material";
-import {
-  DEFAULT_ESTIMATED_COST_RATE,
-  describeEstimatedCostRate,
-  marketPercentOf,
-} from "~/features/inventory-economics/domain/estimatedPurchaseCost";
-import { CostRateFields, readCostRateInput, type CostRateInput } from "../components/CostRateFields";
-import { Link } from "react-router";
-import { InventoryIntakeProgress } from '../components/InventoryIntakeProgress';
-import type { InventoryIntakeWorkflow, IntakePublicationTarget } from '../types/inventoryIntakeRun';
 import { useInventoryProcessor } from "../hooks/useInventoryProcessor";
+import { useIntakeRuns } from "../hooks/useIntakeRuns";
 import {
   InventoryFilters,
   type InventoryFiltersRef,
 } from "../components/InventoryFilters";
 import { InventoryEntryTable } from "../components/InventoryEntryTable";
+import { EntryConditionSelect } from "../components/EntryConditionSelect";
+import { BackgroundBatches } from "../components/BackgroundBatches";
+import { InventoryHelp } from "../components/InventoryHelp";
+import { QueueBar } from "../components/QueueBar";
 import { getConditionShortcutDirection } from "../components/quantityKeyboard";
 import {
-  INVENTORY_CONDITION_ORDER,
-  type InventorySelectableCondition,
-} from "../../../core/utils/conditionOrder";
-
-type IntakeCostMethod = "estimate" | "cost_rate" | "purchase_total";
-
-const DEFAULT_COST_RATE_INPUT: CostRateInput = {
-  marketPercent: marketPercentOf(DEFAULT_ESTIMATED_COST_RATE),
-  perCardDeduction: (DEFAULT_ESTIMATED_COST_RATE.perUnitDeductionCents / 100).toFixed(2),
-};
+  captureEntryFocus,
+  restoreEntryFocus,
+  type EntryFocus,
+} from "../components/entryFocus";
+import {
+  DEFAULT_NEXT_BATCH_COST,
+  describeQueuedCost,
+  nextBatchCostAfterQueue,
+  nextBatchCostRequest,
+} from "../services/nextBatchCost";
+import type { InventoryIntakeWorkflow } from "../types/inventoryIntakeRun";
 
 export default function InventoryManagerRoute() {
   const {
@@ -84,87 +72,52 @@ export default function InventoryManagerRoute() {
     selectNextCondition,
     getFilteredSkus,
   } = useInventoryProcessor();
+  const intake = useIntakeRuns();
 
-  const [clearDialogOpen, setClearDialogOpen] = React.useState(false);
-  const [isCreatingBatch, setIsCreatingBatch] = React.useState(false);
-  const [queueRefreshKey, setQueueRefreshKey] = React.useState(0);
-  const [intakeTarget, setIntakeTarget] = React.useState<IntakePublicationTarget | null>(null);
-  const entryFocus = useRef<HTMLElement | null>(null);
-  const [costMethod, setCostMethod] = React.useState<IntakeCostMethod>("estimate");
-  const [costRateInput, setCostRateInput] = React.useState(DEFAULT_COST_RATE_INPUT);
-  const [purchaseReference, setPurchaseReference] = React.useState("");
-  const [purchaseTotal, setPurchaseTotal] = React.useState("");
-  const [purchaseEstimated, setPurchaseEstimated] = React.useState(false);
-  const [purchaseDate, setPurchaseDate] = React.useState("");
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [isCreatingBatch, setIsCreatingBatch] = useState(false);
+  const [nextCost, setNextCost] = useState(DEFAULT_NEXT_BATCH_COST);
+  const [workflow, setWorkflow] = useState<InventoryIntakeWorkflow>("price_only");
   const filtersRef = useRef<InventoryFiltersRef>(null);
-  const costRate = readCostRateInput(costRateInput);
-  const costRateBlocksQueue = costMethod === "cost_rate" && !costRate.valid;
-  const queuedCost = costMethod === "purchase_total" ? "the entered purchase total"
-    : costMethod === "cost_rate" && costRate.valid ? `an estimate at ${describeEstimatedCostRate(costRate.rate)}`
-    : `an estimate at the default ${describeEstimatedCostRate(DEFAULT_ESTIMATED_COST_RATE)}`;
+  const pageRef = useRef<HTMLDivElement>(null);
+  const entryRegionRef = useRef<HTMLDivElement>(null);
+
+  // The last place inventory was entered, so queuing and clearing hand focus back to it.
+  const entryFocus = useRef<EntryFocus | null>(null);
+  const entryFocusPending = useRef(false);
+  const [entryFocusRequest, setEntryFocusRequest] = useState(0);
+  const returnToEntry = useCallback(() => {
+    entryFocusPending.current = true;
+    setEntryFocusRequest((value) => value + 1);
+  }, []);
+
+  useEffect(() => {
+    const region = entryRegionRef.current;
+    if (!region) return;
+    const remember = (event: FocusEvent) => {
+      entryFocus.current = captureEntryFocus(event.target) ?? entryFocus.current;
+    };
+    region.addEventListener("focusin", remember);
+    return () => region.removeEventListener("focusin", remember);
+  }, []);
+
+  // Waits until the entry fieldset is enabled again, so the inputs can take focus.
+  useEffect(() => {
+    if (!entryFocusPending.current || isCreatingBatch || intakeBlocked) return;
+    const frame = window.requestAnimationFrame(() => {
+      entryFocusPending.current = false;
+      restoreEntryFocus(entryFocus.current);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [entryFocusRequest, isCreatingBatch, intakeBlocked]);
 
   const preserveFocusAcrossConditionChange = useCallback(
     (changeCondition: () => void) => {
-      const activeElement =
-        document.activeElement instanceof HTMLElement
-          ? document.activeElement
-          : null;
-      const focusId = activeElement?.dataset.inventoryFocusId ?? null;
-      const selectionSnapshot =
-        activeElement instanceof HTMLInputElement ||
-        activeElement instanceof HTMLTextAreaElement
-          ? {
-              start: activeElement.selectionStart,
-              end: activeElement.selectionEnd,
-              direction: activeElement.selectionDirection,
-            }
-          : null;
-
+      const focus = captureEntryFocus(document.activeElement);
       changeCondition();
-
-      window.requestAnimationFrame(() => {
-        const nextFocusTarget =
-          focusId === null
-            ? activeElement
-            : Array.from(
-                document.querySelectorAll<HTMLElement>(
-                  "[data-inventory-focus-id]",
-                ),
-              ).find(
-                (element) => element.dataset.inventoryFocusId === focusId,
-              ) ?? activeElement;
-
-        if (
-          !(nextFocusTarget instanceof HTMLElement) ||
-          !nextFocusTarget.isConnected
-        ) {
-          return;
-        }
-
-        nextFocusTarget.focus({ preventScroll: true });
-
-        if (
-          selectionSnapshot &&
-          (nextFocusTarget instanceof HTMLInputElement ||
-            nextFocusTarget instanceof HTMLTextAreaElement)
-        ) {
-          const maxSelectionIndex = nextFocusTarget.value.length;
-          const start = Math.max(
-            0,
-            Math.min(selectionSnapshot.start ?? 0, maxSelectionIndex),
-          );
-          const end = Math.max(
-            0,
-            Math.min(selectionSnapshot.end ?? start, maxSelectionIndex),
-          );
-
-          nextFocusTarget.setSelectionRange(
-            start,
-            end,
-            selectionSnapshot.direction ?? "none",
-          );
-        }
-      });
+      window.requestAnimationFrame(() =>
+        restoreEntryFocus(focus, { withSelection: true }),
+      );
     },
     [],
   );
@@ -174,71 +127,58 @@ export default function InventoryManagerRoute() {
     loadPendingInventory();
   }, [loadProductLines, loadPendingInventory]);
 
-  const handleProductLineChange = (productLineId: number) => {
-    loadSets(productLineId);
-  };
-
-  const handleSetChange = (setId: number) => {
-    selectSet(setId);
-  };
-
-  const handleSearchScopeChange = (nextSearchScope: "set" | "allSets") => {
-    setSearchScope(nextSearchScope);
-  };
-
-  const handleClearPendingInventory = () => {
-    setClearDialogOpen(true);
-  };
-
   const confirmClearPendingInventory = () => {
     clearPendingInventory();
     setClearDialogOpen(false);
+    returnToEntry();
   };
 
-  const handleCreateBatch = async (workflow: InventoryIntakeWorkflow = 'price_only') => {
+  const handleCreateBatch = async (chosenWorkflow: InventoryIntakeWorkflow = "price_only") => {
     setIsCreatingBatch(true);
     // Recovery resends the saved request with its original cost choice, not the one on screen.
     const recovering = hasPendingIntakeRequest;
+    const queuedCost = describeQueuedCost(nextCost);
+    const cost = nextBatchCostRequest(nextCost);
 
     try {
-      const batch = await createBatchFromPendingInventory(costMethod === "purchase_total" ? {
-        purchaseReference: purchaseReference.trim(), totalAmount: purchaseTotal.trim(),
-        provenance: purchaseEstimated ? "estimated" : "actual", allocationRule: "quantity",
-        ...(purchaseDate ? { purchasedAt: purchaseDate } : {}), currency: "USD",
-      } : undefined, workflow, intakeTarget?.sellerKey ?? '', costMethod === "cost_rate" ? {
-        marketPercent: costRateInput.marketPercent.trim(), perCardDeduction: costRateInput.perCardDeduction.trim(),
-      } : undefined);
-      setQueueRefreshKey(value => value + 1);
+      const batch = await createBatchFromPendingInventory(
+        cost.purchaseCost,
+        chosenWorkflow,
+        intake.target?.sellerKey ?? "",
+        cost.estimatedCostRate,
+      );
+      intake.reload();
       if (recovering) {
         setSuccess(`Batch ${batch.batchNumber} queued with its original cost choice. You can keep adding inventory.`);
         return;
       }
       setSuccess(`Batch ${batch.batchNumber} queued with ${queuedCost}. You can keep adding inventory.`);
-      // A cost rate describes the whole lot, so it stays for the next handoff; a total belongs to one.
-      if (costMethod === "purchase_total") setCostMethod("estimate");
-      setPurchaseReference('');
-      setPurchaseTotal('');
-      setPurchaseDate('');
-      setPurchaseEstimated(false);
+      setNextCost(nextBatchCostAfterQueue);
     } catch (error) {
       console.error("Failed to create batch:", error);
     } finally {
       setIsCreatingBatch(false);
-      window.requestAnimationFrame(() => {
-        if (entryFocus.current?.isConnected) entryFocus.current.focus({ preventScroll: true });
-      });
+      returnToEntry();
     }
   };
 
-  const getPendingTotal = () => {
-    return pendingInventory.reduce((sum, entry) => sum + entry.quantity, 0);
-  };
+  const pendingTotal = pendingInventory.reduce((sum, entry) => sum + entry.quantity, 0);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       // React's root listener also lives on document, so a focused quantity
       // input that already handled this shortcut cannot stop it reaching here.
       if (event.defaultPrevented) {
+        return;
+      }
+
+      // Dialogs, menus, and drawers render outside the page; their keys are their own.
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        target !== document.body &&
+        !pageRef.current?.contains(target)
+      ) {
         return;
       }
 
@@ -280,28 +220,48 @@ export default function InventoryManagerRoute() {
   }, [handleKeyDown]);
 
   return (
-    <Box>
-      <Box sx={{ maxWidth: 1200, mx: "auto", p: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Inventory Manager
-        </Typography>
+    <Box
+      ref={pageRef}
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+        px: 3,
+        py: 2,
+        boxSizing: "border-box",
+        height: { md: "calc(100dvh - 64px)" },
+      }}
+    >
+      <Stack spacing={2} sx={{ flexShrink: 0 }}>
+        <Stack direction="row" alignItems="center" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+          <Typography variant="h5" component="h1" sx={{ flex: 1 }}>
+            Inventory Manager
+          </Typography>
+          <BackgroundBatches
+            runs={intake.runs}
+            error={intake.error}
+            publicationPaused={intake.target?.publicationPaused ?? false}
+            onRunChanged={intake.reload}
+          />
+          <InventoryHelp />
+        </Stack>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
+        {error && <Alert severity="error">{error}</Alert>}
+        {hasPendingIntakeRequest && (
+          <Alert
+            severity="warning"
+            action={
+              <Button disabled={isCreatingBatch} onClick={() => void handleCreateBatch()}>
+                Recover Queue Request
+              </Button>
+            }
+          >
+            A queue request has not been confirmed. Recover the original request before entering more inventory. Its
+            original pricing, publication, and cost choices are preserved.
           </Alert>
         )}
 
-        {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>{success}</Alert>}
-        {hasPendingIntakeRequest && <Alert severity="warning" sx={{ mb: 2 }}
-          action={<Button disabled={isCreatingBatch} onClick={() => void handleCreateBatch()}>Recover Queue Request</Button>}>
-          A queue request has not been confirmed. Recover the original request before entering more inventory. Its original pricing, publication, and cost choices are preserved.
-        </Alert>}
-        <InventoryIntakeProgress refreshKey={queueRefreshKey} onTarget={setIntakeTarget} />
-        <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
-          <Typography variant="h6" gutterBottom>
-            Filter Products
-          </Typography>
+        <Paper component="section" aria-label="Filters" sx={{ p: 2 }} elevation={2}>
           <InventoryFilters
             ref={filtersRef}
             productLines={productLines}
@@ -311,140 +271,28 @@ export default function InventoryManagerRoute() {
             searchScope={searchScope}
             sealedFilter={sealedFilter}
             selectedLanguages={selectedLanguages}
-            onProductLineChange={handleProductLineChange}
-            onSetChange={handleSetChange}
-            onSearchScopeChange={handleSearchScopeChange}
+            onProductLineChange={loadSets}
+            onSetChange={selectSet}
+            onSearchScopeChange={setSearchScope}
             onSealedFilterChange={toggleSealedFilter}
             onLanguagesChange={setSelectedLanguages}
-          />
-        </Paper>
-      </Box>
-
-      <Box sx={{ width: "100%", px: 3, mb: 3 }}>
-        <Paper component="fieldset" disabled={intakeBlocked || isCreatingBatch} sx={{ p: 3, m: 0, minWidth: 0, border: 0 }} elevation={3}>
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 2,
-              flexWrap: "wrap",
-              mb: 2,
-            }}
           >
-            <Typography variant="h6">Add New Inventory</Typography>
-            <Stack
-              direction="row"
-              spacing={2}
-              alignItems="center"
-              sx={{ flexWrap: "wrap", justifyContent: "flex-end" }}
-            >
-              <FormControl size="small" sx={{ minWidth: 220 }}>
-                <InputLabel id="inventory-condition-label">
-                  Entry Condition
-                </InputLabel>
-                <Select
-                  labelId="inventory-condition-label"
-                  value={selectedCondition}
-                  label="Entry Condition"
-                  onChange={(event) =>
-                    setSelectedCondition(
-                      event.target.value as InventorySelectableCondition,
-                    )
-                  }
-                >
-                  {INVENTORY_CONDITION_ORDER.map((condition) => (
-                    <MenuItem key={condition} value={condition}>
-                      {condition}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <Chip
-                label="Shortcut: Ctrl+Up / Ctrl+Down (Cmd on Mac)"
-                variant="outlined"
-                color="info"
-              />
-              {pendingInventory.length > 0 && (
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <Typography variant="body2" color="primary">
-                    {getPendingTotal()} unqueued units across{" "}
-                    {pendingInventory.length} SKUs
-                  </Typography>
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    size="small"
-                    onPointerDown={() => { entryFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
-                    onClick={() => void handleCreateBatch('publish')}
-                    disabled={isCreatingBatch || costRateBlocksQueue || !intakeTarget?.canPublish}
-                  >
-                    {isCreatingBatch ? "Saving & Queuing..." : "Queue Pricing & Publishing"}
-                  </Button>
-                  <Button variant="contained" size="small" disabled={isCreatingBatch || costRateBlocksQueue || !intakeTarget}
-                    onPointerDown={() => { entryFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
-                    onClick={() => void handleCreateBatch('price_only')}>Queue Pricing Only</Button>
-                  <Button
-                    variant="outlined"
-                    color="secondary"
-                    onClick={handleClearPendingInventory}
-                    size="small"
-                    disabled={isCreatingBatch}
-                  >
-                    Clear Live Queue
-                  </Button>
-                </Stack>
-              )}
-            </Stack>
-          </Box>
+            <EntryConditionSelect value={selectedCondition} onChange={setSelectedCondition} />
+          </InventoryFilters>
+        </Paper>
+      </Stack>
 
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Queuing hands off the displayed quantities. If the shared queue changes, you must review it again. New additions go into the next batch.
-            Pricing &amp; Publishing authorizes eligible results to go live for seller {intakeTarget?.sellerKey || '(not configured)'}, subject to publication safety controls.
-            Pricing Only waits for manual publication. <Link to="/pending-inventory-pricer">Open Batch Pricer</Link>.
-          </Typography>
-          {intakeTarget?.publishingUnavailableReason && <Alert severity="warning" sx={{ mb: 2 }}>{intakeTarget.publishingUnavailableReason} <Link to="/publication-configuration">Publication settings</Link>.</Alert>}
-          <Box component="section" aria-labelledby="batch-cost-heading" sx={{ mb: 2, p: 2, border: 1, borderColor: "divider", borderRadius: 1 }}>
-            <FormControl>
-              <Typography id="batch-cost-heading" variant="subtitle2">Cost of the next batch</Typography>
-              <RadioGroup row value={costMethod} aria-labelledby="batch-cost-heading"
-                onChange={(event) => setCostMethod(event.target.value as IntakeCostMethod)}>
-                <FormControlLabel value="estimate" control={<Radio size="small" />}
-                  label={`Default estimate: ${describeEstimatedCostRate(DEFAULT_ESTIMATED_COST_RATE)}`} />
-                <FormControlLabel value="cost_rate" control={<Radio size="small" />} label="My own rate" />
-                <FormControlLabel value="purchase_total" control={<Radio size="small" />} label="Purchase total" />
-              </RadioGroup>
-            </FormControl>
-            {costMethod === "cost_rate" && (
-              <Stack spacing={1} sx={{ mt: 1 }}>
-                <CostRateFields value={costRateInput} onChange={setCostRateInput} />
-                <Typography variant="caption" color="text.secondary">
-                  The rate stays selected for later batches of this lot until you change it or reload the page. It also costs cards whose market price is found after intake, and you can change a queued batch's rate in Background inventory batches.
-                </Typography>
-              </Stack>
-            )}
-            {costMethod === "purchase_total" && (
-              <Stack spacing={1} sx={{ mt: 1 }}>
-                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                  <TextField label="Purchase reference" value={purchaseReference} required size="small"
-                    onChange={(event) => setPurchaseReference(event.target.value)} />
-                  <TextField label="Purchase total (USD)" value={purchaseTotal} required size="small"
-                    inputMode="decimal" onChange={(event) => setPurchaseTotal(event.target.value)} />
-                  <TextField label="Purchase date" type="date" value={purchaseDate} size="small"
-                    slotProps={{ inputLabel: { shrink: true } }} onChange={(event) => setPurchaseDate(event.target.value)} />
-                  <FormControlLabel control={<Checkbox checked={purchaseEstimated}
-                    onChange={(event) => setPurchaseEstimated(event.target.checked)} />}
-                    label="Estimated" />
-                </Stack>
-                <Typography variant="caption" color="text.secondary">
-                  Enter only this handoff's share if the purchase is split across batches. It is split across the cards by quantity and clears after the batch is queued.
-                </Typography>
-              </Stack>
-            )}
-            <Typography variant="caption" component="p" color="text.secondary" sx={{ mt: 1 }}>
-              Cost feeds margins and Inventory Economics; pricing does not use it. Estimates use each card's market price at intake, so a card worth less than the amount per card counts as negative cost.
-            </Typography>
-          </Box>
+      <Box
+        component="fieldset"
+        aria-label="Add new inventory"
+        disabled={intakeBlocked || isCreatingBatch}
+        sx={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minHeight: 0, minWidth: 0, m: 0, p: 0, border: 0 }}
+      >
+        <Paper
+          ref={entryRegionRef}
+          elevation={2}
+          sx={{ p: 2, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}
+        >
           <InventoryEntryTable
             skus={getFilteredSkus()}
             pendingInventory={pendingInventory}
@@ -468,9 +316,35 @@ export default function InventoryManagerRoute() {
             sealedFilter={sealedFilter}
           />
         </Paper>
+        {pendingInventory.length > 0 && (
+          <QueueBar
+            units={pendingTotal}
+            skuCount={pendingInventory.length}
+            cost={nextCost}
+            onCostChange={setNextCost}
+            workflow={workflow}
+            onWorkflowChange={setWorkflow}
+            target={intake.target}
+            queuing={isCreatingBatch}
+            onQueue={(chosenWorkflow) => void handleCreateBatch(chosenWorkflow)}
+            onClear={() => setClearDialogOpen(true)}
+          />
+        )}
       </Box>
 
-      <Box sx={{ maxWidth: 1200, mx: "auto", px: 3 }} />
+      <Snackbar
+        open={Boolean(success)}
+        autoHideDuration={8000}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{ mt: 7 }}
+        onClose={(_, reason) => {
+          if (reason !== "clickaway") setSuccess(null);
+        }}
+      >
+        <Alert severity="success" variant="filled" onClose={() => setSuccess(null)}>
+          {success}
+        </Alert>
+      </Snackbar>
 
       <Dialog
         open={clearDialogOpen}
@@ -478,29 +352,21 @@ export default function InventoryManagerRoute() {
         aria-labelledby="clear-dialog-title"
         aria-describedby="clear-dialog-description"
       >
-        <DialogTitle id="clear-dialog-title">
-          Clear Live Inventory Queue?
-        </DialogTitle>
+        <DialogTitle id="clear-dialog-title">Clear unqueued inventory?</DialogTitle>
         <DialogContent>
           <DialogContentText id="clear-dialog-description">
-            Are you sure you want to clear all unbatched inventory entries? This
-            will remove {getPendingTotal()} items from {pendingInventory.length}{" "}
-            SKUs.
+            This removes {pendingTotal} units across {pendingInventory.length} SKUs that have not been queued yet.
             <br />
             <br />
-            Batches that have already been created are not affected.
+            Batches that have already been queued are not affected.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setClearDialogOpen(false)} color="primary">
             Cancel
           </Button>
-          <Button
-            onClick={confirmClearPendingInventory}
-            color="secondary"
-            variant="contained"
-          >
-            Clear Live Queue
+          <Button onClick={confirmClearPendingInventory} color="secondary" variant="contained">
+            Clear unqueued
           </Button>
         </DialogActions>
       </Dialog>

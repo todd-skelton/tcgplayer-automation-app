@@ -62,3 +62,36 @@ export function intakeRunStatus(run: InventoryIntakeRun): string {
   if (run.planningStatus === "waiting") return "Awaiting publication";
   return run.publishedCount === run.itemCount ? "Published" : "Needs review";
 }
+
+/** How many background batches are still working and how many failed or need review. */
+export interface IntakeRunSummary {
+  running: number;
+  needsAttention: number;
+}
+
+const RUNNING_STATUSES = new Set(["Queued", "Pricing", "Awaiting publication"]);
+const ATTENTION_STATUSES = new Set(["Pricing failed", "Needs review"]);
+
+export function summarizeIntakeRuns(runs: InventoryIntakeRun[]): IntakeRunSummary {
+  return runs.reduce(
+    (summary, run) => {
+      const status = intakeRunStatus(run);
+      return {
+        running: summary.running + (RUNNING_STATUSES.has(status) ? 1 : 0),
+        needsAttention:
+          summary.needsAttention +
+          (ATTENTION_STATUSES.has(status) || run.planningError || run.pricingError ? 1 : 0),
+      };
+    },
+    { running: 0, needsAttention: 0 },
+  );
+}
+
+/** The summary in words, for example "2 running, 1 needs review". */
+export function describeIntakeRunSummary({ running, needsAttention }: IntakeRunSummary): string {
+  const parts = [
+    running > 0 ? `${running} running` : null,
+    needsAttention > 0 ? `${needsAttention} ${needsAttention === 1 ? "needs" : "need"} review` : null,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : "none running";
+}

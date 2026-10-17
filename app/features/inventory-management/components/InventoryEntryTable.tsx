@@ -25,8 +25,6 @@ import {
   type GridPaginationModel,
   type GridRowId,
   type GridRowsProp,
-  GridToolbarContainer,
-  GridToolbarQuickFilter,
   useGridApiRef,
 } from "@mui/x-data-grid";
 import { getVisibleRows } from "@mui/x-data-grid/internals";
@@ -988,16 +986,6 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
         [onAdjustQuantity, getSkuMetadata],
       );
 
-      const CustomToolbar = () => {
-        return (
-          <GridToolbarContainer>
-            <Box sx={{ width: 400 }}>
-              <GridToolbarQuickFilter />
-            </Box>
-          </GridToolbarContainer>
-        );
-      };
-
       const getTcgPlayerImageUrl = useCallback(
         (productId: number, size = "200x200") => {
           return `https://tcgplayer-cdn.tcgplayer.com/product/${productId}_in_${size}.jpg`;
@@ -1327,9 +1315,9 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
       const hasNoSkus = skus.length === 0;
 
       return (
-        <Box>
+        <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
           {(!hasNoSkus || searchScope === "allSets") && (
-            <Box sx={{ mb: 2 }}>
+            <Box sx={{ mb: 2, display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
               <TextField
                 label={`${
                   searchScope === "allSets"
@@ -1352,7 +1340,7 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                     : "Type to filter products and press Enter..."
                 }
                 sx={{
-                  width: 400,
+                  width: { xs: "100%", sm: 400 },
                   "& .MuiInputLabel-root": {
                     color:
                       productNameFilter &&
@@ -1377,7 +1365,6 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                       onAllSetsSearch("");
                     }
                   }}
-                  sx={{ ml: 1 }}
                   variant="outlined"
                 >
                   Clear
@@ -1388,38 +1375,16 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                   <Button
                     size="small"
                     onClick={handleSearchSubmit}
-                    sx={{ ml: 1 }}
                     variant="contained"
                     color="primary"
                   >
                     {searchScope === "allSets" ? "Search All Sets" : "Search"}
                   </Button>
                 )}
-            </Box>
-          )}
-
-          {hasNoSkus && (
-            <Alert
-              severity={
-                searchScope === "allSets" && allSetsSearchTerm
-                  ? "warning"
-                  : "info"
-              }
-              sx={{ mb: 2 }}
-            >
-              {searchScope === "allSets"
-                ? allSetsSearchTerm
-                  ? `No matches found for card number "${allSetsSearchTerm}" in the selected product line.`
-                  : "Enter a card number to search across all sets in the selected product line."
-                : "No SKUs available. Please select a product line and set to see available inventory options."}
-            </Alert>
-          )}
-
-          {!hasNoSkus && (
-            <>
-              <Box
-                sx={{ mb: 2, display: "flex", gap: 1, alignItems: "center" }}
-              >
+              {!hasNoSkus && (
+                <Box
+                  sx={{ ml: "auto", display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}
+                >
                 <Chip
                   label={`${dataGridRows.length} products displayed`}
                   color="info"
@@ -1454,9 +1419,31 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                     }}
                   />
                 )}
-              </Box>
+                </Box>
+              )}
+            </Box>
+          )}
 
-              <Box sx={{ height: 600, width: "100%" }}>
+          {hasNoSkus && (
+            <Alert
+              severity={
+                searchScope === "allSets" && allSetsSearchTerm
+                  ? "warning"
+                  : "info"
+              }
+              sx={{ mb: 2 }}
+            >
+              {searchScope === "allSets"
+                ? allSetsSearchTerm
+                  ? `No matches found for card number "${allSetsSearchTerm}" in the selected product line.`
+                  : "Enter a card number to search across all sets in the selected product line."
+                : "No SKUs available. Please select a product line and set to see available inventory options."}
+            </Alert>
+          )}
+
+          {!hasNoSkus && (
+            <>
+              <Box sx={{ flex: { md: 1 }, height: { xs: 600, md: "auto" }, minHeight: { md: 240 }, width: "100%" }}>
                 <ClientOnlyDataGrid
                   apiRef={apiRef}
                   rows={dataGridRows}
@@ -1484,9 +1471,6 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
                         quickFilterValues: [],
                       },
                     },
-                  }}
-                  slots={{
-                    toolbar: CustomToolbar,
                   }}
                   sx={{
                     "& .MuiDataGrid-row": {
