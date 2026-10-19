@@ -75,8 +75,7 @@ import { PullSheetStep } from "../components/steps/PullSheetStep";
 import { BuyPostageStep } from "../components/steps/BuyPostageStep";
 import { PrintStep } from "../components/steps/PrintStep";
 import { PackStep } from "../components/steps/PackStep";
-import { ApplyTrackingStep } from "../components/steps/ApplyTrackingStep";
-import { NotifyStep } from "../components/steps/NotifyStep";
+import { ShipStep } from "../components/steps/ShipStep";
 import { ReturnFlowPanel } from "../components/ReturnFlowPanel";
 import type { SellerOrderCoverage } from "~/features/seller-order-history/types/sellerOrderHistory";
 import { refreshShippingIntakeHistory, withoutShippingIntakeHistory } from "../services/shippingIntakeHistory";
@@ -149,7 +148,7 @@ export const meta: MetaFunction = () => {
     {
       name: "description",
       content:
-        "Step-by-step shipping workflow: load orders, pull cards, buy postage, print labels, pack, apply tracking, and notify buyers.",
+        "Step-by-step shipping workflow: load orders, pull cards, buy postage, print labels, pack, then mark orders shipped and notify buyers.",
     },
   ];
 };
@@ -171,7 +170,6 @@ export default function ShippingExportRoute() {
 
   // ── Order / shipment state ────────────────────────────────────────────────
   const [sourceOrders, setSourceOrders] = useState<TcgPlayerShippingOrder[]>([]);
-  const [orders, setOrders] = useState<TcgPlayerShippingOrder[]>([]);
   const [shipments, setShipments] = useState<EasyPostShipment[]>([]);
   const [shipmentToOrderMap, setShipmentToOrderMap] = useState<ShipmentToOrderMap>({});
   const [shipmentReferences, setShipmentReferences] = useState<string[]>([]);
@@ -207,9 +205,8 @@ export default function ShippingExportRoute() {
   const [generatingBatchLabelSize, setGeneratingBatchLabelSize] = useState<LabelSize | null>(null);
   const [purchasingLabelSize, setPurchasingLabelSize] = useState<LabelSize | null>(null);
   const [purchasingActionKey, setPurchasingActionKey] = useState<string | null>(null);
-  const [isApplyingTracking, setIsApplyingTracking] = useState(false);
+  const [isShipping, setIsShipping] = useState(false);
   const [trackingApplyResults, setTrackingApplyResults] = useState<ShippingTrackingApplyResult[]>([]);
-  const [isSendingShippedMessages, setIsSendingShippedMessages] = useState(false);
   const [shippedMessageResults, setShippedMessageResults] = useState<ShippingShippedMessageResult[]>([]);
 
   // ── Pack step state ───────────────────────────────────────────────────────
@@ -247,7 +244,6 @@ export default function ShippingExportRoute() {
   const {
     isGeneratingPullSheet,
     pullSheetItems,
-    pullSheetOrderIds,
     pullSheetError,
     packPullSheetStatus,
     packPullSheetError,
@@ -265,12 +261,19 @@ export default function ShippingExportRoute() {
     sourceOrders,
     trackingApplyResults,
   );
-  const { messages: shippedMessageItems, alreadySentCount } = buildShippedMessageItems(
+  const { messages: shippedMessageItems } = buildShippedMessageItems(
     shipments,
     sellerKeyInput,
     shipmentToOrderMap,
     outboundPurchaseResultsByReference,
     shippedMessageResults,
+  );
+  const shipPendingOrderNumbers = [
+    ...new Set([...trackingApplyItems, ...shippedMessageItems].map((item) => item.orderNumber)),
+  ];
+  const shippedOrderCount = Math.max(
+    0,
+    trackingApplyItems.length + alreadyTrackedCount - shipPendingOrderNumbers.length,
   );
 
   // ── Internal helpers ──────────────────────────────────────────────────────
@@ -394,7 +397,6 @@ export default function ShippingExportRoute() {
     const nextState = buildShippingWorkflowOrderState(nextSourceOrders, config);
 
     setSourceOrders(nextState.sourceOrders);
-    setOrders(nextState.orders);
     setShipments(nextState.shipments);
     setShipmentToOrderMap(nextState.shipmentToOrderMap);
     setShipmentReferences(nextState.shipmentReferences);
@@ -495,13 +497,10 @@ export default function ShippingExportRoute() {
         const refreshed = await refreshShippingIntakeHistory(sourceSnapshot, sellerKeyInput.trim());
         if (expectedSequence !== orderSourceSequenceRef.current || refreshSequence !== intakeRefreshSequenceRef.current) return;
         setSourceOrders((current) => current.map((order) => order["Order #"]).join("|") === expectedOrders ? refreshed : current);
-        const histories = new Map(refreshed.map((order) => [order["Order #"], order.intakeHistory]));
-        setOrders((current) => current.map((order) => ({ ...order, intakeHistory: histories.get(order["Order #"]) })));
       } catch (refreshError) {
         if (expectedSequence !== orderSourceSequenceRef.current || refreshSequence !== intakeRefreshSequenceRef.current) return;
         setSourceOrders((current) => current.map((order) => order["Order #"]).join("|") === expectedOrders
           ? withoutShippingIntakeHistory(current) : current);
-        setOrders((current) => withoutShippingIntakeHistory(current));
         const warning = `Intake history refresh failed: ${String(refreshError)}`;
         setLoadWarnings((current) => current.includes(warning) ? current : [...current, warning]);
       }
@@ -615,13 +614,10 @@ export default function ShippingExportRoute() {
         try {
           const refreshed = await refreshShippingIntakeHistory(sourceOrders, sellerKeyInput.trim());
           if (sourceSequence !== orderSourceSequenceRef.current || refreshSequence !== intakeRefreshSequenceRef.current) return;
-          const histories = new Map(refreshed.map((order) => [order["Order #"], order.intakeHistory]));
           setSourceOrders(refreshed);
-          setOrders((current) => current.map((order) => ({ ...order, intakeHistory: histories.get(order["Order #"]) })));
         } catch (refreshError) {
           if (sourceSequence !== orderSourceSequenceRef.current || refreshSequence !== intakeRefreshSequenceRef.current) return;
           setSourceOrders((current) => withoutShippingIntakeHistory(current));
-          setOrders((current) => withoutShippingIntakeHistory(current));
           setLoadWarnings((current) => [...current, `Intake history is unavailable after catch-up: ${String(refreshError)}`]);
         }
       }
@@ -890,61 +886,61 @@ export default function ShippingExportRoute() {
   };
 
   // ── Handlers: tracking & messaging ───────────────────────────────────────
-  const handleApplyTracking = async () => {
-    if (trackingApplyItems.length === 0 || isApplyingTracking) return;
+  /**
+   * Applies tracking to orders that still need it, then messages buyers. An
+   * order whose tracking did not apply is not messaged, so no buyer hears it
+   * shipped before TCGPlayer shows the tracking number.
+   */
+  const handleShip = async () => {
+    if (shipPendingOrderNumbers.length === 0 || isShipping) return;
 
-    setIsApplyingTracking(true);
+    setIsShipping(true);
     setError(null);
 
     try {
-      const response = await fetch("/api/shipping-export/tcgplayer-tracking", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ updates: trackingApplyItems }),
-      });
+      const untrackedOrderNumbers = new Set(trackingApplyItems.map((item) => item.orderNumber));
 
-      const trackingResponse = await readJsonResponse<ShippingTrackingApplyResponse>(
-        response,
-        "Failed to apply tracking to TCGPlayer orders.",
-      );
+      if (trackingApplyItems.length > 0) {
+        const response = await fetch("/api/shipping-export/tcgplayer-tracking", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ updates: trackingApplyItems }),
+        });
+        const trackingResponse = await readJsonResponse<ShippingTrackingApplyResponse>(
+          response,
+          "Failed to apply tracking to TCGPlayer orders.",
+        );
 
-      // Earlier applied orders stay applied when only the failed ones are retried.
-      setTrackingApplyResults((previous) =>
-        mergeResultsByOrderNumber(previous, trackingResponse.results),
-      );
-    } catch (trackingError) {
-      setError(String(trackingError));
+        // Earlier applied orders stay applied when only the failed ones are retried.
+        setTrackingApplyResults((previous) =>
+          mergeResultsByOrderNumber(previous, trackingResponse.results),
+        );
+        for (const result of trackingResponse.results) {
+          if (result.status === "applied") untrackedOrderNumbers.delete(result.orderNumber);
+        }
+      }
+
+      const messages = shippedMessageItems.filter((item) => !untrackedOrderNumbers.has(item.orderNumber));
+      if (messages.length > 0) {
+        const response = await fetch("/api/shipping-export/tcgplayer-shipped-messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages }),
+        });
+        const shippedMessageResponse = await readJsonResponse<ShippingShippedMessageResponse>(
+          response,
+          "Failed to send shipped messages to TCGPlayer.",
+        );
+
+        // Earlier messaged orders stay messaged when only the failed ones are retried.
+        setShippedMessageResults((previous) =>
+          mergeResultsByOrderNumber(previous, shippedMessageResponse.results),
+        );
+      }
+    } catch (shipError) {
+      setError(String(shipError));
     } finally {
-      setIsApplyingTracking(false);
-    }
-  };
-
-  const handleSendShippedMessages = async () => {
-    if (shippedMessageItems.length === 0 || isSendingShippedMessages) return;
-
-    setIsSendingShippedMessages(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/shipping-export/tcgplayer-shipped-messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: shippedMessageItems }),
-      });
-
-      const shippedMessageResponse = await readJsonResponse<ShippingShippedMessageResponse>(
-        response,
-        "Failed to send shipped messages to TCGPlayer.",
-      );
-
-      // Earlier messaged orders stay messaged when only the failed ones are retried.
-      setShippedMessageResults((previous) =>
-        mergeResultsByOrderNumber(previous, shippedMessageResponse.results),
-      );
-    } catch (shippedMessageError) {
-      setError(String(shippedMessageError));
-    } finally {
-      setIsSendingShippedMessages(false);
+      setIsShipping(false);
     }
   };
 
@@ -1153,10 +1149,8 @@ export default function ShippingExportRoute() {
       (shipment) => outboundPurchaseResultsByReference[shipment.reference]?.result.status === "purchased",
     ).length,
     packedCount: packedOrderNumbers.size,
-    trackingReadyCount: trackingApplyItems.length,
-    alreadyTrackedCount,
-    messageReadyCount: shippedMessageItems.length,
-    alreadySentCount,
+    shipPendingCount: shipPendingOrderNumbers.length,
+    shippedCount: shippedOrderCount,
   });
   const batchValue = useMemo(
     () => (sourceOrders.length > 0 ? saleValueOfOrders(sourceOrders) : null),
@@ -1174,17 +1168,11 @@ export default function ShippingExportRoute() {
       color: config.easypostMode === "test" ? "warning" : "primary",
       onClick: () => void handleBuyPostage(),
     },
-    "apply-tracking": {
-      label: isApplyingTracking ? "Applying Tracking..." : "Apply Tracking to TCGPlayer",
-      busy: isApplyingTracking,
-      disabled: trackingApplyItems.length === 0 || isApplyingTracking,
-      onClick: () => void handleApplyTracking(),
-    },
-    notify: {
-      label: isSendingShippedMessages ? "Sending Shipped Messages..." : "Send Shipped Messages",
-      busy: isSendingShippedMessages,
-      disabled: shippedMessageItems.length === 0 || isSendingShippedMessages,
-      onClick: () => void handleSendShippedMessages(),
+    ship: {
+      label: isShipping ? "Marking Shipped..." : "Mark Shipped & Notify Buyers",
+      busy: isShipping,
+      disabled: shipPendingOrderNumbers.length === 0 || isShipping,
+      onClick: () => void handleShip(),
     },
   };
 
@@ -1293,7 +1281,6 @@ export default function ShippingExportRoute() {
             sourceOrders={sourceOrders}
             shipments={shipments}
             pullSheetItems={pullSheetItems}
-            pullSheetOrderIds={pullSheetOrderIds}
             isLoadingPullSheet={isGeneratingPullSheet}
             pullSheetError={pullSheetError}
           />
@@ -1304,24 +1291,17 @@ export default function ShippingExportRoute() {
             config={config}
             environmentStatus={environmentStatus}
             shipments={shipments}
-            orders={orders}
             sourceOrders={sourceOrders}
             shipmentToOrderMap={shipmentToOrderMap}
             outboundPurchaseResultsByReference={outboundPurchaseResultsByReference}
             returnPurchaseResultsByReference={returnPurchaseResultsByReference}
-            batchLabelResultsBySize={batchLabelResultsBySize}
-            availableLabelSizes={availableLabelSizes}
-            purchasingLabelSize={purchasingLabelSize}
+            isPurchasing={purchasingLabelSize !== null || purchasingActionKey !== null}
             purchasingActionKey={purchasingActionKey}
-            generatingBatchLabelSize={generatingBatchLabelSize}
-            isLoadingExistingPostage={isLoadingExistingPostage}
             onBuyShipment={(s) => void handleBuyShipment(s)}
             onBuyReturnLabel={(s) => void handleBuyReturnLabel(s)}
-            onGenerateBatchLabel={(size) => void handleGenerateBatchLabelFromSavedPostage(size)}
             onEditShipment={handleOpenEditDrawer}
             onDownloadShipment={handleDownloadShipment}
             onDownloadReturnShipment={handleDownloadReturnShipment}
-            savedPurchasedEntriesForLabelSize={getSavedPurchasedEntriesForLabelSize}
           />
         )}
 
@@ -1355,18 +1335,11 @@ export default function ShippingExportRoute() {
           />
         )}
 
-        {step.key === "apply-tracking" && (
-          <ApplyTrackingStep
-            trackingApplyItems={trackingApplyItems}
-            alreadyTrackedCount={alreadyTrackedCount}
+        {step.key === "ship" && (
+          <ShipStep
+            pendingOrderNumbers={shipPendingOrderNumbers}
+            shippedOrderCount={shippedOrderCount}
             trackingApplyResults={trackingApplyResults}
-          />
-        )}
-
-        {step.key === "notify" && (
-          <NotifyStep
-            shippedMessageItems={shippedMessageItems}
-            alreadySentCount={alreadySentCount}
             shippedMessageResults={shippedMessageResults}
           />
         )}

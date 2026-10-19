@@ -64,10 +64,10 @@ const testCases: TestCase[] = [
     run: () => {
       const html = renderLoadOrdersStep();
 
-      assert.match(html, /Live TCGPlayer Seller Orders/);
       assert.match(html, /Load Live TCGPlayer Orders/);
-      assert.match(html, /Single Order Lookup/);
       assert.match(html, /Lookup Single Order/);
+      assert.match(html, /Seller: not set/, "an empty seller key is called out on its button");
+      assert.doesNotMatch(html, /Saved default/, "the seller key field stays in its popover until asked for");
     },
   },
   {

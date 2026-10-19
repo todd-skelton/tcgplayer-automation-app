@@ -1,17 +1,17 @@
+import CheckBoxIcon from "@mui/icons-material/CheckBox";
+import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import GridViewIcon from "@mui/icons-material/GridView";
+import KeyboardIcon from "@mui/icons-material/Keyboard";
 import ListIcon from "@mui/icons-material/List";
 import {
   Alert,
   Box,
-  Card,
-  CardContent,
+  Button,
   Checkbox,
   Chip,
-  FormControlLabel,
   IconButton,
-  LinearProgress,
   Stack,
   Table,
   TableBody,
@@ -21,9 +21,10 @@ import {
   TableRow,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { PullSheetGrid } from "~/features/pull-sheet/components/PullSheetGrid";
 import type { PullSheetItem } from "~/features/pull-sheet/types/pullSheetTypes";
 import {
@@ -35,6 +36,7 @@ import {
 import { getOrderNumbersForShipmentReference } from "../../services/shippingExportUtils";
 import { SaleValueFigures } from "../SaleValueFigures";
 import { shippingInventorySkuId } from "../../services/shippingOrderIdentity";
+import { packShortcutFor, type PackShortcut } from "../../services/packShortcut";
 import type {
   PackPullSheetLoadStatus,
   PackPullSheetShipmentMatch,
@@ -100,6 +102,51 @@ function buildFallbackRowsFromLines(order: TcgPlayerShippingOrder): FallbackRow[
   }));
 }
 
+function formatAddress(order: TcgPlayerShippingOrder): string {
+  return [
+    `${order.FirstName} ${order.LastName}`,
+    order.Address1,
+    order.Address2,
+    `${order.City}, ${order.State} ${order.PostalCode}`,
+    order.Country,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function postageChipColor(entry: ShippingPostagePurchaseEntry) {
+  return entry.result.status === "purchased"
+    ? "success"
+    : entry.result.status === "failed"
+      ? "error"
+      : "warning";
+}
+
+/** One order of the shipment: its number and value line above its cards. */
+function OrderSection({
+  order,
+  value,
+  children,
+}: {
+  order: TcgPlayerShippingOrder;
+  value: SaleValue;
+  children: ReactNode;
+}) {
+  return (
+    <Box sx={{ border: 1, borderColor: "divider", borderRadius: 2, p: 1.5 }}>
+      <Stack spacing={1}>
+        <Stack direction="row" spacing={1.5} alignItems="center" useFlexGap flexWrap="wrap">
+          <Typography variant="subtitle2" fontWeight={600}>
+            Order {order["Order #"]}
+          </Typography>
+          <SaleValueFigures value={value} />
+        </Stack>
+        {children}
+      </Stack>
+    </Box>
+  );
+}
+
 interface PackStepProps {
   sourceOrders: TcgPlayerShippingOrder[];
   shipmentReferences: string[];
@@ -142,7 +189,7 @@ export function PackStep({
     .map((orderNumber) =>
       sourceOrders.find((order) => order["Order #"] === orderNumber),
     )
-    .filter((order): order is TcgPlayerShippingOrder => order !== null);
+    .filter((order): order is TcgPlayerShippingOrder => order !== undefined);
 
   const purchaseEntry = currentReference
     ? outboundPurchaseResultsByReference[currentReference]
@@ -153,8 +200,6 @@ export function PackStep({
   const isPacked = currentReference
     ? packedOrderNumbers.has(currentReference)
     : false;
-  const packedCount = packedOrderNumbers.size;
-  const progress = totalShipments > 0 ? (packedCount / totalShipments) * 100 : 0;
 
   const allLineItems = mergedOrders.flatMap((order) => order.products ?? []);
   const hasLineItems = allLineItems.length > 0;
@@ -233,368 +278,210 @@ export function PackStep({
     }
   }
 
+  const pageRef = useRef<HTMLDivElement>(null);
+  const applyShortcut = useRef<(shortcut: PackShortcut) => void>(() => undefined);
+  applyShortcut.current = (shortcut) => {
+    if (shortcut === "previous") {
+      setCurrentIndex((index) => Math.max(0, index - 1));
+    } else if (shortcut === "next") {
+      setCurrentIndex((index) => Math.min(totalShipments - 1, index + 1));
+    } else if (currentReference) {
+      handleMarkPacked(currentReference, !isPacked);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Dialogs, menus, and drawers render outside the page; their keys are their own.
+      const target = event.target;
+      if (target instanceof Node && target !== document.body && !pageRef.current?.contains(target)) {
+        return;
+      }
+      const element = target instanceof HTMLElement && target !== document.body ? target : null;
+      const shortcut = packShortcutFor({
+        key: event.key,
+        altKey: event.altKey,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        shiftKey: event.shiftKey,
+        defaultPrevented: event.defaultPrevented,
+        target: element && {
+          tagName: element.tagName,
+          type: element instanceof HTMLInputElement ? element.type : undefined,
+          role: element.getAttribute("role"),
+          isContentEditable: element.isContentEditable,
+        },
+      });
+      if (shortcut) {
+        event.preventDefault();
+        applyShortcut.current(shortcut);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const itemCount = mergedOrders.reduce((sum, order) => sum + order["Item Count"], 0);
+
   return (
-    <Stack spacing={3}>
-      <Stack
-        direction="row"
-        spacing={2}
-        alignItems="center"
-        justifyContent="space-between"
-      >
-        <Stack direction="row" spacing={1} alignItems="center">
-          {viewMode === "card" && (
-            <>
-              <IconButton
-                onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
-                disabled={currentIndex === 0}
-              >
-                <ChevronLeftIcon />
-              </IconButton>
-              <Typography variant="body1" fontWeight={600}>
-                Shipment {currentIndex + 1} of {totalShipments}
-              </Typography>
-              <IconButton
-                onClick={() =>
-                  setCurrentIndex((index) =>
-                    Math.min(totalShipments - 1, index + 1),
-                  )
-                }
-                disabled={currentIndex === totalShipments - 1}
-              >
-                <ChevronRightIcon />
-              </IconButton>
-            </>
-          )}
-          {viewMode === "list" && (
-            <Typography variant="body1" fontWeight={600}>
-              All Shipments
-            </Typography>
-          )}
-        </Stack>
-
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="body2" color="text.secondary">
-              {packedCount} of {totalShipments} packed
-            </Typography>
-            <Chip
-              label={`${Math.round(progress)}%`}
+    <Stack ref={pageRef} spacing={2}>
+      <Stack direction="row" spacing={1.5} alignItems="center" useFlexGap flexWrap="wrap">
+        {viewMode === "card" ? (
+          <Stack direction="row" alignItems="center">
+            <IconButton
               size="small"
-              color={packedCount === totalShipments ? "success" : "default"}
-            />
+              aria-label="Previous shipment"
+              onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
+              disabled={currentIndex === 0}
+            >
+              <ChevronLeftIcon />
+            </IconButton>
+            <Typography variant="body1" fontWeight={600} sx={{ whiteSpace: "nowrap" }}>
+              Shipment {currentIndex + 1} of {totalShipments}
+            </Typography>
+            <IconButton
+              size="small"
+              aria-label="Next shipment"
+              onClick={() => setCurrentIndex((index) => Math.min(totalShipments - 1, index + 1))}
+              disabled={currentIndex >= totalShipments - 1}
+            >
+              <ChevronRightIcon />
+            </IconButton>
           </Stack>
-          <ToggleButtonGroup
-            value={viewMode}
-            exclusive
-            onChange={(_, value) => value && setViewMode(value)}
-            size="small"
-          >
-            <ToggleButton value="card" aria-label="card view">
-              <GridViewIcon fontSize="small" />
-            </ToggleButton>
-            <ToggleButton value="list" aria-label="list view">
-              <ListIcon fontSize="small" />
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </Stack>
-      </Stack>
+        ) : (
+          <Typography variant="body1" fontWeight={600}>
+            All Shipments
+          </Typography>
+        )}
 
-      <LinearProgress
-        variant="determinate"
-        value={progress}
-        color={packedCount === totalShipments ? "success" : "primary"}
-        sx={{ height: 8, borderRadius: 4 }}
-      />
+        {viewMode === "card" && currentOrder && (
+          <>
+            {mergedOrderNumbers.length > 1 ? (
+              <Tooltip title={mergedOrderNumbers.join(", ")}>
+                <Chip label={`Combined shipment of ${mergedOrderNumbers.length} orders`} size="small" />
+              </Tooltip>
+            ) : (
+              <Chip label={currentReference} size="small" variant="outlined" />
+            )}
+            <Tooltip title={<Box sx={{ whiteSpace: "pre-line" }}>{formatAddress(currentOrder)}</Box>}>
+              <Typography variant="body2" noWrap>
+                {currentOrder.FirstName} {currentOrder.LastName} · {currentOrder.City}, {currentOrder.State}
+              </Typography>
+            </Tooltip>
+            <Typography variant="body2" color="text.secondary" noWrap>
+              {currentOrder["Shipping Method"]} · {itemCount} {itemCount === 1 ? "item" : "items"}
+            </Typography>
+            {purchaseEntry && (
+              <Tooltip title={purchaseEntry.result.trackingCode ?? ""}>
+                <Chip
+                  label={purchaseEntry.result.status.toUpperCase()}
+                  size="small"
+                  color={postageChipColor(purchaseEntry)}
+                />
+              </Tooltip>
+            )}
+          </>
+        )}
+
+        <Box sx={{ flex: 1 }} />
+
+        {viewMode === "card" && currentReference && (
+          <Button
+            size="small"
+            color="success"
+            variant={isPacked ? "contained" : "outlined"}
+            aria-pressed={isPacked}
+            startIcon={isPacked ? <CheckBoxIcon /> : <CheckBoxOutlineBlankIcon />}
+            onClick={() => handleMarkPacked(currentReference, !isPacked)}
+          >
+            {isPacked ? "Packed" : "Mark Packed"}
+          </Button>
+        )}
+        <Tooltip title="Space marks the shipment packed and moves to the next one. Left and right arrows move between shipments.">
+          <KeyboardIcon fontSize="small" color="action" aria-label="Keyboard shortcuts" />
+        </Tooltip>
+        <ToggleButtonGroup
+          value={viewMode}
+          exclusive
+          onChange={(_, value) => value && setViewMode(value)}
+          size="small"
+        >
+          <ToggleButton value="card" aria-label="card view">
+            <GridViewIcon fontSize="small" />
+          </ToggleButton>
+          <ToggleButton value="list" aria-label="list view">
+            <ListIcon fontSize="small" />
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Stack>
 
       {viewMode === "card" && (
         <>
           {currentOrder ? (
-            <Card variant="outlined">
-              <CardContent>
-                <Stack spacing={3}>
-                  <Stack
-                    direction={{ xs: "column", lg: "row" }}
-                    spacing={2}
-                    alignItems={{ xs: "stretch", lg: "flex-start" }}
-                    justifyContent="space-between"
-                  >
-                    <Stack spacing={1.5} flex={1}>
-                      <Stack
-                        direction={{ xs: "column", sm: "row" }}
-                        spacing={1}
-                        alignItems={{ xs: "flex-start", sm: "center" }}
-                        justifyContent="space-between"
-                      >
-                        <Typography variant="subtitle1" fontWeight={600}>
-                          Shipment Details
-                        </Typography>
-
-                        {mergedOrderNumbers.length > 1 ? (
-                          <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                            {mergedOrderNumbers.map((orderNumber) => (
-                              <Chip
-                                key={orderNumber}
-                                label={orderNumber}
-                                size="small"
-                                variant="outlined"
-                              />
-                            ))}
-                            <Chip
-                              label="Combined shipment"
-                              size="small"
-                              color="default"
-                            />
-                          </Stack>
-                        ) : (
-                          <Chip
-                            label={currentReference}
-                            size="small"
-                            variant="outlined"
-                          />
-                        )}
-                      </Stack>
-
-                      <Stack
-                        direction="row"
-                        spacing={2}
-                        useFlexGap
-                        flexWrap="wrap"
-                        alignItems="flex-start"
-                      >
-                        <Box sx={{ minWidth: 180, flex: "1 1 180px" }}>
-                          <Typography variant="body2" color="text.secondary">
-                            Recipient
-                          </Typography>
-                          <Typography variant="body2">
-                            {currentOrder.FirstName} {currentOrder.LastName}
-                          </Typography>
-                        </Box>
-
-                        <Box sx={{ minWidth: 240, flex: "2 1 280px" }}>
-                          <Typography variant="body2" color="text.secondary">
-                            Address
-                          </Typography>
-                          <Typography
-                            variant="body2"
-                            component="pre"
-                            sx={{
-                              m: 0,
-                              whiteSpace: "pre-wrap",
-                              fontFamily: "inherit",
-                            }}
-                          >
-                            {[
-                              currentOrder.Address1,
-                              currentOrder.Address2,
-                              `${currentOrder.City}, ${currentOrder.State} ${currentOrder.PostalCode}`,
-                              currentOrder.Country,
-                            ]
-                              .filter(Boolean)
-                              .join("\n")}
-                          </Typography>
-                        </Box>
-
-                        <Box sx={{ minWidth: 96 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            Items
-                          </Typography>
-                          <Typography variant="body2">
-                            {mergedOrders.reduce(
-                              (sum, order) => sum + order["Item Count"],
-                              0,
-                            )}
-                          </Typography>
-                        </Box>
-
-                        {mergedOrders.length > 1 && (
-                          <Box sx={{ flex: "1 1 100%" }}>
-                            <Typography variant="body2" color="text.secondary">
-                              Shipment value
-                            </Typography>
-                            <SaleValueFigures value={saleValueOfOrders(mergedOrders)} />
-                          </Box>
-                        )}
-
-                        <Box sx={{ minWidth: 128 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            Method
-                          </Typography>
-                          <Typography variant="body2">
-                            {currentOrder["Shipping Method"]}
-                          </Typography>
-                        </Box>
-
-                        {purchaseEntry && (
-                          <Box sx={{ minWidth: 180 }}>
-                            <Typography variant="body2" color="text.secondary">
-                              Postage
-                            </Typography>
-                            <Stack direction="row" spacing={1} alignItems="center">
-                              <Chip
-                                label={purchaseEntry.result.status.toUpperCase()}
-                                size="small"
-                                color={
-                                  purchaseEntry.result.status === "purchased"
-                                    ? "success"
-                                    : purchaseEntry.result.status === "failed"
-                                      ? "error"
-                                      : "warning"
-                                }
-                              />
-                              {purchaseEntry.result.trackingCode && (
-                                <Typography variant="body2" color="text.secondary">
-                                  {purchaseEntry.result.trackingCode}
-                                </Typography>
-                              )}
-                            </Stack>
-                          </Box>
-                        )}
-                      </Stack>
-                    </Stack>
-
-                    <Box
-                      sx={{
-                        border: 1,
-                        borderColor: isPacked ? "success.main" : "divider",
-                        borderRadius: 2,
-                        px: 2,
-                        py: 1,
-                        alignSelf: { xs: "stretch", lg: "center" },
-                        bgcolor: isPacked ? "success.light" : "background.paper",
-                      }}
-                    >
-                      <FormControlLabel
-                        sx={{ m: 0 }}
-                        control={
-                          <Checkbox
-                            checked={isPacked}
-                            onChange={(_, checked) => {
-                              if (currentReference) {
-                                handleMarkPacked(currentReference, checked);
-                              }
-                            }}
-                            color="success"
-                          />
-                        }
-                        label={<Typography fontWeight={600}>Mark as Packed</Typography>}
-                      />
-                    </Box>
-                  </Stack>
-
-                      <Stack spacing={1.5}>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Pull Sheet
-                    </Typography>
-
-                    {!hasLineItems && (
-                      <Alert severity="info">
-                        Line item details unavailable - refer to the packing slip PDF.
-                      </Alert>
-                    )}
-
-                    {hasLineItems && packPullSheetStatus === "loading" && (
-                      <Alert severity="info">
-                        Loading visual pull sheet for this shipment.
-                      </Alert>
-                    )}
-
-                    {hasLineItems && packPullSheetStatus === "error" && (
-                      <Alert severity="warning">
-                        {packPullSheetError ??
-                          "Visual pull sheet unavailable. Showing the shipment item list instead."}
-                      </Alert>
-                    )}
-
-                    {hasLineItems &&
-                      visualPullSheetMatch?.fallbackReason &&
-                      packPullSheetStatus !== "loading" && (
-                        <Alert severity="info">
-                          {visualPullSheetMatch.fallbackReason} Showing the shipment
-                          item list instead.
-                        </Alert>
-                      )}
-
-                    {hasLineItems &&
-                      visualPullSheetMatch?.canRenderGrid &&
-                      packPullSheetStatus === "ready" && (
-                        <Stack spacing={2}>
-                          {orderSections.map(
-                            ({ order, orderPullSheetItems, value, cardValues }) => (
-                              <Box
-                                key={order["Order #"]}
-                                sx={{
-                                  border: 1,
-                                  borderColor: "divider",
-                                  borderRadius: 2,
-                                  p: 2,
-                                }}
-                              >
-                                <Stack spacing={1.5}>
-                                  <Stack
-                                    direction={{ xs: "column", sm: "row" }}
-                                    spacing={1}
-                                    alignItems={{ xs: "flex-start", sm: "center" }}
-                                    justifyContent="space-between"
-                                  >
-                                    <Typography variant="subtitle2" fontWeight={600}>
-                                      Order {order["Order #"]}
-                                    </Typography>
-                                    <SaleValueFigures value={value} />
-                                  </Stack>
-                                  <PullSheetGrid
-                                    items={orderPullSheetItems}
-                                    renderItemDetail={(item) => {
-                                      const cardValue = cardValues.get(item.skuId);
-                                      return cardValue ? (
-                                        <SaleValueFigures value={cardValue} variant="caption" onImage />
-                                      ) : null;
-                                    }}
-                                  />
-                                </Stack>
-                              </Box>
-                            ),
-                          )}
-                        </Stack>
-                      )}
-
-                    {hasLineItems &&
-                      packPullSheetStatus !== "loading" &&
-                      (!visualPullSheetMatch?.canRenderGrid ||
-                        packPullSheetStatus === "error") &&
-                      (
-                        <Stack spacing={2}>
-                          {orderSections.map(({ order, fallbackRows, value }) => (
-                            <Box
-                              key={order["Order #"]}
-                              sx={{
-                                border: 1,
-                                borderColor: "divider",
-                                borderRadius: 2,
-                                p: 2,
-                              }}
-                            >
-                              <Stack spacing={1.5}>
-                                <Stack
-                                  direction={{ xs: "column", sm: "row" }}
-                                  spacing={1}
-                                  alignItems={{ xs: "flex-start", sm: "center" }}
-                                  justifyContent="space-between"
-                                >
-                                  <Typography variant="subtitle2" fontWeight={600}>
-                                    Order {order["Order #"]}
-                                  </Typography>
-                                  <SaleValueFigures value={value} />
-                                </Stack>
-                                {renderFallbackPullSheetTable(fallbackRows)}
-                              </Stack>
-                            </Box>
-                          ))}
-                        </Stack>
-                      )}
-                  </Stack>
+            <Stack spacing={1.5}>
+              {mergedOrders.length > 1 && (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="body2" color="text.secondary">
+                    Shipment value
+                  </Typography>
+                  <SaleValueFigures value={saleValueOfOrders(mergedOrders)} />
                 </Stack>
-              </CardContent>
-            </Card>
+              )}
+
+              {!hasLineItems && (
+                <Alert severity="info">
+                  Line item details unavailable - refer to the packing slip PDF.
+                </Alert>
+              )}
+
+              {hasLineItems && packPullSheetStatus === "loading" && (
+                <Alert severity="info">
+                  Loading visual pull sheet for this shipment.
+                </Alert>
+              )}
+
+              {hasLineItems && packPullSheetStatus === "error" && (
+                <Alert severity="warning">
+                  {packPullSheetError ??
+                    "Visual pull sheet unavailable. Showing the shipment item list instead."}
+                </Alert>
+              )}
+
+              {hasLineItems &&
+                visualPullSheetMatch?.fallbackReason &&
+                packPullSheetStatus !== "loading" && (
+                  <Alert severity="info">
+                    {visualPullSheetMatch.fallbackReason} Showing the shipment
+                    item list instead.
+                  </Alert>
+                )}
+
+              {hasLineItems &&
+                visualPullSheetMatch?.canRenderGrid &&
+                packPullSheetStatus === "ready" &&
+                orderSections.map(({ order, orderPullSheetItems, value, cardValues }) => (
+                  <OrderSection key={order["Order #"]} order={order} value={value}>
+                    <PullSheetGrid
+                      items={orderPullSheetItems}
+                      renderItemDetail={(item) => {
+                        const cardValue = cardValues.get(item.skuId);
+                        return cardValue ? (
+                          <SaleValueFigures value={cardValue} variant="caption" onImage />
+                        ) : null;
+                      }}
+                    />
+                  </OrderSection>
+                ))}
+
+              {hasLineItems &&
+                packPullSheetStatus !== "loading" &&
+                (!visualPullSheetMatch?.canRenderGrid || packPullSheetStatus === "error") &&
+                orderSections.map(({ order, fallbackRows, value }) => (
+                  <OrderSection key={order["Order #"]} order={order} value={value}>
+                    {renderFallbackPullSheetTable(fallbackRows)}
+                  </OrderSection>
+                ))}
+            </Stack>
           ) : (
             <Alert severity="warning">
               No order found for this shipment reference.
@@ -631,7 +518,7 @@ export function PackStep({
                   .map((orderNumber) =>
                     sourceOrders.find((order) => order["Order #"] === orderNumber),
                   )
-                  .filter((order): order is TcgPlayerShippingOrder => order !== null);
+                  .filter((order): order is TcgPlayerShippingOrder => order !== undefined);
                 const purchase = outboundPurchaseResultsByReference[shipmentReference];
                 const packed = packedOrderNumbers.has(shipmentReference);
 
@@ -687,13 +574,7 @@ export function PackStep({
                         <Chip
                           label={purchase.result.status.toUpperCase()}
                           size="small"
-                          color={
-                            purchase.result.status === "purchased"
-                              ? "success"
-                              : purchase.result.status === "failed"
-                                ? "error"
-                                : "warning"
-                          }
+                          color={postageChipColor(purchase)}
                         />
                       ) : (
                         "-"

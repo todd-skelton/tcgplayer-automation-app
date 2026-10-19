@@ -5,8 +5,7 @@ export const OUTBOUND_STEPS = [
   { key: "buy-postage", label: "Buy Postage" },
   { key: "print", label: "Print" },
   { key: "pack", label: "Pack" },
-  { key: "apply-tracking", label: "Apply Tracking" },
-  { key: "notify", label: "Notify" },
+  { key: "ship", label: "Ship" },
 ] as const;
 
 export type ShippingStepKey = (typeof OUTBOUND_STEPS)[number]["key"];
@@ -19,10 +18,10 @@ export interface ShippingWorkflowCounts {
   shipmentCount: number;
   purchasedCount: number;
   packedCount: number;
-  trackingReadyCount: number;
-  alreadyTrackedCount: number;
-  messageReadyCount: number;
-  alreadySentCount: number;
+  /** Orders that still need tracking applied or a shipped message sent. */
+  shipPendingCount: number;
+  /** Orders with production postage that are tracked and messaged. */
+  shippedCount: number;
 }
 
 /** Where the current step stands and whether the workflow may move past it. */
@@ -78,25 +77,14 @@ export function describeShippingStep(
         readyToContinue: counts.packedCount > 0,
         canSkip: true,
       };
-    case "apply-tracking":
+    case "ship":
       return {
         summary:
-          counts.trackingReadyCount > 0
-            ? `${count(counts.trackingReadyCount, "order")} ready for tracking`
-            : counts.alreadyTrackedCount > 0
-              ? "Tracking applied to every order with production postage"
+          counts.shipPendingCount > 0
+            ? `${count(counts.shipPendingCount, "order")} to mark shipped and notify`
+            : counts.shippedCount > 0
+              ? "Every order is shipped and its buyer notified"
               : "No orders have production postage",
-        readyToContinue: counts.trackingReadyCount === 0,
-        canSkip: true,
-      };
-    case "notify":
-      return {
-        summary:
-          counts.messageReadyCount > 0
-            ? `${count(counts.messageReadyCount, "order")} ready for shipped messages`
-            : counts.alreadySentCount > 0
-              ? "Every order with production postage has its shipped message"
-              : "No orders are ready for shipped messages",
         readyToContinue: true,
         canSkip: false,
       };

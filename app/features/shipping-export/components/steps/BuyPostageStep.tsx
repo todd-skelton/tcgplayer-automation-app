@@ -1,14 +1,20 @@
-import DownloadIcon from "@mui/icons-material/Download";
-import EditIcon from "@mui/icons-material/Edit";
-import ReplyIcon from "@mui/icons-material/Reply";
+import { useState } from "react";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import {
   Alert,
   Box,
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   IconButton,
-  Paper,
+  Menu,
+  MenuItem,
   Stack,
   Table,
   TableBody,
@@ -20,16 +26,14 @@ import {
   Typography,
 } from "@mui/material";
 import type {
-  EasyPostAddress,
+  EasyPostEnvironmentStatus,
   EasyPostShipment,
-  LabelSize,
   ShipmentToOrderMap,
   ShippingExportConfig,
-  ShippingPostageBatchLabelResult,
   ShippingPostagePurchaseEntry,
   TcgPlayerShippingOrder,
 } from "../../types/shippingExport";
-import type { EasyPostEnvironmentStatus } from "../../types/shippingExport";
+import { getOrderNumbersForShipmentReference } from "../../services/shippingExportUtils";
 import { saleValueOfOrders } from "../../services/saleValue";
 import { SaleValueFigures } from "../SaleValueFigures";
 
@@ -37,300 +41,202 @@ interface BuyPostageStepProps {
   config: ShippingExportConfig;
   environmentStatus: EasyPostEnvironmentStatus;
   shipments: EasyPostShipment[];
-  orders: TcgPlayerShippingOrder[];
-  /** Orders before address merging, used for per-order market comparisons. */
+  /** Orders before address merging, so each shipment's value covers every order in it. */
   sourceOrders: TcgPlayerShippingOrder[];
   shipmentToOrderMap: ShipmentToOrderMap;
   outboundPurchaseResultsByReference: Record<string, ShippingPostagePurchaseEntry>;
   returnPurchaseResultsByReference: Record<string, ShippingPostagePurchaseEntry>;
-  batchLabelResultsBySize: Partial<Record<LabelSize, ShippingPostageBatchLabelResult>>;
-  availableLabelSizes: string[];
-  purchasingLabelSize: LabelSize | null;
+  /** True while any purchase is running; buying is one at a time. */
+  isPurchasing: boolean;
   purchasingActionKey: string | null;
-  generatingBatchLabelSize: LabelSize | null;
-  isLoadingExistingPostage: boolean;
   onBuyShipment: (shipment: EasyPostShipment) => void;
   onBuyReturnLabel: (shipment: EasyPostShipment) => void;
-  onGenerateBatchLabel: (labelSize: LabelSize) => void;
   onEditShipment: (shipment: EasyPostShipment) => void;
   onDownloadShipment: (shipment: EasyPostShipment) => void;
   onDownloadReturnShipment: (shipment: EasyPostShipment) => void;
-  savedPurchasedEntriesForLabelSize: (labelSize: LabelSize) => Array<{
-    shipment: EasyPostShipment;
-    purchaseEntry: ShippingPostagePurchaseEntry;
-  }>;
 }
 
-function AddressBlock({ address }: { address: EasyPostAddress }) {
-  const lines = [
-    address.name,
-    address.company,
-    address.street1,
-    address.street2,
-    `${address.city}, ${address.state} ${address.zip}`.trim(),
-    address.country,
-  ].filter(Boolean);
+type Purchase = { direction: "outbound" | "return"; shipment: EasyPostShipment };
 
-  return <Typography component="pre" variant="body2">{lines.join("\n")}</Typography>;
+const STATUS_COLORS = { purchased: "success", failed: "error", skipped: "warning" } as const;
+
+function labelHref(entry: ShippingPostagePurchaseEntry | undefined): string | undefined {
+  return entry?.result.labelPdfUrl ?? entry?.result.labelUrl;
+}
+
+function isPurchased(entry: ShippingPostagePurchaseEntry | undefined): boolean {
+  return entry?.result.status === "purchased";
+}
+
+function PostageStatus({ entry }: { entry: ShippingPostagePurchaseEntry | undefined }) {
+  if (!entry) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        Not purchased
+      </Typography>
+    );
+  }
+
+  const { result, mode } = entry;
+  const details = [
+    `Mode: ${mode}`,
+    result.trackingCode && `Tracking: ${result.trackingCode}`,
+    result.selectedRate &&
+      `Rate: ${result.selectedRate.service} $${result.selectedRate.rate} ${result.selectedRate.currency}`,
+  ].filter(Boolean);
+  const href = labelHref(entry);
+
+  return (
+    <Stack spacing={0.5}>
+      <Stack direction="row" spacing={0.5} alignItems="center">
+        <Tooltip title={details.join(" · ")}>
+          <Chip label={result.status.toUpperCase()} color={STATUS_COLORS[result.status]} size="small" />
+        </Tooltip>
+        {href && (
+          <Tooltip title="Open label">
+            <IconButton component="a" href={href} target="_blank" rel="noreferrer" size="small" aria-label="Open label">
+              <OpenInNewIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Stack>
+      {result.error && (
+        <Typography variant="caption" color="error">
+          {result.error}
+        </Typography>
+      )}
+    </Stack>
+  );
 }
 
 export function BuyPostageStep({
   config,
   environmentStatus,
   shipments,
-  orders,
   sourceOrders,
   shipmentToOrderMap,
   outboundPurchaseResultsByReference,
   returnPurchaseResultsByReference,
-  batchLabelResultsBySize,
-  availableLabelSizes,
-  purchasingLabelSize,
+  isPurchasing,
   purchasingActionKey,
-  generatingBatchLabelSize,
-  isLoadingExistingPostage,
   onBuyShipment,
   onBuyReturnLabel,
-  onGenerateBatchLabel,
   onEditShipment,
   onDownloadShipment,
   onDownloadReturnShipment,
-  savedPurchasedEntriesForLabelSize,
 }: BuyPostageStepProps) {
+  const [menu, setMenu] = useState<{ anchor: HTMLElement; shipment: EasyPostShipment } | null>(null);
+  const [confirming, setConfirming] = useState<Purchase | null>(null);
   const selectedModeHasApiKey =
-    config.easypostMode === "test"
-      ? environmentStatus.hasTestApiKey
-      : environmentStatus.hasProductionApiKey;
+    config.easypostMode === "test" ? environmentStatus.hasTestApiKey : environmentStatus.hasProductionApiKey;
+  const canBuy = selectedModeHasApiKey && !isPurchasing;
 
-  const purchasedCount = shipments.filter(
-    (s) => outboundPurchaseResultsByReference[s.reference]?.result.status === "purchased",
-  ).length;
-  const letterCount = shipments.filter((s) => s.parcel.predefined_package === "Letter").length;
-  const flatCount = shipments.filter((s) => s.parcel.predefined_package === "Flat").length;
-  const parcelCount = shipments.filter((s) => s.parcel.predefined_package === "Parcel").length;
+  /** Buys at once, or asks first when this would buy a second label for the shipment. */
+  const requestPurchase = (purchase: Purchase) => {
+    const entries =
+      purchase.direction === "outbound" ? outboundPurchaseResultsByReference : returnPurchaseResultsByReference;
+    const existing = entries[purchase.shipment.reference];
+    if (isPurchased(existing) && existing?.mode === config.easypostMode) {
+      setConfirming(purchase);
+      return;
+    }
+    (purchase.direction === "outbound" ? onBuyShipment : onBuyReturnLabel)(purchase.shipment);
+  };
+
+  const menuReturnEntry = menu ? returnPurchaseResultsByReference[menu.shipment.reference] : undefined;
 
   return (
-    <Stack spacing={3}>
-      <Stack direction="row" spacing={1} flexWrap="wrap">
-        <Chip label={`${shipments.length} shipments`} size="small" />
-        {letterCount > 0 && <Chip label={`${letterCount} Letter`} size="small" variant="outlined" />}
-        {flatCount > 0 && <Chip label={`${flatCount} Flat`} size="small" variant="outlined" />}
-        {parcelCount > 0 && <Chip label={`${parcelCount} Parcel`} size="small" variant="outlined" />}
-        {purchasedCount > 0 && (
-          <Chip label={`${purchasedCount} postage purchased`} size="small" color="success" variant="outlined" />
-        )}
-        {purchasedCount < shipments.length && !isLoadingExistingPostage && (
-          <Chip label={`${shipments.length - purchasedCount} pending`} size="small" color="warning" variant="outlined" />
-        )}
-      </Stack>
-
+    <Stack spacing={2}>
       {!selectedModeHasApiKey && (
         <Alert severity="warning">
-          {config.easypostMode === "test"
-            ? "EASYPOST_TEST_API_KEY is not set."
-            : "EASYPOST_PRODUCTION_API_KEY is not set."}{" "}
+          {config.easypostMode === "test" ? "EASYPOST_TEST_API_KEY is not set." : "EASYPOST_PRODUCTION_API_KEY is not set."}{" "}
           Postage purchase is disabled.
         </Alert>
       )}
 
       <TableContainer>
-        <Table>
+        <Table size="small">
           <TableHead>
             <TableRow>
               <TableCell>Orders</TableCell>
-              <TableCell>To Address</TableCell>
-              <TableCell>Parcel Details</TableCell>
-              <TableCell>Service / Label</TableCell>
+              <TableCell>Recipient</TableCell>
+              <TableCell>Parcel and value</TableCell>
               <TableCell>Postage</TableCell>
-              <TableCell>Actions</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {shipments.map((shipment) => {
-              const order = orders.find((o) => o["Order #"] === shipment.reference);
-              const shipmentOrderNumbers = new Set(shipmentToOrderMap[shipment.reference] ?? [shipment.reference]);
-              const shipmentSourceOrders = sourceOrders.filter((sourceOrder) => shipmentOrderNumbers.has(sourceOrder["Order #"]));
+              const orderNumbers = getOrderNumbersForShipmentReference(shipmentToOrderMap, shipment.reference);
+              const shipmentOrders = sourceOrders.filter((order) => orderNumbers.includes(order["Order #"]));
+              const itemCount = shipmentOrders.reduce((sum, order) => sum + order["Item Count"], 0);
               const purchaseEntry = outboundPurchaseResultsByReference[shipment.reference];
-              const returnPurchaseEntry = returnPurchaseResultsByReference[shipment.reference];
               const isBuyingOutbound = purchasingActionKey === `outbound:${shipment.reference}`;
               const isBuyingReturn = purchasingActionKey === `return:${shipment.reference}`;
+              const address = shipment.to_address;
+              const fullAddress = [address.name, address.company, address.street1, address.street2,
+                `${address.city}, ${address.state} ${address.zip}`, address.country].filter(Boolean).join(", ");
 
               return (
                 <TableRow key={shipment.reference}>
                   <TableCell>
-                    <Stack spacing={0.5}>
-                      {(shipmentToOrderMap[shipment.reference] ?? [shipment.reference]).map((num) => (
-                        <Typography key={num} variant="body2">{num}</Typography>
-                      ))}
-                    </Stack>
-                  </TableCell>
-                  <TableCell>
-                    <AddressBlock address={shipment.to_address} />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {shipment.parcel.predefined_package} &bull; {shipment.parcel.weight}oz
-                      {shipment.options.delivery_confirmation === "SIGNATURE" && (
-                        <Chip label="Sig. Required" size="small" color="warning" sx={{ ml: 1 }} />
-                      )}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" component="div">
-                      {shipment.parcel.length}&times;{shipment.parcel.width}&times;{shipment.parcel.height} in
-                      {order ? ` • ${order["Item Count"]} items` : ""}
-                    </Typography>
-                    <Box sx={{ mt: 0.5 }}>
-                      <SaleValueFigures value={saleValueOfOrders(shipmentSourceOrders)} variant="caption" />
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{shipment.service}</Typography>
-                    <Chip label={shipment.options.label_size} size="small" variant="outlined" sx={{ mt: 0.5 }} />
-                  </TableCell>
-                  <TableCell>
-                    {purchaseEntry ? (
-                      <Stack spacing={1}>
-                        <Chip
-                          label={purchaseEntry.result.status.toUpperCase()}
-                          color={
-                            purchaseEntry.result.status === "purchased"
-                              ? "success"
-                              : purchaseEntry.result.status === "failed"
-                                ? "error"
-                                : "warning"
-                          }
-                          size="small"
-                        />
-                        <Typography variant="body2" color="text.secondary">
-                          Mode: {purchaseEntry.mode}
-                        </Typography>
-                        {purchaseEntry.result.trackingCode && (
-                          <Typography variant="body2">
-                            Tracking: {purchaseEntry.result.trackingCode}
-                          </Typography>
-                        )}
-                        {purchaseEntry.result.selectedRate && (
-                          <Typography variant="body2">
-                            Rate: {purchaseEntry.result.selectedRate.service} $
-                            {purchaseEntry.result.selectedRate.rate}{" "}
-                            {purchaseEntry.result.selectedRate.currency}
-                          </Typography>
-                        )}
-                        {purchaseEntry.result.labelPdfUrl && (
-                          <Button
-                            component="a"
-                            href={purchaseEntry.result.labelPdfUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            size="small"
-                            variant="outlined"
-                          >
-                            Open Label PDF
-                          </Button>
-                        )}
-                        {!purchaseEntry.result.labelPdfUrl && purchaseEntry.result.labelUrl && (
-                          <Button
-                            component="a"
-                            href={purchaseEntry.result.labelUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            size="small"
-                            variant="outlined"
-                          >
-                            Open Label
-                          </Button>
-                        )}
-                        {purchaseEntry.result.error && (
-                          <Typography variant="body2" color="error">
-                            {purchaseEntry.result.error}
-                          </Typography>
-                        )}
-                      </Stack>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        Not purchased yet.
+                    {orderNumbers.map((orderNumber) => (
+                      <Typography key={orderNumber} variant="body2">
+                        {orderNumber}
                       </Typography>
-                    )}
+                    ))}
                   </TableCell>
                   <TableCell>
-                    <Stack spacing={1} alignItems="flex-start">
+                    <Tooltip title={fullAddress}>
+                      <Box>
+                        <Typography variant="body2">{address.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {address.city}, {address.state} {address.zip}
+                        </Typography>
+                      </Box>
+                    </Tooltip>
+                  </TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                      <Typography variant="body2">
+                        {shipment.parcel.predefined_package} · {shipment.parcel.weight}oz · {shipment.service} ·{" "}
+                        {shipment.options.label_size} · {itemCount} items
+                      </Typography>
+                      {shipment.options.delivery_confirmation === "SIGNATURE" && (
+                        <Chip label="Sig. Required" size="small" color="warning" />
+                      )}
+                    </Stack>
+                    <SaleValueFigures value={saleValueOfOrders(shipmentOrders)} variant="caption" />
+                  </TableCell>
+                  <TableCell>
+                    <PostageStatus entry={purchaseEntry} />
+                  </TableCell>
+                  <TableCell align="right">
+                    <Stack direction="row" spacing={0.5} justifyContent="flex-end" alignItems="center">
                       <Button
                         size="small"
-                        variant="contained"
+                        variant={isPurchased(purchaseEntry) ? "outlined" : "contained"}
                         color={config.easypostMode === "test" ? "warning" : "primary"}
-                        onClick={() => onBuyShipment(shipment)}
-                        disabled={
-                          !selectedModeHasApiKey ||
-                          purchasingLabelSize !== null ||
-                          purchasingActionKey !== null
-                        }
-                        startIcon={isBuyingOutbound ? <CircularProgress color="inherit" size={16} /> : undefined}
+                        onClick={() => requestPurchase({ direction: "outbound", shipment })}
+                        disabled={!canBuy}
+                        startIcon={isBuyingOutbound || isBuyingReturn ? <CircularProgress color="inherit" size={16} /> : undefined}
                       >
                         {isBuyingOutbound
                           ? "Buying..."
-                          : purchaseEntry?.result.status === "purchased" && purchaseEntry.mode === config.easypostMode
-                            ? "Buy Again"
-                            : "Buy Postage"}
+                          : isBuyingReturn
+                            ? "Buying Return..."
+                            : isPurchased(purchaseEntry) && purchaseEntry?.mode === config.easypostMode
+                              ? "Buy Again"
+                              : "Buy Postage"}
                       </Button>
-                      <Button
+                      <IconButton
+                        aria-label={`More actions for ${shipment.reference}`}
+                        aria-haspopup="menu"
                         size="small"
-                        variant="outlined"
-                        onClick={() => onBuyReturnLabel(shipment)}
-                        disabled={
-                          !selectedModeHasApiKey ||
-                          purchasingLabelSize !== null ||
-                          purchasingActionKey !== null
-                        }
-                        startIcon={
-                          isBuyingReturn ? (
-                            <CircularProgress color="inherit" size={16} />
-                          ) : (
-                            <ReplyIcon fontSize="small" />
-                          )
-                        }
+                        onClick={(event) => setMenu({ anchor: event.currentTarget, shipment })}
                       >
-                        {isBuyingReturn ? "Buying..." : "Buy Return Label"}
-                      </Button>
-                      {returnPurchaseEntry?.result.labelPdfUrl && (
-                        <Button
-                          component="a"
-                          href={returnPurchaseEntry.result.labelPdfUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          size="small"
-                          variant="text"
-                        >
-                          Open Return PDF
-                        </Button>
-                      )}
-                      {!returnPurchaseEntry?.result.labelPdfUrl && returnPurchaseEntry?.result.labelUrl && (
-                        <Button
-                          component="a"
-                          href={returnPurchaseEntry.result.labelUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          size="small"
-                          variant="text"
-                        >
-                          Open Return Label
-                        </Button>
-                      )}
-                      <Stack direction="row" spacing={0.5}>
-                        <Tooltip title="Edit Shipment" arrow>
-                          <IconButton onClick={() => onEditShipment(shipment)} color="primary">
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Download Shipment CSV" arrow>
-                          <IconButton onClick={() => onDownloadShipment(shipment)} color="primary">
-                            <DownloadIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Download Return CSV" arrow>
-                          <IconButton onClick={() => onDownloadReturnShipment(shipment)} color="primary">
-                            <ReplyIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
+                        <MoreVertIcon fontSize="small" />
+                      </IconButton>
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -340,71 +246,87 @@ export function BuyPostageStep({
         </Table>
       </TableContainer>
 
-      {availableLabelSizes.length > 0 && (
-        <Box>
-          <Typography variant="subtitle2" gutterBottom>
-            Batch Labels
-          </Typography>
-          <Stack direction={{ xs: "column", md: "row" }} spacing={2} flexWrap="wrap">
-            {availableLabelSizes.map((labelSize) => {
-              const batchLabel = batchLabelResultsBySize[labelSize as LabelSize];
-              const savedEntries = savedPurchasedEntriesForLabelSize(labelSize as LabelSize);
-              const savedModes = [...new Set(savedEntries.map((e) => e.purchaseEntry.mode))];
-              const canGenerateBatch = savedEntries.length > 0 && savedModes.length === 1;
+      <Menu open={Boolean(menu)} anchorEl={menu?.anchor} onClose={() => setMenu(null)}>
+        {menu && [
+          <MenuItem
+            key="return"
+            disabled={!canBuy}
+            onClick={() => {
+              setMenu(null);
+              requestPurchase({ direction: "return", shipment: menu.shipment });
+            }}
+          >
+            {isPurchased(menuReturnEntry) ? "Buy Another Return Label" : "Buy Return Label"}
+          </MenuItem>,
+          labelHref(menuReturnEntry) && (
+            <MenuItem
+              key="open-return"
+              component="a"
+              href={labelHref(menuReturnEntry)}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setMenu(null)}
+            >
+              Open Return Label
+            </MenuItem>
+          ),
+          <MenuItem
+            key="edit"
+            onClick={() => {
+              setMenu(null);
+              onEditShipment(menu.shipment);
+            }}
+          >
+            Edit Shipment
+          </MenuItem>,
+          <MenuItem
+            key="csv"
+            onClick={() => {
+              setMenu(null);
+              onDownloadShipment(menu.shipment);
+            }}
+          >
+            Download Shipment CSV
+          </MenuItem>,
+          <MenuItem
+            key="return-csv"
+            onClick={() => {
+              setMenu(null);
+              onDownloadReturnShipment(menu.shipment);
+            }}
+          >
+            Download Return CSV
+          </MenuItem>,
+        ]}
+      </Menu>
 
-              return (
-                <Paper key={labelSize} variant="outlined" sx={{ p: 2, minWidth: 220 }}>
-                  <Stack spacing={1.5} alignItems="flex-start">
-                    <Typography variant="subtitle2">{labelSize} Labels</Typography>
-                    {batchLabel?.status === "ready" && batchLabel.labelUrl && (
-                      <Button component="a" href={batchLabel.labelUrl} target="_blank" rel="noreferrer" variant="outlined">
-                        Open Batch Label PDF
-                      </Button>
-                    )}
-                    {batchLabel?.status === "ready" && (
-                      <Chip label={`Batch PDF Ready (${batchLabel.shipmentReferences.length})`} color="success" size="small" />
-                    )}
-                    {batchLabel?.status === "pending" && (
-                      <Typography variant="body2" color="text.secondary">
-                        {batchLabel.message ?? "EasyPost is still generating the batch PDF."}
-                      </Typography>
-                    )}
-                    {batchLabel?.status === "failed" && (
-                      <Typography variant="body2" color="error">
-                        {batchLabel.message ?? "Failed to generate the batch PDF."}
-                      </Typography>
-                    )}
-                    {!batchLabel && canGenerateBatch && (
-                      <>
-                        <Chip label={`Saved Labels Ready (${savedEntries.length})`} color="info" size="small" variant="outlined" />
-                        <Button
-                          variant="outlined"
-                          onClick={() => onGenerateBatchLabel(labelSize as LabelSize)}
-                          disabled={generatingBatchLabelSize !== null}
-                          startIcon={
-                            generatingBatchLabelSize === labelSize ? (
-                              <CircularProgress color="inherit" size={18} />
-                            ) : undefined
-                          }
-                        >
-                          {generatingBatchLabelSize === labelSize
-                            ? `Creating ${labelSize} Batch PDF...`
-                            : "Create Batch Label PDF"}
-                        </Button>
-                      </>
-                    )}
-                    {!batchLabel && !canGenerateBatch && savedEntries.length === 0 && (
-                      <Typography variant="body2" color="text.secondary">
-                        Buy postage to generate a combined PDF.
-                      </Typography>
-                    )}
-                  </Stack>
-                </Paper>
-              );
-            })}
-          </Stack>
-        </Box>
-      )}
+      <Dialog open={Boolean(confirming)} onClose={() => setConfirming(null)} aria-labelledby="buy-again-title">
+        <DialogTitle id="buy-again-title">
+          Buy another {confirming?.direction === "return" ? "return label" : "label"}?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {confirming?.direction === "return" ? "A return label" : "Postage"} was already bought for shipment{" "}
+            {confirming?.shipment.reference} in {config.easypostMode} mode. Buying again charges for a new label; the
+            first one is not refunded automatically.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirming(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={() => {
+              if (confirming) {
+                (confirming.direction === "outbound" ? onBuyShipment : onBuyReturnLabel)(confirming.shipment);
+              }
+              setConfirming(null);
+            }}
+          >
+            Buy Again
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

@@ -8,10 +8,8 @@ const counts: ShippingWorkflowCounts = {
   shipmentCount: 2,
   purchasedCount: 1,
   packedCount: 0,
-  trackingReadyCount: 0,
-  alreadyTrackedCount: 0,
-  messageReadyCount: 0,
-  alreadySentCount: 0,
+  shipPendingCount: 0,
+  shippedCount: 0,
 };
 
 assert.deepEqual(describeShippingStep("load-orders", { ...counts, orderCount: 0 }), {
@@ -45,22 +43,11 @@ assert.deepEqual(describeShippingStep("pack", counts), {
 });
 assert.equal(describeShippingStep("pack", { ...counts, packedCount: 1 }).readyToContinue, true);
 
-assert.deepEqual(describeShippingStep("apply-tracking", { ...counts, trackingReadyCount: 1, alreadyTrackedCount: 1 }), {
-  summary: "1 order ready for tracking",
-  readyToContinue: false,
-  canSkip: true,
-});
+assert.equal(describeShippingStep("ship", { ...counts, shipPendingCount: 2 }).summary, "2 orders to mark shipped and notify");
 assert.equal(
-  describeShippingStep("apply-tracking", { ...counts, alreadyTrackedCount: 1 }).summary,
-  "Tracking applied to every order with production postage",
+  describeShippingStep("ship", { ...counts, shippedCount: 2 }).summary,
+  "Every order is shipped and its buyer notified",
 );
-assert.equal(describeShippingStep("apply-tracking", counts).summary, "No orders have production postage");
-assert.equal(describeShippingStep("apply-tracking", counts).readyToContinue, true);
-
-assert.equal(describeShippingStep("notify", { ...counts, messageReadyCount: 2 }).summary, "2 orders ready for shipped messages");
-assert.equal(
-  describeShippingStep("notify", { ...counts, alreadySentCount: 2 }).summary,
-  "Every order with production postage has its shipped message",
-);
+assert.equal(describeShippingStep("ship", counts).summary, "No orders have production postage");
 
 console.log("PASS shipping step progress names where each step stands and when it may be continued or skipped");

@@ -138,15 +138,6 @@ export interface TcgPlayerShippingOrder {
   intakeHistory?: ShippingOrderIntakeHistory;
 }
 
-export type OutboundWorkflowStep =
-  | "load-orders"
-  | "pull-sheet"
-  | "buy-postage"
-  | "print"
-  | "pack"
-  | "apply-tracking"
-  | "notify";
-
 export type ReturnFlowType = "round-trip" | "return-only";
 
 export interface ShippingPackageSettings {

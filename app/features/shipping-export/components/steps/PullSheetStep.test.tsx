@@ -113,7 +113,6 @@ function renderPullSheetStep(
       sourceOrders={[createOrder()]}
       shipments={[createShipment()]}
       pullSheetItems={createPullSheetItems()}
-      pullSheetOrderIds={["1001"]}
       isLoadingPullSheet={false}
       pullSheetError={null}
       {...overrides}
@@ -127,7 +126,7 @@ const testCases: TestCase[] = [
     run: () => {
       const html = renderPullSheetStep();
 
-      assert.match(html, /Pull Sheet Workspace/);
+      assert.match(visibleText(html), /1 card · 1 row · 1 Letter/);
       assert.match(html, /Card View/);
       assert.match(html, /Grid View/);
       assert.match(html, /12345_in_400x400\.jpg/);

@@ -122,7 +122,8 @@ const testCases: TestCase[] = [
     run: () => {
       const html = renderPackStep();
 
-      assert.match(html, /Shipment Details/);
+      assert.match(html, /Mark Packed/);
+      assert.match(html, /Ash Ketchum · Pallet, CA/);
       assert.match(html, /Order 1001/);
       assert.match(html, /12025_in_400x400\.jpg/);
       assert.match(html, /Pikachu/);
@@ -153,7 +154,7 @@ const testCases: TestCase[] = [
       const order1001Index = html.indexOf("Order 1001");
       const order1002Index = html.indexOf("Order 1002");
 
-      assert.match(html, /Combined shipment/);
+      assert.match(html, /Combined shipment of 2 orders/);
       assert.notEqual(order1001Index, -1);
       assert.notEqual(order1002Index, -1);
       assert.ok(
