@@ -326,7 +326,6 @@ export async function synchronizeSellerOrders(
           orderNumber: summary.orderNumber,
           summaryFingerprint: fingerprintSellerOrderSummary(summary),
         })),
-        new Date(dependencies.now().getTime() - 24 * 60 * 60 * 1_000),
       ));
       const neededSummaries = response.orders.filter((summary) => neededNumbers.has(summary.orderNumber));
       const summariesToFetch = neededSummaries.slice(0, detailBudget);

@@ -128,6 +128,20 @@ export function fingerprintSellerOrderSummary(summary: SellerOrderSearchSummary)
   })).digest("hex");
 }
 
+/**
+ * Whether an order's detail must be fetched: only for a new order or a changed
+ * search summary. Line items never change, and the summary carries the status,
+ * which refunds also change (a partial refund moves the order back to a
+ * shipped status, a full refund cancels it). Any other detail change is picked
+ * up at the order's next status change.
+ */
+export function needsSellerOrderDetail(
+  stored: { summaryFingerprint: string | null } | undefined,
+  summaryFingerprint: string,
+): boolean {
+  return stored?.summaryFingerprint !== summaryFingerprint;
+}
+
 export function fingerprintSellerOrder(
   value: Omit<SellerOrderObservation, "fingerprint" | "observedAt">,
 ): string {

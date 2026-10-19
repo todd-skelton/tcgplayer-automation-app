@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   aggregateSellerOrderLines,
+  needsSellerOrderDetail,
   normalizeSellerOrderLifecycle,
   observeSellerOrder,
 } from "./sellerOrderObservation";
@@ -120,3 +121,9 @@ assert.throws(
   /refund createdAt must include a UTC offset/,
 );
 console.log("PASS seller order observations normalize lifecycle, stable SKU lines, time, and evidence");
+
+assert.equal(needsSellerOrderDetail(undefined, "summary-a"), true, "a new order needs its detail");
+assert.equal(needsSellerOrderDetail({ summaryFingerprint: null }, "summary-a"), true, "an imported order needs its API detail once");
+assert.equal(needsSellerOrderDetail({ summaryFingerprint: "summary-a" }, "summary-b"), true, "a changed summary needs fresh detail");
+assert.equal(needsSellerOrderDetail({ summaryFingerprint: "summary-a" }, "summary-a"), false, "an unchanged summary is not fetched again, however old");
+console.log("PASS seller order detail is fetched only for new orders and changed summaries");
