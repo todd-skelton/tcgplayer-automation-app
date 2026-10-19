@@ -22,10 +22,12 @@ import {
 
 interface PullSheetTableProps {
   items: PullSheetItem[];
+  /** Extra detail shown in its own column, such as what the card sold for. */
+  renderItemDetail?: (item: PullSheetItem) => React.ReactNode;
 }
 
 export const PullSheetTable: React.FC<PullSheetTableProps> = React.memo(
-  ({ items }) => {
+  ({ items, renderItemDetail }) => {
     const theme = useTheme();
     const [imageDialogOpen, setImageDialogOpen] = useState(false);
     const [selectedProductId, setSelectedProductId] = useState<number | null>(
@@ -160,8 +162,20 @@ export const PullSheetTable: React.FC<PullSheetTableProps> = React.memo(
             </Typography>
           ),
         },
+        ...(renderItemDetail
+          ? [
+              {
+                field: "detail",
+                headerName: "Value",
+                minWidth: 420,
+                flex: 1,
+                sortable: false,
+                renderCell: (params) => renderItemDetail(params.row as PullSheetItem),
+              } satisfies GridColDef,
+            ]
+          : []),
       ],
-      [handleOpenImage]
+      [handleOpenImage, renderItemDetail]
     );
 
     return (

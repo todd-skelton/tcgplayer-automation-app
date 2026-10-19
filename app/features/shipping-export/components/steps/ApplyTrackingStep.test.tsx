@@ -24,20 +24,14 @@ function renderApplyTrackingStep(
       trackingApplyItems={[]}
       alreadyTrackedCount={0}
       trackingApplyResults={[]}
-      isApplyingTracking={false}
-      onApplyTracking={() => undefined}
-      onBack={() => undefined}
-      onContinue={() => undefined}
       {...overrides}
     />,
   );
 }
 
-const continueDisabled = /<button[^>]*\bdisabled\b[^>]*>Continue to Notify/;
-
 const testCases: TestCase[] = [
   {
-    name: "ApplyTrackingStep blocks continuing while updates are pending, even after earlier results",
+    name: "ApplyTrackingStep lists pending updates alongside earlier results",
     run: () => {
       const html = renderApplyTrackingStep({
         trackingApplyItems: [{ orderNumber: "B", carrier: "USPS", trackingNumber: "TRACK-B" }],
@@ -47,18 +41,15 @@ const testCases: TestCase[] = [
 
       assert.match(html, /1 order ready to mark as shipped/);
       assert.match(html, /1 order already tracked in TCGPlayer will be skipped\./);
-      assert.match(html, continueDisabled);
-      assert.match(html, /Skip \(proceed anyway\)/);
+      assert.match(html, /Applied tracking to 1 order\./);
     },
   },
   {
-    name: "ApplyTrackingStep lets the operator continue once every order is tracked",
+    name: "ApplyTrackingStep reports when every order is tracked",
     run: () => {
       const html = renderApplyTrackingStep({ alreadyTrackedCount: 1, trackingApplyResults: [appliedResult] });
 
       assert.match(html, /Tracking is already applied to every order with production postage\./);
-      assert.doesNotMatch(html, continueDisabled);
-      assert.doesNotMatch(html, /Skip \(proceed anyway\)/);
     },
   },
   {
@@ -67,7 +58,6 @@ const testCases: TestCase[] = [
       const html = renderApplyTrackingStep();
 
       assert.match(html, /No orders have production postage ready for tracking/);
-      assert.doesNotMatch(html, continueDisabled);
     },
   },
 ];

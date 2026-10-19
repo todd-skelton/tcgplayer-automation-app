@@ -24,10 +24,6 @@ function renderNotifyStep(
       shippedMessageItems={[]}
       alreadySentCount={0}
       shippedMessageResults={[]}
-      isSendingShippedMessages={false}
-      onSendShippedMessages={() => undefined}
-      onBack={() => undefined}
-      onReset={() => undefined}
       {...overrides}
     />,
   );
@@ -55,7 +51,6 @@ const testCases: TestCase[] = [
 
       assert.match(html, /Every order with production postage has already received its shipped message\./);
       assert.match(html, /Batch complete/);
-      assert.match(html, /<button[^>]*\bdisabled\b[^>]*>Send Shipped Messages/);
     },
   },
 ];

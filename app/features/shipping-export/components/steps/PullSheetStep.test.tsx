@@ -8,6 +8,9 @@ import type {
 } from "../../types/shippingExport";
 import { PullSheetStep } from "./PullSheetStep";
 
+const visibleText = (html: string) =>
+  html.replace(/<style[^>]*>[\s\S]*?<\/style>/g, "").replace(/<[^>]+>/g, "");
+
 type TestCase = {
   name: string;
   run: () => void;
@@ -113,8 +116,6 @@ function renderPullSheetStep(
       pullSheetOrderIds={["1001"]}
       isLoadingPullSheet={false}
       pullSheetError={null}
-      onBack={() => undefined}
-      onContinue={() => undefined}
       {...overrides}
     />,
   );
@@ -127,8 +128,6 @@ const testCases: TestCase[] = [
       const html = renderPullSheetStep();
 
       assert.match(html, /Pull Sheet Workspace/);
-      assert.match(html, /Pull sheet intake market/);
-      assert.match(html, /Receipt lots and history status/);
       assert.match(html, /Card View/);
       assert.match(html, /Grid View/);
       assert.match(html, /12345_in_400x400\.jpg/);
@@ -147,7 +146,7 @@ const testCases: TestCase[] = [
     },
   },
   {
-    name: "PullSheetStep summarizes sold value and the market delta for the load",
+    name: "PullSheetStep shows each card's price against market",
     run: () => {
       const order = createOrder();
       const html = renderPullSheetStep({
@@ -161,17 +160,18 @@ const testCases: TestCase[] = [
         ],
       });
 
-      assert.match(html, /Sold \$4\.99/);
-      assert.match(html, /\+24\.8% \(\+\$0\.99\)/);
+      const text = visibleText(html);
+      assert.match(text, /Price\$4\.99/);
+      assert.match(text, /Market\$4\.00 \+\$0\.99 \+24\.8%/);
     },
   },
   {
-    name: "PullSheetStep hides the market delta chip when no line has a market price",
+    name: "PullSheetStep shows a dash when a card has no market price",
     run: () => {
-      const html = renderPullSheetStep();
+      const text = visibleText(renderPullSheetStep());
 
-      assert.match(html, /Sold \$4\.99/);
-      assert.doesNotMatch(html, /No market/);
+      assert.match(text, /Price\$4\.99/);
+      assert.match(text, /Market-/);
     },
   },
 ];

@@ -53,7 +53,6 @@ function renderLoadOrdersStep(
       onSingleOrderNumberChange={() => undefined}
       onLoadLiveOrders={() => undefined}
       onLoadSingleOrder={() => undefined}
-      onContinue={() => undefined}
       {...overrides}
     />,
   );
@@ -69,7 +68,6 @@ const testCases: TestCase[] = [
       assert.match(html, /Load Live TCGPlayer Orders/);
       assert.match(html, /Single Order Lookup/);
       assert.match(html, /Lookup Single Order/);
-      assert.match(html, /Continue to Pull Sheet/);
     },
   },
   {

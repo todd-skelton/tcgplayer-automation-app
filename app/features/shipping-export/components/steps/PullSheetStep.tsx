@@ -3,7 +3,6 @@ import ViewModuleIcon from "@mui/icons-material/ViewModule";
 import {
   Alert,
   Box,
-  Button,
   Chip,
   LinearProgress,
   Paper,
@@ -13,18 +12,16 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PullSheetGrid } from "~/features/pull-sheet/components/PullSheetGrid";
 import { PullSheetTable } from "~/features/pull-sheet/components/PullSheetTable";
-import { formatUsd } from "~/core/utils/marketDelta";
 import type { PullSheetItem } from "~/features/pull-sheet/types/pullSheetTypes";
-import { compareOrdersToMarket } from "../../services/orderMarketComparison";
+import { saleValuesBySku } from "../../services/saleValue";
 import type {
   EasyPostShipment,
   TcgPlayerShippingOrder,
 } from "../../types/shippingExport";
-import { MarketDeltaChip } from "../MarketDeltaChip";
-import { IntakeHistorySummary } from "../IntakeHistorySummary";
+import { SaleValueFigures } from "../SaleValueFigures";
 
 interface PullSheetStepProps {
   sourceOrders: TcgPlayerShippingOrder[];
@@ -33,8 +30,6 @@ interface PullSheetStepProps {
   pullSheetOrderIds: string[];
   isLoadingPullSheet: boolean;
   pullSheetError: string | null;
-  onBack: () => void;
-  onContinue: () => void;
 }
 
 type ViewMode = "card" | "grid";
@@ -46,8 +41,6 @@ export function PullSheetStep({
   pullSheetOrderIds,
   isLoadingPullSheet,
   pullSheetError,
-  onBack,
-  onContinue,
 }: PullSheetStepProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("card");
   const [filterText, setFilterText] = useState("");
@@ -89,7 +82,11 @@ export function PullSheetStep({
   const missingDatabaseMatches = pullSheetItems.filter(
     (item) => !item.found,
   ).length;
-  const marketComparison = compareOrdersToMarket(sourceOrders);
+  const cardValues = useMemo(() => saleValuesBySku(sourceOrders), [sourceOrders]);
+  const renderCardValue = (item: PullSheetItem, onImage: boolean) => {
+    const value = cardValues.get(item.skuId);
+    return value ? <SaleValueFigures value={value} variant="caption" onImage={onImage} /> : null;
+  };
 
   return (
     <Stack spacing={3}>
@@ -100,12 +97,6 @@ export function PullSheetStep({
           size="small"
           variant="outlined"
         />
-        <Chip
-          label={`Sold ${formatUsd(marketComparison.soldTotal)}`}
-          size="small"
-          variant="outlined"
-        />
-        <MarketDeltaChip comparison={marketComparison} showAmount hideWhenUnavailable />
         <Chip
           label={`${pullSheetItems.length} pull-sheet rows`}
           size="small"
@@ -133,10 +124,6 @@ export function PullSheetStep({
           <Chip label={`${parcelCount} Parcel`} size="small" variant="outlined" />
         )}
       </Stack>
-
-      <Paper variant="outlined" sx={{ p: 2 }}>
-        <IntakeHistorySummary sourceOrders={sourceOrders} label="Pull sheet" compact />
-      </Paper>
 
       <Paper variant="outlined" sx={{ p: 2.5 }}>
         <Stack spacing={2}>
@@ -231,9 +218,9 @@ export function PullSheetStep({
               </Stack>
 
               {viewMode === "card" ? (
-                <PullSheetGrid items={filteredItems} />
+                <PullSheetGrid items={filteredItems} renderItemDetail={(item) => renderCardValue(item, true)} />
               ) : (
-                <PullSheetTable items={filteredItems} />
+                <PullSheetTable items={filteredItems} renderItemDetail={(item) => renderCardValue(item, false)} />
               )}
             </>
           )}
@@ -255,15 +242,6 @@ export function PullSheetStep({
           reference while this pull sheet is unavailable.
         </Alert>
       )}
-
-      <Stack direction="row" spacing={2}>
-        <Button variant="outlined" onClick={onBack}>
-          Back
-        </Button>
-        <Button variant="contained" onClick={onContinue}>
-          Continue to Buy Postage
-        </Button>
-      </Stack>
     </Stack>
   );
 }

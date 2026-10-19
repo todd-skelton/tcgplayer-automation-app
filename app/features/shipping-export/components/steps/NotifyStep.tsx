@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Stack,
   Table,
   TableBody,
@@ -23,10 +22,6 @@ interface NotifyStepProps {
   /** How many orders were already messaged in this workflow and will be skipped. */
   alreadySentCount: number;
   shippedMessageResults: ShippingShippedMessageResult[];
-  isSendingShippedMessages: boolean;
-  onSendShippedMessages: () => void;
-  onBack: () => void;
-  onReset: () => void;
 }
 
 function describeReadiness(readyCount: number, alreadySentCount: number): string {
@@ -45,10 +40,6 @@ export function NotifyStep({
   shippedMessageItems,
   alreadySentCount,
   shippedMessageResults,
-  isSendingShippedMessages,
-  onSendShippedMessages,
-  onBack,
-  onReset,
 }: NotifyStepProps) {
   const sentCount = shippedMessageResults.filter((r) => r.status === "sent").length;
   const failedResults = shippedMessageResults.filter((r) => r.status === "failed");
@@ -75,17 +66,6 @@ export function NotifyStep({
             ))}
           </Stack>
         )}
-      </Box>
-
-      <Box>
-        <Button
-          variant="contained"
-          onClick={onSendShippedMessages}
-          disabled={shippedMessageItems.length === 0 || isSendingShippedMessages}
-          startIcon={isSendingShippedMessages ? <CircularProgress color="inherit" size={18} /> : undefined}
-        >
-          {isSendingShippedMessages ? "Sending Shipped Messages..." : "Send Shipped Messages"}
-        </Button>
       </Box>
 
       {hasResults && (
@@ -158,15 +138,6 @@ export function NotifyStep({
           Batch complete! All orders have been shipped and customers notified.
         </Alert>
       )}
-
-      <Stack direction="row" spacing={2}>
-        <Button variant="outlined" onClick={onBack}>
-          Back
-        </Button>
-        <Button variant="contained" color="success" onClick={onReset}>
-          Start New Batch
-        </Button>
-      </Stack>
     </Stack>
   );
 }

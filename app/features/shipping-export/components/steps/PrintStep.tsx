@@ -33,8 +33,6 @@ interface PrintStepProps {
   onOpenPackingSlips: () => void;
   onDownloadPackingSlips: () => void;
   onGenerateBatchLabel: (labelSize: LabelSize) => void;
-  onBack: () => void;
-  onContinue: () => void;
 }
 
 export function PrintStep({
@@ -47,8 +45,6 @@ export function PrintStep({
   onOpenPackingSlips,
   onDownloadPackingSlips,
   onGenerateBatchLabel,
-  onBack,
-  onContinue,
 }: PrintStepProps) {
   return (
     <Stack spacing={3}>
@@ -203,15 +199,6 @@ export function PrintStep({
           </Stack>
         )}
       </Box>
-
-      <Stack direction="row" spacing={2}>
-        <Button variant="outlined" onClick={onBack}>
-          Back
-        </Button>
-        <Button variant="contained" onClick={onContinue}>
-          Continue to Pack
-        </Button>
-      </Stack>
     </Stack>
   );
 }

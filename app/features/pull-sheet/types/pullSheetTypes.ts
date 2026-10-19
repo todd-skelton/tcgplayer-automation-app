@@ -34,14 +34,3 @@ export interface PullSheetItem {
 }
 
 /** Per-unit prices shown on a pull sheet card when the caller knows what the card sold for. */
-export interface PullSheetPriceBadge {
-  soldPrice: number;
-  marketPrice?: number;
-  /** Shipping-only SKU aggregate. Kept optional for non-shipping pull sheets. */
-  intakeMarketTotal?: number | null;
-  intakeOrderedQuantity?: number;
-  intakePriceKnownQuantity?: number;
-  intakeDateKnownQuantity?: number;
-  intakeWeightedDaysHeld?: number | null;
-  intakeStatus?: string;
-}

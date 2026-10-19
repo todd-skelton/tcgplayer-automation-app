@@ -1,9 +1,7 @@
 import {
   Alert,
   Box,
-  Button,
   Chip,
-  CircularProgress,
   Stack,
   Table,
   TableBody,
@@ -23,10 +21,6 @@ interface ApplyTrackingStepProps {
   /** How many orders already carry the purchased tracking number and will be skipped. */
   alreadyTrackedCount: number;
   trackingApplyResults: ShippingTrackingApplyResult[];
-  isApplyingTracking: boolean;
-  onApplyTracking: () => void;
-  onBack: () => void;
-  onContinue: () => void;
 }
 
 function describeReadiness(readyCount: number, alreadyTrackedCount: number): string {
@@ -45,10 +39,6 @@ export function ApplyTrackingStep({
   trackingApplyItems,
   alreadyTrackedCount,
   trackingApplyResults,
-  isApplyingTracking,
-  onApplyTracking,
-  onBack,
-  onContinue,
 }: ApplyTrackingStepProps) {
   const appliedCount = trackingApplyResults.filter((r) => r.status === "applied").length;
   const failedResults = trackingApplyResults.filter((r) => r.status === "failed");
@@ -75,17 +65,6 @@ export function ApplyTrackingStep({
             ))}
           </Stack>
         )}
-      </Box>
-
-      <Box>
-        <Button
-          variant="contained"
-          onClick={onApplyTracking}
-          disabled={trackingApplyItems.length === 0 || isApplyingTracking}
-          startIcon={isApplyingTracking ? <CircularProgress color="inherit" size={18} /> : undefined}
-        >
-          {isApplyingTracking ? "Applying Tracking..." : "Apply Tracking to TCGPlayer"}
-        </Button>
       </Box>
 
       {hasResults && (
@@ -137,20 +116,6 @@ export function ApplyTrackingStep({
           </TableContainer>
         </>
       )}
-
-      <Stack direction="row" spacing={2}>
-        <Button variant="outlined" onClick={onBack}>
-          Back
-        </Button>
-        <Button variant="contained" onClick={onContinue} disabled={trackingApplyItems.length > 0}>
-          Continue to Notify
-        </Button>
-        {trackingApplyItems.length > 0 && (
-          <Button variant="text" onClick={onContinue} size="small" color="inherit">
-            Skip (proceed anyway)
-          </Button>
-        )}
-      </Stack>
     </Stack>
   );
 }

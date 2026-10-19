@@ -25,7 +25,6 @@ interface LoadOrdersStepProps {
   onSingleOrderNumberChange: (value: string) => void;
   onLoadLiveOrders: () => void;
   onLoadSingleOrder: () => void;
-  onContinue: () => void;
   historyCoverage?: SellerOrderCoverage;
   isUpdatingHistory?: boolean;
   onCatchUpHistory?: () => void;
@@ -46,7 +45,6 @@ export function LoadOrdersStep({
   onSingleOrderNumberChange,
   onLoadLiveOrders,
   onLoadSingleOrder,
-  onContinue,
   historyCoverage,
   isUpdatingHistory = false,
   onCatchUpHistory,
@@ -214,17 +212,6 @@ export function LoadOrdersStep({
           )}
         </Stack>
       )}
-
-      <Box>
-        <Button
-          variant="contained"
-          size="large"
-          disabled={sourceOrders.length === 0 || isLoadingLiveOrders || isLoadingSingleOrder || isLoadingExistingPostage}
-          onClick={onContinue}
-        >
-          Continue to Pull Sheet
-        </Button>
-      </Box>
     </Stack>
   );
 }

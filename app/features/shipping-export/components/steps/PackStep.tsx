@@ -5,7 +5,6 @@ import ListIcon from "@mui/icons-material/List";
 import {
   Alert,
   Box,
-  Button,
   Card,
   CardContent,
   Checkbox,
@@ -25,22 +24,16 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
-import { formatUsd } from "~/core/utils/marketDelta";
 import { PullSheetGrid } from "~/features/pull-sheet/components/PullSheetGrid";
-import type {
-  PullSheetItem,
-  PullSheetPriceBadge,
-} from "~/features/pull-sheet/types/pullSheetTypes";
+import type { PullSheetItem } from "~/features/pull-sheet/types/pullSheetTypes";
 import {
-  compareLinesToMarket,
-  compareOrderToMarket,
-  compareOrdersToMarket,
-  describeMarketCoverage,
-  type MarketComparison,
-} from "../../services/orderMarketComparison";
+  saleValueOfLines,
+  saleValueOfOrders,
+  saleValuesBySku,
+  type SaleValue,
+} from "../../services/saleValue";
 import { getOrderNumbersForShipmentReference } from "../../services/shippingExportUtils";
-import { MarketDeltaChip } from "../MarketDeltaChip";
-import { IntakeHistorySummary } from "../IntakeHistorySummary";
+import { SaleValueFigures } from "../SaleValueFigures";
 import { shippingInventorySkuId } from "../../services/shippingOrderIdentity";
 import type {
   PackPullSheetLoadStatus,
@@ -53,7 +46,6 @@ import type {
   OrderLineItem,
   ShipmentToOrderMap,
   ShippingPostagePurchaseEntry,
-  ShippingIntakeLineHistory,
   TcgPlayerShippingOrder,
 } from "../../types/shippingExport";
 
@@ -61,135 +53,51 @@ type FallbackRow = {
   key: string;
   name: string;
   quantity: number;
-  /** Comparison for just this row, so sold and market cells can be shown per card. */
-  comparison: MarketComparison | null;
-  intakeHistory: ShippingIntakeLineHistory | null;
+  /** Shown on the first row for each SKU, so a repeated SKU is not counted twice. */
+  value: SaleValue | null;
 };
 
-function compareSkuQuantityToCurrentMarket(lines: OrderLineItem[], skuId: number, quantity: number): MarketComparison | null {
-  const matching = lines.filter((line) => line.skuId === skuId);
-  const totalQuantity = matching.reduce((sum, line) => sum + line.quantity, 0);
-  if (!totalQuantity) return null;
-  const soldPrice = matching.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0) / totalQuantity;
-  const marketQuantity = matching.filter((line) => line.marketPrice !== undefined).reduce((sum, line) => sum + line.quantity, 0);
-  const marketPrice = marketQuantity === totalQuantity
-    ? matching.reduce((sum, line) => sum + (line.marketPrice ?? 0) * line.quantity, 0) / totalQuantity : undefined;
-  return compareLinesToMarket([{ name: matching[0]?.name ?? "", quantity, unitPrice: soldPrice,
-    ...(marketPrice === undefined ? {} : { marketPrice }) }]);
-}
-
-function buildPriceBadgesBySku(order: TcgPlayerShippingOrder): Record<number, PullSheetPriceBadge> {
-  const badges: Record<number, PullSheetPriceBadge> = {};
-  const histories = new Map((order.intakeHistory?.lines ?? []).map((line) => [line.skuId, line]));
-  const grouped = new Map<number, { quantity: number; sold: number; marketQuantity: number; market: number }>();
-  for (const line of order.products ?? []) {
-    if (line.skuId === undefined) continue;
-    const value = grouped.get(line.skuId) ?? { quantity: 0, sold: 0, marketQuantity: 0, market: 0 };
-    value.quantity += line.quantity; value.sold += line.unitPrice * line.quantity;
-    if (line.marketPrice !== undefined) { value.marketQuantity += line.quantity; value.market += line.marketPrice * line.quantity; }
-    grouped.set(line.skuId, value);
-  }
-  for (const [sku, value] of grouped) {
-    const history = histories.get(String(sku));
-    badges[sku] = { soldPrice: value.sold / value.quantity,
-      ...(value.marketQuantity === value.quantity ? { marketPrice: value.market / value.quantity } : {}),
-      ...(history ? { intakeMarketTotal: history.intakeMarketTotal, intakeOrderedQuantity: history.orderedQuantity,
-        intakePriceKnownQuantity: history.priceKnownQuantity, intakeDateKnownQuantity: history.dateKnownQuantity,
-        intakeWeightedDaysHeld: history.weightedDaysHeld, intakeStatus: history.status } : {}),
-    };
-  }
-
-  return badges;
-}
-
 function buildFallbackRowsFromPullSheet(
-  orderNumber: string,
+  order: TcgPlayerShippingOrder,
   items: PullSheetItem[],
-  lines: OrderLineItem[],
-  histories: Map<string, ShippingIntakeLineHistory>,
 ): FallbackRow[] {
-  const shownHistory = new Set<string>();
+  const shown = new Set<number>();
   return items.map((item, index) => {
-    const history = histories.get(String(item.skuId));
-    const intakeHistory = history && !shownHistory.has(history.skuId) ? history : null;
-    if (history) shownHistory.add(history.skuId);
-
+    const first = !shown.has(item.skuId);
+    shown.add(item.skuId);
     return {
-      key: `${orderNumber}-${item.skuId}-${index}`,
+      key: `${order["Order #"]}-${item.skuId}-${index}`,
       name: item.productName,
       quantity: item.quantity,
-      comparison: compareSkuQuantityToCurrentMarket(lines, item.skuId, item.quantity),
-      intakeHistory,
+      value: first ? saleValueOfLines([order], (line) => line.skuId === item.skuId) : null,
     };
   });
 }
 
-function buildFallbackRowsFromLines(orderNumber: string, lines: OrderLineItem[], histories: Map<string, ShippingIntakeLineHistory>): FallbackRow[] {
-  const groups = new Map<string, { index: number; name: string; lines: OrderLineItem[] }>();
+function lineGroupKey(line: OrderLineItem): string {
+  const identity = shippingInventorySkuId(line);
+  return identity ? `sku:${identity}` : `name:${line.name}`;
+}
 
-  lines.forEach((line, index) => {
-    const identity = shippingInventorySkuId(line);
-    const key = identity ? `sku:${identity}` : `name:${line.name}`;
+function buildFallbackRowsFromLines(order: TcgPlayerShippingOrder): FallbackRow[] {
+  const groups = new Map<string, { index: number; name: string; quantity: number }>();
+
+  (order.products ?? []).forEach((line, index) => {
+    const key = lineGroupKey(line);
     const group = groups.get(key);
-
     if (group) {
-      group.lines.push(line);
+      group.quantity += line.quantity;
       return;
     }
-
-    groups.set(key, { index, name: line.name, lines: [line] });
+    groups.set(key, { index, name: line.name, quantity: line.quantity });
   });
 
-  const shownHistory = new Set<string>();
-  return Array.from(groups.values()).map((group) => {
-    const skuId = group.lines[0] ? shippingInventorySkuId(group.lines[0]) : null;
-    const history = skuId ? histories.get(skuId) : undefined;
-    const intakeHistory = history && !shownHistory.has(history.skuId) ? history : null;
-    if (history) shownHistory.add(history.skuId);
-    return { key: `${orderNumber}-${skuId ?? group.name}-${group.index}`, name: group.name,
-      quantity: group.lines.reduce((sum, line) => sum + line.quantity, 0),
-      comparison: compareLinesToMarket(group.lines), intakeHistory };
-  });
-}
-
-function SkuIntakeFigures({ history }: { history: ShippingIntakeLineHistory | null }) {
-  if (!history) return <Typography variant="caption" color="text.secondary">—</Typography>;
-  return <Stack spacing={0.25}>
-    <Typography variant="caption">{history.priceKnownQuantity ? formatUsd(history.intakeMarketTotal ?? 0) : "Unavailable"}</Typography>
-    <Typography variant="caption" color={history.status === "current" ? "text.secondary" : "warning.main"}>
-      {history.priceKnownQuantity}/{history.orderedQuantity} priced · {history.weightedDaysHeld === null ? "age unavailable" : `${history.weightedDaysHeld.toFixed(1)} days`}
-      {` · ${history.dateKnownQuantity}/${history.orderedQuantity} dated`}
-      {history.status === "current" ? "" : ` · ${history.status}`}
-    </Typography>
-  </Stack>;
-}
-
-function MarketFigure({
-  label,
-  comparison,
-}: {
-  label: string;
-  comparison: MarketComparison;
-}) {
-  const coverage = describeMarketCoverage(comparison);
-
-  return (
-    <Box sx={{ minWidth: 96 }}>
-      <Typography variant="body2" color="text.secondary">
-        {label}
-      </Typography>
-      <Typography variant="body2">
-        {comparison.comparableLineCount > 0
-          ? formatUsd(comparison.comparableMarketTotal)
-          : "Not available"}
-      </Typography>
-      {coverage && comparison.comparableLineCount > 0 && (
-        <Typography variant="caption" color="warning.main">
-          {coverage}
-        </Typography>
-      )}
-    </Box>
-  );
+  return Array.from(groups.entries()).map(([groupKey, group]) => ({
+    key: `${order["Order #"]}-${groupKey}-${group.index}`,
+    name: group.name,
+    quantity: group.quantity,
+    value: saleValueOfLines([order], (line) => lineGroupKey(line) === groupKey),
+  }));
 }
 
 interface PackStepProps {
@@ -202,8 +110,6 @@ interface PackStepProps {
   packPullSheetMatchesByReference: Record<string, PackPullSheetShipmentMatch>;
   packedOrderNumbers: Set<string>;
   onOrderPacked: (reference: string, packed: boolean) => void;
-  onBack: () => void;
-  onContinue: () => void;
   initialViewMode?: ViewMode;
 }
 
@@ -219,8 +125,6 @@ export function PackStep({
   packPullSheetMatchesByReference,
   packedOrderNumbers,
   onOrderPacked,
-  onBack,
-  onContinue,
   initialViewMode = "card",
 }: PackStepProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -255,7 +159,6 @@ export function PackStep({
   const allLineItems = mergedOrders.flatMap((order) => order.products ?? []);
   const hasLineItems = allLineItems.length > 0;
   const orderedPullSheetItems = visualPullSheetMatch?.items ?? [];
-  const shipmentComparison = compareOrdersToMarket(mergedOrders);
 
   function renderFallbackPullSheetTable(tableRows: FallbackRow[]) {
     if (tableRows.length === 0) {
@@ -269,10 +172,7 @@ export function PackStep({
             <TableRow>
               <TableCell>Card</TableCell>
               <TableCell align="right">Qty</TableCell>
-              <TableCell align="right">Sold</TableCell>
-              <TableCell align="right">Current market</TableCell>
-              <TableCell align="right">vs current market</TableCell>
-              <TableCell>SKU intake market / age</TableCell>
+              <TableCell>Value</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -280,18 +180,7 @@ export function PackStep({
               <TableRow key={row.key}>
                 <TableCell>{row.name}</TableCell>
                 <TableCell align="right">{row.quantity}</TableCell>
-                <TableCell align="right">
-                  {row.comparison ? formatUsd(row.comparison.soldTotal) : "-"}
-                </TableCell>
-                <TableCell align="right">
-                  {row.comparison && row.comparison.comparableLineCount > 0
-                    ? formatUsd(row.comparison.comparableMarketTotal)
-                    : "-"}
-                </TableCell>
-                <TableCell align="right">
-                  {row.comparison ? <MarketDeltaChip comparison={row.comparison} /> : "-"}
-                </TableCell>
-                <TableCell><SkuIntakeFigures history={row.intakeHistory} /></TableCell>
+                <TableCell>{row.value ? <SaleValueFigures value={row.value} /> : "-"}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -305,19 +194,17 @@ export function PackStep({
       orderedPullSheetItems,
       order["Order #"],
     );
-    const orderLineItems = order.products ?? [];
-    const histories = new Map((order.intakeHistory?.lines ?? []).map((line) => [line.skuId, line]));
     const fallbackRows =
       orderPullSheetItems.length > 0
-        ? buildFallbackRowsFromPullSheet(order["Order #"], orderPullSheetItems, orderLineItems, histories)
-        : buildFallbackRowsFromLines(order["Order #"], orderLineItems, histories);
+        ? buildFallbackRowsFromPullSheet(order, orderPullSheetItems)
+        : buildFallbackRowsFromLines(order);
 
     return {
       order,
       orderPullSheetItems,
       fallbackRows,
-      comparison: compareOrderToMarket(order),
-      priceBadgesBySku: buildPriceBadgesBySku(order),
+      value: saleValueOfOrders([order]),
+      cardValues: saleValuesBySku([order]),
     };
   });
 
@@ -519,35 +406,14 @@ export function PackStep({
                           </Typography>
                         </Box>
 
-                        <Box sx={{ minWidth: 96 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            Value
-                          </Typography>
-                          <Typography variant="body2">
-                            $
-                            {mergedOrders
-                              .reduce(
-                                (sum, order) => sum + order["Value Of Products"],
-                                0,
-                              )
-                              .toFixed(2)}
-                          </Typography>
-                        </Box>
-
-                        <MarketFigure label="Current market" comparison={shipmentComparison} />
-
-                        <Box sx={{ minWidth: 128 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            vs current market
-                          </Typography>
-                          <Box sx={{ mt: 0.25 }}>
-                            <MarketDeltaChip comparison={shipmentComparison} showAmount />
+                        {mergedOrders.length > 1 && (
+                          <Box sx={{ flex: "1 1 100%" }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Shipment value
+                            </Typography>
+                            <SaleValueFigures value={saleValueOfOrders(mergedOrders)} />
                           </Box>
-                        </Box>
-
-                        <Box sx={{ minWidth: 260, flex: "1 1 260px" }}>
-                          <IntakeHistorySummary sourceOrders={mergedOrders} label="Shipment" compact />
-                        </Box>
+                        )}
 
                         <Box sx={{ minWidth: 128 }}>
                           <Typography variant="body2" color="text.secondary">
@@ -653,7 +519,7 @@ export function PackStep({
                       packPullSheetStatus === "ready" && (
                         <Stack spacing={2}>
                           {orderSections.map(
-                            ({ order, orderPullSheetItems, comparison, priceBadgesBySku }) => (
+                            ({ order, orderPullSheetItems, value, cardValues }) => (
                               <Box
                                 key={order["Order #"]}
                                 sx={{
@@ -673,25 +539,17 @@ export function PackStep({
                                     <Typography variant="subtitle2" fontWeight={600}>
                                       Order {order["Order #"]}
                                     </Typography>
-                                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                                      <Chip
-                                        label={`${order["Item Count"]} items`}
-                                        size="small"
-                                        variant="outlined"
-                                      />
-                                      <Chip
-                                        label={`$${order["Value Of Products"].toFixed(2)}`}
-                                        size="small"
-                                        variant="outlined"
-                                      />
-                                      <MarketDeltaChip comparison={comparison} showAmount />
-                                    </Stack>
+                                    <SaleValueFigures value={value} />
                                   </Stack>
                                   <PullSheetGrid
                                     items={orderPullSheetItems}
-                                    priceBadgesBySku={priceBadgesBySku}
+                                    renderItemDetail={(item) => {
+                                      const cardValue = cardValues.get(item.skuId);
+                                      return cardValue ? (
+                                        <SaleValueFigures value={cardValue} variant="caption" onImage />
+                                      ) : null;
+                                    }}
                                   />
-                                  <IntakeHistorySummary sourceOrders={[order]} label="Order" compact />
                                 </Stack>
                               </Box>
                             ),
@@ -705,7 +563,7 @@ export function PackStep({
                         packPullSheetStatus === "error") &&
                       (
                         <Stack spacing={2}>
-                          {orderSections.map(({ order, fallbackRows, comparison }) => (
+                          {orderSections.map(({ order, fallbackRows, value }) => (
                             <Box
                               key={order["Order #"]}
                               sx={{
@@ -725,22 +583,9 @@ export function PackStep({
                                   <Typography variant="subtitle2" fontWeight={600}>
                                     Order {order["Order #"]}
                                   </Typography>
-                                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                                    <Chip
-                                      label={`${order["Item Count"]} items`}
-                                      size="small"
-                                      variant="outlined"
-                                    />
-                                    <Chip
-                                      label={`$${order["Value Of Products"].toFixed(2)}`}
-                                      size="small"
-                                      variant="outlined"
-                                    />
-                                    <MarketDeltaChip comparison={comparison} showAmount />
-                                  </Stack>
+                                  <SaleValueFigures value={value} />
                                 </Stack>
                                 {renderFallbackPullSheetTable(fallbackRows)}
-                                <IntakeHistorySummary sourceOrders={[order]} label="Order" compact />
                               </Stack>
                             </Box>
                           ))}
@@ -768,9 +613,7 @@ export function PackStep({
                 <TableCell>Recipient</TableCell>
                 <TableCell>Method</TableCell>
                 <TableCell align="right">Items</TableCell>
-                <TableCell align="right">Value</TableCell>
-                <TableCell>vs current market</TableCell>
-                <TableCell>Intake history</TableCell>
+                <TableCell>Value</TableCell>
                 <TableCell>Postage</TableCell>
               </TableRow>
             </TableHead>
@@ -836,16 +679,8 @@ export function PackStep({
                     <TableCell align="right">
                       {rowOrders.reduce((sum, order) => sum + order["Item Count"], 0)}
                     </TableCell>
-                    <TableCell align="right">
-                      {formatUsd(
-                        rowOrders.reduce((sum, order) => sum + order["Value Of Products"], 0),
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <MarketDeltaChip comparison={compareOrdersToMarket(rowOrders)} />
-                    </TableCell>
-                    <TableCell sx={{ minWidth: 280 }}>
-                      <IntakeHistorySummary sourceOrders={rowOrders} label="Shipment" compact />
+                    <TableCell sx={{ minWidth: 420 }}>
+                      <SaleValueFigures value={saleValueOfOrders(rowOrders)} />
                     </TableCell>
                     <TableCell>
                       {purchase ? (
@@ -871,29 +706,6 @@ export function PackStep({
           </Table>
         </TableContainer>
       )}
-
-      <Stack direction="row" spacing={2}>
-        <Button variant="outlined" onClick={onBack}>
-          Back
-        </Button>
-        <Button
-          variant="contained"
-          onClick={onContinue}
-          disabled={packedCount === 0}
-        >
-          Continue to Apply Tracking
-        </Button>
-        {packedCount === 0 && (
-          <Button
-            variant="text"
-            onClick={onContinue}
-            size="small"
-            color="inherit"
-          >
-            Skip (proceed anyway)
-          </Button>
-        )}
-      </Stack>
     </Stack>
   );
 }

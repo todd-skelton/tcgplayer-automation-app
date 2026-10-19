@@ -30,9 +30,8 @@ import type {
   TcgPlayerShippingOrder,
 } from "../../types/shippingExport";
 import type { EasyPostEnvironmentStatus } from "../../types/shippingExport";
-import { compareShipmentToMarket } from "../../services/orderMarketComparison";
-import { MarketDeltaChip } from "../MarketDeltaChip";
-import { IntakeHistorySummary } from "../IntakeHistorySummary";
+import { saleValueOfOrders } from "../../services/saleValue";
+import { SaleValueFigures } from "../SaleValueFigures";
 
 interface BuyPostageStepProps {
   config: ShippingExportConfig;
@@ -50,7 +49,6 @@ interface BuyPostageStepProps {
   purchasingActionKey: string | null;
   generatingBatchLabelSize: LabelSize | null;
   isLoadingExistingPostage: boolean;
-  onBuyPostage: () => void;
   onBuyShipment: (shipment: EasyPostShipment) => void;
   onBuyReturnLabel: (shipment: EasyPostShipment) => void;
   onGenerateBatchLabel: (labelSize: LabelSize) => void;
@@ -61,8 +59,6 @@ interface BuyPostageStepProps {
     shipment: EasyPostShipment;
     purchaseEntry: ShippingPostagePurchaseEntry;
   }>;
-  onBack: () => void;
-  onContinue: () => void;
 }
 
 function AddressBlock({ address }: { address: EasyPostAddress }) {
@@ -93,7 +89,6 @@ export function BuyPostageStep({
   purchasingActionKey,
   generatingBatchLabelSize,
   isLoadingExistingPostage,
-  onBuyPostage,
   onBuyShipment,
   onBuyReturnLabel,
   onGenerateBatchLabel,
@@ -101,8 +96,6 @@ export function BuyPostageStep({
   onDownloadShipment,
   onDownloadReturnShipment,
   savedPurchasedEntriesForLabelSize,
-  onBack,
-  onContinue,
 }: BuyPostageStepProps) {
   const selectedModeHasApiKey =
     config.easypostMode === "test"
@@ -116,43 +109,19 @@ export function BuyPostageStep({
   const flatCount = shipments.filter((s) => s.parcel.predefined_package === "Flat").length;
   const parcelCount = shipments.filter((s) => s.parcel.predefined_package === "Parcel").length;
 
-  const allPurchased = shipments.length > 0 && purchasedCount === shipments.length;
-
   return (
     <Stack spacing={3}>
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        spacing={2}
-        justifyContent="space-between"
-        alignItems={{ md: "center" }}
-      >
-        <Stack direction="row" spacing={1} flexWrap="wrap">
-          <Chip label={`${shipments.length} shipments`} size="small" />
-          {letterCount > 0 && <Chip label={`${letterCount} Letter`} size="small" variant="outlined" />}
-          {flatCount > 0 && <Chip label={`${flatCount} Flat`} size="small" variant="outlined" />}
-          {parcelCount > 0 && <Chip label={`${parcelCount} Parcel`} size="small" variant="outlined" />}
-          {purchasedCount > 0 && (
-            <Chip label={`${purchasedCount} postage purchased`} size="small" color="success" variant="outlined" />
-          )}
-          {purchasedCount < shipments.length && !isLoadingExistingPostage && (
-            <Chip label={`${shipments.length - purchasedCount} pending`} size="small" color="warning" variant="outlined" />
-          )}
-        </Stack>
-
-        <Button
-          variant="contained"
-          color={config.easypostMode === "test" ? "warning" : "primary"}
-          onClick={onBuyPostage}
-          disabled={
-            availableLabelSizes.length === 0 ||
-            !selectedModeHasApiKey ||
-            purchasingLabelSize !== null ||
-            purchasingActionKey !== null
-          }
-          startIcon={purchasingLabelSize ? <CircularProgress color="inherit" size={18} /> : undefined}
-        >
-          {purchasingLabelSize ? `Buying ${purchasingLabelSize} Postage...` : "Buy All Postage"}
-        </Button>
+      <Stack direction="row" spacing={1} flexWrap="wrap">
+        <Chip label={`${shipments.length} shipments`} size="small" />
+        {letterCount > 0 && <Chip label={`${letterCount} Letter`} size="small" variant="outlined" />}
+        {flatCount > 0 && <Chip label={`${flatCount} Flat`} size="small" variant="outlined" />}
+        {parcelCount > 0 && <Chip label={`${parcelCount} Parcel`} size="small" variant="outlined" />}
+        {purchasedCount > 0 && (
+          <Chip label={`${purchasedCount} postage purchased`} size="small" color="success" variant="outlined" />
+        )}
+        {purchasedCount < shipments.length && !isLoadingExistingPostage && (
+          <Chip label={`${shipments.length - purchasedCount} pending`} size="small" color="warning" variant="outlined" />
+        )}
       </Stack>
 
       {!selectedModeHasApiKey && (
@@ -179,11 +148,6 @@ export function BuyPostageStep({
           <TableBody>
             {shipments.map((shipment) => {
               const order = orders.find((o) => o["Order #"] === shipment.reference);
-              const marketComparison = compareShipmentToMarket(
-                sourceOrders,
-                shipmentToOrderMap,
-                shipment.reference,
-              );
               const shipmentOrderNumbers = new Set(shipmentToOrderMap[shipment.reference] ?? [shipment.reference]);
               const shipmentSourceOrders = sourceOrders.filter((sourceOrder) => shipmentOrderNumbers.has(sourceOrder["Order #"]));
               const purchaseEntry = outboundPurchaseResultsByReference[shipment.reference];
@@ -210,15 +174,12 @@ export function BuyPostageStep({
                         <Chip label="Sig. Required" size="small" color="warning" sx={{ ml: 1 }} />
                       )}
                     </Typography>
-                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                      <Typography variant="caption" color="text.secondary">
-                        {shipment.parcel.length}&times;{shipment.parcel.width}&times;{shipment.parcel.height} in
-                        {order ? ` • ${order["Item Count"]} items • $${order["Value Of Products"].toFixed(2)}` : ""}
-                      </Typography>
-                      <MarketDeltaChip comparison={marketComparison} hideWhenUnavailable />
-                    </Stack>
-                    <Box sx={{ mt: 1 }}>
-                      <IntakeHistorySummary sourceOrders={shipmentSourceOrders} label="Shipment" compact />
+                    <Typography variant="caption" color="text.secondary" component="div">
+                      {shipment.parcel.length}&times;{shipment.parcel.width}&times;{shipment.parcel.height} in
+                      {order ? ` • ${order["Item Count"]} items` : ""}
+                    </Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                      <SaleValueFigures value={saleValueOfOrders(shipmentSourceOrders)} variant="caption" />
                     </Box>
                   </TableCell>
                   <TableCell>
@@ -444,24 +405,6 @@ export function BuyPostageStep({
           </Stack>
         </Box>
       )}
-
-      <Stack direction="row" spacing={2}>
-        <Button variant="outlined" onClick={onBack}>
-          Back
-        </Button>
-        <Button
-          variant="contained"
-          onClick={onContinue}
-          disabled={!allPurchased}
-        >
-          Continue to Print
-        </Button>
-        {!allPurchased && shipments.length > 0 && (
-          <Button variant="text" onClick={onContinue} size="small" color="inherit">
-            Skip (proceed anyway)
-          </Button>
-        )}
-      </Stack>
     </Stack>
   );
 }
