@@ -13,7 +13,7 @@ if (process.env.DATABASE_URL !== testUrl) {
 
 const { getPool } = await import("../database.server");
 const { sellerOrderHistoryRepository } = await import("./sellerOrderHistory.server");
-const { observeSellerOrder } = await import(
+const { fingerprintSellerOrderSummary, observeSellerOrder } = await import(
   "~/features/seller-order-history/domain/sellerOrderObservation"
 );
 const { synchronizeSellerOrders } = await import(
@@ -70,6 +70,19 @@ try {
   assert.equal((await sellerOrderHistoryRepository.recordObservation({
     ...observed, observedAt: "2026-09-09T00:00:00Z",
   })).revision, 3);
+
+  const detailsNeeded = await sellerOrderHistoryRepository.findDetailsNeeded(seller, [
+    { orderNumber: "ORDER-1", summaryFingerprint: fingerprintSellerOrderSummary(summary("ORDER-1")) },
+    { orderNumber: "ORDER-1-CHANGED", summaryFingerprint: "unseen" },
+  ]);
+  assert.deepEqual(detailsNeeded, ["ORDER-1-CHANGED"], "a recorded order with an unchanged summary is not fetched again");
+  assert.deepEqual(
+    await sellerOrderHistoryRepository.findDetailsNeeded(seller, [
+      { orderNumber: "ORDER-1", summaryFingerprint: fingerprintSellerOrderSummary(summary("ORDER-1", "Shipped - In Transit")) },
+    ]),
+    ["ORDER-1"],
+    "a changed summary is fetched",
+  );
 
   await sellerOrderHistoryRepository.recordObservation(
     observeSellerOrder(`${seller}-other`, summary("ORDER-1"), detail("ORDER-1")),

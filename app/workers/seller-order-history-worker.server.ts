@@ -4,6 +4,9 @@ import { inventoryFifoRepository } from "../core/db/index.server";
 import { inventoryHistoryWorkerEnabled } from "../features/inventory-history/services/inventoryHistoryWorkerPolicy";
 import { recordMissingEstimatedPurchaseCosts } from "../features/inventory-economics/services/estimatedPurchaseCosts.server";
 
+/** Orders change through their status, which the search shows, so an hourly look is enough. */
+const HISTORY_SYNC_INTERVAL_MS = 60 * 60_000;
+
 let stopping = false;
 let nextHistorySyncAt=0;
 
@@ -34,7 +37,7 @@ async function run(): Promise<void> {
         ) {
           delayMs = 2_000;
         } else if (result.coverage.status === "complete") {
-          nextHistorySyncAt=Date.now()+15*60_000;
+          nextHistorySyncAt=Date.now()+HISTORY_SYNC_INTERVAL_MS;
         }
       }
     } catch (error) {

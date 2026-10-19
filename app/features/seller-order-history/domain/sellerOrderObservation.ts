@@ -128,6 +128,19 @@ export function fingerprintSellerOrderSummary(summary: SellerOrderSearchSummary)
   })).digest("hex");
 }
 
+/**
+ * Whether an order's detail must be fetched. Line items never change, and the
+ * status, refund, and fee changes that do happen also change the search
+ * summary: a refund moves the order back to a shipped status and a full refund
+ * cancels it. So an unchanged summary means unchanged detail.
+ */
+export function needsSellerOrderDetail(
+  stored: { summaryFingerprint: string | null } | undefined,
+  summaryFingerprint: string,
+): boolean {
+  return stored?.summaryFingerprint !== summaryFingerprint;
+}
+
 export function fingerprintSellerOrder(
   value: Omit<SellerOrderObservation, "fingerprint" | "observedAt">,
 ): string {

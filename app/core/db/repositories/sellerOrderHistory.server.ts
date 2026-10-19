@@ -3,7 +3,10 @@ import type {
   SellerOrderObservation,
   SellerOrderSource,
 } from "~/features/seller-order-history/types/sellerOrderHistory";
-import { aggregateSellerOrderLines } from "~/features/seller-order-history/domain/sellerOrderObservation";
+import {
+  aggregateSellerOrderLines,
+  needsSellerOrderDetail,
+} from "~/features/seller-order-history/domain/sellerOrderObservation";
 import { inventoryFifoRepository } from "./inventoryFifo.server";
 import {
   asJson,
@@ -318,25 +321,19 @@ export const sellerOrderHistoryRepository = {
   async findDetailsNeeded(
     sellerKey: string,
     summaries: Array<{ orderNumber: string; summaryFingerprint: string }>,
-    staleBefore: Date,
   ): Promise<string[]> {
     if (summaries.length === 0) return [];
-    const fingerprints = new Map(summaries.map((value) => [value.orderNumber, value.summaryFingerprint]));
-    const rows = await query<{
-      orderNumber: string; summaryFingerprint: string | null; detailObservedAt: Date;
-    }>(
-      `SELECT order_number AS "orderNumber", summary_fingerprint AS "summaryFingerprint",
-         detail_observed_at AS "detailObservedAt"
+    const rows = await query<{ orderNumber: string; summaryFingerprint: string | null }>(
+      `SELECT order_number AS "orderNumber", summary_fingerprint AS "summaryFingerprint"
        FROM seller_orders
        WHERE seller_key = $1 AND order_number = ANY($2::text[])`,
       [sellerKey.trim(), summaries.map((value) => value.orderNumber)],
     );
     const current = new Map(rows.map((row) => [row.orderNumber, row]));
-    return summaries.flatMap(({ orderNumber }) => {
-      const stored = current.get(orderNumber);
-      return !stored || stored.summaryFingerprint !== fingerprints.get(orderNumber) ||
-        stored.detailObservedAt < staleBefore ? [orderNumber] : [];
-    });
+    return summaries
+      .filter(({ orderNumber, summaryFingerprint }) =>
+        needsSellerOrderDetail(current.get(orderNumber), summaryFingerprint))
+      .map(({ orderNumber }) => orderNumber);
   },
 
   async findApiVerifiedOrderNumbers(
