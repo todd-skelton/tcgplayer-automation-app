@@ -26,7 +26,7 @@ Only one leased worker may advance a seller's run. API observations, checkpoints
 
 Detail is not refreshed on a timer because the summary already carries every change seen in practice. Verified on 2026-10-19 against the production ledger and live API:
 
-- Over 30 days, 1,911 later revisions were 1,890 status changes, 15 refunds, 7 cancellations, and 16 fee-only changes. No line item changed SKU, quantity, or price.
+- Over 30 days, 1,913 later revisions were 1,885 status changes, 7 cancellations, 1 refund without a status change, 16 changes while Ready to Ship only to fields the revisions do not keep, such as fees, and 4 catalog renames of a product name on Completed - Paid orders. No line item changed SKU, quantity, or price. Those renames are the only changes this rule no longer records.
 - The search summary has no refund field, and its product and total amounts are not reduced by a refund. A refund nevertheless changes the order's status: a partial refund moves a Completed - Paid order back to a shipped status, and a full refund cancels it. 11 of 12 observed partial refunds changed status when issued; the twelfth was captured at the order's next status change ten hours later.
 - Orders keep advancing through statuses until Completed - Paid, so any detail change before then is captured at the next status change.
 
