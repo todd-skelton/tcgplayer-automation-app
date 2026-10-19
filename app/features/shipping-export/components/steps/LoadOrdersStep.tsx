@@ -65,6 +65,7 @@ export function LoadOrdersStep({
 }: LoadOrdersStepProps) {
   const sellerButton = useRef<HTMLButtonElement>(null);
   const historyButton = useRef<HTMLButtonElement>(null);
+  const historyFileInput = useRef<HTMLInputElement>(null);
   const [sellerOpen, setSellerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const isLoading = isLoadingLiveOrders || isLoadingSingleOrder || isLoadingExistingPostage;
@@ -206,26 +207,34 @@ export function LoadOrdersStep({
           </MenuItem>
         )}
         {onImportHistoryFile && (
-          <MenuItem component="label">
+          <MenuItem
+            onClick={() => {
+              setHistoryOpen(false);
+              historyFileInput.current?.click();
+            }}
+          >
             <ListItemText
               primary="Import Older Order CSV"
               secondary="A USD order export for orders older than the three-month API window."
               slotProps={{ secondary: { sx: { whiteSpace: "normal" } } }}
             />
-            <input
-              hidden
-              type="file"
-              accept=".csv,text/csv"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                setHistoryOpen(false);
-                if (file) onImportHistoryFile(file);
-              }}
-            />
           </MenuItem>
         )}
       </Menu>
+      {onImportHistoryFile && (
+        <input
+          ref={historyFileInput}
+          hidden
+          type="file"
+          accept=".csv,text/csv"
+          aria-label="Older order CSV"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) onImportHistoryFile(file);
+          }}
+        />
+      )}
     </Stack>
   );
 }

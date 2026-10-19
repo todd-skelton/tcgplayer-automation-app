@@ -4,6 +4,11 @@ import {
   Button,
   ButtonGroup,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Menu,
   MenuItem,
   Paper,
@@ -30,6 +35,7 @@ export function ShippingStepBar({
   onBack,
   onNext,
   onStartNewBatch,
+  startNewBatchWarning,
   batchValue,
 }: {
   progress: ShippingStepProgress;
@@ -42,9 +48,12 @@ export function ShippingStepBar({
   onBack?: () => void;
   onNext: () => void;
   onStartNewBatch: () => void;
+  /** When set, starting a new batch would drop unfinished work, so it is confirmed first. */
+  startNewBatchWarning?: string | null;
 }) {
   const skipButton = useRef<HTMLButtonElement>(null);
   const [skipOpen, setSkipOpen] = useState(false);
+  const [confirmingNewBatch, setConfirmingNewBatch] = useState(false);
   const continueLabel = `Continue to ${nextStepLabel}`;
   const offersSkip = !progress.readyToContinue && progress.canSkip;
 
@@ -80,7 +89,12 @@ export function ShippingStepBar({
           </Button>
         )}
         {nextStepLabel === null ? (
-          <Button variant="contained" size="small" color="success" onClick={onStartNewBatch}>
+          <Button
+            variant="contained"
+            size="small"
+            color="success"
+            onClick={() => (startNewBatchWarning ? setConfirmingNewBatch(true) : onStartNewBatch())}
+          >
             Start New Batch
           </Button>
         ) : offersSkip ? (
@@ -119,6 +133,30 @@ export function ShippingStepBar({
           Skip to {nextStepLabel} before this step is done
         </MenuItem>
       </Menu>
+
+      <Dialog
+        open={confirmingNewBatch}
+        onClose={() => setConfirmingNewBatch(false)}
+        aria-labelledby="start-new-batch-title"
+      >
+        <DialogTitle id="start-new-batch-title">Start a new batch?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{startNewBatchWarning}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmingNewBatch(false)}>Keep This Batch</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={() => {
+              setConfirmingNewBatch(false);
+              onStartNewBatch();
+            }}
+          >
+            Start New Batch
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 }

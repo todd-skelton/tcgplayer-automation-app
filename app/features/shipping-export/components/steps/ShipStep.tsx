@@ -23,6 +23,8 @@ interface ShipStepProps {
   shippedOrderCount: number;
   trackingApplyResults: ShippingTrackingApplyResult[];
   shippedMessageResults: ShippingShippedMessageResult[];
+  /** Buyers can only be messaged with a seller key, so shipping waits for one. */
+  hasSellerKey: boolean;
 }
 
 function plural(count: number, noun: string): string {
@@ -70,6 +72,7 @@ export function ShipStep({
   shippedOrderCount,
   trackingApplyResults,
   shippedMessageResults,
+  hasSellerKey,
 }: ShipStepProps) {
   const outcomes = outcomesByOrder(trackingApplyResults, shippedMessageResults);
   const failedCount = outcomes.filter(
@@ -78,11 +81,17 @@ export function ShipStep({
 
   return (
     <Stack spacing={2}>
-      <Typography variant="body1">
-        {describeReadiness(pendingOrderNumbers.length, shippedOrderCount)}
-      </Typography>
+      {hasSellerKey ? (
+        <Typography variant="body1">
+          {describeReadiness(pendingOrderNumbers.length, shippedOrderCount)}
+        </Typography>
+      ) : (
+        <Alert severity="warning">
+          Set the seller key on Load Orders before shipping. Buyers can only be notified with it.
+        </Alert>
+      )}
 
-      {pendingOrderNumbers.length > 0 && (
+      {hasSellerKey && pendingOrderNumbers.length > 0 && (
         <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
           {pendingOrderNumbers.map((orderNumber) => (
             <Chip key={orderNumber} label={orderNumber} size="small" variant="outlined" />

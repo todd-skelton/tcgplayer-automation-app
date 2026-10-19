@@ -200,7 +200,7 @@ export function BuyPostageStep({
                     <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                       <Typography variant="body2">
                         {shipment.parcel.predefined_package} · {shipment.parcel.weight}oz · {shipment.service} ·{" "}
-                        {shipment.options.label_size} · {itemCount} items
+                        {shipment.options.label_size} · {itemCount} {itemCount === 1 ? "item" : "items"}
                       </Typography>
                       {shipment.options.delivery_confirmation === "SIGNATURE" && (
                         <Chip label="Sig. Required" size="small" color="warning" />

@@ -10,6 +10,7 @@ const counts: ShippingWorkflowCounts = {
   packedCount: 0,
   shipPendingCount: 0,
   shippedCount: 0,
+  hasSellerKey: true,
 };
 
 assert.deepEqual(describeShippingStep("load-orders", { ...counts, orderCount: 0 }), {
@@ -49,5 +50,9 @@ assert.equal(
   "Every order is shipped and its buyer notified",
 );
 assert.equal(describeShippingStep("ship", counts).summary, "No orders have production postage");
+assert.equal(
+  describeShippingStep("ship", { ...counts, shipPendingCount: 2, hasSellerKey: false }).summary,
+  "Set the seller key to notify buyers",
+);
 
 console.log("PASS shipping step progress names where each step stands and when it may be continued or skipped");

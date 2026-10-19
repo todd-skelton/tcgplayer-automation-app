@@ -32,5 +32,3 @@ export interface PullSheetItem {
   dbCondition?: Condition;
   found: boolean;
 }
-
-/** Per-unit prices shown on a pull sheet card when the caller knows what the card sold for. */

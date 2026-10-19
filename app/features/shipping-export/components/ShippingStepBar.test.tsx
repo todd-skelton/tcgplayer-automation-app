@@ -52,4 +52,8 @@ assert.match(lastStep, /Start New Batch/);
 assert.match(lastStep, disabledButton("Mark Shipped &amp; Notify Buyers"));
 assert.doesNotMatch(lastStep, /Continue to/);
 
+const unfinished = render({ nextStepLabel: null, startNewBatchWarning: "2 orders are not yet marked shipped." });
+assert.match(unfinished, />Start New Batch</);
+assert.doesNotMatch(unfinished, /2 orders are not yet marked shipped/, "the warning waits until Start New Batch is pressed");
+
 console.log("PASS shipping step bar shows step progress, its action, and how to move on");

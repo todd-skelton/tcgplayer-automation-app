@@ -10,7 +10,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { PullSheetGrid } from "~/features/pull-sheet/components/PullSheetGrid";
 import { PullSheetTable } from "~/features/pull-sheet/components/PullSheetTable";
 import type { PullSheetItem } from "~/features/pull-sheet/types/pullSheetTypes";
@@ -70,10 +70,21 @@ export function PullSheetStep({
     (item) => !item.found,
   ).length;
   const cardValues = useMemo(() => saleValuesBySku(sourceOrders), [sourceOrders]);
-  const renderCardValue = (item: PullSheetItem, onImage: boolean) => {
-    const value = cardValues.get(item.skuId);
-    return value ? <SaleValueFigures value={value} variant="caption" onImage={onImage} /> : null;
-  };
+  // Stable, so the memoized grid and the table's columns are not rebuilt on every render.
+  const renderCardValueOnImage = useCallback(
+    (item: PullSheetItem) => {
+      const value = cardValues.get(item.skuId);
+      return value ? <SaleValueFigures value={value} variant="caption" onImage /> : null;
+    },
+    [cardValues],
+  );
+  const renderCardValue = useCallback(
+    (item: PullSheetItem) => {
+      const value = cardValues.get(item.skuId);
+      return value ? <SaleValueFigures value={value} variant="caption" /> : null;
+    },
+    [cardValues],
+  );
 
   const packageCounts = (["Letter", "Flat", "Parcel"] as const)
     .map((pkg) => [pkg, shipments.filter((shipment) => shipment.parcel.predefined_package === pkg).length] as const)
@@ -140,9 +151,9 @@ export function PullSheetStep({
 
       {pullSheetItems.length > 0 &&
         (viewMode === "card" ? (
-          <PullSheetGrid items={filteredItems} renderItemDetail={(item) => renderCardValue(item, true)} />
+          <PullSheetGrid items={filteredItems} renderItemDetail={renderCardValueOnImage} />
         ) : (
-          <PullSheetTable items={filteredItems} renderItemDetail={(item) => renderCardValue(item, false)} />
+          <PullSheetTable items={filteredItems} renderItemDetail={renderCardValue} />
         ))}
 
       {!isLoadingPullSheet && !pullSheetError && pullSheetItems.length === 0 && sourceOrders.length > 0 && (

@@ -22,6 +22,8 @@ export interface ShippingWorkflowCounts {
   shipPendingCount: number;
   /** Orders with production postage that are tracked and messaged. */
   shippedCount: number;
+  /** Buyers can only be messaged with a seller key. */
+  hasSellerKey: boolean;
 }
 
 /** Where the current step stands and whether the workflow may move past it. */
@@ -80,11 +82,13 @@ export function describeShippingStep(
     case "ship":
       return {
         summary:
-          counts.shipPendingCount > 0
-            ? `${count(counts.shipPendingCount, "order")} to mark shipped and notify`
-            : counts.shippedCount > 0
-              ? "Every order is shipped and its buyer notified"
-              : "No orders have production postage",
+          counts.shipPendingCount > 0 && !counts.hasSellerKey
+            ? "Set the seller key to notify buyers"
+            : counts.shipPendingCount > 0
+              ? `${count(counts.shipPendingCount, "order")} to mark shipped and notify`
+              : counts.shippedCount > 0
+                ? "Every order is shipped and its buyer notified"
+                : "No orders have production postage",
         readyToContinue: true,
         canSkip: false,
       };

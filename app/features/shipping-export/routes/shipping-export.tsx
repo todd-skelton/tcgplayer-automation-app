@@ -271,10 +271,13 @@ export default function ShippingExportRoute() {
   const shipPendingOrderNumbers = [
     ...new Set([...trackingApplyItems, ...shippedMessageItems].map((item) => item.orderNumber)),
   ];
-  const shippedOrderCount = Math.max(
-    0,
-    trackingApplyItems.length + alreadyTrackedCount - shipPendingOrderNumbers.length,
-  );
+  // Without a seller key no buyer can be messaged, so no order counts as shipped.
+  const hasSellerKey = Boolean(sellerKeyInput.trim());
+  const productionOrderCount = trackingApplyItems.length + alreadyTrackedCount;
+  const shippedOrderCount = hasSellerKey
+    ? Math.max(0, productionOrderCount - shipPendingOrderNumbers.length)
+    : 0;
+  const unshippedOrderCount = productionOrderCount - shippedOrderCount;
 
   // ── Internal helpers ──────────────────────────────────────────────────────
   const getOrderNumbersForShipment = (shipmentReference: string) =>
@@ -892,7 +895,7 @@ export default function ShippingExportRoute() {
    * shipped before TCGPlayer shows the tracking number.
    */
   const handleShip = async () => {
-    if (shipPendingOrderNumbers.length === 0 || isShipping) return;
+    if (shipPendingOrderNumbers.length === 0 || isShipping || !hasSellerKey) return;
 
     setIsShipping(true);
     setError(null);
@@ -1149,8 +1152,9 @@ export default function ShippingExportRoute() {
       (shipment) => outboundPurchaseResultsByReference[shipment.reference]?.result.status === "purchased",
     ).length,
     packedCount: packedOrderNumbers.size,
-    shipPendingCount: shipPendingOrderNumbers.length,
+    shipPendingCount: unshippedOrderCount,
     shippedCount: shippedOrderCount,
+    hasSellerKey,
   });
   const batchValue = useMemo(
     () => (sourceOrders.length > 0 ? saleValueOfOrders(sourceOrders) : null),
@@ -1171,7 +1175,7 @@ export default function ShippingExportRoute() {
     ship: {
       label: isShipping ? "Marking Shipped..." : "Mark Shipped & Notify Buyers",
       busy: isShipping,
-      disabled: shipPendingOrderNumbers.length === 0 || isShipping,
+      disabled: shipPendingOrderNumbers.length === 0 || isShipping || !hasSellerKey,
       onClick: () => void handleShip(),
     },
   };
@@ -1341,6 +1345,7 @@ export default function ShippingExportRoute() {
             shippedOrderCount={shippedOrderCount}
             trackingApplyResults={trackingApplyResults}
             shippedMessageResults={shippedMessageResults}
+            hasSellerKey={hasSellerKey}
           />
         )}
       </Paper>
@@ -1352,6 +1357,11 @@ export default function ShippingExportRoute() {
         onBack={currentStep > 0 ? () => setCurrentStep(currentStep - 1) : undefined}
         onNext={() => setCurrentStep(currentStep + 1)}
         onStartNewBatch={handleReset}
+        startNewBatchWarning={
+          unshippedOrderCount > 0
+            ? `${unshippedOrderCount} ${unshippedOrderCount === 1 ? "order is" : "orders are"} not yet marked shipped with the buyer notified. Starting a new batch clears this one.`
+            : null
+        }
         batchValue={batchValue && <SaleValueFigures value={batchValue} />}
       />
 

@@ -325,7 +325,16 @@ export function PackStep({
 
   return (
     <Stack ref={pageRef} spacing={2}>
-      <Stack direction="row" spacing={1.5} alignItems="center" useFlexGap flexWrap="wrap">
+      <Stack
+        direction="row"
+        spacing={1.5}
+        alignItems="center"
+        useFlexGap
+        flexWrap="wrap"
+        // The step panel pads its scroll area by 3; the header covers that padding as it sticks,
+        // above the card layers, which stack up to 4.
+        sx={{ position: "sticky", top: (theme) => theme.spacing(-3), zIndex: 5, bgcolor: "background.paper", backgroundImage: "var(--Paper-overlay)", pt: 3, mt: -3, pb: 0.5 }}
+      >
         {viewMode === "card" ? (
           <Stack direction="row" alignItems="center">
             <IconButton
@@ -397,7 +406,7 @@ export function PackStep({
             {isPacked ? "Packed" : "Mark Packed"}
           </Button>
         )}
-        <Tooltip title="Space marks the shipment packed and moves to the next one. Left and right arrows move between shipments.">
+        <Tooltip title="Space marks the shipment packed and moves to the next one, or unmarks a packed one. Left and right arrows move between shipments.">
           <KeyboardIcon fontSize="small" color="action" aria-label="Keyboard shortcuts" />
         </Tooltip>
         <ToggleButtonGroup

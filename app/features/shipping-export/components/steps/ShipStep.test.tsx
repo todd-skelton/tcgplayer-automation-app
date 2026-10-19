@@ -8,7 +8,14 @@ const visibleText = (html: string) =>
 const render = (props: Partial<React.ComponentProps<typeof ShipStep>> = {}) =>
   visibleText(
     renderToStaticMarkup(
-      <ShipStep pendingOrderNumbers={[]} shippedOrderCount={0} trackingApplyResults={[]} shippedMessageResults={[]} {...props} />,
+      <ShipStep
+        pendingOrderNumbers={[]}
+        shippedOrderCount={0}
+        trackingApplyResults={[]}
+        shippedMessageResults={[]}
+        hasSellerKey
+        {...props}
+      />,
     ),
   );
 
@@ -37,5 +44,9 @@ assert.match(complete, /Every order with production postage is marked shipped an
 assert.match(complete, /Batch complete/);
 
 assert.match(render(), /No orders have production postage\. Buy postage in production mode first\./);
+
+const noSeller = render({ pendingOrderNumbers: ["A"], hasSellerKey: false });
+assert.match(noSeller, /Set the seller key on Load Orders before shipping/);
+assert.doesNotMatch(noSeller, /ready to mark as shipped/, "no order is offered for shipping without a seller key");
 
 console.log("PASS ship step reports tracking and shipped messages per order and when the batch is complete");
