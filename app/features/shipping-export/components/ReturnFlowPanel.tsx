@@ -31,7 +31,7 @@ interface ReturnFlowPanelProps {
   config: ShippingExportConfig;
   environmentStatus: EasyPostEnvironmentStatus;
   sellerKeyInput: string;
-  singleOrderNumberInput: string;
+  orderNumberInput: string;
   returnOrder: TcgPlayerShippingOrder | null;
   returnShipment: EasyPostShipment | null;
   returnFlowType: ReturnFlowType;
@@ -133,7 +133,7 @@ export function ReturnFlowPanel({
   config,
   environmentStatus,
   sellerKeyInput,
-  singleOrderNumberInput,
+  orderNumberInput,
   returnOrder,
   returnShipment,
   returnFlowType,
@@ -172,7 +172,7 @@ export function ReturnFlowPanel({
     <Stack spacing={3}>
       <Box>
         <Typography variant="body2" color="text.secondary">
-          Seller key: <strong>{sellerKeyInput || "(not set)"}</strong>. Set the seller key in the Outbound Workflow tab.
+          Seller key: <strong>{sellerKeyInput || "(not set)"}</strong>. Set the seller key on Load Orders.
         </Typography>
       </Box>
 
@@ -184,7 +184,7 @@ export function ReturnFlowPanel({
       >
         <TextField
           label="Order Number"
-          value={singleOrderNumberInput}
+          value={orderNumberInput}
           onChange={(event) => onOrderNumberChange(event.target.value)}
           placeholder="Enter order number"
           sx={{ minWidth: { xs: "100%", md: 320 } }}
@@ -193,7 +193,7 @@ export function ReturnFlowPanel({
           variant="contained"
           color="secondary"
           onClick={onLookupOrder}
-          disabled={isLoadingReturnOrder || !singleOrderNumberInput.trim()}
+          disabled={isLoadingReturnOrder || !orderNumberInput.trim()}
           startIcon={isLoadingReturnOrder ? <CircularProgress color="inherit" size={18} /> : undefined}
         >
           {isLoadingReturnOrder ? "Looking Up Order..." : "Lookup Order"}

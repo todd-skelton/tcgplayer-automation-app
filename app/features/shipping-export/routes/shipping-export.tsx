@@ -1,15 +1,19 @@
+import CloseIcon from "@mui/icons-material/Close";
+import ReplyIcon from "@mui/icons-material/Reply";
+import SettingsIcon from "@mui/icons-material/Settings";
 import {
   Alert,
   Box,
   Button,
   Chip,
+  Drawer,
+  IconButton,
   Paper,
   Step,
   StepButton,
   Stepper,
   Stack,
-  Tab,
-  Tabs,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { data, Link, type MetaFunction, useLoaderData } from "react-router";
@@ -62,27 +66,19 @@ import {
   type TcgPlayerShippingOrder,
 } from "../types/shippingExport";
 import { ShipmentEditDrawer } from "../components/ShipmentEditDrawer";
-import { OrderMarketSummary } from "../components/OrderMarketSummary";
+import { ShippingStepBar, type ShippingStepAction } from "../components/ShippingStepBar";
+import { SaleValueFigures } from "../components/SaleValueFigures";
+import { saleValueOfOrders } from "../services/saleValue";
+import { describeShippingStep, OUTBOUND_STEPS } from "../services/shippingStepProgress";
 import { LoadOrdersStep } from "../components/steps/LoadOrdersStep";
 import { PullSheetStep } from "../components/steps/PullSheetStep";
 import { BuyPostageStep } from "../components/steps/BuyPostageStep";
 import { PrintStep } from "../components/steps/PrintStep";
 import { PackStep } from "../components/steps/PackStep";
-import { ApplyTrackingStep } from "../components/steps/ApplyTrackingStep";
-import { NotifyStep } from "../components/steps/NotifyStep";
+import { ShipStep } from "../components/steps/ShipStep";
 import { ReturnFlowPanel } from "../components/ReturnFlowPanel";
 import type { SellerOrderCoverage } from "~/features/seller-order-history/types/sellerOrderHistory";
 import { refreshShippingIntakeHistory, withoutShippingIntakeHistory } from "../services/shippingIntakeHistory";
-
-const OUTBOUND_STEPS = [
-  { key: "load-orders", label: "Load Orders" },
-  { key: "pull-sheet", label: "Pull Sheet" },
-  { key: "buy-postage", label: "Buy Postage" },
-  { key: "print", label: "Print" },
-  { key: "pack", label: "Pack" },
-  { key: "apply-tracking", label: "Apply Tracking" },
-  { key: "notify", label: "Notify" },
-] as const;
 
 function downloadCsvFile(filenamePrefix: string, shipments: EasyPostShipment[]): void {
   const csvOutput = Papa.unparse(getShipmentCsvRows(shipments));
@@ -152,7 +148,7 @@ export const meta: MetaFunction = () => {
     {
       name: "description",
       content:
-        "Step-by-step shipping workflow: load orders, pull cards, buy postage, print labels, pack, apply tracking, and notify buyers.",
+        "Step-by-step shipping workflow: load orders, pull cards, buy postage, print labels, pack, then mark orders shipped and notify buyers.",
     },
   ];
 };
@@ -170,11 +166,10 @@ export default function ShippingExportRoute() {
 
   // ── Workflow navigation ───────────────────────────────────────────────────
   const [currentStep, setCurrentStep] = useState(0);
-  const [activeTab, setActiveTab] = useState<"outbound" | "return">("outbound");
+  const [returnsOpen, setReturnsOpen] = useState(false);
 
   // ── Order / shipment state ────────────────────────────────────────────────
   const [sourceOrders, setSourceOrders] = useState<TcgPlayerShippingOrder[]>([]);
-  const [orders, setOrders] = useState<TcgPlayerShippingOrder[]>([]);
   const [shipments, setShipments] = useState<EasyPostShipment[]>([]);
   const [shipmentToOrderMap, setShipmentToOrderMap] = useState<ShipmentToOrderMap>({});
   const [shipmentReferences, setShipmentReferences] = useState<string[]>([]);
@@ -210,15 +205,15 @@ export default function ShippingExportRoute() {
   const [generatingBatchLabelSize, setGeneratingBatchLabelSize] = useState<LabelSize | null>(null);
   const [purchasingLabelSize, setPurchasingLabelSize] = useState<LabelSize | null>(null);
   const [purchasingActionKey, setPurchasingActionKey] = useState<string | null>(null);
-  const [isApplyingTracking, setIsApplyingTracking] = useState(false);
+  const [isShipping, setIsShipping] = useState(false);
   const [trackingApplyResults, setTrackingApplyResults] = useState<ShippingTrackingApplyResult[]>([]);
-  const [isSendingShippedMessages, setIsSendingShippedMessages] = useState(false);
   const [shippedMessageResults, setShippedMessageResults] = useState<ShippingShippedMessageResult[]>([]);
 
   // ── Pack step state ───────────────────────────────────────────────────────
   const [packedOrderNumbers, setPackedOrderNumbers] = useState<Set<string>>(new Set());
 
   // ── Return flow state ─────────────────────────────────────────────────────
+  const [returnOrderNumberInput, setReturnOrderNumberInput] = useState("");
   const [returnFlowType, setReturnFlowType] = useState<ReturnFlowType>("round-trip");
   const [returnService, setReturnService] = useState<EasyPostService>("First");
   const [returnOrder, setReturnOrder] = useState<TcgPlayerShippingOrder | null>(null);
@@ -249,7 +244,6 @@ export default function ShippingExportRoute() {
   const {
     isGeneratingPullSheet,
     pullSheetItems,
-    pullSheetOrderIds,
     pullSheetError,
     packPullSheetStatus,
     packPullSheetError,
@@ -267,13 +261,23 @@ export default function ShippingExportRoute() {
     sourceOrders,
     trackingApplyResults,
   );
-  const { messages: shippedMessageItems, alreadySentCount } = buildShippedMessageItems(
+  const { messages: shippedMessageItems } = buildShippedMessageItems(
     shipments,
     sellerKeyInput,
     shipmentToOrderMap,
     outboundPurchaseResultsByReference,
     shippedMessageResults,
   );
+  const shipPendingOrderNumbers = [
+    ...new Set([...trackingApplyItems, ...shippedMessageItems].map((item) => item.orderNumber)),
+  ];
+  // Without a seller key no buyer can be messaged, so no order counts as shipped.
+  const hasSellerKey = Boolean(sellerKeyInput.trim());
+  const productionOrderCount = trackingApplyItems.length + alreadyTrackedCount;
+  const shippedOrderCount = hasSellerKey
+    ? Math.max(0, productionOrderCount - shipPendingOrderNumbers.length)
+    : 0;
+  const unshippedOrderCount = productionOrderCount - shippedOrderCount;
 
   // ── Internal helpers ──────────────────────────────────────────────────────
   const getOrderNumbersForShipment = (shipmentReference: string) =>
@@ -396,7 +400,6 @@ export default function ShippingExportRoute() {
     const nextState = buildShippingWorkflowOrderState(nextSourceOrders, config);
 
     setSourceOrders(nextState.sourceOrders);
-    setOrders(nextState.orders);
     setShipments(nextState.shipments);
     setShipmentToOrderMap(nextState.shipmentToOrderMap);
     setShipmentReferences(nextState.shipmentReferences);
@@ -497,13 +500,10 @@ export default function ShippingExportRoute() {
         const refreshed = await refreshShippingIntakeHistory(sourceSnapshot, sellerKeyInput.trim());
         if (expectedSequence !== orderSourceSequenceRef.current || refreshSequence !== intakeRefreshSequenceRef.current) return;
         setSourceOrders((current) => current.map((order) => order["Order #"]).join("|") === expectedOrders ? refreshed : current);
-        const histories = new Map(refreshed.map((order) => [order["Order #"], order.intakeHistory]));
-        setOrders((current) => current.map((order) => ({ ...order, intakeHistory: histories.get(order["Order #"]) })));
       } catch (refreshError) {
         if (expectedSequence !== orderSourceSequenceRef.current || refreshSequence !== intakeRefreshSequenceRef.current) return;
         setSourceOrders((current) => current.map((order) => order["Order #"]).join("|") === expectedOrders
           ? withoutShippingIntakeHistory(current) : current);
-        setOrders((current) => withoutShippingIntakeHistory(current));
         const warning = `Intake history refresh failed: ${String(refreshError)}`;
         setLoadWarnings((current) => current.includes(warning) ? current : [...current, warning]);
       }
@@ -617,13 +617,10 @@ export default function ShippingExportRoute() {
         try {
           const refreshed = await refreshShippingIntakeHistory(sourceOrders, sellerKeyInput.trim());
           if (sourceSequence !== orderSourceSequenceRef.current || refreshSequence !== intakeRefreshSequenceRef.current) return;
-          const histories = new Map(refreshed.map((order) => [order["Order #"], order.intakeHistory]));
           setSourceOrders(refreshed);
-          setOrders((current) => current.map((order) => ({ ...order, intakeHistory: histories.get(order["Order #"]) })));
         } catch (refreshError) {
           if (sourceSequence !== orderSourceSequenceRef.current || refreshSequence !== intakeRefreshSequenceRef.current) return;
           setSourceOrders((current) => withoutShippingIntakeHistory(current));
-          setOrders((current) => withoutShippingIntakeHistory(current));
           setLoadWarnings((current) => [...current, `Intake history is unavailable after catch-up: ${String(refreshError)}`]);
         }
       }
@@ -892,61 +889,61 @@ export default function ShippingExportRoute() {
   };
 
   // ── Handlers: tracking & messaging ───────────────────────────────────────
-  const handleApplyTracking = async () => {
-    if (trackingApplyItems.length === 0 || isApplyingTracking) return;
+  /**
+   * Applies tracking to orders that still need it, then messages buyers. An
+   * order whose tracking did not apply is not messaged, so no buyer hears it
+   * shipped before TCGPlayer shows the tracking number.
+   */
+  const handleShip = async () => {
+    if (shipPendingOrderNumbers.length === 0 || isShipping || !hasSellerKey) return;
 
-    setIsApplyingTracking(true);
+    setIsShipping(true);
     setError(null);
 
     try {
-      const response = await fetch("/api/shipping-export/tcgplayer-tracking", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ updates: trackingApplyItems }),
-      });
+      const untrackedOrderNumbers = new Set(trackingApplyItems.map((item) => item.orderNumber));
 
-      const trackingResponse = await readJsonResponse<ShippingTrackingApplyResponse>(
-        response,
-        "Failed to apply tracking to TCGPlayer orders.",
-      );
+      if (trackingApplyItems.length > 0) {
+        const response = await fetch("/api/shipping-export/tcgplayer-tracking", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ updates: trackingApplyItems }),
+        });
+        const trackingResponse = await readJsonResponse<ShippingTrackingApplyResponse>(
+          response,
+          "Failed to apply tracking to TCGPlayer orders.",
+        );
 
-      // Earlier applied orders stay applied when only the failed ones are retried.
-      setTrackingApplyResults((previous) =>
-        mergeResultsByOrderNumber(previous, trackingResponse.results),
-      );
-    } catch (trackingError) {
-      setError(String(trackingError));
+        // Earlier applied orders stay applied when only the failed ones are retried.
+        setTrackingApplyResults((previous) =>
+          mergeResultsByOrderNumber(previous, trackingResponse.results),
+        );
+        for (const result of trackingResponse.results) {
+          if (result.status === "applied") untrackedOrderNumbers.delete(result.orderNumber);
+        }
+      }
+
+      const messages = shippedMessageItems.filter((item) => !untrackedOrderNumbers.has(item.orderNumber));
+      if (messages.length > 0) {
+        const response = await fetch("/api/shipping-export/tcgplayer-shipped-messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages }),
+        });
+        const shippedMessageResponse = await readJsonResponse<ShippingShippedMessageResponse>(
+          response,
+          "Failed to send shipped messages to TCGPlayer.",
+        );
+
+        // Earlier messaged orders stay messaged when only the failed ones are retried.
+        setShippedMessageResults((previous) =>
+          mergeResultsByOrderNumber(previous, shippedMessageResponse.results),
+        );
+      }
+    } catch (shipError) {
+      setError(String(shipError));
     } finally {
-      setIsApplyingTracking(false);
-    }
-  };
-
-  const handleSendShippedMessages = async () => {
-    if (shippedMessageItems.length === 0 || isSendingShippedMessages) return;
-
-    setIsSendingShippedMessages(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/shipping-export/tcgplayer-shipped-messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: shippedMessageItems }),
-      });
-
-      const shippedMessageResponse = await readJsonResponse<ShippingShippedMessageResponse>(
-        response,
-        "Failed to send shipped messages to TCGPlayer.",
-      );
-
-      // Earlier messaged orders stay messaged when only the failed ones are retried.
-      setShippedMessageResults((previous) =>
-        mergeResultsByOrderNumber(previous, shippedMessageResponse.results),
-      );
-    } catch (shippedMessageError) {
-      setError(String(shippedMessageError));
-    } finally {
-      setIsSendingShippedMessages(false);
+      setIsShipping(false);
     }
   };
 
@@ -1007,7 +1004,7 @@ export default function ShippingExportRoute() {
   };
 
   const handleLookupReturnOrder = async () => {
-    const normalizedOrderNumber = singleOrderNumberInput.trim();
+    const normalizedOrderNumber = returnOrderNumberInput.trim();
 
     if (!normalizedOrderNumber) return;
 
@@ -1132,237 +1129,266 @@ export default function ShippingExportRoute() {
     void applyOrderSource([], "");
   };
 
-  // ── Derived for mode status ───────────────────────────────────────────────
+  // ── Derived for the header and step bar ───────────────────────────────────
   const selectedModeHasApiKey =
     config.easypostMode === "test"
       ? environmentStatus.hasTestApiKey
       : environmentStatus.hasProductionApiKey;
+  // Production with its key is the normal state, so only the exceptions are shown.
+  const modeWarning = !selectedModeHasApiKey
+    ? `Missing ${config.easypostMode} API key`
+    : config.easypostMode === "test"
+      ? "Test mode"
+      : null;
+
+  const step = OUTBOUND_STEPS[currentStep];
+  const nextStep = OUTBOUND_STEPS[currentStep + 1] ?? null;
+  const stepProgress = describeShippingStep(step.key, {
+    orderCount: sourceOrders.length,
+    isLoadingOrders: isLoadingLiveOrders || isLoadingSingleOrder || isLoadingExistingPostage,
+    itemCount: sourceOrders.reduce((sum, order) => sum + order["Item Count"], 0),
+    shipmentCount: shipments.length,
+    purchasedCount: shipments.filter(
+      (shipment) => outboundPurchaseResultsByReference[shipment.reference]?.result.status === "purchased",
+    ).length,
+    packedCount: packedOrderNumbers.size,
+    shipPendingCount: unshippedOrderCount,
+    shippedCount: shippedOrderCount,
+    hasSellerKey,
+  });
+  const batchValue = useMemo(
+    () => (sourceOrders.length > 0 ? saleValueOfOrders(sourceOrders) : null),
+    [sourceOrders],
+  );
+  const stepActions: Partial<Record<typeof step.key, ShippingStepAction>> = {
+    "buy-postage": {
+      label: purchasingLabelSize ? `Buying ${purchasingLabelSize} Postage...` : "Buy All Postage",
+      busy: purchasingLabelSize !== null,
+      disabled:
+        availableLabelSizes.length === 0 ||
+        !selectedModeHasApiKey ||
+        purchasingLabelSize !== null ||
+        purchasingActionKey !== null,
+      color: config.easypostMode === "test" ? "warning" : "primary",
+      onClick: () => void handleBuyPostage(),
+    },
+    ship: {
+      label: isShipping ? "Marking Shipped..." : "Mark Shipped & Notify Buyers",
+      busy: isShipping,
+      disabled: shipPendingOrderNumbers.length === 0 || isShipping || !hasSellerKey,
+      onClick: () => void handleShip(),
+    },
+  };
 
   return (
-    <Box sx={{ maxWidth: 1400, mx: "auto", p: 3 }}>
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        spacing={2}
-        justifyContent="space-between"
-        alignItems={{ md: "center" }}
-        sx={{ mb: 1 }}
-      >
-        <Box>
-          <Typography variant="h4" component="h1" gutterBottom>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+        px: 3,
+        py: 2,
+        boxSizing: "border-box",
+        height: { md: "calc(100dvh - 64px)" },
+      }}
+    >
+      <Stack spacing={2} sx={{ flexShrink: 0 }}>
+        <Stack direction="row" alignItems="center" spacing={2} useFlexGap sx={{ flexWrap: "wrap" }}>
+          <Typography variant="h5" component="h1">
             Shipping Workflow
           </Typography>
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-            <Chip
-              label={config.easypostMode === "test" ? "Test Mode" : "Production Mode"}
-              color={config.easypostMode === "test" ? "warning" : "error"}
-            />
-            <Chip
-              label={selectedModeHasApiKey ? "API Key Ready" : "Missing API Key"}
-              color={selectedModeHasApiKey ? "success" : "warning"}
-              variant={selectedModeHasApiKey ? "filled" : "outlined"}
-            />
-          </Stack>
-        </Box>
-      </Stack>
-
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Manage sender address, package thresholds, and label defaults in{" "}
-        <Link to="/shipping-configuration" style={{ color: "inherit", fontWeight: 600 }}>
-          Shipping Configuration
-        </Link>
-        .
-      </Typography>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-
-      {restoredWorkflow && (
-        <Alert
-          severity="info"
-          sx={{ mb: 2 }}
-          action={
-            <>
-              <Button color="inherit" size="small" onClick={handleReset}>
-                Start over
-              </Button>
-              <Button color="inherit" size="small" onClick={dismissRestoredWorkflow}>
-                Dismiss
-              </Button>
-            </>
-          }
-        >
-          Restored your in-progress shipping workflow
-          {restoredWorkflow.loadedSourceLabel ? ` (${restoredWorkflow.loadedSourceLabel})` : ""} saved{" "}
-          {new Date(restoredWorkflow.savedAt).toLocaleString()}.
-        </Alert>
-      )}
-
-      <Tabs
-        value={activeTab}
-        onChange={(_, value: "outbound" | "return") => setActiveTab(value)}
-        sx={{ mb: 3, borderBottom: 1, borderColor: "divider" }}
-      >
-        <Tab label="Outbound Workflow" value="outbound" />
-        <Tab label="Return Labels" value="return" />
-      </Tabs>
-
-      {activeTab === "outbound" && (
-        <>
-          <Stepper nonLinear activeStep={currentStep} sx={{ mb: 4 }}>
-            {OUTBOUND_STEPS.map((step, index) => (
-              <Step key={step.key} completed={index < currentStep}>
+          <Stepper nonLinear activeStep={currentStep} sx={{ flex: "1 1 640px" }}>
+            {OUTBOUND_STEPS.map((outboundStep, index) => (
+              <Step key={outboundStep.key} completed={index < currentStep}>
                 <StepButton onClick={() => setCurrentStep(index)}>
-                  {step.label}
+                  {outboundStep.label}
                 </StepButton>
               </Step>
             ))}
           </Stepper>
+          {modeWarning && <Chip color="warning" label={modeWarning} />}
+          <Button
+            variant="outlined"
+            startIcon={<ReplyIcon />}
+            aria-haspopup="dialog"
+            onClick={() => setReturnsOpen(true)}
+          >
+            Return labels
+          </Button>
+          <Tooltip title="Shipping configuration">
+            <IconButton component={Link} to="/shipping-configuration" aria-label="Shipping configuration">
+              <SettingsIcon />
+            </IconButton>
+          </Tooltip>
+        </Stack>
 
-          <OrderMarketSummary
+        {error && (
+          <Alert severity="error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
+        {restoredWorkflow && (
+          <Alert
+            severity="info"
+            action={
+              <>
+                <Button color="inherit" size="small" onClick={handleReset}>
+                  Start over
+                </Button>
+                <Button color="inherit" size="small" onClick={dismissRestoredWorkflow}>
+                  Dismiss
+                </Button>
+              </>
+            }
+          >
+            Restored your in-progress shipping workflow
+            {restoredWorkflow.loadedSourceLabel ? ` (${restoredWorkflow.loadedSourceLabel})` : ""} saved{" "}
+            {new Date(restoredWorkflow.savedAt).toLocaleString()}.
+          </Alert>
+        )}
+      </Stack>
+
+      <Paper
+        component="section"
+        aria-label={step.label}
+        elevation={2}
+        sx={{ p: 3, flex: 1, minHeight: 0, overflow: "auto" }}
+      >
+        {step.key === "load-orders" && (
+          <LoadOrdersStep
+            config={config}
+            sellerKeyInput={sellerKeyInput}
+            singleOrderNumberInput={singleOrderNumberInput}
             sourceOrders={sourceOrders}
-            shipmentCount={shipmentReferences.length}
+            loadedSourceLabel={loadedSourceLabel}
+            isLoadingLiveOrders={isLoadingLiveOrders}
+            isLoadingSingleOrder={isLoadingSingleOrder}
+            isLoadingExistingPostage={isLoadingExistingPostage}
+            loadWarnings={loadWarnings}
+            onSellerKeyChange={setSellerKeyInput}
+            onSingleOrderNumberChange={setSingleOrderNumberInput}
+            onLoadLiveOrders={() => void handleLoadLiveOrders()}
+            onLoadSingleOrder={() => void handleLoadSingleOrder()}
+            historyCoverage={historyCoverage}
+            isUpdatingHistory={isUpdatingHistory}
+            onCatchUpHistory={() => void updateSellerOrderHistory({
+              action: "catch_up",
+              orderNumbers: sourceOrders.map((order) => order["Order #"]),
+            })}
+            onImportHistoryFile={(file) => void handleImportHistoryFile(file)}
           />
+        )}
 
-          <Paper sx={{ p: 3 }} elevation={2}>
-            {currentStep === 0 && (
-              <LoadOrdersStep
-                config={config}
-                sellerKeyInput={sellerKeyInput}
-                singleOrderNumberInput={singleOrderNumberInput}
-                sourceOrders={sourceOrders}
-                loadedSourceLabel={loadedSourceLabel}
-                isLoadingLiveOrders={isLoadingLiveOrders}
-                isLoadingSingleOrder={isLoadingSingleOrder}
-                isLoadingExistingPostage={isLoadingExistingPostage}
-                loadWarnings={loadWarnings}
-                onSellerKeyChange={setSellerKeyInput}
-                onSingleOrderNumberChange={setSingleOrderNumberInput}
-                onLoadLiveOrders={() => void handleLoadLiveOrders()}
-                onLoadSingleOrder={() => void handleLoadSingleOrder()}
-                historyCoverage={historyCoverage}
-                isUpdatingHistory={isUpdatingHistory}
-                onCatchUpHistory={() => void updateSellerOrderHistory({
-                  action: "catch_up",
-                  orderNumbers: sourceOrders.map((order) => order["Order #"]),
-                })}
-                onImportHistoryFile={(file) => void handleImportHistoryFile(file)}
-                onContinue={() => setCurrentStep(1)}
-              />
-            )}
+        {step.key === "pull-sheet" && (
+          <PullSheetStep
+            sourceOrders={sourceOrders}
+            shipments={shipments}
+            pullSheetItems={pullSheetItems}
+            isLoadingPullSheet={isGeneratingPullSheet}
+            pullSheetError={pullSheetError}
+          />
+        )}
 
-            {currentStep === 1 && (
-              <PullSheetStep
-                sourceOrders={sourceOrders}
-                shipments={shipments}
-                pullSheetItems={pullSheetItems}
-                pullSheetOrderIds={pullSheetOrderIds}
-                isLoadingPullSheet={isGeneratingPullSheet}
-                pullSheetError={pullSheetError}
-                onBack={() => setCurrentStep(0)}
-                onContinue={() => setCurrentStep(2)}
-              />
-            )}
+        {step.key === "buy-postage" && (
+          <BuyPostageStep
+            config={config}
+            environmentStatus={environmentStatus}
+            shipments={shipments}
+            sourceOrders={sourceOrders}
+            shipmentToOrderMap={shipmentToOrderMap}
+            outboundPurchaseResultsByReference={outboundPurchaseResultsByReference}
+            returnPurchaseResultsByReference={returnPurchaseResultsByReference}
+            isPurchasing={purchasingLabelSize !== null || purchasingActionKey !== null}
+            purchasingActionKey={purchasingActionKey}
+            onBuyShipment={(s) => void handleBuyShipment(s)}
+            onBuyReturnLabel={(s) => void handleBuyReturnLabel(s)}
+            onEditShipment={handleOpenEditDrawer}
+            onDownloadShipment={handleDownloadShipment}
+            onDownloadReturnShipment={handleDownloadReturnShipment}
+          />
+        )}
 
-            {currentStep === 2 && (
-              <BuyPostageStep
-                config={config}
-                environmentStatus={environmentStatus}
-                shipments={shipments}
-                orders={orders}
-                sourceOrders={sourceOrders}
-                shipmentToOrderMap={shipmentToOrderMap}
-                outboundPurchaseResultsByReference={outboundPurchaseResultsByReference}
-                returnPurchaseResultsByReference={returnPurchaseResultsByReference}
-                batchLabelResultsBySize={batchLabelResultsBySize}
-                availableLabelSizes={availableLabelSizes}
-                purchasingLabelSize={purchasingLabelSize}
-                purchasingActionKey={purchasingActionKey}
-                generatingBatchLabelSize={generatingBatchLabelSize}
-                isLoadingExistingPostage={isLoadingExistingPostage}
-                onBuyPostage={() => void handleBuyPostage()}
-                onBuyShipment={(s) => void handleBuyShipment(s)}
-                onBuyReturnLabel={(s) => void handleBuyReturnLabel(s)}
-                onGenerateBatchLabel={(size) => void handleGenerateBatchLabelFromSavedPostage(size)}
-                onEditShipment={handleOpenEditDrawer}
-                onDownloadShipment={handleDownloadShipment}
-                onDownloadReturnShipment={handleDownloadReturnShipment}
-                savedPurchasedEntriesForLabelSize={getSavedPurchasedEntriesForLabelSize}
-                onBack={() => setCurrentStep(1)}
-                onContinue={() => setCurrentStep(3)}
-              />
-            )}
+        {step.key === "print" && (
+          <PrintStep
+            sourceOrders={sourceOrders}
+            shipments={shipments}
+            outboundPurchaseResultsByReference={outboundPurchaseResultsByReference}
+            batchLabelResultsBySize={batchLabelResultsBySize}
+            availableLabelSizes={availableLabelSizes}
+            generatingBatchLabelSize={generatingBatchLabelSize}
+            packingSlipAction={packingSlipAction}
+            savedPurchasedEntriesForLabelSize={getSavedPurchasedEntriesForLabelSize}
+            onOpenPackingSlips={() => void handlePackingSlipExport("open")}
+            onDownloadPackingSlips={() => void handlePackingSlipExport("download")}
+            onGenerateBatchLabel={(size) => void handleGenerateBatchLabelFromSavedPostage(size)}
+          />
+        )}
 
-            {currentStep === 3 && (
-              <PrintStep
-                sourceOrders={sourceOrders}
-                shipments={shipments}
-                outboundPurchaseResultsByReference={outboundPurchaseResultsByReference}
-                batchLabelResultsBySize={batchLabelResultsBySize}
-                availableLabelSizes={availableLabelSizes}
-                generatingBatchLabelSize={generatingBatchLabelSize}
-                packingSlipAction={packingSlipAction}
-                savedPurchasedEntriesForLabelSize={getSavedPurchasedEntriesForLabelSize}
-                onOpenPackingSlips={() => void handlePackingSlipExport("open")}
-                onDownloadPackingSlips={() => void handlePackingSlipExport("download")}
-                onGenerateBatchLabel={(size) => void handleGenerateBatchLabelFromSavedPostage(size)}
-                onBack={() => setCurrentStep(2)}
-                onContinue={() => setCurrentStep(4)}
-              />
-            )}
+        {step.key === "pack" && (
+          <PackStep
+            sourceOrders={sourceOrders}
+            shipmentReferences={shipmentReferences}
+            shipmentToOrderMap={shipmentToOrderMap}
+            outboundPurchaseResultsByReference={outboundPurchaseResultsByReference}
+            packPullSheetStatus={packPullSheetStatus}
+            packPullSheetError={packPullSheetError}
+            packPullSheetMatchesByReference={packPullSheetMatchesByReference}
+            packedOrderNumbers={packedOrderNumbers}
+            onOrderPacked={handleOrderPacked}
+          />
+        )}
 
-            {currentStep === 4 && (
-              <PackStep
-                sourceOrders={sourceOrders}
-                shipmentReferences={shipmentReferences}
-                shipmentToOrderMap={shipmentToOrderMap}
-                outboundPurchaseResultsByReference={outboundPurchaseResultsByReference}
-                packPullSheetStatus={packPullSheetStatus}
-                packPullSheetError={packPullSheetError}
-                packPullSheetMatchesByReference={packPullSheetMatchesByReference}
-                packedOrderNumbers={packedOrderNumbers}
-                onOrderPacked={handleOrderPacked}
-                onBack={() => setCurrentStep(3)}
-                onContinue={() => setCurrentStep(5)}
-              />
-            )}
+        {step.key === "ship" && (
+          <ShipStep
+            pendingOrderNumbers={shipPendingOrderNumbers}
+            shippedOrderCount={shippedOrderCount}
+            trackingApplyResults={trackingApplyResults}
+            shippedMessageResults={shippedMessageResults}
+            hasSellerKey={hasSellerKey}
+          />
+        )}
+      </Paper>
 
-            {currentStep === 5 && (
-              <ApplyTrackingStep
-                trackingApplyItems={trackingApplyItems}
-                alreadyTrackedCount={alreadyTrackedCount}
-                trackingApplyResults={trackingApplyResults}
-                isApplyingTracking={isApplyingTracking}
-                onApplyTracking={() => void handleApplyTracking()}
-                onBack={() => setCurrentStep(4)}
-                onContinue={() => setCurrentStep(6)}
-              />
-            )}
+      <ShippingStepBar
+        progress={stepProgress}
+        action={stepActions[step.key]}
+        nextStepLabel={nextStep?.label ?? null}
+        onBack={currentStep > 0 ? () => setCurrentStep(currentStep - 1) : undefined}
+        onNext={() => setCurrentStep(currentStep + 1)}
+        onStartNewBatch={handleReset}
+        startNewBatchWarning={
+          unshippedOrderCount > 0
+            ? `${unshippedOrderCount} ${unshippedOrderCount === 1 ? "order is" : "orders are"} not yet marked shipped with the buyer notified. Starting a new batch clears this one.`
+            : null
+        }
+        batchValue={batchValue && <SaleValueFigures value={batchValue} />}
+      />
 
-            {currentStep === 6 && (
-              <NotifyStep
-                shippedMessageItems={shippedMessageItems}
-                alreadySentCount={alreadySentCount}
-                shippedMessageResults={shippedMessageResults}
-                isSendingShippedMessages={isSendingShippedMessages}
-                onSendShippedMessages={() => void handleSendShippedMessages()}
-                onBack={() => setCurrentStep(5)}
-                onReset={handleReset}
-              />
-            )}
-          </Paper>
-        </>
-      )}
-
-      {activeTab === "return" && (
-        <Paper sx={{ p: 3 }} elevation={2}>
+      <Drawer anchor="right" open={returnsOpen} onClose={() => setReturnsOpen(false)}>
+        <Box
+          role="region"
+          aria-labelledby="return-labels-heading"
+          sx={{ width: { xs: "100vw", sm: 560 }, p: 3 }}
+        >
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+            <Typography id="return-labels-heading" variant="h6">
+              Return labels
+            </Typography>
+            <IconButton aria-label="Close return labels" onClick={() => setReturnsOpen(false)}>
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
           <ReturnFlowPanel
             config={config}
             environmentStatus={environmentStatus}
             sellerKeyInput={sellerKeyInput}
-            singleOrderNumberInput={singleOrderNumberInput}
+            orderNumberInput={returnOrderNumberInput}
             returnOrder={returnOrder}
             returnShipment={returnShipment}
             returnFlowType={returnFlowType}
@@ -1372,14 +1398,14 @@ export default function ShippingExportRoute() {
             isLoadingReturnOrder={isLoadingReturnOrder}
             isLoadingReturnLabels={isLoadingReturnLabels}
             isPurchasingReturn={isPurchasingReturn}
-            onOrderNumberChange={setSingleOrderNumberInput}
+            onOrderNumberChange={setReturnOrderNumberInput}
             onLookupOrder={() => void handleLookupReturnOrder()}
             onReturnFlowTypeChange={setReturnFlowType}
             onReturnServiceChange={setReturnService}
             onBuyLabels={() => void handleBuyReturnFlowLabels()}
           />
-        </Paper>
-      )}
+        </Box>
+      </Drawer>
 
       <ShipmentEditDrawer
         shipment={selectedShipment}

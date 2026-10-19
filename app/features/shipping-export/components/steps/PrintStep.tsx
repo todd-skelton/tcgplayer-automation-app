@@ -33,8 +33,6 @@ interface PrintStepProps {
   onOpenPackingSlips: () => void;
   onDownloadPackingSlips: () => void;
   onGenerateBatchLabel: (labelSize: LabelSize) => void;
-  onBack: () => void;
-  onContinue: () => void;
 }
 
 export function PrintStep({
@@ -47,8 +45,6 @@ export function PrintStep({
   onOpenPackingSlips,
   onDownloadPackingSlips,
   onGenerateBatchLabel,
-  onBack,
-  onContinue,
 }: PrintStepProps) {
   return (
     <Stack spacing={3}>
@@ -177,24 +173,29 @@ export function PrintStep({
                       </Typography>
                     )}
 
-                    {savedEntries.length > 0 && (
-                      <Stack spacing={0.5}>
-                        {savedEntries
-                          .filter((e) => e.purchaseEntry.result.labelPdfUrl)
-                          .map((e) => (
-                            <Button
-                              key={e.shipment.reference}
-                              component="a"
-                              href={e.purchaseEntry.result.labelPdfUrl!}
-                              target="_blank"
-                              rel="noreferrer"
-                              size="small"
-                              variant="text"
-                            >
-                              {e.shipment.reference} — Label PDF
-                            </Button>
-                          ))}
-                      </Stack>
+                    {savedEntries.some((e) => e.purchaseEntry.result.labelPdfUrl) && (
+                      <Box component="details">
+                        <Box component="summary" sx={{ cursor: "pointer", typography: "body2", color: "text.secondary" }}>
+                          Individual labels ({savedEntries.filter((e) => e.purchaseEntry.result.labelPdfUrl).length})
+                        </Box>
+                        <Stack spacing={0.5} alignItems="flex-start" sx={{ mt: 0.5 }}>
+                          {savedEntries
+                            .filter((e) => e.purchaseEntry.result.labelPdfUrl)
+                            .map((e) => (
+                              <Button
+                                key={e.shipment.reference}
+                                component="a"
+                                href={e.purchaseEntry.result.labelPdfUrl!}
+                                target="_blank"
+                                rel="noreferrer"
+                                size="small"
+                                variant="text"
+                              >
+                                {e.shipment.reference} Label PDF
+                              </Button>
+                            ))}
+                        </Stack>
+                      </Box>
                     )}
                   </Stack>
                 </Paper>
@@ -203,15 +204,6 @@ export function PrintStep({
           </Stack>
         )}
       </Box>
-
-      <Stack direction="row" spacing={2}>
-        <Button variant="outlined" onClick={onBack}>
-          Back
-        </Button>
-        <Button variant="contained" onClick={onContinue}>
-          Continue to Pack
-        </Button>
-      </Stack>
     </Stack>
   );
 }

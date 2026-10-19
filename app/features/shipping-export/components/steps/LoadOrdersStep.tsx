@@ -1,9 +1,16 @@
+import { useRef, useState } from "react";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import {
   Alert,
   Box,
   Button,
   Chip,
   CircularProgress,
+  Divider,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Popover,
   Stack,
   TextField,
   Typography,
@@ -25,13 +32,18 @@ interface LoadOrdersStepProps {
   onSingleOrderNumberChange: (value: string) => void;
   onLoadLiveOrders: () => void;
   onLoadSingleOrder: () => void;
-  onContinue: () => void;
   historyCoverage?: SellerOrderCoverage;
   isUpdatingHistory?: boolean;
   onCatchUpHistory?: () => void;
   onImportHistoryFile?: (file: File) => void;
 }
 
+function describeHistoryCoverage(coverage: SellerOrderCoverage): string {
+  const total = coverage.expectedTotal === undefined ? "" : ` of ${coverage.expectedTotal}`;
+  return `API history ${coverage.status.replace("_", " ")}: ${coverage.ordersObserved}${total} orders observed, ${coverage.detailsRecorded} details refreshed in the last scan.${coverage.error ? ` ${coverage.error}` : ""}`;
+}
+
+/** Loads the Ready to Ship queue or one order, with the seller key and order history kept out of the way. */
 export function LoadOrdersStep({
   config,
   sellerKeyInput,
@@ -46,185 +58,183 @@ export function LoadOrdersStep({
   onSingleOrderNumberChange,
   onLoadLiveOrders,
   onLoadSingleOrder,
-  onContinue,
   historyCoverage,
   isUpdatingHistory = false,
   onCatchUpHistory,
   onImportHistoryFile,
 }: LoadOrdersStepProps) {
+  const sellerButton = useRef<HTMLButtonElement>(null);
+  const historyButton = useRef<HTMLButtonElement>(null);
+  const historyFileInput = useRef<HTMLInputElement>(null);
+  const [sellerOpen, setSellerOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const isLoading = isLoadingLiveOrders || isLoadingSingleOrder || isLoadingExistingPostage;
+  const hasHistoryActions = Boolean(onCatchUpHistory || onImportHistoryFile);
+
   return (
-    <Stack spacing={3}>
+    <Stack spacing={2}>
       {loadWarnings.length > 0 && (
         <Alert severity="warning">
-          <Stack spacing={0.5}>
-            <Typography variant="body2" fontWeight={600}>
-              Order load warnings
+          <Typography variant="body2" fontWeight={600}>
+            Order load warnings
+          </Typography>
+          {loadWarnings.map((warning) => (
+            <Typography key={warning} variant="body2">
+              {warning}
             </Typography>
-            {loadWarnings.map((warning) => (
-              <Typography key={warning} variant="body2">
-                {warning}
-              </Typography>
-            ))}
-          </Stack>
+          ))}
         </Alert>
       )}
 
-      <Box>
-        <Typography variant="subtitle1" gutterBottom>
-          Live TCGPlayer Seller Orders
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Load live Ready to Ship orders directly from TCGPlayer using your
-          saved seller key or an override entered here.
-        </Typography>
-      </Box>
-
-      <Stack spacing={1.5}>
-        <Typography variant="subtitle1">Seller order history</Typography>
-        <Typography variant="body2" color="text.secondary">
-          History sync keeps orders after they leave the shipping queue. Each catch-up
-          advances a saved, bounded scan of TCGPlayer&apos;s verified LastThreeMonths view.
-          Import a USD CSV for older orders outside that API window.
-        </Typography>
-        {historyCoverage && (
-          <Alert severity={historyCoverage.status === "complete" ? "success" : "info"}>
-            API history: {historyCoverage.status.replace("_", " ")}; {historyCoverage.ordersObserved}
-            {historyCoverage.expectedTotal === undefined ? "" : ` of ${historyCoverage.expectedTotal}`} order summaries observed,
-            {` ${historyCoverage.detailsRecorded} details refreshed in this scan.`}
-            {historyCoverage.error ? ` ${historyCoverage.error}` : ""}
-          </Alert>
-        )}
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-          {onCatchUpHistory && (
-            <Button variant="outlined" onClick={onCatchUpHistory} disabled={isUpdatingHistory}>
-              {isUpdatingHistory ? "Updating History..." : "Catch Up Order History"}
-            </Button>
-          )}
-          {onImportHistoryFile && (
-            <Button component="label" variant="outlined" disabled={isUpdatingHistory}>
-              Import Older Order CSV
-              <input
-                hidden
-                type="file"
-                accept=".csv,text/csv"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) onImportHistoryFile(file);
-                  event.target.value = "";
-                }}
-              />
-            </Button>
-          )}
-        </Stack>
-      </Stack>
-
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        spacing={2}
-        alignItems={{ md: "center" }}
-        flexWrap="wrap"
-      >
-        <TextField
-          label="Seller Key"
-          value={sellerKeyInput}
-          onChange={(event) => onSellerKeyChange(event.target.value)}
-          placeholder={config.defaultSellerKey || "Enter seller key"}
-          helperText={
-            config.defaultSellerKey
-              ? `Saved default: ${config.defaultSellerKey}`
-              : "Save a default seller key in Shipping Configuration or enter one here."
-          }
-          sx={{ minWidth: { xs: "100%", md: 320 } }}
-        />
+      <Stack direction="row" spacing={1.5} alignItems="center" useFlexGap flexWrap="wrap">
         <Button
           variant="contained"
           onClick={onLoadLiveOrders}
-          disabled={isLoadingLiveOrders || isLoadingSingleOrder || isLoadingExistingPostage}
-          startIcon={
-            isLoadingLiveOrders ? (
-              <CircularProgress color="inherit" size={18} />
-            ) : undefined
-          }
+          disabled={isLoading}
+          startIcon={isLoadingLiveOrders ? <CircularProgress color="inherit" size={18} /> : undefined}
         >
           {isLoadingLiveOrders ? "Loading Live Orders..." : "Load Live TCGPlayer Orders"}
         </Button>
-      </Stack>
+        <Button
+          ref={sellerButton}
+          aria-haspopup="dialog"
+          color={sellerKeyInput.trim() ? "primary" : "warning"}
+          onClick={() => setSellerOpen(true)}
+          sx={{ textTransform: "none" }}
+        >
+          Seller: {sellerKeyInput.trim() || "not set"}
+        </Button>
 
-      <Box>
-        <Typography variant="subtitle1" gutterBottom>
-          Single Order Lookup
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Load one TCGPlayer order by number when you want to inspect it and buy
-          postage without pulling the full live queue. The seller key above is
-          used for the lookup.
-        </Typography>
-      </Box>
+        <Divider orientation="vertical" flexItem />
 
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        spacing={2}
-        alignItems={{ md: "center" }}
-        flexWrap="wrap"
-      >
         <TextField
+          size="small"
           label="Order Number"
           value={singleOrderNumberInput}
           onChange={(event) => onSingleOrderNumberChange(event.target.value)}
-          placeholder="Enter order number"
-          sx={{ minWidth: { xs: "100%", md: 320 } }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !isLoading) onLoadSingleOrder();
+          }}
+          sx={{ width: 240 }}
         />
         <Button
-          variant="contained"
-          color="secondary"
+          variant="outlined"
           onClick={onLoadSingleOrder}
-          disabled={isLoadingSingleOrder || isLoadingLiveOrders || isLoadingExistingPostage}
-          startIcon={
-            isLoadingSingleOrder ? (
-              <CircularProgress color="inherit" size={18} />
-            ) : undefined
-          }
+          disabled={isLoading}
+          startIcon={isLoadingSingleOrder ? <CircularProgress color="inherit" size={18} /> : undefined}
         >
           {isLoadingSingleOrder ? "Looking Up Order..." : "Lookup Single Order"}
         </Button>
+
+        {hasHistoryActions && (
+          <>
+            <Box sx={{ flex: 1 }} />
+            <Button
+              ref={historyButton}
+              aria-haspopup="menu"
+              aria-expanded={historyOpen}
+              disabled={isUpdatingHistory}
+              endIcon={isUpdatingHistory ? <CircularProgress color="inherit" size={16} /> : <ArrowDropDownIcon />}
+              onClick={() => setHistoryOpen(true)}
+            >
+              {isUpdatingHistory ? "Updating History..." : "Order History"}
+            </Button>
+          </>
+        )}
       </Stack>
 
       {(loadedSourceLabel || isLoadingExistingPostage) && (
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-          {loadedSourceLabel && (
-            <Chip
-              label={loadedSourceLabel}
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
-          )}
-          <Chip
-            label={`${sourceOrders.length} orders loaded`}
-            size="small"
-            variant="outlined"
-          />
+        <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+          {loadedSourceLabel && <Chip label={loadedSourceLabel} size="small" color="primary" variant="outlined" />}
+          <Chip label={`${sourceOrders.length} orders loaded`} size="small" variant="outlined" />
           {isLoadingExistingPostage && (
-            <Chip
-              label="Loading saved labels..."
-              size="small"
-              color="info"
-              variant="outlined"
-            />
+            <Chip label="Loading saved labels..." size="small" color="info" variant="outlined" />
           )}
         </Stack>
       )}
 
-      <Box>
-        <Button
-          variant="contained"
-          size="large"
-          disabled={sourceOrders.length === 0 || isLoadingLiveOrders || isLoadingSingleOrder || isLoadingExistingPostage}
-          onClick={onContinue}
-        >
-          Continue to Pull Sheet
-        </Button>
-      </Box>
+      {historyCoverage?.error && <Alert severity="warning">{describeHistoryCoverage(historyCoverage)}</Alert>}
+
+      <Popover
+        open={sellerOpen}
+        anchorEl={sellerButton.current}
+        onClose={() => setSellerOpen(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        slotProps={{ paper: { sx: { p: 2, width: 360 } } }}
+      >
+        <TextField
+          autoFocus
+          fullWidth
+          label="Seller Key"
+          value={sellerKeyInput}
+          onChange={(event) => onSellerKeyChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") setSellerOpen(false);
+          }}
+          placeholder={config.defaultSellerKey || "Enter seller key"}
+          helperText={
+            config.defaultSellerKey
+              ? `Saved default: ${config.defaultSellerKey}. Used for loading, lookups, and returns.`
+              : "Save a default seller key in Shipping Configuration or enter one here."
+          }
+        />
+      </Popover>
+
+      <Menu
+        open={historyOpen}
+        anchorEl={historyButton.current}
+        onClose={() => setHistoryOpen(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{ paper: { sx: { maxWidth: 440 } } }}
+      >
+        {onCatchUpHistory && (
+          <MenuItem
+            onClick={() => {
+              setHistoryOpen(false);
+              onCatchUpHistory();
+            }}
+          >
+            <ListItemText
+              primary="Catch Up Order History"
+              secondary={
+                historyCoverage
+                  ? describeHistoryCoverage(historyCoverage)
+                  : "Advances a saved scan of TCGPlayer's last three months, so orders stay on record after they ship."
+              }
+              slotProps={{ secondary: { sx: { whiteSpace: "normal" } } }}
+            />
+          </MenuItem>
+        )}
+        {onImportHistoryFile && (
+          <MenuItem
+            onClick={() => {
+              setHistoryOpen(false);
+              historyFileInput.current?.click();
+            }}
+          >
+            <ListItemText
+              primary="Import Older Order CSV"
+              secondary="A USD order export for orders older than the three-month API window."
+              slotProps={{ secondary: { sx: { whiteSpace: "normal" } } }}
+            />
+          </MenuItem>
+        )}
+      </Menu>
+      {onImportHistoryFile && (
+        <input
+          ref={historyFileInput}
+          hidden
+          type="file"
+          accept=".csv,text/csv"
+          aria-label="Older order CSV"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) onImportHistoryFile(file);
+          }}
+        />
+      )}
     </Stack>
   );
 }

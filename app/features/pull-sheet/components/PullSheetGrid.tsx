@@ -2,14 +2,7 @@ import React, { useCallback, useState } from "react";
 import { Box, Card, CardMedia, Chip, Tooltip, Typography } from "@mui/material";
 import WarningIcon from "@mui/icons-material/Warning";
 import { keyframes } from "@mui/system";
-import {
-  formatSignedPercent,
-  formatUsd,
-  getMarketDeltaTone,
-  percentAboveMarket,
-  type MarketDeltaTone,
-} from "~/core/utils/marketDelta";
-import type { PullSheetItem, PullSheetPriceBadge } from "../types/pullSheetTypes";
+import type { PullSheetItem } from "../types/pullSheetTypes";
 import {
   getConditionBackdropColor,
   getConditionBorderColor,
@@ -24,52 +17,8 @@ import type { PullSheetVariantVisuals } from "./pullSheetUtils";
 
 interface PullSheetGridProps {
   items: PullSheetItem[];
-  /** Optional sold and market prices by SKU, shown on each card's info panel. */
-  priceBadgesBySku?: Record<number, PullSheetPriceBadge>;
-}
-
-/** Light tones that stay readable on the dark card backdrop. */
-const PRICE_TONE_COLORS: Record<MarketDeltaTone, string> = {
-  above: "#a5d6a7",
-  below: "#ef9a9a",
-  at: "rgba(255,255,255,0.88)",
-  unavailable: "rgba(255,255,255,0.88)",
-};
-
-function PriceBadgeLine({ badge }: { badge: PullSheetPriceBadge }) {
-  const percent = percentAboveMarket(badge.soldPrice, badge.marketPrice);
-  const tone = getMarketDeltaTone(percent);
-  const marketLabel = percent === null ? "" : `Current ${formatUsd(badge.marketPrice ?? 0)} | `;
-  const percentLabel = percent === null ? "Current unavailable" : formatSignedPercent(percent);
-
-  const intakeAvailable = (badge.intakePriceKnownQuantity ?? 0) > 0;
-  return (
-    <Typography
-      variant="caption"
-      sx={{
-        display: "block",
-        mt: 0.5,
-        fontSize: "0.7rem",
-        color: "rgba(255,255,255,0.92)",
-        textShadow: "0 1px 3px rgba(0,0,0,0.95)",
-      }}
-    >
-      Sold {formatUsd(badge.soldPrice)} | {marketLabel}
-      <Box component="span" sx={{ color: PRICE_TONE_COLORS[tone], fontWeight: 700 }}>
-        {percentLabel}
-      </Box>
-      {badge.intakeOrderedQuantity !== undefined && (
-        <>
-          <br />
-          Intake total {intakeAvailable ? formatUsd(badge.intakeMarketTotal ?? 0) : "unavailable"}
-          {` · price ${badge.intakePriceKnownQuantity ?? 0}/${badge.intakeOrderedQuantity}`}
-          {` · age ${badge.intakeWeightedDaysHeld === null || badge.intakeWeightedDaysHeld === undefined ? "unavailable" : `${badge.intakeWeightedDaysHeld.toFixed(1)}d`}`}
-          {` (${badge.intakeDateKnownQuantity ?? 0}/${badge.intakeOrderedQuantity} dated)`}
-          {badge.intakeStatus && badge.intakeStatus !== "current" ? ` · ${badge.intakeStatus}` : ""}
-        </>
-      )}
-    </Typography>
-  );
+  /** Extra detail shown on each card's info panel, such as what it sold for. */
+  renderItemDetail?: (item: PullSheetItem) => React.ReactNode;
 }
 
 const shimmerSweep = keyframes`
@@ -343,7 +292,7 @@ function VariantEffectLayers({
 }
 
 export const PullSheetGrid: React.FC<PullSheetGridProps> = React.memo(
-  ({ items, priceBadgesBySku }) => {
+  ({ items, renderItemDetail }) => {
     const [hiddenInfoKeys, setHiddenInfoKeys] = useState<Record<string, boolean>>(
       {},
     );
@@ -383,7 +332,6 @@ export const PullSheetGrid: React.FC<PullSheetGridProps> = React.memo(
             const metaLine = [item.set, item.releaseYear].filter(Boolean).join(
               " | ",
             );
-            const priceBadge = priceBadgesBySku?.[item.skuId];
 
             return (
               <Card
@@ -581,7 +529,19 @@ export const PullSheetGrid: React.FC<PullSheetGridProps> = React.memo(
                         {item.productLine} | {item.rarity}
                         </Typography>
 
-                        {priceBadge && <PriceBadgeLine badge={priceBadge} />}
+                        {renderItemDetail && (
+                          <Box
+                            sx={{
+                              mt: 0.5,
+                              fontSize: "0.7rem",
+                              color: "rgba(255,255,255,0.92)",
+                              textShadow: "0 1px 3px rgba(0,0,0,0.95)",
+                              "& dl": { fontSize: "inherit" },
+                            }}
+                          >
+                            {renderItemDetail(item)}
+                          </Box>
+                        )}
                       </Box>
                     </Box>
                   )}

@@ -5,6 +5,9 @@ import type { PackPullSheetShipmentMatch } from "../../services/packPullSheet";
 import type { TcgPlayerShippingOrder } from "../../types/shippingExport";
 import { PackStep } from "./PackStep";
 
+const visibleText = (html: string) =>
+  html.replace(/<style[^>]*>[\s\S]*?<\/style>/g, "").replace(/<[^>]+>/g, "");
+
 type TestCase = {
   name: string;
   run: () => void;
@@ -97,8 +100,6 @@ function renderPackStep(
       packPullSheetMatchesByReference={{ "1001": createMatch(true) }}
       packedOrderNumbers={new Set()}
       onOrderPacked={() => undefined}
-      onBack={() => undefined}
-      onContinue={() => undefined}
       {...overrides}
     />,
   );
@@ -121,7 +122,8 @@ const testCases: TestCase[] = [
     run: () => {
       const html = renderPackStep();
 
-      assert.match(html, /Shipment Details/);
+      assert.match(html, /Mark Packed/);
+      assert.match(html, /Ash Ketchum · Pallet, CA/);
       assert.match(html, /Order 1001/);
       assert.match(html, /12025_in_400x400\.jpg/);
       assert.match(html, /Pikachu/);
@@ -152,7 +154,7 @@ const testCases: TestCase[] = [
       const order1001Index = html.indexOf("Order 1001");
       const order1002Index = html.indexOf("Order 1002");
 
-      assert.match(html, /Combined shipment/);
+      assert.match(html, /Combined shipment of 2 orders/);
       assert.notEqual(order1001Index, -1);
       assert.notEqual(order1002Index, -1);
       assert.ok(
@@ -252,7 +254,7 @@ const testCases: TestCase[] = [
     },
   },
   {
-    name: "PackStep shows shipment, order, and card market comparisons in the grid view",
+    name: "PackStep shows order and card value in the grid view",
     run: () => {
       const html = renderPackStep({
         sourceOrders: [
@@ -262,17 +264,13 @@ const testCases: TestCase[] = [
         ],
       });
 
-      assert.match(html, />Current market</);
-      assert.match(html, />vs current market</);
-      assert.match(html, /\$4\.00/);
-      assert.match(html, /\+25\.0% \(\+\$1\.00\)/);
-      assert.match(html, /Sold \$5\.00/);
-      assert.match(html, /Current \$4\.00/);
-      assert.match(html, /\+25\.0%/);
+      const text = visibleText(html);
+      const figures = text.match(/Price\$5\.00Market\$4\.00 \+\$1\.00 \+25\.0%/g) ?? [];
+      assert.equal(figures.length, 2, "the order header and its card each show the figures");
     },
   },
   {
-    name: "PackStep adds sold, market, and delta columns to the fallback table",
+    name: "PackStep shows each card's value in the fallback table",
     run: () => {
       const html = renderPackStep({
         sourceOrders: [
@@ -289,24 +287,20 @@ const testCases: TestCase[] = [
         },
       });
 
-      assert.match(html, />Sold</);
-      assert.match(html, />Current market</);
-      assert.match(html, /\$6\.00/);
-      assert.match(html, /\$8\.00/);
-      assert.match(html, /-25\.0%/);
-      assert.match(html, /Current market unavailable/);
-      assert.match(html, /1 of 2 lines priced/);
+      const text = visibleText(html);
+      assert.match(text, /Price\$6\.00Market\$8\.00 -\$2\.00 -25\.0%/);
+      assert.match(text, /Price\$9\.00Market-/);
+      assert.match(text, /Price\$15\.00Market\$8\.00 -\$2\.00 -25\.0%\*/, "the order total marks its partial market comparison");
     },
   },
   {
-    name: "PackStep keeps intake history available in card and list layouts",
+    name: "PackStep shows the same value figures in card and list layouts",
     run: () => {
-      const card = renderPackStep();
-      const list = renderPackStep({ initialViewMode: "list" });
-      assert.match(card, /Order intake market/);
-      assert.match(card, /Receipt lots and history status/);
-      assert.match(list, />Intake history</);
-      assert.match(list, /Shipment intake market/);
+      const card = visibleText(renderPackStep());
+      const list = visibleText(renderPackStep({ initialViewMode: "list" }));
+      for (const text of [card, list]) {
+        assert.match(text, /Price\$4\.99Market-Intake-Age-/);
+      }
     },
   },
 ];
