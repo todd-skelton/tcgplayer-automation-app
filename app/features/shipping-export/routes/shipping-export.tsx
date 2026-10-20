@@ -32,6 +32,7 @@ import {
   createReturnShipment,
   getAllLabelSizes,
   getOrderNumbersForShipmentReference,
+  getOrdersForShipmentReference,
   getShipmentCsvRows,
   getShipmentsForLabelSize,
   mapOrderToShipment,
@@ -211,6 +212,7 @@ export default function ShippingExportRoute() {
 
   // ── Pack step state ───────────────────────────────────────────────────────
   const [packedOrderNumbers, setPackedOrderNumbers] = useState<Set<string>>(new Set());
+  const [packShipmentIndex, setPackShipmentIndex] = useState(0);
 
   // ── Return flow state ─────────────────────────────────────────────────────
   const [returnOrderNumberInput, setReturnOrderNumberInput] = useState("");
@@ -411,6 +413,7 @@ export default function ShippingExportRoute() {
     setTrackingApplyResults([]);
     setShippedMessageResults([]);
     setPackedOrderNumbers(new Set());
+    setPackShipmentIndex(0);
     setError(null);
     return loadExistingPostage(nextState.shipments, nextState.shipmentToOrderMap);
   };
@@ -1156,10 +1159,17 @@ export default function ShippingExportRoute() {
     shippedCount: shippedOrderCount,
     hasSellerKey,
   });
-  const batchValue = useMemo(
-    () => (sourceOrders.length > 0 ? saleValueOfOrders(sourceOrders) : null),
-    [sourceOrders],
-  );
+  // Packing compares one shipment at a time; every other step works on the whole batch.
+  const packShipmentReference = shipmentReferences[packShipmentIndex] ?? null;
+  const stepValue = useMemo(() => {
+    const orders =
+      step.key === "pack"
+        ? packShipmentReference
+          ? getOrdersForShipmentReference(sourceOrders, shipmentToOrderMap, packShipmentReference)
+          : []
+        : sourceOrders;
+    return orders.length > 0 ? saleValueOfOrders(orders) : null;
+  }, [step.key, packShipmentReference, sourceOrders, shipmentToOrderMap]);
   const stepActions: Partial<Record<typeof step.key, ShippingStepAction>> = {
     "buy-postage": {
       label: purchasingLabelSize ? `Buying ${purchasingLabelSize} Postage...` : "Buy All Postage",
@@ -1336,6 +1346,8 @@ export default function ShippingExportRoute() {
             packPullSheetMatchesByReference={packPullSheetMatchesByReference}
             packedOrderNumbers={packedOrderNumbers}
             onOrderPacked={handleOrderPacked}
+            currentIndex={packShipmentIndex}
+            onCurrentIndexChange={setPackShipmentIndex}
           />
         )}
 
@@ -1362,7 +1374,18 @@ export default function ShippingExportRoute() {
             ? `${unshippedOrderCount} ${unshippedOrderCount === 1 ? "order is" : "orders are"} not yet marked shipped with the buyer notified. Starting a new batch clears this one.`
             : null
         }
-        batchValue={batchValue && <SaleValueFigures value={batchValue} />}
+        value={
+          stepValue && (
+            <Stack direction="row" alignItems="center" spacing={1}>
+              {step.key === "pack" && (
+                <Typography variant="body2" color="text.secondary">
+                  Shipment
+                </Typography>
+              )}
+              <SaleValueFigures value={stepValue} />
+            </Stack>
+          )
+        }
       />
 
       <Drawer anchor="right" open={returnsOpen} onClose={() => setReturnsOpen(false)}>

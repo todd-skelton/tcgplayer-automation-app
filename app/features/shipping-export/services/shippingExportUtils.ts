@@ -53,6 +53,17 @@ export function getOrderNumbersForShipmentReference(
   return shipmentToOrderMap[shipmentReference] ?? [shipmentReference];
 }
 
+/** The loaded orders a shipment carries, in the shipment's order sequence. */
+export function getOrdersForShipmentReference(
+  sourceOrders: TcgPlayerShippingOrder[],
+  shipmentToOrderMap: ShipmentToOrderMap,
+  shipmentReference: string,
+): TcgPlayerShippingOrder[] {
+  return getOrderNumbersForShipmentReference(shipmentToOrderMap, shipmentReference)
+    .map((orderNumber) => sourceOrders.find((order) => order["Order #"] === orderNumber))
+    .filter((order): order is TcgPlayerShippingOrder => order !== undefined);
+}
+
 export function buildOrderNumbersInShipmentOrder(
   shipmentReferences: string[],
   shipmentToOrderMap: ShipmentToOrderMap,
