@@ -36,11 +36,11 @@ export function ShippingStepBar({
   onNext,
   onStartNewBatch,
   startNewBatchWarning,
-  batchValue,
+  value,
 }: {
   progress: ShippingStepProgress;
-  /** The whole batch's value, shown beside the step's progress. */
-  batchValue?: ReactNode;
+  /** The value of what the step works on, such as the batch or the shipment being packed. */
+  value?: ReactNode;
   action?: ShippingStepAction;
   /** The following step's name, or null on the last step. */
   nextStepLabel: string | null;
@@ -69,7 +69,7 @@ export function ShippingStepBar({
           <Typography variant="body2" color="primary" role="status" sx={{ fontWeight: 500 }}>
             {progress.summary}
           </Typography>
-          {batchValue}
+          {value}
         </Stack>
         {action && (
           <Button

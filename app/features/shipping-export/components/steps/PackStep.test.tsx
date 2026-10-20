@@ -100,6 +100,8 @@ function renderPackStep(
       packPullSheetMatchesByReference={{ "1001": createMatch(true) }}
       packedOrderNumbers={new Set()}
       onOrderPacked={() => undefined}
+      currentIndex={0}
+      onCurrentIndexChange={() => undefined}
       {...overrides}
     />,
   );
@@ -123,10 +125,20 @@ const testCases: TestCase[] = [
       const html = renderPackStep();
 
       assert.match(html, /Mark Packed/);
-      assert.match(html, /Ash Ketchum · Pallet, CA/);
+      assert.match(html, /Ash Ketchum/);
+      assert.match(html, /Pallet, CA · Standard · 1 item/);
       assert.match(html, /Order 1001/);
       assert.match(html, /12025_in_400x400\.jpg/);
       assert.match(html, /Pikachu/);
+    },
+  },
+  {
+    name: "PackStep heads a single-order shipment with the buyer's name, not a second order number",
+    run: () => {
+      const html = renderPackStep();
+
+      assert.match(html, /<p class="[^"]*MuiTypography-h5[^"]*"[^>]*>Ash Ketchum<\/p>/);
+      assert.equal(html.match(/1001/g)?.length, 1, "only the order section names the order");
     },
   },
   {

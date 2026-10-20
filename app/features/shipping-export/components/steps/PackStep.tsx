@@ -33,7 +33,10 @@ import {
   saleValuesBySku,
   type SaleValue,
 } from "../../services/saleValue";
-import { getOrderNumbersForShipmentReference } from "../../services/shippingExportUtils";
+import {
+  getOrderNumbersForShipmentReference,
+  getOrdersForShipmentReference,
+} from "../../services/shippingExportUtils";
 import { SaleValueFigures } from "../SaleValueFigures";
 import { shippingInventorySkuId } from "../../services/shippingOrderIdentity";
 import { packShortcutFor, type PackShortcut } from "../../services/packShortcut";
@@ -157,6 +160,9 @@ interface PackStepProps {
   packPullSheetMatchesByReference: Record<string, PackPullSheetShipmentMatch>;
   packedOrderNumbers: Set<string>;
   onOrderPacked: (reference: string, packed: boolean) => void;
+  /** Which shipment the card view shows; the list view highlights it. */
+  currentIndex: number;
+  onCurrentIndexChange: (index: number) => void;
   initialViewMode?: ViewMode;
 }
 
@@ -172,9 +178,10 @@ export function PackStep({
   packPullSheetMatchesByReference,
   packedOrderNumbers,
   onOrderPacked,
+  currentIndex,
+  onCurrentIndexChange: setCurrentIndex,
   initialViewMode = "card",
 }: PackStepProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
 
   const totalShipments = shipmentReferences.length;
@@ -185,11 +192,9 @@ export function PackStep({
   const mergedOrderNumbers = currentReference
     ? getOrderNumbersForShipmentReference(shipmentToOrderMap, currentReference)
     : [];
-  const mergedOrders = mergedOrderNumbers
-    .map((orderNumber) =>
-      sourceOrders.find((order) => order["Order #"] === orderNumber),
-    )
-    .filter((order): order is TcgPlayerShippingOrder => order !== undefined);
+  const mergedOrders = currentReference
+    ? getOrdersForShipmentReference(sourceOrders, shipmentToOrderMap, currentReference)
+    : [];
 
   const purchaseEntry = currentReference
     ? outboundPurchaseResultsByReference[currentReference]
@@ -282,9 +287,9 @@ export function PackStep({
   const applyShortcut = useRef<(shortcut: PackShortcut) => void>(() => undefined);
   applyShortcut.current = (shortcut) => {
     if (shortcut === "previous") {
-      setCurrentIndex((index) => Math.max(0, index - 1));
+      setCurrentIndex(Math.max(0, currentIndex - 1));
     } else if (shortcut === "next") {
-      setCurrentIndex((index) => Math.min(totalShipments - 1, index + 1));
+      setCurrentIndex(Math.min(totalShipments - 1, currentIndex + 1));
     } else if (currentReference) {
       handleMarkPacked(currentReference, !isPacked);
     }
@@ -324,7 +329,8 @@ export function PackStep({
   const itemCount = mergedOrders.reduce((sum, order) => sum + order["Item Count"], 0);
 
   return (
-    <Stack ref={pageRef} spacing={2}>
+    // Flex gap leaves child margins alone, so the sticky header's negative margin holds.
+    <Stack ref={pageRef} spacing={2} useFlexGap>
       <Stack
         direction="row"
         spacing={1.5}
@@ -333,14 +339,14 @@ export function PackStep({
         flexWrap="wrap"
         // The step panel pads its scroll area by 3; the header covers that padding as it sticks,
         // above the card layers, which stack up to 4.
-        sx={{ position: "sticky", top: (theme) => theme.spacing(-3), zIndex: 5, bgcolor: "background.paper", backgroundImage: "var(--Paper-overlay)", pt: 3, mt: -3, pb: 0.5 }}
+        sx={{ position: "sticky", top: (theme) => theme.spacing(-3), zIndex: 5, bgcolor: "background.paper", backgroundImage: "var(--Paper-overlay)", pt: 1.5, mt: -3, pb: 0.5 }}
       >
         {viewMode === "card" ? (
           <Stack direction="row" alignItems="center">
             <IconButton
               size="small"
               aria-label="Previous shipment"
-              onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
+              onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
               disabled={currentIndex === 0}
             >
               <ChevronLeftIcon />
@@ -351,7 +357,7 @@ export function PackStep({
             <IconButton
               size="small"
               aria-label="Next shipment"
-              onClick={() => setCurrentIndex((index) => Math.min(totalShipments - 1, index + 1))}
+              onClick={() => setCurrentIndex(Math.min(totalShipments - 1, currentIndex + 1))}
               disabled={currentIndex >= totalShipments - 1}
             >
               <ChevronRightIcon />
@@ -365,21 +371,20 @@ export function PackStep({
 
         {viewMode === "card" && currentOrder && (
           <>
-            {mergedOrderNumbers.length > 1 ? (
-              <Tooltip title={mergedOrderNumbers.join(", ")}>
-                <Chip label={`Combined shipment of ${mergedOrderNumbers.length} orders`} size="small" />
-              </Tooltip>
-            ) : (
-              <Chip label={currentReference} size="small" variant="outlined" />
-            )}
             <Tooltip title={<Box sx={{ whiteSpace: "pre-line" }}>{formatAddress(currentOrder)}</Box>}>
-              <Typography variant="body2" noWrap>
-                {currentOrder.FirstName} {currentOrder.LastName} · {currentOrder.City}, {currentOrder.State}
+              <Typography variant="h5" component="p" fontWeight={700} noWrap>
+                {currentOrder.FirstName} {currentOrder.LastName}
               </Typography>
             </Tooltip>
             <Typography variant="body2" color="text.secondary" noWrap>
-              {currentOrder["Shipping Method"]} · {itemCount} {itemCount === 1 ? "item" : "items"}
+              {currentOrder.City}, {currentOrder.State} · {currentOrder["Shipping Method"]} · {itemCount}{" "}
+              {itemCount === 1 ? "item" : "items"}
             </Typography>
+            {mergedOrderNumbers.length > 1 && (
+              <Tooltip title={mergedOrderNumbers.join(", ")}>
+                <Chip label={`Combined shipment of ${mergedOrderNumbers.length} orders`} size="small" />
+              </Tooltip>
+            )}
             {purchaseEntry && (
               <Tooltip title={purchaseEntry.result.trackingCode ?? ""}>
                 <Chip
@@ -428,15 +433,6 @@ export function PackStep({
         <>
           {currentOrder ? (
             <Stack spacing={1.5}>
-              {mergedOrders.length > 1 && (
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography variant="body2" color="text.secondary">
-                    Shipment value
-                  </Typography>
-                  <SaleValueFigures value={saleValueOfOrders(mergedOrders)} />
-                </Stack>
-              )}
-
               {!hasLineItems && (
                 <Alert severity="info">
                   Line item details unavailable - refer to the packing slip PDF.
@@ -523,11 +519,11 @@ export function PackStep({
                   sourceOrders.find(
                     (order) => order["Order #"] === shipmentReference,
                   ) ?? null;
-                const rowOrders = orderNumbers
-                  .map((orderNumber) =>
-                    sourceOrders.find((order) => order["Order #"] === orderNumber),
-                  )
-                  .filter((order): order is TcgPlayerShippingOrder => order !== undefined);
+                const rowOrders = getOrdersForShipmentReference(
+                  sourceOrders,
+                  shipmentToOrderMap,
+                  shipmentReference,
+                );
                 const purchase = outboundPurchaseResultsByReference[shipmentReference];
                 const packed = packedOrderNumbers.has(shipmentReference);
 
