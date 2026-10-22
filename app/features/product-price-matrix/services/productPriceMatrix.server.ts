@@ -9,6 +9,7 @@ import {
 } from "~/core/db";
 import { getConditionSortRank } from "~/core/utils/conditionOrder";
 import { createDisplayName } from "~/core/utils/displayNameUtils";
+import { searchProducts } from "~/core/utils/productSearch";
 import type { PricingResult } from "~/features/pricing/services/pricingCalculator";
 import { PricingCalculator } from "~/features/pricing/services/pricingCalculator";
 import { PricingBatchApiCache } from "~/features/pricing/services/pricingBatchApiCache.server";
@@ -128,10 +129,6 @@ function toPositiveInteger(value: unknown): number | null {
   return Number.isInteger(numberValue) && numberValue > 0 ? numberValue : null;
 }
 
-function normalizeSearchText(value: string): string {
-  return value.trim().toLocaleLowerCase();
-}
-
 function getVariantSortRank(variant: Variant): number {
   const rank = DISPLAY_VARIANT_ORDER.indexOf(variant);
   return rank === -1 ? Number.MAX_SAFE_INTEGER : rank;
@@ -222,27 +219,6 @@ function buildProductSummary(
     variants: sortVariants(uniqueValues(skus.map((sku) => sku.variant))),
     languages: sortLanguages(uniqueValues(skus.map((sku) => sku.language))),
   };
-}
-
-function matchesProductQuery(
-  product: ProductPriceMatrixProduct,
-  query: string,
-): boolean {
-  const normalizedQuery = normalizeSearchText(query);
-
-  if (!normalizedQuery) {
-    return true;
-  }
-
-  return [
-    product.productName,
-    product.displayName,
-    product.cardNumber ?? "",
-    product.rarityName,
-    product.productTypeName,
-    product.setName,
-    product.setCode,
-  ].some((value) => normalizeSearchText(value).includes(normalizedQuery));
 }
 
 function buildDisplayMap(
@@ -456,16 +432,16 @@ export function createProductPriceMatrixProductsLoader(
       const setProductsByProductId = new Map(
         setProducts.map((setProduct) => [setProduct.productId, setProduct]),
       );
-      const searchResults = products
-        .map((product) =>
+      const searchResults = searchProducts(
+        products.map((product) =>
           buildProductSummary(
             product,
             setProductsByProductId.get(product.productId),
             categorySet,
           ),
-        )
-        .filter((product) => matchesProductQuery(product, query))
-        .slice(0, 250);
+        ),
+        query,
+      );
 
       return data(
         { products: searchResults } satisfies ProductPriceMatrixProductsResponse,

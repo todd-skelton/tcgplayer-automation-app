@@ -20,6 +20,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { searchProducts } from "~/core/utils/productSearch";
 import type { CategorySet } from "~/shared/data-types/categorySet";
 import type { ProductLine } from "~/shared/data-types/productLine";
 import type {
@@ -600,6 +601,9 @@ export default function ProductPriceMatrixRoute() {
                 options={visibleProducts}
                 value={selectedProduct}
                 getOptionLabel={getProductLabel}
+                filterOptions={(options, { inputValue }) =>
+                  searchProducts(options, inputValue)
+                }
                 isOptionEqualToValue={(option, value) =>
                   option.productId === value.productId
                 }
