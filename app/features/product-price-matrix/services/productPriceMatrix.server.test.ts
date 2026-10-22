@@ -324,6 +324,77 @@ const testCases: TestCase[] = [
     },
   },
   {
+    name: "product matrix set search finds a card number anywhere in a large set",
+    run: async () => {
+      const fillerProducts = Array.from({ length: 300 }, (_, index) => ({
+        ...product,
+        productId: 1000 + index,
+        productName: `Filler ${index}`,
+      }));
+      const promo = {
+        ...product,
+        productId: 153234,
+        productName: "Charizard - 1/99 (Cracked Ice Holo)",
+      };
+      const loader = createProductPriceMatrixProductsLoader({
+        ...createDependencies(),
+        productsRepository: {
+          ...createDependencies().productsRepository,
+          findBySetId: async () => [...fillerProducts, promo],
+        },
+        setProductsRepository: {
+          ...createDependencies().setProductsRepository,
+          findBySetNameId: async () => [
+            { ...setProduct, productId: 153234, number: "001/099" },
+          ],
+        },
+      });
+
+      for (const query of ["1/99", "charizard"]) {
+        const result = await loader({
+          request: new Request(
+            `http://localhost/api/product-price-matrix/products?productLineId=3&scope=set&setId=10&query=${encodeURIComponent(query)}`,
+          ),
+        });
+        const parsed =
+          await parseRouteResult<ProductPriceMatrixProductsResponse>(result);
+
+        assert.equal(parsed.status, 200);
+        assert.deepEqual(
+          parsed.body.products.map((match) => match.productId),
+          [153234],
+          `search "${query}"`,
+        );
+      }
+    },
+  },
+  {
+    name: "product matrix set search lists every product in a large set",
+    run: async () => {
+      const loader = createProductPriceMatrixProductsLoader({
+        ...createDependencies(),
+        productsRepository: {
+          ...createDependencies().productsRepository,
+          findBySetId: async () =>
+            Array.from({ length: 300 }, (_, index) => ({
+              ...product,
+              productId: 1000 + index,
+            })),
+        },
+      });
+
+      const result = await loader({
+        request: new Request(
+          "http://localhost/api/product-price-matrix/products?productLineId=3&scope=set&setId=10",
+        ),
+      });
+      const parsed =
+        await parseRouteResult<ProductPriceMatrixProductsResponse>(result);
+
+      assert.equal(parsed.body.products.length, 300);
+    },
+  },
+  {
     name: "product matrix action returns market prices by condition and variant",
     run: async () => {
       const action = createProductPriceMatrixAction(createDependencies());

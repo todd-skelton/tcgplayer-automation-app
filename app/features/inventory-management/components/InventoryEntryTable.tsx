@@ -33,7 +33,7 @@ import type { Sku } from "../../../shared/data-types/sku";
 import type { PendingInventoryEntry } from "../../pending-inventory/types/pendingInventory";
 import { getConditionColor } from "../../../core/utils/conditionColors";
 import { createDisplayName } from "../../../core/utils/displayNameUtils";
-import { matchesNumberField } from "../../../core/utils/numberFieldMatching";
+import { searchProducts } from "../../../core/utils/productSearch";
 import {
   getConditionSortRank,
   type InventorySelectableCondition,
@@ -722,23 +722,9 @@ export const InventoryEntryTable: React.FC<InventoryEntryTableProps> =
           return a.variant.localeCompare(b.variant);
         });
 
-        if (searchScope === "set" && submittedProductNameFilter.trim()) {
-          const filterLower = submittedProductNameFilter.toLowerCase().trim();
-
-          const numberMatches = sortedGroups.filter((group) =>
-            matchesNumberField(submittedProductNameFilter, group.cardNumber),
-          );
-
-          if (numberMatches.length > 0) {
-            return numberMatches;
-          }
-
-          return sortedGroups.filter((group) =>
-            group.displayName.toLowerCase().includes(filterLower),
-          );
-        }
-
-        return sortedGroups;
+        return searchScope === "set"
+          ? searchProducts(sortedGroups, submittedProductNameFilter)
+          : sortedGroups;
       }, [filteredSkus, searchScope, submittedProductNameFilter]);
 
       const dataGridRows: GridRowsProp<DataGridRow> = useMemo(() => {

@@ -28,6 +28,7 @@ import "../features/ebay-slab-pricing/evaluation/slabPreviewAcceptance.test";
 import "../features/ebay-slab-pricing/publication/slabPublicationPreview.test";
 import "../core/db/repositories/inventoryBatchPricingJobs.server.test";
 import "../core/utils/numberFieldMatching.test";
+import "../core/utils/productSearch.test";
 import "../core/utils/readJsonResponse.test";
 import "../features/inventory-publication/services/inventoryPublicationPolicy.test";
 import "../features/continuous-pricing/services/continuousPricingSettings.test";
