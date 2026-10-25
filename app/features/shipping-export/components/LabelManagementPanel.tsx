@@ -8,45 +8,58 @@ import {
   FormControl,
   FormControlLabel,
   FormLabel,
-  InputLabel,
-  MenuItem,
   Radio,
   RadioGroup,
-  Select,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 import type {
+  EasyPostEnvironmentStatus,
   EasyPostService,
   EasyPostShipment,
-  ReturnFlowType,
+  LabelPurchaseType,
   ShippingExportConfig,
+  ShippingPostageDirection,
   ShippingPostagePurchaseEntry,
   TcgPlayerShippingOrder,
 } from "../types/shippingExport";
-import type { EasyPostEnvironmentStatus } from "../types/shippingExport";
+import { getLabelDirections } from "../services/shippingExportUtils";
+import { ShipmentAddressFields, ShipmentPackageFields } from "./ShipmentFields";
 
-interface ReturnFlowPanelProps {
+interface LabelManagementPanelProps {
   config: ShippingExportConfig;
   environmentStatus: EasyPostEnvironmentStatus;
   sellerKeyInput: string;
   orderNumberInput: string;
-  returnOrder: TcgPlayerShippingOrder | null;
-  returnShipment: EasyPostShipment | null;
-  returnFlowType: ReturnFlowType;
-  returnService: EasyPostService;
-  outboundReturnPurchaseEntry: ShippingPostagePurchaseEntry | null;
-  returnOnlyPurchaseEntry: ShippingPostagePurchaseEntry | null;
-  isLoadingReturnOrder: boolean;
-  isLoadingReturnLabels: boolean;
-  isPurchasingReturn: boolean;
+  order: TcgPlayerShippingOrder | null;
+  /** The order's shipment as edited here; outbound as shown, return with the addresses swapped. */
+  shipment: EasyPostShipment | null;
+  purchaseType: LabelPurchaseType;
+  outboundEntry: ShippingPostagePurchaseEntry | null;
+  returnEntry: ShippingPostagePurchaseEntry | null;
+  isLoadingOrder: boolean;
+  isLoadingLabels: boolean;
+  isPurchasing: boolean;
   onOrderNumberChange: (value: string) => void;
   onLookupOrder: () => void;
-  onReturnFlowTypeChange: (type: ReturnFlowType) => void;
-  onReturnServiceChange: (service: EasyPostService) => void;
+  onPurchaseTypeChange: (type: LabelPurchaseType) => void;
+  onShipmentChange: (changes: Partial<EasyPostShipment>) => void;
+  onServiceChange: (service: EasyPostService) => void;
+  onResetShipment: () => void;
   onBuyLabels: () => void;
 }
+
+const PURCHASE_TYPE_LABELS: Record<LabelPurchaseType, string> = {
+  "outbound-only": "Outbound Label",
+  "round-trip": "Outbound + Return Labels",
+  "return-only": "Return Label",
+};
+
+const DIRECTION_NAMES: Record<ShippingPostageDirection, string> = {
+  outbound: "An outbound label",
+  return: "A return label",
+};
 
 function isPurchased(entry: ShippingPostagePurchaseEntry | null): boolean {
   return entry?.result.status === "purchased";
@@ -129,44 +142,54 @@ function PurchasedLabelSummary({ title, entry }: PurchasedLabelSummaryProps) {
   );
 }
 
-export function ReturnFlowPanel({
+function describeRepurchase(directions: ShippingPostageDirection[]): string {
+  const purchased =
+    directions.length > 1
+      ? "Outbound and return labels were already purchased for this order. Buying again charges for new labels."
+      : `${DIRECTION_NAMES[directions[0]]} was already purchased for this order. Buying again charges for a new label.`;
+  const replacement = directions.includes("outbound")
+    ? " The new outbound label becomes the order's label; refund the old one in EasyPost if it will not be used."
+    : "";
+
+  return `${purchased}${replacement}`;
+}
+
+export function LabelManagementPanel({
   config,
   environmentStatus,
   sellerKeyInput,
   orderNumberInput,
-  returnOrder,
-  returnShipment,
-  returnFlowType,
-  returnService,
-  outboundReturnPurchaseEntry,
-  returnOnlyPurchaseEntry,
-  isLoadingReturnOrder,
-  isLoadingReturnLabels,
-  isPurchasingReturn,
+  order,
+  shipment,
+  purchaseType,
+  outboundEntry,
+  returnEntry,
+  isLoadingOrder,
+  isLoadingLabels,
+  isPurchasing,
   onOrderNumberChange,
   onLookupOrder,
-  onReturnFlowTypeChange,
-  onReturnServiceChange,
+  onPurchaseTypeChange,
+  onShipmentChange,
+  onServiceChange,
+  onResetShipment,
   onBuyLabels,
-}: ReturnFlowPanelProps) {
+}: LabelManagementPanelProps) {
   const selectedModeHasApiKey =
     config.easypostMode === "test"
       ? environmentStatus.hasTestApiKey
       : environmentStatus.hasProductionApiKey;
-  const hasOutboundLabel = isPurchased(outboundReturnPurchaseEntry);
-  const hasReturnLabel = isPurchased(returnOnlyPurchaseEntry);
-  const hasAnyLabelEntry = Boolean(outboundReturnPurchaseEntry || returnOnlyPurchaseEntry);
-  const wouldRepurchaseOutbound = returnFlowType === "round-trip" && hasOutboundLabel;
-  const wouldRepurchaseReturn = hasReturnLabel;
-  const buyButtonLabel = isPurchasingReturn
+  const entriesByDirection: Record<ShippingPostageDirection, ShippingPostagePurchaseEntry | null> = {
+    outbound: outboundEntry,
+    return: returnEntry,
+  };
+  const hasAnyLabelEntry = Boolean(outboundEntry || returnEntry);
+  const repurchasedDirections = getLabelDirections(purchaseType).filter((direction) =>
+    isPurchased(entriesByDirection[direction]),
+  );
+  const buyButtonLabel = isPurchasing
     ? "Buying Labels..."
-    : returnFlowType === "round-trip"
-      ? wouldRepurchaseOutbound || wouldRepurchaseReturn
-        ? "Buy Another Outbound + Return Label"
-        : "Buy Outbound + Return Labels"
-      : wouldRepurchaseReturn
-        ? "Buy Another Return Label"
-        : "Buy Return Label";
+    : `${repurchasedDirections.length > 0 ? "Buy Another" : "Buy"} ${PURCHASE_TYPE_LABELS[purchaseType]}`;
 
   return (
     <Stack spacing={3}>
@@ -193,38 +216,25 @@ export function ReturnFlowPanel({
           variant="contained"
           color="secondary"
           onClick={onLookupOrder}
-          disabled={isLoadingReturnOrder || !orderNumberInput.trim()}
-          startIcon={isLoadingReturnOrder ? <CircularProgress color="inherit" size={18} /> : undefined}
+          disabled={isLoadingOrder || !orderNumberInput.trim()}
+          startIcon={isLoadingOrder ? <CircularProgress color="inherit" size={18} /> : undefined}
         >
-          {isLoadingReturnOrder ? "Looking Up Order..." : "Lookup Order"}
+          {isLoadingOrder ? "Looking Up Order..." : "Lookup Order"}
         </Button>
       </Stack>
 
-      {returnOrder && (
+      {order && (
         <>
           <Divider />
 
           <Box>
             <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-              Order {returnOrder["Order #"]}
+              Order {order["Order #"]}
             </Typography>
-            <Stack spacing={0.5}>
-              <Typography variant="body2">
-                {returnOrder.FirstName} {returnOrder.LastName}
-              </Typography>
-              <Typography variant="body2" component="pre" sx={{ fontFamily: "inherit" }}>
-                {[
-                  returnOrder.Address1,
-                  returnOrder.Address2,
-                  `${returnOrder.City}, ${returnOrder.State} ${returnOrder.PostalCode}`,
-                  returnOrder.Country,
-                ].filter(Boolean).join("\n")}
-              </Typography>
-              <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
-                <Chip label={`${returnOrder["Item Count"]} items`} size="small" variant="outlined" />
-                <Chip label={`$${returnOrder["Value Of Products"].toFixed(2)}`} size="small" variant="outlined" />
-                <Chip label={returnOrder["Shipping Method"]} size="small" variant="outlined" />
-              </Stack>
+            <Stack direction="row" spacing={2}>
+              <Chip label={`${order["Item Count"]} items`} size="small" variant="outlined" />
+              <Chip label={`$${order["Value Of Products"].toFixed(2)}`} size="small" variant="outlined" />
+              <Chip label={order["Shipping Method"]} size="small" variant="outlined" />
             </Stack>
           </Box>
 
@@ -234,7 +244,7 @@ export function ReturnFlowPanel({
             <Typography variant="subtitle2" gutterBottom>
               Purchased Labels
             </Typography>
-            {isLoadingReturnLabels ? (
+            {isLoadingLabels ? (
               <Stack direction="row" spacing={1} alignItems="center">
                 <CircularProgress size={16} />
                 <Typography variant="body2" color="text.secondary">
@@ -243,17 +253,11 @@ export function ReturnFlowPanel({
               </Stack>
             ) : hasAnyLabelEntry ? (
               <Stack spacing={2}>
-                {outboundReturnPurchaseEntry && (
-                  <PurchasedLabelSummary
-                    title="Outbound (seller → buyer)"
-                    entry={outboundReturnPurchaseEntry}
-                  />
+                {outboundEntry && (
+                  <PurchasedLabelSummary title="Outbound (seller → buyer)" entry={outboundEntry} />
                 )}
-                {returnOnlyPurchaseEntry && (
-                  <PurchasedLabelSummary
-                    title="Return (buyer → seller)"
-                    entry={returnOnlyPurchaseEntry}
-                  />
+                {returnEntry && (
+                  <PurchasedLabelSummary title="Return (buyer → seller)" entry={returnEntry} />
                 )}
               </Stack>
             ) : (
@@ -266,11 +270,23 @@ export function ReturnFlowPanel({
           <Divider />
 
           <FormControl>
-            <FormLabel>Return Postage Type</FormLabel>
+            <FormLabel>Labels to Buy</FormLabel>
             <RadioGroup
-              value={returnFlowType}
-              onChange={(_, value) => onReturnFlowTypeChange(value as ReturnFlowType)}
+              value={purchaseType}
+              onChange={(_, value) => onPurchaseTypeChange(value as LabelPurchaseType)}
             >
+              <FormControlLabel
+                value="outbound-only"
+                control={<Radio />}
+                label={
+                  <Box>
+                    <Typography variant="body2" fontWeight={600}>Outbound only</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Buy only an outbound label (seller → buyer). Use to replace a label, such as after correcting the address.
+                    </Typography>
+                  </Box>
+                }
+              />
               <FormControlLabel
                 value="round-trip"
                 control={<Radio />}
@@ -298,22 +314,32 @@ export function ReturnFlowPanel({
             </RadioGroup>
           </FormControl>
 
-          <FormControl sx={{ maxWidth: 320 }}>
-            <InputLabel id="return-service-label">Postage Service</InputLabel>
-            <Select
-              labelId="return-service-label"
-              label="Postage Service"
-              value={returnService}
-              onChange={(event) =>
-                onReturnServiceChange(event.target.value as EasyPostService)
-              }
-            >
-              <MenuItem value="First">First</MenuItem>
-              <MenuItem value="GroundAdvantage">Ground Advantage</MenuItem>
-              <MenuItem value="Priority">Priority</MenuItem>
-              <MenuItem value="Express">Express</MenuItem>
-            </Select>
-          </FormControl>
+          {shipment && (
+            <Stack spacing={2}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between">
+                <Typography variant="subtitle2">Buyer Address</Typography>
+                <Button size="small" onClick={onResetShipment}>
+                  Reset to Order
+                </Button>
+              </Stack>
+              <Typography variant="caption" color="text.secondary">
+                Starts from the TCGplayer order. Changes apply only to labels bought here; the order itself is not updated.
+              </Typography>
+              <ShipmentAddressFields
+                address={shipment.to_address}
+                onChange={(to_address) => onShipmentChange({ to_address })}
+              />
+              <Typography variant="subtitle2">Package</Typography>
+              <ShipmentPackageFields
+                shipment={shipment}
+                onChange={onShipmentChange}
+                onServiceChange={onServiceChange}
+              />
+              <Typography variant="caption" color="text.secondary">
+                Return labels use the same package with the addresses swapped.
+              </Typography>
+            </Stack>
+          )}
 
           {!selectedModeHasApiKey && (
             <Alert severity="warning">
@@ -324,14 +350,8 @@ export function ReturnFlowPanel({
             </Alert>
           )}
 
-          {(wouldRepurchaseOutbound || wouldRepurchaseReturn) && !isLoadingReturnLabels && (
-            <Alert severity="warning">
-              {wouldRepurchaseOutbound && wouldRepurchaseReturn
-                ? "Outbound and return labels were already purchased for this order. Buying again will charge for new labels."
-                : wouldRepurchaseOutbound
-                  ? "An outbound label was already purchased for this order. Choose Return only to avoid buying another outbound label."
-                  : "A return label was already purchased for this order. Buying again will charge for a new label."}
-            </Alert>
+          {repurchasedDirections.length > 0 && !isLoadingLabels && (
+            <Alert severity="warning">{describeRepurchase(repurchasedDirections)}</Alert>
           )}
 
           <Box>
@@ -341,11 +361,11 @@ export function ReturnFlowPanel({
               onClick={onBuyLabels}
               disabled={
                 !selectedModeHasApiKey ||
-                isPurchasingReturn ||
-                isLoadingReturnLabels ||
-                !returnShipment
+                isPurchasing ||
+                isLoadingLabels ||
+                !shipment
               }
-              startIcon={isPurchasingReturn ? <CircularProgress color="inherit" size={18} /> : undefined}
+              startIcon={isPurchasing ? <CircularProgress color="inherit" size={18} /> : undefined}
             >
               {buyButtonLabel}
             </Button>

@@ -78,6 +78,7 @@ import "../features/shipping-export/config/shippingExportConfigFormData.test";
 import "../features/shipping-export/components/steps/LoadOrdersStep.test";
 import "../features/shipping-export/components/steps/PullSheetStep.test";
 import "../features/shipping-export/components/steps/ShipStep.test";
+import "../features/shipping-export/components/LabelManagementPanel.test";
 import "../features/shipping-export/components/ShippingStepBar.test";
 import "../features/shipping-export/services/shippingStepProgress.test";
 import "../features/shipping-export/components/SaleValueFigures.test";

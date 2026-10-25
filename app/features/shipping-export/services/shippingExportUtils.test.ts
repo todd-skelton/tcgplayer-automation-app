@@ -7,10 +7,11 @@ import {
   mergeResultsByOrderNumber,
   calculatePackageType,
   calculateService,
-  createRoundTripShipments,
   createReturnShipment,
+  createShipmentForDirection,
   createShipmentForPostageService,
   getDeliveryConfirmation,
+  getLabelDirections,
   mapOrderToShipment,
   buildTimestampedFileName,
   mergeOrdersByAddress,
@@ -410,11 +411,11 @@ const testCases: TestCase[] = [
     },
   },
   {
-    name: "createRoundTripShipments applies the same service to outbound and return labels",
+    name: "createShipmentForPostageService switches First-Class labels to the letter package",
     run: () => {
       const order = createOrder({ "Value Of Products": 75 });
       const shipment = mapOrderToShipment(order, DEFAULT_SHIPPING_EXPORT_CONFIG);
-      const roundTrip = createRoundTripShipments(
+      const firstClassShipment = createShipmentForPostageService(
         shipment,
         "First",
         DEFAULT_SHIPPING_EXPORT_CONFIG,
@@ -422,20 +423,40 @@ const testCases: TestCase[] = [
       );
 
       assert.equal(shipment.service, "GroundAdvantage");
-      assert.equal(roundTrip.outboundShipment.service, "First");
-      assert.equal(roundTrip.returnShipment.service, "First");
-      assert.equal(roundTrip.outboundShipment.parcel.predefined_package, "Letter");
-      assert.equal(roundTrip.outboundShipment.parcel.length, 9);
-      assert.equal(roundTrip.outboundShipment.parcel.width, 4);
-      assert.equal(roundTrip.outboundShipment.parcel.height, 0.25);
-      assert.equal(roundTrip.outboundShipment.options.label_size, "7x3");
-      assert.equal(roundTrip.returnShipment.parcel.predefined_package, "Letter");
-      assert.equal(roundTrip.returnShipment.parcel.length, 9);
-      assert.equal(roundTrip.returnShipment.parcel.width, 4);
-      assert.equal(roundTrip.returnShipment.parcel.height, 0.25);
-      assert.equal(roundTrip.returnShipment.options.label_size, "7x3");
-      assert.equal(roundTrip.returnShipment.to_address.name, shipment.from_address.name);
-      assert.equal(roundTrip.returnShipment.from_address.name, shipment.to_address.name);
+      assert.equal(firstClassShipment.service, "First");
+      assert.equal(firstClassShipment.parcel.predefined_package, "Letter");
+      assert.equal(firstClassShipment.parcel.length, 9);
+      assert.equal(firstClassShipment.parcel.width, 4);
+      assert.equal(firstClassShipment.parcel.height, 0.25);
+      assert.equal(firstClassShipment.options.label_size, "7x3");
+    },
+  },
+  {
+    name: "getLabelDirections lists outbound before return for each label purchase type",
+    run: () => {
+      assert.deepEqual(getLabelDirections("outbound-only"), ["outbound"]);
+      assert.deepEqual(getLabelDirections("round-trip"), ["outbound", "return"]);
+      assert.deepEqual(getLabelDirections("return-only"), ["return"]);
+    },
+  },
+  {
+    name: "createShipmentForDirection keeps edited outbound details and swaps addresses for returns",
+    run: () => {
+      const shipment = mapOrderToShipment(createOrder(), DEFAULT_SHIPPING_EXPORT_CONFIG);
+      const corrected = {
+        ...shipment,
+        to_address: { ...shipment.to_address, street1: "456 Corrected Ave" },
+        parcel: { ...shipment.parcel, weight: 3.5 },
+      };
+
+      const outbound = createShipmentForDirection(corrected, "outbound");
+      const returnShipment = createShipmentForDirection(corrected, "return");
+
+      assert.equal(outbound, corrected);
+      assert.equal(returnShipment.from_address.street1, "456 Corrected Ave");
+      assert.deepEqual(returnShipment.to_address, corrected.from_address);
+      assert.equal(returnShipment.parcel.weight, 3.5);
+      assert.equal(returnShipment.service, corrected.service);
     },
   },
   {
