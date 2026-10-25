@@ -138,7 +138,8 @@ export interface TcgPlayerShippingOrder {
   intakeHistory?: ShippingOrderIntakeHistory;
 }
 
-export type ReturnFlowType = "round-trip" | "return-only";
+/** Which labels to buy for one order from Label management. */
+export type LabelPurchaseType = "outbound-only" | "round-trip" | "return-only";
 
 export interface ShippingPackageSettings {
   labelSize: LabelSize;

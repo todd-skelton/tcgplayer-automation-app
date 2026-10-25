@@ -1,5 +1,5 @@
 import CloseIcon from "@mui/icons-material/Close";
-import ReplyIcon from "@mui/icons-material/Reply";
+import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {
   Alert,
@@ -28,9 +28,11 @@ import {
   buildTimestampedFileName,
   buildTrackingApplyItems,
   mergeResultsByOrderNumber,
-  createRoundTripShipments,
   createReturnShipment,
+  createShipmentForDirection,
+  createShipmentForPostageService,
   getAllLabelSizes,
+  getLabelDirections,
   getOrderNumbersForShipmentReference,
   getOrdersForShipmentReference,
   getShipmentCsvRows,
@@ -48,8 +50,8 @@ import {
   type EasyPostMode,
   type EasyPostService,
   type EasyPostShipment,
+  type LabelPurchaseType,
   type LabelSize,
-  type ReturnFlowType,
   type ShipmentToOrderMap,
   type ShippingLiveOrderLoadResponse,
   type ShippingPostageBatchLabelRequestItem,
@@ -77,7 +79,7 @@ import { BuyPostageStep } from "../components/steps/BuyPostageStep";
 import { PrintStep } from "../components/steps/PrintStep";
 import { PackStep } from "../components/steps/PackStep";
 import { ShipStep } from "../components/steps/ShipStep";
-import { ReturnFlowPanel } from "../components/ReturnFlowPanel";
+import { LabelManagementPanel } from "../components/LabelManagementPanel";
 import type { SellerOrderCoverage } from "~/features/seller-order-history/types/sellerOrderHistory";
 import { refreshShippingIntakeHistory, withoutShippingIntakeHistory } from "../services/shippingIntakeHistory";
 
@@ -167,7 +169,7 @@ export default function ShippingExportRoute() {
 
   // ── Workflow navigation ───────────────────────────────────────────────────
   const [currentStep, setCurrentStep] = useState(0);
-  const [returnsOpen, setReturnsOpen] = useState(false);
+  const [labelManagementOpen, setLabelManagementOpen] = useState(false);
 
   // ── Order / shipment state ────────────────────────────────────────────────
   const [sourceOrders, setSourceOrders] = useState<TcgPlayerShippingOrder[]>([]);
@@ -214,17 +216,17 @@ export default function ShippingExportRoute() {
   const [packedOrderNumbers, setPackedOrderNumbers] = useState<Set<string>>(new Set());
   const [packShipmentIndex, setPackShipmentIndex] = useState(0);
 
-  // ── Return flow state ─────────────────────────────────────────────────────
-  const [returnOrderNumberInput, setReturnOrderNumberInput] = useState("");
-  const [returnFlowType, setReturnFlowType] = useState<ReturnFlowType>("round-trip");
-  const [returnService, setReturnService] = useState<EasyPostService>("First");
-  const [returnOrder, setReturnOrder] = useState<TcgPlayerShippingOrder | null>(null);
-  const [returnShipment, setReturnShipment] = useState<EasyPostShipment | null>(null);
-  const [isLoadingReturnOrder, setIsLoadingReturnOrder] = useState(false);
-  const [isLoadingReturnLabels, setIsLoadingReturnLabels] = useState(false);
-  const [isPurchasingReturn, setIsPurchasingReturn] = useState(false);
-  const [outboundReturnPurchaseEntry, setOutboundReturnPurchaseEntry] = useState<ShippingPostagePurchaseEntry | null>(null);
-  const [returnOnlyPurchaseEntry, setReturnOnlyPurchaseEntry] = useState<ShippingPostagePurchaseEntry | null>(null);
+  // ── Label management state ────────────────────────────────────────────────
+  const [labelOrderNumberInput, setLabelOrderNumberInput] = useState("");
+  const [labelPurchaseType, setLabelPurchaseType] = useState<LabelPurchaseType>("outbound-only");
+  const [labelOrder, setLabelOrder] = useState<TcgPlayerShippingOrder | null>(null);
+  const [labelShipment, setLabelShipment] = useState<EasyPostShipment | null>(null);
+  const [isLoadingLabelOrder, setIsLoadingLabelOrder] = useState(false);
+  const [isLoadingOrderLabels, setIsLoadingOrderLabels] = useState(false);
+  const [isPurchasingOrderLabels, setIsPurchasingOrderLabels] = useState(false);
+  const [orderLabelEntries, setOrderLabelEntries] = useState<
+    Record<ShippingPostageDirection, ShippingPostagePurchaseEntry | null>
+  >({ outbound: null, return: null });
 
   /** Only the newest postage lookup may write results, so a slow older one cannot overwrite them. */
   const postageLookupSequenceRef = useRef(0);
@@ -963,7 +965,7 @@ export default function ShippingExportRoute() {
     });
   };
 
-  // ── Handler: return flow ──────────────────────────────────────────────────
+  // ── Handler: label management ─────────────────────────────────────────────
   const lookupSavedPostageForOrder = async (
     direction: ShippingPostageDirection,
     orderNumber: string,
@@ -988,35 +990,32 @@ export default function ShippingExportRoute() {
       : null;
   };
 
-  const loadSavedReturnFlowLabels = async (orderNumber: string) => {
-    setIsLoadingReturnLabels(true);
+  const loadSavedOrderLabels = async (orderNumber: string) => {
+    setIsLoadingOrderLabels(true);
 
     try {
-      const [savedOutbound, savedReturn] = await Promise.all([
+      const [outbound, returnLabel] = await Promise.all([
         lookupSavedPostageForOrder("outbound", orderNumber),
         lookupSavedPostageForOrder("return", orderNumber),
       ]);
 
-      setOutboundReturnPurchaseEntry(savedOutbound);
-      setReturnOnlyPurchaseEntry(savedReturn);
+      setOrderLabelEntries({ outbound, return: returnLabel });
     } catch (lookupError) {
       setError(String(lookupError));
     } finally {
-      setIsLoadingReturnLabels(false);
+      setIsLoadingOrderLabels(false);
     }
   };
 
-  const handleLookupReturnOrder = async () => {
-    const normalizedOrderNumber = returnOrderNumberInput.trim();
+  const handleLookupLabelOrder = async () => {
+    const normalizedOrderNumber = labelOrderNumberInput.trim();
 
     if (!normalizedOrderNumber) return;
 
-    setIsLoadingReturnOrder(true);
-    setReturnOrder(null);
-    setReturnShipment(null);
-    setReturnService("First");
-    setOutboundReturnPurchaseEntry(null);
-    setReturnOnlyPurchaseEntry(null);
+    setIsLoadingLabelOrder(true);
+    setLabelOrder(null);
+    setLabelShipment(null);
+    setOrderLabelEntries({ outbound: null, return: null });
     setError(null);
 
     try {
@@ -1035,96 +1034,88 @@ export default function ShippingExportRoute() {
       );
       const loadedOrder = singleOrderResponse.orders[0] ?? null;
 
-      setReturnOrder(loadedOrder);
+      setLabelOrder(loadedOrder);
 
       if (loadedOrder) {
-        const shipmentForOrder = mapOrderToShipment(loadedOrder, config);
-        setReturnShipment(shipmentForOrder);
-        await loadSavedReturnFlowLabels(loadedOrder["Order #"]);
+        setLabelShipment(mapOrderToShipment(loadedOrder, config));
+        await loadSavedOrderLabels(loadedOrder["Order #"]);
       }
     } catch (loadError) {
       setError(String(loadError));
     } finally {
-      setIsLoadingReturnOrder(false);
+      setIsLoadingLabelOrder(false);
     }
   };
 
-  const handleBuyReturnFlowLabels = async () => {
-    if (!returnShipment || isPurchasingReturn) return;
+  const handleResetLabelShipment = () => {
+    if (labelOrder) setLabelShipment(mapOrderToShipment(labelOrder, config));
+  };
 
-    setIsPurchasingReturn(true);
+  /** A new service starts from that service's package for the order and keeps the edited address. */
+  const handleLabelServiceChange = (service: EasyPostService) => {
+    if (!labelOrder || !labelShipment) return;
+
+    setLabelShipment(
+      createShipmentForPostageService(
+        { ...mapOrderToShipment(labelOrder, config), to_address: labelShipment.to_address },
+        service,
+        config,
+        labelOrder,
+      ),
+    );
+  };
+
+  /** Buys outbound then return, stopping at the first label that is not purchased. */
+  const handleBuyOrderLabels = async () => {
+    if (!labelOrder || !labelShipment || isPurchasingOrderLabels) return;
+
+    setIsPurchasingOrderLabels(true);
     setError(null);
 
-    const orderNumbers = returnOrder ? [returnOrder["Order #"]] : [returnShipment.reference];
-    const roundTripShipments = createRoundTripShipments(
-      returnShipment,
-      returnService,
-      config,
-      returnOrder,
-    );
+    const orderNumber = labelOrder["Order #"];
+    let boughtOutbound = false;
 
     try {
-      if (returnFlowType === "round-trip") {
-        // Outbound: seller → buyer (normal shipment direction)
-        const outboundResponse = await fetch("/api/shipping-export/postages", {
+      for (const direction of getLabelDirections(labelPurchaseType)) {
+        const shipment = createShipmentForDirection(labelShipment, direction);
+        const response = await fetch("/api/shipping-export/postages", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            labelSize: roundTripShipments.outboundShipment.options.label_size,
-            direction: "outbound",
+            labelSize: shipment.options.label_size,
+            direction,
             purchaseScope: "single",
-            shipments: [{ shipment: roundTripShipments.outboundShipment, orderNumbers }],
+            shipments: [{ shipment, orderNumbers: [orderNumber] }],
           }),
         });
 
-        const outboundPayload = await readJsonResponse<ShippingPostagePurchaseResponse>(
-          outboundResponse,
-          "Failed to buy outbound label.",
+        const payload = await readJsonResponse<ShippingPostagePurchaseResponse>(
+          response,
+          `Failed to buy ${direction} label.`,
         );
-        const outboundResult = outboundPayload.results[0];
+        const result = payload.results[0];
 
-        if (outboundResult) {
-          setOutboundReturnPurchaseEntry({
-            mode: outboundPayload.mode,
-            result: outboundResult,
-            purchasedAt: new Date().toISOString(),
-          });
+        if (result) {
+          setOrderLabelEntries((previous) => ({
+            ...previous,
+            [direction]: { mode: payload.mode, result, purchasedAt: new Date().toISOString() },
+          }));
         }
+
+        if (result?.status !== "purchased") break;
+        if (direction === "outbound") boughtOutbound = true;
       }
 
-      // Return label: buyer → seller (swap addresses)
-      const returnShipmentData = roundTripShipments.returnShipment;
-      const returnResponse = await fetch("/api/shipping-export/postages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          labelSize: returnShipmentData.options.label_size,
-          direction: "return",
-          purchaseScope: "single",
-          shipments: [{ shipment: returnShipmentData, orderNumbers }],
-        }),
-      });
-
-      const returnPayload = await readJsonResponse<ShippingPostagePurchaseResponse>(
-        returnResponse,
-        "Failed to buy return label.",
-      );
-      const returnResult = returnPayload.results[0];
-
-      if (returnResult) {
-        setReturnOnlyPurchaseEntry({
-          mode: returnPayload.mode,
-          result: returnResult,
-          purchasedAt: new Date().toISOString(),
-        });
+      // A replacement outbound label becomes the order's label, so the loaded batch shows it too.
+      if (boughtOutbound && sourceOrders.some((order) => order["Order #"] === orderNumber)) {
+        await loadExistingPostage(shipments, shipmentToOrderMap);
       }
     } catch (purchaseError) {
       setError(String(purchaseError));
     } finally {
-      setIsPurchasingReturn(false);
+      setIsPurchasingOrderLabels(false);
     }
   };
-
   // ── Handler: reset workflow ───────────────────────────────────────────────
   const handleReset = () => {
     dismissRestoredWorkflow();
@@ -1219,11 +1210,11 @@ export default function ShippingExportRoute() {
           {modeWarning && <Chip color="warning" label={modeWarning} />}
           <Button
             variant="outlined"
-            startIcon={<ReplyIcon />}
+            startIcon={<LocalShippingIcon />}
             aria-haspopup="dialog"
-            onClick={() => setReturnsOpen(true)}
+            onClick={() => setLabelManagementOpen(true)}
           >
-            Return labels
+            Label management
           </Button>
           <Tooltip title="Shipping configuration">
             <IconButton component={Link} to="/shipping-configuration" aria-label="Shipping configuration">
@@ -1388,17 +1379,17 @@ export default function ShippingExportRoute() {
         }
       />
 
-      <Drawer anchor="right" open={returnsOpen} onClose={() => setReturnsOpen(false)}>
+      <Drawer anchor="right" open={labelManagementOpen} onClose={() => setLabelManagementOpen(false)}>
         <Box
           role="region"
-          aria-labelledby="return-labels-heading"
+          aria-labelledby="label-management-heading"
           sx={{ width: { xs: "100vw", sm: 560 }, p: 3 }}
         >
           <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-            <Typography id="return-labels-heading" variant="h6">
-              Return labels
+            <Typography id="label-management-heading" variant="h6">
+              Label management
             </Typography>
-            <IconButton aria-label="Close return labels" onClick={() => setReturnsOpen(false)}>
+            <IconButton aria-label="Close label management" onClick={() => setLabelManagementOpen(false)}>
               <CloseIcon />
             </IconButton>
           </Stack>
@@ -1407,25 +1398,28 @@ export default function ShippingExportRoute() {
               {error}
             </Alert>
           )}
-          <ReturnFlowPanel
+          <LabelManagementPanel
             config={config}
             environmentStatus={environmentStatus}
             sellerKeyInput={sellerKeyInput}
-            orderNumberInput={returnOrderNumberInput}
-            returnOrder={returnOrder}
-            returnShipment={returnShipment}
-            returnFlowType={returnFlowType}
-            returnService={returnService}
-            outboundReturnPurchaseEntry={outboundReturnPurchaseEntry}
-            returnOnlyPurchaseEntry={returnOnlyPurchaseEntry}
-            isLoadingReturnOrder={isLoadingReturnOrder}
-            isLoadingReturnLabels={isLoadingReturnLabels}
-            isPurchasingReturn={isPurchasingReturn}
-            onOrderNumberChange={setReturnOrderNumberInput}
-            onLookupOrder={() => void handleLookupReturnOrder()}
-            onReturnFlowTypeChange={setReturnFlowType}
-            onReturnServiceChange={setReturnService}
-            onBuyLabels={() => void handleBuyReturnFlowLabels()}
+            orderNumberInput={labelOrderNumberInput}
+            order={labelOrder}
+            shipment={labelShipment}
+            purchaseType={labelPurchaseType}
+            outboundEntry={orderLabelEntries.outbound}
+            returnEntry={orderLabelEntries.return}
+            isLoadingOrder={isLoadingLabelOrder}
+            isLoadingLabels={isLoadingOrderLabels}
+            isPurchasing={isPurchasingOrderLabels}
+            onOrderNumberChange={setLabelOrderNumberInput}
+            onLookupOrder={() => void handleLookupLabelOrder()}
+            onPurchaseTypeChange={setLabelPurchaseType}
+            onShipmentChange={(changes) =>
+              setLabelShipment((previous) => (previous ? { ...previous, ...changes } : previous))
+            }
+            onServiceChange={handleLabelServiceChange}
+            onResetShipment={handleResetLabelShipment}
+            onBuyLabels={() => void handleBuyOrderLabels()}
           />
         </Box>
       </Drawer>

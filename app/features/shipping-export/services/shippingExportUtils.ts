@@ -4,8 +4,10 @@ import {
   type EasyPostPackageType,
   type EasyPostService,
   type EasyPostShipment,
+  type LabelPurchaseType,
   type ShipmentToOrderMap,
   type ShippingExportConfig,
+  type ShippingPostageDirection,
   type ShippingPostagePurchaseEntry,
   type ShippingPostagePurchaseResult,
   type ShippingShippedMessageRequestItem,
@@ -523,23 +525,23 @@ export function createShipmentForPostageService(
   };
 }
 
-export function createRoundTripShipments(
-  shipment: EasyPostShipment,
-  service: EasyPostService,
-  config: ShippingExportConfig,
-  order?: TcgPlayerShippingOrder | null,
-): { outboundShipment: EasyPostShipment; returnShipment: EasyPostShipment } {
-  const outboundShipment = createShipmentForPostageService(
-    shipment,
-    service,
-    config,
-    order,
-  );
+const LABEL_DIRECTIONS_BY_PURCHASE_TYPE: Record<LabelPurchaseType, ShippingPostageDirection[]> = {
+  "outbound-only": ["outbound"],
+  "round-trip": ["outbound", "return"],
+  "return-only": ["return"],
+};
 
-  return {
-    outboundShipment,
-    returnShipment: createReturnShipment(outboundShipment, service),
-  };
+/** The label directions to buy, outbound first, for a Label management purchase. */
+export function getLabelDirections(purchaseType: LabelPurchaseType): ShippingPostageDirection[] {
+  return LABEL_DIRECTIONS_BY_PURCHASE_TYPE[purchaseType];
+}
+
+/** The shipment to buy for a direction: outbound as given, return with the addresses swapped. */
+export function createShipmentForDirection(
+  shipment: EasyPostShipment,
+  direction: ShippingPostageDirection,
+): EasyPostShipment {
+  return direction === "return" ? createReturnShipment(shipment) : shipment;
 }
 
 export function getShipmentsForLabelSize(
