@@ -56,8 +56,9 @@ function order(orderNumber: string, lines = [history("1")]): TcgPlayerShippingOr
 
 const batch = saleValueOfOrders([order("A"), order("A")]);
 assert.equal(batch.price, 16, "a repeated order is counted once");
-assert.deepEqual(batch.market, { total: 8, difference: -2, percent: -25, partial: "1 of 2 lines priced" });
+assert.deepEqual(batch.market, { price: 6, total: 8, difference: -2, percent: -25, partial: "1 of 2 lines priced" });
 assert.deepEqual(batch.intake, {
+  price: 6,
   total: 5,
   difference: 1,
   percent: 20,
@@ -69,8 +70,8 @@ assert.equal(batch.agePartial, "2 of 3 units have an intake date");
 const cards = saleValuesBySku([order("A"), order("B")]);
 assert.deepEqual(cards.get(1), {
   price: 12,
-  market: { total: 16, difference: -4, percent: -25, partial: null },
-  intake: { total: 10, difference: 2, percent: 20, partial: null },
+  market: { price: 12, total: 16, difference: -4, percent: -25, partial: null },
+  intake: { price: 12, total: 10, difference: 2, percent: 20, partial: null },
   ageDays: 10,
   agePartial: null,
 }, "a card sums its SKU across orders and covers all of its own units");

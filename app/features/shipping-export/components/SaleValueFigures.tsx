@@ -37,7 +37,15 @@ function Figure({ label, partial, children }: { label: string; partial: string |
     </Box>
   );
 
-  return partial ? <Tooltip title={`Partial: ${partial}. The difference compares only those.`}>{figure}</Tooltip> : figure;
+  return partial ? <Tooltip title={`Partial: ${partial}. The comparison covers only those.`}>{figure}</Tooltip> : figure;
+}
+
+function SubLabel({ children }: { children: ReactNode }) {
+  return (
+    <Box component="span" sx={{ opacity: 0.7, mr: 0.5 }}>
+      {children}
+    </Box>
+  );
 }
 
 function Comparison({ comparison, onImage }: { comparison: SaleComparison | null; onImage: boolean }) {
@@ -56,8 +64,21 @@ function Comparison({ comparison, onImage }: { comparison: SaleComparison | null
   );
 }
 
+/** The sale price of the units with an intake price, against their market when they came in. */
+function IntakeComparison({ comparison, onImage }: { comparison: SaleComparison | null; onImage: boolean }) {
+  if (!comparison) return <>-</>;
+
+  return (
+    <>
+      <SubLabel>Price</SubLabel>
+      {formatUsd(comparison.price)} <SubLabel>Market</SubLabel>
+      <Comparison comparison={comparison} onImage={onImage} />
+    </>
+  );
+}
+
 /**
- * Price, current market, intake market, and age for a card, order, or batch.
+ * Price, current market, intake price and market, and age for a card, order, or batch.
  * Differences are the price minus that value: green when sold above it, red below.
  */
 export function SaleValueFigures({
@@ -82,7 +103,7 @@ export function SaleValueFigures({
         <Comparison comparison={value.market} onImage={onImage} />
       </Figure>
       <Figure label="Intake" partial={value.intake?.partial ?? null}>
-        <Comparison comparison={value.intake} onImage={onImage} />
+        <IntakeComparison comparison={value.intake} onImage={onImage} />
       </Figure>
       <Figure label="Age" partial={value.agePartial}>
         {value.ageDays === null ? "-" : `${value.ageDays.toFixed(1)}d`}
