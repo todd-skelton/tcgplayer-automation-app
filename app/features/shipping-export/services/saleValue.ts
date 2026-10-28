@@ -10,6 +10,8 @@ import { shippingInventorySkuId } from "./shippingOrderIdentity";
 
 /** A value the sale price is measured against. */
 export interface SaleComparison {
+  /** Sale price of the units this comparison covers. */
+  price: number;
   /** The reference value, such as the current market total. */
   total: number;
   /** Sale price minus the reference value over the same units; positive means sold above it. */
@@ -48,6 +50,7 @@ export function saleValueOfOrders(orders: TcgPlayerShippingOrder[]): SaleValue {
       marketDifference === null
         ? null
         : {
+            price: market.comparableSoldTotal,
             total: market.comparableMarketTotal,
             difference: marketDifference,
             percent: getMarketDeltaPercent(market),
@@ -57,6 +60,7 @@ export function saleValueOfOrders(orders: TcgPlayerShippingOrder[]): SaleValue {
       intakeDifference === null
         ? null
         : {
+            price: intake.comparableSoldTotal,
             total: intake.intakeMarketTotal,
             difference: intakeDifference,
             percent: intakeDeltaPercent(intake),
