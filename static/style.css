@@ -55,6 +55,14 @@ button[data-primary] {
   border-color: var(--color-accent);
   color: var(--color-accent-ink);
 }
+button:disabled,
+form[aria-busy="true"] button {
+  cursor: default;
+  opacity: 0.6;
+}
+form[aria-busy="true"] button {
+  pointer-events: none;
+}
 input[type="search"],
 input[type="text"],
 input[type="tel"],

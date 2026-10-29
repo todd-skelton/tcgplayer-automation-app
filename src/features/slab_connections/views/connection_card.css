@@ -1,0 +1,17 @@
+.card {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  & p {
+    margin: 0;
+  }
+  & form {
+    display: grid;
+    gap: var(--space-3);
+  }
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

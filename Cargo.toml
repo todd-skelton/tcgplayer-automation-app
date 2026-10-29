@@ -7,16 +7,17 @@ description = "TCGPlayer Automation on Corten: screens ported one at a time from
 
 [dependencies]
 # Pinned to one revision of main; bump it on purpose when a fix the port needs lands.
-corten = { git = "https://github.com/todd-skelton/corten", rev = "9167f0a7", features = ["json", "compress", "types"] }
-corten-ui = { git = "https://github.com/todd-skelton/corten", rev = "9167f0a7" }
+corten = { git = "https://github.com/todd-skelton/corten", rev = "b501dfaa", features = ["json", "compress", "types"] }
+corten-ui = { git = "https://github.com/todd-skelton/corten", rev = "b501dfaa" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 schemars = "1.2"
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "chrono", "macros"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
-# The legacy relay to the Node app. No gzip/brotli features: an encoded answer goes on as it came.
-reqwest = { version = "0.12", default-features = false, features = ["stream"] }
+# The legacy relay to the Node app, and the slab data providers (rustls for their HTTPS). No
+# gzip/brotli features: an encoded answer goes on as it came.
+reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls"] }
 futures-util = { version = "0.3", default-features = false }
 csv = "1"
 dotenvy = "0.15"
@@ -24,4 +25,6 @@ regex = "1.13.1"
 
 [dev-dependencies]
 http-body-util = "0.1"
+# The slab providers' tests serve a stand-in provider on this machine.
+tokio = { version = "1", features = ["net"] }
 tower = { version = "0.5", features = ["util"] }

@@ -184,9 +184,6 @@ pub mod screens {
     #[derive(Route)]
     #[route("/publication-configuration")]
     pub struct PublicationConfiguration;
-    #[derive(Route)]
-    #[route("/slab-connections")]
-    pub struct SlabConnections;
 
     /// One of them, for lists of screens (the app bar's).
     #[derive(Clone, Copy)]
@@ -202,7 +199,6 @@ pub mod screens {
         DataManagement,
         Configuration,
         PublicationConfiguration,
-        SlabConnections,
     }
 
     impl Href for Screen {
@@ -219,7 +215,6 @@ pub mod screens {
                 Screen::DataManagement => DataManagement.with_href(f),
                 Screen::Configuration => Configuration.with_href(f),
                 Screen::PublicationConfiguration => PublicationConfiguration.with_href(f),
-                Screen::SlabConnections => SlabConnections.with_href(f),
             }
         }
     }

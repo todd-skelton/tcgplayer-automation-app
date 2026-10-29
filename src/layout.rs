@@ -4,7 +4,7 @@ use corten::prelude::*;
 
 use crate::{
     database::Database,
-    features::{http_configuration, pull_sheet, shipping_configuration},
+    features::{http_configuration, pull_sheet, shipping_configuration, slab_connections},
     legacy::screens,
     theme::*,
 };
@@ -73,6 +73,7 @@ pub enum Screen {
     PullSheet,
     HttpConfiguration,
     ShippingConfiguration,
+    SlabConnections,
     Legacy(screens::Screen),
 }
 
@@ -123,10 +124,7 @@ pub const SETTINGS: [(Screen, &str); 5] = [
     ),
     (Screen::ShippingConfiguration, "Shipping Configuration"),
     (Screen::HttpConfiguration, "HTTP Configuration"),
-    (
-        Screen::Legacy(screens::Screen::SlabConnections),
-        "Slab data connections",
-    ),
+    (Screen::SlabConnections, "Slab data connections"),
 ];
 
 /// A link to a screen, marked when it is the page shown. A screen the React app serves loads in
@@ -143,6 +141,9 @@ pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, label: &'a str) -> impl 
                 <a {..req.nav(&shipping_configuration::url::ShippingSettings { done: None })}>
                     {label}
                 </a>
+            }
+            Screen::SlabConnections => {
+                <a {..req.nav(&slab_connections::url::SlabConnections)}>{label}</a>
             }
             Screen::Legacy(legacy) => <a href={*legacy} data-reload>{label}</a>,
         }

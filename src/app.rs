@@ -12,18 +12,20 @@ use corten::{
 use crate::{
     config,
     database::Database,
-    features::{http_configuration, pull_sheet, shipping_configuration},
+    features::{http_configuration, pull_sheet, shipping_configuration, slab_connections},
     layout::{self, Static},
     legacy::{Legacy, forward},
     text::Msg,
     theme,
 };
 
-/// What the handlers share: the database and the React app behind this one.
+/// What the handlers share: the database, the React app behind this one, and the slab data
+/// providers' client.
 #[derive(Clone, FromRef)]
 pub struct Shared {
     pub db: Database,
     pub legacy: Legacy,
+    pub slab_providers: slab_connections::Transport,
 }
 
 impl Shared {
@@ -31,6 +33,7 @@ impl Shared {
         Shared {
             db: Database::connect_lazy(&config::database_url()),
             legacy: Legacy::new(config::legacy_origin()),
+            slab_providers: slab_connections::Transport::default(),
         }
     }
 }
@@ -95,6 +98,12 @@ pub fn app(shared: Shared) -> App {
             shipping_configuration::url::area(area, shared.clone())
                 .components(shipping_configuration::COMPONENTS)
         })
+        // Checking a connection waits on the provider for up to 30 seconds, after its claim on it.
+        .area(|area| {
+            slab_connections::url::area(area, shared.clone())
+                .components(slab_connections::COMPONENTS)
+                .deadline(Some(Duration::from_secs(45)))
+        })
         .assets(Static)
         .components(&[theme::TOKENS, layout::AppBar, layout::Field])
         .messages::<Msg>()
@@ -117,6 +126,7 @@ mod tests {
         let shared = Shared {
             db: Database::connect_lazy("postgresql://localhost/unused"),
             legacy: Legacy::new("http://localhost:1".into()),
+            slab_providers: slab_connections::Transport::default(),
         };
         let _ = app(shared).router();
     }
