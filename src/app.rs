@@ -13,8 +13,8 @@ use crate::{
     config,
     database::Database,
     features::{
-        http_configuration, publication_configuration, pull_sheet, shipping_configuration,
-        slab_connections,
+        configuration, http_configuration, publication_configuration, pull_sheet,
+        shipping_configuration, slab_connections,
     },
     layout::{self, Static},
     legacy::{Legacy, forward},
@@ -105,6 +105,9 @@ pub fn app(shared: Shared) -> App {
             publication_configuration::url::area(area, shared.clone())
                 .components(publication_configuration::COMPONENTS)
         })
+        .area(|area| {
+            configuration::url::area(area, shared.clone()).components(configuration::COMPONENTS)
+        })
         // Checking a connection waits on the provider for up to 30 seconds, after its claim on it.
         .area(|area| {
             slab_connections::url::area(area, shared.clone())
@@ -113,6 +116,7 @@ pub fn app(shared: Shared) -> App {
         })
         .assets(Static)
         .components(&[theme::TOKENS, layout::AppBar, layout::Field])
+        .components(corten_ui::COMPONENTS)
         .messages::<Msg>()
         // TCGplayer's product pictures.
         .policy(Policy::new().img_src("https://tcgplayer-cdn.tcgplayer.com"))

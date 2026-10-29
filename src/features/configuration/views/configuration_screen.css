@@ -1,0 +1,58 @@
+.section {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  & h2,
+  & p {
+    margin: 0;
+  }
+}
+.row {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+.switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* What only one choice uses stays in the form, hidden, so it is sent as it was. */
+.horizon:not(:has(option[value="target-horizon"]:checked)) .for-horizon,
+.supply:not(:has(input[data-enables]:checked)) .for-supply {
+  display: none;
+}
+.saved {
+  color: var(--color-ok);
+  font-size: var(--font-size-sm);
+}
+.add {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(14rem, 2fr) repeat(2, minmax(8rem, 1fr)) auto auto;
+  align-items: end;
+  padding: var(--space-3);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+}
+.lines {
+  width: 100%;
+  & th,
+  & td {
+    padding: var(--space-1) var(--space-2);
+    border-bottom: 1px solid var(--color-line);
+    text-align: center;
+  }
+  & th:first-child,
+  & td:first-child {
+    text-align: start;
+  }
+  & form {
+    display: inline;
+  }
+}
+.danger {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: var(--color-accent-ink);
+}

@@ -51,6 +51,34 @@ impl Legacy {
             uri.path_and_query().map_or("/", |p| p.as_str())
         )
     }
+
+    /// What one of the Node app's JSON routes answers (`/api/...`), read as `T`: for a part of a
+    /// ported screen whose computation is still the Node app's. An error is the message the route
+    /// gave (`{"error": ".."}`), or why there was none to read.
+    pub async fn read<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T, String> {
+        let answer = self
+            .http
+            .get(format!("{}{path}", self.origin))
+            .send()
+            .await
+            .map_err(|_| "The report service did not answer.".to_owned())?;
+        let ok = answer.status().is_success();
+        let body = answer
+            .bytes()
+            .await
+            .map_err(|_| "The report service stopped answering.".to_owned())?;
+        if ok {
+            return serde_json::from_slice(&body).map_err(|_| {
+                "The report service answered something this page cannot read.".to_owned()
+            });
+        }
+        #[derive(serde::Deserialize)]
+        struct Refusal {
+            error: String,
+        }
+        Err(serde_json::from_slice::<Refusal>(&body)
+            .map_or_else(|_| "The report could not be made.".to_owned(), |r| r.error))
+    }
 }
 
 /// The request's headers as the Node app should see them. `Host` stays the browser's, as nginx
@@ -178,9 +206,6 @@ pub mod screens {
     #[derive(Route)]
     #[route("/data-management")]
     pub struct DataManagement;
-    #[derive(Route)]
-    #[route("/configuration")]
-    pub struct Configuration;
 
     /// One of them, for lists of screens (the app bar's).
     #[derive(Clone, Copy)]
@@ -194,7 +219,6 @@ pub mod screens {
         InventoryEconomics,
         ShippingExport,
         DataManagement,
-        Configuration,
     }
 
     impl Href for Screen {
@@ -209,7 +233,6 @@ pub mod screens {
                 Screen::InventoryEconomics => InventoryEconomics.with_href(f),
                 Screen::ShippingExport => ShippingExport.with_href(f),
                 Screen::DataManagement => DataManagement.with_href(f),
-                Screen::Configuration => Configuration.with_href(f),
             }
         }
     }

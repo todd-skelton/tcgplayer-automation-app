@@ -5,8 +5,8 @@ use corten::prelude::*;
 use crate::{
     database::Database,
     features::{
-        http_configuration, publication_configuration, pull_sheet, shipping_configuration,
-        slab_connections,
+        configuration, http_configuration, publication_configuration, pull_sheet,
+        shipping_configuration, slab_connections,
     },
     legacy::screens,
     theme::*,
@@ -78,6 +78,7 @@ pub enum Screen {
     ShippingConfiguration,
     SlabConnections,
     PublicationConfiguration,
+    Configuration,
     Legacy(screens::Screen),
 }
 
@@ -118,10 +119,7 @@ pub const PRIMARY: [(Screen, &str); 10] = [
 
 /// The settings menu, as `settingsNavigationItems` lists it.
 pub const SETTINGS: [(Screen, &str); 5] = [
-    (
-        Screen::Legacy(screens::Screen::Configuration),
-        "Configuration",
-    ),
+    (Screen::Configuration, "Configuration"),
     (Screen::PublicationConfiguration, "Inventory Publication"),
     (Screen::ShippingConfiguration, "Shipping Configuration"),
     (Screen::HttpConfiguration, "HTTP Configuration"),
@@ -150,6 +148,9 @@ pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, label: &'a str) -> impl 
                 <a {..req.nav(&publication_configuration::url::PublicationSettings { done: None })}>
                     {label}
                 </a>
+            }
+            Screen::Configuration => {
+                <a {..req.nav(&configuration::url::Configuration { done: None })}>{label}</a>
             }
             Screen::Legacy(legacy) => <a href={*legacy} data-reload>{label}</a>,
         }
