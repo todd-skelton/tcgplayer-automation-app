@@ -2,3 +2,4 @@
 //! scripts, its queries and its rules.
 pub mod http_configuration;
 pub mod pull_sheet;
+pub mod shipping_configuration;

@@ -12,7 +12,7 @@ use corten::{
 use crate::{
     config,
     database::Database,
-    features::{http_configuration, pull_sheet},
+    features::{http_configuration, pull_sheet, shipping_configuration},
     layout::{self, Static},
     legacy::{Legacy, forward},
     text::Msg,
@@ -91,8 +91,12 @@ pub fn app(shared: Shared) -> App {
             http_configuration::url::area(area, shared.clone())
                 .components(http_configuration::COMPONENTS)
         })
+        .area(|area| {
+            shipping_configuration::url::area(area, shared.clone())
+                .components(shipping_configuration::COMPONENTS)
+        })
         .assets(Static)
-        .components(&[theme::TOKENS, layout::AppBar])
+        .components(&[theme::TOKENS, layout::AppBar, layout::Field])
         .messages::<Msg>()
         // TCGplayer's product pictures.
         .policy(Policy::new().img_src("https://tcgplayer-cdn.tcgplayer.com"))
@@ -105,6 +109,17 @@ pub fn app(shared: Shared) -> App {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Building the router builds the assets, which refuses two components or ids with the same
+    /// name in different features: otherwise found only when the server starts.
+    #[tokio::test]
+    async fn the_app_builds() {
+        let shared = Shared {
+            db: Database::connect_lazy("postgresql://localhost/unused"),
+            legacy: Legacy::new("http://localhost:1".into()),
+        };
+        let _ = app(shared).router();
+    }
 
     /// The scripts' view classes (`corten/views`), which `corten check` type-checks them against.
     #[test]

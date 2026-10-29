@@ -4,14 +4,16 @@ use corten::prelude::*;
 
 use crate::{
     database::Database,
-    features::{http_configuration, pull_sheet},
+    features::{http_configuration, pull_sheet, shipping_configuration},
     legacy::screens,
     theme::*,
 };
 
 mod app_bar;
+mod parts;
 
 pub use app_bar::AppBar;
+pub use parts::{Field, Notice, Tone};
 
 corten::assets::embed! {
     /// The files in `static/`, compiled into the program: `Static::STYLE_CSS` is `static/style.css`.
@@ -70,6 +72,7 @@ pub fn Layout<'a>(
 pub enum Screen {
     PullSheet,
     HttpConfiguration,
+    ShippingConfiguration,
     Legacy(screens::Screen),
 }
 
@@ -118,10 +121,7 @@ pub const SETTINGS: [(Screen, &str); 5] = [
         Screen::Legacy(screens::Screen::PublicationConfiguration),
         "Inventory Publication",
     ),
-    (
-        Screen::Legacy(screens::Screen::ShippingConfiguration),
-        "Shipping Configuration",
-    ),
+    (Screen::ShippingConfiguration, "Shipping Configuration"),
     (Screen::HttpConfiguration, "HTTP Configuration"),
     (
         Screen::Legacy(screens::Screen::SlabConnections),
@@ -138,6 +138,11 @@ pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, label: &'a str) -> impl 
             Screen::PullSheet => <a {..req.nav(&pull_sheet::url::PullSheets)}>{label}</a>,
             Screen::HttpConfiguration => {
                 <a {..req.nav(&http_configuration::url::HttpSettings { done: None })}>{label}</a>
+            }
+            Screen::ShippingConfiguration => {
+                <a {..req.nav(&shipping_configuration::url::ShippingSettings { done: None })}>
+                    {label}
+                </a>
             }
             Screen::Legacy(legacy) => <a href={*legacy} data-reload>{label}</a>,
         }

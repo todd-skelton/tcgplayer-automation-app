@@ -185,9 +185,6 @@ pub mod screens {
     #[route("/publication-configuration")]
     pub struct PublicationConfiguration;
     #[derive(Route)]
-    #[route("/shipping-configuration")]
-    pub struct ShippingConfiguration;
-    #[derive(Route)]
     #[route("/slab-connections")]
     pub struct SlabConnections;
 
@@ -205,7 +202,6 @@ pub mod screens {
         DataManagement,
         Configuration,
         PublicationConfiguration,
-        ShippingConfiguration,
         SlabConnections,
     }
 
@@ -223,7 +219,6 @@ pub mod screens {
                 Screen::DataManagement => DataManagement.with_href(f),
                 Screen::Configuration => Configuration.with_href(f),
                 Screen::PublicationConfiguration => PublicationConfiguration.with_href(f),
-                Screen::ShippingConfiguration => ShippingConfiguration.with_href(f),
                 Screen::SlabConnections => SlabConnections.with_href(f),
             }
         }

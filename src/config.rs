@@ -10,6 +10,16 @@ fn mode() -> &'static str {
     }
 }
 
+/// Whether this is the production deployment, as `NODE_ENV` says.
+pub fn production() -> bool {
+    mode() == "production"
+}
+
+/// Whether the environment sets `name` to something other than blanks.
+pub fn is_set(name: &str) -> bool {
+    std::env::var(name).is_ok_and(|value| !value.trim().is_empty())
+}
+
 fn env_files(mode: &str) -> &'static [&'static str] {
     match mode {
         "production" => &[".env.production.local", ".env.production", ".env"],
