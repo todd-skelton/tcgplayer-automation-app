@@ -181,9 +181,6 @@ pub mod screens {
     #[derive(Route)]
     #[route("/configuration")]
     pub struct Configuration;
-    #[derive(Route)]
-    #[route("/publication-configuration")]
-    pub struct PublicationConfiguration;
 
     /// One of them, for lists of screens (the app bar's).
     #[derive(Clone, Copy)]
@@ -198,7 +195,6 @@ pub mod screens {
         ShippingExport,
         DataManagement,
         Configuration,
-        PublicationConfiguration,
     }
 
     impl Href for Screen {
@@ -214,7 +210,6 @@ pub mod screens {
                 Screen::ShippingExport => ShippingExport.with_href(f),
                 Screen::DataManagement => DataManagement.with_href(f),
                 Screen::Configuration => Configuration.with_href(f),
-                Screen::PublicationConfiguration => PublicationConfiguration.with_href(f),
             }
         }
     }

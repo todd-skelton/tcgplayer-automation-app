@@ -12,7 +12,10 @@ use corten::{
 use crate::{
     config,
     database::Database,
-    features::{http_configuration, pull_sheet, shipping_configuration, slab_connections},
+    features::{
+        http_configuration, publication_configuration, pull_sheet, shipping_configuration,
+        slab_connections,
+    },
     layout::{self, Static},
     legacy::{Legacy, forward},
     text::Msg,
@@ -97,6 +100,10 @@ pub fn app(shared: Shared) -> App {
         .area(|area| {
             shipping_configuration::url::area(area, shared.clone())
                 .components(shipping_configuration::COMPONENTS)
+        })
+        .area(|area| {
+            publication_configuration::url::area(area, shared.clone())
+                .components(publication_configuration::COMPONENTS)
         })
         // Checking a connection waits on the provider for up to 30 seconds, after its claim on it.
         .area(|area| {

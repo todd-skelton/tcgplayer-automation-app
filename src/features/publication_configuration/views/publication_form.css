@@ -1,0 +1,21 @@
+.switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.sources {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0 0 0 var(--space-5);
+  border: 0;
+}
+.numbers {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+.panel-body {
+  display: grid;
+  gap: var(--space-3);
+}
