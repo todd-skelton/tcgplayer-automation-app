@@ -1,0 +1,16 @@
+.empty {
+  padding: var(--space-8) var(--space-5);
+  text-align: center;
+  background: var(--color-raised);
+  border-radius: var(--radius-md);
+  & h2 {
+    color: var(--color-muted);
+  }
+}
+.recent {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  & li + li {
+    margin-top: var(--space-1);
+  }
+}

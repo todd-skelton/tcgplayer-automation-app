@@ -1,0 +1,137 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.filter {
+  margin-inline-start: auto;
+  & input {
+    width: 250px;
+  }
+}
+/* The Filter button is for a browser without scripts; with them, typing filters. */
+@media (scripting: enabled) {
+  .no-script {
+    display: none;
+  }
+}
+.choice {
+  display: flex;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  & legend {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  & label {
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+  & label:has(:checked) {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+  & input {
+    position: absolute;
+    opacity: 0;
+  }
+  & label:has(:focus-visible) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+.grid-choice,
+.table-choice {
+  margin: 0;
+}
+.chip {
+  display: inline-block;
+  padding: 2px var(--space-3);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+  &[hidden] {
+    display: none;
+  }
+}
+.filled {
+  background: var(--color-raised);
+}
+.warning {
+  border-color: var(--color-warn);
+  color: var(--color-warn);
+}
+.info {
+  border-color: var(--color-info);
+  color: var(--color-info);
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+.table-box {
+  display: none;
+  overflow-x: auto;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+/* The layout the radios choose, with no script. */
+.toolbar:has(.table-choice:checked) ~ .cards {
+  display: none;
+}
+.toolbar:has(.table-choice:checked) ~ .table-box {
+  display: block;
+}
+.table {
+  width: 100%;
+  & th {
+    text-align: start;
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 2px solid var(--color-line);
+    white-space: nowrap;
+    font-weight: 600;
+  }
+  & th a {
+    color: inherit;
+    text-decoration: none;
+  }
+  & th[aria-sort="ascending"] a::after {
+    content: " ▲";
+  }
+  & th[aria-sort="descending"] a::after {
+    content: " ▼";
+  }
+}
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.picture {
+  max-width: min(90vw, 640px);
+  padding: var(--space-5);
+  & form {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+  }
+  & img {
+    display: block;
+    max-width: 100%;
+    max-height: 80vh;
+  }
+}
+
