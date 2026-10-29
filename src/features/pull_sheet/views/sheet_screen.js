@@ -47,12 +47,7 @@ export function showPicture(event, link, dialog, image) {
   dialog.showModal();
 }
 
-/**
- * A column the table sorts by, as `SortBy` (views.rs) writes it. The compiler does not tie this
- * union to that enum (corten issue filed by the port), so a renamed variant shows up here only as
- * a column that no longer sorts.
- * @typedef {"product" | "number" | "set" | "condition" | "rarity" | "quantity" | "product-line"} SortBy
- */
+/** @typedef {import("../../../../types/app").SortBy} SortBy Generated from `SortBy` in views.rs. */
 
 /** @type {Record<SortBy, (row: ItemRow) => string | number>} */
 const FIELDS = {

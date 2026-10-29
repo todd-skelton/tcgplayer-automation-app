@@ -15,8 +15,10 @@ pub use upload_screen::{UploadForm, UploadScreen};
 pub const COMPONENTS: &[Component] = &[UploadScreen, SheetScreen, ItemCard, ItemRow];
 
 /// A column the table sorts by: the browser sorts with JavaScript (the handler takes it as
-/// JSON), the server from `?sort=`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue, ToJson, Deserialize)]
+/// JSON, and `types/app.d.ts` gives the script its names), the server from `?sort=`.
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, UrlValue, ToJson, Deserialize, schemars::JsonSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 pub enum SortBy {
     Product,

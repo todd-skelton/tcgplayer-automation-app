@@ -106,6 +106,7 @@ mod tests {
     #[test]
     fn script_types_match_the_server() {
         corten::types::Types::new()
+            .add::<pull_sheet::SortBy>()
             .components(pull_sheet::COMPONENTS)
             .sync(concat!(env!("CARGO_MANIFEST_DIR"), "/types/app.d.ts"));
     }

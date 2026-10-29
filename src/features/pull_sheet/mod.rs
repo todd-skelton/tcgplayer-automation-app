@@ -13,6 +13,9 @@ mod store;
 mod views;
 
 pub use views::COMPONENTS;
+/// For the test that writes the scripts' types.
+#[cfg(test)]
+pub use views::SortBy;
 
 // Handlers are named from here, where the routes module is declared.
 use page::{show, upload, upload_page};
