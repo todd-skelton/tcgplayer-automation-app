@@ -12,7 +12,7 @@ use corten::{
 use crate::{
     config,
     database::Database,
-    features::pull_sheet,
+    features::{http_configuration, pull_sheet},
     layout::{self, Static},
     legacy::{Legacy, forward},
     text::Msg,
@@ -87,6 +87,10 @@ pub fn app(shared: Shared) -> App {
     App::new(url::router(shared.clone()))
         .api(|routes| api::api(routes, shared.clone()).deadline(Some(Duration::from_secs(15 * 60))))
         .area(|area| pull_sheet::url::area(area, shared.clone()).components(pull_sheet::COMPONENTS))
+        .area(|area| {
+            http_configuration::url::area(area, shared.clone())
+                .components(http_configuration::COMPONENTS)
+        })
         .assets(Static)
         .components(&[theme::TOKENS, layout::AppBar])
         .messages::<Msg>()

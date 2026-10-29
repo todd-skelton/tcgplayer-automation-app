@@ -2,7 +2,12 @@
 //! warning when TCGplayer's auth cookie is not set, as the React app's `root.tsx` draws them.
 use corten::prelude::*;
 
-use crate::{database::Database, features::pull_sheet, legacy::screens, theme::*};
+use crate::{
+    database::Database,
+    features::{http_configuration, pull_sheet},
+    legacy::screens,
+    theme::*,
+};
 
 mod app_bar;
 
@@ -64,6 +69,7 @@ pub fn Layout<'a>(
 /// A screen in the app bar: where it is, and whether this app serves it or the React app does.
 pub enum Screen {
     PullSheet,
+    HttpConfiguration,
     Legacy(screens::Screen),
 }
 
@@ -116,10 +122,7 @@ pub const SETTINGS: [(Screen, &str); 5] = [
         Screen::Legacy(screens::Screen::ShippingConfiguration),
         "Shipping Configuration",
     ),
-    (
-        Screen::Legacy(screens::Screen::HttpConfiguration),
-        "HTTP Configuration",
-    ),
+    (Screen::HttpConfiguration, "HTTP Configuration"),
     (
         Screen::Legacy(screens::Screen::SlabConnections),
         "Slab data connections",
@@ -133,6 +136,9 @@ pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, label: &'a str) -> impl 
     html! {
         match screen {
             Screen::PullSheet => <a {..req.nav(&pull_sheet::url::PullSheets)}>{label}</a>,
+            Screen::HttpConfiguration => {
+                <a {..req.nav(&http_configuration::url::HttpSettings { done: None })}>{label}</a>
+            }
             Screen::Legacy(legacy) => <a href={*legacy} data-reload>{label}</a>,
         }
     }

@@ -1,7 +1,7 @@
 use corten::prelude::*;
 
 use super::{Chrome, PRIMARY, SETTINGS, ScreenLink};
-use crate::legacy::screens;
+use crate::{features::http_configuration, legacy::screens};
 
 /// The settings menu, a popover its button opens with no script.
 #[derive(Id)]
@@ -35,8 +35,7 @@ pub fn AppBar<'a>(req: &'a Req, chrome: Chrome) -> impl Render {
                 if chrome.auth_cookie_missing {
                     <a
                         class={Warning}
-                        href={screens::HttpConfiguration}
-                        data-reload
+                        href={http_configuration::url::HttpSettings { done: None }}
                         title="Auth cookie not configured"
                     >
                         "⚠ Auth cookie not configured"

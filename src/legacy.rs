@@ -188,9 +188,6 @@ pub mod screens {
     #[route("/shipping-configuration")]
     pub struct ShippingConfiguration;
     #[derive(Route)]
-    #[route("/http-configuration")]
-    pub struct HttpConfiguration;
-    #[derive(Route)]
     #[route("/slab-connections")]
     pub struct SlabConnections;
 
@@ -209,7 +206,6 @@ pub mod screens {
         Configuration,
         PublicationConfiguration,
         ShippingConfiguration,
-        HttpConfiguration,
         SlabConnections,
     }
 
@@ -228,7 +224,6 @@ pub mod screens {
                 Screen::Configuration => Configuration.with_href(f),
                 Screen::PublicationConfiguration => PublicationConfiguration.with_href(f),
                 Screen::ShippingConfiguration => ShippingConfiguration.with_href(f),
-                Screen::HttpConfiguration => HttpConfiguration.with_href(f),
                 Screen::SlabConnections => SlabConnections.with_href(f),
             }
         }
