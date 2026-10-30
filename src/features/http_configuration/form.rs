@@ -1,7 +1,8 @@
-//! The settings form as the browser sends it, and the settings it says. The per-domain inputs
-//! repeat once per domain under one name, in [`Domain::ALL`]'s order, so each is a list; the
-//! adaptive switches are checkboxes whose value is their domain, so `adaptive` lists the domains
-//! that have it on.
+//! The settings form as the browser sends it, and the settings it says. Each domain's inputs are
+//! a row named by the domain (`domains[sellerPortal].request_delay_ms`), so a domain the browser
+//! leaves out leaves the others where they are, and a bad number is marked on its own input.
+use std::collections::BTreeMap;
+
 use corten::prelude::*;
 use serde::Deserialize;
 
@@ -15,46 +16,61 @@ pub struct SettingsInput {
     pub floor_step_ms: String,
     pub decrease_amount_ms: String,
     pub success_threshold: String,
+    #[fields(rows)]
     #[serde(default)]
-    pub domain: Vec<Domain>,
-    #[serde(default)]
-    pub request_delay_ms: Vec<String>,
-    #[serde(default)]
-    pub rate_limit_cooldown_ms: Vec<String>,
-    #[serde(default)]
-    pub max_concurrent_requests: Vec<String>,
-    #[serde(default)]
-    pub min_request_delay_ms: Vec<String>,
-    #[serde(default)]
-    pub max_request_delay_ms: Vec<String>,
-    #[serde(default)]
-    pub learned_min_delay_ms: Vec<String>,
-    #[serde(default)]
-    pub adaptive: Vec<Domain>,
+    pub domains: BTreeMap<Domain, DomainInput>,
 }
 
-/// One domain's row of the form, as text: what the inputs show.
-pub struct DomainRow<'a> {
-    pub domain: Domain,
-    pub request_delay_ms: &'a str,
-    pub rate_limit_cooldown_ms: &'a str,
-    pub max_concurrent_requests: &'a str,
-    pub min_request_delay_ms: &'a str,
-    pub max_request_delay_ms: &'a str,
-    pub learned_min_delay_ms: &'a str,
+/// One domain's inputs, as text: what they show.
+#[derive(Clone, Debug, Default, Deserialize, Fields)]
+pub struct DomainInput {
+    pub request_delay_ms: String,
+    pub rate_limit_cooldown_ms: String,
+    pub max_concurrent_requests: String,
+    pub min_request_delay_ms: String,
+    pub max_request_delay_ms: String,
+    pub learned_min_delay_ms: String,
+    #[serde(default)]
     pub adaptive: bool,
+}
+
+impl DomainInput {
+    fn of(limits: &Limits) -> Self {
+        DomainInput {
+            request_delay_ms: limits.request_delay_ms.to_string(),
+            rate_limit_cooldown_ms: limits.rate_limit_cooldown_ms.to_string(),
+            max_concurrent_requests: limits.max_concurrent_requests.to_string(),
+            min_request_delay_ms: limits.min_request_delay_ms.to_string(),
+            max_request_delay_ms: limits.max_request_delay_ms.to_string(),
+            learned_min_delay_ms: limits.learned_min_delay_ms.to_string(),
+            adaptive: limits.adaptive_enabled,
+        }
+    }
+}
+
+/// A whole number of at least `least`, or the field's error and 0.
+fn whole_number<P: corten::form::Place>(
+    errors: &mut Errors,
+    field: FieldName<P>,
+    text: &str,
+    what: &str,
+    least: u32,
+) -> u32 {
+    match text.trim().parse::<u32>() {
+        Ok(n) if n >= least => n,
+        _ => {
+            errors.add(
+                field,
+                format!("{what} must be a whole number of at least {least}."),
+            );
+            0
+        }
+    }
 }
 
 impl SettingsInput {
     /// The form filled with `config`.
     pub fn of(config: &HttpConfig) -> Self {
-        let column = |f: fn(&Limits) -> u32| {
-            config
-                .domains
-                .iter()
-                .map(|(_, l)| f(l).to_string())
-                .collect()
-        };
         SettingsInput {
             tcg_auth_cookie: config.tcg_auth_cookie.clone(),
             user_agent: config.user_agent.clone(),
@@ -62,56 +78,20 @@ impl SettingsInput {
             floor_step_ms: config.adaptive.floor_step_ms.to_string(),
             decrease_amount_ms: config.adaptive.decrease_amount_ms.to_string(),
             success_threshold: config.adaptive.success_threshold.to_string(),
-            domain: config.domains.iter().map(|(d, _)| *d).collect(),
-            request_delay_ms: column(|l| l.request_delay_ms),
-            rate_limit_cooldown_ms: column(|l| l.rate_limit_cooldown_ms),
-            max_concurrent_requests: column(|l| l.max_concurrent_requests),
-            min_request_delay_ms: column(|l| l.min_request_delay_ms),
-            max_request_delay_ms: column(|l| l.max_request_delay_ms),
-            learned_min_delay_ms: column(|l| l.learned_min_delay_ms),
-            adaptive: config
+            domains: config
                 .domains
                 .iter()
-                .filter(|(_, l)| l.adaptive_enabled)
-                .map(|(d, _)| *d)
+                .map(|(d, l)| (*d, DomainInput::of(l)))
                 .collect(),
         }
     }
 
-    /// The rows, one per domain the form sent, each with its own inputs' text.
-    pub fn rows(&self) -> impl Iterator<Item = DomainRow<'_>> {
-        self.domain
-            .iter()
-            .enumerate()
-            .map(move |(i, &domain)| DomainRow {
-                domain,
-                request_delay_ms: at(&self.request_delay_ms, i),
-                rate_limit_cooldown_ms: at(&self.rate_limit_cooldown_ms, i),
-                max_concurrent_requests: at(&self.max_concurrent_requests, i),
-                min_request_delay_ms: at(&self.min_request_delay_ms, i),
-                max_request_delay_ms: at(&self.max_request_delay_ms, i),
-                learned_min_delay_ms: at(&self.learned_min_delay_ms, i),
-                adaptive: self.adaptive.contains(&domain),
-            })
-    }
-
-    /// The settings the form says, or why it does not say any. Each repeated input has one name
-    /// for every domain, so its error names the domain in the message (corten issue on per-row
-    /// errors, filed by the port).
+    /// The settings the form says, or why it does not say any.
     pub fn read(&self) -> Result<HttpConfig, Errors> {
         let f = Self::FIELDS;
         let mut errors = Errors::new();
-        let mut whole = |field: FieldName, text: &str, what: &str, least: u32| -> u32 {
-            match text.trim().parse::<u32>() {
-                Ok(n) if n >= least => n,
-                _ => {
-                    errors.add(
-                        field,
-                        format!("{what} must be a whole number of at least {least}."),
-                    );
-                    0
-                }
-            }
+        let mut whole = |field, text: &str, what: &str, least: u32| {
+            whole_number(&mut errors, field, text, what, least)
         };
         let adaptive = Adaptive {
             increase_multiplier: 0.0,
@@ -130,48 +110,51 @@ impl SettingsInput {
             ),
         };
         let mut domains = Domain::ALL.map(|d| (d, d.default_limits()));
-        for row in self.rows() {
-            let name = row.domain.label();
+        for (domain, row) in &self.domains {
+            let r = f.domains.at(domain);
+            let mut whole = |field, text: &str, what: &str, least: u32| {
+                whole_number(&mut errors, field, text, what, least)
+            };
             let limits = Limits {
                 request_delay_ms: whole(
-                    f.request_delay_ms,
-                    row.request_delay_ms,
-                    &format!("{name}: the request delay"),
+                    r.request_delay_ms,
+                    &row.request_delay_ms,
+                    "The request delay",
                     0,
                 ),
                 rate_limit_cooldown_ms: whole(
-                    f.rate_limit_cooldown_ms,
-                    row.rate_limit_cooldown_ms,
-                    &format!("{name}: the cooldown"),
+                    r.rate_limit_cooldown_ms,
+                    &row.rate_limit_cooldown_ms,
+                    "The cooldown",
                     0,
                 ),
                 max_concurrent_requests: whole(
-                    f.max_concurrent_requests,
-                    row.max_concurrent_requests,
-                    &format!("{name}: the concurrent requests"),
+                    r.max_concurrent_requests,
+                    &row.max_concurrent_requests,
+                    "The concurrent requests",
                     1,
                 ),
                 adaptive_enabled: row.adaptive,
                 min_request_delay_ms: whole(
-                    f.min_request_delay_ms,
-                    row.min_request_delay_ms,
-                    &format!("{name}: the minimum delay"),
+                    r.min_request_delay_ms,
+                    &row.min_request_delay_ms,
+                    "The minimum delay",
                     0,
                 ),
                 max_request_delay_ms: whole(
-                    f.max_request_delay_ms,
-                    row.max_request_delay_ms,
-                    &format!("{name}: the maximum delay"),
+                    r.max_request_delay_ms,
+                    &row.max_request_delay_ms,
+                    "The maximum delay",
                     1000,
                 ),
                 learned_min_delay_ms: whole(
-                    f.learned_min_delay_ms,
-                    row.learned_min_delay_ms,
-                    &format!("{name}: the learned minimum delay"),
+                    r.learned_min_delay_ms,
+                    &row.learned_min_delay_ms,
+                    "The learned minimum delay",
                     0,
                 ),
             };
-            if let Some(slot) = domains.iter_mut().find(|(d, _)| *d == row.domain) {
+            if let Some(slot) = domains.iter_mut().find(|(d, _)| d == domain) {
                 slot.1 = limits;
             }
         }
@@ -185,7 +168,7 @@ impl SettingsInput {
                 0.0
             }
         };
-        if self.domain.len() != Domain::ALL.len() {
+        if self.domains.len() != Domain::ALL.len() {
             errors.add_form("The form did not send every domain; load the page again.");
         }
         let config = HttpConfig {
@@ -199,11 +182,6 @@ impl SettingsInput {
         };
         errors.into_result(config)
     }
-}
-
-/// The `i`th value of a repeated input, or nothing when the form sent fewer.
-fn at(column: &[String], i: usize) -> &str {
-    column.get(i).map_or("", String::as_str)
 }
 
 #[cfg(test)]
@@ -237,13 +215,35 @@ mod tests {
     }
 
     #[test]
-    fn a_bad_number_names_its_domain() {
+    fn a_bad_number_is_its_domains_alone() {
         let mut input = SettingsInput::of(&HttpConfig::default());
-        input.max_concurrent_requests[6] = "0".into();
+        input
+            .domains
+            .get_mut(&Domain::SellerPortal)
+            .unwrap()
+            .max_concurrent_requests = "0".into();
         let errors = input.read().unwrap_err();
-        let message = errors
-            .get(SettingsInput::FIELDS.max_concurrent_requests)
-            .unwrap();
-        assert!(message.starts_with("Seller Portal (store)"), "{message}");
+        let rows = SettingsInput::FIELDS.domains;
+        assert_eq!(
+            errors.get(rows.at(&Domain::SellerPortal).max_concurrent_requests),
+            Some("The concurrent requests must be a whole number of at least 1.")
+        );
+        assert!(!errors.has(rows.at(&Domain::MpApi).max_concurrent_requests));
+    }
+
+    #[test]
+    fn a_domain_is_read_from_its_own_names() {
+        let body = "tcg_auth_cookie=&user_agent=ua&increase_multiplier=2&floor_step_ms=100\
+            &decrease_amount_ms=100&success_threshold=10\
+            &domains[sellerPortal].request_delay_ms=2500&domains[sellerPortal].rate_limit_cooldown_ms=1\
+            &domains[sellerPortal].max_concurrent_requests=1&domains[sellerPortal].min_request_delay_ms=0\
+            &domains[sellerPortal].max_request_delay_ms=1000&domains[sellerPortal].learned_min_delay_ms=0";
+        let input: SettingsInput = corten::form::from_bytes(body.as_bytes()).unwrap();
+        let row = &input.domains[&Domain::SellerPortal];
+        assert_eq!(
+            (row.request_delay_ms.as_str(), row.adaptive),
+            ("2500", false)
+        );
+        assert_eq!(input.domains.len(), 1);
     }
 }

@@ -61,16 +61,6 @@ pub fn SettingsScreen<'a>(
 pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Patch {
     let (f, e) = (SettingsInput::FIELDS, errors.within(SettingsFormId));
     let cookie = refs();
-    // The per-domain inputs share a name per column, so their messages are listed here rather
-    // than under one input each.
-    let repeated = [
-        f.request_delay_ms,
-        f.rate_limit_cooldown_ms,
-        f.max_concurrent_requests,
-        f.min_request_delay_ms,
-        f.max_request_delay_ms,
-        f.learned_min_delay_ms,
-    ];
     html! {
         <form
             id={SettingsFormId}
@@ -197,26 +187,17 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                 <p class={(muted(), mb_3())}>
                     "Configure rate limiting settings for each TCGPlayer API domain. Each domain has its own isolated rate limiter, so hitting a rate limit on one domain won't affect requests to other domains."
                 </p>
-                <ul class={Problems}>
-                    for (field, message) in errors.iter().filter(|(field, _)| repeated.contains(field)) {
-                        <li data-field={field}>{message}</li>
-                    }
-                </ul>
-                for row in input.rows() {
-                    <details class={DomainBox}>
+                for (domain, row) in &input.domains {
+                    let r = f.domains.at(domain);
+                    let invalid = [r.request_delay_ms, r.rate_limit_cooldown_ms, r.max_concurrent_requests, r.min_request_delay_ms, r.max_request_delay_ms, r.learned_min_delay_ms].into_iter().any(|n| errors.has(n));
+                    <details class={DomainBox} open={invalid}>
                         <summary>
-                            <strong>{row.domain.label()}</strong>
+                            <strong>{domain.label()}</strong>
                             <span class={AdaptiveChip}>"Adaptive"</span>
                         </summary>
-                        <input type="hidden" name={f.domain} value={row.domain}>
                         <div class={Grid}>
                             <label class={Switch}>
-                                <input
-                                    type="checkbox"
-                                    name={f.adaptive}
-                                    value={row.domain}
-                                    checked={row.adaptive}
-                                >
+                                <input type="checkbox" name={r.adaptive} checked={row.adaptive}>
                                 " Enable Adaptive Rate Limiting"
                             </label>
                             <label class={Field}>
@@ -225,12 +206,14 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                                     type="number"
                                     min="0"
                                     step="100"
-                                    name={f.request_delay_ms}
-                                    value={row.request_delay_ms}
+                                    name={r.request_delay_ms}
+                                    value={&row.request_delay_ms}
+                                    {..e.aria(r.request_delay_ms)}
                                 >
                                 <small class={muted()}>
                                     "Delay between consecutive requests (auto-adjusted when adaptive is enabled)"
                                 </small>
+                                {e.message(r.request_delay_ms)}
                             </label>
                             <label class={Field}>
                                 <span>"Rate Limit Cooldown (ms)"</span>
@@ -238,10 +221,12 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                                     type="number"
                                     min="0"
                                     step="1000"
-                                    name={f.rate_limit_cooldown_ms}
-                                    value={row.rate_limit_cooldown_ms}
+                                    name={r.rate_limit_cooldown_ms}
+                                    value={&row.rate_limit_cooldown_ms}
+                                    {..e.aria(r.rate_limit_cooldown_ms)}
                                 >
                                 <small class={muted()}>"Cooldown after 403/429 response"</small>
+                                {e.message(r.rate_limit_cooldown_ms)}
                             </label>
                             <label class={Field}>
                                 <span>"Max Concurrent Requests"</span>
@@ -249,12 +234,14 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                                     type="number"
                                     min="1"
                                     max="10"
-                                    name={f.max_concurrent_requests}
-                                    value={row.max_concurrent_requests}
+                                    name={r.max_concurrent_requests}
+                                    value={&row.max_concurrent_requests}
+                                    {..e.aria(r.max_concurrent_requests)}
                                 >
                                 <small class={muted()}>
                                     "Maximum simultaneous requests to this domain"
                                 </small>
+                                {e.message(r.max_concurrent_requests)}
                             </label>
                             <fieldset class={Bounds}>
                                 <legend>"Adaptive Bounds"</legend>
@@ -264,12 +251,14 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                                         type="number"
                                         min="0"
                                         step="50"
-                                        name={f.min_request_delay_ms}
-                                        value={row.min_request_delay_ms}
+                                        name={r.min_request_delay_ms}
+                                        value={&row.min_request_delay_ms}
+                                        {..e.aria(r.min_request_delay_ms)}
                                     >
                                     <small class={muted()}>
                                         "Absolute minimum delay (starting point for probing)"
                                     </small>
+                                    {e.message(r.min_request_delay_ms)}
                                 </label>
                                 <label class={Field}>
                                     <span>"Max Request Delay (ms)"</span>
@@ -277,10 +266,12 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                                         type="number"
                                         min="1000"
                                         step="1000"
-                                        name={f.max_request_delay_ms}
-                                        value={row.max_request_delay_ms}
+                                        name={r.max_request_delay_ms}
+                                        value={&row.max_request_delay_ms}
+                                        {..e.aria(r.max_request_delay_ms)}
                                     >
                                     <small class={muted()}>"Maximum delay cap"</small>
+                                    {e.message(r.max_request_delay_ms)}
                                 </label>
                                 <label class={Field}>
                                     <span>"Learned Min Delay (ms)"</span>
@@ -288,12 +279,14 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                                         type="number"
                                         min="0"
                                         step="100"
-                                        name={f.learned_min_delay_ms}
-                                        value={row.learned_min_delay_ms}
+                                        name={r.learned_min_delay_ms}
+                                        value={&row.learned_min_delay_ms}
+                                        {..e.aria(r.learned_min_delay_ms)}
                                     >
                                     <small class={muted()}>
                                         "Runtime-learned floor (ratchets up on rate limits, reset by setting to Min Request Delay)"
                                     </small>
+                                    {e.message(r.learned_min_delay_ms)}
                                 </label>
                             </fieldset>
                         </div>

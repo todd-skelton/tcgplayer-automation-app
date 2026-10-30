@@ -9,7 +9,19 @@ use crate::database::Database;
 const CONFIG_KEY: &str = "default";
 
 /// A TCGplayer API host, each with its own rate limiter, named as `domain_configs` stores it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, corten::UrlValue)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    corten::UrlValue,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum Domain {
     MpSearchApi,

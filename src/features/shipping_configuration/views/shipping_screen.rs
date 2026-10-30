@@ -4,7 +4,7 @@ use super::Done;
 use crate::{
     features::shipping_configuration::{
         config::{EasyPostMode, LabelFormat, LabelSize, Service},
-        form::{Kind, PackageNames, PackageText, SettingsInput},
+        form::{Kind, PackageInput, PackageInputGroupFields, SettingsInput},
         url,
     },
     layout::{Field, Notice, Tone},
@@ -120,41 +120,41 @@ pub fn ShippingSettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) ->
             <h3>"From Address"</h3>
             <div class={Columns}>
                 <Field label="Sender" hint="">
-                    <input name={f.from_name} value={&input.from_name}>
+                    <input name={f.from.name} value={&input.from.name}>
                 </Field>
                 <Field label="Company" hint="">
-                    <input name={f.from_company} value={&input.from_company}>
+                    <input name={f.from.company} value={&input.from.company}>
                 </Field>
                 <Field label="Phone" hint="">
-                    <input type="tel" name={f.from_phone} value={&input.from_phone}>
+                    <input type="tel" name={f.from.phone} value={&input.from.phone}>
                 </Field>
                 <Field label="Email" hint="">
-                    <input type="email" name={f.from_email} value={&input.from_email}>
+                    <input type="email" name={f.from.email} value={&input.from.email}>
                 </Field>
             </div>
             <Field label="Street 1" hint="">
-                <input name={f.from_street1} value={&input.from_street1}>
+                <input name={f.from.street1} value={&input.from.street1}>
             </Field>
             <Field label="Street 2" hint="">
-                <input name={f.from_street2} value={&input.from_street2}>
+                <input name={f.from.street2} value={&input.from.street2}>
             </Field>
             <div class={Columns}>
                 <Field label="City" hint="">
-                    <input name={f.from_city} value={&input.from_city}>
+                    <input name={f.from.city} value={&input.from.city}>
                 </Field>
                 <Field label="State" hint="">
-                    <input name={f.from_state} value={&input.from_state}>
+                    <input name={f.from.state} value={&input.from.state}>
                 </Field>
-                <Field label="Zip" hint=""><input name={f.from_zip} value={&input.from_zip}></Field>
+                <Field label="Zip" hint=""><input name={f.from.zip} value={&input.from.zip}></Field>
                 <Field label="Country" hint="">
-                    <input name={f.from_country} value={&input.from_country}>
+                    <input name={f.from.country} value={&input.from.country}>
                 </Field>
             </div>
             for kind in Kind::ALL {
                 <h3>{kind.title()}</h3>
                 <PackageFields
-                    names={PackageNames::of(kind)}
-                    text={input.package(kind)}
+                    f={kind.fields()}
+                    package={input.package(kind)}
                     errors={errors}
                 />
             }
@@ -189,21 +189,21 @@ pub fn ShippingSettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) ->
     }
 }
 
-/// One package's inputs. What `<PackageFields names={FIELDS.letter} ..>` would be with nested
-/// fields (corten#363).
+/// One package's inputs, given the package's names in the form (`f={FIELDS.letter}`). A parcel's
+/// form has no limits.
 #[component(css = ShippingSettingsForm)]
 pub fn PackageFields<'a>(
-    names: PackageNames,
-    text: PackageText<'a>,
+    f: PackageInputGroupFields,
+    package: &'a PackageInput,
     errors: &'a Errors,
 ) -> impl Render {
     let e = errors.within(ShippingSettingsFormId);
     html! {
         <div class={Columns}>
             <Field label="Label Size" hint="">
-                <select name={names.label_size}>
+                <select name={f.label_size}>
                     for size in LabelSize::ALL {
-                        <option value={size} selected={size == text.label_size}>{size}</option>
+                        <option value={size} selected={size == package.label_size}>{size}</option>
                     }
                 </select>
             </Field>
@@ -212,45 +212,45 @@ pub fn PackageFields<'a>(
                     type="number"
                     step="any"
                     min="0"
-                    name={names.base_weight_oz}
-                    value={text.base_weight_oz}
-                    {..e.aria(names.base_weight_oz)}
+                    name={f.base_weight_oz}
+                    value={&package.base_weight_oz}
+                    {..e.aria(f.base_weight_oz)}
                 >
-                {e.message(names.base_weight_oz)}
+                {e.message(f.base_weight_oz)}
             </Field>
             <Field label="Per Item Weight (oz)" hint="">
                 <input
                     type="number"
                     step="any"
                     min="0"
-                    name={names.per_item_weight_oz}
-                    value={text.per_item_weight_oz}
-                    {..e.aria(names.per_item_weight_oz)}
+                    name={f.per_item_weight_oz}
+                    value={&package.per_item_weight_oz}
+                    {..e.aria(f.per_item_weight_oz)}
                 >
-                {e.message(names.per_item_weight_oz)}
+                {e.message(f.per_item_weight_oz)}
             </Field>
-            if let (Some((count_name, value_name)), Some((count, value))) = (names.limits, text.limits) {
+            if let (Some(count), Some(value)) = (&package.max_item_count, &package.max_value_usd) {
                 <Field label="Max Item Count" hint="">
                     <input
                         type="number"
                         step="any"
                         min="0"
-                        name={count_name}
+                        name={f.max_item_count}
                         value={count}
-                        {..e.aria(count_name)}
+                        {..e.aria(f.max_item_count)}
                     >
-                    {e.message(count_name)}
+                    {e.message(f.max_item_count)}
                 </Field>
                 <Field label="Max Value (USD)" hint="">
                     <input
                         type="number"
                         step="any"
                         min="0"
-                        name={value_name}
+                        name={f.max_value_usd}
                         value={value}
-                        {..e.aria(value_name)}
+                        {..e.aria(f.max_value_usd)}
                     >
-                    {e.message(value_name)}
+                    {e.message(f.max_value_usd)}
                 </Field>
             }
             <Field label="Length (in)" hint="">
@@ -258,33 +258,33 @@ pub fn PackageFields<'a>(
                     type="number"
                     step="any"
                     min="0"
-                    name={names.length_in}
-                    value={text.length_in}
-                    {..e.aria(names.length_in)}
+                    name={f.length_in}
+                    value={&package.length_in}
+                    {..e.aria(f.length_in)}
                 >
-                {e.message(names.length_in)}
+                {e.message(f.length_in)}
             </Field>
             <Field label="Width (in)" hint="">
                 <input
                     type="number"
                     step="any"
                     min="0"
-                    name={names.width_in}
-                    value={text.width_in}
-                    {..e.aria(names.width_in)}
+                    name={f.width_in}
+                    value={&package.width_in}
+                    {..e.aria(f.width_in)}
                 >
-                {e.message(names.width_in)}
+                {e.message(f.width_in)}
             </Field>
             <Field label="Height (in)" hint="">
                 <input
                     type="number"
                     step="any"
                     min="0"
-                    name={names.height_in}
-                    value={text.height_in}
-                    {..e.aria(names.height_in)}
+                    name={f.height_in}
+                    value={&package.height_in}
+                    {..e.aria(f.height_in)}
                 >
-                {e.message(names.height_in)}
+                {e.message(f.height_in)}
             </Field>
         </div>
     }

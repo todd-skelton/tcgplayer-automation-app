@@ -1,7 +1,5 @@
-//! The settings form as the browser sends it. `Fields` cannot nest a group of fields
-//! (corten#363), so the sender's fields are `from_*` and each package's are `letter_*`,
-//! `flat_*` and `parcel_*`; [`PackageNames`] gathers one package's names for the view and the
-//! reader, which is what `FIELDS.letter` would be.
+//! The settings form as the browser sends it. The sender is a group of fields (`from.city`), and
+//! each package is one group type drawn three times (`letter.length_in`, `flat.length_in`, ..).
 use corten::prelude::*;
 use serde::Deserialize;
 
@@ -10,42 +8,48 @@ use super::config::{Address, LabelFormat, LabelSize, Package, Service, ShippingC
 #[derive(Clone, Debug, Deserialize, Fields)]
 pub struct SettingsInput {
     pub default_seller_key: String,
-    pub from_name: String,
-    pub from_company: String,
-    pub from_phone: String,
-    pub from_email: String,
-    pub from_street1: String,
-    pub from_street2: String,
-    pub from_city: String,
-    pub from_state: String,
-    pub from_zip: String,
-    pub from_country: String,
-    pub letter_label_size: LabelSize,
-    pub letter_base_weight_oz: String,
-    pub letter_per_item_weight_oz: String,
-    pub letter_max_item_count: String,
-    pub letter_max_value_usd: String,
-    pub letter_length_in: String,
-    pub letter_width_in: String,
-    pub letter_height_in: String,
-    pub flat_label_size: LabelSize,
-    pub flat_base_weight_oz: String,
-    pub flat_per_item_weight_oz: String,
-    pub flat_max_item_count: String,
-    pub flat_max_value_usd: String,
-    pub flat_length_in: String,
-    pub flat_width_in: String,
-    pub flat_height_in: String,
-    pub parcel_label_size: LabelSize,
-    pub parcel_base_weight_oz: String,
-    pub parcel_per_item_weight_oz: String,
-    pub parcel_length_in: String,
-    pub parcel_width_in: String,
-    pub parcel_height_in: String,
+    #[fields(group)]
+    pub from: AddressInput,
+    #[fields(group)]
+    pub letter: PackageInput,
+    #[fields(group)]
+    pub flat: PackageInput,
+    #[fields(group)]
+    pub parcel: PackageInput,
     pub label_format: LabelFormat,
     pub expedited_service: Service,
     #[serde(default)]
     pub combine_orders: bool,
+}
+
+/// The sender's address, as text.
+#[derive(Clone, Debug, Deserialize, Fields)]
+pub struct AddressInput {
+    pub name: String,
+    pub company: String,
+    pub phone: String,
+    pub email: String,
+    pub street1: String,
+    pub street2: String,
+    pub city: String,
+    pub state: String,
+    pub zip: String,
+    pub country: String,
+}
+
+/// One package's inputs, as text. A parcel has no limits, so its form sends none.
+#[derive(Clone, Debug, Deserialize, Fields)]
+pub struct PackageInput {
+    pub label_size: LabelSize,
+    pub base_weight_oz: String,
+    pub per_item_weight_oz: String,
+    #[serde(default)]
+    pub max_item_count: Option<String>,
+    #[serde(default)]
+    pub max_value_usd: Option<String>,
+    pub length_in: String,
+    pub width_in: String,
+    pub height_in: String,
 }
 
 /// A kind of package, each with its own block of the form.
@@ -74,63 +78,19 @@ impl Kind {
             Kind::Parcel => "Parcel",
         }
     }
-}
 
-/// One package's field names. A parcel has no limits.
-#[derive(Clone, Copy)]
-pub struct PackageNames {
-    pub label_size: FieldName,
-    pub base_weight_oz: FieldName,
-    pub per_item_weight_oz: FieldName,
-    pub limits: Option<(FieldName, FieldName)>,
-    pub length_in: FieldName,
-    pub width_in: FieldName,
-    pub height_in: FieldName,
-}
+    /// Whether the package has an item count and value limit.
+    pub fn limited(self) -> bool {
+        self != Kind::Parcel
+    }
 
-/// One package's inputs as text: what they show.
-#[derive(Clone, Copy)]
-pub struct PackageText<'a> {
-    pub label_size: LabelSize,
-    pub base_weight_oz: &'a str,
-    pub per_item_weight_oz: &'a str,
-    pub limits: Option<(&'a str, &'a str)>,
-    pub length_in: &'a str,
-    pub width_in: &'a str,
-    pub height_in: &'a str,
-}
-
-impl PackageNames {
-    pub fn of(kind: Kind) -> Self {
+    /// The package's fields in the form.
+    pub fn fields(self) -> PackageInputGroupFields {
         let f = SettingsInput::FIELDS;
-        match kind {
-            Kind::Letter => PackageNames {
-                label_size: f.letter_label_size,
-                base_weight_oz: f.letter_base_weight_oz,
-                per_item_weight_oz: f.letter_per_item_weight_oz,
-                limits: Some((f.letter_max_item_count, f.letter_max_value_usd)),
-                length_in: f.letter_length_in,
-                width_in: f.letter_width_in,
-                height_in: f.letter_height_in,
-            },
-            Kind::Flat => PackageNames {
-                label_size: f.flat_label_size,
-                base_weight_oz: f.flat_base_weight_oz,
-                per_item_weight_oz: f.flat_per_item_weight_oz,
-                limits: Some((f.flat_max_item_count, f.flat_max_value_usd)),
-                length_in: f.flat_length_in,
-                width_in: f.flat_width_in,
-                height_in: f.flat_height_in,
-            },
-            Kind::Parcel => PackageNames {
-                label_size: f.parcel_label_size,
-                base_weight_oz: f.parcel_base_weight_oz,
-                per_item_weight_oz: f.parcel_per_item_weight_oz,
-                limits: None,
-                length_in: f.parcel_length_in,
-                width_in: f.parcel_width_in,
-                height_in: f.parcel_height_in,
-            },
+        match self {
+            Kind::Letter => f.letter,
+            Kind::Flat => f.flat,
+            Kind::Parcel => f.parcel,
         }
     }
 }
@@ -146,147 +106,126 @@ fn optional(text: &str) -> Option<String> {
     (!text.is_empty()).then(|| text.to_string())
 }
 
+impl PackageInput {
+    fn of(package: &Package, limited: bool) -> Self {
+        let limit = |n: Option<f64>| limited.then(|| measure_text(n.unwrap_or(0.0)));
+        PackageInput {
+            label_size: package.label_size,
+            base_weight_oz: measure_text(package.base_weight_oz),
+            per_item_weight_oz: measure_text(package.per_item_weight_oz),
+            max_item_count: limit(package.max_item_count),
+            max_value_usd: limit(package.max_value_usd),
+            length_in: measure_text(package.length_in),
+            width_in: measure_text(package.width_in),
+            height_in: measure_text(package.height_in),
+        }
+    }
+
+    /// The package the inputs say; a measure that is not a number of at least zero is an error on
+    /// its own input. Every measure is checked; the React app saved whatever `Number()` made of
+    /// it, blanks as 0.
+    fn read(&self, kind: Kind, errors: &mut Errors) -> Package {
+        let f = kind.fields();
+        let mut number = |field, text: &str, what: &str| -> f64 {
+            match text.trim().parse::<f64>() {
+                Ok(n) if n.is_finite() && n >= 0.0 => n,
+                _ => {
+                    errors.add(
+                        field,
+                        format!("{}: {what} must be a number of at least 0.", kind.name()),
+                    );
+                    0.0
+                }
+            }
+        };
+        let base_weight_oz = number(f.base_weight_oz, &self.base_weight_oz, "the base weight");
+        let per_item_weight_oz = number(
+            f.per_item_weight_oz,
+            &self.per_item_weight_oz,
+            "the per item weight",
+        );
+        let limits = kind.limited().then(|| {
+            (
+                number(
+                    f.max_item_count,
+                    self.max_item_count.as_deref().unwrap_or(""),
+                    "the max item count",
+                ),
+                number(
+                    f.max_value_usd,
+                    self.max_value_usd.as_deref().unwrap_or(""),
+                    "the max value",
+                ),
+            )
+        });
+        Package {
+            label_size: self.label_size,
+            base_weight_oz,
+            per_item_weight_oz,
+            max_item_count: limits.map(|(count, _)| count),
+            max_value_usd: limits.map(|(_, value)| value),
+            length_in: number(f.length_in, &self.length_in, "the length"),
+            width_in: number(f.width_in, &self.width_in, "the width"),
+            height_in: number(f.height_in, &self.height_in, "the height"),
+        }
+    }
+}
+
 impl SettingsInput {
     /// The form filled with `config`.
     pub fn of(config: &ShippingConfig) -> Self {
         let a = &config.from_address;
-        let (l, fl, p) = (&config.letter, &config.flat, &config.parcel);
-        let limit = |n: Option<f64>| measure_text(n.unwrap_or(0.0));
         SettingsInput {
             default_seller_key: config.default_seller_key.clone(),
-            from_name: a.name.clone(),
-            from_company: a.company.clone().unwrap_or_default(),
-            from_phone: a.phone.clone().unwrap_or_default(),
-            from_email: a.email.clone().unwrap_or_default(),
-            from_street1: a.street1.clone(),
-            from_street2: a.street2.clone().unwrap_or_default(),
-            from_city: a.city.clone(),
-            from_state: a.state.clone(),
-            from_zip: a.zip.clone(),
-            from_country: a.country.clone(),
-            letter_label_size: l.label_size,
-            letter_base_weight_oz: measure_text(l.base_weight_oz),
-            letter_per_item_weight_oz: measure_text(l.per_item_weight_oz),
-            letter_max_item_count: limit(l.max_item_count),
-            letter_max_value_usd: limit(l.max_value_usd),
-            letter_length_in: measure_text(l.length_in),
-            letter_width_in: measure_text(l.width_in),
-            letter_height_in: measure_text(l.height_in),
-            flat_label_size: fl.label_size,
-            flat_base_weight_oz: measure_text(fl.base_weight_oz),
-            flat_per_item_weight_oz: measure_text(fl.per_item_weight_oz),
-            flat_max_item_count: limit(fl.max_item_count),
-            flat_max_value_usd: limit(fl.max_value_usd),
-            flat_length_in: measure_text(fl.length_in),
-            flat_width_in: measure_text(fl.width_in),
-            flat_height_in: measure_text(fl.height_in),
-            parcel_label_size: p.label_size,
-            parcel_base_weight_oz: measure_text(p.base_weight_oz),
-            parcel_per_item_weight_oz: measure_text(p.per_item_weight_oz),
-            parcel_length_in: measure_text(p.length_in),
-            parcel_width_in: measure_text(p.width_in),
-            parcel_height_in: measure_text(p.height_in),
+            from: AddressInput {
+                name: a.name.clone(),
+                company: a.company.clone().unwrap_or_default(),
+                phone: a.phone.clone().unwrap_or_default(),
+                email: a.email.clone().unwrap_or_default(),
+                street1: a.street1.clone(),
+                street2: a.street2.clone().unwrap_or_default(),
+                city: a.city.clone(),
+                state: a.state.clone(),
+                zip: a.zip.clone(),
+                country: a.country.clone(),
+            },
+            letter: PackageInput::of(&config.letter, true),
+            flat: PackageInput::of(&config.flat, true),
+            parcel: PackageInput::of(&config.parcel, false),
             label_format: config.label_format,
             expedited_service: config.expedited_service,
             combine_orders: config.combine_orders,
         }
     }
 
-    pub fn package(&self, kind: Kind) -> PackageText<'_> {
+    pub fn package(&self, kind: Kind) -> &PackageInput {
         match kind {
-            Kind::Letter => PackageText {
-                label_size: self.letter_label_size,
-                base_weight_oz: &self.letter_base_weight_oz,
-                per_item_weight_oz: &self.letter_per_item_weight_oz,
-                limits: Some((&self.letter_max_item_count, &self.letter_max_value_usd)),
-                length_in: &self.letter_length_in,
-                width_in: &self.letter_width_in,
-                height_in: &self.letter_height_in,
-            },
-            Kind::Flat => PackageText {
-                label_size: self.flat_label_size,
-                base_weight_oz: &self.flat_base_weight_oz,
-                per_item_weight_oz: &self.flat_per_item_weight_oz,
-                limits: Some((&self.flat_max_item_count, &self.flat_max_value_usd)),
-                length_in: &self.flat_length_in,
-                width_in: &self.flat_width_in,
-                height_in: &self.flat_height_in,
-            },
-            Kind::Parcel => PackageText {
-                label_size: self.parcel_label_size,
-                base_weight_oz: &self.parcel_base_weight_oz,
-                per_item_weight_oz: &self.parcel_per_item_weight_oz,
-                limits: None,
-                length_in: &self.parcel_length_in,
-                width_in: &self.parcel_width_in,
-                height_in: &self.parcel_height_in,
-            },
+            Kind::Letter => &self.letter,
+            Kind::Flat => &self.flat,
+            Kind::Parcel => &self.parcel,
         }
     }
 
-    /// The settings the form says, or why it does not say any. Every measure is a number of at
-    /// least zero; the React app saved whatever `Number()` made of it, blanks as 0.
+    /// The settings the form says, or why it does not say any.
     pub fn read(&self) -> Result<ShippingConfig, Errors> {
         let mut errors = Errors::new();
-        let mut package =
-            |kind: Kind| -> Package {
-                let (names, text) = (PackageNames::of(kind), self.package(kind));
-                let mut number = |field: FieldName, text: &str, what: &str| -> f64 {
-                    match text.trim().parse::<f64>() {
-                        Ok(n) if n.is_finite() && n >= 0.0 => n,
-                        _ => {
-                            errors.add(
-                                field,
-                                format!("{}: {what} must be a number of at least 0.", kind.name()),
-                            );
-                            0.0
-                        }
-                    }
-                };
-                let base_weight_oz =
-                    number(names.base_weight_oz, text.base_weight_oz, "the base weight");
-                let per_item_weight_oz = number(
-                    names.per_item_weight_oz,
-                    text.per_item_weight_oz,
-                    "the per item weight",
-                );
-                let limits = names.limits.zip(text.limits).map(
-                    |((count_name, value_name), (count, value))| {
-                        (
-                            number(count_name, count, "the max item count"),
-                            number(value_name, value, "the max value"),
-                        )
-                    },
-                );
-                Package {
-                    label_size: text.label_size,
-                    base_weight_oz,
-                    per_item_weight_oz,
-                    max_item_count: limits.map(|(count, _)| count),
-                    max_value_usd: limits.map(|(_, value)| value),
-                    length_in: number(names.length_in, text.length_in, "the length"),
-                    width_in: number(names.width_in, text.width_in, "the width"),
-                    height_in: number(names.height_in, text.height_in, "the height"),
-                }
-            };
-        let (letter, flat, parcel) = (
-            package(Kind::Letter),
-            package(Kind::Flat),
-            package(Kind::Parcel),
-        );
+        let letter = self.letter.read(Kind::Letter, &mut errors);
+        let flat = self.flat.read(Kind::Flat, &mut errors);
+        let parcel = self.parcel.read(Kind::Parcel, &mut errors);
+        let a = &self.from;
         let config = ShippingConfig {
             default_seller_key: self.default_seller_key.trim().to_string(),
             from_address: Address {
-                name: self.from_name.trim().to_string(),
-                company: optional(&self.from_company),
-                phone: optional(&self.from_phone),
-                email: optional(&self.from_email),
-                street1: self.from_street1.trim().to_string(),
-                street2: optional(&self.from_street2),
-                city: self.from_city.trim().to_string(),
-                state: self.from_state.trim().to_string(),
-                zip: self.from_zip.trim().to_string(),
-                country: optional(&self.from_country).unwrap_or_else(|| "US".into()),
+                name: a.name.trim().to_string(),
+                company: optional(&a.company),
+                phone: optional(&a.phone),
+                email: optional(&a.email),
+                street1: a.street1.trim().to_string(),
+                street2: optional(&a.street2),
+                city: a.city.trim().to_string(),
+                state: a.state.trim().to_string(),
+                zip: a.zip.trim().to_string(),
+                country: optional(&a.country).unwrap_or_else(|| "US".into()),
             },
             letter,
             flat,
@@ -324,21 +263,20 @@ mod tests {
     #[test]
     fn a_measure_that_is_not_a_number_names_its_package() {
         let mut input = SettingsInput::of(&ShippingConfig::default());
-        input.flat_width_in = "wide".into();
+        input.flat.width_in = "wide".into();
         let errors = input.read().unwrap_err();
+        assert!(!errors.has(SettingsInput::FIELDS.letter.width_in));
         assert_eq!(
-            errors.get(SettingsInput::FIELDS.flat_width_in),
+            errors.get(SettingsInput::FIELDS.flat.width_in),
             Some("Flat: the width must be a number of at least 0.")
         );
     }
 
     #[test]
     fn blank_optional_address_lines_are_left_out() {
-        let input = SettingsInput {
-            from_company: "  ".into(),
-            from_country: "".into(),
-            ..SettingsInput::of(&ShippingConfig::default())
-        };
+        let mut input = SettingsInput::of(&ShippingConfig::default());
+        input.from.company = "  ".into();
+        input.from.country = String::new();
         let address = input.read().unwrap().from_address;
         assert_eq!((address.company, address.country.as_str()), (None, "US"));
     }

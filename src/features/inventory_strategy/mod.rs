@@ -24,7 +24,7 @@
 mod actions;
 pub mod backfill;
 mod cache;
-mod collate;
+pub(crate) mod collate;
 pub mod dashboard;
 pub mod levers;
 pub mod performance;
