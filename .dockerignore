@@ -9,6 +9,11 @@ node_modules
 npm-debug.log
 yarn-error.log
 
+# Corten port build output and local logs
+target
+.port-logs
+.claude
+
 # Data and logs (mounted as volumes)
 data
 logs

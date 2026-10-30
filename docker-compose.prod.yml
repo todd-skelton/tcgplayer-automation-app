@@ -1,10 +1,13 @@
 name: tcgplayer-automation-prod
 
-# The app runs in one of two slots, app-blue or app-green. The proxy owns port
-# 3001 and sends traffic to whichever slot deploy/nginx/active/active.conf
-# names, so a release starts the idle slot, waits for its health check, and
-# switches the proxy before stopping the old slot. Profiles keep a plain
-# `docker compose up` from starting the idle slot.
+# The app runs in one of two slots, blue or green. A slot is the Node app
+# (app-blue) and the Corten app in front of it (web-blue), which serves the
+# screens already ported and relays every other request to its slot's Node app.
+# The proxy owns port 3001 and sends traffic to the web container of whichever
+# slot deploy/nginx/active/active.conf names, so a release starts the idle
+# slot, waits for its health checks, and switches the proxy before stopping the
+# old slot. Profiles keep a plain `docker compose up` from starting the idle
+# slot.
 x-app: &app
   image: tcgplayer-automation-app:prod
   build:
@@ -42,6 +45,43 @@ x-app: &app
     timeout: 10s
     retries: 3
     start_period: 120s
+    start_interval: 2s
+
+x-web-environment: &web-environment
+  DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tcgplayer_automation
+  NODE_ENV: production
+  HOST: 0.0.0.0
+  PORT: 3000
+  # Requests arrive from the proxy on the compose network; its X-Forwarded-For names the client.
+  PROXIES: 172.16.0.0/12
+
+x-web: &web
+  image: tcgplayer-automation-web:prod
+  build:
+    context: .
+    dockerfile: Dockerfile
+    target: web
+  # Names the app answers to besides localhost and IP addresses (HOSTS=automation.lan) come
+  # from here; any other Host gets 421.
+  env_file:
+    - path: .env.production.local
+      required: false
+  restart: unless-stopped
+  stop_grace_period: 30s
+  healthcheck:
+    test:
+      [
+        "CMD",
+        "wget",
+        "--no-verbose",
+        "--tries=1",
+        "--spider",
+        "http://127.0.0.1:3000/",
+      ]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 30s
     start_interval: 2s
 
 x-worker: &worker
@@ -90,6 +130,28 @@ services:
     <<: *app
     container_name: tcgplayer-automation-prod-green
     profiles: [green]
+
+  web-blue:
+    <<: *web
+    container_name: tcgplayer-automation-web-prod-blue
+    profiles: [blue]
+    depends_on:
+      app-blue:
+        condition: service_healthy
+    environment:
+      <<: *web-environment
+      LEGACY_ORIGIN: http://app-blue:3000
+
+  web-green:
+    <<: *web
+    container_name: tcgplayer-automation-web-prod-green
+    profiles: [green]
+    depends_on:
+      app-green:
+        condition: service_healthy
+    environment:
+      <<: *web-environment
+      LEGACY_ORIGIN: http://app-green:3000
 
   pricing-worker:
     <<: *worker

@@ -1,6 +1,6 @@
 # Production Docker Deployment
 
-The production stack runs the app and PostgreSQL together. The app container waits for the database, applies SQL migrations during startup, and then starts serving traffic. An nginx proxy owns port `3001` and forwards requests to the app.
+The production stack runs the app and PostgreSQL together. The app is moving from React Router (Node) to Corten (Rust) one screen at a time, so it runs as two containers: the Node app, which waits for the database, applies SQL migrations during startup, and serves the screens not yet ported, and the Corten app in front of it (`web`), which serves the ported screens and relays every other request to the Node app. An nginx proxy owns port `3001` and forwards requests to the Corten app.
 
 ## Quick Start
 
@@ -16,11 +16,11 @@ Those `prod:*` commands now route through a cross-platform Node wrapper, so the 
 
 ## Releases Without Downtime
 
-The app runs in one of two slots, `app-blue` or `app-green`. `prod:deploy` (no-cache build) and `prod:update` (cached build) release the same way:
+The app runs in one of two slots, blue or green. A slot is the Node app (`app-blue`) and the Corten app that relays to it (`web-blue`). `prod:deploy` (no-cache build) and `prod:update` (cached build) release the same way:
 
-1. Build the image while the running slot keeps serving. A failed build changes nothing.
-2. Start the idle slot, which applies pending migrations, and wait for its health check.
-3. Point the proxy at the new slot and reload nginx. Requests already in flight finish on the old slot.
+1. Build both images while the running slot keeps serving. A failed build changes nothing.
+2. Start the idle slot's Node app, which applies pending migrations, and wait for its health check; then start its Corten app and wait for that one's.
+3. Point the proxy at the new slot's Corten app and reload nginx. Requests already in flight finish on the old slot.
 4. Replace the background workers with the new image, then stop the old slot after its in-flight requests finish.
 
 If the new slot never becomes healthy, the release stops it and the old slot keeps serving.
@@ -48,6 +48,12 @@ The production compose file uses the explicit project name `tcgplayer-automation
 Docker may show the built image name as `tcgplayer-automation-app-app`. That is only the generated image name. The Compose project name for the production stack is still `tcgplayer-automation-prod`.
 
 ## Configuration
+
+The Corten app answers only to `localhost` and IP addresses unless told the names it is served under; any other `Host` gets `421`. If the app is reached by a name (`http://automation.lan:3001`), list it in `.env.production.local`:
+
+```bash
+HOSTS=automation.lan
+```
 
 The production compose file sets:
 
