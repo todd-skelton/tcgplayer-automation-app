@@ -4,7 +4,7 @@
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
-use super::{performance, pricing_changes, sold_units};
+use super::{performance, pricing_changes, reinvestment, sold_units};
 use crate::database::Database;
 
 /// Two JSON values equal but for floating point noise in numbers.
@@ -76,5 +76,28 @@ async fn strategy_matches_node() {
         "pricingChanges",
         &serde_json::to_value(&changes).unwrap(),
         &node["marginTrend"]["pricingChanges"],
+    );
+    let as_of = node["asOf"].as_str().unwrap();
+    let mut conn = db.0.acquire().await.unwrap();
+    let proceeds =
+        crate::features::inventory_economics::ledger::proceeds::load_in(&mut conn, seller)
+            .await
+            .unwrap();
+    let evidence = reinvestment::source::find_source_evidence(&mut conn, seller)
+        .await
+        .unwrap();
+    let input = reinvestment::source::build_input(seller, as_of, &proceeds, &evidence).unwrap();
+    same(
+        "reinvestmentInput",
+        &serde_json::to_value(&input).unwrap(),
+        &node["reinvestmentInput"],
+    );
+    let ours = reinvestment::source::rebuild_report(&mut conn, seller, as_of)
+        .await
+        .unwrap();
+    same(
+        "reinvestment",
+        &serde_json::to_value(&ours).unwrap(),
+        &node["reinvestment"],
     );
 }

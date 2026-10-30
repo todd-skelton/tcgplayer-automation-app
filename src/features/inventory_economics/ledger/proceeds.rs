@@ -134,8 +134,17 @@ pub fn from_evidence(
 
 /// The seller's complete reusable proceeds, read from the database.
 pub async fn load(db: &Database, seller: &str) -> Result<CompleteReusableProceeds, String> {
+    let mut conn = db.0.acquire().await.map_err(|e| e.to_string())?;
+    load_in(&mut conn, seller).await
+}
+
+/// [`load`] on one connection, inside a snapshot the caller holds.
+pub async fn load_in(
+    conn: &mut sqlx::PgConnection,
+    seller: &str,
+) -> Result<CompleteReusableProceeds, String> {
     let seller = seller.trim();
-    let evidence = evidence::find(db, seller, FENCE)
+    let evidence = evidence::find_in(conn, seller, FENCE)
         .await
         .map_err(|e| e.to_string())?;
     from_evidence(seller, &evidence)

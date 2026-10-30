@@ -154,6 +154,16 @@ fn fenced<T>(mut rows: Vec<T>, limit: i64) -> (Vec<T>, bool) {
 
 /// The seller's `limit` most recent orders and the evidence about them.
 pub async fn find(db: &Database, seller: &str, limit: i64) -> sqlx::Result<Evidence> {
+    let mut conn = db.0.acquire().await?;
+    find_in(&mut conn, seller, limit).await
+}
+
+/// [`find`] on one connection, so a caller can read it inside a snapshot of its own.
+pub async fn find_in(
+    conn: &mut sqlx::PgConnection,
+    seller: &str,
+    limit: i64,
+) -> sqlx::Result<Evidence> {
     let seller = seller.trim();
     let orders: Vec<OrderRow> = sqlx::query_as(
         r#"SELECT orders.id,orders.order_number,orders.order_time,orders.currency,
@@ -173,7 +183,7 @@ pub async fn find(db: &Database, seller: &str, limit: i64) -> sqlx::Result<Evide
     )
     .bind(seller)
     .bind(limit + 1)
-    .fetch_all(&db.0)
+    .fetch_all(&mut *conn)
     .await?;
     let (orders, orders_complete) = fenced(orders, limit);
     if orders.is_empty() {
@@ -206,7 +216,7 @@ pub async fn find(db: &Database, seller: &str, limit: i64) -> sqlx::Result<Evide
     )
     .bind(&numbers)
     .bind(FENCE + 1)
-    .fetch_all(&db.0)
+    .fetch_all(&mut *conn)
     .await?;
     let (postage, postage_complete) = fenced(postage, FENCE);
 
@@ -245,7 +255,7 @@ pub async fn find(db: &Database, seller: &str, limit: i64) -> sqlx::Result<Evide
     .bind(seller)
     .bind(&ids)
     .bind(FENCE + 1)
-    .fetch_all(&db.0)
+    .fetch_all(&mut *conn)
     .await?;
     let (allocations, allocations_complete) = fenced(allocations, FENCE);
 
@@ -262,7 +272,7 @@ pub async fn find(db: &Database, seller: &str, limit: i64) -> sqlx::Result<Evide
     .bind(seller)
     .bind(&numbers)
     .bind(FENCE + 1)
-    .fetch_all(&db.0)
+    .fetch_all(&mut *conn)
     .await?;
     let (expenses, expenses_complete) = fenced(expenses, FENCE);
 

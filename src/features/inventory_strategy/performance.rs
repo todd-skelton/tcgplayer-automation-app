@@ -2,10 +2,10 @@
 //! tied up, over trailing windows and week by week, from each sold unit's share of its order's
 //! net proceeds and its lot's cost. Ported from the Node app's `realizedPerformance.ts` and
 //! `marginTrend.ts`.
-use std::cmp::Ordering;
-
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use serde::Serialize;
+
+use super::collate;
 
 /// Trailing windows the page reports, in days.
 pub const PERFORMANCE_WINDOWS: [i64; 2] = [30, 90];
@@ -142,14 +142,6 @@ pub fn summarize(
     }
 }
 
-/// Names in the order `localeCompare` puts them for the product lines on record: letters
-/// without regard to case first, then case.
-fn locale_cmp(a: &str, b: &str) -> Ordering {
-    a.to_lowercase()
-        .cmp(&b.to_lowercase())
-        .then_with(|| b.cmp(a))
-}
-
 /// Realized margin, profit per day and return on capital over trailing windows, overall and by
 /// product line.
 pub fn summarize_realized(
@@ -185,7 +177,7 @@ pub fn summarize_realized(
             product_lines.sort_by(|a, b| {
                 b.proceeds_cents
                     .cmp(&a.proceeds_cents)
-                    .then_with(|| locale_cmp(&a.product_line, &b.product_line))
+                    .then_with(|| collate::compare(&a.product_line, &b.product_line))
             });
             PerformanceWindow {
                 window_days: days,
