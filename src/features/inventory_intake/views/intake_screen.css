@@ -1,0 +1,120 @@
+.intake-screen {
+  display: grid;
+  gap: var(--space-3);
+  & h1 {
+    flex: 1;
+    margin: 0;
+  }
+}
+/* Only the chosen condition's labels and counts show; a sealed product's always do. */
+.intake-screen:not(:has(.condition-select option[value="near-mint"]:checked)) .near-mint,
+.intake-screen:not(:has(.condition-select option[value="lightly-played"]:checked)) .lightly-played,
+.intake-screen:not(:has(.condition-select option[value="moderately-played"]:checked)) .moderately-played,
+.intake-screen:not(:has(.condition-select option[value="heavily-played"]:checked)) .heavily-played,
+.intake-screen:not(:has(.condition-select option[value="damaged"]:checked)) .damaged {
+  display: none;
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: end;
+  & label {
+    display: grid;
+    gap: var(--space-1);
+  }
+}
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.condition-select {
+  min-width: 11rem;
+}
+.more {
+  flex-basis: 100%;
+  & > label,
+  & fieldset {
+    margin-top: var(--space-2);
+  }
+}
+.languages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+}
+.search-field {
+  flex: 1;
+  & input {
+    flex: 1;
+    min-width: 12rem;
+  }
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  & th,
+  & td {
+    padding: var(--space-1) var(--space-2);
+    border-bottom: 1px solid var(--color-line);
+    text-align: start;
+    white-space: nowrap;
+  }
+}
+.name {
+  white-space: normal;
+}
+.chip {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  font-size: var(--font-size-sm);
+}
+.holo {
+  font-style: italic;
+}
+.first {
+  font-weight: 700;
+}
+.missing {
+  opacity: 0.75;
+  border-style: dashed;
+}
+.count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  & button {
+    min-width: 2rem;
+  }
+}
+.quantity {
+  width: 3.5rem;
+  text-align: center;
+}
+.confirm {
+  max-width: 28rem;
+  & h2 {
+    margin-top: 0;
+  }
+}
+.danger {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: var(--color-accent-ink);
+}
+.picture {
+  & img {
+    display: block;
+    max-width: min(80vw, 400px);
+  }
+}

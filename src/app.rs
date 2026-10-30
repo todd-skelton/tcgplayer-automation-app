@@ -13,7 +13,7 @@ use crate::{
     config,
     database::Database,
     features::{
-        configuration, http_configuration, publication_configuration, pull_sheet,
+        configuration, http_configuration, inventory_intake, publication_configuration, pull_sheet,
         shipping_configuration, slab_connections,
     },
     layout::{self, Static},
@@ -93,6 +93,12 @@ pub fn app(shared: Shared) -> App {
     App::new(url::router(shared.clone()))
         .api(|routes| api::api(routes, shared.clone()).deadline(Some(Duration::from_secs(15 * 60))))
         .area(|area| pull_sheet::url::area(area, shared.clone()).components(pull_sheet::COMPONENTS))
+        // A count waits on the Node app, which notes the market price when units are added.
+        .area(|area| {
+            inventory_intake::url::area(area, shared.clone())
+                .components(inventory_intake::COMPONENTS)
+                .deadline(Some(Duration::from_secs(30)))
+        })
         .area(|area| {
             http_configuration::url::area(area, shared.clone())
                 .components(http_configuration::COMPONENTS)

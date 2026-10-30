@@ -5,7 +5,7 @@ use corten::prelude::*;
 use crate::{
     database::Database,
     features::{
-        configuration, http_configuration, publication_configuration, pull_sheet,
+        configuration, http_configuration, inventory_intake, publication_configuration, pull_sheet,
         shipping_configuration, slab_connections,
     },
     legacy::screens,
@@ -73,6 +73,7 @@ pub fn Layout<'a>(
 
 /// A screen in the app bar: where it is, and whether this app serves it or the React app does.
 pub enum Screen {
+    InventoryManager,
     PullSheet,
     HttpConfiguration,
     ShippingConfiguration,
@@ -84,10 +85,7 @@ pub enum Screen {
 
 /// The screens in the order the React app's `primaryNavigationItems` lists them.
 pub const PRIMARY: [(Screen, &str); 10] = [
-    (
-        Screen::Legacy(screens::Screen::InventoryManager),
-        "Inventory",
-    ),
+    (Screen::InventoryManager, "Inventory"),
     (
         Screen::Legacy(screens::Screen::PendingInventoryPricer),
         "Batch Pricer",
@@ -132,6 +130,13 @@ pub const SETTINGS: [(Screen, &str); 5] = [
 pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, label: &'a str) -> impl Render {
     html! {
         match screen {
+            Screen::InventoryManager => {
+                <a
+                    {..req.nav(&inventory_intake::url::InventoryManager { selection: Default::default() })}
+                >
+                    {label}
+                </a>
+            }
             Screen::PullSheet => <a {..req.nav(&pull_sheet::url::PullSheets)}>{label}</a>,
             Screen::HttpConfiguration => {
                 <a {..req.nav(&http_configuration::url::HttpSettings { done: None })}>{label}</a>

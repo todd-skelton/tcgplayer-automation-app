@@ -2,6 +2,7 @@
 //! scripts, its queries and its rules.
 pub mod configuration;
 pub mod http_configuration;
+pub mod inventory_intake;
 pub mod publication_configuration;
 pub mod pull_sheet;
 pub mod shipping_configuration;

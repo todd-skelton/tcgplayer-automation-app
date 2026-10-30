@@ -61,23 +61,48 @@ impl Legacy {
             .get(format!("{}{path}", self.origin))
             .send()
             .await
-            .map_err(|_| "The report service did not answer.".to_owned())?;
+            .map_err(|_| "The Node app did not answer.".to_owned())?;
+        Self::answer(answer).await
+    }
+
+    /// What one of the Node app's JSON routes answers to `body` posted as JSON: for a write whose
+    /// rules are still the Node app's. An error is the message the route gave, or why there was
+    /// none to read.
+    pub async fn send<B: serde::Serialize, T: serde::de::DeserializeOwned>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<T, String> {
+        let body = serde_json::to_vec(body).map_err(|e| e.to_string())?;
+        let answer = self
+            .http
+            .post(format!("{}{path}", self.origin))
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(body)
+            .send()
+            .await
+            .map_err(|_| "The Node app did not answer.".to_owned())?;
+        Self::answer(answer).await
+    }
+
+    async fn answer<T: serde::de::DeserializeOwned>(
+        answer: reqwest::Response,
+    ) -> Result<T, String> {
         let ok = answer.status().is_success();
         let body = answer
             .bytes()
             .await
-            .map_err(|_| "The report service stopped answering.".to_owned())?;
+            .map_err(|_| "The Node app stopped answering.".to_owned())?;
         if ok {
-            return serde_json::from_slice(&body).map_err(|_| {
-                "The report service answered something this page cannot read.".to_owned()
-            });
+            return serde_json::from_slice(&body)
+                .map_err(|_| "The Node app answered something this page cannot read.".to_owned());
         }
         #[derive(serde::Deserialize)]
         struct Refusal {
             error: String,
         }
         Err(serde_json::from_slice::<Refusal>(&body)
-            .map_or_else(|_| "The report could not be made.".to_owned(), |r| r.error))
+            .map_or_else(|_| "The Node app could not do it.".to_owned(), |r| r.error))
     }
 }
 
@@ -180,9 +205,6 @@ pub mod screens {
     #[route("/")]
     pub struct Dashboard;
     #[derive(Route)]
-    #[route("/inventory-manager")]
-    pub struct InventoryManager;
-    #[derive(Route)]
     #[route("/pending-inventory-pricer")]
     pub struct PendingInventoryPricer;
     #[derive(Route)]
@@ -210,7 +232,6 @@ pub mod screens {
     /// One of them, for lists of screens (the app bar's).
     #[derive(Clone, Copy)]
     pub enum Screen {
-        InventoryManager,
         PendingInventoryPricer,
         ContinuousPricing,
         SlabPricing,
@@ -224,7 +245,6 @@ pub mod screens {
     impl Href for Screen {
         fn with_href<T>(&self, f: impl FnOnce(&str) -> T) -> T {
             match self {
-                Screen::InventoryManager => InventoryManager.with_href(f),
                 Screen::PendingInventoryPricer => PendingInventoryPricer.with_href(f),
                 Screen::ContinuousPricing => ContinuousPricing.with_href(f),
                 Screen::SlabPricing => SlabPricing.with_href(f),
