@@ -77,7 +77,7 @@ async fn page(req: &Req, db: &Database, done: Option<Done>, answered: Answered) 
         hurdle: hurdle(&config),
     };
     req.page(html! {
-        <Layout req={req} title="Configuration" chrome={chrome}>
+        <Layout req={req} title="Configuration" chrome={chrome} head="">
             <ConfigurationScreen
                 auth_cookie_missing={chrome.auth_cookie_missing}
                 reset={done == Some(Done::Reset)}

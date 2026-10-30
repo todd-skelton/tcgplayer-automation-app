@@ -3,10 +3,13 @@ use std::sync::LazyLock;
 use corten::prelude::*;
 
 use crate::{
-    features::inventory_intake::{
-        page::RateInput,
-        queue::{self, Batches, CostRate, Run, Workflow},
-        url::{self, Selection},
+    features::{
+        batch_pricer::url::BatchPricer,
+        inventory_intake::{
+            page::RateInput,
+            queue::{self, Batches, CostRate, Run, Workflow},
+            url::{self, Selection},
+        },
     },
     layout::{Notice, Tone},
     theme::*,
@@ -72,7 +75,7 @@ pub fn BackgroundBatches<'a>(
                 </header>
                 <p class={muted()}>
                     "Keep adding inventory while queued batches run. Showing the latest 25 handoffs; counts below are SKUs. "
-                    <a href="/pending-inventory-pricer">"Open Batch Pricer"</a>"."
+                    <a href={BatchPricer::newest()}>"Open Batch Pricer"</a>"."
                 </p>
                 match batches {
                     Err(message) => {
@@ -121,7 +124,7 @@ fn RunItem<'a>(run: &'a Run, selection: &'a Selection, errors: Option<&'a Errors
     html! {
         <li>
             <div class={row(Space::_2)}>
-                <a href={format!("/pending-inventory-pricer?batch={}", run.batch_number)}>
+                <a href={BatchPricer::batch(run.batch_number)}>
                     "Batch "{run.batch_number}
                 </a>
                 <span class={Chip}>{run.status().word()}</span>

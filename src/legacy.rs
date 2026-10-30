@@ -85,6 +85,41 @@ impl Legacy {
         Self::answer(answer).await
     }
 
+    /// What one of the Node app's routes answers to deleting `path`.
+    pub async fn delete<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T, String> {
+        let answer = self
+            .http
+            .delete(format!("{}{path}", self.origin))
+            .send()
+            .await
+            .map_err(|_| "The Node app did not answer.".to_owned())?;
+        Self::answer(answer).await
+    }
+
+    /// What one of the Node app's routes answers to a file posted as `multipart/form-data` under
+    /// `field`, named `file_name`: an upload whose import is still the Node app's.
+    pub async fn send_file<T: serde::de::DeserializeOwned>(
+        &self,
+        path: &str,
+        field: &'static str,
+        file_name: &str,
+        bytes: Vec<u8>,
+    ) -> Result<T, String> {
+        let part = reqwest::multipart::Part::bytes(bytes)
+            .file_name(file_name.to_owned())
+            .mime_str("text/csv")
+            .map_err(|e| e.to_string())?;
+        let form = reqwest::multipart::Form::new().part(field, part);
+        let answer = self
+            .http
+            .post(format!("{}{path}", self.origin))
+            .multipart(form)
+            .send()
+            .await
+            .map_err(|_| "The Node app did not answer.".to_owned())?;
+        Self::answer(answer).await
+    }
+
     async fn answer<T: serde::de::DeserializeOwned>(
         answer: reqwest::Response,
     ) -> Result<T, String> {
@@ -205,9 +240,6 @@ pub mod screens {
     #[route("/")]
     pub struct Dashboard;
     #[derive(Route)]
-    #[route("/pending-inventory-pricer")]
-    pub struct PendingInventoryPricer;
-    #[derive(Route)]
     #[route("/continuous-pricing")]
     pub struct ContinuousPricing;
     #[derive(Route)]
@@ -232,7 +264,6 @@ pub mod screens {
     /// One of them, for lists of screens (the app bar's).
     #[derive(Clone, Copy)]
     pub enum Screen {
-        PendingInventoryPricer,
         ContinuousPricing,
         SlabPricing,
         ProductPriceMatrix,
@@ -245,7 +276,6 @@ pub mod screens {
     impl Href for Screen {
         fn with_href<T>(&self, f: impl FnOnce(&str) -> T) -> T {
             match self {
-                Screen::PendingInventoryPricer => PendingInventoryPricer.with_href(f),
                 Screen::ContinuousPricing => ContinuousPricing.with_href(f),
                 Screen::SlabPricing => SlabPricing.with_href(f),
                 Screen::ProductPriceMatrix => ProductPriceMatrix.with_href(f),

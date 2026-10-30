@@ -35,6 +35,13 @@ mod views;
 
 pub use views::COMPONENTS;
 
+/// The success rates below which a priced batch is worth repricing and from which it is in good
+/// shape, in percent: what the batch pricer's summary says of a batch.
+pub async fn success_rate_thresholds(db: &crate::database::Database) -> sqlx::Result<(f64, f64)> {
+    let pricing = config::load(db).await?.pricing;
+    Ok((pricing.success_rate_low, pricing.success_rate_high))
+}
+
 // Handlers are named from here, where the routes module is declared.
 use page::{
     add_line, calibration_live, calibration_report, remove_line, reset, save_default, save_pricing,

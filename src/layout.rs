@@ -5,8 +5,8 @@ use corten::prelude::*;
 use crate::{
     database::Database,
     features::{
-        configuration, http_configuration, inventory_intake, publication_configuration, pull_sheet,
-        shipping_configuration, slab_connections,
+        batch_pricer, configuration, http_configuration, inventory_intake,
+        publication_configuration, pull_sheet, shipping_configuration, slab_connections,
     },
     legacy::screens,
     theme::*,
@@ -16,7 +16,7 @@ mod app_bar;
 mod parts;
 
 pub use app_bar::AppBar;
-pub use parts::{Field, Notice, Tone};
+pub use parts::{Field, Notice, SubmitsOnChange, Tone};
 
 corten::assets::embed! {
     /// The files in `static/`, compiled into the program: `Static::STYLE_CSS` is `static/style.css`.
@@ -45,11 +45,14 @@ impl Chrome {
     }
 }
 
+/// A page: the app bar and the screen. `head` is what the page adds to its head (`""` for
+/// nothing), such as a `ReadAgain` while it waits on a job.
 #[component]
 pub fn Layout<'a>(
     req: &'a Req,
     title: &'a str,
     chrome: Chrome,
+    head: impl Render,
     children: impl Render,
 ) -> impl Document {
     html! {
@@ -62,6 +65,7 @@ pub fn Layout<'a>(
                 <link rel="icon" href={req.asset(Static::FAVICON_ICO)}>
                 <title>{title}" | TCGPlayer Automation"</title>
                 <Corten />
+                {head}
             </head>
             <body>
                 <AppBar req={req} chrome={chrome} />
@@ -74,6 +78,7 @@ pub fn Layout<'a>(
 /// A screen in the app bar: where it is, and whether this app serves it or the React app does.
 pub enum Screen {
     InventoryManager,
+    BatchPricer,
     PullSheet,
     HttpConfiguration,
     ShippingConfiguration,
@@ -86,10 +91,7 @@ pub enum Screen {
 /// The screens in the order the React app's `primaryNavigationItems` lists them.
 pub const PRIMARY: [(Screen, &str); 10] = [
     (Screen::InventoryManager, "Inventory"),
-    (
-        Screen::Legacy(screens::Screen::PendingInventoryPricer),
-        "Batch Pricer",
-    ),
+    (Screen::BatchPricer, "Batch Pricer"),
     (
         Screen::Legacy(screens::Screen::ContinuousPricing),
         "Continuous Pricing",
@@ -138,6 +140,9 @@ pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, label: &'a str) -> impl 
                 </a>
             }
             Screen::PullSheet => <a {..req.nav(&pull_sheet::url::PullSheets)}>{label}</a>,
+            Screen::BatchPricer => {
+                <a {..req.nav(&batch_pricer::url::BatchPricer::newest())}>{label}</a>
+            }
             Screen::HttpConfiguration => {
                 <a {..req.nav(&http_configuration::url::HttpSettings { done: None })}>{label}</a>
             }

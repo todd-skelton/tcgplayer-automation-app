@@ -14,6 +14,11 @@ mod views;
 
 pub use views::COMPONENTS;
 
+/// The seller the shop ships and publishes for, or empty when none is set.
+pub async fn default_seller_key(db: &crate::database::Database) -> sqlx::Result<String> {
+    Ok(config::load(db).await?.default_seller_key)
+}
+
 // Handlers are named from here, where the routes module is declared.
 use page::{reset, save, show};
 

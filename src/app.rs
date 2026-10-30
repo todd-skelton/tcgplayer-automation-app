@@ -13,8 +13,8 @@ use crate::{
     config,
     database::Database,
     features::{
-        configuration, http_configuration, inventory_intake, publication_configuration, pull_sheet,
-        shipping_configuration, slab_connections,
+        batch_pricer, configuration, http_configuration, inventory_intake,
+        publication_configuration, pull_sheet, shipping_configuration, slab_connections,
     },
     layout::{self, Static},
     legacy::{Legacy, forward},
@@ -99,6 +99,13 @@ pub fn app(shared: Shared) -> App {
                 .components(inventory_intake::COMPONENTS)
                 .deadline(Some(Duration::from_secs(30)))
         })
+        // A seller snapshot reads the seller's whole inventory from TCGplayer before it answers,
+        // and a publication plan reads the batch's results; a live stream starts at once.
+        .area(|area| {
+            batch_pricer::url::area(area, shared.clone())
+                .components(batch_pricer::COMPONENTS)
+                .deadline(Some(Duration::from_secs(5 * 60)))
+        })
         .area(|area| {
             http_configuration::url::area(area, shared.clone())
                 .components(http_configuration::COMPONENTS)
@@ -121,9 +128,16 @@ pub fn app(shared: Shared) -> App {
                 .deadline(Some(Duration::from_secs(45)))
         })
         .assets(Static)
-        .components(&[theme::TOKENS, layout::AppBar, layout::Field])
+        .components(&[
+            theme::TOKENS,
+            layout::AppBar,
+            layout::Field,
+            layout::SubmitsOnChange,
+        ])
         .components(corten_ui::COMPONENTS)
         .messages::<Msg>()
+        // Dates are written in the visitor's zone, as the React screens' `toLocaleString`.
+        .client_zone()
         // TCGplayer's product pictures.
         .policy(Policy::new().img_src("https://tcgplayer-cdn.tcgplayer.com"))
         .ready(move || {
@@ -155,6 +169,7 @@ mod tests {
         corten::types::Types::new()
             .add::<pull_sheet::SortBy>()
             .components(pull_sheet::COMPONENTS)
+            .components(batch_pricer::COMPONENTS)
             .sync(concat!(env!("CARGO_MANIFEST_DIR"), "/types/app.d.ts"));
     }
 }

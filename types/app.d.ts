@@ -89,6 +89,19 @@ declare module "corten/views" {
     static key(el: Element): string;
     static keyOf(data: { key: number; search: string; name: string; number: string; set: string; condition: string; rarity: string; quantity: number; product_line: string; order: string }): string;
   }
+  /** The view of #[component(view)] PublishItem: its holes, read from and written to the page. */
+  export class PublishItem {
+    constructor(el: Element);
+    readonly el: HTMLLIElement;
+    key: number;
+    delta: number;
+    checked: boolean;
+    /** Writes every hole of `el` (a PublishItem's root) from `data`. */
+    static fill(el: Element, data: { key: number; delta: number; checked: boolean }): void;
+    /** The key of a PublishItem's root (its key={key}). */
+    static key(el: Element): string;
+    static keyOf(data: { key: number; delta: number; checked: boolean }): string;
+  }
 }
 
 export {};

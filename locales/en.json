@@ -1,5 +1,10 @@
 {
   "pull_sheet": {
     "showing": "Showing {shown} of {total}"
+  },
+  "batch_pricer": {
+    "selected_one": "Selected {count} SKU; total quantity delta {delta}.",
+    "selected_other": "Selected {count} SKUs; total quantity delta {delta}.",
+    "publish": "Publish {count} SKUs"
   }
 }

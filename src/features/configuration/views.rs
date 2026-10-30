@@ -5,13 +5,11 @@ mod configuration_screen;
 mod report_panels;
 
 pub use configuration_screen::{
-    ConfigurationScreen, Lines, PricingForm, ProductLinesSection, Section, SnapsForm,
-    SubmitsOnChange, SupplyForm,
+    ConfigurationScreen, Lines, PricingForm, ProductLinesSection, Section, SnapsForm, SupplyForm,
 };
 pub use report_panels::{
     CalibrationPanel, OnPage, Report, ReportPanels, Reports, ShippingReportPanel,
 };
 
-/// `ConfigurationScreen` holds the stylesheet its sections share, `ReportPanels` the reports';
-/// `SubmitsOnChange` the script.
-pub const COMPONENTS: &[Component] = &[ConfigurationScreen, ReportPanels, SubmitsOnChange];
+/// `ConfigurationScreen` holds the stylesheet its sections share, `ReportPanels` the reports'.
+pub const COMPONENTS: &[Component] = &[ConfigurationScreen, ReportPanels];

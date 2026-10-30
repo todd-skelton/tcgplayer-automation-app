@@ -1,0 +1,40 @@
+.new-batch {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+.source {
+  display: grid;
+  gap: var(--space-1);
+  & input:not([type="file"]) {
+    min-width: 14rem;
+  }
+}
+.picker {
+  margin-top: var(--space-3);
+  & label {
+    display: grid;
+    gap: var(--space-1);
+    max-width: 36rem;
+  }
+}
+/* The toaster has no box of its own: its message floats at the foot of the screen. */
+.toasts {
+  position: fixed;
+  inset: auto var(--space-5) var(--space-5) auto;
+  z-index: 10;
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  & [role="status"] > div {
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--color-ok);
+    color: var(--color-accent-ink);
+    box-shadow: var(--shadow-md);
+  }
+  & [role="status"] > div[hidden] {
+    display: none;
+  }
+}

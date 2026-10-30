@@ -1,5 +1,5 @@
-// SubmitsOnChange (configuration_screen.rs): a form that is sent whenever a control in it changes,
-// as the React app saved a setting or read a report again, by submitting the control's form.
+// SubmitsOnChange (parts.rs): a form that is sent whenever a control in it changes, as the React
+// app saved a setting, read a report again or picked a batch, by submitting the control's form.
 
 /**
  * @param {Event} event

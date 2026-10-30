@@ -36,7 +36,7 @@ async fn screen(
 ) -> HtmlResult {
     let chrome = Chrome::read(db).await;
     req.page(html! {
-        <Layout req={req} title="HTTP Configuration" chrome={chrome}>
+        <Layout req={req} title="HTTP Configuration" chrome={chrome} head="">
             <SettingsScreen input={input} errors={errors} done={done} />
         </Layout>
     })

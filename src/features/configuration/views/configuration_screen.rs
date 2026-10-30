@@ -14,7 +14,7 @@ use crate::{
         },
         http_configuration,
     },
-    layout::{Field, Notice, Tone},
+    layout::{Field, Notice, SubmitsOnChange, Tone},
     theme::*,
 };
 
@@ -54,14 +54,6 @@ pub struct Lines<'a> {
     /// The hurdle a line without its own uses, shown as the field's placeholder.
     pub default_hurdle: f64,
     pub percentiles: (f64, f64),
-}
-
-/// Sends the form around it whenever one of its controls changes: a section saves itself, a
-/// report's window reads it again, as the React screen did. The form keeps a submit button for a
-/// browser without scripts.
-#[component(js)]
-pub fn SubmitsOnChange(children: impl Render) -> impl Render {
-    html! { <div on:change={js::submit(event)}>{children}</div> }
 }
 
 /// The screen: one panel per section, each saved on its own. It owns the stylesheet.

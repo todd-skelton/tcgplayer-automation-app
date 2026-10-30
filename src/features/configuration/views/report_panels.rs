@@ -7,7 +7,7 @@
 use chrono::DateTime;
 use corten::prelude::*;
 
-use super::SubmitsOnChange;
+use crate::layout::SubmitsOnChange;
 use crate::{
     features::configuration::{
         config::EVIDENCE_WINDOWS,

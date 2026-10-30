@@ -124,7 +124,7 @@ async fn page(
         notice: drawn.notice,
     };
     req.page(html! {
-        <Layout req={req} title="Inventory Manager" chrome={chrome}>
+        <Layout req={req} title="Inventory Manager" chrome={chrome} head="">
             <IntakeScreen screen={&screen} error={drawn.error} queuing={&queuing} />
         </Layout>
     })
@@ -417,7 +417,10 @@ pub async fn queue_batch(
         {ReadAgain { after: BATCHES_EVERY }.from(&again)}
         for field in &redrawn {
             let counted = field.counted();
-            <QuantityField counted={&counted} quantity={screen.quantities.get(&counted.sku).copied().unwrap_or(0)} />
+            <QuantityField
+                counted={&counted}
+                quantity={screen.quantities.get(&counted.sku).copied().unwrap_or(0)}
+            />
         }
     })
 }

@@ -28,7 +28,7 @@ async fn upload_screen(req: &Req, db: &Database, errors: &Errors) -> HtmlResult 
     let (chrome, recent) = tokio::join!(Chrome::read(db), store::recent(db));
     let recent = recent?;
     req.page(html! {
-        <Layout req={req} title="Pull Sheet" chrome={chrome}>
+        <Layout req={req} title="Pull Sheet" chrome={chrome} head="">
             <UploadScreen recent={&recent} errors={errors} />
         </Layout>
     })
@@ -111,7 +111,7 @@ pub async fn show(
     let t: Msg = req.t();
     let file_name = stored.file_name.as_str();
     req.page(html! {
-        <Layout req={&req} title={file_name} chrome={chrome}>
+        <Layout req={&req} title={file_name} chrome={chrome} head="">
             <SheetScreen
                 id={stored.pull_sheet_id}
                 file_name={file_name}

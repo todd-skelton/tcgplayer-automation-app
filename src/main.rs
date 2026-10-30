@@ -9,6 +9,7 @@ mod layout;
 mod legacy;
 mod text;
 mod theme;
+mod zone;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {

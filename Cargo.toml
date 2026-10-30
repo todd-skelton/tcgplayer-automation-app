@@ -15,9 +15,11 @@ serde_json = "1"
 schemars = "1.2"
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "chrono", "macros"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
+# The visitor's time zone, from the name the browser gives (`App::client_zone`).
+chrono-tz = "0.10"
 # The legacy relay to the Node app, and the slab data providers (rustls for their HTTPS). No
 # gzip/brotli features: an encoded answer goes on as it came.
-reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls", "multipart"] }
 futures-util = { version = "0.3", default-features = false }
 csv = "1"
 dotenvy = "0.15"

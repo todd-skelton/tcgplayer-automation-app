@@ -1,0 +1,58 @@
+.batch-summary {
+  display: grid;
+  gap: var(--space-4);
+  & p {
+    margin: 0;
+  }
+  & table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  & th,
+  & td {
+    padding: var(--space-1) var(--space-2);
+    border-bottom: 1px solid var(--color-line);
+    text-align: right;
+  }
+  & th:first-child,
+  & td:first-child {
+    text-align: left;
+  }
+  & th {
+    font-weight: 600;
+  }
+}
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  & > .card {
+    flex: 1;
+    min-width: 20rem;
+  }
+}
+.card {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  & h3 {
+    margin: 0 0 var(--space-2);
+    font-size: var(--font-size-md);
+  }
+}
+.above {
+  color: var(--color-ok);
+}
+.below {
+  color: var(--color-danger);
+}
+.caution {
+  color: var(--color-warn);
+}
+.chip {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+}

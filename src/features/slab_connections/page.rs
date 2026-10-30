@@ -27,7 +27,7 @@ async fn screen(
 ) -> HtmlResult {
     let chrome = Chrome::read(db).await;
     req.page(html! {
-        <Layout req={req} title="Slab data connections" chrome={chrome}>
+        <Layout req={req} title="Slab data connections" chrome={chrome} head="">
             <ConnectionsScreen connections={connections} answered={answered} />
         </Layout>
     })
