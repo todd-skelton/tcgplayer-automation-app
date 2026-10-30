@@ -12,7 +12,7 @@ use crate::{
         screen::Screen,
         selling_history::{
             OrderCoverage, PercentileStatus, Ready, Report, Scope, SellThroughStatus, Summary,
-            UnavailableReason, WINDOWS,
+            UnavailableReason, Window,
         },
         url::{self, View},
     },
@@ -122,9 +122,12 @@ fn ScopeControls<'a>(scope: &'a Scope, lines: &'a [String]) -> impl Render {
                     <label class={Choice}>
                         <span>"History window"</span>
                         <select name={f.history_days}>
-                            for days in WINDOWS {
-                                <option value={days} selected={days == scope.window_days}>
-                                    "Last "{days}" days"
+                            for window in Window::ALL {
+                                <option
+                                    value={window}
+                                    selected={window.days() == scope.window_days}
+                                >
+                                    "Last "{window.days()}" days"
                                 </option>
                             }
                         </select>

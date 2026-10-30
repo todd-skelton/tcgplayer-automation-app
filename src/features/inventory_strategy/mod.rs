@@ -82,12 +82,12 @@ pub mod url {
         pub view: View,
     }
 
-    /// The selling history's scope, and what the last post did. The scope is text, read leniently
-    /// as the React screen read it: an unknown window is the default one (corten#447).
+    /// The selling history's scope, and what the last post did. A window the screen no longer
+    /// offers (an old bookmark) reads as unset, so as the default one, as the React screen read it.
     #[derive(Clone, Debug, Default, serde::Deserialize, corten::Route, corten::Fields)]
     #[route(query)]
     pub struct View {
-        pub history_days: Option<String>,
+        pub history_days: Option<super::selling_history::Window>,
         pub history_product_line: Option<String>,
         pub done: Option<super::views::Done>,
         /// The numbers the message names: SKUs refreshed, the batch, its SKUs, and its state.
@@ -101,7 +101,7 @@ pub mod url {
         /// The same scope, saying nothing.
         pub fn quiet(&self) -> View {
             View {
-                history_days: self.history_days.clone(),
+                history_days: self.history_days,
                 history_product_line: self.history_product_line.clone(),
                 ..View::default()
             }
@@ -112,10 +112,7 @@ pub mod url {
             let default = super::selling_history::Scope::default();
             let window_days = self
                 .history_days
-                .as_deref()
-                .and_then(|d| d.trim().parse::<i64>().ok())
-                .filter(|d| super::selling_history::WINDOWS.contains(d))
-                .unwrap_or(default.window_days);
+                .map_or(default.window_days, super::selling_history::Window::days);
             let product_line = self
                 .history_product_line
                 .as_deref()

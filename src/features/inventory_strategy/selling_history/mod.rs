@@ -14,7 +14,37 @@ use crate::features::inventory_economics::ledger::proceeds::iso;
 pub mod source;
 
 pub const SELL_THROUGH_HORIZONS: [i64; 4] = [7, 30, 60, 90];
-pub const WINDOWS: [i64; 4] = [90, 180, 365, 730];
+
+/// A window the selling history offers, written in an address as its days.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, corten::UrlValue)]
+pub enum Window {
+    #[serde(rename = "90")]
+    Days90,
+    #[serde(rename = "180")]
+    Days180,
+    #[serde(rename = "365")]
+    Days365,
+    #[serde(rename = "730")]
+    Days730,
+}
+
+impl Window {
+    pub const ALL: [Window; 4] = [
+        Window::Days90,
+        Window::Days180,
+        Window::Days365,
+        Window::Days730,
+    ];
+
+    pub fn days(self) -> i64 {
+        match self {
+            Window::Days90 => 90,
+            Window::Days180 => 180,
+            Window::Days365 => 365,
+            Window::Days730 => 730,
+        }
+    }
+}
 const DAY_MS: f64 = 86_400_000.0;
 const DETAIL_LIMIT: usize = 50;
 
