@@ -15,6 +15,13 @@ use crate::{
     zone::Visitor,
 };
 
+/// A product as the picker offers it: its id, its label, and the other words that find it.
+pub struct Pick {
+    pub id: i32,
+    pub label: String,
+    pub terms: Vec<String>,
+}
+
 /// The page as the choices in its address draw it.
 pub struct Screen {
     pub lines: Vec<ProductLine>,
@@ -26,11 +33,11 @@ pub struct Screen {
     pub product_type: ProductType,
     /// The products to choose from, or why they could not be read.
     pub products: Result<Vec<Product>, String>,
-    /// Each product to choose from as the picker offers it: its id and label.
-    pub choices: Vec<(String, String)>,
+    /// Each product to choose from as the picker offers it.
+    pub choices: Vec<Pick>,
     pub product: Option<Product>,
     /// The chosen product's id, as the picker's value.
-    pub chosen: Option<String>,
+    pub chosen: Option<i32>,
     pub language: Option<String>,
     /// The chosen product's prices, or why they could not be read.
     pub matrix: Option<Result<Matrix, String>>,
@@ -74,11 +81,15 @@ impl Screen {
             .as_ref()
             .map(|all| {
                 all.iter()
-                    .map(|p| (p.product_id.to_string(), p.label()))
+                    .map(|p| Pick {
+                        id: p.product_id,
+                        label: p.label(),
+                        terms: p.terms(),
+                    })
                     .collect()
             })
             .unwrap_or_default();
-        let chosen = product.as_ref().map(|p| p.product_id.to_string());
+        let chosen = product.as_ref().map(|p| p.product_id);
         let matrix = match &product {
             Some(p) => Some(matrix::matrix(legacy, p, language.as_deref(), suggested).await),
             None => None,

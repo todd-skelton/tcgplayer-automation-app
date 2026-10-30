@@ -34,6 +34,34 @@ impl Product {
         }
     }
 
+    /// The card number as a seller types it, so the picker finds the product by any of them and
+    /// lists it first when one is typed whole: as written, with the number padded to the set's
+    /// width and without (`4/102`, `004/102`), and the number alone (`4`).
+    pub fn terms(&self) -> Vec<String> {
+        let Some(number) = self
+            .card_number
+            .as_deref()
+            .map(str::trim)
+            .filter(|n| !n.is_empty())
+        else {
+            return Vec::new();
+        };
+        let mut terms = vec![number.to_owned()];
+        if let Some((left, right)) = number.split_once('/') {
+            let bare = match left.trim_start_matches('0') {
+                "" => "0",
+                bare => bare,
+            };
+            let padded = format!("{bare:0>width$}/{right}", width = right.len());
+            for term in [format!("{bare}/{right}"), padded, bare.to_owned()] {
+                if !terms.contains(&term) {
+                    terms.push(term);
+                }
+            }
+        }
+        terms
+    }
+
     /// The language a product opens in: English when it has it, else its first.
     pub fn default_language(&self) -> Option<&str> {
         self.languages
@@ -144,6 +172,18 @@ pub mod tests {
         assert_eq!(p.language(Some("Japanese")), Some("Japanese"));
         assert_eq!(p.language(Some("French")), Some("English"));
         assert_eq!(p.label(), "58/102 - Pikachu - Base Set");
+    }
+
+    #[test]
+    fn a_card_number_is_found_padded_or_not_and_alone() {
+        let numbered = |n: &str| Product {
+            card_number: Some(n.into()),
+            ..product(1, &[])
+        };
+        assert_eq!(numbered("4/102").terms(), ["4/102", "004/102", "4"]);
+        assert_eq!(numbered("004/102").terms(), ["004/102", "4/102", "4"]);
+        assert_eq!(numbered("SWSH236").terms(), ["SWSH236"]);
+        assert!(numbered(" ").terms().is_empty());
     }
 
     #[test]

@@ -256,23 +256,21 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
             .find(|(line, _)| *line == id)
             .map_or_else(|| format!("Product Line {id}"), |(_, name)| name.clone())
     };
-    // The product lines not configured yet. The picker's values are text, so each id is written
-    // as text for it (corten#376).
+    // The product lines not configured yet.
     let available = move || {
         lines
             .names
             .iter()
             .filter(|(id, _)| !lines.stored.settings.contains_key(id))
-            .map(|(id, name)| (id.to_string(), name.as_str()))
+            .map(|(id, name)| Choice::new(*id, name.as_str()))
             .collect::<Vec<_>>()
     };
     html! {
         let e = lines.errors.within(ProductLinesId);
-        let available = available();
-        let choices: Vec<Choice<&str>> = available.iter().map(|(id, label)| Choice { value: id.as_str(), label }).collect();
+        let choices = available();
         let aria = e.aria(a.product_line);
         let picker = Picker {
-            value: Some(lines.add.product_line.as_str()).filter(|id| !id.is_empty()),
+            value: lines.add.product_line,
             attrs: &aria,
             ..Picker::new("product-line-pick", a.product_line, "Search product lines...", "No matches", &choices)
         };

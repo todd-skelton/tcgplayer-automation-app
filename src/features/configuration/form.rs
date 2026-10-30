@@ -299,11 +299,10 @@ impl DefaultPercentileInput {
     }
 }
 
-/// A product line to price differently. The product line is its id as text: the picker's
-/// choices are text (corten#376).
+/// A product line to price differently, by its id; none when nothing was picked.
 #[derive(Clone, Debug, Default, Deserialize, Fields)]
 pub struct AddLineInput {
-    pub product_line: String,
+    pub product_line: Option<i32>,
     #[serde(default)]
     pub percentile: String,
     #[serde(default)]
@@ -322,8 +321,8 @@ impl AddLineInput {
     ) -> Result<(i32, LineSetting), Errors> {
         let f = Self::FIELDS;
         let mut e = Errors::new();
-        let id = match self.product_line.trim().parse::<i32>() {
-            Ok(id) if configurable(id) => id,
+        let id = match self.product_line {
+            Some(id) if configurable(id) => id,
             _ => {
                 e.add(
                     f.product_line,
@@ -401,7 +400,7 @@ mod tests {
     #[test]
     fn a_skipped_line_keeps_no_hurdle() {
         let input = AddLineInput {
-            product_line: "3".into(),
+            product_line: Some(3),
             daily_return_hurdle: "0.01".into(),
             skip: true,
             ..Default::default()
@@ -416,7 +415,7 @@ mod tests {
     #[test]
     fn a_line_already_configured_is_refused() {
         let input = AddLineInput {
-            product_line: "3".into(),
+            product_line: Some(3),
             percentile: "70".into(),
             ..Default::default()
         };

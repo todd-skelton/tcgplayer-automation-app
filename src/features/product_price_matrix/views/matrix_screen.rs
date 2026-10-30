@@ -211,8 +211,10 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, visitor: Visitor, t: Msg) -> impl Re
 fn ProductPicker<'a>(screen: &'a Screen) -> impl Render {
     let f = Choice::FIELDS;
     html! {
-        let options: Vec<Option_<&str>> = screen.choices.iter().map(|(id, label)| Option_ { value: id.as_str(), label: label.as_str() }).collect();
-        let picker = Picker { value: screen.chosen.as_deref(), disabled: options.is_empty(), ..Picker::new("product", f.product, "Choose a product", "No matching products", &options) };
+        // A choice's terms are borrowed `&str`s, so each product's are gathered first.
+        let terms: Vec<Vec<&str>> = screen.choices.iter().map(|c| c.terms.iter().map(String::as_str).collect()).collect();
+        let options: Vec<Option_<i32>> = screen.choices.iter().zip(&terms).map(|(c, terms)| Option_ { terms, ..Option_::new(c.id, &c.label) }).collect();
+        let picker = Picker { value: screen.chosen, disabled: options.is_empty(), ..Picker::new("product", f.product, "Choose a product", "No matching products", &options) };
         <ComboBox field={&picker} />
     }
 }
