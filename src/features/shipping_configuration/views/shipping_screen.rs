@@ -36,7 +36,7 @@ pub fn ShippingScreen<'a>(
                         "These settings are stored on the server and used by the shipping export tool when it loads live seller orders and generates EasyPost shipment rows."
                     </span>
                     <a
-                        href={crate::features::shipping_export::url::ShippingWorkflow { step: None, seller: None, filters: Default::default() }}
+                        href={crate::features::shipping_export::url::ShippingWorkflow { step: None, seller: None, edit: None, filters: Default::default() }}
                     >
                         "Open Shipping Export"
                     </a>

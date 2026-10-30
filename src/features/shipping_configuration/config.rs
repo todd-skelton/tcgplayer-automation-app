@@ -85,6 +85,14 @@ impl EasyPostMode {
         }
     }
 
+    /// The mode as the screens name it: `test` or `production`.
+    pub fn name(self) -> &'static str {
+        match self {
+            EasyPostMode::Test => "test",
+            EasyPostMode::Production => "production",
+        }
+    }
+
     /// The environment variable that holds this mode's API key.
     pub fn key_name(self) -> &'static str {
         match self {

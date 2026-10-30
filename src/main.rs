@@ -3,6 +3,7 @@
 //! serves both while the port runs.
 mod app;
 mod config;
+mod csv_text;
 mod database;
 mod features;
 mod layout;

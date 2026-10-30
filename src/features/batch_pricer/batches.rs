@@ -540,44 +540,24 @@ pub async fn results(legacy: &Legacy, batch: i32, scope: Scope) -> Result<Vec<Ro
 }
 
 /// The rows as CSV the way the React screen wrote them (Papa Parse): the first row's columns as
-/// the header, a field quoted when it holds a comma, a quote, a line break, or space at either
-/// end, lines ended by CRLF and none after the last.
+/// the header.
 pub fn csv(rows: &[Row]) -> String {
-    fn field(text: &str) -> String {
-        let quoted =
-            text.contains([',', '"', '\n', '\r']) || text.starts_with(' ') || text.ends_with(' ');
-        if quoted {
-            format!("\"{}\"", text.replace('"', "\"\""))
-        } else {
-            text.to_owned()
-        }
-    }
     let Some(first) = rows.first() else {
         return String::new();
     };
     let header: Vec<&str> = first.0.iter().map(|(name, _)| name.as_str()).collect();
-    let mut lines = vec![
+    let lines = rows.iter().map(|row| {
         header
             .iter()
-            .map(|h| field(h))
-            .collect::<Vec<_>>()
-            .join(","),
-    ];
-    for row in rows {
-        let line: Vec<String> = header
-            .iter()
             .map(|name| {
-                field(
-                    row.0
-                        .iter()
-                        .find(|(n, _)| n == name)
-                        .map_or("", |(_, v)| v.as_str()),
-                )
+                row.0
+                    .iter()
+                    .find(|(n, _)| n == name)
+                    .map_or_else(String::new, |(_, v)| v.clone())
             })
-            .collect();
-        lines.push(line.join(","));
-    }
-    lines.join("\r\n")
+            .collect()
+    });
+    crate::csv_text::unparse(&header, lines)
 }
 
 #[derive(Serialize)]

@@ -1,0 +1,46 @@
+.shipment-editor {
+  inset-inline: auto 0;
+  inset-block: 0;
+  width: min(420px, 100vw);
+  max-height: 100dvh;
+  height: 100dvh;
+  margin: 0;
+  padding: var(--space-5);
+  border: 0;
+  border-inline-start: 1px solid var(--color-line);
+  box-shadow: var(--shadow-sm);
+  overflow-y: auto;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  & h2 {
+    margin: 0;
+  }
+  & a {
+    text-decoration: none;
+    font-size: 1.25rem;
+  }
+}
+.form {
+  display: grid;
+  gap: var(--space-3);
+  & h3 {
+    margin: var(--space-2) 0 0;
+    font-size: var(--font-size-sm);
+  }
+  &[aria-busy] .save::after {
+    content: " …";
+  }
+}
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.save {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-ink);
+}

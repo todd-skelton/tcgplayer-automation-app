@@ -1,20 +1,21 @@
 use std::{collections::HashMap, time::SystemTime};
 
 use chrono::{Duration, Utc};
-use corten::{ClientZone, axum::http::StatusCode, i18n::Zone, prelude::*};
+use corten::{ClientZone, Media, axum::http::StatusCode, i18n::Zone, prelude::*};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    postage::{self, Postage},
+    editing::ShipmentInput,
+    postage::{self, Bought, Buying, Postage, Scope, Status},
     ship::Pending,
-    shipments::{Batch, Direction},
+    shipments::{self, Batch, Direction, Planned},
     source,
     steps::{Counts, Step},
     url::{self, ShippingWorkflow},
     value,
     views::{
-        LoadOrdersStep, Loading, PullSheetStep, Pulled, SaleValueFigures, ShippingWorkflowScreen,
-        StepBar,
+        BuyAllAction, BuyPostageStep, LoadOrdersStep, Loading, PostageRow, PullSheetStep, Pulled,
+        SaleValueFigures, ShipmentEditor, ShipmentEditorForm, ShippingWorkflowScreen, StepBar,
     },
     workflow::{self, Saved, Workflow},
 };
@@ -41,7 +42,16 @@ impl ShippingWorkflow {
         ShippingWorkflow {
             step: Some(step),
             seller: None,
+            edit: None,
             filters: SheetQuery::default(),
+        }
+    }
+
+    /// The Buy Postage step with `reference`'s editor open.
+    pub fn editing(reference: &str) -> Self {
+        ShippingWorkflow {
+            edit: Some(reference.to_owned()),
+            ..ShippingWorkflow::at(Step::BuyPostage)
         }
     }
 }
@@ -57,8 +67,23 @@ pub struct At {
     pub seller: Option<String>,
 }
 
-/// The batch in progress as the page draws it: the orders planned into shipments under the
-/// current settings, with the shipments edited by hand in place, and the postage bought for them.
+/// The batch's orders planned into shipments under the current settings, with the shipments
+/// edited by hand in place.
+fn plan(config: &ShippingConfig, workflow: Option<&Workflow>) -> Batch {
+    let Some(w) = workflow else {
+        return Batch::default();
+    };
+    let mut batch = Batch::plan(w.orders.clone(), config);
+    for planned in &mut batch.shipments {
+        if let Some(edited) = w.edits.get(planned.reference()) {
+            planned.shipment = edited.clone();
+        }
+    }
+    batch
+}
+
+/// The batch in progress as the page draws it: the shipments planned ([`plan`]) and the postage
+/// bought for them.
 struct Shown {
     config: ShippingConfig,
     saved: Option<Saved>,
@@ -74,19 +99,7 @@ impl Shown {
         if let Some(s) = &mut saved {
             refresh_intake(db, legacy, &config, &mut s.workflow).await?;
         }
-        let mut batch = Batch::plan(
-            saved
-                .as_ref()
-                .map_or_else(Vec::new, |s| s.workflow.orders.clone()),
-            &config,
-        );
-        if let Some(s) = &saved {
-            for planned in &mut batch.shipments {
-                if let Some(edited) = s.workflow.edits.get(planned.reference()) {
-                    planned.shipment = edited.clone();
-                }
-            }
-        }
+        let batch = plan(&config, saved.as_ref().map(|s| &s.workflow));
         let postage = postage::bought(legacy, Direction::Outbound, &batch.shipments).await;
         Ok(Shown {
             config,
@@ -98,6 +111,34 @@ impl Shown {
 
     fn workflow(&self) -> Option<&Workflow> {
         self.saved.as_ref().map(|s| &s.workflow)
+    }
+
+    /// A shipment's postage: the label bought for it, or the last purchase that bought none.
+    fn outbound(&self, reference: &str) -> Option<&Bought> {
+        self.postage
+            .as_ref()
+            .ok()
+            .and_then(|p| p.get(reference))
+            .or_else(|| self.workflow().and_then(|w| w.attempts.get(reference)))
+    }
+
+    fn returned(&self, reference: &str) -> Option<&Bought> {
+        self.workflow().and_then(|w| w.returns.get(reference))
+    }
+
+    /// Each shipment as the Buy Postage step shows it.
+    fn postage_rows(&self) -> Vec<PostageRow<'_>> {
+        self.batch
+            .shipments
+            .iter()
+            .map(|planned| PostageRow {
+                planned,
+                items: self.batch.orders_of(planned).map(|o| o.item_count).sum(),
+                value: value::of_orders(self.batch.orders_of(planned)),
+                outbound: self.outbound(planned.reference()),
+                returned: self.returned(planned.reference()),
+            })
+            .collect()
     }
 
     fn purchased(&self) -> usize {
@@ -264,12 +305,26 @@ pub async fn show(
     let at = url::ShippingWorkflow {
         step: at.step,
         seller: at.seller,
+        edit: at.edit,
         filters: at.filters,
     };
-    page(&req, &db, &legacy, Visitor::of(zone.as_ref()), &at, None).await
+    page(
+        &req,
+        &db,
+        &legacy,
+        Visitor::of(zone.as_ref()),
+        &at,
+        None,
+        None,
+    )
+    .await
 }
 
-/// The page at `at`, with why the last post was refused when it was.
+/// A shipment's editor as sent, and why it was refused.
+type Draft<'a> = (&'a ShipmentInput, &'a Errors);
+
+/// The page at `at`, with why the last post was refused when it was, and the editor as it was
+/// sent when that was refused.
 async fn page(
     req: &Req,
     db: &Database,
@@ -277,6 +332,7 @@ async fn page(
     visitor: Visitor,
     at: &url::ShippingWorkflow,
     problem: Option<&str>,
+    draft: Option<Draft<'_>>,
 ) -> HtmlResult {
     let (chrome, shown) = tokio::join!(Chrome::read(db), Shown::read(db, legacy));
     let shown = shown?;
@@ -325,11 +381,30 @@ async fn page(
         coverage,
     };
     let batch = &shown.batch;
+    let mode = EasyPostMode::of_deployment();
+    let rows = match step {
+        Step::BuyPostage => shown.postage_rows(),
+        _ => Vec::new(),
+    };
+    let no_errors = Errors::new();
+    let stored = at
+        .edit
+        .as_deref()
+        .and_then(|r| batch.shipment(r))
+        .map(|p| ShipmentInput::of(&p.shipment));
+    let editor = at
+        .edit
+        .as_deref()
+        .filter(|_| step == Step::BuyPostage)
+        .and_then(|reference| match draft {
+            Some((input, errors)) => Some((reference, input, errors)),
+            None => stored.as_ref().map(|input| (reference, input, &no_errors)),
+        });
     req.page(html! {
         <Layout req={req} title="Shipping Workflow" chrome={chrome} head="">
             <ShippingWorkflowScreen
                 step={step}
-                mode={EasyPostMode::of_deployment()}
+                mode={mode}
                 problem={problem}
                 bar={&html! {
                     <StepBar
@@ -340,7 +415,11 @@ async fn page(
                                 <SaleValueFigures value={value} on_image={false} t={t} />
                             }
                         }}
-                        action={&""}
+                        action={&html! {
+                            if step == Step::BuyPostage {
+                                <BuyAllAction mode={mode} shipments={counts.shipments} />
+                            }
+                        }}
                         unshipped_warning={unshipped.as_deref()}
                     />
                 }}
@@ -355,6 +434,12 @@ async fn page(
                                 filters={&at.filters}
                                 t={t}
                             />
+                        }
+                    }
+                    Step::BuyPostage => {
+                        <BuyPostageStep rows={&rows} mode={mode} t={t} />
+                        if let Some((reference, input, errors)) = editor {
+                            <ShipmentEditor reference={reference} input={input} errors={errors} />
                         }
                     }
                     _ => {
@@ -384,6 +469,7 @@ async fn refused(
         visitor,
         &ShippingWorkflow::at(step),
         Some(why),
+        None,
     )
     .await?;
     *page.status_mut() = StatusCode::CONFLICT;
@@ -551,4 +637,254 @@ pub async fn import_history(
 pub async fn new_batch(req: Req, State(db): State<Database>) -> HtmlResult {
     workflow::replace(&db, &Workflow::default()).await?;
     req.redirect(&ShippingWorkflow::at(Step::LoadOrders))
+}
+
+/// Why postage cannot be bought now: another purchase is running, or the mode has no key.
+fn cannot_buy(mode: EasyPostMode) -> Option<String> {
+    (!mode.has_key()).then(|| {
+        format!(
+            "{} is not set. Postage purchase is disabled.",
+            mode.key_name()
+        )
+    })
+}
+
+const BUYING: &str = "Postage is already being bought. Try again when that purchase finishes.";
+
+/// Postage for every shipment, a label size at a time, as the React screen's Buy All Postage
+/// bought it: each size in one purchase, with one PDF of its labels for the Print step. A
+/// shipment that already has postage is skipped by the Node app. A purchase that fails stops the
+/// rest.
+pub async fn buy_all(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+) -> HtmlResult {
+    let visitor = Visitor::of(zone.as_ref());
+    let mode = EasyPostMode::of_deployment();
+    let Some(_buying) = Buying::start() else {
+        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, BUYING).await;
+    };
+    if let Some(why) = cannot_buy(mode) {
+        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, &why).await;
+    }
+    let (config, saved) = tokio::join!(
+        shipping_configuration::settings(&db),
+        workflow::current(&db)
+    );
+    let batch = plan(&config?, saved?.as_ref().map(|s| &s.workflow));
+    if batch.shipments.is_empty() {
+        let why = "Load orders before buying postage.";
+        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, why).await;
+    }
+    for size in batch.label_sizes() {
+        let of_size: Vec<Planned> = batch
+            .shipments
+            .iter()
+            .filter(|p| p.shipment.options.label_size == size)
+            .cloned()
+            .collect();
+        match postage::buy(&legacy, size, Direction::Outbound, Scope::Bulk, &of_size).await {
+            Ok(bill) => {
+                workflow::change(&db, move |w| {
+                    w.attempted(bill.mode, bill.results);
+                    w.set_batch_label(size, bill.batch_label);
+                })
+                .await?;
+            }
+            Err(why) => {
+                let why = format!("Failed to buy {size} postage: {why}");
+                return refused(&req, &db, &legacy, visitor, Step::BuyPostage, &why).await;
+            }
+        }
+    }
+    req.redirect(&ShippingWorkflow::at(Step::BuyPostage))
+}
+
+#[derive(Deserialize, Fields)]
+pub struct BuyInput {
+    #[serde(default)]
+    pub direction: Direction,
+    /// Set once the operator said to buy a second label.
+    #[serde(default)]
+    pub again: bool,
+}
+
+/// Postage, or a return label, for one shipment. A second label in the same mode is bought only
+/// when the operator said so (`again`), since the first is not refunded.
+pub async fn buy_shipment(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+    Params(at): Params<url::BuyShipmentPostage>,
+    Form(input): Form<BuyInput>,
+) -> HtmlResult {
+    let visitor = Visitor::of(zone.as_ref());
+    let mode = EasyPostMode::of_deployment();
+    let reference = at.reference;
+    let direction = input.direction;
+    let Some(_buying) = Buying::start() else {
+        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, BUYING).await;
+    };
+    if let Some(why) = cannot_buy(mode) {
+        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, &why).await;
+    }
+    let shown = Shown::read(&db, &legacy).await?;
+    let Some(planned) = shown.batch.shipment(&reference) else {
+        let why = format!("Shipment {reference} is not in this batch.");
+        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, &why).await;
+    };
+    let (what, bought) = match direction {
+        Direction::Outbound => ("Postage", shown.outbound(&reference)),
+        Direction::Return => ("A return label", shown.returned(&reference)),
+    };
+    if bought.is_some_and(|b| b.bought_in(mode)) && !input.again {
+        let why = format!(
+            "{what} was already bought for shipment {reference} in {} mode. Confirm to buy another.",
+            mode.name()
+        );
+        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, &why).await;
+    }
+    let item = Planned {
+        shipment: planned.shipment.toward(direction),
+        orders: planned.orders.clone(),
+    };
+    let size = item.shipment.options.label_size;
+    let bill = match postage::buy(
+        &legacy,
+        size,
+        direction,
+        Scope::Single,
+        std::slice::from_ref(&item),
+    )
+    .await
+    {
+        Ok(bill) => bill,
+        Err(why) => {
+            let why = format!("Failed to buy postage: {why}");
+            return refused(&req, &db, &legacy, visitor, Step::BuyPostage, &why).await;
+        }
+    };
+    let missed = bill
+        .results
+        .iter()
+        .find(|r| r.status != Status::Purchased)
+        .map(|r| {
+            r.error
+                .clone()
+                .unwrap_or_else(|| "no label was bought".into())
+        });
+    workflow::change(&db, move |w| match direction {
+        Direction::Outbound => w.attempted(bill.mode, bill.results),
+        Direction::Return => postage::merge(&mut w.returns, bill.mode, bill.results),
+    })
+    .await?;
+    if let Some(why) = missed {
+        let what = match direction {
+            Direction::Outbound => "Postage",
+            Direction::Return => "The return label",
+        };
+        let why = format!("{what} for shipment {reference} was not bought: {why}");
+        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, &why).await;
+    }
+    req.redirect(&ShippingWorkflow::at(Step::BuyPostage))
+}
+
+/// A shipment, or its return, as the CSV EasyPost imports.
+pub async fn shipment_csv(
+    State(db): State<Database>,
+    Params(at): Params<url::ShipmentCsv>,
+) -> corten::Result<Media> {
+    let (config, saved) = tokio::join!(
+        shipping_configuration::settings(&db),
+        workflow::current(&db)
+    );
+    let batch = plan(&config?, saved?.as_ref().map(|s| &s.workflow));
+    let Some(planned) = batch.shipment(&at.reference) else {
+        return Err(corten::Error::not_found());
+    };
+    let direction = at.direction.unwrap_or_default();
+    let shipment = planned.shipment.toward(direction);
+    let name = shipments::csv_file_name(&shipment, direction, Utc::now());
+    Ok(Media::new("text/csv; charset=utf-8", shipments::csv(&[shipment])).attachment(&name))
+}
+
+/// The shipment as edited, kept for the batch in place of the one planned; one edited back to
+/// the plan is no longer an edit.
+pub async fn edit_shipment(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+    Params(at): Params<url::EditShipment>,
+    Form(input): Form<ShipmentInput>,
+) -> HtmlResult {
+    let visitor = Visitor::of(zone.as_ref());
+    let reference = at.reference;
+    let (config, saved) = tokio::join!(
+        shipping_configuration::settings(&db),
+        workflow::current(&db)
+    );
+    let (config, saved) = (config?, saved?);
+    let orders = saved
+        .as_ref()
+        .map_or_else(Vec::new, |s| s.workflow.orders.clone());
+    let edits = saved.map(|s| s.workflow.edits).unwrap_or_default();
+    // Edits are kept by the reference planned, which an edit may have changed.
+    let planned = Batch::plan(orders, &config);
+    let shown: Vec<(&str, &shipments::Shipment)> = planned
+        .shipments
+        .iter()
+        .map(|p| {
+            (
+                p.reference(),
+                edits.get(p.reference()).unwrap_or(&p.shipment),
+            )
+        })
+        .collect();
+    let Some(&(original, current)) = shown.iter().find(|(_, s)| s.reference == reference) else {
+        let why = format!("Shipment {reference} is not in this batch.");
+        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, &why).await;
+    };
+    let taken = |r: &str| shown.iter().any(|(_, s)| s.reference == r);
+    match input.read(current, taken) {
+        Ok(edited) => {
+            let original = original.to_owned();
+            let as_planned = planned.shipment(&original).map(|p| p.shipment.clone());
+            workflow::change(&db, move |w| {
+                if as_planned.as_ref() == Some(&edited) {
+                    w.edits.remove(&original);
+                } else {
+                    w.edits.insert(original, edited);
+                }
+            })
+            .await?;
+            req.redirect(&ShippingWorkflow::at(Step::BuyPostage))
+        }
+        Err(errors) => {
+            let editing = ShippingWorkflow::editing(&reference);
+            req.invalid(
+                &errors,
+                ShipmentEditorForm {
+                    reference: &reference,
+                    input: &input,
+                    errors: &errors,
+                },
+                || {
+                    page(
+                        &req,
+                        &db,
+                        &legacy,
+                        visitor,
+                        &editing,
+                        None,
+                        Some((&input, &errors)),
+                    )
+                },
+            )
+            .await
+        }
+    }
 }

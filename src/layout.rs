@@ -141,7 +141,7 @@ pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, label: &'a str) -> impl 
             Screen::PullSheet => <a {..req.nav(&pull_sheet::url::PullSheets)}>{label}</a>,
             Screen::ShippingWorkflow => {
                 <a
-                    {..req.nav(&shipping_export::url::ShippingWorkflow { step: None, seller: None, filters: Default::default() })}
+                    {..req.nav(&shipping_export::url::ShippingWorkflow { step: None, seller: None, edit: None, filters: Default::default() })}
                 >
                     {label}
                 </a>

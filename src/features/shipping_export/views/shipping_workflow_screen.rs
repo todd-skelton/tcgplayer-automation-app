@@ -168,3 +168,20 @@ pub fn StepBar<'a>(
         </section>
     }
 }
+
+/// The Buy Postage step's action: postage for every shipment, a label size at a time. In test
+/// mode it says so in the warning color, as the React button did.
+#[component(css = ShippingWorkflowScreen)]
+pub fn BuyAllAction(mode: EasyPostMode, shipments: usize) -> impl Render {
+    let test = mode == EasyPostMode::Test;
+    html! {
+        <form method="post" action={super::super::url::BuyAllPostage} class={Act}>
+            <button
+                disabled={shipments == 0 || !mode.has_key()}
+                class={(Button, Primary, test.then_some(TestMode))}
+            >
+                "Buy All Postage"
+            </button>
+        </form>
+    }
+}

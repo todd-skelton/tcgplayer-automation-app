@@ -11,11 +11,14 @@ use sqlx::types::Json;
 
 use super::{
     orders::Order,
-    postage::{BatchLabel, Postage},
+    postage::{BatchLabel, Bought, Postage, Purchase, Status},
     ship::{Messaged, Tracked},
     shipments::Shipment,
 };
-use crate::{database::Database, features::shipping_configuration::LabelSize};
+use crate::{
+    database::Database,
+    features::shipping_configuration::{EasyPostMode, LabelSize},
+};
 
 /// The one workflow there is: the shop ships one batch at a time.
 const KEY: &str = "current";
@@ -29,6 +32,9 @@ pub struct Workflow {
     pub source: String,
     pub warnings: Vec<String>,
     pub orders: Vec<Order>,
+    /// Outbound purchases that bought no label (failed, or skipped as not domestic), by shipment,
+    /// until one does: the Node app's lookups only find labels bought.
+    pub attempts: Postage,
     /// Return labels bought, by shipment.
     pub returns: Postage,
     /// One PDF of each label size's labels.
@@ -84,6 +90,25 @@ impl Workflow {
 
     pub fn is_packed(&self, reference: &str) -> bool {
         self.packed.iter().any(|r| r == reference)
+    }
+
+    /// Keeps what outbound purchases did: a label bought, or a skip because one was bought
+    /// before, clears the shipment's attempt; anything else is its attempt.
+    pub fn attempted(&mut self, mode: EasyPostMode, results: Vec<Purchase>) {
+        for result in results {
+            if result.status == Status::Purchased || result.easypost_shipment_id.is_some() {
+                self.attempts.remove(&result.reference);
+            } else {
+                self.attempts.insert(
+                    result.reference.clone(),
+                    Bought {
+                        mode,
+                        result,
+                        purchased_at: None,
+                    },
+                );
+            }
+        }
     }
 }
 
@@ -154,4 +179,51 @@ pub async fn change<R>(
         .await?;
     tx.commit().await?;
     Ok(Some(out))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn result(reference: &str, status: Status, shipment: Option<&str>) -> Purchase {
+        Purchase {
+            reference: reference.into(),
+            order_numbers: vec![reference.into()],
+            status,
+            easypost_shipment_id: shipment.map(Into::into),
+            tracking_code: None,
+            selected_rate: None,
+            label_url: None,
+            label_pdf_url: None,
+            error: Some("why".into()),
+        }
+    }
+
+    #[test]
+    fn an_attempt_is_kept_until_a_label_is_bought() {
+        let mut w = Workflow::default();
+        let mode = EasyPostMode::Test;
+        w.attempted(
+            mode,
+            vec![
+                result("A", Status::Failed, None),
+                result("B", Status::Skipped, None),
+                result("C", Status::Failed, None),
+            ],
+        );
+        w.attempted(
+            mode,
+            vec![
+                result("A", Status::Purchased, Some("shp_1")),
+                result("C", Status::Skipped, Some("shp_0")),
+            ],
+        );
+        let mut kept: Vec<&String> = w.attempts.keys().collect();
+        kept.sort();
+        assert_eq!(
+            kept,
+            ["B"],
+            "a skip for a label bought before is no attempt"
+        );
+    }
 }

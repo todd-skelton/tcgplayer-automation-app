@@ -3,6 +3,7 @@
 //! Node app's postage routes take, so a purchase sends it as it is.
 use std::collections::HashMap;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::orders::Order;
@@ -11,6 +12,7 @@ use crate::features::shipping_configuration::{
 };
 
 /// A letter's size when it goes First class, whatever the settings say.
+#[allow(dead_code, reason = "the label panel still to land changes a service")]
 const FIRST_CLASS_LETTER: (f64, f64, f64) = (9.0, 4.0, 0.25);
 /// An order worth this much (dollars) needs a signature.
 const SIGNATURE_FROM: f64 = 250.0;
@@ -20,6 +22,16 @@ pub enum PackageType {
     Letter,
     Flat,
     Parcel,
+}
+
+impl PackageType {
+    pub fn label(self) -> &'static str {
+        match self {
+            PackageType::Letter => "Letter",
+            PackageType::Flat => "Flat",
+            PackageType::Parcel => "Parcel",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -61,9 +73,10 @@ pub struct Shipment {
     pub options: LabelOptions,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, corten::UrlValue)]
 #[serde(rename_all = "lowercase")]
 pub enum Direction {
+    #[default]
     Outbound,
     Return,
 }
@@ -85,8 +98,27 @@ impl Shipment {
         }
     }
 
+    /// The full address it goes to, on one line.
+    pub fn recipient(&self) -> String {
+        let a = &self.to_address;
+        [
+            Some(a.name.clone()),
+            a.company.clone(),
+            Some(a.street1.clone()),
+            a.street2.clone(),
+            Some(format!("{}, {} {}", a.city, a.state, a.zip)),
+            Some(a.country.clone()),
+        ]
+        .into_iter()
+        .flatten()
+        .filter(|part| !part.trim().is_empty())
+        .collect::<Vec<_>>()
+        .join(", ")
+    }
+
     /// The shipment with another service. First class is a letter, so the package becomes one,
     /// weighed for `order` when it is known.
+    #[allow(dead_code, reason = "the label panel still to land changes a service")]
     pub fn with_service(
         &self,
         service: Service,
@@ -131,6 +163,88 @@ impl Planned {
     pub fn reference(&self) -> &str {
         &self.shipment.reference
     }
+}
+
+/// The columns of EasyPost's shipment CSV import, each a field of the shipment.
+const CSV_COLUMNS: [&str; 42] = [
+    "reference",
+    "to_address.name",
+    "to_address.company",
+    "to_address.phone",
+    "to_address.email",
+    "to_address.street1",
+    "to_address.street2",
+    "to_address.city",
+    "to_address.state",
+    "to_address.zip",
+    "to_address.country",
+    "from_address.name",
+    "from_address.company",
+    "from_address.phone",
+    "from_address.email",
+    "from_address.street1",
+    "from_address.street2",
+    "from_address.city",
+    "from_address.state",
+    "from_address.zip",
+    "from_address.country",
+    "return_address.name",
+    "return_address.company",
+    "return_address.phone",
+    "return_address.email",
+    "return_address.street1",
+    "return_address.street2",
+    "return_address.city",
+    "return_address.state",
+    "return_address.zip",
+    "return_address.country",
+    "parcel.length",
+    "parcel.width",
+    "parcel.height",
+    "parcel.weight",
+    "parcel.predefined_package",
+    "carrier",
+    "service",
+    "options.label_format",
+    "options.label_size",
+    "options.invoice_number",
+    "options.delivery_confirmation",
+];
+
+/// Shipments as the CSV EasyPost imports (`getShipmentCsvRows`): a field missing is empty, and a
+/// number is written as JavaScript wrote it (`4`, `0.87`).
+pub fn csv(shipments: &[Shipment]) -> String {
+    let rows = shipments.iter().map(|shipment| {
+        let json = serde_json::to_value(shipment).unwrap_or_default();
+        CSV_COLUMNS
+            .iter()
+            .map(
+                |column| match json.pointer(&format!("/{}", column.replace('.', "/"))) {
+                    Some(serde_json::Value::String(text)) => text.clone(),
+                    Some(serde_json::Value::Number(n)) => {
+                        n.as_f64().map_or_else(String::new, |n| n.to_string())
+                    }
+                    _ => String::new(),
+                },
+            )
+            .collect()
+    });
+    crate::csv_text::unparse(&CSV_COLUMNS, rows)
+}
+
+/// What a shipment's CSV is saved as: `EasyPost_Shipments_4x6_2026.10.29.17.05.00.csv`, or
+/// `EasyPost_Returns_..` for the way back. The React screen meant this stamp, but its pattern cut
+/// it to the year.
+pub fn csv_file_name(shipment: &Shipment, direction: Direction, at: DateTime<Utc>) -> String {
+    let what = match direction {
+        Direction::Outbound => "Shipments",
+        Direction::Return => "Returns",
+    };
+    format!(
+        "EasyPost_{what}_{}_{}.csv",
+        shipment.options.label_size,
+        at.format("%Y.%m.%d.%H.%M.%S")
+    )
 }
 
 /// A batch of orders and the shipments they go out as, oldest order first.
@@ -360,6 +474,46 @@ mod tests {
 
     fn config() -> ShippingConfig {
         ShippingConfig::default()
+    }
+
+    #[test]
+    fn a_shipment_is_written_as_easyposts_csv() {
+        let mut shipment = shipment_for(&order("A"), &config());
+        shipment.parcel.length = 9.0;
+        shipment.parcel.weight = 0.87;
+        let text = csv(std::slice::from_ref(&shipment));
+        let mut reader = ::csv::Reader::from_reader(text.as_bytes());
+        let header: Vec<String> = reader
+            .headers()
+            .unwrap()
+            .iter()
+            .map(str::to_owned)
+            .collect();
+        assert_eq!(header, CSV_COLUMNS);
+        let row = reader.records().next().unwrap().unwrap();
+        let at = |column: &str| &row[CSV_COLUMNS.iter().position(|c| *c == column).unwrap()];
+        assert_eq!(at("reference"), "A");
+        assert_eq!((at("parcel.length"), at("parcel.weight")), ("9", "0.87"));
+        assert_eq!(at("to_address.company"), "", "a missing field is empty");
+        assert_eq!(
+            at("options.label_size"),
+            shipment.options.label_size.to_string()
+        );
+        assert_eq!(at("options.delivery_confirmation"), "NO_SIGNATURE");
+    }
+
+    #[test]
+    fn a_csv_is_named_for_its_way_size_and_time() {
+        use chrono::TimeZone;
+        let shipment = shipment_for(&order("A"), &config());
+        let at = Utc.with_ymd_and_hms(2026, 10, 29, 17, 5, 0).unwrap();
+        assert_eq!(
+            csv_file_name(&shipment, Direction::Return, at),
+            format!(
+                "EasyPost_Returns_{}_2026.10.29.17.05.00.csv",
+                shipment.options.label_size
+            )
+        );
     }
 
     #[test]

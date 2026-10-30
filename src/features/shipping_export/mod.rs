@@ -10,25 +10,26 @@
 //!
 //! | Route | Answer |
 //! |---|---|
-//! | `GET /shipping-export` | the step `?step=` (or the first not done) of the batch in progress; `?seller=` chooses the seller to load for |
+//! | `GET /shipping-export` | the step `?step=` (or the first not done) of the batch in progress; `?seller=` chooses the seller to load for, `?edit=` opens a shipment's editor |
 //! | `POST /shipping-export/orders` | the seller's Ready to Ship orders loaded as a new batch |
 //! | `POST /shipping-export/order` | one order loaded as a new batch |
 //! | `POST /shipping-export/history` | the seller's order history scan moved on |
 //! | `POST /shipping-export/history/import` | an older order CSV added to the seller's order history |
+//! | `POST /shipping-export/postage` | postage bought for every shipment, a label size at a time, with one PDF of each size's labels |
+//! | `POST /shipping-export/shipments/{reference}/postage` | postage, or a return label, bought for one shipment |
+//! | `GET /shipping-export/shipments/{reference}/csv` | the shipment, or its return (`?direction=return`), as EasyPost's CSV |
+//! | `POST /shipping-export/shipments/{reference}` | the shipment as edited, kept for the batch |
 //! | `POST /shipping-export/new-batch` | the batch dropped |
+mod editing;
 mod orders;
 mod page;
 #[allow(
     dead_code,
-    reason = "the Buy Postage, Print, Pack and Ship steps still to land use the rest"
+    reason = "the Print and Ship steps still to land use the rest"
 )]
 mod postage;
 #[allow(dead_code, reason = "the Ship step still to land uses it")]
 mod ship;
-#[allow(
-    dead_code,
-    reason = "the Buy Postage and Pack steps still to land use the rest"
-)]
 mod shipments;
 mod source;
 mod steps;
@@ -43,19 +44,24 @@ mod workflow;
 pub use views::COMPONENTS;
 
 // Handlers are named from here, where the routes module is declared.
-use page::{catch_up, import_history, load_order, load_orders, new_batch, show};
+use page::{
+    buy_all, buy_shipment, catch_up, edit_shipment, import_history, load_order, load_orders,
+    new_batch, shipment_csv, show,
+};
 
 #[corten::routes(area = ShippingWorkflow, state = crate::app::Shared)]
 pub mod url {
-    use super::steps::Step;
+    use super::{shipments::Direction, steps::Step};
     use crate::features::pull_sheet::url::SheetQuery;
 
     /// `step` is the step shown, the first not done when none; `seller` the seller the Load
-    /// Orders step loads for; `filters` the pull sheet's filter and sort without JavaScript.
+    /// Orders step loads for; `edit` the shipment whose editor is open; `filters` the pull
+    /// sheet's filter and sort without JavaScript.
     #[route("/shipping-export", get = show)]
     pub struct ShippingWorkflow {
         pub step: Option<Step>,
         pub seller: Option<String>,
+        pub edit: Option<String>,
         #[route(query)]
         pub filters: SheetQuery,
     }
@@ -71,6 +77,26 @@ pub mod url {
 
     #[route("/shipping-export/history/import", post = import_history)]
     pub struct ImportHistory;
+
+    #[route("/shipping-export/postage", post = buy_all)]
+    pub struct BuyAllPostage;
+
+    #[route("/shipping-export/shipments/{reference}/postage", post = buy_shipment)]
+    pub struct BuyShipmentPostage {
+        pub reference: String,
+    }
+
+    /// `direction` is the way the CSV's shipment goes: outbound when none.
+    #[route("/shipping-export/shipments/{reference}/csv", get = shipment_csv)]
+    pub struct ShipmentCsv {
+        pub reference: String,
+        pub direction: Option<Direction>,
+    }
+
+    #[route("/shipping-export/shipments/{reference}", post = edit_shipment)]
+    pub struct EditShipment {
+        pub reference: String,
+    }
 
     #[route("/shipping-export/new-batch", post = new_batch)]
     pub struct NewBatch;

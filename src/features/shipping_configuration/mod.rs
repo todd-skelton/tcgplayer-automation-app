@@ -15,6 +15,7 @@ mod views;
 pub use views::COMPONENTS;
 
 pub use config::{Address, EasyPostMode, LabelFormat, LabelSize, Package, Service, ShippingConfig};
+pub use form::measure_text;
 
 /// The saved settings, each key a row lacks at its default.
 pub async fn settings(db: &crate::database::Database) -> sqlx::Result<ShippingConfig> {

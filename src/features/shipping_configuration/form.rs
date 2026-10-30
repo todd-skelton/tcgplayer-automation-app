@@ -136,7 +136,7 @@ impl PackageNames {
 }
 
 /// A number as the form shows it: `0.6`, not `0.6000000000000001`.
-fn shown(n: f64) -> String {
+pub fn measure_text(n: f64) -> String {
     let rounded = (n * 1e6).round() / 1e6;
     rounded.to_string()
 }
@@ -151,7 +151,7 @@ impl SettingsInput {
     pub fn of(config: &ShippingConfig) -> Self {
         let a = &config.from_address;
         let (l, fl, p) = (&config.letter, &config.flat, &config.parcel);
-        let limit = |n: Option<f64>| shown(n.unwrap_or(0.0));
+        let limit = |n: Option<f64>| measure_text(n.unwrap_or(0.0));
         SettingsInput {
             default_seller_key: config.default_seller_key.clone(),
             from_name: a.name.clone(),
@@ -165,27 +165,27 @@ impl SettingsInput {
             from_zip: a.zip.clone(),
             from_country: a.country.clone(),
             letter_label_size: l.label_size,
-            letter_base_weight_oz: shown(l.base_weight_oz),
-            letter_per_item_weight_oz: shown(l.per_item_weight_oz),
+            letter_base_weight_oz: measure_text(l.base_weight_oz),
+            letter_per_item_weight_oz: measure_text(l.per_item_weight_oz),
             letter_max_item_count: limit(l.max_item_count),
             letter_max_value_usd: limit(l.max_value_usd),
-            letter_length_in: shown(l.length_in),
-            letter_width_in: shown(l.width_in),
-            letter_height_in: shown(l.height_in),
+            letter_length_in: measure_text(l.length_in),
+            letter_width_in: measure_text(l.width_in),
+            letter_height_in: measure_text(l.height_in),
             flat_label_size: fl.label_size,
-            flat_base_weight_oz: shown(fl.base_weight_oz),
-            flat_per_item_weight_oz: shown(fl.per_item_weight_oz),
+            flat_base_weight_oz: measure_text(fl.base_weight_oz),
+            flat_per_item_weight_oz: measure_text(fl.per_item_weight_oz),
             flat_max_item_count: limit(fl.max_item_count),
             flat_max_value_usd: limit(fl.max_value_usd),
-            flat_length_in: shown(fl.length_in),
-            flat_width_in: shown(fl.width_in),
-            flat_height_in: shown(fl.height_in),
+            flat_length_in: measure_text(fl.length_in),
+            flat_width_in: measure_text(fl.width_in),
+            flat_height_in: measure_text(fl.height_in),
             parcel_label_size: p.label_size,
-            parcel_base_weight_oz: shown(p.base_weight_oz),
-            parcel_per_item_weight_oz: shown(p.per_item_weight_oz),
-            parcel_length_in: shown(p.length_in),
-            parcel_width_in: shown(p.width_in),
-            parcel_height_in: shown(p.height_in),
+            parcel_base_weight_oz: measure_text(p.base_weight_oz),
+            parcel_per_item_weight_oz: measure_text(p.per_item_weight_oz),
+            parcel_length_in: measure_text(p.length_in),
+            parcel_width_in: measure_text(p.width_in),
+            parcel_height_in: measure_text(p.height_in),
             label_format: config.label_format,
             expedited_service: config.expedited_service,
             combine_orders: config.combine_orders,

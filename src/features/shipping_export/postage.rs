@@ -1,7 +1,10 @@
 //! Postage, which the Node app buys from EasyPost and records (`/api/shipping-export/postages`,
 //! `postage-lookups` and `batch-labels`). The mode (test or production) is the Node app's
 //! deployment's, as it is here.
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -64,6 +67,11 @@ impl Bought {
         self.result.status == Status::Purchased
     }
 
+    /// A label bought in `mode`: buying again pays for a second one.
+    pub fn bought_in(&self, mode: EasyPostMode) -> bool {
+        self.purchased() && self.mode == mode
+    }
+
     /// Bought for real: what tracking and buyers' messages are sent for.
     pub fn in_production(&self) -> Option<&Purchase> {
         (self.mode == EasyPostMode::Production && self.purchased()).then_some(&self.result)
@@ -80,6 +88,28 @@ impl Bought {
 
 /// Postage by shipment reference.
 pub type Postage = HashMap<String, Bought>;
+
+static BUYING: AtomicBool = AtomicBool::new(false);
+
+/// The one purchase running: postage is bought one purchase at a time, across tabs and
+/// computers, as the React screen bought it one at a time in a tab, so two clicks cannot pay twice.
+pub struct Buying(());
+
+impl Buying {
+    /// The purchase, or none while another runs.
+    pub fn start() -> Option<Buying> {
+        BUYING
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .ok()
+            .map(|_| Buying(()))
+    }
+}
+
+impl Drop for Buying {
+    fn drop(&mut self) {
+        BUYING.store(false, Ordering::Release);
+    }
+}
 
 /// Adds new results over old ones; a skip does not hide a purchase made before it.
 pub fn merge(into: &mut Postage, mode: EasyPostMode, results: Vec<Purchase>) {
@@ -306,6 +336,14 @@ mod tests {
         );
         assert_eq!(postage["A"].result.status, Status::Purchased);
         assert_eq!(postage["B"].result.status, Status::Skipped);
+    }
+
+    #[test]
+    fn one_purchase_runs_at_a_time() {
+        let first = Buying::start().expect("no purchase is running");
+        assert!(Buying::start().is_none(), "a second waits for the first");
+        drop(first);
+        assert!(Buying::start().is_some(), "the first is over");
     }
 
     #[test]

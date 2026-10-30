@@ -35,28 +35,25 @@ pub fn PullSheetStep<'a>(
     filters: &'a SheetQuery,
     t: Msg,
 ) -> impl Render {
-    let packages: Vec<String> = [
-        (PackageType::Letter, "Letter"),
-        (PackageType::Flat, "Flat"),
-        (PackageType::Parcel, "Parcel"),
-    ]
-    .into_iter()
-    .map(|(kind, name)| {
-        let n = batch
-            .shipments
-            .iter()
-            .filter(|p| p.shipment.parcel.predefined_package == kind)
-            .count();
-        (n, name)
-    })
-    .filter(|(n, _)| *n > 0)
-    .map(|(n, name)| format!("{n} {name}"))
-    .collect();
+    let packages: Vec<String> = [PackageType::Letter, PackageType::Flat, PackageType::Parcel]
+        .into_iter()
+        .map(|kind| {
+            let n = batch
+                .shipments
+                .iter()
+                .filter(|p| p.shipment.parcel.predefined_package == kind)
+                .count();
+            (n, kind.label())
+        })
+        .filter(|(n, _)| *n > 0)
+        .map(|(n, name)| format!("{n} {name}"))
+        .collect();
     let has_lines = batch.orders.iter().any(|o| !o.lines().is_empty());
     let at = move |sort: Option<SortBy>| {
         ShippingWorkflow {
             step: Some(Step::PullSheet),
             seller: None,
+            edit: None,
             filters: SheetQuery {
                 q: sort.and(filters.q.clone()),
                 sort,

@@ -112,6 +112,13 @@
   border-color: var(--color-warn);
   color: var(--color-warn);
 }
+.test-mode {
+  background: var(--color-warn);
+  border-color: var(--color-warn);
+}
+.act[aria-busy] button::after {
+  content: " …";
+}
 .split {
   display: inline-flex;
   position: relative;
