@@ -119,10 +119,12 @@ pub fn EvidenceList<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
         Some(Ok(workspace)) => &workspace.statuses,
         _ => &[],
     };
-    let from = url::Evidence {
-        choice: screen.choice.clone(),
-    };
-    let refreshing = screen.refreshing();
+    // While a refresh is queued or running, the list reads itself again from its own route.
+    let again = screen.refreshing().then(|| {
+        ReadAgain { after: REFRESHING }.from(url::Evidence {
+            choice: screen.choice.clone(),
+        })
+    });
     let choice = &screen.choice;
     let visitor = screen.visitor;
     html! {
@@ -136,10 +138,7 @@ pub fn EvidenceList<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
                 <EvidenceRow status={status} choice={choice} t={t} visitor={visitor} />
             }
         </div>
-        // Built here, where the markup owns `from`: the read borrows its route (corten#440).
-        if refreshing {
-            {ReadAgain { after: REFRESHING }.from(&from)}
-        }
+        {again}
     }
 }
 

@@ -1,9 +1,8 @@
 //! The screen's posts. Each asks the Node app to do the work, then sends the browser back to the
 //! page the post came from (its address is the post's query), showing what changed; a refusal
 //! is that page with why, as a conflict.
-// A refusal sets its status on the drawn page by hand (corten#438), and every post takes the
-// visitor's zone only so a refusal can draw the page's dates (corten#387).
-use corten::{ClientZone, Mode, SubmitKey, axum::http::StatusCode, prelude::*};
+// Every post takes the visitor's zone only so a refusal can draw the page's dates (corten#387).
+use corten::{ClientZone, Refusal, SubmitKey, prelude::*};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -1055,16 +1054,13 @@ async fn refused(
     choice: &Choice,
     why: String,
 ) -> HtmlResult {
-    if req.mode == Mode::Action {
-        let why = Some(why.as_str());
-        return req.patch_with_status(
-            StatusCode::CONFLICT,
-            html! { <Problem at={at} why={why} /> },
-        );
-    }
-    let mut screen = Screen::read(db, legacy, choice, visitor).await?;
-    screen.problem = Some((at, why));
-    let mut answer = page(req, db, &screen).await?;
-    *answer.status_mut() = StatusCode::CONFLICT;
-    Ok(answer)
+    let mut refusal = Errors::new();
+    refusal.refuse(Refusal::Conflict, why.as_str());
+    let message = html! { <Problem at={at} why={Some(why.as_str())} /> };
+    req.invalid(&refusal, message, || async {
+        let mut screen = Screen::read(db, legacy, choice, visitor).await?;
+        screen.problem = Some((at, why.clone()));
+        page(req, db, &screen).await
+    })
+    .await
 }

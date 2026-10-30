@@ -715,3 +715,171 @@ pub async fn load_with_recovery(db: &Database, seller: &str) -> (Option<Report>,
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    type Counts = (i64, i64, i64, Option<i64>);
+
+    async fn counts(db: &Database, seller: &str) -> Counts {
+        sqlx::query_as(
+            "SELECT (SELECT count(*) FROM inventory_reinvestment_rebuilds),
+                    (SELECT coalesce(max(id),0)::bigint FROM inventory_reinvestment_rebuilds),
+                    (SELECT count(*) FROM inventory_reinvestment_allocations),
+                    (SELECT rebuild_id::bigint FROM inventory_reinvestment_current_rebuilds WHERE seller_key=$1)",
+        )
+        .bind(seller)
+        .fetch_one(&db.0)
+        .await
+        .unwrap()
+    }
+
+    type CurrentRow = Option<(i64, DateTime<Utc>)>;
+
+    async fn current_row(db: &Database, seller: &str) -> CurrentRow {
+        sqlx::query_as(
+            "SELECT rebuild_id::bigint,updated_at FROM inventory_reinvestment_current_rebuilds WHERE seller_key=$1",
+        )
+        .bind(seller)
+        .fetch_optional(&db.0)
+        .await
+        .unwrap()
+    }
+
+    /// Puts the tables back as `before`: the current rebuild as it was, and the new rebuilds and
+    /// their allocations gone, with the triggers that keep them immutable off only for that, in
+    /// one transaction, and the id sequence where it was.
+    async fn restore(db: &Database, seller: &str, before: &Counts, current: &CurrentRow) {
+        let mut tx = db.0.begin().await.unwrap();
+        let run = |sql: &'static str| sqlx::query(sql);
+        match current {
+            Some((id, at)) => {
+                run("UPDATE inventory_reinvestment_current_rebuilds SET rebuild_id=$2,updated_at=$3 WHERE seller_key=$1")
+                    .bind(seller)
+                    .bind(id)
+                    .bind(at)
+                    .execute(&mut *tx)
+                    .await
+                    .unwrap();
+            }
+            None => {
+                run("DELETE FROM inventory_reinvestment_current_rebuilds WHERE seller_key=$1")
+                    .bind(seller)
+                    .execute(&mut *tx)
+                    .await
+                    .unwrap();
+            }
+        }
+        for sql in [
+            "ALTER TABLE inventory_reinvestment_allocations DISABLE TRIGGER inventory_reinvestment_allocations_are_immutable",
+            "ALTER TABLE inventory_reinvestment_rebuilds DISABLE TRIGGER inventory_reinvestment_rebuilds_are_immutable",
+        ] {
+            run(sql).execute(&mut *tx).await.unwrap();
+        }
+        run("DELETE FROM inventory_reinvestment_allocations WHERE rebuild_id>$1")
+            .bind(before.1)
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        run("DELETE FROM inventory_reinvestment_rebuilds WHERE id>$1")
+            .bind(before.1)
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        for sql in [
+            "ALTER TABLE inventory_reinvestment_allocations ENABLE TRIGGER inventory_reinvestment_allocations_are_immutable",
+            "ALTER TABLE inventory_reinvestment_rebuilds ENABLE TRIGGER inventory_reinvestment_rebuilds_are_immutable",
+        ] {
+            run(sql).execute(&mut *tx).await.unwrap();
+        }
+        run("SELECT setval('inventory_reinvestment_rebuilds_id_seq', GREATEST($1, 1), $1 > 0)")
+            .bind(before.1)
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+    }
+
+    /// A rebuild is saved once per hour and evidence, with its allocations, and made current; the
+    /// saved report has the keys the Node app's saved reports have. Restores the tables after.
+    #[tokio::test]
+    #[ignore = "writes the dev database's rebuild tables, and restores them"]
+    async fn a_rebuild_is_saved_once_and_made_current_in_the_node_apps_shape() {
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let (seller,): (String,) = sqlx::query_as(
+            "SELECT settings_json#>>'{continuousPricing,sellerKey}' FROM inventory_publication_settings WHERE config_key='default'",
+        )
+        .fetch_one(&db.0)
+        .await
+        .unwrap();
+        let before = counts(&db, &seller).await;
+        let current_before = current_row(&db, &seller).await;
+        let (db_, seller_) = (db.clone(), seller.clone());
+        // Spawned, so a failed assertion still reaches the cleanup below.
+        let outcome = tokio::spawn(async move {
+            let (db, seller) = (db_, seller_);
+            let as_of = hour_of(Utc::now());
+            let first = load(&db, &seller, as_of).await.unwrap();
+            let after_first = counts(&db, &seller).await;
+            let (id,): (i64,) = sqlx::query_as(
+                "SELECT id::bigint FROM inventory_reinvestment_rebuilds WHERE seller_key=$1 AND effective_as_of=$2::timestamptz AND source_fingerprint=$3",
+            )
+            .bind(&seller)
+            .bind(&first.as_of)
+            .bind(&first.source_fingerprint)
+            .fetch_one(&db.0)
+            .await
+            .unwrap();
+            assert_eq!(after_first.3, Some(id), "the rebuild is current");
+            let (allocations,): (i64,) = sqlx::query_as(
+                "SELECT count(*) FROM inventory_reinvestment_allocations WHERE rebuild_id=$1",
+            )
+            .bind(id)
+            .fetch_one(&db.0)
+            .await
+            .unwrap();
+            assert_eq!(allocations as usize, first.samples.len(), "one allocation per sample");
+            let second = load(&db, &seller, as_of).await.unwrap();
+            assert_eq!(counts(&db, &seller).await, after_first, "the same evidence saves nothing new");
+            assert_eq!(second, first, "the saved report is returned");
+            let keys = |id: i64| {
+                let db = db.clone();
+                async move {
+                    let (keys,): (Vec<String>,) = sqlx::query_as(
+                        "SELECT array_agg(k ORDER BY k) FROM inventory_reinvestment_rebuilds, jsonb_object_keys(report) k WHERE id=$1",
+                    )
+                    .bind(id)
+                    .fetch_one(&db.0)
+                    .await
+                    .unwrap();
+                    keys
+                }
+            };
+            let node = before.3.expect("the Node app saved a current rebuild");
+            assert_eq!(keys(id).await, keys(node).await, "the report keeps the Node app's keys");
+            eprintln!(
+                "rebuild {id}: {} samples, {} rebuilds and {} allocations after (from {} and {})",
+                first.samples.len(),
+                after_first.0,
+                after_first.2,
+                before.0,
+                before.2
+            );
+        })
+        .await;
+        restore(&db, &seller, &before, &current_before).await;
+        assert_eq!(
+            counts(&db, &seller).await,
+            before,
+            "the tables are as they were"
+        );
+        assert_eq!(
+            current_row(&db, &seller).await,
+            current_before,
+            "the current rebuild is as it was"
+        );
+        outcome.unwrap();
+    }
+}

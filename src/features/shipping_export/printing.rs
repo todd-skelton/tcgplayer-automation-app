@@ -1,6 +1,6 @@
 //! The Print step's answers: the batch's packing slips, from TCGplayer, and one PDF of a label
 //! size's labels made from the postage already bought.
-use corten::{ClientZone, Media, axum::http::StatusCode, prelude::*};
+use corten::{ClientZone, Media, PageOr, axum::http::StatusCode, prelude::*};
 use serde::Serialize;
 
 use super::{
@@ -18,13 +18,14 @@ use crate::{
 };
 
 /// The batch's packing slips as one PDF, in the order the shipments go: shown in the browser's
-/// viewer (`?open=true`) or saved.
+/// viewer (`?open=true`) or saved. When the Node app cannot make them, the Print step saying why.
 pub async fn packing_slips(
+    req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::PackingSlips>,
-) -> corten::Result<Media> {
+) -> corten::Result<PageOr<Media>> {
     #[derive(Serialize)]
     #[serde(rename_all = "camelCase")]
     struct Request<'a> {
@@ -39,24 +40,32 @@ pub async fn packing_slips(
     if numbers.is_empty() {
         return Err(corten::Error::not_found());
     }
+    let visitor = Visitor::of(zone.as_ref());
     let request = Request {
         order_numbers: &numbers,
-        timezone_offset: hours_ahead(Visitor::of(zone.as_ref())),
+        timezone_offset: hours_ahead(visitor),
     };
-    let pdf = legacy
+    let pdf = match legacy
         .send_for_file("/api/shipping-export/packing-slips-export", &request)
         .await
-        .map_err(|why| {
-            corten::Error::new(format!("Failed to generate packing slips: {why}"))
-                .with_status(StatusCode::BAD_GATEWAY)
-        })?;
+    {
+        Ok(pdf) => pdf,
+        Err(why) => {
+            let why = format!("Failed to generate packing slips: {why}");
+            let mut page = refused(&req, &db, &legacy, visitor, Step::Print, &why).await?;
+            // The Node app failed, not the request: a bad gateway, not refused's conflict.
+            *page.status_mut() = StatusCode::BAD_GATEWAY;
+            return Ok(page.into());
+        }
+    };
     let name = pdf.file_name.unwrap_or_else(|| "packing-slips.pdf".into());
     let media = Media::new("application/pdf", pdf.bytes);
     Ok(if at.open == Some(true) {
         media.inline(&name)
     } else {
         media.attachment(&name)
-    })
+    }
+    .into())
 }
 
 /// The labels of `size` that can go in one PDF: each shipment of that size with postage bought,

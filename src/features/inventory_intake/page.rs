@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use corten::{Mode, UrlValue, axum::http::StatusCode, prelude::*};
+use corten::{Mode, Refusal, UrlValue, axum::http::StatusCode, prelude::*};
 use serde::Deserialize;
 
 use super::{
@@ -335,17 +335,24 @@ pub async fn queue_batch(
         }
     };
     let quantities = pending::quantities(&db).await?;
+    // The counts moving on is a conflict; a submit without a way to queue is invalid input.
     let problem = match (input.workflow, &input.request) {
-        _ if quantities.is_empty() => Some("No saved inventory is available to queue."),
-        _ if queue::fingerprint(&quantities) != input.counted => Some(
+        _ if quantities.is_empty() => Some((
+            Refusal::Conflict,
+            "No saved inventory is available to queue.",
+        )),
+        _ if queue::fingerprint(&quantities) != input.counted => Some((
+            Refusal::Conflict,
             "The shared inventory queue changed. Review the refreshed quantities and queue again. No inventory was handed off.",
-        ),
-        (None, _) | (_, None) => Some("Choose a way to queue the batch."),
+        )),
+        (None, _) | (_, None) => Some((Refusal::Invalid, "Choose a way to queue the batch.")),
         _ => None,
     };
     let (Some(workflow), Some(key), None) = (input.workflow, &input.request, problem) else {
         let mut errors = Errors::new();
-        errors.add_form(problem.unwrap_or_default());
+        if let Some((why, message)) = problem {
+            errors.refuse(why, message);
+        }
         return refuse(
             &req,
             &db,
@@ -368,7 +375,7 @@ pub async fn queue_batch(
         Ok(queued) => queued,
         Err(message) => {
             let mut errors = Errors::new();
-            errors.add_form(message);
+            errors.refuse(Refusal::Conflict, message);
             let quantities = pending::quantities(&db).await?;
             return refuse(
                 &req,
@@ -425,8 +432,9 @@ pub async fn queue_batch(
     })
 }
 
-/// A queue refused: the form with why, and, when the counts are read again, the totals they
-/// come to now. Without JavaScript, the whole screen.
+/// A queue refused, with the refusal's status: the form with why, and, when the counts are read
+/// again, the totals they come to now. Without JavaScript, the whole screen. Not `req.invalid`:
+/// the form reads the Node app's batches, which the whole screen reads for itself.
 async fn refuse(
     req: &Req,
     db: &Database,
@@ -443,7 +451,7 @@ async fn refuse(
             ..Drawn::default()
         };
         let mut answer = page(req, db, legacy, selection, &drawn).await?;
-        *answer.status_mut() = StatusCode::CONFLICT;
+        *answer.status_mut() = errors.refusal().status();
         return Ok(answer);
     }
     let batches = queue::batches(legacy).await;
@@ -451,12 +459,13 @@ async fn refuse(
     let form = html! {
         <QueueForm selection={selection} input={input} target={target} errors={errors} />
     };
+    let status = errors.refusal().status();
     match quantities {
-        None => req.patch_with_status(StatusCode::UNPROCESSABLE_ENTITY, form),
+        None => req.patch_with_status(status, form),
         Some(quantities) => {
             let totals = Totals::of(quantities);
             req.patch_with_status(
-                StatusCode::CONFLICT,
+                status,
                 html! {
                     {form}
                     <QueueTotals totals={totals} counted={&queue::fingerprint(quantities)} />

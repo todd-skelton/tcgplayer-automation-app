@@ -18,10 +18,6 @@
 *::after {
   box-sizing: border-box;
 }
-/* A part hidden with the attribute stays hidden whatever display its own class gives it. */
-[hidden] {
-  display: none !important;
-}
 body {
   margin: 0;
   background: var(--color-bg);

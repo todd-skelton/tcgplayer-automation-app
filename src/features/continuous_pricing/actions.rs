@@ -1,8 +1,7 @@
 //! The screen and its posts. A post sends the browser back to the page it came from, saying what
 //! it did; a refusal is that page with why, as a conflict.
-// A refusal sets its status on the drawn page by hand (corten#438), and every handler takes the
-// visitor's zone so the page's dates are the visitor's (corten#387).
-use corten::{ClientZone, Mode, axum::http::StatusCode, prelude::*};
+// Every handler takes the visitor's zone so the page's dates are the visitor's (corten#387).
+use corten::{ClientZone, Refusal, prelude::*};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -378,16 +377,16 @@ async fn refused(
     view: &View,
     why: String,
 ) -> HtmlResult {
-    if req.mode == Mode::Action {
-        let why = Some(why.as_str());
-        return req.patch_with_status(StatusCode::CONFLICT, html! { <Problem why={why} /> });
-    }
-    let mut screen = Screen::read(db, &view.quiet(), Visitor::of(zone.as_ref())).await?;
-    screen.problem = Some(why);
-    let input = ScheduleInput::of(&screen.settings);
-    let mut answer = page(req, db, &screen, &input, &Errors::new()).await?;
-    *answer.status_mut() = StatusCode::CONFLICT;
-    Ok(answer)
+    let mut refusal = Errors::new();
+    refusal.refuse(Refusal::Conflict, why.as_str());
+    let message = html! { <Problem why={Some(why.as_str())} /> };
+    req.invalid(&refusal, message, || async {
+        let mut screen = Screen::read(db, &view.quiet(), Visitor::of(zone.as_ref())).await?;
+        screen.problem = Some(why.clone());
+        let input = ScheduleInput::of(&screen.settings);
+        page(req, db, &screen, &input, &Errors::new()).await
+    })
+    .await
 }
 
 #[cfg(test)]
