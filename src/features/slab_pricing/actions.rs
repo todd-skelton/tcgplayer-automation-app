@@ -9,7 +9,8 @@ use serde_json::json;
 
 use super::{
     identity::{self, Card, Grading, SlabIdentity},
-    inventory,
+    inventory, maintenance,
+    outcomes::Imported,
     page::{Place, Screen, page},
     recommendation::{Fees, Policy, Seller},
     url::{self, Choice},
@@ -592,6 +593,107 @@ pub async fn next_source_page(
         Err(why) => {
             let visitor = Visitor::of(zone.as_ref());
             refused(Place::Supply, &req, &db, &legacy, visitor, &at.choice, why).await
+        }
+    }
+}
+
+/// The seller's maintenance settings, at the revision the form was drawn from.
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct MaintenanceInput {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub include_supply: bool,
+    pub interval_minutes: i64,
+    pub batch_size: i64,
+    pub refresh_budget: i64,
+    pub revision: i64,
+}
+
+/// Saves the seller's maintenance settings. Enabling them starts the Node app's worker on its
+/// cycles; it never publishes.
+pub async fn save_maintenance(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+    Params(at): Params<url::SaveMaintenance>,
+    Form(input): Form<MaintenanceInput>,
+) -> HtmlResult {
+    let settings = maintenance::Saved {
+        seller: at.choice.seller.as_deref().unwrap_or(""),
+        enabled: input.enabled,
+        include_supply: input.include_supply,
+        interval_minutes: input.interval_minutes,
+        batch_size: input.batch_size,
+        refresh_budget: input.refresh_budget,
+        revision: input.revision,
+    };
+    let asked = json!({ "intent": "save", "settings": settings });
+    match legacy
+        .send::<_, serde_json::Value>("/api/slab-maintenance", &asked)
+        .await
+    {
+        Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
+        Err(why) => {
+            let visitor = Visitor::of(zone.as_ref());
+            refused(
+                Place::Maintenance,
+                &req,
+                &db,
+                &legacy,
+                visitor,
+                &at.choice,
+                why,
+            )
+            .await
+        }
+    }
+}
+
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct OutcomesInput {
+    #[serde(default)]
+    pub csv: String,
+}
+
+/// Imports reviewed outcomes for the seller's listings, then shows the first listing's.
+pub async fn import_outcomes(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+    Params(at): Params<url::ImportOutcomes>,
+    Form(input): Form<OutcomesInput>,
+) -> HtmlResult {
+    let seller = at.choice.seller.as_deref().unwrap_or("");
+    let asked = json!({ "intent": "import-csv", "seller": seller, "csv": input.csv });
+    match legacy
+        .send::<_, Imported>("/api/slab-outcomes", &asked)
+        .await
+    {
+        Ok(imported) => req.redirect(&url::SlabPricing::at(&Choice {
+            item: imported
+                .item_ids
+                .into_iter()
+                .next()
+                .or(at.choice.item.clone()),
+            inserted: Some(imported.inserted),
+            supplied: Some(imported.supplied),
+            ..at.choice.clone()
+        })),
+        Err(why) => {
+            let visitor = Visitor::of(zone.as_ref());
+            refused(
+                Place::Outcomes,
+                &req,
+                &db,
+                &legacy,
+                visitor,
+                &at.choice,
+                why,
+            )
+            .await
         }
     }
 }

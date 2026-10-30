@@ -9,7 +9,7 @@ use crate::{
             inventory::{InventoryPage, Listing},
             page::{Place, Screen},
             url::{self, Choice},
-            views::{KeptChoice, RecommendationPanel, ResearchPanel, SupplyPanel},
+            views::{KeptChoice, RecommendationPanel, ResearchPanel, SellerPanels, SupplyPanel},
         },
     },
     layout::{Field, Notice, Tone},
@@ -96,7 +96,7 @@ pub fn SlabScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 }
                 (None, _) => {}
             }
-            <InventoryPanel screen={screen} />
+            <InventoryPanel screen={screen} t={t} />
         </div>
     }
 }
@@ -254,7 +254,7 @@ fn IdentityCard<'a>(
 
 /// The seller's saved eBay listings, a page at a time, and importing a CSV snapshot of them.
 #[component(css = SlabScreen)]
-fn InventoryPanel<'a>(screen: &'a Screen) -> impl Render {
+fn InventoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let choice = &screen.choice;
     let f = Choice::FIELDS;
     html! {
@@ -275,7 +275,10 @@ fn InventoryPanel<'a>(screen: &'a Screen) -> impl Render {
             match &screen.inventory {
                 None => {}
                 Some(Err(why)) => <Notice tone={Tone::Warning}>{why}</Notice>,
-                Some(Ok(page)) => <Listings page={page} choice={choice} />,
+                Some(Ok(page)) => {
+                    <SellerPanels screen={screen} t={t} />
+                    <Listings page={page} choice={choice} />
+                }
             }
         </section>
     }

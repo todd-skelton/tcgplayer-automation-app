@@ -5,10 +5,11 @@ use corten::{ClientZone, ReadAgain, prelude::*};
 use super::{
     identity::{self, Record},
     inventory::{self, InventoryPage, Listing},
+    maintenance, outcomes,
     research::{self, Workspace},
     supply::{self, DEFAULT_SELLER, Supply},
     url::{self, Choice},
-    views::{EvidenceList, SlabScreen, SupplyBody},
+    views::{EvidenceList, MaintenanceStatusPart, SlabScreen, SupplyBody},
 };
 use crate::{
     database::Database,
@@ -34,6 +35,8 @@ pub enum Place {
     Research,
     Supply,
     Recommendation,
+    Maintenance,
+    Outcomes,
 }
 
 impl Place {
@@ -46,6 +49,8 @@ impl Place {
             Place::Inventory => "inventory",
             Place::Research => "research",
             Place::Supply => "supply",
+            Place::Maintenance => "maintenance",
+            Place::Outcomes => "outcomes",
             Place::Recommendation => "recommendation",
         }
     }
@@ -66,6 +71,10 @@ pub struct Screen {
     pub research: Option<Result<Workspace, String>>,
     /// The active supply for the slab, when it is shown, or why it could not be read.
     pub supply: Option<Result<Supply, String>>,
+    /// The seller's evidence maintenance, when it is shown.
+    pub maintenance: Option<Result<maintenance::View, String>>,
+    /// The outcomes of the listing asked about, when the seller's outcomes are shown.
+    pub outcomes: Option<Result<outcomes::Review, String>>,
     /// Whose time zone dates are written in.
     pub visitor: Visitor,
     /// Why the last post was refused, and the part of the page that sent it.
@@ -118,6 +127,21 @@ impl Screen {
             }
             _ => None,
         };
+        let seller = choice.seller.as_deref().filter(|s| !s.trim().is_empty());
+        let maintenance = match seller {
+            Some(seller) if choice.maintenance == Some(true) => {
+                Some(maintenance::read(legacy, seller).await)
+            }
+            _ => None,
+        };
+        let outcomes = match (seller, choice.item.as_deref()) {
+            (Some(seller), Some(item))
+                if choice.outcomes == Some(true) && !item.trim().is_empty() =>
+            {
+                Some(outcomes::read(legacy, seller, item.trim()).await)
+            }
+            _ => None,
+        };
         Ok(Screen {
             choice: choice.clone(),
             record,
@@ -125,6 +149,8 @@ impl Screen {
             listing,
             research,
             supply,
+            maintenance,
+            outcomes,
             visitor,
             problem: None,
         })
@@ -194,6 +220,23 @@ pub async fn show(
 ) -> HtmlResult {
     let screen = Screen::read(&db, &legacy, &at.choice, Visitor::of(zone.as_ref())).await?;
     page(&req, &db, &screen).await
+}
+
+/// The seller's maintenance status as it stands, read again while maintenance is enabled.
+pub async fn maintenance_status(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+    Params(at): Params<url::MaintenanceStatus>,
+) -> HtmlResult {
+    let screen = Screen::read(&db, &legacy, &at.choice, Visitor::of(zone.as_ref())).await?;
+    let t: Msg = req.t();
+    // The markup moves the locals it uses (corten#414).
+    let screen = &screen;
+    let status = html! { <MaintenanceStatusPart screen={screen} t={t} /> };
+    req.patch_or(status, || async { page(&req, &db, screen).await })
+        .await
 }
 
 /// The evidence list (and the supply, when shown) as it stands, read again while a refresh is

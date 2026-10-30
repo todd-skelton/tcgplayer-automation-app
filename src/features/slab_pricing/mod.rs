@@ -22,7 +22,10 @@
 //! The supply context (asks on unsold listings, screened against the identity) is shown on
 //! request (`supply=true`) and read again with the evidence while its refresh runs.
 //!
-//! The comp review, maintenance, outcomes and publication panels are still being ported.
+//! Under the seller's inventory, evidence maintenance (its status read again every five seconds
+//! while enabled) and seller outcomes are shown on request.
+//!
+//! The comp review and publication panels are still being ported.
 //!
 //! | Route | Answer |
 //! |---|---|
@@ -37,6 +40,9 @@
 //! | `POST /slab-pricing/cancel` | a queued or running refresh cancelled |
 //! | `POST /slab-pricing/refresh-supply` | the active supply for the grade and dates queued for refresh |
 //! | `POST /slab-pricing/next-source-page` | the next page of an eBay source queued, then shown |
+//! | `GET /slab-pricing/maintenance-status` | the seller's maintenance status, as a patch (the page without JavaScript) |
+//! | `POST /slab-pricing/maintenance` | the seller's maintenance settings saved |
+//! | `POST /slab-pricing/outcomes` | reviewed seller outcomes imported from CSV, then shown |
 //! | `POST /slab-pricing/calculate` | the owned slab's recommendation calculated from saved evidence |
 //! | `POST /slab-pricing/reviewed-ask` | the operator's reviewed ask saved on the latest recommendation |
 //!
@@ -44,6 +50,8 @@
 mod actions;
 mod identity;
 mod inventory;
+mod maintenance;
+mod outcomes;
 mod page;
 mod recommendation;
 mod research;
@@ -54,10 +62,10 @@ pub use views::COMPONENTS;
 
 // Handlers are named from here, where the routes module is declared.
 use actions::{
-    assign, calculate, cancel, confirm, import, look_up, next_source_page, open, refresh,
-    refresh_supply, review_ask,
+    assign, calculate, cancel, confirm, import, import_outcomes, look_up, next_source_page, open,
+    refresh, refresh_supply, review_ask, save_maintenance,
 };
-use page::{evidence, show};
+use page::{evidence, maintenance_status, show};
 
 #[corten::routes(area = SlabPricing, state = crate::app::Shared)]
 pub mod url {
@@ -128,6 +136,24 @@ pub mod url {
         pub choice: Choice,
     }
 
+    #[route("/slab-pricing/maintenance-status", get = maintenance_status)]
+    pub struct MaintenanceStatus {
+        #[route(query)]
+        pub choice: Choice,
+    }
+
+    #[route("/slab-pricing/maintenance", post = save_maintenance)]
+    pub struct SaveMaintenance {
+        #[route(query)]
+        pub choice: Choice,
+    }
+
+    #[route("/slab-pricing/outcomes", post = import_outcomes)]
+    pub struct ImportOutcomes {
+        #[route(query)]
+        pub choice: Choice,
+    }
+
     #[route("/slab-pricing/calculate", post = calculate)]
     pub struct Calculate {
         #[route(query)]
@@ -167,6 +193,15 @@ pub mod url {
         /// The supply sources shown before this one, for Previous source page.
         #[serde(default)]
         pub sources: Vec<String>,
+        /// The seller's evidence maintenance is shown.
+        pub maintenance: Option<bool>,
+        /// The seller's outcomes are shown, and the listing whose outcomes are read.
+        pub outcomes: Option<bool>,
+        pub item: Option<String>,
+        /// What the last outcome import saved: new observations, of rows supplied. Carried in
+        /// the address because a redirect cannot say what it did (corten#385).
+        pub inserted: Option<u32>,
+        pub supplied: Option<u32>,
     }
 
     impl Choice {
@@ -194,6 +229,11 @@ pub mod url {
                 self.supply.map(|s| (f.supply, s.to_string())),
                 one(f.source, &self.source),
                 self.rows.map(|r| (f.rows, r.to_string())),
+                self.maintenance.map(|m| (f.maintenance, m.to_string())),
+                self.outcomes.map(|o| (f.outcomes, o.to_string())),
+                one(f.item, &self.item),
+                self.inserted.map(|n| (f.inserted, n.to_string())),
+                self.supplied.map(|n| (f.supplied, n.to_string())),
             ]
             .into_iter()
             .flatten()
