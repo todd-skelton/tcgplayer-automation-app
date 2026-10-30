@@ -2,10 +2,13 @@
 //! grade explored beside it) over a window of sale dates, and whether a refresh is on its way.
 //! Planning the evidence and refreshing it stay the Node app's (`/api/slab-workspace`,
 //! `/api/slab-evidence`), whose worker calls eBay and Alt; this reads what they saved.
+use std::collections::BTreeSet;
+
 use chrono::{Days, NaiveDate, Utc};
 use chrono_tz::America::Chicago;
 use serde::{Deserialize, Serialize};
 
+use super::recommendation::Recommendation;
 use crate::legacy::Legacy;
 
 /// The PSA grades a slab can be explored at beside its own: every half grade from 1 to 10 but
@@ -45,6 +48,8 @@ pub struct Workspace {
     pub keys: Vec<String>,
     /// Why no cross-grade estimate is offered.
     pub grade_model: Option<GradeModel>,
+    /// The slab's latest recommendation, whatever grade is researched.
+    pub recommendation: Option<Recommendation>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -61,6 +66,8 @@ pub struct EvidenceStatus {
     /// `queued`, `running`, `idle`, `failed` or `cancelled`.
     pub state: String,
     pub run_id: String,
+    /// The saved revision the comps are read from, once one was fetched.
+    pub latest_revision: Option<String>,
     pub fetched_at: Option<String>,
     pub error_code: Option<String>,
     /// Expired, never fetched, or failed.
@@ -82,6 +89,14 @@ impl EvidenceStatus {
 impl Workspace {
     pub fn pending(&self) -> bool {
         self.statuses.iter().any(EvidenceStatus::pending)
+    }
+
+    /// The evidence revisions saved for the grade and dates: what a calculation reads.
+    pub fn latest_revisions(&self) -> BTreeSet<String> {
+        self.statuses
+            .iter()
+            .filter_map(|s| s.latest_revision.clone())
+            .collect()
     }
 }
 

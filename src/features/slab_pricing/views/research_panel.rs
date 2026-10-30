@@ -11,9 +11,10 @@ use crate::{
         slab_pricing::{
             actions::{CancelInput, RefreshInput},
             identity::{Record, words},
-            page::{REFRESHING, Screen},
+            page::{Place, REFRESHING, Screen},
             research::{EvidenceStatus, PSA_GRADES, Workspace},
             url::{self, Choice},
+            views::Problem,
         },
     },
     layout::{Field, Notice, Tone},
@@ -74,6 +75,7 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
                     <form
                         method="post"
                         action={url::Refresh { choice: choice.clone() }}
+                        data-patch
                         class={Line}
                     >
                         <input type="hidden" name={r.id} value={&record.id}>
@@ -84,6 +86,7 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
                     </form>
                 }
             }
+            <Problem at={Place::Research} why={screen.problem_at(Place::Research)} />
             <EvidenceList screen={screen} t={t} />
             if let Some(Ok(Workspace { grade_model: Some(model), .. })) = &screen.research {
                 <Notice tone={Tone::Info}>
@@ -159,7 +162,7 @@ fn EvidenceRow<'a>(
                 }
             </span>
             if status.pending() {
-                <form method="post" action={url::Cancel { choice: choice.clone() }}>
+                <form method="post" action={url::Cancel { choice: choice.clone() }} data-patch>
                     <input type="hidden" name={c.key} value={&status.key}>
                     <input type="hidden" name={c.run} value={&status.run_id}>
                     <button>"Cancel refresh"</button>

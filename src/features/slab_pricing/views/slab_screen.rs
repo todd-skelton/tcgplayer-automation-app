@@ -7,15 +7,30 @@ use crate::{
             actions::{AssignInput, ConfirmInput, ImportInput, LookUpInput, OpenInput},
             identity::{Record, words},
             inventory::{InventoryPage, Listing},
-            page::Screen,
+            page::{Place, Screen},
             url::{self, Choice},
-            views::ResearchPanel,
+            views::{RecommendationPanel, ResearchPanel},
         },
     },
     layout::{Field, Notice, Tone},
     text::Msg,
     theme::*,
 };
+
+#[derive(Id)]
+struct ProblemId(&'static str);
+
+/// Why a post from `at` was refused, or an empty slot a refusal's patch fills.
+#[component]
+pub fn Problem<'a>(at: Place, why: Option<&'a str>) -> impl Patch {
+    html! {
+        <div id={ProblemId(at.name())} role="alert">
+            if let Some(why) = why {
+                <Notice tone={Tone::Warning}>{why}</Notice>
+            }
+        </div>
+    }
+}
 
 /// The screen: look up a certificate, review the listing opened, confirm the certificate's
 /// identity, and the seller's listings.
@@ -34,6 +49,7 @@ pub fn SlabScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             <form
                 method="post"
                 action={url::LookUp { choice: choice.clone() }}
+                data-patch
                 class={(panel(), Line)}
             >
                 <Field label="Grader" hint="">
@@ -54,17 +70,22 @@ pub fn SlabScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 </Field>
                 <button data-primary>"Look up certificate"</button>
             </form>
-            if let Some(why) = &screen.problem {
-                <Notice tone={Tone::Warning}>{why}</Notice>
-            }
+            <Problem at={Place::LookUp} why={screen.problem_at(Place::LookUp)} />
             if choice.listing.is_some() {
                 <ReviewedListing screen={screen} />
             }
             match (choice.certificate(), &screen.record) {
                 (Some(_), Some(record)) => {
-                    <IdentityCard record={record} choice={choice} />
+                    <IdentityCard
+                        record={record}
+                        choice={choice}
+                        problem={screen.problem_at(Place::Identity)}
+                    />
                     if record.shown().is_some() {
                         <ResearchPanel screen={screen} record={record} t={t} />
+                    }
+                    if matches!(&screen.research, Some(Ok(_))) {
+                        <RecommendationPanel screen={screen} record={record} t={t} />
                     }
                 }
                 (Some((grader, cert)), None) => {
@@ -105,6 +126,7 @@ fn ReviewedListing<'a>(screen: &'a Screen) -> impl Render {
                         <form
                             method="post"
                             action={url::Assign { choice: choice.clone() }}
+                            data-patch
                             class={Line}
                         >
                             <Field label="Listing identity correction reason" hint="">
@@ -118,6 +140,7 @@ fn ReviewedListing<'a>(screen: &'a Screen) -> impl Render {
                     }
                 }
             }
+            <Problem at={Place::Listing} why={screen.problem_at(Place::Listing)} />
             <a href={url::SlabPricing::at(&separately)}>"Research certificate separately"</a>
         </section>
     }
@@ -125,7 +148,11 @@ fn ReviewedListing<'a>(screen: &'a Screen) -> impl Render {
 
 /// A certificate's identity, what needs review, and the form that confirms or corrects it.
 #[component(css = SlabScreen)]
-fn IdentityCard<'a>(record: &'a Record, choice: &'a Choice) -> impl Render {
+fn IdentityCard<'a>(
+    record: &'a Record,
+    choice: &'a Choice,
+    problem: Option<&'a str>,
+) -> impl Render {
     let shown = record.shown();
     let card = shown.map(|s| s.card.clone()).unwrap_or_default();
     let grading = shown.map(|s| s.grading.clone()).unwrap_or_default();
@@ -152,7 +179,12 @@ fn IdentityCard<'a>(record: &'a Record, choice: &'a Choice) -> impl Render {
             }
             <details>
                 <summary>"Confirm or correct identity"</summary>
-                <form method="post" action={url::Confirm { choice: choice.clone() }} class={Stack}>
+                <form
+                    method="post"
+                    action={url::Confirm { choice: choice.clone() }}
+                    data-patch
+                    class={Stack}
+                >
                     <p class={muted()}>
                         "Confirm the physical slab's card and grade. Blank fields remain unknown."
                     </p>
@@ -213,6 +245,7 @@ fn IdentityCard<'a>(record: &'a Record, choice: &'a Choice) -> impl Render {
                     <button data-primary>"Confirm owned identity"</button>
                 </form>
             </details>
+            <Problem at={Place::Identity} why={problem} />
             <a href={slab_connections::url::SlabConnections}>"Data connections"</a>
         </section>
     }
@@ -245,6 +278,7 @@ fn InventoryPanel<'a>(screen: &'a Screen) -> impl Render {
                 </Field>
                 <button>"Open inventory"</button>
             </form>
+            <Problem at={Place::Inventory} why={screen.problem_at(Place::Inventory)} />
             match &screen.inventory {
                 None => {}
                 Some(Err(why)) => <Notice tone={Tone::Warning}>{why}</Notice>,
@@ -265,7 +299,12 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
         </p>
         <details>
             <summary>"Import CSV"</summary>
-            <form method="post" action={url::Import { choice: choice.clone() }} class={Stack}>
+            <form
+                method="post"
+                action={url::Import { choice: choice.clone() }}
+                data-patch
+                class={Stack}
+            >
                 <p class={muted()}>
                     "Import a partial inventory snapshot for "{seller}
                     ". Required columns: item_id, title, price, currency, quantity, state, format. Add grader and certificate_number for certificate lookup. Existing rows are matched by item_id and variation_key."
@@ -299,7 +338,11 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
                             aria-current={(choice.listing.as_deref() == Some(listing.id.as_str())).then_some("true")}
                         >
                             <td>
-                                <form method="post" action={url::Open { choice: choice.clone() }}>
+                                <form
+                                    method="post"
+                                    action={url::Open { choice: choice.clone() }}
+                                    data-patch
+                                >
                                     <input type="hidden" name={fo.id} value={&listing.id}>
                                     <button>"Open slab"</button>
                                 </form>

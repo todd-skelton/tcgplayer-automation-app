@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::BTreeSet, time::Duration};
 
 use corten::{ClientZone, ReadAgain, prelude::*};
 
@@ -17,8 +17,36 @@ use crate::{
     zone::Visitor,
 };
 
+/// The most evidence revisions one calculation reads, as the Node app allows.
+const MOST_REVISIONS: usize = 20;
+
 /// How long the evidence list waits to read a queued or running refresh again.
 pub const REFRESHING: Duration = Duration::from_secs(2);
+
+/// The parts of the screen a post comes from, where its refusal is shown.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Place {
+    LookUp,
+    Identity,
+    Listing,
+    Inventory,
+    Research,
+    Recommendation,
+}
+
+impl Place {
+    /// The part's name in its message's element id.
+    pub fn name(self) -> &'static str {
+        match self {
+            Place::LookUp => "look-up",
+            Place::Identity => "identity",
+            Place::Listing => "listing",
+            Place::Inventory => "inventory",
+            Place::Research => "research",
+            Place::Recommendation => "recommendation",
+        }
+    }
+}
 
 /// The page as its address draws it.
 pub struct Screen {
@@ -35,8 +63,8 @@ pub struct Screen {
     pub research: Option<Result<Workspace, String>>,
     /// Whose time zone dates are written in.
     pub visitor: Visitor,
-    /// Why the last post was refused.
-    pub problem: Option<String>,
+    /// Why the last post was refused, and the part of the page that sent it.
+    pub problem: Option<(Place, String)>,
 }
 
 impl Screen {
@@ -78,9 +106,40 @@ impl Screen {
         })
     }
 
+    /// Why a post from `place` was refused, when it was.
+    pub fn problem_at(&self, place: Place) -> Option<&str> {
+        self.problem
+            .as_ref()
+            .filter(|(at, _)| *at == place)
+            .map(|(_, why)| why.as_str())
+    }
+
     /// A refresh is queued or running.
     pub fn refreshing(&self) -> bool {
         matches!(&self.research, Some(Ok(w)) if w.pending())
+    }
+
+    /// The owned slab can be calculated: its identity is confirmed, the owned grade is shown,
+    /// the listing reviewed (if any) is tied to it, and its evidence is read and not too much.
+    pub fn can_calculate(&self) -> bool {
+        let (Some(record), Some(Ok(workspace))) = (&self.record, &self.research) else {
+            return false;
+        };
+        let tied = self.choice.listing.is_none()
+            || self.listing.as_ref().and_then(|l| l.identity_id.as_deref())
+                == Some(record.id.as_str());
+        record.confirmed()
+            && self.choice.grade() == "owned"
+            && tied
+            && workspace.latest_revisions().len() <= MOST_REVISIONS
+    }
+
+    /// The evidence a calculation would read now, when one can be made.
+    pub fn calculable_revisions(&self) -> Option<BTreeSet<String>> {
+        match &self.research {
+            Some(Ok(workspace)) if self.can_calculate() => Some(workspace.latest_revisions()),
+            _ => None,
+        }
     }
 }
 

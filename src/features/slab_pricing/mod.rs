@@ -13,8 +13,13 @@
 //! and Alt; while a refresh is queued or running the evidence list reads itself again every two
 //! seconds (`ReadAgain` from `GET /slab-pricing/evidence`, the whole page without JavaScript).
 //!
-//! The recommendation, comp review, supply, maintenance, outcomes and publication panels are
-//! still being ported.
+//! The recommendation is calculated by the Node app from the saved evidence only. A saved one is
+//! marked for recalculation when the Node app says it is no longer current, or when newer
+//! evidence is saved than it read. The React panel also marked it while its inputs were being
+//! edited; this one does not, so its reviewed ask can be saved over inputs changed but not
+//! calculated.
+//!
+//! The comp review, supply, maintenance, outcomes and publication panels are still being ported.
 //!
 //! | Route | Answer |
 //! |---|---|
@@ -27,19 +32,22 @@
 //! | `GET /slab-pricing/evidence` | the evidence list, as a patch (the page without JavaScript) |
 //! | `POST /slab-pricing/refresh` | the evidence for the grade and window queued for refresh |
 //! | `POST /slab-pricing/cancel` | a queued or running refresh cancelled |
+//! | `POST /slab-pricing/calculate` | the owned slab's recommendation calculated from saved evidence |
+//! | `POST /slab-pricing/reviewed-ask` | the operator's reviewed ask saved on the latest recommendation |
 //!
 //! A post the Node app refuses answers 409 with the page and why.
 mod actions;
 mod identity;
 mod inventory;
 mod page;
+mod recommendation;
 mod research;
 mod views;
 
 pub use views::COMPONENTS;
 
 // Handlers are named from here, where the routes module is declared.
-use actions::{assign, cancel, confirm, import, look_up, open, refresh};
+use actions::{assign, calculate, cancel, confirm, import, look_up, open, refresh, review_ask};
 use page::{evidence, show};
 
 #[corten::routes(area = SlabPricing, state = crate::app::Shared)]
@@ -95,6 +103,18 @@ pub mod url {
 
     #[route("/slab-pricing/cancel", post = cancel)]
     pub struct Cancel {
+        #[route(query)]
+        pub choice: Choice,
+    }
+
+    #[route("/slab-pricing/calculate", post = calculate)]
+    pub struct Calculate {
+        #[route(query)]
+        pub choice: Choice,
+    }
+
+    #[route("/slab-pricing/reviewed-ask", post = review_ask)]
+    pub struct ReviewAsk {
         #[route(query)]
         pub choice: Choice,
     }

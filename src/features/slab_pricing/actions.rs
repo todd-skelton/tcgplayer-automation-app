@@ -3,15 +3,17 @@
 //! is that page with why, as a conflict.
 // A refusal sets its status on the drawn page by hand (corten#438), and every post takes the
 // visitor's zone only so a refusal can draw the page's dates (corten#387).
-use corten::{ClientZone, axum::http::StatusCode, prelude::*};
+use corten::{ClientZone, Mode, axum::http::StatusCode, prelude::*};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use super::{
     identity::{self, Card, Grading, SlabIdentity},
     inventory,
-    page::{Screen, page},
+    page::{Place, Screen, page},
+    recommendation::{Fees, Policy, Seller},
     url::{self, Choice},
+    views::Problem,
 };
 use crate::{database::Database, legacy::Legacy, zone::Visitor};
 
@@ -59,7 +61,16 @@ pub async fn look_up(
             let choice = at
                 .choice
                 .with_certificate(input.grader.trim(), input.cert.trim());
-            refused(&req, &db, &legacy, Visitor::of(zone.as_ref()), &choice, why).await
+            refused(
+                Place::LookUp,
+                &req,
+                &db,
+                &legacy,
+                Visitor::of(zone.as_ref()),
+                &choice,
+                why,
+            )
+            .await
         }
     }
 }
@@ -145,6 +156,7 @@ pub async fn confirm(
 ) -> HtmlResult {
     let Some((grader, cert)) = at.choice.certificate() else {
         return refused(
+            Place::Identity,
             &req,
             &db,
             &legacy,
@@ -170,6 +182,7 @@ pub async fn confirm(
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
         Err(why) => {
             refused(
+                Place::Identity,
                 &req,
                 &db,
                 &legacy,
@@ -209,6 +222,7 @@ pub async fn open(
         Ok(Some(listing)) => listing,
         Ok(None) => {
             return refused(
+                Place::Inventory,
                 &req,
                 &db,
                 &legacy,
@@ -220,6 +234,7 @@ pub async fn open(
         }
         Err(why) => {
             return refused(
+                Place::Inventory,
                 &req,
                 &db,
                 &legacy,
@@ -252,6 +267,7 @@ pub async fn open(
         Ok(None) => req.redirect(&url::SlabPricing::at(&reviewing)),
         Err(why) => {
             refused(
+                Place::Inventory,
                 &req,
                 &db,
                 &legacy,
@@ -282,6 +298,7 @@ pub async fn assign(
     let screen = Screen::read(&db, &legacy, &at.choice, Visitor::of(zone.as_ref())).await?;
     let (Some(listing), Some(record)) = (&screen.listing, &screen.record) else {
         return refused(
+            Place::Listing,
             &req,
             &db,
             &legacy,
@@ -306,6 +323,7 @@ pub async fn assign(
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
         Err(why) => {
             refused(
+                Place::Listing,
                 &req,
                 &db,
                 &legacy,
@@ -361,6 +379,7 @@ pub async fn import(
         })),
         Err(why) => {
             refused(
+                Place::Inventory,
                 &req,
                 &db,
                 &legacy,
@@ -406,6 +425,7 @@ pub async fn refresh(
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
         Err(why) => {
             refused(
+                Place::Research,
                 &req,
                 &db,
                 &legacy,
@@ -441,6 +461,7 @@ pub async fn cancel(
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
         Err(why) => {
             refused(
+                Place::Research,
                 &req,
                 &db,
                 &legacy,
@@ -453,8 +474,169 @@ pub async fn cancel(
     }
 }
 
-/// The page the post came from, saying why it was refused, as a conflict.
+/// The seller's costs and the comparable price basis. A blank amount stays unknown.
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct CalculateInput {
+    #[serde(default)]
+    pub basis: String,
+    pub current_ask: Option<f64>,
+    pub shipping_charged: Option<f64>,
+    pub shipping_cost: Option<f64>,
+    pub acquisition_cost: Option<f64>,
+    pub minimum_ask: Option<f64>,
+    pub minimum_profit: Option<f64>,
+    /// A percentage: 13.25 for 13.25%.
+    pub fee_rate: Option<f64>,
+    pub fee_fixed: Option<f64>,
+    #[serde(default)]
+    pub fee_basis: String,
+}
+
+impl CalculateInput {
+    /// The costs as the Node app reads them, or why they cannot be.
+    fn seller(&self) -> Result<Seller, String> {
+        let fees = match (self.fee_rate, self.fee_fixed) {
+            (Some(rate), Some(fixed)) => Some(Fees {
+                rate: rate / 100.0,
+                fixed,
+                basis: self.fee_basis.clone(),
+            }),
+            (None, None) => None,
+            _ => {
+                return Err(
+                    "Provide both fee percentage and fixed fee, or leave both unknown.".into(),
+                );
+            }
+        };
+        Ok(Seller {
+            current_ask: self.current_ask,
+            shipping_charged: self.shipping_charged,
+            shipping_cost: self.shipping_cost,
+            acquisition_cost: self.acquisition_cost,
+            minimum_ask: self.minimum_ask,
+            minimum_profit: self.minimum_profit,
+            fees,
+        })
+    }
+}
+
+/// Calculates the owned slab's recommendation from the evidence saved for the dates shown.
+pub async fn calculate(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+    Params(at): Params<url::Calculate>,
+    Form(input): Form<CalculateInput>,
+) -> HtmlResult {
+    let visitor = Visitor::of(zone.as_ref());
+    let screen = Screen::read(&db, &legacy, &at.choice, visitor).await?;
+    let (Some(record), Some(revisions)) = (&screen.record, screen.calculable_revisions()) else {
+        let why = "Confirm the owned identity, assign it to the selected listing if needed, and return to its grade to calculate.";
+        return refused(
+            Place::Recommendation,
+            &req,
+            &db,
+            &legacy,
+            visitor,
+            &at.choice,
+            why.into(),
+        )
+        .await;
+    };
+    let mut seller = match input.seller() {
+        Ok(seller) => json!(seller),
+        Err(why) => {
+            return refused(
+                Place::Recommendation,
+                &req,
+                &db,
+                &legacy,
+                visitor,
+                &at.choice,
+                why,
+            )
+            .await;
+        }
+    };
+    seller["currency"] = "USD".into();
+    let asked = json!({
+        "intent": "calculate",
+        "slabId": record.id,
+        "identityRevision": record.revision,
+        "revisionIds": revisions,
+        "policy": Policy::with_basis(&input.basis),
+        "seller": seller,
+    });
+    match legacy
+        .send::<_, serde_json::Value>("/api/slab-recommendations", &asked)
+        .await
+    {
+        Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
+        Err(why) => {
+            refused(
+                Place::Recommendation,
+                &req,
+                &db,
+                &legacy,
+                visitor,
+                &at.choice,
+                why,
+            )
+            .await
+        }
+    }
+}
+
+/// The ask the operator settled on for the latest recommendation, and why.
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct ReviewAskInput {
+    pub recommendation: String,
+    pub item_price: Option<f64>,
+    #[serde(default)]
+    pub note: String,
+}
+
+pub async fn review_ask(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+    Params(at): Params<url::ReviewAsk>,
+    Form(input): Form<ReviewAskInput>,
+) -> HtmlResult {
+    let asked = json!({
+        "intent": "override",
+        "recommendationId": input.recommendation,
+        "itemPrice": input.item_price,
+        "currency": "USD",
+        "note": input.note.trim(),
+    });
+    match legacy
+        .send::<_, serde_json::Value>("/api/slab-recommendations", &asked)
+        .await
+    {
+        Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
+        Err(why) => {
+            refused(
+                Place::Recommendation,
+                &req,
+                &db,
+                &legacy,
+                Visitor::of(zone.as_ref()),
+                &at.choice,
+                why,
+            )
+            .await
+        }
+    }
+}
+
+/// Why the post was refused, as a conflict, in the part of the page that sent it: with
+/// JavaScript (a `data-patch` form) only that part's message, so what the user typed stays;
+/// otherwise the page the post came from.
 async fn refused(
+    at: Place,
     req: &Req,
     db: &Database,
     legacy: &Legacy,
@@ -462,8 +644,15 @@ async fn refused(
     choice: &Choice,
     why: String,
 ) -> HtmlResult {
+    if req.mode == Mode::Action {
+        let why = Some(why.as_str());
+        return req.patch_with_status(
+            StatusCode::CONFLICT,
+            html! { <Problem at={at} why={why} /> },
+        );
+    }
     let mut screen = Screen::read(db, legacy, choice, visitor).await?;
-    screen.problem = Some(why);
+    screen.problem = Some((at, why));
     let mut answer = page(req, db, &screen).await?;
     *answer.status_mut() = StatusCode::CONFLICT;
     Ok(answer)
