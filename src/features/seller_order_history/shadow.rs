@@ -1,34 +1,44 @@
-//! The seller order history worker in shadow (port decision 24): it reads TCGplayer as the Node
-//! worker does and, instead of recording, compares what it read with the rows Node recorded and
-//! writes one JSON line per order to a log. It writes nothing to the database.
+//! The seller order history worker in shadow (port decision 24): the ported sync runs as the Node
+//! worker does, but its run is kept in this process and each order it would record is compared
+//! with the row Node holds and written to a log as one JSON line. It writes nothing to the
+//! database.
 //!
-//! It runs when `SELLER_ORDER_SHADOW_LOG` names the log file. Each pass reads one page of the last
-//! three months' orders, oldest first, continuing where the last pass ended and starting over at
-//! the end, and reads the detail of at most [`DETAILS`] orders: those Node would read again, and
-//! then a few Node already holds, to check this side fingerprints them as Node did.
-use std::{collections::HashMap, io::Write, path::PathBuf, time::Duration};
+//! It runs when `SELLER_ORDER_SHADOW_LOG` names the log file. A step reads one page of the last
+//! three months' orders and at most [`BUDGET`]'s details, every [`EVERY`].
+use std::{
+    collections::{HashMap, HashSet},
+    io::Write,
+    path::PathBuf,
+    sync::Mutex,
+    time::Duration,
+};
 
 use corten::Signal;
 use serde::Serialize;
 use tokio::time::{MissedTickBehavior, interval};
 
 use super::{
-    api,
-    observation::{self, Fields},
+    api::{self, SearchPage},
+    observation::{Fields, Observation},
+    sync::{self, Budget, Coverage, MemoryRun, Orders, Progress, Run, Store},
 };
-use crate::{database::Database, features::shipping_configuration, tcgplayer::TcgPlayer};
+use crate::{
+    database::Database,
+    features::shipping_configuration,
+    tcgplayer::{Failure, TcgPlayer},
+};
 
-/// How often a pass runs: Node looks hourly once it has read everything, sooner while catching
-/// up; the shadow reads at most a page a pass, so it goes every ten minutes.
+/// How often a step runs. Node steps every two seconds while a scan is behind and hourly once it
+/// is complete; the shadow reads a smaller page, more slowly, beside it.
 pub const EVERY: Duration = Duration::from_secs(10 * 60);
-/// Search results per page; Node reads 500, the shadow a smaller share of TCGplayer's patience.
-pub const PAGE: u32 = 100;
-/// Details read per pass; Node reads 25.
-pub const DETAILS: usize = 25;
-/// Of those, at most this many are orders Node already holds, read to check fingerprints.
-pub const CHECKS: usize = 5;
+/// A step's reads: Node's, but pages of 100 rather than 500.
+pub const BUDGET: Budget = Budget {
+    max_pages: 1,
+    max_details: 25,
+    page_size: 100,
+    detail_concurrency: 5,
+};
 
-/// The log the shadow writes, when it runs.
 fn log_path() -> Option<PathBuf> {
     std::env::var("SELLER_ORDER_SHADOW_LOG")
         .ok()
@@ -39,278 +49,245 @@ fn log_path() -> Option<PathBuf> {
 /// What Node holds of an order.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Stored {
-    pub summary_fingerprint: Option<String>,
     pub source_fingerprint: String,
     pub source_revision: i32,
 }
 
-/// What the shadow concludes about one order.
+/// What recording an order would do to Node's history.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "verdict", rename_all = "snake_case")]
 pub enum Verdict {
-    /// Node holds the search result as it is now, and its detail was not read.
-    Unchanged,
-    /// Node would read the detail, but this pass's budget was spent.
-    Deferred,
-    /// Node holds the order, and the detail fingerprints as Node recorded it.
-    Agrees { revision: i32 },
-    /// Node holds the search result as it is now, but the detail fingerprints differently: a
-    /// parity bug, or TCGplayer changed the order without its search result showing it.
-    Differs {
-        ours: String,
-        theirs: String,
-        revision: i32,
-    },
-    /// Node has not recorded the order: it would record revision 1.
-    WouldRecord,
-    /// The search result changed and so did the detail: Node would record the next revision.
-    WouldRevise { revision: i32 },
-    /// The search result changed but the detail did not: Node would only note the new result.
-    WouldNoteSummary { revision: i32 },
-    /// The detail could not be read or observed.
-    Failed { why: String },
+    /// Node has not recorded the order: it would record its revision 1.
+    New,
+    /// The order changed: Node would record its next revision.
+    Revised { revision: i32 },
+    /// Only its search result changed: Node would note the new result, keeping the revision.
+    SummaryOnly { revision: i32 },
 }
 
-/// The verdict on an order Node would read again, from its detail's fingerprint.
-pub fn after_reading(stored: Option<&Stored>, ours: &str) -> Verdict {
-    match stored {
-        None => Verdict::WouldRecord,
-        Some(s) if s.source_fingerprint == ours => Verdict::WouldNoteSummary {
-            revision: s.source_revision,
-        },
-        Some(s) => Verdict::WouldRevise {
-            revision: s.source_revision + 1,
-        },
+impl Verdict {
+    pub fn of(stored: Option<&Stored>, fingerprint: &str) -> Verdict {
+        match stored {
+            None => Verdict::New,
+            Some(s) if s.source_fingerprint == fingerprint => Verdict::SummaryOnly {
+                revision: s.source_revision,
+            },
+            Some(s) => Verdict::Revised {
+                revision: s.source_revision + 1,
+            },
+        }
+    }
+
+    /// Whether the history would change, as `recordObservation` says.
+    pub fn changes(&self) -> bool {
+        !matches!(self, Verdict::SummaryOnly { .. })
     }
 }
 
-/// The verdict on an order Node holds as it is, from its detail's fingerprint.
-pub fn after_checking(stored: &Stored, ours: &str) -> Verdict {
-    if stored.source_fingerprint == ours {
-        Verdict::Agrees {
-            revision: stored.source_revision,
-        }
-    } else {
-        Verdict::Differs {
-            ours: ours.to_owned(),
-            theirs: stored.source_fingerprint.clone(),
-            revision: stored.source_revision,
-        }
-    }
-}
-
-/// Which of a page's orders to read, in page order: every one Node would read, up to the budget,
-/// then up to [`CHECKS`] of the rest. The others are deferred or unchanged.
-pub fn plan(needed: &[bool]) -> Vec<Read> {
-    let mut details = 0;
-    let mut checks = 0;
-    let mut reads: Vec<Read> = needed
-        .iter()
-        .map(|&needed| {
-            if needed && details < DETAILS {
-                details += 1;
-                Read::Again
-            } else if needed {
-                Read::Deferred
-            } else {
-                Read::Unchanged
-            }
-        })
-        .collect();
-    for read in reads.iter_mut().rev() {
-        if *read == Read::Unchanged && checks < CHECKS && details < DETAILS {
-            *read = Read::Check;
-            checks += 1;
-            details += 1;
-        }
-    }
-    reads
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Read {
-    /// Node would read the detail again; so does the shadow.
-    Again,
-    /// Node would read it, past the budget.
-    Deferred,
-    /// Node would not; the shadow reads it to check the fingerprint.
-    Check,
-    /// Neither reads it.
-    Unchanged,
-}
-
+/// A line of the log.
 #[derive(Serialize)]
-struct Line<'a> {
-    at: String,
-    offset: u32,
-    order_number: &'a str,
-    #[serde(flatten)]
-    verdict: &'a Verdict,
+#[serde(untagged)]
+enum Line<'a> {
+    Order {
+        at: &'a str,
+        order_number: &'a str,
+        #[serde(flatten)]
+        verdict: &'a Verdict,
+    },
+    Step {
+        at: &'a str,
+        status: &'a str,
+        next_offset: u32,
+        expected_total: Option<u32>,
+        orders_observed: u32,
+        gaps: usize,
+        error: Option<&'a str>,
+        changed: usize,
+    },
 }
 
-async fn stored(
+/// TCGplayer, read live.
+struct Live<'a>(&'a TcgPlayer);
+
+impl Orders for Live<'_> {
+    async fn search(&self, seller: &str, from: u32, size: u32) -> Result<SearchPage, Failure> {
+        api::search(self.0, seller, from, size).await
+    }
+    async fn find(&self, seller: &str, number: &str) -> Result<Option<Fields>, Failure> {
+        api::find(self.0, seller, number).await
+    }
+    async fn order(&self, number: &str) -> Result<Fields, Failure> {
+        api::order(self.0, number).await
+    }
+}
+
+/// Node's history read, the run kept here, and the orders it would record logged.
+struct Shadow<'a> {
+    db: &'a Database,
+    run: &'a MemoryRun,
+    lines: Mutex<Vec<(String, Verdict)>>,
+}
+
+impl Store for Shadow<'_> {
+    async fn start_or_resume(&self, _: &str, _: &str) -> Result<Option<Run>, String> {
+        Ok(Some(self.run.start()))
+    }
+    async fn coverage(&self, _: &str) -> Result<Coverage, String> {
+        Ok(self.run.coverage())
+    }
+    async fn record(&self, _: &Run, _: &str, o: &Observation) -> Result<bool, String> {
+        let row: Option<(String, i32)> = sqlx::query_as(
+            "SELECT source_fingerprint, source_revision FROM seller_orders
+             WHERE seller_key = $1 AND order_number = $2",
+        )
+        .bind(&o.seller_key)
+        .bind(&o.order_number)
+        .fetch_optional(&self.db.0)
+        .await
+        .map_err(|e| e.to_string())?;
+        let stored = row.map(|(source_fingerprint, source_revision)| Stored {
+            source_fingerprint,
+            source_revision,
+        });
+        let verdict = Verdict::of(stored.as_ref(), &o.fingerprint);
+        let changes = verdict.changes();
+        self.lines
+            .lock()
+            .expect("lines lock")
+            .push((o.order_number.clone(), verdict));
+        Ok(changes)
+    }
+    async fn details_needed(
+        &self,
+        seller: &str,
+        summaries: &[(String, String)],
+    ) -> Result<HashSet<String>, String> {
+        let numbers: Vec<&str> = summaries.iter().map(|(n, _)| n.as_str()).collect();
+        let rows: Vec<(String, Option<String>)> = sqlx::query_as(
+            "SELECT order_number, summary_fingerprint FROM seller_orders
+             WHERE seller_key = $1 AND order_number = ANY($2)",
+        )
+        .bind(seller)
+        .bind(&numbers)
+        .fetch_all(&self.db.0)
+        .await
+        .map_err(|e| e.to_string())?;
+        let held: HashMap<String, Option<String>> = rows.into_iter().collect();
+        Ok(summaries
+            .iter()
+            .filter(|(n, fp)| {
+                super::observation::needs_detail(held.get(n).map(|s| s.as_deref()), fp)
+            })
+            .map(|(n, _)| n.clone())
+            .collect())
+    }
+    async fn api_verified(
+        &self,
+        seller: &str,
+        numbers: &[String],
+    ) -> Result<HashSet<String>, String> {
+        let rows: Vec<(String,)> = sqlx::query_as(
+            "SELECT order_number FROM seller_orders
+             WHERE seller_key = $1 AND latest_source = 'tcgplayer_api' AND order_number = ANY($2)",
+        )
+        .bind(seller)
+        .bind(numbers)
+        .fetch_all(&self.db.0)
+        .await
+        .map_err(|e| e.to_string())?;
+        Ok(rows.into_iter().map(|(n,)| n).collect())
+    }
+    async fn save_progress(&self, p: Progress<'_>) -> Result<Coverage, String> {
+        Ok(self.run.save(&p))
+    }
+    async fn finish(
+        &self,
+        _: &Run,
+        _: &str,
+        complete: bool,
+        error: Option<&str>,
+    ) -> Result<Coverage, String> {
+        Ok(self.run.finish(complete, error))
+    }
+    async fn restart(&self, _: &Run, _: &str, error: &str) -> Result<Coverage, String> {
+        Ok(self.run.restart(error))
+    }
+}
+
+fn now() -> String {
+    chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+}
+
+/// One step of the shadow's scan, its lines appended to `log`.
+async fn step(
     db: &Database,
-    seller: &str,
-    numbers: &[String],
-) -> sqlx::Result<HashMap<String, Stored>> {
-    let rows: Vec<(String, Option<String>, String, i32)> = sqlx::query_as(
-        "SELECT order_number, summary_fingerprint, source_fingerprint, source_revision
-         FROM seller_orders WHERE seller_key = $1 AND order_number = ANY($2)",
-    )
-    .bind(seller)
-    .bind(numbers)
-    .fetch_all(&db.0)
-    .await?;
-    Ok(rows
-        .into_iter()
-        .map(|(number, summary, source, revision)| {
-            (
-                number,
-                Stored {
-                    summary_fingerprint: summary,
-                    source_fingerprint: source,
-                    source_revision: revision,
-                },
-            )
-        })
-        .collect())
-}
-
-/// One pass from `offset`; where the next one starts.
-async fn pass(db: &Database, tcg: &TcgPlayer, log: &PathBuf, offset: u32) -> Result<u32, String> {
+    tcg: &TcgPlayer,
+    run: &MemoryRun,
+    log: &PathBuf,
+    budget: Budget,
+) -> Result<(), String> {
     let seller = shipping_configuration::default_seller_key(db)
         .await
         .map_err(|e| e.to_string())?;
-    let seller = seller.trim();
-    if seller.is_empty() {
-        return Ok(0);
+    if seller.trim().is_empty() {
+        return Ok(());
     }
-    // Node's overlap: a few orders of the last page again, so one that moved is not missed.
-    let from = if offset == 0 {
-        0
-    } else {
-        offset.saturating_sub((PAGE / 10).clamp(1, 25))
+    let shadow = Shadow {
+        db,
+        run,
+        lines: Mutex::new(Vec::new()),
     };
-    let page = api::search(tcg, seller, from, PAGE)
-        .await
-        .map_err(|e| e.to_string())?;
-    let numbers: Vec<String> = page
-        .orders
-        .iter()
-        .map(|o| {
-            o.get("orderNumber")
-                .and_then(|n| n.as_str())
-                .unwrap_or("")
-                .to_owned()
-        })
-        .collect();
-    let held = stored(db, seller, &numbers)
-        .await
-        .map_err(|e| e.to_string())?;
-    let fingerprints: Vec<Result<String, String>> = page
-        .orders
-        .iter()
-        .map(observation::summary_fingerprint)
-        .collect();
-    let needed: Vec<bool> = numbers
-        .iter()
-        .zip(&fingerprints)
-        .map(|(number, fp)| match fp {
-            Ok(fp) => observation::needs_detail(
-                Some(
-                    held.get(number)
-                        .and_then(|s| s.summary_fingerprint.as_deref()),
-                ),
-                fp,
-            ),
-            Err(_) => true,
-        })
-        .collect();
-    let now = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
-    let mut lines = Vec::with_capacity(numbers.len());
-    for (((summary, number), read), fp) in page
-        .orders
-        .iter()
-        .zip(&numbers)
-        .zip(plan(&needed))
-        .zip(&fingerprints)
-    {
-        let verdict = match (read, fp) {
-            (_, Err(why)) => Verdict::Failed { why: why.clone() },
-            (Read::Unchanged, _) => Verdict::Unchanged,
-            (Read::Deferred, _) => Verdict::Deferred,
-            (Read::Again | Read::Check, _) => {
-                match detail(tcg, seller, summary, number, &now).await {
-                    Err(why) => Verdict::Failed { why },
-                    Ok(ours) => match (read, held.get(number)) {
-                        (Read::Check, Some(stored)) => after_checking(stored, &ours),
-                        (_, stored) => after_reading(stored, &ours),
-                    },
-                }
-            }
-        };
-        lines.push((number.as_str(), verdict));
-    }
+    let claim = "shadow";
+    let synced = sync::synchronize(&Live(tcg), &shadow, &seller, budget, &[], claim, &now).await?;
+    let at = now();
     let mut file = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(log)
         .map_err(|e| format!("the shadow log did not open: {e}"))?;
-    for (number, verdict) in &lines {
-        let line = Line {
-            at: now.clone(),
-            offset: from,
-            order_number: number,
-            verdict,
-        };
+    let lines = shadow.lines.into_inner().expect("lines lock");
+    let c = &synced.coverage;
+    let summary = Line::Step {
+        at: &at,
+        status: &c.status,
+        next_offset: c.next_offset,
+        expected_total: c.expected_total,
+        orders_observed: c.orders_observed,
+        gaps: c.gaps.len(),
+        error: c.error.as_deref(),
+        changed: synced.changed.len(),
+    };
+    let orders = lines.iter().map(|(number, verdict)| Line::Order {
+        at: &at,
+        order_number: number,
+        verdict,
+    });
+    for line in orders.chain(std::iter::once(summary)) {
         let text = serde_json::to_string(&line).map_err(|e| e.to_string())?;
         writeln!(file, "{text}").map_err(|e| e.to_string())?;
     }
-    let next = from + page.orders.len() as u32;
-    let end = page.orders.len() < PAGE as usize || next >= page.total_orders;
-    Ok(if end { 0 } else { next })
+    Ok(())
 }
 
-/// An order's detail, observed as Node would record it: its fingerprint.
-async fn detail(
-    tcg: &TcgPlayer,
-    seller: &str,
-    summary: &Fields,
-    number: &str,
-    now: &str,
-) -> Result<String, String> {
-    let detail = api::order(tcg, number).await.map_err(|e| e.to_string())?;
-    let read = detail
-        .get("orderNumber")
-        .and_then(|n| n.as_str())
-        .unwrap_or("")
-        .trim()
-        .to_owned();
-    if read != number.trim() {
-        return Err("detail order number did not match search result".into());
-    }
-    Ok(observation::observe(seller, Some(summary), &detail, now)?.fingerprint)
-}
-
-/// The task: when [`log_path`] names a log, a pass at once, then every [`EVERY`], until shutdown.
+/// The task: when `SELLER_ORDER_SHADOW_LOG` names a log, a step at once, then every [`EVERY`],
+/// until shutdown.
 pub async fn run(db: Database, signal: Signal) {
     let Some(log) = log_path() else {
         return;
     };
     println!("Seller order shadow: logging to {}", log.display());
     let tcg = TcgPlayer::new(db.clone());
+    let run = MemoryRun::default();
     let mut every = interval(EVERY);
     every.set_missed_tick_behavior(MissedTickBehavior::Skip);
-    let mut offset = 0;
     loop {
         tokio::select! {
             biased;
             _ = signal.aborted() => return,
             _ = every.tick() => {}
         }
-        match pass(&db, &tcg, &log, offset).await {
-            Ok(next) => offset = next,
-            Err(why) => eprintln!("Seller order shadow pass failed: {why}"),
+        if let Err(why) = step(&db, &tcg, &run, &log, BUDGET).await {
+            eprintln!("Seller order shadow step failed: {why}");
         }
     }
 }
@@ -319,11 +296,11 @@ pub async fn run(db: Database, signal: Signal) {
 mod tests {
     use super::*;
 
-    /// One pass from `SELLER_ORDER_SHADOW_FROM`, or over the newest page, logged to
-    /// `SELLER_ORDER_SHADOW_LOG`.
+    /// Steps from `SELLER_ORDER_SHADOW_FROM` (default: the newest page), logged to
+    /// `SELLER_ORDER_SHADOW_LOG`; `SELLER_ORDER_SHADOW_STEPS` of them (default 1).
     #[tokio::test]
     #[ignore = "reads TCGplayer live with the dev database's cookie"]
-    async fn a_pass_over_the_newest_page() {
+    async fn steps_from_an_offset() {
         crate::config::load_env();
         let log = log_path().expect("SELLER_ORDER_SHADOW_LOG names the log");
         let db = Database::connect_lazy(&crate::config::database_url());
@@ -335,89 +312,62 @@ mod tests {
             .await
             .unwrap()
             .total_orders;
-        let from = std::env::var("SELLER_ORDER_SHADOW_FROM")
-            .ok()
-            .and_then(|f| f.parse().ok())
-            .unwrap_or(total.saturating_sub(PAGE) + (PAGE / 10).clamp(1, 25));
-        pass(&db, &tcg, &log, from).await.unwrap();
+        let var = |name: &str| std::env::var(name).ok().and_then(|v| v.parse::<u32>().ok());
+        let from =
+            var("SELLER_ORDER_SHADOW_FROM").unwrap_or(total.saturating_sub(BUDGET.page_size));
+        let run = MemoryRun::at(from, Some(total), &[]);
+        for _ in 0..var("SELLER_ORDER_SHADOW_STEPS").unwrap_or(1) {
+            step(&db, &tcg, &run, &log, BUDGET).await.unwrap();
+        }
     }
 
     fn stored(fp: &str, revision: i32) -> Stored {
         Stored {
-            summary_fingerprint: Some("s".into()),
             source_fingerprint: fp.into(),
             source_revision: revision,
         }
     }
 
     #[test]
-    fn a_read_order_is_new_revised_or_only_noted() {
-        assert_eq!(after_reading(None, "a"), Verdict::WouldRecord);
+    fn an_order_is_new_revised_or_only_noted() {
+        assert_eq!(Verdict::of(None, "a"), Verdict::New);
         assert_eq!(
-            after_reading(Some(&stored("a", 2)), "a"),
-            Verdict::WouldNoteSummary { revision: 2 }
+            Verdict::of(Some(&stored("a", 2)), "a"),
+            Verdict::SummaryOnly { revision: 2 }
         );
         assert_eq!(
-            after_reading(Some(&stored("a", 2)), "b"),
-            Verdict::WouldRevise { revision: 3 }
+            Verdict::of(Some(&stored("a", 2)), "b"),
+            Verdict::Revised { revision: 3 }
         );
+        assert!(Verdict::New.changes() && !Verdict::SummaryOnly { revision: 1 }.changes());
     }
 
     #[test]
-    fn a_checked_order_agrees_or_differs() {
-        assert_eq!(
-            after_checking(&stored("a", 4), "a"),
-            Verdict::Agrees { revision: 4 }
-        );
-        assert_eq!(
-            after_checking(&stored("a", 4), "b"),
-            Verdict::Differs {
-                ours: "b".into(),
-                theirs: "a".into(),
-                revision: 4
-            }
-        );
-    }
-
-    #[test]
-    fn the_plan_reads_what_node_would_then_checks_the_newest_of_the_rest() {
-        let reads = plan(&[true, false, false, true, false]);
-        assert_eq!(
-            reads,
-            [
-                Read::Again,
-                Read::Check,
-                Read::Check,
-                Read::Again,
-                Read::Check
-            ]
-        );
-        let mut needed = vec![true; DETAILS + 2];
-        needed.extend([false; 3]);
-        let reads = plan(&needed);
-        assert_eq!(reads.iter().filter(|r| **r == Read::Again).count(), DETAILS);
-        assert_eq!(reads.iter().filter(|r| **r == Read::Deferred).count(), 2);
-        assert!(
-            !reads.contains(&Read::Check),
-            "the budget went to what Node would read"
-        );
-        let reads = plan(&[false; 8]);
-        assert_eq!(reads.iter().filter(|r| **r == Read::Check).count(), CHECKS);
-        assert_eq!(&reads[..3], [Read::Unchanged; 3]);
-    }
-
-    #[test]
-    fn a_verdict_is_logged_as_one_flat_line() {
-        let verdict = Verdict::WouldRevise { revision: 3 };
-        let line = Line {
-            at: "t".into(),
-            offset: 0,
+    fn lines_are_flat_json() {
+        let verdict = Verdict::Revised { revision: 3 };
+        let order = Line::Order {
+            at: "t",
             order_number: "A-1",
             verdict: &verdict,
         };
         assert_eq!(
-            serde_json::to_string(&line).unwrap(),
-            r#"{"at":"t","offset":0,"order_number":"A-1","verdict":"would_revise","revision":3}"#
+            serde_json::to_string(&order).unwrap(),
+            r#"{"at":"t","order_number":"A-1","verdict":"revised","revision":3}"#
+        );
+        let step = Line::Step {
+            at: "t",
+            status: "incomplete",
+            next_offset: 100,
+            expected_total: Some(1600),
+            orders_observed: 100,
+            gaps: 0,
+            error: Some("Sync request budget reached; resume from the saved offset."),
+            changed: 4,
+        };
+        assert!(
+            serde_json::to_string(&step)
+                .unwrap()
+                .starts_with(r#"{"at":"t","status":"incomplete","next_offset":100"#)
         );
     }
 }

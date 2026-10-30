@@ -87,9 +87,8 @@ pub async fn search(
         .await
 }
 
-/// The search result for one order, when the seller has it. The recording reads the refunded
-/// orders with it; the sync will verify the orders it is asked to read first.
-#[cfg(test)]
+/// The search result for one order, when the seller has it: the sync checks an order it is asked
+/// to read first is the seller's.
 pub async fn find(
     tcg: &TcgPlayer,
     seller_key: &str,

@@ -6,3 +6,4 @@ pub mod api;
 mod fixtures;
 pub mod observation;
 pub mod shadow;
+pub mod sync;
