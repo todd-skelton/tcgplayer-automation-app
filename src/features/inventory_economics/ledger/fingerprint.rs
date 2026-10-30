@@ -53,7 +53,7 @@ fn js_number(number: &serde_json::Number) -> String {
 }
 
 /// An f64 as `JSON.stringify` writes it; not finite is `null`.
-fn js_float(value: f64) -> String {
+pub fn js_float(value: f64) -> String {
     if !value.is_finite() {
         return "null".into();
     }

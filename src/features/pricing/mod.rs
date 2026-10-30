@@ -7,6 +7,7 @@
 )]
 pub mod capital_cycle;
 pub mod horizon_value_curve;
+pub mod marketplace_price;
 pub mod maximize;
 pub mod policy;
 pub mod shipping_threshold_snap;

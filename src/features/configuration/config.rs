@@ -288,22 +288,31 @@ impl Config {
 
 impl Pricing {
     /// This section's keys of `pricing_json`. The snaps share the document but not the section.
-    fn document(&self) -> Value {
-        let policy = match self.policy {
+    /// `pricing_json.policy`.
+    pub fn policy_document(&self) -> Value {
+        match self.policy {
             Policy::Percentile => json!({ "method": "percentile" }),
             Policy::TargetHorizon(days) => {
                 json!({ "method": "target-horizon", "horizonDays": number(days) })
             }
             Policy::ProfitPerDay => json!({ "method": "profit-per-day" }),
-        };
+        }
+    }
+
+    /// `pricing_json.profitPerDay`.
+    pub fn profit_per_day_document(&self) -> Value {
         let ppd = &self.profit_per_day;
         json!({
-            "policy": policy,
-            "profitPerDay": {
-                "dailyReturnHurdle": number(ppd.daily_return_hurdle),
-                "relativeOverhead": number(ppd.relative_overhead),
-                "staticOverheadPerUnit": number(ppd.static_overhead_per_unit),
-            },
+            "dailyReturnHurdle": number(ppd.daily_return_hurdle),
+            "relativeOverhead": number(ppd.relative_overhead),
+            "staticOverheadPerUnit": number(ppd.static_overhead_per_unit),
+        })
+    }
+
+    fn document(&self) -> Value {
+        json!({
+            "policy": self.policy_document(),
+            "profitPerDay": self.profit_per_day_document(),
             "defaultPercentile": number(self.default_percentile),
             "percentileStep": number(self.percentile_step),
             "minPercentile": number(self.min_percentile),

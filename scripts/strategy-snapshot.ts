@@ -10,6 +10,8 @@ import { buildReinvestmentInput } from "~/features/inventory-strategy/services/r
 import { selectTurnaround } from "~/features/inventory-strategy/domain/turnaroundStrategy";
 import { inventoryStrategyTurnaroundRepository } from "~/core/db/repositories/inventoryStrategyTurnaround.server";
 import { loadInventorySellingHistory } from "~/features/inventory-strategy/services/inventorySellingHistory.server";
+import { inventoryStrategyRepository, pricingConfigRepository } from "~/core/db";
+import { buildInventoryStrategyDashboard } from "~/features/inventory-strategy/services/inventoryStrategy";
 
 const seller = process.argv[2] ?? "8520a14f";
 const now = new Date();
@@ -34,6 +36,8 @@ const turnaround = lines.map((line) => selectTurnaround(seller, line, settings, 
 const sellingHistory = await loadInventorySellingHistory(seller);
 const lineScope = { windowDays: 365 as const, productLine: sellingHistory.availableProductLines[0] ?? null };
 const sellingHistoryLine = await loadInventorySellingHistory(seller, { scope: lineScope, detailPage: 2 });
-writeFileSync("target/node-strategy.json", JSON.stringify({ seller, now: now.toISOString(), asOf, report, marginTrend, reinvestment, reinvestmentInput: input, turnaround, sellingHistory, lineScope, sellingHistoryLine }));
+// The dashboard from the same snapshot and configuration, at the same instant.
+const dashboard = buildInventoryStrategyDashboard(seller, await inventoryStrategyRepository.findSnapshot(seller), await pricingConfigRepository.get(), now);
+writeFileSync("target/node-strategy.json", JSON.stringify({ seller, now: now.toISOString(), asOf, report, marginTrend, reinvestment, reinvestmentInput: input, turnaround, sellingHistory, lineScope, sellingHistoryLine, dashboard }));
 console.log("windows", report.windows.length, "weeks", marginTrend.weeks.length);
 process.exit(0);

@@ -5,8 +5,8 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 
 use super::{
-    performance, pricing_changes, reinvestment, selling_history, sold_units, turnaround,
-    turnaround_settings,
+    performance, pricing_changes, reinvestment, selling_history, snapshot, sold_units, strategy,
+    turnaround, turnaround_settings,
 };
 use crate::database::Database;
 
@@ -139,5 +139,15 @@ async fn strategy_matches_node() {
         "sellingHistoryLine",
         &serde_json::to_value(&line_history).unwrap(),
         &node["sellingHistoryLine"],
+    );
+    let config = crate::features::configuration::config::load(&db)
+        .await
+        .unwrap();
+    let items = snapshot::find(&db, seller).await.unwrap();
+    let dashboard = strategy::build(seller, &items, &config, now);
+    same(
+        "dashboard",
+        &serde_json::to_value(&dashboard).unwrap(),
+        &node["dashboard"],
     );
 }

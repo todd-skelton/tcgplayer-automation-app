@@ -695,6 +695,37 @@ pub struct PersistedDecision {
     pub percentiles: Option<Vec<PercentileDetail>>,
 }
 
+impl PersistedDecision {
+    /// The details as stored, keeping every field that reads and leaving out one that does not,
+    /// as the Node app reads what it can of an older run's JSON.
+    pub fn from_json(details: &serde_json::Value) -> Self {
+        fn field<T: serde::de::DeserializeOwned>(
+            details: &serde_json::Value,
+            key: &str,
+        ) -> Option<T> {
+            serde_json::from_value(details.get(key)?.clone()).ok()
+        }
+        PersistedDecision {
+            pricing_model_version: field(details, "pricingModelVersion"),
+            decision: field(details, "decision"),
+            shadow_decision: field(details, "shadowDecision"),
+            percentile_used: field(details, "percentileUsed"),
+            suggested_price: field(details, "suggestedPrice"),
+            marketplace_price: field(details, "marketplacePrice"),
+            historical_sales_velocity_days: field(details, "historicalSalesVelocityDays"),
+            estimated_time_to_sell_days: field(details, "estimatedTimeToSellDays"),
+            percentiles: details
+                .get("percentiles")
+                .and_then(|p| p.as_array())
+                .map(|all| {
+                    all.iter()
+                        .filter_map(|d| serde_json::from_value(d.clone()).ok())
+                        .collect()
+                }),
+        }
+    }
+}
+
 fn curve_of(details: &PersistedDecision) -> Curve {
     Curve::new(to_pricing_curve(
         details.percentiles.as_deref().unwrap_or_default(),
