@@ -1,4 +1,4 @@
-use corten::{Href, prelude::*};
+use corten::{Href, form::keep_query, prelude::*};
 use serde::Deserialize;
 
 use super::{ItemCard, ItemRow, SortBy, picture};
@@ -46,8 +46,9 @@ pub struct ShowAs {
 /// link. The page's route takes [`SheetQuery`], so the names agree; each page passes its own
 /// typed route.
 pub struct Paging<'a> {
-    pub action: &'a dyn Href,
-    pub keep: Vec<(&'static str, String)>,
+    /// The sheet as shown: the filter form's action, whose query (its sort, and the shipping
+    /// step it is drawn on) the filter keeps.
+    pub here: &'a dyn Href,
     pub filters: &'a SheetQuery,
     pub link: &'a dyn Fn(SortBy) -> Box<dyn Href + 'a>,
 }
@@ -93,22 +94,18 @@ pub fn SheetItems<'a>(
         <div>
             <div class={(panel(), mb_4(), Toolbar)}>
                 {lead}
-                <form method="get" action={paging.action} class={(row(Space::_2), Filter)}>
-                    for (name, value) in &paging.keep {
-                        <input type="hidden" name={*name} value={value.as_str()}>
-                    }
-                    <input
-                        type="search"
-                        name={f.q}
-                        value={q}
-                        placeholder="Filter items..."
-                        aria-label="Filter items"
-                        on:input={js::filter(target, found)}
-                    >
-                    if let Some(sort) = paging.filters.sort {
-                        <input type="hidden" name={f.sort} value={sort}>
-                    }
-                    <button class={NoScript}>"Filter"</button>
+                <form method="get" action={paging.here} class={(row(Space::_2), Filter)}>
+                    {keep_query(paging.here, html! {
+                        <input
+                            type="search"
+                            name={f.q}
+                            value={q}
+                            placeholder="Filter items..."
+                            aria-label="Filter items"
+                            on:input={js::filter(target, found)}
+                        >
+                        <button class={NoScript}>"Filter"</button>
+                    })}
                 </form>
                 <fieldset class={Choice}>
                     <legend>"Show as"</legend>

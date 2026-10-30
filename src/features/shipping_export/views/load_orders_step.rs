@@ -1,4 +1,4 @@
-use corten::prelude::*;
+use corten::{form::keep_query, prelude::*};
 
 use crate::{
     features::shipping_export::{
@@ -41,6 +41,7 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
             loading.configured
         )
     };
+    let here = url::ShippingWorkflow::at(Step::LoadOrders);
     html! {
         <div class={LoadOrdersStep}>
             if !loading.warnings.is_empty() {
@@ -63,17 +64,18 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
                     if seller.is_empty() { "not set" } else { {seller} }
                 </button>
                 <div popover id={SellerPopoverId} class={Popover}>
-                    <form method="get" action={url::ShippingWorkflow::at(Step::LoadOrders)}>
-                        <input type="hidden" name={q.step} value={Step::LoadOrders}>
-                        <Field label="Seller Key" hint={&hint}>
-                            <input
-                                name={q.seller}
-                                value={seller}
-                                placeholder={if loading.configured.is_empty() { "Enter seller key" } else { loading.configured }}
-                                autofocus
-                            >
-                        </Field>
-                        <button>"Use This Seller"</button>
+                    <form method="get" action={&here}>
+                        {keep_query(&here, html! {
+                            <Field label="Seller Key" hint={&hint}>
+                                <input
+                                    name={q.seller}
+                                    value={seller}
+                                    placeholder={if loading.configured.is_empty() { "Enter seller key" } else { loading.configured }}
+                                    autofocus
+                                >
+                            </Field>
+                            <button>"Use This Seller"</button>
+                        })}
                     </form>
                 </div>
                 <span class={Divider}></span>

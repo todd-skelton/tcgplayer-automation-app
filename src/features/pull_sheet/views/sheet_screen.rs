@@ -28,9 +28,9 @@ pub fn SheetScreen<'a>(
         },
     };
     html! {
-        let action = at(None);
+        let here = at(filters.sort);
         let link = |by| Box::new(at(Some(by))) as Box<dyn Href>;
-        let paging = Paging { action: &action, keep: Vec::new(), filters, link: &link };
+        let paging = Paging { here: &here, filters, link: &link };
         <section>
             <h1>"Pull Sheet"</h1>
             <SheetItems

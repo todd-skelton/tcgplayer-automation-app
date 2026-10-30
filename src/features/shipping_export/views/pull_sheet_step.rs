@@ -74,11 +74,10 @@ pub fn PullSheetStep<'a>(
                 </Notice>
             }
             Ok(pulled) => {
-                let action = at(None);
+                let here = at(filters.sort);
                 let link = |by| Box::new(at(Some(by))) as Box<dyn Href>;
                 let paging = Paging {
-                    action: &action,
-                    keep: vec![("step", "pull-sheet".to_owned())],
+                    here: &here,
                     filters,
                     link: &link,
                 };

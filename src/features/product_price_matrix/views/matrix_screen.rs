@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use corten::{
+    form::keep_query,
     i18n::{DateStyle, TimeStyle},
     prelude::*,
 };
@@ -9,10 +10,7 @@ use super::{MatrixTable, RefundHelper};
 use crate::{
     features::{
         inventory_intake::catalog::{ProductType, Scope},
-        product_price_matrix::{
-            page::Screen,
-            url::{self, Choice},
-        },
+        product_price_matrix::{page::Screen, url::Choice},
     },
     layout::{Notice, SubmitsOnChange, Tone},
     text::Msg,
@@ -25,6 +23,9 @@ use crate::{
 #[component(css)]
 pub fn MatrixScreen<'a>(screen: &'a Screen, visitor: Visitor, t: Msg) -> impl Render {
     let f = Choice::FIELDS;
+    // The form keeps what it has no control for: the set while searching by number, and the
+    // product it was drawn for.
+    let here = screen.market();
     let matrix = screen.matrix.as_ref().and_then(|m| m.as_ref().ok());
     let priced_at = matrix.and_then(|m| m.priced_at.parse::<DateTime<Utc>>().ok());
     let none_found = screen.scope == Scope::AllSets
@@ -55,11 +56,12 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, visitor: Visitor, t: Msg) -> impl Re
             </header>
             <form
                 method="get"
-                action={url::ProductPriceMatrix { choice: Choice::default() }}
+                action={&here}
                 class={(panel(), Choices)}
                 aria-label="Choose a product"
                 data-keep-place
             >
+                {keep_query(&here, html! {
                 <SubmitsOnChange>
                     <div class={Line}>
                         <label>
@@ -105,9 +107,6 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, visitor: Visitor, t: Msg) -> impl Re
                                 </select>
                             </label>
                         } else {
-                            if let Some(set) = screen.set {
-                                <input type="hidden" name={f.set} value={set}>
-                            }
                             <label class={Wide}>
                                 "Card Number"
                                 <input name={f.number} value={&screen.number} inputmode="search">
@@ -132,14 +131,12 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, visitor: Visitor, t: Msg) -> impl Re
                                 }
                             </select>
                         </label>
-                        if let Some(p) = &screen.product {
-                            <input type="hidden" name={f.shown_product} value={p.product_id}>
-                        }
                         <button class={Button}>
                             if screen.scope == Scope::AllSets { "Search" } else { "Show" }
                         </button>
                     </div>
                 </SubmitsOnChange>
+                })}
             </form>
             if let Err(why) = &screen.products {
                 <Notice tone={Tone::Warning}>"Failed to load products: "{why}</Notice>
