@@ -23,7 +23,7 @@
 pub(crate) mod catalog;
 mod page;
 mod pending;
-mod queue;
+pub mod queue;
 mod views;
 
 pub use views::COMPONENTS;
