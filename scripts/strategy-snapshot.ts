@@ -9,6 +9,7 @@ import { allocateReinvestmentTurnaround } from "~/features/inventory-strategy/do
 import { buildReinvestmentInput } from "~/features/inventory-strategy/services/reinvestmentTurnaround.server";
 import { selectTurnaround } from "~/features/inventory-strategy/domain/turnaroundStrategy";
 import { inventoryStrategyTurnaroundRepository } from "~/core/db/repositories/inventoryStrategyTurnaround.server";
+import { loadInventorySellingHistory } from "~/features/inventory-strategy/services/inventorySellingHistory.server";
 
 const seller = process.argv[2] ?? "8520a14f";
 const now = new Date();
@@ -29,6 +30,10 @@ for (const unsupported of input.unsupportedPurchaseFunding) {
 const settings = await inventoryStrategyTurnaroundRepository.findForSeller(seller);
 const lines = [null, ...new Set(reinvestment.samples.map((sample) => sample.productLineId))];
 const turnaround = lines.map((line) => selectTurnaround(seller, line, settings, reinvestment, null, now));
-writeFileSync("target/node-strategy.json", JSON.stringify({ seller, now: now.toISOString(), asOf, report, marginTrend, reinvestment, reinvestmentInput: input, turnaround }));
+// The selling history for the default scope and for one product line, second page of details.
+const sellingHistory = await loadInventorySellingHistory(seller);
+const lineScope = { windowDays: 365 as const, productLine: sellingHistory.availableProductLines[0] ?? null };
+const sellingHistoryLine = await loadInventorySellingHistory(seller, { scope: lineScope, detailPage: 2 });
+writeFileSync("target/node-strategy.json", JSON.stringify({ seller, now: now.toISOString(), asOf, report, marginTrend, reinvestment, reinvestmentInput: input, turnaround, sellingHistory, lineScope, sellingHistoryLine }));
 console.log("windows", report.windows.length, "weeks", marginTrend.weeks.length);
 process.exit(0);
