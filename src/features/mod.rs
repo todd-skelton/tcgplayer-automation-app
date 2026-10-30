@@ -7,6 +7,7 @@ pub mod dashboard;
 pub mod data_management;
 pub mod http_configuration;
 pub mod inventory_economics;
+pub mod inventory_fifo;
 pub mod inventory_intake;
 pub mod inventory_strategy;
 pub mod pricing;
