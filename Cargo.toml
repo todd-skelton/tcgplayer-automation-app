@@ -7,8 +7,8 @@ description = "TCGPlayer Automation on Corten: screens ported one at a time from
 
 [dependencies]
 # Pinned to one revision of main; bump it on purpose when a fix the port needs lands.
-corten = { git = "https://github.com/todd-skelton/corten", rev = "2976f158", features = ["json", "compress", "types"] }
-corten-ui = { git = "https://github.com/todd-skelton/corten", rev = "2976f158" }
+corten = { git = "https://github.com/todd-skelton/corten", rev = "dd5e5bc1", features = ["json", "compress", "types"] }
+corten-ui = { git = "https://github.com/todd-skelton/corten", rev = "dd5e5bc1" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

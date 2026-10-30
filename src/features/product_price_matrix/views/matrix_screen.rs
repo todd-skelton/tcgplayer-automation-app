@@ -22,7 +22,7 @@ use crate::{
 
 /// The screen: the choices that find a product, then its prices by condition and variant, and
 /// once the policy priced it, the condition dispute helper.
-#[component(css, js)]
+#[component(css)]
 pub fn MatrixScreen<'a>(screen: &'a Screen, visitor: Visitor, t: Msg) -> impl Render {
     let f = Choice::FIELDS;
     let matrix = screen.matrix.as_ref().and_then(|m| m.as_ref().ok());
@@ -169,15 +169,14 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, visitor: Visitor, t: Msg) -> impl Re
                                 }
                             </div>
                         </div>
-                        // Pricing takes the policy most of a minute: never on a hover's prefetch (corten#421),
-                        // and the link says it is working until the priced page arrives (corten#422).
+                        // Pricing takes the policy most of a minute: never on a hover's prefetch (corten#421).
+                        // The runtime marks the link busy until the priced page arrives.
                         <div class={(row(Space::_2), Reads)}>
                             <a href={screen.priced(false)} class={Button}>"↻ Refresh Market"</a>
                             <a
                                 href={screen.priced(true)}
                                 class={(Button, Primary)}
                                 data-no-prefetch
-                                on:click={js::pricing(event, target)}
                             >
                                 "Suggested Pricing"
                             </a>

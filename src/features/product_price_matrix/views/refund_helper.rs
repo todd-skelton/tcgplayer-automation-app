@@ -78,11 +78,9 @@ fn signed(t: Msg, value: f64) -> String {
     format!("{sign}{}", t.money(Minor(n.abs()), USD))
 }
 
-/// One condition's prices for the script: 0 is none. `id` (`variant|condition`) is there only
-/// because `rows()` takes a view with a key (corten#418).
+/// One condition's prices for the script: 0 is none.
 #[component(view)]
 pub fn PricedCondition<'a>(
-    id: &'a str,
     variant: &'a str,
     condition: &'a str,
     ladder: f64,
@@ -93,7 +91,6 @@ pub fn PricedCondition<'a>(
 ) -> impl Render {
     html! {
         <li
-            key={id}
             data-variant={variant}
             data-condition={condition}
             data-ladder={ladder}
@@ -302,7 +299,6 @@ pub fn RefundHelper<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
                     let paid = c.likely_paid().map(|p| format!("{p:.2}")).unwrap_or_default();
                     let days = c.modeled_days().map(|d| matrix::days(Some(d))).unwrap_or_default();
                     <PricedCondition
-                        id={&format!("{}|{}", c.variant, c.condition)}
                         variant={&c.variant}
                         condition={&c.condition}
                         ladder={c.ladder_price.unwrap_or(0.0)}
