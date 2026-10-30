@@ -5,9 +5,9 @@ use corten::prelude::*;
 use crate::{
     database::Database,
     features::{
-        batch_pricer, configuration, http_configuration, inventory_intake, product_price_matrix,
-        publication_configuration, pull_sheet, shipping_configuration, shipping_export,
-        slab_connections,
+        batch_pricer, configuration, http_configuration, inventory_economics, inventory_intake,
+        product_price_matrix, publication_configuration, pull_sheet, shipping_configuration,
+        shipping_export, slab_connections,
     },
     legacy::screens,
     theme::*,
@@ -83,6 +83,7 @@ pub enum Screen {
     PullSheet,
     ShippingWorkflow,
     ProductPriceMatrix,
+    InventoryEconomics,
     HttpConfiguration,
     ShippingConfiguration,
     SlabConnections,
@@ -105,10 +106,7 @@ pub const PRIMARY: [(Screen, &str); 10] = [
         Screen::Legacy(screens::Screen::InventoryStrategy),
         "Inventory Strategy",
     ),
-    (
-        Screen::Legacy(screens::Screen::InventoryEconomics),
-        "Inventory Economics",
-    ),
+    (Screen::InventoryEconomics, "Inventory Economics"),
     (Screen::PullSheet, "Pull Sheet"),
     (Screen::ShippingWorkflow, "Shipping Export"),
     (Screen::Legacy(screens::Screen::DataManagement), "Data Mgmt"),
@@ -137,6 +135,9 @@ pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, label: &'a str) -> impl 
                 </a>
             }
             Screen::PullSheet => <a {..req.nav(&pull_sheet::url::PullSheets)}>{label}</a>,
+            Screen::InventoryEconomics => {
+                <a {..req.nav(&inventory_economics::url::InventoryEconomics)}>{label}</a>
+            }
             Screen::ProductPriceMatrix => {
                 <a
                     {..req.nav(&product_price_matrix::url::ProductPriceMatrix { choice: Default::default() })}

@@ -13,9 +13,9 @@ use crate::{
     config,
     database::Database,
     features::{
-        batch_pricer, configuration, http_configuration, inventory_intake, product_price_matrix,
-        publication_configuration, pull_sheet, shipping_configuration, shipping_export,
-        slab_connections,
+        batch_pricer, configuration, http_configuration, inventory_economics, inventory_intake,
+        product_price_matrix, publication_configuration, pull_sheet, shipping_configuration,
+        shipping_export, slab_connections,
     },
     layout::{self, Static},
     legacy::{Legacy, forward},
@@ -110,6 +110,10 @@ pub fn app(shared: Shared) -> App {
         .area(|area| {
             http_configuration::url::area(area, shared.clone())
                 .components(http_configuration::COMPONENTS)
+        })
+        .area(|area| {
+            inventory_economics::url::area(area, shared.clone())
+                .components(inventory_economics::COMPONENTS)
         })
         // Suggested pricing reads the product's sales and models each SKU's price on the Node app.
         .area(|area| {

@@ -347,9 +347,6 @@ pub mod screens {
     #[route("/inventory-strategy")]
     pub struct InventoryStrategy;
     #[derive(Route)]
-    #[route("/inventory-economics")]
-    pub struct InventoryEconomics;
-    #[derive(Route)]
     #[route("/data-management")]
     pub struct DataManagement;
 
@@ -359,7 +356,6 @@ pub mod screens {
         ContinuousPricing,
         SlabPricing,
         InventoryStrategy,
-        InventoryEconomics,
         DataManagement,
     }
 
@@ -369,7 +365,6 @@ pub mod screens {
                 Screen::ContinuousPricing => ContinuousPricing.with_href(f),
                 Screen::SlabPricing => SlabPricing.with_href(f),
                 Screen::InventoryStrategy => InventoryStrategy.with_href(f),
-                Screen::InventoryEconomics => InventoryEconomics.with_href(f),
                 Screen::DataManagement => DataManagement.with_href(f),
             }
         }

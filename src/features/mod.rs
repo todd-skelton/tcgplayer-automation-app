@@ -3,6 +3,7 @@
 pub mod batch_pricer;
 pub mod configuration;
 pub mod http_configuration;
+pub mod inventory_economics;
 pub mod inventory_intake;
 pub mod product_price_matrix;
 pub mod publication_configuration;
