@@ -12,6 +12,7 @@
 //! | Route | Answer |
 //! |---|---|
 //! | `GET /product-price-matrix` | the choices in the query, and the chosen product's matrix |
+//! | `GET /product-price-matrix/suggested` | the same, with the active policy's sell-at prices (never prefetched: pricing takes most of a minute) |
 mod matrix;
 mod page;
 mod products;
@@ -20,7 +21,7 @@ mod views;
 pub use views::COMPONENTS;
 
 // Handlers are named from here, where the routes module is declared.
-use page::show;
+use page::{show, show_suggested};
 
 #[corten::routes(area = ProductPriceMatrix, state = crate::app::Shared)]
 pub mod url {
@@ -32,11 +33,18 @@ pub mod url {
         pub choice: Choice,
     }
 
+    /// The matrix priced by the active policy too. Pricing takes most of a minute, so a hover
+    /// never starts it (corten#421).
+    #[route("/product-price-matrix/suggested", get = show_suggested, prefetch = false)]
+    pub struct SuggestedPricing {
+        #[route(query)]
+        pub choice: Choice,
+    }
+
     /// What the page shows: the product line and set, or every set by card number (`number`);
-    /// the product type offered, the product and its language; and whether the active policy's
-    /// sell-at prices were asked for. `shown_product` is the product the form was drawn for, so
-    /// a product chosen anew opens in its own language. A missing value is the screen's default:
-    /// Pokemon, its newest set, unsealed products.
+    /// the product type offered, the product and its language. `shown_product` is the product
+    /// the form was drawn for, so a product chosen anew opens in its own language. A missing value
+    /// is the screen's default: Pokemon, its newest set, unsealed products.
     #[derive(Clone, Debug, Default, serde::Deserialize, corten::Route, corten::Fields)]
     #[route(query)]
     pub struct Choice {
@@ -48,6 +56,5 @@ pub mod url {
         pub product: Option<i32>,
         pub shown_product: Option<i32>,
         pub language: Option<String>,
-        pub suggested: Option<bool>,
     }
 }

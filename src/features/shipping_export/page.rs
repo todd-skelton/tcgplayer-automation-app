@@ -517,10 +517,11 @@ pub(super) async fn refused(
     legacy: &Legacy,
     visitor: Visitor,
     step: Step,
+    refusal: Refusal,
     why: &str,
 ) -> HtmlResult {
     let mut errors = Errors::new();
-    errors.refuse(Refusal::Conflict, why);
+    errors.refuse(refusal, why);
     req.invalid_with(
         &errors,
         |patch| async move { patch.draw(html! { <Refused problem={Some(why)} /> }) },
@@ -551,7 +552,19 @@ async fn start(
 ) -> HtmlResult {
     let loaded = match loaded {
         Ok(loaded) => loaded,
-        Err(why) => return refused(req, db, legacy, visitor, Step::LoadOrders, &why).await,
+        // Node, or TCGplayer behind it, failed to give the orders.
+        Err(why) => {
+            return refused(
+                req,
+                db,
+                legacy,
+                visitor,
+                Step::LoadOrders,
+                Refusal::Upstream,
+                &why,
+            )
+            .await;
+        }
     };
     let configured = shipping_configuration::default_seller_key(db).await?;
     let mut fresh = Workflow::loaded(
@@ -598,7 +611,16 @@ pub async fn load_order(
     let visitor = Visitor::of(zone.as_ref());
     if number.is_empty() {
         let why = "Enter a TCGPlayer order number to load a single order.";
-        return refused(&req, &db, &legacy, visitor, Step::LoadOrders, why).await;
+        return refused(
+            &req,
+            &db,
+            &legacy,
+            visitor,
+            Step::LoadOrders,
+            Refusal::Conflict,
+            why,
+        )
+        .await;
     }
     let loaded = source::one(&legacy, input.seller_key.trim(), &number).await;
     start(&req, &db, &legacy, visitor, loaded, |l| {
@@ -627,7 +649,16 @@ async fn history_changed(
 ) -> HtmlResult {
     if let Err(why) = done {
         let why = format!("Failed to update seller order history: {why}");
-        return refused(req, db, legacy, visitor, Step::LoadOrders, &why).await;
+        return refused(
+            req,
+            db,
+            legacy,
+            visitor,
+            Step::LoadOrders,
+            Refusal::Upstream,
+            &why,
+        )
+        .await;
     }
     workflow::change(db, |w| w.intake_read_at = None).await?;
     req.redirect(&ShippingWorkflow::at(Step::LoadOrders))

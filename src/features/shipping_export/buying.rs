@@ -1,7 +1,7 @@
 //! The Buy Postage step's posts: postage for every shipment or one, a return label, a shipment
 //! edited by hand, and a shipment as EasyPost's CSV.
 use chrono::Utc;
-use corten::{ClientZone, Media, prelude::*};
+use corten::{ClientZone, Media, Refusal, prelude::*};
 use serde::Deserialize;
 
 use super::{
@@ -46,10 +46,28 @@ pub async fn buy_all(
     let visitor = Visitor::of(zone.as_ref());
     let mode = EasyPostMode::of_deployment();
     let Some(_buying) = postage::BUYING.start() else {
-        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, BUYING).await;
+        return refused(
+            &req,
+            &db,
+            &legacy,
+            visitor,
+            Step::BuyPostage,
+            Refusal::Conflict,
+            BUYING,
+        )
+        .await;
     };
     if let Some(why) = cannot_buy(mode) {
-        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, &why).await;
+        return refused(
+            &req,
+            &db,
+            &legacy,
+            visitor,
+            Step::BuyPostage,
+            Refusal::Conflict,
+            &why,
+        )
+        .await;
     }
     let (config, saved) = tokio::join!(
         shipping_configuration::settings(&db),
@@ -58,7 +76,16 @@ pub async fn buy_all(
     let batch = plan(&config?, saved?.as_ref());
     if batch.shipments.is_empty() {
         let why = "Load orders before buying postage.";
-        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, why).await;
+        return refused(
+            &req,
+            &db,
+            &legacy,
+            visitor,
+            Step::BuyPostage,
+            Refusal::Conflict,
+            why,
+        )
+        .await;
     }
     for size in batch.label_sizes() {
         let of_size: Vec<Planned> = batch
@@ -77,7 +104,16 @@ pub async fn buy_all(
             }
             Err(why) => {
                 let why = format!("Failed to buy {size} postage: {why}");
-                return refused(&req, &db, &legacy, visitor, Step::BuyPostage, &why).await;
+                return refused(
+                    &req,
+                    &db,
+                    &legacy,
+                    visitor,
+                    Step::BuyPostage,
+                    Refusal::Upstream,
+                    &why,
+                )
+                .await;
             }
         }
     }
@@ -108,15 +144,42 @@ pub async fn buy_shipment(
     let reference = at.reference;
     let direction = input.direction;
     let Some(_buying) = postage::BUYING.start() else {
-        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, BUYING).await;
+        return refused(
+            &req,
+            &db,
+            &legacy,
+            visitor,
+            Step::BuyPostage,
+            Refusal::Conflict,
+            BUYING,
+        )
+        .await;
     };
     if let Some(why) = cannot_buy(mode) {
-        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, &why).await;
+        return refused(
+            &req,
+            &db,
+            &legacy,
+            visitor,
+            Step::BuyPostage,
+            Refusal::Conflict,
+            &why,
+        )
+        .await;
     }
     let shown = Shown::read(&db, &legacy).await?;
     let Some(planned) = shown.batch.shipment(&reference) else {
         let why = format!("Shipment {reference} is not in this batch.");
-        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, &why).await;
+        return refused(
+            &req,
+            &db,
+            &legacy,
+            visitor,
+            Step::BuyPostage,
+            Refusal::Conflict,
+            &why,
+        )
+        .await;
     };
     let (what, bought) = match direction {
         Direction::Outbound => ("Postage", shown.outbound(&reference)),
@@ -127,7 +190,16 @@ pub async fn buy_shipment(
             "{what} was already bought for shipment {reference} in {} mode. Confirm to buy another.",
             mode.name()
         );
-        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, &why).await;
+        return refused(
+            &req,
+            &db,
+            &legacy,
+            visitor,
+            Step::BuyPostage,
+            Refusal::Conflict,
+            &why,
+        )
+        .await;
     }
     let item = Planned {
         shipment: planned.shipment.toward(direction),
@@ -146,7 +218,16 @@ pub async fn buy_shipment(
         Ok(bill) => bill,
         Err(why) => {
             let why = format!("Failed to buy postage: {why}");
-            return refused(&req, &db, &legacy, visitor, Step::BuyPostage, &why).await;
+            return refused(
+                &req,
+                &db,
+                &legacy,
+                visitor,
+                Step::BuyPostage,
+                Refusal::Upstream,
+                &why,
+            )
+            .await;
         }
     };
     let missed = bill
@@ -169,7 +250,16 @@ pub async fn buy_shipment(
             Direction::Return => "The return label",
         };
         let why = format!("{what} for shipment {reference} was not bought: {why}");
-        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, &why).await;
+        return refused(
+            &req,
+            &db,
+            &legacy,
+            visitor,
+            Step::BuyPostage,
+            Refusal::Upstream,
+            &why,
+        )
+        .await;
     }
     req.redirect(&ShippingWorkflow::at(Step::BuyPostage))
 }
@@ -226,7 +316,16 @@ pub async fn edit_shipment(
         .collect();
     let Some(&(original, current)) = shown.iter().find(|(_, s)| s.reference == reference) else {
         let why = format!("Shipment {reference} is not in this batch.");
-        return refused(&req, &db, &legacy, visitor, Step::BuyPostage, &why).await;
+        return refused(
+            &req,
+            &db,
+            &legacy,
+            visitor,
+            Step::BuyPostage,
+            Refusal::Conflict,
+            &why,
+        )
+        .await;
     };
     let taken = |r: &str| shown.iter().any(|(_, s)| s.reference == r);
     match input.read(current, taken) {

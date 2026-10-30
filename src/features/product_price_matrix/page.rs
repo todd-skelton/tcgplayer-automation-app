@@ -44,7 +44,12 @@ pub struct Screen {
 }
 
 impl Screen {
-    async fn read(db: &Database, legacy: &Legacy, choice: &url::Choice) -> corten::Result<Screen> {
+    async fn read(
+        db: &Database,
+        legacy: &Legacy,
+        choice: &url::Choice,
+        suggested: bool,
+    ) -> corten::Result<Screen> {
         let lines = catalog::product_lines(db).await?;
         let line = choice
             .line
@@ -76,7 +81,6 @@ impl Screen {
             .as_ref()
             .and_then(|p| p.language(kept))
             .map(str::to_owned);
-        let suggested = choice.suggested.unwrap_or(false);
         let choices = products
             .as_ref()
             .map(|all| {
@@ -111,20 +115,31 @@ impl Screen {
         })
     }
 
-    /// The address of this product priced again: by market alone, or with the policy's prices.
-    pub fn priced(&self, suggested: bool) -> url::ProductPriceMatrix {
+    /// This product's choices, to price it again.
+    fn choice(&self) -> url::Choice {
+        url::Choice {
+            line: Some(self.line),
+            set: self.set,
+            scope: Some(self.scope),
+            number: (!self.number.is_empty()).then(|| self.number.clone()),
+            product_type: Some(self.product_type),
+            product: self.product.as_ref().map(|p| p.product_id),
+            shown_product: self.product.as_ref().map(|p| p.product_id),
+            language: self.language.clone(),
+        }
+    }
+
+    /// This product priced again by market alone.
+    pub fn market(&self) -> url::ProductPriceMatrix {
         url::ProductPriceMatrix {
-            choice: url::Choice {
-                line: Some(self.line),
-                set: self.set,
-                scope: Some(self.scope),
-                number: (!self.number.is_empty()).then(|| self.number.clone()),
-                product_type: Some(self.product_type),
-                product: self.product.as_ref().map(|p| p.product_id),
-                shown_product: self.product.as_ref().map(|p| p.product_id),
-                language: self.language.clone(),
-                suggested: suggested.then_some(true),
-            },
+            choice: self.choice(),
+        }
+    }
+
+    /// This product priced again with the active policy's prices.
+    pub fn suggested(&self) -> url::SuggestedPricing {
+        url::SuggestedPricing {
+            choice: self.choice(),
         }
     }
 }
@@ -136,12 +151,36 @@ pub async fn show(
     zone: Option<ClientZone>,
     Params(at): Params<url::ProductPriceMatrix>,
 ) -> HtmlResult {
+    answer(&req, &db, &legacy, zone, &at.choice, false).await
+}
+
+pub async fn show_suggested(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+    Params(at): Params<url::SuggestedPricing>,
+) -> HtmlResult {
+    answer(&req, &db, &legacy, zone, &at.choice, true).await
+}
+
+async fn answer(
+    req: &Req,
+    db: &Database,
+    legacy: &Legacy,
+    zone: Option<ClientZone>,
+    choice: &url::Choice,
+    suggested: bool,
+) -> HtmlResult {
     let visitor = Visitor::of(zone.as_ref());
-    let (chrome, screen) = tokio::join!(Chrome::read(&db), Screen::read(&db, &legacy, &at.choice));
+    let (chrome, screen) = tokio::join!(
+        Chrome::read(db),
+        Screen::read(db, legacy, choice, suggested)
+    );
     let screen = screen?;
     let t: Msg = req.t();
     req.page(html! {
-        <Layout req={&req} title="Product Price Matrix" chrome={chrome} head="">
+        <Layout req={req} title="Product Price Matrix" chrome={chrome} head="">
             <MatrixScreen screen={&screen} visitor={visitor} t={t} />
         </Layout>
     })

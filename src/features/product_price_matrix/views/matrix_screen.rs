@@ -169,15 +169,10 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, visitor: Visitor, t: Msg) -> impl Re
                                 }
                             </div>
                         </div>
-                        // Pricing takes the policy most of a minute: never on a hover's prefetch (corten#421).
                         // The runtime marks the link busy until the priced page arrives.
                         <div class={(row(Space::_2), Reads)}>
-                            <a href={screen.priced(false)} class={Button}>"↻ Refresh Market"</a>
-                            <a
-                                href={screen.priced(true)}
-                                class={(Button, Primary)}
-                                data-no-prefetch
-                            >
+                            <a href={screen.market()} class={Button}>"↻ Refresh Market"</a>
+                            <a href={screen.suggested()} class={(Button, Primary)}>
                                 "Suggested Pricing"
                             </a>
                         </div>

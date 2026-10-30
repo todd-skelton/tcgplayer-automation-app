@@ -1,6 +1,6 @@
 //! The screen and its jobs. A job's answer is its card drawn again with what it did (the page,
 //! without JavaScript), sent with the job's status.
-use corten::{Mode, axum::http::StatusCode, prelude::*};
+use corten::{Mode, Refusal, prelude::*};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -94,33 +94,38 @@ async fn run(
     struct Did {
         message: String,
     }
-    let status = match legacy
+    match legacy
         .send_for_status::<_, Did>("/api/data-management", &jobs::ask(job, fields))
         .await
     {
         Ok(did) => {
             screen.ran = Some(Ran::Done(did.message));
-            StatusCode::OK
-        }
-        Err(refusal) => {
-            screen.ran = Some(Ran::Failed(refusal.message));
-            if refusal.status.is_server_error() {
-                StatusCode::BAD_GATEWAY
-            } else {
-                refusal.status
+            if req.mode == Mode::Action {
+                return req.patch(JobCard {
+                    screen: &screen,
+                    job,
+                });
             }
+            page(req, &screen)
         }
-    };
-    if req.mode == Mode::Action {
-        let card = JobCard {
-            screen: &screen,
-            job,
-        };
-        return req.patch_with_status(status, card);
+        Err(failed) => {
+            // A job Node or a service behind it could not run is a 502; one it refused, the input's.
+            let refusal = if failed.status.is_server_error() {
+                Refusal::Upstream
+            } else {
+                Refusal::Invalid
+            };
+            let mut errors = Errors::new();
+            errors.refuse(refusal, &failed.message);
+            screen.ran = Some(Ran::Failed(failed.message));
+            let card = JobCard {
+                screen: &screen,
+                job,
+            };
+            req.invalid(&errors, card, || async { page(req, &screen) })
+                .await
+        }
     }
-    let mut answer = page(req, &screen)?;
-    *answer.status_mut() = status;
-    Ok(answer)
 }
 
 pub async fn refresh_product_lines(

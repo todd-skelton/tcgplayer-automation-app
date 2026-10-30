@@ -4,7 +4,7 @@
 //! and shipping again reaches only what did not.
 use std::collections::HashSet;
 
-use corten::{ClientZone, prelude::*};
+use corten::{ClientZone, Refusal, prelude::*};
 
 use super::{
     one_at_a_time::OneAtATime,
@@ -31,23 +31,27 @@ pub async fn mark_shipped(
     zone: Option<ClientZone>,
 ) -> HtmlResult {
     let visitor = Visitor::of(zone.as_ref());
-    let refuse = |why: String| {
+    let refuse = |refusal: Refusal, why: String| {
         let (req, db, legacy) = (&req, &db, &legacy);
-        async move { refused(req, db, legacy, visitor, Step::Ship, &why).await }
+        async move { refused(req, db, legacy, visitor, Step::Ship, refusal, &why).await }
     };
     let Some(_shipping) = SHIPPING.start() else {
-        return refuse(SHIPPING_NOW.into()).await;
+        return refuse(Refusal::Conflict, SHIPPING_NOW.into()).await;
     };
     let shown = Shown::read(&db, &legacy).await?;
     if !shown.has_seller() {
-        return refuse(NO_SELLER.into()).await;
+        return refuse(Refusal::Conflict, NO_SELLER.into()).await;
     }
     if let Some(why) = shown.postage_failure() {
-        return refuse(format!("Failed to load saved postage: {why}")).await;
+        return refuse(
+            Refusal::Upstream,
+            format!("Failed to load saved postage: {why}"),
+        )
+        .await;
     }
     let pending = shown.pending();
     if pending.orders().is_empty() {
-        return refuse(NOTHING_PENDING.into()).await;
+        return refuse(Refusal::Conflict, NOTHING_PENDING.into()).await;
     }
     // An order whose tracking did not apply is not messaged: its buyer would get no tracking.
     let mut untracked: HashSet<String> = pending
@@ -59,9 +63,10 @@ pub async fn mark_shipped(
         let results = match ship::apply_tracking(&legacy, &pending.tracking).await {
             Ok(results) => results,
             Err(why) => {
-                return refuse(format!(
-                    "Failed to apply tracking to TCGPlayer orders: {why}"
-                ))
+                return refuse(
+                    Refusal::Upstream,
+                    format!("Failed to apply tracking to TCGPlayer orders: {why}"),
+                )
                 .await;
             }
         };
@@ -79,9 +84,10 @@ pub async fn mark_shipped(
         let results = match ship::send_messages(&legacy, &messages).await {
             Ok(results) => results,
             Err(why) => {
-                return refuse(format!(
-                    "Failed to send shipped messages to TCGPlayer: {why}"
-                ))
+                return refuse(
+                    Refusal::Upstream,
+                    format!("Failed to send shipped messages to TCGPlayer: {why}"),
+                )
                 .await;
             }
         };

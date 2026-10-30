@@ -1,6 +1,6 @@
 //! The Pack step: the shipment being packed, with its cards matched from the pull sheet, or
 //! every shipment in a list; and marking one packed, which moves to the next not packed.
-use corten::{ClientZone, prelude::*};
+use corten::{ClientZone, Refusal, prelude::*};
 use serde::Deserialize;
 
 use super::{
@@ -176,7 +176,16 @@ pub async fn set_packed(
     if !order.contains(&reference) {
         let why = format!("Shipment {reference} is not in this batch.");
         let visitor = Visitor::of(zone.as_ref());
-        return super::page::refused(&req, &db, &legacy, visitor, Step::Pack, &why).await;
+        return super::page::refused(
+            &req,
+            &db,
+            &legacy,
+            visitor,
+            Step::Pack,
+            Refusal::Conflict,
+            &why,
+        )
+        .await;
     }
     let packed = input.packed;
     let marked = reference.clone();
