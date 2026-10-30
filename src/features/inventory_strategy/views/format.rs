@@ -23,7 +23,13 @@ pub fn dollars(t: Msg, dollars: f64) -> String {
         .to_string()
 }
 
-/// An amount of dollars with its sign: "+$12.00", "-$3.10".
+/// A change in dollars as the verdict wrote it (`formatDelta`): "+$12.00", or "$3.10" after a U+2212 minus sign.
+pub fn delta_dollars(t: Msg, dollars: f64) -> String {
+    let sign = if dollars >= 0.0 { "+" } else { "\u{2212}" };
+    format!("{sign}{}", self::dollars(t, dollars.abs()))
+}
+
+/// An amount of dollars with its sign as the levers wrote it (`signedMoney`): "+$12.00", "-$3.10".
 pub fn signed_dollars(t: Msg, dollars: f64) -> String {
     t.signed_money(Minor((dollars * 100.0).round() as i64), USD)
         .to_string()
@@ -118,6 +124,10 @@ mod tests {
         assert_eq!(per_day(0.0052), "0.52%/day");
         assert_eq!(days_delta(-0.25), "\u{2212}0.3 days");
         assert_eq!(days_delta(1.0), "+1.0 days");
+        let t = Msg::default();
+        assert_eq!(delta_dollars(t, -3.5), "\u{2212}$3.50");
+        assert_eq!(delta_dollars(t, 0.0), "+$0.00");
+        assert_eq!(signed_dollars(t, -3.5), "-$3.50");
         assert_eq!(coverage(87, 100), "87%");
         assert_eq!(coverage(1, 0), "0%");
         assert_eq!(month_day("2026-03-02"), "Mar 2");

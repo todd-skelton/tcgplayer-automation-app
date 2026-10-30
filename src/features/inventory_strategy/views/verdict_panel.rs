@@ -1,7 +1,7 @@
 use corten::prelude::*;
 
 use super::{
-    format::{age, count, coverage, days_delta, dollars, fixed, per_day, signed_dollars},
+    format::{age, count, coverage, days_delta, delta_dollars, dollars, fixed, per_day},
     strategy_screen::{Chip, Mood, Stat},
 };
 use crate::{
@@ -73,7 +73,7 @@ fn alternative(
         .map_or_else(String::new, |(c, now, then)| {
             format!(
                 " \u{b7} {} listed \u{b7} {} median wait",
-                signed_dollars(
+                delta_dollars(
                     t,
                     best.scenario.summary.physical_value - c.scenario.summary.physical_value
                 ),
@@ -149,7 +149,7 @@ pub fn VerdictPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                     value={&dollars(t, modeled)}
                     detail={&format!(
                         "{} against {} listed now",
-                        signed_dollars(t, modeled - overall.current_listed_value),
+                        delta_dollars(t, modeled - overall.current_listed_value),
                         dollars(t, overall.current_listed_value)
                     )}
                 />
