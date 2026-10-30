@@ -34,7 +34,4 @@
     color: var(--color-accent-ink);
     box-shadow: var(--shadow-md);
   }
-  & [role="status"] > div[hidden] {
-    display: none;
-  }
 }

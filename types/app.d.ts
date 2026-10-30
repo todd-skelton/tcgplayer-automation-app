@@ -89,6 +89,24 @@ declare module "corten/views" {
     static key(el: Element): string;
     static keyOf(data: { key: number; search: string; name: string; number: string; set: string; condition: string; rarity: string; quantity: number; product_line: string; order: string }): string;
   }
+  /** The view of #[component(view)] PricedCondition: its holes, read from and written to the page. */
+  export class PricedCondition {
+    constructor(el: Element);
+    readonly el: HTMLLIElement;
+    id: string;
+    variant: string;
+    condition: string;
+    ladder: number;
+    market_ladder: number;
+    sell_at: number;
+    paid: string;
+    days: string;
+    /** Writes every hole of `el` (a PricedCondition's root) from `data`. */
+    static fill(el: Element, data: { id: string; variant: string; condition: string; ladder: number; market_ladder: number; sell_at: number; paid: string; days: string }): void;
+    /** The key of a PricedCondition's root (its key={id}). */
+    static key(el: Element): string;
+    static keyOf(data: { id: string; variant: string; condition: string; ladder: number; market_ladder: number; sell_at: number; paid: string; days: string }): string;
+  }
   /** The view of #[component(view)] PublishItem: its holes, read from and written to the page. */
   export class PublishItem {
     constructor(el: Element);

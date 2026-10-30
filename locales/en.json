@@ -6,5 +6,14 @@
     "selected_one": "Selected {count} SKU; total quantity delta {delta}.",
     "selected_other": "Selected {count} SKUs; total quantity delta {delta}.",
     "publish": "Publish {count} SKUs"
+  },
+  "price_matrix": {
+    "unpriced": "{condition} has no sell-at price, so the refund cannot be sized from what you would sell at.",
+    "keeps": "Buyer keeps paying {net}, what {condition} would sell for.",
+    "no_loss": "Your pricing puts {condition} at or above the {paid} the buyer paid, so it sees no loss in the downgrade. Lean on the market refund or take the card back.",
+    "sells": "{received} sells at {received_price} against {sold_price} for {sold}.",
+    "versus": "{difference} versus your sell-at refund. Market has {received} at {received_price} and {sold} at {sold_price}.",
+    "relist": "Relist the {condition} copy at this price.",
+    "relist_eta": "Relist the {condition} copy at this price, expected to sell in {days}."
   }
 }

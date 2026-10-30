@@ -66,7 +66,7 @@ pub enum ProductType {
 }
 
 impl ProductType {
-    fn shows(self, sealed: bool) -> bool {
+    pub fn shows(self, sealed: bool) -> bool {
         match self {
             ProductType::All => true,
             ProductType::SealedOnly => sealed,

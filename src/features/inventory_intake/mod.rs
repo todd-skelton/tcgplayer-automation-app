@@ -20,7 +20,7 @@
 //! The React screen kept an unconfirmed queue request in session storage to send again after a
 //! reload. Here the form's submit key is the request id, and a reload shows what happened: the
 //! batch in the background batches and the counts gone, or the counts still there.
-mod catalog;
+pub(crate) mod catalog;
 mod page;
 mod pending;
 mod queue;

@@ -344,9 +344,6 @@ pub mod screens {
     #[route("/slab-pricing")]
     pub struct SlabPricing;
     #[derive(Route)]
-    #[route("/product-price-matrix")]
-    pub struct ProductPriceMatrix;
-    #[derive(Route)]
     #[route("/inventory-strategy")]
     pub struct InventoryStrategy;
     #[derive(Route)]
@@ -361,7 +358,6 @@ pub mod screens {
     pub enum Screen {
         ContinuousPricing,
         SlabPricing,
-        ProductPriceMatrix,
         InventoryStrategy,
         InventoryEconomics,
         DataManagement,
@@ -372,7 +368,6 @@ pub mod screens {
             match self {
                 Screen::ContinuousPricing => ContinuousPricing.with_href(f),
                 Screen::SlabPricing => SlabPricing.with_href(f),
-                Screen::ProductPriceMatrix => ProductPriceMatrix.with_href(f),
                 Screen::InventoryStrategy => InventoryStrategy.with_href(f),
                 Screen::InventoryEconomics => InventoryEconomics.with_href(f),
                 Screen::DataManagement => DataManagement.with_href(f),

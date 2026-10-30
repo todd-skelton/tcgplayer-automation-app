@@ -1,0 +1,131 @@
+.scroll {
+  overflow-x: auto;
+}
+.matrix-table {
+  min-width: 1250px;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--font-size-sm);
+  & th,
+  & td {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--color-line);
+    text-align: start;
+    vertical-align: top;
+    background: var(--color-surface);
+  }
+  & thead th {
+    font-weight: 700;
+  }
+  & tbody tr {
+    --tint: var(--color-muted);
+  }
+  & tbody tr:hover > * {
+    background-image: linear-gradient(
+      color-mix(in srgb, var(--tint) 10%, transparent),
+      color-mix(in srgb, var(--tint) 10%, transparent)
+    );
+  }
+  & small {
+    display: block;
+    color: var(--color-muted);
+  }
+}
+.lp {
+  --tint: var(--color-info) !important;
+}
+.mp {
+  --tint: var(--color-ok) !important;
+}
+.hp {
+  --tint: var(--color-warn) !important;
+}
+.dmg {
+  --tint: var(--color-danger) !important;
+}
+.starts > * {
+  border-top: 2px solid var(--color-line);
+}
+.sticky {
+  position: sticky;
+  z-index: 1;
+}
+.variant-column {
+  left: 0;
+  width: 150px;
+  min-width: 150px;
+  white-space: nowrap;
+  border-left: 4px solid var(--tint, var(--color-line));
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--tint, transparent) 6%, transparent),
+    color-mix(in srgb, var(--tint, transparent) 6%, transparent)
+  );
+}
+.condition-column {
+  left: 150px;
+  width: 150px;
+  min-width: 150px;
+  white-space: nowrap;
+}
+.market-column {
+  left: 300px;
+  width: 110px;
+  min-width: 110px;
+  border-right: 1px solid var(--color-line);
+}
+.end {
+  text-align: end !important;
+}
+.sell-at {
+  min-width: 190px;
+  border-left: 1px solid var(--tint, var(--color-line));
+}
+.priced {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--tint) 10%, transparent),
+    color-mix(in srgb, var(--tint) 10%, transparent)
+  );
+}
+.condition-chip {
+  display: inline-block;
+  min-width: 122px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--tint);
+  border-radius: var(--radius-pill);
+  color: var(--tint);
+  font-weight: 700;
+}
+.chip {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-pill);
+}
+.above {
+  border-color: var(--color-ok);
+  color: var(--color-ok);
+}
+.below {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+.warn {
+  border-color: var(--color-warn);
+  color: var(--color-warn);
+}
+.bad {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+.filled {
+  background: color-mix(in srgb, currentColor 15%, transparent);
+}
+.notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.muted {
+  color: var(--color-muted);
+}

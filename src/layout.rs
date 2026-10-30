@@ -5,7 +5,7 @@ use corten::prelude::*;
 use crate::{
     database::Database,
     features::{
-        batch_pricer, configuration, http_configuration, inventory_intake,
+        batch_pricer, configuration, http_configuration, inventory_intake, product_price_matrix,
         publication_configuration, pull_sheet, shipping_configuration, shipping_export,
         slab_connections,
     },
@@ -82,6 +82,7 @@ pub enum Screen {
     BatchPricer,
     PullSheet,
     ShippingWorkflow,
+    ProductPriceMatrix,
     HttpConfiguration,
     ShippingConfiguration,
     SlabConnections,
@@ -99,10 +100,7 @@ pub const PRIMARY: [(Screen, &str); 10] = [
         "Continuous Pricing",
     ),
     (Screen::Legacy(screens::Screen::SlabPricing), "Slab Pricing"),
-    (
-        Screen::Legacy(screens::Screen::ProductPriceMatrix),
-        "Price Matrix",
-    ),
+    (Screen::ProductPriceMatrix, "Price Matrix"),
     (
         Screen::Legacy(screens::Screen::InventoryStrategy),
         "Inventory Strategy",
@@ -139,6 +137,13 @@ pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, label: &'a str) -> impl 
                 </a>
             }
             Screen::PullSheet => <a {..req.nav(&pull_sheet::url::PullSheets)}>{label}</a>,
+            Screen::ProductPriceMatrix => {
+                <a
+                    {..req.nav(&product_price_matrix::url::ProductPriceMatrix { choice: Default::default() })}
+                >
+                    {label}
+                </a>
+            }
             Screen::ShippingWorkflow => {
                 <a
                     {..req.nav(&shipping_export::url::ShippingWorkflow { step: None, seller: None, edit: None, shipment: None, view: None, filters: Default::default() })}

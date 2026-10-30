@@ -1,0 +1,89 @@
+.matrix-screen {
+  display: grid;
+  gap: var(--space-4);
+  & p {
+    margin: 0;
+  }
+}
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  & h1,
+  & h2 {
+    margin: 0;
+  }
+  & h2 {
+    margin-bottom: var(--space-2);
+  }
+}
+.choices > div {
+  display: grid;
+  gap: var(--space-3);
+}
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+  & label {
+    display: grid;
+    gap: var(--space-1);
+    font-size: var(--font-size-sm);
+  }
+}
+.wide {
+  flex: 1 1 280px;
+}
+.picked {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+}
+.toggle {
+  display: flex !important;
+  align-items: center;
+  gap: var(--space-2);
+}
+.product {
+  display: grid;
+  gap: var(--space-4);
+}
+.chip {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+}
+.good {
+  border-color: var(--color-ok);
+  color: var(--color-ok);
+}
+.policy {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.button {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: inherit;
+  text-decoration: none;
+}
+.primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+/* Only while the page is still on its way: a navigation stopped short leaves no mark. */
+main[aria-busy] .reads [aria-busy]::after {
+  content: " …";
+}
+main[aria-busy] .reads a {
+  pointer-events: none;
+  opacity: 0.6;
+}
