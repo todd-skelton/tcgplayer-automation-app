@@ -4,7 +4,9 @@
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
-use super::{performance, pricing_changes, reinvestment, sold_units};
+use super::{
+    performance, pricing_changes, reinvestment, sold_units, turnaround, turnaround_settings,
+};
 use crate::database::Database;
 
 /// Two JSON values equal but for floating point noise in numbers.
@@ -99,5 +101,24 @@ async fn strategy_matches_node() {
         "reinvestment",
         &serde_json::to_value(&ours).unwrap(),
         &node["reinvestment"],
+    );
+    let settings = turnaround_settings::find_for_seller(&db, seller)
+        .await
+        .unwrap();
+    let mut lines: Vec<Option<i64>> = vec![None];
+    for sample in &ours.samples {
+        if !lines.contains(&Some(sample.product_line_id)) {
+            lines.push(Some(sample.product_line_id));
+        }
+    }
+    let now_ms = now.timestamp_millis() as f64;
+    let selections: Vec<_> = lines
+        .iter()
+        .map(|&line| turnaround::select(seller, line, &settings, Some(&ours), None, now_ms))
+        .collect();
+    same(
+        "turnaround",
+        &serde_json::to_value(&selections).unwrap(),
+        &node["turnaround"],
     );
 }

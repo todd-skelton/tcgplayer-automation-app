@@ -7,6 +7,8 @@ import { inventoryReinvestmentRepository } from "~/core/db";
 import { loadCompleteReusableProceeds } from "~/features/inventory-economics/services/inventoryEconomics.server";
 import { allocateReinvestmentTurnaround } from "~/features/inventory-strategy/domain/allocateReinvestmentTurnaround";
 import { buildReinvestmentInput } from "~/features/inventory-strategy/services/reinvestmentTurnaround.server";
+import { selectTurnaround } from "~/features/inventory-strategy/domain/turnaroundStrategy";
+import { inventoryStrategyTurnaroundRepository } from "~/core/db/repositories/inventoryStrategyTurnaround.server";
 
 const seller = process.argv[2] ?? "8520a14f";
 const now = new Date();
@@ -23,6 +25,10 @@ for (const unsupported of input.unsupportedPurchaseFunding) {
     : `Purchase funding above current cost for ${unsupported.purchaseReference}`,
     count: 1, amountCents: unsupported.amountCents, currency: unsupported.currency });
 }
-writeFileSync("target/node-strategy.json", JSON.stringify({ seller, now: now.toISOString(), asOf, report, marginTrend, reinvestment, reinvestmentInput: input }));
+// The turnaround for the seller and each line with samples, from that report, as the screen selects it.
+const settings = await inventoryStrategyTurnaroundRepository.findForSeller(seller);
+const lines = [null, ...new Set(reinvestment.samples.map((sample) => sample.productLineId))];
+const turnaround = lines.map((line) => selectTurnaround(seller, line, settings, reinvestment, null, now));
+writeFileSync("target/node-strategy.json", JSON.stringify({ seller, now: now.toISOString(), asOf, report, marginTrend, reinvestment, reinvestmentInput: input, turnaround }));
 console.log("windows", report.windows.length, "weeks", marginTrend.weeks.length);
 process.exit(0);

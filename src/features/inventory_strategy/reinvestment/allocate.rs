@@ -17,7 +17,7 @@ use crate::features::{
 const DAY_MS: f64 = 86_400_000.0;
 
 /// `Date.parse` for the forms the evidence uses: a timestamp, or a date at midnight UTC.
-fn instant(value: &str, label: &str) -> Result<i64, String> {
+pub(crate) fn instant(value: &str, label: &str) -> Result<i64, String> {
     if let Ok(at) = DateTime::parse_from_rfc3339(value) {
         return Ok(at.timestamp_millis());
     }

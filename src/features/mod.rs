@@ -9,6 +9,7 @@ pub mod http_configuration;
 pub mod inventory_economics;
 pub mod inventory_intake;
 pub mod inventory_strategy;
+pub mod pricing;
 pub mod product_price_matrix;
 pub mod publication_configuration;
 pub mod pull_sheet;

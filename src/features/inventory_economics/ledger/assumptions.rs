@@ -93,10 +93,47 @@ pub fn js_round(value: f64) -> i64 {
     (value + 0.5).floor() as i64
 }
 
+/// `Number.prototype.toFixed`: the nearest decimal, an exact half away from zero. Rust's
+/// `{:.N}` breaks an exact half to even (0.25 is "0.2" there and "0.3" in JavaScript).
+pub fn js_to_fixed(value: f64, digits: usize) -> String {
+    let exact = format!("{:.1100}", value.abs());
+    let fraction = exact.split_once('.').map_or("", |(_, f)| f);
+    let half = fraction.as_bytes().get(digits) == Some(&b'5')
+        && fraction[digits + 1..].bytes().all(|b| b == b'0');
+    let rounded = if half {
+        // One step past the half rounds it away from zero and nothing else.
+        f64::from_bits(value.abs().to_bits() + 1)
+    } else {
+        value.abs()
+    };
+    let sign = if value.is_sign_negative() && value != 0.0 {
+        "-"
+    } else {
+        ""
+    };
+    format!("{sign}{rounded:.digits$}")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn to_fixed_rounds_an_exact_half_away_from_zero_as_javascript_does() {
+        assert_eq!(js_to_fixed(0.25, 1), "0.3");
+        assert_eq!(js_to_fixed(1.25, 1), "1.3");
+        assert_eq!(js_to_fixed(-0.25, 1), "-0.3");
+        assert_eq!(
+            js_to_fixed(0.35, 1),
+            "0.3",
+            "0.35 is just under the half in binary"
+        );
+        assert_eq!(js_to_fixed(1.0, 1), "1.0");
+        assert_eq!(js_to_fixed(-0.04, 1), "-0.0");
+        assert_eq!(js_to_fixed(-0.0, 1), "0.0");
+        assert_eq!(js_to_fixed(13.95, 1), "13.9");
+    }
 
     #[test]
     fn missing_refund_settlement_and_postage_evidence_is_filled_in() {

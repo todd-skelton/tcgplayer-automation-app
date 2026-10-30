@@ -10,6 +10,7 @@ mod allocate;
 mod capital;
 pub mod source;
 
+pub(crate) use allocate::instant;
 pub use allocate::{allocate, unsupported_funding_for};
 pub use capital::purchase_capital;
 
