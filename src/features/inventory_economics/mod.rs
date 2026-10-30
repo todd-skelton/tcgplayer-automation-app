@@ -2,12 +2,13 @@
 //! what it left to reinvest, with the purchase costs that price the inventory. Ported from
 //! `app/features/inventory-economics/routes/inventory-economics.tsx`.
 //!
-//! The ledger and its arithmetic stay the Node app's (`GET /api/inventory-economics`, which
-//! reads the default shipping seller's workspace); this screen only shows it.
+//! The ledger is computed here (`ledger`, ported from the Node app's domain and service with
+//! its rounding kept exactly) for the default shipping seller's most recent hundred orders.
 //!
 //! | Route | Answer |
 //! |---|---|
 //! | `GET /inventory-economics` | the seller's current purchase costs and each order's economics |
+pub mod ledger;
 mod page;
 mod views;
 mod workspace;

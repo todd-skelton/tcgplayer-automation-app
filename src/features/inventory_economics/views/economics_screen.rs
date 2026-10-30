@@ -36,7 +36,7 @@ pub fn EconomicsScreen<'a>(workspace: &'a Result<Workspace, String>, t: Msg) -> 
                     </header>
                     <section class={(panel(), Costs)} aria-labelledby="purchase-costs">
                         <h2 id="purchase-costs">"Purchase costs"</h2>
-                        let current: Vec<_> = w.purchase_costs.iter().filter(|c| c.is_current).collect();
+                        let current = &w.purchase_costs;
                         if current.is_empty() {
                             <p class={muted()}>"No purchase cost records."</p>
                         } else {

@@ -24,6 +24,9 @@ futures-util = { version = "0.3", default-features = false }
 csv = "1"
 dotenvy = "0.15"
 regex = "1.13.1"
+# Evidence fingerprints that match the ones the Node app records (inventory economics ledger).
+sha2 = "0.10"
+hex = "0.4"
 
 [dev-dependencies]
 http-body-util = "0.1"
