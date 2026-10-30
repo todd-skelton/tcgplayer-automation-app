@@ -13,9 +13,9 @@ use crate::{
     config,
     database::Database,
     features::{
-        batch_pricer, configuration, dashboard, http_configuration, inventory_economics,
-        inventory_intake, product_price_matrix, publication_configuration, pull_sheet,
-        shipping_configuration, shipping_export, slab_connections, slab_pricing,
+        batch_pricer, configuration, continuous_pricing, dashboard, http_configuration,
+        inventory_economics, inventory_intake, product_price_matrix, publication_configuration,
+        pull_sheet, shipping_configuration, shipping_export, slab_connections, slab_pricing,
     },
     layout::{self, Static},
     legacy::{Legacy, forward},
@@ -107,6 +107,13 @@ pub fn app(shared: Shared) -> App {
         .area(|area| {
             batch_pricer::url::area(area, shared.clone())
                 .components(batch_pricer::COMPONENTS)
+                .deadline(Some(Duration::from_secs(5 * 60)))
+        })
+        // A refresh reads the seller's whole inventory from TCGplayer before it answers, and marking
+        // the inventory due runs a scheduler cycle after it.
+        .area(|area| {
+            continuous_pricing::url::area(area, shared.clone())
+                .components(continuous_pricing::COMPONENTS)
                 .deadline(Some(Duration::from_secs(5 * 60)))
         })
         .area(|area| {

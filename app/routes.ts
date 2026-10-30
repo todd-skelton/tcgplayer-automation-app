@@ -76,6 +76,10 @@ export default [
     file: "features/pending-inventory/routes/pending-inventory-pricer.tsx",
   },
   {
+    path: "/api/continuous-pricing",
+    file: "features/continuous-pricing/routes/api.continuous-pricing.ts",
+  },
+  {
     path: "/continuous-pricing",
     file: "features/continuous-pricing/routes/continuous-pricing.tsx",
   },

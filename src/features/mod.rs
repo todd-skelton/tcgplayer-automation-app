@@ -2,6 +2,7 @@
 //! scripts, its queries and its rules.
 pub mod batch_pricer;
 pub mod configuration;
+pub mod continuous_pricing;
 pub mod dashboard;
 pub mod http_configuration;
 pub mod inventory_economics;

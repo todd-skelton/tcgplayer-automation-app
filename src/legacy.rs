@@ -336,9 +336,6 @@ async fn tunnel(
 pub mod screens {
     use corten::{Href, Route, view::AttrValue};
     #[derive(Route)]
-    #[route("/continuous-pricing")]
-    pub struct ContinuousPricing;
-    #[derive(Route)]
     #[route("/inventory-strategy")]
     pub struct InventoryStrategy;
     #[derive(Route)]
@@ -348,7 +345,6 @@ pub mod screens {
     /// One of them, for lists of screens (the app bar's).
     #[derive(Clone, Copy)]
     pub enum Screen {
-        ContinuousPricing,
         InventoryStrategy,
         DataManagement,
     }
@@ -356,7 +352,6 @@ pub mod screens {
     impl Href for Screen {
         fn with_href<T>(&self, f: impl FnOnce(&str) -> T) -> T {
             match self {
-                Screen::ContinuousPricing => ContinuousPricing.with_href(f),
                 Screen::InventoryStrategy => InventoryStrategy.with_href(f),
                 Screen::DataManagement => DataManagement.with_href(f),
             }
