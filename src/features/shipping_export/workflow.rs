@@ -112,26 +112,15 @@ impl Workflow {
     }
 }
 
-/// The workflow and when it was last saved.
-pub struct Saved {
-    pub workflow: Workflow,
-    pub saved_at: DateTime<Utc>,
-}
-
 /// The workflow in progress, if any. One this version cannot read is none, as the React screen
 /// dropped one it could not restore rather than half restore it.
-pub async fn current(db: &Database) -> sqlx::Result<Option<Saved>> {
-    let row: Option<(serde_json::Value, DateTime<Utc>)> = sqlx::query_as(
-        "SELECT workflow_json, saved_at FROM shipping_workflows WHERE workflow_key = $1",
-    )
-    .bind(KEY)
-    .fetch_optional(&db.0)
-    .await?;
-    Ok(row.and_then(|(json, saved_at)| {
-        serde_json::from_value(json)
-            .ok()
-            .map(|workflow| Saved { workflow, saved_at })
-    }))
+pub async fn current(db: &Database) -> sqlx::Result<Option<Workflow>> {
+    let row: Option<(serde_json::Value,)> =
+        sqlx::query_as("SELECT workflow_json FROM shipping_workflows WHERE workflow_key = $1")
+            .bind(KEY)
+            .fetch_optional(&db.0)
+            .await?;
+    Ok(row.and_then(|(json,)| serde_json::from_value(json).ok()))
 }
 
 /// Starts over with `workflow`; one without orders clears it.

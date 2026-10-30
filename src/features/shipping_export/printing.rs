@@ -35,7 +35,7 @@ pub async fn packing_slips(
         shipping_configuration::settings(&db),
         workflow::current(&db)
     );
-    let numbers = plan(&config?, saved?.as_ref().map(|s| &s.workflow)).order_numbers();
+    let numbers = plan(&config?, saved?.as_ref()).order_numbers();
     if numbers.is_empty() {
         return Err(corten::Error::not_found());
     }

@@ -1,0 +1,135 @@
+.pack-step {
+  display: grid;
+  gap: var(--space-3);
+}
+.shipment {
+  display: grid;
+  gap: var(--space-3);
+}
+.head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  background: var(--color-surface);
+}
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+  & a {
+    padding: 0 var(--space-2);
+    font-size: 1.25rem;
+    text-decoration: none;
+  }
+  & a[aria-disabled] {
+    opacity: 0.35;
+  }
+}
+.who {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.chip {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+}
+.status {
+  &[data-status="good"] {
+    border-color: var(--color-ok);
+    color: var(--color-ok);
+  }
+  &[data-status="bad"] {
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+  }
+  &[data-status="caution"] {
+    border-color: var(--color-warn);
+    color: var(--color-warn);
+  }
+}
+.spacer {
+  flex: 1;
+}
+.toggle {
+  & button {
+    border-color: var(--color-ok);
+    color: var(--color-ok);
+    white-space: nowrap;
+  }
+  &[aria-busy] button::after {
+    content: " …";
+  }
+}
+.packed {
+  background: var(--color-ok);
+  color: var(--color-accent-ink);
+  .toggle & {
+    color: var(--color-accent-ink);
+  }
+}
+.hint {
+  color: var(--color-muted);
+  cursor: help;
+}
+.views {
+  display: inline-flex;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  & a {
+    padding: var(--space-1) var(--space-2);
+    color: inherit;
+    text-decoration: none;
+  }
+  & a[aria-current] {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+}
+.order-box {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+.scroll {
+  overflow-x: auto;
+}
+.listed {
+  width: 100%;
+  border-collapse: collapse;
+  & th,
+  & td {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--color-line);
+    text-align: start;
+    vertical-align: top;
+  }
+  & th {
+    font-size: var(--font-size-sm);
+    color: var(--color-muted);
+    font-weight: 500;
+  }
+  & tr[aria-current] {
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  }
+}
+.end {
+  text-align: end;
+}
+.wide {
+  min-width: 420px;
+}

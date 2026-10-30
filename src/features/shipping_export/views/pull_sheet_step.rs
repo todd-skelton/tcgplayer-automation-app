@@ -54,6 +54,8 @@ pub fn PullSheetStep<'a>(
             step: Some(Step::PullSheet),
             seller: None,
             edit: None,
+            shipment: None,
+            view: None,
             filters: SheetQuery {
                 q: sort.and(filters.q.clone()),
                 sort,

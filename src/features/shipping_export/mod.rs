@@ -10,7 +10,7 @@
 //!
 //! | Route | Answer |
 //! |---|---|
-//! | `GET /shipping-export` | the step `?step=` (or the first not done) of the batch in progress; `?seller=` chooses the seller to load for, `?edit=` opens a shipment's editor |
+//! | `GET /shipping-export` | the step `?step=` (or the first not done) of the batch in progress; `?seller=` chooses the seller to load for, `?edit=` opens a shipment's editor, `?shipment=` and `?view=` are the shipment Pack shows and how |
 //! | `POST /shipping-export/orders` | the seller's Ready to Ship orders loaded as a new batch |
 //! | `POST /shipping-export/order` | one order loaded as a new batch |
 //! | `POST /shipping-export/history` | the seller's order history scan moved on |
@@ -21,14 +21,18 @@
 //! | `POST /shipping-export/shipments/{reference}` | the shipment as edited, kept for the batch |
 //! | `GET /shipping-export/packing-slips` | the batch's packing slips as a PDF, shown (`?open=true`) or saved |
 //! | `POST /shipping-export/labels/{size}` | one PDF of a label size's labels, made from the postage bought |
+//! | `POST /shipping-export/shipments/{reference}/packed` | the shipment marked packed (and the next not packed shown), or not |
 //! | `POST /shipping-export/new-batch` | the batch dropped |
 mod buying;
 mod editing;
 mod orders;
+mod pack;
+mod packing;
 mod page;
 #[allow(dead_code, reason = "the Ship step still to land uses the rest")]
 mod postage;
 mod printing;
+mod sheet;
 #[allow(dead_code, reason = "the Ship step still to land uses it")]
 mod ship;
 mod shipments;
@@ -36,29 +40,32 @@ mod source;
 mod steps;
 mod value;
 mod views;
-#[allow(dead_code, reason = "the Pack step still to land uses the rest")]
 mod workflow;
 
 pub use views::COMPONENTS;
 
 // Handlers are named from here, where the routes module is declared.
 use buying::{buy_all, buy_shipment, edit_shipment, shipment_csv};
+use packing::set_packed;
 use page::{catch_up, import_history, load_order, load_orders, new_batch, show};
 use printing::{create_batch_label, packing_slips};
 
 #[corten::routes(area = ShippingWorkflow, state = crate::app::Shared)]
 pub mod url {
-    use super::{shipments::Direction, steps::Step};
+    use super::{pack::PackView, shipments::Direction, steps::Step};
     use crate::features::{pull_sheet::url::SheetQuery, shipping_configuration::LabelSize};
 
     /// `step` is the step shown, the first not done when none; `seller` the seller the Load
     /// Orders step loads for; `edit` the shipment whose editor is open; `filters` the pull
-    /// sheet's filter and sort without JavaScript.
+    /// sheet's filter and sort without JavaScript; `shipment` the one Pack shows, and `view`
+    /// whether as cards or a list.
     #[route("/shipping-export", get = show)]
     pub struct ShippingWorkflow {
         pub step: Option<Step>,
         pub seller: Option<String>,
         pub edit: Option<String>,
+        pub shipment: Option<String>,
+        pub view: Option<PackView>,
         #[route(query)]
         pub filters: SheetQuery,
     }
@@ -104,6 +111,11 @@ pub mod url {
     #[route("/shipping-export/labels/{size}", post = create_batch_label)]
     pub struct BatchLabelPdf {
         pub size: LabelSize,
+    }
+
+    #[route("/shipping-export/shipments/{reference}/packed", post = set_packed)]
+    pub struct ShipmentPacked {
+        pub reference: String,
     }
 
     #[route("/shipping-export/new-batch", post = new_batch)]

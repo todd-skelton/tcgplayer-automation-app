@@ -55,7 +55,7 @@ pub async fn buy_all(
         shipping_configuration::settings(&db),
         workflow::current(&db)
     );
-    let batch = plan(&config?, saved?.as_ref().map(|s| &s.workflow));
+    let batch = plan(&config?, saved?.as_ref());
     if batch.shipments.is_empty() {
         let why = "Load orders before buying postage.";
         return refused(&req, &db, &legacy, visitor, Step::BuyPostage, why).await;
@@ -183,7 +183,7 @@ pub async fn shipment_csv(
         shipping_configuration::settings(&db),
         workflow::current(&db)
     );
-    let batch = plan(&config?, saved?.as_ref().map(|s| &s.workflow));
+    let batch = plan(&config?, saved?.as_ref());
     let Some(planned) = batch.shipment(&at.reference) else {
         return Err(corten::Error::not_found());
     };
@@ -210,10 +210,8 @@ pub async fn edit_shipment(
         workflow::current(&db)
     );
     let (config, saved) = (config?, saved?);
-    let orders = saved
-        .as_ref()
-        .map_or_else(Vec::new, |s| s.workflow.orders.clone());
-    let edits = saved.map(|s| s.workflow.edits).unwrap_or_default();
+    let orders = saved.as_ref().map_or_else(Vec::new, |w| w.orders.clone());
+    let edits = saved.map(|w| w.edits).unwrap_or_default();
     // Edits are kept by the reference planned, which an edit may have changed.
     let planned = Batch::plan(orders, &config);
     let shown: Vec<(&str, &shipments::Shipment)> = planned

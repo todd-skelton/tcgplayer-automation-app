@@ -219,15 +219,19 @@ pub fn of_orders<'a>(orders: impl IntoIterator<Item = &'a Order>) -> SaleValue {
 
 /// One card's sale across the orders: each order narrowed to that card's lines and history.
 pub fn of_card<'a>(orders: impl IntoIterator<Item = &'a Order>, sku_id: i64) -> SaleValue {
+    of_lines(orders, |l| l.sku_id == Some(sku_id))
+}
+
+/// The sale of the lines `keep` picks across the orders (`saleValueOfLines`): each order
+/// narrowed to those lines and their history.
+pub fn of_lines<'a>(
+    orders: impl IntoIterator<Item = &'a Order>,
+    keep: impl Fn(&Line) -> bool,
+) -> SaleValue {
     let narrowed: Vec<Order> = orders
         .into_iter()
         .filter_map(|order| {
-            let lines: Vec<Line> = order
-                .lines()
-                .iter()
-                .filter(|l| l.sku_id == Some(sku_id))
-                .cloned()
-                .collect();
+            let lines: Vec<Line> = order.lines().iter().filter(|l| keep(l)).cloned().collect();
             if lines.is_empty() {
                 return None;
             }

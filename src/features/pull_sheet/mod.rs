@@ -15,7 +15,7 @@ mod views;
 pub use items::Item;
 pub use page::shown;
 pub use views::COMPONENTS;
-pub use views::{Paging, SheetItems, SortBy, Summary};
+pub use views::{ItemCard, Paging, SheetItems, SortBy, Summary};
 
 /// A pull sheet's items, each with what the catalog knows of its SKU, and the orders it was made
 /// for; or why the text is not a pull sheet.

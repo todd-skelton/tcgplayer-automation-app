@@ -2,12 +2,13 @@ use std::{collections::HashMap, time::SystemTime};
 
 use chrono::{Duration, Utc};
 use corten::{ClientZone, axum::http::StatusCode, i18n::Zone, prelude::*};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use super::{
     editing::ShipmentInput,
+    packing,
     postage::{self, Bought, Postage},
-    printing,
+    printing, sheet,
     ship::Pending,
     shipments::{Batch, Direction},
     source,
@@ -15,10 +16,11 @@ use super::{
     url::{self, ShippingWorkflow},
     value,
     views::{
-        BuyAllAction, BuyPostageStep, LabelSheet, LoadOrdersStep, Loading, PostageRow, PrintStep,
-        PullSheetStep, Pulled, SaleValueFigures, ShipmentEditor, ShippingWorkflowScreen, StepBar,
+        BuyAllAction, BuyPostageStep, LabelSheet, LoadOrdersStep, Loading, PackStep, PostageRow,
+        PrintStep, PullSheetStep, Pulled, SaleValueFigures, ShipmentEditor, ShippingWorkflowScreen,
+        StepBar,
     },
-    workflow::{self, Saved, Workflow},
+    workflow::{self, Workflow},
 };
 use crate::{
     database::Database,
@@ -44,6 +46,8 @@ impl ShippingWorkflow {
             step: Some(step),
             seller: None,
             edit: None,
+            shipment: None,
+            view: None,
             filters: SheetQuery::default(),
         }
     }
@@ -87,7 +91,7 @@ pub(super) fn plan(config: &ShippingConfig, workflow: Option<&Workflow>) -> Batc
 /// bought for them.
 pub(super) struct Shown {
     config: ShippingConfig,
-    saved: Option<Saved>,
+    saved: Option<Workflow>,
     pub(super) batch: Batch,
     postage: Result<Postage, String>,
 }
@@ -98,9 +102,9 @@ impl Shown {
             tokio::join!(shipping_configuration::settings(db), workflow::current(db));
         let (config, mut saved) = (config?, saved?);
         if let Some(s) = &mut saved {
-            refresh_intake(db, legacy, &config, &mut s.workflow).await?;
+            refresh_intake(db, legacy, &config, s).await?;
         }
-        let batch = plan(&config, saved.as_ref().map(|s| &s.workflow));
+        let batch = plan(&config, saved.as_ref());
         let postage = postage::bought(legacy, Direction::Outbound, &batch.shipments).await;
         Ok(Shown {
             config,
@@ -110,8 +114,8 @@ impl Shown {
         })
     }
 
-    fn workflow(&self) -> Option<&Workflow> {
-        self.saved.as_ref().map(|s| &s.workflow)
+    pub(super) fn workflow(&self) -> Option<&Workflow> {
+        self.saved.as_ref()
     }
 
     /// A shipment's postage: the label bought for it, or the last purchase that bought none.
@@ -247,7 +251,7 @@ async fn refresh_intake(
     if changed.is_some()
         && let Some(saved) = workflow::current(db).await?
     {
-        *w = saved.workflow;
+        *w = saved;
     }
     Ok(())
 }
@@ -266,27 +270,8 @@ async fn pull(
     visitor: Visitor,
     filters: &SheetQuery,
 ) -> Result<Pulled, String> {
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Request<'a> {
-        order_numbers: &'a [String],
-        timezone_offset: f64,
-    }
-    let numbers = batch.order_numbers();
-    if numbers.is_empty() {
-        return Err("Load orders first.".into());
-    }
-    let csv = legacy
-        .send_for_file(
-            "/api/shipping-export/pull-sheet-export",
-            &Request {
-                order_numbers: &numbers,
-                timezone_offset: hours_ahead(visitor),
-            },
-        )
-        .await?;
-    let text = String::from_utf8_lossy(&csv.bytes);
-    let (mut items, order_ids) = pull_sheet::read(db, text.trim_start_matches('\u{feff}')).await?;
+    let text = sheet::export(legacy, &batch.order_numbers(), hours_ahead(visitor)).await?;
+    let (mut items, order_ids) = pull_sheet::read(db, &text).await?;
     let summary = Summary::of(&items, order_ids.len());
     let values: HashMap<i64, value::SaleValue> = items
         .iter()
@@ -312,6 +297,8 @@ pub async fn show(
         step: at.step,
         seller: at.seller,
         edit: at.edit,
+        shipment: at.shipment,
+        view: at.view,
         filters: at.filters,
     };
     page(
@@ -392,6 +379,20 @@ pub(super) async fn page(
         Step::BuyPostage => shown.postage_rows(),
         _ => Vec::new(),
     };
+    let packing = match step {
+        Step::Pack => Some(
+            packing::packing(
+                db,
+                legacy,
+                &shown,
+                visitor,
+                at.shipment.as_deref(),
+                at.view.unwrap_or_default(),
+            )
+            .await,
+        ),
+        _ => None,
+    };
     let sheets: Vec<LabelSheet> = match step {
         Step::Print => batch
             .label_sizes()
@@ -461,6 +462,11 @@ pub(super) async fn page(
                         }
                     }
                     Step::Print => <PrintStep sheets={&sheets} has_orders={!batch.orders.is_empty()} />,
+                    Step::Pack => {
+                        if let Some(packing) = &packing {
+                            <PackStep packing={packing} t={t} />
+                        }
+                    }
                     _ => {
                         <Notice tone={Tone::Info}>
                             "This step is still being ported. Use the React screen for it until it lands."
@@ -611,7 +617,7 @@ pub async fn catch_up(
     Form(input): Form<CatchUpInput>,
 ) -> HtmlResult {
     let orders: Vec<String> = workflow::current(&db).await?.map_or_else(Vec::new, |s| {
-        s.workflow.orders.into_iter().map(|o| o.number).collect()
+        s.orders.into_iter().map(|o| o.number).collect()
     });
     let done = source::catch_up(&legacy, input.seller_key.trim(), &orders).await;
     history_changed(&req, &db, done, &legacy, Visitor::of(zone.as_ref())).await
