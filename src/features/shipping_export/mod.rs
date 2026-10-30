@@ -19,15 +19,16 @@
 //! | `POST /shipping-export/shipments/{reference}/postage` | postage, or a return label, bought for one shipment |
 //! | `GET /shipping-export/shipments/{reference}/csv` | the shipment, or its return (`?direction=return`), as EasyPost's CSV |
 //! | `POST /shipping-export/shipments/{reference}` | the shipment as edited, kept for the batch |
+//! | `GET /shipping-export/packing-slips` | the batch's packing slips as a PDF, shown (`?open=true`) or saved |
+//! | `POST /shipping-export/labels/{size}` | one PDF of a label size's labels, made from the postage bought |
 //! | `POST /shipping-export/new-batch` | the batch dropped |
+mod buying;
 mod editing;
 mod orders;
 mod page;
-#[allow(
-    dead_code,
-    reason = "the Print and Ship steps still to land use the rest"
-)]
+#[allow(dead_code, reason = "the Ship step still to land uses the rest")]
 mod postage;
+mod printing;
 #[allow(dead_code, reason = "the Ship step still to land uses it")]
 mod ship;
 mod shipments;
@@ -35,24 +36,20 @@ mod source;
 mod steps;
 mod value;
 mod views;
-#[allow(
-    dead_code,
-    reason = "the Print and Pack steps still to land use the rest"
-)]
+#[allow(dead_code, reason = "the Pack step still to land uses the rest")]
 mod workflow;
 
 pub use views::COMPONENTS;
 
 // Handlers are named from here, where the routes module is declared.
-use page::{
-    buy_all, buy_shipment, catch_up, edit_shipment, import_history, load_order, load_orders,
-    new_batch, shipment_csv, show,
-};
+use buying::{buy_all, buy_shipment, edit_shipment, shipment_csv};
+use page::{catch_up, import_history, load_order, load_orders, new_batch, show};
+use printing::{create_batch_label, packing_slips};
 
 #[corten::routes(area = ShippingWorkflow, state = crate::app::Shared)]
 pub mod url {
     use super::{shipments::Direction, steps::Step};
-    use crate::features::pull_sheet::url::SheetQuery;
+    use crate::features::{pull_sheet::url::SheetQuery, shipping_configuration::LabelSize};
 
     /// `step` is the step shown, the first not done when none; `seller` the seller the Load
     /// Orders step loads for; `edit` the shipment whose editor is open; `filters` the pull
@@ -96,6 +93,17 @@ pub mod url {
     #[route("/shipping-export/shipments/{reference}", post = edit_shipment)]
     pub struct EditShipment {
         pub reference: String,
+    }
+
+    /// `open` shows the PDF in the browser's viewer; without it, it is saved.
+    #[route("/shipping-export/packing-slips", get = packing_slips)]
+    pub struct PackingSlips {
+        pub open: Option<bool>,
+    }
+
+    #[route("/shipping-export/labels/{size}", post = create_batch_label)]
+    pub struct BatchLabelPdf {
+        pub size: LabelSize,
     }
 
     #[route("/shipping-export/new-batch", post = new_batch)]

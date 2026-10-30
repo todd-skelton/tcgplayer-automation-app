@@ -5,7 +5,7 @@ use crate::{
     features::{
         shipping_configuration::EasyPostMode,
         shipping_export::{
-            page::BuyInput,
+            buying::BuyInput,
             postage::{Bought, Status},
             shipments::{DeliveryConfirmation, Direction, Planned},
             url::{self, ShippingWorkflow},
