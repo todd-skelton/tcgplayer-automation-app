@@ -338,8 +338,8 @@ pub async fn queue_batch(
 }
 
 /// A queue refused, with the refusal's status: the form with why, and, when the counts are read
-/// again, the totals they come to now. Without JavaScript, the whole screen. Not `req.invalid`:
-/// the form reads the Node app's batches, which the whole screen reads for itself.
+/// again, the totals they come to now. Without JavaScript, the whole screen. The form reads the
+/// Node app's batches only for the patch; the whole screen reads them for itself.
 async fn refuse(
     req: &Req,
     db: &Database,
@@ -349,36 +349,36 @@ async fn refuse(
     errors: &Errors,
     quantities: Option<&HashMap<i32, i32>>,
 ) -> HtmlResult {
-    if req.mode != Mode::Action {
-        let drawn = Drawn {
-            input: Some(input),
-            errors: Some(errors),
-            ..Drawn::default()
-        };
-        let mut answer = page(req, db, legacy, selection, &drawn).await?;
-        *answer.status_mut() = errors.refusal().status();
-        return Ok(answer);
-    }
-    let batches = queue::batches(legacy).await;
-    let target = batches.as_ref().ok().map(|b| &b.target);
-    let form = html! {
-        <QueueForm selection={selection} input={input} target={target} errors={errors} />
-    };
-    let status = errors.refusal().status();
-    match quantities {
-        None => req.patch_with_status(status, form),
-        Some(quantities) => {
-            let totals = Totals::of(quantities);
-            req.patch_with_status(
-                status,
-                html! {
-                    {form}
-                    <QueueTotals totals={totals} counted={&queue::fingerprint(quantities)} />
-                    <ClearConfirm selection={selection} totals={totals} />
-                },
-            )
-        }
-    }
+    req.invalid_with(
+        errors,
+        |patch| async move {
+            let batches = queue::batches(legacy).await;
+            let target = batches.as_ref().ok().map(|b| &b.target);
+            let form = html! {
+                <QueueForm selection={selection} input={input} target={target} errors={errors} />
+            };
+            match quantities {
+                None => patch.draw(form),
+                Some(quantities) => {
+                    let totals = Totals::of(quantities);
+                    patch.draw(html! {
+                        {form}
+                        <QueueTotals totals={totals} counted={&queue::fingerprint(quantities)} />
+                        <ClearConfirm selection={selection} totals={totals} />
+                    })
+                }
+            }
+        },
+        || async {
+            let drawn = Drawn {
+                input: Some(input),
+                errors: Some(errors),
+                ..Drawn::default()
+            };
+            page(req, db, legacy, selection, &drawn).await
+        },
+    )
+    .await
 }
 
 /// The background batches as they are now, and the request to read them again.
