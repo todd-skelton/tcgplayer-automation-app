@@ -5,9 +5,17 @@
     dead_code,
     reason = "the engine lands before the pricers and the strategy screen that call it"
 )]
+pub mod buyer_arrival_rate;
+pub mod buyer_choice_sell_time;
 pub mod capital_cycle;
+pub mod condition_normalization;
+pub mod condition_sale_rate;
+pub mod effective_sale_price;
 pub mod horizon_value_curve;
+pub mod latest_sales_price;
 pub mod marketplace_price;
 pub mod maximize;
 pub mod policy;
+pub mod sale;
 pub mod shipping_threshold_snap;
+pub mod supply_analysis;
