@@ -1,0 +1,50 @@
+{
+  "allowedActions": [
+    "BlockBuyer"
+  ],
+  "buyerName": "Buyer",
+  "createdAt": "2026-07-30T23:01:21.647Z",
+  "estimatedDeliveryDate": "2026-08-13T23:01:21.077Z",
+  "orderChannel": "TcgMarketplace",
+  "orderFulfillment": "Normal",
+  "orderNumber": "FIXTURE-0005",
+  "pickupStatus": "",
+  "products": [
+    {
+      "extendedPrice": 1.99,
+      "name": "Pokemon - SWSH12: Silver Tempest: Radiant Jirachi - #120/195 - Near Mint Holofoil",
+      "productId": "450292",
+      "quantity": 1,
+      "skuId": "6658499",
+      "unitPrice": 1.99,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/450292"
+    }
+  ],
+  "refundStatus": "",
+  "refunds": [],
+  "sellerName": "Seller",
+  "shippingAddress": {
+    "addressOne": "1 Main St",
+    "city": "Springfield",
+    "country": "US",
+    "postalCode": "62701",
+    "recipientName": "Buyer",
+    "territory": "IL"
+  },
+  "shippingType": "Standard (7-10 days)",
+  "status": "Completed - Paid",
+  "transaction": {
+    "directFeeAmount": 0,
+    "feeAmount": 0.76,
+    "grossAmount": 3.48,
+    "netAmount": 2.72,
+    "productAmount": 1.99,
+    "shippingAmount": 1.49,
+    "taxes": [
+      {
+        "amount": 0.16,
+        "code": "Total"
+      }
+    ]
+  }
+}

@@ -8,6 +8,7 @@ mod database;
 mod features;
 mod layout;
 mod legacy;
+mod tcgplayer;
 mod text;
 mod theme;
 mod zone;

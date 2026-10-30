@@ -1,0 +1,47 @@
+{
+  "FIXTURE-0001": {
+    "summaryFingerprint": "db738bf83ba6de2a0ddda5f30e1d558480a48ab4e33f855d52157ac7a55706b6",
+    "fingerprint": "9b03fc2ca2ba7452d4679e682a7c8196dcfb33d113e9c795c47a1e134da09f03",
+    "lifecycle": "canceled"
+  },
+  "FIXTURE-0002": {
+    "summaryFingerprint": "59b916da602901b6fd14b183efbbb0d3bdc40548fa71f261e4377a86f392e7fe",
+    "fingerprint": "7928e26a7495e1c8870c25e6ca1399a2392396b5e546cadbcca598c2992215de",
+    "lifecycle": "completed_paid"
+  },
+  "FIXTURE-0003": {
+    "summaryFingerprint": "6d8d61892066e56c8e4cb48c086c4b760e49e4a6a368137739a053bb04b4538c",
+    "fingerprint": "b9a3bd9d724f6d20b46e050502bf1cd871fd08278a7d1cba3330ce5102a66863",
+    "lifecycle": "completed_paid"
+  },
+  "FIXTURE-0004": {
+    "summaryFingerprint": "be18744a8560ea7b82fc1be20df2b3f843f2af30298d17ac90589638d936f4ff",
+    "fingerprint": "0295d32e073872685bafb9c7302f872daa8f24a3c04605916a3355f73c5e02ee",
+    "lifecycle": "completed_paid"
+  },
+  "FIXTURE-0005": {
+    "summaryFingerprint": "af5985efa89276c3df947db3d3e5bfe19c83fd529807bfafef899db0924c1c9e",
+    "fingerprint": "cc53ea58ff8b3fe511ec479c3ef197ec9bcdfeaca61b0e7e320718ba8e8d4921",
+    "lifecycle": "completed_paid"
+  },
+  "FIXTURE-0006": {
+    "summaryFingerprint": "5bcfcb2f076a9b6c10bfd2c5d84a38d4653ff59ad6d10351edc9c785353f8fd6",
+    "fingerprint": "8d2c27a2795067cd5e333424bf7d798c99d89fb4d3a240aa8a04e86592ad4f09",
+    "lifecycle": "completed_paid"
+  },
+  "FIXTURE-0007": {
+    "summaryFingerprint": "8613ad8a13a1781881d033506826fdae5f278c0add845a9cf30a6c9ccb2aaa36",
+    "fingerprint": "da1a1f6ad63be4cb1bc5526111039e67f86750ccf40165abf65280eb5aec8c06",
+    "lifecycle": "canceled"
+  },
+  "FIXTURE-0008": {
+    "summaryFingerprint": "ac7af5b603d1ba4c3d0e1fa4ac648b767c58e0cce5a99e1a308cac05e8233d65",
+    "fingerprint": "e6a5ccdcee5974bca0d950cbad7d2fa9106374b7d4a7150804c59de732156ef1",
+    "lifecycle": "completed_paid"
+  },
+  "FIXTURE-0009": {
+    "summaryFingerprint": "5c506bb5ddf0af0b849165dd84fef0b819728840081e4ae7b363e076d9e07f4b",
+    "fingerprint": "bc3e7ad377fccc96d6a0384c5d78955f6642ec86a12732f9f1eab39cbd20615f",
+    "lifecycle": "completed_paid"
+  }
+}

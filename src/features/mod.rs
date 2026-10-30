@@ -13,6 +13,7 @@ pub mod pricing;
 pub mod product_price_matrix;
 pub mod publication_configuration;
 pub mod pull_sheet;
+pub mod seller_order_history;
 pub mod shipping_configuration;
 pub mod shipping_export;
 pub mod shipping_thresholds;

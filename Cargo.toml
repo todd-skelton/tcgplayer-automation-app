@@ -31,5 +31,5 @@ hex = "0.4"
 [dev-dependencies]
 http-body-util = "0.1"
 # The slab providers' tests serve a stand-in provider on this machine.
-tokio = { version = "1", features = ["net"] }
+tokio = { version = "1", features = ["net", "test-util"] }
 tower = { version = "0.5", features = ["util"] }

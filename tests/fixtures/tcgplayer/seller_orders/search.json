@@ -1,0 +1,83 @@
+{
+  "orders": [
+    {
+      "buyerName": "Buyer",
+      "buyerPaid": true,
+      "orderChannel": "TcgMarketplace",
+      "orderDate": "2026-07-30T20:43:36.68Z",
+      "orderFulfillment": "Normal",
+      "orderNumber": "FIXTURE-0001",
+      "orderStatus": "Canceled",
+      "productAmount": 172.57,
+      "shippingAmount": 0.0,
+      "shippingType": "Standard",
+      "totalAmount": 172.57
+    },
+    {
+      "buyerName": "Buyer",
+      "buyerPaid": true,
+      "orderChannel": "TcgMarketplace",
+      "orderDate": "2026-07-30T20:54:18.77Z",
+      "orderFulfillment": "Normal",
+      "orderNumber": "FIXTURE-0002",
+      "orderStatus": "Completed - Paid",
+      "productAmount": 107.21,
+      "shippingAmount": 0.0,
+      "shippingType": "Standard",
+      "totalAmount": 107.21
+    },
+    {
+      "buyerName": "Buyer",
+      "buyerPaid": true,
+      "orderChannel": "TcgMarketplace",
+      "orderDate": "2026-07-30T22:22:50.473Z",
+      "orderFulfillment": "Normal",
+      "orderNumber": "FIXTURE-0003",
+      "orderStatus": "Completed - Paid",
+      "productAmount": 28.7,
+      "shippingAmount": 0.0,
+      "shippingType": "Standard",
+      "totalAmount": 28.7
+    },
+    {
+      "buyerName": "Buyer",
+      "buyerPaid": true,
+      "orderChannel": "TcgMarketplace",
+      "orderDate": "2026-07-30T22:40:30.087Z",
+      "orderFulfillment": "Normal",
+      "orderNumber": "FIXTURE-0004",
+      "orderStatus": "Completed - Paid",
+      "productAmount": 97.04,
+      "shippingAmount": 0.0,
+      "shippingType": "Standard",
+      "totalAmount": 97.04
+    },
+    {
+      "buyerName": "Buyer",
+      "buyerPaid": true,
+      "orderChannel": "TcgMarketplace",
+      "orderDate": "2026-07-30T23:01:21.077Z",
+      "orderFulfillment": "Normal",
+      "orderNumber": "FIXTURE-0005",
+      "orderStatus": "Completed - Paid",
+      "productAmount": 1.99,
+      "shippingAmount": 1.49,
+      "shippingType": "Standard",
+      "totalAmount": 3.48
+    },
+    {
+      "buyerName": "Buyer",
+      "buyerPaid": true,
+      "orderChannel": "TcgMarketplace",
+      "orderDate": "2026-07-31T00:31:12.27Z",
+      "orderFulfillment": "Normal",
+      "orderNumber": "FIXTURE-0006",
+      "orderStatus": "Completed - Paid",
+      "productAmount": 22.91,
+      "shippingAmount": 0.0,
+      "shippingType": "Standard",
+      "totalAmount": 22.91
+    }
+  ],
+  "totalOrders": 1678
+}

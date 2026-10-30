@@ -1,0 +1,66 @@
+{
+  "allowedActions": [
+    "PartialRefund",
+    "BlockBuyer"
+  ],
+  "buyerName": "Buyer",
+  "createdAt": "2026-09-17T19:35:17.303Z",
+  "estimatedDeliveryDate": "2026-10-01T19:35:17.293Z",
+  "orderChannel": "TcgMarketplace",
+  "orderFulfillment": "Normal",
+  "orderNumber": "FIXTURE-0009",
+  "pickupStatus": "",
+  "products": [
+    {
+      "extendedPrice": 42.45,
+      "name": "Pokemon - Nintendo Promos: Mudkip - 018 (EX Deck Tin) - #018 - Near Mint Holofoil",
+      "productId": "87609",
+      "quantity": 1,
+      "skuId": "2882444",
+      "unitPrice": 42.45,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/87609"
+    }
+  ],
+  "refundStatus": "Partial Refund",
+  "refunds": [
+    {
+      "amount": 16.07,
+      "createdAt": "2026-10-03T21:21:14.49Z",
+      "origin": "SellerInitiated",
+      "products": [
+        {
+          "amount": 16.07,
+          "productId": "87609",
+          "skuId": "2882444"
+        }
+      ],
+      "shippingAmount": 0,
+      "type": "Partial"
+    }
+  ],
+  "sellerName": "Seller",
+  "shippingAddress": {
+    "addressOne": "1 Main St",
+    "city": "Springfield",
+    "country": "US",
+    "postalCode": "62701",
+    "recipientName": "Buyer",
+    "territory": "IL"
+  },
+  "shippingType": "Standard (7-10 days)",
+  "status": "Completed - Paid",
+  "transaction": {
+    "directFeeAmount": 0,
+    "feeAmount": 6,
+    "grossAmount": 42.45,
+    "netAmount": 36.45,
+    "productAmount": 42.45,
+    "shippingAmount": 0,
+    "taxes": [
+      {
+        "amount": 2.97,
+        "code": "Total"
+      }
+    ]
+  }
+}

@@ -6,7 +6,7 @@
 //! | `GET /http-configuration` | the settings form; `?done=saved` or `?done=reset` says what the last post did |
 //! | `POST /http-configuration` | the settings saved and the page loaded again, or the form with what is wrong |
 //! | `POST /http-configuration/reset` | every setting back to its default, the auth cookie cleared |
-mod config;
+pub(crate) mod config;
 mod form;
 mod page;
 mod views;

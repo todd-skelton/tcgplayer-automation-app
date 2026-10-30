@@ -1,0 +1,59 @@
+{
+  "allowedActions": [
+    "BlockBuyer"
+  ],
+  "buyerName": "Buyer",
+  "createdAt": "2026-09-23T04:36:41.89Z",
+  "estimatedDeliveryDate": "2026-10-07T04:36:41.423Z",
+  "orderChannel": "TcgMarketplace",
+  "orderFulfillment": "Normal",
+  "orderNumber": "FIXTURE-0007",
+  "pickupStatus": "",
+  "products": [
+    {
+      "extendedPrice": 22.86,
+      "name": "Pokemon - SV01: Scarlet & Violet Base Set: Koraidon ex - 247/198 - #247/198 - Near Mint Holofoil",
+      "productId": "490044",
+      "quantity": 1,
+      "skuId": "7041414",
+      "unitPrice": 22.86,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/490044"
+    }
+  ],
+  "refundStatus": "Full Refund",
+  "refunds": [
+    {
+      "amount": 22.86,
+      "createdAt": "2026-09-30T12:33:07.533Z",
+      "origin": "BuyerInitiated",
+      "products": [],
+      "shippingAmount": 0,
+      "type": "Full"
+    }
+  ],
+  "sellerName": "Seller",
+  "shippingAddress": {
+    "addressOne": "1 Main St",
+    "city": "Springfield",
+    "country": "US",
+    "postalCode": "62701",
+    "recipientName": "Buyer",
+    "territory": "IL"
+  },
+  "shippingType": "Standard (7-10 days)",
+  "status": "Canceled",
+  "transaction": {
+    "directFeeAmount": 0,
+    "feeAmount": 3.38,
+    "grossAmount": 22.86,
+    "netAmount": 19.48,
+    "productAmount": 22.86,
+    "shippingAmount": 0,
+    "taxes": [
+      {
+        "amount": 2,
+        "code": "Total"
+      }
+    ]
+  }
+}

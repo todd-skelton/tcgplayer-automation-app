@@ -15,8 +15,8 @@ use crate::{
     features::{
         batch_pricer, configuration, continuous_pricing, dashboard, data_management,
         http_configuration, inventory_economics, inventory_intake, inventory_strategy,
-        product_price_matrix, publication_configuration, pull_sheet, shipping_configuration,
-        shipping_export, slab_connections, slab_pricing,
+        product_price_matrix, publication_configuration, pull_sheet, seller_order_history,
+        shipping_configuration, shipping_export, slab_connections, slab_pricing,
     },
     layout::{self, Static},
     legacy::{Legacy, forward},
@@ -192,6 +192,11 @@ pub fn app(shared: Shared) -> App {
         .task("forecast evidence backfill", {
             let db = shared.db.clone();
             move |signal| inventory_strategy::backfill::run(db, signal)
+        })
+        // Off unless SELLER_ORDER_SHADOW_LOG names its log; it reads TCGplayer and writes only there.
+        .task("seller order history shadow", {
+            let db = shared.db.clone();
+            move |signal| seller_order_history::shadow::run(db, signal)
         })
         .ready(move || {
             let db = ready.clone();

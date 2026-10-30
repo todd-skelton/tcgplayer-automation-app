@@ -1,0 +1,86 @@
+{
+  "allowedActions": [
+    "BlockBuyer"
+  ],
+  "buyerName": "Buyer",
+  "createdAt": "2026-07-30T20:54:18.91Z",
+  "estimatedDeliveryDate": "2026-08-13T20:54:18.77Z",
+  "orderChannel": "TcgMarketplace",
+  "orderFulfillment": "Normal",
+  "orderNumber": "FIXTURE-0002",
+  "pickupStatus": "",
+  "products": [
+    {
+      "extendedPrice": 10.92,
+      "name": "Pokemon - Deck Exclusives: Machamp - 8/102 - #008/102 - Moderately Played 1st Edition Holofoil",
+      "productId": "42425",
+      "quantity": 1,
+      "skuId": "2999674",
+      "unitPrice": 10.92,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/42425"
+    },
+    {
+      "extendedPrice": 65.23,
+      "name": "Pokemon - Fossil: Dragonite (4) - #04/62 - Heavily Played Unlimited Holofoil",
+      "productId": "106520",
+      "quantity": 1,
+      "skuId": "2995223",
+      "unitPrice": 65.23,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/106520"
+    },
+    {
+      "extendedPrice": 9.82,
+      "name": "Pokemon - Base Set: Poliwrath - #013/102 - Heavily Played Holofoil",
+      "productId": "42353",
+      "quantity": 1,
+      "skuId": "2999700",
+      "unitPrice": 9.82,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/42353"
+    },
+    {
+      "extendedPrice": 7.89,
+      "name": "Pokemon - Base Set: Magneton - #009/102 - Heavily Played Holofoil",
+      "productId": "42433",
+      "quantity": 1,
+      "skuId": "2999680",
+      "unitPrice": 7.89,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/42433"
+    },
+    {
+      "extendedPrice": 13.35,
+      "name": "Pokemon Japan - Neo Premium File 1: Feraligatr - # - Moderately Played Holofoil - Japanese",
+      "productId": "607838",
+      "quantity": 1,
+      "skuId": "8447605",
+      "unitPrice": 13.35,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/607838"
+    }
+  ],
+  "refundStatus": "",
+  "refunds": [],
+  "sellerName": "Seller",
+  "shippingAddress": {
+    "addressOne": "1 Main St",
+    "city": "Springfield",
+    "country": "US",
+    "postalCode": "62701",
+    "recipientName": "Buyer",
+    "territory": "IL"
+  },
+  "shippingType": "Standard (7-10 days)",
+  "status": "Completed - Paid",
+  "transaction": {
+    "directFeeAmount": 0,
+    "feeAmount": 14.69,
+    "grossAmount": 107.21,
+    "netAmount": 92.52,
+    "productAmount": 107.21,
+    "shippingAmount": 0,
+    "taxes": [
+      {
+        "amount": 7.1,
+        "code": "Total"
+      }
+    ]
+  }
+}

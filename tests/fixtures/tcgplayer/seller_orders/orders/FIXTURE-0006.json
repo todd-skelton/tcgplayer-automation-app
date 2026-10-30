@@ -1,0 +1,164 @@
+{
+  "allowedActions": [
+    "BlockBuyer"
+  ],
+  "buyerName": "Buyer",
+  "createdAt": "2026-07-31T00:31:12.28Z",
+  "estimatedDeliveryDate": "2026-08-14T00:31:12.27Z",
+  "orderChannel": "TcgMarketplace",
+  "orderFulfillment": "Normal",
+  "orderNumber": "FIXTURE-0006",
+  "pickupStatus": "",
+  "products": [
+    {
+      "extendedPrice": 0.8,
+      "name": "Pokemon - ME04: Chaos Rising: Cinccino ex - 073/086 - #073/086 - Near Mint Holofoil",
+      "productId": "693463",
+      "quantity": 1,
+      "skuId": "9283207",
+      "unitPrice": 0.8,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/693463"
+    },
+    {
+      "extendedPrice": 0.39,
+      "name": "Pokemon - Miscellaneous Cards & Products: Chikorita (Cosmos Holo) - #008/217 - Near Mint Holofoil",
+      "productId": "680709",
+      "quantity": 1,
+      "skuId": "9169943",
+      "unitPrice": 0.39,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/680709"
+    },
+    {
+      "extendedPrice": 0.89,
+      "name": "Pokemon - ME: Ascended Heroes: Azumarill ex - #084/217 - Near Mint Holofoil",
+      "productId": "675896",
+      "quantity": 1,
+      "skuId": "9124467",
+      "unitPrice": 0.89,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/675896"
+    },
+    {
+      "extendedPrice": 0.88,
+      "name": "Pokemon - SWSH11: Lost Origin: Pidgeot V - #137/196 - Near Mint Holofoil",
+      "productId": "284060",
+      "quantity": 1,
+      "skuId": "5786904",
+      "unitPrice": 0.88,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/284060"
+    },
+    {
+      "extendedPrice": 0.75,
+      "name": "Pokemon - SV01: Scarlet & Violet Base Set: Banette ex - 088/198 - #088/198 - Near Mint Holofoil",
+      "productId": "487954",
+      "quantity": 1,
+      "skuId": "7024832",
+      "unitPrice": 0.75,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/487954"
+    },
+    {
+      "extendedPrice": 13.45,
+      "name": "Pokemon - SWSH04: Vivid Voltage: Pikachu VMAX - #044/185 - Near Mint Holofoil",
+      "productId": "226432",
+      "quantity": 1,
+      "skuId": "4633265",
+      "unitPrice": 13.45,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/226432"
+    },
+    {
+      "extendedPrice": 0.99,
+      "name": "Pokemon - SWSH: Sword & Shield Promo Cards: Tyranitar V - SWSH109 - #SWSH109 - Near Mint Holofoil",
+      "productId": "238553",
+      "quantity": 1,
+      "skuId": "4942386",
+      "unitPrice": 0.99,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/238553"
+    },
+    {
+      "extendedPrice": 0.8,
+      "name": "Pokemon - SV02: Paldea Evolved: Paldean Clodsire ex - #130/193 - Near Mint Holofoil",
+      "productId": "497589",
+      "quantity": 1,
+      "skuId": "7159658",
+      "unitPrice": 0.8,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/497589"
+    },
+    {
+      "extendedPrice": 0.4,
+      "name": "Pokemon - SV: Prismatic Evolutions: Whimsicott (Poke Ball Pattern) - #008/131 - Near Mint Holofoil",
+      "productId": "610542",
+      "quantity": 1,
+      "skuId": "8489858",
+      "unitPrice": 0.4,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/610542"
+    },
+    {
+      "extendedPrice": 2.37,
+      "name": "Pokemon - SWSH: Sword & Shield Promo Cards: Crobat VMAX - SWSH099 - #SWSH099 - Near Mint Holofoil",
+      "productId": "232613",
+      "quantity": 1,
+      "skuId": "4780851",
+      "unitPrice": 2.37,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/232613"
+    },
+    {
+      "extendedPrice": 0.38,
+      "name": "Pokemon - EX Crystal Guardians: Electrike - #52/100 - Near Mint",
+      "productId": "85138",
+      "quantity": 1,
+      "skuId": "1191107",
+      "unitPrice": 0.38,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/85138"
+    },
+    {
+      "extendedPrice": 0.81,
+      "name": "Pokemon - Miscellaneous Cards & Products: Shinx - 046/163 (Cosmos Holo) - #046/163 - Near Mint Holofoil",
+      "productId": "234727",
+      "quantity": 1,
+      "skuId": "4834056",
+      "unitPrice": 0.81,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/234727"
+    }
+  ],
+  "refundStatus": "Partial Refund",
+  "refunds": [
+    {
+      "amount": 2.37,
+      "createdAt": "2026-08-01T15:33:39.26Z",
+      "origin": "SellerInitiated",
+      "products": [
+        {
+          "amount": 2.37,
+          "productId": "232613",
+          "skuId": "4780851"
+        }
+      ],
+      "shippingAmount": 0,
+      "type": "Partial"
+    }
+  ],
+  "sellerName": "Seller",
+  "shippingAddress": {
+    "addressOne": "1 Main St",
+    "city": "Springfield",
+    "country": "US",
+    "postalCode": "62701",
+    "recipientName": "Buyer",
+    "territory": "IL"
+  },
+  "shippingType": "Standard (7-10 days)",
+  "status": "Completed - Paid",
+  "transaction": {
+    "directFeeAmount": 0,
+    "feeAmount": 3.37,
+    "grossAmount": 22.91,
+    "netAmount": 19.54,
+    "productAmount": 22.91,
+    "shippingAmount": 0,
+    "taxes": [
+      {
+        "amount": 1.52,
+        "code": "Total"
+      }
+    ]
+  }
+}
