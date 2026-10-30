@@ -1,5 +1,6 @@
 //! Fingerprints of evidence: a SHA-256 of its JSON with keys sorted, written as the Node app's
 //! `stableJson` writes it, so a fingerprint recorded there matches one computed here.
+use serde::Serialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
@@ -48,9 +49,14 @@ fn js_number(number: &serde_json::Number) -> String {
     if number.is_i64() || number.is_u64() {
         return number.to_string();
     }
-    let Some(value) = number.as_f64().filter(|v| v.is_finite()) else {
+    number.as_f64().map_or_else(|| "null".into(), js_float)
+}
+
+/// An f64 as `JSON.stringify` writes it; not finite is `null`.
+fn js_float(value: f64) -> String {
+    if !value.is_finite() {
         return "null".into();
-    };
+    }
     if value == 0.0 {
         return "0".into();
     }
@@ -65,6 +71,38 @@ fn js_number(number: &serde_json::Number) -> String {
         Some((digits, exponent)) if !exponent.starts_with('-') => format!("{digits}e+{exponent}"),
         _ => written,
     }
+}
+
+/// Writes numbers as JavaScript does, everything else as serde_json does.
+struct JsFormatter;
+
+impl serde_json::ser::Formatter for JsFormatter {
+    fn write_f64<W: ?Sized + std::io::Write>(
+        &mut self,
+        writer: &mut W,
+        value: f64,
+    ) -> std::io::Result<()> {
+        writer.write_all(js_float(value).as_bytes())
+    }
+
+    fn write_f32<W: ?Sized + std::io::Write>(
+        &mut self,
+        writer: &mut W,
+        value: f32,
+    ) -> std::io::Result<()> {
+        self.write_f64(writer, f64::from(value))
+    }
+}
+
+/// `value` as `JSON.stringify` writes the same object: fields in the order they are declared,
+/// numbers as JavaScript writes them.
+pub fn js_json<T: Serialize + ?Sized>(value: &T) -> String {
+    let mut out = Vec::new();
+    let mut serializer = serde_json::Serializer::with_formatter(&mut out, JsFormatter);
+    value
+        .serialize(&mut serializer)
+        .expect("a value that serializes to JSON");
+    String::from_utf8(out).expect("serde_json writes UTF-8")
 }
 
 /// The SHA-256 of `text`, in lowercase hex.
