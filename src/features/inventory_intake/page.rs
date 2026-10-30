@@ -397,14 +397,6 @@ pub async fn queue_batch(
     let screen = screen?;
     let handed_off: HashSet<i32> = expected.iter().map(|i| i.sku).collect();
     let redrawn = redrawn(&screen.products, &handed_off);
-    let counted: Vec<Counted> = redrawn.iter().map(|r| r.counted()).collect();
-    let fields: Vec<QuantityField> = counted
-        .iter()
-        .map(|counted| QuantityField {
-            counted,
-            quantity: screen.quantities.get(&counted.sku).copied().unwrap_or(0),
-        })
-        .collect();
     let next = input.after_queue();
     let none = Errors::new();
     let batches = batches.as_ref().map_err(String::as_str);
@@ -423,7 +415,10 @@ pub async fn queue_batch(
         />
         <BackgroundBatches selection={&selection} batches={batches} refused={None} />
         {ReadAgain { after: BATCHES_EVERY }.from(&again)}
-        {fields}
+        for field in &redrawn {
+            let counted = field.counted();
+            <QuantityField counted={&counted} quantity={screen.quantities.get(&counted.sku).copied().unwrap_or(0)} />
+        }
     })
 }
 
