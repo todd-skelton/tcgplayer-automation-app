@@ -1,0 +1,49 @@
+.ship-step {
+  display: grid;
+  gap: var(--space-4);
+  & p {
+    margin: 0;
+  }
+}
+.pending {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.chip {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+}
+.good {
+  border-color: var(--color-ok);
+  color: var(--color-ok);
+}
+.failed {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+.scroll {
+  overflow-x: auto;
+}
+.outcomes {
+  width: 100%;
+  border-collapse: collapse;
+  & th,
+  & td {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--color-line);
+    text-align: start;
+    vertical-align: top;
+  }
+  & th {
+    font-size: var(--font-size-sm);
+    color: var(--color-muted);
+    font-weight: 500;
+  }
+}

@@ -185,3 +185,16 @@ pub fn BuyAllAction(mode: EasyPostMode, shipments: usize) -> impl Render {
         </form>
     }
 }
+
+/// The Ship step's action: tracking applied and buyers told for the orders still pending. It
+/// waits for a seller key, since buyers are told with it.
+#[component(css = ShippingWorkflowScreen)]
+pub fn ShipAction(pending: usize, has_seller: bool) -> impl Render {
+    html! {
+        <form method="post" action={super::super::url::ShipOrders} class={Act}>
+            <button disabled={pending == 0 || !has_seller} class={(Button, Primary)}>
+                "Mark Shipped & Notify Buyers"
+            </button>
+        </form>
+    }
+}

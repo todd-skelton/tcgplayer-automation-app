@@ -17,8 +17,8 @@ use super::{
     value,
     views::{
         BuyAllAction, BuyPostageStep, LabelSheet, LoadOrdersStep, Loading, PackStep, PostageRow,
-        PrintStep, PullSheetStep, Pulled, SaleValueFigures, ShipmentEditor, ShippingWorkflowScreen,
-        StepBar,
+        PrintStep, PullSheetStep, Pulled, SaleValueFigures, ShipAction, ShipStep, ShipmentEditor,
+        Shipping, ShippingWorkflowScreen, StepBar,
     },
     workflow::{self, Workflow},
 };
@@ -28,7 +28,7 @@ use crate::{
         pull_sheet::{self, Summary, url::SheetQuery},
         shipping_configuration::{self, EasyPostMode, ShippingConfig},
     },
-    layout::{Chrome, Layout, Notice, Tone},
+    layout::{Chrome, Layout},
     legacy::Legacy,
     text::Msg,
     zone::Visitor,
@@ -131,6 +131,17 @@ impl Shown {
         self.workflow().and_then(|w| w.returns.get(reference))
     }
 
+    /// Why the postage bought could not be read, when it could not.
+    pub(super) fn postage_failure(&self) -> Option<&str> {
+        self.postage.as_ref().err().map(String::as_str)
+    }
+
+    /// Buyers are told with the seller's key, so shipping waits for one.
+    pub(super) fn has_seller(&self) -> bool {
+        self.workflow()
+            .is_some_and(|w| !w.seller_key.trim().is_empty())
+    }
+
     /// Each shipment as the Buy Postage step shows it.
     fn postage_rows(&self) -> Vec<PostageRow<'_>> {
         self.batch
@@ -155,7 +166,8 @@ impl Shown {
             .count()
     }
 
-    fn pending(&self) -> Pending {
+    /// What is still to send to mark the orders shipped.
+    pub(super) fn pending(&self) -> Pending {
         let (empty, none) = (Postage::new(), Workflow::default());
         let w = self.workflow().unwrap_or(&none);
         Pending::of(
@@ -170,9 +182,7 @@ impl Shown {
 
     fn counts(&self) -> Counts {
         let pending = self.pending();
-        let has_seller = self
-            .workflow()
-            .is_some_and(|w| !w.seller_key.trim().is_empty());
+        let has_seller = self.has_seller();
         let production = pending.tracking.len() + pending.already_tracked;
         let shipped = if has_seller {
             production.saturating_sub(pending.orders().len())
@@ -351,9 +361,7 @@ pub(super) async fn page(
         _ => None,
     };
     let postage_problem = shown
-        .postage
-        .as_ref()
-        .err()
+        .postage_failure()
         .map(|why| format!("Failed to load saved postage: {why}"));
     let problem = problem.or(postage_problem.as_deref());
     let batch_value =
@@ -405,6 +413,23 @@ pub(super) async fn page(
             .collect(),
         _ => Vec::new(),
     };
+    let pending = match step {
+        Step::Ship => Some(shown.pending()),
+        _ => None,
+    };
+    let shipping = pending.as_ref().map(|pending| Shipping {
+        has_seller: counts.has_seller,
+        pending: if counts.has_seller {
+            pending.orders()
+        } else {
+            Vec::new()
+        },
+        shipped: counts.shipped,
+        tracked: workflow.map_or(&[], |w| &w.tracked),
+        messaged: workflow.map_or(&[], |w| &w.messaged),
+    });
+    // Read in the step bar and in the step, so each view borrows it rather than owning it.
+    let shipping = shipping.as_ref();
     let no_errors = Errors::new();
     let stored = at
         .edit
@@ -438,6 +463,12 @@ pub(super) async fn page(
                             if step == Step::BuyPostage {
                                 <BuyAllAction mode={mode} shipments={counts.shipments} />
                             }
+                            if let Some(shipping) = shipping {
+                                <ShipAction
+                                    pending={shipping.pending.len()}
+                                    has_seller={shipping.has_seller}
+                                />
+                            }
                         }}
                         unshipped_warning={unshipped.as_deref()}
                     />
@@ -467,10 +498,10 @@ pub(super) async fn page(
                             <PackStep packing={packing} t={t} />
                         }
                     }
-                    _ => {
-                        <Notice tone={Tone::Info}>
-                            "This step is still being ported. Use the React screen for it until it lands."
-                        </Notice>
+                    Step::Ship => {
+                        if let Some(shipping) = shipping {
+                            <ShipStep shipping={shipping} />
+                        }
                     }
                 }
             </ShippingWorkflowScreen>

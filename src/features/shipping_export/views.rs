@@ -8,6 +8,7 @@ mod pack_step;
 mod print_step;
 mod pull_sheet_step;
 mod sale_value_figures;
+mod ship_step;
 mod shipment_editor;
 mod shipping_workflow_screen;
 
@@ -17,8 +18,9 @@ pub use pack_step::{PackCard, PackRow, PackStep, PackedOrder, Packing, ShipmentT
 pub use print_step::{LabelSheet, PrintStep};
 pub use pull_sheet_step::{PullSheetStep, Pulled};
 pub use sale_value_figures::SaleValueFigures;
+pub use ship_step::{ShipStep, Shipping};
 pub use shipment_editor::{ShipmentEditor, ShipmentEditorForm};
-pub use shipping_workflow_screen::{BuyAllAction, ShippingWorkflowScreen, StepBar};
+pub use shipping_workflow_screen::{BuyAllAction, ShipAction, ShippingWorkflowScreen, StepBar};
 
 pub const COMPONENTS: &[Component] = &[
     ShippingWorkflowScreen,
@@ -29,4 +31,5 @@ pub const COMPONENTS: &[Component] = &[
     PrintStep,
     PackStep,
     ShipmentToPack,
+    ShipStep,
 ];
