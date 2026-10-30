@@ -1,10 +1,13 @@
+use std::{collections::HashSet, time::Duration};
+
 use corten::prelude::*;
 
+use super::{background_batches::BackgroundBatches, queue_bar::QueueBar};
 use crate::{
     features::inventory_intake::{
         catalog::{Condition, LANGUAGES, Product, ProductType, Scope},
-        page::{ClearInput, CountInput, CountsKey, Screen},
-        pending::Totals,
+        page::{CountInput, CountsKey, Screen},
+        queue::{self, Batches, QueueInput},
         url::{self, Selection},
     },
     layout::{Notice, Tone},
@@ -22,11 +25,9 @@ struct SearchId;
 #[derive(Id)]
 struct TableHeadingId;
 #[derive(Id)]
-pub struct QueueTotalsId;
-#[derive(Id)]
 pub struct IntakeErrorId;
 #[derive(Id)]
-struct ClearConfirmId;
+pub struct QueueNoticeId;
 #[derive(Id)]
 struct PictureId;
 /// A SKU's count field, `quantity-{sku}`: a count's answer replaces it.
@@ -54,10 +55,26 @@ impl<'a> From<&'a CountInput> for Counted<'a> {
     }
 }
 
-/// The screen: the filters, every product of the set with a count per condition, and the
-/// totals not yet queued. CSS shows the counts of the condition chosen.
+/// How often the background batches are read again, as the React screen polled them.
+pub const BATCHES_EVERY: Duration = Duration::from_secs(5);
+
+/// What the screen shows of queuing: the background batches (or why they could not be read),
+/// the queue form as it stands, and what the last queue did.
+pub struct Queuing<'a> {
+    pub batches: Result<&'a Batches, &'a str>,
+    pub input: &'a QueueInput,
+    pub errors: &'a Errors,
+    pub notice: Option<&'a str>,
+}
+
+/// The screen: the filters, every product of the set with a count per condition, and the bar
+/// that queues what is counted. CSS shows the counts of the condition chosen.
 #[component(css, js)]
-pub fn IntakeScreen<'a>(screen: &'a Screen, error: Option<&'a str>) -> impl Render {
+pub fn IntakeScreen<'a>(
+    screen: &'a Screen,
+    error: Option<&'a str>,
+    queuing: &'a Queuing<'a>,
+) -> impl Render {
     let (filters, conditions, sets, search, rows, dialog, image) = refs();
     let (form, sku, product, set, line, label, change, quantity, seen, request) = refs();
     let count = js::Count {
@@ -95,14 +112,16 @@ pub fn IntakeScreen<'a>(screen: &'a Screen, error: Option<&'a str>) -> impl Rend
         >
             <header class={row(Space::_3)}>
                 <h1>"Inventory Manager"</h1>
-                <QueueTotals totals={screen.totals} />
+                <BackgroundBatches selection={selection} batches={queuing.batches} refused={None} />
+                {ReadAgain { after: BATCHES_EVERY }.from(&url::Batches { selection: selection.clone() })}
             </header>
+            <QueueNotice message={queuing.notice} />
             <IntakeError message={error} />
             <form
                 id={FiltersId}
                 ref={filters}
                 method="get"
-                action={url::InventoryManager { selection: Selection::default() }}
+                action={url::InventoryManager { selection: Selection::default(), queued: None }}
                 class={(panel(), Filters)}
                 aria-label="Filters"
                 on:change={js::filtered(event, keys)}
@@ -257,25 +276,14 @@ pub fn IntakeScreen<'a>(screen: &'a Screen, error: Option<&'a str>) -> impl Rend
                 <input ref={seen} name={c.seen}>
                 <input ref={request} name={c.request}>
             </form>
-            <div id={ClearConfirmId} popover class={(panel(), Confirm)}>
-                <h2>"Clear unqueued inventory?"</h2>
-                <p>
-                    "This removes "{screen.totals.units}" units across "{screen.totals.skus}
-                    " SKUs that have not been queued yet. Batches that have already been queued are not affected."
-                </p>
-                <form
-                    method="post"
-                    action={url::ClearCounts { selection: selection.clone() }}
-                    data-patch
-                    class={row(Space::_2)}
-                >
-                    {SubmitKey::field(ClearInput::FIELDS.submit)}
-                    <button type="button" popovertarget={ClearConfirmId} popovertargetaction="hide">
-                        "Cancel"
-                    </button>
-                    <button class={Danger}>"Clear unqueued"</button>
-                </form>
-            </div>
+            <QueueBar
+                selection={selection}
+                totals={screen.totals}
+                counted={&queue::fingerprint(&screen.quantities)}
+                input={queuing.input}
+                target={queuing.batches.ok().map(|b| &b.target)}
+                errors={queuing.errors}
+            />
             <dialog id={PictureId} ref={dialog} class={Picture} closedby="any">
                 <img ref={image} alt="Product">
                 <form method="dialog"><button>"Close"</button></form>
@@ -393,16 +401,7 @@ fn QuantityCell<'a>(
         Condition::Damaged => Damaged,
     });
     let sku = condition.map_or(product.unopened, |c| product.sku(c));
-    // Printings of a product share its name, so the label names the printing too.
-    let printing = match product.variant.as_str() {
-        "Normal" | "" => String::new(),
-        variant => format!(" {variant}"),
-    };
-    let label = format!(
-        "{}{printing} {} quantity",
-        product.display_name,
-        condition.map_or("Unopened", Condition::name)
-    );
+    let label = label(product, condition);
     html! {
         <span class={(Count, shown)}>
             if let Some(sku) = sku {
@@ -418,6 +417,62 @@ fn QuantityCell<'a>(
             }
         </span>
     }
+}
+
+/// `Pikachu - 025/165 - Common Reverse Holofoil Near Mint quantity`: printings of a product share
+/// its name, so the label names the printing too.
+fn label(product: &Product, condition: Option<Condition>) -> String {
+    let printing = match product.variant.as_str() {
+        "Normal" | "" => String::new(),
+        variant => format!(" {variant}"),
+    };
+    format!(
+        "{}{printing} {} quantity",
+        product.display_name,
+        condition.map_or("Unopened", Condition::name)
+    )
+}
+
+/// A count field to draw again: its SKU, its label, and the product it belongs to.
+pub struct Redrawn<'a> {
+    product: &'a Product,
+    sku: i32,
+    label: String,
+}
+
+impl Redrawn<'_> {
+    pub fn counted(&self) -> Counted<'_> {
+        Counted {
+            sku: self.sku,
+            product: self.product.product_id,
+            set: self.product.set_id,
+            line: self.product.product_line_id,
+            label: &self.label,
+        }
+    }
+}
+
+/// The count fields on the screen of the SKUs in `only`: after a queue, those it handed off.
+pub fn redrawn<'a>(products: &'a [Product], only: &HashSet<i32>) -> Vec<Redrawn<'a>> {
+    let mut fields = Vec::new();
+    for product in products {
+        let conditions: Vec<Option<Condition>> = if product.sealed {
+            vec![None]
+        } else {
+            Condition::ALL.into_iter().map(Some).collect()
+        };
+        for condition in conditions {
+            let sku = condition.map_or(product.unopened, |c| product.sku(c));
+            if let Some(sku) = sku.filter(|s| only.contains(s)) {
+                fields.push(Redrawn {
+                    product,
+                    sku,
+                    label: label(product, condition),
+                });
+            }
+        }
+    }
+    fields
 }
 
 /// A SKU's count. It carries where the SKU belongs, for the script to send with a change, and
@@ -441,16 +496,13 @@ pub fn QuantityField<'a>(counted: &'a Counted<'a>, quantity: i32) -> impl Patch 
     }
 }
 
-/// The units and SKUs counted and not queued, and the button that clears them.
+/// What the last queue did: `Batch 12 queued with an estimate at ...`.
 #[component(css = IntakeScreen)]
-pub fn QueueTotals(totals: Totals) -> impl Patch {
+pub fn QueueNotice<'a>(message: Option<&'a str>) -> impl Patch {
     html! {
-        <div id={QueueTotalsId} class={row(Space::_2)} role="status">
-            if totals.units > 0 {
-                <span>{totals.units}" units across "{totals.skus}" SKUs not queued"</span>
-                <button type="button" popovertarget={ClearConfirmId}>"Clear unqueued"</button>
-            } else {
-                <span class={muted()}>"Nothing counted yet"</span>
+        <div id={QueueNoticeId} role="status">
+            if let Some(message) = message {
+                <Notice tone={Tone::Done}>{message}</Notice>
             }
         </div>
     }

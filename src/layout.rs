@@ -132,7 +132,7 @@ pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, label: &'a str) -> impl 
         match screen {
             Screen::InventoryManager => {
                 <a
-                    {..req.nav(&inventory_intake::url::InventoryManager { selection: Default::default() })}
+                    {..req.nav(&inventory_intake::url::InventoryManager { selection: Default::default(), queued: None })}
                 >
                     {label}
                 </a>

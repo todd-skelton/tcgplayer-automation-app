@@ -13,20 +13,23 @@
 //! | `POST /inventory-manager/count` | one SKU's count changed: its field and the totals |
 //! | `POST /inventory-manager/counts` | the table's counts saved (without JavaScript) |
 //! | `POST /inventory-manager/clear` | every count not yet queued removed |
+//! | `POST /inventory-manager/queue` | the counts queued as a pricing batch |
+//! | `GET /inventory-manager/batches` | the background batches again, read every 5 seconds |
+//! | `POST /inventory-manager/batches/{batch}/rate` | a queued batch estimated at another rate |
 //!
-//! Not ported yet: the queue bar (queuing the counts as a pricing batch, the seller key and the
-//! intake target), the background batches, and recovering a queue request after a reload. Until
-//! they are, the Node screen queues what this one counts: both read and write the same pending
-//! inventory.
+//! The React screen kept an unconfirmed queue request in session storage to send again after a
+//! reload. Here the form's submit key is the request id, and a reload shows what happened: the
+//! batch in the background batches and the counts gone, or the counts still there.
 mod catalog;
 mod page;
 mod pending;
+mod queue;
 mod views;
 
 pub use views::COMPONENTS;
 
 // Handlers are named from here, where the routes module is declared.
-use page::{clear, count, save_counts, show};
+use page::{batches, change_rate, clear, count, queue_batch, save_counts, show};
 
 #[corten::routes(area = InventoryManager, state = crate::app::Shared)]
 pub mod url {
@@ -36,6 +39,8 @@ pub mod url {
     pub struct InventoryManager {
         #[route(query)]
         pub selection: Selection,
+        /// The batch the post before this page queued, for the message at the top.
+        pub queued: Option<i32>,
     }
 
     #[route("/inventory-manager/count", post = count)]
@@ -52,6 +57,25 @@ pub mod url {
 
     #[route("/inventory-manager/clear", post = clear)]
     pub struct ClearCounts {
+        #[route(query)]
+        pub selection: Selection,
+    }
+
+    #[route("/inventory-manager/queue", post = queue_batch)]
+    pub struct QueueBatch {
+        #[route(query)]
+        pub selection: Selection,
+    }
+
+    #[route("/inventory-manager/batches", get = batches)]
+    pub struct Batches {
+        #[route(query)]
+        pub selection: Selection,
+    }
+
+    #[route("/inventory-manager/batches/{batch}/rate", post = change_rate)]
+    pub struct ChangeRate {
+        pub batch: i32,
         #[route(query)]
         pub selection: Selection,
     }

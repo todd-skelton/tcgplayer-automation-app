@@ -1,8 +1,16 @@
 //! The Inventory Manager screen. Its stylesheet and script are next to it in `views/`.
 use corten::Component;
 
+mod background_batches;
 mod intake_screen;
+mod queue_bar;
 
-pub use intake_screen::{Counted, IntakeError, IntakeScreen, QuantityField, QueueTotals};
+pub use background_batches::BackgroundBatches;
+pub use intake_screen::{
+    BATCHES_EVERY, Counted, IntakeError, IntakeScreen, QuantityField, QueueNotice, Queuing, redrawn,
+};
+pub use queue_bar::{ClearConfirm, QueueBar, QueueForm, QueueTotals};
 
-pub const COMPONENTS: &[Component] = &[IntakeScreen];
+/// `IntakeScreen` holds the screen's stylesheet and script, `QueueBar` and `BackgroundBatches`
+/// their own stylesheets.
+pub const COMPONENTS: &[Component] = &[IntakeScreen, QueueBar, BackgroundBatches];

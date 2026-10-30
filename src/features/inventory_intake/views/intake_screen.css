@@ -101,17 +101,6 @@
   width: 3.5rem;
   text-align: center;
 }
-.confirm {
-  max-width: 28rem;
-  & h2 {
-    margin-top: 0;
-  }
-}
-.danger {
-  background: var(--color-danger);
-  border-color: var(--color-danger);
-  color: var(--color-accent-ink);
-}
 .picture {
   & img {
     display: block;
