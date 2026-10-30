@@ -22,7 +22,7 @@ use crate::{
 };
 
 /// Why postage cannot be bought now: another purchase is running, or the mode has no key.
-fn cannot_buy(mode: EasyPostMode) -> Option<String> {
+pub(super) fn cannot_buy(mode: EasyPostMode) -> Option<String> {
     (!mode.has_key()).then(|| {
         format!(
             "{} is not set. Postage purchase is disabled.",

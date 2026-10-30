@@ -5,7 +5,7 @@ use crate::{
         shipping_configuration::{self, EasyPostMode},
         shipping_export::{
             steps::{Progress, Step},
-            url::ShippingWorkflow,
+            url::{OrderLabels, ShippingWorkflow},
         },
     },
     layout::{Notice, Tone},
@@ -66,6 +66,7 @@ pub fn ShippingWorkflowScreen<'a>(
                 if let Some(warning) = mode_warning(mode) {
                     <span class={ModeChip}>{warning}</span>
                 }
+                <a href={OrderLabels { order: None }} class={Button}>"Label Management"</a>
                 <a
                     href={shipping_configuration::url::ShippingSettings { done: None }}
                     aria-label="Shipping configuration"

@@ -1,3 +1,4 @@
+use corten::form::Within;
 use corten::prelude::*;
 use corten_ui::dialog;
 
@@ -64,75 +65,83 @@ pub fn ShipmentEditorForm<'a>(
         >
             {errors.form_message()}
             <h3>"To Address"</h3>
-            <Field label="Name" hint=""><input name={f.name} value={&input.name}></Field>
-            <Field label="Street 1" hint=""><input name={f.street1} value={&input.street1}></Field>
-            <Field label="Street 2" hint=""><input name={f.street2} value={&input.street2}></Field>
-            <Field label="City" hint=""><input name={f.city} value={&input.city}></Field>
-            <div class={Pair}>
-                <Field label="State" hint=""><input name={f.state} value={&input.state}></Field>
-                <Field label="Zip" hint=""><input name={f.zip} value={&input.zip}></Field>
-            </div>
+            <AddressFields input={input} />
             <h3>"Shipment Details"</h3>
             <Field label="Reference" hint="">
                 <input name={f.reference} value={&input.reference} required {..e.aria(f.reference)}>
                 {e.message(f.reference)}
             </Field>
-            <Field label="Service" hint="">
-                <select name={f.service}>
-                    for service in [Service::First, Service::GroundAdvantage, Service::Priority, Service::Express] {
-                        <option value={service} selected={service == input.service}>
-                            {service.label()}
-                        </option>
-                    }
-                </select>
-            </Field>
-            <div class={Pair}>
-                <Measure
-                    label="Length (in)"
-                    name={f.length}
-                    value={&input.length}
-                    errors={errors}
-                />
-                <Measure label="Width (in)" name={f.width} value={&input.width} errors={errors} />
-            </div>
-            <div class={Pair}>
-                <Measure
-                    label="Height (in)"
-                    name={f.height}
-                    value={&input.height}
-                    errors={errors}
-                />
-                <Measure
-                    label="Weight (oz)"
-                    name={f.weight}
-                    value={&input.weight}
-                    errors={errors}
-                />
-            </div>
-            <Field label="Label Format" hint="">
-                <select name={f.label_format}>
-                    for format in LabelFormat::ALL {
-                        <option value={format} selected={format == input.label_format}>
-                            {format}
-                        </option>
-                    }
-                </select>
-            </Field>
-            <Field label="Label Size" hint="">
-                <select name={f.label_size}>
-                    for size in LabelSize::ALL {
-                        <option value={size} selected={size == input.label_size}>{size}</option>
-                    }
-                </select>
-            </Field>
+            <PackageFields input={input} e={&e} />
             <button class={Save}>"Save Shipment Changes"</button>
         </form>
     }
 }
 
+/// Where a shipment goes. Nothing in it is checked: the React screens sent it as typed.
 #[component(css = ShipmentEditor)]
-fn Measure<'a>(label: &'a str, name: FieldName, value: &'a str, errors: &'a Errors) -> impl Render {
-    let e = errors.within(ShipmentEditorFormId);
+pub fn AddressFields<'a>(input: &'a ShipmentInput) -> impl Render {
+    let f = ShipmentInput::FIELDS;
+    html! {
+        <Field label="Name" hint=""><input name={f.name} value={&input.name}></Field>
+        <Field label="Street 1" hint=""><input name={f.street1} value={&input.street1}></Field>
+        <Field label="Street 2" hint=""><input name={f.street2} value={&input.street2}></Field>
+        <Field label="City" hint=""><input name={f.city} value={&input.city}></Field>
+        <div class={Pair}>
+            <Field label="State" hint=""><input name={f.state} value={&input.state}></Field>
+            <Field label="Zip" hint=""><input name={f.zip} value={&input.zip}></Field>
+        </div>
+    }
+}
+
+/// A shipment's service, parcel and label, with why a measure was refused in the form `e` is
+/// of.
+#[component(css = ShipmentEditor)]
+pub fn PackageFields<'a, I: Id>(input: &'a ShipmentInput, e: &'a Within<'a, I>) -> impl Render {
+    let f = ShipmentInput::FIELDS;
+    html! {
+        <Field label="Service" hint="">
+            <select name={f.service} data-redraws>
+                for service in [Service::First, Service::GroundAdvantage, Service::Priority, Service::Express] {
+                    <option value={service} selected={service == input.service}>
+                        {service.label()}
+                    </option>
+                }
+            </select>
+        </Field>
+        <div class={Pair}>
+            <Measure label="Length (in)" name={f.length} value={&input.length} e={e} />
+            <Measure label="Width (in)" name={f.width} value={&input.width} e={e} />
+        </div>
+        <div class={Pair}>
+            <Measure label="Height (in)" name={f.height} value={&input.height} e={e} />
+            <Measure label="Weight (oz)" name={f.weight} value={&input.weight} e={e} />
+        </div>
+        <Field label="Label Format" hint="">
+            <select name={f.label_format}>
+                for format in LabelFormat::ALL {
+                    <option value={format} selected={format == input.label_format}>
+                        {format}
+                    </option>
+                }
+            </select>
+        </Field>
+        <Field label="Label Size" hint="">
+            <select name={f.label_size}>
+                for size in LabelSize::ALL {
+                    <option value={size} selected={size == input.label_size}>{size}</option>
+                }
+            </select>
+        </Field>
+    }
+}
+
+#[component(css = ShipmentEditor)]
+fn Measure<'a, I: Id>(
+    label: &'a str,
+    name: FieldName,
+    value: &'a str,
+    e: &'a Within<'a, I>,
+) -> impl Render {
     html! {
         <Field label={label} hint="">
             <input type="number" step="any" min="0" name={name} value={value} {..e.aria(name)}>

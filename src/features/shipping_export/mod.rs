@@ -23,9 +23,13 @@
 //! | `POST /shipping-export/labels/{size}` | one PDF of a label size's labels, made from the postage bought |
 //! | `POST /shipping-export/shipments/{reference}/packed` | the shipment marked packed (and the next not packed shown), or not |
 //! | `POST /shipping-export/ship` | the orders with production postage marked shipped on TCGplayer, then their buyers told |
+//! | `GET /shipping-export/order-labels` | label management: the order `?order=` and the labels bought for it |
+//! | `POST /shipping-export/order-labels/{order}/form` | the order's label form drawn again for the labels and service chosen |
+//! | `POST /shipping-export/order-labels/{order}` | an outbound label, a return label or both bought for the order |
 //! | `POST /shipping-export/new-batch` | the batch dropped |
 mod buying;
 mod editing;
+mod labels;
 mod one_at_a_time;
 mod orders;
 mod pack;
@@ -47,6 +51,7 @@ pub use views::COMPONENTS;
 
 // Handlers are named from here, where the routes module is declared.
 use buying::{buy_all, buy_shipment, edit_shipment, shipment_csv};
+use labels::{buy_labels, redraw_labels, show_labels};
 use packing::set_packed;
 use page::{catch_up, import_history, load_order, load_orders, new_batch, show};
 use printing::{create_batch_label, packing_slips};
@@ -122,6 +127,22 @@ pub mod url {
 
     #[route("/shipping-export/ship", post = mark_shipped)]
     pub struct ShipOrders;
+
+    /// `order` is the order looked up; none shows only the lookup.
+    #[route("/shipping-export/order-labels", get = show_labels)]
+    pub struct OrderLabels {
+        pub order: Option<String>,
+    }
+
+    #[route("/shipping-export/order-labels/{order}/form", post = redraw_labels)]
+    pub struct OrderLabelsForm {
+        pub order: String,
+    }
+
+    #[route("/shipping-export/order-labels/{order}", post = buy_labels)]
+    pub struct BuyOrderLabels {
+        pub order: String,
+    }
 
     #[route("/shipping-export/new-batch", post = new_batch)]
     pub struct NewBatch;

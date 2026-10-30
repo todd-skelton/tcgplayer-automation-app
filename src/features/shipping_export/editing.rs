@@ -81,16 +81,9 @@ impl ShipmentInput {
             number(f.height, &self.height, "height"),
             number(f.weight, &self.weight, "weight"),
         );
-        let street2 = self.street2.trim();
-        let mut edited = shipment.clone();
+        let mut edited = self.with_address(shipment);
         edited.reference = reference.to_owned();
         edited.service = self.service;
-        edited.to_address.name = self.name.trim().to_owned();
-        edited.to_address.street1 = self.street1.trim().to_owned();
-        edited.to_address.street2 = (!street2.is_empty()).then(|| street2.to_owned());
-        edited.to_address.city = self.city.trim().to_owned();
-        edited.to_address.state = self.state.trim().to_owned();
-        edited.to_address.zip = self.zip.trim().to_owned();
         edited.parcel.length = length;
         edited.parcel.width = width;
         edited.parcel.height = height;
@@ -98,6 +91,20 @@ impl ShipmentInput {
         edited.options.label_format = self.label_format;
         edited.options.label_size = self.label_size;
         errors.into_result(edited)
+    }
+
+    /// `shipment` going where the editor says, and otherwise as it was.
+    pub fn with_address(&self, shipment: &Shipment) -> Shipment {
+        let street2 = self.street2.trim();
+        let mut moved = shipment.clone();
+        let to = &mut moved.to_address;
+        to.name = self.name.trim().to_owned();
+        to.street1 = self.street1.trim().to_owned();
+        to.street2 = (!street2.is_empty()).then(|| street2.to_owned());
+        to.city = self.city.trim().to_owned();
+        to.state = self.state.trim().to_owned();
+        to.zip = self.zip.trim().to_owned();
+        moved
     }
 }
 

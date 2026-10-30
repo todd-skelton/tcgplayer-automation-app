@@ -12,7 +12,6 @@ use crate::features::shipping_configuration::{
 };
 
 /// A letter's size when it goes First class, whatever the settings say.
-#[allow(dead_code, reason = "the label panel still to land changes a service")]
 const FIRST_CLASS_LETTER: (f64, f64, f64) = (9.0, 4.0, 0.25);
 /// An order worth this much (dollars) needs a signature.
 const SIGNATURE_FROM: f64 = 250.0;
@@ -118,7 +117,6 @@ impl Shipment {
 
     /// The shipment with another service. First class is a letter, so the package becomes one,
     /// weighed for `order` when it is known.
-    #[allow(dead_code, reason = "the label panel still to land changes a service")]
     pub fn with_service(
         &self,
         service: Service,

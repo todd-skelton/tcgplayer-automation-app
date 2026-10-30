@@ -3,6 +3,7 @@
 use corten::Component;
 
 mod buy_postage_step;
+mod label_management;
 mod load_orders_step;
 mod pack_step;
 mod print_step;
@@ -13,6 +14,7 @@ mod shipment_editor;
 mod shipping_workflow_screen;
 
 pub use buy_postage_step::{BuyPostageStep, PostageRow};
+pub use label_management::{LabelForm, LabelManagement, Looked};
 pub use load_orders_step::{LoadOrdersStep, Loading};
 pub use pack_step::{PackCard, PackRow, PackStep, PackedOrder, Packing, ShipmentToPack};
 pub use print_step::{LabelSheet, PrintStep};
@@ -32,4 +34,6 @@ pub const COMPONENTS: &[Component] = &[
     PackStep,
     ShipmentToPack,
     ShipStep,
+    LabelManagement,
+    LabelForm,
 ];
