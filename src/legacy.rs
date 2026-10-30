@@ -121,7 +121,8 @@ impl Legacy {
 
     /// What one of the Node app's JSON routes answers to `body` posted as JSON: for a write whose
     /// rules are still the Node app's. An error is the message the route gave, or why there was
-    /// none to read.
+    /// none to read. It is sent from the Node app's own origin: a route that refuses a post from
+    /// elsewhere (the slab pricer's) takes it, as it takes the React screens' own.
     pub async fn send<B: serde::Serialize, T: serde::de::DeserializeOwned>(
         &self,
         path: &str,
@@ -132,6 +133,7 @@ impl Legacy {
             .http
             .post(format!("{}{path}", self.origin))
             .header(header::CONTENT_TYPE, "application/json")
+            .header(header::ORIGIN, &self.origin)
             .body(body)
             .send()
             .await
@@ -337,9 +339,6 @@ pub mod screens {
     #[route("/continuous-pricing")]
     pub struct ContinuousPricing;
     #[derive(Route)]
-    #[route("/slab-pricing")]
-    pub struct SlabPricing;
-    #[derive(Route)]
     #[route("/inventory-strategy")]
     pub struct InventoryStrategy;
     #[derive(Route)]
@@ -350,7 +349,6 @@ pub mod screens {
     #[derive(Clone, Copy)]
     pub enum Screen {
         ContinuousPricing,
-        SlabPricing,
         InventoryStrategy,
         DataManagement,
     }
@@ -359,7 +357,6 @@ pub mod screens {
         fn with_href<T>(&self, f: impl FnOnce(&str) -> T) -> T {
             match self {
                 Screen::ContinuousPricing => ContinuousPricing.with_href(f),
-                Screen::SlabPricing => SlabPricing.with_href(f),
                 Screen::InventoryStrategy => InventoryStrategy.with_href(f),
                 Screen::DataManagement => DataManagement.with_href(f),
             }

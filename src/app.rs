@@ -15,7 +15,7 @@ use crate::{
     features::{
         batch_pricer, configuration, dashboard, http_configuration, inventory_economics,
         inventory_intake, product_price_matrix, publication_configuration, pull_sheet,
-        shipping_configuration, shipping_export, slab_connections,
+        shipping_configuration, shipping_export, slab_connections, slab_pricing,
     },
     layout::{self, Static},
     legacy::{Legacy, forward},
@@ -140,6 +140,12 @@ pub fn app(shared: Shared) -> App {
         })
         .area(|area| {
             configuration::url::area(area, shared.clone()).components(configuration::COMPONENTS)
+        })
+        // Looking a certificate up waits on Alt when it was never looked up.
+        .area(|area| {
+            slab_pricing::url::area(area, shared.clone())
+                .components(slab_pricing::COMPONENTS)
+                .deadline(Some(Duration::from_secs(45)))
         })
         // Checking a connection waits on the provider for up to 30 seconds, after its claim on it.
         .area(|area| {

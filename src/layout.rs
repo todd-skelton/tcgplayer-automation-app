@@ -7,7 +7,7 @@ use crate::{
     features::{
         batch_pricer, configuration, http_configuration, inventory_economics, inventory_intake,
         product_price_matrix, publication_configuration, pull_sheet, shipping_configuration,
-        shipping_export, slab_connections,
+        shipping_export, slab_connections, slab_pricing,
     },
     legacy::screens,
     theme::*,
@@ -89,6 +89,7 @@ pub enum Screen {
     HttpConfiguration,
     ShippingConfiguration,
     SlabConnections,
+    SlabPricing,
     PublicationConfiguration,
     Configuration,
     Legacy(screens::Screen),
@@ -137,7 +138,7 @@ pub const PRIMARY: [Entry; 10] = [
         icons::LOOP,
     ),
     entry(
-        Screen::Legacy(screens::Screen::SlabPricing),
+        Screen::SlabPricing,
         "Slab Pricing",
         "Research and price graded cards for eBay",
         icons::PRICE_CHECK,
@@ -253,6 +254,11 @@ pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, children: impl Render) -
             }
             Screen::ShippingConfiguration => {
                 <a {..req.nav(&shipping_configuration::url::ShippingSettings { done: None })}>
+                    {children}
+                </a>
+            }
+            Screen::SlabPricing => {
+                <a {..req.nav(&slab_pricing::url::SlabPricing { choice: Default::default() })}>
                     {children}
                 </a>
             }

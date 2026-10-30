@@ -12,3 +12,4 @@ pub mod pull_sheet;
 pub mod shipping_configuration;
 pub mod shipping_export;
 pub mod slab_connections;
+pub mod slab_pricing;
