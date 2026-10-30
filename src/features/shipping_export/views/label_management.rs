@@ -4,7 +4,10 @@ use corten::{
     prelude::*,
 };
 
-use super::shipment_editor::{AddressFields, PackageFields};
+use super::{
+    shipment_editor::{AddressFields, PackageFields},
+    shipping_workflow_screen::Refused,
+};
 use crate::{
     features::{
         shipping_configuration::EasyPostMode,
@@ -55,9 +58,7 @@ pub fn LabelManagement<'a>(
                 <h1>"Label Management"</h1>
                 <a href={ShippingWorkflow::at(Step::LoadOrders)}>"Back to Shipping Workflow"</a>
             </header>
-            if let Some(problem) = looked.problem {
-                <Notice tone={Tone::Warning}>{problem}</Notice>
-            }
+            <Refused problem={looked.problem} />
             <p class={muted()}>
                 "Seller key: "<strong>{seller}</strong>". Set the seller key on Load Orders."
             </p>

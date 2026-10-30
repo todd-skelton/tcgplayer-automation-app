@@ -461,52 +461,58 @@ pub async fn change_rate(
         Err(errors) => Err(errors),
     };
     let selection = at.selection;
-    if req.mode != Mode::Action {
-        return match changed {
-            Ok(()) => req.redirect(&url::InventoryManager {
-                selection,
-                queued: None,
-            }),
-            Err(errors) => {
-                let message: Vec<&str> = errors
-                    .form()
-                    .into_iter()
-                    .chain(errors.iter().map(|(_, m)| m))
-                    .collect();
-                let message = format!(
-                    "Batch {}'s rate was not changed: {}",
-                    at.batch,
-                    message.join(" ")
-                );
-                let drawn = Drawn {
-                    error: Some(&message),
-                    ..Drawn::default()
-                };
-                let mut answer = page(&req, &db, &legacy, &selection, &drawn).await?;
-                *answer.status_mut() = StatusCode::UNPROCESSABLE_ENTITY;
-                Ok(answer)
-            }
-        };
-    }
-    let batches = queue::batches(&legacy).await;
-    let refused = changed.as_ref().err().map(|errors| (at.batch, errors));
-    let status = if refused.is_some() {
-        StatusCode::UNPROCESSABLE_ENTITY
-    } else {
-        StatusCode::OK
-    };
     let again = url::Batches {
         selection: selection.clone(),
     };
-    req.patch_with_status(
-        status,
-        html! {
-            <BackgroundBatches
-                selection={&selection}
-                batches={batches.as_ref().map_err(String::as_str)}
-                refused={refused}
-            />
-            {ReadAgain { after: BATCHES_EVERY }.from(&again)}
-        },
-    )
+    if let Err(errors) = &changed {
+        let (legacy, selection, again) = (&legacy, &selection, &again);
+        return req
+            .invalid_with(
+                errors,
+                |patch| async move {
+                    let batches = queue::batches(legacy).await;
+                    patch.draw(html! {
+                        <BackgroundBatches
+                            selection={selection}
+                            batches={batches.as_ref().map_err(String::as_str)}
+                            refused={Some((at.batch, errors))}
+                        />
+                        {ReadAgain { after: BATCHES_EVERY }.from(again)}
+                    })
+                },
+                || async {
+                    let message: Vec<&str> = errors
+                        .form()
+                        .into_iter()
+                        .chain(errors.iter().map(|(_, m)| m))
+                        .collect();
+                    let message = format!(
+                        "Batch {}'s rate was not changed: {}",
+                        at.batch,
+                        message.join(" ")
+                    );
+                    let drawn = Drawn {
+                        error: Some(&message),
+                        ..Drawn::default()
+                    };
+                    page(&req, &db, legacy, selection, &drawn).await
+                },
+            )
+            .await;
+    }
+    if req.mode != Mode::Action {
+        return req.redirect(&url::InventoryManager {
+            selection,
+            queued: None,
+        });
+    }
+    let batches = queue::batches(&legacy).await;
+    req.patch(html! {
+        <BackgroundBatches
+            selection={&selection}
+            batches={batches.as_ref().map_err(String::as_str)}
+            refused={None}
+        />
+        {ReadAgain { after: BATCHES_EVERY }.from(&again)}
+    })
 }

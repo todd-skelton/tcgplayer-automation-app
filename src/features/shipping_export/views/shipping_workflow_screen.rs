@@ -16,6 +16,21 @@ use crate::{
 struct NewBatchDialogId;
 #[derive(Id)]
 struct NewBatchHeadingId;
+#[derive(Id)]
+struct RefusedId;
+
+/// Why the last post on the page was refused; empty when it was not. A refused post with
+/// JavaScript replaces it alone, so the page keeps what the user had in front of them.
+#[component]
+pub fn Refused<'a>(problem: Option<&'a str>) -> impl Patch {
+    html! {
+        <div id={RefusedId} role="alert">
+            if let Some(problem) = problem {
+                <Notice tone={Tone::Warning}>{problem}</Notice>
+            }
+        </div>
+    }
+}
 
 /// What postage the deployment buys and whether it can: production with its key says nothing.
 pub fn mode_warning(mode: EasyPostMode) -> Option<String> {
@@ -76,9 +91,7 @@ pub fn ShippingWorkflowScreen<'a>(
                     "⚙"
                 </a>
             </header>
-            if let Some(problem) = problem {
-                <Notice tone={Tone::Warning}>{problem}</Notice>
-            }
+            <Refused problem={problem} />
             <section aria-label={step.label()} class={(panel(), StepPanel)}>{children}</section>
             {bar}
         </div>
@@ -176,7 +189,7 @@ pub fn StepBar<'a>(
 pub fn BuyAllAction(mode: EasyPostMode, shipments: usize) -> impl Render {
     let test = mode == EasyPostMode::Test;
     html! {
-        <form method="post" action={super::super::url::BuyAllPostage} class={Act}>
+        <form method="post" action={super::super::url::BuyAllPostage} class={Act} data-patch>
             <button
                 disabled={shipments == 0 || !mode.has_key()}
                 class={(Button, Primary, test.then_some(TestMode))}
@@ -192,7 +205,7 @@ pub fn BuyAllAction(mode: EasyPostMode, shipments: usize) -> impl Render {
 #[component(css = ShippingWorkflowScreen)]
 pub fn ShipAction(pending: usize, has_seller: bool) -> impl Render {
     html! {
-        <form method="post" action={super::super::url::ShipOrders} class={Act}>
+        <form method="post" action={super::super::url::ShipOrders} class={Act} data-patch>
             <button disabled={pending == 0 || !has_seller} class={(Button, Primary)}>
                 "Mark Shipped & Notify Buyers"
             </button>

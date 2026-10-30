@@ -5,7 +5,7 @@
 //! The form's body is read twice, once as the shipment ([`ShipmentInput`]) and once as the
 //! choice ([`Choice`]), since a form's fields cannot be flattened from a shared group (corten
 //! #363).
-use corten::{ClientZone, axum::body::Bytes, axum::http::StatusCode, form::from_bytes, prelude::*};
+use corten::{ClientZone, Refusal, axum::body::Bytes, form::from_bytes, prelude::*};
 use serde::Deserialize;
 
 use super::{
@@ -15,7 +15,7 @@ use super::{
     postage::{self, Bought, Scope, Status},
     shipments::{Direction, Planned, Shipment, shipment_for},
     source, url,
-    views::{LabelForm, LabelManagement, Looked},
+    views::{LabelForm, LabelManagement, Looked, Refused},
     workflow,
 };
 use crate::{
@@ -458,9 +458,14 @@ async fn refused(
     why: &str,
     draft: Option<Draft<'_>>,
 ) -> HtmlResult {
-    let mut page = labels_page(req, db, legacy, visitor, Some(number), Some(why), draft).await?;
-    *page.status_mut() = StatusCode::CONFLICT;
-    Ok(page)
+    let mut errors = Errors::new();
+    errors.refuse(Refusal::Conflict, why);
+    req.invalid_with(
+        &errors,
+        |patch| async move { patch.draw(html! { <Refused problem={Some(why)} /> }) },
+        || labels_page(req, db, legacy, visitor, Some(number), Some(why), draft),
+    )
+    .await
 }
 
 #[cfg(test)]

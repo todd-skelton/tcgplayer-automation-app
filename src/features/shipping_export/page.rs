@@ -1,7 +1,7 @@
 use std::{collections::HashMap, time::SystemTime};
 
 use chrono::{Duration, Utc};
-use corten::{ClientZone, axum::http::StatusCode, i18n::Zone, prelude::*};
+use corten::{ClientZone, Refusal, i18n::Zone, prelude::*};
 use serde::Deserialize;
 
 use super::{
@@ -17,8 +17,8 @@ use super::{
     value,
     views::{
         BuyAllAction, BuyPostageStep, LabelSheet, LoadOrdersStep, Loading, PackStep, PostageRow,
-        PrintStep, PullSheetStep, Pulled, SaleValueFigures, ShipAction, ShipStep, ShipmentEditor,
-        Shipping, ShippingWorkflowScreen, StepBar,
+        PrintStep, PullSheetStep, Pulled, Refused, SaleValueFigures, ShipAction, ShipStep,
+        ShipmentEditor, Shipping, ShippingWorkflowScreen, StepBar,
     },
     workflow::{self, Workflow},
 };
@@ -509,7 +509,8 @@ pub(super) async fn page(
     })
 }
 
-/// The page with why a post was refused, as a conflict.
+/// Why a post was refused, as a conflict: with JavaScript, the message above the step; without,
+/// the step's page with it.
 pub(super) async fn refused(
     req: &Req,
     db: &Database,
@@ -518,18 +519,17 @@ pub(super) async fn refused(
     step: Step,
     why: &str,
 ) -> HtmlResult {
-    let mut page = page(
-        req,
-        db,
-        legacy,
-        visitor,
-        &ShippingWorkflow::at(step),
-        Some(why),
-        None,
+    let mut errors = Errors::new();
+    errors.refuse(Refusal::Conflict, why);
+    req.invalid_with(
+        &errors,
+        |patch| async move { patch.draw(html! { <Refused problem={Some(why)} /> }) },
+        || async {
+            let at = ShippingWorkflow::at(step);
+            page(req, db, legacy, visitor, &at, Some(why), None).await
+        },
     )
-    .await?;
-    *page.status_mut() = StatusCode::CONFLICT;
-    Ok(page)
+    .await
 }
 
 #[derive(Deserialize, Fields)]

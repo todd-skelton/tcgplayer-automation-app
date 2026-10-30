@@ -138,7 +138,7 @@ fn ShipmentPostageRow<'a>(
                             "Buy Again"
                         </button>
                     } else {
-                        <form method="post" action={&buy}>
+                        <form method="post" action={&buy} data-patch>
                             <input type="hidden" name={f.direction} value={Direction::Outbound}>
                             <button disabled={!can_buy} class={(Buy, Filled, test)}>
                                 "Buy Postage"
@@ -164,7 +164,7 @@ fn ShipmentPostageRow<'a>(
                                 "Buy Another Return Label"
                             </button>
                         } else {
-                            <form method="post" action={&buy}>
+                            <form method="post" action={&buy} data-patch>
                                 <input type="hidden" name={f.direction} value={Direction::Return}>
                                 <button disabled={!can_buy}>"Buy Return Label"</button>
                             </form>
@@ -287,6 +287,7 @@ fn BuyAgainDialog<'a>(
                 method="post"
                 action={url::BuyShipmentPostage { reference: reference.to_owned() }}
                 class={row(Space::_2)}
+                data-patch
             >
                 <input type="hidden" name={f.direction} value={direction}>
                 <input type="hidden" name={f.again} value="true">

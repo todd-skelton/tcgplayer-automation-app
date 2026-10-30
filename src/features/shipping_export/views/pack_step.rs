@@ -126,6 +126,7 @@ fn PackedToggle<'a>(
             method="post"
             action={url::ShipmentPacked { reference: reference.to_owned() }}
             class={Toggle}
+            data-patch
         >
             <input type="hidden" name={f.packed} value={if packed { "false" } else { "true" }}>
             <input type="hidden" name={f.view} value={view}>

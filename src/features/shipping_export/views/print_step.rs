@@ -117,6 +117,7 @@ fn SizeLabels<'a>(sheet: &'a LabelSheet<'a>) -> impl Render {
                         method="post"
                         action={url::BatchLabelPdf { size: sheet.size }}
                         class={Act}
+                        data-patch
                     >
                         <button class={Button}>
                             if status.is_some() {

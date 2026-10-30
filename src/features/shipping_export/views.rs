@@ -22,7 +22,9 @@ pub use pull_sheet_step::{PullSheetStep, Pulled};
 pub use sale_value_figures::SaleValueFigures;
 pub use ship_step::{ShipStep, Shipping};
 pub use shipment_editor::{ShipmentEditor, ShipmentEditorForm};
-pub use shipping_workflow_screen::{BuyAllAction, ShipAction, ShippingWorkflowScreen, StepBar};
+pub use shipping_workflow_screen::{
+    BuyAllAction, Refused, ShipAction, ShippingWorkflowScreen, StepBar,
+};
 
 pub const COMPONENTS: &[Component] = &[
     ShippingWorkflowScreen,

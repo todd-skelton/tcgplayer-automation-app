@@ -50,7 +50,7 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
                 </Notice>
             }
             <div class={Actions}>
-                <form method="post" action={url::LoadOrders}>
+                <form method="post" action={url::LoadOrders} data-patch>
                     <input type="hidden" name={l.seller_key} value={seller}>
                     <button class={Primary}>"Load Live TCGPlayer Orders"</button>
                 </form>
@@ -77,7 +77,7 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
                     </form>
                 </div>
                 <span class={Divider}></span>
-                <form method="post" action={url::LoadOrder} class={row(Space::_2)}>
+                <form method="post" action={url::LoadOrder} class={row(Space::_2)} data-patch>
                     <input type="hidden" name={l.seller_key} value={seller}>
                     <input
                         name={l.order_number}
@@ -90,7 +90,7 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
                 <details class={Menu}>
                     <summary>"Order History"</summary>
                     <div class={MenuItems}>
-                        <form method="post" action={url::OrderHistory}>
+                        <form method="post" action={url::OrderHistory} data-patch>
                             <input type="hidden" name={h.seller_key} value={seller}>
                             <button>
                                 <strong>"Catch Up Order History"</strong>
@@ -106,6 +106,7 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
                             method="post"
                             action={url::ImportHistory}
                             enctype="multipart/form-data"
+                            data-patch
                         >
                             <input type="hidden" name={h.seller_key} value={seller}>
                             <label>

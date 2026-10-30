@@ -4,7 +4,8 @@ use std::{
 };
 
 use corten::{
-    ClientZone, Fragment, LiveResponse, LiveSince, Media, Mode, axum::http::StatusCode, prelude::*,
+    ClientZone, Fragment, LiveResponse, LiveSince, Media, Mode, Refusal, axum::http::StatusCode,
+    prelude::*,
 };
 use corten_ui::Toast;
 use futures_util::stream;
@@ -207,39 +208,48 @@ async fn answer(
     visitor: Visitor,
     done: Result<String, String>,
 ) -> HtmlResult {
-    if req.mode != Mode::Action {
-        return match done {
-            Ok(_) => req.redirect(&url::BatchPricer::batch(batch)),
-            Err(message) => {
-                let drawn = Drawn {
-                    problem: Some(&message),
-                    ..Drawn::default()
-                };
-                let mut page = page(req, db, legacy, Some(batch), visitor, &drawn).await?;
-                *page.status_mut() = StatusCode::CONFLICT;
-                Ok(page)
-            }
-        };
-    }
+    let t: Msg = req.t();
+    let message = match done {
+        Err(message) => {
+            let message = message.as_str();
+            let mut errors = Errors::new();
+            errors.refuse(Refusal::Conflict, message);
+            return req
+                .invalid_with(
+                    &errors,
+                    |patch| async move {
+                        let shown = Shown::read(legacy, batch, success_rates(db).await?)
+                            .await
+                            .map_err(unavailable)?;
+                        patch.draw(html! {
+                            <BatchFollow shown={&shown} t={t} visitor={visitor} />
+                            <BatchProblem message={Some(message)} />
+                        })
+                    },
+                    || async {
+                        let drawn = Drawn {
+                            problem: Some(message),
+                            ..Drawn::default()
+                        };
+                        page(req, db, legacy, Some(batch), visitor, &drawn).await
+                    },
+                )
+                .await;
+        }
+        Ok(_) if req.mode != Mode::Action => {
+            return req.redirect(&url::BatchPricer::batch(batch));
+        }
+        Ok(message) => message,
+    };
     let rates = success_rates(db).await?;
     let shown = Shown::read(legacy, batch, rates)
         .await
         .map_err(unavailable)?;
-    let t: Msg = req.t();
-    match done {
-        Ok(message) => req.patch(html! {
-            <BatchFollow shown={&shown} t={t} visitor={visitor} />
-            <BatchProblem message={None} />
-            <Toast message={Some(message.as_str())} />
-        }),
-        Err(message) => req.patch_with_status(
-            StatusCode::CONFLICT,
-            html! {
-                <BatchFollow shown={&shown} t={t} visitor={visitor} />
-                <BatchProblem message={Some(message.as_str())} />
-            },
-        ),
-    }
+    req.patch(html! {
+        <BatchFollow shown={&shown} t={t} visitor={visitor} />
+        <BatchProblem message={None} />
+        <Toast message={Some(message.as_str())} />
+    })
 }
 
 #[derive(Deserialize, Fields)]
