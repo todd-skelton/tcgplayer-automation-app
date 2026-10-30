@@ -1,7 +1,9 @@
 //! The screen's posts. Each asks the Node app to do the work, then sends the browser back to the
 //! page the post came from (its address is the post's query), showing what changed; a refusal
 //! is that page with why, as a conflict.
-use corten::{axum::http::StatusCode, prelude::*};
+// A refusal sets its status on the drawn page by hand (corten#438), and every post takes the
+// visitor's zone only so a refusal can draw the page's dates (corten#387).
+use corten::{ClientZone, axum::http::StatusCode, prelude::*};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -11,7 +13,7 @@ use super::{
     page::{Screen, page},
     url::{self, Choice},
 };
-use crate::{database::Database, legacy::Legacy};
+use crate::{database::Database, legacy::Legacy, zone::Visitor};
 
 #[derive(Debug, Default, Deserialize, Fields)]
 pub struct LookUpInput {
@@ -40,6 +42,7 @@ pub async fn look_up(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
     Params(at): Params<url::LookUp>,
     Form(input): Form<LookUpInput>,
 ) -> HtmlResult {
@@ -56,7 +59,7 @@ pub async fn look_up(
             let choice = at
                 .choice
                 .with_certificate(input.grader.trim(), input.cert.trim());
-            refused(&req, &db, &legacy, &choice, why).await
+            refused(&req, &db, &legacy, Visitor::of(zone.as_ref()), &choice, why).await
         }
     }
 }
@@ -136,6 +139,7 @@ pub async fn confirm(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
     Params(at): Params<url::Confirm>,
     Form(input): Form<ConfirmInput>,
 ) -> HtmlResult {
@@ -144,6 +148,7 @@ pub async fn confirm(
             &req,
             &db,
             &legacy,
+            Visitor::of(zone.as_ref()),
             &at.choice,
             "Look up a certificate first.".into(),
         )
@@ -163,7 +168,17 @@ pub async fn confirm(
         .await
     {
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
-        Err(why) => refused(&req, &db, &legacy, &at.choice, why).await,
+        Err(why) => {
+            refused(
+                &req,
+                &db,
+                &legacy,
+                Visitor::of(zone.as_ref()),
+                &at.choice,
+                why,
+            )
+            .await
+        }
     }
 }
 
@@ -178,6 +193,7 @@ pub async fn open(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
     Params(at): Params<url::Open>,
     Form(input): Form<OpenInput>,
 ) -> HtmlResult {
@@ -196,12 +212,23 @@ pub async fn open(
                 &req,
                 &db,
                 &legacy,
+                Visitor::of(zone.as_ref()),
                 &at.choice,
                 "Reload the listing; it is not on this page any more.".into(),
             )
             .await;
         }
-        Err(why) => return refused(&req, &db, &legacy, &at.choice, why).await,
+        Err(why) => {
+            return refused(
+                &req,
+                &db,
+                &legacy,
+                Visitor::of(zone.as_ref()),
+                &at.choice,
+                why,
+            )
+            .await;
+        }
     };
     let looked = if let Some(tied) = &listing.identity {
         let asked = json!({ "intent": "lookup", "grader": tied.grader, "certificateNumber": tied.certificate_number });
@@ -223,7 +250,17 @@ pub async fn open(
         )),
         // A listing whose identity was assigned by hand answers with no record: show it as it is.
         Ok(None) => req.redirect(&url::SlabPricing::at(&reviewing)),
-        Err(why) => refused(&req, &db, &legacy, &reviewing, why).await,
+        Err(why) => {
+            refused(
+                &req,
+                &db,
+                &legacy,
+                Visitor::of(zone.as_ref()),
+                &reviewing,
+                why,
+            )
+            .await
+        }
     }
 }
 
@@ -238,15 +275,17 @@ pub async fn assign(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
     Params(at): Params<url::Assign>,
     Form(input): Form<AssignInput>,
 ) -> HtmlResult {
-    let screen = Screen::read(&db, &legacy, &at.choice).await?;
+    let screen = Screen::read(&db, &legacy, &at.choice, Visitor::of(zone.as_ref())).await?;
     let (Some(listing), Some(record)) = (&screen.listing, &screen.record) else {
         return refused(
             &req,
             &db,
             &legacy,
+            Visitor::of(zone.as_ref()),
             &at.choice,
             "Open a listing and look up a confirmed certificate first.".into(),
         )
@@ -265,7 +304,17 @@ pub async fn assign(
         .await
     {
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
-        Err(why) => refused(&req, &db, &legacy, &at.choice, why).await,
+        Err(why) => {
+            refused(
+                &req,
+                &db,
+                &legacy,
+                Visitor::of(zone.as_ref()),
+                &at.choice,
+                why,
+            )
+            .await
+        }
     }
 }
 
@@ -282,6 +331,7 @@ pub async fn import(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
     Params(at): Params<url::Import>,
     Form(input): Form<ImportInput>,
 ) -> HtmlResult {
@@ -309,7 +359,97 @@ pub async fn import(
             listing: None,
             ..at.choice.clone()
         })),
-        Err(why) => refused(&req, &db, &legacy, &at.choice, why).await,
+        Err(why) => {
+            refused(
+                &req,
+                &db,
+                &legacy,
+                Visitor::of(zone.as_ref()),
+                &at.choice,
+                why,
+            )
+            .await
+        }
+    }
+}
+
+/// The certificate researched, at the revision the page showed: a refresh for an identity
+/// changed since is refused.
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct RefreshInput {
+    pub id: String,
+    pub revision: i64,
+}
+
+/// Queues the evidence for the chosen grade and dates for refresh, fetched again even when what
+/// is saved is fresh. The Node app's worker calls the providers; the page follows it.
+pub async fn refresh(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+    Params(at): Params<url::Refresh>,
+    Form(input): Form<RefreshInput>,
+) -> HtmlResult {
+    let asked = json!({
+        "intent": "research",
+        "slabId": input.id,
+        "identityRevision": input.revision,
+        "grade": at.choice.grade(),
+        "window": at.choice.window(),
+        "force": true,
+    });
+    match legacy
+        .send::<_, serde_json::Value>("/api/slab-evidence", &asked)
+        .await
+    {
+        Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
+        Err(why) => {
+            refused(
+                &req,
+                &db,
+                &legacy,
+                Visitor::of(zone.as_ref()),
+                &at.choice,
+                why,
+            )
+            .await
+        }
+    }
+}
+
+/// A refresh to stop, by its run: one that has been run again since is left alone.
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct CancelInput {
+    pub key: String,
+    pub run: String,
+}
+
+pub async fn cancel(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+    Params(at): Params<url::Cancel>,
+    Form(input): Form<CancelInput>,
+) -> HtmlResult {
+    let asked = json!({ "intent": "cancel", "key": input.key, "runId": input.run });
+    match legacy
+        .send::<_, serde_json::Value>("/api/slab-evidence", &asked)
+        .await
+    {
+        Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
+        Err(why) => {
+            refused(
+                &req,
+                &db,
+                &legacy,
+                Visitor::of(zone.as_ref()),
+                &at.choice,
+                why,
+            )
+            .await
+        }
     }
 }
 
@@ -318,10 +458,11 @@ async fn refused(
     req: &Req,
     db: &Database,
     legacy: &Legacy,
+    visitor: Visitor,
     choice: &Choice,
     why: String,
 ) -> HtmlResult {
-    let mut screen = Screen::read(db, legacy, choice).await?;
+    let mut screen = Screen::read(db, legacy, choice, visitor).await?;
     screen.problem = Some(why);
     let mut answer = page(req, db, &screen).await?;
     *answer.status_mut() = StatusCode::CONFLICT;

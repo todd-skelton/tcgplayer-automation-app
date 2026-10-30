@@ -9,16 +9,18 @@ use crate::{
             inventory::{InventoryPage, Listing},
             page::Screen,
             url::{self, Choice},
+            views::ResearchPanel,
         },
     },
     layout::{Field, Notice, Tone},
+    text::Msg,
     theme::*,
 };
 
 /// The screen: look up a certificate, review the listing opened, confirm the certificate's
 /// identity, and the seller's listings.
 #[component(css)]
-pub fn SlabScreen<'a>(screen: &'a Screen) -> impl Render {
+pub fn SlabScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let choice = &screen.choice;
     let f = LookUpInput::FIELDS;
     html! {
@@ -59,7 +61,12 @@ pub fn SlabScreen<'a>(screen: &'a Screen) -> impl Render {
                 <ReviewedListing screen={screen} />
             }
             match (choice.certificate(), &screen.record) {
-                (Some(_), Some(record)) => <IdentityCard record={record} choice={choice} />,
+                (Some(_), Some(record)) => {
+                    <IdentityCard record={record} choice={choice} />
+                    if record.shown().is_some() {
+                        <ResearchPanel screen={screen} record={record} t={t} />
+                    }
+                }
                 (Some((grader, cert)), None) => {
                     <p class={panel()}>
                         {grader}" certificate "{cert}" has not been looked up yet."
@@ -223,6 +230,11 @@ fn InventoryPanel<'a>(screen: &'a Screen) -> impl Render {
                 if let Some((grader, cert)) = choice.certificate() {
                     <input type="hidden" name={f.grader} value={grader}>
                     <input type="hidden" name={f.cert} value={cert}>
+                }
+                for (name, value) in [(f.grade, &choice.grade), (f.from, &choice.from), (f.to, &choice.to)] {
+                    if let Some(value) = value {
+                        <input type="hidden" name={name} value={value}>
+                    }
                 }
                 <Field label="Seller username" hint="">
                     <input
