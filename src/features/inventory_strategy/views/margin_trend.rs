@@ -4,7 +4,7 @@ use corten::prelude::*;
 use super::format::{count, fixed, month_day, percent, percent_per_day};
 use crate::{
     features::{
-        inventory_intake::queue::CostRate,
+        inventory_economics::estimate::CostRate,
         inventory_strategy::{
             performance::{MarginTrendWeek, TRAILING_MARGIN_WEEKS},
             realized::MarginTrend,

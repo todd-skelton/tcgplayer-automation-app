@@ -2,7 +2,7 @@
 //! value after its median wait, valued as a capital cycle. Ported from `components/verdict.ts`.
 use super::dashboard::HurdleScenario;
 use crate::features::{
-    inventory_intake::queue::CostRate,
+    inventory_economics::estimate::CostRate,
     pricing::capital_cycle::{Economics, Portfolio, capital_cycle},
 };
 

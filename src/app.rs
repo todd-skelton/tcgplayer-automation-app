@@ -204,6 +204,11 @@ pub fn app(shared: Shared) -> App {
             let db = shared.db.clone();
             move |signal| inventory_fifo::shadow::run(db, signal)
         })
+        // Off unless ESTIMATE_SHADOW_LOG names its log; it reads the database and writes only there.
+        .task("estimated purchase cost shadow", {
+            let db = shared.db.clone();
+            move |signal| inventory_economics::estimate::run(db, signal)
+        })
         .ready(move || {
             let db = ready.clone();
             async move { db.reachable().await }

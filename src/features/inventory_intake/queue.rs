@@ -30,50 +30,10 @@ pub enum CostMethod {
     PurchaseTotal,
 }
 
-/// How an estimate turns a card's market price at intake into its cost: a share of it, less a
-/// fixed amount per card.
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CostRate {
-    /// From 0 to 1.
-    pub market_rate: f64,
-    pub per_unit_deduction_cents: i64,
-}
+pub use crate::features::inventory_economics::estimate::CostRate;
 
 /// The most a rate may take off each card: $100.00.
 const MAXIMUM_DEDUCTION_CENTS: i64 = 10_000;
-
-impl CostRate {
-    /// 75% of market less $0.30 per card.
-    pub const DEFAULT: CostRate = CostRate {
-        market_rate: 0.75,
-        per_unit_deduction_cents: 30,
-    };
-
-    /// The percent of market as entered: `75`, `60.5`, `33.33`.
-    pub fn market_percent(self) -> String {
-        let hundredths = (self.market_rate * 10_000.0).round() as i64;
-        match (hundredths % 100, hundredths % 10) {
-            (0, _) => format!("{}", hundredths / 100),
-            (_, 0) => format!("{}.{}", hundredths / 100, (hundredths % 100) / 10),
-            _ => format!("{}.{:02}", hundredths / 100, hundredths % 100),
-        }
-    }
-
-    /// The amount less per card as entered: `0.30`.
-    pub fn per_card_deduction(self) -> String {
-        format!("{:.2}", self.per_unit_deduction_cents as f64 / 100.0)
-    }
-
-    /// `60% of market less $0.50 per card`.
-    pub fn describe(self) -> String {
-        format!(
-            "{}% of market less ${} per card",
-            self.market_percent(),
-            self.per_card_deduction()
-        )
-    }
-}
 
 /// `$16.50`, `-$0.20`: signed whole cents as US dollars.
 pub fn dollars(cents: i64) -> String {

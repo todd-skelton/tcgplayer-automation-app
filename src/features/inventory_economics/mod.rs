@@ -8,6 +8,7 @@
 //! | Route | Answer |
 //! |---|---|
 //! | `GET /inventory-economics` | the seller's current purchase costs and each order's economics |
+pub mod estimate;
 pub mod ledger;
 mod page;
 mod views;
