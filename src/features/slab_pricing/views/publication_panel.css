@@ -1,0 +1,32 @@
+.publication-panel {
+  & h3,
+  & h4,
+  & p {
+    margin: 0;
+  }
+  & h4 {
+    font-size: var(--font-size-md);
+  }
+  & form {
+    margin: 0;
+  }
+}
+.toggle {
+  justify-self: start;
+}
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+}
+.stack {
+  display: grid;
+  gap: var(--space-3);
+}
+.runs {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
+}

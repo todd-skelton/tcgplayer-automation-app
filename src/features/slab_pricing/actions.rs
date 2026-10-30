@@ -3,7 +3,7 @@
 //! is that page with why, as a conflict.
 // A refusal sets its status on the drawn page by hand (corten#438), and every post takes the
 // visitor's zone only so a refusal can draw the page's dates (corten#387).
-use corten::{ClientZone, Mode, axum::http::StatusCode, prelude::*};
+use corten::{ClientZone, Mode, SubmitKey, axum::http::StatusCode, prelude::*};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -806,6 +806,118 @@ pub async fn review_ask(
                 why,
             )
             .await
+        }
+    }
+}
+
+/// The price to review (`calculated` or `reviewed`) of the listing and recommendation as the
+/// page showed them: a listing revised or an ask reviewed again since is refused.
+#[derive(Debug, Deserialize, Fields)]
+pub struct PrepareInput {
+    /// Sent as the preview's intent, so a post sent again saves one preview.
+    pub submit: SubmitKey,
+    pub revision: i64,
+    pub recommendation: String,
+    #[serde(default)]
+    pub reviewed_at: String,
+    #[serde(default)]
+    pub selection: String,
+}
+
+/// Saves a price-change preview of the listing reviewed: the selected ask with the listing and
+/// its evidence. It writes nothing to eBay.
+pub async fn prepare(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+    Params(at): Params<url::Prepare>,
+    Form(input): Form<PrepareInput>,
+) -> HtmlResult {
+    let visitor = Visitor::of(zone.as_ref());
+    let screen = Screen::read(&db, &legacy, &at.choice, visitor).await?;
+    let fresh = screen.can_calculate() && screen.recommendation().is_some() && !screen.stale();
+    let Some(listing) = screen.listing.as_ref().filter(|_| fresh) else {
+        let why = "Recalculate using the current listing and evidence before preparing another price change.";
+        return refused(
+            Place::Publication,
+            &req,
+            &db,
+            &legacy,
+            visitor,
+            &at.choice,
+            why.into(),
+        )
+        .await;
+    };
+    let reviewed = input.selection == "reviewed";
+    let asked = json!({
+        "intent": "prepare",
+        "intentId": input.submit.as_str(),
+        "inventoryId": listing.id,
+        "inventoryRevision": input.revision,
+        "recommendationId": input.recommendation,
+        "selection": input.selection,
+        "overrideReviewedAt": reviewed.then_some(input.reviewed_at.as_str()),
+    });
+    match legacy
+        .send::<_, serde_json::Value>("/api/slab-publication-previews", &asked)
+        .await
+    {
+        Ok(_) => req.redirect(&url::SlabPricing::at(&Choice {
+            steps: None,
+            ..at.choice.clone()
+        })),
+        Err(why) => {
+            refused(
+                Place::Publication,
+                &req,
+                &db,
+                &legacy,
+                visitor,
+                &at.choice,
+                why,
+            )
+            .await
+        }
+    }
+}
+
+/// The preview whose publication runs without writing. A new run's intent is a fresh key; a
+/// stopped one is resumed with its own id.
+#[derive(Debug, Deserialize, Fields)]
+pub struct DryRunInput {
+    pub intent: SubmitKey,
+    pub preview: String,
+}
+
+#[derive(Deserialize)]
+struct Ran {
+    id: String,
+}
+
+/// Checks the preview's plan against the imported inventory and records the outcome, then shows
+/// its steps. It does not contact eBay or change a price.
+pub async fn dry_run(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+    Params(at): Params<url::DryRun>,
+    Form(input): Form<DryRunInput>,
+) -> HtmlResult {
+    let asked = json!({ "intent": "dry-run", "intentId": input.intent.as_str(), "previewId": input.preview });
+    match legacy
+        .send::<_, Ran>("/api/slab-publications", &asked)
+        .await
+    {
+        Ok(ran) => req.redirect(&url::SlabPricing::at(&Choice {
+            steps: Some(ran.id),
+            ..at.choice.clone()
+        })),
+        Err(why) => {
+            let visitor = Visitor::of(zone.as_ref());
+            refused(Place::DryRun, &req, &db, &legacy, visitor, &at.choice, why).await
         }
     }
 }

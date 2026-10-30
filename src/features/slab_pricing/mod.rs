@@ -25,7 +25,13 @@
 //! Under the seller's inventory, evidence maintenance (its status read again every five seconds
 //! while enabled) and seller outcomes are shown on request.
 //!
-//! The comp review and publication panels are still being ported.
+//! Once a listing is reviewed and has a recommendation, its price change can be reviewed on
+//! request (`publication=true`): a preview of the calculated or reviewed ask saved with the
+//! listing and its evidence, then a dry run of its publication against the imported inventory.
+//! Each post carries a `SubmitKey`, sent to the Node app as the intent, so a post sent again
+//! applies once. Neither contacts eBay; publishing is not connected.
+//!
+//! The comp review panel is still being ported.
 //!
 //! | Route | Answer |
 //! |---|---|
@@ -45,6 +51,8 @@
 //! | `POST /slab-pricing/outcomes` | reviewed seller outcomes imported from CSV, then shown |
 //! | `POST /slab-pricing/calculate` | the owned slab's recommendation calculated from saved evidence |
 //! | `POST /slab-pricing/reviewed-ask` | the operator's reviewed ask saved on the latest recommendation |
+//! | `POST /slab-pricing/prepare` | a price-change preview of the listing reviewed saved |
+//! | `POST /slab-pricing/dry-run` | the preview's publication run without writing, then its steps shown |
 //!
 //! A post the Node app refuses answers 409 with the page and why.
 mod actions;
@@ -53,6 +61,7 @@ mod inventory;
 mod maintenance;
 mod outcomes;
 mod page;
+mod publication;
 mod recommendation;
 mod research;
 mod supply;
@@ -62,8 +71,8 @@ pub use views::COMPONENTS;
 
 // Handlers are named from here, where the routes module is declared.
 use actions::{
-    assign, calculate, cancel, confirm, import, import_outcomes, look_up, next_source_page, open,
-    refresh, refresh_supply, review_ask, save_maintenance,
+    assign, calculate, cancel, confirm, dry_run, import, import_outcomes, look_up,
+    next_source_page, open, prepare, refresh, refresh_supply, review_ask, save_maintenance,
 };
 use page::{evidence, maintenance_status, show};
 
@@ -166,6 +175,18 @@ pub mod url {
         pub choice: Choice,
     }
 
+    #[route("/slab-pricing/prepare", post = prepare)]
+    pub struct Prepare {
+        #[route(query)]
+        pub choice: Choice,
+    }
+
+    #[route("/slab-pricing/dry-run", post = dry_run)]
+    pub struct DryRun {
+        #[route(query)]
+        pub choice: Choice,
+    }
+
     /// What the screen shows: the certificate (`grader`, `cert`), the seller whose listings are
     /// open, the page of them (`after` the listing that ended the last page, `trail` the pages
     /// before it, for Previous), the listing being reviewed, and the grade and sale dates the
@@ -202,6 +223,9 @@ pub mod url {
         /// the address because a redirect cannot say what it did (corten#385).
         pub inserted: Option<u32>,
         pub supplied: Option<u32>,
+        /// The listing's price-change review is shown, and the publication whose steps are.
+        pub publication: Option<bool>,
+        pub steps: Option<String>,
     }
 
     impl Choice {
@@ -234,6 +258,8 @@ pub mod url {
                 one(f.item, &self.item),
                 self.inserted.map(|n| (f.inserted, n.to_string())),
                 self.supplied.map(|n| (f.supplied, n.to_string())),
+                self.publication.map(|p| (f.publication, p.to_string())),
+                one(f.steps, &self.steps),
             ]
             .into_iter()
             .flatten()

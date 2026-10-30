@@ -2,6 +2,7 @@
 use corten::Component;
 
 mod kept_choice;
+mod publication_panel;
 mod recommendation_panel;
 mod research_panel;
 mod seller_panels;
@@ -9,6 +10,7 @@ mod slab_screen;
 mod supply_panel;
 
 pub use kept_choice::KeptChoice;
+pub use publication_panel::PublicationPanel;
 pub use recommendation_panel::RecommendationPanel;
 pub use research_panel::{EvidenceList, ResearchPanel};
 pub use seller_panels::{MaintenanceStatusPart, SellerPanels};
@@ -20,5 +22,6 @@ pub const COMPONENTS: &[Component] = &[
     ResearchPanel,
     SupplyPanel,
     RecommendationPanel,
+    PublicationPanel,
     SellerPanels,
 ];

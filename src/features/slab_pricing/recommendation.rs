@@ -61,6 +61,9 @@ pub struct Override {
     pub item_price: f64,
     pub currency: String,
     pub note: String,
+    /// When it was reviewed: a price-change preview of it names this time, so a newer review
+    /// refuses the preview.
+    pub reviewed_at: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

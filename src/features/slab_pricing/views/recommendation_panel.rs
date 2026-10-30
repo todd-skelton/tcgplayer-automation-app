@@ -11,7 +11,7 @@ use crate::{
         page::{Place, Screen},
         recommendation::{BASES, Calculation, Recommendation, Reference, amount},
         url,
-        views::Problem,
+        views::{Problem, PublicationPanel},
     },
     layout::{Field, Notice, Tone},
     text::Msg,
@@ -23,15 +23,9 @@ use crate::{
 /// it gave, how it used the evidence, and the ask the operator reviewed.
 #[component(css)]
 pub fn RecommendationPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl Render {
-    let recommendation = match &screen.research {
-        Some(Ok(workspace)) => workspace.recommendation.as_ref(),
-        _ => None,
-    };
+    let recommendation = screen.recommendation();
     let can_calculate = screen.can_calculate();
-    let stale = recommendation.is_some_and(|r| {
-        r.stale(screen.calculable_revisions().as_ref())
-            || r.calculation.identity.revision != record.revision
-    });
+    let stale = screen.stale();
     let visitor = screen.visitor;
     let observed = screen
         .listing
@@ -79,6 +73,15 @@ pub fn RecommendationPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -
                     recommendation={recommendation}
                     allowed={can_calculate && !stale}
                 />
+                if let Some(listing) = &screen.listing {
+                    <PublicationPanel
+                        screen={screen}
+                        listing={listing}
+                        recommendation={recommendation}
+                        stale={stale || !can_calculate}
+                        t={t}
+                    />
+                }
             }
         </section>
     }

@@ -5,7 +5,8 @@ use corten::{ClientZone, ReadAgain, prelude::*};
 use super::{
     identity::{self, Record},
     inventory::{self, InventoryPage, Listing},
-    maintenance, outcomes,
+    maintenance, outcomes, publication,
+    recommendation::Recommendation,
     research::{self, Workspace},
     supply::{self, DEFAULT_SELLER, Supply},
     url::{self, Choice},
@@ -37,6 +38,8 @@ pub enum Place {
     Recommendation,
     Maintenance,
     Outcomes,
+    Publication,
+    DryRun,
 }
 
 impl Place {
@@ -52,6 +55,8 @@ impl Place {
             Place::Maintenance => "maintenance",
             Place::Outcomes => "outcomes",
             Place::Recommendation => "recommendation",
+            Place::Publication => "publication",
+            Place::DryRun => "dry-run",
         }
     }
 }
@@ -75,6 +80,8 @@ pub struct Screen {
     pub maintenance: Option<Result<maintenance::View, String>>,
     /// The outcomes of the listing asked about, when the seller's outcomes are shown.
     pub outcomes: Option<Result<outcomes::Review, String>>,
+    /// The price-change review of the listing reviewed, when it is shown and has a recommendation.
+    pub publication: Option<Result<publication::Review, String>>,
     /// Whose time zone dates are written in.
     pub visitor: Visitor,
     /// Why the last post was refused, and the part of the page that sent it.
@@ -142,6 +149,13 @@ impl Screen {
             }
             _ => None,
         };
+        let recommended = matches!(&research, Some(Ok(w)) if w.recommendation.is_some());
+        let publication = match &listing {
+            Some(listing) if choice.publication == Some(true) && recommended => {
+                Some(publication::read(legacy, &listing.id, choice.steps.as_deref()).await)
+            }
+            _ => None,
+        };
         Ok(Screen {
             choice: choice.clone(),
             record,
@@ -151,6 +165,7 @@ impl Screen {
             supply,
             maintenance,
             outcomes,
+            publication,
             visitor,
             problem: None,
         })
@@ -190,6 +205,26 @@ impl Screen {
             && self.choice.grade() == "owned"
             && tied
             && workspace.latest_revisions().len() <= MOST_REVISIONS
+    }
+
+    /// The slab's latest recommendation, once its research is read.
+    pub fn recommendation(&self) -> Option<&Recommendation> {
+        match &self.research {
+            Some(Ok(workspace)) => workspace.recommendation.as_ref(),
+            _ => None,
+        }
+    }
+
+    /// The latest recommendation needs calculating again: it says so, newer evidence is saved
+    /// than it read, or the identity was revised since.
+    pub fn stale(&self) -> bool {
+        self.recommendation().is_some_and(|r| {
+            r.stale(self.calculable_revisions().as_ref())
+                || self
+                    .record
+                    .as_ref()
+                    .is_some_and(|record| r.calculation.identity.revision != record.revision)
+        })
     }
 
     /// The evidence a calculation would read now, when one can be made.
