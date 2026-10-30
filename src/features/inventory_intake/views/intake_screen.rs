@@ -106,7 +106,7 @@ pub fn IntakeScreen<'a>(
     html! {
         <section
             class={IntakeScreen}
-            on:keydown={js::keys(event, keys, count)}
+            on:document:keydown={js::keys(event, target, keys, count)}
             on:focusin={js::focused(event)}
             on:input={js::typed(event)}
         >

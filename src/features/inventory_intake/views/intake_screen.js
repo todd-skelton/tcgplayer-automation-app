@@ -188,12 +188,14 @@ function shown(k, from) {
 }
 
 /**
- * The screen's keys.
- * @param {KeyboardEvent} event @param {Keys} k @param {Count} count
+ * The screen's keys, wherever focus is on the page; keys pressed in something outside the screen
+ * (the app bar, a dialog) are that thing's.
+ * @param {KeyboardEvent} event @param {HTMLElement} screen @param {Keys} k @param {Count} count
  */
-export function keys(event, k, count) {
+export function keys(event, screen, k, count) {
   if (event.defaultPrevented || event.isComposing) return;
   const target = event.target;
+  if (target instanceof Node && target !== document.body && !screen.contains(target)) return;
   const primary = (event.ctrlKey || event.metaKey) && !(event.ctrlKey && event.metaKey) && !event.altKey;
   if (primary && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
     event.preventDefault();
