@@ -4,6 +4,7 @@ use corten::{
     i18n::{DateStyle, TimeStyle},
     prelude::*,
 };
+use corten_ui::ShownFor;
 
 use super::{
     margin_trend::MarginTrendPanel,
@@ -16,6 +17,7 @@ use super::{
 use crate::{
     features::inventory_strategy::{
         actions::TurnaroundInput,
+        performance::RealizedWindow,
         screen::{Analysis, Screen},
         url::{self, View},
     },
@@ -181,14 +183,15 @@ pub fn Chip<'a>(mood: Mood, label: &'a str) -> impl Render {
 #[component(css = StrategyScreen)]
 fn LeversPanels<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let windows = screen.windows();
+    let choice = super::performance_panel::realized_choice(screen);
     html! {
         if windows.is_empty() {
             <super::performance_panel::Levers levers={&screen.levers(None)} t={t} />
         } else {
-            for window in windows {
-                <div class={Window} data-window={window.window_days}>
+            for (window, shown) in windows.iter().filter_map(|w| Some((w, RealizedWindow::of(w.window_days)?))) {
+                <ShownFor choice={&choice} values={&[shown]}>
                     <super::performance_panel::Levers levers={&screen.levers(Some(window))} t={t} />
-                </div>
+                </ShownFor>
             }
         }
     }

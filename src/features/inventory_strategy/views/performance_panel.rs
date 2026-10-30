@@ -1,4 +1,5 @@
-use corten::{i18n::DateStyle, prelude::*};
+use corten::{Href, i18n::DateStyle, prelude::*};
+use corten_ui::{ChoiceGroup, ChoiceOption, Chosen, ShownFor};
 
 use super::{
     format::{
@@ -9,35 +10,57 @@ use super::{
 use crate::{
     features::inventory_strategy::{
         levers::{HurdleChange, Lever, LineReturn},
-        performance::{PerformanceSummary, PerformanceWindow},
+        performance::{PerformanceSummary, PerformanceWindow, RealizedWindow},
         pricing_changes::format_hurdle,
         screen::Screen,
+        url::{InventoryStrategy, View},
     },
     layout::{Notice, Tone},
     text::Msg,
     theme::*,
 };
 
-/// Which realized window the screen shows: the realized figures and the levers read from it.
-/// Radios and the stylesheet switch them (`:has`), with or without JavaScript, as the React
-/// screen's toggle switched its state; corten-ui's tabs show only panels inside them (corten#474).
-#[component(css = super::strategy_screen::StrategyScreen)]
-fn WindowChoice<'a>(windows: &'a [PerformanceWindow]) -> impl Render {
+#[derive(Id)]
+pub struct RealizedWindowId;
+
+/// The realized window the page shows, from its address: the figures and the levers follow it
+/// wherever they are drawn.
+pub fn realized_choice(screen: &Screen) -> Chosen<RealizedWindowId, RealizedWindow> {
+    Chosen {
+        id: RealizedWindowId,
+        value: screen.view.realized.unwrap_or_default(),
+    }
+}
+
+/// Which realized window the screen shows, as the React screen's toggle chose it. Each option
+/// is the page with that window, so it works without JavaScript too.
+#[component]
+fn WindowChoice<'a>(
+    screen: &'a Screen,
+    choice: &'a Chosen<RealizedWindowId, RealizedWindow>,
+) -> impl Render {
+    let links: Vec<(RealizedWindow, InventoryStrategy)> = screen
+        .windows()
+        .iter()
+        .filter_map(|w| RealizedWindow::of(w.window_days))
+        .map(|w| {
+            let view = View {
+                realized: (w != RealizedWindow::default()).then_some(w),
+                ..screen.view.quiet()
+            };
+            (w, InventoryStrategy { view })
+        })
+        .collect();
     html! {
-        <fieldset class={WindowChoice}>
-            <legend class={VisuallyHidden}>"Performance window"</legend>
-            for (i, window) in windows.iter().enumerate() {
-                <label>
-                    <input
-                        type="radio"
-                        name="performance-window"
-                        value={window.window_days}
-                        checked={i == 0}
-                    >
-                    <span>{window.window_days}" days"</span>
-                </label>
-            }
-        </fieldset>
+        let options: Vec<ChoiceOption<'_, RealizedWindow, String>> = links
+            .iter()
+            .map(|(w, link)| ChoiceOption {
+                value: *w,
+                label: format!("{} days", w.days()),
+                link: Some(link as &dyn Href),
+            })
+            .collect();
+        <ChoiceGroup choice={choice} label="Performance window" options={&options} />
     }
 }
 
@@ -47,13 +70,14 @@ fn WindowChoice<'a>(windows: &'a [PerformanceWindow]) -> impl Render {
 pub fn PerformancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let hurdle = screen.hurdle();
     let windows = screen.windows();
+    let choice = realized_choice(screen);
     html! {
         <section class={panel()} aria-labelledby="realized-performance">
             <div class={Title}>
                 <h2 id="realized-performance">"Realized performance"</h2>
-                for window in windows {
+                for (window, shown) in windows.iter().filter_map(|w| Some((w, RealizedWindow::of(w.window_days)?))) {
                     if let Some(rate) = window.overall.daily_return_percent {
-                        <span class={Window} data-window={window.window_days}>
+                        <ShownFor choice={&choice} values={&[shown]}>
                             <Chip
                                 mood={if rate >= hurdle * 100.0 { Mood::Good } else { Mood::Caution }}
                                 label={&format!(
@@ -62,12 +86,12 @@ pub fn PerformancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                     format_hurdle(hurdle)
                                 )}
                             />
-                        </span>
+                        </ShownFor>
                     }
                 }
                 <span class={Grow}></span>
                 if !windows.is_empty() {
-                    <WindowChoice windows={windows} />
+                    <WindowChoice screen={screen} choice={&choice} />
                 }
             </div>
             <p class={muted()}>
@@ -79,10 +103,10 @@ pub fn PerformancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             if windows.is_empty() {
                 <p class={muted()}>"No sold units with proceeds and cost in this window yet."</p>
             }
-            for window in windows {
-                <div class={Window} data-window={window.window_days}>
+            for (window, shown) in windows.iter().filter_map(|w| Some((w, RealizedWindow::of(w.window_days)?))) {
+                <ShownFor choice={&choice} values={&[shown]}>
                     <WindowFigures window={window} t={t} />
-                </div>
+                </ShownFor>
             }
             if let Some(report) = &screen.performance {
                 <p class={(muted(), Caption)}>

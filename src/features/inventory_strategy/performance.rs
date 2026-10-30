@@ -3,12 +3,38 @@
 //! net proceeds and its lot's cost. Ported from the Node app's `realizedPerformance.ts` and
 //! `marginTrend.ts`.
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::collate;
 
+/// A trailing window the realized figures are shown for, written in an address as its days.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, corten::UrlValue)]
+pub enum RealizedWindow {
+    #[default]
+    #[serde(rename = "30")]
+    Days30,
+    #[serde(rename = "90")]
+    Days90,
+}
+
+impl RealizedWindow {
+    pub const ALL: [RealizedWindow; 2] = [RealizedWindow::Days30, RealizedWindow::Days90];
+
+    pub const fn days(self) -> i64 {
+        match self {
+            RealizedWindow::Days30 => 30,
+            RealizedWindow::Days90 => 90,
+        }
+    }
+
+    pub fn of(days: i64) -> Option<RealizedWindow> {
+        RealizedWindow::ALL.into_iter().find(|w| w.days() == days)
+    }
+}
+
 /// Trailing windows the page reports, in days.
-pub const PERFORMANCE_WINDOWS: [i64; 2] = [30, 90];
+pub const PERFORMANCE_WINDOWS: [i64; 2] =
+    [RealizedWindow::Days30.days(), RealizedWindow::Days90.days()];
 /// Weeks of selling the margin trend reaches back.
 pub const MARGIN_TREND_WEEKS: i64 = 26;
 /// How far before the trend pricing history is read, so its first change has a configuration

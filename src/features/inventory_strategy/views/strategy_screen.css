@@ -17,12 +17,6 @@
     min-width: 0;
   }
 }
-/* The performance window chosen shows its figures and levers and hides the other's. The windows
-   are the realized report's (30 and 90 days, `PERFORMANCE_WINDOWS`). */
-.strategy-screen:has(.window-choice input[value="30"]:checked) .window:not([data-window="30"]),
-.strategy-screen:has(.window-choice input[value="90"]:checked) .window:not([data-window="90"]) {
-  display: none;
-}
 .heading {
   display: flex;
   flex-wrap: wrap;

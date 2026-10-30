@@ -89,6 +89,8 @@ pub mod url {
     pub struct View {
         pub history_days: Option<super::selling_history::Window>,
         pub history_product_line: Option<String>,
+        /// The realized performance window shown; an old bookmark's reads as the default.
+        pub realized: Option<super::performance::RealizedWindow>,
         pub done: Option<super::views::Done>,
         /// The numbers the message names: SKUs refreshed, the batch, its SKUs, and its state.
         pub count: Option<i64>,
@@ -103,6 +105,7 @@ pub mod url {
             View {
                 history_days: self.history_days,
                 history_product_line: self.history_product_line.clone(),
+                realized: self.realized,
                 ..View::default()
             }
         }
