@@ -1,7 +1,4 @@
-use corten::{
-    i18n::{Currency, Minor},
-    prelude::*,
-};
+use corten::{i18n::Currency, prelude::*};
 
 use super::matrix_table::{ConditionNotes, Usd, cents};
 use crate::{
@@ -66,16 +63,9 @@ fn usd(t: Msg, value: Option<f64>) -> String {
     value.map_or_else(|| "N/A".to_owned(), |v| t.money(cents(v), USD).to_string())
 }
 
-/// "+$3.20", "-$1.10" or "$0.00": a difference in dollars (`formatSignedUsd`), signed by hand
-/// until money formats can carry their sign (corten#419).
+/// "+$3.20", "-$1.10" or "$0.00": a difference in dollars (`formatSignedUsd`).
 fn signed(t: Msg, value: f64) -> String {
-    let n = (value * 100.0).round() as i64;
-    let sign = match n.signum() {
-        1 => "+",
-        -1 => "-",
-        _ => "",
-    };
-    format!("{sign}{}", t.money(Minor(n.abs()), USD))
+    t.signed_money(cents(value), USD).to_string()
 }
 
 /// One condition's prices for the script: 0 is none.
@@ -140,6 +130,7 @@ pub fn RefundHelper<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
         relist_text: t.js().price_matrix_relist(),
         relist_eta_text: t.js().price_matrix_relist_eta(),
         money: t.js().money(USD),
+        signed_money: t.js().signed_money(USD),
         none: "N/A",
     };
     let sold_name = d.sold.map_or("", |c| c.condition.as_str());
@@ -310,5 +301,18 @@ pub fn RefundHelper<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
                 }
             </ul>
         </section>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_difference_is_written_with_its_sign() {
+        let t = Msg::default();
+        assert_eq!(signed(t, 3.2), "+$3.20");
+        assert_eq!(signed(t, -1.1), "-$1.10");
+        assert_eq!(signed(t, 0.004), "$0.00");
     }
 }

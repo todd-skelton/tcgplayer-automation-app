@@ -38,6 +38,7 @@ import { PricedCondition, rows } from "corten/views";
  * @property {Message<"condition">} relist_text
  * @property {Message<"condition" | "days">} relist_eta_text
  * @property {MoneyFormat} money
+ * @property {MoneyFormat} signed_money a difference, with its sign
  * @property {string} none what a missing price reads
  */
 
@@ -89,11 +90,8 @@ function startPaid(d) {
 /** @param {Dispute} d @param {number | null} value */
 const usd = (d, value) => (value === null ? d.none : d.money(cents(value)));
 
-/** The server's `signed`, signed by hand until money formats carry their sign (corten#419). @param {Dispute} d @param {number} value */
-function signed(d, value) {
-  const n = cents(value);
-  return (n > 0 ? "+" : n < 0 ? "-" : "") + d.money(Math.abs(n));
-}
+/** The server's `signed`. @param {Dispute} d @param {number} value */
+const signed = (d, value) => d.signed_money(cents(value));
 
 /** @param {Dispute} d */
 function draw(d) {

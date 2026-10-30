@@ -47,13 +47,11 @@ fn Against<'a>(comparison: Option<&'a Comparison>, t: Msg) -> impl Render {
         match comparison {
             None => "-",
             Some(c) => {
-                // Signed by hand until money formats carry their sign (corten#419).
-                let sign = if (c.difference * 100.0).round() > 0.0 { "+" } else if (c.difference * 100.0).round() < 0.0 { "-" } else { "" };
                 {t.money(cents(c.total), USD)}" "
                 <span
                     class={(Delta, (tone(c.ratio) == Some(Tone::Above)).then_some(Above), (tone(c.ratio) == Some(Tone::Below)).then_some(Below))}
                 >
-                    {sign}{t.money(cents(c.difference.abs()), USD)}
+                    {t.signed_money(cents(c.difference), USD)}
                     if let Some(ratio) = c.ratio { " "{t.change(change(ratio), 1)} }
                 </span>
             }
