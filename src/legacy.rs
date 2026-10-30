@@ -141,6 +141,30 @@ impl Legacy {
         Self::answer(answer).await
     }
 
+    /// [`Legacy::send`], keeping the status the Node app refused with: for a page that answers
+    /// with it. A Node app that did not answer is a 502.
+    pub async fn send_for_status<B: serde::Serialize, T: serde::de::DeserializeOwned>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<T, Refusal> {
+        let unreachable = |message: &str| Refusal {
+            status: StatusCode::BAD_GATEWAY,
+            message: message.to_owned(),
+        };
+        let body = serde_json::to_vec(body).map_err(|e| unreachable(&e.to_string()))?;
+        let answer = self
+            .http
+            .post(format!("{}{path}", self.origin))
+            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::ORIGIN, &self.origin)
+            .body(body)
+            .send()
+            .await
+            .map_err(|_| unreachable("The Node app did not answer."))?;
+        Self::answer_with_status(answer).await
+    }
+
     /// What one of the Node app's routes answers to deleting `path`.
     pub async fn delete<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T, String> {
         let answer = self
@@ -179,22 +203,43 @@ impl Legacy {
     async fn answer<T: serde::de::DeserializeOwned>(
         answer: reqwest::Response,
     ) -> Result<T, String> {
-        let ok = answer.status().is_success();
+        Self::answer_with_status(answer)
+            .await
+            .map_err(|refusal| refusal.message)
+    }
+
+    async fn answer_with_status<T: serde::de::DeserializeOwned>(
+        answer: reqwest::Response,
+    ) -> Result<T, Refusal> {
+        let status = answer.status();
+        let failed = |message: &str| Refusal {
+            status: StatusCode::BAD_GATEWAY,
+            message: message.to_owned(),
+        };
         let body = answer
             .bytes()
             .await
-            .map_err(|_| "The Node app stopped answering.".to_owned())?;
-        if ok {
+            .map_err(|_| failed("The Node app stopped answering."))?;
+        if status.is_success() {
             return serde_json::from_slice(&body)
-                .map_err(|_| "The Node app answered something this page cannot read.".to_owned());
+                .map_err(|_| failed("The Node app answered something this page cannot read."));
         }
         #[derive(serde::Deserialize)]
-        struct Refusal {
+        struct Said {
             error: String,
         }
-        Err(serde_json::from_slice::<Refusal>(&body)
-            .map_or_else(|_| "The Node app could not do it.".to_owned(), |r| r.error))
+        let message = serde_json::from_slice::<Said>(&body)
+            .map_or_else(|_| "The Node app could not do it.".to_owned(), |r| r.error);
+        Err(Refusal { status, message })
     }
+}
+
+/// Why one of the Node app's routes did not do what was asked: the status it answered with and
+/// its message.
+#[derive(Debug)]
+pub struct Refusal {
+    pub status: StatusCode,
+    pub message: String,
 }
 
 /// A file one of the Node app's routes answered with.
@@ -338,22 +383,17 @@ pub mod screens {
     #[derive(Route)]
     #[route("/inventory-strategy")]
     pub struct InventoryStrategy;
-    #[derive(Route)]
-    #[route("/data-management")]
-    pub struct DataManagement;
 
     /// One of them, for lists of screens (the app bar's).
     #[derive(Clone, Copy)]
     pub enum Screen {
         InventoryStrategy,
-        DataManagement,
     }
 
     impl Href for Screen {
         fn with_href<T>(&self, f: impl FnOnce(&str) -> T) -> T {
             match self {
                 Screen::InventoryStrategy => InventoryStrategy.with_href(f),
-                Screen::DataManagement => DataManagement.with_href(f),
             }
         }
     }

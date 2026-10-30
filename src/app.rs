@@ -13,9 +13,10 @@ use crate::{
     config,
     database::Database,
     features::{
-        batch_pricer, configuration, continuous_pricing, dashboard, http_configuration,
-        inventory_economics, inventory_intake, product_price_matrix, publication_configuration,
-        pull_sheet, shipping_configuration, shipping_export, slab_connections, slab_pricing,
+        batch_pricer, configuration, continuous_pricing, dashboard, data_management,
+        http_configuration, inventory_economics, inventory_intake, product_price_matrix,
+        publication_configuration, pull_sheet, shipping_configuration, shipping_export,
+        slab_connections, slab_pricing,
     },
     layout::{self, Static},
     legacy::{Legacy, forward},
@@ -115,6 +116,13 @@ pub fn app(shared: Shared) -> App {
             continuous_pricing::url::area(area, shared.clone())
                 .components(continuous_pricing::COMPONENTS)
                 .deadline(Some(Duration::from_secs(5 * 60)))
+        })
+        // A catalog job reads TCGplayer for as long as it takes (every product of a product line can
+        // take many minutes); the proxy in front waits an hour.
+        .area(|area| {
+            data_management::url::area(area, shared.clone())
+                .components(data_management::COMPONENTS)
+                .deadline(Some(Duration::from_secs(60 * 60)))
         })
         .area(|area| {
             http_configuration::url::area(area, shared.clone())

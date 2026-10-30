@@ -4,6 +4,7 @@ pub mod batch_pricer;
 pub mod configuration;
 pub mod continuous_pricing;
 pub mod dashboard;
+pub mod data_management;
 pub mod http_configuration;
 pub mod inventory_economics;
 pub mod inventory_intake;

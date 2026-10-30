@@ -112,6 +112,10 @@ export default [
     file: "features/shipping-export/routes/shipping-configuration.tsx",
   },
   {
+    path: "/api/data-management",
+    file: "features/catalog-sync/routes/api.data-management.ts",
+  },
+  {
     path: "/data-management",
     file: "routes/home.tsx",
   },

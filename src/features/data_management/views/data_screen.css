@@ -1,0 +1,66 @@
+.data-screen {
+  max-width: 1200px;
+  margin-inline: auto;
+  & h1,
+  & h2,
+  & p {
+    margin: 0;
+  }
+  & h2 {
+    font-size: var(--font-size-lg);
+  }
+  & form {
+    margin: 0;
+  }
+}
+.stack {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+}
+.cards {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.said {
+  padding: var(--space-3);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  white-space: pre-wrap;
+  & p {
+    margin-top: var(--space-1);
+  }
+}
+.complete {
+  border-color: var(--color-success, green);
+}
+.failed {
+  border-color: var(--color-danger, crimson);
+}
+.idle {
+  margin: 0;
+}
+/* While the job runs (the runtime marks its form aria-busy), the panel and the button say so;
+   the app's stylesheet already holds the button still. */
+.waiting,
+.working {
+  display: none;
+}
+.job-form[aria-busy="true"] {
+  & .waiting {
+    display: block;
+  }
+  & .working {
+    display: inline;
+  }
+  & .shown,
+  & .ready {
+    display: none;
+  }
+}

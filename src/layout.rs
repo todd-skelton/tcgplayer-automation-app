@@ -5,9 +5,9 @@ use corten::prelude::*;
 use crate::{
     database::Database,
     features::{
-        batch_pricer, configuration, continuous_pricing, http_configuration, inventory_economics,
-        inventory_intake, product_price_matrix, publication_configuration, pull_sheet,
-        shipping_configuration, shipping_export, slab_connections, slab_pricing,
+        batch_pricer, configuration, continuous_pricing, data_management, http_configuration,
+        inventory_economics, inventory_intake, product_price_matrix, publication_configuration,
+        pull_sheet, shipping_configuration, shipping_export, slab_connections, slab_pricing,
     },
     legacy::screens,
     theme::*,
@@ -83,6 +83,7 @@ pub enum Screen {
     InventoryManager,
     BatchPricer,
     ContinuousPricing,
+    DataManagement,
     PullSheet,
     ShippingWorkflow,
     ProductPriceMatrix,
@@ -175,7 +176,7 @@ pub const PRIMARY: [Entry; 10] = [
         icons::LOCAL_SHIPPING,
     ),
     entry(
-        Screen::Legacy(screens::Screen::DataManagement),
+        Screen::DataManagement,
         "Data Mgmt",
         "Refresh product lines, sets, products, and SKUs",
         icons::STORAGE,
@@ -264,6 +265,9 @@ pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, children: impl Render) -
                 >
                     {children}
                 </a>
+            }
+            Screen::DataManagement => {
+                <a {..req.nav(&data_management::url::DataManagement)}>{children}</a>
             }
             Screen::SlabPricing => {
                 <a {..req.nav(&slab_pricing::url::SlabPricing { choice: Default::default() })}>
