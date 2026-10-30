@@ -51,6 +51,10 @@ export default [
     file: "features/ebay-slab-pricing/routes/api.slab-recommendations.ts",
   },
   {
+    path: "/api/slab-comp-review",
+    file: "features/ebay-slab-pricing/routes/api.slab-comp-review.ts",
+  },
+  {
     path: "/api/slab-comp-decisions",
     file: "features/ebay-slab-pricing/routes/api.slab-comp-decisions.ts",
   },

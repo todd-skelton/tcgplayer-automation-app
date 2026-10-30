@@ -9,7 +9,10 @@ use crate::{
             inventory::{InventoryPage, Listing},
             page::{Place, Screen},
             url::{self, Choice},
-            views::{KeptChoice, RecommendationPanel, ResearchPanel, SellerPanels, SupplyPanel},
+            views::{
+                CompReview, KeptChoice, RecommendationPanel, ResearchPanel, SellerPanels,
+                SupplyPanel,
+            },
         },
     },
     layout::{Field, Notice, Tone},
@@ -87,6 +90,9 @@ pub fn SlabScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                     if matches!(&screen.research, Some(Ok(_))) {
                         <SupplyPanel screen={screen} t={t} />
                         <RecommendationPanel screen={screen} record={record} t={t} />
+                        if choice.comps.is_some() {
+                            <CompReview screen={screen} />
+                        }
                     }
                 }
                 (Some((grader, cert)), None) => {

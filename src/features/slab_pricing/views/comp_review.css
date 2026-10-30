@@ -1,0 +1,58 @@
+.comp-review {
+  & h2,
+  & h3,
+  & p {
+    margin: 0;
+  }
+  & form {
+    margin: 0;
+  }
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  & a[aria-label] {
+    text-decoration: none;
+    font-size: 1.25rem;
+  }
+}
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.stack {
+  display: grid;
+  gap: var(--space-3);
+}
+.scroll {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+  & th,
+  & td {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--color-line);
+    text-align: start;
+    vertical-align: middle;
+  }
+  & thead th {
+    font-weight: 700;
+  }
+  & tr[aria-current] > * {
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  }
+}
+.sale {
+  width: min(560px, calc(100vw - 2 * var(--space-4)));
+  padding: var(--space-5);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}

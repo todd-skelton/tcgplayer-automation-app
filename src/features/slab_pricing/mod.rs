@@ -31,7 +31,11 @@
 //! Each post carries a `SubmitKey`, sent to the Node app as the intent, so a post sent again
 //! applies once. Neither contacts eBay; publishing is not connected.
 //!
-//! The comp review panel is still being ported.
+//! The comps of a saved evidence revision are reviewed on request (`comps=<revision>`), fifty
+//! sales a page, each screened against the identity researched by the Node app. A sale opens in a
+//! dialog the address names (`comp=<row>`), where the operator includes or excludes it; that
+//! marks the recommendation for recalculation. Fetching a sale's details or an eBay source's next
+//! page adds its evidence beside the grade's own (`extra`).
 //!
 //! | Route | Answer |
 //! |---|---|
@@ -53,9 +57,12 @@
 //! | `POST /slab-pricing/reviewed-ask` | the operator's reviewed ask saved on the latest recommendation |
 //! | `POST /slab-pricing/prepare` | a price-change preview of the listing reviewed saved |
 //! | `POST /slab-pricing/dry-run` | the preview's publication run without writing, then its steps shown |
+//! | `POST /slab-pricing/comp-decision` | a sale included or excluded from the comps, and why |
+//! | `POST /slab-pricing/fetch-comps` | a sale's details or an eBay source's next page queued, then shown beside the rest |
 //!
 //! A post the Node app refuses answers 409 with the page and why.
 mod actions;
+mod comps;
 mod identity;
 mod inventory;
 mod maintenance;
@@ -71,8 +78,9 @@ pub use views::COMPONENTS;
 
 // Handlers are named from here, where the routes module is declared.
 use actions::{
-    assign, calculate, cancel, confirm, dry_run, import, import_outcomes, look_up,
-    next_source_page, open, prepare, refresh, refresh_supply, review_ask, save_maintenance,
+    assign, calculate, cancel, confirm, decide_comp, dry_run, fetch_comps, import, import_outcomes,
+    look_up, next_source_page, open, prepare, refresh, refresh_supply, review_ask,
+    save_maintenance,
 };
 use page::{evidence, maintenance_status, show};
 
@@ -187,6 +195,18 @@ pub mod url {
         pub choice: Choice,
     }
 
+    #[route("/slab-pricing/comp-decision", post = decide_comp)]
+    pub struct DecideComp {
+        #[route(query)]
+        pub choice: Choice,
+    }
+
+    #[route("/slab-pricing/fetch-comps", post = fetch_comps)]
+    pub struct FetchComps {
+        #[route(query)]
+        pub choice: Choice,
+    }
+
     /// What the screen shows: the certificate (`grader`, `cert`), the seller whose listings are
     /// open, the page of them (`after` the listing that ended the last page, `trail` the pages
     /// before it, for Previous), the listing being reviewed, and the grade and sale dates the
@@ -226,6 +246,15 @@ pub mod url {
         /// The listing's price-change review is shown, and the publication whose steps are.
         pub publication: Option<bool>,
         pub steps: Option<String>,
+        /// The evidence revision whose comps are reviewed, its first row shown, and the row
+        /// (in the whole revision) open for a decision.
+        pub comps: Option<String>,
+        pub comps_from: Option<u32>,
+        pub comp: Option<u32>,
+        /// Evidence fetched beyond the grade's own (a sale's details, an eBay source's next
+        /// page), shown and calculated with it.
+        #[serde(default)]
+        pub extra: Vec<String>,
     }
 
     impl Choice {
@@ -260,13 +289,42 @@ pub mod url {
                 self.supplied.map(|n| (f.supplied, n.to_string())),
                 self.publication.map(|p| (f.publication, p.to_string())),
                 one(f.steps, &self.steps),
+                one(f.comps, &self.comps),
+                self.comps_from.map(|n| (f.comps_from, n.to_string())),
+                self.comp.map(|n| (f.comp, n.to_string())),
             ]
             .into_iter()
             .flatten()
             .collect();
             pairs.extend(self.trail.iter().map(|t| (f.trail, t.clone())));
             pairs.extend(self.sources.iter().map(|s| (f.sources, s.clone())));
+            pairs.extend(self.extra.iter().map(|k| (f.extra, k.clone())));
             pairs
+        }
+
+        /// This choice reviewing the comps of `revision` from its first row, none open.
+        pub fn reviewing_comps(&self, revision: &str) -> Choice {
+            Choice {
+                comps: Some(revision.to_owned()),
+                comps_from: None,
+                comp: None,
+                ..self.clone()
+            }
+        }
+
+        /// This choice with `keys` fetched beside the grade's own evidence, no comp open.
+        pub fn with_extra(&self, keys: impl IntoIterator<Item = String>) -> Choice {
+            let mut extra = self.extra.clone();
+            for key in keys {
+                if !extra.contains(&key) {
+                    extra.push(key);
+                }
+            }
+            Choice {
+                extra,
+                comp: None,
+                ..self.clone()
+            }
         }
 
         /// The supply context is shown.
@@ -315,11 +373,15 @@ pub mod url {
                 grader: Some(grader.to_owned()),
                 cert: Some(cert.to_owned()),
                 // A grade explored for one slab may not apply to another (PSA grades only), and
-                // its supply sources are its own.
+                // its supply sources and comps are its own.
                 grade: None,
                 source: None,
                 rows: None,
                 sources: Vec::new(),
+                comps: None,
+                comps_from: None,
+                comp: None,
+                extra: Vec::new(),
                 ..self.clone()
             }
         }

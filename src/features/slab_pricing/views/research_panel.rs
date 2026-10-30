@@ -44,7 +44,18 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
             <form method="get" action={url::SlabPricing::at(&Choice::default())} class={Line}>
                 <KeptChoice
                     choice={choice}
-                    except={&[f.grade, f.from, f.to, f.source, f.rows, f.sources]}
+                    except={&[
+                        f.grade,
+                        f.from,
+                        f.to,
+                        f.source,
+                        f.rows,
+                        f.sources,
+                        f.comps,
+                        f.comps_from,
+                        f.comp,
+                        f.extra,
+                    ]}
                 />
                 <Field label="Research grade" hint="">
                     <select name={f.grade}>
@@ -164,6 +175,11 @@ fn EvidenceRow<'a>(
                     " · "{words(code)}
                 }
             </span>
+            if let Some(revision) = &status.latest_revision {
+                <a href={url::SlabPricing::at(&choice.reviewing_comps(revision))}>
+                    "Review saved comps"
+                </a>
+            }
             if status.pending() {
                 <form method="post" action={url::Cancel { choice: choice.clone() }} data-patch>
                     <input type="hidden" name={c.key} value={&status.key}>

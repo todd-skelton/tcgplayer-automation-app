@@ -922,6 +922,127 @@ pub async fn dry_run(
     }
 }
 
+/// A sale's decision, as the comp review showed it: the revision and identity revision it was
+/// screened at, the sale's reference, and the operator's call.
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct CompDecisionInput {
+    pub revision: String,
+    pub identity_revision: i64,
+    pub provider: String,
+    pub provider_id: String,
+    /// Empty when the sale's date is unknown.
+    #[serde(default)]
+    pub date: String,
+    /// `accept` or `exclude`.
+    pub decision: String,
+    /// An item amount verified from the sale; shipping and fees stay separate.
+    pub item_price: Option<f64>,
+    #[serde(default)]
+    pub note: String,
+}
+
+/// Includes or excludes a sale from the slab's comps, which marks its recommendation for
+/// recalculation, then closes the sale.
+pub async fn decide_comp(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+    Params(at): Params<url::DecideComp>,
+    Form(input): Form<CompDecisionInput>,
+) -> HtmlResult {
+    let visitor = Visitor::of(zone.as_ref());
+    let Some(record) = (match at.choice.certificate() {
+        Some((grader, cert)) => identity::find(&db, grader, cert).await?,
+        None => None,
+    }) else {
+        let why = "Look up a certificate first.";
+        return refused(
+            Place::CompDecision,
+            &req,
+            &db,
+            &legacy,
+            visitor,
+            &at.choice,
+            why.into(),
+        )
+        .await;
+    };
+    let date = input.date.trim();
+    let asked = json!({
+        "slabId": record.id,
+        "identityRevision": input.identity_revision,
+        "revisionId": input.revision,
+        "provider": input.provider,
+        "providerId": input.provider_id,
+        "date": (!date.is_empty()).then_some(date),
+        "decision": input.decision,
+        "note": input.note.trim(),
+        "itemPrice": input.item_price.map(|amount| json!({ "amount": amount, "currency": "USD" })),
+    });
+    match legacy
+        .send::<_, serde_json::Value>("/api/slab-comp-decisions", &asked)
+        .await
+    {
+        Ok(_) => req.redirect(&url::SlabPricing::at(&Choice {
+            comp: None,
+            ..at.choice.clone()
+        })),
+        Err(why) => {
+            refused(
+                Place::CompDecision,
+                &req,
+                &db,
+                &legacy,
+                visitor,
+                &at.choice,
+                why,
+            )
+            .await
+        }
+    }
+}
+
+/// The revision reviewed, and the Alt sale whose details to fetch (else the eBay source's next
+/// page).
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct FetchCompsInput {
+    pub revision: String,
+    pub transaction: Option<String>,
+}
+
+/// Queues a provider call for a sale's full details or an eBay source's next page, then shows
+/// its evidence beside the grade's own while the Node app's worker fetches it.
+pub async fn fetch_comps(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+    Params(at): Params<url::FetchComps>,
+    Form(input): Form<FetchCompsInput>,
+) -> HtmlResult {
+    let (asked, place) = match &input.transaction {
+        Some(transaction) => (
+            json!({ "intent": "sale-detail", "revision": input.revision, "transactionId": transaction }),
+            Place::CompDecision,
+        ),
+        None => (
+            json!({ "intent": "next-page", "revision": input.revision }),
+            Place::Comps,
+        ),
+    };
+    match legacy.send::<_, Queued>("/api/slab-evidence", &asked).await {
+        Ok(queued) => req.redirect(&url::SlabPricing::at(
+            &at.choice
+                .with_extra(queued.statuses.into_iter().map(|s| s.key)),
+        )),
+        Err(why) => {
+            let visitor = Visitor::of(zone.as_ref());
+            refused(place, &req, &db, &legacy, visitor, &at.choice, why).await
+        }
+    }
+}
+
 /// Why the post was refused, as a conflict, in the part of the page that sent it: with
 /// JavaScript (a `data-patch` form) only that part's message, so what the user typed stays;
 /// otherwise the page the post came from.

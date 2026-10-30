@@ -3,6 +3,7 @@ use std::{collections::BTreeSet, time::Duration};
 use corten::{ClientZone, ReadAgain, prelude::*};
 
 use super::{
+    comps,
     identity::{self, Record},
     inventory::{self, InventoryPage, Listing},
     maintenance, outcomes, publication,
@@ -40,6 +41,8 @@ pub enum Place {
     Outcomes,
     Publication,
     DryRun,
+    Comps,
+    CompDecision,
 }
 
 impl Place {
@@ -57,6 +60,8 @@ impl Place {
             Place::Recommendation => "recommendation",
             Place::Publication => "publication",
             Place::DryRun => "dry-run",
+            Place::Comps => "comps",
+            Place::CompDecision => "comp-decision",
         }
     }
 }
@@ -82,6 +87,8 @@ pub struct Screen {
     pub outcomes: Option<Result<outcomes::Review, String>>,
     /// The price-change review of the listing reviewed, when it is shown and has a recommendation.
     pub publication: Option<Result<publication::Review, String>>,
+    /// The page of comps reviewed, screened against the identity researched, when one is.
+    pub comps: Option<Result<comps::Review, String>>,
     /// Whose time zone dates are written in.
     pub visitor: Visitor,
     /// Why the last post was refused, and the part of the page that sent it.
@@ -156,6 +163,12 @@ impl Screen {
             }
             _ => None,
         };
+        let comps = match (&record, &research, choice.comps.as_deref()) {
+            (Some(record), Some(Ok(_)), Some(revision)) => {
+                Some(comps::read(legacy, &record.id, revision, choice).await)
+            }
+            _ => None,
+        };
         Ok(Screen {
             choice: choice.clone(),
             record,
@@ -166,6 +179,7 @@ impl Screen {
             maintenance,
             outcomes,
             publication,
+            comps,
             visitor,
             problem: None,
         })
@@ -236,12 +250,18 @@ impl Screen {
     }
 }
 
-/// The slab's research, with the refreshes on their way read where they stand (which keeps the
-/// Node app's worker running them).
+/// The slab's research, with the evidence fetched beside it, and the refreshes on their way read
+/// where they stand (which keeps the Node app's worker running them).
 async fn read_research(legacy: &Legacy, id: &str, choice: &Choice) -> Result<Workspace, String> {
     let mut workspace = research::read(legacy, id, choice.grade(), &choice.window()).await?;
-    if workspace.pending() {
-        workspace.statuses = research::statuses(legacy, &workspace.keys).await?;
+    let extra: Vec<&String> = choice
+        .extra
+        .iter()
+        .filter(|k| !workspace.keys.contains(k))
+        .collect();
+    if workspace.pending() || !extra.is_empty() {
+        let keys: Vec<String> = workspace.keys.iter().chain(extra).cloned().collect();
+        workspace.statuses = research::statuses(legacy, &keys).await?;
     }
     Ok(workspace)
 }
