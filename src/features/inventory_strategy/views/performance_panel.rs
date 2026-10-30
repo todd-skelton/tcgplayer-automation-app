@@ -20,7 +20,7 @@ use crate::{
 
 /// Which realized window the screen shows: the realized figures and the levers read from it.
 /// Radios and the stylesheet switch them (`:has`), with or without JavaScript, as the React
-/// screen's toggle switched its state; corten-ui's tabs show only panels inside them.
+/// screen's toggle switched its state; corten-ui's tabs show only panels inside them (corten#474).
 #[component(css = super::strategy_screen::StrategyScreen)]
 fn WindowChoice<'a>(windows: &'a [PerformanceWindow]) -> impl Render {
     html! {

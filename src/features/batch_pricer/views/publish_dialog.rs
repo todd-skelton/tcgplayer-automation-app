@@ -34,8 +34,7 @@ pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> 
         items,
         note,
         submit,
-        one: t.js().batch_pricer_selected_one(),
-        other: t.js().batch_pricer_selected_other(),
+        selected: t.js().batch_pricer_selected(),
         publish: t.js().batch_pricer_publish(),
         number: t.js().number(),
     };
@@ -59,8 +58,7 @@ pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> 
                     role="status"
                 >
                     <span ref={note}>
-                        "Selected "{count}" SKU"{if count == 1 { "" } else { "s" }}
-                        "; total quantity delta "{format!("{delta:+}")}"."
+                        {t.batch_pricer_selected(count, format!("{delta:+}"))}
                     </span>
                     " Inventory changes are selected by default so the published quantity matches the batch. Price-only batches default to the 20 smallest price changes."
                 </p>

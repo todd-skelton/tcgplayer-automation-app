@@ -85,7 +85,7 @@ pub fn age(at: Option<&str>, now: DateTime<Utc>) -> String {
 }
 
 /// A UTC day as a chart labels it: "Mar 2". By hand: corten's dates have no month-and-day style
-/// (corten issue: month and day without the year).
+/// (corten#473).
 pub fn month_day(day: &str) -> String {
     const MONTHS: [&str; 12] = [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",

@@ -11,8 +11,7 @@ import { PublishItem, rows } from "corten/views";
  * @property {Holds<PublishItem, HTMLUListElement>} items
  * @property {HTMLSpanElement} note
  * @property {HTMLButtonElement} submit
- * @property {Message<"count" | "delta">} one what one SKU checked reads
- * @property {Message<"count" | "delta">} other what any other count reads
+ * @property {Message<"count" | "delta">} selected what the checked SKUs read, by their count
  * @property {Message<"count">} publish
  * @property {NumberFormat} number
  */
@@ -34,9 +33,8 @@ export function count(s) {
     checked += 1;
     delta += item.delta;
   }
-  const selected = checked === 1 ? s.one : s.other;
-  s.note.textContent = selected({
-    count: s.number(checked),
+  s.note.textContent = s.selected({
+    count: checked,
     delta: (delta >= 0 ? "+" : "") + s.number(delta),
   });
   s.note.parentElement?.setAttribute("data-changes", String(delta !== 0));
