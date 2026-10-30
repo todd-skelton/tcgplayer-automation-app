@@ -1,7 +1,7 @@
 //! How the screen writes its numbers, as the React components did (`format.ts` and the helpers
 //! each component kept): fixed digits as JavaScript's `toFixed` rounds them, money in dollars.
 use chrono::{DateTime, NaiveDate, Utc};
-use corten::i18n::{Currency, Minor};
+use corten::i18n::{Currency, DayStyle, Minor};
 
 use crate::{features::inventory_economics::ledger::assumptions::js_to_fixed, text::Msg};
 
@@ -90,15 +90,15 @@ pub fn age(at: Option<&str>, now: DateTime<Utc>) -> String {
     }
 }
 
-/// A UTC day as a chart labels it: "Mar 2". By hand: corten's dates have no month-and-day style
-/// (corten#473).
-pub fn month_day(day: &str) -> String {
-    const MONTHS: [&str; 12] = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-    use chrono::Datelike;
+/// A UTC day as a chart labels it, the month and day in the visitor's language: "Mar 2".
+pub fn month_day(t: Msg, day: &str) -> String {
     match NaiveDate::parse_from_str(day, "%Y-%m-%d") {
-        Ok(d) => format!("{} {}", MONTHS[d.month0() as usize], d.day()),
+        Ok(d) => t
+            .date(
+                d.and_time(chrono::NaiveTime::MIN).and_utc(),
+                DayStyle::Short,
+            )
+            .to_string(),
         Err(_) => day.to_owned(),
     }
 }
@@ -130,7 +130,8 @@ mod tests {
         assert_eq!(signed_dollars(t, -3.5), "-$3.50");
         assert_eq!(coverage(87, 100), "87%");
         assert_eq!(coverage(1, 0), "0%");
-        assert_eq!(month_day("2026-03-02"), "Mar 2");
+        assert_eq!(month_day(t, "2026-03-02"), "Mar 2");
+        assert_eq!(month_day(t, "2026-12-31"), "Dec 31");
     }
 
     #[test]

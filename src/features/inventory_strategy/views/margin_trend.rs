@@ -115,7 +115,7 @@ impl Plot {
 /// Weekly realized margin (thin line), the trailing four weeks' (bold), and the days pricing
 /// changed (dashed, numbered as the list below). A point's title names its week and margin.
 #[component(css = super::strategy_screen::StrategyScreen)]
-fn Chart<'a>(trend: &'a MarginTrend) -> impl Render {
+fn Chart<'a>(trend: &'a MarginTrend, t: Msg) -> impl Render {
     let weeks = &trend.weeks;
     let plot = Plot::of(weeks);
     html! {
@@ -172,7 +172,7 @@ fn Chart<'a>(trend: &'a MarginTrend) -> impl Render {
                             r="4"
                         >
                             <title>
-                                "Week of "{month_day(&week.week_start)}": "
+                                "Week of "{month_day(t, &week.week_start)}": "
                                 {percent(Some(margin), "N/A")}
                             </title>
                         </circle>
@@ -186,7 +186,7 @@ fn Chart<'a>(trend: &'a MarginTrend) -> impl Render {
                             y={HEIGHT - 8.0}
                             text-anchor="middle"
                         >
-                            {month_day(&week.week_start)}
+                            {month_day(t, &week.week_start)}
                         </text>
                     }
                 }
@@ -215,11 +215,13 @@ pub fn MarginTrendPanel<'a>(trend: Option<&'a MarginTrend>, t: Msg) -> impl Rend
                     {super::format::cents(t, rule.per_unit_deduction_cents)}
                     " a card unless a batch was given its own rate, so margin follows three ratios: the sale price against the market when it sold, how the market moved since intake, and what fees, postage, and refunds leave of the sale."
                 </p>
-                <Chart trend={trend} />
+                <Chart trend={trend} t={t} />
                 if !trend.pricing_changes.is_empty() {
                     <ol class={Changes}>
                         for change in &trend.pricing_changes {
-                            <li>{month_day(&change.changed_on)}": "{change.changes.join("; ")}</li>
+                            <li>
+                                {month_day(t, &change.changed_on)}": "{change.changes.join("; ")}
+                            </li>
                         }
                     </ol>
                 }
@@ -242,7 +244,7 @@ pub fn MarginTrendPanel<'a>(trend: Option<&'a MarginTrend>, t: Msg) -> impl Rend
                             for week in trend.weeks.iter().rev() {
                                 <tr key={&week.week_start}>
                                     <th scope="row" class={NoWrap}>
-                                        {month_day(&week.week_start)}
+                                        {month_day(t, &week.week_start)}
                                         if !week.ended { " (so far)" }
                                     </th>
                                     <td class={End}>{count(t, week.summary.units_sold)}</td>

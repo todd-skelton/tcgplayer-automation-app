@@ -156,8 +156,7 @@ pub fn SheetItems<'a>(
                                     aria-sort={(paging.filters.sort == Some(by)).then_some("ascending")}
                                 >
                                     <a
-                                        href={(paging.link)(by).as_ref()}
-                                        // a Box<dyn Href> is not an attribute value (corten#457)
+                                        href={(paging.link)(by)}
                                         on:click={js::sortBy(event, target, found, by)}
                                     >
                                         {label}
