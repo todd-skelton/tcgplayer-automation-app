@@ -14,9 +14,11 @@ use crate::{
 };
 
 mod app_bar;
+mod icons;
 mod parts;
 
 pub use app_bar::AppBar;
+pub use icons::{Glyph, Icon};
 pub use parts::{Field, Notice, SubmitsOnChange, Tone};
 
 corten::assets::embed! {
@@ -92,89 +94,180 @@ pub enum Screen {
     Legacy(screens::Screen),
 }
 
+/// A screen as the menus and the dashboard list it, as `appNavigation`'s items.
+pub struct Entry {
+    pub screen: Screen,
+    pub label: &'static str,
+    pub description: &'static str,
+    pub icon: Icon,
+}
+
+const fn entry(
+    screen: Screen,
+    label: &'static str,
+    description: &'static str,
+    icon: Icon,
+) -> Entry {
+    Entry {
+        screen,
+        label,
+        description,
+        icon,
+    }
+}
+
 /// The screens in the order the React app's `primaryNavigationItems` lists them.
-pub const PRIMARY: [(Screen, &str); 10] = [
-    (Screen::InventoryManager, "Inventory"),
-    (Screen::BatchPricer, "Batch Pricer"),
-    (
+pub const PRIMARY: [Entry; 10] = [
+    entry(
+        Screen::InventoryManager,
+        "Inventory",
+        "Add new inventory and freeze it into a pricing batch",
+        icons::INVENTORY,
+    ),
+    entry(
+        Screen::BatchPricer,
+        "Batch Pricer",
+        "Create, price, publish, and download inventory batches",
+        icons::BATCH_PREDICTION,
+    ),
+    entry(
         Screen::Legacy(screens::Screen::ContinuousPricing),
         "Continuous Pricing",
+        "Automatic repricing runs for live inventory",
+        icons::LOOP,
     ),
-    (Screen::Legacy(screens::Screen::SlabPricing), "Slab Pricing"),
-    (Screen::ProductPriceMatrix, "Price Matrix"),
-    (
+    entry(
+        Screen::Legacy(screens::Screen::SlabPricing),
+        "Slab Pricing",
+        "Research and price graded cards for eBay",
+        icons::PRICE_CHECK,
+    ),
+    entry(
+        Screen::ProductPriceMatrix,
+        "Price Matrix",
+        "Compare one product across conditions and variants",
+        icons::PRICE_CHECK,
+    ),
+    entry(
         Screen::Legacy(screens::Screen::InventoryStrategy),
         "Inventory Strategy",
+        "Pricing hurdle, capital turnaround, and selling speed",
+        icons::QUERY_STATS,
     ),
-    (Screen::InventoryEconomics, "Inventory Economics"),
-    (Screen::PullSheet, "Pull Sheet"),
-    (Screen::ShippingWorkflow, "Shipping Export"),
-    (Screen::Legacy(screens::Screen::DataManagement), "Data Mgmt"),
+    entry(
+        Screen::InventoryEconomics,
+        "Inventory Economics",
+        "Estimated cost, proceeds, and realized profit by order",
+        icons::WALLET,
+    ),
+    entry(
+        Screen::PullSheet,
+        "Pull Sheet",
+        "Upload and view pull sheets",
+        icons::VIEW_LIST,
+    ),
+    entry(
+        Screen::ShippingWorkflow,
+        "Shipping Export",
+        "Review shipments, buy postage, and notify buyers",
+        icons::LOCAL_SHIPPING,
+    ),
+    entry(
+        Screen::Legacy(screens::Screen::DataManagement),
+        "Data Mgmt",
+        "Refresh product lines, sets, products, and SKUs",
+        icons::STORAGE,
+    ),
 ];
 
 /// The settings menu, as `settingsNavigationItems` lists it.
-pub const SETTINGS: [(Screen, &str); 5] = [
-    (Screen::Configuration, "Configuration"),
-    (Screen::PublicationConfiguration, "Inventory Publication"),
-    (Screen::ShippingConfiguration, "Shipping Configuration"),
-    (Screen::HttpConfiguration, "HTTP Configuration"),
-    (Screen::SlabConnections, "Slab data connections"),
+pub const SETTINGS: [Entry; 5] = [
+    entry(
+        Screen::Configuration,
+        "Configuration",
+        "Pricing rules and defaults",
+        icons::SETTINGS,
+    ),
+    entry(
+        Screen::PublicationConfiguration,
+        "Inventory Publication",
+        "Automatic publication and guardrails",
+        icons::PUBLISH,
+    ),
+    entry(
+        Screen::ShippingConfiguration,
+        "Shipping Configuration",
+        "Postage and shipping defaults",
+        icons::LOCAL_SHIPPING,
+    ),
+    entry(
+        Screen::HttpConfiguration,
+        "HTTP Configuration",
+        "TCGPlayer authentication and rate limits",
+        icons::HTTP,
+    ),
+    entry(
+        Screen::SlabConnections,
+        "Slab data connections",
+        "eBay research and Alt credentials",
+        icons::HTTP,
+    ),
 ];
 
 /// A link to a screen, marked when it is the page shown. A screen the React app serves loads in
 /// full (`data-reload`): the runtime cannot swap in a page another app rendered.
 #[component]
-pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, label: &'a str) -> impl Render {
+pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, children: impl Render) -> impl Render {
     html! {
         match screen {
             Screen::InventoryManager => {
                 <a
                     {..req.nav(&inventory_intake::url::InventoryManager { selection: Default::default(), queued: None })}
                 >
-                    {label}
+                    {children}
                 </a>
             }
-            Screen::PullSheet => <a {..req.nav(&pull_sheet::url::PullSheets)}>{label}</a>,
+            Screen::PullSheet => <a {..req.nav(&pull_sheet::url::PullSheets)}>{children}</a>,
             Screen::InventoryEconomics => {
-                <a {..req.nav(&inventory_economics::url::InventoryEconomics)}>{label}</a>
+                <a {..req.nav(&inventory_economics::url::InventoryEconomics)}>{children}</a>
             }
             Screen::ProductPriceMatrix => {
                 <a
                     {..req.nav(&product_price_matrix::url::ProductPriceMatrix { choice: Default::default() })}
                 >
-                    {label}
+                    {children}
                 </a>
             }
             Screen::ShippingWorkflow => {
                 <a
                     {..req.nav(&shipping_export::url::ShippingWorkflow { step: None, seller: None, edit: None, shipment: None, view: None, filters: Default::default() })}
                 >
-                    {label}
+                    {children}
                 </a>
             }
             Screen::BatchPricer => {
-                <a {..req.nav(&batch_pricer::url::BatchPricer::newest())}>{label}</a>
+                <a {..req.nav(&batch_pricer::url::BatchPricer::newest())}>{children}</a>
             }
             Screen::HttpConfiguration => {
-                <a {..req.nav(&http_configuration::url::HttpSettings { done: None })}>{label}</a>
+                <a {..req.nav(&http_configuration::url::HttpSettings { done: None })}>{children}</a>
             }
             Screen::ShippingConfiguration => {
                 <a {..req.nav(&shipping_configuration::url::ShippingSettings { done: None })}>
-                    {label}
+                    {children}
                 </a>
             }
             Screen::SlabConnections => {
-                <a {..req.nav(&slab_connections::url::SlabConnections)}>{label}</a>
+                <a {..req.nav(&slab_connections::url::SlabConnections)}>{children}</a>
             }
             Screen::PublicationConfiguration => {
                 <a {..req.nav(&publication_configuration::url::PublicationSettings { done: None })}>
-                    {label}
+                    {children}
                 </a>
             }
             Screen::Configuration => {
-                <a {..req.nav(&configuration::url::Configuration { done: None })}>{label}</a>
+                <a {..req.nav(&configuration::url::Configuration { done: None })}>{children}</a>
             }
-            Screen::Legacy(legacy) => <a href={*legacy} data-reload>{label}</a>,
+            Screen::Legacy(legacy) => <a href={*legacy} data-reload>{children}</a>,
         }
     }
 }

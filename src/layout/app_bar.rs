@@ -1,7 +1,7 @@
 use corten::prelude::*;
 
 use super::{Chrome, PRIMARY, SETTINGS, ScreenLink};
-use crate::{features::http_configuration, legacy::screens};
+use crate::{app, features::http_configuration};
 
 /// The settings menu, a popover its button opens with no script.
 #[derive(Id)]
@@ -25,10 +25,10 @@ pub fn AppBar<'a>(req: &'a Req, chrome: Chrome) -> impl Render {
             >
                 "☰"
             </button>
-            <a class={Name} href={screens::Dashboard} data-reload>"TCGPlayer Automation"</a>
+            <a class={Name} href={app::url::Home}>"TCGPlayer Automation"</a>
             <nav class={Links} aria-label="Screens">
-                for (screen, label) in PRIMARY.iter() {
-                    <ScreenLink req={req} screen={screen} label={label} />
+                for e in PRIMARY.iter() {
+                    <ScreenLink req={req} screen={&e.screen}>{e.label}</ScreenLink>
                 }
             </nav>
             <div class={End}>
@@ -46,13 +46,13 @@ pub fn AppBar<'a>(req: &'a Req, chrome: Chrome) -> impl Render {
                 </button>
             </div>
             <nav id={SettingsMenuId} class={Menu} popover aria-label="Settings">
-                for (screen, label) in SETTINGS.iter() {
-                    <ScreenLink req={req} screen={screen} label={label} />
+                for e in SETTINGS.iter() {
+                    <ScreenLink req={req} screen={&e.screen}>{e.label}</ScreenLink>
                 }
             </nav>
             <nav id={ScreensMenuId} class={Menu} popover aria-label="All screens">
-                for (screen, label) in PRIMARY.iter().chain(SETTINGS.iter()) {
-                    <ScreenLink req={req} screen={screen} label={label} />
+                for e in PRIMARY.iter().chain(SETTINGS.iter()) {
+                    <ScreenLink req={req} screen={&e.screen}>{e.label}</ScreenLink>
                 }
             </nav>
         </header>

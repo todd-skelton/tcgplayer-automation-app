@@ -13,9 +13,9 @@ use crate::{
     config,
     database::Database,
     features::{
-        batch_pricer, configuration, http_configuration, inventory_economics, inventory_intake,
-        product_price_matrix, publication_configuration, pull_sheet, shipping_configuration,
-        shipping_export, slab_connections,
+        batch_pricer, configuration, dashboard, http_configuration, inventory_economics,
+        inventory_intake, product_price_matrix, publication_configuration, pull_sheet,
+        shipping_configuration, shipping_export, slab_connections,
     },
     layout::{self, Static},
     legacy::{Legacy, forward},
@@ -42,11 +42,11 @@ impl Shared {
     }
 }
 
-/// Every path no ported screen claims is the React app's, its home page included. Handlers are
+/// The home page, and every path no ported screen claims, which is the React app's. Handlers are
 /// named from this module, where the routes module is declared, not from inside it.
 #[corten::routes(state = Shared)]
 pub mod url {
-    #[route("/", get = forward, post = forward)]
+    #[route("/", get = show_home)]
     pub struct Home;
 
     #[route("/{*rest}", get = forward_page, post = forward_page, put = forward_page, patch = forward_page, delete = forward_page)]
@@ -67,6 +67,8 @@ pub mod api {
         pub rest: &'a str,
     }
 }
+
+use dashboard::show as show_home;
 
 // A route with a parameter takes its `Params`, even a catch-all whose handler reads the whole
 // request, so each catch-all gets a handler of its own that passes the request on.
@@ -153,6 +155,7 @@ pub fn app(shared: Shared) -> App {
             layout::SubmitsOnChange,
         ])
         .components(corten_ui::COMPONENTS)
+        .components(dashboard::COMPONENTS)
         .messages::<Msg>()
         // Dates are written in the visitor's zone, as the React screens' `toLocaleString`.
         .client_zone()

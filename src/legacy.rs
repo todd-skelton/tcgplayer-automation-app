@@ -333,10 +333,6 @@ async fn tunnel(
 /// until it names the ported route.
 pub mod screens {
     use corten::{Href, Route, view::AttrValue};
-
-    #[derive(Route)]
-    #[route("/")]
-    pub struct Dashboard;
     #[derive(Route)]
     #[route("/continuous-pricing")]
     pub struct ContinuousPricing;
