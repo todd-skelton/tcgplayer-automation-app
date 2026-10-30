@@ -67,19 +67,25 @@ pub async fn save(
 }
 
 /// One read from the provider with the saved credential. It takes as long as the provider does,
-/// up to the request's 30 seconds; leaving the page cancels it.
+/// up to the request's 30 seconds; leaving the page cancels it, and the provider's lease is
+/// released either way.
 pub async fn check(
     req: Req,
     State(db): State<Database>,
     State(transport): State<Transport>,
     Params(at): Params<url::CheckConnection>,
 ) -> HtmlResult {
-    let signal = req.signal().clone();
     let gate = DatabaseGate(db.clone());
-    let checked = access::check(&transport, &gate, at.provider, async move {
-        signal.aborted().await;
-    })
-    .await;
+    let provider = at.provider;
+    let checked = req
+        .signal()
+        .finish(move |signal| async move {
+            let cancelled = async move {
+                signal.aborted().await;
+            };
+            access::check(&transport, &gate, provider, cancelled).await
+        })
+        .await;
     let found = checked.err().unwrap_or(Status::Connected);
     answer(&req, &db, at.provider, Outcome::Checked(found)).await
 }

@@ -20,7 +20,7 @@ pub async fn check<G: Gate>(
     transport: &Transport,
     gate: &G,
     provider: Provider,
-    cancel: impl Future<Output = ()> + Send + 'static,
+    cancel: impl Future<Output = ()> + Send,
 ) -> Result<(), Status> {
     let (ask, read): (Ask, Check) = match provider {
         Provider::Alt => (Ask::post("/graphql/Me", ALT_ME.to_owned()), read_alt),

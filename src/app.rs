@@ -136,8 +136,9 @@ pub fn app(shared: Shared) -> App {
 mod tests {
     use super::*;
 
-    /// Building the router builds the assets, which refuses two components or ids with the same
-    /// name in different features: otherwise found only when the server starts.
+    /// The router and its assets build. Two components or ids with one name in different
+    /// features fail the build itself since Corten 50d57b3d (corten#368), so this only checks
+    /// that the app starts as the server would.
     #[tokio::test]
     async fn the_app_builds() {
         let shared = Shared {

@@ -104,21 +104,20 @@ impl Transport {
     /// Asks `provider` and answers its body once `check` accepts it. Every failure is a
     /// [`Status`], never the transport's error, which can hold the credential.
     ///
-    /// It runs as a task of its own and is awaited here: a handler's future is dropped when its
-    /// client leaves, and a dropped future cannot release the lease. `cancel` resolving (the
-    /// request's signal) stops the request instead, and the lease is released as cancelled.
+    /// It claims the provider's lease and releases it, so a handler runs it inside
+    /// `Signal::finish`, which finishes it when the handler is dropped. `cancel` resolving (the
+    /// work's signal) stops the request, and the lease is released as cancelled.
     pub async fn request<G: Gate>(
         &self,
         gate: &G,
         provider: Provider,
         ask: Ask,
         check: Check,
-        cancel: impl Future<Output = ()> + Send + 'static,
+        cancel: impl Future<Output = ()> + Send,
     ) -> Result<String, Status> {
-        let (transport, gate) = (self.clone(), gate.clone());
-        tokio::spawn(async move { transport.run(gate, provider, ask, check, cancel).await })
+        self.clone()
+            .run(gate.clone(), provider, ask, check, cancel)
             .await
-            .unwrap_or(Err(Status::Unavailable))
     }
 
     async fn run<G: Gate>(
