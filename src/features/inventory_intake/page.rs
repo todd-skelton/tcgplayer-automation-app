@@ -1,16 +1,16 @@
 use std::collections::{HashMap, HashSet};
 
-use corten::{Mode, Refusal, UrlValue, axum::http::StatusCode, prelude::*};
+use corten::{Mode, Refusal, axum::http::StatusCode, prelude::*};
 use serde::Deserialize;
 
 use super::{
     catalog::{self, Condition, Product, ProductLine, Scope, Set, Shown},
-    pending::{self, Change, Place, Totals},
+    pending::{self, Place, Totals},
     queue::{self, CostRate, Queue, QueueInput},
     url::{self, Selection},
     views::{
-        BATCHES_EVERY, BackgroundBatches, ClearConfirm, Counted, IntakeError, IntakeScreen,
-        QuantityField, QueueForm, QueueNotice, QueueTotals, Queuing, redrawn,
+        BATCHES_EVERY, BackgroundBatches, ClearConfirm, CountForm, Counted, IntakeError,
+        IntakeScreen, QueueForm, QueueNotice, QueueTotals, Queuing, label, redrawn,
     },
 };
 use crate::{
@@ -130,54 +130,17 @@ async fn page(
     })
 }
 
-/// How a count changes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum ChangeKind {
-    Add,
-    Remove,
-    Set,
-}
-
-/// One SKU's count changed by the screen's script: the SKU and where it belongs, the field's
-/// label (to draw it again), the change, and the request id the change is applied once by.
+/// A SKU's count as its form sends it: the count, the count the server last answered (so a count
+/// changed meanwhile is refused), and the key the change is applied once by.
 #[derive(Clone, Debug, Deserialize, Fields)]
 pub struct CountInput {
-    pub sku: i32,
-    pub product: i32,
-    pub set: i32,
-    pub line: i32,
-    pub label: String,
-    pub change: ChangeKind,
     pub quantity: u32,
-    /// For a set, the count the user saw.
-    #[serde(default)]
-    pub seen: Option<u32>,
-    pub request: String,
+    pub seen: u32,
+    pub submit: SubmitKey,
 }
 
-impl CountInput {
-    fn change(&self) -> Change {
-        match self.change {
-            ChangeKind::Add => Change::Add(self.quantity),
-            ChangeKind::Remove => Change::Remove(self.quantity),
-            ChangeKind::Set => Change::Set {
-                quantity: self.quantity,
-                seen: self.seen.unwrap_or(0),
-            },
-        }
-    }
-
-    fn place(&self) -> Place {
-        Place {
-            product_line_id: self.line,
-            set_id: self.set,
-            product_id: self.product,
-        }
-    }
-}
-
-/// The SKU's field with the count stored, the totals, and what went wrong, if anything.
+/// The SKU's form with the count stored, the totals, and what went wrong, if anything. Without
+/// JavaScript, the screen again.
 pub async fn count(
     req: Req,
     State(db): State<Database>,
@@ -185,12 +148,21 @@ pub async fn count(
     Params(at): Params<url::Count>,
     Form(input): Form<CountInput>,
 ) -> HtmlResult {
-    let applied = pending::change(
+    let (product, condition) = catalog::counted(&db, at.sku)
+        .await?
+        .ok_or_else(corten::Error::not_found)?;
+    let place = Place {
+        product_line_id: product.product_line_id,
+        set_id: product.set_id,
+        product_id: product.product_id,
+    };
+    let applied = pending::set(
         &legacy,
-        &input.request,
-        input.sku,
-        input.place(),
-        input.change(),
+        input.submit.as_str(),
+        at.sku,
+        place,
+        input.quantity,
+        input.seen,
     )
     .await;
     if req.mode != Mode::Action {
@@ -200,11 +172,15 @@ pub async fn count(
         });
     }
     let quantities = pending::quantities(&db).await?;
-    let stored = quantities.get(&input.sku).copied().unwrap_or(0);
+    let stored = quantities.get(&at.sku).copied().unwrap_or(0);
     let totals = Totals::of(&quantities);
-    let counted = Counted::from(&input);
+    let label = label(&product, condition);
+    let counted = Counted {
+        sku: at.sku,
+        label: &label,
+    };
     let field = html! {
-        <QuantityField counted={&counted} quantity={stored} />
+        <CountForm counted={&counted} quantity={stored} selection={&at.selection} />
         <QueueTotals totals={totals} counted={&queue::fingerprint(&quantities)} />
         <ClearConfirm selection={&at.selection} totals={totals} />
     };
@@ -223,80 +199,8 @@ pub async fn count(
     }
 }
 
-/// The table's counts without JavaScript: each field is named by its SKU, and those that differ
-/// from what is stored are set, each once by the form's submit key.
-pub async fn save_counts(
-    req: Req,
-    State(db): State<Database>,
-    State(legacy): State<Legacy>,
-    Params(at): Params<url::SaveCounts>,
-    Form(fields): Form<HashMap<String, String>>,
-) -> HtmlResult {
-    let screen = Screen::read(&db, &at.selection).await?;
-    let submit = fields.get("submit").cloned().unwrap_or_default();
-    let mut failed = None;
-    for product in &screen.products {
-        for sku in Condition::ALL
-            .iter()
-            .filter_map(|c| product.sku(*c))
-            .chain(product.unopened)
-        {
-            let Some(typed) = fields.get(&sku.to_string()) else {
-                continue;
-            };
-            let Ok(quantity) = typed.trim().parse::<u32>() else {
-                continue;
-            };
-            let seen = screen.quantities.get(&sku).copied().unwrap_or(0).max(0) as u32;
-            if quantity == seen {
-                continue;
-            }
-            let place = Place {
-                product_line_id: product.product_line_id,
-                set_id: product.set_id,
-                product_id: product.product_id,
-            };
-            let request = format!("{submit}-{sku}");
-            if let Err(message) = pending::change(
-                &legacy,
-                &request,
-                sku,
-                place,
-                Change::Set { quantity, seen },
-            )
-            .await
-            {
-                failed = Some(message);
-            }
-        }
-    }
-    match failed {
-        None => req.redirect(&url::InventoryManager {
-            selection: at.selection,
-            queued: None,
-        }),
-        Some(message) => {
-            let drawn = Drawn {
-                error: Some(&message),
-                ..Drawn::default()
-            };
-            page(&req, &db, &legacy, &at.selection, &drawn).await
-        }
-    }
-}
-
 #[derive(Deserialize, Fields)]
 pub struct ClearInput {
-    pub submit: SubmitKey,
-}
-
-/// The submit key of the table's form without JavaScript, whose other fields are named by SKU.
-#[derive(Deserialize, Fields)]
-#[expect(
-    dead_code,
-    reason = "the struct only names the key's field; the form is read as a map of SKUs"
-)]
-pub struct CountsKey {
     pub submit: SubmitKey,
 }
 
@@ -424,9 +328,10 @@ pub async fn queue_batch(
         {ReadAgain { after: BATCHES_EVERY }.from(&again)}
         for field in &redrawn {
             let counted = field.counted();
-            <QuantityField
+            <CountForm
                 counted={&counted}
                 quantity={screen.quantities.get(&counted.sku).copied().unwrap_or(0)}
+                selection={&selection}
             />
         }
     })

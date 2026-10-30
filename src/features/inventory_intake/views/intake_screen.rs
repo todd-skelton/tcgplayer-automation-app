@@ -6,7 +6,7 @@ use super::{background_batches::BackgroundBatches, queue_bar::QueueBar};
 use crate::{
     features::inventory_intake::{
         catalog::{Condition, LANGUAGES, Product, ProductType, Scope},
-        page::{CountInput, CountsKey, Screen},
+        page::{CountInput, Screen},
         queue::{self, Batches, QueueInput},
         url::{self, Selection},
     },
@@ -30,29 +30,14 @@ pub struct IntakeErrorId;
 pub struct QueueNoticeId;
 #[derive(Id)]
 struct PictureId;
-/// A SKU's count field, `quantity-{sku}`: a count's answer replaces it.
+/// A SKU's count form, `count-{sku}`: a count's answer replaces it.
 #[derive(Id)]
-struct QuantityId(i32);
+struct CountId(i32);
 
 /// A SKU's count field: which SKU, where it belongs, and what it is called.
 pub struct Counted<'a> {
     pub sku: i32,
-    pub product: i32,
-    pub set: i32,
-    pub line: i32,
     pub label: &'a str,
-}
-
-impl<'a> From<&'a CountInput> for Counted<'a> {
-    fn from(input: &'a CountInput) -> Self {
-        Counted {
-            sku: input.sku,
-            product: input.product,
-            set: input.set,
-            line: input.line,
-            label: &input.label,
-        }
-    }
 }
 
 /// How often the background batches are read again, as the React screen polled them.
@@ -76,19 +61,6 @@ pub fn IntakeScreen<'a>(
     queuing: &'a Queuing<'a>,
 ) -> impl Render {
     let (filters, conditions, sets, search, rows, dialog, image) = refs();
-    let (form, sku, product, set, line, label, change, quantity, seen, request) = refs();
-    let count = js::Count {
-        form,
-        sku,
-        product,
-        set,
-        line,
-        label,
-        change,
-        quantity,
-        seen,
-        request,
-    };
     let keys = js::Keys {
         filters,
         conditions,
@@ -97,7 +69,6 @@ pub fn IntakeScreen<'a>(
         rows,
     };
     let f = Selection::FIELDS;
-    let c = CountInput::FIELDS;
     let selection = &screen.selection;
     let searched = selection
         .search
@@ -106,7 +77,7 @@ pub fn IntakeScreen<'a>(
     html! {
         <section
             class={IntakeScreen}
-            on:document:keydown={js::keys(event, target, keys, count)}
+            on:document:keydown={js::keys(event, target, keys)}
             on:focusin={js::focused(event)}
             on:input={js::typed(event)}
         >
@@ -220,13 +191,7 @@ pub fn IntakeScreen<'a>(
                 </label>
                 <noscript><button>"Show"</button></noscript>
             </form>
-            <form
-                method="post"
-                action={url::SaveCounts { selection: selection.clone() }}
-                class={panel()}
-                aria-labelledby={TableHeadingId}
-            >
-                {SubmitKey::field(CountsKey::FIELDS.submit)}
+            <section class={panel()} aria-labelledby={TableHeadingId}>
                 <h2 id={TableHeadingId} class={VisuallyHidden}>"Add new inventory"</h2>
                 <table class={Table}>
                     <thead>
@@ -240,8 +205,8 @@ pub fn IntakeScreen<'a>(
                     </thead>
                     <tbody
                         ref={rows}
-                        on:click={js::clicked(event, count, js::Picture { dialog, image, search })}
-                        on:change={js::committed(event, count)}
+                        on:click={js::clicked(event, js::Picture { dialog, image, search })}
+                        on:change={js::committed(event)}
                         on:connect={js::start(rows, searched)}
                     >
                         for p in &screen.products {
@@ -256,26 +221,8 @@ pub fn IntakeScreen<'a>(
                             _ => "No products match.",
                         }
                     </p>
-                } else {
-                    <noscript><button>"Save counts"</button></noscript>
                 }
-            </form>
-            <form
-                ref={form}
-                method="post"
-                action={url::Count { selection: selection.clone() }}
-                hidden
-            >
-                <input ref={sku} name={c.sku}>
-                <input ref={product} name={c.product}>
-                <input ref={set} name={c.set}>
-                <input ref={line} name={c.line}>
-                <input ref={label} name={c.label}>
-                <input ref={change} name={c.change}>
-                <input ref={quantity} name={c.quantity}>
-                <input ref={seen} name={c.seen}>
-                <input ref={request} name={c.request}>
-            </form>
+            </section>
             <QueueBar
                 selection={selection}
                 totals={screen.totals}
@@ -403,17 +350,14 @@ fn QuantityCell<'a>(
     let sku = condition.map_or(product.unopened, |c| product.sku(c));
     let label = label(product, condition);
     html! {
-        <span class={(Count, shown)}>
+        <span class={shown}>
             if let Some(sku) = sku {
-                let counted = Counted { sku, product: product.product_id, set: product.set_id, line: product.product_line_id, label: &label };
-                <button type="button" tabindex="-1" data-step="-1" aria-label="One fewer">
-                    "−"
-                </button>
-                <QuantityField
+                let counted = Counted { sku, label: &label };
+                <CountForm
                     counted={&counted}
                     quantity={screen.quantities.get(&sku).copied().unwrap_or(0)}
+                    selection={&screen.selection}
                 />
-                <button type="button" data-step="1" aria-label="One more">"+"</button>
             }
         </span>
     }
@@ -421,7 +365,7 @@ fn QuantityCell<'a>(
 
 /// `Pikachu - 025/165 - Common Reverse Holofoil Near Mint quantity`: printings of a product share
 /// its name, so the label names the printing too.
-fn label(product: &Product, condition: Option<Condition>) -> String {
+pub fn label(product: &Product, condition: Option<Condition>) -> String {
     let printing = match product.variant.as_str() {
         "Normal" | "" => String::new(),
         variant => format!(" {variant}"),
@@ -433,27 +377,23 @@ fn label(product: &Product, condition: Option<Condition>) -> String {
     )
 }
 
-/// A count field to draw again: its SKU, its label, and the product it belongs to.
-pub struct Redrawn<'a> {
-    product: &'a Product,
+/// A count to draw again: its SKU and its label.
+pub struct Redrawn {
     sku: i32,
     label: String,
 }
 
-impl Redrawn<'_> {
+impl Redrawn {
     pub fn counted(&self) -> Counted<'_> {
         Counted {
             sku: self.sku,
-            product: self.product.product_id,
-            set: self.product.set_id,
-            line: self.product.product_line_id,
             label: &self.label,
         }
     }
 }
 
 /// The count fields on the screen of the SKUs in `only`: after a queue, those it handed off.
-pub fn redrawn<'a>(products: &'a [Product], only: &HashSet<i32>) -> Vec<Redrawn<'a>> {
+pub fn redrawn(products: &[Product], only: &HashSet<i32>) -> Vec<Redrawn> {
     let mut fields = Vec::new();
     for product in products {
         let conditions: Vec<Option<Condition>> = if product.sealed {
@@ -465,7 +405,6 @@ pub fn redrawn<'a>(products: &'a [Product], only: &HashSet<i32>) -> Vec<Redrawn<
             let sku = condition.map_or(product.unopened, |c| product.sku(c));
             if let Some(sku) = sku.filter(|s| only.contains(s)) {
                 fields.push(Redrawn {
-                    product,
                     sku,
                     label: label(product, condition),
                 });
@@ -475,24 +414,38 @@ pub fn redrawn<'a>(products: &'a [Product], only: &HashSet<i32>) -> Vec<Redrawn<
     fields
 }
 
-/// A SKU's count. It carries where the SKU belongs, for the script to send with a change, and
-/// is named by its SKU for the table's form without JavaScript.
+/// A SKU's count, a form of its own: the script writes the new count into the field and submits
+/// it with `seen`, the count the server last answered, so a count changed meanwhile is refused.
+/// The answer is this form with the count stored. Without JavaScript, Enter in the field sends it.
 #[component(css = IntakeScreen)]
-pub fn QuantityField<'a>(counted: &'a Counted<'a>, quantity: i32) -> impl Patch {
+pub fn CountForm<'a>(
+    counted: &'a Counted<'a>,
+    quantity: i32,
+    selection: &'a Selection,
+) -> impl Patch {
+    let c = CountInput::FIELDS;
     html! {
-        <input
-            id={QuantityId(counted.sku)}
-            class={Quantity}
-            name={counted.sku}
-            value={quantity}
-            inputmode="numeric"
-            autocomplete="off"
-            aria-label={counted.label}
-            data-sku={counted.sku}
-            data-product={counted.product}
-            data-set={counted.set}
-            data-line={counted.line}
+        <form
+            id={CountId(counted.sku)}
+            class={Count}
+            method="post"
+            action={url::Count { sku: counted.sku, selection: selection.clone() }}
+            data-patch
         >
+            <button type="button" tabindex="-1" data-step="-1" aria-label="One fewer">"−"</button>
+            <input
+                class={Quantity}
+                name={c.quantity}
+                value={quantity}
+                inputmode="numeric"
+                autocomplete="off"
+                aria-label={counted.label}
+                data-sku={counted.sku}
+            >
+            <button type="button" data-step="1" aria-label="One more">"+"</button>
+            <input type="hidden" name={c.seen} value={quantity}>
+            {SubmitKey::field(c.submit)}
+        </form>
     }
 }
 

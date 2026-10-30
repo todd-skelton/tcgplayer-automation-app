@@ -6,10 +6,10 @@
 // Up and Down move to the row above or below. Anywhere on the screen: Ctrl+Up and Ctrl+Down (Cmd
 // on a Mac) step the condition, Page Up and Page Down the set.
 //
-// A field shows its new count at once, and the change is sent after the ones before it, each
-// with its own request id, so every step counts once and in order. The answer is the field
-// with the count stored; once a SKU has no change on its way the field shows that count.
-import { keep, patch } from "corten";
+// A field shows its new count at once and its form is sent with it. A change made while one is
+// on its way waits for that answer, then goes with the latest count; the answer is the form with
+// the count stored, which a refused change takes back.
+import { keep } from "corten";
 
 /**
  * The screen's parts the keys move between.
@@ -22,39 +22,20 @@ import { keep, patch } from "corten";
  */
 
 /**
- * The hidden form a change is sent with: its fields are named as the server reads them.
- * @typedef {object} Count
- * @property {HTMLFormElement} form
- * @property {HTMLInputElement} sku
- * @property {HTMLInputElement} product
- * @property {HTMLInputElement} set
- * @property {HTMLInputElement} line
- * @property {HTMLInputElement} label
- * @property {HTMLInputElement} change
- * @property {HTMLInputElement} quantity
- * @property {HTMLInputElement} seen
- * @property {HTMLInputElement} request
- */
-
-/**
  * What the screen keeps between events.
  * @typedef {object} State
- * @property {Promise<void>} queue The changes on their way, one after another.
  * @property {Map<string, number>} baseline Each field's count when it took focus or last sent one, by SKU.
  * @property {Set<string>} typed SKUs whose field was typed into and not sent.
  * @property {Set<string>} untouched SKUs whose field has not changed since it took focus.
- * @property {Map<string, number>} sending Changes sent and not answered, by SKU.
  * @property {string | null} focused The SKU whose field has focus, so a field an answer replaced is not taken as new focus.
  */
 
 /** @returns {State} */
 const state = () =>
   keep(() => ({
-    queue: Promise.resolve(),
     baseline: new Map(),
     typed: new Set(),
     untouched: new Set(),
-    sending: new Map(),
     focused: null,
   }));
 
@@ -76,60 +57,10 @@ const focusField = (field) => {
   field.select();
 };
 
-/**
- * Sends a change to a SKU's count after the ones before it.
- * @param {Count} count @param {HTMLInputElement} field @param {"add" | "remove" | "set"} change
- * @param {number} quantity @param {number} [seen]
- */
-function send(count, field, change, quantity, seen) {
+/** Steps a field's count by `delta`, not below zero. @param {HTMLInputElement} field @param {number} delta */
+function step(field, delta) {
   const s = state();
-  const sku = field.dataset.sku ?? "";
-  count.sku.value = sku;
-  count.product.value = field.dataset.product ?? "";
-  count.set.value = field.dataset.set ?? "";
-  count.line.value = field.dataset.line ?? "";
-  count.label.value = field.getAttribute("aria-label") ?? "";
-  count.change.value = change;
-  count.quantity.value = String(quantity);
-  count.seen.value = String(seen ?? 0);
-  count.seen.disabled = seen === undefined;
-  count.request.value = crypto.randomUUID();
-  const body = new URLSearchParams(/** @type {any} */ (new FormData(count.form)));
-  const url = count.form.action;
-  const rows = /** @type {HTMLElement} */ (count.form.parentElement);
-  s.sending.set(sku, (s.sending.get(sku) ?? 0) + 1);
-  s.queue = s.queue.then(async () => {
-    let ok = false;
-    try {
-      const res = await fetch(url, { method: "POST", headers: { corten: "action" }, body });
-      if (res.headers.has("corten-patch")) await patch(await res.text());
-      ok = res.ok;
-    } catch {
-      // Offline: the field is put back to what is stored below.
-    }
-    const left = (s.sending.get(sku) ?? 1) - 1;
-    if (left > 0) s.sending.set(sku, left);
-    else s.sending.delete(sku);
-    if (!ok || left === 0) settle(s, rows, sku);
-  });
-}
-
-/**
- * Shows the count stored in a SKU's field, unless it is being typed into: an answer keeps what
- * the field showed, so a refused change would otherwise stay on the screen.
- * @param {State} s @param {HTMLElement} screen @param {string} sku
- */
-function settle(s, screen, sku) {
-  const field = screen.querySelector(`input[data-sku="${sku}"]`);
-  if (!(field instanceof HTMLInputElement) || s.typed.has(sku)) return;
-  field.value = field.defaultValue;
-  s.baseline.set(sku, parse(field.defaultValue));
-}
-
-/** Steps a field's count by `delta`, not below zero. @param {HTMLInputElement} field @param {number} delta @param {Count} count */
-function step(field, delta, count) {
-  const s = state();
-  commit(field, count);
+  commit(field);
   const sku = field.dataset.sku ?? "";
   const current = parse(field.value);
   const next = Math.max(0, current + delta);
@@ -137,23 +68,23 @@ function step(field, delta, count) {
   if (next === current) return;
   field.value = String(next);
   s.baseline.set(sku, next);
-  send(count, field, next > current ? "add" : "remove", Math.abs(next - current));
+  field.form?.requestSubmit();
   // Typing next replaces the count rather than adding digits to it.
   if (document.activeElement === field) field.select();
 }
 
-/** Sends what was typed into a field, if it changed the count. @param {HTMLInputElement} field @param {Count} count */
-function commit(field, count) {
+/** Sends what was typed into a field, if it changed the count. @param {HTMLInputElement} field */
+function commit(field) {
   const s = state();
   const sku = field.dataset.sku ?? "";
   if (!s.typed.has(sku)) return;
   s.typed.delete(sku);
   const quantity = parse(field.value);
   field.value = String(quantity);
-  const seen = s.baseline.get(sku) ?? parse(field.defaultValue);
-  if (quantity === seen) return;
+  const before = s.baseline.get(sku) ?? parse(field.defaultValue);
+  if (quantity === before) return;
   s.baseline.set(sku, quantity);
-  send(count, field, "set", quantity, seen);
+  field.form?.requestSubmit();
 }
 
 /** The field of the row `by` rows from the focused one that has a field. @param {HTMLTableSectionElement} rows @param {HTMLInputElement} field @param {number} by */
@@ -190,16 +121,16 @@ function shown(k, from) {
 /**
  * The screen's keys, wherever focus is on the page; keys pressed in something outside the screen
  * (the app bar, a dialog) are that thing's.
- * @param {KeyboardEvent} event @param {HTMLElement} screen @param {Keys} k @param {Count} count
+ * @param {KeyboardEvent} event @param {HTMLElement} screen @param {Keys} k
  */
-export function keys(event, screen, k, count) {
+export function keys(event, screen, k) {
   if (event.defaultPrevented || event.isComposing) return;
   const target = event.target;
   if (target instanceof Node && target !== document.body && !screen.contains(target)) return;
   const primary = (event.ctrlKey || event.metaKey) && !(event.ctrlKey && event.metaKey) && !event.altKey;
   if (primary && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
     event.preventDefault();
-    if (isCount(target)) commit(target, count);
+    if (isCount(target)) commit(target);
     return stepCondition(k, event.key === "ArrowUp" ? -1 : 1, target);
   }
   if (event.ctrlKey || event.altKey || event.metaKey) return;
@@ -207,23 +138,23 @@ export function keys(event, screen, k, count) {
     const key = event.key;
     if (key === "ArrowUp" || key === "ArrowDown") {
       event.preventDefault();
-      commit(target, count);
+      commit(target);
       return move(k.rows, target, key === "ArrowUp" ? -1 : 1);
     }
     if (key === "Enter") {
       event.preventDefault();
       const s = state();
-      if (s.untouched.has(target.dataset.sku ?? "")) step(target, 1, count);
-      else commit(target, count);
+      if (s.untouched.has(target.dataset.sku ?? "")) step(target, 1);
+      else commit(target);
       return focusField(k.search);
     }
     if (key === "+" || key === "=" || event.code === "NumpadAdd") {
       event.preventDefault();
-      return step(target, 1, count);
+      return step(target, 1);
     }
     if (key === "-" || key === "_" || event.code === "NumpadSubtract") {
       event.preventDefault();
-      return step(target, -1, count);
+      return step(target, -1);
     }
   }
   if ((event.key === "PageUp" || event.key === "PageDown") && !k.sets.disabled) {
@@ -263,9 +194,9 @@ export function typed(event) {
   s.untouched.delete(sku);
 }
 
-/** A field left after typing sends what was typed. @param {Event} event @param {Count} count */
-export function committed(event, count) {
-  if (isCount(event.target)) commit(event.target, count);
+/** A field left after typing sends what was typed. @param {Event} event */
+export function committed(event) {
+  if (isCount(event.target)) commit(event.target);
 }
 
 /**
@@ -279,9 +210,9 @@ export function committed(event, count) {
 /**
  * A product's picture opens in the dialog rather than a new tab; the - and + buttons step its
  * count, and + goes back to the search, as the React screen did.
- * @param {MouseEvent} event @param {Count} count @param {Picture} to
+ * @param {MouseEvent} event @param {Picture} to
  */
-export function clicked(event, count, to) {
+export function clicked(event, to) {
   const target = event.target instanceof Element ? event.target : null;
   const link = target?.closest("a");
   if (link) {
@@ -290,10 +221,10 @@ export function clicked(event, count, to) {
     return to.dialog.showModal();
   }
   const button = target?.closest("button[data-step]");
-  const field = button?.parentElement?.querySelector("input");
+  const field = button?.parentElement?.querySelector("input[data-sku]");
   if (!(button instanceof HTMLButtonElement) || !isCount(field)) return;
   const by = Number(button.dataset.step);
-  step(field, by, count);
+  step(field, by);
   if (by > 0) focusField(to.search);
 }
 

@@ -7,7 +7,8 @@ mod queue_bar;
 
 pub use background_batches::BackgroundBatches;
 pub use intake_screen::{
-    BATCHES_EVERY, Counted, IntakeError, IntakeScreen, QuantityField, QueueNotice, Queuing, redrawn,
+    BATCHES_EVERY, CountForm, Counted, IntakeError, IntakeScreen, QueueNotice, Queuing, label,
+    redrawn,
 };
 pub use queue_bar::{ClearConfirm, QueueBar, QueueForm, QueueTotals};
 

@@ -4,14 +4,14 @@
 //! The filters are a GET form, so a set, a search or a product line is a link. Every product of
 //! the set is drawn with a count for each condition, and the condition shown is chosen in the
 //! browser (CSS reads the condition select), so stepping through conditions needs no request.
-//! A count changed with JavaScript is sent on its own, in order, by the screen's script; without
-//! JavaScript the table is one form whose Save button sends every count.
+//! Each count is its own form: the script writes the new count into its field and submits it, and
+//! a change made while one is on its way waits for that answer, then goes with the latest count
+//! (the runtime's order for a `data-patch` write). Without JavaScript, Enter in a field sends it.
 //!
 //! | Route | Answer |
 //! |---|---|
 //! | `GET /inventory-manager` | the screen for the filters in the query |
-//! | `POST /inventory-manager/count` | one SKU's count changed: its field and the totals |
-//! | `POST /inventory-manager/counts` | the table's counts saved (without JavaScript) |
+//! | `POST /inventory-manager/count/{sku}` | one SKU's count set: its form and the totals |
 //! | `POST /inventory-manager/clear` | every count not yet queued removed |
 //! | `POST /inventory-manager/queue` | the counts queued as a pricing batch |
 //! | `GET /inventory-manager/batches` | the background batches again, read every 5 seconds |
@@ -29,7 +29,7 @@ mod views;
 pub use views::COMPONENTS;
 
 // Handlers are named from here, where the routes module is declared.
-use page::{batches, change_rate, clear, count, queue_batch, save_counts, show};
+use page::{batches, change_rate, clear, count, queue_batch, show};
 
 #[corten::routes(area = InventoryManager, state = crate::app::Shared)]
 pub mod url {
@@ -43,14 +43,9 @@ pub mod url {
         pub queued: Option<i32>,
     }
 
-    #[route("/inventory-manager/count", post = count)]
+    #[route("/inventory-manager/count/{sku}", post = count)]
     pub struct Count {
-        #[route(query)]
-        pub selection: Selection,
-    }
-
-    #[route("/inventory-manager/counts", post = save_counts)]
-    pub struct SaveCounts {
+        pub sku: i32,
         #[route(query)]
         pub selection: Selection,
     }

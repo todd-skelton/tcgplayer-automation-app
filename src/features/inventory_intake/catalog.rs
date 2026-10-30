@@ -236,6 +236,36 @@ pub async fn card_number_skus(
     .await
 }
 
+/// The product a SKU counts, as its row draws it, and the SKU's condition (none when sealed).
+pub async fn counted(
+    db: &Database,
+    sku: i32,
+) -> sqlx::Result<Option<(Product, Option<Condition>)>> {
+    let found: Option<Sku> = sqlx::query_as(&format!(
+        "SELECT {SKU_COLUMNS},
+            (SELECT sp.number FROM set_products sp WHERE sp.set_name_id = p.set_id AND sp.product_id = p.product_id LIMIT 1) AS card_number,
+            (SELECT cs.release_date FROM category_sets cs WHERE cs.category_id = p.product_line_id AND cs.set_name_id = p.set_id) AS release_date
+         FROM skus s
+         JOIN products p ON p.product_id = s.product_id
+         WHERE s.sku = $1"
+    ))
+    .bind(sku)
+    .fetch_optional(&db.0)
+    .await?;
+    let Some(sku) = found else {
+        return Ok(None);
+    };
+    let condition = Condition::of(&sku.condition).filter(|_| !sku.sealed);
+    let shown = Shown {
+        product_type: ProductType::All,
+        languages: &[],
+    };
+    Ok(products(vec![sku], &shown)
+        .into_iter()
+        .next()
+        .map(|product| (product, condition)))
+}
+
 /// One row of the table: a product in one printing and language, with its SKU per condition.
 #[derive(Clone, Debug)]
 pub struct Product {

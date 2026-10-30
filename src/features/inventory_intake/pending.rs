@@ -1,7 +1,7 @@
 //! The inventory counted and not yet queued (`pending_inventory`). This reads it; a change goes
 //! through the Node app's `/api/pending-inventory`, whose rules (each change applied once by its
-//! request id, a set refused when the count moved meanwhile, the market price noted when units
-//! are added) stay there until the intake workers move here.
+//! request id, a set refused when the count moved meanwhile, the market price noted when a set
+//! raises the count) stay there until the intake workers move here.
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
@@ -41,18 +41,6 @@ pub struct Place {
     pub product_id: i32,
 }
 
-/// A change to one SKU's count, or to all of them.
-#[derive(Clone, Copy, Debug)]
-pub enum Change {
-    Add(u32),
-    Remove(u32),
-    /// The count to set, and the count the user saw, so a count changed meanwhile is refused.
-    Set {
-        quantity: u32,
-        seen: u32,
-    },
-}
-
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Mutation<'a> {
@@ -73,25 +61,22 @@ struct Applied {
     quantity: i32,
 }
 
-/// Applies a change to a SKU's count once per `request_id`, and gives the count after it.
-pub async fn change(
+/// Sets a SKU's count once per `request_id`, and gives the count after it. `seen` is the count
+/// the user saw, so a count changed meanwhile is refused.
+pub async fn set(
     legacy: &Legacy,
     request_id: &str,
     sku: i32,
     place: Place,
-    change: Change,
+    quantity: u32,
+    seen: u32,
 ) -> Result<i32, String> {
-    let (operation, quantity, expected_quantity) = match change {
-        Change::Add(n) => ("add", n, None),
-        Change::Remove(n) => ("remove", n, None),
-        Change::Set { quantity, seen } => ("set", quantity, Some(seen)),
-    };
     let mutation = Mutation {
-        operation,
+        operation: "set",
         request_id,
         sku: Some(sku),
         quantity: Some(quantity),
-        expected_quantity,
+        expected_quantity: Some(seen),
         place: Some(place),
     };
     let applied: Applied = legacy.send("/api/pending-inventory", &mutation).await?;
