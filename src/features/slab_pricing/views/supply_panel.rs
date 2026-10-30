@@ -26,7 +26,7 @@ struct SupplyBodyId;
 
 /// Asks on unsold listings for the slab researched, shown on request. Context only: it never
 /// changes the recommendation.
-#[component(css)]
+#[component(css = super::slab_screen::SlabScreen)]
 pub fn SupplyPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let choice = &screen.choice;
     let shown = choice.shows_supply();
@@ -61,7 +61,7 @@ pub fn SupplyPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
 }
 
 /// Refreshing the supply, reloading what is saved, and choosing the source shown.
-#[component(css = SupplyPanel)]
+#[component(css = super::slab_screen::SlabScreen)]
 fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
     let choice = &screen.choice;
     let r = RefreshInput::FIELDS;
@@ -117,7 +117,7 @@ fn source_name(status: &EvidenceStatus) -> String {
 
 /// The supply's refreshes and the source shown. Read again with the evidence while a refresh
 /// is on its way.
-#[component(css = SupplyPanel)]
+#[component(css = super::slab_screen::SlabScreen)]
 pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
     let supply = screen.supply.as_ref().and_then(|s| s.as_ref().ok());
     let changed = supply.is_some_and(|s| {
@@ -188,7 +188,7 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
 
 /// The source shown: its counts and lowest asks, a page of its listings, and what changed since
 /// the observation before it.
-#[component(css = SupplyPanel)]
+#[component(css = super::slab_screen::SlabScreen)]
 fn SupplyContext<'a>(
     supply: &'a Supply,
     context: &'a Context,

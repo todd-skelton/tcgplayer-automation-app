@@ -20,19 +20,17 @@ pub fn SheetScreen<'a>(
     filters: &'a SheetQuery,
     t: Msg,
 ) -> impl Render {
-    let at = move |sort: Option<SortBy>| {
-        url::PullSheet {
-            id,
-            filters: SheetQuery {
-                q: sort.and(filters.q.clone()),
-                sort,
-            },
-        }
-        .with_href(str::to_owned)
+    let at = move |sort: Option<SortBy>| url::PullSheet {
+        id,
+        filters: SheetQuery {
+            q: sort.and(filters.q.clone()),
+            sort,
+        },
     };
     html! {
-        let link = |by| at(Some(by));
-        let paging = Paging { action: at(None), keep: Vec::new(), filters, link: &link };
+        let action = at(None);
+        let link = |by| Box::new(at(Some(by))) as Box<dyn Href>;
+        let paging = Paging { action: &action, keep: Vec::new(), filters, link: &link };
         <section>
             <h1>"Pull Sheet"</h1>
             <SheetItems

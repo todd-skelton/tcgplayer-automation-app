@@ -49,19 +49,16 @@ pub fn PullSheetStep<'a>(
         .map(|(n, name)| format!("{n} {name}"))
         .collect();
     let has_lines = batch.orders.iter().any(|o| !o.lines().is_empty());
-    let at = move |sort: Option<SortBy>| {
-        ShippingWorkflow {
-            step: Some(Step::PullSheet),
-            seller: None,
-            edit: None,
-            shipment: None,
-            view: None,
-            filters: SheetQuery {
-                q: sort.and(filters.q.clone()),
-                sort,
-            },
-        }
-        .with_href(str::to_owned)
+    let at = move |sort: Option<SortBy>| ShippingWorkflow {
+        step: Some(Step::PullSheet),
+        seller: None,
+        edit: None,
+        shipment: None,
+        view: None,
+        filters: SheetQuery {
+            q: sort.and(filters.q.clone()),
+            sort,
+        },
     };
     html! {
         if !has_lines && !batch.orders.is_empty() {
@@ -77,9 +74,10 @@ pub fn PullSheetStep<'a>(
                 </Notice>
             }
             Ok(pulled) => {
-                let link = |by| at(Some(by));
+                let action = at(None);
+                let link = |by| Box::new(at(Some(by))) as Box<dyn Href>;
                 let paging = Paging {
-                    action: at(None),
+                    action: &action,
                     keep: vec![("step", "pull-sheet".to_owned())],
                     filters,
                     link: &link,

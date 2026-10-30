@@ -1,4 +1,4 @@
-use corten::prelude::*;
+use corten::{Href, prelude::*};
 use serde::Deserialize;
 
 use super::{ItemCard, ItemRow, SortBy, picture};
@@ -43,12 +43,13 @@ pub struct ShowAs {
 
 /// Where the filter and the sort go without JavaScript, on the page that shows the items: the
 /// filter's GET form, the fields it keeps (`keep`, such as the page's step), and each column's
-/// link. The page's route takes [`SheetQuery`], so the names agree.
+/// link. The page's route takes [`SheetQuery`], so the names agree; each page passes its own
+/// typed route.
 pub struct Paging<'a> {
-    pub action: String,
+    pub action: &'a dyn Href,
     pub keep: Vec<(&'static str, String)>,
     pub filters: &'a SheetQuery,
-    pub link: &'a dyn Fn(SortBy) -> String,
+    pub link: &'a dyn Fn(SortBy) -> Box<dyn Href + 'a>,
 }
 
 /// What is drawn on an item besides the sheet's columns (what it sold for, on the shipping
@@ -92,7 +93,7 @@ pub fn SheetItems<'a>(
         <div>
             <div class={(panel(), mb_4(), Toolbar)}>
                 {lead}
-                <form method="get" action={paging.action.as_str()} class={(row(Space::_2), Filter)}>
+                <form method="get" action={paging.action} class={(row(Space::_2), Filter)}>
                     for (name, value) in &paging.keep {
                         <input type="hidden" name={*name} value={value.as_str()}>
                     }
@@ -155,7 +156,8 @@ pub fn SheetItems<'a>(
                                     aria-sort={(paging.filters.sort == Some(by)).then_some("ascending")}
                                 >
                                     <a
-                                        href={(paging.link)(by).as_str()}
+                                        href={(paging.link)(by).as_ref()}
+                                        // a Box<dyn Href> is not an attribute value (corten#457)
                                         on:click={js::sortBy(event, target, found, by)}
                                     >
                                         {label}

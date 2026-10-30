@@ -379,30 +379,14 @@ async fn tunnel(
 /// type. A screen leaves this list when its port lands, and every link to it then fails to compile
 /// until it names the ported route.
 pub mod screens {
-    use corten::{Href, Route, view::AttrValue};
+    use corten::{Href, Route};
     #[derive(Route)]
     #[route("/inventory-strategy")]
     pub struct InventoryStrategy;
 
-    /// One of them, for lists of screens (the app bar's).
-    #[derive(Clone, Copy)]
+    /// One of them, for lists of screens (the app bar's), written as `href={screen}`.
+    #[derive(Href)]
     pub enum Screen {
-        InventoryStrategy,
-    }
-
-    impl Href for Screen {
-        fn with_href<T>(&self, f: impl FnOnce(&str) -> T) -> T {
-            match self {
-                Screen::InventoryStrategy => InventoryStrategy.with_href(f),
-            }
-        }
-    }
-
-    /// `href={screen}`: a route's derive writes its own attribute, an enum of routes does not
-    /// (corten issue filed by the port), so this writes the URL its `Href` gives.
-    impl AttrValue for Screen {
-        fn write_attr(&self, name: &str, out: &mut String) {
-            self.with_href(|href| href.write_attr(name, out))
-        }
+        InventoryStrategy(InventoryStrategy),
     }
 }

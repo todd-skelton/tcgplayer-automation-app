@@ -27,7 +27,7 @@ use crate::{
 struct MaintenanceStatusId;
 
 /// The seller's evidence maintenance and outcomes, each shown on request.
-#[component(css)]
+#[component(css = super::slab_screen::SlabScreen)]
 pub fn SellerPanels<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let choice = &screen.choice;
     let maintenance_shown = choice.maintenance == Some(true);
@@ -62,7 +62,7 @@ pub fn SellerPanels<'a>(screen: &'a Screen, t: Msg) -> impl Render {
 }
 
 /// The seller's maintenance settings and how its cycles went. Never publishes prices.
-#[component(css = SellerPanels)]
+#[component(css = super::slab_screen::SlabScreen)]
 fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let choice = &screen.choice;
     let seller = choice.seller.as_deref().unwrap_or("");
@@ -147,7 +147,7 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
 
 /// How the seller's cycles went and the connections they use. Read again every five seconds
 /// while maintenance is enabled.
-#[component(css = SellerPanels)]
+#[component(css = super::slab_screen::SlabScreen)]
 pub fn MaintenanceStatusPart<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
     let view = screen.maintenance.as_ref().and_then(|m| m.as_ref().ok());
     let following = view.is_some_and(|v| v.settings.enabled);
@@ -167,7 +167,7 @@ pub fn MaintenanceStatusPart<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
     }
 }
 
-#[component(css = SellerPanels)]
+#[component(css = super::slab_screen::SlabScreen)]
 fn MaintenanceStatusLines<'a>(view: &'a View, t: Msg, visitor: Visitor) -> impl Render {
     let s = &view.settings;
     let at = |when: &Option<String>| {
@@ -242,7 +242,7 @@ fn MaintenanceStatusLines<'a>(view: &'a View, t: Msg, visitor: Visitor) -> impl 
 
 /// Reviewed sales, cancellations and relists for one of the seller's listings, and importing
 /// more. Inventory and prices are unchanged.
-#[component(css = SellerPanels)]
+#[component(css = super::slab_screen::SlabScreen)]
 fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
     let choice = &screen.choice;
     let seller = choice.seller.as_deref().unwrap_or("");

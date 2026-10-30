@@ -23,7 +23,7 @@ use crate::{
 
 /// The link that shows or hides the price-change review of the listing reviewed, and the review
 /// when it is shown.
-#[component(css)]
+#[component(css = super::slab_screen::SlabScreen)]
 pub fn PublicationPanel<'a>(
     screen: &'a Screen,
     listing: &'a Listing,
@@ -85,7 +85,7 @@ pub fn PublicationPanel<'a>(
 
 /// The price to review, the calculated ask or the reviewed one, saved as a preview of the listing
 /// at the revision shown.
-#[component(css = PublicationPanel)]
+#[component(css = super::slab_screen::SlabScreen)]
 fn PrepareForm<'a>(
     screen: &'a Screen,
     listing: &'a Listing,
@@ -128,7 +128,7 @@ fn PrepareForm<'a>(
 
 /// The saved price change: the listing, the old and new price, what it rests on, and whether it
 /// needs replacing.
-#[component(css = PublicationPanel)]
+#[component(css = super::slab_screen::SlabScreen)]
 fn SavedPreview<'a>(preview: &'a Preview, t: Msg, visitor: Visitor) -> impl Render {
     let plan = &preview.plan;
     let inventory = &plan.inventory;
@@ -182,7 +182,7 @@ fn SavedPreview<'a>(preview: &'a Preview, t: Msg, visitor: Visitor) -> impl Rend
 
 /// The preview's publication checked against the imported inventory and recorded, without
 /// writing: its last runs, and the steps of the one asked about.
-#[component(css = PublicationPanel)]
+#[component(css = super::slab_screen::SlabScreen)]
 fn DryRun<'a>(
     screen: &'a Screen,
     preview: &'a Preview,

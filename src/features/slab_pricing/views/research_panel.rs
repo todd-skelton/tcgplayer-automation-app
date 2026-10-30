@@ -28,7 +28,7 @@ struct EvidenceListId;
 
 /// The certificate's research: the grade and sale dates, refreshing the evidence, and what is
 /// saved for them.
-#[component(css)]
+#[component(css = super::slab_screen::SlabScreen)]
 pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl Render {
     let choice = &screen.choice;
     let window = choice.window();
@@ -113,7 +113,7 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
 
 /// The evidence saved for the grade and dates, and where each refresh stands. While one is
 /// queued or running it reads itself again.
-#[component(css = ResearchPanel)]
+#[component(css = super::slab_screen::SlabScreen)]
 pub fn EvidenceList<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
     let statuses: &[EvidenceStatus] = match &screen.research {
         Some(Ok(workspace)) => &workspace.statuses,
@@ -143,7 +143,7 @@ pub fn EvidenceList<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
     }
 }
 
-#[component(css = ResearchPanel)]
+#[component(css = super::slab_screen::SlabScreen)]
 fn EvidenceRow<'a>(
     status: &'a EvidenceStatus,
     choice: &'a Choice,

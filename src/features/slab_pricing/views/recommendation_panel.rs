@@ -21,7 +21,7 @@ use crate::{
 
 /// The owned slab's recommendation: the costs it is calculated from, the market range and ask
 /// it gave, how it used the evidence, and the ask the operator reviewed.
-#[component(css)]
+#[component(css = super::slab_screen::SlabScreen)]
 pub fn RecommendationPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl Render {
     let recommendation = screen.recommendation();
     let can_calculate = screen.can_calculate();
@@ -89,7 +89,7 @@ pub fn RecommendationPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -
 
 /// The comparable price basis and the seller's costs. The listing reviewed gives its ask and
 /// shipping; the rest come from the last calculation.
-#[component(css = RecommendationPanel)]
+#[component(css = super::slab_screen::SlabScreen)]
 fn CostsForm<'a>(
     screen: &'a Screen,
     record: &'a Record,
@@ -185,7 +185,7 @@ fn CostsForm<'a>(
     }
 }
 
-#[component(css = RecommendationPanel)]
+#[component(css = super::slab_screen::SlabScreen)]
 fn BasisSelect<'a>(name: FieldName, chosen: &'a str) -> impl Render {
     html! {
         <select name={name}>
@@ -197,7 +197,7 @@ fn BasisSelect<'a>(name: FieldName, chosen: &'a str) -> impl Render {
 }
 
 /// What the calculation gave: the market range, the proposed ask, and why it may need review.
-#[component(css = RecommendationPanel)]
+#[component(css = super::slab_screen::SlabScreen)]
 fn Outcome<'a>(recommendation: &'a Recommendation, t: Msg, visitor: Visitor) -> impl Render {
     let c = &recommendation.calculation;
     let market = &c.market;
@@ -255,7 +255,7 @@ fn Outcome<'a>(recommendation: &'a Recommendation, t: Msg, visitor: Visitor) -> 
 }
 
 /// Each sold event the calculation accepted, was unsure of, or left out, and why.
-#[component(css = RecommendationPanel)]
+#[component(css = super::slab_screen::SlabScreen)]
 fn EvidenceUsed<'a>(calculation: &'a Calculation) -> impl Render {
     let rows = decisions(calculation);
     html! {
@@ -311,7 +311,7 @@ fn decisions(c: &Calculation) -> Vec<String> {
 }
 
 /// The ask the operator reviewed, and the form that saves another.
-#[component(css = RecommendationPanel)]
+#[component(css = super::slab_screen::SlabScreen)]
 fn ReviewedAsk<'a>(
     screen: &'a Screen,
     recommendation: &'a Recommendation,

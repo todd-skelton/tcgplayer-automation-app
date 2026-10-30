@@ -11,5 +11,5 @@ pub use report_panels::{
     CalibrationPanel, OnPage, Report, ReportPanels, Reports, ShippingReportPanel,
 };
 
-/// `ConfigurationScreen` holds the stylesheet its sections share, `ReportPanels` the reports'.
-pub const COMPONENTS: &[Component] = &[ConfigurationScreen, ReportPanels];
+/// `ConfigurationScreen` holds the stylesheet its sections and the reports share.
+pub const COMPONENTS: &[Component] = &[ConfigurationScreen];

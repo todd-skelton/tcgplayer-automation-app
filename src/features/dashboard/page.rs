@@ -10,7 +10,7 @@ pub const COMPONENTS: &[Component] = &[Dashboard];
 
 pub async fn show(req: Req, State(db): State<Database>) -> HtmlResult {
     let chrome = Chrome::read(&db).await;
-    // The page's view takes what it uses, and `page` borrows `req` too (corten#414).
+    // The view at the top of `html!` owns what it uses, and `page` borrows `req` too.
     let req = &req;
     req.page(html! {
         <Layout req={req} title="Home" chrome={chrome} head="">

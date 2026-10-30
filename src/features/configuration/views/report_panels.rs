@@ -2,8 +2,7 @@
 //! sends it read, so the settings never wait for a report; its window is a GET form to its
 //! report route, which answers the panel (the page without scripts).
 //!
-//! They have their own stylesheet: `css = ConfigurationScreen` works only in that component's
-//! module (corten#377).
+//! They share the configuration screen's stylesheet.
 use chrono::DateTime;
 use corten::prelude::*;
 
@@ -50,9 +49,8 @@ pub struct Reports<'a> {
     pub hurdle: Option<f64>,
 }
 
-/// The shipping report, then the calibration. Each panel is its own section, patched on its own;
-/// this owns the stylesheet they share.
-#[component(css)]
+/// The shipping report, then the calibration. Each panel is its own section, patched on its own.
+#[component(css = super::configuration_screen::ConfigurationScreen)]
 pub fn ReportPanels<'a>(reports: &'a Reports<'a>) -> impl Render {
     html! {
         match reports.shipping {
@@ -120,7 +118,7 @@ fn date(value: &str) -> String {
 }
 
 /// A window select that reads the panel again when it changes; a Show button without scripts.
-#[component(css = ReportPanels)]
+#[component(css = super::configuration_screen::ConfigurationScreen)]
 fn WindowChoice<'a>(days: u32, windows: &'a [u32], label: &'a str) -> impl Render {
     let f = Window::FIELDS;
     html! {
@@ -140,7 +138,7 @@ fn WindowChoice<'a>(days: u32, windows: &'a [u32], label: &'a str) -> impl Rende
     }
 }
 
-#[component(css = ReportPanels)]
+#[component(css = super::configuration_screen::ConfigurationScreen)]
 pub fn CalibrationPanel<'a>(
     days: u32,
     report: Report<'a, Calibration>,
@@ -263,7 +261,7 @@ fn SaleGroupRow<'a>(label: &'a str, group: &'a SaleGroup) -> impl Render {
 
 /// What shipping costs at each threshold, learned from recent orders, and what snapping did over
 /// the chosen window. A snaps save reads it again.
-#[component(css = ReportPanels)]
+#[component(css = super::configuration_screen::ConfigurationScreen)]
 pub fn ShippingReportPanel<'a>(days: u32, report: Report<'a, Shipping>) -> impl Patch {
     let at = url::ShippingReport {
         window: Window { days: Some(days) },

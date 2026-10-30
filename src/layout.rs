@@ -152,7 +152,9 @@ pub const PRIMARY: [Entry; 10] = [
         icons::PRICE_CHECK,
     ),
     entry(
-        Screen::Legacy(screens::Screen::InventoryStrategy),
+        Screen::Legacy(screens::Screen::InventoryStrategy(
+            screens::InventoryStrategy,
+        )),
         "Inventory Strategy",
         "Pricing hurdle, capital turnaround, and selling speed",
         icons::QUERY_STATS,

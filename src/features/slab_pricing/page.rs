@@ -287,7 +287,7 @@ pub async fn maintenance_status(
 ) -> HtmlResult {
     let screen = Screen::read(&db, &legacy, &at.choice, Visitor::of(zone.as_ref())).await?;
     let t: Msg = req.t();
-    // The markup moves the locals it uses (corten#414).
+    // The view at the top of `html!` owns what it uses; the fallback page reads `screen` too.
     let screen = &screen;
     let status = html! { <MaintenanceStatusPart screen={screen} t={t} /> };
     req.patch_or(status, || async { page(&req, &db, screen).await })
@@ -305,7 +305,7 @@ pub async fn evidence(
 ) -> HtmlResult {
     let screen = Screen::read(&db, &legacy, &at.choice, Visitor::of(zone.as_ref())).await?;
     let t: Msg = req.t();
-    // The markup moves the locals it uses (corten#414).
+    // The view at the top of `html!` owns what it uses; the fallback page reads `screen` too.
     let screen = &screen;
     let list = html! {
         <EvidenceList screen={screen} t={t} />

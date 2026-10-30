@@ -177,7 +177,7 @@ async fn labels_page(
     let lookup_problem = found.as_ref().and_then(|f| f.as_ref().err().cloned());
     let problem = problem.or(lookup_problem.as_deref());
     let found = found.and_then(Result::ok);
-    // Borrowed by the form and by the view, so the view takes the reference (corten #414).
+    // Read by the form and by the view, which owns what it uses, so both take the reference.
     let found = found.as_ref();
     let t: Msg = req.t();
     let mode = EasyPostMode::of_deployment();
