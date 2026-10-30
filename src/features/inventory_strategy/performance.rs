@@ -11,6 +11,9 @@ use serde::Serialize;
 pub const PERFORMANCE_WINDOWS: [i64; 2] = [30, 90];
 /// Weeks of selling the margin trend reaches back.
 pub const MARGIN_TREND_WEEKS: i64 = 26;
+/// How far before the trend pricing history is read, so its first change has a configuration
+/// to compare with.
+pub const PRICING_HISTORY_LEAD_DAYS: i64 = 56;
 /// Weeks blended into the trailing margin that smooths week-to-week noise.
 pub const TRAILING_MARGIN_WEEKS: i64 = 4;
 

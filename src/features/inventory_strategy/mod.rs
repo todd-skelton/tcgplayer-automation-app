@@ -3,6 +3,7 @@
 //! (`legacy::screens::InventoryStrategy`) until its views land here.
 #![allow(dead_code, reason = "the domain lands before the screen that reads it")]
 pub mod performance;
+pub mod pricing_changes;
 pub mod sold_units;
 
 #[cfg(test)]

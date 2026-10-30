@@ -4,7 +4,7 @@
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
-use super::{performance, sold_units};
+use super::{performance, pricing_changes, sold_units};
 use crate::database::Database;
 
 /// Two JSON values equal but for floating point noise in numbers.
@@ -65,5 +65,16 @@ async fn strategy_matches_node() {
         "weeks",
         &serde_json::to_value(&weeks).unwrap(),
         &node["marginTrend"]["weeks"],
+    );
+    let since = now
+        - chrono::Duration::days(
+            performance::MARGIN_TREND_WEEKS * 7 + performance::PRICING_HISTORY_LEAD_DAYS,
+        );
+    let history = pricing_changes::history(&db, since).await.unwrap();
+    let changes = pricing_changes::describe(&history, &weeks[0].week_start);
+    same(
+        "pricingChanges",
+        &serde_json::to_value(&changes).unwrap(),
+        &node["marginTrend"]["pricingChanges"],
     );
 }

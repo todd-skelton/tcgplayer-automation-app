@@ -27,7 +27,8 @@
 //! browser's localStorage (`tcgplayer-file-config`, `tcgplayer-form-defaults`). Only screens
 //! still in React read them, and the batch form still saves its seller key there; they are
 //! decided with the inventory intake and batch pricer ports.
-mod config;
+/// The stored pricing configuration, also read by the strategy (what changed between pricing runs).
+pub mod config;
 mod form;
 mod page;
 mod reports;
