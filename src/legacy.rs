@@ -374,19 +374,3 @@ async fn tunnel(
     });
     Ok(switch.into())
 }
-
-/// The screens the React app still serves, as link-only routes so the app bar names each by a
-/// type. A screen leaves this list when its port lands, and every link to it then fails to compile
-/// until it names the ported route.
-pub mod screens {
-    use corten::{Href, Route};
-    #[derive(Route)]
-    #[route("/inventory-strategy")]
-    pub struct InventoryStrategy;
-
-    /// One of them, for lists of screens (the app bar's), written as `href={screen}`.
-    #[derive(Href)]
-    pub enum Screen {
-        InventoryStrategy(InventoryStrategy),
-    }
-}

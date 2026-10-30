@@ -19,7 +19,7 @@
 //!
 //! A post the Node app refuses answers 409 with the page and why.
 mod actions;
-mod store;
+pub mod store;
 mod views;
 
 pub use views::COMPONENTS;

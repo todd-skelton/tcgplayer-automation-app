@@ -6,10 +6,10 @@ use crate::{
     database::Database,
     features::{
         batch_pricer, configuration, continuous_pricing, data_management, http_configuration,
-        inventory_economics, inventory_intake, product_price_matrix, publication_configuration,
-        pull_sheet, shipping_configuration, shipping_export, slab_connections, slab_pricing,
+        inventory_economics, inventory_intake, inventory_strategy, product_price_matrix,
+        publication_configuration, pull_sheet, shipping_configuration, shipping_export,
+        slab_connections, slab_pricing,
     },
-    legacy::screens,
     theme::*,
 };
 
@@ -78,7 +78,7 @@ pub fn Layout<'a>(
     }
 }
 
-/// A screen in the app bar: where it is, and whether this app serves it or the React app does.
+/// A screen in the app bar.
 pub enum Screen {
     InventoryManager,
     BatchPricer,
@@ -94,7 +94,7 @@ pub enum Screen {
     SlabPricing,
     PublicationConfiguration,
     Configuration,
-    Legacy(screens::Screen),
+    InventoryStrategy,
 }
 
 /// A screen as the menus and the dashboard list it, as `appNavigation`'s items.
@@ -152,9 +152,7 @@ pub const PRIMARY: [Entry; 10] = [
         icons::PRICE_CHECK,
     ),
     entry(
-        Screen::Legacy(screens::Screen::InventoryStrategy(
-            screens::InventoryStrategy,
-        )),
+        Screen::InventoryStrategy,
         "Inventory Strategy",
         "Pricing hurdle, capital turnaround, and selling speed",
         icons::QUERY_STATS,
@@ -287,7 +285,13 @@ pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, children: impl Render) -
             Screen::Configuration => {
                 <a {..req.nav(&configuration::url::Configuration { done: None })}>{children}</a>
             }
-            Screen::Legacy(legacy) => <a href={*legacy} data-reload>{children}</a>,
+            Screen::InventoryStrategy => {
+                <a
+                    {..req.nav(&inventory_strategy::url::InventoryStrategy { view: Default::default() })}
+                >
+                    {children}
+                </a>
+            }
         }
     }
 }

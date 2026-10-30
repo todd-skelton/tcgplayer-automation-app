@@ -14,9 +14,9 @@ use crate::{
     database::Database,
     features::{
         batch_pricer, configuration, continuous_pricing, dashboard, data_management,
-        http_configuration, inventory_economics, inventory_intake, product_price_matrix,
-        publication_configuration, pull_sheet, shipping_configuration, shipping_export,
-        slab_connections, slab_pricing,
+        http_configuration, inventory_economics, inventory_intake, inventory_strategy,
+        product_price_matrix, publication_configuration, pull_sheet, shipping_configuration,
+        shipping_export, slab_connections, slab_pricing,
     },
     layout::{self, Static},
     legacy::{Legacy, forward},
@@ -132,6 +132,13 @@ pub fn app(shared: Shared) -> App {
             inventory_economics::url::area(area, shared.clone())
                 .components(inventory_economics::COMPONENTS)
         })
+        // Refreshing reads the seller's whole inventory from TCGplayer before it answers; the
+        // dashboard's first build models every in-stock SKU.
+        .area(|area| {
+            inventory_strategy::url::area(area, shared.clone())
+                .components(inventory_strategy::COMPONENTS)
+                .deadline(Some(Duration::from_secs(5 * 60)))
+        })
         // Suggested pricing reads the product's sales and models each SKU's price on the Node app.
         .area(|area| {
             product_price_matrix::url::area(area, shared.clone())
@@ -182,6 +189,10 @@ pub fn app(shared: Shared) -> App {
         .client_zone()
         // TCGplayer's product pictures.
         .policy(Policy::new().img_src("https://tcgplayer-cdn.tcgplayer.com"))
+        .task("forecast evidence backfill", {
+            let db = shared.db.clone();
+            move |signal| inventory_strategy::backfill::run(db, signal)
+        })
         .ready(move || {
             let db = ready.clone();
             async move { db.reachable().await }

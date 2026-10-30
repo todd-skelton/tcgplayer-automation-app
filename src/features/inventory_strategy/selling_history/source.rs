@@ -12,7 +12,8 @@ use crate::{database::Database, features::inventory_economics::ledger::proceeds:
 pub const EPISODE_LIMIT: i64 = 20_000;
 pub const OUTCOME_LIMIT: i64 = 40_000;
 /// Publications the selling history may complete with their pricing result per page load.
-const BACKFILL_LIMIT: i64 = 500;
+/// The most items one backfill records, as the Node app's page load asked for.
+pub const BACKFILL_LIMIT: i64 = 500;
 
 const OBSERVATION_SQL: &str = r##"SELECT cutoff_at AS "cutoffAt"
 FROM inventory_complete_observations
@@ -520,8 +521,9 @@ UPDATE inventory_publication_items item SET
   forecast_evidence_provenance='recorded',updated_at=NOW()
 FROM supported WHERE item.id=supported.id RETURNING item.id"##;
 
-/// The report for one page of details: completes forecast evidence first, as the Node app does
-/// on every load, so the details show what each item was priced with.
+/// The report for one page of details. Only reads: the forecast evidence the details show is
+/// completed by the backfill task (`super::super::backfill`), where the Node app completed it on
+/// every load.
 pub async fn load(
     db: &Database,
     seller: &str,
@@ -538,7 +540,6 @@ pub async fn load(
             order_coverage: OrderCoverage::not_started(""),
         })));
     }
-    backfill_supported_forecast_evidence(db, seller, BACKFILL_LIMIT).await?;
     let evidence = find_evidence(db, seller, scope)
         .await
         .map_err(|e| e.to_string())?;
