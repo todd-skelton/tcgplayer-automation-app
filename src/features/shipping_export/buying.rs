@@ -7,7 +7,7 @@ use serde::Deserialize;
 use super::{
     editing::ShipmentInput,
     page::{Shown, page, plan, refused},
-    postage::{self, Buying, Scope, Status},
+    postage::{self, Scope, Status},
     shipments::{self, Batch, Direction, Planned},
     steps::Step,
     url::{self, ShippingWorkflow},
@@ -45,7 +45,7 @@ pub async fn buy_all(
 ) -> HtmlResult {
     let visitor = Visitor::of(zone.as_ref());
     let mode = EasyPostMode::of_deployment();
-    let Some(_buying) = Buying::start() else {
+    let Some(_buying) = postage::BUYING.start() else {
         return refused(&req, &db, &legacy, visitor, Step::BuyPostage, BUYING).await;
     };
     if let Some(why) = cannot_buy(mode) {
@@ -107,7 +107,7 @@ pub async fn buy_shipment(
     let mode = EasyPostMode::of_deployment();
     let reference = at.reference;
     let direction = input.direction;
-    let Some(_buying) = Buying::start() else {
+    let Some(_buying) = postage::BUYING.start() else {
         return refused(&req, &db, &legacy, visitor, Step::BuyPostage, BUYING).await;
     };
     if let Some(why) = cannot_buy(mode) {

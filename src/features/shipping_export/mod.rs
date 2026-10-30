@@ -25,6 +25,7 @@
 //! | `POST /shipping-export/new-batch` | the batch dropped |
 mod buying;
 mod editing;
+mod one_at_a_time;
 mod orders;
 mod pack;
 mod packing;

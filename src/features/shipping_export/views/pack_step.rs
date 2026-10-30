@@ -110,8 +110,10 @@ fn ViewChoice<'a>(packing: &'a Packing<'a>) -> impl Render {
 }
 
 /// Marks a shipment packed, or not: the form says which, so sending it twice does the same.
+/// `form` is the form, for the card view's Space.
 #[component(css = PackStep)]
 fn PackedToggle<'a>(
+    form: Ref<el::HTMLFormElement>,
     reference: &'a str,
     packed: bool,
     view: PackView,
@@ -120,6 +122,7 @@ fn PackedToggle<'a>(
     let f = PackedInput::FIELDS;
     html! {
         <form
+            ref={form}
             method="post"
             action={url::ShipmentPacked { reference: reference.to_owned() }}
             class={Toggle}
@@ -203,25 +206,13 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                     </span>
                 }
                 <span class={Spacer}></span>
-                <form
-                    ref={toggle}
-                    method="post"
-                    action={url::ShipmentPacked { reference: reference.to_owned() }}
-                    class={Toggle}
-                >
-                    <input
-                        type="hidden"
-                        name={PackedInput::FIELDS.packed}
-                        value={if current.packed { "false" } else { "true" }}
-                    >
-                    <input type="hidden" name={PackedInput::FIELDS.view} value={PackView::Card}>
-                    <button
-                        aria-pressed={if current.packed { "true" } else { "false" }}
-                        class={current.packed.then_some(Packed)}
-                    >
-                        if current.packed { "☑ Packed" } else { "☐ Mark Packed" }
-                    </button>
-                </form>
+                <PackedToggle
+                    form={toggle}
+                    reference={reference}
+                    packed={current.packed}
+                    view={PackView::Card}
+                    label={if current.packed { "Packed" } else { "Mark Packed" }}
+                />
                 <span
                     class={Hint}
                     title="Space marks the shipment packed and moves to the next one, or unmarks a packed one. Left and right arrows move between shipments."
@@ -292,6 +283,7 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
 #[component(css = PackStep)]
 fn PackList<'a>(packing: &'a Packing<'a>, t: Msg) -> impl Render {
     let current = packing.card.as_ref().map(|c| c.index);
+    let forms = refs();
     html! {
         <section class={Shipment}>
             <header class={Head}>
@@ -317,6 +309,7 @@ fn PackList<'a>(packing: &'a Packing<'a>, t: Msg) -> impl Render {
                             <tr aria-current={(current == Some(i)).then_some("true")}>
                                 <td>
                                     <PackedToggle
+                                        form={forms}
                                         reference={row.planned.reference()}
                                         packed={row.packed}
                                         view={PackView::List}
