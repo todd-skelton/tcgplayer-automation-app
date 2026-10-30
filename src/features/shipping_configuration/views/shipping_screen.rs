@@ -8,7 +8,6 @@ use crate::{
         url,
     },
     layout::{Field, Notice, Tone},
-    legacy::screens,
     theme::*,
 };
 
@@ -36,7 +35,11 @@ pub fn ShippingScreen<'a>(
                     <span>
                         "These settings are stored on the server and used by the shipping export tool when it loads live seller orders and generates EasyPost shipment rows."
                     </span>
-                    <a href={screens::ShippingExport} data-reload>"Open Shipping Export"</a>
+                    <a
+                        href={crate::features::shipping_export::url::ShippingWorkflow { step: None, seller: None, filters: Default::default() }}
+                    >
+                        "Open Shipping Export"
+                    </a>
                 </div>
             </Notice>
             match done {

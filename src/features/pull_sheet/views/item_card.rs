@@ -5,10 +5,16 @@ use crate::features::pull_sheet::items::{Finish, Grade, Item, Printing};
 
 /// A card to pull, as its picture: the border and the panel colored by condition, a shimmer for
 /// a holo or reverse holo, a badge for a first edition, and the quantity when more than one. A
-/// click on the picture hides the details over it (a checkbox CSS reads, no script). A view, so
-/// the sheet's filter and sort read its `search` text and move it by its key.
+/// click on the picture hides the details over it (a checkbox CSS reads, no script). `detail` is
+/// drawn under the details (what the card sold for, on the shipping workflow). A view, so the
+/// sheet's filter and sort read its `search` text and move it by its key.
 #[component(view, css)]
-pub fn ItemCard<'a>(key: usize, search: &'a str, item: &'a Item) -> impl Render {
+pub fn ItemCard<'a>(
+    key: usize,
+    search: &'a str,
+    item: &'a Item,
+    detail: Option<&'a dyn Render>,
+) -> impl Render {
     let condition = item.shown_condition();
     let grade = match Grade::of(condition) {
         Grade::NearMint => NearMint,
@@ -62,6 +68,7 @@ pub fn ItemCard<'a>(key: usize, search: &'a str, item: &'a Item) -> impl Render 
                         }
                     </span>
                     <small>{&item.product_line}" | "{&item.rarity}</small>
+                    {detail}
                 </span>
             </label>
         </article>

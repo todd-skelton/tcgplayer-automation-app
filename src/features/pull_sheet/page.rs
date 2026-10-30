@@ -95,19 +95,7 @@ pub async fn show(
     let skus = items::find_skus(&db, &parsed.rows).await?;
     let mut all = items::items(parsed.rows, &skus);
     let summary = Summary::of(&all, parsed.order_ids.len());
-    if let Some(q) = at
-        .filters
-        .q
-        .as_deref()
-        .map(str::trim)
-        .filter(|q| !q.is_empty())
-    {
-        let q = q.to_lowercase();
-        all.retain(|item| item.search_text().contains(&q));
-    }
-    if let Some(by) = at.filters.sort {
-        sort(&mut all, by);
-    }
+    shown(&mut all, &at.filters);
     let t: Msg = req.t();
     let file_name = stored.file_name.as_str();
     req.page(html! {
@@ -122,6 +110,23 @@ pub async fn show(
             />
         </Layout>
     })
+}
+
+/// The items the filter matches, in the order the sort asks for: what the page shows without
+/// JavaScript.
+pub fn shown(items: &mut Vec<Item>, filters: &url::SheetQuery) {
+    if let Some(q) = filters
+        .q
+        .as_deref()
+        .map(str::trim)
+        .filter(|q| !q.is_empty())
+    {
+        let q = q.to_lowercase();
+        items.retain(|item| item.search_text().contains(&q));
+    }
+    if let Some(by) = filters.sort {
+        sort(items, by);
+    }
 }
 
 /// The order the table's column links ask for, as the browser sorts it with JavaScript.

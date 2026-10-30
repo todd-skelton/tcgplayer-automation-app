@@ -4,7 +4,8 @@ use crate::features::pull_sheet::items::{Finish, Grade, Printing};
 
 /// A card to pull, as a table row. A view: the filter reads `search`, and each column's sort
 /// reads its field (`name`, `set`, `quantity`, ...) by name. The picture is a link to it, which
-/// the sheet's one handler on the table body opens in a dialog instead.
+/// the sheet's one handler on the table body opens in a dialog instead. A `detail` is a last
+/// column.
 #[component(view, css)]
 pub fn ItemRow<'a>(
     key: usize,
@@ -21,6 +22,7 @@ pub fn ItemRow<'a>(
     order: &'a str,
     picture: Option<String>,
     open: Ref<el::HTMLAnchorElement>,
+    detail: Option<&'a dyn Render>,
 ) -> impl Render {
     let tone = match grade {
         Grade::NearMint => NearMint,
@@ -64,6 +66,9 @@ pub fn ItemRow<'a>(
             <td class={Number}>{quantity}</td>
             <td>{product_line}</td>
             <td><code>{order}</code></td>
+            if let Some(detail) = detail {
+                <td>{detail}</td>
+            }
         </tr>
     }
 }

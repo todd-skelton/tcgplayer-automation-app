@@ -14,6 +14,13 @@ mod views;
 
 pub use views::COMPONENTS;
 
+pub use config::{Address, EasyPostMode, LabelFormat, LabelSize, Package, Service, ShippingConfig};
+
+/// The saved settings, each key a row lacks at its default.
+pub async fn settings(db: &crate::database::Database) -> sqlx::Result<ShippingConfig> {
+    config::load(db).await
+}
+
 /// The seller the shop ships and publishes for, or empty when none is set.
 pub async fn default_seller_key(db: &crate::database::Database) -> sqlx::Result<String> {
     Ok(config::load(db).await?.default_seller_key)

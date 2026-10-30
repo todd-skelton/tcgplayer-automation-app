@@ -27,6 +27,8 @@ pub struct Item {
     pub rarity: String,
     pub quantity: u32,
     pub order_quantity: String,
+    /// The SKU the sheet names, when it is a number.
+    pub sku_id: Option<i64>,
     pub catalog: Option<CatalogSku>,
 }
 
@@ -111,6 +113,7 @@ pub fn items(rows: Vec<SheetRow>, skus: &HashMap<i32, CatalogSku>) -> Vec<Item> 
                 number: row.number,
                 set: row.set,
                 rarity: row.rarity,
+                sku_id: row.sku_id.trim().parse().ok(),
                 order_quantity: row.order_quantity,
                 catalog,
             }

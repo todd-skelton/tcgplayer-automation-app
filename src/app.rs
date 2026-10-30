@@ -14,7 +14,8 @@ use crate::{
     database::Database,
     features::{
         batch_pricer, configuration, http_configuration, inventory_intake,
-        publication_configuration, pull_sheet, shipping_configuration, slab_connections,
+        publication_configuration, pull_sheet, shipping_configuration, shipping_export,
+        slab_connections,
     },
     layout::{self, Static},
     legacy::{Legacy, forward},
@@ -110,6 +111,13 @@ pub fn app(shared: Shared) -> App {
             http_configuration::url::area(area, shared.clone())
                 .components(http_configuration::COMPONENTS)
         })
+        // Loading the Ready to Ship queue reads every order and its market prices from TCGplayer,
+        // and a bulk postage purchase waits on EasyPost for each label.
+        .area(|area| {
+            shipping_export::url::area(area, shared.clone())
+                .components(shipping_export::COMPONENTS)
+                .deadline(Some(Duration::from_secs(5 * 60)))
+        })
         .area(|area| {
             shipping_configuration::url::area(area, shared.clone())
                 .components(shipping_configuration::COMPONENTS)
@@ -170,6 +178,7 @@ mod tests {
             .add::<pull_sheet::SortBy>()
             .components(pull_sheet::COMPONENTS)
             .components(batch_pricer::COMPONENTS)
+            .components(shipping_export::COMPONENTS)
             .sync(concat!(env!("CARGO_MANIFEST_DIR"), "/types/app.d.ts"));
     }
 }

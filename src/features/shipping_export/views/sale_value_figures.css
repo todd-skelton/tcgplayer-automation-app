@@ -1,0 +1,43 @@
+.sale-value-figures {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space-3);
+  row-gap: 2px;
+  margin: 0;
+  font-size: var(--font-size-sm);
+  & > div {
+    white-space: nowrap;
+  }
+  & dt {
+    display: inline;
+    margin-inline-end: var(--space-1);
+    opacity: 0.7;
+  }
+  & dd {
+    display: inline;
+    margin: 0;
+  }
+}
+.sub {
+  margin-inline-end: var(--space-1);
+  opacity: 0.7;
+}
+.delta {
+  font-weight: 600;
+}
+.above {
+  color: var(--color-ok);
+}
+.below {
+  color: var(--color-danger);
+}
+/* Over card art: lighter tones that stay readable. */
+.on-image {
+  font-size: 0.75rem;
+  & .above {
+    color: #a5d6a7;
+  }
+  & .below {
+    color: #ef9a9a;
+  }
+}

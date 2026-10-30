@@ -56,13 +56,67 @@ impl Legacy {
     /// ported screen whose computation is still the Node app's. An error is the message the route
     /// gave (`{"error": ".."}`), or why there was none to read.
     pub async fn read<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T, String> {
+        self.read_with(path, &()).await
+    }
+
+    /// [`Legacy::read`] with `query` added to the path's query string.
+    pub async fn read_with<T: serde::de::DeserializeOwned, Q: serde::Serialize>(
+        &self,
+        path: &str,
+        query: &Q,
+    ) -> Result<T, String> {
         let answer = self
             .http
             .get(format!("{}{path}", self.origin))
+            .query(query)
             .send()
             .await
             .map_err(|_| "The Node app did not answer.".to_owned())?;
         Self::answer(answer).await
+    }
+
+    /// What one of the Node app's routes answers to `body` posted as JSON when the answer is a
+    /// file (a CSV, a PDF): its type, its name if it gives one, and its bytes.
+    pub async fn send_for_file<B: serde::Serialize>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<Answered, String> {
+        let body = serde_json::to_vec(body).map_err(|e| e.to_string())?;
+        let answer = self
+            .http
+            .post(format!("{}{path}", self.origin))
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(body)
+            .send()
+            .await
+            .map_err(|_| "The Node app did not answer.".to_owned())?;
+        if !answer.status().is_success() {
+            return Err(Self::answer::<serde_json::Value>(answer)
+                .await
+                .err()
+                .unwrap_or_else(|| "The Node app could not do it.".to_owned()));
+        }
+        let text = |name| {
+            answer
+                .headers()
+                .get(name)
+                .and_then(|v| v.to_str().ok())
+                .map(str::to_owned)
+        };
+        let (content_type, disposition) = (
+            text(header::CONTENT_TYPE),
+            text(header::CONTENT_DISPOSITION),
+        );
+        let bytes = answer
+            .bytes()
+            .await
+            .map_err(|_| "The Node app stopped answering.".to_owned())?;
+        Ok(Answered {
+            content_type: content_type.unwrap_or_else(|| "application/octet-stream".into()),
+            file_name: disposition.as_deref().and_then(file_name),
+            bytes: bytes.to_vec(),
+        })
     }
 
     /// What one of the Node app's JSON routes answers to `body` posted as JSON: for a write whose
@@ -139,6 +193,50 @@ impl Legacy {
         Err(serde_json::from_slice::<Refusal>(&body)
             .map_or_else(|_| "The Node app could not do it.".to_owned(), |r| r.error))
     }
+}
+
+/// A file one of the Node app's routes answered with.
+#[allow(
+    dead_code,
+    reason = "the packing slips the Print step opens use its type and name"
+)]
+pub struct Answered {
+    pub content_type: String,
+    /// The name its `Content-Disposition` gives, if any.
+    pub file_name: Option<String>,
+    pub bytes: Vec<u8>,
+}
+
+/// The file name a `Content-Disposition` gives: `filename*=UTF-8''..` first, then `filename=`.
+fn file_name(disposition: &str) -> Option<String> {
+    let value = |key: &str| {
+        disposition
+            .split(';')
+            .map(str::trim)
+            .find_map(|part| part.strip_prefix(key))
+            .map(|v| v.trim().trim_matches('"').to_owned())
+            .filter(|v| !v.is_empty())
+    };
+    value("filename*=UTF-8''")
+        .map(|encoded| percent_decoded(&encoded).unwrap_or(encoded))
+        .or_else(|| value("filename="))
+}
+
+fn percent_decoded(text: &str) -> Option<String> {
+    let bytes = text.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' {
+            let hex = text.get(i + 1..i + 3)?;
+            out.push(u8::from_str_radix(hex, 16).ok()?);
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8(out).ok()
 }
 
 /// The request's headers as the Node app should see them. `Host` stays the browser's, as nginx
@@ -255,9 +353,6 @@ pub mod screens {
     #[route("/inventory-economics")]
     pub struct InventoryEconomics;
     #[derive(Route)]
-    #[route("/shipping-export")]
-    pub struct ShippingExport;
-    #[derive(Route)]
     #[route("/data-management")]
     pub struct DataManagement;
 
@@ -269,7 +364,6 @@ pub mod screens {
         ProductPriceMatrix,
         InventoryStrategy,
         InventoryEconomics,
-        ShippingExport,
         DataManagement,
     }
 
@@ -281,7 +375,6 @@ pub mod screens {
                 Screen::ProductPriceMatrix => ProductPriceMatrix.with_href(f),
                 Screen::InventoryStrategy => InventoryStrategy.with_href(f),
                 Screen::InventoryEconomics => InventoryEconomics.with_href(f),
-                Screen::ShippingExport => ShippingExport.with_href(f),
                 Screen::DataManagement => DataManagement.with_href(f),
             }
         }

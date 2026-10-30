@@ -12,10 +12,23 @@ mod sheet;
 mod store;
 mod views;
 
+pub use items::Item;
+pub use page::shown;
 pub use views::COMPONENTS;
-/// For the test that writes the scripts' types.
-#[cfg(test)]
-pub use views::SortBy;
+pub use views::{Paging, SheetItems, SortBy, Summary};
+
+/// A pull sheet's items, each with what the catalog knows of its SKU, and the orders it was made
+/// for; or why the text is not a pull sheet.
+pub async fn read(
+    db: &crate::database::Database,
+    text: &str,
+) -> Result<(Vec<Item>, Vec<String>), String> {
+    let parsed = sheet::parse(text).map_err(|e| e.to_string())?;
+    let skus = items::find_skus(db, &parsed.rows)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok((items::items(parsed.rows, &skus), parsed.order_ids))
+}
 
 // Handlers are named from here, where the routes module is declared.
 use page::{show, upload, upload_page};

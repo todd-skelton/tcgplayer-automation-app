@@ -6,7 +6,8 @@ use crate::{
     database::Database,
     features::{
         batch_pricer, configuration, http_configuration, inventory_intake,
-        publication_configuration, pull_sheet, shipping_configuration, slab_connections,
+        publication_configuration, pull_sheet, shipping_configuration, shipping_export,
+        slab_connections,
     },
     legacy::screens,
     theme::*,
@@ -80,6 +81,7 @@ pub enum Screen {
     InventoryManager,
     BatchPricer,
     PullSheet,
+    ShippingWorkflow,
     HttpConfiguration,
     ShippingConfiguration,
     SlabConnections,
@@ -110,10 +112,7 @@ pub const PRIMARY: [(Screen, &str); 10] = [
         "Inventory Economics",
     ),
     (Screen::PullSheet, "Pull Sheet"),
-    (
-        Screen::Legacy(screens::Screen::ShippingExport),
-        "Shipping Export",
-    ),
+    (Screen::ShippingWorkflow, "Shipping Export"),
     (Screen::Legacy(screens::Screen::DataManagement), "Data Mgmt"),
 ];
 
@@ -140,6 +139,13 @@ pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, label: &'a str) -> impl 
                 </a>
             }
             Screen::PullSheet => <a {..req.nav(&pull_sheet::url::PullSheets)}>{label}</a>,
+            Screen::ShippingWorkflow => {
+                <a
+                    {..req.nav(&shipping_export::url::ShippingWorkflow { step: None, seller: None, filters: Default::default() })}
+                >
+                    {label}
+                </a>
+            }
             Screen::BatchPricer => {
                 <a {..req.nav(&batch_pricer::url::BatchPricer::newest())}>{label}</a>
             }

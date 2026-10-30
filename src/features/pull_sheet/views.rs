@@ -4,15 +4,17 @@ use serde::Deserialize;
 
 mod item_card;
 mod item_row;
+mod sheet_items;
 mod sheet_screen;
 mod upload_screen;
 
 pub use item_card::ItemCard;
 pub use item_row::ItemRow;
-pub use sheet_screen::{SheetScreen, Summary};
+pub use sheet_items::{Paging, SheetItems, Summary};
+pub use sheet_screen::SheetScreen;
 pub use upload_screen::{UploadForm, UploadScreen};
 
-pub const COMPONENTS: &[Component] = &[UploadScreen, SheetScreen, ItemCard, ItemRow];
+pub const COMPONENTS: &[Component] = &[UploadScreen, SheetItems, ItemCard, ItemRow];
 
 /// A column the table sorts by: the browser sorts with JavaScript (the handler takes it as
 /// JSON, and `types/app.d.ts` gives the script its names), the server from `?sort=`.

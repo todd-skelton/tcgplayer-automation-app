@@ -1,5 +1,5 @@
 // @ts-check
-// SheetScreen (sheet_screen.rs): the filter and the table's sort, over both lists of the sheet's
+// SheetItems (sheet_items.rs): the filter and the table's sort, over both lists of a sheet's
 // items, the picture cards and the table rows. Both are lists of views in the same order with
 // the same keys, so a sort orders the rows by a field and the cards to match.
 import { ItemCard, ItemRow, rows } from "corten/views";
