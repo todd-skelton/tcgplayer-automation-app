@@ -14,7 +14,7 @@ use crate::{
             page::{Place, REFRESHING, Screen},
             research::{EvidenceStatus, PSA_GRADES, Workspace},
             url::{self, Choice},
-            views::Problem,
+            views::{KeptChoice, Problem},
         },
     },
     layout::{Field, Notice, Tone},
@@ -42,7 +42,10 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
         <section class={(panel(), Stack, ResearchPanel)} aria-labelledby="slab-research">
             <h2 id="slab-research">"Research evidence"</h2>
             <form method="get" action={url::SlabPricing::at(&Choice::default())} class={Line}>
-                <KeptChoice choice={choice} />
+                <KeptChoice
+                    choice={choice}
+                    except={&[f.grade, f.from, f.to, f.source, f.rows, f.sources]}
+                />
                 <Field label="Research grade" hint="">
                     <select name={f.grade}>
                         <option value="owned" selected={grade == "owned"}>
@@ -169,30 +172,5 @@ fn EvidenceRow<'a>(
                 </form>
             }
         </div>
-    }
-}
-
-/// The rest of the screen's address, for a GET form that changes only the research: the
-/// certificate, the seller and the page of listings, and the listing reviewed. Written by hand,
-/// field by field (corten#439).
-#[component]
-fn KeptChoice<'a>(choice: &'a Choice) -> impl Render {
-    let f = Choice::FIELDS;
-    let kept = [
-        (f.grader, &choice.grader),
-        (f.cert, &choice.cert),
-        (f.seller, &choice.seller),
-        (f.after, &choice.after),
-        (f.listing, &choice.listing),
-    ];
-    html! {
-        for (name, value) in kept {
-            if let Some(value) = value {
-                <input type="hidden" name={name} value={value}>
-            }
-        }
-        for page in &choice.trail {
-            <input type="hidden" name={f.trail} value={page}>
-        }
     }
 }

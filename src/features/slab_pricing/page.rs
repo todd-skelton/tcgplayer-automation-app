@@ -6,8 +6,9 @@ use super::{
     identity::{self, Record},
     inventory::{self, InventoryPage, Listing},
     research::{self, Workspace},
+    supply::{self, DEFAULT_SELLER, Supply},
     url::{self, Choice},
-    views::{EvidenceList, SlabScreen},
+    views::{EvidenceList, SlabScreen, SupplyBody},
 };
 use crate::{
     database::Database,
@@ -31,6 +32,7 @@ pub enum Place {
     Listing,
     Inventory,
     Research,
+    Supply,
     Recommendation,
 }
 
@@ -43,6 +45,7 @@ impl Place {
             Place::Listing => "listing",
             Place::Inventory => "inventory",
             Place::Research => "research",
+            Place::Supply => "supply",
             Place::Recommendation => "recommendation",
         }
     }
@@ -61,6 +64,8 @@ pub struct Screen {
     /// The certificate's research at the chosen grade and dates, once it has an identity to
     /// research, or why it could not be read.
     pub research: Option<Result<Workspace, String>>,
+    /// The active supply for the slab, when it is shown, or why it could not be read.
+    pub supply: Option<Result<Supply, String>>,
     /// Whose time zone dates are written in.
     pub visitor: Visitor,
     /// Why the last post was refused, and the part of the page that sent it.
@@ -95,12 +100,31 @@ impl Screen {
             Some(record) => Some(read_research(legacy, &record.id, choice).await),
             None => None,
         };
+        let supply = match (&record, &research) {
+            (Some(record), Some(Ok(_))) if choice.shows_supply() => {
+                let seller = listing
+                    .as_ref()
+                    .map_or(DEFAULT_SELLER, |l| l.seller.as_str());
+                let window = choice.window();
+                let asked = supply::Asked {
+                    id: &record.id,
+                    grade: choice.grade(),
+                    window: &window,
+                    seller,
+                    source: choice.source.as_deref(),
+                    offset: choice.rows.unwrap_or(0),
+                };
+                Some(supply::read(legacy, &asked).await)
+            }
+            _ => None,
+        };
         Ok(Screen {
             choice: choice.clone(),
             record,
             inventory,
             listing,
             research,
+            supply,
             visitor,
             problem: None,
         })
@@ -114,9 +138,17 @@ impl Screen {
             .map(|(_, why)| why.as_str())
     }
 
-    /// A refresh is queued or running.
+    /// A refresh of the evidence or the supply shown is queued or running.
     pub fn refreshing(&self) -> bool {
         matches!(&self.research, Some(Ok(w)) if w.pending())
+            || matches!(&self.supply, Some(Ok(s)) if s.pending())
+    }
+
+    /// The seller whose own listings supply leaves out: the listing reviewed's, or the default.
+    pub fn supply_seller(&self) -> &str {
+        self.listing
+            .as_ref()
+            .map_or(DEFAULT_SELLER, |l| l.seller.as_str())
     }
 
     /// The owned slab can be calculated: its identity is confirmed, the owned grade is shown,
@@ -164,7 +196,8 @@ pub async fn show(
     page(&req, &db, &screen).await
 }
 
-/// The evidence list as it stands, read again while a refresh is on its way.
+/// The evidence list (and the supply, when shown) as it stands, read again while a refresh is
+/// on its way.
 pub async fn evidence(
     req: Req,
     State(db): State<Database>,
@@ -174,8 +207,15 @@ pub async fn evidence(
 ) -> HtmlResult {
     let screen = Screen::read(&db, &legacy, &at.choice, Visitor::of(zone.as_ref())).await?;
     let t: Msg = req.t();
-    let list = html! { <EvidenceList screen={&screen} t={t} /> };
-    req.patch_or(list, || async { page(&req, &db, &screen).await })
+    // The markup moves the locals it uses (corten#414).
+    let screen = &screen;
+    let list = html! {
+        <EvidenceList screen={screen} t={t} />
+        if screen.choice.shows_supply() {
+            <SupplyBody screen={screen} t={t} />
+        }
+    };
+    req.patch_or(list, || async { page(&req, &db, screen).await })
         .await
 }
 

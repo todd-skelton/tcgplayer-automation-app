@@ -19,7 +19,10 @@
 //! edited; this one does not, so its reviewed ask can be saved over inputs changed but not
 //! calculated.
 //!
-//! The comp review, supply, maintenance, outcomes and publication panels are still being ported.
+//! The supply context (asks on unsold listings, screened against the identity) is shown on
+//! request (`supply=true`) and read again with the evidence while its refresh runs.
+//!
+//! The comp review, maintenance, outcomes and publication panels are still being ported.
 //!
 //! | Route | Answer |
 //! |---|---|
@@ -32,6 +35,8 @@
 //! | `GET /slab-pricing/evidence` | the evidence list, as a patch (the page without JavaScript) |
 //! | `POST /slab-pricing/refresh` | the evidence for the grade and window queued for refresh |
 //! | `POST /slab-pricing/cancel` | a queued or running refresh cancelled |
+//! | `POST /slab-pricing/refresh-supply` | the active supply for the grade and dates queued for refresh |
+//! | `POST /slab-pricing/next-source-page` | the next page of an eBay source queued, then shown |
 //! | `POST /slab-pricing/calculate` | the owned slab's recommendation calculated from saved evidence |
 //! | `POST /slab-pricing/reviewed-ask` | the operator's reviewed ask saved on the latest recommendation |
 //!
@@ -42,12 +47,16 @@ mod inventory;
 mod page;
 mod recommendation;
 mod research;
+mod supply;
 mod views;
 
 pub use views::COMPONENTS;
 
 // Handlers are named from here, where the routes module is declared.
-use actions::{assign, calculate, cancel, confirm, import, look_up, open, refresh, review_ask};
+use actions::{
+    assign, calculate, cancel, confirm, import, look_up, next_source_page, open, refresh,
+    refresh_supply, review_ask,
+};
 use page::{evidence, show};
 
 #[corten::routes(area = SlabPricing, state = crate::app::Shared)]
@@ -107,6 +116,18 @@ pub mod url {
         pub choice: Choice,
     }
 
+    #[route("/slab-pricing/refresh-supply", post = refresh_supply)]
+    pub struct RefreshSupply {
+        #[route(query)]
+        pub choice: Choice,
+    }
+
+    #[route("/slab-pricing/next-source-page", post = next_source_page)]
+    pub struct NextSourcePage {
+        #[route(query)]
+        pub choice: Choice,
+    }
+
     #[route("/slab-pricing/calculate", post = calculate)]
     pub struct Calculate {
         #[route(query)]
@@ -137,6 +158,15 @@ pub mod url {
         pub grade: Option<String>,
         pub from: Option<String>,
         pub to: Option<String>,
+        /// The supply context is shown.
+        pub supply: Option<bool>,
+        /// The supply source shown (an evidence key), when not the default one.
+        pub source: Option<String>,
+        /// The first supply row shown.
+        pub rows: Option<u32>,
+        /// The supply sources shown before this one, for Previous source page.
+        #[serde(default)]
+        pub sources: Vec<String>,
     }
 
     impl Choice {
@@ -146,6 +176,53 @@ pub mod url {
                 .as_deref()
                 .zip(self.cert.as_deref())
                 .filter(|(g, c)| !g.trim().is_empty() && !c.trim().is_empty())
+        }
+
+        /// Every field that is set, as a GET form sends it: a list once per item.
+        pub fn pairs(&self) -> Vec<(corten::form::FieldName, String)> {
+            let f = Choice::FIELDS;
+            let one = |name, value: &Option<String>| value.clone().map(|v| (name, v));
+            let mut pairs: Vec<_> = [
+                one(f.grader, &self.grader),
+                one(f.cert, &self.cert),
+                one(f.seller, &self.seller),
+                one(f.after, &self.after),
+                one(f.listing, &self.listing),
+                one(f.grade, &self.grade),
+                one(f.from, &self.from),
+                one(f.to, &self.to),
+                self.supply.map(|s| (f.supply, s.to_string())),
+                one(f.source, &self.source),
+                self.rows.map(|r| (f.rows, r.to_string())),
+            ]
+            .into_iter()
+            .flatten()
+            .collect();
+            pairs.extend(self.trail.iter().map(|t| (f.trail, t.clone())));
+            pairs.extend(self.sources.iter().map(|s| (f.sources, s.clone())));
+            pairs
+        }
+
+        /// The supply context is shown.
+        pub fn shows_supply(&self) -> bool {
+            self.supply == Some(true)
+        }
+
+        /// This choice on the first row of the supply source shown, or of `source`.
+        pub fn supply_source(&self, source: Option<String>, sources: Vec<String>) -> Choice {
+            Choice {
+                source,
+                sources,
+                rows: None,
+                ..self.clone()
+            }
+        }
+
+        /// The supply source shown before this one, if there is one.
+        pub fn previous_source(&self) -> Option<Choice> {
+            let mut sources = self.sources.clone();
+            let previous = sources.pop()?;
+            Some(self.supply_source((!previous.is_empty()).then_some(previous), sources))
         }
 
         /// The grade researched: the owned one unless another is chosen.
@@ -171,8 +248,12 @@ pub mod url {
             Choice {
                 grader: Some(grader.to_owned()),
                 cert: Some(cert.to_owned()),
-                // A grade explored for one slab may not apply to another (PSA grades only).
+                // A grade explored for one slab may not apply to another (PSA grades only), and
+                // its supply sources are its own.
                 grade: None,
+                source: None,
+                rows: None,
+                sources: Vec::new(),
                 ..self.clone()
             }
         }
@@ -233,6 +314,22 @@ mod tests {
         let start = back.previous_page().unwrap();
         assert_eq!(start.after, None);
         assert!(start.previous_page().is_none());
+    }
+
+    #[test]
+    fn previous_source_returns_to_the_default_source() {
+        let shown = Choice {
+            source: Some("b".into()),
+            sources: vec!["".into(), "a".into()],
+            rows: Some(50),
+            ..Choice::default()
+        };
+        let back = shown.previous_source().unwrap();
+        assert_eq!(back.source.as_deref(), Some("a"));
+        assert_eq!(back.rows, None);
+        let first = back.previous_source().unwrap();
+        assert_eq!(first.source, None);
+        assert!(first.previous_source().is_none());
     }
 
     #[test]

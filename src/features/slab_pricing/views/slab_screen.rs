@@ -9,7 +9,7 @@ use crate::{
             inventory::{InventoryPage, Listing},
             page::{Place, Screen},
             url::{self, Choice},
-            views::{RecommendationPanel, ResearchPanel},
+            views::{KeptChoice, RecommendationPanel, ResearchPanel, SupplyPanel},
         },
     },
     layout::{Field, Notice, Tone},
@@ -85,6 +85,7 @@ pub fn SlabScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         <ResearchPanel screen={screen} record={record} t={t} />
                     }
                     if matches!(&screen.research, Some(Ok(_))) {
+                        <SupplyPanel screen={screen} t={t} />
                         <RecommendationPanel screen={screen} record={record} t={t} />
                     }
                 }
@@ -260,15 +261,7 @@ fn InventoryPanel<'a>(screen: &'a Screen) -> impl Render {
         <section class={(panel(), Stack)} aria-labelledby="slab-inventory">
             <h2 id="slab-inventory">"eBay inventory"</h2>
             <form method="get" action={url::SlabPricing::at(&Choice::default())} class={Line}>
-                if let Some((grader, cert)) = choice.certificate() {
-                    <input type="hidden" name={f.grader} value={grader}>
-                    <input type="hidden" name={f.cert} value={cert}>
-                }
-                for (name, value) in [(f.grade, &choice.grade), (f.from, &choice.from), (f.to, &choice.to)] {
-                    if let Some(value) = value {
-                        <input type="hidden" name={name} value={value}>
-                    }
-                }
+                <KeptChoice choice={choice} except={&[f.seller, f.after, f.trail, f.listing]} />
                 <Field label="Seller username" hint="">
                     <input
                         name={f.seller}

@@ -520,6 +520,82 @@ impl CalculateInput {
     }
 }
 
+/// Queues the active supply for the grade and dates for refresh, then shows its default source
+/// from its first row.
+pub async fn refresh_supply(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+    Params(at): Params<url::RefreshSupply>,
+    Form(input): Form<RefreshInput>,
+) -> HtmlResult {
+    let visitor = Visitor::of(zone.as_ref());
+    let screen = Screen::read(&db, &legacy, &at.choice, visitor).await?;
+    let asked = json!({
+        "intent": "refresh",
+        "slabId": input.id,
+        "identityRevision": input.revision,
+        "grade": at.choice.grade(),
+        "window": at.choice.window(),
+        "seller": screen.supply_seller(),
+    });
+    match legacy
+        .send::<_, serde_json::Value>("/api/slab-supply", &asked)
+        .await
+    {
+        Ok(_) => req.redirect(&url::SlabPricing::at(
+            &at.choice.supply_source(None, Vec::new()),
+        )),
+        Err(why) => refused(Place::Supply, &req, &db, &legacy, visitor, &at.choice, why).await,
+    }
+}
+
+/// The eBay source page shown, whose next page is fetched.
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct NextSourcePageInput {
+    pub revision: String,
+}
+
+#[derive(Deserialize)]
+struct Queued {
+    statuses: Vec<QueuedStatus>,
+}
+
+#[derive(Deserialize)]
+struct QueuedStatus {
+    key: String,
+}
+
+/// Queues the next page of the eBay supply source shown, then shows it, keeping the way back.
+pub async fn next_source_page(
+    req: Req,
+    State(db): State<Database>,
+    State(legacy): State<Legacy>,
+    zone: Option<ClientZone>,
+    Params(at): Params<url::NextSourcePage>,
+    Form(input): Form<NextSourcePageInput>,
+) -> HtmlResult {
+    let asked = json!({ "intent": "next-page", "revision": input.revision });
+    match legacy.send::<_, Queued>("/api/slab-evidence", &asked).await {
+        Ok(queued) => {
+            let Some(next) = queued.statuses.into_iter().next() else {
+                return req.redirect(&url::SlabPricing::at(&at.choice));
+            };
+            // The default source is kept as an empty entry, as the first listing page is.
+            let mut sources = at.choice.sources.clone();
+            sources.push(at.choice.source.clone().unwrap_or_default());
+            req.redirect(&url::SlabPricing::at(
+                &at.choice.supply_source(Some(next.key), sources),
+            ))
+        }
+        Err(why) => {
+            let visitor = Visitor::of(zone.as_ref());
+            refused(Place::Supply, &req, &db, &legacy, visitor, &at.choice, why).await
+        }
+    }
+}
+
 /// Calculates the owned slab's recommendation from the evidence saved for the dates shown.
 pub async fn calculate(
     req: Req,

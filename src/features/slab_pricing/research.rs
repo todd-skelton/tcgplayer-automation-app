@@ -77,6 +77,11 @@ pub struct EvidenceStatus {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Spec {
     pub kind: String,
+    /// An eBay page's first result and page size.
+    #[serde(default)]
+    pub offset: Option<u32>,
+    #[serde(default)]
+    pub limit: Option<u32>,
 }
 
 impl EvidenceStatus {
