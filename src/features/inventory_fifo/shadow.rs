@@ -222,7 +222,13 @@ pub async fn run(db: Database, signal: Signal) {
                 continue;
             }
         };
-        match pass(&db, seller.trim(), &log).await {
+        // A pass only reads (its transaction is rolled back), so shutdown can drop it.
+        let passed = tokio::select! {
+            biased;
+            _ = signal.aborted() => return,
+            passed = pass(&db, seller.trim(), &log) => passed,
+        };
+        match passed {
             Ok(tally) => println!(
                 "FIFO shadow: {} {:?}",
                 if tally.clean() { "clean" } else { "differs" },

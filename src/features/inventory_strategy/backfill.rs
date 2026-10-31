@@ -23,7 +23,13 @@ pub async fn run(db: Database, signal: Signal) {
             _ = signal.aborted() => return,
             _ = every.tick() => {}
         }
-        match backfill(&db, &signal).await {
+        // Each batch is one statement, so one cut off by shutdown records nothing.
+        let backfilled = tokio::select! {
+            biased;
+            _ = signal.aborted() => return,
+            backfilled = backfill(&db, &signal) => backfilled,
+        };
+        match backfilled {
             Ok(0) => {}
             Ok(recorded) => println!("Forecast evidence recorded on {recorded} published items."),
             Err(why) => eprintln!("Forecast evidence backfill failed: {why}"),

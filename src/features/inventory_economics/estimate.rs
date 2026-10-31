@@ -466,7 +466,13 @@ pub async fn run(db: Database, signal: Signal) {
                 .map_err(|e| e.to_string())?;
             writeln!(file, "{line}").map_err(|e| e.to_string())
         };
-        if let Err(why) = logged.await {
+        // A run only reads, so shutdown can drop it.
+        let logged = tokio::select! {
+            biased;
+            _ = signal.aborted() => return,
+            logged = logged => logged,
+        };
+        if let Err(why) = logged {
             eprintln!("Estimated purchase cost shadow failed: {why}");
         }
     }

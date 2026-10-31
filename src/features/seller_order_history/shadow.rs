@@ -286,7 +286,13 @@ pub async fn run(db: Database, signal: Signal) {
             _ = signal.aborted() => return,
             _ = every.tick() => {}
         }
-        if let Err(why) = step(&db, &tcg, &run, &log, BUDGET).await {
+        // A step reads TCGplayer for up to minutes: shutdown must not wait for it.
+        let stepped = tokio::select! {
+            biased;
+            _ = signal.aborted() => return,
+            stepped = step(&db, &tcg, &run, &log, BUDGET) => stepped,
+        };
+        if let Err(why) = stepped {
             eprintln!("Seller order shadow step failed: {why}");
         }
     }
