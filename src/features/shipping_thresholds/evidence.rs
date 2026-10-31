@@ -7,7 +7,7 @@ use chrono::{DateTime, Duration, Utc};
 use serde::Deserialize;
 use sqlx::types::Json;
 
-use super::{OrderEvidence, OrderLine, ShippingCostModel, cost_model};
+use super::{OrderEvidence, OrderLine, ShippingCostModel, SnapOutcome, cost_model};
 use crate::{
     database::Database,
     features::inventory_economics::ledger::{
@@ -29,6 +29,7 @@ struct LineRow {
 #[derive(sqlx::FromRow)]
 struct OrderRow {
     order_number: String,
+    order_time: DateTime<Utc>,
     item_value: f64,
     buyer_shipping: Option<f64>,
     lines: Json<Vec<LineRow>>,
@@ -57,7 +58,8 @@ pub async fn shipped_orders(
     since: DateTime<Utc>,
 ) -> sqlx::Result<Vec<OrderEvidence>> {
     let orders: Vec<OrderRow> = sqlx::query_as(
-        r#"SELECT orders.order_number,orders.gross_item_proceeds::float8 AS item_value,
+        r#"SELECT orders.order_number,date_trunc('milliseconds',orders.order_time) AS order_time,
+            orders.gross_item_proceeds::float8 AS item_value,
             orders.gross_shipping_proceeds::float8 AS buyer_shipping,
             COALESCE((SELECT json_agg(json_build_object('sku',line.sku_id,'quantity',line.ordered_quantity,
               'value',line.gross_item_proceeds::float8)) FROM seller_order_lines line WHERE line.order_id=orders.id),'[]'::json) AS lines
@@ -108,10 +110,12 @@ pub async fn shipped_orders(
         .into_iter()
         .map(|order| OrderEvidence {
             item_value: order.item_value,
+            order_time: order.order_time,
             buyer_shipping: order.buyer_shipping,
             postage: postage_cents
                 .get(&order.order_number)
                 .map(|cents| *cents as f64 / 100.0),
+            order_number: order.order_number,
             lines: order
                 .lines
                 .0
@@ -127,6 +131,52 @@ pub async fn shipped_orders(
                     })
                 })
                 .collect(),
+        })
+        .collect())
+}
+
+/// A published price whose pricing decision considered a snap.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SnapPublication {
+    pub sku: i64,
+    /// When it was published, to the millisecond.
+    pub published_at: DateTime<Utc>,
+    pub snap: ConsideredSnap,
+}
+
+/// What the publication's decision recorded of its snap.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+pub struct ConsideredSnap {
+    pub threshold: f64,
+    pub outcome: SnapOutcome,
+}
+
+/// `findSnapPublications`: prices published since `since` whose decision considered a snap,
+/// oldest first.
+pub async fn snap_publications(
+    db: &Database,
+    seller: &str,
+    since: DateTime<Utc>,
+) -> sqlx::Result<Vec<SnapPublication>> {
+    let rows: Vec<(i32, DateTime<Utc>, Json<ConsideredSnap>)> = sqlx::query_as(
+        r#"SELECT item.sku,date_trunc('milliseconds',item.published_at),
+            item.forecast_evidence->'decision'->'shippingThresholdSnap'
+          FROM inventory_publication_items item
+          JOIN inventory_publications publication ON publication.id=item.publication_id
+          WHERE publication.seller_key=$1 AND item.status='published' AND item.published_at>=$2
+            AND item.forecast_evidence->'decision' ? 'shippingThresholdSnap'
+          ORDER BY item.published_at,item.id"#,
+    )
+    .bind(seller)
+    .bind(since)
+    .fetch_all(&db.0)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|(sku, published_at, snap)| SnapPublication {
+            sku: i64::from(sku),
+            published_at,
+            snap: snap.0,
         })
         .collect())
 }

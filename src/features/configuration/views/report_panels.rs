@@ -9,14 +9,11 @@ use corten::prelude::*;
 use crate::layout::SubmitsOnChange;
 use crate::{
     features::{
-        configuration::{
-            config::EVIDENCE_WINDOWS,
-            reports::{Basis, SaleGroup, Shipping, Window},
-            url,
-        },
+        configuration::{config::EVIDENCE_WINDOWS, reports::Window, url},
         forecast_calibration::{
             Calibration, DEFAULT_WINDOW_DAYS, HeldOutCheck, TimeInStock, WINDOW_DAYS,
         },
+        shipping_thresholds::{TierBasis, outcomes::SaleGroup, report::ShippingReport},
     },
     layout::{Notice, Tone},
     theme::*,
@@ -44,7 +41,7 @@ pub enum OnPage<'a, T> {
 /// Both reports as the page draws them.
 pub struct Reports<'a> {
     pub calibration: OnPage<'a, Calibration>,
-    pub shipping: OnPage<'a, Shipping>,
+    pub shipping: OnPage<'a, ShippingReport>,
     /// The shipping report's window until another is chosen: the snaps' evidence window.
     pub evidence_days: u32,
     /// The daily return hurdle the calibration weighs, under the profit-per-day policy.
@@ -248,13 +245,13 @@ fn SaleGroupRow<'a>(label: &'a str, group: &'a SaleGroup) -> impl Render {
     html! {
         <tr>
             <td>{label}</td>
-            <td>{count(group.units)}</td>
-            <td>{count(group.orders)}</td>
+            <td>{count(group.units as f64)}</td>
+            <td>{count(group.orders as f64)}</td>
             <td>{maybe_count(group.median_days_to_sell)}</td>
             <td>{maybe_count(group.units_per_order)}</td>
             <td>{share(group.orders_with_add_ons)}</td>
             <td>{share(group.orders_reaching_threshold)}</td>
-            <td>{count(group.largest_order_units)}</td>
+            <td>{count(group.largest_order_units as f64)}</td>
             <td>{share(group.bulk_order_unit_share)}</td>
             <td>{group.shipping_cost_per_order.map_or_else(|| "N/A".into(), money)}</td>
         </tr>
@@ -264,7 +261,7 @@ fn SaleGroupRow<'a>(label: &'a str, group: &'a SaleGroup) -> impl Render {
 /// What shipping costs at each threshold, learned from recent orders, and what snapping did over
 /// the chosen window. A snaps save reads it again.
 #[component(css = super::configuration_screen::ConfigurationScreen)]
-pub fn ShippingReportPanel<'a>(days: u32, report: Report<'a, Shipping>) -> impl Patch {
+pub fn ShippingReportPanel<'a>(days: u32, report: Report<'a, ShippingReport>) -> impl Patch {
     let at = url::ShippingReport {
         window: Window { days: Some(days) },
     };
@@ -296,8 +293,8 @@ pub fn ShippingReportPanel<'a>(days: u32, report: Report<'a, Shipping>) -> impl 
                 Report::Read(Err(error)) => <Notice tone={Tone::Warning}>{error}</Notice>,
                 Report::Read(Ok(r)) => {
                     <h3>
-                        "Learned from "{count(r.cost_model.order_count)}" orders and "
-                        {count(r.cost_model.basket_count)}
+                        "Learned from "{count(r.cost_model.order_count as f64)}" orders and "
+                        {count(r.cost_model.basket_count as f64)}
                         " units sold in the last "{r.cost_model.evidence_window_days}" days"
                     </h3>
                     <table class={Figures}>
@@ -314,13 +311,13 @@ pub fn ShippingReportPanel<'a>(days: u32, report: Report<'a, Shipping>) -> impl 
                             for tier in &r.cost_model.tiers {
                                 <tr>
                                     <td>"From "{money(tier.from_order_value)}</td>
-                                    <td>{count(tier.order_count)}</td>
+                                    <td>{count(tier.order_count as f64)}</td>
                                     <td>{money(tier.buyer_shipping)}</td>
                                     <td>{money(tier.postage)}</td>
                                     <td>
                                         match tier.basis {
-                                            Basis::Observed => "Observed",
-                                            Basis::Default => "Default (too few orders)",
+                                            TierBasis::Observed => "Observed",
+                                            TierBasis::Default => "Default (too few orders)",
                                         }
                                     </td>
                                 </tr>
@@ -340,11 +337,13 @@ pub fn ShippingReportPanel<'a>(days: u32, report: Report<'a, Shipping>) -> impl 
                             for cost in &r.threshold_costs {
                                 <tr>
                                     <td>{money(cost.threshold)}</td>
-                                    <td>{count(cost.basket_count)}</td>
+                                    <td>{count(cost.basket_count as f64)}</td>
                                     <td>
                                         {cost.snap_price_shipping_cost.map_or_else(|| "Too few sales to snap".into(), money)}
                                     </td>
-                                    <td>{money(cost.threshold_shipping_cost)}</td>
+                                    <td>
+                                        {cost.threshold_shipping_cost.map_or_else(|| "Too few sales to snap".into(), money)}
+                                    </td>
                                 </tr>
                             }
                         </tbody>

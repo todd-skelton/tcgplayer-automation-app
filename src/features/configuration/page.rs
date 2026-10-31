@@ -7,7 +7,7 @@ use futures_util::stream;
 use super::{
     config::{self, Config},
     form::{AddLineInput, DefaultPercentileInput, PricingInput, SnapsInput, SupplyInput},
-    reports::{self, Shipping, Window},
+    reports::Window,
     url,
     views::{
         CalibrationPanel, ConfigurationScreen, Lines, OnPage, PricingForm, ProductLinesSection,
@@ -19,9 +19,9 @@ use crate::{
     features::{
         configuration::config::EVIDENCE_WINDOWS,
         forecast_calibration::{self, Calibration, DEFAULT_WINDOW_DAYS, WINDOW_DAYS},
+        shipping_thresholds::report::{self as shipping_report, ShippingReport},
     },
     layout::{Chrome, Layout},
-    legacy::Legacy,
 };
 
 /// Every product line, by name: the picker's choices and the table's names.
@@ -44,7 +44,7 @@ struct Answered {
     said: Option<&'static str>,
     /// A report read for this request: its own route, reached without scripts.
     calibration: Option<(u32, Result<Calibration, String>)>,
-    shipping: Option<(u32, Result<Shipping, String>)>,
+    shipping: Option<(u32, Result<ShippingReport, String>)>,
 }
 
 async fn page(req: &Req, db: &Database, answered: Answered) -> HtmlResult {
@@ -368,16 +368,29 @@ pub async fn calibration_report(
     req.patch_or(panel, || page(&req, &db, answered())).await
 }
 
+/// The shipping report over `days` under the stored snaps and overhead, read now.
+async fn shipping(db: &Database, config: &Config, days: u32) -> Result<ShippingReport, String> {
+    shipping_report::load(
+        db,
+        &config.snaps,
+        config.pricing.profit_per_day.relative_overhead,
+        days,
+        Utc::now(),
+    )
+    .await
+}
+
 /// The shipping report panel read over the window asked for; the page with it without scripts.
 pub async fn shipping_report(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::ShippingReport>,
 ) -> HtmlResult {
-    let evidence = config::load(&db).await?.snaps.evidence_window_days;
-    let days = at.window.days_in(&EVIDENCE_WINDOWS, evidence);
-    let report = reports::shipping(&legacy, days).await;
+    let config = config::load(&db).await?;
+    let days = at
+        .window
+        .days_in(&EVIDENCE_WINDOWS, config.snaps.evidence_window_days);
+    let report = shipping(&db, &config, days).await;
     let panel = ShippingReportPanel {
         days,
         report: Report::Read(&report),
@@ -409,15 +422,12 @@ pub async fn calibration_live(State(db): State<Database>) -> LiveResponse {
 
 /// The shipping report panel once read over the snaps' evidence window, for the page's
 /// `<corten-live>`.
-pub async fn shipping_live(
-    State(db): State<Database>,
-    State(legacy): State<Legacy>,
-) -> LiveResponse {
+pub async fn shipping_live(State(db): State<Database>) -> LiveResponse {
     corten::live(stream::once(async move {
         let report = match config::load(&db).await {
             Ok(config) => {
                 let days = config.snaps.evidence_window_days;
-                (days, reports::shipping(&legacy, days).await)
+                (days, shipping(&db, &config, days).await)
             }
             Err(_) => {
                 let days = config::Snaps::default().evidence_window_days;

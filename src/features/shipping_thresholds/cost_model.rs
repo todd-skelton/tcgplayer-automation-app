@@ -179,6 +179,8 @@ mod tests {
         unit_prices: &[f64],
     ) -> OrderEvidence {
         OrderEvidence {
+            order_number: String::new(),
+            order_time: chrono::DateTime::UNIX_EPOCH,
             item_value,
             buyer_shipping: Some(buyer_shipping),
             postage,

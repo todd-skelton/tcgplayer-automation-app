@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 
 pub mod cost_model;
 pub mod evidence;
+pub mod outcomes;
+pub mod report;
 
 /// Order item values where shipping economics step: under $5 the buyer pays shipping, from $5
 /// shipping is free, from $50 orders ship tracked ground, and from $250 they ship with signature.
@@ -49,6 +51,9 @@ pub struct OrderLine {
 /// for shipping and the postage bought, when recorded, and what was in it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct OrderEvidence {
+    pub order_number: String,
+    /// When it was placed, to the millisecond.
+    pub order_time: chrono::DateTime<chrono::Utc>,
     pub item_value: f64,
     pub buyer_shipping: Option<f64>,
     pub postage: Option<f64>,
