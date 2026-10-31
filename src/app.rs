@@ -17,7 +17,7 @@ use crate::{
         http_configuration, inventory_economics, inventory_fifo, inventory_intake,
         inventory_strategy, product_price_matrix, publication_configuration, pull_sheet,
         seller_order_history, shipping_configuration, shipping_export, slab_connections,
-        slab_pricing,
+        slab_evidence, slab_pricing,
     },
     layout::{self, Static},
     legacy::{Legacy, forward},
@@ -216,6 +216,16 @@ pub fn app(shared: Shared) -> App {
         let db = db.clone();
         seller_order_history::worker::on()
             .then_some(move |signal| seller_order_history::worker::run(db, signal))
+    });
+    // Node's worker refreshes the slab evidence until cutover; both read Alt and eBay.
+    let app = switched(app, "slab evidence worker", {
+        let db = db.clone();
+        let providers = slab_evidence::worker::Providers {
+            transport: shared.slab_providers.clone(),
+            gate: slab_connections::DatabaseGate(db.clone()),
+        };
+        slab_evidence::worker::on()
+            .then_some(move |signal| slab_evidence::worker::run(db, providers, signal))
     });
     // It reads TCGplayer and writes only to its log.
     let app = switched(app, "seller order history shadow", {

@@ -23,6 +23,7 @@ pub use provider::{Provider, Status as ConnectionStatus};
 #[cfg(test)]
 pub use request::Lease;
 pub use request::{Ask, Gate, Transport};
+pub use store::DatabaseGate;
 pub use views::COMPONENTS;
 
 // Handlers are named from here, where the routes module is declared.

@@ -39,17 +39,17 @@ const SUPPLY: &str = "query AssetDetails($id: ID!) { asset(id: $id) { id activeL
 } } }";
 /// The most rows one answer may hold.
 const MAX_ROWS: usize = 2000;
-const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_991.0;
+pub(super) const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_991.0;
 
-type Read<T> = Result<T, Status>;
+pub(super) type Read<T> = Result<T, Status>;
 
-fn invalid<T>() -> Read<T> {
+pub(super) fn invalid<T>() -> Read<T> {
     Err(Status::InvalidResponse)
 }
 
 /// `String.prototype.trim`: JavaScript's white space and line terminators, which include the
 /// byte order mark and not U+0085.
-fn js_trim(text: &str) -> &str {
+pub(super) fn js_trim(text: &str) -> &str {
     let space = |c: char| {
         matches!(
             c,
@@ -67,7 +67,7 @@ fn js_trim(text: &str) -> &str {
 }
 
 /// A value's length as JavaScript counts it, in UTF-16 units.
-fn js_length(text: &str) -> usize {
+pub(super) fn js_length(text: &str) -> usize {
     text.encode_utf16().count()
 }
 
@@ -75,7 +75,7 @@ fn absent(value: &Value) -> bool {
     value.is_null() || value.as_str() == Some("")
 }
 
-fn object(value: &Value) -> Read<&Map<String, Value>> {
+pub(super) fn object(value: &Value) -> Read<&Map<String, Value>> {
     value.as_object().ok_or(Status::InvalidResponse)
 }
 
@@ -118,7 +118,7 @@ fn boolean(value: &Value) -> Read<Value> {
 }
 
 /// A number as JavaScript keeps it: a whole one without a fraction.
-fn number(value: f64) -> Value {
+pub(super) fn number(value: f64) -> Value {
     js_numbers(&json!(value))
 }
 
@@ -513,7 +513,7 @@ pub struct Alt<'a, G> {
     pub gate: &'a G,
 }
 
-fn now() -> String {
+pub(super) fn now() -> String {
     Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true)
 }
 

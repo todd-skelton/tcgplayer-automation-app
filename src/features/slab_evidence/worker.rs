@@ -3,11 +3,14 @@
 //! seconds that it still holds the lease, and saves what was read or the failure's code. A busy,
 //! rate-limited or unavailable provider is tried again later; anything else fails the refresh.
 //!
-//! Node's worker refreshes the evidence until cutover, and also runs the slab maintenance cycle
-//! when nothing is queued; that cycle is not ported. Node wakes its worker when a refresh is
-//! requested; this one looks again within 30 seconds. Reading Alt and eBay is not ported, so the
-//! app does not run this worker yet: [`run`] takes the [`Provider`] it reads with.
+//! Node's worker refreshes the evidence until cutover: this one runs only when
+//! `SLAB_EVIDENCE_WORKER` is set, beside Node's, the two sharing the queue's claims and each
+//! provider's connection lease. Node's also runs the slab maintenance cycle when nothing is queued;
+//! that cycle is not ported. Node wakes its worker when a refresh is requested; this one looks
+//! again within 30 seconds.
 use std::{future::Future, time::Duration};
+
+use futures_util::FutureExt;
 
 use corten::Signal;
 use serde_json::Value;
@@ -18,10 +21,15 @@ use tokio::{
 };
 
 use super::{
+    alt::Alt,
+    ebay::{Ebay, Query, Tab},
     spec::Spec,
     store::{self, Job},
 };
-use crate::{database::Database, features::slab_connections::ConnectionStatus as Status};
+use crate::{
+    database::Database,
+    features::slab_connections::{ConnectionStatus as Status, DatabaseGate, Transport},
+};
 
 /// How long one read may take.
 pub const TIMEOUT: Duration = Duration::from_secs(60);
@@ -34,11 +42,67 @@ const IDLE: Duration = Duration::from_secs(30);
 /// How often old evidence is cleaned.
 const CLEAN_EVERY: Duration = Duration::from_secs(60 * 60);
 
+/// Whether `SLAB_EVIDENCE_WORKER` turns the worker on.
+pub fn on() -> bool {
+    crate::config::is_set("SLAB_EVIDENCE_WORKER")
+}
+
 /// What reads a request's evidence from its provider: the payload `{ kind, data }`, or the
 /// status the provider left the connection in (`invalid-response` for an answer it could not
-/// read).
+/// read). It stops as `cancelled` once `cancel` resolves, releasing what it claimed.
 pub trait Provider: Sync {
-    fn fetch(&self, spec: &Spec) -> impl Future<Output = Result<Value, Status>> + Send;
+    fn fetch(
+        &self,
+        spec: &Spec,
+        cancel: impl Future<Output = ()> + Send,
+    ) -> impl Future<Output = Result<Value, Status>> + Send;
+}
+
+/// `fetchEvidence`: Alt and eBay Research, through the connections the operator saved.
+pub struct Providers {
+    pub transport: Transport,
+    pub gate: DatabaseGate,
+}
+
+impl Provider for Providers {
+    async fn fetch(
+        &self,
+        spec: &Spec,
+        cancel: impl Future<Output = ()> + Send,
+    ) -> Result<Value, Status> {
+        let alt = Alt {
+            transport: &self.transport,
+            gate: &self.gate,
+        };
+        let ebay = Ebay {
+            transport: &self.transport,
+            gate: &self.gate,
+        };
+        let query = |page: &super::spec::EbayPage| Query {
+            keywords: page.keywords.clone(),
+            window: page.window.clone(),
+            offset: page.offset,
+            limit: page.limit,
+            timezone: page.timezone.clone(),
+        };
+        let data = match spec {
+            Spec::AltSales {
+                asset_id,
+                window,
+                limit_per_grade,
+            } => {
+                let limit = u32::try_from(*limit_per_grade).map_err(|_| Status::InvalidResponse)?;
+                alt.sales(asset_id, window, limit, cancel).await?
+            }
+            Spec::AltSupply { asset_id } => alt.supply(asset_id, cancel).await?,
+            Spec::AltSaleDetail { transaction_id } => {
+                alt.sale_detail(transaction_id, cancel).await?
+            }
+            Spec::EbaySales(page) => ebay.page(&query(page), Tab::Sold, cancel).await?,
+            Spec::EbaySupply(page) => ebay.page(&query(page), Tab::Active, cancel).await?,
+        };
+        Ok(serde_json::json!({ "kind": spec.kind(), "data": data }))
+    }
 }
 
 /// The code a failure is saved under: a cancelled read counts as the provider being unavailable.
@@ -58,25 +122,17 @@ fn retried(code: Status) -> bool {
 }
 
 /// `runEvidenceJob`: reads `job` with `provider` and saves what was read, or the failure. A read
-/// still running when `stop` finishes, after [`TIMEOUT`], or once the lease is lost, fails as
-/// `unavailable`. Answers whether evidence was saved.
+/// still running when `stop` finishes, after [`TIMEOUT`], or once the lease is lost, is
+/// cancelled and fails as `unavailable`. Answers whether evidence was saved.
 pub async fn run_job(
     conn: &mut PgConnection,
     provider: &impl Provider,
     job: &Job,
-    stop: impl Future<Output = ()>,
+    stop: impl Future<Output = ()> + Send,
 ) -> Result<bool, store::Error> {
     let started = Instant::now();
     // One connection, taken in turn by the read and the lease check.
     let conn = Mutex::new(conn);
-    let read = async {
-        let active = store::active(&mut **conn.lock().await, job).await;
-        match active {
-            Ok(true) => provider.fetch(&job.spec).await.map(Some),
-            Ok(false) => Ok(None),
-            Err(_) => Err(Status::InvalidResponse),
-        }
-    };
     let lost = async {
         let mut every = interval_at(started + CHECK_EVERY, CHECK_EVERY);
         loop {
@@ -87,12 +143,36 @@ pub async fn run_job(
             }
         }
     };
+    // The provider is told to stop, so it releases its claim on the connection as Node's abort does.
+    let cancel = async {
+        tokio::select! {
+            _ = stop => {}
+            _ = lost => {}
+            _ = sleep(TIMEOUT) => {}
+        }
+    }
+    .shared();
+    let read = async {
+        let active = store::active(&mut **conn.lock().await, job).await;
+        match active {
+            Ok(true) => provider.fetch(&job.spec, cancel.clone()).await.map(Some),
+            Ok(false) => Ok(None),
+            Err(_) => Err(Status::InvalidResponse),
+        }
+    };
     let read = tokio::select! {
         biased;
-        _ = stop => Err(Status::Unavailable),
-        _ = lost => Err(Status::Unavailable),
-        _ = sleep(TIMEOUT) => Err(Status::Unavailable),
         read = read => read,
+        // A provider that does not stop when told is left behind.
+        _ = async { cancel.clone().await; sleep(Duration::from_secs(5)).await } => Err(Status::Unavailable),
+    };
+    // Whatever a read answers after it was told to stop, it stopped: unavailable, as in Node.
+    let stopped = cancel.clone().now_or_never().is_some();
+    drop(cancel);
+    let read = if stopped {
+        Err(Status::Unavailable)
+    } else {
+        read
     };
     let conn = conn.into_inner();
     let failure = match read {
@@ -112,12 +192,11 @@ pub async fn run_job(
 
 /// One turn of the loop: the next refresh due, if any, then a clean when the last was an hour
 /// ago. Answers the pause before the next turn.
-#[expect(dead_code, reason = "run once reading Alt and eBay is ported")]
 pub async fn tick(
     db: &Database,
     provider: &impl Provider,
     cleaned: &mut Option<Instant>,
-    stop: impl Future<Output = ()>,
+    stop: impl Future<Output = ()> + Send,
 ) -> Duration {
     let mut wait = IDLE;
     let turn = async {
@@ -140,7 +219,6 @@ pub async fn tick(
 
 /// The app's task: a turn at once, then each after its pause, until shutdown. A read running at
 /// shutdown is saved as unavailable, to be tried again.
-#[expect(dead_code, reason = "run once reading Alt and eBay is ported")]
 pub async fn run(db: Database, provider: impl Provider, signal: Signal) {
     println!("Slab evidence worker started");
     let mut cleaned = None;
@@ -179,7 +257,11 @@ mod tests {
     struct StandIn(Value);
 
     impl Provider for StandIn {
-        fn fetch(&self, spec: &Spec) -> impl Future<Output = Result<Value, Status>> + Send {
+        fn fetch(
+            &self,
+            spec: &Spec,
+            cancel: impl Future<Output = ()> + Send,
+        ) -> impl Future<Output = Result<Value, Status>> + Send {
             let answer = match spec {
                 Spec::AltSaleDetail { transaction_id } if transaction_id == "tx-9" => {
                     Some(Ok(self.0["detail"].clone()))
@@ -192,7 +274,10 @@ mod tests {
             async move {
                 match answer {
                     Some(answer) => answer,
-                    None => std::future::pending().await,
+                    None => {
+                        cancel.await;
+                        Err(Status::Cancelled)
+                    }
                 }
             }
         }
