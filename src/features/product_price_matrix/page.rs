@@ -64,7 +64,7 @@ impl Screen {
         let number = choice.number.as_deref().unwrap_or("").trim().to_owned();
         let product_type = choice.product_type.unwrap_or_default();
         let products = match products::looking(scope, set, &number) {
-            Some(looking) => products::products(legacy, line, looking, product_type).await,
+            Some(looking) => products::products(db, line, looking, product_type).await,
             None => Ok(Vec::new()),
         };
         let product = products

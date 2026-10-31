@@ -208,32 +208,65 @@ pub async fn card_number_skus(
     product_line: i32,
     number: &str,
 ) -> sqlx::Result<Vec<Sku>> {
-    let number = number.trim();
-    if number.is_empty() {
+    let Some(matching) = NumberMatch::of(number) else {
         return Ok(Vec::new());
-    }
-    let (column, normalized) = if number.contains('/') {
-        ("normalize_card_number(sp.number)", normalize_value(number))
-    } else {
-        (
-            "normalize_card_number_prefix(sp.number)",
-            normalize_prefix(number),
-        )
     };
-    let raw = searches_raw_text(number).then(|| format!("%{}%", escape_like(number)));
     sqlx::query_as(&format!(
         "SELECT {SKU_COLUMNS}, sp.number AS card_number, cs.release_date
          FROM set_products sp
          JOIN products p ON p.product_id = sp.product_id
          LEFT JOIN category_sets cs ON cs.category_id = p.product_line_id AND cs.set_name_id = sp.set_name_id
          CROSS JOIN LATERAL jsonb_to_recordset(p.skus_json) AS s(sku int, condition text, variant text, language text)
-         WHERE p.product_line_id = $1 AND ({column} = $2 OR ($3::text IS NOT NULL AND sp.number ILIKE $3 ESCAPE '\'))"
+         WHERE p.product_line_id = $1 AND {}",
+        matching.condition()
     ))
     .bind(product_line)
-    .bind(normalized)
-    .bind(raw)
+    .bind(matching.normalized)
+    .bind(matching.raw)
     .fetch_all(&db.0)
     .await
+}
+
+/// How `set_products.number` (as `sp`) is matched to a card number typed, as
+/// `setProductsRepository.findByCardNumber` matches it: whole when it has a `/`, else by the number
+/// before it, and as text too when it has letters.
+pub(crate) struct NumberMatch {
+    column: &'static str,
+    /// Bound as `$2`.
+    pub normalized: String,
+    /// Bound as `$3`: the text to find anywhere in the number, when it is searched as text.
+    pub raw: Option<String>,
+}
+
+impl NumberMatch {
+    /// None for a blank number, which matches nothing.
+    pub fn of(number: &str) -> Option<NumberMatch> {
+        let number = number.trim();
+        if number.is_empty() {
+            return None;
+        }
+        let (column, normalized) = if number.contains('/') {
+            ("normalize_card_number(sp.number)", normalize_value(number))
+        } else {
+            (
+                "normalize_card_number_prefix(sp.number)",
+                normalize_prefix(number),
+            )
+        };
+        Some(NumberMatch {
+            column,
+            normalized,
+            raw: searches_raw_text(number).then(|| format!("%{}%", escape_like(number))),
+        })
+    }
+
+    /// The SQL condition, over `$2` and `$3`.
+    pub fn condition(&self) -> String {
+        format!(
+            "({} = $2 OR ($3::text IS NOT NULL AND sp.number ILIKE $3 ESCAPE '\\'))",
+            self.column
+        )
+    }
 }
 
 /// The product a SKU counts, as its row draws it, and the SKU's condition (none when sealed).
