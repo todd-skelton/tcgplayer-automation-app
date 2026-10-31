@@ -129,53 +129,62 @@ pub async fn release(conn: &mut PgConnection, job: i64, worker: &str) -> sqlx::R
     Ok(batch.is_some())
 }
 
-/// The job priced: its summary and last progress kept, its lease dropped.
+/// `worker`'s job priced: its summary and last progress kept, its lease dropped; false when the
+/// job is no longer `worker`'s (its lease ran out and another worker may hold it), and nothing is
+/// written.
 pub async fn complete(
     conn: &mut PgConnection,
     job: i64,
+    worker: &str,
     summary: &Value,
     progress: Option<&Value>,
-) -> sqlx::Result<()> {
-    sqlx::query(
+) -> sqlx::Result<bool> {
+    let completed = sqlx::query(
         "UPDATE inventory_batch_pricing_jobs
-         SET status = 'completed', summary_json = $2::jsonb,
-             progress_json = COALESCE($3::jsonb, progress_json), error_message = NULL,
+         SET status = 'completed', summary_json = $3::jsonb,
+             progress_json = COALESCE($4::jsonb, progress_json), error_message = NULL,
              claim_expires_at = NULL, completed_at = NOW(), updated_at = NOW()
-         WHERE id = $1",
+         WHERE id = $1 AND status = 'pricing' AND claimed_by = $2",
     )
     .bind(job)
+    .bind(worker)
     .bind(summary)
     .bind(progress)
     .execute(&mut *conn)
     .await?;
-    Ok(())
+    Ok(completed.rows_affected() == 1)
 }
 
-/// The job failed with `error`, and so did its batch. Run it in a transaction.
+/// `worker`'s job failed with `error`, and so did its batch; false when the job is no longer
+/// `worker`'s, and nothing is written. Run it in a transaction.
 pub async fn fail(
     conn: &mut PgConnection,
     job: i64,
-    batch_number: i32,
+    worker: &str,
     error: &str,
     progress: Option<&Value>,
-) -> sqlx::Result<()> {
-    sqlx::query(
+) -> sqlx::Result<bool> {
+    let batch: Option<i32> = sqlx::query_scalar(
         "UPDATE inventory_batch_pricing_jobs
-         SET status = 'failed', error_message = $2,
-             progress_json = COALESCE($3::jsonb, progress_json),
+         SET status = 'failed', error_message = $3,
+             progress_json = COALESCE($4::jsonb, progress_json),
              claim_expires_at = NULL, completed_at = NOW(), updated_at = NOW()
-         WHERE id = $1",
+         WHERE id = $1 AND status = 'pricing' AND claimed_by = $2
+         RETURNING batch_number",
     )
     .bind(job)
+    .bind(worker)
     .bind(error)
     .bind(progress)
-    .execute(&mut *conn)
+    .fetch_optional(&mut *conn)
     .await?;
-    sqlx::query("UPDATE inventory_batches SET status = 'failed', updated_at = NOW() WHERE batch_number = $1")
-        .bind(batch_number)
-        .execute(&mut *conn)
-        .await?;
-    Ok(())
+    if let Some(batch) = batch {
+        sqlx::query("UPDATE inventory_batches SET status = 'failed', updated_at = NOW() WHERE batch_number = $1")
+            .bind(batch)
+            .execute(&mut *conn)
+            .await?;
+    }
+    Ok(batch.is_some())
 }
 
 #[cfg(test)]
@@ -280,14 +289,19 @@ mod tests {
             Some(progress.clone()),
             "progress kept through the requeue"
         );
-        complete(
-            &mut tx,
-            urgent,
-            &serde_json::json!({ "totalRows": 1 }),
-            None,
-        )
-        .await
-        .unwrap();
+        let summary = serde_json::json!({ "totalRows": 1 });
+        assert!(
+            !complete(&mut tx, urgent, "someone-else", &summary, None)
+                .await
+                .unwrap(),
+            "a worker whose lease ran out writes nothing"
+        );
+        assert_eq!(status(&mut tx, urgent).await.0, "pricing");
+        assert!(
+            complete(&mut tx, urgent, "rust-test", &summary, None)
+                .await
+                .unwrap()
+        );
         assert_eq!(status(&mut tx, urgent).await.0, "completed");
 
         let next = claim_next(&mut tx, "rust-test", 15_000)
@@ -295,7 +309,17 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(next.id, routine);
-        fail(&mut tx, routine, batch, "boom", None).await.unwrap();
+        assert!(
+            !fail(&mut tx, routine, "someone-else", "boom", None)
+                .await
+                .unwrap()
+        );
+        assert_eq!(batch_status(&mut tx, batch).await, "pricing");
+        assert!(
+            fail(&mut tx, routine, "rust-test", "boom", None)
+                .await
+                .unwrap()
+        );
         assert_eq!(status(&mut tx, routine).await.0, "failed");
         assert_eq!(batch_status(&mut tx, batch).await, "failed");
         assert!(

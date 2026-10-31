@@ -10,7 +10,7 @@ use std::{future::Future, sync::Arc, time::Duration};
 use corten::Signal;
 use tokio::{
     sync::Notify,
-    time::{MissedTickBehavior, interval, sleep},
+    time::{MissedTickBehavior, interval, sleep, timeout},
 };
 
 /// How long a claim lasts unless renewed.
@@ -63,26 +63,41 @@ pub trait Jobs {
 
 /// One job, its claim renewed every [`HEARTBEAT`] while it runs; the work stops when shutdown
 /// begins or the claim is lost.
+///
+/// Racing the whole job against shutdown is safe because the work's only write is its save, one
+/// transaction fenced on the claim: dropped mid-save, it rolls back, and the job can be priced
+/// again from the start.
 pub async fn process<J: Jobs>(jobs: &J, job: &J::Job, stop: &impl Stop) -> Outcome {
-    let work = jobs.work(job);
-    tokio::pin!(work);
-    let mut heartbeat = interval(HEARTBEAT);
-    heartbeat.set_missed_tick_behavior(MissedTickBehavior::Delay);
-    heartbeat.tick().await; // the first tick is at once; the claim was just made
-    let outcome = loop {
-        tokio::select! {
-            biased;
-            _ = stop.stopped() => break Outcome::Released,
-            done = &mut work => break match done {
-                Ok(()) => Outcome::Completed,
-                Err(why) => Outcome::Failed(why),
-            },
-            _ = heartbeat.tick() => match jobs.renew(job).await {
-                Ok(true) => {}
-                Ok(false) => break Outcome::LeaseLost,
-                // A renewal that fails is retried at the next beat; the lease outlasts several.
-                Err(why) => eprintln!("Pricing job heartbeat failed: {why}"),
-            },
+    // The work lives in this block, so whatever it holds (a connection, a transaction) is gone
+    // before the claim is released or finished.
+    let outcome = {
+        let work = jobs.work(job);
+        tokio::pin!(work);
+        let mut heartbeat = interval(HEARTBEAT);
+        heartbeat.set_missed_tick_behavior(MissedTickBehavior::Delay);
+        heartbeat.tick().await; // the first tick is at once; the claim was just made
+        loop {
+            tokio::select! {
+                biased;
+                _ = stop.stopped() => break Outcome::Released,
+                done = &mut work => break match done {
+                    Ok(()) => Outcome::Completed,
+                    Err(why) => Outcome::Failed(why),
+                },
+                _ = heartbeat.tick() => {
+                    // A renewal that hangs is given up after a beat, and the next one is a whole
+                    // beat after this one ended, not owed at once.
+                    let renewed = timeout(HEARTBEAT, jobs.renew(job)).await;
+                    heartbeat.reset();
+                    match renewed {
+                        Ok(Ok(true)) => {}
+                        Ok(Ok(false)) => break Outcome::LeaseLost,
+                        // Retried at the next beat; the lease outlasts several.
+                        Ok(Err(why)) => eprintln!("Pricing job heartbeat failed: {why}"),
+                        Err(_) => eprintln!("Pricing job heartbeat timed out after {HEARTBEAT:?}"),
+                    }
+                }
+            }
         }
     };
     if let Err(why) = jobs.finished(job, &outcome).await {
@@ -152,7 +167,18 @@ mod tests {
         log: RefCell<Vec<(u64, String)>>,
         renewals: Cell<u32>,
         lose_lease_after: Option<u32>,
+        /// How long the first renewal hangs.
+        first_renewal_hangs: Duration,
         start: Instant,
+    }
+
+    /// Notes when a job's work is dropped.
+    struct Dropped<'a>(&'a Fake, u32);
+
+    impl Drop for Dropped<'_> {
+        fn drop(&mut self) {
+            self.0.note(format!("drop {}", self.1));
+        }
     }
 
     impl Fake {
@@ -166,8 +192,18 @@ mod tests {
                 log: RefCell::default(),
                 renewals: Cell::new(0),
                 lose_lease_after: None,
+                first_renewal_hangs: Duration::ZERO,
                 start: Instant::now(),
             }
+        }
+        /// The claims and how each job ended, without renewals and drops.
+        fn outcomes(&self) -> Vec<(u64, String)> {
+            self.log
+                .borrow()
+                .iter()
+                .filter(|(_, what)| !what.starts_with("renew") && !what.starts_with("drop"))
+                .cloned()
+                .collect()
         }
         fn note(&self, what: String) {
             let at = self.start.elapsed().as_millis() as u64;
@@ -189,12 +225,20 @@ mod tests {
         }
         async fn renew(&self, _: &Self::Job) -> Result<bool, String> {
             self.renewals.set(self.renewals.get() + 1);
+            self.note(format!("renew {}", self.renewals.get()));
+            if self.renewals.get() == 1 {
+                sleep(self.first_renewal_hangs).await;
+            }
             Ok(self
                 .lose_lease_after
                 .is_none_or(|n| self.renewals.get() <= n))
         }
         fn work(&self, job: &Self::Job) -> impl Future<Output = Result<(), String>> {
-            sleep(job.1).then_ok()
+            let (fake, (id, takes)): (&Fake, _) = (self, *job);
+            async move {
+                let _dropped = Dropped(fake, id);
+                sleep(takes).then_ok().await
+            }
         }
         async fn finished(&self, job: &Self::Job, outcome: &Outcome) -> Result<(), String> {
             self.note(format!("{} {outcome:?}", job.0));
@@ -240,7 +284,7 @@ mod tests {
             4,
             "at 2, 4, 6 and 8 seconds into a 10 second job"
         );
-        let log = fake.log.borrow();
+        let log = fake.outcomes();
         assert_eq!(log[0], (0, "claim 1".into()));
         assert_eq!(log[1], (10_000, "1 Completed".into()));
         assert_eq!(log[2], (13_000, "claim 2".into()));
@@ -255,9 +299,41 @@ mod tests {
             sleep(Duration::from_millis(5_500)).await;
             stop();
         });
+        let log = fake.log.borrow();
         assert_eq!(
-            *fake.log.borrow().last().unwrap(),
-            (5_500, "1 Released".into())
+            log[log.len() - 2..],
+            [(5_500, "drop 1".into()), (5_500, "1 Released".into())],
+            "the work is gone before its claim is given back"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_hung_renewal_is_cut_off_and_the_next_is_a_whole_beat_later() {
+        let mut fake = Fake::new(&[(1, 10)]);
+        fake.first_renewal_hangs = Duration::from_secs(60);
+        let (signal, stop) = signal();
+        let worker = run(&fake, Arc::new(Notify::new()), signal);
+        tokio::join!(worker, async {
+            sleep(Duration::from_secs(11)).await;
+            stop();
+        });
+        let renewals: Vec<_> = fake
+            .log
+            .borrow()
+            .iter()
+            .filter(|(_, what)| what.starts_with("renew"))
+            .map(|(at, _)| *at)
+            .collect();
+        // Given up at 4 s; the next at 6 s, not at once at 4 s.
+        assert_eq!(renewals, [2_000, 6_000, 8_000]);
+        assert_eq!(
+            fake.log
+                .borrow()
+                .iter()
+                .find(|(_, w)| w == "1 Completed")
+                .unwrap()
+                .0,
+            10_000
         );
     }
 
@@ -287,6 +363,6 @@ mod tests {
             sleep(Duration::from_secs(8)).await;
             stop();
         });
-        assert_eq!(fake.log.borrow()[1], (6_000, "1 LeaseLost".into()));
+        assert_eq!(fake.outcomes()[1], (6_000, "1 LeaseLost".into()));
     }
 }
