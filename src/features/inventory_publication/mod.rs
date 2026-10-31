@@ -6,5 +6,6 @@
     dead_code,
     reason = "planning lands before the pricing worker that calls it"
 )]
+pub mod plan;
 pub mod policy;
 pub mod preview;

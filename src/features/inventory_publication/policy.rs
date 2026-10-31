@@ -125,6 +125,41 @@ impl Policy {
     }
 }
 
+impl Policy {
+    /// The policy as Node stores it in a publication's `config_json`, every source named and whole
+    /// numbers written without a fraction.
+    pub fn document(&self) -> Value {
+        let sources: serde_json::Map<String, Value> = Source::ALL
+            .into_iter()
+            .map(|s| {
+                (
+                    s.as_str().to_owned(),
+                    self.automatic_sources.contains(&s).into(),
+                )
+            })
+            .collect();
+        serde_json::json!({
+            "automaticPublishingEnabled": self.automatic_publishing_enabled,
+            "automaticSources": sources,
+            "allowWarnings": self.allow_warnings,
+            "maximumCandidateAgeMs": self.maximum_candidate_age_ms,
+            "minimumAbsolutePriceChange": js_number(self.minimum_absolute_price_change),
+            "minimumRelativePriceChangePercent": js_number(self.minimum_relative_price_change_percent),
+            "stagedMicroBatchMaximum": self.staged_micro_batch_maximum,
+            "stagedFlushWindowMs": self.staged_flush_window_ms,
+        })
+    }
+}
+
+/// A number as JavaScript writes it: a whole one without a fraction.
+fn js_number(value: f64) -> Value {
+    if value.fract() == 0.0 && value.abs() < 9e15 {
+        Value::from(value as i64)
+    } else {
+        Value::from(value)
+    }
+}
+
 /// Why a candidate is held back, in the order the policy finds them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
