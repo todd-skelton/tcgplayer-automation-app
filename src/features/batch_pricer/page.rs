@@ -78,9 +78,14 @@ pub struct Shown {
 }
 
 impl Shown {
-    async fn read(legacy: &Legacy, batch: i32, rates: SuccessRates) -> Result<Shown, String> {
+    async fn read(
+        db: &Database,
+        legacy: &Legacy,
+        batch: i32,
+        rates: SuccessRates,
+    ) -> Result<Shown, String> {
         let (one, publications) = tokio::join!(
-            batches::one(legacy, batch),
+            batches::one(db, batch),
             batches::publications(legacy, batch)
         );
         Ok(Shown {
@@ -147,14 +152,14 @@ async fn page(
 ) -> HtmlResult {
     let (chrome, list, seller, rates) = tokio::join!(
         Chrome::read(db),
-        batches::list(legacy),
+        batches::list(db),
         shipping_configuration::default_seller_key(db),
         success_rates(db)
     );
     let (list, rates) = (list.map_err(unavailable)?, rates?);
     let number = chosen.or_else(|| list.first().map(|b| b.batch_number));
     let shown = match number {
-        Some(n) => Some(Shown::read(legacy, n, rates).await),
+        Some(n) => Some(Shown::read(db, legacy, n, rates).await),
         None => None,
     };
     let again = shown
@@ -209,7 +214,7 @@ async fn answer(
                 .invalid_with(
                     &errors,
                     |patch| async move {
-                        let shown = Shown::read(legacy, batch, success_rates(db).await?)
+                        let shown = Shown::read(db, legacy, batch, success_rates(db).await?)
                             .await
                             .map_err(unavailable)?;
                         patch.draw(html! {
@@ -233,7 +238,7 @@ async fn answer(
         Ok(message) => message,
     };
     let rates = success_rates(db).await?;
-    let shown = Shown::read(legacy, batch, rates)
+    let shown = Shown::read(db, legacy, batch, rates)
         .await
         .map_err(unavailable)?;
     req.patch(html! {
@@ -319,7 +324,7 @@ pub async fn delete(
     zone: Option<ClientZone>,
     Params(at): Params<url::Delete>,
 ) -> HtmlResult {
-    match batches::delete(&legacy, at.batch).await {
+    match batches::delete(&db, at.batch).await {
         Ok(()) => req.redirect_with_notice(
             &url::BatchPricer::newest(),
             format_args!("Batch {} deleted", at.batch),
@@ -340,10 +345,10 @@ pub async fn delete(
 
 /// The batch's successful or manual-review rows, as the CSV the React screen saved.
 pub async fn download(
-    State(legacy): State<Legacy>,
+    State(db): State<Database>,
     Params(at): Params<url::Results>,
 ) -> corten::Result<Media> {
-    let rows = batches::results(&legacy, at.batch, at.scope)
+    let rows = batches::results(&db, at.batch, at.scope)
         .await
         .map_err(unavailable)?;
     if rows.is_empty() {
@@ -460,6 +465,7 @@ pub async fn live(
     };
     let (t, visitor): (Msg, Visitor) = (req.t(), Visitor::of(zone.as_ref()));
     let follow = Follow {
+        db,
         legacy,
         batch: at.batch,
         rates,
@@ -485,6 +491,7 @@ pub async fn live(
 /// A batch followed while it prices or publishes. Its publications are read when its pricing
 /// moves on, and every other read while one publishes: theirs is the slow read.
 struct Follow {
+    db: Database,
     legacy: Legacy,
     batch: i32,
     rates: SuccessRates,
@@ -508,7 +515,7 @@ impl Follow {
                 tokio::time::sleep(FOLLOW_EVERY).await;
             }
             self.reads += 1;
-            let Ok(batch) = batches::one(&self.legacy, self.batch).await else {
+            let Ok(batch) = batches::one(&self.db, self.batch).await else {
                 self.failures += 1;
                 if self.failures >= MOST_FAILURES {
                     return None;

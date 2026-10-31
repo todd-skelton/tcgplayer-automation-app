@@ -1,15 +1,16 @@
 //! Inventory batches as the Node app keeps them: frozen sets of SKUs (from the Inventory Manager,
 //! a seller's live inventory or a CSV) that its pricing worker prices and its publisher publishes.
-//! Reading and every write go through its `/api/inventory-batches` routes, whose rules (one active
-//! pricing job per batch, the publication safety checks, deleting only an unpublished batch) stay
-//! there with the workers.
+//! The batches, their latest jobs and saved results are read here, and a batch deleted here, as
+//! `inventoryBatches.server.ts` does. Pricing, publishing and importing still go through the Node
+//! app's `/api/inventory-batches` routes, whose rules (one active pricing job per batch, the
+//! publication safety checks) stay there with the workers.
 use std::collections::{BTreeMap, HashSet};
 
 use chrono::{DateTime, Utc};
 use corten::UrlValue;
 use serde::{Deserialize, Serialize};
 
-use crate::legacy::Legacy;
+use crate::{database::Database, legacy::Legacy};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -454,15 +455,133 @@ impl Publications {
     }
 }
 
-/// The newest 100 batches made by hand.
-pub async fn list(legacy: &Legacy) -> Result<Vec<Batch>, String> {
-    legacy.read("/api/inventory-batches").await
+/// A batch as `batchSelect` reads it, before its latest job is attached.
+#[derive(sqlx::FromRow)]
+struct BatchRow {
+    batch_number: i32,
+    status: String,
+    source_type: String,
+    source_label: String,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+    last_priced_at: Option<DateTime<Utc>>,
+    summary: Option<String>,
+    successful_count: i32,
+    manual_review_count: i32,
+    item_count: i32,
 }
 
-pub async fn one(legacy: &Legacy, batch: i32) -> Result<Batch, String> {
-    legacy
-        .read(&format!("/api/inventory-batches/{batch}"))
-        .await
+// Times are cut to milliseconds, as Node's `Date` reads them.
+const BATCH_SELECT: &str = "SELECT b.batch_number, b.status, b.source_type, b.source_label,
+  date_trunc('milliseconds', b.created_at) AS created_at, date_trunc('milliseconds', b.updated_at) AS updated_at,
+  date_trunc('milliseconds', b.last_priced_at) AS last_priced_at, b.summary_json::text AS summary, b.successful_count,
+  b.manual_review_count, COUNT(i.sku)::int AS item_count
+FROM inventory_batches b LEFT JOIN inventory_batch_items i ON i.batch_number = b.batch_number";
+
+const BATCH_GROUP: &str =
+    "GROUP BY b.batch_number, b.status, b.source_type, b.source_label, b.created_at,
+  b.updated_at, b.last_priced_at, b.summary_json, b.successful_count, b.manual_review_count";
+
+#[derive(sqlx::FromRow)]
+struct JobRow {
+    batch_number: i32,
+    id: i64,
+    mode: String,
+    status: String,
+    progress: Option<String>,
+    error_message: Option<String>,
+    updated_at: DateTime<Utc>,
+}
+
+fn word<T: serde::de::DeserializeOwned>(text: &str) -> Result<T, String> {
+    serde_json::from_value(serde_json::Value::String(text.to_owned())).map_err(|e| e.to_string())
+}
+
+fn parsed<T: serde::de::DeserializeOwned>(json: Option<&str>) -> Result<Option<T>, String> {
+    json.map(serde_json::from_str)
+        .transpose()
+        .map_err(|e| e.to_string())
+}
+
+impl JobRow {
+    fn job(&self) -> Result<Job, String> {
+        Ok(Job {
+            id: self.id,
+            mode: word(&self.mode)?,
+            status: word(&self.status)?,
+            progress: parsed(self.progress.as_deref())?,
+            error_message: self.error_message.clone(),
+            updated_at: self.updated_at,
+        })
+    }
+}
+
+/// `findLatestByBatchNumbers`: each batch's newest pricing job.
+async fn latest_jobs(db: &Database, batches: &[i32]) -> Result<BTreeMap<i32, Job>, String> {
+    let rows: Vec<JobRow> = sqlx::query_as(
+        "SELECT DISTINCT ON (batch_number) batch_number, id, mode, status, progress_json::text AS progress,
+           error_message, date_trunc('milliseconds', updated_at) AS updated_at
+         FROM inventory_batch_pricing_jobs WHERE batch_number = ANY($1::int[])
+         ORDER BY batch_number, created_at DESC, id DESC",
+    )
+    .bind(batches)
+    .fetch_all(&db.0)
+    .await
+    .map_err(|e| e.to_string())?;
+    rows.iter()
+        .map(|row| Ok((row.batch_number, row.job()?)))
+        .collect()
+}
+
+async fn with_jobs(db: &Database, rows: Vec<BatchRow>) -> Result<Vec<Batch>, String> {
+    let numbers: Vec<i32> = rows.iter().map(|row| row.batch_number).collect();
+    let mut jobs = latest_jobs(db, &numbers).await?;
+    rows.into_iter()
+        .map(|row| {
+            Ok(Batch {
+                latest_job: jobs.remove(&row.batch_number),
+                status: word(&row.status)?,
+                summary: parsed(row.summary.as_deref())?,
+                batch_number: row.batch_number,
+                source_type: row.source_type,
+                source_label: row.source_label,
+                created_at: row.created_at,
+                updated_at: row.updated_at,
+                last_priced_at: row.last_priced_at,
+                successful_count: row.successful_count.into(),
+                manual_review_count: row.manual_review_count.into(),
+                item_count: row.item_count.into(),
+            })
+        })
+        .collect()
+}
+
+/// The newest 100 batches made by hand: from the Inventory Manager, a seller or a CSV.
+pub async fn list(db: &Database) -> Result<Vec<Batch>, String> {
+    let rows: Vec<BatchRow> = sqlx::query_as(&format!(
+        "{BATCH_SELECT} WHERE b.source_type = ANY($1::text[]) {BATCH_GROUP}
+         ORDER BY b.batch_number DESC LIMIT 100"
+    ))
+    .bind(["pending_inventory", "seller", "csv"])
+    .fetch_all(&db.0)
+    .await
+    .map_err(|e| e.to_string())?;
+    with_jobs(db, rows).await
+}
+
+pub async fn one(db: &Database, batch: i32) -> Result<Batch, String> {
+    let row: Option<BatchRow> = sqlx::query_as(&format!(
+        "{BATCH_SELECT} WHERE b.batch_number = $1 {BATCH_GROUP}"
+    ))
+    .bind(batch)
+    .fetch_optional(&db.0)
+    .await
+    .map_err(|e| e.to_string())?;
+    let row = row.ok_or_else(|| format!("Batch {batch} not found"))?;
+    with_jobs(db, vec![row])
+        .await?
+        .pop()
+        .ok_or_else(|| format!("Batch {batch} not found"))
 }
 
 pub async fn publications(legacy: &Legacy, batch: i32) -> Result<Publications, String> {
@@ -487,10 +606,11 @@ impl Scope {
         }
     }
 
-    fn query(self) -> &'static str {
+    /// `findResults`'s filter on the saved result's status.
+    fn filter(self) -> &'static str {
         match self {
-            Scope::Successful => "successful",
-            Scope::ManualReview => "manual-review",
+            Scope::Successful => "r.result_status = 'successful'",
+            Scope::ManualReview => "r.result_status <> 'successful'",
         }
     }
 }
@@ -524,19 +644,23 @@ impl<'de> Deserialize<'de> for Row {
     }
 }
 
-#[derive(Deserialize)]
-struct Saved {
-    row: Row,
-}
-
-pub async fn results(legacy: &Legacy, batch: i32, scope: Scope) -> Result<Vec<Row>, String> {
-    let saved: Vec<Saved> = legacy
-        .read(&format!(
-            "/api/inventory-batches/{batch}/results?scope={}",
-            scope.query()
-        ))
-        .await?;
-    Ok(saved.into_iter().map(|s| s.row).collect())
+/// `findResults`: the saved rows in `scope`, by product line, set, product and SKU. Each row is
+/// read as text, so its columns keep the order Postgres gives them, which the CSV header follows.
+pub async fn results(db: &Database, batch: i32, scope: Scope) -> Result<Vec<Row>, String> {
+    let rows: Vec<String> = sqlx::query_scalar(&format!(
+        "SELECT r.row_json::text FROM inventory_batch_results r
+         WHERE r.batch_number = $1 AND {}
+         ORDER BY COALESCE(r.row_json->>'Product Line', ''), COALESCE(r.row_json->>'Set Name', ''),
+           COALESCE(r.row_json->>'Product', ''), r.sku",
+        scope.filter()
+    ))
+    .bind(batch)
+    .fetch_all(&db.0)
+    .await
+    .map_err(|e| e.to_string())?;
+    rows.iter()
+        .map(|row| serde_json::from_str(row).map_err(|e| e.to_string()))
+        .collect()
 }
 
 /// The rows as CSV the way the React screen wrote them (Papa Parse): the first row's columns as
@@ -585,10 +709,18 @@ pub async fn price(legacy: &Legacy, batch: i32, mode: Mode) -> Result<String, St
     })
 }
 
-pub async fn delete(legacy: &Legacy, batch: i32) -> Result<(), String> {
-    let _: serde_json::Value = legacy
-        .delete(&format!("/api/inventory-batches/{batch}"))
-        .await?;
+/// `deleteBatch`: the batch with its items, results and pricing jobs. The database refuses a
+/// published batch (its publications keep it).
+pub async fn delete(db: &Database, batch: i32) -> Result<(), String> {
+    let deleted = sqlx::query("DELETE FROM inventory_batches WHERE batch_number = $1")
+        .bind(batch)
+        .execute(&db.0)
+        .await
+        .map_err(|e| e.to_string())?
+        .rows_affected();
+    if deleted == 0 {
+        return Err(format!("Batch {batch} not found"));
+    }
     Ok(())
 }
 
@@ -647,6 +779,56 @@ pub async fn import_seller(legacy: &Legacy, seller_key: &str) -> Result<Batch, S
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[derive(Deserialize)]
+    struct Saved {
+        row: Row,
+    }
+
+    /// The batches, each one shown, and the saved results of the newest priced ones, read here
+    /// and from the running dev Node app's `/api/inventory-batches` routes: the same.
+    #[tokio::test]
+    #[ignore = "reads the dev database and the dev Node app"]
+    async fn batches_read_as_node_reads_them() {
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let legacy = Legacy::new(crate::config::legacy_origin());
+        let ours = list(&db).await.unwrap();
+        let theirs: Vec<Batch> = legacy.read("/api/inventory-batches").await.unwrap();
+        assert_eq!(ours.len(), theirs.len());
+        for (ours, theirs) in ours.iter().zip(&theirs) {
+            assert_eq!(ours, theirs, "batch {}", ours.batch_number);
+        }
+        assert!(!ours.is_empty());
+        for batch in ours.iter().take(10) {
+            let n = batch.batch_number;
+            let theirs: Batch = legacy
+                .read(&format!("/api/inventory-batches/{n}"))
+                .await
+                .unwrap();
+            assert_eq!(one(&db, n).await.unwrap(), theirs);
+        }
+        let priced = ours.iter().filter(|b| b.has_results()).take(3);
+        for batch in priced {
+            let n = batch.batch_number;
+            for (scope, query) in [
+                (Scope::Successful, "successful"),
+                (Scope::ManualReview, "manual-review"),
+            ] {
+                let theirs: Vec<Saved> = legacy
+                    .read(&format!("/api/inventory-batches/{n}/results?scope={query}"))
+                    .await
+                    .unwrap();
+                let theirs: Vec<Row> = theirs.into_iter().map(|s| s.row).collect();
+                let ours = results(&db, n, scope).await.unwrap();
+                assert_eq!(csv(&ours), csv(&theirs), "batch {n} {query}");
+            }
+        }
+        assert_eq!(
+            one(&db, i32::MAX).await,
+            Err(format!("Batch {} not found", i32::MAX))
+        );
+    }
 
     fn candidate(sku: i64, before: Option<f64>, after: Option<f64>, delta: i64) -> Candidate {
         Candidate {

@@ -165,17 +165,6 @@ impl Legacy {
         Self::answer_with_status(answer).await
     }
 
-    /// What one of the Node app's routes answers to deleting `path`.
-    pub async fn delete<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T, String> {
-        let answer = self
-            .http
-            .delete(format!("{}{path}", self.origin))
-            .send()
-            .await
-            .map_err(|_| "The Node app did not answer.".to_owned())?;
-        Self::answer(answer).await
-    }
-
     /// What one of the Node app's routes answers to a file posted as `multipart/form-data` under
     /// `field`, named `file_name`: an upload whose import is still the Node app's.
     pub async fn send_file<T: serde::de::DeserializeOwned>(
