@@ -260,11 +260,11 @@ pub struct PublishInput {
     pub sku: Vec<i64>,
 }
 
-/// The checked SKUs planned for publication to Seller Portal; the Node app checks each again.
+/// The checked SKUs planned for publication to Seller Portal; Node's publisher checks each again
+/// as it sends them.
 pub async fn publish(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::Publish>,
     Form(input): Form<PublishInput>,
@@ -273,7 +273,7 @@ pub async fn publish(
         if input.sku.is_empty() {
             Err("Select at least one SKU to publish.".to_owned())
         } else {
-            batches::publish(&legacy, at.batch, &input.sku).await.map(|publications| {
+            batches::publish(&db, at.batch, &input.sku).await.map(|publications| {
             format!(
                 "{} SKUs from batch {} queued in {publications} Seller Portal publication{}",
                 input.sku.len(),

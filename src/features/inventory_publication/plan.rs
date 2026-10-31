@@ -598,6 +598,82 @@ impl Configuration {
     }
 }
 
+/// The publications a person's selection plans (`planInventoryBatchPublications`): the selected
+/// eligible results in staged publications of at most the policy's maximum each, every one keyed
+/// by its own SKUs.
+pub fn manual(
+    preview: &Preview,
+    policy: &Policy,
+    selected: Option<&[i32]>,
+    target_seller: Option<&str>,
+) -> Result<Vec<NewPublication>, Error> {
+    let items = publishable(preview, selected)?;
+    let Some(maximum) = usize::try_from(policy.staged_micro_batch_maximum)
+        .ok()
+        .filter(|most| *most > 0)
+    else {
+        return rejected("The staged publication batch maximum must be positive.");
+    };
+    items
+        .chunks(maximum)
+        .map(|chunk| {
+            let skus: Vec<i32> = chunk.iter().map(|item| item.sku).collect();
+            new_publication(
+                preview,
+                policy,
+                Mode::Manual,
+                chunk,
+                Some(&skus),
+                target_seller,
+            )
+        })
+        .collect()
+}
+
+/// What a person's publish planned.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Planned {
+    pub publication_ids: Vec<i64>,
+    /// How many of them this call made; the rest were planned before.
+    pub created: usize,
+}
+
+/// Plans the batch's selected SKUs (every eligible one when none are given) for publication to
+/// the publication settings' seller, under their policy, as the Batch Pricer's Publish does.
+/// Each publication is saved in a transaction of its own, as Node saves them.
+pub async fn plan_manual(
+    conn: &mut PgConnection,
+    batch_number: i32,
+    selected: Option<&[i64]>,
+    now: DateTime<Utc>,
+) -> Result<Planned, Error> {
+    use sqlx::Connection;
+    let configuration = Configuration::load(conn).await?;
+    let selected = selected_skus(selected)?;
+    let Some((batch, items, results)) = preview::load(conn, batch_number).await? else {
+        return rejected(format!("Batch {batch_number} not found."));
+    };
+    let known = preview::known(conn, batch_number, &items, &results, None).await?;
+    let policy = &configuration.policy;
+    let preview = preview::preview(&batch, &items, &results, &known, policy, now, false)
+        .map_err(Error::Rejected)?;
+    let publications = manual(
+        &preview,
+        policy,
+        selected.as_deref(),
+        configuration.seller_key.as_deref(),
+    )?;
+    let mut planned = Planned::default();
+    for publication in &publications {
+        let mut tx = conn.begin().await?;
+        let (id, created) = create_or_find(&mut tx, publication).await?;
+        tx.commit().await?;
+        planned.publication_ids.push(id);
+        planned.created += usize::from(created);
+    }
+    Ok(planned)
+}
+
 /// Why a batch planned no publication by itself.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Skipped {
@@ -806,6 +882,133 @@ mod tests {
             println!("  publication {id}: {why}");
         }
         assert!(different.is_empty());
+    }
+
+    /// Node's publish route (`POST /api/inventory-batches/:batch/publications`) recorded over dev batches
+    /// (`.port-logs/publish-*`): received, csv and continuous batches, selections split at a maximum,
+    /// a selection planned twice, no seller, stale candidates and refused batches. Each case is
+    /// planned here as it stood, inside a transaction that is rolled back, and must answer as Node
+    /// answered (its refusals are 500s whose message carries an `Error: ` prefix) and save what Node
+    /// saved.
+    #[tokio::test]
+    #[ignore = "reads the dev database and .port-logs; writes only in a transaction that is rolled back"]
+    async fn selections_plan_as_node_plans() {
+        use sqlx::Connection;
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let read = |path: &str| std::fs::read_to_string(path).unwrap();
+        let cases: Vec<Value> =
+            serde_json::from_str(&read(".port-logs/publish-cases.json")).unwrap();
+        let node: Vec<Value> = serde_json::from_str(&read(".port-logs/publish.node.json")).unwrap();
+        let capture = read(".port-logs/publish-capture.sql");
+        assert_eq!(cases.len(), node.len());
+        let mut tx = db.0.begin().await.unwrap();
+        let mut planned_some = 0;
+        for (case, node) in cases.iter().zip(&node) {
+            let name = case["name"].as_str().unwrap();
+            let mut each = tx.begin().await.unwrap();
+            if let Some(setup) = case["setup"].as_str() {
+                sqlx::raw_sql(setup).execute(&mut *each).await.unwrap();
+            }
+            let before: i64 =
+                sqlx::query_scalar("SELECT COALESCE(max(id), 0) FROM inventory_publications")
+                    .fetch_one(&mut *each)
+                    .await
+                    .unwrap();
+            let now: DateTime<Utc> = node["at"].as_str().unwrap().parse().unwrap();
+            let selected: Option<Vec<i64>> = serde_json::from_value(node["skus"].clone()).unwrap();
+            let mut answers = Vec::new();
+            for _ in 0..node["answers"].as_array().unwrap().len() {
+                let answer = match plan_manual(
+                    &mut each,
+                    case["batch"].as_i64().unwrap() as i32,
+                    selected.as_deref(),
+                    now,
+                )
+                .await
+                {
+                    Ok(planned) => json!({
+                        "status": 201,
+                        "publications": planned.publication_ids.len(),
+                        "created": planned.created,
+                    }),
+                    Err(Error::Rejected(why)) => {
+                        json!({ "status": 500, "error": format!("Error: {why}") })
+                    }
+                    Err(error) => panic!("{name}: {error}"),
+                };
+                answers.push(answer);
+            }
+            let captured: String = sqlx::query_scalar(&capture)
+                .bind(before)
+                .fetch_one(&mut *each)
+                .await
+                .unwrap();
+            let captured: Value = serde_json::from_str(&captured).unwrap();
+            each.rollback().await.unwrap();
+            assert_eq!(Value::from(answers), node["answers"], "{name}: answers");
+            assert_eq!(captured, node["captured"], "{name}: saved");
+            planned_some += usize::from(!captured.as_array().unwrap().is_empty());
+        }
+        tx.rollback().await.unwrap();
+        assert!(
+            planned_some >= 4,
+            "only {planned_some} cases planned anything"
+        );
+    }
+
+    /// A selection too large for one staged publication is split, each part keyed by its own
+    /// SKUs, and a selection no maximum can split is refused.
+    #[test]
+    fn a_selection_is_split_at_the_policy_maximum() {
+        let mut policy = Policy::of(&Value::Null);
+        policy.staged_micro_batch_maximum = 2;
+        let item = |sku: i32| PreviewItem {
+            sku,
+            product_id: 1,
+            product_line: "Line".into(),
+            set_name: "Set".into(),
+            product_name: "Card".into(),
+            condition: "Near Mint".into(),
+            previous_price: None,
+            desired_price: Some(1.0),
+            original_quantity_delta: 0,
+            quantity_delta: 0,
+            inventory_delta_already_planned: false,
+            priced_at: DateTime::UNIX_EPOCH,
+            eligible: true,
+            reasons: Vec::new(),
+            candidate_key: format!("candidate-{sku}"),
+            inventory_delta_key: None,
+            forecast_evidence: None,
+        };
+        let preview = Preview {
+            batch_number: 7,
+            pricing_job_id: 70,
+            source: Source::Csv,
+            source_label: "file.csv".into(),
+            eligible_count: 3,
+            excluded_count: 0,
+            items: vec![item(5), item(3), item(9)],
+        };
+        let planned = manual(&preview, &policy, None, Some("seller")).unwrap();
+        let skus: Vec<Vec<i32>> = planned
+            .iter()
+            .map(|p| p.items.iter().map(|i| i.sku).collect())
+            .collect();
+        assert_eq!(skus, vec![vec![5, 3], vec![9]]);
+        assert_eq!(
+            planned[0].planning_key,
+            planning_key(preview.pricing_job_id, Some(&[5, 3]))
+        );
+        assert_eq!(planned[1].config["selectedSkus"], json!([9]));
+        policy.staged_micro_batch_maximum = 0;
+        assert_eq!(
+            manual(&preview, &policy, None, Some("seller"))
+                .unwrap_err()
+                .to_string(),
+            "The staged publication batch maximum must be positive."
+        );
     }
 
     /// Each reason a batch plans nothing by itself, and Node's latest automatic publication

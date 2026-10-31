@@ -1,10 +1,11 @@
 //! Inventory batches as the Node app keeps them: frozen sets of SKUs (from the Inventory Manager,
 //! a seller's live inventory or a CSV) that its pricing worker prices and its publisher publishes.
 //! The batches, their latest jobs, saved results and publications (with what publishing would
-//! send) are read here, a batch deleted here, and its pricing queued here, as
-//! `inventoryBatches.server.ts` and `inventoryBatchPricingJobs.server.ts` do. Publishing and a
-//! seller's import still go through the Node app's `/api/inventory-batches` routes: the
-//! publication safety checks stay with its publisher, and a seller's inventory is read live.
+//! send) are read here, a batch deleted here, its pricing queued here and its publication
+//! planned here, as `inventoryBatches.server.ts`, `inventoryBatchPricingJobs.server.ts` and
+//! `planInventoryBatchPublications` do; Node's publisher sends what is planned, with its safety
+//! checks. A seller's import still goes through the Node app's `/api/inventory-batches` routes,
+//! as it reads the seller's inventory live.
 use std::collections::{BTreeMap, HashSet};
 
 use chrono::{DateTime, Utc};
@@ -813,28 +814,14 @@ pub async fn delete(db: &Database, batch: i32) -> Result<(), String> {
     Ok(())
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PublishRequest<'a> {
-    selected_skus: &'a [i64],
-}
-
-#[derive(Deserialize)]
-struct Published {
-    publications: Vec<serde_json::Value>,
-}
-
-/// Plans the selected SKUs' publication to Seller Portal; how many publications it made.
-pub async fn publish(legacy: &Legacy, batch: i32, skus: &[i64]) -> Result<usize, String> {
-    let published: Published = legacy
-        .send(
-            &format!("/api/inventory-batches/{batch}/publications"),
-            &PublishRequest {
-                selected_skus: skus,
-            },
-        )
-        .await?;
-    Ok(published.publications.len())
+/// Plans the selected SKUs' publication to Seller Portal; how many publications it made. Node's
+/// publisher sends them (its worker finds planned publications on its poll).
+pub async fn publish(db: &Database, batch: i32, skus: &[i64]) -> Result<usize, String> {
+    let mut conn = db.0.acquire().await.map_err(|e| e.to_string())?;
+    plan::plan_manual(&mut conn, batch, Some(skus), Utc::now())
+        .await
+        .map(|planned| planned.publication_ids.len())
+        .map_err(|e| e.to_string())
 }
 
 #[derive(Serialize)]
