@@ -3,9 +3,11 @@
 //! from the Node app's `ebay-slab-pricing/evidence`.
 //!
 //! [`spec`] says what a request is and the key it is kept under; [`store`] is the refresh queue a
-//! worker claims from, and where what it fetched is saved; [`worker`] reads and saves each.
+//! worker claims from, and where what it fetched is saved, a supply refresh's listings as a
+//! [`supply`] scan; [`worker`] reads and saves each.
 pub mod spec;
 pub mod store;
+pub mod supply;
 #[cfg_attr(
     not(test),
     expect(dead_code, reason = "run once reading Alt and eBay is ported")

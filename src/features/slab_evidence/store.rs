@@ -6,15 +6,18 @@
 //! claims the highest priority refresh under a 90-second lease, at most three attempts, and saves
 //! what it fetched as a revision only while its lease holds.
 //!
-//! Supply (the asks on unsold listings) is saved with its listings as a scan: that is not ported
-//! yet, and a supply refresh completed here is refused.
+//! Supply (the asks on unsold listings) is saved as a scan of its listings ([`supply`]), and its
+//! revision without them.
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 use sqlx::{Connection, PgConnection, PgExecutor};
 
-use super::spec::{Refused, Spec};
+use super::{
+    spec::{Refused, Spec},
+    supply,
+};
 use crate::features::inventory_economics::ledger::fingerprint::js_numbers;
 
 /// A refusal the operator can act on, or the database failing.
@@ -45,7 +48,7 @@ impl From<sqlx::Error> for Error {
     }
 }
 
-fn refused<T>(message: &str) -> Result<T, Error> {
+pub(super) fn refused<T>(message: &str) -> Result<T, Error> {
     Err(Error::Refused(Refused(message.to_owned())))
 }
 
@@ -506,9 +509,6 @@ pub async fn complete(
     }
     let compact = compact(payload)?;
     validate(&job.spec, &compact.payload)?;
-    if matches!(job.spec, Spec::AltSupply { .. } | Spec::EbaySupply(_)) {
-        return refused("Supply scans are saved by the Node app until they are ported.");
-    }
     let mut tx = conn.begin().await?;
     sqlx::query("SET LOCAL statement_timeout = '15s'")
         .execute(&mut *tx)
@@ -525,15 +525,18 @@ pub async fn complete(
     if held.is_none() {
         return Ok(false);
     }
+    supply::record(&mut tx, job, &compact.payload).await?;
+    let scanned = matches!(job.spec, Spec::AltSupply { .. } | Spec::EbaySupply(_));
     sqlx::query(
         "INSERT INTO slab_evidence_revisions(id,key,payload,fetched_at,byte_count,observation_count,supply_scan_id)
-         VALUES ($1::uuid,$2,$3::jsonb,clock_timestamp(),$4,$5,NULL)",
+         VALUES ($1::uuid,$2,$3::jsonb,clock_timestamp(),$4,$5,$6::uuid)",
     )
     .bind(&job.run_id)
     .bind(&job.key)
-    .bind(compact.payload.to_string())
+    .bind(supply::without_listings(&compact.payload).to_string())
     .bind(compact.bytes as i32)
     .bind(compact.observations as i32)
+    .bind(scanned.then_some(&job.run_id))
     .execute(&mut *tx)
     .await?;
     sqlx::query(

@@ -4,15 +4,29 @@ use serde::Serialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
+use crate::features::inventory_strategy::collate;
+
 /// `value` as JSON with every object's keys sorted and numbers written as JavaScript writes
 /// them (`10`, not `10.0`).
 pub fn stable_json(value: &Value) -> String {
     let mut out = String::new();
-    write(value, &mut out);
+    write(value, &mut out, &|a, b| {
+        a.encode_utf16().cmp(b.encode_utf16())
+    });
     out
 }
 
-fn write(value: &Value, out: &mut String) {
+/// `value` as JSON with every object's keys in `localeCompare` order, as the Node app's
+/// `JSON.stringify(canonical(value))` writes it, and numbers written as JavaScript writes them.
+pub fn locale_json(value: &Value) -> String {
+    let mut out = String::new();
+    write(value, &mut out, &|a, b| collate::compare(a, b));
+    out
+}
+
+type KeyOrder = dyn Fn(&str, &str) -> std::cmp::Ordering;
+
+fn write(value: &Value, out: &mut String, order: &KeyOrder) {
     match value {
         Value::Array(items) => {
             out.push('[');
@@ -20,13 +34,13 @@ fn write(value: &Value, out: &mut String) {
                 if index > 0 {
                     out.push(',');
                 }
-                write(item, out);
+                write(item, out, order);
             }
             out.push(']');
         }
         Value::Object(object) => {
             let mut keys: Vec<&String> = object.keys().collect();
-            keys.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
+            keys.sort_by(|a, b| order(a, b));
             out.push('{');
             for (index, key) in keys.into_iter().enumerate() {
                 if index > 0 {
@@ -34,7 +48,7 @@ fn write(value: &Value, out: &mut String) {
                 }
                 out.push_str(&Value::String(key.clone()).to_string());
                 out.push(':');
-                write(&object[key], out);
+                write(&object[key], out, order);
             }
             out.push('}');
         }
