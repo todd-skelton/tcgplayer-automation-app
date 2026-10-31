@@ -1,5 +1,6 @@
 //! Where the orders come from: TCGplayer's Ready to Ship queue or one order, read by the Node app
-//! (`/api/shipping-export/tcgplayer-orders`), and the seller's order history record
+//! (`/api/shipping-export/tcgplayer-orders`), and the seller's order history record: how far its
+//! scan has got is read here; moving the scan on and importing an export stay the Node app's
 //! (`/api/seller-order-history`).
 use serde::{Deserialize, Serialize};
 
@@ -87,16 +88,36 @@ pub async fn one(legacy: &Legacy, seller_key: &str, number: &str) -> Result<Load
         .await
 }
 
-/// How far the seller's order history scan has got.
-pub async fn coverage(legacy: &Legacy, seller_key: &str) -> Result<Coverage, String> {
-    #[derive(Deserialize)]
-    struct Answer {
-        coverage: Coverage,
-    }
-    let answer: Answer = legacy
-        .read_with("/api/seller-order-history", &[("sellerKey", seller_key)])
-        .await?;
-    Ok(answer.coverage)
+/// A scan as read: its status, the orders it expects, has observed and recorded, and its error.
+type Scan = (String, Option<i32>, i32, i32, Option<String>);
+
+/// How far the seller's order history scan has got: its latest API scan (`getCoverage`).
+pub async fn coverage(db: impl sqlx::PgExecutor<'_>, seller_key: &str) -> Result<Coverage, String> {
+    let row: Option<Scan> = sqlx::query_as(
+        "SELECT status, expected_total, orders_observed, details_recorded, error FROM seller_order_sync_runs
+         WHERE seller_key = $1 AND source = 'tcgplayer_api' ORDER BY started_at DESC, id DESC LIMIT 1",
+    )
+    .bind(seller_key.trim())
+    .fetch_optional(db)
+    .await
+    .map_err(|e| e.to_string())?;
+    let count = |n: i32| u64::try_from(n).unwrap_or(0);
+    Ok(match row {
+        None => Coverage {
+            status: "not_started".to_owned(),
+            expected_total: None,
+            orders_observed: 0,
+            details_recorded: 0,
+            error: None,
+        },
+        Some((status, expected, observed, recorded, error)) => Coverage {
+            status,
+            expected_total: expected.map(count),
+            orders_observed: count(observed),
+            details_recorded: count(recorded),
+            error: error.filter(|e| !e.is_empty()),
+        },
+    })
 }
 
 /// Moves the seller's order history scan on, these orders first.
@@ -153,6 +174,43 @@ pub async fn import_history(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Node's `getCoverage` for the sellers in `.port-logs/coverage.node.json`: the dev seller's
+    /// scans as they are, and sellers whose runs `coverage-node.ts` seeds, in a transaction rolled
+    /// back.
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction rolled back, and Node's reads in .port-logs"]
+    async fn coverage_reads_as_node_reads_it() {
+        crate::config::load_env();
+        let db = crate::database::Database::connect_lazy(&crate::config::database_url());
+        let read_log = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let node: Vec<serde_json::Value> =
+            serde_json::from_str(&read_log("coverage.node.json")).unwrap();
+        let mut tx = db.0.begin().await.unwrap();
+        sqlx::raw_sql(&read_log("coverage-seed.sql"))
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        for theirs in node {
+            let seller = theirs["asked"].as_str().unwrap();
+            let ours = coverage(&mut *tx, seller).await.unwrap();
+            let c = &theirs["coverage"];
+            assert_eq!(ours.status, c["status"], "{seller}");
+            assert_eq!(ours.expected_total, c["expectedTotal"].as_u64(), "{seller}");
+            assert_eq!(
+                Some(ours.orders_observed),
+                c["ordersObserved"].as_u64(),
+                "{seller}"
+            );
+            assert_eq!(
+                Some(ours.details_recorded),
+                c["detailsRecorded"].as_u64(),
+                "{seller}"
+            );
+            assert_eq!(ours.error.as_deref(), c["error"].as_str(), "{seller}");
+        }
+        tx.rollback().await.unwrap();
+    }
 
     #[test]
     fn coverage_reads_as_the_react_screen_wrote_it() {

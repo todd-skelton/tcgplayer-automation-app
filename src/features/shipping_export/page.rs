@@ -356,7 +356,7 @@ pub(super) async fn page(
         _ => None,
     };
     let coverage = match step {
-        Step::LoadOrders if !seller.is_empty() => Some(source::coverage(legacy, &seller).await),
+        Step::LoadOrders if !seller.is_empty() => Some(source::coverage(&db.0, &seller).await),
         _ => None,
     };
     let postage_problem = shown
