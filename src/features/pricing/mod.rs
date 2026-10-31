@@ -16,7 +16,10 @@ pub mod horizon_value_curve;
 pub mod latest_sales_price;
 pub mod marketplace_price;
 pub mod maximize;
+#[cfg(test)]
+mod parity;
 pub mod policy;
+pub mod resolver;
 pub mod sale;
 pub mod shipping_threshold_snap;
 pub mod sku_price;

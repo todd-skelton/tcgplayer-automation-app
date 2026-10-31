@@ -2,6 +2,7 @@
 //! any price, softened by competing sellers, scaled by the card's share of what the buyer pays.
 //! Ported from `buyerChoiceSellTime.ts`; the model has no within-card price response, so it is
 //! read for one listing at its price, never along a curve.
+use crate::js_math::JsMath;
 use serde::Serialize;
 
 use super::policy::CurvePoint;
@@ -80,11 +81,11 @@ pub fn sell_days(inputs: Inputs, listed_price: f64, calibration: Calibration) ->
         return None;
     }
     let log_rate = calibration.log_daily_rate
-        - calibration.demand_elasticity * buyer_interval_days.ln()
-        - calibration.competition_elasticity * (competing_sellers + 1.0).ln()
+        - calibration.demand_elasticity * buyer_interval_days.js_ln()
+        - calibration.competition_elasticity * (competing_sellers + 1.0).js_ln()
         + calibration.effective_price_elasticity
-            * (listed_price / (listed_price + calibration.purchase_fixed_cost)).ln();
-    Some(std::f64::consts::LN_2 / log_rate.exp())
+            * (listed_price / (listed_price + calibration.purchase_fixed_cost)).js_ln();
+    Some(std::f64::consts::LN_2 / log_rate.js_exp())
 }
 
 /// The forecast for a listing at its price, when its curve supports one.
@@ -149,7 +150,7 @@ mod tests {
             flat,
         )
         .unwrap();
-        assert!((d - std::f64::consts::LN_2 / CALIBRATION.log_daily_rate.exp()).abs() < 1e-9);
+        assert!((d - std::f64::consts::LN_2 / CALIBRATION.log_daily_rate.js_exp()).abs() < 1e-9);
     }
 
     fn point(

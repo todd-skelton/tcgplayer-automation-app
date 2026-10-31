@@ -1,6 +1,7 @@
 //! What selling at a horizon earns on the capital it ties up: `capitalCycle.ts`. A cycle sells at
 //! the modeled value, pays overhead, recovers the cost basis, and waits out the turnaround before
 //! the money is working again.
+use crate::js_math::JsMath;
 use serde::Serialize;
 
 use super::{
@@ -77,7 +78,7 @@ pub fn capital_cycle(
             0.0
         },
         daily_return: (cycle_days > 0.0 && cost > 0.0 && net_proceeds > 0.0)
-            .then(|| (net_proceeds / cost).ln() / cycle_days),
+            .then(|| (net_proceeds / cost).js_ln() / cycle_days),
     }
 }
 
@@ -168,7 +169,7 @@ mod tests {
         assert!((cycle.profit_per_day - cycle.profit / cycle.cycle_days).abs() < 1e-9);
         let daily_return = cycle.daily_return.unwrap();
         assert!(
-            (daily_return - (cycle.net_proceeds / cost).ln() / cycle.cycle_days).abs() < 1e-12,
+            (daily_return - (cycle.net_proceeds / cost).js_ln() / cycle.cycle_days).abs() < 1e-12,
             "daily return is the continuous growth of the cost basis over the cycle"
         );
 

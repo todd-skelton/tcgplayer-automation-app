@@ -6,6 +6,7 @@ use crate::features::{
         cost_model::{MINIMUM_NEARBY_BASKETS, baskets_near, expected_shipping_cost},
     },
 };
+use crate::js_math::JsMath;
 
 pub struct SnapInputs<'a> {
     /// Price the policy chose, after the floor.
@@ -62,7 +63,7 @@ pub fn consider(inputs: &SnapInputs) -> Option<ShippingThresholdSnap> {
     let discounted_return = |price: f64, days: f64| {
         let net = (inputs.net_proceeds)(price) - shipping_cost(price);
         if net > 0.0 {
-            net * (-inputs.daily_return_hurdle * days).exp()
+            net * (-inputs.daily_return_hurdle * days).js_exp()
         } else {
             net
         }

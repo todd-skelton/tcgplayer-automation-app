@@ -16,10 +16,15 @@ use super::latest_sales_price::Point;
 use super::marketplace_price::{self, Floor, Outcome, PriceEvidence, Reference};
 use super::policy::{
     self, Basis, Constrained, Constraint, Curve, CurvePoint, Decision, ForecastStatus, Method,
-    PercentileDetail, Policy, PortfolioItem, PortfolioPlan,
+    PercentileDetail, Policy, PortfolioItem, PortfolioPlan, ProfitPerDay,
 };
+pub use super::sku_price::Failure;
 use super::sku_price::Priced;
-use crate::features::inventory_economics::ledger::assumptions::{js_round, js_to_fixed};
+use crate::features::{
+    configuration::config::{Config as StoredConfig, Policy as StoredPolicy},
+    inventory_economics::ledger::assumptions::{js_round, js_to_fixed},
+    shipping_thresholds::{ShippingCostModel, SnapPolicy},
+};
 
 const MILLISECONDS_PER_DAY: f64 = 24.0 * 60.0 * 60.0 * 1000.0;
 
@@ -32,6 +37,64 @@ pub const DEFAULT_FLOOR: Floor = Floor {
 /// `Math.round((value + Number.EPSILON) * 100) / 100`.
 fn round_currency(value: f64) -> f64 {
     js_round((value + f64::EPSILON) * 100.0) as f64 / 100.0
+}
+
+/// `pricingCalculatorConfig`: the run's settings from the stored configuration. Threshold snaps
+/// join the profit-per-day policy when they are on, have thresholds and a cost model was learned.
+pub fn config_of(
+    stored: &StoredConfig,
+    excluded_seller_key: Option<String>,
+    cost_model: Option<ShippingCostModel>,
+) -> Config {
+    let policy = match stored.pricing.policy {
+        StoredPolicy::Percentile => None,
+        StoredPolicy::TargetHorizon(horizon_days) => Some(Policy::TargetHorizon { horizon_days }),
+        StoredPolicy::ProfitPerDay => {
+            let p = &stored.pricing.profit_per_day;
+            let snaps = &stored.snaps;
+            let shipping_threshold_snap = cost_model
+                .filter(|_| snaps.enabled && !snaps.thresholds.is_empty())
+                .map(|cost_model| SnapPolicy {
+                    thresholds: snaps.thresholds.iter().map(|t| f64::from(*t)).collect(),
+                    snap_range: snaps.snap_range,
+                    cost_model,
+                });
+            Some(Policy::ProfitPerDay(ProfitPerDay {
+                daily_return_hurdle: p.daily_return_hurdle,
+                relative_overhead: p.relative_overhead,
+                static_overhead_per_unit: p.static_overhead_per_unit,
+                shipping_threshold_snap,
+            }))
+        }
+    };
+    Config {
+        percentile: stored.product_lines.default_percentile,
+        policy,
+        product_lines: Some(ProductLines {
+            default_percentile: stored.product_lines.default_percentile,
+            settings: stored
+                .product_lines
+                .settings
+                .iter()
+                .map(|(line, s)| {
+                    (
+                        i64::from(*line),
+                        ProductLineSetting {
+                            percentile: s.percentile,
+                            skip: s.skip,
+                            daily_return_hurdle: s.daily_return_hurdle,
+                        },
+                    )
+                })
+                .collect(),
+        }),
+        floor: Floor {
+            min_price_multiplier: stored.pricing.min_price_multiplier,
+            min_price_constant: stored.pricing.min_price_constant,
+        },
+        supply_analysis: stored.supply.enabled,
+        excluded_seller_key,
+    }
 }
 
 /// A SKU to price.
@@ -155,15 +218,6 @@ impl From<Priced> for Resolved {
             price_evidence: priced.price_evidence,
         }
     }
-}
-
-/// Why the resolver could not answer.
-#[derive(Clone, Debug, PartialEq)]
-pub enum Failure {
-    /// The session no longer sees full sales history, so no SKU can be priced: the run stops.
-    SalesHistoryUnavailable(String),
-    /// This SKU failed; the run goes on.
-    Sku(String),
 }
 
 /// Prices one SKU from its evidence.

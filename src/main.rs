@@ -6,6 +6,7 @@ mod config;
 mod csv_text;
 mod database;
 mod features;
+mod js_math;
 mod layout;
 mod legacy;
 mod tcgplayer;

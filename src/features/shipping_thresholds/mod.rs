@@ -6,6 +6,7 @@
 use serde::{Deserialize, Serialize};
 
 pub mod cost_model;
+pub mod evidence;
 
 /// Order item values where shipping economics step: under $5 the buyer pays shipping, from $5
 /// shipping is free, from $50 orders ship tracked ground, and from $250 they ship with signature.

@@ -44,11 +44,20 @@ pub struct History {
     pub buckets: Vec<HistoryBucket>,
 }
 
+/// Why a SKU could not be priced.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Failure {
+    /// The session no longer sees full sales history, so no SKU can be priced: the run stops.
+    SalesHistoryUnavailable(String),
+    /// This SKU failed; the run goes on.
+    Sku(String),
+}
+
 /// Where a pricer reads its evidence.
 #[allow(async_fn_in_trait, reason = "used generically within this crate")]
 pub trait Evidence {
     /// The product's latest sales in the SKU's variant and language, every condition.
-    async fn latest_sales(&self, sku: &Sku) -> Result<Vec<Sale>, String>;
+    async fn latest_sales(&self, sku: &Sku) -> Result<Vec<Sale>, Failure>;
     /// The product's annual price history, every SKU; none when unavailable.
     async fn price_history(&self, product_id: i64) -> Option<Vec<History>>;
     /// Every seller's cheapest ask per condition delivered at or under the ceiling, without the
@@ -149,7 +158,7 @@ pub async fn price(
     config: &Config,
     evidence: &impl Evidence,
     now: f64,
-) -> Result<Priced, String> {
+) -> Result<Priced, Failure> {
     let excluded = config
         .excluded_seller_key
         .as_deref()
@@ -308,7 +317,7 @@ mod tests {
     }
 
     impl Evidence for Recorded {
-        async fn latest_sales(&self, _: &Sku) -> Result<Vec<Sale>, String> {
+        async fn latest_sales(&self, _: &Sku) -> Result<Vec<Sale>, Failure> {
             Ok(self.sales.clone())
         }
         async fn price_history(&self, _: i64) -> Option<Vec<History>> {

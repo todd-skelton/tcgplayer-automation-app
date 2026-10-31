@@ -2,6 +2,7 @@
 //! time, or at the best return on capital; and the shadow plan that matches a portfolio's current
 //! value at one horizon. Ported from `pricingPolicy.ts` and `core/types/pricingPolicy.ts`; a
 //! decision's JSON keeps the Node app's shape, since both apps store and read it.
+use crate::js_math::JsMath;
 use std::{
     collections::{HashMap, HashSet},
     f64::consts::LN_2,
@@ -525,7 +526,7 @@ impl Curve {
         let discounted_net = |sell_days: f64| {
             let net = net_proceeds_at_price(at_sell_time(points, sell_days).price, policy);
             if net > 0.0 {
-                net * (-policy.daily_return_hurdle * sell_days).exp()
+                net * (-policy.daily_return_hurdle * sell_days).js_exp()
             } else {
                 net
             }

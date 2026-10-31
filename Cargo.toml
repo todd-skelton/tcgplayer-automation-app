@@ -11,7 +11,8 @@ corten = { git = "https://github.com/todd-skelton/corten", rev = "758a26d2", fea
 corten-ui = { git = "https://github.com/todd-skelton/corten", rev = "758a26d2" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# Correctly rounded float parsing, so numbers the Node app wrote read back to the same bits.
+serde_json = { version = "1", features = ["float_roundtrip"] }
 schemars = "1.2"
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "chrono", "macros"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
@@ -26,6 +27,8 @@ dotenvy = "0.15"
 regex = "1.13.1"
 # Evidence fingerprints that match the ones the Node app records (inventory economics ledger).
 sha2 = "0.10"
+# fdlibm's exp, as V8's Math.exp computes it (js_math).
+libm = "0.2"
 hex = "0.4"
 
 [dev-dependencies]

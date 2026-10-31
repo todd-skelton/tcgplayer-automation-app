@@ -1,5 +1,7 @@
 //! How often buyers pay at least a price, from a product's latest sales: the interval between
 //! them over the time the sales could have happened. Ported from `buyerArrivalRate.ts`.
+use crate::js_math::JsMath;
+
 const MILLISECONDS_PER_DAY: f64 = 24.0 * 60.0 * 60.0 * 1000.0;
 /// The shortest exposure a capped history is read over: an hour.
 const MINIMUM_CAPPED_EXPOSURE_DAYS: f64 = 1.0 / 24.0;
@@ -85,7 +87,7 @@ pub fn estimate_at_price(sales: &[Observation], target_price: f64, options: Opti
         _ => 0.0,
     };
     let effective_exposure_days = if decay_rate > 0.0 {
-        (1.0 - (-decay_rate * observation_days).exp()) / decay_rate
+        (1.0 - (-decay_rate * observation_days).js_exp()) / decay_rate
     } else {
         observation_days
     };
@@ -97,7 +99,7 @@ pub fn estimate_at_price(sales: &[Observation], target_price: f64, options: Opti
         let age_days = (as_of - sale.timestamp) / MILLISECONDS_PER_DAY;
         total
             + if decay_rate > 0.0 {
-                (-decay_rate * age_days).exp()
+                (-decay_rate * age_days).js_exp()
             } else {
                 1.0
             }

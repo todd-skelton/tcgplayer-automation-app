@@ -2137,6 +2137,7 @@ dependencies = [
  "futures-util",
  "hex",
  "http-body-util",
+ "libm",
  "regex",
  "reqwest",
  "schemars",

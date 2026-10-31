@@ -1,5 +1,6 @@
 //! Portfolio value against target horizon as a log-logistic curve: `horizonValueCurve.ts`.
 //! value = floor + (ceiling - floor) / (1 + (midpointDays / horizonDays) ^ steepness).
+use crate::js_math::JsMath;
 use serde::{Deserialize, Serialize};
 
 /// Residual is the root-mean-square error in headroom fraction over the samples the curve was
@@ -57,8 +58,8 @@ impl HorizonShape {
         if !positive(horizon_days) {
             return 0.0;
         }
-        let offset = self.steepness * (horizon_days.ln() - self.midpoint_days.ln());
-        1.0 / (1.0 + (-offset).exp())
+        let offset = self.steepness * (horizon_days.js_ln() - self.midpoint_days.js_ln());
+        1.0 / (1.0 + (-offset).js_exp())
     }
 
     /// Horizon at which gain per doubling of horizon decelerates fastest.
@@ -135,9 +136,9 @@ pub fn fit(
     let (mut weight_sum, mut weighted_x, mut weighted_y, mut weighted_xx, mut weighted_xy) =
         (0.0, 0.0, 0.0, 0.0, 0.0);
     for &&(horizon_days, fraction) in &interior {
-        let log_horizon = horizon_days.ln();
+        let log_horizon = horizon_days.js_ln();
         let weight = fraction * (1.0 - fraction);
-        let logit = (fraction / (1.0 - fraction)).ln();
+        let logit = (fraction / (1.0 - fraction)).js_ln();
         weight_sum += weight;
         weighted_x += weight * log_horizon;
         weighted_y += weight * logit;
@@ -149,7 +150,7 @@ pub fn fit(
         return None;
     }
     let steepness = (weight_sum * weighted_xy - weighted_x * weighted_y) / denominator;
-    let midpoint_days = (-(weighted_y - steepness * weighted_x) / weight_sum / steepness).exp();
+    let midpoint_days = (-(weighted_y - steepness * weighted_x) / weight_sum / steepness).js_exp();
     if !positive(steepness) || !positive(midpoint_days) || !midpoint_days.is_finite() {
         return None;
     }
@@ -186,8 +187,9 @@ mod tests {
     fn sampled(value: impl Fn(f64) -> f64) -> Vec<HorizonValueSample> {
         (0..25)
             .map(|index| {
-                let horizon_days =
-                    (0.5f64.ln() + ((2000f64.ln() - 0.5f64.ln()) * index as f64) / 24.0).exp();
+                let horizon_days = (0.5f64.js_ln()
+                    + ((2000f64.js_ln() - 0.5f64.js_ln()) * index as f64) / 24.0)
+                    .js_exp();
                 HorizonValueSample {
                     horizon_days,
                     value: value(horizon_days),

@@ -2,6 +2,7 @@
 //! fit of price against condition rank when the sales support one, else the card's value ladder
 //! from its sibling SKUs' market prices, else no scaling. Ported from
 //! `conditionNormalization.ts`.
+use crate::js_math::JsMath;
 use serde::Serialize;
 
 use super::{
@@ -109,7 +110,7 @@ fn condition_information(observations: &[Observation]) -> f64 {
         .iter()
         .map(|o| o.timestamp / MILLISECONDS_PER_DAY)
         .collect();
-    let conditions: Vec<f64> = observations.iter().map(|o| o.rank.ln()).collect();
+    let conditions: Vec<f64> = observations.iter().map(|o| o.rank.js_ln()).collect();
     let len = times.len() as f64;
     let mean_time = times.iter().fold(0.0, |t, v| t + v) / len;
     let mean_condition = conditions.iter().fold(0.0, |t, v| t + v) / len;
@@ -293,11 +294,11 @@ pub fn fit(
             [
                 1.0,
                 (o.timestamp - as_of) / (LATEST_SALES_HISTORY_DAYS * MILLISECONDS_PER_DAY),
-                o.rank.ln(),
+                o.rank.js_ln(),
             ]
         })
         .collect();
-    let log_prices: Vec<f64> = observations.iter().map(|o| o.price.ln()).collect();
+    let log_prices: Vec<f64> = observations.iter().map(|o| o.price.js_ln()).collect();
     let mut weights = vec![1.0; observations.len()];
     let mut coefficients = None;
     for _ in 0..4 {
