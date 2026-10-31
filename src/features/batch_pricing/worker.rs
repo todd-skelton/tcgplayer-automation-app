@@ -120,13 +120,15 @@ pub async fn run<J: Jobs>(jobs: J, queued: Arc<Notify>, signal: Signal) {
     }
 }
 
-/// The app's task: the Postgres queue priced from TCGplayer, off unless `PRICING_WORKER` is set.
-/// Node's worker owns the jobs until cutover (port decisions 3 and 26); turned on beside it, the two
-/// claim jobs from one queue under their own leases, so a job is priced by one or the other.
+/// Whether `PRICING_WORKER` turns the worker on. Node's worker owns the jobs until cutover (port
+/// decisions 3 and 26); turned on beside it, the two claim jobs from one queue under their own
+/// leases, so a job is priced by one or the other.
+pub fn on() -> bool {
+    crate::config::is_set("PRICING_WORKER")
+}
+
+/// The app's task: the Postgres queue priced from TCGplayer.
 pub async fn start(db: crate::database::Database, signal: Signal) {
-    if !crate::config::is_set("PRICING_WORKER") {
-        return;
-    }
     let tcg = crate::tcgplayer::TcgPlayer::new(db.clone());
     let jobs = super::jobs::PricingJobs {
         worker: super::jobs::worker_id(),

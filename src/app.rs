@@ -95,7 +95,8 @@ async fn forward_api(
 
 pub fn app(shared: Shared) -> App {
     let ready = shared.db.clone();
-    App::new(url::router(shared.clone()))
+    let db = shared.db.clone();
+    let app = App::new(url::router(shared.clone()))
         .api(|routes| api::api(routes, shared.clone()).deadline(Some(Duration::from_secs(15 * 60))))
         .area(|area| pull_sheet::url::area(area, shared.clone()).components(pull_sheet::COMPONENTS))
         // A count waits on the Node app, which notes the market price when units are added.
@@ -190,39 +191,59 @@ pub fn app(shared: Shared) -> App {
         .client_zone()
         // TCGplayer's product pictures.
         .policy(Policy::new().img_src("https://tcgplayer-cdn.tcgplayer.com"))
-        // Off unless PRICING_WORKER is set: Node's worker prices the batches until cutover.
-        .task("inventory batch pricing worker", {
-            let db = shared.db.clone();
-            move |signal| batch_pricing::worker::start(db, signal)
-        })
-        // Off unless CONTINUOUS_PRICING_SCHEDULER is set: Node's scheduler queues until cutover.
-        .task("continuous pricing scheduler", {
-            let db = shared.db.clone();
-            move |signal| continuous_pricing::scheduler::run(db, signal)
-        })
         .task("forecast evidence backfill", {
             let db = shared.db.clone();
             move |signal| inventory_strategy::backfill::run(db, signal)
         })
-        // Off unless SELLER_ORDER_SHADOW_LOG names its log; it reads TCGplayer and writes only there.
-        .task("seller order history shadow", {
-            let db = shared.db.clone();
-            move |signal| seller_order_history::shadow::run(db, signal)
-        })
-        // Off unless FIFO_SHADOW_LOG names its log; it reads the database and writes only there.
-        .task("fifo replay shadow", {
-            let db = shared.db.clone();
-            move |signal| inventory_fifo::shadow::run(db, signal)
-        })
-        // Off unless ESTIMATE_SHADOW_LOG names its log; it reads the database and writes only there.
-        .task("estimated purchase cost shadow", {
-            let db = shared.db.clone();
-            move |signal| inventory_economics::estimate::run(db, signal)
-        })
         .ready(move || {
             let db = ready.clone();
             async move { db.reachable().await }
-        })
+        });
+    // Node's worker prices the batches until cutover.
+    let app = switched(app, "inventory batch pricing worker", {
+        let db = db.clone();
+        batch_pricing::worker::on()
+            .then_some(move |signal| batch_pricing::worker::start(db, signal))
+    });
+    // Node's scheduler queues the batches until cutover.
+    let app = switched(app, "continuous pricing scheduler", {
+        let db = db.clone();
+        continuous_pricing::scheduler::on()
+            .then_some(move |signal| continuous_pricing::scheduler::run(db, signal))
+    });
+    // It reads TCGplayer and writes only to its log.
+    let app = switched(app, "seller order history shadow", {
+        let db = db.clone();
+        seller_order_history::shadow::log_path()
+            .map(|log| move |signal| seller_order_history::shadow::run(db, log, signal))
+    });
+    // It reads the database and writes only to its log.
+    let app = switched(app, "fifo replay shadow", {
+        let db = db.clone();
+        inventory_fifo::shadow::log_path()
+            .map(|log| move |signal| inventory_fifo::shadow::run(db, log, signal))
+    });
+    // It reads the database and writes only to its log.
+    switched(app, "estimated purchase cost shadow", {
+        inventory_economics::estimate::log_path()
+            .map(|log| move |signal| inventory_economics::estimate::run(db, log, signal))
+    })
+}
+
+/// A task the configuration turns on or off: one that is off is not registered, and the log says
+/// so, as Corten's guide shows for a switched task (corten#503).
+fn switched<F, Fut>(app: App, name: &'static str, task: Option<F>) -> App
+where
+    F: FnOnce(corten::Signal) -> Fut + Send + 'static,
+    Fut: std::future::Future<Output = ()> + Send + 'static,
+{
+    match task {
+        Some(task) => app.task(name, task),
+        None => {
+            println!("Task {name} is off");
+            app
+        }
+    }
 }
 
 #[cfg(test)]

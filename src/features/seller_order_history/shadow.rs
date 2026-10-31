@@ -39,7 +39,8 @@ pub const BUDGET: Budget = Budget {
     detail_concurrency: 5,
 };
 
-fn log_path() -> Option<PathBuf> {
+/// The log `SELLER_ORDER_SHADOW_LOG` names: the shadow runs only when it is set.
+pub fn log_path() -> Option<PathBuf> {
     std::env::var("SELLER_ORDER_SHADOW_LOG")
         .ok()
         .filter(|p| !p.trim().is_empty())
@@ -269,12 +270,8 @@ async fn step(
     Ok(())
 }
 
-/// The task: when `SELLER_ORDER_SHADOW_LOG` names a log, a step at once, then every [`EVERY`],
-/// until shutdown.
-pub async fn run(db: Database, signal: Signal) {
-    let Some(log) = log_path() else {
-        return;
-    };
+/// The task: a step at once, then every [`EVERY`], until shutdown, each appended to `log`.
+pub async fn run(db: Database, log: PathBuf, signal: Signal) {
     println!("Seller order shadow: logging to {}", log.display());
     let tcg = TcgPlayer::new(db.clone());
     let run = MemoryRun::default();

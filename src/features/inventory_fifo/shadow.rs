@@ -17,7 +17,8 @@ use crate::{database::Database, features::shipping_configuration};
 /// an hour leaves its queue time to settle between passes.
 pub const EVERY: Duration = Duration::from_secs(60 * 60);
 
-fn log_path() -> Option<PathBuf> {
+/// The log `FIFO_SHADOW_LOG` names: the shadow runs only when it is set.
+pub fn log_path() -> Option<PathBuf> {
     std::env::var("FIFO_SHADOW_LOG")
         .ok()
         .filter(|p| !p.trim().is_empty())
@@ -200,11 +201,8 @@ pub async fn pass(db: &Database, seller: &str, log: &Path) -> Result<Tally, Stri
     Ok(tally)
 }
 
-/// The task: when `FIFO_SHADOW_LOG` names a log, a pass at once, then every [`EVERY`], until shutdown.
-pub async fn run(db: Database, signal: Signal) {
-    let Some(log) = log_path() else {
-        return;
-    };
+/// The task: a pass at once, then every [`EVERY`], until shutdown, each appended to `log`.
+pub async fn run(db: Database, log: PathBuf, signal: Signal) {
     println!("FIFO shadow: logging to {}", log.display());
     let mut every = interval(EVERY);
     every.set_missed_tick_behavior(MissedTickBehavior::Skip);

@@ -431,16 +431,17 @@ pub async fn worker_run(db: &Database, seller: &str) -> Result<Option<Run>, Stri
     plan(seller, &batches).map(Some).map_err(|e| e.to_string())
 }
 
-/// The task: when `ESTIMATE_SHADOW_LOG` names a log, what the worker's run would record is
-/// appended to it as one JSON line at once, then every [`EVERY`]. It writes nothing else.
-pub async fn run(db: Database, signal: Signal) {
-    let Some(log) = std::env::var("ESTIMATE_SHADOW_LOG")
+/// The log `ESTIMATE_SHADOW_LOG` names: the shadow runs only when it is set.
+pub fn log_path() -> Option<PathBuf> {
+    std::env::var("ESTIMATE_SHADOW_LOG")
         .ok()
         .filter(|p| !p.trim().is_empty())
         .map(PathBuf::from)
-    else {
-        return;
-    };
+}
+
+/// The task: what the worker's run would record is appended to `log` as one JSON line at once,
+/// then every [`EVERY`]. It writes nothing else.
+pub async fn run(db: Database, log: PathBuf, signal: Signal) {
     println!(
         "Estimated purchase cost shadow: logging to {}",
         log.display()

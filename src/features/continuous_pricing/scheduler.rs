@@ -492,13 +492,14 @@ fn pause(cycle: &Cycle, settings: &Settings) -> std::time::Duration {
     std::time::Duration::from_millis((seconds.max(0) as u64 * 1_000).max(1_000))
 }
 
-/// The app's task (`continuous-pricing-scheduler.server.ts`), off unless
-/// `CONTINUOUS_PRICING_SCHEDULER` is set: Node's scheduler queues the batches until cutover, and
-/// both read the seller's inventory from TCGplayer.
+/// Whether `CONTINUOUS_PRICING_SCHEDULER` turns the scheduler on: Node's scheduler queues the
+/// batches until cutover, and both read the seller's inventory from TCGplayer.
+pub fn on() -> bool {
+    crate::config::is_set("CONTINUOUS_PRICING_SCHEDULER")
+}
+
+/// The app's task (`continuous-pricing-scheduler.server.ts`).
 pub async fn run(db: Database, signal: corten::Signal) {
-    if !crate::config::is_set("CONTINUOUS_PRICING_SCHEDULER") {
-        return;
-    }
     println!("Continuous pricing scheduler started");
     let tcg = crate::tcgplayer::TcgPlayer::new(db.clone());
     let inventory = refresh::TcgPlayerSearch(tcg.clone());
