@@ -4,18 +4,19 @@
 use chrono::Utc;
 use corten::{ClientZone, Refusal, prelude::*};
 use serde::Deserialize;
-use serde_json::json;
 
 use super::{
+    refresh::{self, TcgPlayerSearch},
     scheduler,
     store::{self, Settings},
     url::{self, View},
-    views::{ContinuousScreen, Cycled, Did, Problem, ScheduleForm},
+    views::{ContinuousScreen, Did, Problem, ScheduleForm},
 };
 use crate::{
     database::Database,
+    features::batch_pricing::market::TcgPlayerMarket,
     layout::{Chrome, Layout},
-    legacy::Legacy,
+    tcgplayer::TcgPlayer,
     text::Msg,
     zone::Visitor,
 };
@@ -185,25 +186,39 @@ pub async fn save(
     }
 }
 
+/// TCGplayer's search and market data, read through the app's client.
+fn tcgplayer(db: &Database) -> (TcgPlayerSearch, TcgPlayerMarket) {
+    let tcg = TcgPlayer::new(db.clone());
+    (TcgPlayerSearch(tcg.clone()), TcgPlayerMarket(tcg))
+}
+
 /// Reads the seller's whole inventory from TCGplayer again, with its market prices.
 pub async fn refresh(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::Refresh>,
 ) -> HtmlResult {
-    #[derive(Deserialize)]
-    struct Refreshed {
-        count: i64,
+    let settings = store::settings(&db).await?;
+    if settings.seller_key.is_empty() {
+        let why = "Save a seller key before refreshing inventory.".to_owned();
+        return refused(&req, &db, zone, &at.view, why).await;
     }
-    match legacy
-        .send::<_, Refreshed>("/api/continuous-pricing", &json!({ "intent": "refresh" }))
-        .await
+    let (inventory, market) = tcgplayer(&db);
+    match refresh::refresh(
+        &db,
+        &settings.seller_key,
+        settings.minimum_interval_minutes,
+        &inventory,
+        &market,
+    )
+    .await
     {
-        Ok(done) => req.redirect_with_notice(
+        Ok(count) => req.redirect_with_notice(
             &url::ContinuousPricing { view: at.view },
-            Did::Refreshed { count: done.count },
+            Did::Refreshed {
+                count: count as i64,
+            },
         ),
         Err(why) => refused(&req, &db, zone, &at.view, why).await,
     }
@@ -213,22 +228,14 @@ pub async fn refresh(
 pub async fn run(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::Run>,
 ) -> HtmlResult {
-    #[derive(Deserialize)]
-    struct Ran {
-        cycle: Cycled,
-    }
-    match legacy
-        .send::<_, Ran>("/api/continuous-pricing", &json!({ "intent": "run" }))
-        .await
-    {
-        Ok(done) => req.redirect_with_notice(
-            &url::ContinuousPricing { view: at.view },
-            Did::Ran(done.cycle),
-        ),
+    let (inventory, market) = tcgplayer(&db);
+    match scheduler::cycle(&db, &inventory, &market).await {
+        Ok((cycle, _)) => {
+            req.redirect_with_notice(&url::ContinuousPricing { view: at.view }, Did::Ran(cycle))
+        }
         Err(why) => refused(&req, &db, zone, &at.view, why).await,
     }
 }
@@ -277,27 +284,24 @@ pub async fn apply_policy(
 pub async fn mark_due(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::MarkDue>,
 ) -> HtmlResult {
-    #[derive(Deserialize)]
-    struct Marked {
-        count: i64,
-        cycle: Cycled,
+    let settings = store::settings(&db).await?;
+    if !settings.enabled || settings.seller_key.is_empty() {
+        let why = "Enable continuous pricing before repricing inventory.".to_owned();
+        return refused(&req, &db, zone, &at.view, why).await;
     }
-    match legacy
-        .send::<_, Marked>(
-            "/api/continuous-pricing",
-            &json!({ "intent": "reprice_all" }),
-        )
-        .await
-    {
-        Ok(done) => req.redirect_with_notice(
+    let mut conn = db.0.acquire().await?;
+    let count = scheduler::make_eligible_inventory_due(&mut conn, &settings.seller_key).await?;
+    drop(conn);
+    let (inventory, market) = tcgplayer(&db);
+    match scheduler::cycle(&db, &inventory, &market).await {
+        Ok((cycle, _)) => req.redirect_with_notice(
             &url::ContinuousPricing { view: at.view },
             Did::MarkedDue {
-                count: done.count,
-                cycle: done.cycle,
+                count: count as i64,
+                cycle,
             },
         ),
         Err(why) => refused(&req, &db, zone, &at.view, why).await,

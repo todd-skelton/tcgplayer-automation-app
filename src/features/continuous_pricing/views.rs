@@ -1,6 +1,7 @@
 //! The Continuous Pricing screen. Its stylesheet is next to it in `views/`.
 use corten::Component;
-use serde::Deserialize;
+
+use super::scheduler::Cycle;
 
 mod continuous_screen;
 
@@ -8,46 +9,19 @@ pub use continuous_screen::{ContinuousScreen, Problem, ScheduleForm};
 
 pub const COMPONENTS: &[Component] = &[ContinuousScreen];
 
-/// What a scheduler cycle came to, as the Node app names it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Cycle {
-    Disabled,
-    RefreshFailed,
-    Idle,
-    Backlogged,
-    Scheduled,
-}
-
-impl Cycle {
-    fn word(self) -> &'static str {
-        match self {
-            Cycle::Disabled => "disabled",
-            Cycle::RefreshFailed => "refresh_failed",
-            Cycle::Idle => "idle",
-            Cycle::Backlogged => "backlogged",
-            Cycle::Scheduled => "scheduled",
-        }
+/// A cycle's outcome as the Node app names it.
+fn word(cycle: Cycle) -> &'static str {
+    match cycle {
+        Cycle::Disabled => "disabled",
+        Cycle::RefreshFailed => "refresh_failed",
+        Cycle::Idle => "idle",
+        Cycle::Backlogged => "backlogged",
+        Cycle::Scheduled { .. } => "scheduled",
     }
 }
 
-/// A scheduler cycle's outcome, as the Node app answers it.
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Cycled {
-    pub status: Cycle,
-    pub batch_number: Option<i32>,
-    pub item_count: Option<i64>,
-}
-
-impl Cycled {
-    fn queued(&self) -> String {
-        format!(
-            "Queued batch {} with {} SKUs.",
-            self.batch_number.unwrap_or(0),
-            self.item_count.unwrap_or(0)
-        )
-    }
+fn queued(batch_number: i32, item_count: usize) -> String {
+    format!("Queued batch {batch_number} with {item_count} SKUs.")
 }
 
 /// What a post did; the notice on the page it redirects to says it, as the React screen did.
@@ -57,7 +31,7 @@ pub enum Did {
     Refreshed {
         count: i64,
     },
-    Ran(Cycled),
+    Ran(Cycle),
     Applied {
         cached: i64,
         batches: i64,
@@ -65,7 +39,7 @@ pub enum Did {
     },
     MarkedDue {
         count: i64,
-        cycle: Cycled,
+        cycle: Cycle,
     },
     Enabled {
         sku: i32,
@@ -80,9 +54,12 @@ impl std::fmt::Display for Did {
         match *self {
             Did::Saved => f.write_str("Continuous pricing settings saved."),
             Did::Refreshed { count } => write!(f, "Refreshed {count} seller inventory SKUs."),
-            Did::Ran(cycle) => match cycle.status {
-                Cycle::Scheduled => f.write_str(&cycle.queued()),
-                other => write!(f, "Scheduler cycle completed: {}.", other.word()),
+            Did::Ran(cycle) => match cycle {
+                Cycle::Scheduled {
+                    batch_number,
+                    item_count,
+                } => f.write_str(&queued(batch_number, item_count)),
+                other => write!(f, "Scheduler cycle completed: {}.", word(other)),
             },
             Did::Applied {
                 cached,
@@ -93,8 +70,11 @@ impl std::fmt::Display for Did {
                 "Queued {cached} SKUs from saved curves in {batches} batches. {remaining} SKUs remain due for fresh market data or an in-flight publication."
             ),
             Did::MarkedDue { count, cycle } => {
-                let next = match cycle.status {
-                    Cycle::Scheduled => cycle.queued(),
+                let next = match cycle {
+                    Cycle::Scheduled {
+                        batch_number,
+                        item_count,
+                    } => queued(batch_number, item_count),
                     Cycle::Backlogged => {
                         "The existing pricing queue will process the due inventory.".into()
                     }
@@ -118,32 +98,22 @@ mod tests {
 
     #[test]
     fn each_post_says_what_it_did_as_the_react_screen_did() {
-        let scheduled = Cycled {
-            status: Cycle::Scheduled,
-            batch_number: Some(12),
-            item_count: Some(100),
+        let scheduled = Cycle::Scheduled {
+            batch_number: 12,
+            item_count: 100,
         };
         assert_eq!(
             Did::Ran(scheduled).to_string(),
             "Queued batch 12 with 100 SKUs."
         );
-        let failed = Cycled {
-            status: Cycle::RefreshFailed,
-            ..scheduled
-        };
         assert_eq!(
-            Did::Ran(failed).to_string(),
+            Did::Ran(Cycle::RefreshFailed).to_string(),
             "Scheduler cycle completed: refresh_failed."
         );
-        let backlogged = Cycled {
-            status: Cycle::Backlogged,
-            batch_number: None,
-            item_count: None,
-        };
         assert_eq!(
             Did::MarkedDue {
                 count: 40,
-                cycle: backlogged
+                cycle: Cycle::Backlogged
             }
             .to_string(),
             "Marked 40 eligible SKUs due. The existing pricing queue will process the due inventory."

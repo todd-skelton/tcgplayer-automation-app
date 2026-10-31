@@ -195,6 +195,11 @@ pub fn app(shared: Shared) -> App {
             let db = shared.db.clone();
             move |signal| batch_pricing::worker::start(db, signal)
         })
+        // Off unless CONTINUOUS_PRICING_SCHEDULER is set: Node's scheduler queues until cutover.
+        .task("continuous pricing scheduler", {
+            let db = shared.db.clone();
+            move |signal| continuous_pricing::scheduler::run(db, signal)
+        })
         .task("forecast evidence backfill", {
             let db = shared.db.clone();
             move |signal| inventory_strategy::backfill::run(db, signal)

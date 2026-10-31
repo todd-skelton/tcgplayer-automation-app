@@ -3,10 +3,10 @@
 //! at a time; and the recent automatic runs. Ported from
 //! `app/features/continuous-pricing/routes/continuous-pricing.tsx`.
 //!
-//! The schedule, the inventory, pausing or enabling a SKU, and repricing from saved curves
-//! ([`scheduler`]) are read and written here, with the Node app's queries. Refreshing the
-//! inventory and a scheduler cycle, which call TCGplayer, stay the Node app's
-//! (`/api/continuous-pricing`).
+//! Everything is read and written here, with the Node app's queries: the schedule, the inventory,
+//! pausing or enabling a SKU, refreshing the inventory from TCGplayer ([`refresh`]), a scheduler
+//! cycle and repricing from saved curves ([`scheduler`]). The scheduler's own task is off unless
+//! `CONTINUOUS_PRICING_SCHEDULER` is set, so Node's keeps queueing until cutover.
 //!
 //! | Route | Answer |
 //! |---|---|
@@ -20,6 +20,7 @@
 //!
 //! A post the Node app refuses answers 409 with the page and why.
 mod actions;
+pub mod refresh;
 pub mod scheduler;
 pub mod store;
 mod views;

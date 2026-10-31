@@ -1,8 +1,8 @@
 //! The continuous pricing scheduler's queues (`continuousPricingRepository`): the SKUs due for
 //! pricing as one batch, never more than one queued at a priority (`scheduleDueBatch`), and the
-//! operator's repricing from saved curves (`scheduleCachedPolicyBatches`). The scheduler's cycle,
-//! which refreshes the seller's inventory from TCGplayer first, stays the Node app's until that
-//! refresh is ported.
+//! operator's repricing from saved curves (`scheduleCachedPolicyBatches`); and the scheduler's
+//! cycle (`runContinuousPricingSchedulerCycle`), which refreshes the seller's inventory first when
+//! it is stale.
 use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 use sqlx::{PgConnection, types::Json};
@@ -10,14 +10,17 @@ use sqlx::{PgConnection, types::Json};
 use crate::{
     database::Database,
     features::{
-        batch_pricing::saved_curves::REUSABLE,
+        batch_pricing::{job::MarketData, saved_curves::REUSABLE},
         configuration::config::{self as pricing_config},
         inventory_economics::ledger::fingerprint::js_float,
         pricing::policy::MODEL_VERSION,
     },
 };
 
-use super::store::Settings;
+use super::{
+    refresh::{self, SellerInventory},
+    store::{self, Settings},
+};
 
 /// How urgent a pricing job is (`PRICING_JOB_PRIORITIES`); the most urgent is claimed first.
 pub mod priority {
@@ -388,11 +391,166 @@ pub async fn job_config(db: &Database) -> sqlx::Result<Value> {
     Ok(pricing_config::normalized(&pricing, &supply, &lines))
 }
 
+/// Whether the seller's inventory has not been refreshed within the interval.
+pub async fn should_refresh(db: &Database, seller: &str, minutes: i64) -> sqlx::Result<bool> {
+    sqlx::query_scalar(
+        "SELECT NOT EXISTS (SELECT 1 FROM continuous_pricing_refreshes
+           WHERE seller_key = $1 AND status = 'completed'
+             AND completed_at >= NOW() - ($2 * INTERVAL '1 minute'))",
+    )
+    .bind(seller)
+    .bind(minutes as f64)
+    .fetch_one(&db.0)
+    .await
+}
+
+/// Records a refresh that failed, its message cut to a thousand characters.
+pub async fn record_refresh_failure(db: &Database, seller: &str, why: &str) -> sqlx::Result<()> {
+    // `slice(0, 1_000)` counts UTF-16 units, as JavaScript's strings do.
+    let why = String::from_utf16_lossy(&why.encode_utf16().take(1_000).collect::<Vec<_>>());
+    sqlx::query(
+        "INSERT INTO continuous_pricing_refreshes (seller_key, status, error_message, completed_at)
+         VALUES ($1, 'failed', $2, NOW())",
+    )
+    .bind(seller)
+    .bind(why)
+    .execute(&db.0)
+    .await?;
+    Ok(())
+}
+
+/// What a scheduler cycle did (`ContinuousPricingSchedulerResult`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Cycle {
+    Disabled,
+    RefreshFailed,
+    Idle,
+    Backlogged,
+    Scheduled {
+        batch_number: i32,
+        item_count: usize,
+    },
+}
+
+/// One cycle: refresh the inventory when it is stale, then queue what is due.
+pub async fn cycle(
+    db: &Database,
+    inventory: &impl SellerInventory,
+    market: &impl MarketData,
+) -> Result<(Cycle, Settings), String> {
+    let failed = |e: sqlx::Error| e.to_string();
+    let settings = store::settings(db).await.map_err(failed)?;
+    if !settings.enabled || settings.seller_key.is_empty() {
+        return Ok((Cycle::Disabled, settings));
+    }
+    let seller = &settings.seller_key;
+    if should_refresh(db, seller, settings.inventory_refresh_minutes)
+        .await
+        .map_err(failed)?
+        && let Err(why) = refresh::refresh(
+            db,
+            seller,
+            settings.minimum_interval_minutes,
+            inventory,
+            market,
+        )
+        .await
+    {
+        record_refresh_failure(db, seller, &why)
+            .await
+            .map_err(failed)?;
+        return Ok((Cycle::RefreshFailed, settings));
+    }
+    let config = job_config(db).await.map_err(failed)?;
+    let mut tx = db.0.begin().await.map_err(failed)?;
+    let scheduled = schedule_due_batch(&mut tx, &Queue::of(&settings, &config), Utc::now())
+        .await
+        .map_err(failed)?;
+    tx.commit().await.map_err(failed)?;
+    let cycle = match scheduled {
+        None => Cycle::Idle,
+        Some(Scheduled::Backlogged) => Cycle::Backlogged,
+        Some(Scheduled::Batch {
+            batch_number,
+            item_count,
+            ..
+        }) => Cycle::Scheduled {
+            batch_number,
+            item_count,
+        },
+    };
+    Ok((cycle, settings))
+}
+
+/// How long a cycle waits before the next: at once after queueing a batch, the schedule's poll
+/// otherwise, and never under a second.
+fn pause(cycle: &Cycle, settings: &Settings) -> std::time::Duration {
+    let seconds = match cycle {
+        Cycle::Scheduled { .. } => 0,
+        _ => settings.scheduler_poll_seconds,
+    };
+    std::time::Duration::from_millis((seconds.max(0) as u64 * 1_000).max(1_000))
+}
+
+/// The app's task (`continuous-pricing-scheduler.server.ts`), off unless
+/// `CONTINUOUS_PRICING_SCHEDULER` is set: Node's scheduler queues the batches until cutover, and
+/// both read the seller's inventory from TCGplayer.
+pub async fn run(db: Database, signal: corten::Signal) {
+    if !crate::config::is_set("CONTINUOUS_PRICING_SCHEDULER") {
+        return;
+    }
+    println!("Continuous pricing scheduler started");
+    let tcg = crate::tcgplayer::TcgPlayer::new(db.clone());
+    let inventory = refresh::TcgPlayerSearch(tcg.clone());
+    let market = crate::features::batch_pricing::market::TcgPlayerMarket(tcg);
+    loop {
+        if signal.is_aborted() {
+            return;
+        }
+        // A cycle stops at shutdown: its writes are each a transaction, so none is left half done.
+        let wait = tokio::select! {
+            biased;
+            _ = signal.aborted() => return,
+            done = cycle(&db, &inventory, &market) => match done {
+                Ok((cycle, settings)) => {
+                    if let Cycle::Scheduled { batch_number, item_count } = cycle {
+                        println!("Continuous pricing scheduler queued batch={batch_number} items={item_count}");
+                    }
+                    pause(&cycle, &settings)
+                }
+                Err(why) => {
+                    eprintln!("Continuous pricing scheduler cycle failed: {why}");
+                    std::time::Duration::from_secs(30)
+                }
+            },
+        };
+        tokio::select! {
+            biased;
+            _ = signal.aborted() => return,
+            _ = tokio::time::sleep(wait) => {}
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
 
-    use super::{super::store, *};
+    use super::*;
+
+    #[test]
+    fn the_next_cycle_comes_at_once_after_a_batch_and_at_the_poll_otherwise() {
+        let settings = Settings {
+            scheduler_poll_seconds: 45,
+            ..Settings::default()
+        };
+        let queued = Cycle::Scheduled {
+            batch_number: 1,
+            item_count: 2,
+        };
+        assert_eq!(pause(&queued, &settings).as_millis(), 1_000);
+        assert_eq!(pause(&Cycle::Idle, &settings).as_secs(), 45);
+    }
 
     #[test]
     fn a_batch_item_s_row_writes_prices_as_javascript_does() {
