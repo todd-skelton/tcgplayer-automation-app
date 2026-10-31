@@ -63,6 +63,25 @@ pub struct Decision {
     pub item_price: Option<Money>,
 }
 
+/// What a sale or an unsold listing says it is, as `compareCompIdentity` reads it.
+pub(super) struct Described<'a> {
+    pub(super) card: Option<&'a Card>,
+    pub(super) grading: &'a Grading,
+    pub(super) title: &'a Option<String>,
+    pub(super) extended_title: &'a Option<String>,
+}
+
+impl Sale {
+    fn described(&self) -> Described<'_> {
+        Described {
+            card: self.card.as_ref(),
+            grading: &self.grading,
+            title: &self.title,
+            extended_title: &self.extended_title,
+        }
+    }
+}
+
 /// The sale dates an evidence revision was asked for.
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 pub struct SaleWindow {
@@ -462,11 +481,11 @@ fn label_qualifier(label: Option<&str>) -> Option<String> {
 
 /// `compareCompIdentity`: where the sale's card and grade disagree with the target's, or cannot
 /// be told.
-fn compare_identity(sale: &Sale, target: &Identity) -> Vec<Reason> {
+pub(super) fn compare_identity(sale: &Described<'_>, target: &Identity) -> Vec<Reason> {
     use Severity::{Reject, Review};
     let mut reasons = Vec::new();
     let r = &mut reasons;
-    let joined = [&sale.title, &sale.extended_title]
+    let joined = [sale.title, sale.extended_title]
         .into_iter()
         .filter_map(filled)
         .collect::<Vec<_>>()
@@ -517,7 +536,7 @@ fn compare_identity(sale: &Sale, target: &Identity) -> Vec<Reason> {
     }
     for ((field, expected), (_, actual)) in card_fields(Some(card))
         .into_iter()
-        .zip(card_fields(sale.card.as_ref()))
+        .zip(card_fields(sale.card))
     {
         match (expected, actual) {
             (Some(e), Some(a)) if !same_field(field, e, a) => conflict(r, field, Reject),
@@ -776,7 +795,7 @@ pub fn screen(
 ) -> Screened {
     let sale = reference.sale;
     let mut reasons = match target.identity {
-        Some(identity) if target.confirmed => compare_identity(sale, identity),
+        Some(identity) if target.confirmed => compare_identity(&sale.described(), identity),
         _ => vec![Reason {
             code: "target-identity-unconfirmed".to_owned(),
             severity: Severity::Review,

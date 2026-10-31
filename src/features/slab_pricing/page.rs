@@ -16,7 +16,6 @@ use super::{
 use crate::{
     database::Database,
     layout::{Chrome, Layout},
-    legacy::Legacy,
     text::Msg,
     zone::Visitor,
 };
@@ -96,12 +95,7 @@ pub struct Screen {
 }
 
 impl Screen {
-    pub async fn read(
-        db: &Database,
-        legacy: &Legacy,
-        choice: &Choice,
-        visitor: Visitor,
-    ) -> corten::Result<Screen> {
+    pub async fn read(db: &Database, choice: &Choice, visitor: Visitor) -> corten::Result<Screen> {
         let record = match choice.certificate() {
             Some((grader, cert)) => identity::find(db, grader, cert).await?,
             None => None,
@@ -137,7 +131,7 @@ impl Screen {
                     source: choice.source.as_deref(),
                     offset: choice.rows.unwrap_or(0),
                 };
-                Some(supply::read(legacy, &asked).await)
+                Some(supply::read(db, &asked).await)
             }
             _ => None,
         };
@@ -269,11 +263,10 @@ async fn read_research(db: &Database, id: &str, choice: &Choice) -> Result<Works
 pub async fn show(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::SlabPricing>,
 ) -> HtmlResult {
-    let screen = Screen::read(&db, &legacy, &at.choice, Visitor::of(zone.as_ref())).await?;
+    let screen = Screen::read(&db, &at.choice, Visitor::of(zone.as_ref())).await?;
     page(&req, &db, &screen).await
 }
 
@@ -281,11 +274,10 @@ pub async fn show(
 pub async fn maintenance_status(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::MaintenanceStatus>,
 ) -> HtmlResult {
-    let screen = Screen::read(&db, &legacy, &at.choice, Visitor::of(zone.as_ref())).await?;
+    let screen = Screen::read(&db, &at.choice, Visitor::of(zone.as_ref())).await?;
     let t: Msg = req.t();
     // The view at the top of `html!` owns what it uses; the fallback page reads `screen` too.
     let screen = &screen;
@@ -299,11 +291,10 @@ pub async fn maintenance_status(
 pub async fn evidence(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::Evidence>,
 ) -> HtmlResult {
-    let screen = Screen::read(&db, &legacy, &at.choice, Visitor::of(zone.as_ref())).await?;
+    let screen = Screen::read(&db, &at.choice, Visitor::of(zone.as_ref())).await?;
     let t: Msg = req.t();
     // The view at the top of `html!` owns what it uses; the fallback page reads `screen` too.
     let screen = &screen;

@@ -192,6 +192,11 @@ impl Identity {
         sha256_hex(&js_json(&fields))
     }
 
+    /// The Alt asset the card was matched to, if any.
+    pub(super) fn provider_asset_id(&self) -> Option<&str> {
+        self.provider_asset.as_ref().map(|a| a.id.as_str())
+    }
+
     /// `buildResearchKeywords`: the card and grade as an eBay search, PSA's grade without its
     /// label.
     fn keywords(&self) -> String {
@@ -275,6 +280,20 @@ impl Identity {
     }
 }
 
+/// `planSlabEvidence` with supply, which it keeps: the keys of the slab's unsold listings, Alt's
+/// when Alt knows the card and eBay's for the same search as its sales.
+pub(super) fn supply_keys(identity: &Identity, window: &Window) -> Result<Vec<String>, String> {
+    specs_checked(identity, window)?
+        .into_iter()
+        .filter_map(|request| match request {
+            Request::AltSales { asset_id, .. } => Some(Request::AltSupply { asset_id }),
+            Request::EbaySales(page) => Some(Request::EbaySupply(page)),
+            _ => None,
+        })
+        .map(|r| r.key().map_err(|e| e.0))
+        .collect()
+}
+
 /// What to read for a slab: its Alt sales when Alt knows the card, and its eBay sales.
 fn specs_checked(identity: &Identity, window: &Window) -> Result<Vec<Request>, String> {
     let window = spec::Window {
@@ -311,7 +330,7 @@ fn specs(identity: &Identity, window: &Window) -> Vec<Request> {
         .collect()
 }
 
-fn status(s: store::Status) -> EvidenceStatus {
+pub(super) fn status(s: store::Status) -> EvidenceStatus {
     let (offset, limit) = match &s.spec {
         Request::EbaySales(page) | Request::EbaySupply(page) => (
             u32::try_from(page.offset).ok(),

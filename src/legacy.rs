@@ -53,9 +53,9 @@ impl Legacy {
     }
 
     /// What one of the Node app's JSON routes answers (`/api/...`) with `query` added to the path's
-    /// query string, read as `T`: for a part of a ported screen whose computation is still the Node
-    /// app's. An error is the message the route gave (`{"error": ".."}`), or why there was none to
-    /// read.
+    /// query string, read as `T`: what a parity test compares a ported read with. An error is the
+    /// message the route gave (`{"error": ".."}`), or why there was none to read.
+    #[cfg(test)]
     pub async fn read_with<T: serde::de::DeserializeOwned, Q: serde::Serialize>(
         &self,
         path: &str,
