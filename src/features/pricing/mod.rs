@@ -24,3 +24,4 @@ pub mod sale;
 pub mod shipping_threshold_snap;
 pub mod sku_price;
 pub mod supply_analysis;
+pub mod tcgplayer_evidence;
