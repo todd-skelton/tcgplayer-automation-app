@@ -1,7 +1,7 @@
 //! Reviewing the saved comps of one evidence revision: each sale screened against the identity
-//! researched, with the operator's decision on it, ported from `loadCompReview`. Saving decisions
-//! stays the Node app's (`/api/slab-comp-decisions`); fetching a sale's details or an eBay
-//! source's next page queues a provider call for its worker.
+//! researched, with the operator's decision on it, ported from `loadCompReview`, and saving a
+//! decision (`saveCompDecision`). Fetching a sale's details or an eBay source's next page queues a
+//! provider call for Node's worker (`refreshes`).
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::Deserialize;
 use serde_json::Value;
@@ -348,9 +348,226 @@ pub async fn read(
     .await
 }
 
+/// A person's decision on one sale of a revision, at the identity revision the review showed.
+pub struct Decided<'a> {
+    pub slab_id: &'a str,
+    pub identity_revision: i64,
+    pub revision_id: &'a str,
+    pub provider: &'a str,
+    pub provider_id: &'a str,
+    /// None when the sale's date is unknown.
+    pub date: Option<&'a str>,
+    pub decision: &'a str,
+    pub note: &'a str,
+    pub item_price: Option<f64>,
+}
+
+/// `saveCompDecision`: the decision saved for the sale in the slab's valuation group, replacing
+/// one saved before, and the revision kept for as long as the decision is.
+pub async fn decide(conn: &mut PgConnection, d: &Decided<'_>) -> Result<Decision, String> {
+    use sqlx::Connection;
+    let uuid = |id: &str| {
+        id.len() == 36
+            && id.bytes().enumerate().all(|(i, b)| match i {
+                8 | 13 | 18 | 23 => b == b'-',
+                _ => matches!(b, b'0'..=b'9' | b'a'..=b'f'),
+            })
+    };
+    let day = |date: &str| {
+        date.len() == 10
+            && date.bytes().enumerate().all(|(i, b)| match i {
+                4 | 7 => b == b'-',
+                _ => b.is_ascii_digit(),
+            })
+    };
+    let note = d.note.trim();
+    if !uuid(d.slab_id)
+        || d.identity_revision < 1
+        || !uuid(d.revision_id)
+        || !matches!(d.provider, "alt" | "ebayResearch")
+        || !(1..=80).contains(&d.provider_id.len())
+        || !d
+            .provider_id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-')
+        || !matches!(d.decision, "accept" | "exclude")
+        || note.is_empty()
+        || d.note.encode_utf16().count() > 1000
+        || d.date.is_some_and(|date| !day(date))
+    {
+        return Err("Choose a displayed sale, a review decision and a short reason.".to_owned());
+    }
+    if d.item_price
+        .is_some_and(|a| !a.is_finite() || a <= 0.0 || a >= 1e9)
+    {
+        return Err("A reviewed item price needs a positive amount and currency.".to_owned());
+    }
+    let failed = |error: sqlx::Error| {
+        eprintln!("slab comp decision: {error}");
+        "Unable to save the comp review.".to_owned()
+    };
+    let mut tx = conn.begin().await.map_err(failed)?;
+    sqlx::query("SET LOCAL statement_timeout = '10s'")
+        .execute(&mut *tx)
+        .await
+        .map_err(failed)?;
+    let group: Option<Option<String>> = sqlx::query_scalar(
+        "SELECT valuation_group_key FROM slab_identities WHERE id = $1::uuid AND revision = $2 AND status = 'confirmed' FOR SHARE",
+    )
+    .bind(d.slab_id)
+    .bind(d.identity_revision)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(failed)?;
+    let Some(group) = group.flatten().filter(|g| !g.is_empty()) else {
+        return Err("Reload and confirm the slab identity before reviewing comps.".to_owned());
+    };
+    let payload: Option<Value> = sqlx::query_scalar(
+        "SELECT payload FROM slab_evidence_revisions WHERE id = $1::uuid FOR UPDATE",
+    )
+    .bind(d.revision_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(failed)?;
+    let payload = payload.unwrap_or(Value::Null);
+    let data = &payload["data"];
+    let rows: Vec<&Value> = match payload["kind"].as_str() {
+        Some("alt-sale-detail") if is_truthy(data) => vec![data],
+        Some("alt-sales") => sales(data),
+        Some("ebay-sales") if data["status"] == "sold" => sales(data),
+        _ => Vec::new(),
+    };
+    let date = d.date.map_or(Value::Null, Value::from);
+    let matches: Vec<&&Value> = rows
+        .iter()
+        .filter(|row| {
+            row["provider"] == d.provider
+                && row["providerId"] == d.provider_id
+                && row.get("date") == Some(&date)
+        })
+        .collect();
+    let [sale] = matches.as_slice() else {
+        return Err("The evidence revision does not contain this exact sale.".to_owned());
+    };
+    let decision = Decision {
+        revision_id: d.revision_id.to_owned(),
+        provider: d.provider.to_owned(),
+        provider_id: d.provider_id.to_owned(),
+        date: d.date.map(str::to_owned),
+        valuation_group_key: group.clone(),
+        decision: d.decision.to_owned(),
+        note: note.to_owned(),
+        item_price: d.item_price.map(|amount| Money {
+            amount,
+            currency: Some("USD".to_owned()),
+        }),
+    };
+    // `compDecisionKey`.
+    let event_key =
+        serde_json::json!([sale["provider"], sale["providerId"], sale["date"]]).to_string();
+    sqlx::query(
+        "INSERT INTO slab_comp_decisions(revision_id, valuation_group_key, event_key, decision) VALUES ($1::uuid,$2,$3,$4)
+         ON CONFLICT (revision_id, valuation_group_key, event_key) DO UPDATE SET decision = EXCLUDED.decision, updated_at = clock_timestamp()",
+    )
+    .bind(d.revision_id)
+    .bind(&group)
+    .bind(&event_key)
+    .bind(sqlx::types::Json(&decision))
+    .execute(&mut *tx)
+    .await
+    .map_err(failed)?;
+    // `retainEvidenceRevisions`.
+    let kept =
+        sqlx::query("UPDATE slab_evidence_revisions SET retained = true WHERE id = $1::uuid")
+            .bind(d.revision_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(failed)?;
+    if kept.rows_affected() != 1 {
+        return Err("Evidence expired before it could be retained. Refresh and retry.".to_owned());
+    }
+    tx.commit().await.map_err(failed)?;
+    Ok(decision)
+}
+
+/// A revision's sales, none when it has none.
+fn sales(data: &Value) -> Vec<&Value> {
+    data["sales"]
+        .as_array()
+        .map(|s| s.iter().collect())
+        .unwrap_or_default()
+}
+
+/// What JavaScript counts as true.
+fn is_truthy(value: &Value) -> bool {
+    match value {
+        Value::Null => false,
+        Value::Bool(b) => *b,
+        Value::Number(n) => n.as_f64().is_some_and(|n| n != 0.0),
+        Value::String(s) => !s.is_empty(),
+        _ => true,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Node's `/api/slab-comp-decisions` action recorded over
+    /// `.port-logs/slab-comp-decision-cases.json` (`slab-comp-decision-node.ts`), in order, on the
+    /// slab `slab-workspace-seed.sql` saves and the revisions `slab-comp-decision-seed.sql` saves,
+    /// inside a transaction rolled back: each must answer as Node answered (its refusals were 400s,
+    /// or 409 for an identity changed since, with the message here) and leave the decisions and
+    /// kept revisions as Node left them.
+    #[tokio::test]
+    #[ignore = "reads the dev database and .port-logs; writes only in a transaction that is rolled back"]
+    async fn decides_as_node_decides() {
+        use sqlx::Connection;
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let read = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let cases: Vec<Value> =
+            serde_json::from_str(&read("slab-comp-decision-cases.json")).unwrap();
+        let node: Vec<Value> = serde_json::from_str(&read("slab-comp-decision.node.json")).unwrap();
+        let capture = read("slab-comp-decision-capture.sql");
+        assert_eq!(cases.len(), node.len());
+        let mut conn = db.0.acquire().await.unwrap();
+        let mut tx = conn.begin().await.unwrap();
+        for seed in ["slab-workspace-seed.sql", "slab-comp-decision-seed.sql"] {
+            sqlx::raw_sql(&read(seed)).execute(&mut *tx).await.unwrap();
+        }
+        for (case, node) in cases.iter().zip(&node) {
+            let name = case["name"].as_str().unwrap();
+            let b = &case["body"];
+            let text = |key: &str| b[key].as_str().unwrap_or_default();
+            let decided = Decided {
+                slab_id: text("slabId"),
+                identity_revision: b["identityRevision"].as_i64().unwrap(),
+                revision_id: text("revisionId"),
+                provider: text("provider"),
+                provider_id: text("providerId"),
+                date: b["date"].as_str(),
+                decision: text("decision"),
+                note: text("note"),
+                item_price: b["itemPrice"]["amount"].as_f64(),
+            };
+            match (decide(&mut tx, &decided).await, node["error"].as_str()) {
+                (Ok(decision), None) => {
+                    let expected: Decision =
+                        serde_json::from_value(node["decision"].clone()).unwrap();
+                    assert_eq!(decision, expected, "{name}");
+                }
+                (Err(why), Some(error)) => assert_eq!(why, error, "{name}"),
+                (got, _) => panic!("{name}: {got:?} where Node answered {node}"),
+            }
+            let saved: Value = sqlx::query_scalar(&capture)
+                .fetch_one(&mut *tx)
+                .await
+                .unwrap();
+            assert_eq!(saved, node["saved"], "{name}: saved");
+        }
+        tx.rollback().await.unwrap();
+    }
 
     fn page_of(offset: u32, rows: usize, total: u32) -> Review {
         let sale: Sale = serde_json::from_value(serde_json::json!({

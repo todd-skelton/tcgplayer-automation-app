@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use super::{
+    comps,
     identity::{self, Card, Grading, SlabIdentity},
     inventory, maintenance,
     outcomes::Imported,
@@ -888,7 +889,6 @@ pub struct CompDecisionInput {
 pub async fn decide_comp(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::DecideComp>,
     Form(input): Form<CompDecisionInput>,
@@ -910,21 +910,22 @@ pub async fn decide_comp(
         .await;
     };
     let date = input.date.trim();
-    let asked = json!({
-        "slabId": record.id,
-        "identityRevision": input.identity_revision,
-        "revisionId": input.revision,
-        "provider": input.provider,
-        "providerId": input.provider_id,
-        "date": (!date.is_empty()).then_some(date),
-        "decision": input.decision,
-        "note": input.note.trim(),
-        "itemPrice": input.item_price.map(|amount| json!({ "amount": amount, "currency": "USD" })),
-    });
-    match legacy
-        .send::<_, serde_json::Value>("/api/slab-comp-decisions", &asked)
-        .await
-    {
+    let decided = comps::Decided {
+        slab_id: &record.id,
+        identity_revision: input.identity_revision,
+        revision_id: &input.revision,
+        provider: &input.provider,
+        provider_id: &input.provider_id,
+        date: Some(date).filter(|d| !d.is_empty()),
+        decision: &input.decision,
+        note: &input.note,
+        item_price: input.item_price,
+    };
+    let saved = match db.0.acquire().await {
+        Ok(mut conn) => comps::decide(&mut conn, &decided).await,
+        Err(error) => Err(error.to_string()),
+    };
+    match saved {
         Ok(_) => req.redirect(&url::SlabPricing::at(&Choice {
             comp: None,
             ..at.choice.clone()
