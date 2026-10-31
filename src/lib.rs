@@ -8,6 +8,7 @@ mod csv_text;
 mod database;
 mod features;
 mod js_math;
+mod js_number;
 mod layout;
 mod legacy;
 mod tcgplayer;

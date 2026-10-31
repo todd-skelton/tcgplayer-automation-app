@@ -20,7 +20,7 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 chrono-tz = { version = "0.10", features = ["case-insensitive"] }
 # The legacy relay to the Node app, and the slab data providers (rustls for their HTTPS). No
 # gzip/brotli features: an encoded answer goes on as it came.
-reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls", "multipart"] }
+reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls"] }
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 csv = "1"
 dotenvy = "0.15"

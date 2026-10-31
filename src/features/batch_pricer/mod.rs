@@ -2,8 +2,10 @@
 //! its pricing as it runs, download its results, publish what is ready to Seller Portal, or delete
 //! it. Ported from `app/features/pending-inventory/routes/pending-inventory-pricer.tsx`.
 //!
-//! The batches, their pricing and their publication are the Node app's (its workers do the work),
-//! so every read and write goes through its `/api/inventory-batches` routes. While a batch prices
+//! The batches are read, made from a CSV export, queued for pricing and deleted here, in the
+//! tables the Node app keeps; its workers price and publish them. Publishing and a seller's import
+//! still go through its `/api/inventory-batches` routes (port decision 3: the publisher stays with
+//! Node until cutover; a seller's inventory is a live TCGplayer read). While a batch prices
 //! or publishes, a `<corten-live>` stream follows it and sends the batch's panel each time it
 //! changes, as the React screen's event stream did; a browser without scripts reads the page
 //! again instead.
@@ -23,6 +25,7 @@
 //! the shipping settings' default seller. Dates are written in the visitor's time zone, which the
 //! browser names after its first page (`App::client_zone`); until then they are in UTC.
 mod batches;
+mod import;
 mod page;
 mod views;
 

@@ -1,10 +1,10 @@
 //! Inventory batches as the Node app keeps them: frozen sets of SKUs (from the Inventory Manager,
 //! a seller's live inventory or a CSV) that its pricing worker prices and its publisher publishes.
 //! The batches, their latest jobs, saved results and publications (with what publishing would
-//! send) are read here, and a batch deleted here, as `inventoryBatches.server.ts` does. Pricing,
-//! publishing and importing still go through the Node app's `/api/inventory-batches` routes, whose
-//! rules (one active pricing job per batch, the publication safety checks) stay there with the
-//! workers.
+//! send) are read here, a batch deleted here, and its pricing queued here, as
+//! `inventoryBatches.server.ts` and `inventoryBatchPricingJobs.server.ts` do. Publishing and a
+//! seller's import still go through the Node app's `/api/inventory-batches` routes: the
+//! publication safety checks stay with its publisher, and a seller's inventory is read live.
 use std::collections::{BTreeMap, HashSet};
 
 use chrono::{DateTime, Utc};
@@ -13,9 +13,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     database::Database,
-    features::inventory_publication::{
-        plan::{self, Configuration},
-        preview,
+    features::{
+        batch_pricing::queue,
+        continuous_pricing::scheduler,
+        inventory_publication::{
+            plan::{self, Configuration},
+            preview,
+        },
     },
     legacy::Legacy,
 };
@@ -773,28 +777,24 @@ pub fn csv(rows: &[Row]) -> String {
     crate::csv_text::unparse(&header, lines)
 }
 
-#[derive(Serialize)]
-struct PriceRequest {
-    mode: Mode,
-}
-
-#[derive(Deserialize)]
-struct PriceAnswer {
-    status: Option<String>,
-}
-
-/// Queues a pricing job, or finds the one already running; the words for what happened.
-pub async fn price(legacy: &Legacy, batch: i32, mode: Mode) -> Result<String, String> {
-    let answer: PriceAnswer = legacy
-        .send(
-            &format!("/api/inventory-batches/{batch}/pricing-jobs"),
-            &PriceRequest { mode },
-        )
-        .await?;
-    Ok(match answer.status.as_deref() {
-        Some("pricing") => format!("Batch {batch} is already pricing"),
-        Some("queued") => format!("Batch {batch} queued for pricing"),
-        _ => format!("Batch {batch} pricing requested"),
+/// `api.inventory-batch-pricing-jobs`: a pricing job queued under the pricing configuration as
+/// it is now, or the one already queued or pricing; the words for what happened. The pricing
+/// worker claims it from the queue.
+pub async fn price(db: &Database, batch: i32, mode: Mode) -> Result<String, String> {
+    let e = |e: sqlx::Error| e.to_string();
+    if mode == Mode::Cached {
+        return Err("Invalid pricing mode".to_owned());
+    }
+    let config = scheduler::job_config(db).await.map_err(e)?;
+    let mut tx = db.0.begin().await.map_err(e)?;
+    let queued = queue::create_or_reuse(&mut tx, batch, mode.word(), &config)
+        .await
+        .map_err(e)?
+        .ok_or_else(|| format!("Batch {batch} not found"))?;
+    tx.commit().await.map_err(e)?;
+    Ok(match queued.status.as_str() {
+        "pricing" => format!("Batch {batch} is already pricing"),
+        _ => format!("Batch {batch} queued for pricing"),
     })
 }
 
@@ -835,18 +835,6 @@ pub async fn publish(legacy: &Legacy, batch: i32, skus: &[i64]) -> Result<usize,
         )
         .await?;
     Ok(published.publications.len())
-}
-
-/// A batch frozen from a CSV export, queued for pricing.
-pub async fn import_csv(legacy: &Legacy, file_name: &str, bytes: Vec<u8>) -> Result<Batch, String> {
-    legacy
-        .send_file(
-            "/api/inventory-batches/import-csv",
-            "file",
-            file_name,
-            bytes,
-        )
-        .await
 }
 
 #[derive(Serialize)]

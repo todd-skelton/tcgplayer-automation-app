@@ -86,7 +86,7 @@ fn price(value: &Value) -> Option<f64> {
     match value {
         Value::Number(n) => n.as_f64().filter(|v| v.is_finite()),
         Value::String(s) if !s.trim().is_empty() => {
-            crate::features::batch_pricing::save::parse_float(s).filter(|v| v.is_finite())
+            crate::js_number::parse_float(s).filter(|v| v.is_finite())
         }
         _ => None,
     }

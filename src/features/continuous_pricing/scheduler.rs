@@ -10,7 +10,7 @@ use sqlx::{PgConnection, types::Json};
 use crate::{
     database::Database,
     features::{
-        batch_pricing::{job::MarketData, saved_curves::REUSABLE},
+        batch_pricing::{job::MarketData, queue::priority, saved_curves::REUSABLE},
         configuration::config::{self as pricing_config},
         inventory_economics::ledger::fingerprint::js_float,
         pricing::policy::MODEL_VERSION,
@@ -21,13 +21,6 @@ use super::{
     refresh::{self, SellerInventory},
     store::{self, Settings},
 };
-
-/// How urgent a pricing job is (`PRICING_JOB_PRIORITIES`); the most urgent is claimed first.
-pub mod priority {
-    pub const OPERATOR: i32 = 200;
-    pub const CONTINUOUS_PRIORITY: i32 = 100;
-    pub const CONTINUOUS_ROUTINE: i32 = 0;
-}
 
 /// The seller's SKUs that may be priced now: enabled, eligible, in stock, not paused, due, and not
 /// waiting in a continuous publication. `$1` is the seller.

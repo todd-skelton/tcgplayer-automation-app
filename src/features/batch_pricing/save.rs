@@ -107,39 +107,11 @@ pub struct Saved {
 fn numeric(value: &Value) -> f64 {
     match value {
         Value::Number(n) => n.as_f64().filter(|v| v.is_finite()).unwrap_or(0.0),
-        Value::String(s) => parse_float(s).filter(|v| v.is_finite()).unwrap_or(0.0),
+        Value::String(s) => crate::js_number::parse_float(s)
+            .filter(|v| v.is_finite())
+            .unwrap_or(0.0),
         _ => 0.0,
     }
-}
-
-/// `Number.parseFloat`: the longest leading decimal of the trimmed text.
-pub fn parse_float(text: &str) -> Option<f64> {
-    let text = text.trim_start();
-    let bytes = text.as_bytes();
-    let digits = |from: usize| {
-        from + bytes[from..]
-            .iter()
-            .take_while(|b| b.is_ascii_digit())
-            .count()
-    };
-    let mut end = usize::from(matches!(bytes.first(), Some(b'+' | b'-')));
-    let whole = digits(end);
-    let mut fraction = whole;
-    if bytes.get(whole) == Some(&b'.') {
-        fraction = digits(whole + 1);
-    }
-    if fraction == end || (fraction == end + 1 && bytes.get(end) == Some(&b'.')) {
-        return None;
-    }
-    end = fraction;
-    if matches!(bytes.get(end), Some(b'e' | b'E')) {
-        let sign = end + 1 + usize::from(matches!(bytes.get(end + 1), Some(b'+' | b'-')));
-        let exponent = digits(sign);
-        if exponent > sign {
-            end = exponent;
-        }
-    }
-    text[..end].parse().ok()
 }
 
 /// A detail's number when it has one; the row's text otherwise (`details?.x ?? parse(row[..])`).

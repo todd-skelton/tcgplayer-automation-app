@@ -165,30 +165,6 @@ impl Legacy {
         Self::answer_with_status(answer).await
     }
 
-    /// What one of the Node app's routes answers to a file posted as `multipart/form-data` under
-    /// `field`, named `file_name`: an upload whose import is still the Node app's.
-    pub async fn send_file<T: serde::de::DeserializeOwned>(
-        &self,
-        path: &str,
-        field: &'static str,
-        file_name: &str,
-        bytes: Vec<u8>,
-    ) -> Result<T, String> {
-        let part = reqwest::multipart::Part::bytes(bytes)
-            .file_name(file_name.to_owned())
-            .mime_str("text/csv")
-            .map_err(|e| e.to_string())?;
-        let form = reqwest::multipart::Form::new().part(field, part);
-        let answer = self
-            .http
-            .post(format!("{}{path}", self.origin))
-            .multipart(form)
-            .send()
-            .await
-            .map_err(|_| "The Node app did not answer.".to_owned())?;
-        Self::answer(answer).await
-    }
-
     async fn answer<T: serde::de::DeserializeOwned>(
         answer: reqwest::Response,
     ) -> Result<T, String> {

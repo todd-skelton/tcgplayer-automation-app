@@ -13,7 +13,7 @@ use serde::Deserialize;
 
 use super::{
     batches::{self, Batch, Mode as Pricing, Publications},
-    url,
+    import, url,
     views::{BatchFollow, BatchPanel, BatchProblem, CsvForm, PricerScreen, SellerForm},
 };
 use crate::{
@@ -30,7 +30,7 @@ const FOLLOW_EVERY: Duration = Duration::from_secs(1);
 /// How often a browser without JavaScript reads the page again while the batch prices or
 /// publishes.
 const RELOAD_EVERY: Duration = Duration::from_secs(5);
-/// Reads in a row that fail before a follow gives up (the batch was deleted, the Node app went).
+/// Reads in a row that fail before a follow gives up (the batch was deleted, the database went).
 const MOST_FAILURES: u32 = 10;
 /// The largest CSV export the screen takes.
 const MOST: usize = 20 << 20;
@@ -240,17 +240,16 @@ pub struct PriceInput {
     pub mode: Pricing,
 }
 
-/// Pricing queued for every SKU of the batch or for those needing review; the Node app refuses it
-/// while the batch publishes.
+/// Pricing queued for every SKU of the batch or for those needing review, or the job already
+/// queued or pricing named.
 pub async fn price(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::Price>,
     Form(input): Form<PriceInput>,
 ) -> HtmlResult {
-    let done = batches::price(&legacy, at.batch, input.mode).await;
+    let done = batches::price(&db, at.batch, input.mode).await;
     answer(&req, &db, at.batch, Visitor::of(zone.as_ref()), done).await
 }
 
@@ -332,12 +331,11 @@ pub struct CsvInput {
     pub file: Files,
 }
 
-/// A batch frozen from a CSV export, and the screen showing it; a file the Node app cannot read
-/// gets the form back with why.
+/// A batch frozen from a CSV export, and the screen showing it; a file with no row the catalog
+/// knows gets the form back with why.
 pub async fn import_csv(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     mut upload: Upload<CsvInput>,
 ) -> HtmlResult {
@@ -357,7 +355,7 @@ pub async fn import_csv(
     }
     upload.fields().await?;
     if let (Some((name, bytes)), true) = (chosen, errors.is_empty()) {
-        match batches::import_csv(&legacy, &name, bytes).await {
+        match import::csv(&db, &name, &bytes).await {
             Ok(batch) => return req.redirect(&url::BatchPricer::batch(batch.batch_number)),
             Err(message) => errors.add(f.file, message),
         }
