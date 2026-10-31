@@ -35,7 +35,7 @@ pub fn AppBar<'a>(req: &'a Req, chrome: Chrome) -> impl Render {
                 if chrome.auth_cookie_missing {
                     <a
                         class={Warning}
-                        href={http_configuration::url::HttpSettings { done: None }}
+                        href={http_configuration::url::HttpSettings}
                         title="Auth cookie not configured"
                     >
                         "⚠ Auth cookie not configured"

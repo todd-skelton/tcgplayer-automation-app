@@ -40,8 +40,6 @@ pub fn SellerPanels<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let toggle_outcomes = Choice {
         outcomes: (!outcomes_shown).then_some(true),
         item: None,
-        inserted: None,
-        supplied: None,
         ..choice.clone()
     };
     html! {
@@ -249,26 +247,15 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
     let seller = choice.seller.as_deref().unwrap_or("");
     let f = Choice::FIELDS;
     let o = OutcomesInput::FIELDS;
-    let saved = choice.inserted.zip(choice.supplied);
     html! {
         <section class={(Panel, Stack)} aria-labelledby="slab-outcomes">
             <h3 id="slab-outcomes">"Seller outcomes · "{seller}</h3>
             <p class={muted()}>
                 "Record reviewed sales, cancellations and relists for imported listings. Observations keep their first recorded time and source; repeated imports do not duplicate them. Conflicting claims remain unresolved. Inventory and prices are unchanged."
             </p>
-            if let Some((inserted, supplied)) = saved {
-                <Notice tone={Tone::Done}>
-                    {inserted}" new observations saved from "{supplied}" rows."
-                </Notice>
-            }
             <form method="get" action={url::SlabPricing::at(&Choice::default())} class={Line}>
-                // Reading another listing's outcomes drops the last import's counts.
                 {keep_query(
-                    &url::SlabPricing::at(&Choice {
-                        inserted: None,
-                        supplied: None,
-                        ..choice.clone()
-                    }),
+                    &url::SlabPricing::at(choice),
                     html! {
                     <Field label="Outcome listing item ID" hint="">
                         <input name={f.item} value={choice.item.as_deref().unwrap_or("")} required>

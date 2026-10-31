@@ -83,7 +83,7 @@ pub fn ShippingWorkflowScreen<'a>(
                 }
                 <a href={OrderLabels { order: None }} class={Button}>"Label Management"</a>
                 <a
-                    href={shipping_configuration::url::ShippingSettings { done: None }}
+                    href={shipping_configuration::url::ShippingSettings}
                     aria-label="Shipping configuration"
                     title="Shipping configuration"
                     class={Settings}

@@ -4,21 +4,17 @@ use super::{
     config::{self, Runtime},
     form::SettingsInput,
     url,
-    views::{Done, PublicationForm, PublicationScreen},
+    views::{PublicationForm, PublicationScreen},
 };
 use crate::{
     database::Database,
     layout::{Chrome, Layout},
 };
 
-pub async fn show(
-    req: Req,
-    State(db): State<Database>,
-    Params(at): Params<url::PublicationSettings>,
-) -> HtmlResult {
+pub async fn show(req: Req, State(db): State<Database>) -> HtmlResult {
     let (settings, runtime) = config::load(&db).await?;
     let input = SettingsInput::of(&settings);
-    screen(&req, &db, &input, &runtime, &Errors::new(), at.done).await
+    screen(&req, &db, &input, &runtime, &Errors::new()).await
 }
 
 async fn screen(
@@ -27,12 +23,11 @@ async fn screen(
     input: &SettingsInput,
     runtime: &Runtime,
     errors: &Errors,
-    done: Option<Done>,
 ) -> HtmlResult {
     let chrome = Chrome::read(db).await;
     req.page(html! {
         <Layout req={req} title="Inventory Publication" chrome={chrome} head="">
-            <PublicationScreen input={input} runtime={runtime} errors={errors} done={done} />
+            <PublicationScreen input={input} runtime={runtime} errors={errors} />
         </Layout>
     })
 }
@@ -47,9 +42,7 @@ pub async fn save(
     match input.read() {
         Ok(settings) => {
             config::save(&db, &settings).await?;
-            req.redirect(&url::PublicationSettings {
-                done: Some(Done::Saved),
-            })
+            req.redirect_with_notice(&url::PublicationSettings, "Publication settings saved.")
         }
         Err(errors) => {
             let (_, runtime) = config::load(&db).await?;
@@ -59,7 +52,7 @@ pub async fn save(
                 errors: &errors,
             };
             req.invalid(&errors, form, || {
-                screen(&req, &db, &input, &runtime, &errors, None)
+                screen(&req, &db, &input, &runtime, &errors)
             })
             .await
         }
@@ -70,7 +63,5 @@ pub async fn save(
 /// in the form it was sent from are not saved.
 pub async fn resume(req: Req, State(db): State<Database>) -> HtmlResult {
     config::resume(&db).await?;
-    req.redirect(&url::PublicationSettings {
-        done: Some(Done::Resumed),
-    })
+    req.redirect_with_notice(&url::PublicationSettings, "Publication resumed.")
 }

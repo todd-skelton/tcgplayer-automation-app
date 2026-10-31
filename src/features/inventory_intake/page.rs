@@ -82,24 +82,16 @@ pub async fn show(
     State(legacy): State<Legacy>,
     Params(at): Params<url::InventoryManager>,
 ) -> HtmlResult {
-    let notice = at
-        .queued
-        .map(|batch| format!("Batch {batch} queued. You can keep adding inventory."));
-    let drawn = Drawn {
-        notice: notice.as_deref(),
-        ..Drawn::default()
-    };
-    page(&req, &db, &legacy, &at.selection, &drawn).await
+    page(&req, &db, &legacy, &at.selection, &Drawn::default()).await
 }
 
-/// What a page is drawn with besides the stored state: a refused change, the queue form as sent,
-/// its errors, and what the last queue did.
+/// What a page is drawn with besides the stored state: a refused change, and the queue form as
+/// sent with its errors. What the last queue did is the layout's notice.
 #[derive(Default)]
 struct Drawn<'a> {
     error: Option<&'a str>,
     input: Option<&'a QueueInput>,
     errors: Option<&'a Errors>,
-    notice: Option<&'a str>,
 }
 
 /// The whole screen for `selection`.
@@ -121,7 +113,6 @@ async fn page(
         batches: batches.as_ref().map_err(String::as_str),
         input: drawn.input.unwrap_or(&fresh),
         errors: drawn.errors.unwrap_or(&none),
-        notice: drawn.notice,
     };
     req.page(html! {
         <Layout req={req} title="Inventory Manager" chrome={chrome} head="">
@@ -168,7 +159,6 @@ pub async fn count(
     if req.mode != Mode::Action {
         return req.redirect(&url::InventoryManager {
             selection: at.selection,
-            queued: None,
         });
     }
     let quantities = pending::quantities(&db).await?;
@@ -216,7 +206,6 @@ pub async fn clear(
         .map_err(|message| corten::Error::new(message).with_status(StatusCode::BAD_GATEWAY))?;
     req.redirect(&url::InventoryManager {
         selection: at.selection,
-        queued: None,
     })
 }
 
@@ -293,17 +282,14 @@ pub async fn queue_batch(
             .await;
         }
     };
-    if req.mode != Mode::Action {
-        return req.redirect(&url::InventoryManager {
-            selection,
-            queued: Some(queued.batch_number),
-        });
-    }
     let notice = format!(
         "Batch {} queued with {}. You can keep adding inventory.",
         queued.batch_number,
         cost.described()
     );
+    if req.mode != Mode::Action {
+        return req.redirect_with_notice(&url::InventoryManager { selection }, notice);
+    }
     let (screen, batches) = tokio::join!(Screen::read(&db, &selection), queue::batches(&legacy));
     let screen = screen?;
     let handed_off: HashSet<i32> = expected.iter().map(|i| i.sku).collect();
@@ -404,7 +390,6 @@ pub async fn batches(
         || async {
             req.redirect(&url::InventoryManager {
                 selection: selection.clone(),
-                queued: None,
             })
         },
     )
@@ -501,10 +486,7 @@ pub async fn change_rate(
             .await;
     }
     if req.mode != Mode::Action {
-        return req.redirect(&url::InventoryManager {
-            selection,
-            queued: None,
-        });
+        return req.redirect(&url::InventoryManager { selection });
     }
     let batches = queue::batches(&legacy).await;
     req.patch(html! {

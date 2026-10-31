@@ -39,8 +39,6 @@ pub mod url {
     pub struct InventoryManager {
         #[route(query)]
         pub selection: Selection,
-        /// The batch the post before this page queued, for the message at the top.
-        pub queued: Option<i32>,
     }
 
     #[route("/inventory-manager/count/{sku}", post = count)]

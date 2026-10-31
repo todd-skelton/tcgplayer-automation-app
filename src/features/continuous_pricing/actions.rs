@@ -8,7 +8,7 @@ use serde_json::json;
 use super::{
     store::{self, Settings},
     url::{self, View},
-    views::{ContinuousScreen, Cycle, Done, Problem, ScheduleForm},
+    views::{ContinuousScreen, Cycled, Did, Problem, ScheduleForm},
 };
 use crate::{
     database::Database,
@@ -168,15 +168,10 @@ pub async fn save(
     match input.read(&saved) {
         Ok(settings) => {
             store::save(&db, &settings).await?;
-            req.redirect(&url::ContinuousPricing {
-                view: View {
-                    done: Some(Done::Saved),
-                    ..at.view.quiet()
-                },
-            })
+            req.redirect_with_notice(&url::ContinuousPricing { view: at.view }, Did::Saved)
         }
         Err(errors) => {
-            let screen = Screen::read(&db, &at.view.quiet(), Visitor::of(zone.as_ref())).await?;
+            let screen = Screen::read(&db, &at.view.clone(), Visitor::of(zone.as_ref())).await?;
             let form = ScheduleForm {
                 screen: &screen,
                 input: &input,
@@ -184,26 +179,6 @@ pub async fn save(
             };
             req.invalid(&errors, form, || page(&req, &db, &screen, &input, &errors))
                 .await
-        }
-    }
-}
-
-/// A scheduler cycle's outcome, as the Node app answers it.
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct Ran {
-    status: Cycle,
-    batch_number: Option<i32>,
-    item_count: Option<i64>,
-}
-
-impl Ran {
-    fn into_view(self, view: View) -> View {
-        View {
-            cycle: Some(self.status),
-            batch: self.batch_number,
-            items: self.item_count,
-            ..view
         }
     }
 }
@@ -224,13 +199,10 @@ pub async fn refresh(
         .send::<_, Refreshed>("/api/continuous-pricing", &json!({ "intent": "refresh" }))
         .await
     {
-        Ok(done) => req.redirect(&url::ContinuousPricing {
-            view: View {
-                done: Some(Done::Refreshed),
-                count: Some(done.count),
-                ..at.view.quiet()
-            },
-        }),
+        Ok(done) => req.redirect_with_notice(
+            &url::ContinuousPricing { view: at.view },
+            Did::Refreshed { count: done.count },
+        ),
         Err(why) => refused(&req, &db, zone, &at.view, why).await,
     }
 }
@@ -244,19 +216,17 @@ pub async fn run(
     Params(at): Params<url::Run>,
 ) -> HtmlResult {
     #[derive(Deserialize)]
-    struct Cycled {
-        cycle: Ran,
+    struct Ran {
+        cycle: Cycled,
     }
     match legacy
-        .send::<_, Cycled>("/api/continuous-pricing", &json!({ "intent": "run" }))
+        .send::<_, Ran>("/api/continuous-pricing", &json!({ "intent": "run" }))
         .await
     {
-        Ok(done) => req.redirect(&url::ContinuousPricing {
-            view: done.cycle.into_view(View {
-                done: Some(Done::Ran),
-                ..at.view.quiet()
-            }),
-        }),
+        Ok(done) => req.redirect_with_notice(
+            &url::ContinuousPricing { view: at.view },
+            Did::Ran(done.cycle),
+        ),
         Err(why) => refused(&req, &db, zone, &at.view, why).await,
     }
 }
@@ -282,15 +252,14 @@ pub async fn apply_policy(
         )
         .await
     {
-        Ok(done) => req.redirect(&url::ContinuousPricing {
-            view: View {
-                done: Some(Done::Applied),
-                count: Some(done.cached),
-                batches: Some(done.batches),
-                remaining: Some(done.remaining),
-                ..at.view.quiet()
+        Ok(done) => req.redirect_with_notice(
+            &url::ContinuousPricing { view: at.view },
+            Did::Applied {
+                cached: done.cached,
+                batches: done.batches,
+                remaining: done.remaining,
             },
-        }),
+        ),
         Err(why) => refused(&req, &db, zone, &at.view, why).await,
     }
 }
@@ -306,7 +275,7 @@ pub async fn mark_due(
     #[derive(Deserialize)]
     struct Marked {
         count: i64,
-        cycle: Ran,
+        cycle: Cycled,
     }
     match legacy
         .send::<_, Marked>(
@@ -315,13 +284,13 @@ pub async fn mark_due(
         )
         .await
     {
-        Ok(done) => req.redirect(&url::ContinuousPricing {
-            view: done.cycle.into_view(View {
-                done: Some(Done::MarkedDue),
-                count: Some(done.count),
-                ..at.view.quiet()
-            }),
-        }),
+        Ok(done) => req.redirect_with_notice(
+            &url::ContinuousPricing { view: at.view },
+            Did::MarkedDue {
+                count: done.count,
+                cycle: done.cycle,
+            },
+        ),
         Err(why) => refused(&req, &db, zone, &at.view, why).await,
     }
 }
@@ -355,17 +324,12 @@ pub async fn set_sku(
         );
         return refused(&req, &db, zone, &at.view, why).await;
     }
-    req.redirect(&url::ContinuousPricing {
-        view: View {
-            done: Some(if input.enabled {
-                Done::Enabled
-            } else {
-                Done::Paused
-            }),
-            sku: Some(input.sku),
-            ..at.view.quiet()
-        },
-    })
+    let did = if input.enabled {
+        Did::Enabled { sku: input.sku }
+    } else {
+        Did::Paused { sku: input.sku }
+    };
+    req.redirect_with_notice(&url::ContinuousPricing { view: at.view }, did)
 }
 
 /// Why the post was refused, as a conflict: with JavaScript (a `data-patch` form) only the
@@ -381,7 +345,7 @@ async fn refused(
     refusal.refuse(Refusal::Conflict, why.as_str());
     let message = html! { <Problem why={Some(why.as_str())} /> };
     req.invalid(&refusal, message, || async {
-        let mut screen = Screen::read(db, &view.quiet(), Visitor::of(zone.as_ref())).await?;
+        let mut screen = Screen::read(db, &view.clone(), Visitor::of(zone.as_ref())).await?;
         screen.problem = Some(why.clone());
         let input = ScheduleInput::of(&screen.settings);
         page(req, db, &screen, &input, &Errors::new()).await

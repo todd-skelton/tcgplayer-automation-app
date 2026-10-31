@@ -39,14 +39,12 @@ impl url::BatchPricer {
     pub fn newest() -> Self {
         url::BatchPricer {
             chosen: Chosen::default(),
-            deleted: None,
         }
     }
 
     pub fn batch(batch: i32) -> Self {
         url::BatchPricer {
             chosen: Chosen { batch: Some(batch) },
-            deleted: None,
         }
     }
 }
@@ -106,11 +104,10 @@ impl Shown {
     }
 }
 
-/// What a page is drawn with besides the batches: what the last post did, why it was refused, and
-/// a new batch's form as sent with its errors.
+/// What a page is drawn with besides the batches: why the last post was refused, and a new
+/// batch's form as sent with its errors. What a post did is the layout's notice.
 #[derive(Default)]
 struct Drawn<'a> {
-    notice: Option<&'a str>,
     problem: Option<&'a str>,
     errors: Option<&'a Errors>,
     seller: Option<&'a str>,
@@ -128,18 +125,13 @@ pub async fn show(
     zone: Option<ClientZone>,
     Params(at): Params<url::BatchPricer>,
 ) -> HtmlResult {
-    let notice = at.deleted.map(|batch| format!("Batch {batch} deleted"));
-    let drawn = Drawn {
-        notice: notice.as_deref(),
-        ..Drawn::default()
-    };
     page(
         &req,
         &db,
         &legacy,
         at.chosen.batch,
         Visitor::of(zone.as_ref()),
-        &drawn,
+        &Drawn::default(),
     )
     .await
 }
@@ -188,7 +180,6 @@ async fn page(
                 shown={shown.as_ref().map(|s| s.as_ref().map_err(String::as_str))}
                 seller={&seller}
                 errors={drawn.errors.unwrap_or(&none)}
-                notice={drawn.notice}
                 problem={drawn.problem}
                 t={req.t()}
                 visitor={visitor}
@@ -329,10 +320,10 @@ pub async fn delete(
     Params(at): Params<url::Delete>,
 ) -> HtmlResult {
     match batches::delete(&legacy, at.batch).await {
-        Ok(()) => req.redirect(&url::BatchPricer {
-            chosen: Chosen::default(),
-            deleted: Some(at.batch),
-        }),
+        Ok(()) => req.redirect_with_notice(
+            &url::BatchPricer::newest(),
+            format_args!("Batch {} deleted", at.batch),
+        ),
         Err(message) => {
             answer(
                 &req,

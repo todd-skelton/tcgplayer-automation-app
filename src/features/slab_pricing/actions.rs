@@ -671,16 +671,20 @@ pub async fn import_outcomes(
         .send::<_, Imported>("/api/slab-outcomes", &asked)
         .await
     {
-        Ok(imported) => req.redirect(&url::SlabPricing::at(&Choice {
-            item: imported
-                .item_ids
-                .into_iter()
-                .next()
-                .or(at.choice.item.clone()),
-            inserted: Some(imported.inserted),
-            supplied: Some(imported.supplied),
-            ..at.choice.clone()
-        })),
+        Ok(imported) => req.redirect_with_notice(
+            &url::SlabPricing::at(&Choice {
+                item: imported
+                    .item_ids
+                    .into_iter()
+                    .next()
+                    .or(at.choice.item.clone()),
+                ..at.choice.clone()
+            }),
+            format_args!(
+                "{} new observations saved from {} rows.",
+                imported.inserted, imported.supplied
+            ),
+        ),
         Err(why) => {
             let visitor = Visitor::of(zone.as_ref());
             refused(

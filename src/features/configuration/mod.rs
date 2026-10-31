@@ -7,7 +7,7 @@
 //!
 //! | Route | Answer |
 //! |---|---|
-//! | `GET /configuration` | every section; `?done=reset` after a reset |
+//! | `GET /configuration` | every section; the layout's toaster says a reset happened |
 //! | `POST /configuration/pricing` | the pricing section saved |
 //! | `POST /configuration/product-lines/default` | the default percentile saved |
 //! | `POST /configuration/product-lines` | a product line's setting added |
@@ -52,9 +52,7 @@ use page::{
 #[corten::routes(area = Configuration, state = crate::app::Shared)]
 pub mod url {
     #[route("/configuration", get = show)]
-    pub struct Configuration {
-        pub done: Option<super::page::Done>,
-    }
+    pub struct Configuration;
 
     #[route("/configuration/pricing", post = save_pricing)]
     pub struct SavePricing;

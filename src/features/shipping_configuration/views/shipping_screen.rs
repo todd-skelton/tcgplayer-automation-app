@@ -1,6 +1,5 @@
 use corten::prelude::*;
 
-use super::Done;
 use crate::{
     features::shipping_configuration::{
         config::{EasyPostMode, LabelFormat, LabelSize, Service},
@@ -18,11 +17,7 @@ pub struct ShippingSettingsFormId;
 /// The screen: what the last post did, where the export is, the EasyPost mode and keys, and the
 /// settings form. It shares the form's stylesheet.
 #[component(css = ShippingSettingsForm)]
-pub fn ShippingScreen<'a>(
-    input: &'a SettingsInput,
-    errors: &'a Errors,
-    done: Option<Done>,
-) -> impl Render {
+pub fn ShippingScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Render {
     let mode = EasyPostMode::of_deployment();
     html! {
         <section class={Screen}>
@@ -42,11 +37,6 @@ pub fn ShippingScreen<'a>(
                     </a>
                 </div>
             </Notice>
-            match done {
-                Some(Done::Saved) => <Notice tone={Tone::Done}>"Shipping configuration saved."</Notice>,
-                Some(Done::Reset) => <Notice tone={Tone::Done}>"Shipping configuration reset to defaults."</Notice>,
-                None => {}
-            }
             if !mode.has_key() {
                 <Notice tone={Tone::Warning}>
                     {mode.key_name()}
@@ -102,7 +92,7 @@ pub fn ShippingSettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) ->
         <form
             id={ShippingSettingsFormId}
             method="post"
-            action={url::ShippingSettings { done: None }}
+            action={url::ShippingSettings}
             class={Settings}
             data-patch
         >

@@ -1,6 +1,7 @@
 //! The document around every page: the app bar with the screens, the settings menu and the
 //! warning when TCGplayer's auth cookie is not set, as the React app's `root.tsx` draws them.
 use corten::prelude::*;
+use corten_ui::{Toast, Toaster};
 
 use crate::{
     database::Database,
@@ -48,9 +49,10 @@ impl Chrome {
     }
 }
 
-/// A page: the app bar and the screen. `head` is what the page adds to its head (`""` for
-/// nothing), such as a `ReadAgain` while it waits on a job.
-#[component]
+/// A page: the app bar, the screen, and the toaster that says what an action did: the notice a
+/// write's redirect left (`req.redirect_with_notice`), or a patch's `Toast`. `head` is what the
+/// page adds to its head (`""` for nothing), such as a `ReadAgain` while it waits on a job.
+#[component(css = parts::Field)]
 pub fn Layout<'a>(
     req: &'a Req,
     title: &'a str,
@@ -73,6 +75,9 @@ pub fn Layout<'a>(
             <body>
                 <AppBar req={req} chrome={chrome} />
                 <main class={(max_w_page(), mx_auto(), p_5())}>{children}</main>
+                <div class={Toasts}>
+                    <Toaster close="Dismiss" seconds={10} toast={Toast { message: req.notice() }} />
+                </div>
             </body>
         </html>
     }
@@ -225,7 +230,7 @@ pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, children: impl Render) -
         match screen {
             Screen::InventoryManager => {
                 <a
-                    {..req.nav(&inventory_intake::url::InventoryManager { selection: Default::default(), queued: None })}
+                    {..req.nav(&inventory_intake::url::InventoryManager { selection: Default::default() })}
                 >
                     {children}
                 </a>
@@ -252,10 +257,10 @@ pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, children: impl Render) -
                 <a {..req.nav(&batch_pricer::url::BatchPricer::newest())}>{children}</a>
             }
             Screen::HttpConfiguration => {
-                <a {..req.nav(&http_configuration::url::HttpSettings { done: None })}>{children}</a>
+                <a {..req.nav(&http_configuration::url::HttpSettings)}>{children}</a>
             }
             Screen::ShippingConfiguration => {
-                <a {..req.nav(&shipping_configuration::url::ShippingSettings { done: None })}>
+                <a {..req.nav(&shipping_configuration::url::ShippingSettings)}>
                     {children}
                 </a>
             }
@@ -278,12 +283,12 @@ pub fn ScreenLink<'a>(req: &'a Req, screen: &'a Screen, children: impl Render) -
                 <a {..req.nav(&slab_connections::url::SlabConnections)}>{children}</a>
             }
             Screen::PublicationConfiguration => {
-                <a {..req.nav(&publication_configuration::url::PublicationSettings { done: None })}>
+                <a {..req.nav(&publication_configuration::url::PublicationSettings)}>
                     {children}
                 </a>
             }
             Screen::Configuration => {
-                <a {..req.nav(&configuration::url::Configuration { done: None })}>{children}</a>
+                <a {..req.nav(&configuration::url::Configuration)}>{children}</a>
             }
             Screen::InventoryStrategy => {
                 <a

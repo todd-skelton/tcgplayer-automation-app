@@ -9,7 +9,7 @@ use super::{
     turnaround::Mode,
     turnaround_settings::{self, Change, MAXIMUM_MANUAL_DAYS},
     url::{self, View},
-    views::{AnalysisStatus, BatchState, Done, Problem, StrategyScreen, TurnaroundForm},
+    views::{AnalysisStatus, BatchState, Did, Problem, StrategyScreen, TurnaroundForm},
 };
 use crate::{
     database::Database,
@@ -107,12 +107,11 @@ pub async fn save_turnaround(
     let errors = match input.read() {
         Ok(change) => match turnaround_settings::save_for_configured_seller(&db, &change).await {
             Ok(_) => {
-                return req.redirect(&url::InventoryStrategy {
-                    view: View {
-                        done: Some(Done::Saved),
-                        ..at.view.quiet()
-                    },
-                });
+                let t: Msg = req.t();
+                return req.redirect_with_notice(
+                    &url::InventoryStrategy { view: at.view },
+                    Did::Saved.said(t),
+                );
             }
             Err(why) => {
                 let mut errors = Errors::new();
@@ -122,7 +121,7 @@ pub async fn save_turnaround(
         },
         Err(errors) => errors,
     };
-    let view = at.view.quiet();
+    let view = at.view.clone();
     let form = TurnaroundForm {
         view: &view,
         input: &input,
@@ -151,13 +150,13 @@ pub async fn refresh(
         .send::<_, Refreshed>("/api/continuous-pricing", &json!({ "intent": "refresh" }))
         .await
     {
-        Ok(done) => req.redirect(&url::InventoryStrategy {
-            view: View {
-                done: Some(Done::Refreshed),
-                count: Some(done.count),
-                ..at.view.quiet()
-            },
-        }),
+        Ok(done) => {
+            let t: Msg = req.t();
+            req.redirect_with_notice(
+                &url::InventoryStrategy { view: at.view },
+                Did::Refreshed { count: done.count }.said(t),
+            )
+        }
         Err(why) => refused(&req, &db, zone, &at.view, why).await,
     }
 }
@@ -183,19 +182,21 @@ pub async fn queue_analysis(
         .send::<_, Queued>("/api/inventory-strategy-analysis", &json!({}))
         .await
     {
-        Ok(q) => req.redirect(&url::InventoryStrategy {
-            view: View {
-                done: Some(if q.created {
-                    Done::Queued
-                } else {
-                    Done::AlreadyQueued
-                }),
-                batch: Some(q.batch_number),
-                items: Some(q.item_count),
-                state: BatchState::of(&q.status),
-                ..at.view.quiet()
-            },
-        }),
+        Ok(q) => {
+            let did = if q.created {
+                Did::Queued {
+                    batch: q.batch_number,
+                    items: q.item_count,
+                }
+            } else {
+                Did::AlreadyQueued {
+                    batch: q.batch_number,
+                    state: BatchState::of(&q.status),
+                }
+            };
+            let t: Msg = req.t();
+            req.redirect_with_notice(&url::InventoryStrategy { view: at.view }, did.said(t))
+        }
         Err(why) => refused(&req, &db, zone, &at.view, why).await,
     }
 }
@@ -210,7 +211,7 @@ pub async fn analysis(
 ) -> HtmlResult {
     let visitor = Visitor::of(zone.as_ref());
     let t: Msg = req.t();
-    let view = at.view.quiet();
+    let view = at.view.clone();
     let back = || async { req.redirect(&url::InventoryStrategy { view: view.clone() }) };
     match screen::analysis(&db, at.batch).await? {
         Some(running) if running.active() => {
@@ -249,7 +250,7 @@ async fn refused(
     refusal.refuse(Refusal::Conflict, why.as_str());
     let message = html! { <Problem why={Some(why.as_str())} /> };
     req.invalid(&refusal, message, || async {
-        let mut screen = Screen::read(db, &view.quiet(), Visitor::of(zone.as_ref())).await?;
+        let mut screen = Screen::read(db, &view.clone(), Visitor::of(zone.as_ref())).await?;
         screen.problem = Some(why.clone());
         let input = TurnaroundInput::of(&screen);
         page(req, db, &screen, &input, &Errors::new()).await

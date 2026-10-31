@@ -9,7 +9,6 @@ use corten_ui::ShownFor;
 use super::{
     margin_trend::MarginTrendPanel,
     performance_panel::PerformancePanel,
-    said,
     selling_history_panel::SellingHistoryPanel,
     turnaround_panel::TurnaroundPanel,
     verdict_panel::{HurdleSweep, VerdictPanel},
@@ -60,7 +59,7 @@ pub fn StrategyScreen<'a>(
     errors: &'a Errors,
     t: Msg,
 ) -> impl Patch {
-    let quiet = screen.view.quiet();
+    let quiet = screen.view.clone();
     let configured = !screen.seller_key.is_empty();
     let analysis_active = screen.analysis.as_ref().is_some_and(Analysis::active);
     html! {
@@ -90,9 +89,6 @@ pub fn StrategyScreen<'a>(
                 <Notice tone={Tone::Info}>
                     "Configure the continuous-pricing seller key before loading inventory."
                 </Notice>
-            }
-            if let Some(message) = said(&screen.view, t) {
-                <Notice tone={Tone::Done}>{message}</Notice>
             }
             <Problem why={screen.problem.as_deref()} />
             if let Some(analysis) = &screen.analysis {

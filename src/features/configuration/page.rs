@@ -1,8 +1,7 @@
 use std::time::Duration;
 
-use corten::{LiveResponse, UrlValue, prelude::*};
+use corten::{LiveResponse, prelude::*};
 use futures_util::stream;
-use serde::Deserialize;
 
 use super::{
     config::{self, Config},
@@ -22,13 +21,6 @@ use crate::{
     layout::{Chrome, Layout},
     legacy::Legacy,
 };
-
-/// What the post before the page did.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum Done {
-    Reset,
-}
 
 /// Every product line, by name: the picker's choices and the table's names.
 async fn product_lines(db: &Database) -> sqlx::Result<Vec<(i32, String)>> {
@@ -53,7 +45,7 @@ struct Answered {
     shipping: Option<(u32, Result<Shipping, String>)>,
 }
 
-async fn page(req: &Req, db: &Database, done: Option<Done>, answered: Answered) -> HtmlResult {
+async fn page(req: &Req, db: &Database, answered: Answered) -> HtmlResult {
     let config = config::load(db).await?;
     let names = product_lines(db).await?;
     let chrome = Chrome::read(db).await;
@@ -80,7 +72,6 @@ async fn page(req: &Req, db: &Database, done: Option<Done>, answered: Answered) 
         <Layout req={req} title="Configuration" chrome={chrome} head="">
             <ConfigurationScreen
                 auth_cookie_missing={chrome.auth_cookie_missing}
-                reset={done == Some(Done::Reset)}
                 pricing={Section { input: &pricing.0, errors: &pricing.1, saved: false }}
                 lines={lines(&config, &names, &default.0, &add.0, line_errors, answered.said)}
                 snaps={Section { input: &snaps.0, errors: &snaps.1, saved: false }}
@@ -131,17 +122,13 @@ fn lines<'a>(
     }
 }
 
-pub async fn show(
-    req: Req,
-    State(db): State<Database>,
-    Params(at): Params<url::Configuration>,
-) -> HtmlResult {
-    page(&req, &db, at.done, Answered::default()).await
+pub async fn show(req: Req, State(db): State<Database>) -> HtmlResult {
+    page(&req, &db, Answered::default()).await
 }
 
 /// The page again, without scripts: a post's own answer is the section it saved.
 fn back(req: &Req) -> HtmlResult {
-    req.redirect(&url::Configuration { done: None })
+    req.redirect(&url::Configuration)
 }
 
 pub async fn save_pricing(
@@ -174,7 +161,7 @@ pub async fn save_pricing(
         pricing: Some((input.clone(), errors.clone())),
         ..Answered::default()
     };
-    req.invalid(&errors, form, || page(&req, &db, None, answered))
+    req.invalid(&errors, form, || page(&req, &db, answered))
         .await
 }
 
@@ -218,7 +205,7 @@ pub async fn save_snaps(
         snaps: Some((input.clone(), errors.clone())),
         ..Answered::default()
     };
-    req.invalid(&errors, form, || page(&req, &db, None, answered))
+    req.invalid(&errors, form, || page(&req, &db, answered))
         .await
 }
 
@@ -258,7 +245,7 @@ async fn answer_lines(req: &Req, db: &Database, answered: Answered) -> HtmlResul
             add: Some(add.clone()),
             ..Answered::default()
         };
-        req.invalid(errors, section, || page(req, db, None, answered))
+        req.invalid(errors, section, || page(req, db, answered))
             .await
     }
 }
@@ -353,9 +340,7 @@ pub async fn remove_line(
 
 pub async fn reset(req: Req, State(db): State<Database>) -> HtmlResult {
     config::reset(&db).await?;
-    req.redirect(&url::Configuration {
-        done: Some(Done::Reset),
-    })
+    req.redirect_with_notice(&url::Configuration, "Configuration reset to defaults")
 }
 
 /// The calibration panel read over the window asked for; the page with it without scripts.
@@ -378,8 +363,7 @@ pub async fn calibration_report(
         calibration: Some((days, report.clone())),
         ..Answered::default()
     };
-    req.patch_or(panel, || page(&req, &db, None, answered()))
-        .await
+    req.patch_or(panel, || page(&req, &db, answered())).await
 }
 
 /// The shipping report panel read over the window asked for; the page with it without scripts.
@@ -400,8 +384,7 @@ pub async fn shipping_report(
         shipping: Some((days, report.clone())),
         ..Answered::default()
     };
-    req.patch_or(panel, || page(&req, &db, None, answered()))
-        .await
+    req.patch_or(panel, || page(&req, &db, answered())).await
 }
 
 /// The calibration panel once read over its default window, for the page's `<corten-live>`.

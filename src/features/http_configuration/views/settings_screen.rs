@@ -1,6 +1,5 @@
 use corten::prelude::*;
 
-use super::Done;
 use crate::{
     features::http_configuration::{config::Domain, form::SettingsInput, url},
     theme::*,
@@ -19,22 +18,13 @@ struct CookieId;
 /// The screen: what the last post did, the settings form, and the reset. It shares the form's
 /// stylesheet.
 #[component(css = SettingsForm)]
-pub fn SettingsScreen<'a>(
-    input: &'a SettingsInput,
-    errors: &'a Errors,
-    done: Option<Done>,
-) -> impl Render {
+pub fn SettingsScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Render {
     html! {
         <section class={Screen}>
             <h1>"HTTP Configuration"</h1>
             <p class={(muted(), mb_4())}>
                 "Configure HTTP client settings for TCGPlayer API requests. Changes are saved to the database."
             </p>
-            match done {
-                Some(Done::Saved) => <p class={(Notice, Ok)} role="status">"Configuration saved"</p>,
-                Some(Done::Reset) => <p class={(Notice, Ok)} role="status">"Configuration reset to defaults"</p>,
-                None => {}
-            }
             <SettingsForm input={input} errors={errors} />
             <section class={panel()}>
                 <h2 class={mb_2()}>"Reset Configuration"</h2>
@@ -65,7 +55,7 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
         <form
             id={SettingsFormId}
             method="post"
-            action={url::HttpSettings { done: None }}
+            action={url::HttpSettings}
             data-patch
         >
             {errors.form_message()}

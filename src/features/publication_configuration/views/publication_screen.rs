@@ -1,6 +1,5 @@
 use corten::prelude::*;
 
-use super::Done;
 use crate::{
     features::publication_configuration::{
         config::{Authentication, Runtime, Source},
@@ -21,7 +20,6 @@ pub fn PublicationScreen<'a>(
     input: &'a SettingsInput,
     runtime: &'a Runtime,
     errors: &'a Errors,
-    done: Option<Done>,
 ) -> impl Render {
     html! {
         <section>
@@ -29,11 +27,6 @@ pub fn PublicationScreen<'a>(
             <p class={(muted(), mb_4())}>
                 "Automatic publication uses durable staged imports. It is disabled by default, never automatically replays ambiguous outcomes, and keeps quantity deltas separate from continuous price-only work."
             </p>
-            match done {
-                Some(Done::Saved) => <Notice tone={Tone::Done}>"Publication settings saved."</Notice>,
-                Some(Done::Resumed) => <Notice tone={Tone::Done}>"Publication resumed."</Notice>,
-                None => {}
-            }
             <PublicationForm input={input} runtime={runtime} errors={errors} />
         </section>
     }
@@ -61,7 +54,7 @@ pub fn PublicationForm<'a>(
         <form
             id={PublicationFormId}
             method="post"
-            action={url::PublicationSettings { done: None }}
+            action={url::PublicationSettings}
             data-patch
         >
             {errors.form_message()}

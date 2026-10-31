@@ -49,7 +49,6 @@ pub struct Queuing<'a> {
     pub batches: Result<&'a Batches, &'a str>,
     pub input: &'a QueueInput,
     pub errors: &'a Errors,
-    pub notice: Option<&'a str>,
 }
 
 /// The screen: the filters, every product of the set with a count per condition, and the bar
@@ -86,13 +85,13 @@ pub fn IntakeScreen<'a>(
                 <BackgroundBatches selection={selection} batches={queuing.batches} refused={None} />
                 {ReadAgain { after: BATCHES_EVERY }.from(&url::Batches { selection: selection.clone() })}
             </header>
-            <QueueNotice message={queuing.notice} />
+            <QueueNotice message={None} />
             <IntakeError message={error} />
             <form
                 id={FiltersId}
                 ref={filters}
                 method="get"
-                action={url::InventoryManager { selection: Selection::default(), queued: None }}
+                action={url::InventoryManager { selection: Selection::default() }}
                 class={(panel(), Filters)}
                 aria-label="Filters"
                 on:change={js::filtered(event, keys)}

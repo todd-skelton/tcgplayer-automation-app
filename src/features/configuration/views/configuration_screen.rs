@@ -60,7 +60,6 @@ pub struct Lines<'a> {
 #[component(css)]
 pub fn ConfigurationScreen<'a>(
     auth_cookie_missing: bool,
-    reset: bool,
     pricing: Section<'a, PricingInput>,
     lines: Lines<'a>,
     snaps: Section<'a, SnapsInput>,
@@ -77,13 +76,10 @@ pub fn ConfigurationScreen<'a>(
                 <Notice tone={Tone::Warning}>
                     <strong>"Authentication Required:"</strong>
                     " You haven't configured your TCGPlayer auth cookie yet. "
-                    <a href={http_configuration::url::HttpSettings { done: None }}>
+                    <a href={http_configuration::url::HttpSettings}>
                         "Configure HTTP Settings"
                     </a>
                 </Notice>
-            }
-            if reset {
-                <Notice tone={Tone::Done}>"Configuration reset to defaults"</Notice>
             }
             <PricingForm section={pricing} />
             <ProductLinesSection lines={lines} />

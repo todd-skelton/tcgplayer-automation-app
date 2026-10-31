@@ -19,19 +19,3 @@
     max-width: 36rem;
   }
 }
-/* The toaster has no box of its own: its message floats at the foot of the screen. */
-.toasts {
-  position: fixed;
-  inset: auto var(--space-5) var(--space-5) auto;
-  z-index: 10;
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-  & [role="status"] > div {
-    padding: var(--space-3) var(--space-4);
-    border-radius: var(--radius-md);
-    background: var(--color-ok);
-    color: var(--color-accent-ink);
-    box-shadow: var(--shadow-md);
-  }
-}

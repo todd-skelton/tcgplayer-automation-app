@@ -8,7 +8,6 @@ use crate::{
         actions::{ScheduleInput, Screen, SkuInput},
         store::{Item, PAGE_SIZE, RECENT_RUNS, Run, Shown},
         url::{self, View},
-        views::said,
     },
     layout::{Field, Notice, SubmitsOnChange, Tone},
     text::Msg,
@@ -48,7 +47,6 @@ pub fn ContinuousScreen<'a>(
     errors: &'a Errors,
     t: Msg,
 ) -> impl Render {
-    let message = said(&screen.view);
     html! {
         <section class={(Stack, ContinuousScreen)}>
             <header>
@@ -57,9 +55,6 @@ pub fn ContinuousScreen<'a>(
                     "The scheduler refreshes live seller inventory, claims the oldest due SKUs, and creates immutable price-only batches. Each SKU receives its next due time when scheduled, preventing pricing more often than the configured minimum interval."
                 </p>
             </header>
-            if let Some(message) = &message {
-                <Notice tone={Tone::Done}>{message}</Notice>
-            }
             <Problem why={screen.problem.as_deref()} />
             <section class={(panel(), Stack)} aria-labelledby="continuous-schedule">
                 <h2 id="continuous-schedule">"Schedule"</h2>
@@ -89,7 +84,7 @@ pub fn ScheduleForm<'a>(
         <form
             id={ScheduleFormId}
             method="post"
-            action={url::SaveSchedule { view: screen.view.quiet() }}
+            action={url::SaveSchedule { view: screen.view.clone() }}
             data-patch
             class={Stack}
         >
@@ -151,7 +146,7 @@ pub fn ScheduleForm<'a>(
 #[component(css = ContinuousScreen)]
 fn Actions<'a>(screen: &'a Screen) -> impl Render {
     let settings = &screen.settings;
-    let view = screen.view.quiet();
+    let view = screen.view.clone();
     let repricable = settings.enabled && screen.status.enabled_in_stock_count > 0;
     html! {
         <div class={Line}>
@@ -345,7 +340,7 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg, visitor: Visitor) -> impl 
         .current_price
         .map_or_else(|| "unknown".to_owned(), |p| format!("${p:.2}"));
     let (priced, published) = (item.last_priced_at, item.last_published_at);
-    let action = || url::SetSku { view: view.quiet() };
+    let action = || url::SetSku { view: view.clone() };
     html! {
         <article class={(panel(), SkuCard)}>
             <div class={Spread}>

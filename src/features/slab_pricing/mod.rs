@@ -239,10 +239,6 @@ pub mod url {
         /// The seller's outcomes are shown, and the listing whose outcomes are read.
         pub outcomes: Option<bool>,
         pub item: Option<String>,
-        /// What the last outcome import saved: new observations, of rows supplied. Carried in
-        /// the address because a redirect cannot say what it did (corten#385).
-        pub inserted: Option<u32>,
-        pub supplied: Option<u32>,
         /// The listing's price-change review is shown, and the publication whose steps are.
         pub publication: Option<bool>,
         pub steps: Option<String>,

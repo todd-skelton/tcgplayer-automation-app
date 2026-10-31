@@ -4,40 +4,23 @@ use super::{
     config::{self, ShippingConfig},
     form::SettingsInput,
     url,
-    views::{Done, ShippingScreen, ShippingSettingsForm},
+    views::{ShippingScreen, ShippingSettingsForm},
 };
 use crate::{
     database::Database,
     layout::{Chrome, Layout},
 };
 
-pub async fn show(
-    req: Req,
-    State(db): State<Database>,
-    Params(at): Params<url::ShippingSettings>,
-) -> HtmlResult {
+pub async fn show(req: Req, State(db): State<Database>) -> HtmlResult {
     let config = config::load(&db).await?;
-    screen(
-        &req,
-        &db,
-        &SettingsInput::of(&config),
-        &Errors::new(),
-        at.done,
-    )
-    .await
+    screen(&req, &db, &SettingsInput::of(&config), &Errors::new()).await
 }
 
-async fn screen(
-    req: &Req,
-    db: &Database,
-    input: &SettingsInput,
-    errors: &Errors,
-    done: Option<Done>,
-) -> HtmlResult {
+async fn screen(req: &Req, db: &Database, input: &SettingsInput, errors: &Errors) -> HtmlResult {
     let chrome = Chrome::read(db).await;
     req.page(html! {
         <Layout req={req} title="Shipping Configuration" chrome={chrome} head="">
-            <ShippingScreen input={input} errors={errors} done={done} />
+            <ShippingScreen input={input} errors={errors} />
         </Layout>
     })
 }
@@ -52,9 +35,7 @@ pub async fn save(
     match input.read() {
         Ok(config) => {
             config::save(&db, &config).await?;
-            req.redirect(&url::ShippingSettings {
-                done: Some(Done::Saved),
-            })
+            req.redirect_with_notice(&url::ShippingSettings, "Shipping configuration saved.")
         }
         Err(errors) => {
             req.invalid(
@@ -63,7 +44,7 @@ pub async fn save(
                     input: &input,
                     errors: &errors,
                 },
-                || screen(&req, &db, &input, &errors, None),
+                || screen(&req, &db, &input, &errors),
             )
             .await
         }
@@ -72,7 +53,8 @@ pub async fn save(
 
 pub async fn reset(req: Req, State(db): State<Database>) -> HtmlResult {
     config::save(&db, &ShippingConfig::default()).await?;
-    req.redirect(&url::ShippingSettings {
-        done: Some(Done::Reset),
-    })
+    req.redirect_with_notice(
+        &url::ShippingSettings,
+        "Shipping configuration reset to defaults.",
+    )
 }

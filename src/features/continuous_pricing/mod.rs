@@ -9,7 +9,7 @@
 //!
 //! | Route | Answer |
 //! |---|---|
-//! | `GET /continuous-pricing` | the schedule, the inventory's status, a page of it, and the recent runs; `?done=` says what the last post did |
+//! | `GET /continuous-pricing` | the schedule, the inventory's status, a page of it, and the recent runs; the layout's toaster says what the last post did |
 //! | `POST /continuous-pricing/schedule` | the schedule saved, or the form with what is wrong |
 //! | `POST /continuous-pricing/refresh` | the seller's inventory read again from TCGplayer |
 //! | `POST /continuous-pricing/run` | a scheduler cycle run now |
@@ -73,37 +73,16 @@ pub mod url {
         pub view: View,
     }
 
-    /// The page of inventory shown (`q` searched, `state` chosen), and what the last post did.
-    /// What it did is carried in the address because a redirect cannot say it (corten#385).
+    /// The page of inventory shown (`q` searched, `state` chosen).
     #[derive(Clone, Debug, Default, serde::Deserialize, corten::Route, corten::Fields)]
     #[route(query)]
     pub struct View {
         pub q: Option<String>,
         pub state: Option<Shown>,
         pub page: Option<i64>,
-        pub done: Option<super::views::Done>,
-        /// What a scheduler cycle came to, when one ran.
-        pub cycle: Option<super::views::Cycle>,
-        /// The numbers the message names: SKUs, a batch, its SKUs, batches, SKUs left due.
-        pub count: Option<i64>,
-        pub batch: Option<i32>,
-        pub items: Option<i64>,
-        pub batches: Option<i64>,
-        pub remaining: Option<i64>,
-        pub sku: Option<i32>,
     }
 
     impl View {
-        /// The same page of inventory, saying nothing.
-        pub fn quiet(&self) -> View {
-            View {
-                q: self.q.clone(),
-                state: self.state,
-                page: self.page,
-                ..View::default()
-            }
-        }
-
         pub fn search(&self) -> &str {
             self.q.as_deref().unwrap_or("").trim()
         }
@@ -116,7 +95,7 @@ pub mod url {
         pub fn at_page(&self, page: i64) -> View {
             View {
                 page: (page > 1).then_some(page),
-                ..self.quiet()
+                ..self.clone()
             }
         }
     }

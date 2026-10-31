@@ -154,7 +154,7 @@ pub fn TurnaroundForm<'a>(
         <form
             id={TurnaroundFormId}
             method="post"
-            action={url::SaveTurnaround { view: view.quiet() }}
+            action={url::SaveTurnaround { view: view.clone() }}
             data-patch
             class={TurnaroundForm}
         >

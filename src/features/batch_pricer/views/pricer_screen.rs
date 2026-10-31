@@ -1,5 +1,4 @@
 use corten::prelude::*;
-use corten_ui::{Toast, Toaster};
 
 use super::batch_panel::{BatchFollow, BatchProblem};
 use crate::{
@@ -22,7 +21,7 @@ pub struct CsvFormId;
 pub struct SellerFormId;
 
 /// The screen: a new batch from a CSV export or a seller, the batch picker, and the batch picked.
-/// What a post did shows in the toaster; why one was refused, above the batch.
+/// What a post did shows in the layout's toaster; why one was refused, above the batch.
 #[component(css)]
 pub fn PricerScreen<'a>(
     list: &'a [Batch],
@@ -30,7 +29,6 @@ pub fn PricerScreen<'a>(
     shown: Option<Result<&'a Shown, &'a str>>,
     seller: &'a str,
     errors: &'a Errors,
-    notice: Option<&'a str>,
     problem: Option<&'a str>,
     t: Msg,
     visitor: Visitor,
@@ -84,9 +82,6 @@ pub fn PricerScreen<'a>(
                 </SubmitsOnChange>
             }
         </section>
-        <div class={Toasts}>
-            <Toaster close="Dismiss" seconds={10} toast={Toast { message: notice }} />
-        </div>
         <BatchProblem message={problem} />
         match shown {
             None => {}

@@ -4,7 +4,7 @@
 //!
 //! | Route | Answer |
 //! |---|---|
-//! | `GET /shipping-configuration` | the settings form; `?done=saved` or `?done=reset` says what the last post did |
+//! | `GET /shipping-configuration` | the settings form; the layout's toaster says what the last post did |
 //! | `POST /shipping-configuration` | the settings saved and the page loaded again, or the form with what is wrong |
 //! | `POST /shipping-configuration/reset` | every setting back to its default |
 mod config;
@@ -32,11 +32,8 @@ use page::{reset, save, show};
 
 #[corten::routes(area = ShippingSettings, state = crate::app::Shared)]
 pub mod url {
-    /// `done` is what the post before this page did, for the message at the top.
     #[route("/shipping-configuration", get = show, post = save)]
-    pub struct ShippingSettings {
-        pub done: Option<super::views::Done>,
-    }
+    pub struct ShippingSettings;
 
     #[route("/shipping-configuration/reset", post = reset)]
     pub struct ResetShippingSettings;

@@ -37,7 +37,7 @@ pub fn DataScreen<'a>(screen: &'a Screen) -> impl Render {
             if screen.chrome.auth_cookie_missing {
                 <Notice tone={Tone::Warning}>
                     "Live TCGPlayer requests are blocked until the HTTP configuration page has a valid authentication cookie. "
-                    <a href={http_configuration::url::HttpSettings { done: None }}>"Fix Auth"</a>
+                    <a href={http_configuration::url::HttpSettings}>"Fix Auth"</a>
                 </Notice>
             }
             <div class={Cards}>

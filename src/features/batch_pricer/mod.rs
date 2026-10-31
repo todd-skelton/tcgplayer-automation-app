@@ -10,7 +10,7 @@
 //!
 //! | Route | Answer |
 //! |---|---|
-//! | `GET /pending-inventory-pricer` | the screen for `?batch=`, or the newest batch; `?deleted=` after a delete |
+//! | `GET /pending-inventory-pricer` | the screen for `?batch=`, or the newest batch |
 //! | `POST /pending-inventory-pricer/import-csv` | a batch made from a CSV export |
 //! | `POST /pending-inventory-pricer/import-seller` | a batch made from a seller's live inventory |
 //! | `POST /pending-inventory-pricer/batches/{batch}/price` | pricing queued, every SKU or the errors |
@@ -35,13 +35,11 @@ use page::{delete, download, import_csv, import_seller, live, price, publish, sh
 pub mod url {
     use super::{batches::Scope, page::Chosen};
 
-    /// `chosen` is the batch shown, the newest when none; `deleted` the batch the post before
-    /// deleted.
+    /// `chosen` is the batch shown, the newest when none.
     #[route("/pending-inventory-pricer", get = show)]
     pub struct BatchPricer {
         #[route(query)]
         pub chosen: Chosen,
-        pub deleted: Option<i32>,
     }
 
     #[route("/pending-inventory-pricer/import-csv", post = import_csv)]

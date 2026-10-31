@@ -46,7 +46,7 @@ fn WindowChoice<'a>(
         .map(|w| {
             let view = View {
                 realized: (w != RealizedWindow::default()).then_some(w),
-                ..screen.view.quiet()
+                ..screen.view.clone()
             };
             (w, InventoryStrategy { view })
         })
