@@ -15,7 +15,7 @@ use crate::{
 };
 
 pub async fn show(req: Req, State(db): State<Database>) -> HtmlResult {
-    let connections = store::connections(&db).await?;
+    let connections = store::connections(&db.0).await?;
     screen(&req, &db, &connections, None).await
 }
 
@@ -47,7 +47,7 @@ pub async fn save(
             answer(&req, &db, at.provider, Outcome::Saved).await
         }
         Err(errors) => {
-            let connections = store::connections(&db).await?;
+            let connections = store::connections(&db.0).await?;
             let answered = Answered {
                 provider: at.provider,
                 outcome: None,
@@ -101,7 +101,7 @@ pub async fn remove(
 
 /// The provider's card, saying what was done; without scripts, the page with it.
 async fn answer(req: &Req, db: &Database, provider: Provider, outcome: Outcome) -> HtmlResult {
-    let connections = store::connections(db).await?;
+    let connections = store::connections(&db.0).await?;
     let errors = Errors::new();
     let answered = Answered {
         provider,

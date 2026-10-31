@@ -144,7 +144,7 @@ impl Screen {
         let seller = choice.seller.as_deref().filter(|s| !s.trim().is_empty());
         let maintenance = match seller {
             Some(seller) if choice.maintenance == Some(true) => {
-                Some(maintenance::read(legacy, seller).await)
+                Some(maintenance::read(db, seller).await)
             }
             _ => None,
         };

@@ -16,11 +16,11 @@ const QUERY_DEADLINE: Duration = Duration::from_secs(5);
 
 /// Each provider's connection, in the order the screen lists them; a provider never saved has
 /// none.
-pub async fn connections(db: &Database) -> sqlx::Result<Vec<Connection>> {
+pub async fn connections<'c>(on: impl sqlx::PgExecutor<'c>) -> sqlx::Result<Vec<Connection>> {
     let rows: Vec<(String, bool, String, Option<DateTime<Utc>>)> = sqlx::query_as(
         "SELECT provider, credential <> '', status, checked_at FROM slab_provider_connections",
     )
-    .fetch_all(&db.0)
+    .fetch_all(on)
     .await?;
     Ok(Provider::ALL
         .into_iter()

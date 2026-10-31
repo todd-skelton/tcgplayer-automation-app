@@ -84,7 +84,8 @@ impl Status {
 }
 
 /// A provider's saved connection, without its credential: the screen never shows it.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Connection {
     pub provider: Provider,
     pub configured: bool,

@@ -621,8 +621,8 @@ pub struct MaintenanceInput {
     pub revision: i64,
 }
 
-/// Saves the seller's maintenance settings. Enabling them starts the Node app's worker on its
-/// cycles; it never publishes.
+/// Saves the seller's maintenance settings. Once enabled, Node's slab evidence worker runs their
+/// cycles; they never publish.
 pub async fn save_maintenance(
     req: Req,
     State(db): State<Database>,
@@ -640,11 +640,7 @@ pub async fn save_maintenance(
         refresh_budget: input.refresh_budget,
         revision: input.revision,
     };
-    let asked = json!({ "intent": "save", "settings": settings });
-    match legacy
-        .send::<_, serde_json::Value>("/api/slab-maintenance", &asked)
-        .await
-    {
+    match maintenance::save(&db, &settings).await {
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
         Err(why) => {
             let visitor = Visitor::of(zone.as_ref());

@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use corten::{
     ReadAgain,
     form::keep_query,
@@ -169,16 +168,12 @@ pub fn MaintenanceStatusPart<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
 #[component(css = super::slab_screen::SlabScreen)]
 fn MaintenanceStatusLines<'a>(view: &'a View, t: Msg, visitor: Visitor) -> impl Render {
     let s = &view.settings;
-    let at = |when: &Option<String>| {
-        when.as_deref()
-            .and_then(|w| w.parse::<DateTime<Utc>>().ok())
-    };
-    let last = at(&s.last_cycle_at);
-    let next = at(&s.next_cycle_at).filter(|_| s.enabled);
+    let last = s.last_cycle_at;
+    let next = s.next_cycle_at.filter(|_| s.enabled);
     let providers = view
         .providers
         .iter()
-        .map(|p| format!("{}: {}", p.provider, words(&p.status)))
+        .map(|p| format!("{}: {}", p.provider.as_ref(), words(p.status.as_ref())))
         .collect::<Vec<_>>()
         .join(" · ");
     html! {
@@ -202,11 +197,9 @@ fn MaintenanceStatusLines<'a>(view: &'a View, t: Msg, visitor: Visitor) -> impl 
             }
             ". Turning maintenance off stops further work; already requested evidence and an in-progress calculation may finish."
         </p>
-        if view.worker_mode == "external" {
-            <Notice tone={Tone::Info}>
-                "Maintenance requires the existing slab evidence worker to be running."
-            </Notice>
-        }
+        <Notice tone={Tone::Info}>
+            "Maintenance requires the existing slab evidence worker to be running."
+        </Notice>
         if let Some(error) = &s.last_error {
             <Notice tone={Tone::Warning}>{words(error)}</Notice>
         }
