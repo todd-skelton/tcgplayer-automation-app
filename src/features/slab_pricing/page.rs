@@ -120,7 +120,7 @@ impl Screen {
                 .cloned()
         });
         let research = match record.as_ref().filter(|r| r.shown().is_some()) {
-            Some(record) => Some(read_research(db, legacy, &record.id, choice).await),
+            Some(record) => Some(read_research(db, &record.id, choice).await),
             None => None,
         };
         let supply = match (&record, &research) {
@@ -251,13 +251,8 @@ impl Screen {
 }
 
 /// The slab's research, with the evidence fetched beside it, and the refreshes on their way read
-/// where they stand (which keeps the Node app's worker running them).
-async fn read_research(
-    db: &Database,
-    legacy: &Legacy,
-    id: &str,
-    choice: &Choice,
-) -> Result<Workspace, String> {
+/// where they stand.
+async fn read_research(db: &Database, id: &str, choice: &Choice) -> Result<Workspace, String> {
     let mut workspace = research::read(db, id, choice.grade(), &choice.window()).await?;
     let extra: Vec<&String> = choice
         .extra
@@ -266,7 +261,7 @@ async fn read_research(
         .collect();
     if workspace.pending() || !extra.is_empty() {
         let keys: Vec<String> = workspace.keys.iter().chain(extra).cloned().collect();
-        workspace.statuses = research::statuses(legacy, &keys).await?;
+        workspace.statuses = research::statuses(db, &keys).await?;
     }
     Ok(workspace)
 }

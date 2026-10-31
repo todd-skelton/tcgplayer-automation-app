@@ -1,7 +1,8 @@
 //! Research for the certificate shown: the evidence saved for a grade (the owned one, or a PSA
 //! grade explored beside it) over a window of sale dates, and whether a refresh is on its way,
-//! ported from `loadSlabWorkspace`. Refreshing stays the Node app's (`/api/slab-evidence`), whose
-//! worker calls eBay and Alt, and whose status read keeps that worker running.
+//! ported from `loadSlabWorkspace`, and where refreshes on their way stand. Refreshing stays the
+//! Node app's (`/api/slab-evidence`), whose worker calls eBay and Alt; Node's status read also
+//! woke its in-process worker, which this process cannot, so the worker must be running on its own.
 use std::collections::BTreeSet;
 
 use chrono::{Days, NaiveDate, SecondsFormat, Utc};
@@ -20,7 +21,6 @@ use crate::{
             store,
         },
     },
-    legacy::Legacy,
 };
 
 /// The PSA grades a slab can be explored at beside its own: every half grade from 1 to 10 but
@@ -470,25 +470,12 @@ pub async fn read(
     })
 }
 
-#[derive(Deserialize)]
-struct Statuses {
-    statuses: Vec<EvidenceStatus>,
-}
-
-/// Where the refreshes of `keys` stand. Asking keeps the Node app's refresh worker running
-/// while one is queued, as the React screen's poll did.
-pub async fn statuses(legacy: &Legacy, keys: &[String]) -> Result<Vec<EvidenceStatus>, String> {
-    #[derive(Serialize)]
-    struct Keys {
-        keys: String,
-    }
-    let keys = Keys {
-        keys: keys.join(","),
-    };
-    legacy
-        .read_with::<Statuses, _>("/api/slab-evidence", &keys)
+/// Where the refreshes of `keys` stand (`evidenceStatuses`), as the React screen's poll read them.
+pub async fn statuses(db: &Database, keys: &[String]) -> Result<Vec<EvidenceStatus>, String> {
+    store::statuses(&db.0, keys)
         .await
-        .map(|s| s.statuses)
+        .map(|rows| rows.into_iter().map(status).collect())
+        .map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
