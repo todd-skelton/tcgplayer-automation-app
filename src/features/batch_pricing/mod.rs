@@ -12,5 +12,6 @@ pub mod cache;
 pub mod job;
 pub mod queue;
 pub mod results;
+pub mod save;
 pub mod shadow;
 pub mod worker;
