@@ -10,6 +10,7 @@
 )]
 pub mod cache;
 pub mod job;
+pub mod jobs;
 pub mod queue;
 pub mod results;
 pub mod save;

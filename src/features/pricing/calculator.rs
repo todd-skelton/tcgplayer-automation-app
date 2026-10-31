@@ -554,8 +554,49 @@ fn aggregate(samples: &[PercentileSample]) -> Aggregated {
     aggregated
 }
 
-/// `calculatePrices` as of `now`, the shadow plan's cohort named by `source`. Fails only when the
-/// resolver reports that sales history is unavailable, or the SKUs repeat.
+/// Why a run stopped before pricing every SKU.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Stopped {
+    /// The session no longer sees full sales history; the run can be tried again once it does.
+    SalesHistoryUnavailable(String),
+    Failed(String),
+}
+
+impl From<String> for Stopped {
+    fn from(message: String) -> Self {
+        Stopped::Failed(message)
+    }
+}
+
+impl From<&str> for Stopped {
+    fn from(message: &str) -> Self {
+        Stopped::Failed(message.to_owned())
+    }
+}
+
+impl std::fmt::Display for Stopped {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Stopped::SalesHistoryUnavailable(message) | Stopped::Failed(message) => {
+                f.write_str(message)
+            }
+        }
+    }
+}
+
+/// How far a run got (`onProgress`): before the first SKU (`current` 0, no `sku`), before each
+/// SKU, and when every SKU is done (`current` = `total`, no `sku`), with the counts so far.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Tick {
+    pub current: usize,
+    pub total: usize,
+    pub sku: Option<i64>,
+    pub stats: Stats,
+}
+
+/// `calculatePrices` as of `now`, the shadow plan's cohort named by `source`, each step told to
+/// `tick`. Stops only when the resolver reports that sales history is unavailable, or the SKUs
+/// repeat.
 pub async fn calculate(
     skus: &[PricerSku],
     config: &Config,
@@ -563,14 +604,28 @@ pub async fn calculate(
     source: &str,
     resolver: &impl Resolve,
     now: DateTime<Utc>,
-) -> Result<Calculation, String> {
+    tick: &mut impl FnMut(Tick),
+) -> Result<Calculation, Stopped> {
     let started = Instant::now();
     let mut stats = Stats::default();
     let mut priced_items: Vec<PricedItem> = Vec::new();
     let mut samples: Vec<PercentileSample> = Vec::new();
     let batch = batch_percentiles(config);
+    let total = skus.len();
+    tick(Tick {
+        current: 0,
+        total,
+        sku: None,
+        stats,
+    });
 
-    for sku in skus {
+    for (index, sku) in skus.iter().enumerate() {
+        tick(Tick {
+            current: index + 1,
+            total,
+            sku: Some(sku.sku),
+            stats,
+        });
         if sku.sku <= 0 {
             stats.skipped += 1;
             continue;
@@ -604,7 +659,9 @@ pub async fn calculate(
         };
         let result = match resolver.resolve(&request).await {
             Ok(result) => result,
-            Err(Failure::SalesHistoryUnavailable(message)) => return Err(message),
+            Err(Failure::SalesHistoryUnavailable(message)) => {
+                return Err(Stopped::SalesHistoryUnavailable(message));
+            }
             Err(Failure::Sku(message)) => {
                 priced_items.push(PricedItem {
                     sku: sku.sku,
@@ -806,6 +863,12 @@ pub async fn calculate(
         }
         priced_items.push(item);
     }
+    tick(Tick {
+        current: total,
+        total,
+        sku: None,
+        stats,
+    });
 
     stats.processing_time = started.elapsed().as_millis();
     let aggregated_percentiles = aggregate(&samples);
@@ -965,6 +1028,7 @@ mod tests {
             "pricing",
             &Fixed(resolved),
             now(),
+            &mut |_| {},
         )
         .await
         .unwrap()
@@ -1401,6 +1465,7 @@ mod tests {
             "pricing",
             &broke,
             now(),
+            &mut |_| {},
         )
         .await
         .unwrap();
@@ -1423,9 +1488,13 @@ mod tests {
             "pricing",
             &signed_out,
             now(),
+            &mut |_| {},
         )
         .await;
-        assert_eq!(stopped, Err("signed out".to_string()));
+        assert_eq!(
+            stopped,
+            Err(Stopped::SalesHistoryUnavailable("signed out".to_string()))
+        );
         assert_eq!(
             signed_out.calls.get(),
             1,

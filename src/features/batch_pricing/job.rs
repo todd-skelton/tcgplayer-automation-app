@@ -10,7 +10,7 @@ use crate::{
     features::{
         configuration::config::{Config as StoredConfig, Policy as StoredPolicy},
         pricing::{
-            calculator::{self, Calculation, PricedItem, PricerSku},
+            calculator::{self, Calculation, PricedItem, PricerSku, Stats, Stopped, Tick},
             resolver::LatestSales,
             sku_price::Evidence,
         },
@@ -82,11 +82,48 @@ pub struct PricedSku {
     pub point: Option<PricePoint>,
 }
 
-/// A priced batch: its SKUs in the order they were priced and its summary document.
+/// A priced batch: its SKUs in the order they were priced, its summary document, and the
+/// progress it ended at.
 #[derive(Debug)]
 pub struct Priced {
     pub skus: Vec<PricedSku>,
     pub summary: serde_json::Value,
+    pub progress: serde_json::Value,
+}
+
+/// A step of a job as the Batch Pricer's progress panel reads it (`ProcessingProgress`): one of
+/// six, its phase and when it began, the counts so far, and how far within the step.
+fn step(
+    current: u32,
+    status: &str,
+    phase: &str,
+    phase_start: Option<i64>,
+    counts: Stats,
+    within: Option<(usize, usize, &str)>,
+) -> serde_json::Value {
+    let mut step = serde_json::json!({
+        "current": current,
+        "total": 6,
+        "status": status,
+        "processed": counts.processed,
+        "skipped": counts.skipped,
+        "errors": counts.errors,
+        "warnings": counts.warnings,
+        "phase": phase,
+    });
+    if let Some(at) = phase_start {
+        step["phaseStartTime"] = at.into();
+    }
+    if let Some((current, total, status)) = within {
+        step["subProgress"] =
+            serde_json::json!({ "current": current, "total": total, "status": status });
+    }
+    step
+}
+
+/// Wall-clock milliseconds, as `Date.now()` stamps a phase.
+fn wall_ms() -> i64 {
+    Utc::now().timestamp_millis()
 }
 
 /// The batch a job prices.
@@ -260,7 +297,12 @@ async fn cost_model(
 }
 
 /// Prices `batch`'s items under `stored` as of `now`, reading sales through `evidence` and
-/// market data through `market`. Saved-curve repricing (`cached`) is not ported yet.
+/// market data through `market`, each step told to `report` as Node's worker reports it.
+/// Saved-curve repricing (`cached`) is not ported yet.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "executeInventoryBatchPricingJob's inputs"
+)]
 pub async fn price<E: Evidence, M: MarketData>(
     db: &Database,
     batch: &Batch,
@@ -269,8 +311,18 @@ pub async fn price<E: Evidence, M: MarketData>(
     evidence: &E,
     market: &M,
     now: DateTime<Utc>,
-) -> Result<Priced, String> {
+    report: &mut impl FnMut(serde_json::Value),
+) -> Result<Priced, Stopped> {
     let started = Instant::now();
+    let none = Stats::default();
+    report(step(
+        1,
+        "Loading inventory batch items...",
+        "Data Validation",
+        Some(wall_ms()),
+        none,
+        None,
+    ));
     let items = items(db, batch.batch_number, mode).await?;
     let bypass = matches!(batch.source_type.as_str(), "pending_inventory" | "strategy");
     let sources: Vec<PricerSku> = items
@@ -300,8 +352,38 @@ pub async fn price<E: Evidence, M: MarketData>(
         return Err("Saved-curve repricing is not ported yet.".into());
     }
     let invalid = items.len() - sources.len();
+    let skipped = Stats {
+        skipped: invalid,
+        ..none
+    };
+    let n = sources.len();
+    report(step(
+        2,
+        &format!("Validated {n} SKUs, preparing price data..."),
+        "Preparing Price Data",
+        Some(wall_ms()),
+        skipped,
+        None,
+    ));
+    let fetching = wall_ms();
+    report(step(
+        3,
+        "Fetching price points...",
+        "Fetching Price Data",
+        Some(fetching),
+        skipped,
+        Some((0, n, "Requesting latest price points...")),
+    ));
     let skus: Vec<i64> = sources.iter().map(|s| s.sku).collect();
     let points = market.price_points(&skus).await?;
+    report(step(
+        3,
+        "Price points fetched successfully!",
+        "Fetching Price Data",
+        Some(fetching),
+        skipped,
+        Some((n, n, "Price data ready")),
+    ));
     let market_prices: HashMap<i64, f64> = points
         .iter()
         .map(|(sku, p)| (*sku, p.market_price))
@@ -320,8 +402,62 @@ pub async fn price<E: Evidence, M: MarketData>(
         now: now.timestamp_millis() as f64,
     };
     let source = format!("inventory-batch-{}", batch.batch_number);
-    let calculation: Calculation =
-        calculator::calculate(&sources, &config, &market_prices, &source, &resolver, now).await?;
+    let pricing = wall_ms();
+    report(step(
+        4,
+        "Calculating pricing...",
+        "Calculating Prices",
+        Some(pricing),
+        skipped,
+        None,
+    ));
+    let mut tick = |t: Tick| {
+        let status = match t.sku {
+            None if t.current == 0 => format!("Starting to process {} SKUs...", t.total),
+            None => "Pricing calculation complete!".to_owned(),
+            Some(sku) => {
+                let name = names.get(&sku).map_or_else(
+                    || format!("SKU {sku}"),
+                    |d| format!("{} ({sku})", d.product_name),
+                );
+                format!("Processing {}/{}: {name}...", t.current, t.total)
+            }
+        };
+        let counts = Stats {
+            skipped: invalid + t.stats.skipped,
+            ..t.stats
+        };
+        report(step(
+            4,
+            "Calculating pricing...",
+            "Calculating Prices",
+            Some(pricing),
+            counts,
+            Some((t.current, t.total, &status)),
+        ));
+    };
+    let calculation: Calculation = calculator::calculate(
+        &sources,
+        &config,
+        &market_prices,
+        &source,
+        &resolver,
+        now,
+        &mut tick,
+    )
+    .await?;
+    let counts = Stats {
+        skipped: invalid + calculation.stats.skipped,
+        ..calculation.stats
+    };
+    report(step(
+        5,
+        "Enriching pricing data for display...",
+        "Enriching Display Data",
+        Some(wall_ms()),
+        counts,
+        None,
+    ));
     let skus: Vec<PricedSku> = calculation
         .priced_items
         .iter()
@@ -341,7 +477,13 @@ pub async fn price<E: Evidence, M: MarketData>(
         stored,
         started.elapsed().as_millis(),
     );
-    Ok(Priced { skus, summary })
+    let progress = step(6, "Complete", "Complete", None, counts, None);
+    report(progress.clone());
+    Ok(Priced {
+        skus,
+        summary,
+        progress,
+    })
 }
 
 #[cfg(test)]

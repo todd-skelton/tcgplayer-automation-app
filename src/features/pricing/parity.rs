@@ -319,9 +319,17 @@ async fn prices_match_node_on_the_same_evidence() {
             evidence: &recorded,
             now: now.timestamp_millis() as f64,
         };
-        let result = calculator::calculate(&skus, &config, &market, "parity", &resolver, now)
-            .await
-            .unwrap();
+        let result = calculator::calculate(
+            &skus,
+            &config,
+            &market,
+            "parity",
+            &resolver,
+            now,
+            &mut |_| {},
+        )
+        .await
+        .unwrap();
         let name = &run.name;
         diff.compare(
             &format!("{name}.pricedItems"),

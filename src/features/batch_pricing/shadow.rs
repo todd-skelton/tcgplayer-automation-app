@@ -180,7 +180,7 @@ pub struct Saved {
     pub pricing_details_json: Option<Value>,
 }
 
-async fn saved(db: &Database, batch_number: i32) -> Result<Vec<Saved>, String> {
+pub async fn saved(db: &Database, batch_number: i32) -> Result<Vec<Saved>, String> {
     sqlx::query_as(
         "SELECT sku, result_status, row_json, pricing_details_json
          FROM inventory_batch_results WHERE batch_number = $1",
@@ -192,7 +192,7 @@ async fn saved(db: &Database, batch_number: i32) -> Result<Vec<Saved>, String> {
 }
 
 /// Node's market data, read back from the results it saved.
-struct SavedMarket<'a>(&'a [Saved]);
+pub struct SavedMarket<'a>(pub &'a [Saved]);
 
 impl MarketData for SavedMarket<'_> {
     async fn price_points(&self, _: &[i64]) -> Result<HashMap<i64, PricePoint>, String> {
@@ -453,8 +453,10 @@ pub async fn replay(db: &Database, job: &Finished) -> Result<(Tally, Vec<(i32, V
         &ledgers,
         &SavedMarket(&node),
         job.started_at,
+        &mut |_| {},
     )
-    .await?;
+    .await
+    .map_err(|stopped| stopped.to_string())?;
     let ours: HashMap<i32, &PricedSku> =
         priced.skus.iter().map(|s| (s.item.sku as i32, s)).collect();
     let mut tally = Tally::default();
