@@ -146,13 +146,6 @@ fn uuid_shaped(value: &str) -> bool {
 }
 
 /// `evidenceStatuses`: the refreshes of `keys` there are, in key order.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the screen asks the Node app, whose answer wakes its worker"
-    )
-)]
 pub async fn statuses(db: impl PgExecutor<'_>, keys: &[String]) -> Result<Vec<Status>, Error> {
     let keys = keys_input(keys)?;
     let rows: Vec<StatusRow> = sqlx::query_as(&format!(
