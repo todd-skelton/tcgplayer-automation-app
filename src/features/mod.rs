@@ -21,4 +21,5 @@ pub mod shipping_configuration;
 pub mod shipping_export;
 pub mod shipping_thresholds;
 pub mod slab_connections;
+pub mod slab_evidence;
 pub mod slab_pricing;

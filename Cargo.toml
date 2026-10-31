@@ -7,8 +7,8 @@ description = "TCGPlayer Automation on Corten: screens ported one at a time from
 
 [dependencies]
 # Pinned to one revision of main; bump it on purpose when a fix the port needs lands.
-corten = { git = "https://github.com/todd-skelton/corten", rev = "472aceb5", features = ["json", "compress", "types"] }
-corten-ui = { git = "https://github.com/todd-skelton/corten", rev = "472aceb5" }
+corten = { git = "https://github.com/todd-skelton/corten", rev = "67d597e8", features = ["json", "compress", "types"] }
+corten-ui = { git = "https://github.com/todd-skelton/corten", rev = "67d597e8" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
 # Correctly rounded float parsing, so numbers the Node app wrote read back to the same bits.
@@ -17,7 +17,7 @@ schemars = "1.2"
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "chrono", "macros"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
 # The visitor's time zone, from the name the browser gives (`App::client_zone`).
-chrono-tz = "0.10"
+chrono-tz = { version = "0.10", features = ["case-insensitive"] }
 # The legacy relay to the Node app, and the slab data providers (rustls for their HTTPS). No
 # gzip/brotli features: an encoded answer goes on as it came.
 reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls", "multipart"] }
@@ -30,6 +30,11 @@ sha2 = "0.10"
 # fdlibm's exp, as V8's Math.exp computes it (js_math).
 libm = "0.2"
 hex = "0.4"
+
+[features]
+# The tests that call TCGplayer live (and one that rewrites tests/fixtures): off, so no run of the
+# database tests (`--include-ignored`) reaches them. `cargo test --features live-tcgplayer <name> -- --ignored`.
+live-tcgplayer = []
 
 [dev-dependencies]
 http-body-util = "0.1"

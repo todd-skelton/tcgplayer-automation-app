@@ -386,6 +386,7 @@ mod tests {
     /// One approved live read (decision 32): the dev ledger's busiest product's latest sales and
     /// price history, checked against what the Node app recorded. Writes nothing to the database;
     /// with `LATEST_SALES_FIXTURE` set, saves the sales there with titles and listing ids cleared.
+    #[cfg(feature = "live-tcgplayer")]
     #[tokio::test]
     #[ignore = "reads TCGplayer live with the dev database's cookie"]
     async fn live_sales_agree_with_the_ledger() {

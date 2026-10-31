@@ -15,7 +15,9 @@ use super::{
     url::{self, Choice},
     views::Problem,
 };
-use crate::{database::Database, legacy::Legacy, zone::Visitor};
+use crate::{
+    database::Database, features::slab_evidence::store as evidence, legacy::Legacy, zone::Visitor,
+};
 
 #[derive(Debug, Default, Deserialize, Fields)]
 pub struct LookUpInput {
@@ -438,7 +440,8 @@ pub async fn refresh(
     }
 }
 
-/// A refresh to stop, by its run: one that has been run again since is left alone.
+/// A refresh to stop, by its run: one that has been run again since is left alone. Stopped here,
+/// in the refresh queue the Node app's worker claims from.
 #[derive(Debug, Default, Deserialize, Fields)]
 pub struct CancelInput {
     pub key: String,
@@ -453,13 +456,9 @@ pub async fn cancel(
     Params(at): Params<url::Cancel>,
     Form(input): Form<CancelInput>,
 ) -> HtmlResult {
-    let asked = json!({ "intent": "cancel", "key": input.key, "runId": input.run });
-    match legacy
-        .send::<_, serde_json::Value>("/api/slab-evidence", &asked)
-        .await
-    {
+    match evidence::cancel(&db.0, &input.key, &input.run).await {
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
-        Err(why) => {
+        Err(evidence::Error::Refused(why)) => {
             refused(
                 Place::Research,
                 &req,
@@ -467,7 +466,20 @@ pub async fn cancel(
                 &legacy,
                 Visitor::of(zone.as_ref()),
                 &at.choice,
-                why,
+                why.0,
+            )
+            .await
+        }
+        Err(why) => {
+            eprintln!("Slab evidence cancel failed: {why}");
+            refused(
+                Place::Research,
+                &req,
+                &db,
+                &legacy,
+                Visitor::of(zone.as_ref()),
+                &at.choice,
+                "Unable to access slab evidence.".to_owned(),
             )
             .await
         }

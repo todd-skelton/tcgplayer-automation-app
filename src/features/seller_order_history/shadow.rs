@@ -291,6 +291,7 @@ mod tests {
 
     /// Steps from `SELLER_ORDER_SHADOW_FROM` (default: the newest page), logged to
     /// `SELLER_ORDER_SHADOW_LOG`; `SELLER_ORDER_SHADOW_STEPS` of them (default 1).
+    #[cfg(feature = "live-tcgplayer")]
     #[tokio::test]
     #[ignore = "reads TCGplayer live with the dev database's cookie"]
     async fn steps_from_an_offset() {

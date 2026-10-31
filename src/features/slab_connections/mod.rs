@@ -19,6 +19,7 @@ mod request;
 mod store;
 mod views;
 
+pub use provider::Status as ConnectionStatus;
 pub use request::Transport;
 pub use views::COMPONENTS;
 

@@ -117,6 +117,27 @@ pub fn financial(transaction: &Value, refunds: &Value) -> String {
     sha256_hex(&stable_json(&evidence))
 }
 
+/// A JSON value with every whole number written as JavaScript writes it (`2`, not `2.0`), so
+/// evidence stored as JSONB, or measured in bytes, is what Node's is.
+pub fn js_numbers(value: &Value) -> Value {
+    match value {
+        Value::Number(n) => match n.as_f64() {
+            Some(f) if n.is_f64() && f.fract() == 0.0 && f.abs() < 9_007_199_254_740_992.0 => {
+                Value::from(f as i64)
+            }
+            _ => value.clone(),
+        },
+        Value::Array(items) => Value::Array(items.iter().map(js_numbers).collect()),
+        Value::Object(fields) => Value::Object(
+            fields
+                .iter()
+                .map(|(k, v)| (k.clone(), js_numbers(v)))
+                .collect(),
+        ),
+        other => other.clone(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -18,7 +18,10 @@ use super::{
     observation::{self, Observation},
     sync::{Coverage, Gap, Progress, Run, Store},
 };
-use crate::features::{inventory_economics::ledger::fingerprint::js_float, inventory_fifo::queue};
+use crate::features::{
+    inventory_economics::ledger::fingerprint::{js_float, js_numbers},
+    inventory_fifo::queue,
+};
 
 const LEASE_LOST: &str = "Seller order sync lease was lost.";
 
@@ -66,27 +69,6 @@ impl RunRow {
     }
 }
 
-/// A JSON value with every whole number written as JavaScript writes it (`2`, not `2.0`), so
-/// evidence stored as JSONB reads back as Node's does.
-fn js_json(value: &Value) -> Value {
-    match value {
-        Value::Number(n) => match n.as_f64() {
-            Some(f) if n.is_f64() && f.fract() == 0.0 && f.abs() < 9_007_199_254_740_992.0 => {
-                Value::from(f as i64)
-            }
-            _ => value.clone(),
-        },
-        Value::Array(items) => Value::Array(items.iter().map(js_json).collect()),
-        Value::Object(fields) => Value::Object(
-            fields
-                .iter()
-                .map(|(k, v)| (k.clone(), js_json(v)))
-                .collect(),
-        ),
-        other => other.clone(),
-    }
-}
-
 /// A text column from an observed field: a string as it is, anything else as JSON writes it.
 fn text(value: &Option<Value>) -> Option<String> {
     match value {
@@ -113,7 +95,7 @@ fn transaction_amount(observation: &Observation, key: &str) -> Option<String> {
 
 fn transaction_evidence(observation: &Observation) -> String {
     match &observation.transaction {
-        Ok(transaction) => js_json(transaction).to_string(),
+        Ok(transaction) => js_numbers(transaction).to_string(),
         Err(reason) => json!({ "coverageReason": reason }).to_string(),
     }
 }
@@ -266,8 +248,8 @@ pub async fn record_observation(
     .bind(&o.provider_status)
     .bind(o.lifecycle)
     .bind(text(&o.refund_status))
-    .bind(js_json(&Value::Array(o.refunds.clone())).to_string())
-    .bind(js_json(&lines).to_string())
+    .bind(js_numbers(&Value::Array(o.refunds.clone())).to_string())
+    .bind(js_numbers(&lines).to_string())
     .bind(transaction_evidence(o))
     .execute(&mut *conn)
     .await
@@ -512,7 +494,7 @@ impl<C: DerefMut<Target = PgConnection> + Send> Store for Postgres<C> {
         .fetch_one(&mut *tx)
         .await
         .map_err(failed)?;
-        let gaps = serde_json::to_string(&js_json(
+        let gaps = serde_json::to_string(&js_numbers(
             &serde_json::to_value(p.gaps).map_err(|e| e.to_string())?,
         ))
         .map_err(|e| e.to_string())?;

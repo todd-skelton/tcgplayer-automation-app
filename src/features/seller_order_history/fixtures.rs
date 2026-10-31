@@ -1,6 +1,7 @@
 //! Recorded order management answers (`tests/fixtures/tcgplayer/seller_orders`), scrubbed of the
 //! seller's and buyers' details, and the checks that run against them. The recording itself is an
-//! ignored test that reads TCGplayer live: `cargo test record_seller_order_fixtures -- --ignored`.
+//! test that reads TCGplayer live, compiled only with the `live-tcgplayer` feature so no run of the
+//! other ignored tests can reach it: `cargo test --features live-tcgplayer record_seller_order_fixtures -- --ignored`.
 use std::{collections::BTreeMap, path::PathBuf};
 
 use serde_json::{Value, json};
@@ -298,6 +299,7 @@ fn the_recordings_hold_nothing_the_scrubber_drops() {
 /// Reads TCGplayer live (decisions 19 and 23 in the port plan): the oldest page of six orders
 /// from the last three months, and the newest partly refunded and canceled ones Node recorded,
 /// with each one's detail; scrubbed, then written over the fixtures.
+#[cfg(feature = "live-tcgplayer")]
 #[tokio::test]
 #[ignore = "reads TCGplayer live with the dev database's cookie"]
 async fn record_seller_order_fixtures() {
