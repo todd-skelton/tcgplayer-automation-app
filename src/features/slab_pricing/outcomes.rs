@@ -1,15 +1,21 @@
 //! Seller outcomes: the reviewed sales, cancellations and relists recorded for an imported
 //! listing (`readSellerOutcomes`), and which of them can be counted
-//! (`reconcileSellerOutcomes`). Manually reviewed only; they change neither inventory nor
-//! prices. Importing stays the Node app's (`/api/slab-outcomes`).
+//! (`reconcileSellerOutcomes`), and importing reviewed ones from a CSV
+//! (`importSellerOutcomeCsv`). Manually reviewed only; they change neither inventory nor prices.
 use std::collections::{HashMap, HashSet};
 
-use chrono::{DateTime, SecondsFormat, Utc};
-use serde::Deserialize;
+use chrono::{DateTime, NaiveDateTime, SecondsFormat, Utc};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sqlx::PgConnection;
 
 use super::inventory::seller_account;
-use crate::database::Database;
+use crate::{
+    csv_text::{self, Reading},
+    database::Database,
+    features::inventory_economics::ledger::fingerprint::{js_json, sha256_hex},
+    js_number,
+};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -57,7 +63,7 @@ pub struct Summary {
 }
 
 /// What an import saved.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Imported {
     pub inserted: u32,
@@ -301,9 +307,320 @@ pub async fn read(db: &Database, seller: &str, item_id: &str) -> Result<Review, 
     review(&mut conn, seller, item_id, Utc::now()).await
 }
 
+/// The most of a file an import reads, and the most rows.
+const MOST_BYTES: usize = 256 * 1024;
+const MOST_ROWS: usize = 50;
+
+const COLUMNS_MESSAGE: &str =
+    "Provide 1–50 outcomes with event_id, item_id, kind, occurred_at, quantity and note columns.";
+
+/// One reviewed outcome as Node saves it; its fields in Node's order, which its hash reads.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Reviewed {
+    id: String,
+    seller: String,
+    item_id: String,
+    kind: String,
+    occurred_at: String,
+    quantity: u8,
+    price: Option<Amount>,
+    related_sale_id: Option<String>,
+    next_item_id: Option<String>,
+    source: &'static str,
+    note: String,
+}
+
+#[derive(Debug, Serialize)]
+struct Amount {
+    amount: f64,
+    currency: String,
+}
+
+/// `parseSellerOutcomeCsv`: each row checked, with the row Node names when one is wrong.
+fn parse(csv: &str, seller: &str) -> Result<Vec<Reviewed>, String> {
+    let seller = seller_account(seller)?;
+    if csv.len() > MOST_BYTES {
+        return Err("Provide at most 256 KiB of seller outcomes.".to_owned());
+    }
+    let table = csv_text::read(
+        csv,
+        Reading {
+            greedy: true,
+            trim_header: false,
+        },
+    );
+    let required = [
+        "event_id",
+        "item_id",
+        "kind",
+        "occurred_at",
+        "quantity",
+        "note",
+    ];
+    if table.error.is_some()
+        || table.rows.is_empty()
+        || table.rows.len() > MOST_ROWS
+        || required
+            .iter()
+            .any(|c| !table.fields.iter().any(|f| f == c))
+    {
+        return Err(COLUMNS_MESSAGE.to_owned());
+    }
+    let identifier = |v: &str| {
+        (1..=120).contains(&v.len())
+            && v.bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'.' | b':' | b'-'))
+    };
+    let item = |v: &str| (9..=15).contains(&v.len()) && v.bytes().all(|b| b.is_ascii_digit());
+    table
+        .rows
+        .iter()
+        .enumerate()
+        .map(|(index, row)| {
+            let field = |name: &str| row.get(name).and_then(Value::as_str).unwrap_or_default();
+            let trimmed = |name: &str| js_number::trim(field(name));
+            let optional = |name: &str| Some(trimmed(name).to_owned()).filter(|v| !v.is_empty());
+            let id = trimmed("event_id").to_owned();
+            let item_id = trimmed("item_id").to_owned();
+            let note = trimmed("note").to_owned();
+            let kind = field("kind");
+            let occurred_at = utc_time(trimmed("occurred_at"));
+            let related_sale_id = optional("related_sale_id");
+            let next_item_id = optional("next_item_id");
+            let price_text = trimmed("price");
+            let currency = trimmed("currency");
+            let price_ok = if price_text.is_empty() {
+                currency.is_empty()
+            } else {
+                let amount = js_number::number(price_text);
+                cents(price_text)
+                    && amount > 0.0
+                    && amount < 1e9
+                    && currency.len() == 3
+                    && currency.bytes().all(|b| b.is_ascii_uppercase())
+            };
+            let priced = !price_text.is_empty();
+            let fits = identifier(&id)
+                && item(&item_id)
+                && matches!(kind, "sale" | "cancellation" | "relist")
+                && occurred_at.is_some()
+                && trimmed("quantity") == "1"
+                && !note.is_empty()
+                && note.encode_utf16().count() <= 1000
+                && price_ok
+                && related_sale_id
+                    .as_deref()
+                    .is_none_or(|r| identifier(r) && r != id)
+                && next_item_id
+                    .as_deref()
+                    .is_none_or(|n| item(n) && n != item_id)
+                && match kind {
+                    "sale" => related_sale_id.is_none() && next_item_id.is_none(),
+                    "cancellation" => related_sale_id.is_some() && next_item_id.is_none() && !priced,
+                    _ => next_item_id.is_some() && related_sale_id.is_none() && !priced,
+                };
+            let Some(occurred_at) = occurred_at.filter(|_| fits) else {
+                return Err(format!(
+                    "Check outcome row {}: use a UTC timestamp, quantity 1, an explicit review note and valid sale/cancellation/relist fields.",
+                    index + 2
+                ));
+            };
+            Ok(Reviewed {
+                id,
+                seller: seller.clone(),
+                item_id,
+                kind: kind.to_owned(),
+                occurred_at,
+                quantity: 1,
+                price: priced.then(|| Amount {
+                    amount: js_number::number(price_text),
+                    currency: currency.to_owned(),
+                }),
+                related_sale_id,
+                next_item_id,
+                source: "reviewed-manual",
+                note,
+            })
+        })
+        .collect()
+}
+
+/// A price of whole units and at most two decimals (`/^\d+(?:\.\d{1,2})?$/`).
+fn cents(text: &str) -> bool {
+    let (whole, decimals) = text.split_once('.').unwrap_or((text, "1"));
+    !whole.is_empty()
+        && whole.bytes().all(|b| b.is_ascii_digit())
+        && (1..=2).contains(&decimals.len())
+        && decimals.bytes().all(|b| b.is_ascii_digit())
+}
+
+/// A UTC time written `2026-10-02T03:04:05Z` or with milliseconds, that names a real moment, as
+/// its ISO form with milliseconds.
+fn utc_time(text: &str) -> Option<String> {
+    let b = text.as_bytes();
+    let digits = |range: std::ops::Range<usize>| b[range].iter().all(u8::is_ascii_digit);
+    let shape = match b.len() {
+        20 => b[19] == b'Z',
+        24 => b[19] == b'.' && digits(20..23) && b[23] == b'Z',
+        _ => false,
+    } && digits(0..4)
+        && b[4] == b'-'
+        && digits(5..7)
+        && b[7] == b'-'
+        && digits(8..10)
+        && b[10] == b'T'
+        && digits(11..13)
+        && b[13] == b':'
+        && digits(14..16)
+        && b[16] == b':'
+        && digits(17..19);
+    if !shape || &text[17..19] >= "60" {
+        return None;
+    }
+    let parsed =
+        NaiveDateTime::parse_from_str(&text[..text.len() - 1], "%Y-%m-%dT%H:%M:%S%.f").ok()?;
+    let iso = parsed
+        .and_utc()
+        .to_rfc3339_opts(SecondsFormat::Millis, true);
+    let written = if b.len() == 20 {
+        format!("{}.000Z", &text[..19])
+    } else {
+        text.to_owned()
+    };
+    (iso == written).then_some(iso)
+}
+
+/// `importSellerOutcomeCsv`: the reviewed outcomes saved for the seller's imported listings,
+/// each claim once. A claim that contradicts one saved is saved beside it, for review.
+pub async fn import(db: &Database, csv: &str, seller: &str) -> Result<Imported, String> {
+    let mut conn = db.0.acquire().await.map_err(unavailable)?;
+    record(&mut conn, csv, seller).await
+}
+
+fn unavailable(error: sqlx::Error) -> String {
+    eprintln!("slab outcomes: {error}");
+    "Seller outcomes are unavailable.".to_owned()
+}
+
+async fn record(conn: &mut PgConnection, csv: &str, seller: &str) -> Result<Imported, String> {
+    use sqlx::Connection;
+    let rows = parse(csv, seller)?;
+    let seller = rows[0].seller.clone();
+    let mut tx = conn.begin().await.map_err(unavailable)?;
+    sqlx::query("SET LOCAL statement_timeout = '10s'")
+        .execute(&mut *tx)
+        .await
+        .map_err(unavailable)?;
+    let now: DateTime<Utc> = sqlx::query_scalar("SELECT clock_timestamp()")
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(unavailable)?;
+    let later = |row: &Reviewed| {
+        DateTime::parse_from_rfc3339(&row.occurred_at)
+            .is_ok_and(|at| at.timestamp_millis() > now.timestamp_millis())
+    };
+    if rows.iter().any(later) {
+        return Err("An outcome cannot occur in the future.".to_owned());
+    }
+    let mut item_ids: Vec<String> = Vec::new();
+    for row in &rows {
+        if !item_ids.contains(&row.item_id) {
+            item_ids.push(row.item_id.clone());
+        }
+    }
+    let owned: Vec<String> = sqlx::query_scalar(
+        "SELECT DISTINCT item_id FROM slab_inventory WHERE seller=$1 AND item_id=ANY($2::text[])",
+    )
+    .bind(&seller)
+    .bind(&item_ids)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(unavailable)?;
+    if owned.len() != item_ids.len() {
+        return Err(
+            "Import each referenced listing into this seller's inventory first.".to_owned(),
+        );
+    }
+    let entries: Vec<String> = rows
+        .iter()
+        .map(|row| {
+            let payload = js_json(row);
+            format!(
+                "{{\"event_id\":{},\"item_id\":{},\"content_hash\":\"{}\",\"payload\":{payload}}}",
+                js_json(&row.id),
+                js_json(&row.item_id),
+                sha256_hex(&payload)
+            )
+        })
+        .collect();
+    // Repeated imports keep when a claim was first observed.
+    let inserted = sqlx::query(
+        "INSERT INTO slab_seller_outcomes(seller,event_id,content_hash,item_id,payload)
+         SELECT $1,x.event_id,x.content_hash,x.item_id,x.payload FROM jsonb_to_recordset($2::jsonb) AS x(event_id text,content_hash text,item_id text,payload jsonb)
+         ON CONFLICT DO NOTHING",
+    )
+    .bind(&seller)
+    .bind(format!("[{}]", entries.join(",")))
+    .execute(&mut *tx)
+    .await
+    .map_err(unavailable)?
+    .rows_affected();
+    tx.commit().await.map_err(unavailable)?;
+    Ok(Imported {
+        inserted: inserted as u32,
+        supplied: rows.len() as u32,
+        item_ids,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Node's `/api/slab-outcomes` import recorded over `.port-logs/slab-outcome-cases.json`
+    /// (`slab-outcome-node.ts`), in order, on the listings `slab-inventory-seed.sql` and
+    /// `slab-outcome-seed.sql` save, inside a transaction rolled back: each must answer as Node
+    /// answered (its refusals were 400s with the message here) and leave the outcomes as Node did.
+    #[tokio::test]
+    #[ignore = "reads the dev database and .port-logs; writes only in a transaction that is rolled back"]
+    async fn imports_as_node_imports() {
+        use sqlx::Connection;
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let read = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let cases: Vec<Value> = serde_json::from_str(&read("slab-outcome-cases.json")).unwrap();
+        let node: Vec<Value> = serde_json::from_str(&read("slab-outcome.node.json")).unwrap();
+        let capture = read("slab-outcome-capture.sql");
+        assert_eq!(cases.len(), node.len());
+        let mut conn = db.0.acquire().await.unwrap();
+        let mut tx = conn.begin().await.unwrap();
+        for seed in ["slab-inventory-seed.sql", "slab-outcome-seed.sql"] {
+            sqlx::raw_sql(&read(seed)).execute(&mut *tx).await.unwrap();
+        }
+        for (case, node) in cases.iter().zip(&node) {
+            let name = case["name"].as_str().unwrap();
+            let got = record(
+                &mut tx,
+                case["csv"].as_str().unwrap(),
+                case["seller"].as_str().unwrap(),
+            )
+            .await;
+            match node["body"]["error"].as_str() {
+                None => {
+                    let expected: Imported = serde_json::from_value(node["body"].clone()).unwrap();
+                    assert_eq!(got.unwrap(), expected, "{name}");
+                }
+                Some(error) => assert_eq!(got.unwrap_err(), error, "{name}"),
+            }
+            let saved: Value = sqlx::query_scalar(&capture)
+                .fetch_one(&mut *tx)
+                .await
+                .unwrap();
+            assert_eq!(saved, node["saved"], "{name}: saved");
+        }
+        tx.rollback().await.unwrap();
+    }
 
     /// The cases in `.port-logs/seller-outcomes-cases.json` on the claims
     /// `seller-outcomes-seed.sql` saves, in a transaction rolled back, against Node's

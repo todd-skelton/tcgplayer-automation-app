@@ -10,8 +10,7 @@ use serde_json::json;
 use super::{
     comps,
     identity::{self, Card, Grading, SlabIdentity},
-    inventory, maintenance,
-    outcomes::Imported,
+    inventory, maintenance, outcomes,
     page::{Place, Screen, page},
     recommendation::{Fees, Policy, Seller},
     refreshes,
@@ -643,17 +642,12 @@ pub struct OutcomesInput {
 pub async fn import_outcomes(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::ImportOutcomes>,
     Form(input): Form<OutcomesInput>,
 ) -> HtmlResult {
     let seller = at.choice.seller.as_deref().unwrap_or("");
-    let asked = json!({ "intent": "import-csv", "seller": seller, "csv": input.csv });
-    match legacy
-        .send::<_, Imported>("/api/slab-outcomes", &asked)
-        .await
-    {
+    match outcomes::import(&db, &input.csv, seller).await {
         Ok(imported) => req.redirect_with_notice(
             &url::SlabPricing::at(&Choice {
                 item: imported
