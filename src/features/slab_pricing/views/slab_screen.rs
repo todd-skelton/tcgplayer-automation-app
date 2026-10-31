@@ -1,4 +1,4 @@
-use corten::prelude::*;
+use corten::{form::keep_query, prelude::*};
 
 use crate::{
     features::{
@@ -9,10 +9,7 @@ use crate::{
             inventory::{InventoryPage, Listing},
             page::{Place, Screen},
             url::{self, Choice},
-            views::{
-                CompReview, KeptChoice, RecommendationPanel, ResearchPanel, SellerPanels,
-                SupplyPanel,
-            },
+            views::{CompReview, RecommendationPanel, ResearchPanel, SellerPanels, SupplyPanel},
         },
     },
     layout::{Field, Notice, Tone},
@@ -267,15 +264,25 @@ fn InventoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
         <section class={(panel(), Stack)} aria-labelledby="slab-inventory">
             <h2 id="slab-inventory">"eBay inventory"</h2>
             <form method="get" action={url::SlabPricing::at(&Choice::default())} class={Line}>
-                <KeptChoice choice={choice} except={&[f.seller, f.after, f.trail, f.listing]} />
-                <Field label="Seller username" hint="">
-                    <input
-                        name={f.seller}
-                        value={choice.seller.as_deref().unwrap_or("pokebash")}
-                        required
-                    >
-                </Field>
-                <button>"Open inventory"</button>
+                // Another seller's inventory opens at its first page, no listing open.
+                {keep_query(
+                    &url::SlabPricing::at(&Choice {
+                        after: None,
+                        trail: Vec::new(),
+                        listing: None,
+                        ..choice.clone()
+                    }),
+                    html! {
+                    <Field label="Seller username" hint="">
+                        <input
+                            name={f.seller}
+                            value={choice.seller.as_deref().unwrap_or("pokebash")}
+                            required
+                        >
+                    </Field>
+                    <button>"Open inventory"</button>
+                    },
+                )}
             </form>
             <Problem at={Place::Inventory} why={screen.problem_at(Place::Inventory)} />
             match &screen.inventory {

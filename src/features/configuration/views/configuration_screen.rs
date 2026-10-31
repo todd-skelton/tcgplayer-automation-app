@@ -121,7 +121,7 @@ fn saved(saved: bool) -> impl Render {
 pub fn PricingForm<'a>(section: &'a Section<'a, PricingInput>) -> impl Patch {
     let (input, errors) = (section.input, section.errors);
     let f = PricingInput::FIELDS;
-    let number = move |name: FieldName,
+    let number = move |name: FieldName<String>,
                        value: &'a str,
                        step: &'static str,
                        min: &'static str,

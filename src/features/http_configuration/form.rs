@@ -51,7 +51,7 @@ impl DomainInput {
 /// A whole number of at least `least`, or the field's error and 0.
 fn whole_number<P: corten::form::Place>(
     errors: &mut Errors,
-    field: FieldName<P>,
+    field: FieldName<String, P>,
     text: &str,
     what: &str,
     least: u32,

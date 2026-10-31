@@ -66,7 +66,7 @@ impl ShipmentInput {
                 format!("Shipment {reference} is already in this batch."),
             );
         }
-        let mut number = |field: FieldName, text: &str, what: &str| -> f64 {
+        let mut number = |field: FieldName<String>, text: &str, what: &str| -> f64 {
             match text.trim().parse::<f64>() {
                 Ok(n) if n.is_finite() && n >= 0.0 => n,
                 _ => {

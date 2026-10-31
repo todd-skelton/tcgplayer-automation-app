@@ -21,7 +21,7 @@ pub enum Method {
 /// and the stored value stays.
 fn number(
     errors: &mut Errors,
-    field: FieldName,
+    field: FieldName<String>,
     text: &str,
     stored: f64,
     ok: impl Fn(f64) -> bool,

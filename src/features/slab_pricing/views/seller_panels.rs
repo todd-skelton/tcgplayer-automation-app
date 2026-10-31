@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use corten::{
     ReadAgain,
+    form::keep_query,
     i18n::{DateStyle, TimeStyle},
     prelude::*,
 };
@@ -14,7 +15,7 @@ use crate::{
             maintenance::{FOLLOWING, View},
             page::{Place, Screen},
             url::{self, Choice},
-            views::{KeptChoice, Problem},
+            views::Problem,
         },
     },
     layout::{Field, Notice, Tone},
@@ -261,11 +262,20 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
                 </Notice>
             }
             <form method="get" action={url::SlabPricing::at(&Choice::default())} class={Line}>
-                <KeptChoice choice={choice} except={&[f.item, f.inserted, f.supplied]} />
-                <Field label="Outcome listing item ID" hint="">
-                    <input name={f.item} value={choice.item.as_deref().unwrap_or("")} required>
-                </Field>
-                <button>"Read saved outcomes"</button>
+                // Reading another listing's outcomes drops the last import's counts.
+                {keep_query(
+                    &url::SlabPricing::at(&Choice {
+                        inserted: None,
+                        supplied: None,
+                        ..choice.clone()
+                    }),
+                    html! {
+                    <Field label="Outcome listing item ID" hint="">
+                        <input name={f.item} value={choice.item.as_deref().unwrap_or("")} required>
+                    </Field>
+                    <button>"Read saved outcomes"</button>
+                    },
+                )}
             </form>
             <details>
                 <summary>"Import reviewed outcomes"</summary>

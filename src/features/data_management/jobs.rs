@@ -132,7 +132,7 @@ impl SetInput {
     }
 }
 
-fn known(errors: &mut Errors, field: FieldName, id: Option<i32>, lines: &[Line]) -> i32 {
+fn known(errors: &mut Errors, field: FieldName<i32>, id: Option<i32>, lines: &[Line]) -> i32 {
     match id.filter(|id| lines.iter().any(|l| l.id == *id)) {
         Some(id) => id,
         None => {

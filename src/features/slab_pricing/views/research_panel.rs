@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use corten::{
     ReadAgain,
+    form::keep_query,
     i18n::{DateStyle, TimeStyle},
     prelude::*,
 };
@@ -14,7 +15,7 @@ use crate::{
             page::{Place, REFRESHING, Screen},
             research::{EvidenceStatus, PSA_GRADES, Workspace},
             url::{self, Choice},
-            views::{KeptChoice, Problem},
+            views::Problem,
         },
     },
     layout::{Field, Notice, Tone},
@@ -33,53 +34,51 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
     let choice = &screen.choice;
     let window = choice.window();
     let grade = choice.grade();
-    let owned = record
-        .shown()
-        .map_or(String::new(), |s| s.grading.encoding.clone());
+    let owned = record.shown().map_or("", |s| s.grading.encoding.as_str());
     let f = Choice::FIELDS;
     let r = RefreshInput::FIELDS;
     html! {
         <section class={(panel(), Stack, ResearchPanel)} aria-labelledby="slab-research">
             <h2 id="slab-research">"Research evidence"</h2>
             <form method="get" action={url::SlabPricing::at(&Choice::default())} class={Line}>
-                <KeptChoice
-                    choice={choice}
-                    except={&[
-                        f.grade,
-                        f.from,
-                        f.to,
-                        f.source,
-                        f.rows,
-                        f.sources,
-                        f.comps,
-                        f.comps_from,
-                        f.comp,
-                        f.extra,
-                    ]}
-                />
-                <Field label="Research grade" hint="">
-                    <select name={f.grade}>
-                        <option value="owned" selected={grade == "owned"}>
-                            "Owned "{&record.grader}" "{&owned}
-                        </option>
-                        if record.grader == "PSA" {
-                            for n in PSA_GRADES {
-                                <option value={n} selected={grade == n}>"Explore PSA "{n}</option>
+                // A new grade or window starts the evidence over: its source, comps and extras reset.
+                {keep_query(
+                    &url::SlabPricing::at(&Choice {
+                        source: None,
+                        rows: None,
+                        sources: Vec::new(),
+                        comps: None,
+                        comps_from: None,
+                        comp: None,
+                        extra: Vec::new(),
+                        ..choice.clone()
+                    }),
+                    html! {
+                    <Field label="Research grade" hint="">
+                        <select name={f.grade}>
+                            <option value="owned" selected={grade == "owned"}>
+                                "Owned "{&record.grader}" "{owned}
+                            </option>
+                            if record.grader == "PSA" {
+                                for n in PSA_GRADES {
+                                    <option value={n} selected={grade == n}>"Explore PSA "{n}</option>
+                                }
                             }
-                        }
-                    </select>
-                </Field>
-                <Field label="Sales from" hint="">
-                    <input type="date" name={f.from} value={&window.from} required>
-                </Field>
-                <Field label="Sales through" hint="">
-                    <input type="date" name={f.to} value={&window.to} required>
-                </Field>
-                <button>"Show evidence"</button>
+                        </select>
+                    </Field>
+                    <Field label="Sales from" hint="">
+                        <input type="date" name={f.from} value={&window.from} required>
+                    </Field>
+                    <Field label="Sales through" hint="">
+                        <input type="date" name={f.to} value={&window.to} required>
+                    </Field>
+                    <button>"Show evidence"</button>
+                    },
+                )}
             </form>
             if grade != "owned" {
                 <Notice tone={Tone::Info}>
-                    "Exploring PSA "{grade}". Owned "{&record.grader}" "{&owned}
+                    "Exploring PSA "{grade}". Owned "{&record.grader}" "{owned}
                     " is unchanged. Research evidence cannot be used to calculate or override the owned slab price."
                 </Notice>
             }

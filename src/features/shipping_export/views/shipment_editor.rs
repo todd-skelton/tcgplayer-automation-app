@@ -138,7 +138,7 @@ pub fn PackageFields<'a, I: Id>(input: &'a ShipmentInput, e: &'a Within<'a, I>) 
 #[component(css = ShipmentEditor)]
 fn Measure<'a, I: Id>(
     label: &'a str,
-    name: FieldName,
+    name: FieldName<String>,
     value: &'a str,
     e: &'a Within<'a, I>,
 ) -> impl Render {

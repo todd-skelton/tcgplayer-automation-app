@@ -186,7 +186,7 @@ fn CostsForm<'a>(
 }
 
 #[component(css = super::slab_screen::SlabScreen)]
-fn BasisSelect<'a>(name: FieldName, chosen: &'a str) -> impl Render {
+fn BasisSelect<'a>(name: FieldName<String>, chosen: &'a str) -> impl Render {
     html! {
         <select name={name}>
             for (value, label) in BASES {

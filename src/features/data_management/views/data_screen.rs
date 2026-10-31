@@ -236,7 +236,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
 
 /// The product lines to choose from, by id.
 fn line_choice<'a, I: Id>(
-    name: FieldName,
+    name: FieldName<i32>,
     lines: &'a [Line],
     chosen: Option<i32>,
     e: &'a Within<'a, I>,

@@ -266,42 +266,6 @@ pub mod url {
                 .filter(|(g, c)| !g.trim().is_empty() && !c.trim().is_empty())
         }
 
-        /// Every field that is set, as a GET form sends it: a list once per item.
-        pub fn pairs(&self) -> Vec<(corten::form::FieldName, String)> {
-            let f = Choice::FIELDS;
-            let one = |name, value: &Option<String>| value.clone().map(|v| (name, v));
-            let mut pairs: Vec<_> = [
-                one(f.grader, &self.grader),
-                one(f.cert, &self.cert),
-                one(f.seller, &self.seller),
-                one(f.after, &self.after),
-                one(f.listing, &self.listing),
-                one(f.grade, &self.grade),
-                one(f.from, &self.from),
-                one(f.to, &self.to),
-                self.supply.map(|s| (f.supply, s.to_string())),
-                one(f.source, &self.source),
-                self.rows.map(|r| (f.rows, r.to_string())),
-                self.maintenance.map(|m| (f.maintenance, m.to_string())),
-                self.outcomes.map(|o| (f.outcomes, o.to_string())),
-                one(f.item, &self.item),
-                self.inserted.map(|n| (f.inserted, n.to_string())),
-                self.supplied.map(|n| (f.supplied, n.to_string())),
-                self.publication.map(|p| (f.publication, p.to_string())),
-                one(f.steps, &self.steps),
-                one(f.comps, &self.comps),
-                self.comps_from.map(|n| (f.comps_from, n.to_string())),
-                self.comp.map(|n| (f.comp, n.to_string())),
-            ]
-            .into_iter()
-            .flatten()
-            .collect();
-            pairs.extend(self.trail.iter().map(|t| (f.trail, t.clone())));
-            pairs.extend(self.sources.iter().map(|s| (f.sources, s.clone())));
-            pairs.extend(self.extra.iter().map(|k| (f.extra, k.clone())));
-            pairs
-        }
-
         /// This choice reviewing the comps of `revision` from its first row, none open.
         pub fn reviewing_comps(&self, revision: &str) -> Choice {
             Choice {

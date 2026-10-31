@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use corten::{
+    form::keep_query,
     i18n::{DateStyle, TimeStyle},
     prelude::*,
 };
@@ -13,7 +14,7 @@ use crate::{
         research::EvidenceStatus,
         supply::{Context, ROWS, Supply, money},
         url::{self, Choice},
-        views::{KeptChoice, Problem},
+        views::Problem,
     },
     layout::{Field, Notice, Tone},
     text::Msg,
@@ -84,20 +85,29 @@ fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
             <a href={url::SlabPricing::at(choice)}>"Reload saved supply"</a>
             if let Some(supply) = supply.filter(|s| !s.statuses.is_empty()) {
                 <form method="get" action={url::SlabPricing::at(&Choice::default())} class={Line}>
-                    <KeptChoice choice={choice} except={&[f.source, f.rows, f.sources]} />
-                    <Field label="Supply source" hint="">
-                        <select name={f.source}>
-                            for status in &supply.statuses {
-                                <option
-                                    value={&status.key}
-                                    selected={supply.selected_key.as_deref() == Some(status.key.as_str())}
-                                >
-                                    {source_name(status)}" · "{words(&status.state)}
-                                </option>
-                            }
-                        </select>
-                    </Field>
-                    <button>"Show source"</button>
+                    // Another source starts at its first row, with no earlier sources to go back to.
+                    {keep_query(
+                        &url::SlabPricing::at(&Choice {
+                            rows: None,
+                            sources: Vec::new(),
+                            ..choice.clone()
+                        }),
+                        html! {
+                        <Field label="Supply source" hint="">
+                            <select name={f.source}>
+                                for status in &supply.statuses {
+                                    <option
+                                        value={&status.key}
+                                        selected={supply.selected_key.as_deref() == Some(status.key.as_str())}
+                                    >
+                                        {source_name(status)}" · "{words(&status.state)}
+                                    </option>
+                                }
+                            </select>
+                        </Field>
+                        <button>"Show source"</button>
+                        },
+                    )}
                 </form>
             }
         </div>
