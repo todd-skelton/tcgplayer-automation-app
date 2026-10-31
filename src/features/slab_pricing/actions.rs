@@ -12,7 +12,7 @@ use super::{
     identity::{self, Card, Grading, SlabIdentity},
     inventory, maintenance, outcomes,
     page::{Place, Screen, page},
-    recommendation::{Fees, Policy, Seller},
+    recommendation::{self, Fees, Policy, Seller},
     refreshes,
     url::{self, Choice},
     views::Problem,
@@ -728,22 +728,22 @@ pub struct ReviewAskInput {
 pub async fn review_ask(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::ReviewAsk>,
     Form(input): Form<ReviewAskInput>,
 ) -> HtmlResult {
-    let asked = json!({
-        "intent": "override",
-        "recommendationId": input.recommendation,
-        "itemPrice": input.item_price,
-        "currency": "USD",
-        "note": input.note.trim(),
-    });
-    match legacy
-        .send::<_, serde_json::Value>("/api/slab-recommendations", &asked)
-        .await
-    {
+    let asked = recommendation::ReviewedAsk {
+        recommendation_id: &input.recommendation,
+        // A price left empty is refused as Node refused a missing one.
+        item_price: input.item_price.unwrap_or(f64::NAN),
+        currency: "USD",
+        note: &input.note,
+    };
+    let saved = match db.0.acquire().await {
+        Ok(mut conn) => recommendation::review_ask(&mut conn, &asked).await,
+        Err(error) => Err(error.to_string()),
+    };
+    match saved {
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
         Err(why) => {
             refused(

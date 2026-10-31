@@ -1,10 +1,12 @@
 //! The owned slab's recommendation: a market range from the saved sold evidence, and an item ask
-//! from the seller's costs. Calculating and reviewing one stay the Node app's
-//! (`/api/slab-recommendations`, from saved evidence only, never a provider); the latest is read
-//! with the research (`/api/slab-workspace`).
+//! from the seller's costs. Calculating one stays the Node app's (`/api/slab-recommendations`,
+//! from saved evidence only, never a provider); the operator's reviewed ask on the latest is saved
+//! here (`overrideSlabPrice`), and the latest is read with the research.
 use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
+
+use crate::features::inventory_economics::ledger::fingerprint::js_float;
 
 /// The valuation policy the React screen sent, with the comparable price basis chosen. The
 /// same values as `DEFAULT_SLAB_POLICY` in `app/features/ebay-slab-pricing/valuation/slabValuation.ts`.
@@ -250,9 +252,127 @@ pub fn amount(value: Option<f64>) -> String {
     value.map_or_else(|| "Unknown".into(), |v| format!("USD {v:.2}"))
 }
 
+/// The operator's reviewed ask for a recommendation, and why.
+pub struct ReviewedAsk<'a> {
+    pub recommendation_id: &'a str,
+    pub item_price: f64,
+    pub currency: &'a str,
+    pub note: &'a str,
+}
+
+/// `overrideSlabPrice`: the reviewed ask saved on the slab's latest recommendation, while its
+/// identity is still the confirmed one it was calculated for and its currency is the ask's.
+pub async fn review_ask(conn: &mut sqlx::PgConnection, o: &ReviewedAsk<'_>) -> Result<(), String> {
+    use sqlx::Connection;
+    let uuid = o.recommendation_id.len() == 36
+        && o.recommendation_id
+            .bytes()
+            .enumerate()
+            .all(|(i, b)| match i {
+                8 | 13 | 18 | 23 => b == b'-',
+                _ => matches!(b, b'0'..=b'9' | b'a'..=b'f'),
+            });
+    let note = o.note.trim();
+    if !uuid
+        || !o.item_price.is_finite()
+        || o.item_price <= 0.0
+        || o.item_price >= 1e9
+        || o.currency.len() != 3
+        || !o.currency.bytes().all(|b| b.is_ascii_uppercase())
+        || note.is_empty()
+        || o.note.encode_utf16().count() > 1000
+    {
+        return Err("Provide an explicit item price, currency and review reason.".to_owned());
+    }
+    let failed = |error: sqlx::Error| {
+        eprintln!("slab reviewed ask: {error}");
+        "Unable to calculate a slab recommendation.".to_owned()
+    };
+    let mut tx = conn.begin().await.map_err(failed)?;
+    sqlx::query("SET LOCAL statement_timeout = '15s'")
+        .execute(&mut *tx)
+        .await
+        .map_err(failed)?;
+    sqlx::query(
+        "SELECT i.id FROM slab_identities i JOIN slab_recommendations r ON r.slab_id=i.id WHERE r.id=$1::uuid FOR UPDATE OF i",
+    )
+    .bind(o.recommendation_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(failed)?;
+    let saved = sqlx::query(
+        "INSERT INTO slab_price_overrides(recommendation_id,item_price,currency,note)
+         SELECT r.id,$2::numeric,$3,$4 FROM slab_recommendations r JOIN slab_identities i ON i.id=r.slab_id
+         WHERE r.id=$1::uuid AND i.revision=r.identity_revision AND i.status='confirmed' AND i.valuation_group_key=r.valuation_group_key
+           AND r.calculation->'policy'->>'currency'=$3
+           AND r.id=(SELECT latest.id FROM slab_recommendations latest WHERE latest.slab_id=r.slab_id ORDER BY latest.created_at DESC,latest.id DESC LIMIT 1)
+         ON CONFLICT(recommendation_id) DO UPDATE SET item_price=EXCLUDED.item_price,currency=EXCLUDED.currency,note=EXCLUDED.note,reviewed_at=clock_timestamp()",
+    )
+    .bind(o.recommendation_id)
+    // The amount as JavaScript writes it, which is what Node's driver sends.
+    .bind(js_float(o.item_price))
+    .bind(o.currency)
+    .bind(note)
+    .execute(&mut *tx)
+    .await
+    .map_err(failed)?
+    .rows_affected();
+    tx.commit().await.map_err(failed)?;
+    if saved == 0 {
+        return Err(
+            "The recommendation changed or uses another currency. Recalculate before overriding."
+                .to_owned(),
+        );
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Node's `/api/slab-recommendations` override recorded over
+    /// `.port-logs/slab-override-cases.json` (`slab-override-node.ts`), in order, on the slabs and
+    /// recommendations `slab-workspace-seed.sql` saves, inside a transaction rolled back: each must
+    /// answer as Node answered (its refusals were 400s with the message here) and leave the reviewed
+    /// asks as Node did.
+    #[tokio::test]
+    #[ignore = "reads the dev database and .port-logs; writes only in a transaction that is rolled back"]
+    async fn reviews_asks_as_node_does() {
+        use serde_json::Value;
+        use sqlx::Connection;
+        crate::config::load_env();
+        let db = crate::database::Database::connect_lazy(&crate::config::database_url());
+        let read = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let cases: Vec<Value> = serde_json::from_str(&read("slab-override-cases.json")).unwrap();
+        let node: Vec<Value> = serde_json::from_str(&read("slab-override.node.json")).unwrap();
+        let capture = read("slab-override-capture.sql");
+        assert_eq!(cases.len(), node.len());
+        let mut conn = db.0.acquire().await.unwrap();
+        let mut tx = conn.begin().await.unwrap();
+        sqlx::raw_sql(&read("slab-workspace-seed.sql"))
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        for (case, node) in cases.iter().zip(&node) {
+            let name = case["name"].as_str().unwrap();
+            let b = &case["body"];
+            let o = ReviewedAsk {
+                recommendation_id: b["recommendationId"].as_str().unwrap(),
+                item_price: b["itemPrice"].as_f64().unwrap(),
+                currency: b["currency"].as_str().unwrap(),
+                note: b["note"].as_str().unwrap(),
+            };
+            let got = review_ask(&mut tx, &o).await;
+            assert_eq!(got.err().as_deref(), node["error"].as_str(), "{name}");
+            let saved: Value = sqlx::query_scalar(&capture)
+                .fetch_one(&mut *tx)
+                .await
+                .unwrap();
+            assert_eq!(saved, node["saved"], "{name}: saved");
+        }
+        tx.rollback().await.unwrap();
+    }
 
     fn saved(current: bool, read: &[&str]) -> Recommendation {
         serde_json::from_value(serde_json::json!({
