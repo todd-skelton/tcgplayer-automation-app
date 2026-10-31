@@ -360,6 +360,90 @@ impl LineSetting {
     }
 }
 
+/// `{ ...defaults, ...stored }` on JSON objects: the stored keys over the defaults', unknown ones kept.
+fn spread(defaults: Value, stored: &Value) -> Map<String, Value> {
+    let mut merged = match defaults {
+        Value::Object(map) => map,
+        _ => Map::new(),
+    };
+    if let Some(stored) = stored.as_object() {
+        merged.extend(stored.clone());
+    }
+    merged
+}
+
+/// Whether JavaScript reads the value as true.
+fn truthy(value: &Value) -> bool {
+    match value {
+        Value::Null => false,
+        Value::Bool(b) => *b,
+        Value::Number(n) => n.as_f64().is_some_and(|n| n != 0.0 && !n.is_nan()),
+        Value::String(s) => !s.is_empty(),
+        Value::Array(_) | Value::Object(_) => true,
+    }
+}
+
+/// The stored documents as `normalizeServerPricingConfig` returns them, the document a pricing job
+/// is queued with: each section's stored keys over its defaults, unknown keys kept, and the policy,
+/// profit per day, snaps and per-line settings read as [`Config::of`] reads them. The retired
+/// `forecastCorrection` is dropped.
+pub fn normalized(pricing: &Value, supply: &Value, product_lines: &Value) -> Value {
+    let read = Config::of(pricing, supply, product_lines);
+    let defaults = Config::default();
+    let mut stored_pricing = pricing.as_object().cloned().unwrap_or_default();
+    stored_pricing.remove("forecastCorrection");
+    let mut pricing_section = spread(defaults.pricing.document(), &Value::Object(stored_pricing));
+    pricing_section.insert("policy".into(), read.pricing.policy_document());
+    pricing_section.insert(
+        "profitPerDay".into(),
+        read.pricing.profit_per_day_document(),
+    );
+    pricing_section.extend(
+        read.snaps
+            .document()
+            .as_object()
+            .expect("an object")
+            .clone(),
+    );
+    pricing_section.insert(
+        "successRateThreshold".into(),
+        Value::Object(spread(
+            json!({
+                "low": number(defaults.pricing.success_rate_low),
+                "high": number(defaults.pricing.success_rate_high),
+            }),
+            &pricing["successRateThreshold"],
+        )),
+    );
+    let mut lines = spread(
+        json!({ "productLineSettings": {}, "defaultPercentile": number(defaults.product_lines.default_percentile) }),
+        product_lines,
+    );
+    let settings: Map<String, Value> = product_lines["productLineSettings"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .filter(|(_, setting)| truthy(setting))
+        .map(|(id, setting)| {
+            let mut kept = setting.as_object().cloned().unwrap_or_default();
+            let hurdle = kept.remove("dailyReturnHurdle");
+            if let Some(hurdle) = hurdle.filter(|h| {
+                !kept.get("skip").is_some_and(truthy)
+                    && h.as_f64().is_some_and(ProfitPerDay::hurdle_is_valid)
+            }) {
+                kept.insert("dailyReturnHurdle".into(), hurdle);
+            }
+            (id.clone(), Value::Object(kept))
+        })
+        .collect();
+    lines.insert("productLineSettings".into(), Value::Object(settings));
+    json!({
+        "pricing": pricing_section,
+        "supplyAnalysis": spread(defaults.supply.document(), supply),
+        "productLinePricing": lines,
+    })
+}
+
 /// The stored configuration; the defaults when there is none yet (the Node app writes them on
 /// its first read, and so does the first save here).
 pub async fn load(db: &Database) -> sqlx::Result<Config> {
@@ -492,6 +576,26 @@ pub async fn reset(db: &Database) -> sqlx::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `normalizeServerPricingConfig`'s output for stored documents current, old, odd and empty
+    /// (`fixtures/normalized.json`, written by running it on each input).
+    #[test]
+    fn documents_normalize_as_node_normalizes_them() {
+        let cases: Vec<Value> =
+            serde_json::from_str(include_str!("fixtures/normalized.json")).expect("the fixture");
+        for case in cases {
+            let input = &case["input"];
+            assert_eq!(
+                normalized(
+                    &input["pricing"],
+                    &input["supplyAnalysis"],
+                    &input["productLinePricing"]
+                ),
+                case["output"],
+                "for {input}"
+            );
+        }
+    }
 
     #[test]
     fn a_stored_config_reads_as_the_node_app_reads_it() {

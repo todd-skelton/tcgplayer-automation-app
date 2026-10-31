@@ -1,11 +1,13 @@
 //! The screen and its posts. A post sends the browser back to the page it came from, saying what
 //! it did; a refusal is that page with why, as a conflict.
 // Every handler takes the visitor's zone so the page's dates are the visitor's (corten#387).
+use chrono::Utc;
 use corten::{ClientZone, Refusal, prelude::*};
 use serde::Deserialize;
 use serde_json::json;
 
 use super::{
+    scheduler,
     store::{self, Settings},
     url::{self, View},
     views::{ContinuousScreen, Cycled, Did, Problem, ScheduleForm},
@@ -231,37 +233,44 @@ pub async fn run(
     }
 }
 
-/// Reprices the inventory from saved curves where the data allows, and makes the rest due.
+/// Reprices the inventory from saved curves where the data allows, and makes the rest due
+/// (`applyContinuousPricingPolicy`): the curves' batches, then a batch of what is due, each in a
+/// transaction of its own as Node's are.
 pub async fn apply_policy(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::ApplyPolicy>,
 ) -> HtmlResult {
-    #[derive(Deserialize)]
-    struct Applied {
-        cached: i64,
-        batches: i64,
-        remaining: i64,
+    let settings = store::settings(&db).await?;
+    if !settings.enabled || settings.seller_key.is_empty() {
+        let why = "Enable continuous pricing before repricing inventory.".to_owned();
+        return refused(&req, &db, zone, &at.view, why).await;
     }
-    match legacy
-        .send::<_, Applied>(
-            "/api/continuous-pricing",
-            &json!({ "intent": "apply_policy" }),
-        )
-        .await
-    {
-        Ok(done) => req.redirect_with_notice(
-            &url::ContinuousPricing { view: at.view },
-            Did::Applied {
-                cached: done.cached,
-                batches: done.batches,
-                remaining: done.remaining,
-            },
-        ),
-        Err(why) => refused(&req, &db, zone, &at.view, why).await,
-    }
+    let config = scheduler::job_config(&db).await?;
+    let queue = scheduler::Queue::of(&settings, &config);
+    let mut tx = db.0.begin().await?;
+    let repriced =
+        match scheduler::schedule_cached_policy_batches(&mut tx, &queue, Utc::now()).await {
+            Ok(repriced) => repriced,
+            Err(scheduler::Refused::AlreadyQueued) => {
+                let why = scheduler::Refused::AlreadyQueued.to_string();
+                return refused(&req, &db, zone, &at.view, why).await;
+            }
+            Err(scheduler::Refused::Failed(error)) => return Err(error.into()),
+        };
+    tx.commit().await?;
+    let mut tx = db.0.begin().await?;
+    scheduler::schedule_due_batch(&mut tx, &queue, Utc::now()).await?;
+    tx.commit().await?;
+    req.redirect_with_notice(
+        &url::ContinuousPricing { view: at.view },
+        Did::Applied {
+            cached: repriced.cached_count as i64,
+            batches: repriced.batch_numbers.len() as i64,
+            remaining: repriced.refresh_count as i64,
+        },
+    )
 }
 
 /// Makes every eligible SKU due for fresh market-data pricing, then runs a cycle.
