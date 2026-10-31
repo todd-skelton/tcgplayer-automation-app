@@ -301,7 +301,7 @@ struct Row {
 
 /// `findEstimableBatchReceipts`: the seller's batches an estimate may cost, with their lots.
 pub async fn estimable(
-    db: &Database,
+    db: impl sqlx::PgExecutor<'_>,
     seller: &str,
     batch_numbers: Option<&[i32]>,
     limit: i64,
@@ -360,7 +360,7 @@ pub async fn estimable(
     .bind(seller)
     .bind(batch_numbers)
     .bind(limit)
-    .fetch_all(&db.0)
+    .fetch_all(db)
     .await?;
     let mut batches: Vec<Batch> = Vec::new();
     for row in rows {
@@ -400,7 +400,7 @@ pub async fn estimable(
 }
 
 /// `findUncostedBatchNumbers`: batches with a lot no purchase cost owns yet.
-pub async fn uncosted(db: &Database, seller: &str) -> sqlx::Result<Vec<i32>> {
+pub async fn uncosted(db: impl sqlx::PgExecutor<'_>, seller: &str) -> sqlx::Result<Vec<i32>> {
     sqlx::query_scalar(
         "SELECT DISTINCT link.batch_number
       FROM inventory_receipt_batch_links link
@@ -412,7 +412,7 @@ pub async fn uncosted(db: &Database, seller: &str) -> sqlx::Result<Vec<i32>> {
       ORDER BY 1 LIMIT 100",
     )
     .bind(seller)
-    .fetch_all(&db.0)
+    .fetch_all(db)
     .await
 }
 
@@ -421,14 +421,86 @@ pub const EVERY: Duration = Duration::from_secs(60 * 60);
 
 /// What the worker's run would record now: the uncosted batches' estimates, or none.
 pub async fn worker_run(db: &Database, seller: &str) -> Result<Option<Run>, String> {
-    let missing = uncosted(db, seller).await.map_err(|e| e.to_string())?;
+    let missing = uncosted(&db.0, seller).await.map_err(|e| e.to_string())?;
     if missing.is_empty() {
         return Ok(None);
     }
-    let batches = estimable(db, seller, Some(&missing), 100)
+    let batches = estimable(&db.0, seller, Some(&missing), 100)
         .await
         .map_err(|e| e.to_string())?;
     plan(seller, &batches).map(Some).map_err(|e| e.to_string())
+}
+
+/// An estimate a run saved.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Recorded {
+    pub batch_number: i32,
+    pub entry_id: String,
+    pub total_amount_cents: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub corrects_entry_id: Option<String>,
+}
+
+/// What a run of `recordEstimatedPurchaseCosts` did with each batch.
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Estimated {
+    pub recorded: Vec<Recorded>,
+    /// Batches already estimated under the current rule.
+    pub repeated: Vec<i32>,
+    /// Batches estimated under an earlier rule that the current one leaves the same.
+    pub unchanged: Vec<i32>,
+    pub market_unavailable: BTreeMap<i32, Vec<i32>>,
+}
+
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the seller order history worker's cycle calls it once its sync store is ported"
+    )
+)]
+/// `recordMissingEstimatedPurchaseCosts`: estimates every batch with a lot no purchase cost owns
+/// yet, or does nothing when there is none. Each estimate is saved in a transaction of its own on
+/// `conn` (a savepoint when `conn` is already in one), so one that fails keeps those before it.
+pub async fn record_missing(
+    conn: &mut sqlx::PgConnection,
+    seller: &str,
+) -> Result<Option<Estimated>, String> {
+    use sqlx::Connection;
+    let failed = |e: sqlx::Error| e.to_string();
+    let missing = uncosted(&mut *conn, seller).await.map_err(failed)?;
+    if missing.is_empty() {
+        return Ok(None);
+    }
+    let batches = estimable(&mut *conn, seller, Some(&missing), 100)
+        .await
+        .map_err(failed)?;
+    let run = plan(seller, &batches).map_err(|e| e.to_string())?;
+    let mut estimated = Estimated {
+        recorded: Vec::new(),
+        repeated: run.repeated,
+        unchanged: run.unchanged,
+        market_unavailable: run.market_unavailable,
+    };
+    for cost in run.would_record {
+        let mut tx = conn.begin().await.map_err(failed)?;
+        let saved = super::purchase_cost::record(&mut tx, &cost).await?;
+        tx.commit().await.map_err(failed)?;
+        let batch_number = cost.batch_numbers[0];
+        if saved.repeated {
+            estimated.repeated.push(batch_number);
+        } else {
+            estimated.recorded.push(Recorded {
+                batch_number,
+                entry_id: saved.entry_id,
+                total_amount_cents: cost.total_amount_cents,
+                corrects_entry_id: cost.corrects_entry_id,
+            });
+        }
+    }
+    Ok(Some(estimated))
 }
 
 /// The log `ESTIMATE_SHADOW_LOG` names: the shadow runs only when it is set.
@@ -521,21 +593,64 @@ mod tests {
             .await
             .unwrap();
         let seller = seller.trim();
-        let missing = uncosted(&db, seller).await.unwrap();
+        let missing = uncosted(&db.0, seller).await.unwrap();
         let worker = if missing.is_empty() {
             None
         } else {
             Some(
                 plan(
                     seller,
-                    &estimable(&db, seller, Some(&missing), 100).await.unwrap(),
+                    &estimable(&db.0, seller, Some(&missing), 100).await.unwrap(),
                 )
                 .unwrap(),
             )
         };
-        let all = plan(seller, &estimable(&db, seller, None, 1000).await.unwrap()).unwrap();
+        let all = plan(seller, &estimable(&db.0, seller, None, 1000).await.unwrap()).unwrap();
         let json = serde_json::json!({ "worker": worker, "all": all });
         std::fs::write(out, serde_json::to_string_pretty(&json).unwrap()).unwrap();
+    }
+
+    /// Records what the worker would on the dev database, in a transaction it rolls back, and
+    /// compares what it wrote with what Node's `recordMissingEstimatedPurchaseCosts` wrote
+    /// (`.port-logs/estimate-record-node.ts`, captured by `.port-logs/estimate-capture.sql`).
+    #[tokio::test]
+    #[ignore = "writes the dev database in a transaction it rolls back"]
+    async fn records_missing_estimates_as_node_does() {
+        crate::config::load_env();
+        let node: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(".port-logs/estimate-record.node.json").unwrap(),
+        )
+        .unwrap();
+        let capture = std::fs::read_to_string(".port-logs/estimate-capture.sql").unwrap();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let seller = crate::features::shipping_configuration::default_seller_key(&db)
+            .await
+            .unwrap();
+        let mut tx = db.0.begin().await.unwrap();
+        let estimated = record_missing(&mut tx, seller.trim()).await.unwrap();
+        let captured: String =
+            sqlx::query_scalar(&format!("SELECT captured::text FROM ({capture}) AS c"))
+                .fetch_one(&mut *tx)
+                .await
+                .unwrap();
+        tx.rollback().await.unwrap();
+        let result = estimated.map(|e| {
+            serde_json::json!({
+                "recorded": e.recorded.iter().map(|r| r.batch_number).collect::<Vec<_>>(),
+                "repeated": e.repeated,
+                "unchanged": e.unchanged,
+                "marketUnavailable": e.market_unavailable,
+            })
+        });
+        let captured: serde_json::Value = serde_json::from_str(&captured).unwrap();
+        println!(
+            "recorded {:?}; {} entries, {} lots owned",
+            result.as_ref().map(|r| &r["recorded"]),
+            captured["entries"].as_array().map_or(0, Vec::len),
+            captured["owned"].as_array().map_or(0, Vec::len),
+        );
+        assert_eq!(result.unwrap_or_default(), node["result"]);
+        assert_eq!(captured, node["captured"]);
     }
 
     #[test]
