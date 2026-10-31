@@ -20,23 +20,6 @@ pub const HEARTBEAT: Duration = Duration::from_millis(2_000);
 /// How often an empty queue is looked at again.
 pub const POLL: Duration = Duration::from_millis(1_000);
 
-/// What tells the loop to stop: the task's [`Signal`] when served. A test cannot abort a
-/// `Signal` (its `abort` is Corten's own), so the loop takes this and tests pass their own.
-#[allow(async_fn_in_trait, reason = "used generically within this crate")]
-pub trait Stop {
-    fn is_stopped(&self) -> bool;
-    async fn stopped(&self);
-}
-
-impl Stop for Signal {
-    fn is_stopped(&self) -> bool {
-        self.is_aborted()
-    }
-    async fn stopped(&self) {
-        self.aborted().await;
-    }
-}
-
 /// How a job ended.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Outcome {
@@ -67,7 +50,7 @@ pub trait Jobs {
 /// Racing the whole job against shutdown is safe because the work's only write is its save, one
 /// transaction fenced on the claim: dropped mid-save, it rolls back, and the job can be priced
 /// again from the start.
-pub async fn process<J: Jobs>(jobs: &J, job: &J::Job, stop: &impl Stop) -> Outcome {
+pub async fn process<J: Jobs>(jobs: &J, job: &J::Job, signal: &Signal) -> Outcome {
     // The work lives in this block, so whatever it holds (a connection, a transaction) is gone
     // before the claim is released or finished.
     let outcome = {
@@ -79,7 +62,7 @@ pub async fn process<J: Jobs>(jobs: &J, job: &J::Job, stop: &impl Stop) -> Outco
         loop {
             tokio::select! {
                 biased;
-                _ = stop.stopped() => break Outcome::Released,
+                _ = signal.aborted() => break Outcome::Released,
                 done = &mut work => break match done {
                     Ok(()) => Outcome::Completed,
                     Err(why) => Outcome::Failed(why),
@@ -107,9 +90,9 @@ pub async fn process<J: Jobs>(jobs: &J, job: &J::Job, stop: &impl Stop) -> Outco
 }
 
 /// The loop, until shutdown. `queued` is notified by the request that queues a job.
-pub async fn run<J: Jobs>(jobs: J, queued: Arc<Notify>, stop: impl Stop) {
+pub async fn run<J: Jobs>(jobs: J, queued: Arc<Notify>, signal: Signal) {
     loop {
-        if stop.is_stopped() {
+        if signal.is_aborted() {
             return;
         }
         let claimed = match jobs.requeue_expired().await {
@@ -118,7 +101,7 @@ pub async fn run<J: Jobs>(jobs: J, queued: Arc<Notify>, stop: impl Stop) {
         };
         match claimed {
             Ok(Some(job)) => {
-                if process(&jobs, &job, &stop).await == Outcome::Released {
+                if process(&jobs, &job, &signal).await == Outcome::Released {
                     return;
                 }
                 // Straight on to the next job, as Node's tick schedules itself at 0.
@@ -130,7 +113,7 @@ pub async fn run<J: Jobs>(jobs: J, queued: Arc<Notify>, stop: impl Stop) {
         // A sleep from now, not an interval: a long job must not leave ticks owed.
         tokio::select! {
             biased;
-            _ = stop.stopped() => return,
+            _ = signal.aborted() => return,
             _ = queued.notified() => {}
             _ = sleep(POLL) => {}
         }
@@ -144,22 +127,9 @@ mod tests {
         collections::VecDeque,
     };
 
-    use tokio::{sync::watch, time::Instant};
+    use tokio::time::Instant;
 
     use super::*;
-
-    /// A stop a test can trigger.
-    struct Stopper(watch::Receiver<bool>);
-
-    impl Stop for Stopper {
-        fn is_stopped(&self) -> bool {
-            *self.0.borrow()
-        }
-        async fn stopped(&self) {
-            let mut seen = self.0.clone();
-            let _ = seen.wait_for(|stopped| *stopped).await;
-        }
-    }
 
     /// Jobs that take a set time, each event logged with the clock.
     struct Fake {
@@ -254,17 +224,10 @@ mod tests {
     }
     impl<F: Future<Output = ()>> ThenOk for F {}
 
-    fn signal() -> (Stopper, impl FnOnce()) {
-        let (send, receive) = watch::channel(false);
-        (Stopper(receive), move || {
-            send.send_replace(true);
-        })
-    }
-
     #[tokio::test(start_paused = true)]
     async fn a_long_job_renews_its_claim_and_leaves_no_ticks_owed() {
         let fake = Fake::new(&[(1, 10)]);
-        let (signal, stop) = signal();
+        let (signal, shutdown) = Signal::task();
         let queued = Arc::new(Notify::new());
         let worker = run(&fake, queued.clone(), signal);
         tokio::select! {
@@ -275,7 +238,7 @@ mod tests {
                 // Found at the next poll (13 s), a second after the queue was last seen empty:
                 // not in a burst of polls owed for the ten seconds the first job took.
                 sleep(Duration::from_secs(3)).await;
-                stop();
+                shutdown.begin();
                 sleep(Duration::from_secs(1)).await;
             } => {}
         }
@@ -293,11 +256,11 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn shutdown_mid_job_gives_the_job_back_at_once() {
         let fake = Fake::new(&[(1, 60)]);
-        let (signal, stop) = signal();
+        let (signal, shutdown) = Signal::task();
         let worker = run(&fake, Arc::new(Notify::new()), signal);
         tokio::join!(worker, async {
             sleep(Duration::from_millis(5_500)).await;
-            stop();
+            shutdown.begin();
         });
         let log = fake.log.borrow();
         assert_eq!(
@@ -311,11 +274,11 @@ mod tests {
     async fn a_hung_renewal_is_cut_off_and_the_next_is_a_whole_beat_later() {
         let mut fake = Fake::new(&[(1, 10)]);
         fake.first_renewal_hangs = Duration::from_secs(60);
-        let (signal, stop) = signal();
+        let (signal, shutdown) = Signal::task();
         let worker = run(&fake, Arc::new(Notify::new()), signal);
         tokio::join!(worker, async {
             sleep(Duration::from_secs(11)).await;
-            stop();
+            shutdown.begin();
         });
         let renewals: Vec<_> = fake
             .log
@@ -340,7 +303,7 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn a_queued_job_wakes_the_worker_before_the_poll() {
         let fake = Fake::new(&[]);
-        let (signal, stop) = signal();
+        let (signal, shutdown) = Signal::task();
         let queued = Arc::new(Notify::new());
         let worker = run(&fake, queued.clone(), signal);
         tokio::join!(worker, async {
@@ -348,7 +311,7 @@ mod tests {
             fake.queue.borrow_mut().push_back((7, Duration::ZERO));
             queued.notify_one();
             sleep(Duration::from_millis(100)).await;
-            stop();
+            shutdown.begin();
         });
         assert_eq!(fake.log.borrow()[0], (1_250, "claim 7".into()));
     }
@@ -357,11 +320,11 @@ mod tests {
     async fn a_lost_claim_stops_the_job_without_completing_it() {
         let mut fake = Fake::new(&[(1, 60)]);
         fake.lose_lease_after = Some(2);
-        let (signal, stop) = signal();
+        let (signal, shutdown) = Signal::task();
         let worker = run(&fake, Arc::new(Notify::new()), signal);
         tokio::join!(worker, async {
             sleep(Duration::from_secs(8)).await;
-            stop();
+            shutdown.begin();
         });
         assert_eq!(fake.outcomes()[1], (6_000, "1 LeaseLost".into()));
     }
