@@ -78,16 +78,9 @@ pub struct Shown {
 }
 
 impl Shown {
-    async fn read(
-        db: &Database,
-        legacy: &Legacy,
-        batch: i32,
-        rates: SuccessRates,
-    ) -> Result<Shown, String> {
-        let (one, publications) = tokio::join!(
-            batches::one(db, batch),
-            batches::publications(legacy, batch)
-        );
+    async fn read(db: &Database, batch: i32, rates: SuccessRates) -> Result<Shown, String> {
+        let (one, publications) =
+            tokio::join!(batches::one(db, batch), batches::publications(db, batch));
         Ok(Shown {
             batch: one?,
             publications,
@@ -126,14 +119,12 @@ fn unavailable(message: String) -> corten::Error {
 pub async fn show(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::BatchPricer>,
 ) -> HtmlResult {
     page(
         &req,
         &db,
-        &legacy,
         at.chosen.batch,
         Visitor::of(zone.as_ref()),
         &Drawn::default(),
@@ -145,7 +136,6 @@ pub async fn show(
 async fn page(
     req: &Req,
     db: &Database,
-    legacy: &Legacy,
     chosen: Option<i32>,
     visitor: Visitor,
     drawn: &Drawn<'_>,
@@ -159,7 +149,7 @@ async fn page(
     let (list, rates) = (list.map_err(unavailable)?, rates?);
     let number = chosen.or_else(|| list.first().map(|b| b.batch_number));
     let shown = match number {
-        Some(n) => Some(Shown::read(db, legacy, n, rates).await),
+        Some(n) => Some(Shown::read(db, n, rates).await),
         None => None,
     };
     let again = shown
@@ -199,7 +189,6 @@ async fn page(
 async fn answer(
     req: &Req,
     db: &Database,
-    legacy: &Legacy,
     batch: i32,
     visitor: Visitor,
     done: Result<String, String>,
@@ -214,7 +203,7 @@ async fn answer(
                 .invalid_with(
                     &errors,
                     |patch| async move {
-                        let shown = Shown::read(db, legacy, batch, success_rates(db).await?)
+                        let shown = Shown::read(db, batch, success_rates(db).await?)
                             .await
                             .map_err(unavailable)?;
                         patch.draw(html! {
@@ -227,7 +216,7 @@ async fn answer(
                             problem: Some(message),
                             ..Drawn::default()
                         };
-                        page(req, db, legacy, Some(batch), visitor, &drawn).await
+                        page(req, db, Some(batch), visitor, &drawn).await
                     },
                 )
                 .await;
@@ -238,9 +227,7 @@ async fn answer(
         Ok(message) => message,
     };
     let rates = success_rates(db).await?;
-    let shown = Shown::read(db, legacy, batch, rates)
-        .await
-        .map_err(unavailable)?;
+    let shown = Shown::read(db, batch, rates).await.map_err(unavailable)?;
     req.patch(html! {
         <BatchFollow shown={&shown} t={t} visitor={visitor} />
         <BatchProblem message={None} />
@@ -264,15 +251,7 @@ pub async fn price(
     Form(input): Form<PriceInput>,
 ) -> HtmlResult {
     let done = batches::price(&legacy, at.batch, input.mode).await;
-    answer(
-        &req,
-        &db,
-        &legacy,
-        at.batch,
-        Visitor::of(zone.as_ref()),
-        done,
-    )
-    .await
+    answer(&req, &db, at.batch, Visitor::of(zone.as_ref()), done).await
 }
 
 /// The SKUs checked in the publish dialog, each a `sku` field.
@@ -304,23 +283,14 @@ pub async fn publish(
             )
         })
         };
-    answer(
-        &req,
-        &db,
-        &legacy,
-        at.batch,
-        Visitor::of(zone.as_ref()),
-        done,
-    )
-    .await
+    answer(&req, &db, at.batch, Visitor::of(zone.as_ref()), done).await
 }
 
-/// The batch, its items and its results deleted, and the newest batch shown; the Node app
-/// refuses a batch that prices or was published.
+/// The batch, its items and its results deleted, and the newest batch shown; the database refuses
+/// a batch with publications.
 pub async fn delete(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::Delete>,
 ) -> HtmlResult {
@@ -333,7 +303,6 @@ pub async fn delete(
             answer(
                 &req,
                 &db,
-                &legacy,
                 at.batch,
                 Visitor::of(zone.as_ref()),
                 Err(message),
@@ -401,7 +370,7 @@ pub async fn import_csv(
         ..Drawn::default()
     };
     req.invalid(&errors, CsvForm { errors: &errors }, || {
-        page(&req, &db, &legacy, None, visitor, &drawn)
+        page(&req, &db, None, visitor, &drawn)
     })
     .await
 }
@@ -445,7 +414,7 @@ pub async fn import_seller(
             seller: key,
             errors: &errors,
         },
-        || page(&req, &db, &legacy, None, visitor, &drawn),
+        || page(&req, &db, None, visitor, &drawn),
     )
     .await
 }
@@ -455,7 +424,6 @@ pub async fn import_seller(
 pub async fn live(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     since: LiveSince,
     Params(at): Params<url::Live>,
@@ -466,7 +434,6 @@ pub async fn live(
     let (t, visitor): (Msg, Visitor) = (req.t(), Visitor::of(zone.as_ref()));
     let follow = Follow {
         db,
-        legacy,
         batch: at.batch,
         rates,
         since: since.0,
@@ -489,10 +456,9 @@ pub async fn live(
 }
 
 /// A batch followed while it prices or publishes. Its publications are read when its pricing
-/// moves on, and every other read while one publishes: theirs is the slow read.
+/// moves on, and every other read while one publishes: the preview is the slow read.
 struct Follow {
     db: Database,
-    legacy: Legacy,
     batch: i32,
     rates: SuccessRates,
     /// The version the page shows.
@@ -533,7 +499,7 @@ impl Follow {
                 || self.job.as_ref() != Some(&job)
                 || (publishing && self.reads.is_multiple_of(2))
             {
-                self.publications = Some(batches::publications(&self.legacy, self.batch).await);
+                self.publications = Some(batches::publications(&self.db, self.batch).await);
                 self.job = Some(job);
             }
             let shown = Shown {

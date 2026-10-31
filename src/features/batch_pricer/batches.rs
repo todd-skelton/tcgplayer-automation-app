@@ -1,16 +1,24 @@
 //! Inventory batches as the Node app keeps them: frozen sets of SKUs (from the Inventory Manager,
 //! a seller's live inventory or a CSV) that its pricing worker prices and its publisher publishes.
-//! The batches, their latest jobs and saved results are read here, and a batch deleted here, as
-//! `inventoryBatches.server.ts` does. Pricing, publishing and importing still go through the Node
-//! app's `/api/inventory-batches` routes, whose rules (one active pricing job per batch, the
-//! publication safety checks) stay there with the workers.
+//! The batches, their latest jobs, saved results and publications (with what publishing would
+//! send) are read here, and a batch deleted here, as `inventoryBatches.server.ts` does. Pricing,
+//! publishing and importing still go through the Node app's `/api/inventory-batches` routes, whose
+//! rules (one active pricing job per batch, the publication safety checks) stay there with the
+//! workers.
 use std::collections::{BTreeMap, HashSet};
 
 use chrono::{DateTime, Utc};
 use corten::UrlValue;
 use serde::{Deserialize, Serialize};
 
-use crate::{database::Database, legacy::Legacy};
+use crate::{
+    database::Database,
+    features::inventory_publication::{
+        plan::{self, Configuration},
+        preview,
+    },
+    legacy::Legacy,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -328,6 +336,35 @@ pub struct Preview {
     pub items: Vec<Candidate>,
 }
 
+impl Preview {
+    fn of(preview: preview::Preview) -> Preview {
+        Preview {
+            planning_key: plan::planning_key(preview.pricing_job_id, None),
+            eligible_count: preview.eligible_count as i64,
+            excluded_count: preview.excluded_count as i64,
+            items: preview
+                .items
+                .into_iter()
+                .map(|item| Candidate {
+                    sku: item.sku.into(),
+                    product_id: item.product_id.into(),
+                    product_name: Some(item.product_name),
+                    condition: item.condition,
+                    previous_price: item.previous_price,
+                    desired_price: item.desired_price,
+                    quantity_delta: item.quantity_delta.into(),
+                    eligible: item.eligible,
+                    reasons: item
+                        .reasons
+                        .iter()
+                        .filter_map(|r| serde_json::to_value(r).ok()?.as_str().map(str::to_owned))
+                        .collect(),
+                })
+                .collect(),
+        }
+    }
+}
+
 /// A batch's publications, newest first, and what publishing it now would send.
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 pub struct Publications {
@@ -584,10 +621,62 @@ pub async fn one(db: &Database, batch: i32) -> Result<Batch, String> {
         .ok_or_else(|| format!("Batch {batch} not found"))
 }
 
-pub async fn publications(legacy: &Legacy, batch: i32) -> Result<Publications, String> {
-    legacy
-        .read(&format!("/api/inventory-batches/{batch}/publications"))
+/// The batch's publications, newest first, and what publishing its completed pricing job would
+/// send under the saved policy (`api.inventory-batch-publications` loader).
+pub async fn publications(db: &Database, batch: i32) -> Result<Publications, String> {
+    let e = |e: sqlx::Error| e.to_string();
+    let mut conn = db.0.acquire().await.map_err(e)?;
+    let (found, items, results) = preview::load(&mut conn, batch)
         .await
+        .map_err(e)?
+        .ok_or_else(|| format!("Batch {batch} not found"))?;
+    let rows: Vec<(i64, String, Option<i64>, String)> = sqlx::query_as(
+        "SELECT id, planning_key, pricing_job_id, status FROM inventory_publications
+         WHERE batch_number = $1 ORDER BY created_at DESC, id DESC",
+    )
+    .bind(batch)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(e)?;
+    let ids: Vec<i64> = rows.iter().map(|row| row.0).collect();
+    let item_statuses: Vec<(i64, String)> = sqlx::query_as(
+        "SELECT publication_id, status FROM inventory_publication_items
+         WHERE publication_id = ANY($1) ORDER BY id",
+    )
+    .bind(&ids)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(e)?;
+    let publications = rows
+        .into_iter()
+        .map(|(id, planning_key, pricing_job_id, status)| Publication {
+            items: item_statuses
+                .iter()
+                .filter(|(publication, _)| *publication == id)
+                .map(|(_, status)| PublicationItem {
+                    status: status.clone(),
+                })
+                .collect(),
+            id,
+            planning_key,
+            pricing_job_id,
+            status,
+        })
+        .collect();
+    let preview = if found.job_status.as_deref() == Some("completed") {
+        let policy = Configuration::load(&mut conn).await.map_err(e)?.policy;
+        let known = preview::known(&mut conn, batch, &items, &results, None)
+            .await
+            .map_err(e)?;
+        let shown = preview::preview(&found, &items, &results, &known, &policy, Utc::now(), false)?;
+        Some(Preview::of(shown))
+    } else {
+        None
+    };
+    Ok(Publications {
+        preview,
+        publications,
+    })
 }
 
 /// Which saved results: those priced, or those for manual review.
@@ -826,6 +915,52 @@ mod tests {
         }
         assert_eq!(
             one(&db, i32::MAX).await,
+            Err(format!("Batch {} not found", i32::MAX))
+        );
+    }
+
+    /// Each batch's publications and publication preview, read here and from the running dev Node
+    /// app: the same, for the newest batches, the newest with publications and the newest with a
+    /// publication in each status.
+    #[tokio::test]
+    #[ignore = "reads the dev database and the dev Node app"]
+    async fn publications_read_as_node_reads_them() {
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let legacy = Legacy::new(crate::config::legacy_origin());
+        let published: Vec<i32> = sqlx::query_scalar(
+            "(SELECT batch_number FROM inventory_publications WHERE batch_number IS NOT NULL
+              ORDER BY batch_number DESC LIMIT 15)
+             UNION
+             (SELECT DISTINCT ON (status) batch_number FROM inventory_publications
+              WHERE batch_number IS NOT NULL ORDER BY status, batch_number DESC)",
+        )
+        .fetch_all(&db.0)
+        .await
+        .unwrap();
+        let mut numbers: Vec<i32> = list(&db)
+            .await
+            .unwrap()
+            .iter()
+            .take(15)
+            .map(|b| b.batch_number)
+            .collect();
+        numbers.extend(published);
+        numbers.sort_unstable();
+        numbers.dedup();
+        let mut previewed = 0;
+        for n in numbers {
+            let theirs: Publications = legacy
+                .read(&format!("/api/inventory-batches/{n}/publications"))
+                .await
+                .unwrap();
+            let ours = publications(&db, n).await.unwrap();
+            previewed += usize::from(ours.preview.is_some());
+            assert_eq!(ours, theirs, "batch {n}");
+        }
+        assert!(previewed > 0);
+        assert_eq!(
+            publications(&db, i32::MAX).await,
             Err(format!("Batch {} not found", i32::MAX))
         );
     }
