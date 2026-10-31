@@ -1,14 +1,10 @@
 //! The two reports the screen shows beside the settings they inform: how listings sold against
-//! their sell-time forecasts, and what shipping costs at each threshold and what snapping did.
-//! Their computation is still the Node app's (`features/forecast-calibration`,
-//! `features/shipping-thresholds`); this reads its JSON routes until those features are ported.
+//! their sell-time forecasts (`features::forecast_calibration`), and what shipping costs at each
+//! threshold and what snapping did. The shipping report's computation is still the Node app's
+//! (`features/shipping-thresholds`); this reads its JSON route until that feature is ported.
 use serde::Deserialize;
 
 use crate::legacy::Legacy;
-
-/// The windows the calibration is measured over.
-pub const CALIBRATION_WINDOWS: [u32; 3] = [28, 56, 84];
-pub const DEFAULT_CALIBRATION_WINDOW: u32 = 56;
 
 /// The days a report is read over, as its window select and links write it. None is the
 /// report's default: 56 for the calibration, the snaps' evidence window for shipping.
@@ -26,54 +22,6 @@ impl Window {
             .filter(|days| windows.contains(days))
             .unwrap_or(default)
     }
-}
-
-/// A count of listings, days in stock, and sales seen and forecast.
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TimeInStock {
-    pub listings: f64,
-    pub in_stock_days: f64,
-    pub sales: f64,
-    pub forecast_sales: f64,
-}
-
-impl TimeInStock {
-    /// Pseudo-sales exactly as forecast that steady a thin sample, as the Node model adds them.
-    const PRIOR_SALES: f64 = 20.0;
-
-    pub fn actual_days_per_forecast_day(&self) -> f64 {
-        (self.forecast_sales + Self::PRIOR_SALES) / (self.sales + Self::PRIOR_SALES)
-    }
-
-    pub fn plus(&self, other: &TimeInStock) -> TimeInStock {
-        TimeInStock {
-            listings: self.listings + other.listings,
-            in_stock_days: self.in_stock_days + other.in_stock_days,
-            sales: self.sales + other.sales,
-            forecast_sales: self.forecast_sales + other.forecast_sales,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum HeldOutCheck {
-    Confirmed,
-    NotConfirmed,
-    TooFewSales,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Calibration {
-    pub from: String,
-    pub held_out_from: String,
-    pub through: String,
-    pub earlier: TimeInStock,
-    pub held_out: TimeInStock,
-    pub held_out_check: HeldOutCheck,
-    pub actual_days_per_forecast_day: f64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
@@ -153,12 +101,6 @@ pub struct Shipping {
     pub outcomes: Vec<Outcome>,
 }
 
-pub async fn calibration(legacy: &Legacy, days: u32) -> Result<Calibration, String> {
-    legacy
-        .read(&format!("/api/forecast-calibration?days={days}"))
-        .await
-}
-
 pub async fn shipping(legacy: &Legacy, days: u32) -> Result<Shipping, String> {
     legacy
         .read(&format!("/api/shipping-thresholds?days={days}"))
@@ -183,17 +125,5 @@ mod tests {
         let report: Shipping = serde_json::from_str(json).unwrap();
         assert_eq!(report.threshold_costs[0].snap_price_shipping_cost, None);
         assert_eq!(report.outcomes[0].just_above.units_per_order, Some(3.83));
-    }
-
-    #[test]
-    fn the_calibration_report_reads() {
-        let time = r#"{"listings":10,"inStockDays":300,"sales":40,"forecastSales":60}"#;
-        let json = format!(
-            r#"{{"from":"2026-09-01T00:00:00Z","heldOutFrom":"2026-10-01T00:00:00Z","through":"2026-10-28T00:00:00Z",
-            "earlier":{time},"heldOut":{time},"heldOutCheck":"not_confirmed","actualDaysPerForecastDay":1.33}}"#
-        );
-        let report: Calibration = serde_json::from_str(&json).unwrap();
-        assert_eq!(report.held_out_check, HeldOutCheck::NotConfirmed);
-        assert!((report.earlier.actual_days_per_forecast_day() - 80.0 / 60.0).abs() < 1e-9);
     }
 }

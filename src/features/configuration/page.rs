@@ -1,14 +1,13 @@
 use std::time::Duration;
 
+use chrono::Utc;
 use corten::{LiveResponse, prelude::*};
 use futures_util::stream;
 
 use super::{
     config::{self, Config},
     form::{AddLineInput, DefaultPercentileInput, PricingInput, SnapsInput, SupplyInput},
-    reports::{
-        self, CALIBRATION_WINDOWS, Calibration, DEFAULT_CALIBRATION_WINDOW, Shipping, Window,
-    },
+    reports::{self, Shipping, Window},
     url,
     views::{
         CalibrationPanel, ConfigurationScreen, Lines, OnPage, PricingForm, ProductLinesSection,
@@ -17,7 +16,10 @@ use super::{
 };
 use crate::{
     database::Database,
-    features::configuration::config::EVIDENCE_WINDOWS,
+    features::{
+        configuration::config::EVIDENCE_WINDOWS,
+        forecast_calibration::{self, Calibration, DEFAULT_WINDOW_DAYS, WINDOW_DAYS},
+    },
     layout::{Chrome, Layout},
     legacy::Legacy,
 };
@@ -347,13 +349,13 @@ pub async fn reset(req: Req, State(db): State<Database>) -> HtmlResult {
 pub async fn calibration_report(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::CalibrationReport>,
 ) -> HtmlResult {
-    let days = at
-        .window
-        .days_in(&CALIBRATION_WINDOWS, DEFAULT_CALIBRATION_WINDOW);
-    let (config, report) = tokio::join!(config::load(&db), reports::calibration(&legacy, days));
+    let days = at.window.days_in(&WINDOW_DAYS, DEFAULT_WINDOW_DAYS);
+    let (config, report) = tokio::join!(
+        config::load(&db),
+        forecast_calibration::load(&db, days, Utc::now())
+    );
     let panel = CalibrationPanel {
         days,
         report: Report::Read(&report),
@@ -388,13 +390,13 @@ pub async fn shipping_report(
 }
 
 /// The calibration panel once read over its default window, for the page's `<corten-live>`.
-pub async fn calibration_live(
-    State(db): State<Database>,
-    State(legacy): State<Legacy>,
-) -> LiveResponse {
+pub async fn calibration_live(State(db): State<Database>) -> LiveResponse {
     corten::live(stream::once(async move {
-        let days = DEFAULT_CALIBRATION_WINDOW;
-        let (config, report) = tokio::join!(config::load(&db), reports::calibration(&legacy, days));
+        let days = DEFAULT_WINDOW_DAYS;
+        let (config, report) = tokio::join!(
+            config::load(&db),
+            forecast_calibration::load(&db, days, Utc::now())
+        );
         let hurdle = config.ok().as_ref().and_then(hurdle);
         CalibrationPanel {
             days,

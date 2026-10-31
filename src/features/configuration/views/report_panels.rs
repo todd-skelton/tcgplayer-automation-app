@@ -8,13 +8,15 @@ use corten::prelude::*;
 
 use crate::layout::SubmitsOnChange;
 use crate::{
-    features::configuration::{
-        config::EVIDENCE_WINDOWS,
-        reports::{
-            Basis, CALIBRATION_WINDOWS, Calibration, DEFAULT_CALIBRATION_WINDOW, HeldOutCheck,
-            SaleGroup, Shipping, TimeInStock, Window,
+    features::{
+        configuration::{
+            config::EVIDENCE_WINDOWS,
+            reports::{Basis, SaleGroup, Shipping, Window},
+            url,
         },
-        url,
+        forecast_calibration::{
+            Calibration, DEFAULT_WINDOW_DAYS, HeldOutCheck, TimeInStock, WINDOW_DAYS,
+        },
     },
     layout::{Notice, Tone},
     theme::*,
@@ -66,7 +68,7 @@ pub fn ReportPanels<'a>(reports: &'a Reports<'a>) -> impl Render {
             OnPage::Streamed => {
                 <corten-live src={url::CalibrationLive}>
                     <CalibrationPanel
-                        days={DEFAULT_CALIBRATION_WINDOW}
+                        days={DEFAULT_WINDOW_DAYS}
                         report={Report::Waiting}
                         hurdle={reports.hurdle}
                     />
@@ -162,7 +164,7 @@ pub fn CalibrationPanel<'a>(
                 action={url::CalibrationReport { window: Window::default() }}
                 data-patch
             >
-                <WindowChoice days={days} windows={&CALIBRATION_WINDOWS} label="Measure over " />
+                <WindowChoice days={days} windows={&WINDOW_DAYS} label="Measure over " />
             </form>
             match report {
                 Report::Waiting => <p class={muted()} role="status">
