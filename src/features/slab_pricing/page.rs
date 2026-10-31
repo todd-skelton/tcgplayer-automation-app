@@ -108,7 +108,7 @@ impl Screen {
         };
         let inventory = match choice.seller.as_deref().filter(|s| !s.trim().is_empty()) {
             Some(seller) => {
-                Some(inventory::page(legacy, seller, choice.after.as_deref().unwrap_or("")).await)
+                Some(inventory::page(db, seller, choice.after.as_deref().unwrap_or("")).await)
             }
             None => None,
         };

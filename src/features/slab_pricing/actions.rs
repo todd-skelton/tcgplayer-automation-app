@@ -217,7 +217,7 @@ pub async fn open(
         listing: Some(input.id.clone()),
         ..at.choice.clone()
     };
-    let found = inventory::page(&legacy, &seller, at.choice.after.as_deref().unwrap_or(""))
+    let found = inventory::page(&db, &seller, at.choice.after.as_deref().unwrap_or(""))
         .await
         .map(|page| page.items.into_iter().find(|l| l.id == input.id));
     let listing = match found {
