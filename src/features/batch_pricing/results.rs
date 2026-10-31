@@ -3,12 +3,13 @@
 //! batch's summary (`buildSummary`), as the Node app writes them.
 use std::collections::HashMap;
 
+use chrono::{DateTime, Utc};
 use serde_json::{Map, Value, json};
 
 use super::job::{Display, Mode, PricedSku};
 use crate::features::{
     configuration::config::Config as StoredConfig,
-    inventory_economics::ledger::{assumptions::js_to_fixed, fingerprint::js_float},
+    inventory_economics::ledger::{assumptions::js_to_fixed, fingerprint::js_float, proceeds::iso},
     pricing::{
         calculator::{Aggregated, Calculation, PricerSku},
         policy::{MODEL_VERSION, Method},
@@ -39,7 +40,6 @@ fn text(value: Option<f64>) -> String {
 pub fn row(sku: &PricedSku) -> Value {
     let item = &sku.item;
     let shown = sku.display.clone().unwrap_or_default();
-    let point = sku.point;
     let quantity = js_float(item.quantity.unwrap_or(0.0));
     let add = js_float(item.add_to_quantity.unwrap_or(0.0));
     json!({
@@ -49,10 +49,10 @@ pub fn row(sku: &PricedSku) -> Value {
         "Product": shown.product_name,
         "Sku Variant": shown.variant,
         "Sku Condition": shown.condition,
-        "Sale Count": js_float(point.map_or(0.0, |p| p.price_count)),
-        "Lowest Sale Price": fixed(point.map(|p| p.lowest_price)),
-        "Highest Sale Price": fixed(point.map(|p| p.highest_price)),
-        "TCG Market Price": fixed(point.map(|p| p.market_price)),
+        "Sale Count": text(sku.sale_count),
+        "Lowest Sale Price": fixed(sku.lowest_sale_price),
+        "Highest Sale Price": fixed(sku.highest_sale_price),
+        "TCG Market Price": fixed(sku.tcg_market_price),
         "Total Quantity": quantity,
         "Add to Quantity": add,
         "TCG Marketplace Price": fixed(item.price),
@@ -75,10 +75,14 @@ fn put(details: &mut Map<String, Value>, key: &str, value: Option<Value>) {
 }
 
 /// The SKU's pricing details as the worker saves them.
-pub fn details(sku: &PricedSku, mode: Mode, priced_at: &str, stored: &StoredConfig) -> Value {
+pub fn details(
+    sku: &PricedSku,
+    mode: Mode,
+    priced_at: DateTime<Utc>,
+    stored: &StoredConfig,
+) -> Value {
     let item = serde_json::to_value(&sku.item).expect("a priced item serializes");
     let field = |key: &str| item.get(key).cloned();
-    let point = sku.point;
     let number = |value: Option<f64>| value.map(|v| json!(v));
     let mut d = Map::new();
     d.insert(
@@ -87,28 +91,19 @@ pub fn details(sku: &PricedSku, mode: Mode, priced_at: &str, stored: &StoredConf
     );
     d.insert("pricingModelVersion".into(), json!(MODEL_VERSION));
     d.insert("mode".into(), json!(mode.as_str()));
-    d.insert("pricedAt".into(), json!(priced_at));
-    d.insert("marketDataAt".into(), json!(priced_at));
+    d.insert("pricedAt".into(), json!(iso(priced_at)));
+    d.insert(
+        "marketDataAt".into(),
+        json!(iso(sku.market_data_at.unwrap_or(priced_at))),
+    );
     put(&mut d, "productLineId", field("productLineId"));
     put(&mut d, "percentileUsed", field("percentileUsed"));
     put(&mut d, "suggestedPrice", field("suggestedPrice"));
     put(&mut d, "marketplacePrice", field("price"));
     put(&mut d, "previousPrice", field("previousPrice"));
-    put(
-        &mut d,
-        "tcgMarketPrice",
-        number(point.map(|p| p.market_price)),
-    );
-    put(
-        &mut d,
-        "lowestSalePrice",
-        number(point.map(|p| p.lowest_price)),
-    );
-    put(
-        &mut d,
-        "highestSalePrice",
-        number(point.map(|p| p.highest_price)),
-    );
+    put(&mut d, "tcgMarketPrice", number(sku.tcg_market_price));
+    put(&mut d, "lowestSalePrice", number(sku.lowest_sale_price));
+    put(&mut d, "highestSalePrice", number(sku.highest_sale_price));
     put(&mut d, "quantity", field("quantity"));
     put(&mut d, "addToQuantity", field("addToQuantity"));
     for key in [
@@ -278,7 +273,7 @@ pub fn summary(
     let stats = &calculation.stats;
     let total = sources.len() + invalid;
     let sum = |value: &dyn Fn(&PricedSku) -> f64| skus.iter().map(value).sum::<f64>();
-    let market = |s: &PricedSku| or_zero(s.point.map(|p| p.market_price));
+    let market = |s: &PricedSku| or_zero(s.tcg_market_price);
     let aggregated: &Aggregated = &calculation.aggregated_percentiles;
     let mut summary = json!({
         "totalRows": total,
@@ -294,7 +289,7 @@ pub fn summary(
         "totalAddQuantity": js_value(sum(&|s| or_zero(s.item.add_to_quantity))),
         "totals": {
             "marketPrice": js_value(sum(&|s| market(s) * combined(s))),
-            "lowPrice": js_value(sum(&|s| or_zero(s.point.map(|p| p.lowest_price)) * combined(s))),
+            "lowPrice": js_value(sum(&|s| or_zero(s.lowest_sale_price) * combined(s))),
             "marketplacePrice": js_value(sum(&|s| or_zero(s.item.price) * combined(s))),
             "percentiles": object(&aggregated.market_price),
         },
@@ -337,7 +332,7 @@ pub fn summary(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::features::{batch_pricing::job::PricePoint, pricing::calculator::PricedItem};
+    use crate::features::pricing::calculator::PricedItem;
 
     fn priced(price: Option<f64>, errors: &[&str]) -> PricedSku {
         PricedSku {
@@ -358,13 +353,16 @@ mod tests {
                 condition: "Near Mint".into(),
                 variant: "1st Edition".into(),
             }),
-            point: Some(PricePoint {
-                market_price: 0.28,
-                lowest_price: 0.11,
-                highest_price: 0.49,
-                price_count: 3.0,
-            }),
+            tcg_market_price: Some(0.28),
+            lowest_sale_price: Some(0.11),
+            highest_sale_price: Some(0.49),
+            sale_count: Some(3.0),
+            market_data_at: None,
         }
+    }
+
+    fn at(text: &str) -> DateTime<Utc> {
+        text.parse().expect("a time")
     }
 
     #[test]
@@ -402,9 +400,10 @@ mod tests {
         let details = details(
             &priced(Some(0.23), &[]),
             Mode::Full,
-            "2026-10-04T16:16:19.633Z",
+            at("2026-10-04T16:16:19.633Z"),
             &StoredConfig::default(),
         );
+        assert_eq!(details["marketDataAt"], "2026-10-04T16:16:19.633Z");
         assert_eq!(details["schemaVersion"], 2);
         assert_eq!(details["pricingModelVersion"], "pooled-supply-v1");
         assert_eq!(details["marketplacePrice"], 0.23);
@@ -412,5 +411,33 @@ mod tests {
         assert_eq!(details["warnings"], json!([]));
         assert!(details.get("previousPrice").is_none());
         assert!(details.get("policy").is_none(), "no decision, no policy");
+    }
+
+    #[test]
+    fn a_sku_repriced_from_its_saved_curve_keeps_the_curve_s_market_reading() {
+        let sku = PricedSku {
+            lowest_sale_price: None,
+            highest_sale_price: Some(0.6),
+            sale_count: None,
+            market_data_at: Some(at("2026-10-03T08:00:00.120Z")),
+            ..priced(Some(0.23), &[])
+        };
+        let details = details(
+            &sku,
+            Mode::Cached,
+            at("2026-10-04T16:16:19.633Z"),
+            &StoredConfig::default(),
+        );
+        assert_eq!(details["pricedAt"], "2026-10-04T16:16:19.633Z");
+        assert_eq!(details["marketDataAt"], "2026-10-03T08:00:00.120Z");
+        assert!(details.get("lowestSalePrice").is_none());
+        let row = row(&sku);
+        assert_eq!(
+            (
+                row["Sale Count"].as_str(),
+                row["Highest Sale Price"].as_str()
+            ),
+            (Some(""), Some("0.60"))
+        );
     }
 }

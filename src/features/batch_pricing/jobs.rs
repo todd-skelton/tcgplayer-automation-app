@@ -59,15 +59,6 @@ impl Running {
     }
 }
 
-/// The pricing configuration a job was queued with.
-fn stored(config: &Value) -> StoredConfig {
-    StoredConfig::of(
-        &config["pricing"],
-        &config["supplyAnalysis"],
-        &config["productLinePricing"],
-    )
-}
-
 /// A time as Node writes `new Date()`: to the millisecond.
 fn to_millis(at: DateTime<Utc>) -> DateTime<Utc> {
     DateTime::from_timestamp_millis(at.timestamp_millis()).expect("a time already in range")
@@ -96,7 +87,12 @@ pub async fn save_priced(
         return Ok(false);
     }
     let priced_at = to_millis(now);
-    let rows = save::rows(&priced.skus, mode, priced_at, &stored(&job.config_json));
+    let rows = save::rows(
+        &priced.skus,
+        mode,
+        priced_at,
+        &job::stored(&job.config_json),
+    );
     save::save_results(&mut tx, job.batch_number, mode, &rows, priced_at, now).await?;
     let completed = queue::complete(
         &mut tx,
@@ -199,12 +195,11 @@ impl<E: Evidence, M: MarketData> Jobs for PricingJobs<E, M> {
         let mode = Mode::of(&claimed.mode)
             .ok_or_else(|| format!("Unknown pricing mode {}", claimed.mode))?;
         let batch = job::batch(&self.db, claimed.batch_number).await?;
-        let config = stored(&claimed.config_json);
         let priced = job::price(
             &self.db,
             &batch,
             mode,
-            &config,
+            &claimed.config_json,
             &self.evidence,
             &self.market,
             Utc::now(),
@@ -291,13 +286,12 @@ mod tests {
         .unwrap();
         let node = saved(&db, finished.batch_number).await.unwrap();
         let batch = job::batch(&db, finished.batch_number).await.unwrap();
-        let config = stored(&finished.config_json);
         let mut steps = Vec::new();
         let priced = job::price(
             &db,
             &batch,
             Mode::Full,
-            &config,
+            &finished.config_json,
             &Ledgers {
                 db: &db,
                 as_of: finished.completed_at,

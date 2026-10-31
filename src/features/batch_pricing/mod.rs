@@ -14,5 +14,6 @@ pub mod jobs;
 pub mod queue;
 pub mod results;
 pub mod save;
+pub mod saved_curves;
 pub mod shadow;
 pub mod worker;

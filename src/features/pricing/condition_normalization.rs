@@ -3,7 +3,7 @@
 //! from its sibling SKUs' market prices, else no scaling. Ported from
 //! `conditionNormalization.ts`.
 use crate::js_math::JsMath;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::{
     buyer_arrival_rate::{LATEST_SALES_HISTORY_DAYS, LATEST_SALES_LIMIT},
@@ -33,7 +33,7 @@ pub fn rank(condition: &str) -> Option<usize> {
 /// One multiplier per condition, in [`CONDITIONS`] order.
 pub type Multipliers = [f64; 5];
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Method {
     TimeControlledZipf,
@@ -41,7 +41,8 @@ pub enum Method {
     NeutralConditionFallback,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+/// Read back from saved pricing details too, which a saved-curve repricing carries forward.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Diagnostics {
     pub method: Method,
@@ -51,7 +52,7 @@ pub struct Diagnostics {
     pub condition_exponent: Option<f64>,
     /// The condition whose market price stood in for the listed one's, when they differ.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub anchor_condition: Option<&'static str>,
+    pub anchor_condition: Option<String>,
     pub condition_time_connected: bool,
 }
 
@@ -259,12 +260,12 @@ pub fn fit(
         .count();
     let information = condition_information(&observations);
     let connected = timelines_connected(&observations);
-    let diagnostics = |method, condition_exponent, anchor_condition| Diagnostics {
+    let diagnostics = |method, condition_exponent, anchor_condition: Option<&str>| Diagnostics {
         method,
         observation_count: observations.len(),
         observed_condition_count: condition_count,
         condition_exponent,
-        anchor_condition,
+        anchor_condition: anchor_condition.map(str::to_owned),
         condition_time_connected: connected,
     };
     let fallback = || match sibling_ratio(&options.sibling_market_prices, target) {
@@ -450,7 +451,7 @@ mod tests {
     fn an_unpriced_condition_is_valued_as_the_nearest_better_one() {
         let (m, d) = fitted(HP, PRICES);
         assert_eq!(d.method, Method::SiblingMarketRatio);
-        assert_eq!(d.anchor_condition, Some("Moderately Played"));
+        assert_eq!(d.anchor_condition.as_deref(), Some("Moderately Played"));
         assert_eq!(
             m.map(round),
             [
@@ -462,7 +463,7 @@ mod tests {
             ]
         );
         let (m, d) = fitted(NM, [None, Some(10.63), Some(10.25), None, None]);
-        assert_eq!(d.anchor_condition, Some("Lightly Played"));
+        assert_eq!(d.anchor_condition.as_deref(), Some("Lightly Played"));
         assert_eq!(m[LP], 1.0);
         assert_eq!(round(m[MP]), round(10.63 / 10.25));
         let (m, d) = fitted(LP, PRICES);

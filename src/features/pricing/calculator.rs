@@ -175,7 +175,7 @@ pub struct Resolved {
 }
 
 /// Milliseconds as days, for a value JavaScript reads as truthy.
-fn days(ms: Option<f64>) -> Option<f64> {
+pub fn days(ms: Option<f64>) -> Option<f64> {
     ms.filter(|ms| *ms != 0.0 && !ms.is_nan())
         .map(|ms| ms / MILLISECONDS_PER_DAY)
 }
@@ -1391,7 +1391,7 @@ mod tests {
         resolved.condition_sale_rate = Some(SaleRate {
             interval_days: 12.0,
             transactions: 30.0,
-            method: condition_sale_rate::METHOD,
+            method: condition_sale_rate::METHOD.into(),
         });
         let result = run(&[sku(790, 1.0, 20.0)], &Config::default(), &[], resolved).await;
         let rate = only(&result).condition_rate_forecast.as_ref().unwrap();

@@ -333,7 +333,12 @@ pub fn compare(rust: &PricedSku, node: &Saved) -> Verdict {
             side: "node details",
         };
     };
-    let ours = results::details(rust, Mode::Full, "", &StoredConfig::default());
+    let ours = results::details(
+        rust,
+        Mode::Full,
+        DateTime::UNIX_EPOCH,
+        &StoredConfig::default(),
+    );
     let node_error = node.row_json["Error"].as_str().unwrap_or_default();
     if details.get("decision").is_none() && unreachable(node_error) {
         return Verdict::NodeUnreachable {
@@ -433,12 +438,6 @@ enum Line<'a> {
 /// Prices `job`'s batch again and compares each SKU with Node's result.
 pub async fn replay(db: &Database, job: &Finished) -> Result<(Tally, Vec<(i32, Verdict)>), String> {
     let mode = Mode::of(&job.mode).ok_or_else(|| format!("unknown mode {}", job.mode))?;
-    let config = &job.config_json;
-    let stored = StoredConfig::of(
-        &config["pricing"],
-        &config["supplyAnalysis"],
-        &config["productLinePricing"],
-    );
     let batch: Batch = job::batch(db, job.batch_number).await?;
     let node = saved(db, job.batch_number).await?;
     let ledgers = Ledgers {
@@ -449,7 +448,7 @@ pub async fn replay(db: &Database, job: &Finished) -> Result<(Tally, Vec<(i32, V
         db,
         &batch,
         mode,
-        &stored,
+        &job.config_json,
         &ledgers,
         &SavedMarket(&node),
         job.started_at,

@@ -1,7 +1,7 @@
 //! How often the listed condition alone sells, from a year of the SKU's own weekly sales counts.
 //! Ported from `conditionSaleRate.ts`.
 use chrono::NaiveDate;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::policy::median_sell_days;
 
@@ -21,14 +21,15 @@ pub struct SalesBucket {
     pub transaction_count: f64,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+/// Read back from a saved forecast too, whose rate a saved-curve repricing forecasts again from.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SaleRate {
     /// Mean days between sales of this SKU, weighted toward the last quarter.
     pub interval_days: f64,
     /// Sales of the SKU in the year.
     pub transactions: f64,
-    pub method: &'static str,
+    pub method: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -36,7 +37,7 @@ pub struct SaleRate {
 pub struct RateForecast {
     pub interval_days: f64,
     pub transactions: f64,
-    pub method: &'static str,
+    pub method: String,
     pub median_sell_days: f64,
 }
 
@@ -91,7 +92,7 @@ pub fn estimate(
     Some(SaleRate {
         interval_days: 1.0 / rate,
         transactions: year_transactions,
-        method: METHOD,
+        method: METHOD.into(),
     })
 }
 
@@ -102,7 +103,7 @@ pub fn forecast(rate: Option<&SaleRate>, store_win_share: Option<f64>) -> Option
     Some(RateForecast {
         interval_days: rate.interval_days,
         transactions: rate.transactions,
-        method: rate.method,
+        method: rate.method.clone(),
         median_sell_days: days,
     })
 }

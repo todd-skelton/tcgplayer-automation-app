@@ -1,18 +1,31 @@
 //! Pricing one inventory batch (`executeInventoryBatchPricingJob`): its items, their catalog names,
-//! the market data for them, the calculator over the latest-sales resolver, and the summary.
-use std::{collections::HashMap, time::Instant};
+//! the market data for them, the calculator over the latest-sales resolver (or, in `cached` mode,
+//! over the SKUs' saved curves), and the summary.
+use std::{
+    collections::{HashMap, HashSet},
+    time::Instant,
+};
 
 use chrono::{DateTime, Utc};
+use serde_json::Value;
 
-use super::{cache::Cached, results::summary};
+use super::{
+    cache::Cached,
+    results::summary,
+    saved_curves::{self, SavedCurve, SavedCurves},
+};
 use crate::{
     database::Database,
     features::{
         configuration::config::{Config as StoredConfig, Policy as StoredPolicy},
+        continuous_pricing,
         pricing::{
-            calculator::{self, Calculation, PricedItem, PricerSku, Stats, Stopped, Tick},
+            calculator::{
+                self, Calculation, PricedItem, PricerSku, Request, Resolve, Resolved, Stats,
+                Stopped, Tick,
+            },
             resolver::LatestSales,
-            sku_price::Evidence,
+            sku_price::{Evidence, Failure},
         },
         shipping_configuration,
         shipping_thresholds::evidence::learn_recent,
@@ -74,12 +87,70 @@ pub struct Display {
     pub variant: String,
 }
 
-/// A priced SKU with its name and market data (`PricedSku`).
-#[derive(Clone, Debug, PartialEq)]
+/// A priced SKU with its name and market data (`PricedSku`): the market data read for it, or
+/// what its saved curve recorded when it was repriced from one.
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct PricedSku {
     pub item: PricedItem,
     pub display: Option<Display>,
-    pub point: Option<PricePoint>,
+    pub tcg_market_price: Option<f64>,
+    pub lowest_sale_price: Option<f64>,
+    pub highest_sale_price: Option<f64>,
+    /// None for a SKU repriced from its saved curve, which records no count.
+    pub sale_count: Option<f64>,
+    /// When its market data was read, for a SKU repriced from its saved curve; otherwise it was
+    /// read as the batch was priced.
+    pub market_data_at: Option<DateTime<Utc>>,
+}
+
+impl PricedSku {
+    /// The SKU with the market data read for it (`enrichPricedSkus`).
+    fn enriched(item: &PricedItem, display: Option<&Display>, point: Option<&PricePoint>) -> Self {
+        PricedSku {
+            item: item.clone(),
+            display: display.cloned(),
+            tcg_market_price: point.map(|p| p.market_price),
+            lowest_sale_price: point.map(|p| p.lowest_price),
+            highest_sale_price: point.map(|p| p.highest_price),
+            sale_count: Some(point.map_or(0.0, |p| p.price_count)),
+            market_data_at: None,
+        }
+    }
+
+    /// The SKU repriced from `curve`, with what the curve recorded of its market.
+    fn repriced_from(self, curve: Option<&SavedCurve>) -> Self {
+        PricedSku {
+            market_data_at: curve.map(|c| c.market_data_at),
+            lowest_sale_price: curve.and_then(SavedCurve::lowest_sale_price),
+            highest_sale_price: curve.and_then(SavedCurve::highest_sale_price),
+            sale_count: None,
+            ..self
+        }
+    }
+}
+
+/// The pricing configuration a job was queued with.
+pub fn stored(config: &Value) -> StoredConfig {
+    StoredConfig::of(
+        &config["pricing"],
+        &config["supplyAnalysis"],
+        &config["productLinePricing"],
+    )
+}
+
+/// Where a job's SKUs are priced from: their latest sales, or their saved curves.
+enum Resolver<'a, E> {
+    LatestSales(LatestSales<'a, Cached<'a, E>>),
+    SavedCurves(SavedCurves),
+}
+
+impl<E: Evidence> Resolve for Resolver<'_, E> {
+    async fn resolve(&self, request: &Request<'_>) -> Result<Resolved, Failure> {
+        match self {
+            Resolver::LatestSales(latest) => latest.resolve(request).await,
+            Resolver::SavedCurves(saved) => saved.resolve(request).await,
+        }
+    }
 }
 
 /// A priced batch: its SKUs in the order they were priced, its summary document, and the
@@ -296,9 +367,36 @@ async fn cost_model(
         .ok()
 }
 
-/// Prices `batch`'s items under `stored` as of `now`, reading sales through `evidence` and
-/// market data through `market`, each step told to `report` as Node's worker reports it.
-/// Saved-curve repricing (`cached`) is not ported yet.
+/// The batch's curves that can be priced from again, under the schedule's interval and the
+/// supply settings the job was queued with.
+async fn reusable_curves(
+    db: &Database,
+    batch: &Batch,
+    config: &Value,
+    sources: &[PricerSku],
+    now: DateTime<Utc>,
+) -> Result<Vec<SavedCurve>, String> {
+    let interval = continuous_pricing::store::settings(db)
+        .await
+        .map_err(failed)?
+        .minimum_interval_minutes;
+    let skus: Vec<i64> = sources.iter().map(|s| s.sku).collect();
+    saved_curves::reusable(
+        db,
+        &batch.source_label,
+        &skus,
+        interval,
+        &config["supplyAnalysis"],
+        now,
+    )
+    .await
+    .map_err(failed)
+}
+
+/// Prices `batch`'s items under `config`, the configuration its job was queued with, as of `now`:
+/// from sales read through `evidence` and market data through `market`, or in `cached` mode from
+/// the SKUs' saved curves and the inventory's market prices. Each step is told to `report` as
+/// Node's worker reports it.
 #[allow(
     clippy::too_many_arguments,
     reason = "executeInventoryBatchPricingJob's inputs"
@@ -307,13 +405,14 @@ pub async fn price<E: Evidence, M: MarketData>(
     db: &Database,
     batch: &Batch,
     mode: Mode,
-    stored: &StoredConfig,
+    config: &Value,
     evidence: &E,
     market: &M,
     now: DateTime<Utc>,
     report: &mut impl FnMut(serde_json::Value),
 ) -> Result<Priced, Stopped> {
     let started = Instant::now();
+    let stored = &stored(config);
     let none = Stats::default();
     report(step(
         1,
@@ -325,7 +424,7 @@ pub async fn price<E: Evidence, M: MarketData>(
     ));
     let items = items(db, batch.batch_number, mode).await?;
     let bypass = matches!(batch.source_type.as_str(), "pending_inventory" | "strategy");
-    let sources: Vec<PricerSku> = items
+    let mut sources: Vec<PricerSku> = items
         .iter()
         .filter(|i| i.sku > 0 && i.total_quantity + i.add_to_quantity > 0)
         .map(|i| PricerSku {
@@ -344,13 +443,31 @@ pub async fn price<E: Evidence, M: MarketData>(
             "No batch items are available to price".into()
         });
     }
-    let names = names(db, &items).await?;
-    if mode == Mode::Cached {
+    let mut names = names(db, &items).await?;
+    let saved = if mode == Mode::Cached {
         if batch.source_type != "continuous" {
             return Err("Saved-curve repricing requires a continuous inventory batch.".into());
         }
-        return Err("Saved-curve repricing is not ported yet.".into());
-    }
+        let curves = reusable_curves(db, batch, config, &sources, now).await?;
+        let reusable: HashSet<i64> = curves.iter().map(|c| c.sku).collect();
+        let stale: Vec<i64> = sources
+            .iter()
+            .map(|s| s.sku)
+            .filter(|sku| !reusable.contains(sku))
+            .collect();
+        saved_curves::defer_to_refresh(db, batch.batch_number, &stale)
+            .await
+            .map_err(failed)?;
+        sources.retain(|s| reusable.contains(&s.sku));
+        for curve in &curves {
+            names
+                .entry(curve.sku)
+                .or_insert_with(|| curve.display.clone());
+        }
+        Some(curves)
+    } else {
+        None
+    };
     let invalid = items.len() - sources.len();
     let skipped = Stats {
         skipped: invalid,
@@ -366,20 +483,43 @@ pub async fn price<E: Evidence, M: MarketData>(
         None,
     ));
     let fetching = wall_ms();
+    let (phase, started_status, sub_status, done_status) = if saved.is_some() {
+        (
+            "Loading Saved Data",
+            "Loading saved pricing data...",
+            "Using the latest saved curves and inventory market prices...",
+            "Saved pricing data loaded.",
+        )
+    } else {
+        (
+            "Fetching Price Data",
+            "Fetching price points...",
+            "Requesting latest price points...",
+            "Price points fetched successfully!",
+        )
+    };
     report(step(
         3,
-        "Fetching price points...",
-        "Fetching Price Data",
+        started_status,
+        phase,
         Some(fetching),
         skipped,
-        Some((0, n, "Requesting latest price points...")),
+        Some((0, n, sub_status)),
     ));
-    let skus: Vec<i64> = sources.iter().map(|s| s.sku).collect();
-    let points = market.price_points(&skus).await?;
+    let points: HashMap<i64, PricePoint> = match &saved {
+        Some(curves) => curves
+            .iter()
+            .filter_map(|c| Some((c.sku, c.price_point()?)))
+            .collect(),
+        None => {
+            let skus: Vec<i64> = sources.iter().map(|s| s.sku).collect();
+            market.price_points(&skus).await?
+        }
+    };
     report(step(
         3,
-        "Price points fetched successfully!",
-        "Fetching Price Data",
+        done_status,
+        phase,
         Some(fetching),
         skipped,
         Some((n, n, "Price data ready")),
@@ -396,10 +536,13 @@ pub async fn price<E: Evidence, M: MarketData>(
     .then(|| batch.source_label.clone());
     let config = calculator::config_of(stored, excluded, cost_model(db, stored, now).await);
     let cached = Cached::new(evidence);
-    let resolver = LatestSales {
-        db,
-        evidence: &cached,
-        now: now.timestamp_millis() as f64,
+    let resolver = match &saved {
+        Some(curves) => Resolver::SavedCurves(SavedCurves::new(curves)),
+        None => Resolver::LatestSales(LatestSales {
+            db,
+            evidence: &cached,
+            now: now.timestamp_millis() as f64,
+        }),
     };
     let source = format!("inventory-batch-{}", batch.batch_number);
     let pricing = wall_ms();
@@ -458,13 +601,18 @@ pub async fn price<E: Evidence, M: MarketData>(
         counts,
         None,
     ));
+    let saved_by_sku: Option<HashMap<i64, &SavedCurve>> = saved
+        .as_ref()
+        .map(|curves| curves.iter().map(|c| (c.sku, c)).collect());
     let skus: Vec<PricedSku> = calculation
         .priced_items
         .iter()
-        .map(|item| PricedSku {
-            item: item.clone(),
-            display: names.get(&item.sku).cloned(),
-            point: points.get(&item.sku).copied(),
+        .map(|item| {
+            let priced = PricedSku::enriched(item, names.get(&item.sku), points.get(&item.sku));
+            match &saved_by_sku {
+                Some(saved) => priced.repriced_from(saved.get(&item.sku).copied()),
+                None => priced,
+            }
         })
         .collect();
     let summary = summary(

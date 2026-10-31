@@ -37,13 +37,12 @@ pub fn rows(
     priced_at: DateTime<Utc>,
     stored: &StoredConfig,
 ) -> Vec<Row> {
-    let at = iso(priced_at);
     skus.iter()
         .map(|sku| Row {
             sku: sku.item.sku as i32,
             result_status: results::status(sku),
             row: results::row(sku),
-            details: results::details(sku, mode, &at, stored),
+            details: results::details(sku, mode, priced_at, stored),
             errors: sku.item.errors.clone(),
             warnings: sku.item.warnings.clone().unwrap_or_default(),
         })
