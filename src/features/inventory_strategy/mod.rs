@@ -22,6 +22,7 @@
     reason = "the domain is ported whole; the screen reads part of it"
 )]
 mod actions;
+mod analysis_queue;
 pub mod backfill;
 mod cache;
 pub(crate) mod collate;

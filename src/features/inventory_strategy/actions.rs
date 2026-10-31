@@ -5,6 +5,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use super::{
+    analysis_queue,
     screen::{self, Screen},
     turnaround::Mode,
     turnaround_settings::{self, Change, MAXIMUM_MANUAL_DAYS},
@@ -161,27 +162,15 @@ pub async fn refresh(
     }
 }
 
-/// Queues a strategy analysis of the in-stock snapshot on the Node app's pricing worker, or names
-/// the one already running.
+/// Queues a strategy analysis of the in-stock snapshot for the pricing worker, or names the one
+/// already running.
 pub async fn queue_analysis(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::QueueAnalysis>,
 ) -> HtmlResult {
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Queued {
-        batch_number: i32,
-        item_count: i64,
-        status: String,
-        created: bool,
-    }
-    match legacy
-        .send::<_, Queued>("/api/inventory-strategy-analysis", &json!({}))
-        .await
-    {
+    match analysis_queue::queue_analysis(&db).await {
         Ok(q) => {
             let did = if q.created {
                 Did::Queued {

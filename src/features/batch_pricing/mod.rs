@@ -5,6 +5,7 @@
 //! Node's worker owns the jobs until cutover (port decision 26). The port's worker
 //! ([`worker::start`]) claims from the same queue only when `PRICING_WORKER` is set.
 pub mod cache;
+pub mod imported;
 pub mod job;
 pub mod jobs;
 pub mod market;
