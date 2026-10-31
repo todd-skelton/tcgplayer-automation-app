@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 use super::{
     editing::ShipmentInput,
-    packing,
+    intake_history, packing,
     postage::{self, Bought, Postage},
     printing, sheet,
     ship::Pending,
@@ -102,7 +102,7 @@ impl Shown {
             tokio::join!(shipping_configuration::settings(db), workflow::current(db));
         let (config, mut saved) = (config?, saved?);
         if let Some(s) = &mut saved {
-            refresh_intake(db, legacy, &config, s).await?;
+            refresh_intake(db, &config, s).await?;
         }
         let batch = plan(&config, saved.as_ref());
         let postage = postage::bought(legacy, Direction::Outbound, &batch.shipments).await;
@@ -224,7 +224,6 @@ impl Shown {
 /// is dropped with a warning, as the React screen dropped it.
 async fn refresh_intake(
     db: &Database,
-    legacy: &Legacy,
     config: &ShippingConfig,
     w: &mut Workflow,
 ) -> sqlx::Result<()> {
@@ -236,7 +235,7 @@ async fn refresh_intake(
         return Ok(());
     }
     let mut orders = w.orders.clone();
-    let read = source::intake_history(legacy, configured, &mut orders).await;
+    let read = intake_history::attach(db, configured, &mut orders).await;
     let numbers: Vec<String> = orders.iter().map(|o| o.number.clone()).collect();
     let changed = workflow::change(db, move |stored| {
         // A batch loaded while this was read is not this one.

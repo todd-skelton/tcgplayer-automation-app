@@ -1,13 +1,10 @@
 //! Where the orders come from: TCGplayer's Ready to Ship queue or one order, read by the Node app
-//! (`/api/shipping-export/tcgplayer-orders`), with each order's intake history
-//! (`intake-history`) and the seller's order history record (`/api/seller-order-history`).
+//! (`/api/shipping-export/tcgplayer-orders`), and the seller's order history record
+//! (`/api/seller-order-history`).
 use serde::{Deserialize, Serialize};
 
-use super::orders::{IntakeHistory, Order};
+use super::orders::Order;
 use crate::legacy::Legacy;
-
-/// The most orders the intake history is read for at once, as the Node route takes.
-const MOST_FOR_HISTORY: usize = 500;
 
 /// How far the saved scan of the seller's orders has got.
 #[derive(Clone, Debug, Deserialize)]
@@ -88,92 +85,6 @@ pub async fn one(legacy: &Legacy, seller_key: &str, number: &str) -> Result<Load
             },
         )
         .await
-}
-
-/// The orders' intake history read again (the Node route checks the seller is the configured
-/// one); an order it has none for gets none.
-pub async fn intake_history(
-    legacy: &Legacy,
-    seller_key: &str,
-    orders: &mut [Order],
-) -> Result<(), String> {
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Line {
-        quantity: u32,
-        unit_price: f64,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        sku_id: Option<i64>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        inventory_sku_id: Option<String>,
-    }
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Asked {
-        order_number: String,
-        order_date: String,
-        item_count: u32,
-        value_of_products: f64,
-        products: Vec<Line>,
-    }
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Request<'a> {
-        seller_key: &'a str,
-        orders: Vec<Asked>,
-    }
-    #[derive(Deserialize)]
-    struct Answer {
-        histories: Vec<IntakeHistory>,
-    }
-    if orders.is_empty() {
-        return Ok(());
-    }
-    if orders.len() > MOST_FOR_HISTORY {
-        return Err(format!(
-            "Intake history is read for at most {MOST_FOR_HISTORY} orders."
-        ));
-    }
-    let request = Request {
-        seller_key,
-        orders: orders
-            .iter()
-            .map(|o| Asked {
-                order_number: o.number.clone(),
-                order_date: o.order_date.clone(),
-                item_count: o.item_count,
-                value_of_products: o.value_of_products,
-                products: o
-                    .lines()
-                    .iter()
-                    .map(|l| Line {
-                        quantity: l.quantity,
-                        unit_price: l.unit_price,
-                        sku_id: l.sku_id,
-                        inventory_sku_id: l.inventory_sku_id.clone(),
-                    })
-                    .collect(),
-            })
-            .collect(),
-    };
-    let answer: Answer = legacy
-        .send("/api/shipping-export/intake-history", &request)
-        .await?;
-    if answer
-        .histories
-        .iter()
-        .any(|h| h.seller_key != seller_key.trim())
-    {
-        return Err("Intake history response seller does not match the loaded workflow.".into());
-    }
-    for order in orders.iter_mut() {
-        order.intake_history = answer
-            .histories
-            .iter()
-            .find(|h| h.order_number == order.number)
-            .cloned();
-    }
-    Ok(())
 }
 
 /// How far the seller's order history scan has got.
