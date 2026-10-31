@@ -6,7 +6,7 @@ use serde::Deserialize;
 use super::{
     catalog::{self, Condition, Product, ProductLine, Scope, Set, Shown},
     pending::{self, Place, Totals},
-    queue::{self, CostRate, Queue, QueueInput},
+    queue::{self, CostRate, NotQueued, Queue, QueueInput},
     url::{self, Selection},
     views::{
         BATCHES_EVERY, BackgroundBatches, ClearConfirm, CountForm, Counted, IntakeError,
@@ -204,13 +204,12 @@ pub async fn clear(
     })
 }
 
-/// The counts handed off as a pricing batch, with the cost and workflow chosen. Refused before
-/// anything is sent when the counts moved since the screen showed them; the Node app refuses it
-/// when the seller moved, and queues it once per submit key.
+/// The counts handed off as a pricing batch, with the cost and workflow chosen, once per submit
+/// key. Refused when the counts moved since the screen showed them, checked here first and again
+/// under the queue's lock, or when the seller moved.
 pub async fn queue_batch(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::QueueBatch>,
     Form(input): Form<QueueInput>,
 ) -> HtmlResult {
@@ -250,14 +249,15 @@ pub async fn queue_batch(
         expected: &expected,
         seller_key: &input.seller,
     };
-    let queued = match queue::queue(&legacy, key.as_str(), &request).await {
+    let queued = match queue::queue(&db, key.as_str(), &request).await {
         Ok(queued) => queued,
-        Err(message) => {
+        Err(NotQueued::Refused(why, message)) => {
             let mut errors = Errors::new();
-            errors.refuse(Refusal::Conflict, message);
+            errors.refuse(why, message);
             let quantities = pending::quantities(&db).await?;
             return refuse(&req, &db, &selection, &input, &errors, Some(&quantities)).await;
         }
+        Err(NotQueued::Failed(why)) => return Err(corten::Error::new(why)),
     };
     let notice = format!(
         "Batch {} queued with {}. You can keep adding inventory.",

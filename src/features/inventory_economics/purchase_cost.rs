@@ -1,5 +1,7 @@
 //! Recording a purchase cost, ported from `inventoryEconomicsRepository.recordPurchaseCost` for the
-//! explicit rule, the one estimates use: each receipt lot of the batches is given its amount.
+//! two rules the app records: explicit, the one estimates use, where each receipt lot of the
+//! batches is given its amount; and quantity, an entered total split across the lots by their
+//! units.
 //!
 //! A request is recorded once. Its fingerprint is the one Node computes, so a request either app
 //! repeats is answered with the entry already saved, and one reused for other evidence is refused.
@@ -9,7 +11,10 @@ use sqlx::PgConnection;
 
 use super::{
     estimate::{ExplicitAllocation, PurchaseCost},
-    ledger::fingerprint::{sha256_hex, stable_json},
+    ledger::{
+        fingerprint::{sha256_hex, stable_json},
+        money::allocate,
+    },
 };
 
 /// The entry a request saved, or found already saved for it.
@@ -54,9 +59,11 @@ pub fn request_fingerprint(cost: &PurchaseCost) -> String {
 /// Records `cost` on `conn`, which the caller holds in a transaction.
 pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Saved, String> {
     let failed = |e: sqlx::Error| e.to_string();
-    if cost.allocation_rule != "explicit" {
-        return Err("Only explicit purchase costs are recorded here.".into());
-    }
+    let explicit = match cost.allocation_rule {
+        "explicit" => true,
+        "quantity" => false,
+        _ => return Err("Only explicit and quantity purchase costs are recorded here.".into()),
+    };
     let batch_numbers = batch_numbers(cost);
     if batch_numbers.is_empty()
         || batch_numbers.len() > 100
@@ -65,11 +72,15 @@ pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Save
         return Err("Purchase costs require 1 to 100 positive batch numbers.".into());
     }
     let allocations = allocations(cost);
-    if allocations.is_empty()
-        || allocations.iter().any(|a| a.receipt_id <= 0)
-        || allocations
-            .windows(2)
-            .any(|pair| pair[0].receipt_id == pair[1].receipt_id)
+    if !explicit && !allocations.is_empty() {
+        return Err("Explicit receipt amounts require the explicit allocation rule.".into());
+    }
+    if explicit
+        && (allocations.is_empty()
+            || allocations.iter().any(|a| a.receipt_id <= 0)
+            || allocations
+                .windows(2)
+                .any(|pair| pair[0].receipt_id == pair[1].receipt_id))
     {
         return Err("Explicit allocations require each receipt exactly once.".into());
     }
@@ -190,12 +201,12 @@ pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Save
         return Err("A receipt lot already belongs to another purchase or currency.".into());
     }
 
-    let receipts: Vec<(i32, Option<String>)> = sqlx::query_as(
-        "SELECT receipt.receipt_id,receipt.seller_key
+    let receipts: Vec<(i32, Option<String>, i32)> = sqlx::query_as(
+        "SELECT receipt.receipt_id,receipt.seller_key,receipt.original_quantity
          FROM inventory_receipt_batch_links link
          JOIN inventory_receipts receipt ON receipt.receipt_id=link.receipt_id
          WHERE link.batch_number=ANY($1::int[])
-         GROUP BY receipt.receipt_id,receipt.seller_key
+         GROUP BY receipt.receipt_id,receipt.seller_key,receipt.original_quantity
          ORDER BY receipt.receipt_id",
     )
     .bind(&batch_numbers)
@@ -207,22 +218,16 @@ pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Save
     }
     if receipts
         .iter()
-        .any(|(_, seller)| seller.as_deref().is_some_and(|s| s != cost.seller_key))
+        .any(|(_, seller, _)| seller.as_deref().is_some_and(|s| s != cost.seller_key))
     {
         return Err("Purchase receipts cannot cross sellers.".into());
     }
-    // Both are sorted by receipt, so every receipt is named once exactly when the ids line up.
-    if receipts.len() != allocations.len()
-        || receipts
-            .iter()
-            .zip(&allocations)
-            .any(|((id, _), a)| *id != a.receipt_id)
-    {
-        return Err("Explicit allocations must name every selected receipt exactly once.".into());
-    }
-    if allocations.iter().map(|a| a.amount_cents).sum::<i64>() != cost.total_amount_cents {
-        return Err("Explicit receipt allocations must equal the purchase total.".into());
-    }
+    let receipt_ids: Vec<i32> = receipts.iter().map(|(id, _, _)| *id).collect();
+    let (amounts, weights) = if explicit {
+        explicit_amounts(&receipt_ids, &allocations, cost.total_amount_cents)?
+    } else {
+        by_quantity(&receipts, cost.total_amount_cents)?
+    };
 
     let entry_id: String = sqlx::query_scalar(
         "INSERT INTO inventory_purchase_cost_entries
@@ -247,15 +252,15 @@ pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Save
     .fetch_one(&mut *conn)
     .await
     .map_err(failed)?;
-    // An explicit lot's weight is its amount.
-    let amounts: Vec<i64> = allocations.iter().map(|a| a.amount_cents).collect();
     sqlx::query(
         "INSERT INTO inventory_purchase_cost_allocations (entry_id,receipt_id,allocated_amount_cents,allocation_weight)
-         SELECT $1::bigint,receipt_id,amount,amount FROM unnest($2::int[],$3::bigint[]) AS lot(receipt_id,amount)",
+         SELECT $1::bigint,receipt_id,amount,weight
+         FROM unnest($2::int[],$3::bigint[],$4::bigint[]) AS lot(receipt_id,amount,weight)",
     )
     .bind(&entry_id)
     .bind(&receipt_ids)
     .bind(&amounts)
+    .bind(&weights)
     .execute(&mut *conn)
     .await
     .map_err(failed)?;
@@ -263,6 +268,59 @@ pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Save
         entry_id,
         repeated: false,
     })
+}
+
+/// Each lot's amount and weight under the explicit rule: the amount it was given, which is also
+/// its weight. Both lists are sorted by receipt, so every receipt is named once exactly when the
+/// ids line up.
+fn explicit_amounts(
+    receipt_ids: &[i32],
+    allocations: &[ExplicitAllocation],
+    total_amount_cents: i64,
+) -> Result<(Vec<i64>, Vec<i64>), String> {
+    if receipt_ids.len() != allocations.len()
+        || receipt_ids
+            .iter()
+            .zip(allocations)
+            .any(|(id, a)| *id != a.receipt_id)
+    {
+        return Err("Explicit allocations must name every selected receipt exactly once.".into());
+    }
+    if allocations.iter().map(|a| a.amount_cents).sum::<i64>() != total_amount_cents {
+        return Err("Explicit receipt allocations must equal the purchase total.".into());
+    }
+    let amounts: Vec<i64> = allocations.iter().map(|a| a.amount_cents).collect();
+    Ok((amounts.clone(), amounts))
+}
+
+/// Each lot's amount and weight under the quantity rule: the total split by the lots' units, to
+/// the cent, the cents left over going to the largest remainders and then by receipt id as text
+/// (`allocateAmountCents`).
+fn by_quantity(
+    receipts: &[(i32, Option<String>, i32)],
+    total_amount_cents: i64,
+) -> Result<(Vec<i64>, Vec<i64>), String> {
+    let ids: Vec<String> = receipts.iter().map(|(id, _, _)| id.to_string()).collect();
+    let mut targets = Vec::with_capacity(receipts.len());
+    for ((_, _, quantity), id) in receipts.iter().zip(&ids) {
+        let weight = u64::try_from(*quantity)
+            .map_err(|_| format!("Allocation weight for {id} must be nonnegative."))?;
+        targets.push((id.as_str(), weight));
+    }
+    let shares = allocate(total_amount_cents, &targets)
+        .ok_or("Allocation weights must include a positive value.")?;
+    let amounts = ids
+        .iter()
+        .map(|id| {
+            shares
+                .iter()
+                .find(|share| share.id == *id)
+                .map(|share| share.cents)
+                .expect("every lot has a share")
+        })
+        .collect();
+    let weights = receipts.iter().map(|(_, _, q)| i64::from(*q)).collect();
+    Ok((amounts, weights))
 }
 
 #[cfg(test)]

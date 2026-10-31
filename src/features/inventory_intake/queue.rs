@@ -1,16 +1,31 @@
-//! Handing what was counted off as a pricing batch, and the batches handed off. The Node app's
-//! `/api/inventory-intake-runs` does both: it queues a batch once per request id, refuses it when
-//! the counts or the seller moved since the screen showed them, records its cost and starts its
-//! pricing, and lists the latest 25. Those rules stay there until the intake workers move here.
+//! Handing what was counted off as a pricing batch, and the batches handed off, ported from the
+//! Node app's `/api/inventory-intake-runs` (`queueInventoryIntake`,
+//! `findRecentInventoryIntakeRuns`): a batch is queued once per request id, refused when the
+//! counts or the seller moved since the screen showed them, costed (an entered total split by
+//! units, or an estimate at its rate) and queued for pricing in full; the latest 25 are listed.
+//!
+//! Node's route also starts its pricing and publication workers in its own process, unless
+//! `WORKERS_RUN_IN_PROCESS=false`. This process cannot. In production the workers are processes
+//! of their own that poll every second, so they find the job. In development Node's in-process
+//! worker prices it once any Node route has started it, as for the jobs a CSV import or a
+//! strategy analysis queues here.
 use std::collections::HashMap;
 
-use corten::{UrlValue, prelude::*};
+use corten::{Refusal, UrlValue, prelude::*};
 use serde::{Deserialize, Serialize};
+use sqlx::PgConnection;
 
 use crate::{
     database::Database,
-    features::{continuous_pricing, publication_configuration, shipping_configuration},
-    legacy::Legacy,
+    features::{
+        batch_pricing::queue as batch_queue,
+        continuous_pricing::{self, scheduler},
+        inventory_economics::{
+            estimate::{self, PurchaseCost},
+            purchase_cost,
+        },
+        publication_configuration, shipping_configuration,
+    },
 };
 
 /// What queuing does with the batch: price it, or price it and publish what is ready.
@@ -19,6 +34,16 @@ use crate::{
 pub enum Workflow {
     PriceOnly,
     Publish,
+}
+
+impl Workflow {
+    /// As the Node app stores it.
+    pub fn word(self) -> &'static str {
+        match self {
+            Workflow::PriceOnly => "price_only",
+            Workflow::Publish => "publish",
+        }
+    }
 }
 
 /// How the next batch is costed.
@@ -47,14 +72,7 @@ pub fn dollars(cents: i64) -> String {
 
 /// A nonnegative amount with at most two decimals, in cents: `0.3` is 30.
 fn cents(text: &str) -> Option<i64> {
-    let (whole, fraction) = text.split_once('.').unwrap_or((text, ""));
-    let digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
-    if !digits(whole) || !(fraction.is_empty() || (digits(fraction) && fraction.len() <= 2)) {
-        return None;
-    }
-    let whole: i64 = whole.parse().ok()?;
-    let fraction: i64 = format!("{fraction:0<2}").parse().ok()?;
-    whole.checked_mul(100)?.checked_add(fraction)
+    dollars_to_cents(text, "Amount").ok()
 }
 
 /// The percent of market as typed (0 to 100, at most two decimals), or why not, in the Node
@@ -201,11 +219,8 @@ impl QueueInput {
                         "Enter the purchase reference before queuing.",
                     );
                 }
-                if cents(total).is_none() {
-                    errors.add(
-                        f.purchase_total,
-                        "Purchase total must be a nonnegative amount with at most two decimal places.",
-                    );
+                if let Err(message) = dollars_to_cents(total, "Purchase total") {
+                    errors.add(f.purchase_total, message);
                 }
                 let date = self.purchase_date.trim();
                 Cost::Purchase {
@@ -250,9 +265,10 @@ pub fn fingerprint(quantities: &HashMap<i32, i32>) -> String {
     format!("{hash:016x}")
 }
 
+/// The purchase cost as the queue request names it.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct PurchaseCost<'a> {
+struct PurchaseCostRequest<'a> {
     purchase_reference: &'a str,
     total_amount: &'a str,
     provenance: &'static str,
@@ -269,24 +285,141 @@ struct EstimatedCostRate {
     per_card_deduction: String,
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct QueueRequest<'a> {
-    request_id: &'a str,
-    workflow: Workflow,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    purchase_cost: Option<PurchaseCost<'a>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    estimated_cost_rate: Option<EstimatedCostRate>,
-    expected_inventory: &'a [IntakeQuantity],
-    expected_seller_key: &'a str,
-}
-
-/// A batch the Node app queued.
-#[derive(Clone, Copy, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+/// A batch queued, or the one a request queued before.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Queued {
     pub batch_number: i32,
+}
+
+/// Why a batch was not queued.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum NotQueued {
+    /// Refused, in the Node app's words: input it would not take (its 400), or counts, a seller
+    /// or a request that moved on (its 409).
+    Refused(Refusal, String),
+    /// The database failed.
+    Failed(String),
+}
+
+impl From<sqlx::Error> for NotQueued {
+    fn from(e: sqlx::Error) -> Self {
+        NotQueued::Failed(e.to_string())
+    }
+}
+
+fn invalid(message: impl Into<String>) -> NotQueued {
+    NotQueued::Refused(Refusal::Invalid, message.into())
+}
+
+fn conflict(message: impl Into<String>) -> NotQueued {
+    NotQueued::Refused(Refusal::Conflict, message.into())
+}
+
+/// JavaScript's `length`: UTF-16 units.
+fn js_length(text: &str) -> usize {
+    text.encode_utf16().count()
+}
+
+/// The largest whole number JavaScript counts exactly.
+const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;
+
+/// `dollarsToCents`: a nonnegative amount with at most two decimals, in cents.
+fn dollars_to_cents(text: &str, label: &str) -> Result<i64, String> {
+    let text = text.trim();
+    let (whole, fraction) = match text.split_once('.') {
+        Some((whole, fraction)) => (whole, Some(fraction)),
+        None => (text, None),
+    };
+    let digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
+    if !digits(whole) || fraction.is_some_and(|f| !digits(f) || f.len() > 2) {
+        return Err(format!(
+            "{label} must be a nonnegative amount with at most two decimal places."
+        ));
+    }
+    let fraction = format!("{:0<2}", fraction.unwrap_or(""));
+    whole
+        .parse::<i64>()
+        .ok()
+        .and_then(|w| w.checked_mul(100)?.checked_add(fraction.parse().ok()?))
+        .filter(|cents| *cents <= MAX_SAFE_INTEGER)
+        .ok_or_else(|| format!("{label} is outside the supported range."))
+}
+
+/// `requiredText`: trimmed, and at most 200 characters.
+fn required_text(text: &str, label: &str) -> Result<String, String> {
+    let text = text.trim();
+    if text.is_empty() || js_length(text) > 200 {
+        return Err(format!(
+            "{label} is required and limited to 200 characters."
+        ));
+    }
+    Ok(text.to_owned())
+}
+
+/// `calendarDate`: none when blank, else a real `YYYY-MM-DD` date (as `Date.UTC` reads it,
+/// which takes years below 100 for the 1900s, so those are refused).
+fn calendar_date(text: Option<&str>) -> Result<Option<String>, String> {
+    let Some(text) = text.map(str::trim).filter(|t| !t.is_empty()) else {
+        return Ok(None);
+    };
+    if js_length(text) > 200 {
+        return Err("Purchase date is limited to 200 characters.".to_owned());
+    }
+    let refused = || "Purchase date must be a calendar date in YYYY-MM-DD format.".to_owned();
+    let bytes = text.as_bytes();
+    let shaped = bytes.len() == 10
+        && bytes[4] == b'-'
+        && bytes[7] == b'-'
+        && [0, 1, 2, 3, 5, 6, 8, 9]
+            .iter()
+            .all(|&i| bytes[i].is_ascii_digit());
+    if !shaped {
+        return Err(refused());
+    }
+    let number = |range: std::ops::Range<usize>| text[range].parse::<u32>().unwrap_or(0);
+    let year = i32::try_from(number(0..4)).unwrap_or(0);
+    if year < 100 || chrono::NaiveDate::from_ymd_opt(year, number(5..7), number(8..10)).is_none() {
+        return Err(refused());
+    }
+    Ok(Some(text.to_owned()))
+}
+
+/// `parseIntakePurchaseCost`: the entered total as the purchase cost the batch records, split
+/// across its lots by their units, or why not. It names no batch until the batch exists.
+fn purchase_cost(
+    request_id: &str,
+    seller_key: &str,
+    cost: &Cost,
+) -> Result<Option<PurchaseCost>, String> {
+    let Cost::Purchase {
+        reference,
+        total,
+        date,
+        estimated,
+    } = cost
+    else {
+        return Ok(None);
+    };
+    let total_amount_cents = dollars_to_cents(total, "Purchase total")?;
+    let purchased_at = calendar_date(date.as_deref())?;
+    let request_id = required_text(&format!("{request_id}:purchase-cost"), "Request ID")?;
+    let seller_key = required_text(seller_key, "Seller key")?;
+    let purchase_reference = required_text(reference, "Purchase reference")?;
+    Ok(Some(PurchaseCost {
+        request_id,
+        seller_key,
+        purchase_reference,
+        currency: "USD",
+        total_amount_cents,
+        provenance: if *estimated { "estimated" } else { "actual" },
+        source: "intake",
+        allocation_rule: "quantity",
+        batch_numbers: Vec::new(),
+        purchased_at,
+        explicit_allocations: Vec::new(),
+        corrects_entry_id: None,
+        correction_reason: None,
+    }))
 }
 
 /// What a queue request carries besides its id: what queuing does, the cost, and the counts and
@@ -298,48 +431,257 @@ pub struct Queue<'a> {
     pub seller_key: &'a str,
 }
 
-fn request<'a>(request_id: &'a str, queue: &'a Queue<'a>) -> QueueRequest<'a> {
-    let (purchase_cost, estimated_cost_rate) = match queue.cost {
-        Cost::Estimate => (None, None),
-        Cost::Rate(rate) => (
-            None,
-            Some(EstimatedCostRate {
-                market_percent: rate.market_percent(),
-                per_card_deduction: rate.per_card_deduction(),
-            }),
-        ),
+/// What a request asked for, as the Node app saves it (`request_json`) and compares a repeat
+/// of it: what queuing does, the cost as sent, the rate only when one was, and the counts in SKU
+/// order with the seller the screen showed.
+fn details(queue: &Queue<'_>) -> serde_json::Value {
+    let mut expected = queue.expected.to_vec();
+    expected.sort_by_key(|i| i.sku);
+    let purchase_cost = match queue.cost {
         Cost::Purchase {
             reference,
             total,
             date,
             estimated,
-        } => (
-            Some(PurchaseCost {
-                purchase_reference: reference,
-                total_amount: total,
-                provenance: if *estimated { "estimated" } else { "actual" },
-                allocation_rule: "quantity",
-                purchased_at: date.as_deref(),
-                currency: "USD",
-            }),
-            None,
-        ),
+        } => serde_json::to_value(PurchaseCostRequest {
+            purchase_reference: reference,
+            total_amount: total,
+            provenance: if *estimated { "estimated" } else { "actual" },
+            allocation_rule: "quantity",
+            purchased_at: date.as_deref(),
+            currency: "USD",
+        })
+        .expect("a purchase cost is JSON"),
+        _ => serde_json::Value::Null,
     };
-    QueueRequest {
-        request_id,
-        workflow: queue.workflow,
-        purchase_cost,
-        estimated_cost_rate,
-        expected_inventory: queue.expected,
-        expected_seller_key: queue.seller_key,
+    let mut details = serde_json::json!({
+        "workflow": queue.workflow,
+        "purchaseCost": purchase_cost,
+        "expectedInventory": expected,
+        "expectedSellerKey": queue.seller_key,
+    });
+    if let Cost::Rate(rate) = queue.cost {
+        details["estimatedCostRate"] = serde_json::to_value(EstimatedCostRate {
+            market_percent: rate.market_percent(),
+            per_card_deduction: rate.per_card_deduction(),
+        })
+        .expect("a rate is JSON");
     }
+    details
 }
 
-/// Queues the counts as a batch, once per `request_id`: the same id again gives the same batch.
-pub async fn queue(legacy: &Legacy, request_id: &str, queue: &Queue<'_>) -> Result<Queued, String> {
-    legacy
-        .send("/api/inventory-intake-runs", &request(request_id, queue))
-        .await
+/// What the Node route refuses before it looks at the queue: a request id that is blank or
+/// longer than 180, counts that are not 1 to 5,000 distinct SKUs each with a positive count, or
+/// a seller key longer than 200.
+fn well_formed(request_id: &str, queue: &Queue<'_>) -> bool {
+    let mut skus: Vec<i32> = queue.expected.iter().map(|i| i.sku).collect();
+    skus.sort_unstable();
+    !request_id.trim().is_empty()
+        && js_length(request_id) <= 180
+        && (1..=5000).contains(&queue.expected.len())
+        && queue.expected.iter().all(|i| i.sku > 0 && i.quantity > 0)
+        && skus.windows(2).all(|pair| pair[0] != pair[1])
+        && js_length(queue.seller_key) <= 200
+}
+
+/// Why the target refuses what the request asks, in the Node app's words: publishing for a
+/// seller it may not publish for, or a cost or publication with no seller to record it for.
+fn refusal(target: &Target, workflow: Workflow, cost: &Cost) -> Option<String> {
+    if workflow == Workflow::Publish && !target.can_publish {
+        return target.publishing_unavailable_reason.clone();
+    }
+    let needs_seller = workflow == Workflow::Publish || !matches!(cost, Cost::Estimate);
+    (needs_seller && target.seller_key.is_empty()).then(|| {
+        "Configure a default shipping seller before queuing publication or purchase cost."
+            .to_owned()
+    })
+}
+
+/// `createFromPendingInventory`: the counted inventory locked and moved into a new batch with
+/// its receipt lots linked (each lot as its adjustments leave it), or none when nothing is
+/// counted. What is counted while this runs stays for the next batch.
+async fn create_batch(conn: &mut PgConnection, request_id: &str) -> sqlx::Result<Option<i32>> {
+    let skus: Vec<i32> =
+        sqlx::query_scalar("SELECT sku FROM pending_inventory ORDER BY created_at FOR UPDATE")
+            .fetch_all(&mut *conn)
+            .await?;
+    if skus.is_empty() {
+        return Ok(None);
+    }
+    let batch_number: i32 = sqlx::query_scalar(
+        "INSERT INTO inventory_batches (status, source_type, source_label, source_request_id)
+        VALUES ('pending', 'pending_inventory', 'Inventory Manager', $1)
+        RETURNING batch_number",
+    )
+    .bind(request_id)
+    .fetch_one(&mut *conn)
+    .await?;
+    sqlx::query(
+        "INSERT INTO inventory_batch_intake_requests (request_id, batch_number) VALUES ($1, $2)",
+    )
+    .bind(request_id)
+    .bind(batch_number)
+    .execute(&mut *conn)
+    .await?;
+    sqlx::query(
+        "INSERT INTO inventory_batch_items (batch_number, sku, total_quantity, add_to_quantity,
+          current_price, product_line_id, set_id, product_id, original_row_json, created_at, updated_at)
+        SELECT $1, sku, 0, quantity, NULL, product_line_id, set_id, product_id, NULL, created_at, updated_at
+        FROM pending_inventory WHERE sku = ANY($2::int[])",
+    )
+    .bind(batch_number)
+    .bind(&skus)
+    .execute(&mut *conn)
+    .await?;
+    sqlx::query(
+        "WITH adjusted_receipts AS (
+          SELECT receipt.receipt_id,
+            receipt.original_quantity + COALESCE(SUM(adjustment.quantity_delta), 0)::integer AS quantity
+          FROM inventory_receipts receipt
+          JOIN pending_inventory pending ON pending.sku = receipt.sku
+          LEFT JOIN inventory_receipt_adjustments adjustment ON adjustment.receipt_id = receipt.receipt_id
+          WHERE receipt.receipt_kind = 'received'
+            AND pending.sku = ANY($2::int[])
+            AND NOT EXISTS (SELECT 1 FROM inventory_receipt_batch_links existing_link
+              WHERE existing_link.receipt_id = receipt.receipt_id)
+          GROUP BY receipt.receipt_id
+        )
+        INSERT INTO inventory_receipt_batch_links (receipt_id, batch_number, linked_quantity)
+        SELECT receipt_id, $1, quantity FROM adjusted_receipts WHERE quantity > 0",
+    )
+    .bind(batch_number)
+    .bind(&skus)
+    .execute(&mut *conn)
+    .await?;
+    sqlx::query("DELETE FROM pending_inventory WHERE sku = ANY($1::int[])")
+        .bind(&skus)
+        .execute(&mut *conn)
+        .await?;
+    Ok(Some(batch_number))
+}
+
+/// `queueInventoryIntake` on `conn`, which the caller holds in a transaction: the counts as
+/// a batch once per request id, costed and queued for pricing in full, under the lock every
+/// change to the counts takes. A request the screen drew against other counts or another seller
+/// is refused; the same request again answers the batch it queued.
+pub async fn queued(
+    conn: &mut PgConnection,
+    request_id: &str,
+    queue: &Queue<'_>,
+    target: &Target,
+    config: &serde_json::Value,
+) -> Result<Queued, NotQueued> {
+    if !well_formed(request_id, queue) {
+        return Err(invalid(
+            "A request ID and valid queue options are required.",
+        ));
+    }
+    let request_id = request_id.trim();
+    let details = details(queue);
+    sqlx::query("SELECT pg_advisory_xact_lock(55, 0)")
+        .execute(&mut *conn)
+        .await?;
+    let previous: Option<(i32, serde_json::Value)> = sqlx::query_as(
+        "SELECT batch_number, request_json FROM inventory_intake_runs WHERE request_id = $1",
+    )
+    .bind(request_id)
+    .fetch_optional(&mut *conn)
+    .await?;
+    if let Some((batch_number, saved)) = previous {
+        if saved != details {
+            return Err(conflict(
+                "This request already queued different options. Recover the original request first.",
+            ));
+        }
+        return Ok(Queued { batch_number });
+    }
+    let used: Option<String> = sqlx::query_scalar(
+        "SELECT request_id FROM inventory_batch_intake_requests WHERE request_id = $1",
+    )
+    .bind(request_id)
+    .fetch_optional(&mut *conn)
+    .await?;
+    if used.is_some() {
+        return Err(conflict(
+            "This request belongs to an earlier or deleted batch.",
+        ));
+    }
+    let current: Vec<(i32, i32)> =
+        sqlx::query_as("SELECT sku, quantity FROM pending_inventory ORDER BY sku")
+            .fetch_all(&mut *conn)
+            .await?;
+    let current: Vec<IntakeQuantity> = current
+        .into_iter()
+        .map(|(sku, quantity)| IntakeQuantity { sku, quantity })
+        .collect();
+    if serde_json::to_value(&current).ok().as_ref() != details.get("expectedInventory") {
+        return Err(conflict(
+            "The shared inventory queue changed. Review the refreshed quantities and queue again. No inventory was handed off.",
+        ));
+    }
+    if target.seller_key != queue.seller_key {
+        return Err(conflict(
+            "The intake seller changed. Refresh and review the seller before queuing again.",
+        ));
+    }
+    if let Some(why) = refusal(target, queue.workflow, queue.cost) {
+        return Err(invalid(why));
+    }
+    let seller = target.seller_key.as_str();
+    let purchase = purchase_cost(request_id, seller, queue.cost).map_err(invalid)?;
+    let batch_number = create_batch(conn, request_id)
+        .await?
+        .ok_or_else(|| invalid("No saved inventory is available to queue."))?;
+    // Recording a cost refuses a lot another purchase owns, or a request id used for other
+    // evidence. Node answers the first with a 409 and the rest with a 500 whose message the
+    // screen shows; here every one is shown as a conflict.
+    let recorded = if let Some(mut cost) = purchase {
+        cost.batch_numbers = vec![batch_number];
+        purchase_cost::record(conn, &cost).await.map(drop)
+    } else {
+        if let Cost::Rate(rate) = queue.cost {
+            estimate::save_rate(&mut *conn, batch_number, *rate).await?;
+        }
+        if seller.is_empty() {
+            Ok(())
+        } else {
+            estimate::record_batch(conn, seller, batch_number)
+                .await
+                .map(drop)
+        }
+    };
+    recorded.map_err(conflict)?;
+    let job = batch_queue::create_or_reuse(conn, batch_number, "full", config)
+        .await?
+        .ok_or_else(|| NotQueued::Failed(format!("Batch {batch_number} was not saved.")))?;
+    sqlx::query(
+        "INSERT INTO inventory_intake_runs
+          (request_id, batch_number, pricing_job_id, workflow, request_json, seller_key)
+        VALUES ($1, $2, $3, $4, $5, $6)",
+    )
+    .bind(request_id)
+    .bind(batch_number)
+    .bind(job.id)
+    .bind(queue.workflow.word())
+    .bind(&details)
+    .bind((!seller.is_empty()).then_some(seller))
+    .execute(&mut *conn)
+    .await?;
+    Ok(Queued { batch_number })
+}
+
+/// Queues the counts as a batch (see [`queued`]) in a transaction of its own, against the
+/// seller and the pricing configuration as they are now.
+pub async fn queue(
+    db: &Database,
+    request_id: &str,
+    queue: &Queue<'_>,
+) -> Result<Queued, NotQueued> {
+    let (target, config) = tokio::try_join!(target(db), scheduler::saved_config(db))?;
+    let mut tx = db.0.begin().await?;
+    let queued = queued(&mut tx, request_id, queue, &target, &config).await?;
+    tx.commit().await?;
+    Ok(queued)
 }
 
 /// The seller queued batches are counted and published for.
@@ -616,6 +958,202 @@ mod tests {
         assert_eq!(target(&db).await.unwrap(), node.target);
     }
 
+    fn cost_of(cost: &serde_json::Value) -> Cost {
+        let text = |key: &str| cost[key].as_str().unwrap().to_owned();
+        match cost["kind"].as_str().unwrap() {
+            "estimate" => Cost::Estimate,
+            "rate" => Cost::Rate(CostRate {
+                market_rate: read_market_percent(&text("marketPercent")).unwrap(),
+                per_unit_deduction_cents: read_per_card_deduction(&text("perCardDeduction"))
+                    .unwrap(),
+            }),
+            _ => Cost::Purchase {
+                reference: text("reference"),
+                total: text("total"),
+                date: cost["date"].as_str().map(str::to_owned),
+                estimated: cost["estimated"].as_bool().unwrap(),
+            },
+        }
+    }
+
+    /// Checks each quantity cost's fingerprint against its own batch number, as only it can be
+    /// (an estimate's names receipt ids, which differ between runs), then drops the two.
+    fn fingerprints_checked(mut captured: serde_json::Value) -> serde_json::Value {
+        for batch in captured["batches"].as_array_mut().unwrap() {
+            let Some(costs) = batch["costs"].as_array_mut() else {
+                continue;
+            };
+            for cost in costs {
+                let fields = cost.as_object_mut().unwrap();
+                let fingerprint = fields.remove("fingerprint").unwrap();
+                let batch_number = fields.remove("batchNumber").unwrap();
+                if fields["rule"] != "quantity" {
+                    continue;
+                }
+                let text = |key: &str| fields[key].as_str().unwrap().to_owned();
+                let ours = purchase_cost::request_fingerprint(&PurchaseCost {
+                    request_id: String::new(),
+                    seller_key: text("seller"),
+                    purchase_reference: text("reference"),
+                    currency: "USD",
+                    total_amount_cents: fields["total"].as_i64().unwrap(),
+                    provenance: if fields["provenance"] == "estimated" {
+                        "estimated"
+                    } else {
+                        "actual"
+                    },
+                    source: "intake",
+                    allocation_rule: "quantity",
+                    batch_numbers: vec![batch_number.as_i64().unwrap() as i32],
+                    purchased_at: fields["purchasedAt"].as_str().map(str::to_owned),
+                    explicit_allocations: Vec::new(),
+                    corrects_entry_id: None,
+                    correction_reason: None,
+                });
+                assert_eq!(fingerprint, ours, "fingerprint of {}", text("request"));
+            }
+        }
+        captured
+    }
+
+    /// The cases in `.port-logs/intake-queue-cases.json`, from the counts
+    /// `.port-logs/pending-seed.sql` leaves, inside a transaction rolled back (a savepoint each),
+    /// against Node's route over the same (`.port-logs/intake-queue-node.ts`): what each request
+    /// is answered, and the batches, lots, costs, jobs and runs left.
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
+    async fn queues_as_node_queues() {
+        use sqlx::Connection;
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let read = |path: &str| std::fs::read_to_string(path).unwrap();
+        let cases: Vec<serde_json::Value> =
+            serde_json::from_str(&read(".port-logs/intake-queue-cases.json")).unwrap();
+        let node: serde_json::Value =
+            serde_json::from_str(&read(".port-logs/intake-queue.node.json")).unwrap();
+        let seed = read(".port-logs/pending-seed.sql");
+        let capture = read(".port-logs/intake-queue-capture.sql");
+        let target = target(&db).await.unwrap();
+        let config = scheduler::saved_config(&db).await.unwrap();
+        assert_eq!(node["seller"], target.seller_key.as_str());
+        let mut tx = db.0.begin().await.unwrap();
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtext('inventory_batch_pricing_jobs tests'))")
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        sqlx::raw_sql(&seed).execute(&mut *tx).await.unwrap();
+        let node_cases = node["cases"].as_array().unwrap();
+        assert_eq!(cases.len(), node_cases.len());
+        for (case, node) in cases.iter().zip(node_cases) {
+            let name = case["name"].as_str().unwrap();
+            let mut each = tx.begin().await.unwrap();
+            if let Some(setup) = case["setup"].as_str() {
+                sqlx::raw_sql(setup).execute(&mut *each).await.unwrap();
+            }
+            let mut batches: Vec<i32> = Vec::new();
+            let mut answers = Vec::new();
+            for step in case["steps"].as_array().unwrap() {
+                let expected: Vec<IntakeQuantity> = match step["expected"].as_array() {
+                    Some(counts) => counts
+                        .iter()
+                        .map(|pair| IntakeQuantity {
+                            sku: pair[0].as_i64().unwrap() as i32,
+                            quantity: pair[1].as_i64().unwrap() as i32,
+                        })
+                        .collect(),
+                    None => {
+                        let rows: Vec<(i32, i32)> = sqlx::query_as(
+                            "SELECT sku, quantity FROM pending_inventory ORDER BY sku",
+                        )
+                        .fetch_all(&mut *each)
+                        .await
+                        .unwrap();
+                        rows.into_iter()
+                            .map(|(sku, quantity)| IntakeQuantity { sku, quantity })
+                            .collect()
+                    }
+                };
+                let cost = cost_of(&step["cost"]);
+                let seller = step["seller"]
+                    .as_str()
+                    .unwrap_or(&target.seller_key)
+                    .to_owned();
+                let request = Queue {
+                    workflow: serde_json::from_value(step["workflow"].clone()).unwrap(),
+                    cost: &cost,
+                    expected: &expected,
+                    seller_key: &seller,
+                };
+                let mut attempt = each.begin().await.unwrap();
+                let id = step["request"].as_str().unwrap();
+                answers.push(
+                    match queued(&mut attempt, id, &request, &target, &config).await {
+                        Ok(Queued { batch_number }) => {
+                            attempt.commit().await.unwrap();
+                            if !batches.contains(&batch_number) {
+                                batches.push(batch_number);
+                            }
+                            let label =
+                                batches.iter().position(|b| *b == batch_number).unwrap() + 1;
+                            serde_json::json!({ "status": 201, "batch": format!("B{label}") })
+                        }
+                        Err(NotQueued::Refused(why, error)) => {
+                            attempt.rollback().await.unwrap();
+                            let status = match why {
+                                Refusal::Invalid => 400,
+                                Refusal::Conflict => 409,
+                                other => panic!("{name}: refused as {other:?}"),
+                            };
+                            serde_json::json!({ "status": status, "error": error })
+                        }
+                        Err(NotQueued::Failed(why)) => panic!("{name}: {why}"),
+                    },
+                );
+            }
+            let captured: String = sqlx::query_scalar(&capture)
+                .fetch_one(&mut *each)
+                .await
+                .unwrap();
+            each.rollback().await.unwrap();
+            assert_eq!(serde_json::Value::from(answers), node["answers"], "{name}");
+            let ours = fingerprints_checked(serde_json::from_str(&captured).unwrap());
+            assert_eq!(
+                ours,
+                fingerprints_checked(node["captured"].clone()),
+                "{name}"
+            );
+        }
+        tx.rollback().await.unwrap();
+    }
+
+    #[test]
+    fn amounts_and_dates_are_read_as_node_reads_them() {
+        assert_eq!(dollars_to_cents(" 12.3 ", "Purchase total"), Ok(1230));
+        assert_eq!(
+            dollars_to_cents("12.", "Purchase total"),
+            Err(
+                "Purchase total must be a nonnegative amount with at most two decimal places."
+                    .into()
+            )
+        );
+        assert_eq!(
+            dollars_to_cents("90071992547409.92", "Purchase total"),
+            Err("Purchase total is outside the supported range.".into())
+        );
+        assert_eq!(
+            dollars_to_cents("90071992547409.91", "Purchase total"),
+            Ok(MAX_SAFE_INTEGER)
+        );
+        assert_eq!(
+            calendar_date(Some(" 2024-02-29 ")),
+            Ok(Some("2024-02-29".into()))
+        );
+        assert_eq!(calendar_date(Some("  ")), Ok(None));
+        assert!(calendar_date(Some("2023-02-29")).is_err());
+        assert!(calendar_date(Some("0099-01-01")).is_err());
+        assert!(calendar_date(Some("2024-2-09")).is_err());
+    }
+
     #[test]
     fn a_rate_is_written_as_entered() {
         assert_eq!(
@@ -717,11 +1255,17 @@ mod tests {
     }
 
     #[test]
-    fn the_request_is_the_json_the_node_route_reads() {
-        let expected = [IntakeQuantity {
-            sku: 2,
-            quantity: 3,
-        }];
+    fn the_request_is_saved_as_the_node_app_saves_it() {
+        let expected = [
+            IntakeQuantity {
+                sku: 5,
+                quantity: 1,
+            },
+            IntakeQuantity {
+                sku: 2,
+                quantity: 3,
+            },
+        ];
         let cost = Cost::Rate(CostRate {
             market_rate: 0.6,
             per_unit_deduction_cents: 50,
@@ -732,14 +1276,13 @@ mod tests {
             expected: &expected,
             seller_key: "abc",
         };
-        let json = serde_json::to_value(request("r1", &q)).unwrap();
         assert_eq!(
-            json,
+            details(&q),
             serde_json::json!({
-                "requestId": "r1",
                 "workflow": "price_only",
+                "purchaseCost": null,
                 "estimatedCostRate": { "marketPercent": "60", "perCardDeduction": "0.50" },
-                "expectedInventory": [{ "sku": 2, "quantity": 3 }],
+                "expectedInventory": [{ "sku": 2, "quantity": 3 }, { "sku": 5, "quantity": 1 }],
                 "expectedSellerKey": "abc"
             })
         );
@@ -755,7 +1298,8 @@ mod tests {
             expected: &expected,
             seller_key: "abc",
         };
-        let json = serde_json::to_value(request("r2", &q)).unwrap();
+        let json = details(&q);
+        assert_eq!(json.get("estimatedCostRate"), None);
         assert_eq!(
             json["purchaseCost"],
             serde_json::json!({

@@ -12,7 +12,7 @@ use crate::{
     features::{
         batch_pricing::{job::MarketData, queue::priority, saved_curves::REUSABLE},
         configuration::config::{self as pricing_config},
-        inventory_economics::ledger::fingerprint::js_float,
+        inventory_economics::ledger::{fingerprint::js_float, proceeds::iso},
         pricing::policy::MODEL_VERSION,
     },
 };
@@ -382,6 +382,20 @@ pub async fn job_config(db: &Database) -> sqlx::Result<Value> {
     .await?;
     let (pricing, supply, lines) = row.unwrap_or_default();
     Ok(pricing_config::normalized(&pricing, &supply, &lines))
+}
+
+/// The pricing configuration with when it was saved, as `pricingConfigRepository.get` answers
+/// it: the Node app queues intake and strategy jobs with the whole answer, `updatedAt` included.
+pub async fn saved_config(db: &Database) -> sqlx::Result<Value> {
+    let mut config = job_config(db).await?;
+    let saved: Option<DateTime<Utc>> =
+        sqlx::query_scalar("SELECT updated_at FROM pricing_config WHERE config_key = 'default'")
+            .fetch_optional(&db.0)
+            .await?;
+    if let (Some(saved), Some(fields)) = (saved, config.as_object_mut()) {
+        fields.insert("updatedAt".into(), Value::String(iso(saved)));
+    }
+    Ok(config)
 }
 
 /// Whether the seller's inventory has not been refreshed within the interval.

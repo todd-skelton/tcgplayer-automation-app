@@ -550,6 +550,18 @@ async fn rate_changed(
              {seller}, so it has no estimate to change."
         ));
     }
+    save_rate(&mut *conn, batch_number, rate)
+        .await
+        .map_err(failed)?;
+    record_batch(conn, seller, batch_number).await
+}
+
+/// `saveBatchEstimatedCostRate`: the rate the batch's estimates use from now on.
+pub async fn save_rate(
+    db: impl sqlx::PgExecutor<'_>,
+    batch_number: i32,
+    rate: CostRate,
+) -> sqlx::Result<()> {
     sqlx::query(
         "INSERT INTO inventory_batch_estimated_cost_rates (batch_number,market_rate,per_unit_deduction_cents)
         VALUES ($1,$2,$3)
@@ -559,10 +571,19 @@ async fn rate_changed(
     .bind(batch_number)
     .bind(rate.market_rate)
     .bind(rate.per_unit_deduction_cents)
-    .execute(&mut *conn)
+    .execute(db)
     .await
-    .map_err(failed)?;
-    let batches = estimable(&mut *conn, seller, Some(&only), 100)
+    .map(drop)
+}
+
+/// `recordEstimatedPurchaseCosts` for one batch: its estimate at its rate, when it is the
+/// seller's and no entered purchase cost owns it.
+pub async fn record_batch(
+    conn: &mut sqlx::PgConnection,
+    seller: &str,
+    batch_number: i32,
+) -> Result<Estimated, String> {
+    let batches = estimable(&mut *conn, seller, Some(&[batch_number]), 100)
         .await
         .map_err(failed)?;
     record(conn, seller, &batches).await

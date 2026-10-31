@@ -15,7 +15,7 @@ use crate::{
             queue,
         },
         continuous_pricing::{scheduler, store},
-        inventory_economics::ledger::{fingerprint::js_float, proceeds::iso},
+        inventory_economics::ledger::fingerprint::js_float,
     },
 };
 
@@ -72,21 +72,6 @@ async fn counted(conn: &mut PgConnection, batch: i32) -> Result<(String, i64), S
     .fetch_one(&mut *conn)
     .await
     .map_err(refused)
-}
-
-/// The pricing configuration the analysis is queued with: the whole stored configuration, with
-/// when it was saved (`pricingConfigRepository.get()`).
-async fn config(db: &Database) -> Result<Value, String> {
-    let mut config = scheduler::job_config(db).await.map_err(refused)?;
-    let saved: Option<DateTime<Utc>> =
-        sqlx::query_scalar("SELECT updated_at FROM pricing_config WHERE config_key = 'default'")
-            .fetch_optional(&db.0)
-            .await
-            .map_err(refused)?;
-    if let (Some(saved), Some(fields)) = (saved, config.as_object_mut()) {
-        fields.insert("updatedAt".into(), Value::String(iso(saved)));
-    }
-    Ok(config)
 }
 
 /// The configured seller's analysis, queued now or already running; why not when there is no
@@ -151,7 +136,7 @@ async fn queue(
             original_row: original_row(item),
         })
         .collect();
-    let config = config(db).await?;
+    let config = scheduler::saved_config(db).await.map_err(refused)?;
     let batch_number = imported::create(conn, "strategy", seller, &items, now).await?;
     queue::create_or_reuse(conn, batch_number, "full", &config)
         .await
