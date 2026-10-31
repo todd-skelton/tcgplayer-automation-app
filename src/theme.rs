@@ -1,6 +1,7 @@
-//! The design tokens (`tokens.json`), in place of the React app's MUI theme: the same blue, a
-//! light and a dark theme that follows the system, and the utility classes made from them.
-corten::style::tokens!("tokens.json");
+//! The design tokens (`tokens/`, W3C Design Tokens), in place of the React app's MUI theme: the
+//! same blue, a light and a dark theme that follows the system, and the utility classes made from
+//! them.
+corten::style::tokens!("tokens/tokens.resolver.json");
 
 use corten::style::ClassList;
 

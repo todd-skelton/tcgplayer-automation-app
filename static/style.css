@@ -9,7 +9,7 @@
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :where(:root):not([data-theme]) {
     color-scheme: dark;
   }
 }

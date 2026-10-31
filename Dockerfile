@@ -22,7 +22,8 @@ RUN npm run build
 # time and every source touched first, since cargo goes by file times.
 FROM rust:1-bookworm AS web-build
 WORKDIR /src
-COPY Cargo.toml Cargo.lock tokens.json /src/
+COPY Cargo.toml Cargo.lock /src/
+COPY tokens /src/tokens
 COPY src /src/src
 COPY static /src/static
 COPY locales /src/locales

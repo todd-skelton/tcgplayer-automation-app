@@ -1,0 +1,180 @@
+{
+  "color": {
+    "ink": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.9098,
+          0.9176,
+          0.9294
+        ],
+        "hex": "#e8eaed"
+      }
+    },
+    "muted": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.6275,
+          0.651,
+          0.6902
+        ],
+        "hex": "#a0a6b0"
+      }
+    },
+    "line": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.1882,
+          0.2039,
+          0.2353
+        ],
+        "hex": "#30343c"
+      }
+    },
+    "bg": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.0706,
+          0.0706,
+          0.0706
+        ],
+        "hex": "#121212"
+      }
+    },
+    "surface": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.1176,
+          0.1216,
+          0.1333
+        ],
+        "hex": "#1e1f22"
+      }
+    },
+    "raised": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.149,
+          0.1569,
+          0.1725
+        ],
+        "hex": "#26282c"
+      }
+    },
+    "accent": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.5647,
+          0.7922,
+          0.9765
+        ],
+        "hex": "#90caf9"
+      }
+    },
+    "accent-ink": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.051,
+          0.1059,
+          0.1647
+        ],
+        "hex": "#0d1b2a"
+      }
+    },
+    "bar": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.1176,
+          0.1216,
+          0.1333
+        ],
+        "hex": "#1e1f22"
+      }
+    },
+    "bar-ink": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          1,
+          1,
+          1
+        ],
+        "hex": "#ffffff"
+      }
+    },
+    "warn": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          1,
+          0.7176,
+          0.302
+        ],
+        "hex": "#ffb74d"
+      }
+    },
+    "warn-soft": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.1686,
+          0.1294,
+          0.0706
+        ],
+        "hex": "#2b2112"
+      }
+    },
+    "danger": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.9373,
+          0.6039,
+          0.6039
+        ],
+        "hex": "#ef9a9a"
+      }
+    },
+    "danger-soft": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.1725,
+          0.0863,
+          0.0863
+        ],
+        "hex": "#2c1616"
+      }
+    },
+    "info": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.5647,
+          0.7922,
+          0.9765
+        ],
+        "hex": "#90caf9"
+      }
+    },
+    "ok": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.5059,
+          0.7804,
+          0.5176
+        ],
+        "hex": "#81c784"
+      }
+    }
+  }
+}
