@@ -6,6 +6,8 @@ use serde::Serialize;
 use serde_json::json;
 use sqlx::{Connection, PgConnection};
 
+use chrono::{DateTime, Utc};
+
 use super::replay::{self, Replay, SavedLine, iso};
 
 /// What became of the SKU a replay claimed.
@@ -16,13 +18,6 @@ pub enum Processed {
     Complete { sku: i32, changed_lines: usize },
 }
 
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the seller order history worker's cycle calls it once its sync store is ported"
-    )
-)]
 /// Replays the seller's next queued SKU in a transaction of its own on `conn` (a savepoint
 /// when `conn` is already in one), or answers none when nothing is queued.
 pub async fn process_next(
@@ -91,6 +86,250 @@ pub async fn process_next(
     };
     tx.commit().await.map_err(failed)?;
     Ok(Some(processed))
+}
+
+/// `standardInventorySku`: a SKU id the inventory can hold, a positive 32-bit integer written plainly.
+pub fn standard_sku(sku_id: &str) -> Option<i32> {
+    let plain = (1..=10).contains(&sku_id.len())
+        && sku_id.bytes().all(|b| b.is_ascii_digit())
+        && !sku_id.starts_with('0');
+    plain.then(|| sku_id.parse::<i32>().ok()).flatten()
+}
+
+/// `enqueue`: the SKU replayed from `affected_from`, or from earlier when it is already queued.
+async fn enqueue(
+    conn: &mut PgConnection,
+    seller: &str,
+    sku: i32,
+    affected_from: DateTime<Utc>,
+) -> sqlx::Result<()> {
+    sqlx::query(
+        "INSERT INTO inventory_fifo_replay_queue (seller_key,sku,affected_from,status,generation)
+         VALUES ($1,$2,$3::timestamptz,'pending',1)
+         ON CONFLICT (seller_key,sku) DO UPDATE SET
+           affected_from=LEAST(inventory_fifo_replay_queue.affected_from,EXCLUDED.affected_from),
+           generation=inventory_fifo_replay_queue.generation+1,status='pending',
+           claim_token=NULL,claim_expires_at=NULL,hold_reason=NULL,updated_at=NOW()",
+    )
+    .bind(seller)
+    .bind(sku)
+    .bind(iso(affected_from))
+    .execute(&mut *conn)
+    .await
+    .map(|_| ())
+}
+
+/// `enqueueOrderRevision`: after an order is recorded, each of its lines the inventory holds gets
+/// a FIFO line and its SKU is queued for replay; a line the inventory cannot hold, or one the
+/// order no longer has, is saved as such.
+pub async fn enqueue_order_revision(conn: &mut PgConnection, order_id: &str) -> Result<(), String> {
+    let failed = |e: sqlx::Error| e.to_string();
+    let order: Option<(String, DateTime<Utc>, i32)> = sqlx::query_as(
+        "SELECT seller_key,order_time,source_revision FROM seller_orders WHERE id=$1::bigint",
+    )
+    .bind(order_id)
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(failed)?;
+    let Some((seller, order_time, source_revision)) = order else {
+        return Err("Seller order was not found for FIFO.".into());
+    };
+    // Node reads the order time into a Date, which keeps milliseconds.
+    let order_time = DateTime::parse_from_rfc3339(&iso(order_time))
+        .map_err(|e| e.to_string())?
+        .with_timezone(&Utc);
+    let current: Vec<(String, i32)> = sqlx::query_as(
+        "SELECT sku_id,ordered_quantity FROM seller_order_lines WHERE order_id=$1::bigint",
+    )
+    .bind(order_id)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(failed)?;
+    let existing: Vec<(String, Option<i32>)> = sqlx::query_as(
+        "SELECT order_line_sku_id,sku FROM inventory_fifo_lines WHERE order_id=$1::bigint",
+    )
+    .bind(order_id)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(failed)?;
+    let supported: Vec<(&str, i32, i32)> = current
+        .iter()
+        .filter_map(|(sku_id, quantity)| {
+            standard_sku(sku_id).map(|sku| (sku_id.as_str(), sku, *quantity))
+        })
+        .collect();
+    if !supported.is_empty() {
+        sqlx::query(
+            "INSERT INTO inventory_fifo_lines
+               (seller_key,order_id,order_line_sku_id,sku,order_time,ordered_quantity,source_order_revision,state,
+                matched_quantity,unmatched_quantity,price_known_quantity,date_known_quantity)
+             SELECT $1,$2::bigint,x.sku_id,x.sku,$3::timestamptz,x.quantity,$4,'pending',0,x.quantity,0,0
+             FROM unnest($5::text[],$6::int[],$7::int[]) AS x(sku_id,sku,quantity)
+             ON CONFLICT (order_id,order_line_sku_id) DO NOTHING",
+        )
+        .bind(&seller)
+        .bind(order_id)
+        .bind(iso(order_time))
+        .bind(source_revision)
+        .bind(supported.iter().map(|(id, _, _)| *id).collect::<Vec<_>>())
+        .bind(supported.iter().map(|(_, sku, _)| *sku).collect::<Vec<_>>())
+        .bind(supported.iter().map(|(_, _, quantity)| *quantity).collect::<Vec<_>>())
+        .execute(&mut *conn)
+        .await
+        .map_err(failed)?;
+    }
+    let mut skus: Vec<i32> = current
+        .iter()
+        .filter_map(|(sku_id, _)| standard_sku(sku_id))
+        .chain(
+            existing
+                .iter()
+                .filter_map(|(sku_id, sku)| sku.or_else(|| standard_sku(sku_id))),
+        )
+        .collect();
+    skus.sort_unstable();
+    skus.dedup();
+    for sku in skus {
+        enqueue(conn, &seller, sku, order_time)
+            .await
+            .map_err(failed)?;
+    }
+    let unsupported = current
+        .iter()
+        .filter(|(sku_id, _)| standard_sku(sku_id).is_none())
+        .map(|(sku_id, quantity)| {
+            (
+                sku_id,
+                *quantity,
+                "unsupported",
+                Some("unsupported_inventory_identity"),
+                "order_revision",
+            )
+        });
+    let removed = existing
+        .iter()
+        .filter(|(sku_id, sku)| sku.is_none() && !current.iter().any(|(id, _)| id == sku_id))
+        .map(|(sku_id, _)| (sku_id, 0, "removed", None, "order_line_removed"));
+    for (sku_id, quantity, state, hold_reason, trigger) in
+        unsupported.chain(removed).collect::<Vec<_>>()
+    {
+        let line = SavedLine {
+            order_id: order_id.to_owned(),
+            sku_id: sku_id.clone(),
+            order_time,
+            ordered_quantity: quantity.into(),
+            source_order_revision: source_revision,
+            state,
+            hold_reason: hold_reason.map(str::to_owned),
+            matched_quantity: 0,
+            unmatched_quantity: quantity.into(),
+            price_known_quantity: 0,
+            date_known_quantity: 0,
+            intake_market_total: None,
+            weighted_days_held: None,
+            allocations: Vec::new(),
+        };
+        save_line(conn, &seller, &line, trigger).await?;
+    }
+    Ok(())
+}
+
+/// `saveLine` for a line no SKU of the inventory holds: a revision when its fingerprint changed,
+/// the line created first when the order is new.
+async fn save_line(
+    conn: &mut PgConnection,
+    seller: &str,
+    line: &SavedLine,
+    trigger_reason: &str,
+) -> Result<(), String> {
+    let failed = |e: sqlx::Error| e.to_string();
+    let fingerprint = replay::fingerprint(line);
+    let current: Option<(String, i32, Option<String>)> = sqlx::query_as(
+        "SELECT line.id::text,COALESCE(revision.revision_number,0)::int,revision.source_fingerprint
+         FROM inventory_fifo_lines line
+         LEFT JOIN inventory_fifo_revisions revision ON revision.id=line.current_revision_id
+         WHERE line.order_id=$1::bigint AND line.order_line_sku_id=$2 FOR UPDATE OF line",
+    )
+    .bind(&line.order_id)
+    .bind(&line.sku_id)
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(failed)?;
+    let (line_id, revision_number) = match current {
+        Some((_, _, Some(saved))) if saved == fingerprint => return Ok(()),
+        Some((id, number, _)) => (id, number),
+        None => {
+            let id: String = sqlx::query_scalar(
+                "INSERT INTO inventory_fifo_lines
+                   (seller_key,order_id,order_line_sku_id,sku,order_time,ordered_quantity,source_order_revision,state,
+                    hold_reason,matched_quantity,unmatched_quantity,price_known_quantity,date_known_quantity,
+                    intake_market_total,weighted_days_held)
+                 VALUES ($1,$2::bigint,$3,NULL,$4::timestamptz,$5,$6,$7,$8,$9,$10,$11,$12,NULL,NULL)
+                 RETURNING id::text",
+            )
+            .bind(seller)
+            .bind(&line.order_id)
+            .bind(&line.sku_id)
+            .bind(iso(line.order_time))
+            .bind(line.ordered_quantity as i32)
+            .bind(line.source_order_revision)
+            .bind(line.state)
+            .bind(&line.hold_reason)
+            .bind(line.matched_quantity as i32)
+            .bind(line.unmatched_quantity as i32)
+            .bind(line.price_known_quantity as i32)
+            .bind(line.date_known_quantity as i32)
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(failed)?;
+            (id, 0)
+        }
+    };
+    let revision: String = sqlx::query_scalar(
+        "INSERT INTO inventory_fifo_revisions
+           (line_id,revision_number,source_order_revision,order_time,trigger_reason,state,hold_reason,ordered_quantity,
+            matched_quantity,unmatched_quantity,price_known_quantity,date_known_quantity,intake_market_total,
+            weighted_days_held,source_fingerprint)
+         VALUES ($1::bigint,$2,$3,$4::timestamptz,$5,$6,$7,$8,$9,$10,$11,$12,NULL,NULL,$13) RETURNING id::text",
+    )
+    .bind(&line_id)
+    .bind(revision_number + 1)
+    .bind(line.source_order_revision)
+    .bind(iso(line.order_time))
+    .bind(trigger_reason)
+    .bind(line.state)
+    .bind(&line.hold_reason)
+    .bind(line.ordered_quantity as i32)
+    .bind(line.matched_quantity as i32)
+    .bind(line.unmatched_quantity as i32)
+    .bind(line.price_known_quantity as i32)
+    .bind(line.date_known_quantity as i32)
+    .bind(&fingerprint)
+    .fetch_one(&mut *conn)
+    .await
+    .map_err(failed)?;
+    sqlx::query(
+        "UPDATE inventory_fifo_lines SET sku=NULL,order_time=$2::timestamptz,ordered_quantity=$3,
+           source_order_revision=$4,state=$5,hold_reason=$6,matched_quantity=$7,unmatched_quantity=$8,
+           price_known_quantity=$9,date_known_quantity=$10,intake_market_total=NULL,weighted_days_held=NULL,
+           current_revision_id=$11::bigint,updated_at=NOW()
+         WHERE id=$1::bigint",
+    )
+    .bind(&line_id)
+    .bind(iso(line.order_time))
+    .bind(line.ordered_quantity as i32)
+    .bind(line.source_order_revision)
+    .bind(line.state)
+    .bind(&line.hold_reason)
+    .bind(line.matched_quantity as i32)
+    .bind(line.unmatched_quantity as i32)
+    .bind(line.price_known_quantity as i32)
+    .bind(line.date_known_quantity as i32)
+    .bind(&revision)
+    .execute(&mut *conn)
+    .await
+    .map_err(failed)?;
+    Ok(())
 }
 
 async fn hold(conn: &mut PgConnection, seller: &str, sku: i32, reason: &str) -> sqlx::Result<()> {
@@ -253,6 +492,24 @@ pub async fn save_lines(
 mod tests {
     use super::*;
     use crate::database::Database;
+
+    #[test]
+    fn a_standard_sku_is_a_plain_positive_32_bit_integer() {
+        assert_eq!(standard_sku("8274931"), Some(8_274_931));
+        assert_eq!(standard_sku("2147483647"), Some(i32::MAX));
+        for not in [
+            "",
+            "0",
+            "012",
+            "2147483648",
+            "12a",
+            "-4",
+            " 12",
+            "12345678901",
+        ] {
+            assert_eq!(standard_sku(not), None, "{not:?}");
+        }
+    }
 
     /// Replays the worker's cycle (25 SKUs) on the dev database in a transaction it rolls back,
     /// from the scenario `.port-logs/fifo-setup.sql` queues, and compares what it wrote

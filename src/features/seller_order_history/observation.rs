@@ -66,7 +66,8 @@ pub struct Line {
 }
 
 impl Line {
-    fn json(&self) -> Value {
+    /// The line as Node keeps it in a revision's evidence.
+    pub fn json(&self) -> Value {
         serde_json::json!({
             "name": self.name,
             "unitPrice": self.unit_price,

@@ -211,6 +211,12 @@ pub fn app(shared: Shared) -> App {
         continuous_pricing::scheduler::on()
             .then_some(move |signal| continuous_pricing::scheduler::run(db, signal))
     });
+    // Node's worker records the order history, replays FIFO and estimates costs until cutover.
+    let app = switched(app, "seller order history worker", {
+        let db = db.clone();
+        seller_order_history::worker::on()
+            .then_some(move |signal| seller_order_history::worker::run(db, signal))
+    });
     // It reads TCGplayer and writes only to its log.
     let app = switched(app, "seller order history shadow", {
         let db = db.clone();

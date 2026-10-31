@@ -454,13 +454,6 @@ pub struct Estimated {
     pub market_unavailable: BTreeMap<i32, Vec<i32>>,
 }
 
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the seller order history worker's cycle calls it once its sync store is ported"
-    )
-)]
 /// `recordMissingEstimatedPurchaseCosts`: estimates every batch with a lot no purchase cost owns
 /// yet, or does nothing when there is none. Each estimate is saved in a transaction of its own on
 /// `conn` (a savepoint when `conn` is already in one), so one that fails keeps those before it.

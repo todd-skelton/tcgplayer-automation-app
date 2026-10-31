@@ -18,15 +18,11 @@ use serde::Serialize;
 use tokio::time::{MissedTickBehavior, interval};
 
 use super::{
-    api::{self, SearchPage},
-    observation::{Fields, Observation},
-    sync::{self, Budget, Coverage, MemoryRun, Orders, Progress, Run, Store},
+    api,
+    observation::Observation,
+    sync::{self, Budget, Coverage, MemoryRun, Progress, Run, Store},
 };
-use crate::{
-    database::Database,
-    features::shipping_configuration,
-    tcgplayer::{Failure, TcgPlayer},
-};
+use crate::{database::Database, features::shipping_configuration, tcgplayer::TcgPlayer};
 
 /// How often a step runs. Node steps every two seconds while a scan is behind and hourly once it
 /// is complete; the shadow reads a smaller page, more slowly, beside it.
@@ -105,21 +101,6 @@ enum Line<'a> {
         error: Option<&'a str>,
         changed: usize,
     },
-}
-
-/// TCGplayer, read live.
-struct Live<'a>(&'a TcgPlayer);
-
-impl Orders for Live<'_> {
-    async fn search(&self, seller: &str, from: u32, size: u32) -> Result<SearchPage, Failure> {
-        api::search(self.0, seller, from, size).await
-    }
-    async fn find(&self, seller: &str, number: &str) -> Result<Option<Fields>, Failure> {
-        api::find(self.0, seller, number).await
-    }
-    async fn order(&self, number: &str) -> Result<Fields, Failure> {
-        api::order(self.0, number).await
-    }
 }
 
 /// Node's history read, the run kept here, and the orders it would record logged.
@@ -239,7 +220,16 @@ async fn step(
         lines: Mutex::new(Vec::new()),
     };
     let claim = "shadow";
-    let synced = sync::synchronize(&Live(tcg), &shadow, &seller, budget, &[], claim, &now).await?;
+    let synced = sync::synchronize(
+        &api::OrderManagement(tcg),
+        &shadow,
+        &seller,
+        budget,
+        &[],
+        claim,
+        &now,
+    )
+    .await?;
     let at = now();
     let mut file = std::fs::OpenOptions::new()
         .create(true)

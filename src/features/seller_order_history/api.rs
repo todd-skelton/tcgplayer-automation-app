@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use super::observation::Fields;
+use super::{observation::Fields, sync::Orders};
 use crate::{
     features::http_configuration::config::Domain,
     tcgplayer::{Call, Failure, TcgPlayer},
@@ -134,6 +134,21 @@ fn component(text: &str) -> String {
         }
     }
     out
+}
+
+/// TCGplayer's order management API, read live.
+pub struct OrderManagement<'a>(pub &'a TcgPlayer);
+
+impl Orders for OrderManagement<'_> {
+    async fn search(&self, seller: &str, from: u32, size: u32) -> Result<SearchPage, Failure> {
+        search(self.0, seller, from, size).await
+    }
+    async fn find(&self, seller: &str, number: &str) -> Result<Option<Fields>, Failure> {
+        find(self.0, seller, number).await
+    }
+    async fn order(&self, number: &str) -> Result<Fields, Failure> {
+        order(self.0, number).await
+    }
 }
 
 #[cfg(test)]

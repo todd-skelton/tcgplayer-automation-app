@@ -371,3 +371,81 @@ async fn record_seller_order_fixtures() {
         write(&format!("orders/{number}.json"), &Value::Object(scrubbed));
     }
 }
+
+/// The recorded answers as an order management API: the search page, the orders found by number,
+/// and each detail, the detail of FIXTURE-0005 failing the first time it is read.
+pub struct RecordedOrders {
+    page: Vec<Fields>,
+    found: Vec<Fields>,
+    failed_once: std::sync::atomic::AtomicBool,
+}
+
+impl RecordedOrders {
+    pub fn new() -> Self {
+        let objects = |value: Value| -> Vec<Fields> {
+            value
+                .as_array()
+                .expect("a list of orders")
+                .iter()
+                .filter_map(|v| v.as_object().cloned())
+                .collect()
+        };
+        RecordedOrders {
+            page: objects(read("search.json")["orders"].take()),
+            found: objects(read("found.json")),
+            failed_once: std::sync::atomic::AtomicBool::new(false),
+        }
+    }
+
+    /// The orders found by number, which a sync is asked about first.
+    pub fn found_numbers(&self) -> Vec<String> {
+        self.found
+            .iter()
+            .filter_map(|s| s["orderNumber"].as_str().map(str::to_owned))
+            .collect()
+    }
+}
+
+impl super::sync::Orders for RecordedOrders {
+    async fn search(
+        &self,
+        _: &str,
+        from: u32,
+        size: u32,
+    ) -> Result<SearchPage, crate::tcgplayer::Failure> {
+        Ok(SearchPage {
+            total_orders: self.page.len() as u32,
+            orders: self
+                .page
+                .iter()
+                .skip(from as usize)
+                .take(size as usize)
+                .cloned()
+                .collect(),
+        })
+    }
+
+    async fn find(
+        &self,
+        _: &str,
+        number: &str,
+    ) -> Result<Option<Fields>, crate::tcgplayer::Failure> {
+        Ok(self
+            .page
+            .iter()
+            .chain(&self.found)
+            .find(|s| s["orderNumber"] == number)
+            .cloned())
+    }
+
+    async fn order(&self, number: &str) -> Result<Fields, crate::tcgplayer::Failure> {
+        use std::sync::atomic::Ordering;
+        if number == "FIXTURE-0005" && !self.failed_once.swap(true, Ordering::SeqCst) {
+            return Err(crate::tcgplayer::Failure::Status(500));
+        }
+        Ok(read(&format!("orders/{number}.json"))
+            .as_object()
+            .cloned()
+            .expect("a detail object"))
+    }
+}
