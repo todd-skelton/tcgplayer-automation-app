@@ -152,7 +152,7 @@ impl Screen {
             (Some(seller), Some(item))
                 if choice.outcomes == Some(true) && !item.trim().is_empty() =>
             {
-                Some(outcomes::read(legacy, seller, item.trim()).await)
+                Some(outcomes::read(db, seller, item.trim()).await)
             }
             _ => None,
         };
