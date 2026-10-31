@@ -120,6 +120,28 @@ pub async fn run<J: Jobs>(jobs: J, queued: Arc<Notify>, signal: Signal) {
     }
 }
 
+/// The app's task: the Postgres queue priced from TCGplayer, off unless `PRICING_WORKER` is set.
+/// Node's worker owns the jobs until cutover (port decisions 3 and 26); turned on beside it, the two
+/// claim jobs from one queue under their own leases, so a job is priced by one or the other.
+pub async fn start(db: crate::database::Database, signal: Signal) {
+    if !crate::config::is_set("PRICING_WORKER") {
+        return;
+    }
+    let tcg = crate::tcgplayer::TcgPlayer::new(db.clone());
+    let jobs = super::jobs::PricingJobs {
+        worker: super::jobs::worker_id(),
+        evidence: crate::features::pricing::tcgplayer_evidence::TcgPlayerEvidence {
+            tcg: tcg.clone(),
+            db: db.clone(),
+        },
+        market: super::market::TcgPlayerMarket(tcg),
+        db,
+    };
+    println!("Inventory batch pricing worker {} started", jobs.worker);
+    // Jobs are queued by the Node app, which cannot wake this process: the poll finds them.
+    run(jobs, Arc::new(Notify::new()), signal).await;
+}
+
 #[cfg(test)]
 mod tests {
     use std::{

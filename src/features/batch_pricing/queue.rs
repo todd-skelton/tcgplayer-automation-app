@@ -15,7 +15,10 @@ pub struct Claimed {
     pub mode: String,
     pub config_json: Value,
     pub progress_json: Option<Value>,
+    /// How many times the job has been claimed, this one included; the queue's tests read it.
+    #[allow(dead_code, reason = "read by the queue's tests")]
     pub attempt_count: i32,
+    #[allow(dead_code, reason = "claimed as Node's repository returns it")]
     pub started_at: Option<DateTime<Utc>>,
 }
 

@@ -13,7 +13,7 @@ use crate::{
     config,
     database::Database,
     features::{
-        batch_pricer, configuration, continuous_pricing, dashboard, data_management,
+        batch_pricer, batch_pricing, configuration, continuous_pricing, dashboard, data_management,
         http_configuration, inventory_economics, inventory_fifo, inventory_intake,
         inventory_strategy, product_price_matrix, publication_configuration, pull_sheet,
         seller_order_history, shipping_configuration, shipping_export, slab_connections,
@@ -190,6 +190,11 @@ pub fn app(shared: Shared) -> App {
         .client_zone()
         // TCGplayer's product pictures.
         .policy(Policy::new().img_src("https://tcgplayer-cdn.tcgplayer.com"))
+        // Off unless PRICING_WORKER is set: Node's worker prices the batches until cutover.
+        .task("inventory batch pricing worker", {
+            let db = shared.db.clone();
+            move |signal| batch_pricing::worker::start(db, signal)
+        })
         .task("forecast evidence backfill", {
             let db = shared.db.clone();
             move |signal| inventory_strategy::backfill::run(db, signal)

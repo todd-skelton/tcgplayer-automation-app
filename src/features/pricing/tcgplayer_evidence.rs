@@ -146,12 +146,13 @@ const READ: Call = Call {
 
 /// Latest sales and price history from TCGplayer; the product line's language and variant ids
 /// from the catalog's category filters.
-pub struct TcgPlayerEvidence<'a> {
-    pub tcg: &'a TcgPlayer,
-    pub db: &'a Database,
+#[derive(Clone)]
+pub struct TcgPlayerEvidence {
+    pub tcg: TcgPlayer,
+    pub db: Database,
 }
 
-impl TcgPlayerEvidence<'_> {
+impl TcgPlayerEvidence {
     async fn filter_id(&self, sku: &Sku, column: &str, name: &str) -> Result<i64, Failure> {
         let entries: Option<serde_json::Value> = sqlx::query_scalar(&format!(
             "SELECT {column} FROM category_filters WHERE category_id = $1"
@@ -229,7 +230,7 @@ impl TcgPlayerEvidence<'_> {
     }
 }
 
-impl Evidence for TcgPlayerEvidence<'_> {
+impl Evidence for TcgPlayerEvidence {
     async fn latest_sales(&self, sku: &Sku) -> Result<Vec<Sale>, Failure> {
         let language = self.filter_id(sku, "languages", &sku.language).await?;
         let variant = self.filter_id(sku, "variants", &sku.variant).await?;
@@ -395,7 +396,10 @@ mod tests {
         crate::config::load_env();
         let db = Database::connect_lazy(&crate::config::database_url());
         let tcg = TcgPlayer::new(db.clone());
-        let evidence = TcgPlayerEvidence { tcg: &tcg, db: &db };
+        let evidence = TcgPlayerEvidence {
+            tcg,
+            db: db.clone(),
+        };
         let (product_id, product_line_id, variant, language): (i32, i32, String, String) =
             sqlx::query_as(
                 "SELECT s.product_id, p.product_line_id, s.variant, s.language

@@ -2,15 +2,12 @@
 //! sales and written as the rows and details the Batch Pricer shows. Ported from
 //! `inventoryBatchPricing.server.ts` and `inventoryBatchPricingWorker.server.ts`.
 //!
-//! While Node's worker owns the jobs (port decision 26), this runs as a shadow beside it: it prices
-//! the batches Node priced and logs where its results differ, writing nothing.
-#![allow(
-    dead_code,
-    reason = "the job lands before the worker that claims and saves it"
-)]
+//! Node's worker owns the jobs until cutover (port decision 26). The port's worker
+//! ([`worker::start`]) claims from the same queue only when `PRICING_WORKER` is set.
 pub mod cache;
 pub mod job;
 pub mod jobs;
+pub mod market;
 pub mod queue;
 pub mod results;
 pub mod save;

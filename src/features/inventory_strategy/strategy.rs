@@ -921,3 +921,18 @@ pub async fn load(
         })
         .await
 }
+
+/// Rebuilds the continuously priced seller's dashboard (`warmInventoryStrategy`), so the next page
+/// load finds it ready: after a pricing run that recorded new curves.
+pub async fn warm(db: &crate::database::Database) -> Result<(), String> {
+    let (settings, config) = tokio::join!(
+        crate::features::continuous_pricing::store::settings(db),
+        crate::features::configuration::config::load(db),
+    );
+    let seller = settings.map_err(|e| e.to_string())?.seller_key;
+    if seller.is_empty() {
+        return Ok(());
+    }
+    load(db, &seller, &config.map_err(|e| e.to_string())?).await?;
+    Ok(())
+}

@@ -10,6 +10,10 @@
 //!
 //! [`run`] is the background form, off unless `BATCH_PRICING_SHADOW_LOG` names the log; it is not
 //! registered while the replay cannot be a gate.
+#![allow(
+    dead_code,
+    reason = "a diagnostic run from its tests; its task is not registered"
+)]
 use std::{collections::HashMap, io::Write, path::PathBuf, time::Duration};
 
 use chrono::{DateTime, Utc};

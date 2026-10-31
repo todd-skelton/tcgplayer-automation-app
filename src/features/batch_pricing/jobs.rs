@@ -23,6 +23,7 @@ use crate::{
     features::{
         configuration::config::{self as pricing_config, Config as StoredConfig},
         inventory_publication::plan::{self, Configuration},
+        inventory_strategy::strategy,
         pricing::{calculator::Stopped, sku_price::Evidence},
     },
 };
@@ -106,18 +107,34 @@ pub async fn save_priced(
     Ok(completed)
 }
 
+/// What a completed batch's follow-up did.
+#[derive(Debug)]
+pub struct FollowedUp {
+    /// The strategy's curves the batch recorded.
+    pub curves_recorded: u64,
+    /// What the batch planned to publish by itself, unless planning failed.
+    #[allow(
+        dead_code,
+        reason = "the worker logs a failure only; the dev test reads the plan"
+    )]
+    pub planned: Option<plan::Automatic>,
+}
+
 /// What a completed batch changes elsewhere, each failure logged and the rest still done, as
 /// Node's worker does: the strategy's curves, the continuous inventory's last pricing, and the
-/// publication the batch plans by itself. The strategy's warm-up after new curves is not ported.
+/// publication the batch plans by itself.
 pub async fn follow_up(
     conn: &mut PgConnection,
     batch_number: i32,
     current: &StoredConfig,
     now: DateTime<Utc>,
-) -> Option<plan::Automatic> {
-    if let Err(why) = save::record_successful_batch(conn, batch_number).await {
-        eprintln!("Inventory strategy projection update failed for batch {batch_number}: {why}");
-    }
+) -> FollowedUp {
+    let curves_recorded = save::record_successful_batch(conn, batch_number)
+        .await
+        .inspect_err(|why| {
+            eprintln!("Inventory strategy projection update failed for batch {batch_number}: {why}")
+        })
+        .unwrap_or(0);
     if let Err(why) = save::record_batch_completed(conn, batch_number).await {
         eprintln!("Continuous pricing projection update failed for batch {batch_number}: {why}");
     }
@@ -130,11 +147,14 @@ pub async fn follow_up(
         Ok::<_, plan::Error>(planned)
     }
     .await;
-    planned
-        .inspect_err(|why| {
-            eprintln!("Automatic publication planning failed for batch {batch_number}: {why}")
-        })
-        .ok()
+    FollowedUp {
+        curves_recorded,
+        planned: planned
+            .inspect_err(|why| {
+                eprintln!("Automatic publication planning failed for batch {batch_number}: {why}")
+            })
+            .ok(),
+    }
 }
 
 /// The pricing jobs in Postgres, priced from `evidence` and `market` by `worker`.
@@ -145,12 +165,13 @@ pub struct PricingJobs<E, M> {
     pub market: M,
 }
 
-impl<E, M> PricingJobs<E, M> {
-    /// Node's worker is `inventory-batch-worker-{pid}`; this one says it is the port's.
-    pub fn worker_id() -> String {
-        format!("inventory-batch-worker-rust-{}", std::process::id())
-    }
+/// This process's name on the jobs it claims. Node's worker is `inventory-batch-worker-{pid}`;
+/// this one says it is the port's.
+pub fn worker_id() -> String {
+    format!("inventory-batch-worker-rust-{}", std::process::id())
+}
 
+impl<E, M> PricingJobs<E, M> {
     fn lease_ms() -> i64 {
         LEASE.as_millis() as i64
     }
@@ -232,7 +253,18 @@ impl<E: Evidence, M: MarketData> Jobs for PricingJobs<E, M> {
                 let current = pricing_config::load(&self.db)
                     .await
                     .map_err(|e| e.to_string())?;
-                follow_up(&mut conn, claimed.batch_number, &current, Utc::now()).await;
+                let done = follow_up(&mut conn, claimed.batch_number, &current, Utc::now()).await;
+                if done.curves_recorded > 0 {
+                    // The page's next load finds the dashboard built; the worker does not wait.
+                    let (db, batch) = (self.db.clone(), claimed.batch_number);
+                    tokio::spawn(async move {
+                        if let Err(why) = strategy::warm(&db).await {
+                            eprintln!(
+                                "Inventory strategy warm-up failed after batch {batch}: {why}"
+                            );
+                        }
+                    });
+                }
             }
             Outcome::Failed(why) => {
                 let mut tx = sqlx::Connection::begin(&mut *conn)
@@ -381,13 +413,13 @@ mod tests {
         assert_eq!(priced_at, to_millis(now));
 
         let current = pricing_config::load(&db).await.unwrap();
-        let planned = follow_up(&mut tx, claimed.batch_number, &current, now).await;
+        let done = follow_up(&mut tx, claimed.batch_number, &current, now).await;
         println!(
-            "batch {}: {} SKUs saved; follow-up planned {planned:?}",
+            "batch {}: {} SKUs saved; follow-up {done:?}",
             claimed.batch_number,
             priced.skus.len()
         );
-        assert!(planned.is_some(), "planning ran without an error");
+        assert!(done.planned.is_some(), "planning ran without an error");
         tx.rollback().await.unwrap();
     }
 }
