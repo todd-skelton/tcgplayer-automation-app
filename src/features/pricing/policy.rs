@@ -214,7 +214,7 @@ pub struct Decision {
 }
 
 impl Decision {
-    fn new(
+    pub fn new(
         method: Method,
         selected_price: f64,
         constraint: Constraint,
@@ -247,7 +247,7 @@ impl Decision {
     }
 
     /// The policy's own setting: its percentile, horizon or hurdle.
-    fn with_policy(mut self, policy: &Policy) -> Self {
+    pub fn with_policy(mut self, policy: &Policy) -> Self {
         match policy {
             Policy::Percentile { percentile } => self.configured_percentile = Some(*percentile),
             Policy::TargetHorizon { horizon_days } => {

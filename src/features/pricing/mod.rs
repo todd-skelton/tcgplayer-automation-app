@@ -7,6 +7,7 @@
 )]
 pub mod buyer_arrival_rate;
 pub mod buyer_choice_sell_time;
+pub mod calculator;
 pub mod capital_cycle;
 pub mod condition_normalization;
 pub mod condition_sale_rate;
