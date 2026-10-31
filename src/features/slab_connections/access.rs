@@ -26,10 +26,7 @@ pub async fn check<G: Gate>(
         Provider::Alt => (Ask::post("/graphql/Me", ALT_ME.to_owned()), read_alt),
         Provider::EbayResearch => (Ask::get(one_sold_listing()), read_ebay),
     };
-    transport
-        .request(gate, provider, ask, read, cancel)
-        .await
-        .map(drop)
+    transport.request(gate, provider, ask, read, cancel).await
 }
 
 /// eBay Research's search for one sale in the last 90 days.

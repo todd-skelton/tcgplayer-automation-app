@@ -89,7 +89,8 @@ impl Default for Transport {
 }
 
 impl Transport {
-    fn to(alt: &str, ebay_research: &str) -> Self {
+    /// A transport to these origins: the providers', or a stand-in's in a test.
+    pub(crate) fn to(alt: &str, ebay_research: &str) -> Self {
         let http = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .build()
@@ -101,33 +102,34 @@ impl Transport {
         }
     }
 
-    /// Asks `provider` and answers its body once `check` accepts it. Every failure is a
+    /// Asks `provider` and answers what `read` made of its body; an answer `read` refuses counts
+    /// as the provider's for its cooldown. Every failure is a
     /// [`Status`], never the transport's error, which can hold the credential.
     ///
     /// It claims the provider's lease and releases it, so a handler runs it inside
     /// `Signal::finish`, which finishes it when the handler is dropped. `cancel` resolving (the
     /// work's signal) stops the request, and the lease is released as cancelled.
-    pub async fn request<G: Gate>(
+    pub async fn request<G: Gate, T: Send>(
         &self,
         gate: &G,
         provider: Provider,
         ask: Ask,
-        check: Check,
+        read: impl Fn(&str) -> Result<T, Status> + Send + Sync,
         cancel: impl Future<Output = ()> + Send,
-    ) -> Result<String, Status> {
+    ) -> Result<T, Status> {
         self.clone()
-            .run(gate.clone(), provider, ask, check, cancel)
+            .run(gate.clone(), provider, ask, read, cancel)
             .await
     }
 
-    async fn run<G: Gate>(
+    async fn run<G: Gate, T: Send>(
         self,
         gate: G,
         provider: Provider,
         ask: Ask,
-        check: Check,
+        read: impl Fn(&str) -> Result<T, Status> + Send + Sync,
         cancel: impl Future<Output = ()> + Send,
-    ) -> Result<String, Status> {
+    ) -> Result<T, Status> {
         let url = self.url(provider, &ask.path)?;
         if ask.timeout.is_zero() {
             return Err(Status::InvalidResponse);
@@ -143,7 +145,7 @@ impl Transport {
             Err(Status::Cancelled)
         } else {
             let attempts =
-                self.attempts(provider, &url, &ask, &lease, check, deadline, &mut retry_at);
+                self.attempts(provider, &url, &ask, &lease, &read, deadline, &mut retry_at);
             tokio::select! {
                 biased;
                 () = &mut cancel => Err(Status::Cancelled),
@@ -166,16 +168,16 @@ impl Transport {
     }
 
     #[allow(clippy::too_many_arguments)]
-    async fn attempts(
+    async fn attempts<T>(
         &self,
         provider: Provider,
         url: &Url,
         ask: &Ask,
         lease: &Lease,
-        check: Check,
+        read: &(impl Fn(&str) -> Result<T, Status> + Sync),
         deadline: Instant,
         retry_at: &mut DateTime<Utc>,
-    ) -> Result<String, Status> {
+    ) -> Result<T, Status> {
         let headers = headers(provider, lease)?;
         let method = if ask.body.is_some() {
             Method::POST
@@ -220,8 +222,7 @@ impl Transport {
                 return Err(Status::InvalidResponse);
             }
             let body = read_body(response).await?;
-            check(&body)?;
-            return Ok(body);
+            return read(&body);
         }
         Err(Status::Unavailable)
     }
@@ -445,7 +446,13 @@ mod tests {
         path: &str,
     ) -> Result<String, Status> {
         transport
-            .request(gate, provider, Ask::get(path), |_| Ok(()), never())
+            .request(
+                gate,
+                provider,
+                Ask::get(path),
+                |body| Ok(body.to_owned()),
+                never(),
+            )
             .await
     }
 

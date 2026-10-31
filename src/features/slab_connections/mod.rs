@@ -19,8 +19,10 @@ mod request;
 mod store;
 mod views;
 
-pub use provider::Status as ConnectionStatus;
-pub use request::Transport;
+pub use provider::{Provider, Status as ConnectionStatus};
+#[cfg(test)]
+pub use request::Lease;
+pub use request::{Ask, Gate, Transport};
 pub use views::COMPONENTS;
 
 // Handlers are named from here, where the routes module is declared.
