@@ -114,7 +114,7 @@ fn numeric(value: &Value) -> f64 {
 }
 
 /// `Number.parseFloat`: the longest leading decimal of the trimmed text.
-fn parse_float(text: &str) -> Option<f64> {
+pub fn parse_float(text: &str) -> Option<f64> {
     let text = text.trim_start();
     let bytes = text.as_bytes();
     let digits = |from: usize| {
