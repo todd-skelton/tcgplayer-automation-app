@@ -9,9 +9,10 @@
 //! is its address, so each post carries it and sends the browser back to it.
 //!
 //! Research reads the evidence saved for the owned grade, or a PSA grade explored beside it, over
-//! a window of sale dates. Refreshing it queues work for the Node app's worker, which calls eBay
-//! and Alt; while a refresh is queued or running the evidence list reads itself again every two
-//! seconds (`ReadAgain` from `GET /slab-pricing/evidence`, the whole page without JavaScript).
+//! a window of sale dates. Refreshing it queues work here (`refreshes`) for the Node app's slab
+//! evidence worker, which calls eBay and Alt and must be running on its own; while a refresh is
+//! queued or running the evidence list reads itself again every two seconds (`ReadAgain` from
+//! `GET /slab-pricing/evidence`, the whole page without JavaScript).
 //!
 //! The recommendation is calculated by the Node app from the saved evidence only. A saved one is
 //! marked for recalculation when the Node app says it is no longer current, or when newer
@@ -70,6 +71,7 @@ mod outcomes;
 mod page;
 mod publication;
 mod recommendation;
+mod refreshes;
 mod research;
 mod screening;
 mod supply;

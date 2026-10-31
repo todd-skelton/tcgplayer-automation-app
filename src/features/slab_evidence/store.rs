@@ -160,13 +160,6 @@ pub async fn statuses(db: impl PgExecutor<'_>, keys: &[String]) -> Result<Vec<St
 /// `requestEvidence`: each request queued unless it is queued or running already, or (unless
 /// `force`) what was fetched is still fresh or its retry is not due; a queued one is raised to
 /// `priority`. Answers where each stands.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the screen asks the Node app, whose answer wakes its worker"
-    )
-)]
 pub async fn request(
     conn: &mut PgConnection,
     specs: &[Spec],

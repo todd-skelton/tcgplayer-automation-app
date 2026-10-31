@@ -256,7 +256,7 @@ async fn load(
     if asked.offset > 1950 || !asked.offset.is_multiple_of(ROWS) {
         return Err("Choose a bounded supply page.".to_owned());
     }
-    let plan = research::plan(conn, asked.id, asked.grade, asked.window).await?;
+    let plan = research::plan(conn, asked.id, None, asked.grade, asked.window).await?;
     let keys = research::supply_keys(&plan.target, asked.window)?;
     let source = asked.source.filter(|key| !key.is_empty());
     let wanted: Vec<String> = keys

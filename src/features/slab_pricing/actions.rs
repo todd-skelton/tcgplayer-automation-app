@@ -1,5 +1,6 @@
-//! The screen's posts. Each asks the Node app to do the work, then sends the browser back to the
-//! page the post came from (its address is the post's query), showing what changed; a refusal
+//! The screen's posts. Some are done here (maintenance settings, queuing evidence refreshes,
+//! cancelling one); the rest ask the Node app to do the work. Each then sends the browser back to
+//! the page the post came from (its address is the post's query), showing what changed; a refusal
 //! is that page with why, as a conflict.
 // Every post takes the visitor's zone only so a refusal can draw the page's dates (corten#387).
 use corten::{ClientZone, Refusal, SubmitKey, prelude::*};
@@ -12,6 +13,7 @@ use super::{
     outcomes::Imported,
     page::{Place, Screen, page},
     recommendation::{Fees, Policy, Seller},
+    refreshes,
     url::{self, Choice},
     views::Problem,
 };
@@ -394,27 +396,29 @@ pub struct RefreshInput {
 }
 
 /// Queues the evidence for the chosen grade and dates for refresh, fetched again even when what
-/// is saved is fresh. The Node app's worker calls the providers; the page follows it.
+/// is saved is fresh. Node's slab evidence worker calls the providers; the page follows it.
 pub async fn refresh(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::Refresh>,
     Form(input): Form<RefreshInput>,
 ) -> HtmlResult {
-    let asked = json!({
-        "intent": "research",
-        "slabId": input.id,
-        "identityRevision": input.revision,
-        "grade": at.choice.grade(),
-        "window": at.choice.window(),
-        "force": true,
-    });
-    match legacy
-        .send::<_, serde_json::Value>("/api/slab-evidence", &asked)
+    let window = at.choice.window();
+    let queued = async {
+        let mut conn = refreshes::connection(&db).await?;
+        refreshes::research(
+            &mut conn,
+            &input.id,
+            input.revision,
+            at.choice.grade(),
+            &window,
+            true,
+        )
         .await
-    {
+    }
+    .await;
+    match queued {
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
         Err(why) => {
             refused(
@@ -524,25 +528,25 @@ impl CalculateInput {
 pub async fn refresh_supply(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::RefreshSupply>,
     Form(input): Form<RefreshInput>,
 ) -> HtmlResult {
     let visitor = Visitor::of(zone.as_ref());
-    let screen = Screen::read(&db, &at.choice, visitor).await?;
-    let asked = json!({
-        "intent": "refresh",
-        "slabId": input.id,
-        "identityRevision": input.revision,
-        "grade": at.choice.grade(),
-        "window": at.choice.window(),
-        "seller": screen.supply_seller(),
-    });
-    match legacy
-        .send::<_, serde_json::Value>("/api/slab-supply", &asked)
+    let window = at.choice.window();
+    let queued = async {
+        let mut conn = refreshes::connection(&db).await?;
+        refreshes::supply(
+            &mut conn,
+            &input.id,
+            input.revision,
+            at.choice.grade(),
+            &window,
+        )
         .await
-    {
+    }
+    .await;
+    match queued {
         Ok(_) => req.redirect(&url::SlabPricing::at(
             &at.choice.supply_source(None, Vec::new()),
         )),
@@ -556,29 +560,22 @@ pub struct NextSourcePageInput {
     pub revision: String,
 }
 
-#[derive(Deserialize)]
-struct Queued {
-    statuses: Vec<QueuedStatus>,
-}
-
-#[derive(Deserialize)]
-struct QueuedStatus {
-    key: String,
-}
-
 /// Queues the next page of the eBay supply source shown, then shows it, keeping the way back.
 pub async fn next_source_page(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::NextSourcePage>,
     Form(input): Form<NextSourcePageInput>,
 ) -> HtmlResult {
-    let asked = json!({ "intent": "next-page", "revision": input.revision });
-    match legacy.send::<_, Queued>("/api/slab-evidence", &asked).await {
+    let queued = async {
+        let mut conn = refreshes::connection(&db).await?;
+        refreshes::next_page(&mut conn, &input.revision).await
+    }
+    .await;
+    match queued {
         Ok(queued) => {
-            let Some(next) = queued.statuses.into_iter().next() else {
+            let Some(next) = queued.into_iter().next() else {
                 return req.redirect(&url::SlabPricing::at(&at.choice));
             };
             // The default source is kept as an empty entry, as the first listing page is.
@@ -949,25 +946,27 @@ pub struct FetchCompsInput {
 pub async fn fetch_comps(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::FetchComps>,
     Form(input): Form<FetchCompsInput>,
 ) -> HtmlResult {
-    let (asked, place) = match &input.transaction {
-        Some(transaction) => (
-            json!({ "intent": "sale-detail", "revision": input.revision, "transactionId": transaction }),
-            Place::CompDecision,
-        ),
-        None => (
-            json!({ "intent": "next-page", "revision": input.revision }),
-            Place::Comps,
-        ),
+    let place = match &input.transaction {
+        Some(_) => Place::CompDecision,
+        None => Place::Comps,
     };
-    match legacy.send::<_, Queued>("/api/slab-evidence", &asked).await {
+    let queued = async {
+        let mut conn = refreshes::connection(&db).await?;
+        match &input.transaction {
+            Some(transaction) => {
+                refreshes::sale_detail(&mut conn, &input.revision, transaction).await
+            }
+            None => refreshes::next_page(&mut conn, &input.revision).await,
+        }
+    }
+    .await;
+    match queued {
         Ok(queued) => req.redirect(&url::SlabPricing::at(
-            &at.choice
-                .with_extra(queued.statuses.into_iter().map(|s| s.key)),
+            &at.choice.with_extra(queued.into_iter().map(|s| s.key)),
         )),
         Err(why) => {
             let visitor = Visitor::of(zone.as_ref());

@@ -144,13 +144,14 @@ fn is_revision_id(id: &str) -> bool {
 }
 
 /// A saved revision (`getEvidenceRevision`): its source key, what was fetched, and when.
-struct Saved {
-    id: String,
-    payload: Value,
-    fetched_at: DateTime<Utc>,
+pub(super) struct Saved {
+    pub(super) id: String,
+    pub(super) key: String,
+    pub(super) payload: Value,
+    pub(super) fetched_at: DateTime<Utc>,
 }
 
-async fn saved(conn: &mut PgConnection, id: &str) -> Result<Option<Saved>, String> {
+pub(super) async fn saved(conn: &mut PgConnection, id: &str) -> Result<Option<Saved>, String> {
     if !is_revision_id(id) {
         return Err("Provide an evidence revision.".to_owned());
     }
@@ -186,6 +187,7 @@ async fn saved(conn: &mut PgConnection, id: &str) -> Result<Option<Saved>, Strin
     }
     Ok(Some(Saved {
         id,
+        key,
         payload,
         fetched_at,
     }))
@@ -234,7 +236,7 @@ async fn review(
     if offset > 2000 {
         return Err("Invalid evidence page.".to_owned());
     }
-    let plan = research::plan(conn, id, grade, window).await?;
+    let plan = research::plan(conn, id, None, grade, window).await?;
     let saved = saved(conn, revision)
         .await?
         .ok_or_else(|| "Evidence revision is no longer available.".to_owned())?;

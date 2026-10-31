@@ -283,15 +283,31 @@ impl Identity {
 /// `planSlabEvidence` with supply, which it keeps: the keys of the slab's unsold listings, Alt's
 /// when Alt knows the card and eBay's for the same search as its sales.
 pub(super) fn supply_keys(identity: &Identity, window: &Window) -> Result<Vec<String>, String> {
-    specs_checked(identity, window)?
+    requests(identity, window, true)?
+        .iter()
+        .map(|r| r.key().map_err(|e| e.0))
+        .collect()
+}
+
+/// `planSlabEvidence`'s requests for one confirmed slab: its sales, or with `supply` its unsold
+/// listings (Alt's when Alt knows the card, and eBay's for the same search).
+pub(super) fn requests(
+    identity: &Identity,
+    window: &Window,
+    supply: bool,
+) -> Result<Vec<Request>, String> {
+    let sales = specs_checked(identity, window)?;
+    if !supply {
+        return Ok(sales);
+    }
+    Ok(sales
         .into_iter()
         .filter_map(|request| match request {
             Request::AltSales { asset_id, .. } => Some(Request::AltSupply { asset_id }),
             Request::EbaySales(page) => Some(Request::EbaySupply(page)),
             _ => None,
         })
-        .map(|r| r.key().map_err(|e| e.0))
-        .collect()
+        .collect())
 }
 
 /// What to read for a slab: its Alt sales when Alt knows the card, and its eBay sales.
@@ -384,6 +400,7 @@ pub(super) struct Plan {
 pub(super) async fn plan(
     conn: &mut PgConnection,
     id: &str,
+    revision: Option<i64>,
     grade: &str,
     window: &Window,
 ) -> Result<Plan, String> {
@@ -403,7 +420,9 @@ pub(super) async fn plan(
     .fetch_optional(&mut *conn)
     .await
     .map_err(|e| e.to_string())?;
-    let Some((saved, candidate, status, revision, saved_key)) = record else {
+    let Some((saved, candidate, status, revision, saved_key)) = record
+        .filter(|(.., saved_revision, _)| revision.is_none_or(|r| r == i64::from(*saved_revision)))
+    else {
         return Err("The slab identity changed. Reopen it before refreshing.".to_owned());
     };
     let identity = |value: Option<Value>| {
@@ -448,7 +467,7 @@ async fn research(
 ) -> Result<Researched, String> {
     let Plan {
         keys, grade_model, ..
-    } = plan(conn, id, grade, window).await?;
+    } = plan(conn, id, None, grade, window).await?;
     let statuses = store::statuses(&mut *conn, &keys)
         .await
         .map_err(|e| e.to_string())?
