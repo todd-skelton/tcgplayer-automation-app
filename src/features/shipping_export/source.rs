@@ -1,11 +1,15 @@
 //! Where the orders come from: TCGplayer's Ready to Ship queue or one order, read by the Node app
 //! (`/api/shipping-export/tcgplayer-orders`), and the seller's order history record: how far its
-//! scan has got is read here; moving the scan on and importing an export stay the Node app's
-//! (`/api/seller-order-history`).
+//! scan has got is read and an export is imported here; moving the scan on reads TCGplayer, so it
+//! stays the Node app's (`/api/seller-order-history`).
 use serde::{Deserialize, Serialize};
 
 use super::orders::Order;
-use crate::legacy::Legacy;
+use crate::{
+    database::Database,
+    features::{seller_order_history::file_import, shipping_configuration},
+    legacy::Legacy,
+};
 
 /// How far the saved scan of the seller's orders has got.
 #[derive(Clone, Debug, Deserialize)]
@@ -142,33 +146,29 @@ pub async fn catch_up(legacy: &Legacy, seller_key: &str, orders: &[String]) -> R
         .map(drop)
 }
 
-/// Adds an order export older than the API's three months to the seller's order history.
+/// Adds an order export older than the API's three months to the seller's order history: the
+/// seller named, else the default shipping seller (as the Node route resolves it).
 pub async fn import_history(
-    legacy: &Legacy,
+    db: &Database,
     seller_key: &str,
     file_name: &str,
     csv_text: &str,
-) -> Result<(), String> {
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Request<'a> {
-        seller_key: &'a str,
-        action: &'static str,
-        csv_text: &'a str,
-        file_name: &'a str,
+) -> Result<file_import::Imported, String> {
+    let failed = |e: sqlx::Error| e.to_string();
+    let seller = match seller_key.trim() {
+        "" => shipping_configuration::default_seller_key(db)
+            .await
+            .map_err(failed)?
+            .trim()
+            .to_owned(),
+        named => named.to_owned(),
+    };
+    if seller.is_empty() {
+        return Err("A seller key is required.".to_owned());
     }
-    legacy
-        .send::<_, serde_json::Value>(
-            "/api/seller-order-history",
-            &Request {
-                seller_key,
-                action: "import_csv",
-                csv_text,
-                file_name,
-            },
-        )
-        .await
-        .map(drop)
+    let observed_at = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let mut conn = db.0.acquire().await.map_err(failed)?;
+    file_import::import(&mut conn, &seller, csv_text, Some(file_name), &observed_at).await
 }
 
 #[cfg(test)]

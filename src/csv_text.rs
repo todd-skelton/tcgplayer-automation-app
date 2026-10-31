@@ -39,24 +39,80 @@ pub fn decode(bytes: &[u8]) -> String {
 /// as an object of its fields by the header's names, a repeated name numbered (`Name_1`), fields
 /// past the header's in `__parsed_extra`, and a short row without the missing names.
 pub fn parse(text: &str) -> Vec<Map<String, Value>> {
+    read(text, Reading::default()).rows
+}
+
+/// How a file is read, as Papa Parse's options say it.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Reading {
+    /// `skipEmptyLines: "greedy"`: a line of white space and delimiters is empty too.
+    pub greedy: bool,
+    /// `transformHeader: (name) => name.trim()`.
+    pub trim_header: bool,
+}
+
+/// A file read as Papa Parse reads it with `header: true`.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Table {
+    pub rows: Vec<Map<String, Value>>,
+    /// The header's names (`meta.fields`).
+    pub fields: Vec<String>,
+    /// The first error Papa Parse reports (`errors[0].message`): a quote left open or closed
+    /// badly, a delimiter it could not guess, then the first row with more or fewer fields than
+    /// the header.
+    pub error: Option<String>,
+}
+
+/// `Papa.parse(text, { header: true, skipEmptyLines, transformHeader })`, with its errors.
+pub fn read(text: &str, reading: Reading) -> Table {
     let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    let empty = |row: &[String]| {
+        if reading.greedy {
+            js_number::trim(&row.concat()).is_empty()
+        } else {
+            empty_line(row)
+        }
+    };
     let newline = guess_newline(text);
-    let delimiter = guess_delimiter(text, newline).unwrap_or(",");
-    let mut rows = Parser {
-        delimiter,
+    let guessed = guess_delimiter(text, newline, &empty);
+    let Scanned { mut rows, errors } = Parser {
+        delimiter: guessed.unwrap_or(","),
         newline,
         preview: None,
     }
     .rows(text);
-    if let Some(header) = rows.first_mut() {
-        rename_repeated(header);
+    let mut errors: Vec<String> = errors.into_iter().map(str::to_owned).collect();
+    if guessed.is_none() && !text.is_empty() {
+        errors.push("Unable to auto-detect delimiting character; defaulted to ','".to_owned());
     }
-    rows.retain(|row| !empty_line(row));
+    if let Some(header) = rows.first_mut() {
+        rename_repeated(header, reading.trim_header);
+    }
+    rows.retain(|row| !empty(row));
     let mut rows = rows.into_iter();
     let Some(fields) = rows.next() else {
-        return Vec::new();
+        return Table {
+            error: errors.into_iter().next(),
+            ..Table::default()
+        };
     };
-    rows.map(|row| {
+    let rows: Vec<Vec<String>> = rows.collect();
+    for row in &rows {
+        if row.len() != fields.len() {
+            let (more, fewer) = ("Too many", "Too few");
+            errors.push(format!(
+                "{} fields: expected {} fields but parsed {}",
+                if row.len() > fields.len() {
+                    more
+                } else {
+                    fewer
+                },
+                fields.len(),
+                row.len()
+            ));
+        }
+    }
+    let objects = rows.into_iter().map(|row| {
         let mut object = Map::new();
         let mut extra = Vec::new();
         for (i, value) in row.into_iter().enumerate() {
@@ -71,8 +127,12 @@ pub fn parse(text: &str) -> Vec<Map<String, Value>> {
             object.insert("__parsed_extra".to_owned(), Value::Array(extra));
         }
         object
-    })
-    .collect()
+    });
+    Table {
+        rows: objects.collect(),
+        fields,
+        error: errors.into_iter().next(),
+    }
 }
 
 /// `skipEmptyLines: true`: a line with one empty field.
@@ -80,12 +140,14 @@ fn empty_line(row: &[String]) -> bool {
     matches!(row, [only] if only.is_empty())
 }
 
-/// The header's repeated names numbered, each number not already a name.
-fn rename_repeated(header: &mut [String]) {
+/// The header's names, trimmed when asked, and repeated ones numbered, each number not already a
+/// name as it was read.
+fn rename_repeated(header: &mut [String], trim: bool) {
     let mut used: std::collections::HashSet<String> = header.iter().cloned().collect();
     let mut counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
     for field in header.iter_mut() {
-        let name = field.strip_prefix('\u{feff}').unwrap_or(field).to_owned();
+        let name = field.strip_prefix('\u{feff}').unwrap_or(field);
+        let name = if trim { js_number::trim(name) } else { name }.to_owned();
         match counts.get(&name).copied() {
             None => {
                 counts.insert(name.clone(), 1);
@@ -145,7 +207,11 @@ fn guess_newline(text: &str) -> &'static str {
 /// `guessDelimiter`: of comma, tab, bar, semicolon and the record and unit separators, the one
 /// that splits the first ten lines most evenly into two or more fields on average, the most
 /// fields among equals; none when no delimiter does.
-fn guess_delimiter(text: &str, newline: &'static str) -> Option<&'static str> {
+fn guess_delimiter(
+    text: &str,
+    newline: &'static str,
+    empty_line: &dyn Fn(&[String]) -> bool,
+) -> Option<&'static str> {
     let mut best: Option<(&'static str, f64, f64)> = None;
     for delimiter in [",", "\t", "|", ";", "\u{1e}", "\u{1f}"] {
         let rows = Parser {
@@ -153,7 +219,8 @@ fn guess_delimiter(text: &str, newline: &'static str) -> Option<&'static str> {
             newline,
             preview: Some(10),
         }
-        .rows(text);
+        .rows(text)
+        .rows;
         let (mut delta, mut fields, mut empty) = (0.0, 0.0, 0.0);
         let mut previous: Option<usize> = None;
         for row in &rows {
@@ -193,8 +260,15 @@ struct Parser {
     preview: Option<usize>,
 }
 
+/// What a pass read: its rows, and the quoting errors it met on the way, in order.
+#[derive(Default)]
+struct Scanned {
+    rows: Vec<Vec<String>>,
+    errors: Vec<&'static str>,
+}
+
 impl Parser {
-    fn rows(&self, input: &str) -> Vec<Vec<String>> {
+    fn rows(&self, input: &str) -> Scanned {
         Scan {
             input,
             delimiter: self.delimiter,
@@ -203,6 +277,7 @@ impl Parser {
             cursor: 0,
             rows: Vec::new(),
             row: Vec::new(),
+            errors: Vec::new(),
         }
         .run()
     }
@@ -217,6 +292,7 @@ struct Scan<'a> {
     cursor: isize,
     rows: Vec<Vec<String>>,
     row: Vec<String>,
+    errors: Vec<&'static str>,
 }
 
 impl Scan<'_> {
@@ -264,17 +340,24 @@ impl Scan<'_> {
         self.preview.is_some_and(|most| self.rows.len() >= most)
     }
 
-    fn finish(mut self, value: Option<String>) -> Vec<Vec<String>> {
+    fn finish(mut self, value: Option<String>) -> Scanned {
         let value =
             value.unwrap_or_else(|| self.text(self.cursor, self.input.len() as isize).to_owned());
         self.row.push(value);
         self.rows.push(std::mem::take(&mut self.row));
-        self.rows
+        self.scanned()
     }
 
-    fn run(mut self) -> Vec<Vec<String>> {
+    fn scanned(self) -> Scanned {
+        Scanned {
+            rows: self.rows,
+            errors: self.errors,
+        }
+    }
+
+    fn run(mut self) -> Scanned {
         if self.input.is_empty() {
-            return Vec::new();
+            return Scanned::default();
         }
         let len = self.input.len() as isize;
         let (delimiter, newline) = (self.delimiter, self.newline);
@@ -287,6 +370,7 @@ impl Scan<'_> {
                 loop {
                     quote = self.index_of("\"", quote + 1);
                     if quote == -1 {
+                        self.errors.push("Quoted field unterminated");
                         return self.finish(None);
                     }
                     if quote == len - 1 {
@@ -324,10 +408,12 @@ impl Scan<'_> {
                         next_newline = self.save_row(quote + 1 + spaces + newline.len() as isize);
                         next_delimiter = self.index_of(delimiter, self.cursor);
                         if self.previewed() {
-                            return self.rows;
+                            return self.scanned();
                         }
                         break;
                     }
+                    self.errors
+                        .push("Trailing quote on quoted field is malformed");
                     quote += 1;
                 }
                 continue;
@@ -344,7 +430,7 @@ impl Scan<'_> {
                 self.row.push(field);
                 next_newline = self.save_row(next_newline + newline.len() as isize);
                 if self.previewed() {
-                    return self.rows;
+                    return self.scanned();
                 }
                 continue;
             }

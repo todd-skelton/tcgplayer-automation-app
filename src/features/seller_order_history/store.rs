@@ -10,12 +10,12 @@ use std::{
     ops::DerefMut,
 };
 
-use serde_json::{Value, json};
+use serde_json::Value;
 use sqlx::{Connection, PgConnection};
 use tokio::sync::Mutex;
 
 use super::{
-    observation::{self, Observation},
+    observation::{self, Observation, Source},
     sync::{Coverage, Gap, Progress, Run, Store},
 };
 use crate::features::{
@@ -86,29 +86,30 @@ fn amount(value: f64) -> String {
 fn transaction_amount(observation: &Observation, key: &str) -> Option<String> {
     observation
         .transaction
-        .as_ref()
-        .ok()
+        .recorded()
         .and_then(|t| t.get(key))
         .and_then(Value::as_f64)
         .map(amount)
 }
 
-fn transaction_evidence(observation: &Observation) -> String {
-    match &observation.transaction {
-        Ok(transaction) => js_numbers(transaction).to_string(),
-        Err(reason) => json!({ "coverageReason": reason }).to_string(),
-    }
+fn transaction_evidence(observation: &Observation) -> Option<String> {
+    observation
+        .transaction
+        .evidence()
+        .map(|evidence| js_numbers(&evidence).to_string())
 }
 
-/// `recordObservation` for an order read from the API: whether it changed the history, and the
-/// order's id.
+/// `recordObservation`: whether the observation changed the history, and the order's id. One
+/// the history already has only moves its times on. A file never replaces what the API last
+/// said of an order, since it may describe an older state.
 pub async fn record_observation(
     conn: &mut PgConnection,
     o: &Observation,
 ) -> Result<(bool, String), String> {
     let failed = |e: sqlx::Error| e.to_string();
-    let existing: Option<(String, String, i32)> = sqlx::query_as(
-        "SELECT id::text,source_fingerprint,source_revision FROM seller_orders
+    let source = o.source.word();
+    let existing: Option<(String, String, i32, String)> = sqlx::query_as(
+        "SELECT id::text,source_fingerprint,source_revision,latest_source FROM seller_orders
          WHERE seller_key=$1 AND order_number=$2 FOR UPDATE",
     )
     .bind(&o.seller_key)
@@ -116,7 +117,7 @@ pub async fn record_observation(
     .fetch_optional(&mut *conn)
     .await
     .map_err(failed)?;
-    if let Some((id, fingerprint, _)) = &existing
+    if let Some((id, fingerprint, _, _)) = &existing
         && *fingerprint == o.fingerprint
     {
         sqlx::query(
@@ -124,22 +125,31 @@ pub async fn record_observation(
                summary_order_time=COALESCE($3::timestamptz,summary_order_time),
                summary_fingerprint=COALESCE($4,summary_fingerprint),
                last_observed_at=GREATEST(last_observed_at,$2::timestamptz),
-               detail_observed_at=GREATEST(detail_observed_at,$2::timestamptz),
-               latest_source='tcgplayer_api'
+               detail_observed_at=CASE WHEN $5='tcgplayer_api'
+                 THEN GREATEST(detail_observed_at,$2::timestamptz) ELSE detail_observed_at END,
+               latest_source=CASE WHEN latest_source='tcgplayer_api' AND $5='file_import'
+                 THEN latest_source ELSE $5 END
              WHERE id=$1::bigint",
         )
         .bind(id)
         .bind(&o.observed_at)
         .bind(&o.summary_order_time)
         .bind(&o.summary_fingerprint)
+        .bind(source)
         .execute(&mut *conn)
         .await
         .map_err(failed)?;
         return Ok((false, id.clone()));
     }
-    let revision = existing.as_ref().map_or(0, |(_, _, r)| *r) + 1;
+    if let Some((id, _, _, latest)) = &existing
+        && o.source == Source::FileImport
+        && latest == Source::Api.word()
+    {
+        return Ok((false, id.clone()));
+    }
+    let revision = existing.as_ref().map_or(0, |(_, _, r, _)| *r) + 1;
     let order_id = match existing {
-        Some((id, _, _)) => {
+        Some((id, _, _, _)) => {
             sqlx::query(
                 "UPDATE seller_orders SET
                    order_time=$2::timestamptz,summary_order_time=COALESCE($3::timestamptz,summary_order_time),
@@ -149,7 +159,7 @@ pub async fn record_observation(
                    provider_net_proceeds=$13::numeric,direct_fee_amount=$14::numeric,
                    transaction_evidence=$15::jsonb,source_revision=$16,source_fingerprint=$17,
                    summary_fingerprint=COALESCE($18,summary_fingerprint),
-                   last_observed_at=$19::timestamptz,detail_observed_at=$19::timestamptz,latest_source='tcgplayer_api'
+                   last_observed_at=$19::timestamptz,detail_observed_at=$19::timestamptz,latest_source=$20
                  WHERE id=$1::bigint",
             )
             .bind(&id)
@@ -171,6 +181,7 @@ pub async fn record_observation(
             .bind(&o.fingerprint)
             .bind(&o.summary_fingerprint)
             .bind(&o.observed_at)
+            .bind(source)
             .execute(&mut *conn)
             .await
             .map_err(failed)?;
@@ -190,7 +201,7 @@ pub async fn record_observation(
                first_observed_at,last_observed_at,detail_observed_at,latest_source
              ) VALUES ($1,$2,$3::timestamptz,$4::timestamptz,$5,$6,$7,$8,$9,$10::numeric,$11::numeric,$12::numeric,
                $13::numeric,$14::numeric,$15::numeric,$16::jsonb,1,$17,$18,
-               $19::timestamptz,$19::timestamptz,$19::timestamptz,'tcgplayer_api')
+               $19::timestamptz,$19::timestamptz,$19::timestamptz,$20)
              RETURNING id::text",
         )
         .bind(&o.seller_key)
@@ -212,6 +223,7 @@ pub async fn record_observation(
         .bind(&o.fingerprint)
         .bind(&o.summary_fingerprint)
         .bind(&o.observed_at)
+        .bind(source)
         .fetch_one(&mut *conn)
         .await
         .map_err(failed)?,
@@ -236,7 +248,7 @@ pub async fn record_observation(
         "INSERT INTO seller_order_revisions (
            order_id,revision_number,source_fingerprint,source,observed_at,order_time,order_time_evidence,
            summary_order_time,provider_status,lifecycle,refund_status,refund_evidence,line_evidence,transaction_evidence
-         ) VALUES ($1::bigint,$2,$3,'tcgplayer_api',$4::timestamptz,$5::timestamptz,'detail_canonical',
+         ) VALUES ($1::bigint,$2,$3,$13,$4::timestamptz,$5::timestamptz,'detail_canonical',
            $6::timestamptz,$7,$8,$9,$10::jsonb,$11::jsonb,$12::jsonb)",
     )
     .bind(&order_id)
@@ -251,6 +263,7 @@ pub async fn record_observation(
     .bind(js_numbers(&Value::Array(o.refunds.clone())).to_string())
     .bind(js_numbers(&lines).to_string())
     .bind(transaction_evidence(o))
+    .bind(source)
     .execute(&mut *conn)
     .await
     .map_err(failed)?;
@@ -613,6 +626,8 @@ impl<C: DerefMut<Target = PgConnection> + Send> Store for Postgres<C> {
 
 #[cfg(test)]
 mod tests {
+    use serde_json::json;
+
     use super::*;
     use crate::{
         database::Database,

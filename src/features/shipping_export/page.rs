@@ -23,9 +23,11 @@ use super::{
     workflow::{self, Workflow},
 };
 use crate::{
+    csv_text,
     database::Database,
     features::{
         pull_sheet::{self, Summary, url::SheetQuery},
+        seller_order_history::file_import,
         shipping_configuration::{self, EasyPostMode, ShippingConfig},
     },
     layout::{Chrome, Layout},
@@ -37,8 +39,6 @@ use crate::{
 /// How long the orders' intake history is used before it is read again, as the React screen
 /// read it every five minutes.
 const INTAKE_FOR: Duration = Duration::minutes(5);
-/// The largest older order CSV the Node app takes.
-const MOST_HISTORY: usize = 5 << 20;
 
 impl ShippingWorkflow {
     pub fn at(step: Step) -> Self {
@@ -692,6 +692,7 @@ pub async fn import_history(
     zone: Option<ClientZone>,
     mut upload: Upload<HistoryInput>,
 ) -> HtmlResult {
+    const MOST_HISTORY: usize = file_import::MOST_BYTES;
     let f = HistoryInput::FIELDS;
     upload.limit(MOST_HISTORY + (64 << 10));
     let mut chosen = None;
@@ -711,9 +712,13 @@ pub async fn import_history(
     let done = match (problem, chosen) {
         (Some(why), _) => Err(why),
         (None, None) => Err("A seller order CSV file is required.".to_owned()),
+        // Read as the React screen's `File.text()` read it, so the file's fingerprint is the one
+        // Node recorded for the same file.
         (None, Some((name, bytes))) => {
-            let text = String::from_utf8_lossy(&bytes);
-            source::import_history(&legacy, &seller, &name, &text).await
+            let text = csv_text::decode(&bytes);
+            source::import_history(&db, &seller, &name, &text)
+                .await
+                .map(drop)
         }
     };
     history_changed(&req, &db, done, &legacy, Visitor::of(zone.as_ref())).await

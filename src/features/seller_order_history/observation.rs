@@ -235,7 +235,54 @@ pub fn needs_detail(stored: Option<Option<&str>>, summary_fingerprint: &str) -> 
     stored.flatten() != Some(summary_fingerprint)
 }
 
-/// What the history records of an order read from the API.
+/// What an observation says of the order's money: the transaction the API sent with every field
+/// the history records, why it is not recorded, or nothing (a file has no transaction).
+#[derive(Clone, Debug, PartialEq)]
+pub enum Transaction {
+    Recorded(Value),
+    Unavailable(&'static str),
+    Absent,
+}
+
+impl Transaction {
+    pub fn recorded(&self) -> Option<&Value> {
+        match self {
+            Transaction::Recorded(transaction) => Some(transaction),
+            _ => None,
+        }
+    }
+
+    /// As a revision keeps it: the transaction, or why there is none; nothing for a file.
+    pub fn evidence(&self) -> Option<Value> {
+        match self {
+            Transaction::Recorded(transaction) => Some(transaction.clone()),
+            Transaction::Unavailable(reason) => {
+                Some(serde_json::json!({ "coverageReason": reason }))
+            }
+            Transaction::Absent => None,
+        }
+    }
+}
+
+/// Where an observation came from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Source {
+    /// TCGplayer's order management API, which is current.
+    Api,
+    /// An order export a user imported, which may describe an older state.
+    FileImport,
+}
+
+impl Source {
+    pub fn word(self) -> &'static str {
+        match self {
+            Source::Api => "tcgplayer_api",
+            Source::FileImport => "file_import",
+        }
+    }
+}
+
+/// What the history records of an order, read from the API or a file.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Observation {
     pub seller_key: String,
@@ -248,13 +295,13 @@ pub struct Observation {
     pub order_channel: Option<Value>,
     pub order_fulfillment: Option<Value>,
     pub gross_item_proceeds: f64,
-    /// The transaction when every field of it is there, or why it is not recorded.
-    pub transaction: Result<Value, &'static str>,
+    pub transaction: Transaction,
     pub lines: Vec<Line>,
     pub refunds: Vec<Value>,
     pub observed_at: String,
     pub fingerprint: String,
     pub summary_fingerprint: Option<String>,
+    pub source: Source,
 }
 
 fn number(fields: &Fields, key: &str) -> Option<f64> {
@@ -326,12 +373,21 @@ fn lines(detail: &Fields) -> Result<Vec<Line>, String> {
 }
 
 /// The fingerprint of what an order is: a new one is a new revision.
-fn fingerprint(o: &Observation) -> Result<String, String> {
+pub(super) fn fingerprint(o: &Observation) -> Result<String, String> {
     let lines: Vec<Value> = aggregate_lines(&o.lines)?.iter().map(Line::json).collect();
     let (transaction, reason) = match &o.transaction {
-        Ok(t) => (Some(t.clone()), None),
-        Err(reason) => (None, Some(Value::from(*reason))),
+        Transaction::Recorded(t) => (Some(t.clone()), None),
+        Transaction::Unavailable(reason) => (None, Some(Value::from(*reason))),
+        Transaction::Absent => (None, None),
     };
+    // The API's refunds come sorted; a file's in the order its rows name them.
+    let mut refunds = o.refunds.clone();
+    for refund in &mut refunds {
+        if let Some(Value::Array(products)) = refund.get_mut("products") {
+            sort_by_json(products);
+        }
+    }
+    sort_by_json(&mut refunds);
     Ok(sha256_hex(&stable_object(vec![
         (
             "orderNumber",
@@ -353,7 +409,7 @@ fn fingerprint(o: &Observation) -> Result<String, String> {
         ("transaction", stable(transaction.as_ref())),
         ("transactionCoverageReason", stable(reason.as_ref())),
         ("lines", stable_json(&Value::Array(lines))),
-        ("refunds", stable_json(&Value::Array(o.refunds.clone()))),
+        ("refunds", stable_json(&Value::Array(refunds))),
     ])))
 }
 
@@ -408,12 +464,16 @@ pub fn observe(
         order_channel: detail.get("orderChannel").cloned(),
         order_fulfillment: detail.get("orderFulfillment").cloned(),
         gross_item_proceeds: gross,
-        transaction: transaction(raw).ok_or("provider_transaction_fields_unavailable"),
+        transaction: transaction(raw).map_or(
+            Transaction::Unavailable("provider_transaction_fields_unavailable"),
+            Transaction::Recorded,
+        ),
         lines: lines(detail)?,
         refunds: refunds(&refund_list)?,
         observed_at: observed_at.to_owned(),
         fingerprint: String::new(),
         summary_fingerprint: None,
+        source: Source::Api,
     };
     observation.fingerprint = fingerprint(&observation)?;
     observation.summary_fingerprint = match (summary, summary_date) {
@@ -496,7 +556,7 @@ mod tests {
         let partial = observe("seller-a", None, &fields(partial), AT).unwrap();
         assert_eq!(
             partial.transaction,
-            Err("provider_transaction_fields_unavailable")
+            Transaction::Unavailable("provider_transaction_fields_unavailable")
         );
         assert_eq!(
             partial.fingerprint,
