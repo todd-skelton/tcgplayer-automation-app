@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sqlx::PgConnection;
 
-use super::recommendation::Recommendation;
+use super::recommendation::{self, Recommendation};
 use crate::{
     database::Database,
     features::{
@@ -346,18 +346,6 @@ struct Researched {
     recommendation: Option<Value>,
 }
 
-/// `getSlabRecommendation` of the slab's latest: `current` while its identity, decisions and
-/// evidence are as it was calculated from.
-const LATEST: &str = r#"SELECT jsonb_build_object('id', r.id, 'calculation', r.calculation,
-    'current', (i.revision = r.identity_revision AND i.valuation_group_key = r.valuation_group_key AND i.status = 'confirmed'
-    AND r.calculation->'decisions' = COALESCE((SELECT jsonb_agg(d.decision ORDER BY d.revision_id,d.event_key) FROM slab_comp_decisions d
-      WHERE d.valuation_group_key=r.valuation_group_key AND d.revision_id IN (SELECT revision_id FROM slab_recommendation_evidence WHERE recommendation_id=r.id)), '[]'::jsonb)
-    AND NOT EXISTS (SELECT 1 FROM slab_recommendation_evidence e JOIN slab_evidence_revisions v ON v.id=e.revision_id
-      JOIN slab_evidence_refreshes j ON j.key=v.key WHERE e.recommendation_id=r.id AND (j.latest_revision IS DISTINCT FROM v.id OR j.expires_at <= clock_timestamp() OR j.expires_at IS NULL OR j.state='failed'))),
-    'override', CASE WHEN o.recommendation_id IS NULL THEN NULL ELSE jsonb_build_object('itemPrice',o.item_price,'currency',o.currency,'note',o.note,'reviewedAt',o.reviewed_at) END)
-    FROM slab_recommendations r JOIN slab_identities i ON i.id=r.slab_id LEFT JOIN slab_price_overrides o ON o.recommendation_id=r.id
-    WHERE r.id = (SELECT id FROM slab_recommendations WHERE slab_id=$1::uuid ORDER BY created_at DESC, id DESC LIMIT 1)"#;
-
 /// A slab as `loadResearchPlan` reads it: its identity at the grade researched, the evidence
 /// keys for it over the window, and the slab's own state.
 pub(super) struct Plan {
@@ -448,7 +436,7 @@ async fn research(
         .into_iter()
         .map(status)
         .collect();
-    let recommendation: Option<Value> = sqlx::query_scalar(LATEST)
+    let recommendation: Option<Value> = sqlx::query_scalar(recommendation::LATEST)
         .bind(id)
         .fetch_optional(&mut *conn)
         .await

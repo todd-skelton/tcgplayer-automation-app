@@ -23,6 +23,11 @@ pub struct InventoryPage {
 pub struct Listing {
     pub id: String,
     pub seller: String,
+    /// The eBay item, and the variation of it when the listing has several.
+    #[serde(default)]
+    pub item_id: String,
+    #[serde(default)]
+    pub variation_key: String,
     pub revision: i64,
     pub state: String,
     pub url: String,
@@ -270,14 +275,28 @@ fn review_reasons(
     reasons
 }
 
-const PAGE: &str = r#"SELECT s.id::text, s.seller, s.item_id, s.snapshot, s.state, s.revision, s.identity_id::text, s.observed_at,
+/// A listing with the identity it is tied to, and whether another active listing names its
+/// certificate (`REVIEW_COLUMNS`).
+macro_rules! reviewed {
+    ($rest:literal) => {
+        concat!(
+            r#"SELECT s.id::text, s.seller, s.item_id, s.variation_key, s.snapshot, s.state, s.revision, s.identity_id::text, s.observed_at,
     (SELECT jsonb_build_object('grader', i.grader, 'certificateNumber', i.certificate_number, 'candidate', i.candidate,
       'identity', i.identity, 'reviewReasons', i.review_reasons) FROM slab_identities i WHERE i.id = s.identity_id),
     EXISTS (SELECT 1 FROM slab_inventory other WHERE other.seller = s.seller AND other.id <> s.id AND other.state = 'active'
       AND s.snapshot->'certificate' <> 'null'::jsonb AND other.snapshot->'certificate' = s.snapshot->'certificate')
-    FROM slab_inventory s WHERE seller = $1 AND ($2 = '' OR id > NULLIF($2, '')::uuid) ORDER BY id LIMIT $3"#;
+    FROM slab_inventory s "#,
+            $rest
+        )
+    };
+}
+
+const PAGE: &str =
+    reviewed!("WHERE seller = $1 AND ($2 = '' OR id > NULLIF($2, '')::uuid) ORDER BY id LIMIT $3");
+const ONE: &str = reviewed!("WHERE id = $1::uuid");
 
 type Row = (
+    String,
     String,
     String,
     String,
@@ -289,6 +308,63 @@ type Row = (
     Option<Value>,
     bool,
 );
+
+/// `reviewInventoryRow`: the listing as saved, with what it needs reviewed.
+fn reviewed(row: Row) -> Result<Listing, String> {
+    let (
+        id,
+        seller,
+        item_id,
+        variation_key,
+        snapshot,
+        state,
+        revision,
+        identity_id,
+        observed_at,
+        identity,
+        duplicate,
+    ) = row;
+    let unreadable = |e: serde_json::Error| format!("Listing {id} could not be read: {e}");
+    let snapshot: Snapshot = serde_json::from_value(snapshot).map_err(unreadable)?;
+    let identity: Option<ListingIdentity> = identity
+        .map(serde_json::from_value)
+        .transpose()
+        .map_err(unreadable)?;
+    Ok(Listing {
+        review_reasons: review_reasons(&snapshot, identity.as_ref(), duplicate),
+        url: format!("https://www.ebay.com/itm/{item_id}"),
+        id,
+        seller,
+        item_id,
+        variation_key,
+        revision: i64::from(revision),
+        state,
+        snapshot,
+        identity_id,
+        identity,
+        observed_at: observed_at.to_rfc3339_opts(SecondsFormat::Millis, true),
+    })
+}
+
+/// `getInventoryListing`: one listing, with what it needs reviewed.
+pub(super) async fn listing(
+    conn: &mut sqlx::PgConnection,
+    id: &str,
+) -> Result<Option<Listing>, String> {
+    let valid = id.len() == 36
+        && id
+            .bytes()
+            .all(|b| matches!(b, b'a'..=b'f' | b'0'..=b'9' | b'-'));
+    if !valid {
+        return Err("Choose an inventory listing.".to_owned());
+    }
+    let row: Option<Row> = sqlx::query_as(ONE)
+        .bind(id)
+        .fetch_optional(&mut *conn)
+        .await
+        .map_err(|e| e.to_string())?;
+    row.map(reviewed).transpose()
+}
 
 /// `getInventory`: `limit` of the seller's listings after the listing `after` (none for the
 /// first), the next page's start, and the account's revision.
@@ -319,40 +395,7 @@ async fn read(
     let items = rows
         .into_iter()
         .take(limit as usize)
-        .map(
-            |(
-                id,
-                seller,
-                item_id,
-                snapshot,
-                state,
-                revision,
-                identity_id,
-                observed_at,
-                identity,
-                duplicate,
-            )| {
-                let unreadable =
-                    |e: serde_json::Error| format!("Listing {id} could not be read: {e}");
-                let snapshot: Snapshot = serde_json::from_value(snapshot).map_err(unreadable)?;
-                let identity: Option<ListingIdentity> = identity
-                    .map(serde_json::from_value)
-                    .transpose()
-                    .map_err(unreadable)?;
-                Ok(Listing {
-                    review_reasons: review_reasons(&snapshot, identity.as_ref(), duplicate),
-                    url: format!("https://www.ebay.com/itm/{item_id}"),
-                    id,
-                    seller,
-                    revision: i64::from(revision),
-                    state,
-                    snapshot,
-                    identity_id,
-                    identity,
-                    observed_at: observed_at.to_rfc3339_opts(SecondsFormat::Millis, true),
-                })
-            },
-        )
+        .map(reviewed)
         .collect::<Result<Vec<_>, String>>()?;
     let revision: Option<i32> =
         sqlx::query_scalar("SELECT revision FROM slab_inventory_accounts WHERE seller = $1")

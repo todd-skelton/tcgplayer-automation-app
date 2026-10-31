@@ -159,7 +159,7 @@ impl Screen {
         let recommended = matches!(&research, Some(Ok(w)) if w.recommendation.is_some());
         let publication = match &listing {
             Some(listing) if choice.publication == Some(true) && recommended => {
-                Some(publication::read(legacy, &listing.id, choice.steps.as_deref()).await)
+                Some(publication::read(db, &listing.id, choice.steps.as_deref()).await)
             }
             _ => None,
         };

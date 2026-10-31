@@ -38,6 +38,33 @@ impl Policy<'_> {
     }
 }
 
+/// A stored recommendation (`getSlabRecommendation`) as JSON: `current` while its identity,
+/// decisions and evidence are as it was calculated from, and the ask reviewed on it.
+macro_rules! stored {
+    ($which:literal) => {
+        concat!(
+            r#"SELECT jsonb_build_object('id', r.id, 'calculation', r.calculation,
+    'current', (i.revision = r.identity_revision AND i.valuation_group_key = r.valuation_group_key AND i.status = 'confirmed'
+    AND r.calculation->'decisions' = COALESCE((SELECT jsonb_agg(d.decision ORDER BY d.revision_id,d.event_key) FROM slab_comp_decisions d
+      WHERE d.valuation_group_key=r.valuation_group_key AND d.revision_id IN (SELECT revision_id FROM slab_recommendation_evidence WHERE recommendation_id=r.id)), '[]'::jsonb)
+    AND NOT EXISTS (SELECT 1 FROM slab_recommendation_evidence e JOIN slab_evidence_revisions v ON v.id=e.revision_id
+      JOIN slab_evidence_refreshes j ON j.key=v.key WHERE e.recommendation_id=r.id AND (j.latest_revision IS DISTINCT FROM v.id OR j.expires_at <= clock_timestamp() OR j.expires_at IS NULL OR j.state='failed'))),
+    'override', CASE WHEN o.recommendation_id IS NULL THEN NULL ELSE jsonb_build_object('itemPrice',o.item_price,'currency',o.currency,'note',o.note,'reviewedAt',o.reviewed_at) END)
+    FROM slab_recommendations r JOIN slab_identities i ON i.id=r.slab_id LEFT JOIN slab_price_overrides o ON o.recommendation_id=r.id
+    "#,
+            $which
+        )
+    };
+}
+
+/// The slab's latest recommendation.
+pub(super) const LATEST: &str = stored!(
+    "WHERE r.id = (SELECT id FROM slab_recommendations WHERE slab_id=$1::uuid ORDER BY created_at DESC, id DESC LIMIT 1)"
+);
+
+/// The recommendation `id`.
+pub(super) const BY_ID: &str = stored!("WHERE r.id = $1::uuid");
+
 /// The comparable price basis, as the select and the policy write it.
 pub const BASES: [(&str, &str); 2] = [
     ("item-plus-shipping", "Item + shipping"),
