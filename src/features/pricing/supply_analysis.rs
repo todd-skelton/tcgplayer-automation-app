@@ -8,6 +8,8 @@ use std::collections::{HashMap, HashSet};
 use super::condition_normalization::{self, Multipliers};
 use super::policy::SupplyStatus;
 
+const SEALED: &str = "Unopened";
+
 /// One seller's ask for a copy of the card, delivered price split into price and shipping.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Listing {
@@ -59,7 +61,8 @@ impl Observation {
     }
 }
 
-/// Each seller's cheapest ask in each graded condition, cheapest delivered first, without the
+/// Each seller's cheapest ask in each known condition (the graded ones and sealed), cheapest
+/// delivered first, without the
 /// store's own asks. Buyers weigh condition against price, so a listing competes with asks in
 /// every condition once they are in its own condition's terms.
 pub fn cheapest_asks(listings: Vec<Listing>, excluded_seller_key: Option<&str>) -> Observation {
@@ -69,7 +72,9 @@ pub fn cheapest_asks(listings: Vec<Listing>, excluded_seller_key: Option<&str>) 
         if excluded_seller_key.is_some_and(|key| !key.is_empty() && listing.seller_key == key) {
             continue;
         }
-        if condition_normalization::rank(&listing.condition).is_none() {
+        if condition_normalization::rank(&listing.condition).is_none()
+            && listing.condition != SEALED
+        {
             continue;
         }
         let key = format!("{} {}", listing.seller(), listing.condition);
@@ -238,11 +243,16 @@ mod tests {
                 listing("Lightly Played", 3.0, 0.0, "a", 3),
                 listing("Near Mint", 2.0, 0.0, "store", 4),
                 listing("Unopened", 1.0, 0.0, "b", 5),
+                listing("Sealed", 0.5, 0.0, "c", 6),
             ],
             Some("seller-store"),
         );
         assert_eq!(observed.status, SupplyStatus::Observed);
         let ids: Vec<i64> = observed.listings.iter().map(|l| l.listing_id).collect();
-        assert_eq!(ids, [3, 2]);
+        assert_eq!(
+            ids,
+            [5, 3, 2],
+            "an unknown condition is dropped, sealed is kept"
+        );
     }
 }

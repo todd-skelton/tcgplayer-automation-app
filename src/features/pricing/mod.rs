@@ -18,4 +18,5 @@ pub mod maximize;
 pub mod policy;
 pub mod sale;
 pub mod shipping_threshold_snap;
+pub mod sku_price;
 pub mod supply_analysis;
