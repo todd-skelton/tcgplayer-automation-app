@@ -1,7 +1,8 @@
 //! Estimated purchase costs, ported from `estimatedPurchaseCost.ts` and
 //! `recordEstimatedPurchaseCosts`: a batch with no entered purchase cost is costed at a share of
-//! each card's market price at intake, less a fixed amount per card. Node still records the
-//! estimates; [`plan`] says what it would record, so the two can be compared before the switch.
+//! each card's market price at intake, less a fixed amount per card. [`plan`] says what an estimate
+//! records; [`record_missing`] records the batches not yet costed, and [`change_rate`] estimates a
+//! batch again at a rate of its own.
 use std::{collections::BTreeMap, io::Write, path::PathBuf, time::Duration};
 
 use chrono::{DateTime, Utc};
@@ -461,8 +462,6 @@ pub async fn record_missing(
     conn: &mut sqlx::PgConnection,
     seller: &str,
 ) -> Result<Option<Estimated>, String> {
-    use sqlx::Connection;
-    let failed = |e: sqlx::Error| e.to_string();
     let missing = uncosted(&mut *conn, seller).await.map_err(failed)?;
     if missing.is_empty() {
         return Ok(None);
@@ -470,7 +469,21 @@ pub async fn record_missing(
     let batches = estimable(&mut *conn, seller, Some(&missing), 100)
         .await
         .map_err(failed)?;
-    let run = plan(seller, &batches).map_err(|e| e.to_string())?;
+    record(conn, seller, &batches).await.map(Some)
+}
+
+fn failed(e: sqlx::Error) -> String {
+    e.to_string()
+}
+
+/// Records what [`plan`] says for `batches`, each estimate in a transaction of its own on `conn`.
+async fn record(
+    conn: &mut sqlx::PgConnection,
+    seller: &str,
+    batches: &[Batch],
+) -> Result<Estimated, String> {
+    use sqlx::Connection;
+    let run = plan(seller, batches).map_err(|e| e.to_string())?;
     let mut estimated = Estimated {
         recorded: Vec::new(),
         repeated: run.repeated,
@@ -493,7 +506,66 @@ pub async fn record_missing(
             });
         }
     }
-    Ok(Some(estimated))
+    Ok(estimated)
+}
+
+/// `changeBatchEstimatedCostRate`: the batch estimated again at `rate`, which stays its rate, and
+/// a correction recorded when its amounts change. A batch an entered purchase cost owns, or with
+/// no received cards for the default shipping seller, is refused.
+pub async fn change_rate(
+    db: &Database,
+    batch_number: i32,
+    rate: CostRate,
+) -> Result<Estimated, String> {
+    use sqlx::Connection;
+    let seller = crate::features::shipping_configuration::default_seller_key(db)
+        .await
+        .map_err(failed)?;
+    let seller = seller.trim();
+    if seller.is_empty() {
+        return Err(
+            "Configure a default shipping seller before recording inventory economics.".to_owned(),
+        );
+    }
+    let mut conn = db.0.acquire().await.map_err(failed)?;
+    let mut tx = conn.begin().await.map_err(failed)?;
+    let estimated = rate_changed(&mut tx, seller, batch_number, rate).await?;
+    tx.commit().await.map_err(failed)?;
+    Ok(estimated)
+}
+
+async fn rate_changed(
+    conn: &mut sqlx::PgConnection,
+    seller: &str,
+    batch_number: i32,
+    rate: CostRate,
+) -> Result<Estimated, String> {
+    let only = [batch_number];
+    let before = estimable(&mut *conn, seller, Some(&only), 100)
+        .await
+        .map_err(failed)?;
+    if before.is_empty() {
+        return Err(format!(
+            "Batch {batch_number} has an entered purchase cost or no received cards for seller \
+             {seller}, so it has no estimate to change."
+        ));
+    }
+    sqlx::query(
+        "INSERT INTO inventory_batch_estimated_cost_rates (batch_number,market_rate,per_unit_deduction_cents)
+        VALUES ($1,$2,$3)
+        ON CONFLICT (batch_number) DO UPDATE SET market_rate=EXCLUDED.market_rate,
+          per_unit_deduction_cents=EXCLUDED.per_unit_deduction_cents,updated_at=NOW()",
+    )
+    .bind(batch_number)
+    .bind(rate.market_rate)
+    .bind(rate.per_unit_deduction_cents)
+    .execute(&mut *conn)
+    .await
+    .map_err(failed)?;
+    let batches = estimable(&mut *conn, seller, Some(&only), 100)
+        .await
+        .map_err(failed)?;
+    record(conn, seller, &batches).await
 }
 
 /// The log `ESTIMATE_SHADOW_LOG` names: the shadow runs only when it is set.
@@ -606,6 +678,70 @@ mod tests {
     /// Records what the worker would on the dev database, in a transaction it rolls back, and
     /// compares what it wrote with what Node's `recordMissingEstimatedPurchaseCosts` wrote
     /// (`.port-logs/estimate-record-node.ts`, captured by `.port-logs/estimate-capture.sql`).
+    /// Each case `.port-logs/rate-change-node.ts` ran through Node's `changeBatchEstimatedCostRate`,
+    /// on the dev database in a transaction rolled back: the rate as the screen reads it, what is
+    /// recorded, what is written (`estimate-capture.sql` and the rate saved), and the refusal.
+    #[tokio::test]
+    #[ignore = "writes the dev database in a transaction it rolls back"]
+    async fn rates_change_as_node_changes_them() {
+        use crate::features::inventory_intake::queue::{
+            read_market_percent, read_per_card_deduction,
+        };
+        use serde_json::{Value, json};
+        crate::config::load_env();
+        let node: Value = serde_json::from_str(
+            &std::fs::read_to_string(".port-logs/rate-change.node.json").unwrap(),
+        )
+        .unwrap();
+        let capture = std::fs::read_to_string(".port-logs/estimate-capture.sql").unwrap();
+        let rates = "SELECT COALESCE(json_agg(json_build_object('batch', batch_number,
+            'rate', market_rate::text, 'cents', per_unit_deduction_cents) ORDER BY batch_number),
+            '[]')::text FROM inventory_batch_estimated_cost_rates WHERE updated_at = now()";
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let seller = node["seller"].as_str().unwrap();
+        for case in node["cases"].as_array().unwrap() {
+            let batch = i32::try_from(case["batch"].as_i64().unwrap()).unwrap();
+            let rate = CostRate {
+                market_rate: read_market_percent(case["marketPercent"].as_str().unwrap()).unwrap(),
+                per_unit_deduction_cents: read_per_card_deduction(
+                    case["perCardDeduction"].as_str().unwrap(),
+                )
+                .unwrap(),
+            };
+            let mut tx = db.0.begin().await.unwrap();
+            let changed = rate_changed(&mut tx, seller, batch, rate).await;
+            let ours = match changed {
+                Ok(estimated) => {
+                    let captured: String =
+                        sqlx::query_scalar(&format!("SELECT captured::text FROM ({capture}) AS c"))
+                            .fetch_one(&mut *tx)
+                            .await
+                            .unwrap();
+                    let saved: String =
+                        sqlx::query_scalar(rates).fetch_one(&mut *tx).await.unwrap();
+                    let mut captured: Value = serde_json::from_str(&captured).unwrap();
+                    captured["rates"] = serde_json::from_str(&saved).unwrap();
+                    let mut recorded = serde_json::to_value(&estimated.recorded).unwrap();
+                    for one in recorded.as_array_mut().unwrap() {
+                        one.as_object_mut().unwrap().remove("entryId");
+                    }
+                    json!({ "batch": batch, "result": {
+                        "recorded": recorded, "repeated": estimated.repeated,
+                        "unchanged": estimated.unchanged,
+                        "marketUnavailable": estimated.market_unavailable,
+                    }, "captured": captured })
+                }
+                Err(error) => json!({ "batch": batch, "error": error, "captured": null }),
+            };
+            tx.rollback().await.unwrap();
+            let mut theirs = case.clone();
+            let theirs = theirs.as_object_mut().unwrap();
+            theirs.remove("marketPercent");
+            theirs.remove("perCardDeduction");
+            assert_eq!(ours, Value::Object(theirs.clone()), "batch {batch}");
+        }
+    }
+
     #[tokio::test]
     #[ignore = "writes the dev database in a transaction it rolls back"]
     async fn records_missing_estimates_as_node_does() {

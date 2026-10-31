@@ -871,7 +871,10 @@ mod tests {
         let db = Database::connect_lazy(&crate::config::database_url());
         let legacy = Legacy::new(crate::config::legacy_origin());
         let ours = list(&db).await.unwrap();
-        let theirs: Vec<Batch> = legacy.read("/api/inventory-batches").await.unwrap();
+        let theirs: Vec<Batch> = legacy
+            .read_with("/api/inventory-batches", &())
+            .await
+            .unwrap();
         assert_eq!(ours.len(), theirs.len());
         for (ours, theirs) in ours.iter().zip(&theirs) {
             assert_eq!(ours, theirs, "batch {}", ours.batch_number);
@@ -880,7 +883,7 @@ mod tests {
         for batch in ours.iter().take(10) {
             let n = batch.batch_number;
             let theirs: Batch = legacy
-                .read(&format!("/api/inventory-batches/{n}"))
+                .read_with(&format!("/api/inventory-batches/{n}"), &())
                 .await
                 .unwrap();
             assert_eq!(one(&db, n).await.unwrap(), theirs);
@@ -893,7 +896,10 @@ mod tests {
                 (Scope::ManualReview, "manual-review"),
             ] {
                 let theirs: Vec<Saved> = legacy
-                    .read(&format!("/api/inventory-batches/{n}/results?scope={query}"))
+                    .read_with(
+                        &format!("/api/inventory-batches/{n}/results?scope={query}"),
+                        &(),
+                    )
                     .await
                     .unwrap();
                 let theirs: Vec<Row> = theirs.into_iter().map(|s| s.row).collect();
@@ -939,7 +945,7 @@ mod tests {
         let mut previewed = 0;
         for n in numbers {
             let theirs: Publications = legacy
-                .read(&format!("/api/inventory-batches/{n}/publications"))
+                .read_with(&format!("/api/inventory-batches/{n}/publications"), &())
                 .await
                 .unwrap();
             let ours = publications(&db, n).await.unwrap();

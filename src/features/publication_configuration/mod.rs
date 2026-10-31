@@ -14,6 +14,13 @@ mod views;
 
 pub use views::COMPONENTS;
 
+/// Whether publication is stopped: paused by hand, or its circuit open or its sign-in refused
+/// until someone resumes it.
+pub async fn paused(db: &crate::database::Database) -> sqlx::Result<bool> {
+    let (settings, runtime) = config::load(db).await?;
+    Ok(settings.global_paused || runtime.needs_resume())
+}
+
 // Handlers are named from here, where the routes module is declared.
 use page::{resume, save, show};
 

@@ -15,6 +15,7 @@ use super::{
 };
 use crate::{
     database::Database,
+    features::inventory_economics::estimate,
     layout::{Chrome, Layout},
     legacy::Legacy,
 };
@@ -79,10 +80,9 @@ impl Screen {
 pub async fn show(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::InventoryManager>,
 ) -> HtmlResult {
-    page(&req, &db, &legacy, &at.selection, &Drawn::default()).await
+    page(&req, &db, &at.selection, &Drawn::default()).await
 }
 
 /// What a page is drawn with besides the stored state: a refused change, and the queue form as
@@ -95,16 +95,10 @@ struct Drawn<'a> {
 }
 
 /// The whole screen for `selection`.
-async fn page(
-    req: &Req,
-    db: &Database,
-    legacy: &Legacy,
-    selection: &Selection,
-    drawn: &Drawn<'_>,
-) -> HtmlResult {
+async fn page(req: &Req, db: &Database, selection: &Selection, drawn: &Drawn<'_>) -> HtmlResult {
     let (screen, batches, chrome) = tokio::join!(
         Screen::read(db, selection),
-        queue::batches(legacy),
+        queue::batches(db),
         Chrome::read(db)
     );
     let screen = screen?;
@@ -148,6 +142,7 @@ pub async fn count(
         product_id: product.product_id,
     };
     let applied = pending::set(
+        &db,
         &legacy,
         input.submit.as_str(),
         at.sku,
@@ -197,13 +192,13 @@ pub struct ClearInput {
 /// Every count not yet queued removed; queued batches keep theirs.
 pub async fn clear(
     req: Req,
-    State(legacy): State<Legacy>,
+    State(db): State<Database>,
     Params(at): Params<url::ClearCounts>,
     Form(input): Form<ClearInput>,
 ) -> HtmlResult {
-    pending::clear(&legacy, input.submit.as_str())
+    pending::clear(&db, input.submit.as_str())
         .await
-        .map_err(|message| corten::Error::new(message).with_status(StatusCode::BAD_GATEWAY))?;
+        .map_err(|message| corten::Error::new(message).with_status(StatusCode::CONFLICT))?;
     req.redirect(&url::InventoryManager {
         selection: at.selection,
     })
@@ -224,7 +219,7 @@ pub async fn queue_batch(
     let cost = match input.read_cost() {
         Ok(cost) => cost,
         Err(errors) => {
-            return refuse(&req, &db, &legacy, &selection, &input, &errors, None).await;
+            return refuse(&req, &db, &selection, &input, &errors, None).await;
         }
     };
     let quantities = pending::quantities(&db).await?;
@@ -246,16 +241,7 @@ pub async fn queue_batch(
         if let Some((why, message)) = problem {
             errors.refuse(why, message);
         }
-        return refuse(
-            &req,
-            &db,
-            &legacy,
-            &selection,
-            &input,
-            &errors,
-            Some(&quantities),
-        )
-        .await;
+        return refuse(&req, &db, &selection, &input, &errors, Some(&quantities)).await;
     };
     let expected = queue::snapshot(&quantities);
     let request = Queue {
@@ -270,16 +256,7 @@ pub async fn queue_batch(
             let mut errors = Errors::new();
             errors.refuse(Refusal::Conflict, message);
             let quantities = pending::quantities(&db).await?;
-            return refuse(
-                &req,
-                &db,
-                &legacy,
-                &selection,
-                &input,
-                &errors,
-                Some(&quantities),
-            )
-            .await;
+            return refuse(&req, &db, &selection, &input, &errors, Some(&quantities)).await;
         }
     };
     let notice = format!(
@@ -290,7 +267,7 @@ pub async fn queue_batch(
     if req.mode != Mode::Action {
         return req.redirect_with_notice(&url::InventoryManager { selection }, notice);
     }
-    let (screen, batches) = tokio::join!(Screen::read(&db, &selection), queue::batches(&legacy));
+    let (screen, batches) = tokio::join!(Screen::read(&db, &selection), queue::batches(&db));
     let screen = screen?;
     let handed_off: HashSet<i32> = expected.iter().map(|i| i.sku).collect();
     let redrawn = redrawn(&screen.products, &handed_off);
@@ -329,7 +306,6 @@ pub async fn queue_batch(
 async fn refuse(
     req: &Req,
     db: &Database,
-    legacy: &Legacy,
     selection: &Selection,
     input: &QueueInput,
     errors: &Errors,
@@ -338,7 +314,7 @@ async fn refuse(
     req.invalid_with(
         errors,
         |patch| async move {
-            let batches = queue::batches(legacy).await;
+            let batches = queue::batches(db).await;
             let target = batches.as_ref().ok().map(|b| &b.target);
             let form = html! {
                 <QueueForm selection={selection} input={input} target={target} errors={errors} />
@@ -361,7 +337,7 @@ async fn refuse(
                 errors: Some(errors),
                 ..Drawn::default()
             };
-            page(req, db, legacy, selection, &drawn).await
+            page(req, db, selection, &drawn).await
         },
     )
     .await
@@ -370,10 +346,10 @@ async fn refuse(
 /// The background batches as they are now, and the request to read them again.
 pub async fn batches(
     req: Req,
-    State(legacy): State<Legacy>,
+    State(db): State<Database>,
     Params(at): Params<url::Batches>,
 ) -> HtmlResult {
-    let batches = queue::batches(&legacy).await;
+    let batches = queue::batches(&db).await;
     let selection = &at.selection;
     let again = url::Batches {
         selection: selection.clone(),
@@ -431,13 +407,13 @@ impl RateInput {
 pub async fn change_rate(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::ChangeRate>,
     Form(input): Form<RateInput>,
 ) -> HtmlResult {
     let changed = match input.read() {
-        Ok(rate) => queue::change_rate(&legacy, at.batch, rate)
+        Ok(rate) => estimate::change_rate(&db, at.batch, rate)
             .await
+            .map(drop)
             .map_err(|message| {
                 let mut errors = Errors::new();
                 errors.add_form(message);
@@ -450,12 +426,12 @@ pub async fn change_rate(
         selection: selection.clone(),
     };
     if let Err(errors) = &changed {
-        let (legacy, selection, again) = (&legacy, &selection, &again);
+        let (db, selection, again) = (&db, &selection, &again);
         return req
             .invalid_with(
                 errors,
                 |patch| async move {
-                    let batches = queue::batches(legacy).await;
+                    let batches = queue::batches(db).await;
                     patch.draw(html! {
                         <BackgroundBatches
                             selection={selection}
@@ -480,7 +456,7 @@ pub async fn change_rate(
                         error: Some(&message),
                         ..Drawn::default()
                     };
-                    page(&req, &db, legacy, selection, &drawn).await
+                    page(&req, db, selection, &drawn).await
                 },
             )
             .await;
@@ -488,7 +464,7 @@ pub async fn change_rate(
     if req.mode != Mode::Action {
         return req.redirect(&url::InventoryManager { selection });
     }
-    let batches = queue::batches(&legacy).await;
+    let batches = queue::batches(&db).await;
     req.patch(html! {
         <BackgroundBatches
             selection={&selection}

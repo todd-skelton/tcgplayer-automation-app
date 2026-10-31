@@ -7,7 +7,11 @@ use std::collections::HashMap;
 use corten::{UrlValue, prelude::*};
 use serde::{Deserialize, Serialize};
 
-use crate::legacy::Legacy;
+use crate::{
+    database::Database,
+    features::{continuous_pricing, publication_configuration, shipping_configuration},
+    legacy::Legacy,
+};
 
 /// What queuing does with the batch: price it, or price it and publish what is ready.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue, Deserialize, Serialize)]
@@ -339,7 +343,7 @@ pub async fn queue(legacy: &Legacy, request_id: &str, queue: &Queue<'_>) -> Resu
 }
 
 /// The seller queued batches are counted and published for.
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Target {
     pub seller_key: String,
@@ -366,7 +370,7 @@ pub enum PricingStatus {
 }
 
 /// A queued batch and how far it got.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Run {
     pub batch_number: i32,
@@ -502,34 +506,115 @@ pub struct Batches {
     pub target: Target,
 }
 
-pub async fn batches(legacy: &Legacy) -> Result<Batches, String> {
-    legacy.read("/api/inventory-intake-runs").await
+/// The 25 newest runs, newest first, each as `findRecentInventoryIntakeRuns` answers it. A run's
+/// review count is its batch's failed or manual-review items once priced, or what is neither
+/// published nor publishing when it publishes.
+const RUNS: &str = r#"SELECT to_jsonb(run) FROM (SELECT r.batch_number AS "batchNumber", r.workflow,
+    r.planning_status AS "planningStatus", r.planning_error AS "planningError",
+    j.status AS "pricingStatus", j.error_message AS "pricingError", r.created_at AS "createdAt",
+    items.count AS "itemCount", items.quantity,
+    COALESCE(p.published, 0)::int AS "publishedCount",
+    COALESCE(p.publishing, 0)::int AS "publishingCount",
+    CASE WHEN j.status = 'completed' THEN
+      CASE WHEN r.workflow = 'price_only' OR r.planning_status = 'waiting'
+        THEN b.manual_review_count + COALESCE(p.failed, 0)
+        ELSE GREATEST(0, items.count - COALESCE(p.published, 0) - COALESCE(p.publishing, 0)) END
+      ELSE 0 END::int AS "reviewCount",
+    cost.cents AS "recordedCostCents", cost.uncosted AS "uncostedLotCount", cost.entered AS "hasEnteredCost",
+    CASE WHEN rate.batch_number IS NOT NULL THEN jsonb_build_object(
+      'marketRate', rate.market_rate::float8,
+      'perUnitDeductionCents', rate.per_unit_deduction_cents) END AS "costRate"
+    FROM (SELECT * FROM inventory_intake_runs ORDER BY created_at DESC LIMIT 25) r
+    JOIN inventory_batches b ON b.batch_number = r.batch_number
+    LEFT JOIN inventory_batch_estimated_cost_rates rate ON rate.batch_number = r.batch_number
+    CROSS JOIN LATERAL (SELECT SUM(allocation.allocated_amount_cents)::float8 AS cents,
+      COUNT(*) FILTER (WHERE ownership.receipt_id IS NULL)::int AS uncosted,
+      COALESCE(bool_or(series.purchase_reference <> 'estimated:batch-' || r.batch_number), FALSE) AS entered
+      FROM inventory_receipt_batch_links link
+      LEFT JOIN inventory_purchase_receipt_ownership ownership ON ownership.receipt_id = link.receipt_id
+      LEFT JOIN inventory_purchase_cost_series series ON series.id = ownership.series_id
+      LEFT JOIN LATERAL (SELECT entry.id FROM inventory_purchase_cost_entries entry
+        WHERE entry.series_id = ownership.series_id ORDER BY entry.sequence DESC LIMIT 1) current ON TRUE
+      LEFT JOIN inventory_purchase_cost_allocations allocation
+        ON allocation.entry_id = current.id AND allocation.receipt_id = link.receipt_id
+      WHERE link.batch_number = r.batch_number) cost
+    JOIN LATERAL (SELECT * FROM inventory_batch_pricing_jobs WHERE batch_number = r.batch_number ORDER BY id DESC LIMIT 1) j ON TRUE
+    CROSS JOIN LATERAL (SELECT COUNT(*)::int AS count, COALESCE(SUM(add_to_quantity), 0)::int AS quantity
+      FROM inventory_batch_items WHERE batch_number = r.batch_number) items
+    LEFT JOIN LATERAL (SELECT
+      COUNT(DISTINCT i.sku) FILTER (WHERE i.status = 'published' AND i.quantity_delta > 0) AS published,
+      COUNT(DISTINCT i.sku) FILTER (WHERE i.status = 'planned' AND p.status IN ('planned','staging','staged','publishing')) AS publishing,
+      COUNT(DISTINCT i.sku) FILTER (WHERE i.status IN ('failed','ambiguous','manual_review') OR
+        (i.status = 'planned' AND p.status IN ('failed','ambiguous','rolled_back'))) AS failed
+      FROM inventory_publication_items i JOIN inventory_publications p ON p.id = i.publication_id
+      WHERE i.batch_number = r.batch_number AND i.quantity_delta > 0) p ON TRUE) run
+    ORDER BY run."createdAt" DESC"#;
+
+async fn runs(db: impl sqlx::PgExecutor<'_>) -> sqlx::Result<Vec<Run>> {
+    let rows: Vec<sqlx::types::Json<Run>> = sqlx::query_scalar(RUNS).fetch_all(db).await?;
+    Ok(rows.into_iter().map(|row| row.0).collect())
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RateChange {
-    action: &'static str,
-    batch_number: i32,
-    market_percent: String,
-    per_card_deduction: String,
-}
-
-/// Estimates a queued batch's cost again at `rate`; its earlier estimate stays in its history.
-pub async fn change_rate(legacy: &Legacy, batch_number: i32, rate: CostRate) -> Result<(), String> {
-    let change = RateChange {
-        action: "change_estimated_cost_rate",
-        batch_number,
-        market_percent: rate.market_percent(),
-        per_card_deduction: rate.per_card_deduction(),
+/// The seller queued batches are for: the default shipping seller, which may be published for
+/// only when it is the publication seller (`getIntakePublicationTarget`).
+async fn target(db: &Database) -> sqlx::Result<Target> {
+    let seller_key = shipping_configuration::default_seller_key(db)
+        .await?
+        .trim()
+        .to_owned();
+    let publication_seller_key = continuous_pricing::store::settings(db).await?.seller_key;
+    let publishing_unavailable_reason = if seller_key.is_empty() {
+        Some("Set a default shipping seller before queuing publication.")
+    } else if seller_key != publication_seller_key {
+        Some(
+            "The publication seller and default shipping seller must match before queuing publication.",
+        )
+    } else {
+        None
     };
-    let _: serde_json::Value = legacy.send("/api/inventory-economics", &change).await?;
-    Ok(())
+    Ok(Target {
+        can_publish: publishing_unavailable_reason.is_none(),
+        publishing_unavailable_reason: publishing_unavailable_reason.map(str::to_owned),
+        publication_paused: publication_configuration::paused(db).await?,
+        seller_key,
+    })
+}
+
+/// The latest batches and the seller they are for.
+pub async fn batches(db: &Database) -> Result<Batches, String> {
+    let (runs, target) = tokio::try_join!(runs(&db.0), target(db)).map_err(|e| e.to_string())?;
+    Ok(Batches { runs, target })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The runs `.port-logs/intake-runs-seed.sql` adds to the dev database, inside a transaction
+    /// rolled back, against Node's read of the same (`.port-logs/intake-runs-node.ts`); and the
+    /// target as dev has it.
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction rolled back, and Node's read in .port-logs"]
+    async fn batches_read_as_node_reads_them() {
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let node: Batches = serde_json::from_str(
+            &std::fs::read_to_string(".port-logs/intake-runs.node.json").unwrap(),
+        )
+        .unwrap();
+        let seed = std::fs::read_to_string(".port-logs/intake-runs-seed.sql").unwrap();
+        let mut tx = db.0.begin().await.unwrap();
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtext('inventory_batch_pricing_jobs tests'))")
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        sqlx::raw_sql(&seed).execute(&mut *tx).await.unwrap();
+        let ours = runs(&mut *tx).await.unwrap();
+        tx.rollback().await.unwrap();
+        assert_eq!(ours.len(), 25);
+        assert_eq!(ours, node.runs);
+        assert_eq!(target(&db).await.unwrap(), node.target);
+    }
 
     #[test]
     fn a_rate_is_written_as_entered() {
