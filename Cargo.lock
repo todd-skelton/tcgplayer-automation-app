@@ -2198,6 +2198,7 @@ dependencies = [
  "sqlx",
  "tokio",
  "tower",
+ "unicode-normalization",
 ]
 
 [[package]]

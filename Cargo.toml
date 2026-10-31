@@ -25,6 +25,8 @@ futures-util = { version = "0.3", default-features = false, features = ["alloc"]
 csv = "1"
 dotenvy = "0.15"
 regex = "1.13.1"
+# NFKD, to read titles as the Node app's `words` does (slab comp screening).
+unicode-normalization = "0.1"
 # Evidence fingerprints that match the ones the Node app records (inventory economics ledger).
 sha2 = "0.10"
 # fdlibm's exp, as V8's Math.exp computes it (js_math).

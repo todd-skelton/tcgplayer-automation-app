@@ -32,7 +32,7 @@
 //! applies once. Neither contacts eBay; publishing is not connected.
 //!
 //! The comps of a saved evidence revision are reviewed on request (`comps=<revision>`), fifty
-//! sales a page, each screened against the identity researched by the Node app. A sale opens in a
+//! sales a page, each screened here against the identity researched (`screening`). A sale opens in a
 //! dialog the address names (`comp=<row>`), where the operator includes or excludes it; that
 //! marks the recommendation for recalculation. Fetching a sale's details or an eBay source's next
 //! page adds its evidence beside the grade's own (`extra`).
@@ -71,6 +71,7 @@ mod page;
 mod publication;
 mod recommendation;
 mod research;
+mod screening;
 mod supply;
 mod views;
 

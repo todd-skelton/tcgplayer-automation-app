@@ -120,9 +120,9 @@ impl Workspace {
 /// A slab's card and grade, as saved (`SlabIdentity`).
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Identity {
-    card: Card,
-    grading: Grading,
+pub(super) struct Identity {
+    pub(super) card: Card,
+    pub(super) grading: Grading,
     #[serde(default)]
     provider_asset: Option<Asset>,
 }
@@ -130,26 +130,26 @@ struct Identity {
 /// `CARD_FIELDS`, in their order.
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Card {
-    name: Option<String>,
-    game: Option<String>,
-    language: Option<String>,
-    set: Option<String>,
-    card_number: Option<String>,
-    year: Option<String>,
-    edition: Option<String>,
-    finish: Option<String>,
-    stamp: Option<String>,
+pub(super) struct Card {
+    pub(super) name: Option<String>,
+    pub(super) game: Option<String>,
+    pub(super) language: Option<String>,
+    pub(super) set: Option<String>,
+    pub(super) card_number: Option<String>,
+    pub(super) year: Option<String>,
+    pub(super) edition: Option<String>,
+    pub(super) finish: Option<String>,
+    pub(super) stamp: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
-struct Grading {
-    grader: String,
-    encoding: String,
-    number: Option<f64>,
-    label: Option<String>,
-    qualifier: Option<String>,
-    autograph: Option<String>,
+pub(super) struct Grading {
+    pub(super) grader: String,
+    pub(super) encoding: String,
+    pub(super) number: Option<f64>,
+    pub(super) label: Option<String>,
+    pub(super) qualifier: Option<String>,
+    pub(super) autograph: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
@@ -358,15 +358,28 @@ const LATEST: &str = r#"SELECT jsonb_build_object('id', r.id, 'calculation', r.c
     FROM slab_recommendations r JOIN slab_identities i ON i.id=r.slab_id LEFT JOIN slab_price_overrides o ON o.recommendation_id=r.id
     WHERE r.id = (SELECT id FROM slab_recommendations WHERE slab_id=$1::uuid ORDER BY created_at DESC, id DESC LIMIT 1)"#;
 
-/// `loadSlabWorkspace`: the slab's evidence keys at `grade` over `window`, where their
-/// refreshes stand, and its latest recommendation.
-async fn research(
+/// A slab as `loadResearchPlan` reads it: its identity at the grade researched, the evidence
+/// keys for it over the window, and the slab's own state.
+pub(super) struct Plan {
+    /// `confirmed` or `needs-review`.
+    pub(super) status: String,
+    /// The identity's revision: a decision saved over a newer one is refused.
+    pub(super) revision: i64,
+    pub(super) target: Identity,
+    /// The target's valuation group: the slab's saved one at the owned grade, else the grade's.
+    pub(super) valuation_group_key: Option<String>,
+    keys: Vec<String>,
+    grade_model: GradeModel,
+}
+
+/// `loadResearchPlan` with `researchTarget`: the slab `id` at `grade` (`owned` or a PSA grade),
+/// and the evidence keys for it over `window`.
+pub(super) async fn plan(
     conn: &mut PgConnection,
     id: &str,
     grade: &str,
     window: &Window,
-) -> Result<Researched, String> {
-    let failed = |e: sqlx::Error| e.to_string();
+) -> Result<Plan, String> {
     let uuid = id.len() == 36
         && id.bytes().enumerate().all(|(i, b)| match i {
             8 | 13 | 18 | 23 => b == b'-',
@@ -375,14 +388,15 @@ async fn research(
     if !uuid {
         return Err("Choose a saved slab identity.".to_owned());
     }
-    let record: Option<(Option<Value>, Option<Value>)> = sqlx::query_as(
-        "SELECT identity, candidate->'identity' FROM slab_identities WHERE id = $1::uuid",
+    type Record = (Option<Value>, Option<Value>, String, i32, Option<String>);
+    let record: Option<Record> = sqlx::query_as(
+        "SELECT identity, candidate->'identity', status, revision, valuation_group_key FROM slab_identities WHERE id = $1::uuid",
     )
     .bind(id)
     .fetch_optional(&mut *conn)
     .await
-    .map_err(failed)?;
-    let Some((saved, candidate)) = record else {
+    .map_err(|e| e.to_string())?;
+    let Some((saved, candidate, status, revision, saved_key)) = record else {
         return Err("The slab identity changed. Reopen it before refreshing.".to_owned());
     };
     let identity = |value: Option<Value>| {
@@ -400,7 +414,34 @@ async fn research(
     let Some(source) = source else {
         return Err("Correct the card identity before researching it.".to_owned());
     };
-    let keys = source.at_grade(grade)?.keys(window)?;
+    let target = source.at_grade(grade)?;
+    let keys = target.keys(window)?;
+    let valuation_group_key = if grade == "owned" {
+        saved_key
+    } else {
+        Some(target.group_key())
+    };
+    Ok(Plan {
+        status,
+        revision: i64::from(revision),
+        target,
+        valuation_group_key,
+        keys,
+        grade_model,
+    })
+}
+
+/// `loadSlabWorkspace`: the slab's evidence keys at `grade` over `window`, where their
+/// refreshes stand, and its latest recommendation.
+async fn research(
+    conn: &mut PgConnection,
+    id: &str,
+    grade: &str,
+    window: &Window,
+) -> Result<Researched, String> {
+    let Plan {
+        keys, grade_model, ..
+    } = plan(conn, id, grade, window).await?;
     let statuses = store::statuses(&mut *conn, &keys)
         .await
         .map_err(|e| e.to_string())?
@@ -411,7 +452,7 @@ async fn research(
         .bind(id)
         .fetch_optional(&mut *conn)
         .await
-        .map_err(failed)?;
+        .map_err(|e| e.to_string())?;
     Ok(Researched {
         keys,
         statuses,

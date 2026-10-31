@@ -165,7 +165,7 @@ impl Screen {
         };
         let comps = match (&record, &research, choice.comps.as_deref()) {
             (Some(record), Some(Ok(_)), Some(revision)) => {
-                Some(comps::read(legacy, &record.id, revision, choice).await)
+                Some(comps::read(db, &record.id, revision, choice).await)
             }
             _ => None,
         };
