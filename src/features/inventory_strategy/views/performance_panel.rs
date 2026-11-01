@@ -18,7 +18,10 @@ use crate::{
     text::Msg,
     theme::*,
     ui::alert::{Alert, AlertVariant},
-    ui::badge::{Badge, BadgeVariant},
+    ui::{
+        badge::{Badge, BadgeVariant},
+        table::Table,
+    },
 };
 
 #[derive(Id)]
@@ -190,8 +193,8 @@ fn WindowFigures<'a>(window: &'a PerformanceWindow, t: Msg) -> impl Render {
 fn LineTable<'a>(lines: &'a [PerformanceSummary], t: Msg) -> impl Render {
     html! {
         if !lines.is_empty() {
-            <div class={Scroll}>
-                <table class={Table} aria-label="Realized performance by product line">
+            <Table>
+                <table class={Cells} aria-label="Realized performance by product line">
                     <thead>
                         <tr>
                             <th>"Product line"</th>
@@ -221,7 +224,7 @@ fn LineTable<'a>(lines: &'a [PerformanceSummary], t: Msg) -> impl Render {
                         }
                     </tbody>
                 </table>
-            </div>
+            </Table>
         }
     }
 }

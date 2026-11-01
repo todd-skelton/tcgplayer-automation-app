@@ -19,7 +19,10 @@ use crate::{
     layout::LabeledControl,
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        table::Table,
+    },
 };
 
 #[derive(Id)]
@@ -246,8 +249,8 @@ fn SupplyContext<'a>(
                 "Search coverage is incomplete."
             }
         </p>
-        <div class={Scroll}>
-            <table class={Table} aria-label="Active supply">
+        <Table>
+            <table class={Cells} aria-label="Active supply">
                 <thead>
                     <tr>
                         <th>"Active listing"</th>
@@ -288,7 +291,7 @@ fn SupplyContext<'a>(
                     }
                 </tbody>
             </table>
-        </div>
+        </Table>
         <nav class={Line} aria-label="Supply pages">
             if let Some(back) = choice.previous_source() {
                 <a href={url::SlabPricing::at(&back)}>"Previous source page"</a>

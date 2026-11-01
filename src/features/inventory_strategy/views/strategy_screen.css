@@ -128,22 +128,9 @@
     gap: var(--space-1);
   }
 }
-.scroll {
-  overflow-x: auto;
-}
-.table {
-  width: 100%;
-  font-size: var(--font-size-sm);
-  & th,
-  & td {
-    padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--border);
-    text-align: start;
-    vertical-align: top;
-  }
-  & thead th {
-    font-weight: 700;
-  }
+/* What the kit's Table leaves to the page: a row's heading in the body reads as text, and a note
+   under a cell's value. */
+.cells {
   & tbody th {
     font-weight: 400;
   }

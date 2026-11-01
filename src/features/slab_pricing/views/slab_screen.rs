@@ -15,7 +15,10 @@ use crate::{
     layout::LabeledControl,
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        table::Table,
+    },
 };
 
 #[derive(Id)]
@@ -326,8 +329,8 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
                 <button>"Import into "{seller}</button>
             </form>
         </details>
-        <div class={Scroll}>
-            <table class={Table} aria-label="Saved eBay listings">
+        <Table>
+            <table class={Cells} aria-label="Saved eBay listings">
                 <thead>
                     <tr>
                         <th>"Review"</th>
@@ -372,7 +375,7 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
                     }
                 </tbody>
             </table>
-        </div>
+        </Table>
         <nav class={Line} aria-label="Inventory pages">
             match choice.previous_page() {
                 Some(previous) => <a href={url::SlabPricing::at(&previous)}>"Previous page"</a>,

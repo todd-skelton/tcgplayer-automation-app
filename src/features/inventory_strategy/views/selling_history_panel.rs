@@ -20,7 +20,10 @@ use crate::{
     text::Msg,
     theme::*,
     ui::alert::{Alert, AlertVariant},
-    ui::badge::{Badge, BadgeVariant},
+    ui::{
+        badge::{Badge, BadgeVariant},
+        table::Table,
+    },
 };
 
 /// "1 unit", "1,234 units".
@@ -196,8 +199,8 @@ fn HistorySummary<'a>(summary: &'a Summary, t: Msg) -> impl Render {
 #[component(css = super::strategy_screen::StrategyScreen)]
 fn SellThroughTable<'a>(summary: &'a Summary, t: Msg) -> impl Render {
     html! {
-        <div class={Scroll}>
-            <table class={Table} aria-label="Age-eligible sell-through">
+        <Table>
+            <table class={Cells} aria-label="Age-eligible sell-through">
                 <thead>
                     <tr>
                         <th>"Age-eligible sell-through"</th>
@@ -225,7 +228,7 @@ fn SellThroughTable<'a>(summary: &'a Summary, t: Msg) -> impl Render {
                     }
                 </tbody>
             </table>
-        </div>
+        </Table>
     }
 }
 
@@ -233,8 +236,8 @@ fn SellThroughTable<'a>(summary: &'a Summary, t: Msg) -> impl Render {
 fn LineTable<'a>(report: &'a Ready, t: Msg) -> impl Render {
     html! {
         if !report.product_lines.is_empty() {
-            <div class={Scroll}>
-                <table class={Table} aria-label="Product-line selling history">
+            <Table>
+                <table class={Cells} aria-label="Product-line selling history">
                     <thead>
                         <tr>
                             <th>"Product line"</th>
@@ -260,7 +263,7 @@ fn LineTable<'a>(report: &'a Ready, t: Msg) -> impl Render {
                         }
                     </tbody>
                 </table>
-            </div>
+            </Table>
         }
     }
 }

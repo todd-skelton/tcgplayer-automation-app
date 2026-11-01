@@ -11,7 +11,10 @@ use crate::{
         url::{self, Selection},
     },
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        table::Table,
+    },
 };
 
 #[derive(Id)]
@@ -192,27 +195,29 @@ pub fn IntakeScreen<'a>(
             </form>
             <section class={panel()} aria-labelledby={TableHeadingId}>
                 <h2 id={TableHeadingId} class={VisuallyHidden}>"Add new inventory"</h2>
-                <table class={Table}>
-                    <thead>
-                        <tr>
-                            <th>"Image"</th>
-                            <th>"Set"</th>
-                            <th>"SKU"</th>
-                            <th>"Quantity"</th>
-                            <th>"Product Name"</th>
-                        </tr>
-                    </thead>
-                    <tbody
-                        ref={rows}
-                        on:click={js::clicked(event, js::Picture { dialog, image, search })}
-                        on:change={js::committed(event)}
-                        on:connect={js::start(rows, searched)}
-                    >
-                        for p in &screen.products {
-                            <ProductRow product={p} screen={screen} />
-                        }
-                    </tbody>
-                </table>
+                <Table>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>"Image"</th>
+                                <th>"Set"</th>
+                                <th>"SKU"</th>
+                                <th>"Quantity"</th>
+                                <th>"Product Name"</th>
+                            </tr>
+                        </thead>
+                        <tbody
+                            ref={rows}
+                            on:click={js::clicked(event, js::Picture { dialog, image, search })}
+                            on:change={js::committed(event)}
+                            on:connect={js::start(rows, searched)}
+                        >
+                            for p in &screen.products {
+                                <ProductRow product={p} screen={screen} />
+                            }
+                        </tbody>
+                    </table>
+                </Table>
                 if screen.products.is_empty() {
                     <p class={muted()}>
                         match screen.scope {

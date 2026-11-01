@@ -13,7 +13,10 @@ use crate::{
     },
     text::Msg,
     theme::*,
-    ui::badge::{Badge, BadgeVariant},
+    ui::{
+        badge::{Badge, BadgeVariant},
+        table::Table,
+    },
 };
 
 /// The active policy, and how many product lines price at a hurdle of their own.
@@ -194,8 +197,8 @@ pub fn HurdleSweep<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             <p class={muted()}>
                 "Listed value, median / P90 wait, and SKUs raised / lowered against current prices at each daily return hurdle. The shaded cell is the configured hurdle."
             </p>
-            <div class={Scroll}>
-                <table class={Table}>
+            <Table>
+                <table class={Cells}>
                     <thead>
                         <tr>
                             <th>"Product line"</th>
@@ -241,7 +244,7 @@ pub fn HurdleSweep<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         }
                     </tbody>
                 </table>
-            </div>
+            </Table>
         </section>
     }
 }

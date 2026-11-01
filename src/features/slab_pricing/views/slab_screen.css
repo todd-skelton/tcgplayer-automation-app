@@ -24,23 +24,8 @@
   display: grid;
   gap: var(--space-3);
 }
-.scroll {
-  overflow-x: auto;
-}
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--font-size-sm);
-  & th,
-  & td {
-    padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--border);
-    text-align: start;
-    vertical-align: middle;
-  }
-  & thead th {
-    font-weight: 700;
-  }
+/* What the kit's Table leaves to the page: the row the screen is on stands out. */
+.cells {
   & tr[aria-current] > * {
     background: color-mix(in srgb, var(--primary) 10%, transparent);
   }

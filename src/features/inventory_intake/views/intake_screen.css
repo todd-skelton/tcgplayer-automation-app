@@ -58,19 +58,9 @@
   overflow: hidden;
   clip-path: inset(50%);
 }
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  & th,
-  & td {
-    padding: var(--space-1) var(--space-2);
-    border-bottom: 1px solid var(--border);
-    text-align: start;
-    white-space: nowrap;
-  }
-}
+/* A product's name wraps; the kit's Table keeps every other cell on one line (corten#559). */
 .name {
-  white-space: normal;
+  white-space: normal !important;
 }
 .chip {
   display: inline-block;

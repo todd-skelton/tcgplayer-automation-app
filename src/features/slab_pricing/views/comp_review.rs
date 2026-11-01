@@ -12,7 +12,10 @@ use crate::{
     },
     layout::LabeledControl,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        table::Table,
+    },
 };
 
 /// The saved comps of the revision reviewed, fifty a page, each screened against the identity
@@ -86,8 +89,8 @@ fn Comps<'a>(review: &'a Review, choice: &'a Choice) -> impl Render {
                 "No sold observations in this saved response."
             </Alert>
         }
-        <div class={Scroll}>
-            <table class={Table} aria-label="Saved comps">
+        <Table>
+            <table class={Cells} aria-label="Saved comps">
                 <thead>
                     <tr>
                         <th>"Details"</th>
@@ -115,7 +118,7 @@ fn Comps<'a>(review: &'a Review, choice: &'a Choice) -> impl Render {
                     }
                 </tbody>
             </table>
-        </div>
+        </Table>
         <nav class={Line} aria-label="Comp pages">
             match &previous {
                 Some(previous) => <a href={url::SlabPricing::at(previous)}>"Previous 50"</a>,
