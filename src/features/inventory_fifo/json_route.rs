@@ -1,26 +1,21 @@
 //! `POST /api/inventory-fifo`: an operator's FIFO actions for the default shipping seller, as the
-//! Node route answered them. Reading an order's allocation, a line's revisions and the holds, and
-//! one replay, are answered here; recording a disposition, superseding one and a quantity
-//! correction still go to the Node app until they are ported.
+//! Node route answered them: reading an order's allocation, a line's revisions and the holds, one
+//! replay, and the corrections (`corrections`): recording a disposition, superseding one, and a
+//! quantity correction, each in a transaction of its own.
+use chrono::{DateTime, Utc};
 use corten::{
-    Api, JsonError, JsonResponse, Prefix,
-    axum::{
-        body::{Body, to_bytes},
-        extract::Request,
-        http::StatusCode,
-    },
+    Api, JsonResponse, Prefix,
+    axum::{body::to_bytes, extract::Request, http::StatusCode},
     prelude::*,
 };
 use serde_json::{Value, json};
+use sqlx::PgConnection;
 
-use super::{operator, queue};
-use crate::{
-    api,
-    app::Shared,
-    database::Database,
-    features::shipping_configuration,
-    legacy::{Legacy, relay_request},
+use super::{
+    corrections::{self, Disposition, QuantityCorrection, Supersession},
+    operator, queue,
 };
+use crate::{api, app::Shared, database::Database, features::shipping_configuration, node_pg};
 
 /// The largest body read: an action and its evidence.
 const MAX_BODY_BYTES: usize = 1024 * 1024;
@@ -34,34 +29,19 @@ pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
     api.route::<InventoryFifo>(post(act).with_state(shared.clone()))
 }
 
-/// What an action asked for: an answer, or the request for the Node app.
-enum Acted {
-    Answer(Value),
-    Node(Body),
-}
-
-/// The route's own answer, or the Node app's for an action it still answers, passed on as it came.
-async fn act(
-    State(db): State<Database>,
-    State(legacy): State<Legacy>,
-    request: Request,
-) -> Result<JsonResponse, JsonError> {
-    let (parts, body) = request.into_parts();
-    let own = Ok;
-    let body = match to_bytes(body, MAX_BODY_BYTES).await {
+/// The action's answer, or Node's refusal.
+async fn act(State(db): State<Database>, request: Request) -> JsonResponse {
+    let body = match to_bytes(request.into_body(), MAX_BODY_BYTES).await {
         Ok(body) => body,
-        Err(error) => return own(api::error(StatusCode::CONFLICT, format!("Error: {error}"))),
+        Err(error) => return api::error(StatusCode::CONFLICT, format!("Error: {error}")),
     };
     match acted(&db, &body).await {
-        Ok(Acted::Answer(answer)) => own(api::node_json(&answer)),
-        Ok(Acted::Node(body)) => Ok(relay_request(&legacy, Request::from_parts(parts, body))
-            .await?
-            .into()),
+        Ok(answer) => api::node_json(&answer),
         Err(Refused::Seller) => {
             let message = "Seller key must match the configured seller.";
-            own(api::error(StatusCode::BAD_REQUEST, message))
+            api::error(StatusCode::BAD_REQUEST, message)
         }
-        Err(Refused::Failed(error)) => own(api::error(StatusCode::CONFLICT, error)),
+        Err(Refused::Failed(error)) => api::error(StatusCode::CONFLICT, error),
     }
 }
 
@@ -78,7 +58,7 @@ impl From<String> for Refused {
     }
 }
 
-async fn acted(db: &Database, body: &[u8]) -> Result<Acted, Refused> {
+async fn acted(db: &Database, body: &[u8]) -> Result<Value, Refused> {
     let payload: Value =
         serde_json::from_slice(body).map_err(|e| Refused::Failed(format!("SyntaxError: {e}")))?;
     if payload.is_null() {
@@ -115,12 +95,184 @@ async fn acted(db: &Database, body: &[u8]) -> Result<Acted, Refused> {
             json!({ "revisions": operator::line_revisions(db, seller, line, after, limit).await? })
         }
         Some("replay") => json!({ "result": replayed(db, seller).await? }),
-        Some("record_disposition" | "supersede_disposition" | "record_quantity_correction") => {
-            return Ok(Acted::Node(Body::from(body.to_vec())));
+        Some(
+            action
+            @ ("record_disposition" | "supersede_disposition" | "record_quantity_correction"),
+        ) => {
+            let correction = correction(action, &payload, seller)?;
+            let mut tx = db.0.begin().await.map_err(node_pg::thrown)?;
+            let result = correction.record(&mut tx).await?;
+            tx.commit().await.map_err(node_pg::thrown)?;
+            json!({ "result": result })
         }
         _ => return Err("Error: Unknown inventory FIFO action.".to_owned().into()),
     };
-    Ok(Acted::Answer(answer))
+    Ok(answer)
+}
+
+/// A correction an action asks for, checked as Node's route checked it.
+pub enum Correction {
+    Disposition(Disposition),
+    Supersession(Supersession),
+    QuantityCorrection(QuantityCorrection),
+}
+
+impl Correction {
+    /// Records it on `conn`, in the caller's transaction.
+    pub async fn record(self, conn: &mut PgConnection) -> Result<Value, String> {
+        match self {
+            Correction::Disposition(input) => corrections::record_disposition(conn, input).await,
+            Correction::Supersession(input) => {
+                corrections::supersede_disposition(conn, input).await
+            }
+            Correction::QuantityCorrection(input) => {
+                corrections::record_quantity_correction(conn, input).await
+            }
+        }
+    }
+}
+
+/// `hasOffset`: a time written with `Z` or an offset that `Date.parse` reads, as `new Date` reads
+/// it, to the millisecond.
+fn offset_time(value: &Value) -> Option<DateTime<Utc>> {
+    let text = value.as_str()?;
+    let bytes = text.as_bytes();
+    let offset = text.ends_with(['Z', 'z'])
+        || (bytes.len() >= 6 && {
+            let tail = &bytes[bytes.len() - 6..];
+            matches!(tail[0], b'+' | b'-')
+                && tail[1].is_ascii_digit()
+                && tail[2].is_ascii_digit()
+                && tail[3] == b':'
+                && tail[4].is_ascii_digit()
+                && tail[5].is_ascii_digit()
+        });
+    let at = DateTime::parse_from_rfc3339(text).ok().filter(|_| offset)?;
+    DateTime::from_timestamp_millis(at.timestamp_millis())
+}
+
+/// The payload's `action` read into a correction for `seller`, or Node's refusal of it.
+pub fn correction(action: &str, payload: &Value, seller: &str) -> Result<Correction, String> {
+    let text = |key: &str| payload.get(key).and_then(Value::as_str).map(str::to_owned);
+    let number = |key: &str| payload.get(key).and_then(Value::as_f64);
+    let evidence = || payload.get("evidence").and_then(Value::as_object).cloned();
+    let allocations = || {
+        payload
+            .get("sourceAllocations")
+            .and_then(Value::as_array)
+            .cloned()
+    };
+    let refused = |message: &str| format!("Error: {message}");
+    match action {
+        "record_disposition" => {
+            let kind = text("dispositionType").filter(|kind| {
+                matches!(
+                    kind.as_str(),
+                    "unfulfilled_cancellation" | "physical_restock"
+                )
+            });
+            let (
+                Some(request_id),
+                Some(order_number),
+                Some(sku_id),
+                Some(disposition_type),
+                Some(quantity),
+                Some(revision),
+                Some(available_at),
+                Some(evidence),
+                Some(source_allocations),
+            ) = (
+                text("requestId"),
+                text("orderNumber"),
+                text("skuId"),
+                kind,
+                number("quantity"),
+                number("sourceOrderRevision"),
+                payload.get("availableAt").and_then(offset_time),
+                evidence(),
+                allocations(),
+            )
+            else {
+                return Err(refused(
+                    "Complete disposition identity, quantity, availability, lineage, and evidence are required.",
+                ));
+            };
+            Ok(Correction::Disposition(Disposition {
+                request_id,
+                seller_key: seller.to_owned(),
+                order_number,
+                sku_id,
+                disposition_type,
+                quantity,
+                source_order_revision: revision,
+                available_at,
+                evidence,
+                source_allocations,
+            }))
+        }
+        "supersede_disposition" => {
+            let (
+                Some(request_id),
+                Some(disposition_id),
+                Some(revision),
+                Some(confirmed_at),
+                Some(evidence),
+            ) = (
+                text("requestId"),
+                text("dispositionId"),
+                number("sourceOrderRevision"),
+                payload.get("confirmedAt").and_then(offset_time),
+                evidence(),
+            )
+            else {
+                return Err(refused(
+                    "Complete correction identity and evidence are required.",
+                ));
+            };
+            Ok(Correction::Supersession(Supersession {
+                request_id,
+                seller_key: seller.to_owned(),
+                disposition_id,
+                source_order_revision: revision,
+                confirmed_at,
+                evidence,
+            }))
+        }
+        _ => {
+            let (
+                Some(request_id),
+                Some(order_number),
+                Some(sku_id),
+                Some(revision),
+                Some(available_at),
+                Some(evidence),
+                Some(source_allocations),
+            ) = (
+                text("requestId"),
+                text("orderNumber"),
+                text("skuId"),
+                number("sourceOrderRevision"),
+                payload.get("availableAt").and_then(offset_time),
+                evidence(),
+                allocations(),
+            )
+            else {
+                return Err(refused(
+                    "Complete quantity correction identity, time, source allocations, and evidence are required.",
+                ));
+            };
+            Ok(Correction::QuantityCorrection(QuantityCorrection {
+                request_id,
+                seller_key: seller.to_owned(),
+                order_number,
+                sku_id,
+                source_order_revision: revision,
+                available_at,
+                evidence,
+                source_allocations,
+            }))
+        }
+    }
 }
 
 /// `processNextReplay` for the seller, as Node answers it.
@@ -140,15 +292,87 @@ async fn replayed(db: &Database, seller: &str) -> Result<Value, String> {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::Value;
-    use tower::ServiceExt;
+    use std::collections::HashMap;
 
-    use crate::{
-        app::{Shared, app},
-        database::Database,
-        features::slab_connections,
-        legacy::Legacy,
-    };
+    use serde_json::Value;
+    use sqlx::Connection;
+
+    use super::*;
+
+    /// The corrections in `.port-logs/fifo-corrections-cases.json`, in order on the dev database in
+    /// one transaction rolled back (each case's setup first, each correction in a savepoint),
+    /// against Node's route over the same (`fifo-corrections-node.ts`): the status, the answer
+    /// (its ids are this run's) and what was written after each case.
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
+    async fn corrections_answer_and_write_as_node_did() {
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let read = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let cases: Vec<Value> = serde_json::from_str(&read("fifo-corrections-cases.json")).unwrap();
+        let node: Vec<Value> = serde_json::from_str(&read("fifo-corrections.node.json")).unwrap();
+        let capture = read("fifo-corrections-capture.sql");
+        assert_eq!(cases.len(), node.len());
+        let seller = shipping_configuration::default_seller_key(&db)
+            .await
+            .unwrap();
+        let mut ids: HashMap<(String, String), String> = HashMap::new();
+        let mut ours: Vec<Value> = Vec::new();
+        let mut tx = db.0.begin().await.unwrap();
+        for (case, theirs) in cases.iter().zip(&node) {
+            let name = &case["name"];
+            if let Some(setup) = case["setup"].as_str() {
+                sqlx::raw_sql(setup).execute(&mut *tx).await.unwrap();
+            }
+            let mut payload = case["payload"].clone();
+            if let Some(at) = payload["dispositionId"]
+                .as_str()
+                .and_then(|id| id.strip_prefix('@'))
+            {
+                let earlier: usize = at.parse().unwrap();
+                payload["dispositionId"] = ours[earlier]["result"]["id"].clone();
+            }
+            let action = payload["action"].as_str().unwrap().to_owned();
+            let answer = match correction(&action, &payload, seller.trim()) {
+                Err(error) => Err(error),
+                Ok(correction) => {
+                    let mut each = tx.begin().await.unwrap();
+                    let recorded = correction.record(&mut each).await;
+                    if recorded.is_ok() {
+                        each.commit().await.unwrap();
+                    } else {
+                        each.rollback().await.unwrap();
+                    }
+                    recorded
+                }
+            };
+            let (status, body) = match answer {
+                Ok(result) => (200, json!({ "result": result })),
+                Err(error) => (409, json!({ "error": error })),
+            };
+            ours.push(body.clone());
+            let mut expected = theirs["body"].clone();
+            if let (Some(mine), Some(node_id)) = (
+                body["result"]["id"].as_str(),
+                expected["result"]["id"].as_str(),
+            ) {
+                let mapped = ids
+                    .entry((action.clone(), node_id.to_owned()))
+                    .or_insert_with(|| mine.to_owned());
+                assert_eq!(mapped, mine, "{name}: not the record Node's answer named");
+                expected["result"]["id"] = Value::from(mine);
+            }
+            let captured: String = sqlx::query_scalar(&capture)
+                .fetch_one(&mut *tx)
+                .await
+                .unwrap();
+            let captured: Value = serde_json::from_str(&captured).unwrap();
+            assert_eq!(u64::from(status as u16), theirs["status"], "{name}");
+            assert_eq!(body, expected, "{name}");
+            assert_eq!(captured, theirs["captured"], "{name}: written");
+        }
+        tx.rollback().await.unwrap();
+    }
 
     /// Node's answers on the dev database (`.port-logs/api-node.ts inventory-fifo`): an order's
     /// allocation, a line's revisions, the holds, and every refusal before them. A replay writes,
@@ -157,33 +381,5 @@ mod tests {
     #[ignore = "reads the dev database, and Node's answers in .port-logs"]
     async fn the_route_answers_as_node_answered() {
         crate::api::tests::answers_as_node("inventory-fifo", &[]).await;
-    }
-
-    /// An action not ported yet goes to the Node app, whose absence is a 502 in its shape. The
-    /// seller is checked first, as Node checks it, so it reads the dev database.
-    #[tokio::test]
-    #[ignore = "reads the dev database"]
-    async fn a_correction_still_goes_to_the_node_app() {
-        crate::config::load_env();
-        let router = app(Shared {
-            db: Database::connect_lazy(&crate::config::database_url()),
-            legacy: Legacy::new("http://127.0.0.1:1".into()),
-            slab_providers: slab_connections::Transport::default(),
-        })
-        .router();
-        let request = corten::axum::http::Request::post("/api/inventory-fifo")
-            .header("content-type", "application/json")
-            .body(corten::axum::body::Body::from(
-                r#"{"action":"record_quantity_correction"}"#,
-            ))
-            .unwrap();
-        let answer = router.oneshot(request).await.unwrap();
-        let status = answer.status();
-        let body = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let body: Value = serde_json::from_slice(&body).unwrap();
-        assert!(status.is_server_error(), "{status} {body}");
-        assert!(body["error"].is_string(), "{body}");
     }
 }
