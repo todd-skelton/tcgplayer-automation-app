@@ -7,19 +7,66 @@ use chrono::{DateTime, SecondsFormat, Utc};
 use serde::Deserialize;
 use sqlx::types::Json;
 
-use super::orders::{IntakeHistory, IntakeLine, Order};
+use super::orders::{IntakeHistory, IntakeLine, IntakeLot, Order};
 use crate::database::Database;
 
 /// The most orders read at once, as the Node route takes.
 pub const MOST_ORDERS: usize = 500;
 
+const DAY_MILLIS: f64 = 86_400_000.0;
+
 /// A receipt lot an allocation took from.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Lot {
+    supply_key: String,
+    receipt_id: i64,
     quantity: i64,
+    available_at: DateTime<Utc>,
+    disposition_id: Option<String>,
+    quantity_correction_id: Option<String>,
+    receipt_kind: String,
     intake_at: Option<DateTime<Utc>>,
     market_value: Option<f64>,
+    market_provenance: String,
+}
+
+impl Lot {
+    /// The lot as a line shows it, for an allocation made at `allocated_at` (milliseconds).
+    fn shown(&self, allocated_at: i64) -> IntakeLot {
+        let source_kind = if self.disposition_id.is_some() {
+            "physical_restock"
+        } else if self.quantity_correction_id.is_some() {
+            "quantity_correction"
+        } else {
+            &self.receipt_kind
+        };
+        let intake_at = self.intake_at.map(|at| at.timestamp_millis());
+        IntakeLot {
+            supply_key: self.supply_key.clone(),
+            receipt_id: self.receipt_id,
+            quantity: count(self.quantity),
+            available_at: iso(self.available_at),
+            source_kind: source_kind.to_owned(),
+            intake_at: self.intake_at.map(iso),
+            days_held: intake_at
+                .filter(|at| *at <= allocated_at)
+                .map(|at| (allocated_at - at) as f64 / DAY_MILLIS),
+            intake_market_value: self.market_value,
+            price_provenance: self.provenance().to_owned(),
+        }
+    }
+
+    /// `priceProvenance`: a value worked out rather than paid is `estimated`.
+    fn provenance(&self) -> &'static str {
+        let worked_out = ["estimated", "modeled", "calculated"];
+        let provenance = self.market_provenance.to_lowercase();
+        match self.market_value {
+            None => "unknown",
+            Some(_) if worked_out.iter().any(|word| provenance.contains(word)) => "estimated",
+            Some(_) => "recorded",
+        }
+    }
 }
 
 /// An order history line and the FIFO allocation of it, if any.
@@ -27,18 +74,23 @@ struct Lot {
 struct Allocation {
     order_number: String,
     current_order_time: DateTime<Utc>,
+    current_source_order_revision: i64,
     sku_id: String,
     current_ordered_quantity: i64,
     persisted_sold_total: f64,
     state: Option<String>,
+    hold_reason: Option<String>,
     allocated_order_time: Option<DateTime<Utc>>,
     matched_quantity: Option<i64>,
+    unmatched_quantity: Option<i64>,
     price_known_quantity: Option<i64>,
     date_known_quantity: Option<i64>,
     intake_market_total: Option<f64>,
     weighted_days_held: Option<f64>,
     revision_id: Option<String>,
+    allocated_source_order_revision: Option<i64>,
     replay_status: Option<String>,
+    queue_hold_reason: Option<String>,
     allocation_pending: bool,
     lots: Json<Vec<Lot>>,
 }
@@ -54,18 +106,27 @@ async fn allocations(
         SELECT orders.* FROM seller_orders orders
         WHERE orders.seller_key = $1 AND orders.order_number = ANY($2::text[])
       ) SELECT orders.order_number, date_trunc('milliseconds', orders.order_time) AS current_order_time,
+        orders.source_revision::int8 AS current_source_order_revision,
         current_line.sku_id, current_line.ordered_quantity::int8 AS current_ordered_quantity,
-        current_line.gross_item_proceeds::float8 AS persisted_sold_total, fifo.state,
+        current_line.gross_item_proceeds::float8 AS persisted_sold_total, fifo.state, fifo.hold_reason,
         date_trunc('milliseconds', fifo.order_time) AS allocated_order_time,
         fifo.matched_quantity::int8 AS matched_quantity,
+        fifo.unmatched_quantity::int8 AS unmatched_quantity,
         fifo.price_known_quantity::int8 AS price_known_quantity,
         fifo.date_known_quantity::int8 AS date_known_quantity,
         fifo.intake_market_total::float8 AS intake_market_total,
         fifo.weighted_days_held::float8 AS weighted_days_held,
-        fifo.current_revision_id::text AS revision_id, queue.status AS replay_status,
+        fifo.current_revision_id::text AS revision_id,
+        fifo.source_order_revision::int8 AS allocated_source_order_revision,
+        queue.status AS replay_status, queue.hold_reason AS queue_hold_reason,
         (fifo.id IS NULL OR queue.generation IS NOT NULL OR fifo.source_order_revision <> orders.source_revision) AS allocation_pending,
-        COALESCE((SELECT jsonb_agg(jsonb_build_object('quantity', allocation.allocated_quantity,
-            'intakeAt', receipt.intake_at, 'marketValue', receipt.market_value::float8)
+        COALESCE((SELECT jsonb_agg(jsonb_build_object(
+            'supplyKey', allocation.supply_key, 'receiptId', allocation.receipt_id,
+            'quantity', allocation.allocated_quantity, 'availableAt', allocation.available_at,
+            'dispositionId', allocation.disposition_id::text,
+            'quantityCorrectionId', allocation.quantity_correction_id::text,
+            'receiptKind', receipt.receipt_kind, 'intakeAt', receipt.intake_at,
+            'marketValue', receipt.market_value::float8, 'marketProvenance', receipt.market_provenance)
           ORDER BY allocation.available_at, allocation.supply_key)
           FROM inventory_fifo_revision_allocations allocation
           JOIN inventory_receipts receipt ON receipt.receipt_id = allocation.receipt_id
@@ -81,6 +142,11 @@ async fn allocations(
     .await
 }
 
+/// JavaScript's `toISOString`, to the millisecond.
+fn iso(at: DateTime<Utc>) -> String {
+    at.to_rfc3339_opts(SecondsFormat::Millis, true)
+}
+
 /// JavaScript's `Math.round(dollars * 100)`.
 fn cents(dollars: f64) -> f64 {
     (dollars * 100.0 + 0.5).floor()
@@ -90,17 +156,16 @@ fn count(quantity: i64) -> u32 {
     u32::try_from(quantity.max(0)).unwrap_or(u32::MAX)
 }
 
-/// A line with no allocation to read.
-fn unavailable(sku_id: &str, quantity: i64) -> IntakeLine {
+/// A line with no allocation to read (`unavailableLine`), dated as the order was loaded.
+fn unavailable(sku_id: &str, order: &Order, quantity: i64) -> IntakeLine {
     IntakeLine {
         sku_id: sku_id.to_owned(),
         status: "unavailable".to_owned(),
-        sold_total: None,
+        status_reason: Some("No exact persisted seller-order allocation is available.".to_owned()),
+        order_time: order.order_date.clone(),
         ordered_quantity: count(quantity),
-        price_known_quantity: 0,
-        date_known_quantity: 0,
-        intake_market_total: None,
-        weighted_days_held: None,
+        unmatched_quantity: count(quantity),
+        ..IntakeLine::default()
     }
 }
 
@@ -110,69 +175,113 @@ struct Shipped {
     sold_total: f64,
 }
 
-/// `historyStatus`.
-fn status(row: &Allocation, quantity: i64, shipped: Option<&Shipped>) -> &'static str {
+/// `historyStatus`: the line's status, and why when it is not `current`.
+fn status(
+    row: &Allocation,
+    quantity: i64,
+    shipped: Option<&Shipped>,
+) -> (&'static str, Option<String>) {
     if row.current_ordered_quantity != quantity {
-        return "mismatch";
+        let ordered = row.current_ordered_quantity;
+        let why = format!("Shipping has {quantity} units; order history has {ordered}.");
+        return ("mismatch", Some(why));
     }
     if let Some(shipped) = shipped
         && (shipped.placed_at != Some(row.current_order_time.timestamp_millis())
             || cents(shipped.sold_total) != cents(row.persisted_sold_total))
     {
-        return "mismatch";
+        let why = "Shipping order time or SKU sale proceeds do not match current persisted order history.";
+        return ("mismatch", Some(why.to_owned()));
     }
     if row.state.as_deref() == Some("held") || row.replay_status.as_deref() == Some("held") {
-        return "held";
+        let why = row.queue_hold_reason.as_ref().or(row.hold_reason.as_ref());
+        let why = why.map_or("FIFO allocation needs review.", String::as_str);
+        return ("held", Some(why.to_owned()));
     }
     if row.allocation_pending
         || row.revision_id.is_none()
         || matches!(row.replay_status.as_deref(), Some("pending" | "processing"))
     {
-        return "pending";
+        return (
+            "pending",
+            Some("FIFO allocation is waiting to be refreshed.".to_owned()),
+        );
     }
     if row.state.as_deref() == Some("unsupported") {
-        return "unavailable";
+        let why = "This inventory identity is not a supported standard SKU.";
+        return ("unavailable", Some(why.to_owned()));
     }
-    "current"
+    ("current", None)
 }
 
-/// `currentLineHistory`: the allocation's totals, `mismatch` when its lots do not add up to them.
+/// `currentLineHistory`: the allocation and its lots, `mismatch` when the lots do not add up to
+/// its totals.
 fn history(row: &Allocation, quantity: i64, shipped: Option<&Shipped>) -> IntakeLine {
     let allocated_at = row.allocated_order_time.unwrap_or(row.current_order_time);
-    let lots = &row.lots.0;
-    let dated = |lot: &&Lot| lot.intake_at.is_some_and(|at| at <= allocated_at);
-    let matched: i64 = lots.iter().map(|lot| lot.quantity).sum();
-    let price_known: i64 = lots
+    let lots: Vec<IntakeLot> = row
+        .lots
+        .0
         .iter()
-        .filter(|lot| lot.market_value.is_some())
-        .map(|lot| lot.quantity)
-        .sum();
-    let date_known: i64 = lots.iter().filter(dated).map(|lot| lot.quantity).sum();
+        .map(|lot| lot.shown(allocated_at.timestamp_millis()))
+        .collect();
+    let units = |keep: fn(&IntakeLot) -> bool| -> i64 {
+        lots.iter()
+            .filter(|lot| keep(lot))
+            .map(|lot| i64::from(lot.quantity))
+            .sum()
+    };
+    let price_known = units(|lot| lot.intake_market_value.is_some());
+    let date_known = units(|lot| lot.days_held.is_some());
     let market_total = (price_known != 0).then(|| {
         lots.iter()
-            .filter_map(|lot| lot.market_value.map(|value| value * lot.quantity as f64))
-            .sum::<f64>()
+            .filter_map(|lot| {
+                lot.intake_market_value
+                    .map(|value| value * f64::from(lot.quantity))
+            })
+            .fold(0.0, |total, value| total + value)
     });
-    let totals_differ = matched != row.matched_quantity.unwrap_or(0)
+    let days: Vec<f64> = lots.iter().filter_map(|lot| lot.days_held).collect();
+    let totals_differ = units(|_| true) != row.matched_quantity.unwrap_or(0)
         || price_known != row.price_known_quantity.unwrap_or(0)
         || date_known != row.date_known_quantity.unwrap_or(0)
         || market_total.is_none() != row.intake_market_total.is_none()
         || market_total
             .is_some_and(|total| cents(total) != cents(row.intake_market_total.unwrap_or(0.0)));
+    let (status, status_reason) = if totals_differ {
+        let why = "Saved FIFO totals do not match their receipt allocation detail.";
+        ("mismatch", Some(why.to_owned()))
+    } else {
+        status(row, quantity, shipped)
+    };
     IntakeLine {
         sku_id: row.sku_id.clone(),
-        status: if totals_differ {
-            "mismatch"
-        } else {
-            status(row, quantity, shipped)
-        }
-        .to_owned(),
-        sold_total: Some(row.persisted_sold_total),
+        status: status.to_owned(),
+        status_reason,
+        allocation_revision_id: row.revision_id.clone(),
+        allocated_source_order_revision: row.allocated_source_order_revision,
+        current_source_order_revision: row.current_source_order_revision,
+        order_time: iso(allocated_at),
         ordered_quantity: count(quantity),
+        sold_total: Some(row.persisted_sold_total),
+        matched_quantity: count(row.matched_quantity.unwrap_or(0)),
+        unmatched_quantity: count(row.unmatched_quantity.unwrap_or(quantity)),
         price_known_quantity: count(row.price_known_quantity.unwrap_or(0)),
         date_known_quantity: count(row.date_known_quantity.unwrap_or(0)),
+        recorded_price_quantity: count(units(|lot| lot.price_provenance == "recorded")),
+        estimated_price_quantity: count(units(|lot| lot.price_provenance == "estimated")),
         intake_market_total: row.intake_market_total,
         weighted_days_held: row.weighted_days_held,
+        minimum_days_held: days.iter().copied().reduce(f64::min),
+        maximum_days_held: days.iter().copied().reduce(f64::max),
+        lots,
+    }
+}
+
+/// Marks every line `mismatch`, for why.
+fn mismatched(lines: &mut [IntakeLine], why: &str) {
+    for line in lines {
+        line.status = "mismatch".to_owned();
+        line.status_reason = Some(why.to_owned());
     }
 }
 
@@ -213,7 +322,7 @@ fn order_history(order: &Order, allocated: &[&Allocation]) -> Vec<IntakeLine> {
                             sold_total: *sold_total,
                         }),
                     ),
-                    None => unavailable(sku, *quantity),
+                    None => unavailable(sku, order, *quantity),
                 }
             })
             .collect()
@@ -227,30 +336,35 @@ fn order_history(order: &Order, allocated: &[&Allocation]) -> Vec<IntakeLine> {
             .sum::<i64>()
             + (item_count - product_quantity).max(0);
         if unidentified != 0 {
-            lines.push(unavailable("unidentified", unidentified));
+            lines.push(unavailable("unidentified", order, unidentified));
         }
         if product_quantity > item_count {
-            for line in &mut lines {
-                line.status = "mismatch".to_owned();
-            }
+            let why = format!(
+                "Shipping product rows have {product_quantity} units; the order total has {item_count}."
+            );
+            mismatched(&mut lines, &why);
         }
     } else {
         let persisted_quantity: i64 = lines.iter().map(|l| i64::from(l.ordered_quantity)).sum();
         let persisted_sold: f64 = lines.iter().map(|l| l.sold_total.unwrap_or(0.0)).sum();
         if persisted_quantity < item_count {
-            lines.push(unavailable("unidentified", item_count - persisted_quantity));
+            lines.push(unavailable(
+                "unidentified",
+                order,
+                item_count - persisted_quantity,
+            ));
         }
         if persisted_quantity > item_count
             || (persisted_quantity == item_count
                 && cents(persisted_sold) != cents(order.value_of_products))
         {
-            for line in &mut lines {
-                line.status = "mismatch".to_owned();
-            }
+            let why =
+                "Persisted SKU quantities or sale proceeds do not match the shipping order total.";
+            mismatched(&mut lines, why);
         }
     }
     if lines.is_empty() && item_count > 0 {
-        lines.push(unavailable("unidentified", item_count));
+        lines.push(unavailable("unidentified", order, item_count));
     }
     lines
 }

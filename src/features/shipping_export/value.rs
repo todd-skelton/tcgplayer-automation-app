@@ -296,6 +296,7 @@ mod tests {
             date_known_quantity: known,
             intake_market_total: Some(market),
             weighted_days_held: Some(days),
+            ..IntakeLine::default()
         };
         o.intake_history = Some(IntakeHistory {
             order_number: "A".into(),

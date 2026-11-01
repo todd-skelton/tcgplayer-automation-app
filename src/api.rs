@@ -12,7 +12,7 @@ use crate::{
     features::{
         forecast_calibration,
         inventory_economics::{self, ledger::fingerprint::js_json},
-        inventory_fifo, inventory_history, inventory_intake, seller_order_history,
+        inventory_fifo, inventory_history, inventory_intake, seller_order_history, shipping_export,
         shipping_thresholds, slab_pricing,
     },
 };
@@ -25,6 +25,7 @@ pub fn ported<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
     let api = inventory_history::json_route::routes(api, shared);
     let api = inventory_intake::json_route::routes(api, shared);
     let api = seller_order_history::json_route::routes(api, shared);
+    let api = shipping_export::json_route::routes(api, shared);
     let api = slab_pricing::json_route::routes(api, shared);
     shipping_thresholds::json_route::routes(api, shared)
 }

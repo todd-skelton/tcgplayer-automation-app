@@ -120,7 +120,7 @@ impl Line {
 }
 
 /// What the order's cards cost when they came into inventory and how long they were held, as the
-/// Node app's intake history answers it. Only what the sale value reads is kept.
+/// Node app's intake history answers it (`ShippingOrderIntakeHistory`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IntakeHistory {
@@ -130,18 +130,54 @@ pub struct IntakeHistory {
     pub refreshed_at: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+/// One SKU of an order and the receipt lots its units were allocated from
+/// (`ShippingIntakeLineHistory`). What a workflow saved before a field was kept reads as its
+/// default.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
 pub struct IntakeLine {
     pub sku_id: String,
-    /// `current` when the history matches the order as it is now.
+    /// `current` when the history matches the order as it is now; `mismatch`, `held`,
+    /// `pending` or `unavailable` otherwise, with why.
     pub status: String,
-    pub sold_total: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_reason: Option<String>,
+    pub allocation_revision_id: Option<String>,
+    pub allocated_source_order_revision: Option<i64>,
+    pub current_source_order_revision: i64,
+    /// When the allocation took the units: ISO 8601, or the order's date as loaded when none did.
+    pub order_time: String,
     pub ordered_quantity: u32,
+    pub sold_total: Option<f64>,
+    pub matched_quantity: u32,
+    pub unmatched_quantity: u32,
     pub price_known_quantity: u32,
     pub date_known_quantity: u32,
+    pub recorded_price_quantity: u32,
+    pub estimated_price_quantity: u32,
     pub intake_market_total: Option<f64>,
     pub weighted_days_held: Option<f64>,
+    pub minimum_days_held: Option<f64>,
+    pub maximum_days_held: Option<f64>,
+    pub lots: Vec<IntakeLot>,
+}
+
+/// A receipt lot a line's units came from (`ShippingIntakeLot`).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IntakeLot {
+    pub supply_key: String,
+    pub receipt_id: i64,
+    pub quantity: u32,
+    pub available_at: String,
+    /// `opening_balance`, `received`, `physical_restock` or `quantity_correction`.
+    pub source_kind: String,
+    pub intake_at: Option<String>,
+    /// Days from intake to the order, when the lot came in before it.
+    pub days_held: Option<f64>,
+    pub intake_market_value: Option<f64>,
+    /// `recorded`, `estimated` or `unknown`.
+    pub price_provenance: String,
 }
 
 fn text_or_number<'de, D: Deserializer<'de>>(d: D) -> Result<String, D::Error> {
