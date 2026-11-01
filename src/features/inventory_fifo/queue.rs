@@ -97,7 +97,7 @@ pub fn standard_sku(sku_id: &str) -> Option<i32> {
 }
 
 /// `enqueue`: the SKU replayed from `affected_from`, or from earlier when it is already queued.
-async fn enqueue(
+pub(crate) async fn enqueue(
     conn: &mut PgConnection,
     seller: &str,
     sku: i32,

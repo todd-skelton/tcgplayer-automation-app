@@ -7,7 +7,7 @@
 //! | `GET /publication-configuration` | the settings and the publisher's state; the layout's toaster says what the last post did |
 //! | `POST /publication-configuration` | the settings saved and the page loaded again, or the form with what is wrong |
 //! | `POST /publication-configuration/resume` | the circuit closed and the failures forgotten |
-mod config;
+pub mod config;
 mod form;
 mod page;
 mod views;

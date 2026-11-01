@@ -175,6 +175,23 @@ impl Lane {
     }
 }
 
+/// What a form post answered.
+#[derive(Clone, Debug)]
+pub struct FormAnswer {
+    pub status: u16,
+    pub content_type: Option<String>,
+    /// Whether the answer came from another address than the one posted to.
+    pub redirected: bool,
+    pub body: Vec<u8>,
+}
+
+/// A post with no answer: the connection failed or the attempt timed out.
+#[derive(Clone, Debug)]
+pub struct Unanswered {
+    pub timed_out: bool,
+    pub message: String,
+}
+
 /// The TCGplayer client. Cloning it shares the throttles.
 #[derive(Clone)]
 pub struct TcgPlayer {
@@ -266,6 +283,66 @@ impl TcgPlayer {
     ) -> Result<T, Failure> {
         self.send(domain, Method::POST, path, Some(body), call)
             .await
+    }
+
+    /// POSTs `form` (already encoded) to `path` on `domain` once, never retried: Seller Portal's
+    /// stateful posts must not be repeated. Throttled as every call is, and answered whatever the
+    /// status, so the caller can read a refusal's page.
+    pub async fn post_form(
+        &self,
+        domain: Domain,
+        path: &str,
+        form: &str,
+        timeout: Duration,
+    ) -> Result<FormAnswer, Unanswered> {
+        let url = format!("https://{}{path}", host(domain));
+        let lane = self.lane(domain);
+        let (config, limits) = self.settings(domain).await.map_err(|failure| Unanswered {
+            timed_out: false,
+            message: failure.to_string(),
+        })?;
+        let _in_flight = lane.enter(limits.max_concurrent_requests).await;
+        lane.wait_to_start(Duration::from_millis(limits.request_delay_ms.into()))
+            .await;
+        let mut request = self
+            .http
+            .post(&url)
+            .timeout(timeout)
+            .header(header::CACHE_CONTROL, "no-cache")
+            .header(
+                header::CONTENT_TYPE,
+                "application/x-www-form-urlencoded; charset=UTF-8",
+            )
+            .header(header::USER_AGENT, &config.user_agent)
+            .body(form.to_owned());
+        if !config.tcg_auth_cookie.is_empty() {
+            request = request.header(
+                header::COOKIE,
+                format!("TCGAuthTicket_Production={};", config.tcg_auth_cookie),
+            );
+        }
+        let unanswered = |e: reqwest::Error| Unanswered {
+            timed_out: e.is_timeout(),
+            message: e.without_url().to_string(),
+        };
+        let answer = request.send().await.map_err(unanswered)?;
+        let status = answer.status().as_u16();
+        let redirected = answer.url().as_str() != url;
+        let content_type = answer
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_owned);
+        let body = answer.bytes().await.map_err(unanswered)?.to_vec();
+        if (200..300).contains(&status) {
+            self.succeeded(domain, &config.adaptive).await;
+        }
+        Ok(FormAnswer {
+            status,
+            content_type,
+            redirected,
+            body,
+        })
     }
 
     async fn send<B: Serialize + ?Sized, T: DeserializeOwned>(

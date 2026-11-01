@@ -32,6 +32,8 @@ sha2 = "0.10"
 # fdlibm's exp, as V8's Math.exp computes it (js_math).
 libm = "0.2"
 hex = "0.4"
+# Seller Portal's forms, encoded as the browser's URLSearchParams encodes them.
+form_urlencoded = "1"
 
 [features]
 # The tests that call TCGplayer live (and one that rewrites tests/fixtures): off, so no run of the

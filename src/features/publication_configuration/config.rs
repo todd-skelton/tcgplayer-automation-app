@@ -274,6 +274,69 @@ pub async fn resume(db: &Database) -> sqlx::Result<()> {
     Ok(())
 }
 
+/// Makes the settings row when there is none, as every write of the Node app's repository does.
+async fn ensure(conn: &mut sqlx::PgConnection) -> sqlx::Result<()> {
+    sqlx::query(
+        "INSERT INTO inventory_publication_settings (config_key, settings_json)
+        VALUES ($1, '{}'::jsonb) ON CONFLICT (config_key) DO NOTHING",
+    )
+    .bind(CONFIG_KEY)
+    .execute(&mut *conn)
+    .await?;
+    Ok(())
+}
+
+/// Seller Portal took a publication (\`recordSuccess\`): signed in, the circuit closed and the
+/// failures forgotten.
+pub async fn record_success(conn: &mut sqlx::PgConnection) -> sqlx::Result<()> {
+    ensure(conn).await?;
+    sqlx::query(
+        "UPDATE inventory_publication_settings
+        SET authentication_status = 'healthy', circuit_open = FALSE, consecutive_failures = 0,
+            pause_reason = NULL, last_success_at = NOW(), runtime_updated_at = NOW()
+        WHERE config_key = $1",
+    )
+    .bind(CONFIG_KEY)
+    .execute(&mut *conn)
+    .await?;
+    Ok(())
+}
+
+/// Seller Portal failed a publication (\`recordFailure\`): one more failure in a row, and the
+/// circuit opens at the settings' limit, or at once when it refused the sign-in.
+pub async fn record_failure(
+    conn: &mut sqlx::PgConnection,
+    authentication_failure: bool,
+    message: &str,
+) -> sqlx::Result<()> {
+    ensure(conn).await?;
+    let stored: Value = sqlx::query_scalar(
+        "SELECT settings_json FROM inventory_publication_settings WHERE config_key = $1",
+    )
+    .bind(CONFIG_KEY)
+    .fetch_one(&mut *conn)
+    .await?;
+    let limit = Settings::of(&stored).consecutive_failure_limit;
+    let message: String = message.chars().take(1_000).collect();
+    sqlx::query(
+        "UPDATE inventory_publication_settings
+        SET authentication_status = CASE WHEN $2 THEN 'invalid' ELSE authentication_status END,
+            consecutive_failures = consecutive_failures + 1,
+            circuit_open = $2 OR consecutive_failures + 1 >= $3,
+            pause_reason = CASE WHEN $2 THEN 'Seller Portal authentication requires attention.'
+                WHEN consecutive_failures + 1 >= $3 THEN $4 ELSE pause_reason END,
+            last_failure_at = NOW(), runtime_updated_at = NOW()
+        WHERE config_key = $1",
+    )
+    .bind(CONFIG_KEY)
+    .bind(authentication_failure)
+    .bind(i32::try_from(limit).unwrap_or(i32::MAX))
+    .bind(message)
+    .execute(&mut *conn)
+    .await?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

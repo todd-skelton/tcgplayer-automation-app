@@ -15,9 +15,9 @@ use crate::{
     features::{
         batch_pricer, batch_pricing, configuration, continuous_pricing, dashboard, data_management,
         http_configuration, inventory_economics, inventory_fifo, inventory_intake,
-        inventory_strategy, product_price_matrix, publication_configuration, pull_sheet,
-        seller_order_history, shipping_configuration, shipping_export, slab_connections,
-        slab_evidence, slab_pricing,
+        inventory_publication, inventory_strategy, product_price_matrix, publication_configuration,
+        pull_sheet, seller_order_history, shipping_configuration, shipping_export,
+        slab_connections, slab_evidence, slab_pricing,
     },
     layout::{self, Static},
     legacy::{Legacy, forward},
@@ -226,6 +226,12 @@ pub fn app(shared: Shared) -> App {
         };
         slab_evidence::worker::on()
             .then_some(move |signal| slab_evidence::worker::run(db, providers, signal))
+    });
+    // Node's worker publishes to Seller Portal until cutover; this one writes there too when on.
+    let app = switched(app, "inventory publication worker", {
+        let db = db.clone();
+        inventory_publication::worker::on()
+            .then_some(move |signal| inventory_publication::worker::run(db, signal))
     });
     // It reads TCGplayer and writes only to its log.
     let app = switched(app, "seller order history shadow", {
