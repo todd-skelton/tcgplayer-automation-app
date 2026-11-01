@@ -10,6 +10,7 @@ use serde_json::json;
 
 use super::{
     comps,
+    dry_run::dry_run as run_dry,
     identity::{self, Card, Grading, SlabIdentity},
     inventory, maintenance, outcomes,
     page::{Place, Screen, page},
@@ -828,28 +829,25 @@ pub struct DryRunInput {
     pub preview: String,
 }
 
-#[derive(Deserialize)]
-struct Ran {
-    id: String,
-}
-
 /// Checks the preview's plan against the imported inventory and records the outcome, then shows
 /// its steps. It does not contact eBay or change a price.
 pub async fn dry_run(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::DryRun>,
     Form(input): Form<DryRunInput>,
 ) -> HtmlResult {
-    let asked = json!({ "intent": "dry-run", "intentId": input.intent.as_str(), "previewId": input.preview });
-    match legacy
-        .send::<_, Ran>("/api/slab-publications", &asked)
-        .await
-    {
+    let ran = match db.0.acquire().await {
+        Ok(mut conn) => {
+            let intent = input.intent.as_str();
+            run_dry(&mut conn, intent, &input.preview, chrono::Utc::now()).await
+        }
+        Err(error) => Err(error.to_string()),
+    };
+    match ran {
         Ok(ran) => req.redirect(&url::SlabPricing::at(&Choice {
-            steps: Some(ran.id),
+            steps: Some(ran),
             ..at.choice.clone()
         })),
         Err(why) => {

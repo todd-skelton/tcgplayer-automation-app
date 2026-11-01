@@ -1,8 +1,7 @@
 //! Reviewing a listing's price change: a preview saved with the listing and its evidence, then a
-//! dry run of its publication against the imported inventory. A preview is prepared here, and it,
-//! its conflicts, its runs and their steps are read here; running it stays the Node app's
-//! (`/api/slab-publications`). Neither contacts eBay: seller OAuth and live readback are not
-//! connected, so nothing publishes.
+//! dry run of its publication against the imported inventory (`dry_run`). A preview is prepared
+//! here, and it, its conflicts, its runs and their steps are read here. Neither contacts eBay:
+//! seller OAuth and live readback are not connected, so nothing publishes.
 use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -170,7 +169,7 @@ struct StoredOverride {
     reviewed_at: String,
 }
 
-fn time(value: &str) -> Option<DateTime<Utc>> {
+pub(super) fn time(value: &str) -> Option<DateTime<Utc>> {
     DateTime::parse_from_rfc3339(value)
         .ok()
         .map(|t| t.with_timezone(&Utc))
@@ -233,7 +232,7 @@ fn conflicts(
     reasons.into_iter().map(str::to_owned).collect()
 }
 
-fn is_id(value: &str) -> bool {
+pub(super) fn is_id(value: &str) -> bool {
     value.len() == 36
         && value.bytes().enumerate().all(|(i, b)| match i {
             8 | 13 | 18 | 23 => b == b'-',
@@ -241,27 +240,44 @@ fn is_id(value: &str) -> bool {
         })
 }
 
-/// `readPublicationPreview` of a listing: its latest preview, and why it would need replacing.
-async fn preview(
+/// Which saved preview `readPublicationPreview` reads.
+#[derive(Clone, Copy)]
+pub(super) enum Which<'a> {
+    /// The listing's latest.
+    Latest(&'a str),
+    /// The preview of this id.
+    Id(&'a str),
+}
+
+/// `readPublicationPreview`: the preview, its plan as saved, and why it would need replacing.
+pub(super) async fn saved_preview(
     conn: &mut PgConnection,
-    listing: &str,
+    which: Which<'_>,
     now: DateTime<Utc>,
-) -> Result<Option<Preview>, String> {
+) -> Result<Option<(Preview, Value)>, String> {
     let failed = |e: sqlx::Error| e.to_string();
-    if !is_id(listing) {
+    let (query, id) = match which {
+        Which::Latest(listing) => (
+            "SELECT id::text, plan FROM slab_publication_previews WHERE inventory_id = $1::uuid ORDER BY created_at DESC, id DESC LIMIT 1",
+            listing,
+        ),
+        Which::Id(id) => (
+            "SELECT id::text, plan FROM slab_publication_previews WHERE id = $1::uuid",
+            id,
+        ),
+    };
+    if !is_id(id) {
         return Err("Choose a saved preview or listing.".to_owned());
     }
-    let row: Option<(String, Value)> = sqlx::query_as(
-        "SELECT id::text, plan FROM slab_publication_previews WHERE inventory_id = $1::uuid ORDER BY created_at DESC, id DESC LIMIT 1",
-    )
-    .bind(listing)
-    .fetch_optional(&mut *conn)
-    .await
-    .map_err(failed)?;
-    let Some((id, plan)) = row else {
+    let row: Option<(String, Value)> = sqlx::query_as(query)
+        .bind(id)
+        .fetch_optional(&mut *conn)
+        .await
+        .map_err(failed)?;
+    let Some((id, saved)) = row else {
         return Ok(None);
     };
-    let plan: Plan = serde_json::from_value(plan)
+    let plan: Plan = serde_json::from_value(saved.clone())
         .map_err(|e| format!("The saved preview could not be read: {e}"))?;
     let inventory = inventory::listing(conn, &plan.inventory.id).await?;
     if !is_id(&plan.recommendation_id) {
@@ -276,11 +292,22 @@ async fn preview(
         .map(serde_json::from_value)
         .transpose()
         .map_err(|e| format!("The preview's recommendation could not be read: {e}"))?;
-    Ok(Some(Preview {
+    let preview = Preview {
         conflicts: conflicts(&plan, inventory.as_ref(), stored.as_ref(), now),
         id,
         plan,
-    }))
+    };
+    Ok(Some((preview, saved)))
+}
+
+/// The listing's latest preview, and why it would need replacing.
+async fn preview(
+    conn: &mut PgConnection,
+    listing: &str,
+    now: DateTime<Utc>,
+) -> Result<Option<Preview>, String> {
+    let read = saved_preview(conn, Which::Latest(listing), now).await?;
+    Ok(read.map(|(preview, _)| preview))
 }
 
 /// What the operator asked to preview (\`PreviewRequest\`): the listing and recommendation at the
@@ -312,12 +339,12 @@ const REVIEW_MS: i64 = 15 * 60_000;
 const MOST_PLAN_BYTES: usize = 64 * 1024;
 
 /// A time as \`Date.parse\` reads an ISO one, in milliseconds.
-fn millis(value: &str) -> Option<i64> {
+pub(super) fn millis(value: &str) -> Option<i64> {
     time(value).map(|t| t.timestamp_millis())
 }
 
 /// The milliseconds as \`Date.prototype.toISOString\` writes them.
-fn iso(ms: i64) -> String {
+pub(super) fn iso(ms: i64) -> String {
     Utc.timestamp_millis_opt(ms)
         .single()
         .map_or_else(String::new, |t| {

@@ -29,7 +29,7 @@
 //! Once a listing is reviewed and has a recommendation, its price change can be reviewed on
 //! request (`publication=true`): a preview of the calculated or reviewed ask saved with the
 //! listing and its evidence, saved here (`publication`), then a dry run of its publication
-//! against the imported inventory, which the Node app runs. Each post carries a `SubmitKey` as
+//! against the imported inventory, also run here (`dry_run`). Each post carries a `SubmitKey` as
 //! its intent, so a post sent again applies once. Neither contacts eBay; publishing is not
 //! connected.
 //!
@@ -65,6 +65,7 @@
 //! A post refused, here or by the Node app, answers 409 with the page and why.
 mod actions;
 mod comps;
+mod dry_run;
 mod identity;
 mod inventory;
 mod maintenance;
