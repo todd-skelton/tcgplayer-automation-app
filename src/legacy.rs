@@ -1,7 +1,7 @@
-//! The React Router app in `app/`, behind this one while the port runs. Every path no ported
-//! screen serves (its pages, its JSON routes, its event streams, Vite's assets and HMR socket in
-//! development) is passed to it as it came and its answer passed back as it comes, so one origin
-//! serves both apps and the Node app needs no change to sit behind this one.
+//! The Node app in `app/`, behind this one until cutover. Every path this app does not serve (the
+//! Node app's JSON routes, Vite's assets and HMR socket in development) is passed to it as it
+//! came and its answer passed back as it comes, so one origin serves both apps and the Node app
+//! needs no change to sit behind this one.
 use corten::{
     Relay,
     axum::{

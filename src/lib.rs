@@ -1,6 +1,7 @@
-//! TCGPlayer Automation on Corten. Screens move here one at a time from the React Router app in
-//! `app/`; every path no ported screen serves is relayed to that app (`legacy`), so one origin
-//! serves both while the port runs. The app is this library, so tests and examples reach it;
+//! TCGPlayer Automation on Corten. Every screen is drawn here; the React screens in `app/` are
+//! gone. The Node app there still answers its JSON routes (`/api/...`) and runs its workers until
+//! cutover, and every path this app does not serve is relayed to it (`legacy`), so one origin
+//! serves both. The app is this library, so tests and examples reach it;
 //! `main.rs` only serves it.
 mod app;
 mod config;
