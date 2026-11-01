@@ -2,10 +2,10 @@
 //! line's new products or every product, one product, one set), each a form whose result shows
 //! under it. Ported from `app/routes/home.tsx` (served at `/data-management`).
 //!
-//! The jobs stay the Node app's (`/api/data-management`, which runs the React form's action):
-//! they read TCGplayer and write the catalog. This screen checks what each form says, asks for
-//! the job, and draws what it did. With JavaScript a form's answer replaces its card only, so the
-//! other forms keep what was typed; without, it is the page with that card's result.
+//! The jobs run here (`catalog`, ported from the Node app's `runCatalogMaintenance`): they read
+//! TCGplayer and write the catalog. This screen checks what each form says, runs the job, and
+//! draws what it did. With JavaScript a form's answer replaces its card only, so the other forms
+//! keep what was typed; without, it is the page with that card's result.
 //!
 //! | Route | Answer |
 //! |---|---|
@@ -16,9 +16,10 @@
 //! | `POST /data-management/product` | one product and its SKUs read again |
 //! | `POST /data-management/set` | one set's products and SKUs read, optionally from scratch |
 //!
-//! A form that is not filled in is a 422 with what is missing. A job the Node app refuses keeps
-//! its status (a product it does not know is a 404); one that fails is a 502.
+//! A form that is not filled in is a 422 with what is missing. A job refused for what it was
+//! asked is a 422; one TCGplayer or the database failed is a 502.
 mod actions;
+mod catalog;
 mod jobs;
 mod views;
 

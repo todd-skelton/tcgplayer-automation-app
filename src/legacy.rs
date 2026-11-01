@@ -93,70 +93,25 @@ impl Legacy {
         Self::answer(answer).await
     }
 
-    /// [`Legacy::send`], keeping the status the Node app refused with: for a page that answers
-    /// with it. A Node app that did not answer is a 502.
-    pub async fn send_for_status<B: serde::Serialize, T: serde::de::DeserializeOwned>(
-        &self,
-        path: &str,
-        body: &B,
-    ) -> Result<T, Refusal> {
-        let unreachable = |message: &str| Refusal {
-            status: StatusCode::BAD_GATEWAY,
-            message: message.to_owned(),
-        };
-        let body = serde_json::to_vec(body).map_err(|e| unreachable(&e.to_string()))?;
-        let answer = self
-            .http
-            .post(format!("{}{path}", self.origin))
-            .header(header::CONTENT_TYPE, "application/json")
-            .header(header::ORIGIN, &self.origin)
-            .body(body)
-            .send()
-            .await
-            .map_err(|_| unreachable("The Node app did not answer."))?;
-        Self::answer_with_status(answer).await
-    }
-
     async fn answer<T: serde::de::DeserializeOwned>(
         answer: reqwest::Response,
     ) -> Result<T, String> {
-        Self::answer_with_status(answer)
-            .await
-            .map_err(|refusal| refusal.message)
-    }
-
-    async fn answer_with_status<T: serde::de::DeserializeOwned>(
-        answer: reqwest::Response,
-    ) -> Result<T, Refusal> {
         let status = answer.status();
-        let failed = |message: &str| Refusal {
-            status: StatusCode::BAD_GATEWAY,
-            message: message.to_owned(),
-        };
         let body = answer
             .bytes()
             .await
-            .map_err(|_| failed("The Node app stopped answering."))?;
+            .map_err(|_| "The Node app stopped answering.".to_owned())?;
         if status.is_success() {
             return serde_json::from_slice(&body)
-                .map_err(|_| failed("The Node app answered something this page cannot read."));
+                .map_err(|_| "The Node app answered something this page cannot read.".to_owned());
         }
         #[derive(serde::Deserialize)]
         struct Said {
             error: String,
         }
-        let message = serde_json::from_slice::<Said>(&body)
-            .map_or_else(|_| "The Node app could not do it.".to_owned(), |r| r.error);
-        Err(Refusal { status, message })
+        Err(serde_json::from_slice::<Said>(&body)
+            .map_or_else(|_| "The Node app could not do it.".to_owned(), |r| r.error))
     }
-}
-
-/// Why one of the Node app's routes did not do what was asked: the status it answered with and
-/// its message.
-#[derive(Debug)]
-pub struct Refusal {
-    pub status: StatusCode,
-    pub message: String,
 }
 
 /// The request's headers as the Node app should see them. `Host` stays the browser's, as nginx

@@ -1,7 +1,6 @@
 //! The jobs, what each form sends for one, and the product lines they choose from.
 use corten::prelude::*;
 use serde::Deserialize;
-use serde_json::{Value, json};
 
 use crate::database::Database;
 
@@ -15,7 +14,7 @@ pub enum Job {
     Set,
 }
 
-/// What a job came to: what it did, or why it did not, in the Node app's words.
+/// What a job came to: what it did, or why it did not, in the words the React screen showed.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Ran {
     Done(String),
@@ -142,22 +141,6 @@ fn known(errors: &mut Errors, field: FieldName<i32>, id: Option<i32>, lines: &[L
     }
 }
 
-/// What the Node app's `/api/data-management` is sent for a job: the React form's fields.
-pub fn ask(job: Job, fields: Value) -> Value {
-    let action_type = match job {
-        Job::ProductLines => "fetchAllProductLines",
-        Job::NewProducts => "syncNewProducts",
-        Job::EveryProduct => "fetchAllCategory3Data",
-        Job::Product => "updateProductAndSkus",
-        Job::Set => "fetchSetProductsAndSkus",
-    };
-    let mut body = json!({ "actionType": action_type });
-    if let (Value::Object(body), Value::Object(fields)) = (&mut body, fields) {
-        body.extend(fields);
-    }
-    body
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -194,20 +177,5 @@ mod tests {
         let errors = set.read(&lines()).unwrap_err();
         assert!(errors.has(SetInput::FIELDS.set_name));
         assert_eq!(errors.len(), 1);
-    }
-
-    #[test]
-    fn a_job_is_asked_for_with_the_react_forms_fields() {
-        assert_eq!(
-            ask(
-                Job::Product,
-                json!({ "productId": "42", "productLineId": "3" })
-            ),
-            json!({ "actionType": "updateProductAndSkus", "productId": "42", "productLineId": "3" })
-        );
-        assert_eq!(
-            ask(Job::ProductLines, Value::Null),
-            json!({ "actionType": "fetchAllProductLines" })
-        );
     }
 }
