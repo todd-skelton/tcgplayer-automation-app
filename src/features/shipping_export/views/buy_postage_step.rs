@@ -100,7 +100,7 @@ fn ShipmentPostageRow<'a>(
         format!("outbound-{reference}"),
         format!("return-{reference}"),
     );
-    let test = (mode == EasyPostMode::Test).then_some(Test);
+    let test = mode == EasyPostMode::Test;
     let f = BuyInput::FIELDS;
     let buy = url::BuyShipmentPostage {
         reference: reference.to_owned(),
@@ -135,21 +135,30 @@ fn ShipmentPostageRow<'a>(
             <td class={End}>
                 <div class={Actions}>
                     if again {
-                        <button
-                            type="button"
-                            command="show-modal"
-                            commandfor={BuyAgainId(&outbound_key)}
-                            disabled={!can_buy}
-                            class={(Buy, test)}
+                        <Button
+                            variant={if test { ButtonVariant::Warning } else { ButtonVariant::Outline }}
+                            size={ButtonSize::Md}
                         >
-                            "Buy Again"
-                        </button>
+                            <button
+                                type="button"
+                                command="show-modal"
+                                commandfor={BuyAgainId(&outbound_key)}
+                                disabled={!can_buy}
+                            >
+                                "Buy Again"
+                            </button>
+                        </Button>
                     } else {
                         <form method="post" action={&buy} data-patch>
                             <input type="hidden" name={f.direction} value={Direction::Outbound}>
-                            <button disabled={!can_buy} class={(Buy, Filled, test)}>
-                                "Buy Postage"
-                            </button>
+                            <Button
+                                variant={if test { ButtonVariant::Warning } else { ButtonVariant::Primary }}
+                                size={ButtonSize::Md}
+                            >
+                                <button disabled={!can_buy}>
+                                    "Buy Postage"
+                                </button>
+                            </Button>
                         </form>
                     }
                     <button
@@ -306,7 +315,9 @@ fn BuyAgainDialog<'a>(
                         "Cancel"
                     </button>
                 </Button>
-                <button class={(Filled, Caution)}>"Buy Again"</button>
+                <Button variant={ButtonVariant::Warning} size={ButtonSize::Md}>
+                    <button>"Buy Again"</button>
+                </Button>
             </form>
         </dialog>
     }

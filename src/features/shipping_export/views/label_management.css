@@ -50,7 +50,8 @@
     margin: var(--space-2) 0 0;
     font-size: var(--font-size-sm);
   }
-  &[aria-busy] .primary::after {
+  /* The buy button is the form's one submit without a formaction of its own. */
+  &[aria-busy] button:not([formaction])::after {
     content: " …";
   }
 }
@@ -78,27 +79,4 @@
 .bad {
   border-color: var(--destructive);
   color: var(--destructive);
-}
-.button {
-  display: inline-block;
-  justify-self: start;
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--card);
-  color: inherit;
-  text-decoration: none;
-}
-.secondary {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-.primary {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--primary-foreground);
-}
-.test-mode {
-  background: var(--warning);
-  border-color: var(--warning);
 }

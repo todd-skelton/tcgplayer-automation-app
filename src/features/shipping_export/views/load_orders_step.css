@@ -11,11 +11,6 @@
     content: " …";
   }
 }
-.primary {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--primary-foreground);
-}
 .seller-button {
   border-color: transparent;
   background: none;

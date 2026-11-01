@@ -108,14 +108,15 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
                                 if priced { "Reprice Batch" } else { "Price Batch" }
                             </button>
                         </Button>
-                        <button
-                            name={mode}
-                            value={Pricing::Errors}
-                            class={Caution}
-                            disabled={busy || !priced || batch.manual_review_count == 0}
-                        >
-                            "Reprice Errors ("{batch.manual_review_count}")"
-                        </button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button
+                                name={mode}
+                                value={Pricing::Errors}
+                                disabled={busy || !priced || batch.manual_review_count == 0}
+                            >
+                                "Reprice Errors ("{batch.manual_review_count}")"
+                            </button>
+                        </Button>
                     </form>
                     <div class={row(Space::_2)}>
                         <Download
@@ -133,24 +134,26 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
                             ready={priced}
                         />
                     </div>
-                    <button
-                        type="button"
-                        command="show-modal"
-                        commandfor={PublishDialogId}
-                        class={Publish}
-                        disabled={!can_publish}
-                    >
-                        "Publish ("{ready}")"
-                    </button>
-                    <button
-                        type="button"
-                        command="show-modal"
-                        commandfor={DeleteDialogId}
-                        class={Danger}
-                        disabled={!can_delete}
-                    >
-                        "Delete Batch"
-                    </button>
+                    <Button variant={ButtonVariant::Success} size={ButtonSize::Md}>
+                        <button
+                            type="button"
+                            command="show-modal"
+                            commandfor={PublishDialogId}
+                            disabled={!can_publish}
+                        >
+                            "Publish ("{ready}")"
+                        </button>
+                    </Button>
+                    <Button variant={ButtonVariant::Destructive} size={ButtonSize::Md}>
+                        <button
+                            type="button"
+                            command="show-modal"
+                            commandfor={DeleteDialogId}
+                            disabled={!can_delete}
+                        >
+                            "Delete Batch"
+                        </button>
+                    </Button>
                 </div>
                 if let Some(p) = preview {
                     <Alert
@@ -212,7 +215,9 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
                                 "Cancel"
                             </button>
                         </Button>
-                        <button class={Danger}>"Delete Batch"</button>
+                        <Button variant={ButtonVariant::Destructive} size={ButtonSize::Md}>
+                            <button>"Delete Batch"</button>
+                        </Button>
                     </form>
                 </dialog>
             }
@@ -233,9 +238,11 @@ fn run_tone(status: RunStatus) -> AlertVariant {
 fn Download<'a>(batch: i32, scope: Scope, label: &'a str, count: i64, ready: bool) -> impl Render {
     html! {
         if ready && count > 0 {
-            <a href={url::Results { batch, scope }} download class={ButtonLink}>
-                "⤓ "{label}" ("{count}")"
-            </a>
+            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                <a href={url::Results { batch, scope }} download>
+                    "⤓ "{label}" ("{count}")"
+                </a>
+            </Button>
         } else {
             <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
                 <button type="button" disabled>"⤓ "{label}" ("{count}")"</button>

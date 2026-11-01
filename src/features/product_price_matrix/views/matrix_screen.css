@@ -61,20 +61,6 @@
   border-color: var(--primary);
   color: var(--primary);
 }
-.button {
-  display: inline-block;
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--card);
-  color: inherit;
-  text-decoration: none;
-}
-.primary {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--primary-foreground);
-}
 /* Only while the page is still on its way: a navigation stopped short leaves no mark. */
 main[aria-busy] .reads [aria-busy]::after {
   content: " …";

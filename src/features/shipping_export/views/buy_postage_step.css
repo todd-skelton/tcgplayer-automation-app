@@ -30,10 +30,6 @@
     text-decoration: none;
   }
 }
-.caution {
-  border-color: var(--warning);
-  color: var(--warning);
-}
 .error {
   color: var(--destructive);
 }
@@ -44,22 +40,6 @@
   & form[aria-busy] button::after {
     content: " …";
   }
-}
-.buy {
-  white-space: nowrap;
-}
-.filled {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--primary-foreground);
-  &.test,
-  &.caution {
-    background: var(--warning);
-    border-color: var(--warning);
-  }
-}
-.test {
-  border-color: var(--warning);
 }
 .more {
   border-color: transparent;

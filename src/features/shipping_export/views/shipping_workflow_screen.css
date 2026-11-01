@@ -84,44 +84,25 @@
   flex: 1;
   min-width: 0;
 }
-.button {
-  display: inline-block;
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--card);
-  color: inherit;
-  text-decoration: none;
-  cursor: pointer;
-}
-.primary {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--primary-foreground);
-  &:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-}
-.go {
-  background: var(--success);
-  border-color: var(--success);
-  color: var(--primary-foreground);
-}
-.caution {
-  border-color: var(--warning);
-  color: var(--warning);
-}
-.test-mode {
-  background: var(--warning);
-  border-color: var(--warning);
-}
 .act[aria-busy] button::after {
   content: " …";
 }
 .split {
   display: inline-flex;
   position: relative;
+}
+/* The split button's menu toggle: a <summary> must be its <details>' first child, so the kit's
+   Button cannot wrap it (corten#558); it takes the primary button's look here. */
+.skip-toggle {
+  display: inline-flex;
+  align-items: center;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 0.875rem;
+  cursor: pointer;
 }
 .skip {
   & summary {
@@ -138,10 +119,4 @@
     border-radius: var(--radius-sm);
     box-shadow: var(--shadow-sm);
   }
-}
-.confirm {
-  max-width: 480px;
-  padding: var(--space-5);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
 }

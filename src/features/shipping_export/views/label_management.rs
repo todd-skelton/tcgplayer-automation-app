@@ -26,6 +26,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeVariant},
+        button::{Button, ButtonSize, ButtonVariant},
         input::Input,
     },
 };
@@ -76,7 +77,9 @@ pub fn LabelManagement<'a>(
                         >
                     </Input>
                 </LabeledControl>
-                <button class={(Button, Secondary)}>"Lookup Order"</button>
+                <Button variant={ButtonVariant::Secondary} size={ButtonSize::Md}>
+                    <button>"Lookup Order"</button>
+                </Button>
             </form>
             if let Some(found) = found {
                 <section class={Section}>
@@ -162,9 +165,11 @@ fn PurchasedLabel<'a>(title: &'a str, bought: &'a Bought, looked: &'a Looked<'a>
                 <p>"Tracking: "{code}</p>
             }
             if let Some(href) = href {
-                <a href={href} target="_blank" rel="noreferrer" class={Button}>
-                    if result.label_pdf_url.is_some() { "Open Label PDF" } else { "Open Label" }
-                </a>
+                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                    <a href={href} target="_blank" rel="noreferrer">
+                        if result.label_pdf_url.is_some() { "Open Label PDF" } else { "Open Label" }
+                    </a>
+                </Button>
             }
             if let Some(error) = &result.error {
                 <p class={Bad}>{error}</p>
@@ -269,13 +274,14 @@ pub fn LabelForm<'a>(
             <input type="hidden" name={f.reference} value={number}>
             <input type="hidden" name={c.shown_service} value={input.service}>
             <p class={muted()}>"Return labels use the same package with the addresses swapped."</p>
-            <button
-                ref={redraw}
-                formaction={url::OrderLabelsForm { order: order.clone() }}
-                class={Button}
-            >
-                "Apply Choice and Service"
-            </button>
+            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                <button
+                    ref={redraw}
+                    formaction={url::OrderLabelsForm { order: order.clone() }}
+                >
+                    "Apply Choice and Service"
+                </button>
+            </Button>
             if !mode.has_key() {
                 <Alert variant={AlertVariant::Warning}>
                     {mode.key_name()}" is not set. Postage purchase is disabled."
@@ -285,10 +291,15 @@ pub fn LabelForm<'a>(
                 <Alert variant={AlertVariant::Warning}>{repurchase(bought)}</Alert>
                 <input type="hidden" name={c.again} value="true">
             }
-            <button disabled={!mode.has_key()} class={(Button, Primary, test.then_some(TestMode))}>
-                if bought.is_empty() { "Buy " } else { "Buy Another " }
-                {buy.label()}
-            </button>
+            <Button
+                variant={if test { ButtonVariant::Warning } else { ButtonVariant::Primary }}
+                size={ButtonSize::Md}
+            >
+                <button disabled={!mode.has_key()}>
+                    if bought.is_empty() { "Buy " } else { "Buy Another " }
+                    {buy.label()}
+                </button>
+            </Button>
         </form>
     }
 }

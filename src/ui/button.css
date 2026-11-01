@@ -18,6 +18,11 @@
 .ghost > * { background: transparent; color: var(--foreground); }
 .destructive > * { background: var(--destructive); color: var(--destructive-foreground); }
 .destructive > :hover { background: color-mix(in oklab, var(--destructive) 88%, var(--foreground)); }
+/* The app's tones: the tone filled, with its foreground. */
+.success > * { background: var(--success); color: var(--success-foreground); }
+.success > :hover { background: color-mix(in oklab, var(--success) 88%, var(--foreground)); }
+.warning > * { background: var(--warning); color: var(--warning-foreground); }
+.warning > :hover { background: color-mix(in oklab, var(--warning) 88%, var(--foreground)); }
 .link > * { background: none; color: var(--primary); text-underline-offset: 4px; }
 .link > :hover { text-decoration: underline; }
 .sm > * { height: 2rem; padding: 0 .75rem; font-size: .8125rem; }

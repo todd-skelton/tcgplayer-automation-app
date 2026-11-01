@@ -48,11 +48,6 @@
     display: inline;
   }
 }
-.danger {
-  background: var(--destructive);
-  border-color: var(--destructive);
-  color: var(--primary-foreground);
-}
 /* Both report panels; each is a section patched on its own. */
 .report-section {
   display: grid;

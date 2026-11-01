@@ -18,6 +18,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeVariant},
+        button::{Button, ButtonSize, ButtonVariant},
         input::Input,
         select::Select,
     },
@@ -148,9 +149,11 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                 </select>
                             </Select>
                         </label>
-                        <button class={Button}>
-                            if screen.scope == Scope::AllSets { "Search" } else { "Show" }
-                        </button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button>
+                                if screen.scope == Scope::AllSets { "Search" } else { "Show" }
+                            </button>
+                        </Button>
                     </div>
                 </SubmitsOnChange>
                 })}
@@ -187,10 +190,14 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         </div>
                         // The runtime marks the link busy until the priced page arrives.
                         <div class={(row(Space::_2), Reads)}>
-                            <a href={screen.market()} class={Button}>"↻ Refresh Market"</a>
-                            <a href={screen.suggested()} class={(Button, Primary)}>
-                                "Suggested Pricing"
-                            </a>
+                            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                                <a href={screen.market()}>"↻ Refresh Market"</a>
+                            </Button>
+                            <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                                <a href={screen.suggested()}>
+                                    "Suggested Pricing"
+                                </a>
+                            </Button>
                         </div>
                     </header>
                     match &screen.matrix {

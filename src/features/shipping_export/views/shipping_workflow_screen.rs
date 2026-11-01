@@ -9,7 +9,11 @@ use crate::{
         },
     },
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
+        dialog::{Dialog, DialogFooter},
+    },
 };
 
 #[derive(Id)]
@@ -81,7 +85,9 @@ pub fn ShippingWorkflowScreen<'a>(
                 if let Some(warning) = mode_warning(mode) {
                     <span class={ModeChip}>{warning}</span>
                 }
-                <a href={OrderLabels { order: None }} class={Button}>"Label Management"</a>
+                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                    <a href={OrderLabels { order: None }}>"Label Management"</a>
+                </Button>
                 <a
                     href={shipping_configuration::url::ShippingSettings}
                     aria-label="Shipping configuration"
@@ -116,40 +122,45 @@ pub fn StepBar<'a>(
             <div class={Value}>{value}</div>
             {action}
             if let Some(back) = step.previous() {
-                <a href={ShippingWorkflow::at(back)} class={Button}>"Back"</a>
+                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                    <a href={ShippingWorkflow::at(back)}>"Back"</a>
+                </Button>
             }
             match step.next() {
                 None => {
                     if unshipped_warning.is_some() {
-                        <button
-                            type="button"
-                            command="show-modal"
-                            commandfor={NewBatchDialogId}
-                            class={(Button, Go)}
-                        >
-                            "Start New Batch"
-                        </button>
+                        <Button variant={ButtonVariant::Success} size={ButtonSize::Md}>
+                            <button
+                                type="button"
+                                command="show-modal"
+                                commandfor={NewBatchDialogId}
+                            >
+                                "Start New Batch"
+                            </button>
+                        </Button>
                     } else {
                         <form method="post" action={super::super::url::NewBatch}>
-                            <button class={(Button, Go)}>"Start New Batch"</button>
+                            <Button variant={ButtonVariant::Success} size={ButtonSize::Md}>
+                                <button>"Start New Batch"</button>
+                            </Button>
                         </form>
                     }
                 }
                 Some(next) => {
                     if progress.ready {
-                        <a href={ShippingWorkflow::at(next)} class={(Button, Primary)}>
-                            "Continue to "{next.label()}
-                        </a>
+                        <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                            <a href={ShippingWorkflow::at(next)}>"Continue to "{next.label()}</a>
+                        </Button>
                     } else {
                         <span class={Split}>
-                            <button type="button" disabled class={(Button, Primary)}>
-                                "Continue to "{next.label()}
-                            </button>
+                            <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                                <button type="button" disabled>"Continue to "{next.label()}</button>
+                            </Button>
                             if progress.can_skip {
                                 <details class={Skip}>
                                     <summary
                                         aria-label="More ways to continue"
-                                        class={(Button, Primary)}
+                                        class={SkipToggle}
                                     >
                                         "▾"
                                     </summary>
@@ -163,21 +174,28 @@ pub fn StepBar<'a>(
                 }
             }
             if let Some(warning) = unshipped_warning {
-                <dialog id={NewBatchDialogId} aria-labelledby={NewBatchHeadingId} class={Confirm}>
-                    <h2 id={NewBatchHeadingId}>"Start a new batch?"</h2>
-                    <p>{warning}</p>
-                    <form method="post" action={super::super::url::NewBatch} class={row(Space::_2)}>
-                        <button
-                            type="button"
-                            command="close"
-                            commandfor={NewBatchDialogId}
-                            class={Button}
-                        >
-                            "Keep This Batch"
-                        </button>
-                        <button class={(Button, Caution)}>"Start New Batch"</button>
-                    </form>
-                </dialog>
+                <Dialog>
+                    <dialog id={NewBatchDialogId} aria-labelledby={NewBatchHeadingId}>
+                        <h2 id={NewBatchHeadingId}>"Start a new batch?"</h2>
+                        <p>{warning}</p>
+                        <form method="post" action={super::super::url::NewBatch}>
+                            <DialogFooter>
+                                <Button variant={ButtonVariant::Ghost} size={ButtonSize::Md}>
+                                    <button
+                                        type="button"
+                                        command="close"
+                                        commandfor={NewBatchDialogId}
+                                    >
+                                        "Keep This Batch"
+                                    </button>
+                                </Button>
+                                <Button variant={ButtonVariant::Warning} size={ButtonSize::Md}>
+                                    <button>"Start New Batch"</button>
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </dialog>
+                </Dialog>
             }
         </section>
     }
@@ -190,12 +208,12 @@ pub fn BuyAllAction(mode: EasyPostMode, shipments: usize) -> impl Render {
     let test = mode == EasyPostMode::Test;
     html! {
         <form method="post" action={super::super::url::BuyAllPostage} class={Act} data-patch>
-            <button
-                disabled={shipments == 0 || !mode.has_key()}
-                class={(Button, Primary, test.then_some(TestMode))}
+            <Button
+                variant={if test { ButtonVariant::Warning } else { ButtonVariant::Primary }}
+                size={ButtonSize::Md}
             >
-                "Buy All Postage"
-            </button>
+                <button disabled={shipments == 0 || !mode.has_key()}>"Buy All Postage"</button>
+            </Button>
         </form>
     }
 }
@@ -206,9 +224,11 @@ pub fn BuyAllAction(mode: EasyPostMode, shipments: usize) -> impl Render {
 pub fn ShipAction(pending: usize, has_seller: bool) -> impl Render {
     html! {
         <form method="post" action={super::super::url::ShipOrders} class={Act} data-patch>
-            <button disabled={pending == 0 || !has_seller} class={(Button, Primary)}>
-                "Mark Shipped & Notify Buyers"
-            </button>
+            <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                <button disabled={pending == 0 || !has_seller}>
+                    "Mark Shipped & Notify Buyers"
+                </button>
+            </Button>
         </form>
     }
 }

@@ -42,17 +42,20 @@ pub fn PrintStep<'a>(sheets: &'a [LabelSheet<'a>], has_orders: bool) -> impl Ren
                 <h2>"Packing Slips"</h2>
                 <div class={row(Space::_2)}>
                     if has_orders {
-                        <a
-                            href={url::PackingSlips { open: Some(true) }}
-                            target="_blank"
-                            data-reload
-                            class={Button}
-                        >
-                            "↗ Open Packing Slips PDF"
-                        </a>
-                        <a href={url::PackingSlips { open: None }} download class={Button}>
-                            "⤓ Download Packing Slips PDF"
-                        </a>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <a
+                                href={url::PackingSlips { open: Some(true) }}
+                                target="_blank"
+                                data-reload
+                            >
+                                "↗ Open Packing Slips PDF"
+                            </a>
+                        </Button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <a href={url::PackingSlips { open: None }} download>
+                                "⤓ Download Packing Slips PDF"
+                            </a>
+                        </Button>
                     } else {
                         <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
                             <button type="button" disabled>"↗ Open Packing Slips PDF"</button>
@@ -94,14 +97,15 @@ fn SizeLabels<'a>(sheet: &'a LabelSheet<'a>) -> impl Render {
                 match batch.status {
                     BatchLabelStatus::Ready => {
                         if let Some(href) = &batch.label_url {
-                            <a
-                                href={href}
-                                target="_blank"
-                                rel="noreferrer"
-                                class={(Button, Primary)}
-                            >
-                                "↗ Open Batch Label PDF"
-                            </a>
+                            <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                                <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    "↗ Open Batch Label PDF"
+                                </a>
+                            </Button>
                         }
                         <Badge variant={BadgeVariant::Success}>
                             {batch.shipment_references.len()}" labels in batch"
@@ -127,13 +131,15 @@ fn SizeLabels<'a>(sheet: &'a LabelSheet<'a>) -> impl Render {
                         class={Act}
                         data-patch
                     >
-                        <button class={Button}>
-                            if status.is_some() {
-                                "Create Batch Label PDF Again"
-                            } else {
-                                "Create Batch Label PDF"
-                            }
-                        </button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button>
+                                if status.is_some() {
+                                    "Create Batch Label PDF Again"
+                                } else {
+                                    "Create Batch Label PDF"
+                                }
+                            </button>
+                        </Button>
                     </form>
                 } else if sheet.batch.is_none() {
                     <p class={muted()}>

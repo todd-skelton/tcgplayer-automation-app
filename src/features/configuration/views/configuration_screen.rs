@@ -104,7 +104,9 @@ pub fn ConfigurationScreen<'a>(
                         <Alert variant={AlertVariant::Warning}>
                             "This resets every setting on this page. It cannot be undone."
                         </Alert>
-                        <button class={Danger}>"Confirm Reset to Defaults"</button>
+                        <Button variant={ButtonVariant::Destructive} size={ButtonSize::Md}>
+                            <button>"Confirm Reset to Defaults"</button>
+                        </Button>
                     </form>
                 </details>
             </section>

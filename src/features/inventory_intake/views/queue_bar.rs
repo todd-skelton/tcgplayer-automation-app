@@ -94,7 +94,9 @@ pub fn ClearConfirm<'a>(selection: &'a Selection, totals: Totals) -> impl Patch 
                         "Cancel"
                     </button>
                 </Button>
-                <button class={Danger}>"Clear unqueued"</button>
+                <Button variant={ButtonVariant::Destructive} size={ButtonSize::Md}>
+                    <button>"Clear unqueued"</button>
+                </Button>
             </form>
         </div>
     }

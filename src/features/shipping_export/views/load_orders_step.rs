@@ -59,7 +59,9 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
             <div class={Actions}>
                 <form method="post" action={url::LoadOrders} data-patch>
                     <input type="hidden" name={l.seller_key} value={seller}>
-                    <button class={Primary}>"Load Live TCGPlayer Orders"</button>
+                    <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                        <button>"Load Live TCGPlayer Orders"</button>
+                    </Button>
                 </form>
                 <button
                     type="button"

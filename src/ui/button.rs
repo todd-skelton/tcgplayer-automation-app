@@ -22,6 +22,10 @@ pub enum ButtonVariant {
     Ghost,
     Destructive,
     Link,
+    /// A step that goes ahead and cannot be taken back lightly, such as starting a batch.
+    Success,
+    /// An action that spends money or changes a mode, such as buying postage in test mode.
+    Warning,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -52,6 +56,8 @@ pub fn Button<C: Render>(variant: ButtonVariant, size: ButtonSize, children: C) 
         ButtonVariant::Ghost => Ghost,
         ButtonVariant::Destructive => Destructive,
         ButtonVariant::Link => Link,
+        ButtonVariant::Success => Success,
+        ButtonVariant::Warning => Warning,
     };
     let size = match size {
         ButtonSize::Sm => Sm,

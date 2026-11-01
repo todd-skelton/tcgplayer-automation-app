@@ -82,8 +82,3 @@
     margin-top: 0;
   }
 }
-.danger {
-  background: var(--destructive);
-  border-color: var(--destructive);
-  color: var(--primary-foreground);
-}
