@@ -3,12 +3,12 @@ name = "tcgplayer-automation"
 version = "0.1.0"
 edition = "2024"
 publish = false
-description = "TCGPlayer Automation on Corten: screens ported one at a time from the React Router app in app/, which serves the rest through the legacy relay."
+description = "TCGPlayer Automation on Corten: every screen, beside the Node app in app/, whose JSON routes and workers the legacy relay reaches until cutover."
 
 [dependencies]
 # Pinned to one revision of main; bump it on purpose when a fix the port needs lands.
-corten = { git = "https://github.com/todd-skelton/corten", rev = "6c895820", features = ["json", "compress", "types", "zones"] }
-corten-ui = { git = "https://github.com/todd-skelton/corten", rev = "6c895820" }
+corten = { git = "https://github.com/todd-skelton/corten", rev = "df5c2582", features = ["json", "compress", "types", "zones"] }
+corten-ui = { git = "https://github.com/todd-skelton/corten", rev = "df5c2582" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
 # Correctly rounded float parsing, so numbers the Node app wrote read back to the same bits.
