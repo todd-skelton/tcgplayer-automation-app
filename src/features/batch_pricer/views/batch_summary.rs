@@ -11,7 +11,12 @@ use crate::{
     },
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        badge::{Badge, BadgeVariant},
+        card::{Card, CardContent, CardHeader},
+        table::Table,
+    },
 };
 
 const USD: Currency = Currency::new("USD");
@@ -82,170 +87,210 @@ pub fn BatchSummary<'a>(
                 }
             </p>
             <div class={Cards}>
-                <div class={Card}>
-                    <h3>"Record Statistics"</h3>
-                    <table>
-                        <tbody>
-                            <tr>
-                                <td>"Total Records"</td>
-                                <td>{t.number(whole(summary.total_rows))}</td>
-                            </tr>
-                            <tr>
-                                <td>"Successfully Priced"</td>
-                                <td class={Above}>{t.number(whole(summary.processed_rows))}</td>
-                            </tr>
-                            <tr>
-                                <td>"Manual Review / Errors"</td>
-                                <td class={Caution}>
-                                    {t.number(whole(summary.manual_review_rows))}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>"Skipped"</td>
-                                <td>{t.number(whole(summary.skipped_rows))}</td>
-                            </tr>
-                            <tr>
-                                <td>"Rows With Errors"</td>
-                                <td class={Below}>{t.number(whole(summary.error_rows))}</td>
-                            </tr>
-                            <tr>
-                                <td>"Rows With Warnings"</td>
-                                <td class={Caution}>{t.number(whole(summary.warning_rows))}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class={Card}>
-                    <h3>"Quantity Summary"</h3>
-                    <table>
-                        <tbody>
-                            <tr>
-                                <td>"Total Quantity"</td>
-                                <td>{t.number(whole(summary.total_quantity))}</td>
-                            </tr>
-                            <tr>
-                                <td>"Add to Quantity"</td>
-                                <td>{t.number(whole(summary.total_add_quantity))}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>"Combined Total"</strong></td>
-                                <td><strong>{t.number(whole(combined))}</strong></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                <Card>
+                    <CardHeader>
+                        <h3>"Record Statistics"</h3>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <table class={Figures}>
+                                <tbody>
+                                    <tr>
+                                        <td>"Total Records"</td>
+                                        <td>{t.number(whole(summary.total_rows))}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>"Successfully Priced"</td>
+                                        <td class={Above}>
+                                            {t.number(whole(summary.processed_rows))}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>"Manual Review / Errors"</td>
+                                        <td class={Caution}>
+                                            {t.number(whole(summary.manual_review_rows))}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>"Skipped"</td>
+                                        <td>{t.number(whole(summary.skipped_rows))}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>"Rows With Errors"</td>
+                                        <td class={Below}>{t.number(whole(summary.error_rows))}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>"Rows With Warnings"</td>
+                                        <td class={Caution}>
+                                            {t.number(whole(summary.warning_rows))}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </Table>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <h3>"Quantity Summary"</h3>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <table class={Figures}>
+                                <tbody>
+                                    <tr>
+                                        <td>"Total Quantity"</td>
+                                        <td>{t.number(whole(summary.total_quantity))}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>"Add to Quantity"</td>
+                                        <td>{t.number(whole(summary.total_add_quantity))}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>"Combined Total"</strong></td>
+                                        <td><strong>{t.number(whole(combined))}</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </Table>
+                    </CardContent>
+                </Card>
             </div>
             if let Some(lines) = lines {
-                <div class={Card}>
-                    <h3>"Product Line Breakdown"</h3>
-                    <p class={muted()}>"Current successful rows grouped by product line."</p>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>"Product Line"</th>
-                                <th>"Items"</th>
-                                <th>"Percentiles Used"</th>
-                                <th>"Total Value"</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            for (name, line) in lines {
-                                <tr>
-                                    <td>{name}</td>
-                                    <td>{t.number(whole(line.count))}</td>
-                                    <td>{line.percentiles()}</td>
-                                    <td>{t.money(cents(line.total_value), USD)}</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-            <div class={Card}>
-                <h3>"Price Totals (Weighted by Quantity)"</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>"Price Type"</th>
-                            <th>"Total Value"</th>
-                            <th>"Average per Unit"</th>
-                            <th>"% vs Market"</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>"Market Price"</td>
-                            <td>{t.money(cents(summary.totals.market_price), USD)}</td>
-                            <td>{t.money(cents(per_unit(summary.totals.market_price)), USD)}</td>
-                            <td>{t.change(ratio(0.0), 1)}</td>
-                        </tr>
-                        <tr>
-                            <td>"Low Price"</td>
-                            <td>{t.money(cents(low), USD)}</td>
-                            <td>{t.money(cents(per_unit(low)), USD)}</td>
-                            <td class={direction(low_change)}>
-                                match low_change {
-                                    Some(p) => { {t.change(ratio(p), 1)} }
-                                    None => { "Not available" }
-                                }
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>"Marketplace Price"</strong></td>
-                            <td><strong>{t.money(cents(marketplace), USD)}</strong></td>
-                            <td><strong>{t.money(cents(per_unit(marketplace)), USD)}</strong></td>
-                            <td class={direction(marketplace_change)}>
-                                <strong>
-                                    match marketplace_change {
-                                        Some(p) => { {t.change(ratio(p), 1)} }
-                                        None => { "Not available" }
+                <Card>
+                    <CardHeader>
+                        <h3>"Product Line Breakdown"</h3>
+                        <p>"Current successful rows grouped by product line."</p>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <table class={Figures}>
+                                <thead>
+                                    <tr>
+                                        <th>"Product Line"</th>
+                                        <th>"Items"</th>
+                                        <th>"Percentiles Used"</th>
+                                        <th>"Total Value"</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    for (name, line) in lines {
+                                        <tr>
+                                            <td>{name}</td>
+                                            <td>{t.number(whole(line.count))}</td>
+                                            <td>{line.percentiles()}</td>
+                                            <td>{t.money(cents(line.total_value), USD)}</td>
+                                        </tr>
                                     }
-                                </strong>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                                </tbody>
+                            </table>
+                        </Table>
+                    </CardContent>
+                </Card>
+            }
+            <Card>
+                <CardHeader>
+                    <h3>"Price Totals (Weighted by Quantity)"</h3>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <table class={Figures}>
+                            <thead>
+                                <tr>
+                                    <th>"Price Type"</th>
+                                    <th>"Total Value"</th>
+                                    <th>"Average per Unit"</th>
+                                    <th>"% vs Market"</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>"Market Price"</td>
+                                    <td>{t.money(cents(summary.totals.market_price), USD)}</td>
+                                    <td>
+                                        {t.money(cents(per_unit(summary.totals.market_price)), USD)}
+                                    </td>
+                                    <td>{t.change(ratio(0.0), 1)}</td>
+                                </tr>
+                                <tr>
+                                    <td>"Low Price"</td>
+                                    <td>{t.money(cents(low), USD)}</td>
+                                    <td>{t.money(cents(per_unit(low)), USD)}</td>
+                                    <td class={direction(low_change)}>
+                                        match low_change {
+                                            Some(p) => { {t.change(ratio(p), 1)} }
+                                            None => { "Not available" }
+                                        }
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>"Marketplace Price"</strong></td>
+                                    <td><strong>{t.money(cents(marketplace), USD)}</strong></td>
+                                    <td>
+                                        <strong>
+                                            {t.money(cents(per_unit(marketplace)), USD)}
+                                        </strong>
+                                    </td>
+                                    <td class={direction(marketplace_change)}>
+                                        <strong>
+                                            match marketplace_change {
+                                                Some(p) => { {t.change(ratio(p), 1)} }
+                                                None => { "Not available" }
+                                            }
+                                        </strong>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </Table>
+                </CardContent>
+            </Card>
             if !keys.is_empty() {
-                <div class={Card}>
-                    <h3>"Percentile Analysis"</h3>
-                    <p class={muted()}>
-                        "Rebuilt from the saved pricing details on successful rows."
-                    </p>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>"Percentile"</th>
-                                <th>"Total Value"</th>
-                                <th>"% Difference from Market"</th>
-                                <th>"Historical Sales Velocity"</th>
-                                <th>"Estimated Time to Sell"</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            for key in &keys {
-                                <PercentileRow summary={summary} key={key} t={t} />
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                <Card>
+                    <CardHeader>
+                        <h3>"Percentile Analysis"</h3>
+                        <p>
+                            "Rebuilt from the saved pricing details on successful rows."
+                        </p>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <table class={Figures}>
+                                <thead>
+                                    <tr>
+                                        <th>"Percentile"</th>
+                                        <th>"Total Value"</th>
+                                        <th>"% Difference from Market"</th>
+                                        <th>"Historical Sales Velocity"</th>
+                                        <th>"Estimated Time to Sell"</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    for key in &keys {
+                                        <PercentileRow summary={summary} key={key} t={t} />
+                                    }
+                                </tbody>
+                            </table>
+                        </Table>
+                    </CardContent>
+                </Card>
             }
             <div class={row(Space::_2)}>
-                <span class={(Chip, Above)}>
+                <Badge variant={BadgeVariant::Success}>
                     {t.number(whole(summary.processed_rows))}" successful"
-                </span>
-                <span class={(Chip, Caution)}>
+                </Badge>
+                <Badge variant={BadgeVariant::Warning}>
                     {t.number(whole(summary.manual_review_rows))}" manual review"
-                </span>
+                </Badge>
                 if summary.skipped_rows > 0.0 {
-                    <span class={Chip}>
+                    <Badge variant={BadgeVariant::Outline}>
                         {t.number(whole(summary.skipped_rows))}" not yet priced"
-                    </span>
+                    </Badge>
                 }
                 if summary.warning_rows > 0.0 {
-                    <span class={(Chip, Caution)}>
+                    <Badge variant={BadgeVariant::Warning}>
                         {t.number(whole(summary.warning_rows))}" rows with warnings"
-                    </span>
+                    </Badge>
                 }
             </div>
             if summary.success_rate < rates.low {

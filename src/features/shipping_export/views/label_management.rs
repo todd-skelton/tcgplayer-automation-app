@@ -23,7 +23,10 @@ use crate::{
     layout::LabeledControl,
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        badge::{Badge, BadgeVariant},
+    },
 };
 
 /// The form for the order's labels: a refused purchase or a new choice redraws it.
@@ -76,9 +79,15 @@ pub fn LabelManagement<'a>(
                 <section class={Section}>
                     <h2>"Order "{&found.order.number}</h2>
                     <div class={row(Space::_2)}>
-                        <span class={Chip}>{found.order.item_count}" items"</span>
-                        <span class={Chip}>{format!("${:.2}", found.order.value_of_products)}</span>
-                        <span class={Chip}>{&found.order.shipping_method}</span>
+                        <Badge variant={BadgeVariant::Outline}>
+                            {found.order.item_count}" items"
+                        </Badge>
+                        <Badge variant={BadgeVariant::Outline}>
+                            {format!("${:.2}", found.order.value_of_products)}
+                        </Badge>
+                        <Badge variant={BadgeVariant::Outline}>
+                            {&found.order.shipping_method}
+                        </Badge>
                     </div>
                 </section>
                 <section class={Section}>
@@ -113,9 +122,9 @@ pub fn LabelManagement<'a>(
 fn PurchasedLabel<'a>(title: &'a str, bought: &'a Bought, looked: &'a Looked<'a>) -> impl Render {
     let result = &bought.result;
     let (status, tone) = match result.status {
-        Status::Purchased => ("PURCHASED", Good),
-        Status::Failed => ("FAILED", Bad),
-        Status::Skipped => ("SKIPPED", Warn),
+        Status::Purchased => ("PURCHASED", BadgeVariant::Success),
+        Status::Failed => ("FAILED", BadgeVariant::Destructive),
+        Status::Skipped => ("SKIPPED", BadgeVariant::Warning),
     };
     let at = bought
         .purchased_at
@@ -130,12 +139,14 @@ fn PurchasedLabel<'a>(title: &'a str, bought: &'a Bought, looked: &'a Looked<'a>
         <article class={Label}>
             <h3>{title}</h3>
             <div class={row(Space::_2)}>
-                <span class={(Chip, tone)}>{status}</span>
-                <span class={Chip}>
+                <Badge variant={tone}>{status}</Badge>
+                <Badge variant={BadgeVariant::Outline}>
                     if bought.mode == EasyPostMode::Test { "TEST" } else { "PRODUCTION" }
-                </span>
+                </Badge>
                 if let Some(rate) = &result.selected_rate {
-                    <span class={Chip}>{&rate.service}" "{&rate.rate}" "{&rate.currency}</span>
+                    <Badge variant={BadgeVariant::Outline}>
+                        {&rate.service}" "{&rate.rate}" "{&rate.currency}
+                    </Badge>
                 }
             </div>
             if let Some(at) = at {

@@ -16,7 +16,10 @@ use crate::{
     },
     layout::{LabeledControl, SubmitsOnChange},
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        table::Table,
+    },
 };
 
 #[derive(Id)]
@@ -354,45 +357,47 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
                     ")."
                 </Alert>
             } else {
-                <table class={Lines}>
-                    <thead>
-                        <tr>
-                            <th>"Product Line"</th>
-                            <th>"Percentile"</th>
-                            <th>"Daily return hurdle"</th>
-                            <th>"Skip"</th>
-                            <th>"Actions"</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        for (id, setting) in &lines.stored.settings {
-                            <tr id={ProductLineRowId(*id)}>
-                                <td>{name(*id)}</td>
-                                if setting.skip {
-                                    <td>"—"</td>
-                                    <td>"—"</td>
-                                } else {
-                                    <td>{setting.percentile}</td>
-                                    <td>
-                                        {setting.daily_return_hurdle.map_or_else(|| "—".to_owned(), |h| h.to_string())}
-                                    </td>
-                                }
-                                <td>{if setting.skip { "Yes" } else { "No" }}</td>
-                                <td>
-                                    <form
-                                        method="post"
-                                        action={url::RemoveProductLine { id: *id }}
-                                        data-patch
-                                    >
-                                        <button aria-label={("Remove ", name(*id).as_str())}>
-                                            "Remove"
-                                        </button>
-                                    </form>
-                                </td>
+                <Table>
+                    <table class={Lines}>
+                        <thead>
+                            <tr>
+                                <th>"Product Line"</th>
+                                <th>"Percentile"</th>
+                                <th>"Daily return hurdle"</th>
+                                <th>"Skip"</th>
+                                <th>"Actions"</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            for (id, setting) in &lines.stored.settings {
+                                <tr id={ProductLineRowId(*id)}>
+                                    <td>{name(*id)}</td>
+                                    if setting.skip {
+                                        <td>"—"</td>
+                                        <td>"—"</td>
+                                    } else {
+                                        <td>{setting.percentile}</td>
+                                        <td>
+                                            {setting.daily_return_hurdle.map_or_else(|| "—".to_owned(), |h| h.to_string())}
+                                        </td>
+                                    }
+                                    <td>{if setting.skip { "Yes" } else { "No" }}</td>
+                                    <td>
+                                        <form
+                                            method="post"
+                                            action={url::RemoveProductLine { id: *id }}
+                                            data-patch
+                                        >
+                                            <button aria-label={("Remove ", name(*id).as_str())}>
+                                                "Remove"
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </Table>
             }
         </section>
     }

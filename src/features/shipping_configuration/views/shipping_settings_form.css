@@ -21,17 +21,3 @@
     grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   }
 }
-.chip {
-  padding: 2px var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-sm);
-}
-.ready {
-  border-color: var(--success);
-  color: var(--success);
-}
-.missing {
-  border-color: var(--warning);
-  color: var(--warning);
-}

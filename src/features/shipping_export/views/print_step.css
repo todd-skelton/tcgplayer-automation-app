@@ -43,20 +43,6 @@
   border-color: var(--primary);
   color: var(--primary-foreground);
 }
-.chip {
-  padding: 0 var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-sm);
-}
-.good {
-  border-color: var(--success);
-  color: var(--success);
-}
-.info {
-  border-color: var(--info);
-  color: var(--info);
-}
 .bad {
   color: var(--destructive);
 }

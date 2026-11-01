@@ -17,7 +17,11 @@ use crate::{
     },
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        badge::{Badge, BadgeVariant},
+        table::Table,
+    },
 };
 
 /// One shipment as the Pack step lists it.
@@ -62,11 +66,11 @@ fn at(reference: &str, view: PackView) -> ShippingWorkflow {
     }
 }
 
-fn postage_chip(bought: &Bought) -> (&'static str, &'static str) {
+fn postage_chip(bought: &Bought) -> (&'static str, BadgeVariant) {
     match bought.result.status {
-        Status::Purchased => ("PURCHASED", "good"),
-        Status::Failed => ("FAILED", "bad"),
-        Status::Skipped => ("SKIPPED", "caution"),
+        Status::Purchased => ("PURCHASED", BadgeVariant::Success),
+        Status::Failed => ("FAILED", BadgeVariant::Destructive),
+        Status::Skipped => ("SKIPPED", BadgeVariant::Warning),
     }
 }
 
@@ -195,18 +199,18 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                     </span>
                 }
                 if numbers.len() > 1 {
-                    <span class={Chip} title={numbers.join(", ")}>
-                        "Combined shipment of "{numbers.len()}" orders"
-                    </span>
+                    <Badge variant={BadgeVariant::Outline}>
+                        <span title={numbers.join(", ")}>
+                            "Combined shipment of "{numbers.len()}" orders"
+                        </span>
+                    </Badge>
                 }
                 if let Some(bought) = current.postage {
-                    <span
-                        class={(Chip, Status)}
-                        data-status={postage_chip(bought).1}
-                        title={bought.result.tracking_code.as_deref().unwrap_or("")}
-                    >
-                        {postage_chip(bought).0}
-                    </span>
+                    <Badge variant={postage_chip(bought).1}>
+                        <span title={bought.result.tracking_code.as_deref().unwrap_or("")}>
+                            {postage_chip(bought).0}
+                        </span>
+                    </Badge>
                 }
                 <span class={Spacer}></span>
                 <PackedToggle
@@ -247,33 +251,35 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                             }
                         </div>
                     } else if !packed.listed.is_empty() {
-                        <table class={Listed}>
-                            <thead>
-                                <tr>
-                                    <th>"Card"</th>
-                                    <th class={End}>"Qty"</th>
-                                    <th>"Value"</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                for card in &packed.listed {
+                        <Table>
+                            <table class={Listed}>
+                                <thead>
                                     <tr>
-                                        <td>{&card.name}</td>
-                                        <td class={End}>{card.quantity}</td>
-                                        <td>
-                                            match &card.value {
-                                                Some(value) => <SaleValueFigures
-                                                    value={value}
-                                                    on_image={false}
-                                                    t={t}
-                                                />,
-                                                None => "-",
-                                            }
-                                        </td>
+                                        <th>"Card"</th>
+                                        <th class={End}>"Qty"</th>
+                                        <th>"Value"</th>
                                     </tr>
-                                }
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    for card in &packed.listed {
+                                        <tr>
+                                            <td>{&card.name}</td>
+                                            <td class={End}>{card.quantity}</td>
+                                            <td>
+                                                match &card.value {
+                                                    Some(value) => <SaleValueFigures
+                                                        value={value}
+                                                        on_image={false}
+                                                        t={t}
+                                                    />,
+                                                    None => "-",
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </Table>
                     }
                 </section>
             }
@@ -295,60 +301,65 @@ fn PackList<'a>(packing: &'a Packing<'a>, t: Msg) -> impl Render {
                 <ViewChoice packing={packing} />
             </header>
             <div class={Scroll}>
-                <table class={Listed}>
-                    <thead>
-                        <tr>
-                            <th>"Packed"</th>
-                            <th>"Order(s)"</th>
-                            <th>"Recipient"</th>
-                            <th>"Method"</th>
-                            <th class={End}>"Items"</th>
-                            <th>"Value"</th>
-                            <th>"Postage"</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        for (i, row) in packing.rows.iter().enumerate() {
-                            <tr aria-current={(current == Some(i)).then_some("true")}>
-                                <td>
-                                    <PackedToggle
-                                        form={forms}
-                                        reference={row.planned.reference()}
-                                        packed={row.packed}
-                                        view={PackView::List}
-                                        label={if row.packed { "Packed" } else { "Pack" }}
-                                    />
-                                </td>
-                                <td>
-                                    <a href={at(row.planned.reference(), PackView::Card)}>
-                                        for number in &row.planned.orders { <div>{number}</div> }
-                                    </a>
-                                </td>
-                                <td>
-                                    {row.orders.first().map(|o| o.recipient()).unwrap_or_else(|| "-".into())}
-                                </td>
-                                <td>
-                                    {row.orders.first().map_or("-", |o| o.shipping_method.as_str())}
-                                </td>
-                                <td class={End}>{row.items}</td>
-                                <td class={Wide}>
-                                    <SaleValueFigures value={&row.value} on_image={false} t={t} />
-                                </td>
-                                <td>
-                                    match row.postage {
-                                        Some(bought) => <span
-                                            class={(Chip, Status)}
-                                            data-status={postage_chip(bought).1}
-                                        >
-                                            {postage_chip(bought).0}
-                                        </span>,
-                                        None => "-",
-                                    }
-                                </td>
+                <Table>
+                    <table class={Listed}>
+                        <thead>
+                            <tr>
+                                <th>"Packed"</th>
+                                <th>"Order(s)"</th>
+                                <th>"Recipient"</th>
+                                <th>"Method"</th>
+                                <th class={End}>"Items"</th>
+                                <th>"Value"</th>
+                                <th>"Postage"</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            for (i, row) in packing.rows.iter().enumerate() {
+                                <tr aria-current={(current == Some(i)).then_some("true")}>
+                                    <td>
+                                        <PackedToggle
+                                            form={forms}
+                                            reference={row.planned.reference()}
+                                            packed={row.packed}
+                                            view={PackView::List}
+                                            label={if row.packed { "Packed" } else { "Pack" }}
+                                        />
+                                    </td>
+                                    <td>
+                                        <a href={at(row.planned.reference(), PackView::Card)}>
+                                            for number in &row.planned.orders {
+                                                <div>{number}</div>
+                                            }
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {row.orders.first().map(|o| o.recipient()).unwrap_or_else(|| "-".into())}
+                                    </td>
+                                    <td>
+                                        {row.orders.first().map_or("-", |o| o.shipping_method.as_str())}
+                                    </td>
+                                    <td class={End}>{row.items}</td>
+                                    <td class={Wide}>
+                                        <SaleValueFigures
+                                            value={&row.value}
+                                            on_image={false}
+                                            t={t}
+                                        />
+                                    </td>
+                                    <td>
+                                        match row.postage {
+                                            Some(bought) => <Badge variant={postage_chip(bought).1}>
+                                                {postage_chip(bought).0}
+                                            </Badge>,
+                                            None => "-",
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </Table>
             </div>
         </section>
     }

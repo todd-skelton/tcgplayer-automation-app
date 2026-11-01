@@ -16,7 +16,10 @@ use crate::{
         shipping_thresholds::{TierBasis, outcomes::SaleGroup, report::ShippingReport},
     },
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        table::Table,
+    },
 };
 
 #[derive(Id)]
@@ -198,23 +201,25 @@ pub fn CalibrationPanel<'a>(
                         "Measured from "{date(&r.from)}" through "{date(&r.through)}
                         ", holding out prices listed from "{date(&r.held_out_from)}
                     </h3>
-                    <table class={Figures}>
-                        <thead>
-                            <tr>
-                                <th>"Listed"</th>
-                                <th>"Prices"</th>
-                                <th>"Days in stock"</th>
-                                <th>"Sales seen"</th>
-                                <th>"Sales forecast"</th>
-                                <th>"Actual days per forecast day"</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            for (label, time) in [("Earlier", &r.earlier), ("Held out", &r.held_out), ("Whole window", &whole)] {
-                                <TimeRow label={label} time={time} />
-                            }
-                        </tbody>
-                    </table>
+                    <Table>
+                        <table class={Figures}>
+                            <thead>
+                                <tr>
+                                    <th>"Listed"</th>
+                                    <th>"Prices"</th>
+                                    <th>"Days in stock"</th>
+                                    <th>"Sales seen"</th>
+                                    <th>"Sales forecast"</th>
+                                    <th>"Actual days per forecast day"</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                for (label, time) in [("Earlier", &r.earlier), ("Held out", &r.held_out), ("Whole window", &whole)] {
+                                    <TimeRow label={label} time={time} />
+                                }
+                            </tbody>
+                        </table>
+                    </Table>
                 }
             }
         </section>
@@ -297,57 +302,61 @@ pub fn ShippingReportPanel<'a>(days: u32, report: Report<'a, ShippingReport>) ->
                         {count(r.cost_model.basket_count as f64)}
                         " units sold in the last "{r.cost_model.evidence_window_days}" days"
                     </h3>
-                    <table class={Figures}>
-                        <thead>
-                            <tr>
-                                <th>"Order value"</th>
-                                <th>"Orders"</th>
-                                <th>"Buyer shipping"</th>
-                                <th>"Postage"</th>
-                                <th>"Basis"</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            for tier in &r.cost_model.tiers {
+                    <Table>
+                        <table class={Figures}>
+                            <thead>
                                 <tr>
-                                    <td>"From "{money(tier.from_order_value)}</td>
-                                    <td>{count(tier.order_count as f64)}</td>
-                                    <td>{money(tier.buyer_shipping)}</td>
-                                    <td>{money(tier.postage)}</td>
-                                    <td>
-                                        match tier.basis {
-                                            TierBasis::Observed => "Observed",
-                                            TierBasis::Default => "Default (too few orders)",
-                                        }
-                                    </td>
+                                    <th>"Order value"</th>
+                                    <th>"Orders"</th>
+                                    <th>"Buyer shipping"</th>
+                                    <th>"Postage"</th>
+                                    <th>"Basis"</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
-                    <table class={Figures}>
-                        <thead>
-                            <tr>
-                                <th>"Threshold"</th>
-                                <th>"Units sold nearby"</th>
-                                <th>"Shipping cost per unit one cent under"</th>
-                                <th>"Shipping cost per unit at threshold"</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            for cost in &r.threshold_costs {
+                            </thead>
+                            <tbody>
+                                for tier in &r.cost_model.tiers {
+                                    <tr>
+                                        <td>"From "{money(tier.from_order_value)}</td>
+                                        <td>{count(tier.order_count as f64)}</td>
+                                        <td>{money(tier.buyer_shipping)}</td>
+                                        <td>{money(tier.postage)}</td>
+                                        <td>
+                                            match tier.basis {
+                                                TierBasis::Observed => "Observed",
+                                                TierBasis::Default => "Default (too few orders)",
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </Table>
+                    <Table>
+                        <table class={Figures}>
+                            <thead>
                                 <tr>
-                                    <td>{money(cost.threshold)}</td>
-                                    <td>{count(cost.basket_count as f64)}</td>
-                                    <td>
-                                        {cost.snap_price_shipping_cost.map_or_else(|| "Too few sales to snap".into(), money)}
-                                    </td>
-                                    <td>
-                                        {cost.threshold_shipping_cost.map_or_else(|| "Too few sales to snap".into(), money)}
-                                    </td>
+                                    <th>"Threshold"</th>
+                                    <th>"Units sold nearby"</th>
+                                    <th>"Shipping cost per unit one cent under"</th>
+                                    <th>"Shipping cost per unit at threshold"</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                for cost in &r.threshold_costs {
+                                    <tr>
+                                        <td>{money(cost.threshold)}</td>
+                                        <td>{count(cost.basket_count as f64)}</td>
+                                        <td>
+                                            {cost.snap_price_shipping_cost.map_or_else(|| "Too few sales to snap".into(), money)}
+                                        </td>
+                                        <td>
+                                            {cost.threshold_shipping_cost.map_or_else(|| "Too few sales to snap".into(), money)}
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </Table>
                     for outcome in &r.outcomes {
                         <p>
                             {money(outcome.threshold)}": "{outcome.listings.snapped}
@@ -355,30 +364,32 @@ pub fn ShippingReportPanel<'a>(days: u32, report: Report<'a, ShippingReport>) ->
                             {outcome.listings.kept}" kept above, "{outcome.listings.floor}
                             " held by the price floor"
                         </p>
-                        <table class={Figures}>
-                            <thead>
-                                <tr>
-                                    <th>"Sales"</th>
-                                    <th>"Units"</th>
-                                    <th>"Orders"</th>
-                                    <th>"Median days to sell"</th>
-                                    <th>"Units per order"</th>
-                                    <th>"With add-ons"</th>
-                                    <th>"Reached threshold"</th>
-                                    <th>"Most in one order"</th>
-                                    <th>"Bought in bulk"</th>
-                                    <th>"Shipping cost per order"</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <SaleGroupRow label="Snapped" group={&outcome.snapped} />
-                                <SaleGroupRow label="Kept above" group={&outcome.kept} />
-                                <SaleGroupRow
-                                    label="All sales just above"
-                                    group={&outcome.just_above}
-                                />
-                            </tbody>
-                        </table>
+                        <Table>
+                            <table class={Figures}>
+                                <thead>
+                                    <tr>
+                                        <th>"Sales"</th>
+                                        <th>"Units"</th>
+                                        <th>"Orders"</th>
+                                        <th>"Median days to sell"</th>
+                                        <th>"Units per order"</th>
+                                        <th>"With add-ons"</th>
+                                        <th>"Reached threshold"</th>
+                                        <th>"Most in one order"</th>
+                                        <th>"Bought in bulk"</th>
+                                        <th>"Shipping cost per order"</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <SaleGroupRow label="Snapped" group={&outcome.snapped} />
+                                    <SaleGroupRow label="Kept above" group={&outcome.kept} />
+                                    <SaleGroupRow
+                                        label="All sales just above"
+                                        group={&outcome.just_above}
+                                    />
+                                </tbody>
+                            </table>
+                        </Table>
                     }
                 }
             }

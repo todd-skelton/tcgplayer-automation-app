@@ -9,7 +9,10 @@ use crate::{
     },
     layout::LabeledControl,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        badge::{Badge, BadgeVariant},
+    },
 };
 
 #[derive(Id)]
@@ -126,8 +129,8 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
             </div>
             if let Some((source, count)) = loading.source {
                 <p class={row(Space::_2)}>
-                    <span class={(Chip, Accent)}>{source}</span>
-                    <span class={Chip}>{count}" orders loaded"</span>
+                    <Badge variant={BadgeVariant::Primary}>{source}</Badge>
+                    <Badge variant={BadgeVariant::Outline}>{count}" orders loaded"</Badge>
                 </p>
             }
             match &loading.coverage {

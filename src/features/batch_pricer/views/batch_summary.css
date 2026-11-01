@@ -1,43 +1,30 @@
 .batch-summary {
   display: grid;
   gap: var(--space-4);
-  & p {
+  & > p {
     margin: 0;
   }
-  & table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  & th,
-  & td {
-    padding: var(--space-1) var(--space-2);
-    border-bottom: 1px solid var(--border);
-    text-align: right;
-  }
-  & th:first-child,
-  & td:first-child {
-    text-align: left;
-  }
-  & th {
-    font-weight: 600;
+  & > h2 {
+    margin: 0;
   }
 }
 .cards {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-4);
-  & > .card {
+  & > * {
     flex: 1;
     min-width: 20rem;
   }
 }
-.card {
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  & h3 {
-    margin: 0 0 var(--space-2);
-    font-size: var(--font-size-md);
+/* A figure reads from its end, its label from the start. The kit's Table aligns every cell to
+   the start, so these outrank it (corten#559). */
+.figures {
+  & :is(th, td) {
+    text-align: end !important;
+  }
+  & :is(th, td):first-child {
+    text-align: start !important;
   }
 }
 .above {
@@ -48,11 +35,4 @@
 }
 .caution {
   color: var(--warning);
-}
-.chip {
-  display: inline-block;
-  padding: 0 var(--space-2);
-  border: 1px solid currentColor;
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-sm);
 }

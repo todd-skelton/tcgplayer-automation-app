@@ -35,17 +35,14 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
+/* The kit's Table aligns every cell to the start; these columns center, and outrank it
+   (corten#559). */
 .lines {
-  width: 100%;
-  & th,
-  & td {
-    padding: var(--space-1) var(--space-2);
-    border-bottom: 1px solid var(--border);
-    text-align: center;
+  & :is(th, td) {
+    text-align: center !important;
   }
-  & th:first-child,
-  & td:first-child {
-    text-align: start;
+  & :is(th, td):first-child {
+    text-align: start !important;
   }
   & form {
     display: inline;
@@ -72,16 +69,12 @@
   align-items: center;
   gap: var(--space-2);
 }
+/* A figure reads from its end, its label from the start (corten#559). */
 .figures {
-  width: 100%;
-  & th,
-  & td {
-    padding: var(--space-1) var(--space-2);
-    border-bottom: 1px solid var(--border);
-    text-align: end;
+  & :is(th, td) {
+    text-align: end !important;
   }
-  & th:first-child,
-  & td:first-child {
-    text-align: start;
+  & :is(th, td):first-child {
+    text-align: start !important;
   }
 }

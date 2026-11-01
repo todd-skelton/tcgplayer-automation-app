@@ -9,6 +9,7 @@ use crate::{
         },
     },
     theme::*,
+    ui::badge::{Badge, BadgeVariant},
 };
 
 /// One label size as the Print step shows it: its batch PDF, if one was made, and each label of
@@ -95,9 +96,9 @@ fn SizeLabels<'a>(sheet: &'a LabelSheet<'a>) -> impl Render {
                                 "↗ Open Batch Label PDF"
                             </a>
                         }
-                        <span class={(Chip, Good)}>
+                        <Badge variant={BadgeVariant::Success}>
                             {batch.shipment_references.len()}" labels in batch"
-                        </span>
+                        </Badge>
                     }
                     BatchLabelStatus::Pending => <p class={muted()}>
                         {batch.message.as_deref().unwrap_or("EasyPost is still generating the batch PDF.")}
@@ -112,7 +113,7 @@ fn SizeLabels<'a>(sheet: &'a LabelSheet<'a>) -> impl Render {
             }
             if status != Some(BatchLabelStatus::Ready) {
                 if sheet.can_combine() {
-                    <span class={(Chip, Info)}>{sheet.labels.len()}" saved labels"</span>
+                    <Badge variant={BadgeVariant::Info}>{sheet.labels.len()}" saved labels"</Badge>
                     <form
                         method="post"
                         action={url::BatchLabelPdf { size: sheet.size }}

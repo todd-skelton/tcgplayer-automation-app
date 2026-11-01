@@ -5,24 +5,16 @@
 .scroll {
   overflow-x: auto;
 }
+/* What the kit's Table leaves to the page: a shipment's cells wrap and sit at the top, as an
+   address needs (corten#559). */
 .shipments {
-  width: 100%;
-  border-collapse: collapse;
-  & th,
-  & td {
-    padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--border);
-    text-align: start;
-    vertical-align: top;
-  }
-  & th {
-    font-size: var(--font-size-sm);
-    color: var(--muted-foreground);
-    font-weight: 500;
+  & :is(th, td) {
+    white-space: normal !important;
+    vertical-align: top !important;
   }
 }
 .end {
-  text-align: end;
+  text-align: end !important;
 }
 .parcel {
   display: flex;
@@ -37,21 +29,6 @@
   & a {
     text-decoration: none;
   }
-}
-.chip {
-  display: inline-block;
-  padding: 0 var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-sm);
-}
-.good {
-  border-color: var(--success);
-  color: var(--success);
-}
-.bad {
-  border-color: var(--destructive);
-  color: var(--destructive);
 }
 .caution {
   border-color: var(--warning);

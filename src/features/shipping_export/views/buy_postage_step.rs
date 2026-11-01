@@ -14,7 +14,11 @@ use crate::{
     },
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        badge::{Badge, BadgeVariant},
+        table::Table,
+    },
 };
 
 /// A shipment's menu of more actions.
@@ -51,22 +55,24 @@ pub fn BuyPostageStep<'a>(rows: &'a [PostageRow<'a>], mode: EasyPostMode, t: Msg
                 </Alert>
             }
             <div class={Scroll}>
-                <table class={Shipments}>
-                    <thead>
-                        <tr>
-                            <th>"Orders"</th>
-                            <th>"Recipient"</th>
-                            <th>"Parcel and value"</th>
-                            <th>"Postage"</th>
-                            <th class={End}>"Actions"</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        for row in rows {
-                            <ShipmentPostageRow row={row} mode={mode} can_buy={can_buy} t={t} />
-                        }
-                    </tbody>
-                </table>
+                <Table>
+                    <table class={Shipments}>
+                        <thead>
+                            <tr>
+                                <th>"Orders"</th>
+                                <th>"Recipient"</th>
+                                <th>"Parcel and value"</th>
+                                <th>"Postage"</th>
+                                <th class={End}>"Actions"</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            for row in rows {
+                                <ShipmentPostageRow row={row} mode={mode} can_buy={can_buy} t={t} />
+                            }
+                        </tbody>
+                    </table>
+                </Table>
             </div>
         </div>
     }
@@ -119,7 +125,7 @@ fn ShipmentPostageRow<'a>(
                         if row.items == 1 { " item" } else { " items" }
                     </span>
                     if s.options.delivery_confirmation == DeliveryConfirmation::Signature {
-                        <span class={(Chip, Caution)}>"Sig. Required"</span>
+                        <Badge variant={BadgeVariant::Warning}>"Sig. Required"</Badge>
                     }
                 </div>
                 <SaleValueFigures value={&row.value} on_image={false} t={t} />
@@ -207,16 +213,15 @@ fn PostageStatus<'a>(entry: Option<&'a Bought>) -> impl Render {
             None => <span class={muted()}>"Not purchased"</span>,
             Some(bought) => {
                 <div class={Postage}>
-                    <span
-                        title={details(bought)}
-                        class={(Chip, match bought.result.status {
-                            Status::Purchased => Good,
-                            Status::Failed => Bad,
-                            Status::Skipped => Caution,
-                        })}
+                    <Badge
+                        variant={match bought.result.status {
+                            Status::Purchased => BadgeVariant::Success,
+                            Status::Failed => BadgeVariant::Destructive,
+                            Status::Skipped => BadgeVariant::Warning,
+                        }}
                     >
-                        {status_word(bought)}
-                    </span>
+                        <span title={details(bought)}>{status_word(bought)}</span>
+                    </Badge>
                     if let Some(label) = bought.label() {
                         <a
                             href={label}

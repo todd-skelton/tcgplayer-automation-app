@@ -2,7 +2,11 @@ use corten::prelude::*;
 
 use crate::{
     features::shipping_export::ship::{Messaged, Tracked},
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        badge::{Badge, BadgeVariant},
+        table::Table,
+    },
 };
 
 /// The Ship step as it stands: what is still to send and what came back each time it was sent.
@@ -100,7 +104,9 @@ pub fn ShipStep<'a>(shipping: &'a Shipping<'a>) -> impl Render {
                 <p>{shipping.readiness()}</p>
                 if !shipping.pending.is_empty() {
                     <ul class={Pending} aria-label="Orders to ship">
-                        for order in &shipping.pending { <li class={Chip}>{*order}</li> }
+                        for order in &shipping.pending {
+                            <li><Badge variant={BadgeVariant::Outline}>{*order}</Badge></li>
+                        }
                     </ul>
                 }
             } else {
@@ -121,46 +127,48 @@ pub fn ShipStep<'a>(shipping: &'a Shipping<'a>) -> impl Render {
             }
             if !outcomes.is_empty() {
                 <div class={Scroll}>
-                    <table class={Outcomes}>
-                        <thead>
-                            <tr>
-                                <th>"Order"</th>
-                                <th>"Tracking"</th>
-                                <th>"Tracking number"</th>
-                                <th>"Shipped message"</th>
-                                <th>"Error"</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            for outcome in &outcomes {
+                    <Table>
+                        <table class={Outcomes}>
+                            <thead>
                                 <tr>
-                                    <td>{outcome.order}</td>
-                                    <td>
-                                        <Status
-                                            label={outcome.tracked.map(|t| t.status.as_str())}
-                                            succeeded="applied"
-                                        />
-                                    </td>
-                                    <td>
-                                        {outcome.tracked.map_or("-", |t| t.tracking_number.as_str())}
-                                    </td>
-                                    <td>
-                                        <Status
-                                            label={outcome.messaged.map(|m| m.status.as_str())}
-                                            succeeded="sent"
-                                        />
-                                        if let Some(href) = outcome.messaged.and_then(|m| m.tracking_url.as_deref()) {
-                                            " "
-                                            <a href={href} target="_blank" rel="noreferrer">
-                                                "Track"
-                                            </a>
-                                        }
-                                    </td>
-                                    <td class={Failed}>{outcome.errors()}</td>
+                                    <th>"Order"</th>
+                                    <th>"Tracking"</th>
+                                    <th>"Tracking number"</th>
+                                    <th>"Shipped message"</th>
+                                    <th>"Error"</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                for outcome in &outcomes {
+                                    <tr>
+                                        <td>{outcome.order}</td>
+                                        <td>
+                                            <Status
+                                                label={outcome.tracked.map(|t| t.status.as_str())}
+                                                succeeded="applied"
+                                            />
+                                        </td>
+                                        <td>
+                                            {outcome.tracked.map_or("-", |t| t.tracking_number.as_str())}
+                                        </td>
+                                        <td>
+                                            <Status
+                                                label={outcome.messaged.map(|m| m.status.as_str())}
+                                                succeeded="sent"
+                                            />
+                                            if let Some(href) = outcome.messaged.and_then(|m| m.tracking_url.as_deref()) {
+                                                " "
+                                                <a href={href} target="_blank" rel="noreferrer">
+                                                    "Track"
+                                                </a>
+                                            }
+                                        </td>
+                                        <td class={Failed}>{outcome.errors()}</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </Table>
                 </div>
             }
         </div>
@@ -172,7 +180,11 @@ pub fn ShipStep<'a>(shipping: &'a Shipping<'a>) -> impl Render {
 fn Status<'a>(label: Option<&'a str>, succeeded: &'a str) -> impl Render {
     html! {
         if let Some(label) = label {
-            <span class={(Chip, if label == succeeded { Good } else { Failed })}>{label}</span>
+            <Badge
+                variant={if label == succeeded { BadgeVariant::Success } else { BadgeVariant::Destructive }}
+            >
+                {label}
+            </Badge>
         } else {
             "-"
         }

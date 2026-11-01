@@ -35,26 +35,6 @@
   font-size: 1.5rem;
   font-weight: 700;
 }
-.chip {
-  padding: 0 var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-sm);
-}
-.status {
-  &[data-status="good"] {
-    border-color: var(--success);
-    color: var(--success);
-  }
-  &[data-status="bad"] {
-    border-color: var(--destructive);
-    color: var(--destructive);
-  }
-  &[data-status="caution"] {
-    border-color: var(--warning);
-    color: var(--warning);
-  }
-}
 .spacer {
   flex: 1;
 }
@@ -108,27 +88,19 @@
 .scroll {
   overflow-x: auto;
 }
+/* What the kit's Table leaves to the page: a shipment's cells wrap and sit at the top, as an
+   address needs (corten#559). */
 .listed {
-  width: 100%;
-  border-collapse: collapse;
-  & th,
-  & td {
-    padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--border);
-    text-align: start;
-    vertical-align: top;
-  }
-  & th {
-    font-size: var(--font-size-sm);
-    color: var(--muted-foreground);
-    font-weight: 500;
+  & :is(th, td) {
+    white-space: normal !important;
+    vertical-align: top !important;
   }
   & tr[aria-current] {
     background: color-mix(in srgb, var(--primary) 10%, transparent);
   }
 }
 .end {
-  text-align: end;
+  text-align: end !important;
 }
 .wide {
   min-width: 420px;

@@ -75,23 +75,9 @@
   align-items: baseline;
   justify-content: space-between;
 }
-.chip {
-  padding: 0 var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-sm);
-}
-.good {
-  border-color: var(--success);
-  color: var(--success);
-}
 .bad {
   border-color: var(--destructive);
   color: var(--destructive);
-}
-.warn {
-  border-color: var(--warning);
-  color: var(--warning);
 }
 .button {
   display: inline-block;

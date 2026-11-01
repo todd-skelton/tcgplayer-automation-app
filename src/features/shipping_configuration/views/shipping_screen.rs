@@ -8,7 +8,10 @@ use crate::{
     },
     layout::LabeledControl,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        badge::{Badge, BadgeVariant},
+    },
 };
 
 /// The settings form's id: an answer that refuses it replaces it.
@@ -61,22 +64,24 @@ pub fn ShippingScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
                     "Direct postage purchases follow the current runtime environment. Development is locked to EasyPost test mode and production is locked to EasyPost production mode."
                 </p>
                 <div class={(row(Space::_2), mb_4())}>
-                    <span class={Chip}>
+                    <Badge variant={BadgeVariant::Outline}>
                         "EasyPost Mode: "
                         match mode {
                             EasyPostMode::Test => "Test",
                             EasyPostMode::Production => "Production",
                         }
-                    </span>
+                    </Badge>
                     for key in [EasyPostMode::Test, EasyPostMode::Production] {
-                        <span class={(Chip, if key.has_key() { Ready } else { Missing })}>
+                        <Badge
+                            variant={if key.has_key() { BadgeVariant::Success } else { BadgeVariant::Warning }}
+                        >
                             match (key, key.has_key()) {
                                 (EasyPostMode::Test, true) => "Test Key Ready",
                                 (EasyPostMode::Test, false) => "Missing Test Key",
                                 (EasyPostMode::Production, true) => "Production Key Ready",
                                 (EasyPostMode::Production, false) => "Missing Production Key",
                             }
-                        </span>
+                        </Badge>
                     }
                 </div>
                 <ShippingSettingsForm input={input} errors={errors} />

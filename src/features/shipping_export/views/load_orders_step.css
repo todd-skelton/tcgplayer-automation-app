@@ -71,14 +71,3 @@
     white-space: normal;
   }
 }
-.chip {
-  display: inline-block;
-  padding: 2px var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-sm);
-}
-.accent {
-  border-color: var(--primary);
-  color: var(--primary);
-}
