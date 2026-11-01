@@ -10,15 +10,17 @@ use serde_json::json;
 use crate::{
     app::Shared,
     features::{
-        forecast_calibration, inventory_economics::ledger::fingerprint::js_json,
-        shipping_thresholds,
+        forecast_calibration, inventory_economics::ledger::fingerprint::js_json, inventory_history,
+        seller_order_history, shipping_thresholds,
     },
 };
 
 /// Every ported route, each from its feature.
 pub fn ported<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
-    let api = forecast_calibration::api::routes(api, shared);
-    shipping_thresholds::api::routes(api, shared)
+    let api = forecast_calibration::json_route::routes(api, shared);
+    let api = inventory_history::json_route::routes(api, shared);
+    let api = seller_order_history::json_route::routes(api, shared);
+    shipping_thresholds::json_route::routes(api, shared)
 }
 
 /// `value` as the Node route wrote it, with `JSON.stringify`'s numbers: a whole `f64` is `2`,
@@ -88,8 +90,8 @@ pub mod tests {
     };
 
     /// Each request Node's route was asked (`.port-logs/api-node.ts <name>`, recorded in
-    /// `.port-logs/api/<name>.node.json` as `{path, status, body}`) gets the status and JSON it
-    /// gave, through the app's router, on the dev database. `timed` are JSON pointers to what
+    /// `.port-logs/api/<name>.node.json` as `{path, post?, status, body}`, `post` the JSON a post
+    /// sent) gets the status and JSON it gave, through the app's router, on the dev database. `timed` are JSON pointers to what
     /// says when it was read, which differ by when each ran. Numbers are compared as written, since
     /// serde_json reads `2` and `2.0` as different values.
     pub async fn answers_as_node(name: &str, timed: &[&str]) {
@@ -113,9 +115,17 @@ pub mod tests {
         assert!(!node.is_empty(), "{name}: nothing recorded");
         for expected in &node {
             let path = expected["path"].as_str().unwrap();
-            let request = corten::axum::http::Request::get(path)
-                .body(corten::axum::body::Body::empty())
-                .unwrap();
+            let asked = format!("{path} {}", expected["post"]);
+            // A post was sent to the action as JSON; anything else is a `GET`.
+            let request = match expected["post"].as_str() {
+                Some(body) => corten::axum::http::Request::post(path)
+                    .header("content-type", "application/json")
+                    .body(corten::axum::body::Body::from(body.to_owned())),
+                None => {
+                    corten::axum::http::Request::get(path).body(corten::axum::body::Body::empty())
+                }
+            }
+            .unwrap();
             let answer = router.clone().oneshot(request).await.unwrap();
             let status = answer.status().as_u16();
             let kind = answer.headers()["content-type"]
@@ -126,13 +136,13 @@ pub mod tests {
                 .await
                 .unwrap();
             let body: Value = serde_json::from_slice(&body).unwrap();
-            assert!(kind.starts_with("application/json"), "{path}: {kind}");
+            assert!(kind.starts_with("application/json"), "{asked}: {kind}");
             assert_eq!(
                 u64::from(status),
                 expected["status"].as_u64().unwrap(),
-                "{path}"
+                "{asked}"
             );
-            assert_eq!(untimed(body), untimed(expected["body"].clone()), "{path}");
+            assert_eq!(untimed(body), untimed(expected["body"].clone()), "{asked}");
         }
     }
 

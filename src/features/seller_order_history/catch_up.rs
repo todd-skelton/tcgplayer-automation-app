@@ -4,6 +4,7 @@
 use sqlx::PgConnection;
 
 use super::sync::{self, Budget, Orders, Synced};
+use crate::{database::Database, features::shipping_configuration, tcgplayer::TcgPlayer};
 
 /// The orders a catch-up reads first, at most.
 pub const PRIORITY: usize = 25;
@@ -26,6 +27,29 @@ pub fn asked(
         seller.to_owned(),
         orders.iter().take(PRIORITY).cloned().collect(),
     ))
+}
+
+/// A catch-up asked for `named` (else the default shipping seller, as the Node route resolves it),
+/// `orders` read from TCGplayer first: the seller it was for and what it did.
+pub async fn requested(
+    db: &Database,
+    named: &str,
+    orders: &[String],
+) -> Result<(String, Synced), String> {
+    let failed = |e: sqlx::Error| format!("Error: {e}");
+    let configured = match named.trim() {
+        "" => shipping_configuration::default_seller_key(db)
+            .await
+            .map_err(failed)?,
+        _ => String::new(),
+    };
+    let (seller, priority) = asked(named, &configured, orders)?;
+    let tcgplayer = TcgPlayer::new(db.clone());
+    let mut conn = db.0.acquire().await.map_err(failed)?;
+    let api = super::api::OrderManagement(&tcgplayer);
+    let now = super::worker::iso_now;
+    let synced = catch_up(&mut conn, &api, &seller, &priority, &now).await?;
+    Ok((seller, synced))
 }
 
 /// One step of the seller's scan on `conn`, `priority`'s orders read first, observed `now`.

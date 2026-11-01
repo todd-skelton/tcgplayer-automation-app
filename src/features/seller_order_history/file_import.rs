@@ -323,6 +323,32 @@ pub struct Imported {
     pub duplicate_file: bool,
 }
 
+/// An export imported for `named` (else the default shipping seller, as the Node route resolves
+/// it), observed now: the seller it was for and what it did.
+pub async fn requested(
+    db: &crate::database::Database,
+    named: &str,
+    file_name: Option<&str>,
+    text: &str,
+) -> Result<(String, Imported), String> {
+    let failed = |e: sqlx::Error| e.to_string();
+    let seller = match named.trim() {
+        "" => crate::features::shipping_configuration::default_seller_key(db)
+            .await
+            .map_err(failed)?
+            .trim()
+            .to_owned(),
+        named => named.to_owned(),
+    };
+    if seller.is_empty() {
+        return Err("A seller key is required.".to_owned());
+    }
+    let observed_at = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let mut conn = db.0.acquire().await.map_err(failed)?;
+    let imported = import(&mut conn, &seller, text, file_name, &observed_at).await?;
+    Ok((seller, imported))
+}
+
 /// `importSellerOrderCsv` on `conn`: the file's orders recorded for the seller, in a transaction
 /// of their own (a savepoint when `conn` is in one), unless the same file was imported before.
 pub async fn import(

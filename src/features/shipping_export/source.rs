@@ -485,19 +485,7 @@ pub async fn coverage(db: impl sqlx::PgExecutor<'_>, seller_key: &str) -> Result
 /// Moves the seller's order history scan on a step, reading these orders from TCGplayer first:
 /// the seller named, else the default shipping seller (as the Node route resolves it).
 pub async fn catch_up(db: &Database, seller_key: &str, orders: &[String]) -> Result<(), String> {
-    let failed = |e: sqlx::Error| format!("Error: {e}");
-    let configured = match seller_key.trim() {
-        "" => shipping_configuration::default_seller_key(db)
-            .await
-            .map_err(failed)?,
-        _ => String::new(),
-    };
-    let (seller, priority) = history::catch_up::asked(seller_key, &configured, orders)?;
-    let tcgplayer = TcgPlayer::new(db.clone());
-    let mut conn = db.0.acquire().await.map_err(failed)?;
-    let orders_api = history::api::OrderManagement(&tcgplayer);
-    let now = history::worker::iso_now;
-    history::catch_up::catch_up(&mut conn, &orders_api, &seller, &priority, &now)
+    history::catch_up::requested(db, seller_key, orders)
         .await
         .map(drop)
 }
@@ -510,21 +498,9 @@ pub async fn import_history(
     file_name: &str,
     csv_text: &str,
 ) -> Result<file_import::Imported, String> {
-    let failed = |e: sqlx::Error| e.to_string();
-    let seller = match seller_key.trim() {
-        "" => shipping_configuration::default_seller_key(db)
-            .await
-            .map_err(failed)?
-            .trim()
-            .to_owned(),
-        named => named.to_owned(),
-    };
-    if seller.is_empty() {
-        return Err("A seller key is required.".to_owned());
-    }
-    let observed_at = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
-    let mut conn = db.0.acquire().await.map_err(failed)?;
-    file_import::import(&mut conn, &seller, csv_text, Some(file_name), &observed_at).await
+    file_import::requested(db, seller_key, Some(file_name), csv_text)
+        .await
+        .map(|(_, imported)| imported)
 }
 
 #[cfg(test)]
