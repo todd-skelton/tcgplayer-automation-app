@@ -3,14 +3,18 @@
 //! (`GET /{batch}/results?scope=`) and its pricing (`POST /{batch}/pricing-jobs`), as the Node
 //! routes answered them. Making a batch from the counted inventory (`POST`), making one from a
 //! CSV or a seller (`/import-csv`, `/import-seller`) and saving results priced in the browser
-//! (`POST /{batch}/results`, which no screen sends now) still go to the Node app; so do a batch's
-//! publications, under the relay for every path not ported.
+//! (`POST /{batch}/results`, which no screen sends now) still go to the Node app, and so does
+//! confirming an ambiguous publication item (`PATCH /{batch}/publications`). A batch's
+//! publications and preview (`GET /{batch}/publications`) and planning its publication (`POST`)
+//! are answered here.
 //!
 //! A batch's pricing stream (`GET /{batch}/pricing-stream`) is server-sent events of JSON: the
 //! batch each time it changes, a heartbeat, and an error when there is no such batch. Corten
 //! answers server-sent events only as live HTML patches (`corten::live`) or a feed's rows, so the
 //! stream is a body of its own, sent as a `Relay`.
 use std::{convert::Infallible, time::Duration};
+
+use chrono::Utc;
 
 use corten::{
     Api, JsonError, JsonResponse, Prefix, Relay,
@@ -31,8 +35,10 @@ use crate::{
     app::Shared,
     database::Database,
     features::{
-        batch_pricing::queue, continuous_pricing::scheduler,
+        batch_pricing::queue,
+        continuous_pricing::scheduler,
         inventory_economics::ledger::fingerprint::js_json,
+        inventory_publication::{plan, preview, publication_json},
     },
     legacy::{Legacy, relay_request},
     node_pg,
@@ -72,6 +78,12 @@ pub struct InventoryBatchResults<'a> {
 #[derive(Route)]
 #[route("/api/inventory-batches/{batch}/pricing-jobs")]
 pub struct InventoryBatchPricingJobs<'a> {
+    pub batch: &'a str,
+}
+
+#[derive(Route)]
+#[route("/api/inventory-batches/{batch}/publications")]
+pub struct InventoryBatchPublications<'a> {
     pub batch: &'a str,
 }
 
@@ -117,6 +129,14 @@ pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
                 .with_state(shared.clone()),
         )
         .route::<InventoryBatchPricingStream<'_>>(get(pricing_stream).with_state(shared.clone()))
+        .route::<InventoryBatchPublications<'_>>(
+            get(publications)
+                .post(publish)
+                .patch(relay)
+                .put(publications_not_allowed)
+                .delete(publications_not_allowed)
+                .with_state(shared.clone()),
+        )
 }
 
 /// Every method the relay at `/api/{*rest}` takes, sent on to the Node app.
@@ -454,6 +474,145 @@ fn sse_event(name: &str, payload: &Value) -> String {
     format!("event: {name}\ndata: {}\n\n", js_json(payload))
 }
 
+/// The batch's publications, newest first, and what publishing its completed pricing job would
+/// plan under the saved policy (`null` before it completed).
+async fn publications(
+    State(db): State<Database>,
+    Params(at): Params<InventoryBatchPublications<'_>>,
+) -> JsonResponse {
+    let batch = match batch_number(&at.batch) {
+        Ok(batch) => batch,
+        Err(refused) => return refused.into(),
+    };
+    let answer = match db.0.acquire().await {
+        Ok(mut conn) => shown_publications(&mut conn, batch).await,
+        Err(error) => Err(node_pg::thrown(error)),
+    };
+    match answer {
+        Ok(Some(answer)) => api::node_json(&answer),
+        Ok(None) => not_found(batch),
+        Err(error) => failed(error),
+    }
+}
+
+/// `{ preview, publications }`, or none when there is no such batch.
+async fn shown_publications(conn: &mut PgConnection, batch: i32) -> Result<Option<Value>, String> {
+    let Some((found, items, results)) =
+        preview::load(conn, batch).await.map_err(node_pg::thrown)?
+    else {
+        return Ok(None);
+    };
+    let publications = publication_json::for_batch(conn, batch).await?;
+    let policy = plan::Configuration::load(conn)
+        .await
+        .map_err(node_pg::thrown)?
+        .policy;
+    let preview = if found.job_status.as_deref() == Some("completed") {
+        let known = preview::known(conn, batch, &items, &results, None)
+            .await
+            .map_err(node_pg::thrown)?;
+        preview::preview(&found, &items, &results, &known, &policy, Utc::now(), false)
+            .map_err(|why| format!("Error: {why}"))?
+            .json()
+    } else {
+        Value::Null
+    };
+    Ok(Some(
+        json!({ "preview": preview, "publications": publications }),
+    ))
+}
+
+/// Plans the batch's selected SKUs (every eligible one when none are sent) for publication: 201
+/// when a publication was made, 200 when each was planned before. Node's publisher sends them.
+async fn publish(
+    State(db): State<Database>,
+    Params(at): Params<InventoryBatchPublications<'_>>,
+    request: Request,
+) -> JsonResponse {
+    let batch = match batch_number(&at.batch) {
+        Ok(batch) => batch,
+        Err(refused) => return refused.into(),
+    };
+    let body = match to_bytes(request.into_body(), MAX_PUBLISH_BODY_BYTES).await {
+        Ok(body) => body,
+        Err(error) => return failed(format!("Error: {error}")),
+    };
+    match db.0.acquire().await {
+        Ok(mut conn) => published(&mut conn, batch, &body).await,
+        Err(error) => failed(node_pg::thrown(error)),
+    }
+}
+
+/// What a publish request with `body` answers.
+async fn published(conn: &mut PgConnection, batch: i32, body: &[u8]) -> JsonResponse {
+    let Ok(selected) = selected_skus(body) else {
+        return api::error(
+            StatusCode::BAD_REQUEST,
+            "selectedSkus must contain valid SKU numbers",
+        );
+    };
+    planned(conn, batch, selected.as_deref()).await
+}
+
+/// The largest publish request read: a selection of SKUs.
+const MAX_PUBLISH_BODY_BYTES: usize = 4 * 1024 * 1024;
+
+/// The body's `selectedSkus`: none when it is not sent (or the body is not a JSON object, which
+/// publishes every eligible SKU, as Node's did); refused unless a list of whole numbers above
+/// zero.
+fn selected_skus(body: &[u8]) -> Result<Option<Vec<i64>>, ()> {
+    let Ok(Value::Object(body)) = serde_json::from_slice::<Value>(body) else {
+        return Ok(None);
+    };
+    let Some(selected) = body.get("selectedSkus") else {
+        return Ok(None);
+    };
+    let skus = selected.as_array().ok_or(())?;
+    skus.iter()
+        .map(|sku| {
+            sku.as_f64()
+                .filter(|n| n.fract() == 0.0 && *n > 0.0 && *n <= 9_007_199_254_740_991.0)
+                .map(|n| n as i64)
+                .ok_or(())
+        })
+        .collect::<Result<Vec<_>, ()>>()
+        .map(Some)
+}
+
+/// `planInventoryBatchPublications`'s answer: the publications, the preview and how many were made.
+async fn planned(conn: &mut PgConnection, batch: i32, selected: Option<&[i64]>) -> JsonResponse {
+    let planned = match plan::plan_manual(conn, batch, selected, Utc::now()).await {
+        Ok(planned) => planned,
+        Err(plan::Error::Rejected(why)) => return failed(format!("Error: {why}")),
+        Err(plan::Error::Database(error)) => return failed(node_pg::thrown(error)),
+    };
+    let publications = match publication_json::by_ids(conn, &planned.publication_ids).await {
+        Ok(publications) => publications,
+        Err(error) => return failed(error),
+    };
+    let status = if planned.created > 0 {
+        StatusCode::CREATED
+    } else {
+        StatusCode::OK
+    };
+    api::node_json(&json!({
+        "publications": publications,
+        "preview": planned.preview.json(),
+        "createdCount": planned.created,
+    }))
+    .with_status(status)
+}
+
+/// Any other write to a batch's publications: Node's action, which read the batch number first.
+async fn publications_not_allowed(
+    Params(at): Params<InventoryBatchPublications<'_>>,
+) -> JsonResponse {
+    match batch_number(&at.batch) {
+        Ok(_) => api::error(StatusCode::METHOD_NOT_ALLOWED, "Method not allowed"),
+        Err(refused) => refused.into(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use corten::axum::response::IntoResponse;
@@ -532,6 +691,62 @@ mod tests {
                 assert_eq!(event(&text), event(expected), "{path}");
             }
         }
+    }
+
+    /// Node's publish route over `.port-logs/publish-route.node.json` (`publish-route-node.ts`: the
+    /// cases of `publish-cases.json`, then refusals of the body), each after its setup in a
+    /// savepoint rolled back after it: the status and the whole answer, but the ids and times of
+    /// the publications each run makes.
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
+    async fn publishes_answer_as_node_answered() {
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let read = std::fs::read_to_string(".port-logs/publish-route.node.json").unwrap();
+        let node: Vec<Value> = serde_json::from_str(&read).unwrap();
+        let unmade = |mut body: Value| {
+            for publication in body["publications"].as_array_mut().into_iter().flatten() {
+                for key in ["id", "createdAt", "updatedAt"] {
+                    publication[key] = Value::Null;
+                }
+                for item in publication["items"].as_array_mut().into_iter().flatten() {
+                    for key in ["id", "publicationId", "createdAt", "updatedAt"] {
+                        item[key] = Value::Null;
+                    }
+                }
+            }
+            body
+        };
+        let mut tx = db.0.begin().await.unwrap();
+        for case in &node {
+            let name = &case["name"];
+            let mut each = tx.begin().await.unwrap();
+            if let Some(setup) = case["setup"].as_str() {
+                sqlx::raw_sql(setup).execute(&mut *each).await.unwrap();
+            }
+            let batch = case["batch"].to_string();
+            let body = case["body"].as_str().unwrap().as_bytes();
+            for theirs in case["answers"].as_array().unwrap() {
+                let answer = match batch_number(&batch) {
+                    Ok(batch) => published(&mut each, batch, body).await,
+                    Err(refused) => refused.into(),
+                }
+                .into_response();
+                let status = answer.status().as_u16();
+                let bytes = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
+                    .await
+                    .unwrap();
+                let ours: Value = serde_json::from_slice(&bytes).unwrap();
+                assert_eq!(u64::from(status), theirs["status"], "{name}");
+                assert_eq!(
+                    unmade(crate::api::tests::node_numbers(&ours)),
+                    unmade(theirs["body"].clone()),
+                    "{name}"
+                );
+            }
+            each.rollback().await.unwrap();
+        }
+        tx.rollback().await.unwrap();
     }
 
     /// The pricing requests in `.port-logs/pricing-jobs-cases.json` on the dev database, in order in
@@ -648,6 +863,7 @@ mod tests {
             "inventory-batch",
             "inventory-batch-items",
             "inventory-batch-results",
+            "inventory-batch-publications",
         ] {
             crate::api::tests::answers_as_node(name, &[]).await;
         }

@@ -7,6 +7,7 @@ pub mod plan;
 pub mod policy;
 pub mod preview;
 pub mod projection;
+pub mod publication_json;
 pub mod queued_intake;
 pub mod seller_portal;
 pub mod store;

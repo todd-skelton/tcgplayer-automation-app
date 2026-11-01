@@ -630,12 +630,13 @@ pub fn manual(
         .collect()
 }
 
-/// What a person's publish planned.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+/// What a person's publish planned, and the preview it planned from.
+#[derive(Clone, Debug, PartialEq)]
 pub struct Planned {
     pub publication_ids: Vec<i64>,
     /// How many of them this call made; the rest were planned before.
     pub created: usize,
+    pub preview: Preview,
 }
 
 /// Plans the batch's selected SKUs (every eligible one when none are given) for publication to
@@ -663,7 +664,11 @@ pub async fn plan_manual(
         selected.as_deref(),
         configuration.seller_key.as_deref(),
     )?;
-    let mut planned = Planned::default();
+    let mut planned = Planned {
+        publication_ids: Vec::new(),
+        created: 0,
+        preview,
+    };
     for publication in &publications {
         let mut tx = conn.begin().await?;
         let (id, created) = create_or_find(&mut tx, publication).await?;
@@ -989,6 +994,7 @@ mod tests {
             source_label: "file.csv".into(),
             eligible_count: 3,
             excluded_count: 0,
+            manual_review_count: 0,
             items: vec![item(5), item(3), item(9)],
         };
         let planned = manual(&preview, &policy, None, Some("seller")).unwrap();
