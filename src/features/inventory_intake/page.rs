@@ -15,9 +15,9 @@ use super::{
 };
 use crate::{
     database::Database,
-    features::inventory_economics::estimate,
+    features::{batch_pricing::market::TcgPlayerMarket, inventory_economics::estimate},
     layout::{Chrome, Layout},
-    legacy::Legacy,
+    tcgplayer::TcgPlayer,
 };
 
 /// Everything the screen draws for a selection.
@@ -129,7 +129,6 @@ pub struct CountInput {
 pub async fn count(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::Count>,
     Form(input): Form<CountInput>,
 ) -> HtmlResult {
@@ -141,9 +140,10 @@ pub async fn count(
         set_id: product.set_id,
         product_id: product.product_id,
     };
+    let market = TcgPlayerMarket(TcgPlayer::new(db.clone()));
     let applied = pending::set(
         &db,
-        &legacy,
+        &market,
         input.submit.as_str(),
         at.sku,
         place,

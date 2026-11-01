@@ -23,12 +23,13 @@ struct Search<'a> {
 /// One SKU's market data as the gateway answers it.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Answer {
-    sku_id: i64,
-    market_price: Option<f64>,
+pub(crate) struct Answer {
+    pub sku_id: i64,
+    pub market_price: Option<f64>,
     lowest_price: Option<f64>,
     highest_price: Option<f64>,
     price_count: Option<f64>,
+    pub calculated_at: Option<String>,
 }
 
 /// The answers by SKU. A SKU the gateway gives no market price is left out, as one it does not
@@ -54,19 +55,19 @@ fn by_sku(answers: Vec<Answer>) -> HashMap<i64, PricePoint> {
 #[derive(Clone)]
 pub struct TcgPlayerMarket(pub TcgPlayer);
 
+impl TcgPlayerMarket {
+    /// The gateway's answers for `skus`, asked as `call` says.
+    pub(crate) async fn answers(&self, skus: &[i64], call: Call) -> Result<Vec<Answer>, String> {
+        self.0
+            .post(Domain::MpGateway, PATH, &Search { sku_ids: skus }, call)
+            .await
+            .map_err(|e| e.to_string())
+    }
+}
+
 impl MarketData for TcgPlayerMarket {
     async fn price_points(&self, skus: &[i64]) -> Result<HashMap<i64, PricePoint>, String> {
-        let answers: Vec<Answer> = self
-            .0
-            .post(
-                Domain::MpGateway,
-                PATH,
-                &Search { sku_ids: skus },
-                Call::default(),
-            )
-            .await
-            .map_err(|e| e.to_string())?;
-        Ok(by_sku(answers))
+        Ok(by_sku(self.answers(skus, Call::default()).await?))
     }
 }
 

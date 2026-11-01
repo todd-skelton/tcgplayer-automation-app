@@ -1,15 +1,18 @@
 //! The inventory counted and not yet queued (`pending_inventory`), and its changes, ported from
 //! `pendingInventoryRepository.mutate`: each change is applied once by its request id, under the
 //! lock Node takes too, and a set is refused when the count moved meanwhile. A set that raises a
-//! count notes the card's market price at intake, a live TCGplayer read, so it still goes through
-//! the Node app's `/api/pending-inventory`.
-use std::collections::HashMap;
+//! count records a receipt of the units added with the card's market price as they were counted
+//! (`/api/pending-inventory`'s `observeMarket`), read from TCGplayer's price points.
+use std::{collections::HashMap, time::Duration};
 
-use serde::{Deserialize, Serialize};
+use chrono::{DateTime, Utc};
+use serde::Serialize;
 use sqlx::{Connection, PgConnection};
 
 use crate::{
-    database::Database, features::batch_pricing::imported::refused as failed, legacy::Legacy,
+    database::Database,
+    features::batch_pricing::{imported::refused as failed, market::TcgPlayerMarket},
+    tcgplayer::Call,
 };
 
 /// How many units of each SKU are counted.
@@ -45,15 +48,93 @@ pub struct Place {
     pub product_id: i32,
 }
 
+/// The card's market price as it was counted (`InventoryMarketObservation`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Market {
+    pub value: Option<f64>,
+    pub observed_at: Option<DateTime<Utc>>,
+    pub calculated_at: Option<DateTime<Utc>>,
+    pub provenance: &'static str,
+}
+
+impl Market {
+    /// No market price could be read.
+    pub const UNAVAILABLE: Market = Market {
+        value: None,
+        observed_at: None,
+        calculated_at: None,
+        provenance: "tcgplayer_price_points_unavailable",
+    };
+}
+
+/// TCGplayer's market price for a SKU and when it was calculated (`MarketPriceObservation`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Observation {
+    pub market_price: Option<f64>,
+    pub calculated_at: Option<String>,
+}
+
+/// Where a raised count reads its card's market price (`fetchInventoryIntakeMarketObservation`).
+#[allow(async_fn_in_trait, reason = "used generically within this crate")]
+pub trait MarketAtIntake {
+    /// The SKU's market price, or none when TCGplayer has no price point for it.
+    async fn observe(&self, sku: i32) -> Result<Option<Observation>, String>;
+}
+
+/// How long a count waits for its market price before going without.
+const MARKET_DEADLINE: Duration = Duration::from_secs(3);
+
+/// The price points, asked once with no retry and given up after three seconds, as Node asks.
+impl MarketAtIntake for TcgPlayerMarket {
+    async fn observe(&self, sku: i32) -> Result<Option<Observation>, String> {
+        let call = Call {
+            retry: false,
+            timeout: MARKET_DEADLINE,
+        };
+        let answers = tokio::time::timeout(MARKET_DEADLINE, self.answers(&[i64::from(sku)], call))
+            .await
+            .map_err(|_| "Inventory intake market lookup timed out".to_owned())??;
+        Ok(answers
+            .into_iter()
+            .find(|a| a.sku_id == i64::from(sku))
+            .map(|a| Observation {
+                market_price: a.market_price,
+                calculated_at: a.calculated_at,
+            }))
+    }
+}
+
+/// The market price as a count notes it (`observeMarket`): a positive price or none, and when it
+/// was calculated if that reads as a time. A failed read, or no price point, is unavailable.
+pub async fn observe(market: &impl MarketAtIntake, sku: i32) -> Market {
+    match market.observe(sku).await {
+        Ok(Some(observation)) => Market {
+            value: observation
+                .market_price
+                .filter(|price| price.is_finite() && *price > 0.0),
+            observed_at: Some(Utc::now()),
+            calculated_at: observation
+                .calculated_at
+                .and_then(|at| DateTime::parse_from_rfc3339(&at).ok())
+                .map(|at| at.with_timezone(&Utc)),
+            provenance: "tcgplayer_price_points",
+        },
+        Ok(None) | Err(_) => Market::UNAVAILABLE,
+    }
+}
+
 /// A change to the counts made here.
 #[derive(Clone, Copy, Debug)]
 pub enum Change {
-    /// A SKU's count set to `quantity`, at most `seen`, the count the user saw.
+    /// A SKU's count set to `quantity`, against `seen`, the count the user saw. Units it adds are
+    /// received at `intake_at` with the `market` price.
     Set {
         sku: i32,
         place: Place,
         quantity: i32,
         seen: i32,
+        intake_at: DateTime<Utc>,
+        market: Market,
     },
     /// Every count removed.
     Clear,
@@ -100,6 +181,7 @@ impl Stored {
                 place,
                 quantity,
                 seen,
+                ..
             } => (Some(sku), Some(quantity), Some(seen), Some(place)),
             Change::Clear => (None, None, None, None),
         };
@@ -200,6 +282,7 @@ async fn record(
             place,
             quantity,
             seen,
+            ..
         } => (Some(sku), Some(quantity), Some(seen), Some(place)),
         Change::Clear => (None, None, None, None),
     };
@@ -218,6 +301,41 @@ async fn record(
     .bind(place.map(|p| p.product_id))
     .bind(delta)
     .bind(resulting)
+    .execute(&mut *conn)
+    .await
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// Records `quantity` units of `sku` received from the inventory manager (`insertReceipt`). The
+/// market price is written as JavaScript writes the number.
+#[allow(clippy::too_many_arguments, reason = "the receipt's columns")]
+async fn receive(
+    conn: &mut PgConnection,
+    request_id: &str,
+    sku: i32,
+    place: Place,
+    quantity: i32,
+    intake_at: DateTime<Utc>,
+    market: Market,
+) -> Result<(), String> {
+    sqlx::query(
+        r#"INSERT INTO inventory_receipts (request_id, sku, original_quantity, product_line_id,
+          set_id, product_id, intake_at, market_value, market_observed_at, market_calculated_at,
+          market_provenance, source_evidence)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9, $10, $11, '{"source":"inventory_manager"}'::jsonb)"#,
+    )
+    .bind(request_id)
+    .bind(sku)
+    .bind(quantity)
+    .bind(place.product_line_id)
+    .bind(place.set_id)
+    .bind(place.product_id)
+    .bind(intake_at)
+    .bind(market.value.map(|value| value.to_string()))
+    .bind(market.observed_at)
+    .bind(market.calculated_at)
+    .bind(market.provenance)
     .execute(&mut *conn)
     .await
     .map_err(failed)?;
@@ -273,6 +391,8 @@ async fn applied(
         place,
         quantity,
         seen,
+        intake_at,
+        market,
     } = change
     else {
         let total: i32 =
@@ -320,21 +440,29 @@ async fn applied(
         ));
     }
     let delta = quantity - current;
-    if delta > 0 {
-        return Err(
-            "A raised count is recorded by the Node app, which reads its market price.".to_owned(),
-        );
-    }
     record(conn, request_id, change, delta, quantity).await?;
-    if delta < 0 {
+    if delta > 0 {
+        receive(conn, request_id, sku, place, delta, intake_at, market).await?;
+    } else if delta < 0 {
         remove(conn, request_id, -delta, "correction", Some(sku)).await?;
     }
     let row = if quantity == 0 {
         sqlx::query("DELETE FROM pending_inventory WHERE sku = $1").bind(sku)
-    } else {
+    } else if existing.is_some() {
         sqlx::query("UPDATE pending_inventory SET quantity = $2, updated_at = NOW() WHERE sku = $1")
             .bind(sku)
             .bind(quantity)
+    } else {
+        sqlx::query(
+            "INSERT INTO pending_inventory (sku, quantity, product_line_id, set_id, product_id,
+              created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, NOW(), NOW())",
+        )
+        .bind(sku)
+        .bind(quantity)
+        .bind(place.product_line_id)
+        .bind(place.set_id)
+        .bind(place.product_id)
     };
     row.execute(&mut *conn).await.map_err(failed)?;
     Ok(Applied {
@@ -344,58 +472,47 @@ async fn applied(
     })
 }
 
-/// A raised count as the Node route reads it.
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct Raise<'a> {
-    operation: &'static str,
-    request_id: &'a str,
-    sku: i32,
-    quantity: u32,
-    expected_quantity: u32,
-    #[serde(flatten)]
-    place: Place,
-}
-
-#[derive(Deserialize)]
-struct Raised {
-    quantity: i32,
-}
-
 fn whole(count: u32) -> Result<i32, String> {
     i32::try_from(count).map_err(|_| format!("A count of {count} is too large."))
 }
 
+/// The change a set makes (the route's `set` operation): received now, and when it raises the
+/// count, with the market price read from `market` first.
+pub async fn setting(
+    market: &impl MarketAtIntake,
+    sku: i32,
+    place: Place,
+    quantity: u32,
+    seen: u32,
+) -> Result<Change, String> {
+    let intake_at = Utc::now();
+    let market = if quantity > seen {
+        observe(market, sku).await
+    } else {
+        Market::UNAVAILABLE
+    };
+    Ok(Change::Set {
+        sku,
+        place,
+        quantity: whole(quantity)?,
+        seen: whole(seen)?,
+        intake_at,
+        market,
+    })
+}
+
 /// Sets a SKU's count once per `request_id`, and gives the count after it. `seen` is the count
-/// the user saw, so a count changed meanwhile is refused. A raised count goes through the Node
-/// app, which notes the market price.
+/// the user saw, so a count changed meanwhile is refused.
 pub async fn set(
     db: &Database,
-    legacy: &Legacy,
+    market: &impl MarketAtIntake,
     request_id: &str,
     sku: i32,
     place: Place,
     quantity: u32,
     seen: u32,
 ) -> Result<i32, String> {
-    if quantity > seen {
-        let raise = Raise {
-            operation: "set",
-            request_id,
-            sku,
-            quantity,
-            expected_quantity: seen,
-            place,
-        };
-        let raised: Raised = legacy.send("/api/pending-inventory", &raise).await?;
-        return Ok(raised.quantity);
-    }
-    let change = Change::Set {
-        sku,
-        place,
-        quantity: whole(quantity)?,
-        seen: whole(seen)?,
-    };
+    let change = setting(market, sku, place, quantity, seen).await?;
     let mut conn = db.0.acquire().await.map_err(failed)?;
     apply(&mut conn, request_id, change)
         .await
@@ -413,27 +530,6 @@ mod tests {
     use serde_json::{Value, json};
 
     use super::*;
-
-    #[test]
-    fn a_raise_is_the_json_the_node_route_reads() {
-        let raise = Raise {
-            operation: "set",
-            request_id: "r1",
-            sku: 7,
-            quantity: 2,
-            expected_quantity: 1,
-            place: Place {
-                product_line_id: 3,
-                set_id: 24831,
-                product_id: 10,
-            },
-        };
-        assert_eq!(
-            serde_json::to_value(&raise).unwrap(),
-            json!({"operation": "set", "requestId": "r1", "sku": 7, "quantity": 2,
-                "expectedQuantity": 1, "productLineId": 3, "setId": 24831, "productId": 10})
-        );
-    }
 
     #[test]
     fn a_removal_takes_from_the_newest_receipts() {
@@ -484,6 +580,8 @@ mod tests {
                     },
                     quantity: number("quantity"),
                     seen: number("expected"),
+                    intake_at: Utc::now(),
+                    market: Market::UNAVAILABLE,
                 }
             };
             answers.push(
@@ -500,6 +598,98 @@ mod tests {
             .unwrap();
         tx.rollback().await.unwrap();
         assert_eq!(Value::Array(answers), node["answers"]);
+        assert_eq!(
+            serde_json::from_str::<Value>(&captured).unwrap(),
+            node["captured"]
+        );
+    }
+
+    /// The price points as `.port-logs/raise-cases.json` scripts them per SKU, noting each SKU asked.
+    struct Scripted {
+        market: Value,
+        asked: std::sync::Mutex<Vec<i32>>,
+    }
+
+    impl MarketAtIntake for Scripted {
+        async fn observe(&self, sku: i32) -> Result<Option<Observation>, String> {
+            self.asked.lock().unwrap().push(sku);
+            let answer = &self.market[sku.to_string()];
+            if answer == "fail" {
+                return Err("scripted gateway failure".to_owned());
+            }
+            Ok(answer
+                .as_array()
+                .into_iter()
+                .flatten()
+                .find(|a| a["skuId"] == sku)
+                .map(|a| Observation {
+                    market_price: a["marketPrice"].as_f64(),
+                    calculated_at: a["calculatedAt"].as_str().map(str::to_owned),
+                }))
+        }
+    }
+
+    /// The set steps in `.port-logs/raise-cases.json`, raising counts with the market price as its
+    /// stand-in answers, from the counts `pending-seed.sql` makes, on the dev database in a
+    /// transaction rolled back, against Node's `/api/pending-inventory` action over the same
+    /// (`.port-logs/raise-node.ts`): each answer or refusal, the SKUs whose market was read, and
+    /// what is left, receipts with their market price.
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction rolled back, and Node's run in .port-logs"]
+    async fn raised_counts_note_the_market_as_node_does() {
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let read = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let node: Value = serde_json::from_str(&read("raise.node.json")).unwrap();
+        let cases: Value = serde_json::from_str(&read("raise-cases.json")).unwrap();
+        let market = Scripted {
+            market: cases["market"].clone(),
+            asked: std::sync::Mutex::default(),
+        };
+        let mut tx = db.0.begin().await.unwrap();
+        sqlx::raw_sql(&read("pending-seed.sql"))
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        let mut answers = Vec::new();
+        for step in cases["steps"].as_array().unwrap() {
+            let number = |value: &Value| i32::try_from(value.as_i64().unwrap()).unwrap();
+            let count = |key: &str| u32::try_from(step[key].as_u64().unwrap()).unwrap();
+            let place = Place {
+                product_line_id: number(&step["place"][0]),
+                set_id: number(&step["place"][1]),
+                product_id: number(&step["place"][2]),
+            };
+            let change = setting(
+                &market,
+                number(&step["sku"]),
+                place,
+                count("quantity"),
+                count("expected"),
+            )
+            .await
+            .unwrap();
+            answers.push(
+                match apply(&mut tx, step["request"].as_str().unwrap(), change).await {
+                    Ok(a) => json!({"quantity": a.quantity, "quantityDelta": a.delta,
+                        "repeated": a.repeated}),
+                    Err(error) => json!({ "error": error, "status": 409 }),
+                },
+            );
+        }
+        let captured: String = sqlx::query_scalar(&read("raise-capture.sql"))
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap();
+        tx.rollback().await.unwrap();
+        assert_eq!(Value::Array(answers), node["answers"]);
+        let asked: Vec<Value> = node["asked"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|a| a["body"]["skuIds"][0].clone())
+            .collect();
+        assert_eq!(json!(*market.asked.lock().unwrap()), Value::Array(asked));
         assert_eq!(
             serde_json::from_str::<Value>(&captured).unwrap(),
             node["captured"]
