@@ -3,15 +3,13 @@
 //! `calculate` still goes to the Node app until its policy and seller read JSON as Node validates
 //! them.
 use corten::{
-    Api, JsonResponse, Prefix, Relay,
+    Api, JsonError, JsonResponse, Prefix,
     axum::{
         body::{Body, to_bytes},
         extract::{RawQuery, Request},
         http::{HeaderMap, HeaderValue, StatusCode, header},
-        response::IntoResponse,
     },
     prelude::*,
-    upgrade::SwitchOr,
 };
 use serde_json::Value;
 
@@ -20,7 +18,7 @@ use crate::{
     api,
     app::Shared,
     database::Database,
-    legacy::{Legacy, forward},
+    legacy::{Legacy, relay_request},
 };
 
 /// The largest request Node read (`readSlabJsonRequest`).
@@ -79,21 +77,13 @@ async fn read(db: &Database, id: &str) -> Result<Option<Value>, ()> {
         .map_err(|e| eprintln!("slab recommendation: {e}"))
 }
 
-/// `override` answered here; `calculate` by the Node app. A handler answers one type, so its own
-/// JSON goes out as a `Relay` too (corten#541).
+/// `override` answered here; `calculate` by the Node app, its answer passed on as it came.
 async fn act(
     State(db): State<Database>,
     State(legacy): State<Legacy>,
     request: Request,
-) -> corten::Result<SwitchOr<Relay>> {
-    let own = |answer: JsonResponse| {
-        let (head, body) = answer.into_response().into_parts();
-        Ok(SwitchOr::Answer(Relay::new(
-            head.status,
-            head.headers,
-            body,
-        )))
-    };
+) -> Result<JsonResponse, JsonError> {
+    let own = Ok;
     let (parts, body) = request.into_parts();
     if !same_origin(&parts.headers) {
         let refused = api::error(
@@ -120,14 +110,12 @@ async fn act(
         return own(failure(None, true));
     }
     match input.get("intent").and_then(Value::as_str) {
-        Some("calculate") => {
-            forward(
-                State(legacy),
-                None,
-                Request::from_parts(parts, Body::from(body)),
-            )
-            .await
-        }
+        Some("calculate") => Ok(relay_request(
+            &legacy,
+            Request::from_parts(parts, Body::from(body)),
+        )
+        .await?
+        .into()),
         Some("override") => own(reviewed(&db, &input).await),
         _ => own(failure(Some("Choose calculate or override."), false)),
     }

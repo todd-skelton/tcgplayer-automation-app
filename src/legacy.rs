@@ -124,12 +124,20 @@ pub async fn forward(
     upgrade: Option<Upgrade>,
     req: Request,
 ) -> corten::Result<SwitchOr<Relay>> {
+    if let Some(upgrade) = upgrade {
+        let url = legacy.url(req.uri());
+        let headers = forwarded(req.headers());
+        return tunnel(&legacy, upgrade, url, headers).await;
+    }
+    relay_request(&legacy, req).await.map(SwitchOr::Answer)
+}
+
+/// The request sent to the Node app, and its answer as it comes: for a JSON route that answers
+/// some requests itself (`relay.into()` is its `JsonResponse`).
+pub async fn relay_request(legacy: &Legacy, req: Request) -> corten::Result<Relay> {
     let (parts, body) = req.into_parts();
     let url = legacy.url(&parts.uri);
     let headers = forwarded(&parts.headers);
-    if let Some(upgrade) = upgrade {
-        return tunnel(&legacy, upgrade, url, headers).await;
-    }
     let mut request = legacy
         .http
         .request(parts.method.clone(), url)
@@ -140,7 +148,7 @@ pub async fn forward(
         ));
     }
     let answer = request.send().await.map_err(unreachable)?;
-    Ok(SwitchOr::Answer(relay(answer)))
+    Ok(relay(answer))
 }
 
 fn relay(answer: reqwest::Response) -> Relay {

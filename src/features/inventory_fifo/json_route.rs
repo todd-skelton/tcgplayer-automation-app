@@ -3,15 +3,13 @@
 //! one replay, are answered here; recording a disposition, superseding one and a quantity
 //! correction still go to the Node app until they are ported.
 use corten::{
-    Api, JsonResponse, Prefix, Relay,
+    Api, JsonError, JsonResponse, Prefix,
     axum::{
         body::{Body, to_bytes},
         extract::Request,
         http::StatusCode,
-        response::IntoResponse,
     },
     prelude::*,
-    upgrade::SwitchOr,
 };
 use serde_json::{Value, json};
 
@@ -21,7 +19,7 @@ use crate::{
     app::Shared,
     database::Database,
     features::shipping_configuration,
-    legacy::{Legacy, forward},
+    legacy::{Legacy, relay_request},
 };
 
 /// The largest body read: an action and its evidence.
@@ -42,31 +40,23 @@ enum Acted {
     Node(Body),
 }
 
-/// The route's own answer, or the Node app's for an action it still answers. A handler answers
-/// one type, so its own JSON goes out as a `Relay` too (corten#541).
+/// The route's own answer, or the Node app's for an action it still answers, passed on as it came.
 async fn act(
     State(db): State<Database>,
     State(legacy): State<Legacy>,
     request: Request,
-) -> corten::Result<SwitchOr<Relay>> {
+) -> Result<JsonResponse, JsonError> {
     let (parts, body) = request.into_parts();
-    let own = |answer: JsonResponse| {
-        let (head, body) = answer.into_response().into_parts();
-        Ok(SwitchOr::Answer(Relay::new(
-            head.status,
-            head.headers,
-            body,
-        )))
-    };
+    let own = Ok;
     let body = match to_bytes(body, MAX_BODY_BYTES).await {
         Ok(body) => body,
         Err(error) => return own(api::error(StatusCode::CONFLICT, format!("Error: {error}"))),
     };
     match acted(&db, &body).await {
         Ok(Acted::Answer(answer)) => own(api::node_json(&answer)),
-        Ok(Acted::Node(body)) => {
-            forward(State(legacy), None, Request::from_parts(parts, body)).await
-        }
+        Ok(Acted::Node(body)) => Ok(relay_request(&legacy, Request::from_parts(parts, body))
+            .await?
+            .into()),
         Err(Refused::Seller) => {
             let message = "Seller key must match the configured seller.";
             own(api::error(StatusCode::BAD_REQUEST, message))

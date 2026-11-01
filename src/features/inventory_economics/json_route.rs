@@ -4,15 +4,13 @@
 //! funding or an expense, finding allocation targets, importing a CSV), and a body that is not a
 //! JSON object naming one of the two, still go to the Node app.
 use corten::{
-    Api, JsonResponse, Prefix, Relay,
+    Api, JsonError, JsonResponse, Prefix,
     axum::{
         body::{Body, to_bytes},
         extract::Request,
         http::StatusCode,
-        response::IntoResponse,
     },
     prelude::*,
-    upgrade::SwitchOr,
 };
 use serde_json::{Map, Value, json};
 
@@ -22,7 +20,7 @@ use crate::{
     app::Shared,
     database::Database,
     features::{inventory_intake::queue::cost_rate, shipping_configuration},
-    legacy::{Legacy, forward},
+    legacy::{Legacy, relay_request},
 };
 
 /// The largest body read before it is answered or relayed.
@@ -63,21 +61,13 @@ async fn show(State(db): State<Database>) -> JsonResponse {
     }
 }
 
-/// An estimate action answered here, or the request for the Node app. A handler answers one
-/// type, so its own JSON goes out as a `Relay` too (corten#541).
+/// An estimate action answered here, or the Node app's answer to the request, passed on as it came.
 async fn act(
     State(db): State<Database>,
     State(legacy): State<Legacy>,
     request: Request,
-) -> corten::Result<SwitchOr<Relay>> {
-    let own = |answer: JsonResponse| {
-        let (head, body) = answer.into_response().into_parts();
-        Ok(SwitchOr::Answer(Relay::new(
-            head.status,
-            head.headers,
-            body,
-        )))
-    };
+) -> Result<JsonResponse, JsonError> {
+    let own = Ok;
     let (parts, body) = request.into_parts();
     let Ok(bytes) = to_bytes(body, MAX_BODY_BYTES).await else {
         return own(api::error(
@@ -93,12 +83,11 @@ async fn act(
         )
     });
     let Some(payload) = ours else {
-        return forward(
-            State(legacy),
-            None,
-            Request::from_parts(parts, Body::from(bytes)),
-        )
-        .await;
+        return Ok(
+            relay_request(&legacy, Request::from_parts(parts, Body::from(bytes)))
+                .await?
+                .into(),
+        );
     };
     // Node's action answers every failure with a 409 saying why.
     match estimated(&db, payload).await {
