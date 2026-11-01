@@ -243,12 +243,7 @@ pub async fn queue_batch(
         return refuse(&req, &db, &selection, &input, &errors, Some(&quantities)).await;
     };
     let expected = queue::snapshot(&quantities);
-    let request = Queue {
-        workflow,
-        cost: &cost,
-        expected: &expected,
-        seller_key: &input.seller,
-    };
+    let request = Queue::entered(workflow, &cost, &expected, &input.seller);
     let queued = match queue::queue(&db, key.as_str(), &request).await {
         Ok(queued) => queued,
         Err(NotQueued::Refused(why, message)) => {
@@ -257,7 +252,9 @@ pub async fn queue_batch(
             let quantities = pending::quantities(&db).await?;
             return refuse(&req, &db, &selection, &input, &errors, Some(&quantities)).await;
         }
-        Err(NotQueued::Failed(why)) => return Err(corten::Error::new(why)),
+        Err(NotQueued::Failed(why) | NotQueued::Unrecorded(why)) => {
+            return Err(corten::Error::new(why));
+        }
     };
     let notice = format!(
         "Batch {} queued with {}. You can keep adding inventory.",
@@ -269,7 +266,7 @@ pub async fn queue_batch(
     }
     let (screen, batches) = tokio::join!(Screen::read(&db, &selection), queue::batches(&db));
     let screen = screen?;
-    let handed_off: HashSet<i32> = expected.iter().map(|i| i.sku).collect();
+    let handed_off: HashSet<i32> = quantities.keys().copied().collect();
     let redrawn = redrawn(&screen.products, &handed_off);
     let next = input.after_queue();
     let none = Errors::new();

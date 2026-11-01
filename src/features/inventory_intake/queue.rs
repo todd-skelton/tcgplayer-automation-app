@@ -13,16 +13,18 @@ use std::collections::HashMap;
 
 use corten::{Refusal, UrlValue, prelude::*};
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 use sqlx::PgConnection;
 
 use crate::{
+    api::js_trim,
     database::Database,
     features::{
         batch_pricing::queue as batch_queue,
         continuous_pricing::{self, scheduler},
         inventory_economics::{
             estimate::{self, PurchaseCost},
-            purchase_cost,
+            purchase_cost::{self, NotRecorded},
         },
         publication_configuration, shipping_configuration,
     },
@@ -78,22 +80,24 @@ fn cents(text: &str) -> Option<i64> {
 /// The percent of market as typed (0 to 100, at most two decimals), or why not, in the Node
 /// app's words.
 pub fn read_market_percent(text: &str) -> Result<f64, &'static str> {
-    match cents(text.trim()) {
+    match cents(text) {
         Some(hundredths) if hundredths <= 10_000 => Ok(hundredths as f64 / 10_000.0),
         _ => Err("Percent of market must be between 0 and 100 with at most two decimal places."),
     }
 }
 
 /// The amount less per card as typed (at most $100.00), in cents, or why not.
-pub fn read_per_card_deduction(text: &str) -> Result<i64, &'static str> {
-    match cents(text.trim()) {
-        None => Err(
-            "Amount less per card must be a nonnegative amount with at most two decimal places.",
-        ),
-        Some(c) if c > MAXIMUM_DEDUCTION_CENTS => {
-            Err("Amount less per card must be at most $100.00.")
-        }
-        Some(c) => Ok(c),
+pub fn read_per_card_deduction(text: &str) -> Result<i64, String> {
+    at_most_a_deduction(dollars_to_cents(text, DEDUCTION)?)
+}
+
+const DEDUCTION: &str = "Amount less per card";
+
+fn at_most_a_deduction(cents: i64) -> Result<i64, String> {
+    if cents > MAXIMUM_DEDUCTION_CENTS {
+        Err("Amount less per card must be at most $100.00.".to_owned())
+    } else {
+        Ok(cents)
     }
 }
 
@@ -199,8 +203,8 @@ impl QueueInput {
                 if let Err(message) = percent {
                     errors.add(f.market_percent, message);
                 }
-                if let Err(message) = deduction {
-                    errors.add(f.per_card_deduction, message);
+                if let Err(message) = &deduction {
+                    errors.add(f.per_card_deduction, message.as_str());
                 }
                 match (percent, deduction) {
                     (Ok(market_rate), Ok(per_unit_deduction_cents)) => Cost::Rate(CostRate {
@@ -238,15 +242,18 @@ impl QueueInput {
 /// One SKU's count as the queue request names it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub struct IntakeQuantity {
-    pub sku: i32,
-    pub quantity: i32,
+    pub sku: i64,
+    pub quantity: i64,
 }
 
 /// The counts in SKU order, as the Node app compares them.
 pub fn snapshot(quantities: &HashMap<i32, i32>) -> Vec<IntakeQuantity> {
     let mut items: Vec<IntakeQuantity> = quantities
         .iter()
-        .map(|(&sku, &quantity)| IntakeQuantity { sku, quantity })
+        .map(|(&sku, &quantity)| IntakeQuantity {
+            sku: sku.into(),
+            quantity: quantity.into(),
+        })
         .collect();
     items.sort_by_key(|i| i.sku);
     items
@@ -265,26 +272,6 @@ pub fn fingerprint(quantities: &HashMap<i32, i32>) -> String {
     format!("{hash:016x}")
 }
 
-/// The purchase cost as the queue request names it.
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PurchaseCostRequest<'a> {
-    purchase_reference: &'a str,
-    total_amount: &'a str,
-    provenance: &'static str,
-    allocation_rule: &'static str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    purchased_at: Option<&'a str>,
-    currency: &'static str,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct EstimatedCostRate {
-    market_percent: String,
-    per_card_deduction: String,
-}
-
 /// A batch queued, or the one a request queued before.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Queued {
@@ -297,6 +284,9 @@ pub enum NotQueued {
     /// Refused, in the Node app's words: input it would not take (its 400), or counts, a seller
     /// or a request that moved on (its 409).
     Refused(Refusal, String),
+    /// Its cost could not be recorded for a reason other than a conflict with what is recorded
+    /// (no receipt lots, say): Node's 500, whose message its screen showed.
+    Unrecorded(String),
     /// The database failed.
     Failed(String),
 }
@@ -315,6 +305,15 @@ fn conflict(message: impl Into<String>) -> NotQueued {
     NotQueued::Refused(Refusal::Conflict, message.into())
 }
 
+/// A cost not recorded: a conflict with what is recorded (Node's `InventoryEconomicsConflictError`,
+/// its 409), or anything else (its 500).
+fn unrecorded(not: NotRecorded) -> NotQueued {
+    match not {
+        NotRecorded::Conflict(message) => conflict(message),
+        NotRecorded::Failed(message) => NotQueued::Unrecorded(message),
+    }
+}
+
 /// JavaScript's `length`: UTF-16 units.
 fn js_length(text: &str) -> usize {
     text.encode_utf16().count()
@@ -325,7 +324,7 @@ const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;
 
 /// `dollarsToCents`: a nonnegative amount with at most two decimals, in cents.
 fn dollars_to_cents(text: &str, label: &str) -> Result<i64, String> {
-    let text = text.trim();
+    let text = js_trim(text);
     let (whole, fraction) = match text.split_once('.') {
         Some((whole, fraction)) => (whole, Some(fraction)),
         None => (text, None),
@@ -347,7 +346,7 @@ fn dollars_to_cents(text: &str, label: &str) -> Result<i64, String> {
 
 /// `requiredText`: trimmed, and at most 200 characters.
 fn required_text(text: &str, label: &str) -> Result<String, String> {
-    let text = text.trim();
+    let text = js_trim(text);
     if text.is_empty() || js_length(text) > 200 {
         return Err(format!(
             "{label} is required and limited to 200 characters."
@@ -359,7 +358,7 @@ fn required_text(text: &str, label: &str) -> Result<String, String> {
 /// `calendarDate`: none when blank, else a real `YYYY-MM-DD` date (as `Date.UTC` reads it,
 /// which takes years below 100 for the 1900s, so those are refused).
 fn calendar_date(text: Option<&str>) -> Result<Option<String>, String> {
-    let Some(text) = text.map(str::trim).filter(|t| !t.is_empty()) else {
+    let Some(text) = text.map(js_trim).filter(|t| !t.is_empty()) else {
         return Ok(None);
     };
     if js_length(text) > 200 {
@@ -384,34 +383,60 @@ fn calendar_date(text: Option<&str>) -> Result<Option<String>, String> {
     Ok(Some(text.to_owned()))
 }
 
+/// `dollarsToCents` of a JSON value: only text is an amount.
+fn js_dollars(value: Option<&Value>, label: &str) -> Result<i64, String> {
+    match value {
+        Some(Value::String(text)) => dollars_to_cents(text, label),
+        _ => Err(format!(
+            "{label} must be a nonnegative amount with at most two decimal places."
+        )),
+    }
+}
+
 /// `parseIntakePurchaseCost`: the entered total as the purchase cost the batch records, split
-/// across its lots by their units, or why not. It names no batch until the batch exists.
+/// across its lots by their units, or why not, each field checked in Node's order. It names no
+/// batch until the batch exists.
 fn purchase_cost(
     request_id: &str,
     seller_key: &str,
-    cost: &Cost,
-) -> Result<Option<PurchaseCost>, String> {
-    let Cost::Purchase {
-        reference,
-        total,
-        date,
-        estimated,
-    } = cost
-    else {
-        return Ok(None);
+    fields: &Map<String, Value>,
+) -> Result<PurchaseCost, String> {
+    if fields.get("allocationRule").and_then(Value::as_str) != Some("quantity") {
+        return Err("Intake purchase cost supports quantity allocation.".to_owned());
+    }
+    let total_amount_cents = js_dollars(fields.get("totalAmount"), "Purchase total")?;
+    // `normalizePurchaseCostDetails`: the currency, upper-cased, then the rest.
+    let currency = match fields.get("currency") {
+        None => "USD".to_owned(),
+        Some(Value::String(text)) => required_text(text, "Currency")?.to_uppercase(),
+        Some(_) => return Err("Currency is required.".to_owned()),
     };
-    let total_amount_cents = dollars_to_cents(total, "Purchase total")?;
-    let purchased_at = calendar_date(date.as_deref())?;
+    if currency.len() != 3 || !currency.bytes().all(|b| b.is_ascii_uppercase()) {
+        return Err("Currency must be a three-letter code.".to_owned());
+    }
+    let provenance = match fields.get("provenance").and_then(Value::as_str) {
+        Some("actual") => "actual",
+        Some("estimated") => "estimated",
+        _ => return Err("Purchase provenance is invalid.".to_owned()),
+    };
+    let purchased_at = match fields.get("purchasedAt") {
+        None => None,
+        Some(Value::String(text)) => calendar_date(Some(text))?,
+        Some(_) => return Err("Purchase date must be text.".to_owned()),
+    };
     let request_id = required_text(&format!("{request_id}:purchase-cost"), "Request ID")?;
     let seller_key = required_text(seller_key, "Seller key")?;
-    let purchase_reference = required_text(reference, "Purchase reference")?;
-    Ok(Some(PurchaseCost {
+    let purchase_reference = match fields.get("purchaseReference") {
+        Some(Value::String(text)) => required_text(text, "Purchase reference")?,
+        _ => return Err("Purchase reference is required.".to_owned()),
+    };
+    Ok(PurchaseCost {
         request_id,
         seller_key,
         purchase_reference,
-        currency: "USD",
+        currency,
         total_amount_cents,
-        provenance: if *estimated { "estimated" } else { "actual" },
+        provenance,
         source: "intake",
         allocation_rule: "quantity",
         batch_numbers: Vec::new(),
@@ -419,53 +444,102 @@ fn purchase_cost(
         explicit_allocations: Vec::new(),
         corrects_entry_id: None,
         correction_reason: None,
-    }))
+    })
 }
 
-/// What a queue request carries besides its id: what queuing does, the cost, and the counts and
-/// seller the screen showed.
+/// `parseEstimatedCostRate`: the rate from its fields as sent; only text is read.
+fn cost_rate(fields: &Map<String, Value>) -> Result<CostRate, String> {
+    let percent = fields
+        .get("marketPercent")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let market_rate = read_market_percent(percent)?;
+    let deduction = js_dollars(fields.get("perCardDeduction"), DEDUCTION)?;
+    Ok(CostRate {
+        market_rate,
+        per_unit_deduction_cents: at_most_a_deduction(deduction)?,
+    })
+}
+
+/// What a queue request carries besides its id: what queuing does, the cost's fields as sent
+/// (an entered purchase total, or a rate; Node's `purchaseCost` and `estimatedCostRate`, read
+/// only once the queue is checked), and the counts and seller the screen showed.
 pub struct Queue<'a> {
     pub workflow: Workflow,
-    pub cost: &'a Cost,
+    pub purchase_cost: Option<Map<String, Value>>,
+    pub estimated_cost_rate: Option<Map<String, Value>>,
     pub expected: &'a [IntakeQuantity],
     pub seller_key: &'a str,
+}
+
+impl<'a> Queue<'a> {
+    /// The request the queue bar's form makes for `cost`, as the React screen sent it.
+    pub fn entered(
+        workflow: Workflow,
+        cost: &Cost,
+        expected: &'a [IntakeQuantity],
+        seller_key: &'a str,
+    ) -> Self {
+        let object = |value: serde_json::Value| match value {
+            Value::Object(fields) => fields,
+            _ => unreachable!("a cost's fields are an object"),
+        };
+        let (purchase_cost, estimated_cost_rate) = match cost {
+            Cost::Estimate => (None, None),
+            Cost::Rate(rate) => (
+                None,
+                Some(object(serde_json::json!({
+                    "marketPercent": rate.market_percent(),
+                    "perCardDeduction": rate.per_card_deduction(),
+                }))),
+            ),
+            Cost::Purchase {
+                reference,
+                total,
+                date,
+                estimated,
+            } => {
+                let mut fields = object(serde_json::json!({
+                    "purchaseReference": reference,
+                    "totalAmount": total,
+                    "provenance": if *estimated { "estimated" } else { "actual" },
+                    "allocationRule": "quantity",
+                    "currency": "USD",
+                }));
+                if let Some(date) = date {
+                    fields.insert("purchasedAt".into(), date.as_str().into());
+                }
+                (Some(fields), None)
+            }
+        };
+        Queue {
+            workflow,
+            purchase_cost,
+            estimated_cost_rate,
+            expected,
+            seller_key,
+        }
+    }
+
+    fn costed(&self) -> bool {
+        self.purchase_cost.is_some() || self.estimated_cost_rate.is_some()
+    }
 }
 
 /// What a request asked for, as the Node app saves it (`request_json`) and compares a repeat
 /// of it: what queuing does, the cost as sent, the rate only when one was, and the counts in SKU
 /// order with the seller the screen showed.
-fn details(queue: &Queue<'_>) -> serde_json::Value {
+fn details(queue: &Queue<'_>) -> Value {
     let mut expected = queue.expected.to_vec();
     expected.sort_by_key(|i| i.sku);
-    let purchase_cost = match queue.cost {
-        Cost::Purchase {
-            reference,
-            total,
-            date,
-            estimated,
-        } => serde_json::to_value(PurchaseCostRequest {
-            purchase_reference: reference,
-            total_amount: total,
-            provenance: if *estimated { "estimated" } else { "actual" },
-            allocation_rule: "quantity",
-            purchased_at: date.as_deref(),
-            currency: "USD",
-        })
-        .expect("a purchase cost is JSON"),
-        _ => serde_json::Value::Null,
-    };
     let mut details = serde_json::json!({
         "workflow": queue.workflow,
-        "purchaseCost": purchase_cost,
+        "purchaseCost": queue.purchase_cost.clone().map_or(Value::Null, Value::Object),
         "expectedInventory": expected,
         "expectedSellerKey": queue.seller_key,
     });
-    if let Cost::Rate(rate) = queue.cost {
-        details["estimatedCostRate"] = serde_json::to_value(EstimatedCostRate {
-            market_percent: rate.market_percent(),
-            per_card_deduction: rate.per_card_deduction(),
-        })
-        .expect("a rate is JSON");
+    if let Some(rate) = &queue.estimated_cost_rate {
+        details["estimatedCostRate"] = Value::Object(rate.clone());
     }
     details
 }
@@ -474,9 +548,9 @@ fn details(queue: &Queue<'_>) -> serde_json::Value {
 /// longer than 180, counts that are not 1 to 5,000 distinct SKUs each with a positive count, or
 /// a seller key longer than 200.
 fn well_formed(request_id: &str, queue: &Queue<'_>) -> bool {
-    let mut skus: Vec<i32> = queue.expected.iter().map(|i| i.sku).collect();
+    let mut skus: Vec<i64> = queue.expected.iter().map(|i| i.sku).collect();
     skus.sort_unstable();
-    !request_id.trim().is_empty()
+    !js_trim(request_id).is_empty()
         && js_length(request_id) <= 180
         && (1..=5000).contains(&queue.expected.len())
         && queue.expected.iter().all(|i| i.sku > 0 && i.quantity > 0)
@@ -486,11 +560,11 @@ fn well_formed(request_id: &str, queue: &Queue<'_>) -> bool {
 
 /// Why the target refuses what the request asks, in the Node app's words: publishing for a
 /// seller it may not publish for, or a cost or publication with no seller to record it for.
-fn refusal(target: &Target, workflow: Workflow, cost: &Cost) -> Option<String> {
-    if workflow == Workflow::Publish && !target.can_publish {
+fn refusal(target: &Target, queue: &Queue<'_>) -> Option<String> {
+    if queue.workflow == Workflow::Publish && !target.can_publish {
         return target.publishing_unavailable_reason.clone();
     }
-    let needs_seller = workflow == Workflow::Publish || !matches!(cost, Cost::Estimate);
+    let needs_seller = queue.workflow == Workflow::Publish || queue.costed();
     (needs_seller && target.seller_key.is_empty()).then(|| {
         "Configure a default shipping seller before queuing publication or purchase cost."
             .to_owned()
@@ -576,7 +650,7 @@ pub async fn queued(
             "A request ID and valid queue options are required.",
         ));
     }
-    let request_id = request_id.trim();
+    let request_id = js_trim(request_id);
     let details = details(queue);
     sqlx::query("SELECT pg_advisory_xact_lock(55, 0)")
         .execute(&mut *conn)
@@ -606,8 +680,8 @@ pub async fn queued(
             "This request belongs to an earlier or deleted batch.",
         ));
     }
-    let current: Vec<(i32, i32)> =
-        sqlx::query_as("SELECT sku, quantity FROM pending_inventory ORDER BY sku")
+    let current: Vec<(i64, i64)> =
+        sqlx::query_as("SELECT sku::int8, quantity::int8 FROM pending_inventory ORDER BY sku")
             .fetch_all(&mut *conn)
             .await?;
     let current: Vec<IntakeQuantity> = current
@@ -624,33 +698,41 @@ pub async fn queued(
             "The intake seller changed. Refresh and review the seller before queuing again.",
         ));
     }
-    if let Some(why) = refusal(target, queue.workflow, queue.cost) {
+    if let Some(why) = refusal(target, queue) {
         return Err(invalid(why));
     }
+    if queue.purchase_cost.is_some() && queue.estimated_cost_rate.is_some() {
+        return Err(invalid("Enter a purchase total or a cost rate, not both."));
+    }
     let seller = target.seller_key.as_str();
-    let purchase = purchase_cost(request_id, seller, queue.cost).map_err(invalid)?;
+    let purchase = queue
+        .purchase_cost
+        .as_ref()
+        .map(|fields| purchase_cost(request_id, seller, fields))
+        .transpose()
+        .map_err(invalid)?;
+    let rate = queue
+        .estimated_cost_rate
+        .as_ref()
+        .map(cost_rate)
+        .transpose()
+        .map_err(invalid)?;
     let batch_number = create_batch(conn, request_id)
         .await?
         .ok_or_else(|| invalid("No saved inventory is available to queue."))?;
-    // Recording a cost refuses a lot another purchase owns, or a request id used for other
-    // evidence. Node answers the first with a 409 and the rest with a 500 whose message the
-    // screen shows; here every one is shown as a conflict.
-    let recorded = if let Some(mut cost) = purchase {
+    if let Some(rate) = rate {
+        estimate::save_rate(&mut *conn, batch_number, rate).await?;
+    }
+    if let Some(mut cost) = purchase {
         cost.batch_numbers = vec![batch_number];
-        purchase_cost::record(conn, &cost).await.map(drop)
-    } else {
-        if let Cost::Rate(rate) = queue.cost {
-            estimate::save_rate(&mut *conn, batch_number, *rate).await?;
-        }
-        if seller.is_empty() {
-            Ok(())
-        } else {
-            estimate::record_batch(conn, seller, batch_number)
-                .await
-                .map(drop)
-        }
-    };
-    recorded.map_err(conflict)?;
+        purchase_cost::record(conn, &cost)
+            .await
+            .map_err(unrecorded)?;
+    } else if !seller.is_empty() {
+        estimate::record_batch(conn, seller, batch_number)
+            .await
+            .map_err(unrecorded)?;
+    }
     let job = batch_queue::create_or_reuse(conn, batch_number, "full", config)
         .await?
         .ok_or_else(|| NotQueued::Failed(format!("Batch {batch_number} was not saved.")))?;
@@ -685,10 +767,12 @@ pub async fn queue(
 }
 
 /// The seller queued batches are counted and published for.
-#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Target {
     pub seller_key: String,
+    /// The seller publication is for, which must be the same to publish.
+    pub publication_seller_key: String,
     pub can_publish: bool,
     pub publishing_unavailable_reason: Option<String>,
     pub publication_paused: bool,
@@ -851,9 +935,11 @@ pub struct Batches {
 /// The 25 newest runs, newest first, each as `findRecentInventoryIntakeRuns` answers it. A run's
 /// review count is its batch's failed or manual-review items once priced, or what is neither
 /// published nor publishing when it publishes.
+/// `createdAt` is written as Node's `toISOString` writes it.
 const RUNS: &str = r#"SELECT to_jsonb(run) FROM (SELECT r.batch_number AS "batchNumber", r.workflow,
     r.planning_status AS "planningStatus", r.planning_error AS "planningError",
-    j.status AS "pricingStatus", j.error_message AS "pricingError", r.created_at AS "createdAt",
+    j.status AS "pricingStatus", j.error_message AS "pricingError",
+    to_char(r.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
     items.count AS "itemCount", items.quantity,
     COALESCE(p.published, 0)::int AS "publishedCount",
     COALESCE(p.publishing, 0)::int AS "publishingCount",
@@ -892,14 +978,22 @@ const RUNS: &str = r#"SELECT to_jsonb(run) FROM (SELECT r.batch_number AS "batch
       WHERE i.batch_number = r.batch_number AND i.quantity_delta > 0) p ON TRUE) run
     ORDER BY run."createdAt" DESC"#;
 
+/// The 25 newest runs as `findRecentInventoryIntakeRuns` answers them, in its JSON.
+pub async fn runs_json(db: impl sqlx::PgExecutor<'_>) -> sqlx::Result<Vec<Value>> {
+    sqlx::query_scalar(RUNS).fetch_all(db).await
+}
+
 async fn runs(db: impl sqlx::PgExecutor<'_>) -> sqlx::Result<Vec<Run>> {
-    let rows: Vec<sqlx::types::Json<Run>> = sqlx::query_scalar(RUNS).fetch_all(db).await?;
-    Ok(rows.into_iter().map(|row| row.0).collect())
+    runs_json(db)
+        .await?
+        .into_iter()
+        .map(|row| serde_json::from_value(row).map_err(|e| sqlx::Error::Decode(e.into())))
+        .collect()
 }
 
 /// The seller queued batches are for: the default shipping seller, which may be published for
 /// only when it is the publication seller (`getIntakePublicationTarget`).
-async fn target(db: &Database) -> sqlx::Result<Target> {
+pub async fn target(db: &Database) -> sqlx::Result<Target> {
     let seller_key = shipping_configuration::default_seller_key(db)
         .await?
         .trim()
@@ -919,6 +1013,7 @@ async fn target(db: &Database) -> sqlx::Result<Target> {
         publishing_unavailable_reason: publishing_unavailable_reason.map(str::to_owned),
         publication_paused: publication_configuration::paused(db).await?,
         seller_key,
+        publication_seller_key,
     })
 }
 
@@ -958,6 +1053,34 @@ mod tests {
         assert_eq!(target(&db).await.unwrap(), node.target);
     }
 
+    /// A batch's JSON with what differs between runs named instead: its number (as `label` names
+    /// it) and its job's id, and whether each time is set.
+    fn untimed(mut batch: serde_json::Value, label: &str) -> serde_json::Value {
+        fn times(fields: &mut serde_json::Value) {
+            for key in [
+                "createdAt",
+                "updatedAt",
+                "lastPricedAt",
+                "startedAt",
+                "completedAt",
+                "claimExpiresAt",
+            ] {
+                if let Some(at) = fields.get_mut(key) {
+                    *at = serde_json::Value::Bool(!at.is_null());
+                }
+            }
+        }
+        times(&mut batch);
+        batch["batchNumber"] = label.into();
+        if batch["latestJob"].is_object() {
+            let job = &mut batch["latestJob"];
+            times(job);
+            job["batchNumber"] = label.into();
+            job["id"] = serde_json::Value::Null;
+        }
+        batch
+    }
+
     fn cost_of(cost: &serde_json::Value) -> Cost {
         let text = |key: &str| cost[key].as_str().unwrap().to_owned();
         match cost["kind"].as_str().unwrap() {
@@ -995,7 +1118,7 @@ mod tests {
                     request_id: String::new(),
                     seller_key: text("seller"),
                     purchase_reference: text("reference"),
-                    currency: "USD",
+                    currency: "USD".into(),
                     total_amount_cents: fields["total"].as_i64().unwrap(),
                     provenance: if fields["provenance"] == "estimated" {
                         "estimated"
@@ -1052,18 +1175,19 @@ mod tests {
             }
             let mut batches: Vec<i32> = Vec::new();
             let mut answers = Vec::new();
+            let mut bodies = Vec::new();
             for step in case["steps"].as_array().unwrap() {
                 let expected: Vec<IntakeQuantity> = match step["expected"].as_array() {
                     Some(counts) => counts
                         .iter()
                         .map(|pair| IntakeQuantity {
-                            sku: pair[0].as_i64().unwrap() as i32,
-                            quantity: pair[1].as_i64().unwrap() as i32,
+                            sku: pair[0].as_i64().unwrap(),
+                            quantity: pair[1].as_i64().unwrap(),
                         })
                         .collect(),
                     None => {
-                        let rows: Vec<(i32, i32)> = sqlx::query_as(
-                            "SELECT sku, quantity FROM pending_inventory ORDER BY sku",
+                        let rows: Vec<(i64, i64)> = sqlx::query_as(
+                            "SELECT sku::int8, quantity::int8 FROM pending_inventory ORDER BY sku",
                         )
                         .fetch_all(&mut *each)
                         .await
@@ -1078,17 +1202,24 @@ mod tests {
                     .as_str()
                     .unwrap_or(&target.seller_key)
                     .to_owned();
-                let request = Queue {
-                    workflow: serde_json::from_value(step["workflow"].clone()).unwrap(),
-                    cost: &cost,
-                    expected: &expected,
-                    seller_key: &seller,
-                };
+                let request = Queue::entered(
+                    serde_json::from_value(step["workflow"].clone()).unwrap(),
+                    &cost,
+                    &expected,
+                    &seller,
+                );
                 let mut attempt = each.begin().await.unwrap();
                 let id = step["request"].as_str().unwrap();
                 answers.push(
                     match queued(&mut attempt, id, &request, &target, &config).await {
                         Ok(Queued { batch_number }) => {
+                            let body = crate::features::batch_pricer::batch_json::find(
+                                &mut attempt,
+                                batch_number,
+                            )
+                            .await
+                            .unwrap();
+                            bodies.push((batch_number, body.unwrap()));
                             attempt.commit().await.unwrap();
                             if !batches.contains(&batch_number) {
                                 batches.push(batch_number);
@@ -1106,6 +1237,10 @@ mod tests {
                             };
                             serde_json::json!({ "status": status, "error": error })
                         }
+                        Err(NotQueued::Unrecorded(error)) => {
+                            attempt.rollback().await.unwrap();
+                            serde_json::json!({ "status": 500, "error": error })
+                        }
                         Err(NotQueued::Failed(why)) => panic!("{name}: {why}"),
                     },
                 );
@@ -1116,6 +1251,18 @@ mod tests {
                 .unwrap();
             each.rollback().await.unwrap();
             assert_eq!(serde_json::Value::from(answers), node["answers"], "{name}");
+            let node_bodies = node["bodies"].as_array().unwrap();
+            assert_eq!(bodies.len(), node_bodies.len(), "{name}");
+            for ((number, ours), theirs) in bodies.iter().zip(node_bodies) {
+                let label = batches.iter().position(|b| b == number).unwrap() + 1;
+                let label = format!("B{label}");
+                let ours = crate::api::tests::node_numbers(ours);
+                assert_eq!(
+                    untimed(ours, &label),
+                    untimed(theirs.clone(), &label),
+                    "{name}"
+                );
+            }
             let ours = fingerprints_checked(serde_json::from_str(&captured).unwrap());
             assert_eq!(
                 ours,
@@ -1183,7 +1330,7 @@ mod tests {
         assert_eq!(read_per_card_deduction("100"), Ok(10_000));
         assert_eq!(
             read_per_card_deduction("100.01"),
-            Err("Amount less per card must be at most $100.00.")
+            Err("Amount less per card must be at most $100.00.".into())
         );
     }
 
@@ -1270,12 +1417,7 @@ mod tests {
             market_rate: 0.6,
             per_unit_deduction_cents: 50,
         });
-        let q = Queue {
-            workflow: Workflow::PriceOnly,
-            cost: &cost,
-            expected: &expected,
-            seller_key: "abc",
-        };
+        let q = Queue::entered(Workflow::PriceOnly, &cost, &expected, "abc");
         assert_eq!(
             details(&q),
             serde_json::json!({
@@ -1292,12 +1434,7 @@ mod tests {
             date: Some("2026-10-01".into()),
             estimated: true,
         };
-        let q = Queue {
-            workflow: Workflow::Publish,
-            cost: &cost,
-            expected: &expected,
-            seller_key: "abc",
-        };
+        let q = Queue::entered(Workflow::Publish, &cost, &expected, "abc");
         let json = details(&q);
         assert_eq!(json.get("estimatedCostRate"), None);
         assert_eq!(

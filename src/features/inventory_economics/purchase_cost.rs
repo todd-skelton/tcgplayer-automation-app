@@ -56,9 +56,40 @@ pub fn request_fingerprint(cost: &PurchaseCost) -> String {
     })))
 }
 
+/// Why a purchase cost was not recorded.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum NotRecorded {
+    /// It conflicts with what is recorded: a request id reused for other evidence, a correction
+    /// of an entry that is not the current one, or a lot another purchase owns. Node's
+    /// `InventoryEconomicsConflictError`.
+    Conflict(String),
+    /// Anything else: input it does not take, lots it cannot find, the database failing.
+    Failed(String),
+}
+
+impl From<&str> for NotRecorded {
+    fn from(message: &str) -> Self {
+        NotRecorded::Failed(message.to_owned())
+    }
+}
+
+impl From<String> for NotRecorded {
+    fn from(message: String) -> Self {
+        NotRecorded::Failed(message)
+    }
+}
+
+impl From<NotRecorded> for String {
+    fn from(not: NotRecorded) -> Self {
+        match not {
+            NotRecorded::Conflict(message) | NotRecorded::Failed(message) => message,
+        }
+    }
+}
+
 /// Records `cost` on `conn`, which the caller holds in a transaction.
-pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Saved, String> {
-    let failed = |e: sqlx::Error| e.to_string();
+pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Saved, NotRecorded> {
+    let failed = |e: sqlx::Error| NotRecorded::Failed(e.to_string());
     let explicit = match cost.allocation_rule {
         "explicit" => true,
         "quantity" => false,
@@ -103,9 +134,9 @@ pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Save
     .map_err(failed)?;
     if let Some((entry_id, saved)) = repeated {
         if saved != fingerprint {
-            return Err(
+            return Err(NotRecorded::Conflict(
                 "Request ID was already used for different inventory economics evidence.".into(),
-            );
+            ));
         }
         return Ok(Saved {
             entry_id,
@@ -119,7 +150,7 @@ pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Save
     )
     .bind(&cost.seller_key)
     .bind(&cost.purchase_reference)
-    .bind(cost.currency)
+    .bind(&cost.currency)
     .execute(&mut *conn)
     .await
     .map_err(failed)?;
@@ -129,7 +160,7 @@ pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Save
     )
     .bind(&cost.seller_key)
     .bind(&cost.purchase_reference)
-    .bind(cost.currency)
+    .bind(&cost.currency)
     .fetch_one(&mut *conn)
     .await
     .map_err(failed)?;
@@ -144,12 +175,16 @@ pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Save
     .map_err(failed)?;
     let sequence = match (current, &cost.corrects_entry_id) {
         (None, None) => 1,
-        (None, Some(_)) => return Err("An initial entry cannot be a correction.".into()),
+        (None, Some(_)) => {
+            return Err(NotRecorded::Conflict(
+                "An initial entry cannot be a correction.".into(),
+            ));
+        }
         (Some((id, sequence)), Some(corrects)) if *corrects == id => sequence + 1,
         (Some((id, _)), _) => {
-            return Err(format!(
+            return Err(NotRecorded::Conflict(format!(
                 "A correction must reference the current entry {id}."
-            ));
+            )));
         }
     };
 
@@ -183,7 +218,7 @@ pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Save
     )
     .bind(&receipt_ids)
     .bind(&series)
-    .bind(cost.currency)
+    .bind(&cost.currency)
     .execute(&mut *conn)
     .await
     .map_err(failed)?;
@@ -193,12 +228,14 @@ pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Save
     )
     .bind(&receipt_ids)
     .bind(&series)
-    .bind(cost.currency)
+    .bind(&cost.currency)
     .fetch_optional(&mut *conn)
     .await
     .map_err(failed)?;
     if owned_elsewhere.is_some() {
-        return Err("A receipt lot already belongs to another purchase or currency.".into());
+        return Err(NotRecorded::Conflict(
+            "A receipt lot already belongs to another purchase or currency.".into(),
+        ));
     }
 
     let receipts: Vec<(i32, Option<String>, i32)> = sqlx::query_as(
@@ -332,7 +369,7 @@ mod tests {
             request_id: "estimated-purchase-cost:market-rate-v2:batch-7".into(),
             seller_key: "seller".into(),
             purchase_reference: "estimated:batch-7".into(),
-            currency: "USD",
+            currency: "USD".into(),
             total_amount_cents: 690,
             provenance: "estimated",
             source: "intake",

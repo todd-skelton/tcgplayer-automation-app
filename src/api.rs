@@ -11,7 +11,8 @@ use crate::{
     app::Shared,
     features::{
         forecast_calibration, inventory_economics::ledger::fingerprint::js_json, inventory_fifo,
-        inventory_history, seller_order_history, shipping_thresholds, slab_pricing,
+        inventory_history, inventory_intake, seller_order_history, shipping_thresholds,
+        slab_pricing,
     },
 };
 
@@ -20,6 +21,7 @@ pub fn ported<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
     let api = forecast_calibration::json_route::routes(api, shared);
     let api = inventory_fifo::json_route::routes(api, shared);
     let api = inventory_history::json_route::routes(api, shared);
+    let api = inventory_intake::json_route::routes(api, shared);
     let api = seller_order_history::json_route::routes(api, shared);
     let api = slab_pricing::json_route::routes(api, shared);
     shipping_thresholds::json_route::routes(api, shared)
@@ -43,10 +45,16 @@ pub fn first(query: Option<&str>, name: &str) -> Option<String> {
         .map(|(_, value)| value.into_owned())
 }
 
+/// JavaScript's `text.trim()`: white space, line ends and the byte order mark, which Rust's
+/// `trim` keeps, off both ends.
+pub fn js_trim(text: &str) -> &str {
+    text.trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}')
+}
+
 /// JavaScript's `Number(text)`: blank is 0, surrounding white space is ignored, `0x`, `0o` and
 /// `0b` read in their base, and anything else that is not a decimal number is `None` (NaN).
 pub fn js_number(text: &str) -> Option<f64> {
-    let t = text.trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}');
+    let t = js_trim(text);
     if t.is_empty() {
         return Some(0.0);
     }
@@ -166,6 +174,11 @@ pub mod tests {
                 );
             }
         }
+    }
+
+    /// `value` with its numbers written as `node_json` writes them, to compare with a recording.
+    pub fn node_numbers(value: &impl Serialize) -> Value {
+        serde_json::from_str(&js_json(value)).unwrap()
     }
 
     #[test]

@@ -10,6 +10,7 @@ use corten::Signal;
 use serde::{Deserialize, Serialize};
 use tokio::time::{MissedTickBehavior, interval};
 
+use super::purchase_cost::NotRecorded;
 use crate::database::Database;
 
 /// How an estimate turns a card's market price at intake into its cost: a share of it, less a
@@ -133,7 +134,7 @@ pub struct PurchaseCost {
     pub request_id: String,
     pub seller_key: String,
     pub purchase_reference: String,
-    pub currency: &'static str,
+    pub currency: String,
     pub total_amount_cents: i64,
     pub provenance: &'static str,
     pub source: &'static str,
@@ -215,7 +216,7 @@ pub fn estimate(
             request_id: request_id(batch_number, rate),
             seller_key: seller.to_owned(),
             purchase_reference: format!("estimated:batch-{batch_number}"),
-            currency: "USD",
+            currency: "USD".into(),
             total_amount_cents: allocations.iter().map(|a| a.amount_cents).sum(),
             provenance: "estimated",
             source: "intake",
@@ -469,7 +470,10 @@ pub async fn record_missing(
     let batches = estimable(&mut *conn, seller, Some(&missing), 100)
         .await
         .map_err(failed)?;
-    record(conn, seller, &batches).await.map(Some)
+    record(conn, seller, &batches)
+        .await
+        .map(Some)
+        .map_err(String::from)
 }
 
 fn failed(e: sqlx::Error) -> String {
@@ -481,8 +485,9 @@ async fn record(
     conn: &mut sqlx::PgConnection,
     seller: &str,
     batches: &[Batch],
-) -> Result<Estimated, String> {
+) -> Result<Estimated, NotRecorded> {
     use sqlx::Connection;
+    let failed = |e: sqlx::Error| NotRecorded::Failed(e.to_string());
     let run = plan(seller, batches).map_err(|e| e.to_string())?;
     let mut estimated = Estimated {
         recorded: Vec::new(),
@@ -553,7 +558,9 @@ async fn rate_changed(
     save_rate(&mut *conn, batch_number, rate)
         .await
         .map_err(failed)?;
-    record_batch(conn, seller, batch_number).await
+    record_batch(conn, seller, batch_number)
+        .await
+        .map_err(String::from)
 }
 
 /// `saveBatchEstimatedCostRate`: the rate the batch's estimates use from now on.
@@ -582,10 +589,10 @@ pub async fn record_batch(
     conn: &mut sqlx::PgConnection,
     seller: &str,
     batch_number: i32,
-) -> Result<Estimated, String> {
+) -> Result<Estimated, NotRecorded> {
     let batches = estimable(&mut *conn, seller, Some(&[batch_number]), 100)
         .await
-        .map_err(failed)?;
+        .map_err(|e| NotRecorded::Failed(e.to_string()))?;
     record(conn, seller, &batches).await
 }
 
