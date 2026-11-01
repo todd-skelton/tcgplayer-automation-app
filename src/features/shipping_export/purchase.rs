@@ -258,6 +258,12 @@ async fn bought(
 /// Buys postage for shipments of one label size in `mode` and records each result: an outbound
 /// order bought before in bulk, or a shipment abroad, is skipped; a bulk outbound purchase makes
 /// one PDF of its labels. Shipments the Node route would refuse are refused whole.
+///
+/// A result that cannot be recorded stops the run with that error, before any more postage is
+/// bought: the duplicate check reads those records, so buying on could buy an order twice. Node
+/// caught a failed record of a bought label and recorded it again as failed (keeping on when that
+/// second insert worked, so a bought label was reported failed), and failed the whole request
+/// when it did not, as a database that is down does.
 pub async fn buy(
     conn: &mut PgConnection,
     api: &impl Api,
