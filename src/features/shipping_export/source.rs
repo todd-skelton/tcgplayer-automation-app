@@ -274,26 +274,10 @@ fn shipping_order(d: Detail) -> Order {
 
 /// The path of an order's detail, its number written as `encodeURIComponent` writes it.
 fn order_path(number: &str) -> String {
-    let mut path = String::from("/orders/");
-    for byte in number.bytes() {
-        match byte {
-            b'A'..=b'Z'
-            | b'a'..=b'z'
-            | b'0'..=b'9'
-            | b'-'
-            | b'_'
-            | b'.'
-            | b'!'
-            | b'~'
-            | b'*'
-            | b'\''
-            | b'('
-            | b')' => path.push(byte as char),
-            _ => path.push_str(&format!("%{byte:02X}")),
-        }
-    }
-    path.push_str("?api-version=2.0");
-    path
+    format!(
+        "/orders/{}?api-version=2.0",
+        history::api::component(number)
+    )
 }
 
 async fn detail(api: &impl OrderManagement, number: &str) -> Result<Order, String> {

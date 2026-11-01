@@ -114,7 +114,7 @@ pub async fn order(tcg: &TcgPlayer, order_number: &str) -> Result<Fields, Failur
 }
 
 /// `text` as JavaScript's `encodeURIComponent` writes it.
-fn component(text: &str) -> String {
+pub fn component(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for byte in text.bytes() {
         match byte {

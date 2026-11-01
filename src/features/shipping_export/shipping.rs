@@ -14,7 +14,7 @@ use super::{
     url::ShippingWorkflow,
     workflow,
 };
-use crate::{database::Database, legacy::Legacy};
+use crate::{database::Database, legacy::Legacy, tcgplayer::TcgPlayer};
 
 /// Buyers hear once: a second click, tab or computer waits for the first to finish.
 static SHIPPING: OneAtATime = OneAtATime::new();
@@ -58,7 +58,12 @@ pub async fn mark_shipped(
         .map(|t| t.order_number.clone())
         .collect();
     if !pending.tracking.is_empty() {
-        let results = match ship::apply_tracking(&legacy, &pending.tracking).await {
+        let results = match ship::apply_tracking(
+            &ship::TcgPlayerTracking(TcgPlayer::new(db.clone())),
+            &pending.tracking,
+        )
+        .await
+        {
             Ok(results) => results,
             Err(why) => {
                 return refuse(

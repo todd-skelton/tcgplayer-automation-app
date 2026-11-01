@@ -1,17 +1,24 @@
-//! Marking orders shipped: their tracking applied on TCGplayer, then their buyers told
-//! (`/api/shipping-export/tcgplayer-tracking` and `tcgplayer-shipped-messages`). Only production
+//! Marking orders shipped: their tracking applied on TCGplayer here, through its order management
+//! API (`/api/shipping-export/tcgplayer-tracking`), then their buyers told through the Node app,
+//! which reads each shipment's tracking page from EasyPost (`tcgplayer-shipped-messages`). Only production
 //! postage is real, so only it is sent. What is still to send is worked out from what was sent,
 //! so sending again after a lost answer or a reload reaches only what has not gone.
 use std::collections::{HashMap, HashSet};
 
+use futures_util::future::join_all;
 use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 
 use super::{
     orders::Order,
     postage::{Postage, Purchase},
     shipments::Planned,
 };
-use crate::legacy::Legacy;
+use crate::{
+    features::{http_configuration::config::Domain, seller_order_history::api::component},
+    legacy::Legacy,
+    tcgplayer::{Call, TcgPlayer},
+};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -191,22 +198,81 @@ impl Pending {
     }
 }
 
-pub async fn apply_tracking(legacy: &Legacy, updates: &[Tracking]) -> Result<Vec<Tracked>, String> {
-    #[derive(Serialize)]
-    struct Request<'a> {
-        updates: &'a [Tracking],
+/// Where tracking is applied: TCGplayer's order management API.
+#[allow(async_fn_in_trait, reason = "used generically within this crate")]
+pub trait TrackingApi {
+    /// Posts `body` to `path`, answering why it failed.
+    async fn post(&self, path: &str, body: &Value) -> Result<(), String>;
+}
+
+/// What axios asks for by default, as the Node app asked.
+const AXIOS_ACCEPT: &str = "application/json, text/plain, */*";
+
+/// The API, through the app's TCGplayer client and its rate limits; the answer is not read.
+pub struct TcgPlayerTracking(pub TcgPlayer);
+
+impl TrackingApi for TcgPlayerTracking {
+    async fn post(&self, path: &str, body: &Value) -> Result<(), String> {
+        self.0
+            .post_for_bytes(
+                Domain::OrderManagementApi,
+                path,
+                body,
+                AXIOS_ACCEPT,
+                Call::default(),
+            )
+            .await
+            .map(drop)
+            .map_err(|e| e.to_string())
     }
-    #[derive(Deserialize)]
-    struct Answer {
-        results: Vec<Tracked>,
+}
+
+/// Each order's tracking applied on TCGplayer, the first update of an order only
+/// (`applyTrackingToSellerOrders`); an update without an order number, carrier or tracking number
+/// is refused as the Node route refuses it.
+pub async fn apply_tracking(
+    api: &impl TrackingApi,
+    updates: &[Tracking],
+) -> Result<Vec<Tracked>, String> {
+    if updates.is_empty() {
+        return Err("updates must be a non-empty array.".to_owned());
     }
-    let answer: Answer = legacy
-        .send(
-            "/api/shipping-export/tcgplayer-tracking",
-            &Request { updates },
-        )
-        .await?;
-    Ok(answer.results)
+    let blank = |t: &Tracking| {
+        [&t.order_number, &t.carrier, &t.tracking_number]
+            .iter()
+            .any(|s| s.trim().is_empty())
+    };
+    if updates.iter().any(blank) {
+        return Err(
+            "Each tracking update must include an orderNumber, carrier, and trackingNumber."
+                .to_owned(),
+        );
+    }
+    let mut seen = HashSet::new();
+    let firsts = updates
+        .iter()
+        .filter(|t| seen.insert(t.order_number.trim().to_owned()));
+    Ok(join_all(firsts.map(|t| async move {
+        let path = format!(
+            "/orders/{}/tracking?api-version=2.0",
+            component(&t.order_number)
+        );
+        let body = json!({ "carrier": t.carrier, "trackingNumber": t.tracking_number });
+        let failed = api.post(&path, &body).await.err();
+        Tracked {
+            order_number: t.order_number.clone(),
+            carrier: t.carrier.clone(),
+            tracking_number: t.tracking_number.clone(),
+            status: if failed.is_none() {
+                "applied"
+            } else {
+                "failed"
+            }
+            .to_owned(),
+            error: failed.map(|e| format!("Error: {e}")),
+        }
+    }))
+    .await)
 }
 
 pub async fn send_messages(legacy: &Legacy, messages: &[Message]) -> Result<Vec<Messaged>, String> {
@@ -229,7 +295,66 @@ pub async fn send_messages(legacy: &Legacy, messages: &[Message]) -> Result<Vec<
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Mutex;
+
     use super::*;
+
+    /// The tracking post as a case of `.port-logs/tracking-cases.json` scripts it, noting each.
+    struct Scripted {
+        fail: Value,
+        posted: Mutex<Vec<Value>>,
+    }
+
+    impl TrackingApi for Scripted {
+        async fn post(&self, path: &str, body: &Value) -> Result<(), String> {
+            self.posted
+                .lock()
+                .unwrap()
+                .push(json!({ "path": path, "body": body }));
+            let failing = self.fail.as_object().unwrap().iter().find(|(number, _)| {
+                path == format!("/orders/{}/tracking?api-version=2.0", component(number))
+            });
+            match failing {
+                Some((_, why)) => Err(why.as_str().unwrap().to_owned()),
+                None => Ok(()),
+            }
+        }
+    }
+
+    /// Node's `createShippingTcgplayerTrackingAction` over the cases in
+    /// `.port-logs/tracking.node.json`, against a scripted tracking post: results, refusals and
+    /// every post made.
+    #[tokio::test]
+    #[ignore = "reads Node's answers in .port-logs"]
+    async fn tracking_is_applied_as_node_applies_it() {
+        let read_log = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let cases: Vec<Value> = serde_json::from_str(&read_log("tracking-cases.json")).unwrap();
+        let node: Vec<Value> = serde_json::from_str(&read_log("tracking.node.json")).unwrap();
+        assert_eq!(cases.len(), node.len());
+        for (case, theirs) in cases.into_iter().zip(node) {
+            let name = theirs["name"].as_str().unwrap();
+            let updates: Vec<Tracking> = serde_json::from_value(case["updates"].clone()).unwrap();
+            let api = Scripted {
+                fail: case["fail"].clone(),
+                posted: Mutex::new(Vec::new()),
+            };
+            let ours = apply_tracking(&api, &updates).await;
+            let expected = match theirs["status"].as_u64().unwrap() {
+                200 => Ok(serde_json::from_value::<Vec<Tracked>>(
+                    theirs["body"]["results"].clone(),
+                )
+                .unwrap()),
+                _ => Err(theirs["body"]["error"].as_str().unwrap().to_owned()),
+            };
+            assert_eq!(ours, expected, "{name}");
+            let by_path = |p: &Value| p["path"].as_str().unwrap().to_owned();
+            let mut posted = api.posted.into_inner().unwrap();
+            posted.sort_by_key(by_path);
+            let mut node_posted = theirs["posted"].as_array().unwrap().clone();
+            node_posted.sort_by_key(by_path);
+            assert_eq!(posted, node_posted, "{name}: posted");
+        }
+    }
     use crate::features::{
         shipping_configuration::{EasyPostMode, ShippingConfig},
         shipping_export::{
