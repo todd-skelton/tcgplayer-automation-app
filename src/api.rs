@@ -11,7 +11,7 @@ use crate::{
     app::Shared,
     features::{
         forecast_calibration, inventory_economics::ledger::fingerprint::js_json, inventory_fifo,
-        inventory_history, seller_order_history, shipping_thresholds,
+        inventory_history, seller_order_history, shipping_thresholds, slab_pricing,
     },
 };
 
@@ -21,6 +21,7 @@ pub fn ported<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
     let api = inventory_fifo::json_route::routes(api, shared);
     let api = inventory_history::json_route::routes(api, shared);
     let api = seller_order_history::json_route::routes(api, shared);
+    let api = slab_pricing::json_route::routes(api, shared);
     shipping_thresholds::json_route::routes(api, shared)
 }
 
@@ -91,8 +92,9 @@ pub mod tests {
     };
 
     /// Each request Node's route was asked (`.port-logs/api-node.ts <name>`, recorded in
-    /// `.port-logs/api/<name>.node.json` as `{path, post?, status, body}`, `post` the JSON a post
-    /// sent) gets the status and JSON it gave, through the app's router, on the dev database. `timed` are JSON pointers to what
+    /// `.port-logs/api/<name>.node.json` as `{path, post?, headers?, status, cacheControl?, body}`,
+    /// `post` the JSON a post sent with any `headers` added, from a page at `http://localhost`) gets
+    /// the status, `Cache-Control` and JSON it gave, through the app's router, on the dev database. `timed` are JSON pointers to what
     /// says when it was read, which differ by when each ran. Numbers are compared as written, since
     /// serde_json reads `2` and `2.0` as different values.
     pub async fn answers_as_node(name: &str, timed: &[&str]) {
@@ -119,9 +121,20 @@ pub mod tests {
             let asked = format!("{path} {}", expected["post"]);
             // A post was sent to the action as JSON; anything else is a `GET`.
             let request = match expected["post"].as_str() {
-                Some(body) => corten::axum::http::Request::post(path)
-                    .header("content-type", "application/json")
-                    .body(corten::axum::body::Body::from(body.to_owned())),
+                Some(body) => {
+                    let mut post = corten::axum::http::Request::post(path)
+                        .header("host", "localhost")
+                        .header("content-type", "application/json");
+                    for (name, value) in expected["headers"].as_object().into_iter().flatten() {
+                        let headers = post.headers_mut().unwrap();
+                        let value = value.as_str().unwrap().parse().unwrap();
+                        headers.insert(
+                            name.parse::<corten::axum::http::HeaderName>().unwrap(),
+                            value,
+                        );
+                    }
+                    post.body(corten::axum::body::Body::from(body.to_owned()))
+                }
                 None => {
                     corten::axum::http::Request::get(path).body(corten::axum::body::Body::empty())
                 }
@@ -129,6 +142,7 @@ pub mod tests {
             .unwrap();
             let answer = router.clone().oneshot(request).await.unwrap();
             let status = answer.status().as_u16();
+            let cache = answer.headers().get("cache-control").cloned();
             let kind = answer.headers()["content-type"]
                 .to_str()
                 .unwrap()
@@ -144,6 +158,13 @@ pub mod tests {
                 "{asked}"
             );
             assert_eq!(untimed(body), untimed(expected["body"].clone()), "{asked}");
+            if let Some(expected) = expected["cacheControl"].as_str() {
+                assert_eq!(
+                    cache.as_ref().map(|v| v.to_str().unwrap()),
+                    Some(expected),
+                    "{asked}"
+                );
+            }
         }
     }
 
