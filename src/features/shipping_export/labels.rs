@@ -13,6 +13,7 @@ use super::{
     editing::ShipmentInput,
     orders::Order,
     postage::{self, Bought, Scope, Status},
+    purchase,
     shipments::{Direction, Planned, Shipment, shipment_for},
     source, url,
     views::{LabelForm, LabelManagement, Looked, Refused},
@@ -22,7 +23,6 @@ use crate::{
     database::Database,
     features::shipping_configuration::{self, EasyPostMode, Service, ShippingConfig},
     layout::{Chrome, Layout},
-    legacy::Legacy,
     text::Msg,
 };
 
@@ -274,7 +274,6 @@ pub async fn redraw_labels(
 pub async fn buy_labels(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::BuyOrderLabels>,
     body: Bytes,
 ) -> HtmlResult {
@@ -372,8 +371,8 @@ pub async fn buy_labels(
             orders: vec![found.order.number.clone()],
         };
         let size = item.shipment.options.label_size;
-        let bill = postage::buy(
-            &legacy,
+        let bill = purchase::buy_from_easypost(
+            &db,
             size,
             direction,
             Scope::Single,

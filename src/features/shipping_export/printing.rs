@@ -3,9 +3,10 @@
 use corten::{Media, PageOr, Refusal, prelude::*};
 
 use super::{
+    easypost::EasyPost,
     page::{Shown, hours_ahead, plan, refused},
-    postage::{self, BatchLabel, BatchLabelStatus, Bought},
-    sheet,
+    postage::{BatchLabel, BatchLabelStatus, Bought},
+    purchase, sheet,
     steps::Step,
     url::{self, ShippingWorkflow},
     workflow,
@@ -13,7 +14,6 @@ use super::{
 use crate::{
     database::Database,
     features::shipping_configuration::{self, LabelSize},
-    legacy::Legacy,
 };
 
 /// The batch's packing slips as one PDF, in the order the shipments go: shown in the browser's
@@ -74,7 +74,6 @@ pub fn labels_of(shown: &Shown, size: LabelSize) -> Vec<(&str, &Bought)> {
 pub async fn create_batch_label(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::BatchLabelPdf>,
 ) -> HtmlResult {
     let size = at.size;
@@ -92,7 +91,7 @@ pub async fn create_batch_label(
                 Some((*reference, b.result.easypost_shipment_id.as_deref()?))
             })
             .collect();
-        match postage::batch_label(&legacy, mode, size, &ids).await {
+        match purchase::batch_label(&EasyPost::default(), mode, &ids).await {
             Ok(label) => label,
             Err(why) => {
                 let why = format!("Failed to create the batch label PDF: {why}");

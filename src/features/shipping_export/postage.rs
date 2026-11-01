@@ -1,7 +1,6 @@
-//! Postage, which the Node app buys from EasyPost and records (`/api/shipping-export/postages`
-//! and `batch-labels`); what was bought for a shipment is read here from the record
-//! (`postage-lookups`). The mode (test or production) is the Node app's deployment's, as it is
-//! here.
+//! Postage: what was bought for each shipment, read from its record (`postage-lookups`), and
+//! what a purchase did. Buying it from EasyPost is [`super::purchase`]'s. The mode (test or
+//! production) follows the deployment, as it did on the Node app.
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
@@ -10,10 +9,7 @@ use super::{
     one_at_a_time::OneAtATime,
     shipments::{Direction, Planned},
 };
-use crate::{
-    features::shipping_configuration::{EasyPostMode, LabelSize},
-    legacy::Legacy,
-};
+use crate::features::shipping_configuration::EasyPostMode;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -145,41 +141,13 @@ pub enum Scope {
     Single,
 }
 
-#[derive(Deserialize)]
+/// What a purchase did: its mode, each shipment's result and the batch PDF of its labels.
+#[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Bill {
     pub mode: EasyPostMode,
     pub batch_label: BatchLabel,
     pub results: Vec<Purchase>,
-}
-
-/// Buys postage for shipments of one label size.
-pub async fn buy(
-    legacy: &Legacy,
-    label_size: LabelSize,
-    direction: Direction,
-    scope: Scope,
-    shipments: &[Planned],
-) -> Result<Bill, String> {
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Request<'a> {
-        label_size: LabelSize,
-        direction: Direction,
-        purchase_scope: Scope,
-        shipments: &'a [Planned],
-    }
-    legacy
-        .send(
-            "/api/shipping-export/postages",
-            &Request {
-                label_size,
-                direction,
-                purchase_scope: scope,
-                shipments,
-            },
-        )
-        .await
 }
 
 /// A successful purchase as recorded (`shipping_postage_purchases`), newest first.
@@ -316,42 +284,6 @@ pub async fn bought(
         );
     }
     Ok(postage)
-}
-
-/// One PDF of labels already bought, all in one mode.
-pub async fn batch_label(
-    legacy: &Legacy,
-    mode: EasyPostMode,
-    label_size: LabelSize,
-    labels: &[(&str, &str)],
-) -> Result<BatchLabel, String> {
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Item<'a> {
-        shipment_reference: &'a str,
-        easypost_shipment_id: &'a str,
-    }
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Request<'a> {
-        mode: EasyPostMode,
-        label_size: LabelSize,
-        shipments: Vec<Item<'a>>,
-    }
-    let request = Request {
-        mode,
-        label_size,
-        shipments: labels
-            .iter()
-            .map(|(reference, id)| Item {
-                shipment_reference: reference,
-                easypost_shipment_id: id,
-            })
-            .collect(),
-    };
-    legacy
-        .send("/api/shipping-export/batch-labels", &request)
-        .await
 }
 
 #[cfg(test)]

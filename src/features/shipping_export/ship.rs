@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::{
-    easypost::TrackingPages,
+    easypost::{self, Api},
     orders::Order,
     postage::{Postage, Purchase},
     shipments::Planned,
@@ -343,7 +343,7 @@ fn shipped_message(tracking_url: &str) -> String {
 /// is refused as the Node route refuses it.
 pub async fn send_messages(
     api: &impl MessagesApi,
-    pages: &impl TrackingPages,
+    easypost: &impl Api,
     messages: &[Message],
 ) -> Result<Vec<Messaged>, String> {
     if messages.is_empty() {
@@ -378,7 +378,7 @@ pub async fn send_messages(
     }
     let urls: HashMap<String, Result<String, String>> =
         join_all(shipments.into_iter().map(|id| async move {
-            let url = pages.tracking_url(EasyPostMode::Production, &id).await;
+            let url = easypost::tracking_url(easypost, EasyPostMode::Production, &id).await;
             (id, url)
         }))
         .await

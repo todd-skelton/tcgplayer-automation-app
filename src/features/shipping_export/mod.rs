@@ -6,8 +6,8 @@
 //! ([`sheet`]), and so are the orders themselves, from TCGplayer's order management API with
 //! their market prices and intake history, and the seller's order history scan is moved on here too
 //! ([`source`]). Orders are marked shipped and their buyers told here ([`ship`]), and the postage
-//! already bought is read from its record ([`postage`]); buying postage and its batch PDFs from
-//! EasyPost stay the Node app's and go through its routes. The batch in progress
+//! already bought is read from its record ([`postage`]); postage and its batch PDFs are bought from
+//! EasyPost and recorded here too ([`purchase`]). The batch in progress
 //! is kept in the database (`workflow`), where the React screen kept it in each browser's
 //! localStorage: a reload, a second tab or another computer continues the same batch. The step is
 //! the page's address; with none, the screen opens at the first step not done.
@@ -43,6 +43,7 @@ mod packing;
 mod page;
 mod postage;
 mod printing;
+mod purchase;
 mod sheet;
 mod ship;
 mod shipments;

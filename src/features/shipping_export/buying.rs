@@ -8,6 +8,7 @@ use super::{
     editing::ShipmentInput,
     page::{Shown, page, plan, refused},
     postage::{self, Scope, Status},
+    purchase,
     shipments::{self, Batch, Direction, Planned},
     steps::Step,
     url::{self, ShippingWorkflow},
@@ -17,7 +18,6 @@ use super::{
 use crate::{
     database::Database,
     features::shipping_configuration::{self, EasyPostMode},
-    legacy::Legacy,
 };
 
 /// Why postage cannot be bought now: another purchase is running, or the mode has no key.
@@ -34,13 +34,9 @@ const BUYING: &str = "Postage is already being bought. Try again when that purch
 
 /// Postage for every shipment, a label size at a time, as the React screen's Buy All Postage
 /// bought it: each size in one purchase, with one PDF of its labels for the Print step. A
-/// shipment that already has postage is skipped by the Node app. A purchase that fails stops the
+/// shipment that already has postage is skipped. A purchase that fails stops the
 /// rest.
-pub async fn buy_all(
-    req: Req,
-    State(db): State<Database>,
-    State(legacy): State<Legacy>,
-) -> HtmlResult {
+pub async fn buy_all(req: Req, State(db): State<Database>) -> HtmlResult {
     let mode = EasyPostMode::of_deployment();
     let Some(_buying) = postage::BUYING.start() else {
         return refused(&req, &db, Step::BuyPostage, Refusal::Conflict, BUYING).await;
@@ -64,7 +60,9 @@ pub async fn buy_all(
             .filter(|p| p.shipment.options.label_size == size)
             .cloned()
             .collect();
-        match postage::buy(&legacy, size, Direction::Outbound, Scope::Bulk, &of_size).await {
+        match purchase::buy_from_easypost(&db, size, Direction::Outbound, Scope::Bulk, &of_size)
+            .await
+        {
             Ok(bill) => {
                 workflow::change(&db, move |w| {
                     w.attempted(bill.mode, bill.results);
@@ -95,7 +93,6 @@ pub struct BuyInput {
 pub async fn buy_shipment(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::BuyShipmentPostage>,
     Form(input): Form<BuyInput>,
 ) -> HtmlResult {
@@ -129,8 +126,8 @@ pub async fn buy_shipment(
         orders: planned.orders.clone(),
     };
     let size = item.shipment.options.label_size;
-    let bill = match postage::buy(
-        &legacy,
+    let bill = match purchase::buy_from_easypost(
+        &db,
         size,
         direction,
         Scope::Single,
