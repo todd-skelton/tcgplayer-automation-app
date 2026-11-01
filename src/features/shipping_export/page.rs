@@ -273,12 +273,11 @@ pub(super) fn hours_ahead(req: &Req) -> f64 {
 /// The batch's pull sheet: TCGplayer's for the orders, read with the catalog.
 async fn pull(
     db: &Database,
-    legacy: &Legacy,
     batch: &Batch,
     ahead: f64,
     filters: &SheetQuery,
 ) -> Result<Pulled, String> {
-    let text = sheet::export(legacy, &batch.order_numbers(), ahead).await?;
+    let text = sheet::export(db, &batch.order_numbers(), ahead).await?;
     let (mut items, order_ids) = pull_sheet::read(db, &text).await?;
     let summary = Summary::of(&items, order_ids.len());
     let values: HashMap<i64, value::SaleValue> = items
@@ -340,9 +339,7 @@ pub(super) async fn page(
         .trim()
         .to_owned();
     let pulled = match step {
-        Step::PullSheet => {
-            Some(pull(db, legacy, &shown.batch, hours_ahead(req), &at.filters).await)
-        }
+        Step::PullSheet => Some(pull(db, &shown.batch, hours_ahead(req), &at.filters).await),
         _ => None,
     };
     let coverage = match step {
@@ -380,7 +377,6 @@ pub(super) async fn page(
         Step::Pack => Some(
             packing::packing(
                 db,
-                legacy,
                 &shown,
                 hours_ahead(req),
                 at.shipment.as_deref(),

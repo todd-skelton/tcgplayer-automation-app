@@ -2,7 +2,6 @@
 //! is the post's query), saying what it did; a refusal is that screen with why, as a conflict.
 use corten::{Refusal, prelude::*};
 use serde::Deserialize;
-use serde_json::json;
 
 use super::{
     analysis_queue,
@@ -14,9 +13,12 @@ use super::{
 };
 use crate::{
     database::Database,
-    features::inventory_economics::ledger::fingerprint::js_float,
+    features::{
+        batch_pricing::market::TcgPlayerMarket, continuous_pricing,
+        inventory_economics::ledger::fingerprint::js_float,
+    },
     layout::{Chrome, Layout},
-    legacy::Legacy,
+    tcgplayer::TcgPlayer,
     text::Msg,
 };
 
@@ -132,26 +134,36 @@ pub async fn save_turnaround(
     .await
 }
 
-/// Reads the seller's whole inventory from TCGplayer again, on the Node app.
+/// Reads the seller's whole inventory from TCGplayer again, with its market prices, as
+/// Continuous Pricing's refresh does.
 pub async fn refresh(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::Refresh>,
 ) -> HtmlResult {
-    #[derive(Deserialize)]
-    struct Refreshed {
-        count: i64,
+    let settings = continuous_pricing::store::settings(&db).await?;
+    if settings.seller_key.is_empty() {
+        let why = "Save a seller key before refreshing inventory.".to_owned();
+        return refused(&req, &db, &at.view, why).await;
     }
-    match legacy
-        .send::<_, Refreshed>("/api/continuous-pricing", &json!({ "intent": "refresh" }))
-        .await
-    {
-        Ok(done) => {
+    let tcg = TcgPlayer::new(db.clone());
+    let refreshed = continuous_pricing::refresh::refresh(
+        &db,
+        &settings.seller_key,
+        settings.minimum_interval_minutes,
+        &continuous_pricing::refresh::TcgPlayerSearch(tcg.clone()),
+        &TcgPlayerMarket(tcg),
+    )
+    .await;
+    match refreshed {
+        Ok(count) => {
             let t: Msg = req.t();
             req.redirect_with_notice(
                 &url::InventoryStrategy { view: at.view },
-                Did::Refreshed { count: done.count }.said(t),
+                Did::Refreshed {
+                    count: count as i64,
+                }
+                .said(t),
             )
         }
         Err(why) => refused(&req, &db, &at.view, why).await,

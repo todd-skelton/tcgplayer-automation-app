@@ -19,7 +19,6 @@ use crate::{database::Database, features::pull_sheet, layout::Tone, legacy::Lega
 /// batch), in `view`. The pull sheet is read only for the card view.
 pub async fn packing<'a>(
     db: &Database,
-    legacy: &Legacy,
     shown: &'a Shown,
     ahead: f64,
     chosen: Option<&str>,
@@ -54,7 +53,7 @@ pub async fn packing<'a>(
             orders: Vec::new(),
         }),
         (Some(row), PackView::Card) => {
-            Some(card(db, legacy, row, index, ahead, &batch.order_numbers()).await)
+            Some(card(db, row, index, ahead, &batch.order_numbers()).await)
         }
     };
     Packing { view, rows, card }
@@ -64,7 +63,6 @@ pub async fn packing<'a>(
 /// list, saying why.
 async fn card<'a>(
     db: &Database,
-    legacy: &Legacy,
     row: &PackRow<'a>,
     index: usize,
     ahead: f64,
@@ -72,7 +70,7 @@ async fn card<'a>(
 ) -> PackCard<'a> {
     let has_lines = row.orders.iter().any(|o| !o.lines().is_empty());
     let read = if has_lines {
-        match sheet::export(legacy, numbers, ahead).await {
+        match sheet::export(db, numbers, ahead).await {
             Ok(text) => pull_sheet::read(db, &text).await.map(|(items, _)| items),
             Err(why) => Err(why),
         }

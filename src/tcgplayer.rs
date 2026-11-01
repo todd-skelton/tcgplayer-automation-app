@@ -345,6 +345,20 @@ impl TcgPlayer {
         })
     }
 
+    /// POSTs `body` as JSON to `path` on `domain`, asking for `accept`, and answers the body as
+    /// sent (a file: a CSV, a PDF).
+    pub async fn post_for_bytes<B: Serialize + ?Sized>(
+        &self,
+        domain: Domain,
+        path: &str,
+        body: &B,
+        accept: &str,
+        call: Call,
+    ) -> Result<Vec<u8>, Failure> {
+        self.send_bytes(domain, Method::POST, path, Some(body), Some(accept), call)
+            .await
+    }
+
     async fn send<B: Serialize + ?Sized, T: DeserializeOwned>(
         &self,
         domain: Domain,
@@ -353,6 +367,21 @@ impl TcgPlayer {
         body: Option<&B>,
         call: Call,
     ) -> Result<T, Failure> {
+        let bytes = self
+            .send_bytes(domain, method, path, body, None, call)
+            .await?;
+        serde_json::from_slice(&bytes).map_err(|e| Failure::Unreadable(e.to_string()))
+    }
+
+    async fn send_bytes<B: Serialize + ?Sized>(
+        &self,
+        domain: Domain,
+        method: Method,
+        path: &str,
+        body: Option<&B>,
+        accept: Option<&str>,
+        call: Call,
+    ) -> Result<Vec<u8>, Failure> {
         let retries = if call.retry { MAX_RETRIES } else { 0 };
         let url = format!("https://{}{path}", host(domain));
         let lane = self.lane(domain);
@@ -365,7 +394,7 @@ impl TcgPlayer {
                 lane.wait_to_start(Duration::from_millis(limits.request_delay_ms.into()))
                     .await;
                 match self
-                    .attempt(&config, &method, &url, body, call.timeout)
+                    .attempt(&config, &method, &url, body, accept, call.timeout)
                     .await
                 {
                     Ok(answer) => {
@@ -399,14 +428,15 @@ impl TcgPlayer {
         }
     }
 
-    async fn attempt<B: Serialize + ?Sized, T: DeserializeOwned>(
+    async fn attempt<B: Serialize + ?Sized>(
         &self,
         config: &HttpConfig,
         method: &Method,
         url: &str,
         body: Option<&B>,
+        accept: Option<&str>,
         timeout: Duration,
-    ) -> Result<T, Failure> {
+    ) -> Result<Vec<u8>, Failure> {
         let mut request = self
             .http
             .request(method.clone(), url)
@@ -414,6 +444,9 @@ impl TcgPlayer {
             .header(header::CACHE_CONTROL, "no-cache")
             .header(header::CONTENT_TYPE, "application/json")
             .header(header::USER_AGENT, &config.user_agent);
+        if let Some(accept) = accept {
+            request = request.header(header::ACCEPT, accept);
+        }
         if !config.tcg_auth_cookie.is_empty() {
             request = request.header(
                 header::COOKIE,
@@ -436,7 +469,7 @@ impl TcgPlayer {
             .bytes()
             .await
             .map_err(|e| Failure::Unreachable(e.without_url().to_string()))?;
-        serde_json::from_slice(&bytes).map_err(|e| Failure::Unreadable(e.to_string()))
+        Ok(bytes.to_vec())
     }
 }
 

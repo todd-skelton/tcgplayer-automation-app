@@ -3,9 +3,7 @@
 //! the active policy's verdict and the hurdle sweep, the capital turnaround, and the selling
 //! history, all computed here with the Node app's queries and rounding.
 //!
-//! Refreshing the seller's inventory and queueing a fresh analysis stay the Node app's
-//! (`/api/continuous-pricing`, `/api/inventory-strategy-analysis`): they call TCGplayer and queue
-//! work for its pricing worker. The forecast evidence the selling history shows is completed by a
+//! Refreshing the seller's inventory reads TCGplayer here, as Continuous Pricing's refresh does. The forecast evidence the selling history shows is completed by a
 //! task (`backfill`), not by the page, which only reads.
 //!
 //! | Route | Answer |

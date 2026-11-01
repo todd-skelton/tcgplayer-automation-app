@@ -2,8 +2,9 @@
 //! the labels and packing slips, pack each shipment, then mark the orders shipped and tell their
 //! buyers. Ported from `app/features/shipping-export/routes/shipping-export.tsx`.
 //!
-//! TCGplayer, EasyPost and their records stay the Node app's, so loading orders, postage and
-//! marking orders shipped go through its `/api/shipping-export/*` routes. The batch in progress
+//! TCGplayer's order exports (the pull sheet and the packing slips) are read here
+//! ([`sheet`]); loading orders, postage and marking orders shipped, with their records, stay the
+//! Node app's and go through its `/api/shipping-export/*` routes. The batch in progress
 //! is kept in the database (`workflow`), where the React screen kept it in each browser's
 //! localStorage: a reload, a second tab or another computer continues the same batch. The step is
 //! the page's address; with none, the screen opens at the first step not done.

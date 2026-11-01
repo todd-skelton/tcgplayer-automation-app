@@ -1,11 +1,11 @@
 //! The Print step's answers: the batch's packing slips, from TCGplayer, and one PDF of a label
 //! size's labels made from the postage already bought.
 use corten::{Media, PageOr, Refusal, prelude::*};
-use serde::Serialize;
 
 use super::{
     page::{Shown, hours_ahead, plan, refused},
     postage::{self, BatchLabel, BatchLabelStatus, Bought},
+    sheet,
     steps::Step,
     url::{self, ShippingWorkflow},
     workflow,
@@ -24,12 +24,6 @@ pub async fn packing_slips(
     State(legacy): State<Legacy>,
     Params(at): Params<url::PackingSlips>,
 ) -> corten::Result<PageOr<Media>> {
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Request<'a> {
-        order_numbers: &'a [String],
-        timezone_offset: f64,
-    }
     let (config, saved) = tokio::join!(
         shipping_configuration::settings(&db),
         workflow::current(&db)
@@ -38,14 +32,7 @@ pub async fn packing_slips(
     if numbers.is_empty() {
         return Err(corten::Error::not_found());
     }
-    let request = Request {
-        order_numbers: &numbers,
-        timezone_offset: hours_ahead(&req),
-    };
-    let pdf = match legacy
-        .send_for_file("/api/shipping-export/packing-slips-export", &request)
-        .await
-    {
+    let pdf = match sheet::packing_slips(&db, &numbers, hours_ahead(&req)).await {
         Ok(pdf) => pdf,
         Err(why) => {
             let why = format!("Failed to generate packing slips: {why}");
@@ -53,8 +40,10 @@ pub async fn packing_slips(
             return Ok(page.into());
         }
     };
-    let name = pdf.file_name.unwrap_or_else(|| "packing-slips.pdf".into());
-    let media = Media::new("application/pdf", pdf.bytes);
+    // The time it was made, as `toISOString` writes it with `:` and `.` made `-`.
+    let made = chrono::Utc::now().format("%Y-%m-%dT%H-%M-%S-%3fZ");
+    let name = format!("packing-slips-{made}.pdf");
+    let media = Media::new("application/pdf", pdf);
     Ok(if at.open == Some(true) {
         media.inline(&name)
     } else {
