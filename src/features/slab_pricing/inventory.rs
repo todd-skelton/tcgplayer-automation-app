@@ -47,6 +47,11 @@ pub struct Snapshot {
     pub title: String,
     pub price: Price,
     pub shipping: Shipping,
+    /// How many the listing offers, and whether it is `fixed-price`, when the import read them.
+    #[serde(default)]
+    pub quantity: Option<f64>,
+    #[serde(default)]
+    pub format: Option<String>,
     #[serde(default)]
     pub certificate: Option<Certificate>,
     /// What the listing itself says the card and grade are.
@@ -100,6 +105,12 @@ pub struct Certificate {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListingIdentity {
+    pub id: String,
+    /// `confirmed` or `needs-review`.
+    pub status: String,
+    pub revision: i64,
+    #[serde(default)]
+    pub valuation_group_key: Option<String>,
     pub grader: String,
     pub certificate_number: String,
     #[serde(default)]
@@ -280,8 +291,9 @@ macro_rules! reviewed {
     ($rest:literal) => {
         concat!(
             r#"SELECT s.id::text, s.seller, s.item_id, s.variation_key, s.snapshot, s.state, s.revision, s.identity_id::text, s.observed_at,
-    (SELECT jsonb_build_object('grader', i.grader, 'certificateNumber', i.certificate_number, 'candidate', i.candidate,
-      'identity', i.identity, 'reviewReasons', i.review_reasons) FROM slab_identities i WHERE i.id = s.identity_id),
+    (SELECT jsonb_build_object('id', i.id, 'grader', i.grader, 'certificateNumber', i.certificate_number, 'candidate', i.candidate,
+      'identity', i.identity, 'status', i.status, 'reviewReasons', i.review_reasons, 'valuationGroupKey', i.valuation_group_key,
+      'revision', i.revision) FROM slab_identities i WHERE i.id = s.identity_id),
     EXISTS (SELECT 1 FROM slab_inventory other WHERE other.seller = s.seller AND other.id <> s.id AND other.state = 'active'
       AND s.snapshot->'certificate' <> 'null'::jsonb AND other.snapshot->'certificate' = s.snapshot->'certificate')
     FROM slab_inventory s "#,
@@ -518,7 +530,7 @@ mod tests {
         assert_eq!(listing.ask_in_usd(), Some(420.5));
         assert_eq!(listing.shipping_in_usd(), Some(5.0));
         let tied: ListingIdentity = serde_json::from_str(
-            r#"{"grader":"PSA","certificateNumber":"5","candidate":null,"identity":{"card":{"name":"Charizard"},"grading":{"grader":"PSA","encoding":"9","number":9,"label":"MINT","qualifier":null,"autograph":null}}}"#,
+            r#"{"id":"c2000000-0000-4000-8000-000000000001","status":"confirmed","revision":1,"grader":"PSA","certificateNumber":"5","candidate":null,"identity":{"card":{"name":"Charizard"},"grading":{"grader":"PSA","encoding":"9","number":9,"label":"MINT","qualifier":null,"autograph":null}}}"#,
         )
         .unwrap();
         let listing = Listing {

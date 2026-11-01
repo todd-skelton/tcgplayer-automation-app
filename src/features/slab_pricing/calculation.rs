@@ -25,6 +25,17 @@ pub struct Asked<'a> {
     pub revision_ids: &'a [String],
     pub policy: &'a Policy,
     pub seller: &'a Seller,
+    /// For a recalculation in the background: the recommendation it replaces, which must still
+    /// be the slab's latest and not reviewed. The identity is then held for update, so a review
+    /// saved meanwhile waits for it.
+    pub replacing: Option<&'a str>,
+}
+
+/// A recommendation saved: its id, and whether its ask needs the operator's review.
+#[derive(Debug)]
+pub struct Calculated {
+    pub id: String,
+    pub requires_review: bool,
 }
 
 /// Node's answer to anything but a refusal it words.
@@ -94,18 +105,19 @@ fn saved(row: &Row, window: SaleWindow, raw: &Value) -> Result<Saved, String> {
 }
 
 /// `calculateSlabRecommendation` at `as_of` (an ISO time) on `conn`, in a transaction of its
-/// own: the id of the recommendation saved, or of the one saved before from the same calculation.
+/// own: the recommendation saved, or the one saved before from the same calculation.
 pub async fn calculate(
     conn: &mut PgConnection,
     asked: &Asked<'_>,
     as_of: &str,
-) -> Result<String, String> {
+) -> Result<Calculated, String> {
     let now = millis(as_of);
     if !is_id(asked.slab_id)
         || asked.identity_revision < 1
         || asked.revision_ids.len() > 20
         || asked.revision_ids.iter().any(|id| !is_id(id))
         || now.is_none()
+        || asked.replacing.is_some_and(|id| !is_id(id))
     {
         return Err(
             "Choose a current slab identity and at most twenty evidence revisions.".to_owned(),
@@ -123,10 +135,15 @@ pub async fn calculate(
         .await
         .map_err(unable)?;
     type Target_ = (String, Option<Value>, i32, Option<String>);
-    let target: Option<Target_> = sqlx::query_as(
+    let lock = if asked.replacing.is_some() {
+        "UPDATE"
+    } else {
+        "SHARE"
+    };
+    let target: Option<Target_> = sqlx::query_as(&format!(
         "SELECT id::text, identity, revision, valuation_group_key FROM slab_identities
-         WHERE id = $1::uuid AND revision = $2 AND status = 'confirmed' FOR SHARE",
-    )
+         WHERE id = $1::uuid AND revision = $2 AND status = 'confirmed' FOR {lock}"
+    ))
     .bind(asked.slab_id)
     .bind(asked.identity_revision)
     .fetch_optional(&mut *tx)
@@ -138,6 +155,23 @@ pub async fn calculate(
     let identity = identity.filter(truthy).ok_or_else(changed)?;
     let group = group.filter(|g| !g.is_empty()).ok_or_else(changed)?;
     let identity: Identity = serde_json::from_value(identity).map_err(unable)?;
+    // Background recalculation waits on, and gives way to, the operator's review.
+    if let Some(replacing) = asked.replacing {
+        let latest: Option<(String, bool)> = sqlx::query_as(
+            "SELECT r.id::text, EXISTS(SELECT 1 FROM slab_price_overrides o WHERE o.recommendation_id=r.id)
+             FROM slab_recommendations r WHERE r.slab_id=$1::uuid ORDER BY r.created_at DESC,r.id DESC LIMIT 1",
+        )
+        .bind(asked.slab_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(unable)?;
+        if latest.is_none_or(|(id, reviewed)| id != replacing || reviewed) {
+            return Err(
+                "The recommendation changed or has a reviewed price. Reload before recalculating."
+                    .to_owned(),
+            );
+        }
+    }
     let (count, bytes): (i32, i32) = sqlx::query_as(
         "SELECT count(*)::int, COALESCE(sum(byte_count),0)::int FROM slab_evidence_revisions WHERE id=ANY($1::uuid[])",
     )
@@ -343,7 +377,10 @@ pub async fn calculate(
         return Err(unable("evidence expired before it could be retained"));
     }
     tx.commit().await.map_err(unable)?;
-    Ok(id)
+    Ok(Calculated {
+        id,
+        requires_review: ask.requires_review,
+    })
 }
 
 #[cfg(test)]
@@ -384,10 +421,11 @@ mod tests {
                 revision_ids: &ids,
                 policy: &policy,
                 seller: &seller,
+                replacing: None,
             };
             let as_of = case["asOf"].as_str().unwrap();
             match calculate(&mut tx, &asked, as_of).await {
-                Ok(id) => {
+                Ok(Calculated { id, .. }) => {
                     let key: String = sqlx::query_scalar(
                         "SELECT input_key FROM slab_recommendations WHERE id = $1::uuid",
                     )

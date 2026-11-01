@@ -1,9 +1,10 @@
 //! Evidence maintenance for a seller: refreshing confirmed inventory in small groups and
 //! updating recommendations from fresh saved evidence. It never publishes prices. The settings
 //! and recent listing checks are read and saved here (`slabMaintenanceStore.server.ts`); the
-//! cycles stay with Node's slab evidence worker, which calls eBay and Alt. Node woke its
-//! in-process worker when enabled settings were read or saved; this process cannot, so the
-//! worker must be running on its own and finds due cycles on its poll.
+//! cycles are run by a slab evidence worker when it has nothing to refresh: Node's until
+//! cutover, or this app's (`maintenance_cycle`) when `SLAB_EVIDENCE_WORKER` is set. Node woke its
+//! in-process worker when enabled settings were read or saved; a worker here finds due cycles on
+//! its poll.
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use sqlx::{FromRow, PgConnection};

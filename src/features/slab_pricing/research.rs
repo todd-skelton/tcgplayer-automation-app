@@ -43,7 +43,7 @@ impl Window {
         Window::year_to(Utc::now().with_timezone(&Chicago).date_naive())
     }
 
-    fn year_to(today: NaiveDate) -> Window {
+    pub(super) fn year_to(today: NaiveDate) -> Window {
         let from = today.checked_sub_days(Days::new(365)).unwrap_or(today);
         Window {
             from: from.format("%Y-%m-%d").to_string(),
@@ -308,6 +308,66 @@ pub(super) fn requests(
             _ => None,
         })
         .collect())
+}
+
+/// `planSlabEvidence` for one confirmed slab in its saved valuation group `group`: its Alt sales
+/// (and with `supply` Alt's unsold listings) when Alt knows the card, then its eBay sales (and
+/// unsold listings), each normalized, by key, once each.
+pub(super) fn planned(
+    identity: &Identity,
+    group: &str,
+    window: &Window,
+    supply: bool,
+) -> Result<Vec<(String, Request)>, String> {
+    let window = spec::Window {
+        from: window.from.clone(),
+        to: window.to.clone(),
+    }
+    .checked()
+    .map_err(|e| e.0)?;
+    let mut requests = Vec::new();
+    if let Some(asset) = &identity.provider_asset {
+        requests.push(Request::AltSales {
+            asset_id: asset.id.clone(),
+            window: window.clone(),
+            limit_per_grade: 16,
+        });
+        if supply {
+            requests.push(Request::AltSupply {
+                asset_id: asset.id.clone(),
+            });
+        }
+    }
+    let page = EbayPage {
+        group_key: group.to_owned(),
+        keywords: identity.keywords(),
+        window,
+        offset: 0,
+        limit: 50,
+        timezone: "America/Chicago".to_owned(),
+    };
+    requests.push(Request::EbaySales(page.clone()));
+    if supply {
+        requests.push(Request::EbaySupply(page));
+    }
+    let mut keyed: Vec<(String, Request)> = Vec::new();
+    for request in requests {
+        let request = request.normalized().map_err(|e| e.0)?;
+        let key = request.key().map_err(|e| e.0)?;
+        match keyed.iter_mut().find(|(k, _)| *k == key) {
+            Some(entry) => entry.1 = request,
+            None => keyed.push((key, request)),
+        }
+    }
+    Ok(keyed)
+}
+
+/// The window as an evidence request writes it.
+pub(super) fn to_spec_window(window: &Window) -> spec::Window {
+    spec::Window {
+        from: window.from.clone(),
+        to: window.to.clone(),
+    }
 }
 
 /// What to read for a slab: its Alt sales when Alt knows the card, and its eBay sales.

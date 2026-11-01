@@ -75,6 +75,7 @@ mod identity;
 mod inventory;
 mod inventory_import;
 mod maintenance;
+pub mod maintenance_cycle;
 mod outcomes;
 mod page;
 mod publication;

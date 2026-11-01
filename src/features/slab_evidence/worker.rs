@@ -5,9 +5,9 @@
 //!
 //! Node's worker refreshes the evidence until cutover: this one runs only when
 //! `SLAB_EVIDENCE_WORKER` is set, beside Node's, the two sharing the queue's claims and each
-//! provider's connection lease. Node's also runs the slab maintenance cycle when nothing is queued;
-//! that cycle is not ported. Node wakes its worker when a refresh is requested; this one looks
-//! again within 30 seconds.
+//! provider's connection lease. When nothing is due it runs a slab maintenance cycle
+//! (`slab_pricing::maintenance_cycle`), as Node's does. Node wakes its worker when a refresh is
+//! requested; this one looks again within 30 seconds.
 use std::{future::Future, time::Duration};
 
 use futures_util::FutureExt;
@@ -28,7 +28,10 @@ use super::{
 };
 use crate::{
     database::Database,
-    features::slab_connections::{ConnectionStatus as Status, DatabaseGate, Transport},
+    features::{
+        slab_connections::{ConnectionStatus as Status, DatabaseGate, Transport},
+        slab_pricing::maintenance_cycle,
+    },
 };
 
 /// How long one read may take.
@@ -204,6 +207,10 @@ pub async fn tick(
         if let Some(job) = store::claim(&mut conn).await? {
             wait = BUSY;
             run_job(&mut conn, provider, &job, stop).await?;
+        } else if let Some(cycle) = maintenance_cycle::run(&mut conn, chrono::Utc::now()).await?
+            && cycle.queued > 0
+        {
+            wait = BUSY;
         }
         if cleaned.is_none_or(|at| at.elapsed() > CLEAN_EVERY) {
             store::clean(&mut conn).await?;

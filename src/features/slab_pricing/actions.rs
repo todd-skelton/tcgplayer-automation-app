@@ -584,6 +584,7 @@ pub async fn calculate(
         revision_ids: &revisions,
         policy: &policy,
         seller: &seller,
+        replacing: None,
     };
     let as_of = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
     let calculated = match db.0.acquire().await {
