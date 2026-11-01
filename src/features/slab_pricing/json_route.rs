@@ -34,6 +34,7 @@ pub struct SlabRecommendations;
 pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
     let api = api.route::<SlabRecommendations>(get(show).post(act).with_state(shared.clone()));
     let api = super::inventory_route::routes(api, shared);
+    let api = super::evidence_route::routes(api, shared);
     super::comp_decisions_route::routes(api, shared)
 }
 

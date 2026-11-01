@@ -479,7 +479,7 @@ pub(super) async fn plan(
     .bind(id)
     .fetch_optional(&mut *conn)
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(super::refreshes::unable)?;
     let Some((saved, candidate, status, revision, saved_key)) = record
         .filter(|(.., saved_revision, _)| revision.is_none_or(|r| r == i64::from(*saved_revision)))
     else {
@@ -490,7 +490,7 @@ pub(super) async fn plan(
             .filter(|v| !v.is_null())
             .map(serde_json::from_value::<Identity>)
             .transpose()
-            .map_err(|e| e.to_string())
+            .map_err(super::refreshes::unable)
     };
     let source = match identity(saved)? {
         Some(owned) => Some(owned),

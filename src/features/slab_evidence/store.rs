@@ -70,6 +70,28 @@ pub struct Status {
     pub stale: bool,
 }
 
+impl Status {
+    /// As Node's routes answer it (`EvidenceStatus`), each time as JavaScript writes a date.
+    pub fn answered(&self) -> Value {
+        let at = |t: &Option<DateTime<Utc>>| {
+            t.map(|t| t.to_rfc3339_opts(chrono::SecondsFormat::Millis, true))
+        };
+        json!({
+            "key": self.key,
+            "spec": self.spec,
+            "state": self.state,
+            "runId": self.run_id,
+            "latestRevision": self.latest_revision,
+            "fetchedAt": at(&self.fetched_at),
+            "expiresAt": at(&self.expires_at),
+            "errorCode": self.error_code,
+            "attempts": self.attempts,
+            "durationMs": self.duration_ms,
+            "stale": self.stale,
+        })
+    }
+}
+
 #[derive(sqlx::FromRow)]
 struct StatusRow {
     key: String,

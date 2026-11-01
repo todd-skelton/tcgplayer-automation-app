@@ -72,6 +72,7 @@ mod comp_decisions_route;
 mod comp_events;
 mod comps;
 mod dry_run;
+mod evidence_route;
 pub(crate) mod identity;
 mod inventory;
 mod inventory_import;

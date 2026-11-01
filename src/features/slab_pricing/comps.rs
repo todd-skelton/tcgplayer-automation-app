@@ -155,7 +155,7 @@ pub(super) async fn saved(conn: &mut PgConnection, id: &str) -> Result<Option<Sa
     if !is_revision_id(id) {
         return Err("Provide an evidence revision.".to_owned());
     }
-    let failed = |e: sqlx::Error| e.to_string();
+    let failed = super::refreshes::unable;
     type Record = (String, String, Value, DateTime<Utc>, Option<String>);
     let row: Option<Record> = sqlx::query_as(
         "SELECT id::text, key, payload, fetched_at, supply_scan_id::text FROM slab_evidence_revisions WHERE id = $1::uuid",
