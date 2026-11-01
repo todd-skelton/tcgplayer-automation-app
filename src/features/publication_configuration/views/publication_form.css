@@ -1,21 +1,29 @@
-.switch {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+.publication-form {
+  display: grid;
+  gap: var(--space-4);
+  /* The grid's gap spaces its parts, so none keeps a margin of its own. */
+  & > * {
+    margin: 0;
+  }
 }
 .sources {
   display: grid;
   gap: var(--space-2);
   margin: 0;
-  padding: 0 0 0 var(--space-5);
+  padding: 0;
   border: 0;
+  & legend {
+    margin-bottom: var(--space-2);
+    color: var(--muted-foreground);
+    font-size: var(--font-size-sm);
+  }
 }
 .numbers {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-4);
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
 }
-.panel-body {
+.warnings {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-1);
 }

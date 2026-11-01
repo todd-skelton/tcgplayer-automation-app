@@ -4,59 +4,33 @@
   & h1 {
     margin-bottom: var(--space-1);
   }
-  & p {
+  & header p {
     margin: 0;
   }
 }
 .costs {
-  & h2 {
-    margin: 0 0 var(--space-2);
-    font-size: var(--font-size-lg);
-  }
-  & ul {
-    display: grid;
-    gap: var(--space-2);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-sm);
   & li {
     padding-bottom: var(--space-2);
     border-bottom: 1px solid var(--border);
-    font-size: var(--font-size-sm);
   }
   & small {
     display: block;
     color: var(--muted-foreground);
   }
 }
-.scroll {
-  overflow-x: auto;
-}
-.orders {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--font-size-sm);
-  & th,
-  & td {
-    padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--border);
-    text-align: start;
-    vertical-align: top;
-  }
-  & thead th {
-    font-weight: 700;
-  }
-  & tbody th {
-    font-weight: 400;
-    white-space: nowrap;
-  }
-}
+/* An amount's column reads from its end. The kit table aligns every cell left and keeps it on one
+   line, so these outrank it (corten#559). */
 .end {
   text-align: end !important;
-  white-space: nowrap;
 }
 .coverage {
   min-width: 320px;
+  white-space: normal !important;
   color: var(--muted-foreground);
 }

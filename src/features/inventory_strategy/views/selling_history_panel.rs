@@ -5,7 +5,7 @@ use corten::{
 
 use super::{
     format::{count, days, fixed, instant, words},
-    strategy_screen::{Chip, Mood, Stat},
+    strategy_screen::Stat,
 };
 use crate::{
     features::inventory_strategy::{
@@ -20,6 +20,7 @@ use crate::{
     text::Msg,
     theme::*,
     ui::alert::{Alert, AlertVariant},
+    ui::badge::{Badge, BadgeVariant},
 };
 
 /// "1 unit", "1,234 units".
@@ -74,16 +75,15 @@ pub fn SellingHistoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         "Selling history is unavailable: "{reason_words(report.reason)}"."
                     </p>
                     <div>
-                        <Chip
-                            mood={Mood::Caution}
-                            label={&format!("Order history: {}", words(&report.order_coverage.status))}
-                        />
+                        <Badge variant={BadgeVariant::Warning}>
+                            {&format!("Order history: {}", words(&report.order_coverage.status))}
+                        </Badge>
                     </div>
                 }
                 Ok(Report::Ready(report)) => {
                     <div class={Title}>
                         <h2 id="selling-history">"Selling history"</h2>
-                        <Chip mood={Mood::Good} label="Observed listing exposure" />
+                        <Badge variant={BadgeVariant::Success}>"Observed listing exposure"</Badge>
                     </div>
                     <ScopeControls scope={&report.scope} lines={&report.available_product_lines} />
                     <p class={muted()}>

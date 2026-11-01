@@ -439,13 +439,8 @@ mod tests {
             errors: &Errors::new(),
         }
         .to_html();
-        let labels = html.matches("<label for=\"").count();
-        assert_eq!(labels, 6 + 6 * Domain::ALL.len(), "{html}");
-        for (at, _) in html.match_indices("<label for=\"") {
-            let id = &html[at + 12..];
-            let id = &id[..id.find('"').unwrap()];
-            assert_eq!(html.matches(&format!(" id=\"{id}\"")).count(), 1, "{id}");
-        }
+        let labels = crate::ui::assert_labels_name_their_controls(&html);
+        assert_eq!(labels, 6 + 6 * Domain::ALL.len());
         assert!(html.contains("role=\"switch\""));
         assert!(html.contains("command=\"show-modal\""));
         assert!(!html.contains("data-primary"));

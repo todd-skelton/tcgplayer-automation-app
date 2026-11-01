@@ -2,7 +2,7 @@ use corten::prelude::*;
 
 use super::{
     format::{age, count, coverage, days_delta, delta_dollars, dollars, fixed, per_day},
-    strategy_screen::{Chip, Mood, Stat},
+    strategy_screen::Stat,
 };
 use crate::{
     features::inventory_strategy::{
@@ -13,6 +13,7 @@ use crate::{
     },
     text::Msg,
     theme::*,
+    ui::badge::{Badge, BadgeVariant},
 };
 
 /// The active policy, and how many product lines price at a hurdle of their own.
@@ -138,7 +139,7 @@ pub fn VerdictPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
         <section class={panel()} aria-label="Active policy">
             <div class={Title}>
                 <h2>{policy_label(screen)}</h2>
-                <Chip mood={Mood::Good} label="Active" />
+                <Badge variant={BadgeVariant::Success}>"Active"</Badge>
             </div>
             <p class={muted()}>
                 "Modeled returns assume net proceeds are reinvested after the capital turnaround below; they are directional, not observed growth."

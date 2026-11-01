@@ -151,24 +151,6 @@ pub fn Stat<'a>(label: &'a str, value: &'a str, detail: &'a str) -> impl Render 
     }
 }
 
-/// How a [`Chip`] reads.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Mood {
-    Good,
-    Caution,
-}
-
-/// A short status beside a heading.
-#[component(css = StrategyScreen)]
-pub fn Chip<'a>(mood: Mood, label: &'a str) -> impl Render {
-    html! {
-        match mood {
-            Mood::Good => <span class={(Chip, Good)}>{label}</span>,
-            Mood::Caution => <span class={(Chip, Caution)}>{label}</span>,
-        }
-    }
-}
-
 /// What to change, once per performance window: the levers read the window shown.
 #[component(css = StrategyScreen)]
 fn LeversPanels<'a>(screen: &'a Screen, t: Msg) -> impl Render {

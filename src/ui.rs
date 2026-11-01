@@ -63,3 +63,23 @@ pub const COMPONENTS: &[Component] = &[
     textarea::Textarea,
     toasts::Toasts,
 ];
+
+/// Asserts each `<label for>` in `html` names exactly one element's id: a kit `Field` is given its
+/// control's id apart from the control, so a page's test checks the two agree. Returns the count.
+#[cfg(test)]
+pub fn assert_labels_name_their_controls(html: &str) -> usize {
+    let starts: Vec<usize> = html
+        .match_indices("<label for=\"")
+        .map(|(at, _)| at + 12)
+        .collect();
+    for at in &starts {
+        let id = &html[*at..];
+        let id = &id[..id.find('"').unwrap()];
+        assert_eq!(
+            html.matches(&format!(" id=\"{id}\"")).count(),
+            1,
+            "label for {id}: {html}"
+        );
+    }
+    starts.len()
+}

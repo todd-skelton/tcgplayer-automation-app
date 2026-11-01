@@ -5,7 +5,7 @@ use super::{
     format::{
         cents, count, days, dollars, fixed, per_day, percent, percent_per_day, signed_dollars,
     },
-    strategy_screen::{Chip, Mood, Stat},
+    strategy_screen::Stat,
 };
 use crate::{
     features::inventory_strategy::{
@@ -18,6 +18,7 @@ use crate::{
     text::Msg,
     theme::*,
     ui::alert::{Alert, AlertVariant},
+    ui::badge::{Badge, BadgeVariant},
 };
 
 #[derive(Id)]
@@ -78,14 +79,15 @@ pub fn PerformancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 for (window, shown) in windows.iter().filter_map(|w| Some((w, RealizedWindow::of(w.window_days)?))) {
                     if let Some(rate) = window.overall.daily_return_percent {
                         <ShownFor choice={&choice} values={&[shown]}>
-                            <Chip
-                                mood={if rate >= hurdle * 100.0 { Mood::Good } else { Mood::Caution }}
-                                label={&format!(
-                                    "{} on capital \u{b7} hurdle {}",
-                                    percent_per_day(Some(rate), ""),
-                                    format_hurdle(hurdle)
-                                )}
-                            />
+                            <Badge
+                                variant={if rate >= hurdle * 100.0 { BadgeVariant::Success } else { BadgeVariant::Warning }}
+                            >
+                                {&format!(
+                                        "{} on capital \u{b7} hurdle {}",
+                                        percent_per_day(Some(rate), ""),
+                                        format_hurdle(hurdle)
+                                    )}
+                            </Badge>
                         </ShownFor>
                     }
                 }

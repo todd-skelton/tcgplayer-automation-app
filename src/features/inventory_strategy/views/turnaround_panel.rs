@@ -2,7 +2,7 @@ use corten::{i18n::DateStyle, prelude::*};
 
 use super::{
     format::{cents, days, fixed, instant},
-    strategy_screen::{Chip, Mood, Stat},
+    strategy_screen::Stat,
 };
 use crate::{
     features::inventory_strategy::{
@@ -16,6 +16,7 @@ use crate::{
     text::Msg,
     theme::*,
     ui::alert::{Alert, AlertVariant},
+    ui::badge::{Badge, BadgeVariant},
 };
 
 /// The turnaround form's id: an answer that refuses it replaces it.
@@ -57,14 +58,15 @@ pub fn TurnaroundPanel<'a>(
         <section class={panel()} aria-labelledby="capital-turnaround">
             <div class={Title}>
                 <h2 id="capital-turnaround">"Capital turnaround"</h2>
-                <Chip
-                    mood={if selection.effective_source == EffectiveSource::ManualFallback { Mood::Caution } else { Mood::Good }}
-                    label={&format!(
-                        "Using {} days \u{b7} {}",
-                        fixed(selection.effective_days, 1),
-                        source_words(selection.effective_source)
-                    )}
-                />
+                <Badge
+                    variant={if selection.effective_source == EffectiveSource::ManualFallback { BadgeVariant::Warning } else { BadgeVariant::Success }}
+                >
+                    {&format!(
+                            "Using {} days \u{b7} {}",
+                            fixed(selection.effective_days, 1),
+                            source_words(selection.effective_source)
+                        )}
+                </Badge>
             </div>
             <p class={muted()}>
                 "Days from a sale until its proceeds are back on sale as replacement inventory, estimated from the last 90 days of completed cycles."

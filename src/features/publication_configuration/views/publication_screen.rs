@@ -6,14 +6,24 @@ use crate::{
         form::SettingsInput,
         url,
     },
-    layout::LabeledControl,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
+        card::{Card, CardContent, CardHeader},
+        checkbox::Checkbox,
+        field::Field,
+        input::Input,
+        switch::Switch,
+    },
 };
 
 /// The settings form's id: an answer that refuses it replaces it.
 #[derive(Id)]
 pub struct PublicationFormId;
+
+#[derive(Id)]
+struct WarningsHintId;
 
 /// The screen: what the last post did, and the form. It shares the form's stylesheet.
 #[component(css = PublicationForm)]
@@ -33,8 +43,8 @@ pub fn PublicationScreen<'a>(
     }
 }
 
-/// The publisher's state and the settings. Resume is a button of the same form that posts to its
-/// own route, which saves nothing.
+/// The publisher's state and the settings, one card each. Resume is a button of the same form
+/// that posts to its own route, which saves nothing.
 #[component(css)]
 pub fn PublicationForm<'a>(
     input: &'a SettingsInput,
@@ -54,127 +64,197 @@ pub fn PublicationForm<'a>(
     html! {
         <form
             id={PublicationFormId}
+            class={PublicationForm}
             method="post"
             action={url::PublicationSettings}
             data-patch
         >
             {errors.form_message()}
-            <section class={(panel(), mb_4())}>
-                <div class={PanelBody}>
-                    <h2>"Runtime safety"</h2>
+            <Card>
+                <CardHeader><h2>"Runtime safety"</h2></CardHeader>
+                <CardContent>
                     if runtime.needs_resume() {
-                        <Alert variant={AlertVariant::Warning}>{state}</Alert>
+                        <Alert variant={AlertVariant::Warning}><p>{state}</p></Alert>
                     } else if runtime.authentication == Authentication::Healthy {
-                        <Alert variant={AlertVariant::Success}>{state}</Alert>
+                        <Alert variant={AlertVariant::Success}><p>{state}</p></Alert>
                     } else {
-                        <Alert variant={AlertVariant::Info}>{state}</Alert>
+                        <Alert variant={AlertVariant::Info}><p>{state}</p></Alert>
                     }
-                    <label class={Switch}>
-                        <input type="checkbox" name={f.global_paused} checked={input.global_paused}>
-                        "Global publication pause"
-                    </label>
-                    if runtime.needs_resume() {
-                        <div>
-                            <button formaction={url::ResumePublication}>
-                                "Resume after authentication is refreshed"
-                            </button>
-                        </div>
-                    }
-                </div>
-            </section>
-            <section class={(panel(), mb_4())}>
-                <div class={PanelBody}>
-                    <h2>"Automatic publication"</h2>
-                    <label class={Switch}>
+                    <Switch label="Global publication pause">
                         <input
                             type="checkbox"
+                            role="switch"
+                            name={f.global_paused}
+                            checked={input.global_paused}
+                        >
+                    </Switch>
+                    if runtime.needs_resume() {
+                        <div>
+                            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                                <button formaction={url::ResumePublication}>
+                                    "Resume after authentication is refreshed"
+                                </button>
+                            </Button>
+                        </div>
+                    }
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader><h2>"Automatic publication"</h2></CardHeader>
+                <CardContent>
+                    <Switch label="Enable automatic publication globally">
+                        <input
+                            type="checkbox"
+                            role="switch"
                             name={f.automatic_publishing_enabled}
                             checked={input.automatic_publishing_enabled}
                         >
-                        "Enable automatic publication globally"
-                    </label>
+                    </Switch>
                     <fieldset class={Sources}>
-                        <legend class={muted()}>"Sources that publish automatically"</legend>
+                        <legend>"Sources that publish automatically"</legend>
                         for source in Source::ALL {
-                            <label class={Switch}>
+                            <Checkbox label={source.label()}>
                                 <input
                                     type="checkbox"
                                     name={f.automatic_sources}
                                     value={source}
                                     checked={input.automatic_sources.contains(&source)}
                                 >
-                                {source.label()}
-                            </label>
+                            </Checkbox>
                         }
                     </fieldset>
-                </div>
-            </section>
-            <section class={(panel(), mb_4())}>
-                <div class={PanelBody}>
-                    <h2>"Guardrails"</h2>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader><h2>"Guardrails"</h2></CardHeader>
+                <CardContent>
                     <div class={Numbers}>
-                        <LabeledControl label="Failure limit" hint="">
-                            <input
-                                type="number"
-                                min="1"
-                                max="100"
-                                name={f.consecutive_failure_limit}
-                                value={&input.consecutive_failure_limit}
-                                {..e.aria(f.consecutive_failure_limit)}
-                            >
-                            {e.message(f.consecutive_failure_limit)}
-                        </LabeledControl>
-                        <LabeledControl label="Minimum price change ($)" hint="">
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                name={f.minimum_absolute_price_change}
-                                value={&input.minimum_absolute_price_change}
-                                {..e.aria(f.minimum_absolute_price_change)}
-                            >
-                            {e.message(f.minimum_absolute_price_change)}
-                        </LabeledControl>
-                        <LabeledControl label="Candidate maximum age (minutes)" hint="">
-                            <input
-                                type="number"
-                                min="1"
-                                max="10080"
-                                name={f.maximum_candidate_age_minutes}
-                                value={&input.maximum_candidate_age_minutes}
-                                {..e.aria(f.maximum_candidate_age_minutes)}
-                            >
-                            {e.message(f.maximum_candidate_age_minutes)}
-                        </LabeledControl>
-                        <LabeledControl label="Staged micro-batch maximum" hint="">
-                            <input
-                                type="number"
-                                min="1"
-                                max="750"
-                                name={f.staged_micro_batch_maximum}
-                                value={&input.staged_micro_batch_maximum}
-                                {..e.aria(f.staged_micro_batch_maximum)}
-                            >
-                            {e.message(f.staged_micro_batch_maximum)}
-                        </LabeledControl>
-                    </div>
-                    <label class={Switch}>
-                        <input
-                            type="checkbox"
-                            name={f.allow_warnings}
-                            checked={input.allow_warnings}
+                        <Field
+                            id="failure-limit"
+                            label="Failure limit"
+                            note={e.message(f.consecutive_failure_limit)}
                         >
-                        "Allow pricing warnings to publish automatically"
-                    </label>
-                    <small class={muted()}>
-                        "When off, a warned price still publishes if it was forecast from the curve, anchored by a market price, and profitable. Fallback and reference prices wait for review."
-                    </small>
-                </div>
-            </section>
+                            <Input>
+                                <input
+                                    id="failure-limit"
+                                    type="number"
+                                    min="1"
+                                    max="100"
+                                    name={f.consecutive_failure_limit}
+                                    value={&input.consecutive_failure_limit}
+                                    {..e.aria(f.consecutive_failure_limit)}
+                                >
+                            </Input>
+                        </Field>
+                        <Field
+                            id="minimum-price-change"
+                            label="Minimum price change ($)"
+                            note={e.message(f.minimum_absolute_price_change)}
+                        >
+                            <Input>
+                                <input
+                                    id="minimum-price-change"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    name={f.minimum_absolute_price_change}
+                                    value={&input.minimum_absolute_price_change}
+                                    {..e.aria(f.minimum_absolute_price_change)}
+                                >
+                            </Input>
+                        </Field>
+                        <Field
+                            id="candidate-maximum-age"
+                            label="Candidate maximum age (minutes)"
+                            note={e.message(f.maximum_candidate_age_minutes)}
+                        >
+                            <Input>
+                                <input
+                                    id="candidate-maximum-age"
+                                    type="number"
+                                    min="1"
+                                    max="10080"
+                                    name={f.maximum_candidate_age_minutes}
+                                    value={&input.maximum_candidate_age_minutes}
+                                    {..e.aria(f.maximum_candidate_age_minutes)}
+                                >
+                            </Input>
+                        </Field>
+                        <Field
+                            id="staged-micro-batch-maximum"
+                            label="Staged micro-batch maximum"
+                            note={e.message(f.staged_micro_batch_maximum)}
+                        >
+                            <Input>
+                                <input
+                                    id="staged-micro-batch-maximum"
+                                    type="number"
+                                    min="1"
+                                    max="750"
+                                    name={f.staged_micro_batch_maximum}
+                                    value={&input.staged_micro_batch_maximum}
+                                    {..e.aria(f.staged_micro_batch_maximum)}
+                                >
+                            </Input>
+                        </Field>
+                    </div>
+                    <div class={Warnings}>
+                        <Switch label="Allow pricing warnings to publish automatically">
+                            <input
+                                type="checkbox"
+                                role="switch"
+                                name={f.allow_warnings}
+                                checked={input.allow_warnings}
+                                aria-describedby={WarningsHintId}
+                            >
+                        </Switch>
+                        <small id={WarningsHintId} class={muted()}>
+                            "When off, a warned price still publishes if it was forecast from the curve, anchored by a market price, and profitable. Fallback and reference prices wait for review."
+                        </small>
+                    </div>
+                </CardContent>
+            </Card>
             <Alert variant={AlertVariant::Warning}>
-                "Quantity values are additive in staged imports. CSV quantity deltas are always excluded from automatic publication. Once an inventory delta is planned, it cannot be recreated under another pricing candidate."
+                <p>
+                    "Quantity values are additive in staged imports. CSV quantity deltas are always excluded from automatic publication. Once an inventory delta is planned, it cannot be recreated under another pricing candidate."
+                </p>
             </Alert>
-            <button data-primary>"Save publication settings"</button>
+            <div>
+                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                    <button>"Save publication settings"</button>
+                </Button>
+            </div>
         </form>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::features::publication_configuration::config::Settings;
+
+    /// The settings are drawn with the design system's parts, each label naming its control, and
+    /// the resume button shows only while the publisher waits for it.
+    #[test]
+    fn the_settings_are_drawn_with_the_design_system() {
+        let input = SettingsInput::of(&Settings::default());
+        for (circuit_open, resumes) in [(false, 0), (true, 1)] {
+            let runtime = Runtime {
+                authentication: Authentication::Healthy,
+                circuit_open,
+                consecutive_failures: 0,
+                pause_reason: None,
+            };
+            let html = PublicationScreen {
+                input: &input,
+                runtime: &runtime,
+                errors: &Errors::new(),
+            }
+            .to_html();
+            assert_eq!(crate::ui::assert_labels_name_their_controls(&html), 4);
+            assert_eq!(html.matches("role=\"switch\"").count(), 3);
+            assert_eq!(html.matches("Resume after authentication").count(), resumes);
+            assert!(!html.contains("data-primary"));
+        }
     }
 }

@@ -42,20 +42,6 @@
 .grow {
   flex-grow: 1;
 }
-.chip {
-  display: inline-block;
-  padding: 1px var(--space-2);
-  border: 1px solid currentColor;
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-xs);
-  white-space: nowrap;
-}
-.good {
-  color: var(--success);
-}
-.caution {
-  color: var(--warning);
-}
 .warn {
   color: var(--warning);
 }
