@@ -75,20 +75,6 @@
 .row {
   align-items: center;
 }
-.chip {
-  padding: 0 var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-sm);
-}
-.fresh {
-  border-color: var(--success);
-  color: var(--success);
-}
-.stale {
-  border-color: var(--warning);
-  color: var(--warning);
-}
 .seller-panels {
   gap: var(--space-4);
 }

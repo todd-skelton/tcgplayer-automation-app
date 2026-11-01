@@ -23,6 +23,7 @@ use crate::{
     ui::{
         badge::{Badge, BadgeVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        select::Select,
         table::Table,
     },
 };
@@ -124,25 +125,31 @@ fn ScopeControls<'a>(scope: &'a Scope, lines: &'a [String]) -> impl Render {
                 <div class={Line}>
                     <label class={Choice}>
                         <span>"History window"</span>
-                        <select name={f.history_days}>
-                            for window in Window::ALL {
-                                <option
-                                    value={window}
-                                    selected={window.days() == scope.window_days}
-                                >
-                                    "Last "{window.days()}" days"
-                                </option>
-                            }
-                        </select>
+                        <Select>
+                            <select name={f.history_days}>
+                                for window in Window::ALL {
+                                    <option
+                                        value={window}
+                                        selected={window.days() == scope.window_days}
+                                    >
+                                        "Last "{window.days()}" days"
+                                    </option>
+                                }
+                            </select>
+                        </Select>
                     </label>
                     <label class={Choice}>
                         <span>"Product line"</span>
-                        <select name={f.history_product_line}>
-                            <option value="" selected={line.is_empty()}>"All product lines"</option>
-                            for name in lines {
-                                <option value={name} selected={name == line}>{name}</option>
-                            }
-                        </select>
+                        <Select>
+                            <select name={f.history_product_line}>
+                                <option value="" selected={line.is_empty()}>
+                                    "All product lines"
+                                </option>
+                                for name in lines {
+                                    <option value={name} selected={name == line}>{name}</option>
+                                }
+                            </select>
+                        </Select>
                     </label>
                     <noscript>
                         <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>

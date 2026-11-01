@@ -14,7 +14,9 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
+        badge::{Badge, BadgeVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        input::Input,
     },
 };
 
@@ -132,7 +134,7 @@ fn RunItem<'a>(run: &'a Run, selection: &'a Selection, errors: Option<&'a Errors
                 <a href={BatchPricer::batch(run.batch_number)}>
                     "Batch "{run.batch_number}
                 </a>
-                <span class={Chip}>{run.status().word()}</span>
+                <Badge variant={BadgeVariant::Outline}>{run.status().word()}</Badge>
                 <span class={muted()}>
                     match run.workflow {
                         Workflow::Publish => "Publish when ready",
@@ -162,24 +164,28 @@ fn RunItem<'a>(run: &'a Run, selection: &'a Selection, errors: Option<&'a Errors
                         {errors.form_message()}
                         <label>
                             "Percent of market"
-                            <input
-                                name={f.market_percent}
-                                value={rate.market_percent()}
-                                inputmode="decimal"
-                                required
-                                {..e.aria(f.market_percent)}
-                            >
+                            <Input>
+                                <input
+                                    name={f.market_percent}
+                                    value={rate.market_percent()}
+                                    inputmode="decimal"
+                                    required
+                                    {..e.aria(f.market_percent)}
+                                >
+                            </Input>
                             {e.message(f.market_percent)}
                         </label>
                         <label>
                             "Less per card ($)"
-                            <input
-                                name={f.per_card_deduction}
-                                value={rate.per_card_deduction()}
-                                inputmode="decimal"
-                                required
-                                {..e.aria(f.per_card_deduction)}
-                            >
+                            <Input>
+                                <input
+                                    name={f.per_card_deduction}
+                                    value={rate.per_card_deduction()}
+                                    inputmode="decimal"
+                                    required
+                                    {..e.aria(f.per_card_deduction)}
+                                >
+                            </Input>
                             {e.message(f.per_card_deduction)}
                         </label>
                         <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>

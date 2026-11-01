@@ -23,7 +23,10 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
+        badge::{Badge, BadgeVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        input::Input,
+        select::Select,
     },
 };
 
@@ -58,22 +61,28 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
                     }),
                     html! {
                     <LabeledControl label="Research grade" hint="">
-                        <select name={f.grade}>
-                            <option value="owned" selected={grade == "owned"}>
-                                "Owned "{&record.grader}" "{owned}
-                            </option>
-                            if record.grader == "PSA" {
-                                for n in PSA_GRADES {
-                                    <option value={n} selected={grade == n}>"Explore PSA "{n}</option>
+                        <Select>
+                            <select name={f.grade}>
+                                <option value="owned" selected={grade == "owned"}>
+                                    "Owned "{&record.grader}" "{owned}
+                                </option>
+                                if record.grader == "PSA" {
+                                    for n in PSA_GRADES {
+                                        <option value={n} selected={grade == n}>"Explore PSA "{n}</option>
+                                    }
                                 }
-                            }
-                        </select>
+                            </select>
+                        </Select>
                     </LabeledControl>
                     <LabeledControl label="Sales from" hint="">
-                        <input type="date" name={f.from} value={&window.from} required>
+                        <Input>
+                            <input type="date" name={f.from} value={&window.from} required>
+                        </Input>
                     </LabeledControl>
                     <LabeledControl label="Sales through" hint="">
-                        <input type="date" name={f.to} value={&window.to} required>
+                        <Input>
+                            <input type="date" name={f.to} value={&window.to} required>
+                        </Input>
                     </LabeledControl>
                     <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
                         <button>"Show evidence"</button>
@@ -157,11 +166,11 @@ fn EvidenceRow<'a>(status: &'a EvidenceStatus, choice: &'a Choice, t: Msg) -> im
     html! {
         <div class={(Line, Row)}>
             <strong>{words(&status.spec.kind)}</strong>
-            <span class={Chip}>{words(&status.state)}</span>
+            <Badge variant={BadgeVariant::Outline}>{words(&status.state)}</Badge>
             if status.stale {
-                <span class={(Chip, Stale)}>"Stale or not fetched"</span>
+                <Badge variant={BadgeVariant::Warning}>"Stale or not fetched"</Badge>
             } else {
-                <span class={(Chip, Fresh)}>"Fresh"</span>
+                <Badge variant={BadgeVariant::Success}>"Fresh"</Badge>
             }
             <span class={muted()}>
                 match fetched {

@@ -9,7 +9,10 @@ use crate::{
         url::{self, Selection},
     },
     theme::*,
-    ui::button::{Button, ButtonSize, ButtonVariant},
+    ui::{
+        button::{Button, ButtonSize, ButtonVariant},
+        input::Input,
+    },
 };
 
 #[derive(Id)]
@@ -165,24 +168,28 @@ pub fn QueueForm<'a>(
                         <div class={(RateFields, row(Space::_3))}>
                             <label>
                                 "Percent of market"
-                                <input
-                                    name={f.market_percent}
-                                    value={&input.market_percent}
-                                    inputmode="decimal"
-                                    pattern="\\d+(\\.\\d{1,2})?"
-                                    {..e.aria(f.market_percent)}
-                                >
+                                <Input>
+                                    <input
+                                        name={f.market_percent}
+                                        value={&input.market_percent}
+                                        inputmode="decimal"
+                                        pattern="\\d+(\\.\\d{1,2})?"
+                                        {..e.aria(f.market_percent)}
+                                    >
+                                </Input>
                                 {e.message(f.market_percent)}
                             </label>
                             <label>
                                 "Less per card ($)"
-                                <input
-                                    name={f.per_card_deduction}
-                                    value={&input.per_card_deduction}
-                                    inputmode="decimal"
-                                    pattern="\\d+(\\.\\d{1,2})?"
-                                    {..e.aria(f.per_card_deduction)}
-                                >
+                                <Input>
+                                    <input
+                                        name={f.per_card_deduction}
+                                        value={&input.per_card_deduction}
+                                        inputmode="decimal"
+                                        pattern="\\d+(\\.\\d{1,2})?"
+                                        {..e.aria(f.per_card_deduction)}
+                                    >
+                                </Input>
                                 {e.message(f.per_card_deduction)}
                             </label>
                             <p class={muted()}>
@@ -194,21 +201,25 @@ pub fn QueueForm<'a>(
                         <div class={(PurchaseFields, row(Space::_3))}>
                             <label>
                                 "Purchase reference"
-                                <input
-                                    name={f.purchase_reference}
-                                    value={&input.purchase_reference}
-                                    {..e.aria(f.purchase_reference)}
-                                >
+                                <Input>
+                                    <input
+                                        name={f.purchase_reference}
+                                        value={&input.purchase_reference}
+                                        {..e.aria(f.purchase_reference)}
+                                    >
+                                </Input>
                                 {e.message(f.purchase_reference)}
                             </label>
                             <label>
                                 "Purchase total (USD)"
-                                <input
-                                    name={f.purchase_total}
-                                    value={&input.purchase_total}
-                                    inputmode="decimal"
-                                    {..e.aria(f.purchase_total)}
-                                >
+                                <Input>
+                                    <input
+                                        name={f.purchase_total}
+                                        value={&input.purchase_total}
+                                        inputmode="decimal"
+                                        {..e.aria(f.purchase_total)}
+                                    >
+                                </Input>
                                 {e.message(f.purchase_total)}
                             </label>
                         </div>
@@ -216,7 +227,13 @@ pub fn QueueForm<'a>(
                     <div class={(PurchaseFields, row(Space::_3))}>
                         <label>
                             "Purchase date"
-                            <input type="date" name={f.purchase_date} value={&input.purchase_date}>
+                            <Input>
+                                <input
+                                    type="date"
+                                    name={f.purchase_date}
+                                    value={&input.purchase_date}
+                                >
+                            </Input>
                         </label>
                         <label class={Choice}>
                             <input

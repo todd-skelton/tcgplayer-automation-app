@@ -22,6 +22,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        select::Select,
         table::Table,
     },
 };
@@ -100,16 +101,18 @@ fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
                         }),
                         html! {
                         <LabeledControl label="Supply source" hint="">
-                            <select name={f.source}>
-                                for status in &supply.statuses {
-                                    <option
-                                        value={&status.key}
-                                        selected={supply.selected_key.as_deref() == Some(status.key.as_str())}
-                                    >
-                                        {source_name(status)}" · "{words(&status.state)}
-                                    </option>
-                                }
-                            </select>
+                            <Select>
+                                <select name={f.source}>
+                                    for status in &supply.statuses {
+                                        <option
+                                            value={&status.key}
+                                            selected={supply.selected_key.as_deref() == Some(status.key.as_str())}
+                                        >
+                                            {source_name(status)}" · "{words(&status.state)}
+                                        </option>
+                                    }
+                                </select>
+                            </Select>
                         </LabeledControl>
                         <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
                             <button>"Show source"</button>

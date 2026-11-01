@@ -61,19 +61,6 @@
 .below {
   color: var(--destructive, crimson);
 }
-.chip {
-  padding: 0 var(--space-2);
-  border-radius: 999px;
-  background: var(--border);
-  font-size: var(--font-size-sm);
-}
-.due {
-  background: color-mix(in srgb, orange 30%, transparent);
-}
-.outlined {
-  background: none;
-  border: 1px solid var(--border);
-}
 .sku-card {
   display: grid;
   gap: var(--space-2);

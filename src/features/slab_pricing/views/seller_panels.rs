@@ -23,6 +23,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        input::Input,
     },
 };
 
@@ -100,37 +101,43 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                             "Include active supply"
                         </label>
                         <LabeledControl label="Refresh interval (minutes)" hint="">
-                            <input
-                                type="number"
-                                name={f.interval_minutes}
-                                value={view.settings.interval_minutes}
-                                min="15"
-                                max="1440"
-                                step="1"
-                                required
-                            >
+                            <Input>
+                                <input
+                                    type="number"
+                                    name={f.interval_minutes}
+                                    value={view.settings.interval_minutes}
+                                    min="15"
+                                    max="1440"
+                                    step="1"
+                                    required
+                                >
+                            </Input>
                         </LabeledControl>
                         <LabeledControl label="Listings per cycle" hint="">
-                            <input
-                                type="number"
-                                name={f.batch_size}
-                                value={view.settings.batch_size}
-                                min="1"
-                                max="25"
-                                step="1"
-                                required
-                            >
+                            <Input>
+                                <input
+                                    type="number"
+                                    name={f.batch_size}
+                                    value={view.settings.batch_size}
+                                    min="1"
+                                    max="25"
+                                    step="1"
+                                    required
+                                >
+                            </Input>
                         </LabeledControl>
                         <LabeledControl label="Refresh jobs per cycle" hint="">
-                            <input
-                                type="number"
-                                name={f.refresh_budget}
-                                value={view.settings.refresh_budget}
-                                min="1"
-                                max="50"
-                                step="1"
-                                required
-                            >
+                            <Input>
+                                <input
+                                    type="number"
+                                    name={f.refresh_budget}
+                                    value={view.settings.refresh_budget}
+                                    min="1"
+                                    max="50"
+                                    step="1"
+                                    required
+                                >
+                            </Input>
                         </LabeledControl>
                     </div>
                     <div class={Line}>
@@ -257,7 +264,9 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
                     &url::SlabPricing::at(choice),
                     html! {
                     <LabeledControl label="Outcome listing item ID" hint="">
-                        <input name={f.item} value={choice.item.as_deref().unwrap_or("")} required>
+                        <Input>
+                            <input name={f.item} value={choice.item.as_deref().unwrap_or("")} required>
+                        </Input>
                     </LabeledControl>
                     <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
                         <button>"Read saved outcomes"</button>

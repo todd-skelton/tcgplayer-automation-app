@@ -21,6 +21,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        select::Select,
     },
 };
 
@@ -112,16 +113,18 @@ fn PrepareForm<'a>(
                 <input type="hidden" name={f.reviewed_at} value={&reviewed.reviewed_at}>
             }
             <LabeledControl label="Price to review" hint="">
-                <select name={f.selection}>
-                    <option value="calculated" selected={reviewed.is_none()}>
-                        "Calculated ask · "{calculated}
-                    </option>
-                    if let Some(reviewed) = reviewed {
-                        <option value="reviewed" selected>
-                            "Reviewed ask · "{amount(Some(reviewed.item_price))}
+                <Select>
+                    <select name={f.selection}>
+                        <option value="calculated" selected={reviewed.is_none()}>
+                            "Calculated ask · "{calculated}
                         </option>
-                    }
-                </select>
+                        if let Some(reviewed) = reviewed {
+                            <option value="reviewed" selected>
+                                "Reviewed ask · "{amount(Some(reviewed.item_price))}
+                            </option>
+                        }
+                    </select>
+                </Select>
             </LabeledControl>
             <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
                 <button disabled={stale}>"Save price-change preview"</button>

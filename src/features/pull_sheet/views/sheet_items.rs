@@ -9,7 +9,10 @@ use crate::{
     },
     text::Msg,
     theme::*,
-    ui::button::{Button, ButtonSize, ButtonVariant},
+    ui::{
+        button::{Button, ButtonSize, ButtonVariant},
+        input::Input,
+    },
 };
 
 /// What the summary counts, over the whole sheet whatever the filter shows.
@@ -97,14 +100,16 @@ pub fn SheetItems<'a>(
                 {lead}
                 <form method="get" action={paging.here} class={(row(Space::_2), Filter)}>
                     {keep_query(paging.here, html! {
-                        <input
-                            type="search"
-                            name={f.q}
-                            value={q}
-                            placeholder="Filter items..."
-                            aria-label="Filter items"
-                            on:input={js::filter(target, found)}
-                        >
+                        <Input>
+                            <input
+                                type="search"
+                                name={f.q}
+                                value={q}
+                                placeholder="Filter items..."
+                                aria-label="Filter items"
+                                on:input={js::filter(target, found)}
+                            >
+                        </Input>
                         <button class={NoScript}>"Filter"</button>
                     })}
                 </form>

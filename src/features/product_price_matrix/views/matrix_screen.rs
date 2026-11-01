@@ -15,7 +15,12 @@ use crate::{
     layout::SubmitsOnChange,
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        badge::{Badge, BadgeVariant},
+        input::Input,
+        select::Select,
+    },
 };
 
 /// The screen: the choices that find a product, then its prices by condition and variant, and
@@ -41,15 +46,17 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 if let Some(m) = matrix {
                     <div class={row(Space::_2)}>
                         if let Some(at) = priced_at {
-                            <span class={Chip}>
+                            <Badge variant={BadgeVariant::Outline}>
                                 "Priced "
                                 {t.date_time(at, DateStyle::Short, TimeStyle::Medium)}
-                            </span>
+                            </Badge>
                         }
                         if m.suggested_prices_included {
-                            <span class={(Chip, Good)}>"Suggested prices included"</span>
+                            <Badge variant={BadgeVariant::Success}>
+                                "Suggested prices included"
+                            </Badge>
                         } else {
-                            <span class={Chip}>"Market prices only"</span>
+                            <Badge variant={BadgeVariant::Outline}>"Market prices only"</Badge>
                         }
                     </div>
                 }
@@ -66,23 +73,27 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                     <div class={Line}>
                         <label>
                             "Product Line"
-                            <select name={f.line}>
-                                for l in &screen.lines {
-                                    <option value={l.id} selected={l.id == screen.line}>
-                                        {&l.name}
-                                    </option>
-                                }
-                            </select>
+                            <Select>
+                                <select name={f.line}>
+                                    for l in &screen.lines {
+                                        <option value={l.id} selected={l.id == screen.line}>
+                                            {&l.name}
+                                        </option>
+                                    }
+                                </select>
+                            </Select>
                         </label>
                         <label>
                             "Product Type"
-                            <select name={f.product_type}>
-                                for (value, text) in [(ProductType::All, "All Products"), (ProductType::UnsealedOnly, "Unsealed Only"), (ProductType::SealedOnly, "Sealed Only")] {
-                                    <option value={value} selected={screen.product_type == value}>
-                                        {text}
-                                    </option>
-                                }
-                            </select>
+                            <Select>
+                                <select name={f.product_type}>
+                                    for (value, text) in [(ProductType::All, "All Products"), (ProductType::UnsealedOnly, "Unsealed Only"), (ProductType::SealedOnly, "Sealed Only")] {
+                                        <option value={value} selected={screen.product_type == value}>
+                                            {text}
+                                        </option>
+                                    }
+                                </select>
+                            </Select>
                         </label>
                         <label class={Toggle}>
                             <input
@@ -98,18 +109,22 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         if screen.scope == Scope::Set {
                             <label class={Wide}>
                                 "Set"
-                                <select name={f.set}>
-                                    for s in &screen.sets {
-                                        <option value={s.id} selected={Some(s.id) == screen.set}>
-                                            {s.label()}
-                                        </option>
-                                    }
-                                </select>
+                                <Select>
+                                    <select name={f.set}>
+                                        for s in &screen.sets {
+                                            <option value={s.id} selected={Some(s.id) == screen.set}>
+                                                {s.label()}
+                                            </option>
+                                        }
+                                    </select>
+                                </Select>
                             </label>
                         } else {
                             <label class={Wide}>
                                 "Card Number"
-                                <input name={f.number} value={&screen.number} inputmode="search">
+                                <Input>
+                                    <input name={f.number} value={&screen.number} inputmode="search">
+                                </Input>
                             </label>
                         }
                         <div class={(Wide, Picked)}>
@@ -118,18 +133,20 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         </div>
                         <label>
                             "Language"
-                            <select name={f.language} disabled={screen.product.is_none()}>
-                                if let Some(p) = &screen.product {
-                                    for language in &p.languages {
-                                        <option
-                                            value={language}
-                                            selected={screen.language.as_ref() == Some(language)}
-                                        >
-                                            {language}
-                                        </option>
+                            <Select>
+                                <select name={f.language} disabled={screen.product.is_none()}>
+                                    if let Some(p) = &screen.product {
+                                        for language in &p.languages {
+                                            <option
+                                                value={language}
+                                                selected={screen.language.as_ref() == Some(language)}
+                                            >
+                                                {language}
+                                            </option>
+                                        }
                                     }
-                                }
-                            </select>
+                                </select>
+                            </Select>
                         </label>
                         <button class={Button}>
                             if screen.scope == Scope::AllSets { "Search" } else { "Show" }
@@ -151,16 +168,18 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                             <h2>{&product.product_name}</h2>
                             <div class={row(Space::_2)}>
                                 if let Some(number) = product.card_number.as_deref().filter(|n| !n.is_empty()) {
-                                    <span class={Chip}>"#"{number}</span>
+                                    <Badge variant={BadgeVariant::Outline}>"#"{number}</Badge>
                                 }
-                                <span class={Chip}>{&product.set_name}</span>
+                                <Badge variant={BadgeVariant::Outline}>{&product.set_name}</Badge>
                                 if let Some(rarity) = product.rarity_name.as_deref().filter(|r| !r.is_empty()) {
-                                    <span class={Chip}>{rarity}</span>
+                                    <Badge variant={BadgeVariant::Outline}>{rarity}</Badge>
                                 }
-                                <span class={Chip}>{product.sku_count}" SKUs"</span>
-                                <span class={Chip}>
+                                <Badge variant={BadgeVariant::Outline}>
+                                    {product.sku_count}" SKUs"
+                                </Badge>
+                                <Badge variant={BadgeVariant::Outline}>
                                     {screen.language.as_deref().unwrap_or("No language")}
-                                </span>
+                                </Badge>
                                 if let Some(policy) = matrix.and_then(|m| m.policy.as_ref()) {
                                     <span class={(Chip, Policy)}>{policy.describe()}</span>
                                 }

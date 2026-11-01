@@ -14,6 +14,8 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        input::Input,
+        select::Select,
     },
 };
 
@@ -159,15 +161,17 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                     >
                         {line_choice(ProductInput::FIELDS.product_line, lines, screen.product.product_line, &e)}
                         <LabeledControl label="Product ID" hint="">
-                            <input
-                                type="number"
-                                min="1"
-                                required
-                                name={ProductInput::FIELDS.product}
-                                value={screen.product.product}
-                                placeholder="Enter the exact TCGPlayer product ID"
-                                {..e.aria(ProductInput::FIELDS.product)}
-                            >
+                            <Input>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    required
+                                    name={ProductInput::FIELDS.product}
+                                    value={screen.product.product}
+                                    placeholder="Enter the exact TCGPlayer product ID"
+                                    {..e.aria(ProductInput::FIELDS.product)}
+                                >
+                            </Input>
                             {e.message(ProductInput::FIELDS.product)}
                         </LabeledControl>
                         <Run ready="Repair Product and SKUs" working="Repairing Product..." />
@@ -192,30 +196,34 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                         class={(Stack, JobForm)}
                     >
                         <LabeledControl label="Set name" hint="">
-                            <input
-                                required
-                                name={SetInput::FIELDS.set_name}
-                                value={&screen.set.set_name}
-                                placeholder="Example: Duskmourn: House of Horror"
-                                {..e.aria(SetInput::FIELDS.set_name)}
-                            >
+                            <Input>
+                                <input
+                                    required
+                                    name={SetInput::FIELDS.set_name}
+                                    value={&screen.set.set_name}
+                                    placeholder="Example: Duskmourn: House of Horror"
+                                    {..e.aria(SetInput::FIELDS.set_name)}
+                                >
+                            </Input>
                             {e.message(SetInput::FIELDS.set_name)}
                         </LabeledControl>
                         <LabeledControl label="Product line" hint="">
-                            <select
-                                name={SetInput::FIELDS.product_line}
-                                required
-                                {..e.aria(SetInput::FIELDS.product_line)}
-                            >
-                                for line in lines {
-                                    <option
-                                        value={&line.url_name}
-                                        selected={line.url_name == screen.set.product_line}
-                                    >
-                                        {&line.name}
-                                    </option>
-                                }
-                            </select>
+                            <Select>
+                                <select
+                                    name={SetInput::FIELDS.product_line}
+                                    required
+                                    {..e.aria(SetInput::FIELDS.product_line)}
+                                >
+                                    for line in lines {
+                                        <option
+                                            value={&line.url_name}
+                                            selected={line.url_name == screen.set.product_line}
+                                        >
+                                            {&line.name}
+                                        </option>
+                                    }
+                                </select>
+                            </Select>
                             {e.message(SetInput::FIELDS.product_line)}
                         </LabeledControl>
                         <label class={Check}>
@@ -247,11 +255,15 @@ fn line_choice<'a, I: Id>(
 ) -> impl Render + 'a {
     html! {
         <LabeledControl label="Product line" hint="">
-            <select name={name} required {..e.aria(name)}>
-                for line in lines {
-                    <option value={line.id} selected={chosen == Some(line.id)}>{&line.name}</option>
-                }
-            </select>
+            <Select>
+                <select name={name} required {..e.aria(name)}>
+                    for line in lines {
+                        <option value={line.id} selected={chosen == Some(line.id)}>
+                            {&line.name}
+                        </option>
+                    }
+                </select>
+            </Select>
             {e.message(name)}
         </LabeledControl>
     }

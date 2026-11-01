@@ -14,7 +14,10 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
+        badge::{Badge, BadgeVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        input::Input,
+        select::Select,
     },
 };
 
@@ -97,46 +100,54 @@ pub fn ScheduleForm<'a>(
                 "Enable continuous pricing scheduler"
             </label>
             <LabeledControl label="Seller key" hint="">
-                <input
-                    name={f.seller_key}
-                    value={&input.seller_key}
-                    maxlength="200"
-                    {..e.aria(f.seller_key)}
-                >
+                <Input>
+                    <input
+                        name={f.seller_key}
+                        value={&input.seller_key}
+                        maxlength="200"
+                        {..e.aria(f.seller_key)}
+                    >
+                </Input>
                 {e.message(f.seller_key)}
             </LabeledControl>
             <div class={Numbers}>
                 <LabeledControl label="Minimum pricing interval (minutes)" hint="">
-                    <input
-                        type="number"
-                        min="15"
-                        max="43200"
-                        name={f.minimum_interval_minutes}
-                        value={&input.minimum_interval_minutes}
-                        {..e.aria(f.minimum_interval_minutes)}
-                    >
+                    <Input>
+                        <input
+                            type="number"
+                            min="15"
+                            max="43200"
+                            name={f.minimum_interval_minutes}
+                            value={&input.minimum_interval_minutes}
+                            {..e.aria(f.minimum_interval_minutes)}
+                        >
+                    </Input>
                     {e.message(f.minimum_interval_minutes)}
                 </LabeledControl>
                 <LabeledControl label="Inventory refresh interval (minutes)" hint="">
-                    <input
-                        type="number"
-                        min="5"
-                        max="10080"
-                        name={f.inventory_refresh_minutes}
-                        value={&input.inventory_refresh_minutes}
-                        {..e.aria(f.inventory_refresh_minutes)}
-                    >
+                    <Input>
+                        <input
+                            type="number"
+                            min="5"
+                            max="10080"
+                            name={f.inventory_refresh_minutes}
+                            value={&input.inventory_refresh_minutes}
+                            {..e.aria(f.inventory_refresh_minutes)}
+                        >
+                    </Input>
                     {e.message(f.inventory_refresh_minutes)}
                 </LabeledControl>
                 <LabeledControl label="Batch size" hint="">
-                    <input
-                        type="number"
-                        min="1"
-                        max="750"
-                        name={f.batch_size}
-                        value={&input.batch_size}
-                        {..e.aria(f.batch_size)}
-                    >
+                    <Input>
+                        <input
+                            type="number"
+                            min="1"
+                            max="750"
+                            name={f.batch_size}
+                            value={&input.batch_size}
+                            {..e.aria(f.batch_size)}
+                        >
+                    </Input>
                     {e.message(f.batch_size)}
                 </LabeledControl>
             </div>
@@ -216,11 +227,15 @@ fn Snapshot<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                     </p>
                 </div>
                 <div class={Line}>
-                    <span class={Chip}>{s.enabled_in_stock_count}" enabled"</span>
-                    <span class={(Chip, (s.due_count > 0).then_some(Due))}>
+                    <Badge variant={BadgeVariant::Secondary}>
+                        {s.enabled_in_stock_count}" enabled"
+                    </Badge>
+                    <Badge
+                        variant={if s.due_count > 0 { BadgeVariant::Warning } else { BadgeVariant::Secondary }}
+                    >
                         {s.due_count}" due"
-                    </span>
-                    <span class={Chip}>{s.inventory_count}" tracked"</span>
+                    </Badge>
+                    <Badge variant={BadgeVariant::Secondary}>{s.inventory_count}" tracked"</Badge>
                 </div>
             </div>
             <div class={Metrics}>
@@ -303,14 +318,20 @@ fn Controls<'a>(screen: &'a Screen) -> impl Render {
                     label="Search SKU, product, set, condition, or product line"
                     hint=""
                 >
-                    <input type="search" name={f.q} value={screen.view.search()}>
+                    <Input>
+                        <input type="search" name={f.q} value={screen.view.search()}>
+                    </Input>
                 </LabeledControl>
                 <LabeledControl label="State" hint="">
-                    <select name={f.state}>
-                        for state in Shown::ALL {
-                            <option value={state} selected={state == shown}>{state.label()}</option>
-                        }
-                    </select>
+                    <Select>
+                        <select name={f.state}>
+                            for state in Shown::ALL {
+                                <option value={state} selected={state == shown}>
+                                    {state.label()}
+                                </option>
+                            }
+                        </select>
+                    </Select>
                 </LabeledControl>
                 <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
                     <button>"Apply"</button>
@@ -448,11 +469,11 @@ fn Runs<'a>(runs: &'a [Run], t: Msg) -> impl Render {
                         {t.date_time(run.created_at, DateStyle::Short, TimeStyle::Medium)}
                     </span>
                     <span class={Line}>
-                        <span class={Chip}>{&run.status}</span>
+                        <Badge variant={BadgeVariant::Secondary}>{&run.status}</Badge>
                         if let Some(priority) = run.priority {
-                            <span class={(Chip, Outlined)}>
+                            <Badge variant={BadgeVariant::Outline}>
                                 if priority > 0 { "New / retry priority" } else { "Routine" }
-                            </span>
+                            </Badge>
                         }
                     </span>
                 </div>

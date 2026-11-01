@@ -13,7 +13,10 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
+        badge::{Badge, BadgeVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        input::Input,
+        select::Select,
         table::Table,
     },
 };
@@ -102,26 +105,32 @@ pub fn IntakeScreen<'a>(
             >
                 <label>
                     "Product Line"
-                    <select name={f.line}>
-                        for l in &screen.lines {
-                            <option value={l.id} selected={l.id == screen.line}>{&l.name}</option>
-                        }
-                    </select>
+                    <Select>
+                        <select name={f.line}>
+                            for l in &screen.lines {
+                                <option value={l.id} selected={l.id == screen.line}>
+                                    {&l.name}
+                                </option>
+                            }
+                        </select>
+                    </Select>
                 </label>
                 <label>
                     "Set"
-                    <select
-                        id={SetSelectId}
-                        ref={sets}
-                        name={f.set}
-                        disabled={screen.scope == Scope::AllSets}
-                    >
-                        for s in &screen.sets {
-                            <option value={s.id} selected={Some(s.id) == screen.set}>
-                                {s.label()}
-                            </option>
-                        }
-                    </select>
+                    <Select>
+                        <select
+                            id={SetSelectId}
+                            ref={sets}
+                            name={f.set}
+                            disabled={screen.scope == Scope::AllSets}
+                        >
+                            for s in &screen.sets {
+                                <option value={s.id} selected={Some(s.id) == screen.set}>
+                                    {s.label()}
+                                </option>
+                            }
+                        </select>
+                    </Select>
                 </label>
                 <label class={Toggle}>
                     <input
@@ -134,31 +143,37 @@ pub fn IntakeScreen<'a>(
                 </label>
                 <label>
                     "Condition"
-                    <select
-                        id={ConditionSelectId}
-                        ref={conditions}
-                        name={f.condition}
-                        class={ConditionSelect}
-                    >
-                        for c in Condition::ALL {
-                            <option value={c} selected={c == screen.condition}>{c.name()}</option>
-                        }
-                    </select>
+                    <Select>
+                        <select
+                            id={ConditionSelectId}
+                            ref={conditions}
+                            name={f.condition}
+                            class={ConditionSelect}
+                        >
+                            for c in Condition::ALL {
+                                <option value={c} selected={c == screen.condition}>
+                                    {c.name()}
+                                </option>
+                            }
+                        </select>
+                    </Select>
                 </label>
                 <details class={More}>
                     <summary>{more_filters(selection)}</summary>
                     <label>
                         "Product Type"
-                        <select name={f.product_type}>
-                            for (value, text) in [(ProductType::All, "All Products"), (ProductType::SealedOnly, "Sealed Only"), (ProductType::UnsealedOnly, "Unsealed Only")] {
-                                <option
-                                    value={value}
-                                    selected={selection.product_type.unwrap_or_default() == value}
-                                >
-                                    {text}
-                                </option>
-                            }
-                        </select>
+                        <Select>
+                            <select name={f.product_type}>
+                                for (value, text) in [(ProductType::All, "All Products"), (ProductType::SealedOnly, "Sealed Only"), (ProductType::UnsealedOnly, "Unsealed Only")] {
+                                    <option
+                                        value={value}
+                                        selected={selection.product_type.unwrap_or_default() == value}
+                                    >
+                                        {text}
+                                    </option>
+                                }
+                            </select>
+                        </Select>
                     </label>
                     <fieldset class={Languages}>
                         <legend>"Languages (none chosen: all)"</legend>
@@ -181,14 +196,16 @@ pub fn IntakeScreen<'a>(
                         Scope::AllSets => "Card number, in every set",
                     }
                     <span class={row(Space::_2)}>
-                        <input
-                            id={SearchId}
-                            ref={search}
-                            type="search"
-                            name={f.search}
-                            value={selection.search.as_deref().unwrap_or("")}
-                            autocomplete="off"
-                        >
+                        <Input>
+                            <input
+                                id={SearchId}
+                                ref={search}
+                                type="search"
+                                name={f.search}
+                                value={selection.search.as_deref().unwrap_or("")}
+                                autocomplete="off"
+                            >
+                        </Input>
                         <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
                             <button>"Search"</button>
                         </Button>
@@ -291,7 +308,7 @@ fn ProductRow<'a>(product: &'a Product, screen: &'a Screen) -> impl Render {
             <td>
                 <a href={picture(product.product_id)} tabindex="-1">"View"</a>
             </td>
-            <td><span class={Chip}>{set}</span></td>
+            <td><Badge variant={BadgeVariant::Outline}>{set}</Badge></td>
             <td>
                 if product.sealed {
                     <SkuLabel product={product} condition={None} />

@@ -19,6 +19,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        input::Input,
     },
 };
 
@@ -191,16 +192,18 @@ pub fn TurnaroundForm<'a>(
                         label="Manual days"
                         hint="Used when manual is selected or observed evidence is too thin"
                     >
-                        <input
-                            type="number"
-                            min="0"
-                            max={MAXIMUM_MANUAL_DAYS}
-                            step="1"
-                            name={f.manual_turnaround_days}
-                            value={&input.manual_turnaround_days}
-                            disabled={off}
-                            {..e.aria(f.manual_turnaround_days)}
-                        >
+                        <Input>
+                            <input
+                                type="number"
+                                min="0"
+                                max={MAXIMUM_MANUAL_DAYS}
+                                step="1"
+                                name={f.manual_turnaround_days}
+                                value={&input.manual_turnaround_days}
+                                disabled={off}
+                                {..e.aria(f.manual_turnaround_days)}
+                            >
+                        </Input>
                         {e.message(f.manual_turnaround_days)}
                     </LabeledControl>
                     <noscript>

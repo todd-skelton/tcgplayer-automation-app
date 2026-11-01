@@ -12,6 +12,8 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        input::Input,
+        select::Select,
     },
 };
 
@@ -114,41 +116,63 @@ pub fn ShippingSettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) ->
                 label="Default Seller Key"
                 hint="Leave blank to require entering a seller key on the shipping page."
             >
-                <input name={f.default_seller_key} value={&input.default_seller_key}>
+                <Input>
+                    <input name={f.default_seller_key} value={&input.default_seller_key}>
+                </Input>
             </LabeledControl>
             <h3>"From Address"</h3>
             <div class={Columns}>
                 <LabeledControl label="Sender" hint="">
-                    <input name={f.from.name} value={&input.from.name}>
+                    <Input>
+                        <input name={f.from.name} value={&input.from.name}>
+                    </Input>
                 </LabeledControl>
                 <LabeledControl label="Company" hint="">
-                    <input name={f.from.company} value={&input.from.company}>
+                    <Input>
+                        <input name={f.from.company} value={&input.from.company}>
+                    </Input>
                 </LabeledControl>
                 <LabeledControl label="Phone" hint="">
-                    <input type="tel" name={f.from.phone} value={&input.from.phone}>
+                    <Input>
+                        <input type="tel" name={f.from.phone} value={&input.from.phone}>
+                    </Input>
                 </LabeledControl>
                 <LabeledControl label="Email" hint="">
-                    <input type="email" name={f.from.email} value={&input.from.email}>
+                    <Input>
+                        <input type="email" name={f.from.email} value={&input.from.email}>
+                    </Input>
                 </LabeledControl>
             </div>
             <LabeledControl label="Street 1" hint="">
-                <input name={f.from.street1} value={&input.from.street1}>
+                <Input>
+                    <input name={f.from.street1} value={&input.from.street1}>
+                </Input>
             </LabeledControl>
             <LabeledControl label="Street 2" hint="">
-                <input name={f.from.street2} value={&input.from.street2}>
+                <Input>
+                    <input name={f.from.street2} value={&input.from.street2}>
+                </Input>
             </LabeledControl>
             <div class={Columns}>
                 <LabeledControl label="City" hint="">
-                    <input name={f.from.city} value={&input.from.city}>
+                    <Input>
+                        <input name={f.from.city} value={&input.from.city}>
+                    </Input>
                 </LabeledControl>
                 <LabeledControl label="State" hint="">
-                    <input name={f.from.state} value={&input.from.state}>
+                    <Input>
+                        <input name={f.from.state} value={&input.from.state}>
+                    </Input>
                 </LabeledControl>
                 <LabeledControl label="Zip" hint="">
-                    <input name={f.from.zip} value={&input.from.zip}>
+                    <Input>
+                        <input name={f.from.zip} value={&input.from.zip}>
+                    </Input>
                 </LabeledControl>
                 <LabeledControl label="Country" hint="">
-                    <input name={f.from.country} value={&input.from.country}>
+                    <Input>
+                        <input name={f.from.country} value={&input.from.country}>
+                    </Input>
                 </LabeledControl>
             </div>
             for kind in Kind::ALL {
@@ -161,22 +185,29 @@ pub fn ShippingSettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) ->
             }
             <div class={Columns}>
                 <LabeledControl label="Label Format" hint="">
-                    <select name={f.label_format}>
-                        for format in LabelFormat::ALL {
-                            <option value={format} selected={format == input.label_format}>
-                                {format}
-                            </option>
-                        }
-                    </select>
+                    <Select>
+                        <select name={f.label_format}>
+                            for format in LabelFormat::ALL {
+                                <option value={format} selected={format == input.label_format}>
+                                    {format}
+                                </option>
+                            }
+                        </select>
+                    </Select>
                 </LabeledControl>
                 <LabeledControl label="Expedited Service" hint="">
-                    <select name={f.expedited_service}>
-                        for service in Service::EXPEDITED {
-                            <option value={service} selected={service == input.expedited_service}>
-                                {service.label()}
-                            </option>
-                        }
-                    </select>
+                    <Select>
+                        <select name={f.expedited_service}>
+                            for service in Service::EXPEDITED {
+                                <option
+                                    value={service}
+                                    selected={service == input.expedited_service}
+                                >
+                                    {service.label()}
+                                </option>
+                            }
+                        </select>
+                    </Select>
                 </LabeledControl>
             </div>
             <label>
@@ -204,89 +235,107 @@ pub fn PackageFields<'a>(
     html! {
         <div class={Columns}>
             <LabeledControl label="Label Size" hint="">
-                <select name={f.label_size}>
-                    for size in LabelSize::ALL {
-                        <option value={size} selected={size == package.label_size}>{size}</option>
-                    }
-                </select>
+                <Select>
+                    <select name={f.label_size}>
+                        for size in LabelSize::ALL {
+                            <option value={size} selected={size == package.label_size}>
+                                {size}
+                            </option>
+                        }
+                    </select>
+                </Select>
             </LabeledControl>
             <LabeledControl label="Base Weight (oz)" hint="">
-                <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    name={f.base_weight_oz}
-                    value={&package.base_weight_oz}
-                    {..e.aria(f.base_weight_oz)}
-                >
+                <Input>
+                    <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        name={f.base_weight_oz}
+                        value={&package.base_weight_oz}
+                        {..e.aria(f.base_weight_oz)}
+                    >
+                </Input>
                 {e.message(f.base_weight_oz)}
             </LabeledControl>
             <LabeledControl label="Per Item Weight (oz)" hint="">
-                <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    name={f.per_item_weight_oz}
-                    value={&package.per_item_weight_oz}
-                    {..e.aria(f.per_item_weight_oz)}
-                >
+                <Input>
+                    <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        name={f.per_item_weight_oz}
+                        value={&package.per_item_weight_oz}
+                        {..e.aria(f.per_item_weight_oz)}
+                    >
+                </Input>
                 {e.message(f.per_item_weight_oz)}
             </LabeledControl>
             if let (Some(count), Some(value)) = (&package.max_item_count, &package.max_value_usd) {
                 <LabeledControl label="Max Item Count" hint="">
-                    <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        name={f.max_item_count}
-                        value={count}
-                        {..e.aria(f.max_item_count)}
-                    >
+                    <Input>
+                        <input
+                            type="number"
+                            step="any"
+                            min="0"
+                            name={f.max_item_count}
+                            value={count}
+                            {..e.aria(f.max_item_count)}
+                        >
+                    </Input>
                     {e.message(f.max_item_count)}
                 </LabeledControl>
                 <LabeledControl label="Max Value (USD)" hint="">
-                    <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        name={f.max_value_usd}
-                        value={value}
-                        {..e.aria(f.max_value_usd)}
-                    >
+                    <Input>
+                        <input
+                            type="number"
+                            step="any"
+                            min="0"
+                            name={f.max_value_usd}
+                            value={value}
+                            {..e.aria(f.max_value_usd)}
+                        >
+                    </Input>
                     {e.message(f.max_value_usd)}
                 </LabeledControl>
             }
             <LabeledControl label="Length (in)" hint="">
-                <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    name={f.length_in}
-                    value={&package.length_in}
-                    {..e.aria(f.length_in)}
-                >
+                <Input>
+                    <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        name={f.length_in}
+                        value={&package.length_in}
+                        {..e.aria(f.length_in)}
+                    >
+                </Input>
                 {e.message(f.length_in)}
             </LabeledControl>
             <LabeledControl label="Width (in)" hint="">
-                <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    name={f.width_in}
-                    value={&package.width_in}
-                    {..e.aria(f.width_in)}
-                >
+                <Input>
+                    <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        name={f.width_in}
+                        value={&package.width_in}
+                        {..e.aria(f.width_in)}
+                    >
+                </Input>
                 {e.message(f.width_in)}
             </LabeledControl>
             <LabeledControl label="Height (in)" hint="">
-                <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    name={f.height_in}
-                    value={&package.height_in}
-                    {..e.aria(f.height_in)}
-                >
+                <Input>
+                    <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        name={f.height_in}
+                        value={&package.height_in}
+                        {..e.aria(f.height_in)}
+                    >
+                </Input>
                 {e.message(f.height_in)}
             </LabeledControl>
         </div>

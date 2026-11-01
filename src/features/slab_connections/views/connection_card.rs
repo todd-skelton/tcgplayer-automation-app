@@ -15,6 +15,7 @@ use crate::{
     ui::{
         alert::Alert,
         button::{Button, ButtonSize, ButtonVariant},
+        input::Input,
     },
 };
 
@@ -98,23 +99,27 @@ pub fn ConnectionCard<'a>(
                     }}
                     hint=""
                 >
-                    <input
-                        type="password"
-                        name={f.credential}
-                        autocomplete="new-password"
-                        maxlength="32768"
-                        {..e.aria(f.credential)}
-                    >
+                    <Input>
+                        <input
+                            type="password"
+                            name={f.credential}
+                            autocomplete="new-password"
+                            maxlength="32768"
+                            {..e.aria(f.credential)}
+                        >
+                    </Input>
                     {e.message(f.credential)}
                 </LabeledControl>
                 if provider == Provider::EbayResearch {
                     <LabeledControl label="Browser User-Agent" hint="">
-                        <input
-                            name={f.user_agent}
-                            value={answered.map_or("", |a| a.user_agent)}
-                            maxlength="512"
-                            {..e.aria(f.user_agent)}
-                        >
+                        <Input>
+                            <input
+                                name={f.user_agent}
+                                value={answered.map_or("", |a| a.user_agent)}
+                                maxlength="512"
+                                {..e.aria(f.user_agent)}
+                            >
+                        </Input>
                         {e.message(f.user_agent)}
                     </LabeledControl>
                 }

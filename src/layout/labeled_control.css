@@ -1,8 +1,8 @@
 .labeled-control {
   display: grid;
   gap: var(--space-1);
-  & > input:not([type="checkbox"]),
-  & > select {
+  & input:not([type="checkbox"]),
+  & select {
     width: 100%;
   }
   & > small {

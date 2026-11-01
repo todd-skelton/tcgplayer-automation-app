@@ -13,6 +13,8 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        input::Input,
+        select::Select,
     },
 };
 
@@ -65,19 +67,21 @@ pub fn PricerScreen<'a>(
                     <form method="get" action={url::BatchPricer::newest()} class={Picker}>
                         <label>
                             "Batch"
-                            <select name={Chosen::FIELDS.batch}>
-                                if let Some(n) = unlisted {
-                                    <option value={n} selected>"Batch "{n}</option>
-                                }
-                                for batch in list {
-                                    <option
-                                        value={batch.batch_number}
-                                        selected={Some(batch.batch_number) == number}
-                                    >
-                                        {choice(batch)}
-                                    </option>
-                                }
-                            </select>
+                            <Select>
+                                <select name={Chosen::FIELDS.batch}>
+                                    if let Some(n) = unlisted {
+                                        <option value={n} selected>"Batch "{n}</option>
+                                    }
+                                    for batch in list {
+                                        <option
+                                            value={batch.batch_number}
+                                            selected={Some(batch.batch_number) == number}
+                                        >
+                                            {choice(batch)}
+                                        </option>
+                                    }
+                                </select>
+                            </Select>
                         </label>
                         <noscript>
                             <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
@@ -154,7 +158,9 @@ pub fn SellerForm<'a>(seller: &'a str, errors: &'a Errors) -> impl Patch {
             <div class={row(Space::_2)}>
                 <label>
                     "Seller Key "
-                    <input name={f.seller_key} value={seller} required {..e.aria(f.seller_key)}>
+                    <Input>
+                        <input name={f.seller_key} value={seller} required {..e.aria(f.seller_key)}>
+                    </Input>
                 </label>
                 <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
                     <button>"Snapshot Seller"</button>

@@ -26,6 +26,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeVariant},
+        input::Input,
     },
 };
 
@@ -66,12 +67,14 @@ pub fn LabelManagement<'a>(
             </p>
             <form method="get" action={url::OrderLabels { order: None }} class={Lookup}>
                 <LabeledControl label="Order Number" hint="">
-                    <input
-                        name="order"
-                        value={looked.number.unwrap_or_default()}
-                        placeholder="Enter order number"
-                        required
-                    >
+                    <Input>
+                        <input
+                            name="order"
+                            value={looked.number.unwrap_or_default()}
+                            placeholder="Enter order number"
+                            required
+                        >
+                    </Input>
                 </LabeledControl>
                 <button class={(Button, Secondary)}>"Lookup Order"</button>
             </form>

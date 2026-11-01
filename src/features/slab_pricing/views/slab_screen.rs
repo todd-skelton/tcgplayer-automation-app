@@ -18,6 +18,8 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        input::Input,
+        select::Select,
         table::Table,
     },
 };
@@ -58,20 +60,24 @@ pub fn SlabScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 class={(panel(), Line)}
             >
                 <LabeledControl label="Grader" hint="">
-                    <input
-                        name={f.grader}
-                        value={choice.grader.as_deref().unwrap_or("PSA")}
-                        required
-                        maxlength="40"
-                    >
+                    <Input>
+                        <input
+                            name={f.grader}
+                            value={choice.grader.as_deref().unwrap_or("PSA")}
+                            required
+                            maxlength="40"
+                        >
+                    </Input>
                 </LabeledControl>
                 <LabeledControl label="Certificate number" hint="">
-                    <input
-                        name={f.cert}
-                        value={choice.cert.as_deref().unwrap_or("")}
-                        required
-                        maxlength="80"
-                    >
+                    <Input>
+                        <input
+                            name={f.cert}
+                            value={choice.cert.as_deref().unwrap_or("")}
+                            required
+                            maxlength="80"
+                        >
+                    </Input>
                 </LabeledControl>
                 <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
                     <button>"Look up certificate"</button>
@@ -141,7 +147,9 @@ fn ReviewedListing<'a>(screen: &'a Screen) -> impl Render {
                             class={Line}
                         >
                             <LabeledControl label="Listing identity correction reason" hint="">
-                                <input name={f.note} required maxlength="1000">
+                                <Input>
+                                    <input name={f.note} required maxlength="1000">
+                                </Input>
                             </LabeledControl>
                             <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
                                 <button>"Assign confirmed identity"</button>
@@ -204,56 +212,68 @@ fn IdentityCard<'a>(
                     <input type="hidden" name={f.revision} value={record.revision}>
                     <div class={Line}>
                         <LabeledControl label="name" hint="">
-                            <input
-                                name={f.name}
-                                value={card.name.as_deref().unwrap_or("")}
-                                required
-                                maxlength="200"
-                            >
+                            <Input>
+                                <input
+                                    name={f.name}
+                                    value={card.name.as_deref().unwrap_or("")}
+                                    required
+                                    maxlength="200"
+                                >
+                            </Input>
                         </LabeledControl>
                         for (label, name, value) in [("game", f.game, &card.game), ("language", f.language, &card.language), ("set", f.set, &card.set), ("card number", f.card_number, &card.card_number), ("year", f.year, &card.year), ("edition", f.edition, &card.edition), ("finish", f.finish, &card.finish), ("stamp", f.stamp, &card.stamp)] {
                             <LabeledControl label={label} hint="">
-                                <input
-                                    name={name}
-                                    value={value.as_deref().unwrap_or("")}
-                                    maxlength="200"
-                                >
+                                <Input>
+                                    <input
+                                        name={name}
+                                        value={value.as_deref().unwrap_or("")}
+                                        maxlength="200"
+                                    >
+                                </Input>
                             </LabeledControl>
                         }
                     </div>
                     <div class={Line}>
                         <LabeledControl label="Original grade encoding" hint="">
-                            <input
-                                name={f.encoding}
-                                value={&grading.encoding}
-                                required
-                                maxlength="40"
-                            >
+                            <Input>
+                                <input
+                                    name={f.encoding}
+                                    value={&grading.encoding}
+                                    required
+                                    maxlength="40"
+                                >
+                            </Input>
                         </LabeledControl>
                         <LabeledControl label="Numeric grade" hint="">
-                            <select name={f.number}>
-                                <option value="" selected={grading.number.is_none()}>
-                                    "Unmapped"
-                                </option>
-                                for n in &grades {
-                                    <option value={n} selected={grading.number == Some(*n)}>
-                                        {n}
+                            <Select>
+                                <select name={f.number}>
+                                    <option value="" selected={grading.number.is_none()}>
+                                        "Unmapped"
                                     </option>
-                                }
-                            </select>
+                                    for n in &grades {
+                                        <option value={n} selected={grading.number == Some(*n)}>
+                                            {n}
+                                        </option>
+                                    }
+                                </select>
+                            </Select>
                         </LabeledControl>
                         for (label, name, value) in [("label", f.label, &grading.label), ("qualifier", f.qualifier, &grading.qualifier), ("autograph", f.autograph, &grading.autograph)] {
                             <LabeledControl label={label} hint="">
-                                <input
-                                    name={name}
-                                    value={value.as_deref().unwrap_or("")}
-                                    maxlength="40"
-                                >
+                                <Input>
+                                    <input
+                                        name={name}
+                                        value={value.as_deref().unwrap_or("")}
+                                        maxlength="40"
+                                    >
+                                </Input>
                             </LabeledControl>
                         }
                     </div>
                     <LabeledControl label="Reason for confirmation or correction" hint="">
-                        <input name={f.note} required maxlength="1000">
+                        <Input>
+                            <input name={f.note} required maxlength="1000">
+                        </Input>
                     </LabeledControl>
                     <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
                         <button>"Confirm owned identity"</button>
@@ -285,11 +305,13 @@ fn InventoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                     }),
                     html! {
                     <LabeledControl label="Seller username" hint="">
-                        <input
-                            name={f.seller}
-                            value={choice.seller.as_deref().unwrap_or("pokebash")}
-                            required
-                        >
+                        <Input>
+                            <input
+                                name={f.seller}
+                                value={choice.seller.as_deref().unwrap_or("pokebash")}
+                                required
+                            >
+                        </Input>
                     </LabeledControl>
                     <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
                         <button>"Open inventory"</button>

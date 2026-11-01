@@ -19,6 +19,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        select::Select,
         table::Table,
     },
 };
@@ -128,13 +129,15 @@ fn WindowChoice<'a>(days: u32, windows: &'a [u32], label: &'a str) -> impl Rende
         <SubmitsOnChange>
             <label class={WindowSelect}>
                 {label}
-                <select name={f.days}>
-                    for window in windows {
-                        <option value={*window} selected={*window == days}>
-                            "Last "{*window}" days"
-                        </option>
-                    }
-                </select>
+                <Select>
+                    <select name={f.days}>
+                        for window in windows {
+                            <option value={*window} selected={*window == days}>
+                                "Last "{*window}" days"
+                            </option>
+                        }
+                    </select>
+                </Select>
                 <noscript>
                     <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
                         <button>"Show"</button>

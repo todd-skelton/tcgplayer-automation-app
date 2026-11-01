@@ -13,6 +13,7 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        input::Input,
     },
 };
 
@@ -72,12 +73,14 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
                     <form method="get" action={&here}>
                         {keep_query(&here, html! {
                             <LabeledControl label="Seller Key" hint={&hint}>
-                                <input
-                                    name={q.seller}
-                                    value={seller}
-                                    placeholder={if loading.configured.is_empty() { "Enter seller key" } else { loading.configured }}
-                                    autofocus
-                                >
+                                <Input>
+                                    <input
+                                        name={q.seller}
+                                        value={seller}
+                                        placeholder={if loading.configured.is_empty() { "Enter seller key" } else { loading.configured }}
+                                        autofocus
+                                    >
+                                </Input>
                             </LabeledControl>
                             <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
                                 <button>"Use This Seller"</button>
@@ -88,12 +91,14 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
                 <span class={Divider}></span>
                 <form method="post" action={url::LoadOrder} class={row(Space::_2)} data-patch>
                     <input type="hidden" name={l.seller_key} value={seller}>
-                    <input
-                        name={l.order_number}
-                        aria-label="Order Number"
-                        placeholder="Order Number"
-                        required
-                    >
+                    <Input>
+                        <input
+                            name={l.order_number}
+                            aria-label="Order Number"
+                            placeholder="Order Number"
+                            required
+                        >
+                    </Input>
                     <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
                         <button>"Lookup Single Order"</button>
                     </Button>

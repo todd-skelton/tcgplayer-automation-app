@@ -57,10 +57,6 @@
   border-radius: var(--radius-pill);
   font-size: var(--font-size-sm);
 }
-.good {
-  border-color: var(--success);
-  color: var(--success);
-}
 .policy {
   border-color: var(--primary);
   color: var(--primary);
