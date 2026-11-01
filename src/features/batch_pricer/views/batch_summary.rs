@@ -12,7 +12,6 @@ use crate::{
     layout::{Notice, Tone},
     text::Msg,
     theme::*,
-    zone::Visitor,
 };
 
 const USD: Currency = Currency::new("USD");
@@ -40,7 +39,6 @@ pub fn BatchSummary<'a>(
     last_priced: Option<DateTime<Utc>>,
     rates: SuccessRates,
     t: Msg,
-    visitor: Visitor,
 ) -> impl Render {
     let combined = summary.combined_quantity();
     let per_unit = move |total: f64| {
@@ -78,7 +76,7 @@ pub fn BatchSummary<'a>(
                 "Last priced: "
                 match last_priced {
                     Some(at) => {
-                        {t.date_time(at, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                        {t.date_time(at, DateStyle::Short, TimeStyle::Medium)}
                     }
                     None => { "No prices produced" }
                 }

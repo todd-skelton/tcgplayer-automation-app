@@ -16,7 +16,6 @@ use crate::{
     layout::{Field, Notice, Tone},
     text::Msg,
     theme::*,
-    zone::Visitor,
 };
 
 /// The owned slab's recommendation: the costs it is calculated from, the market range and ask
@@ -26,7 +25,6 @@ pub fn RecommendationPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -
     let recommendation = screen.recommendation();
     let can_calculate = screen.can_calculate();
     let stale = screen.stale();
-    let visitor = screen.visitor;
     let observed = screen
         .listing
         .as_ref()
@@ -45,7 +43,7 @@ pub fn RecommendationPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -
                     "Listing "{&listing.snapshot.item_id}" · "{&listing.snapshot.title}
                     if let Some(at) = observed {
                         " · Observed "
-                        {t.date_time(at, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                        {t.date_time(at, DateStyle::Short, TimeStyle::Medium)}
                     }
                 </p>
             }
@@ -67,7 +65,7 @@ pub fn RecommendationPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -
                         "Inputs or evidence changed. This saved recommendation needs recalculation."
                     </Notice>
                 }
-                <Outcome recommendation={recommendation} t={t} visitor={visitor} />
+                <Outcome recommendation={recommendation} t={t} />
                 <ReviewedAsk
                     screen={screen}
                     recommendation={recommendation}
@@ -198,7 +196,7 @@ fn BasisSelect<'a>(name: FieldName<String>, chosen: &'a str) -> impl Render {
 
 /// What the calculation gave: the market range, the proposed ask, and why it may need review.
 #[component(css = super::slab_screen::SlabScreen)]
-fn Outcome<'a>(recommendation: &'a Recommendation, t: Msg, visitor: Visitor) -> impl Render {
+fn Outcome<'a>(recommendation: &'a Recommendation, t: Msg) -> impl Render {
     let c = &recommendation.calculation;
     let market = &c.market;
     let as_of = market.as_of.parse::<DateTime<Utc>>().ok();
@@ -223,7 +221,7 @@ fn Outcome<'a>(recommendation: &'a Recommendation, t: Msg, visitor: Visitor) -> 
             {format!("{:.2}", market.effective_count)}" recency-weighted events"
             if let Some(at) = as_of {
                 " · Calculated "
-                {t.date_time(at, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                {t.date_time(at, DateStyle::Short, TimeStyle::Medium)}
             }
         </p>
         if market.range.is_some() {

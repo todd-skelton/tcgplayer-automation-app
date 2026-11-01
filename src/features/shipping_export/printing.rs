@@ -1,6 +1,6 @@
 //! The Print step's answers: the batch's packing slips, from TCGplayer, and one PDF of a label
 //! size's labels made from the postage already bought.
-use corten::{ClientZone, Media, PageOr, Refusal, prelude::*};
+use corten::{Media, PageOr, Refusal, prelude::*};
 use serde::Serialize;
 
 use super::{
@@ -14,7 +14,6 @@ use crate::{
     database::Database,
     features::shipping_configuration::{self, LabelSize},
     legacy::Legacy,
-    zone::Visitor,
 };
 
 /// The batch's packing slips as one PDF, in the order the shipments go: shown in the browser's
@@ -23,7 +22,6 @@ pub async fn packing_slips(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::PackingSlips>,
 ) -> corten::Result<PageOr<Media>> {
     #[derive(Serialize)]
@@ -40,10 +38,9 @@ pub async fn packing_slips(
     if numbers.is_empty() {
         return Err(corten::Error::not_found());
     }
-    let visitor = Visitor::of(zone.as_ref());
     let request = Request {
         order_numbers: &numbers,
-        timezone_offset: hours_ahead(visitor),
+        timezone_offset: hours_ahead(&req),
     };
     let pdf = match legacy
         .send_for_file("/api/shipping-export/packing-slips-export", &request)
@@ -52,16 +49,7 @@ pub async fn packing_slips(
         Ok(pdf) => pdf,
         Err(why) => {
             let why = format!("Failed to generate packing slips: {why}");
-            let page = refused(
-                &req,
-                &db,
-                &legacy,
-                visitor,
-                Step::Print,
-                Refusal::Upstream,
-                &why,
-            )
-            .await?;
+            let page = refused(&req, &db, &legacy, Step::Print, Refusal::Upstream, &why).await?;
             return Ok(page.into());
         }
     };
@@ -99,25 +87,14 @@ pub async fn create_batch_label(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::BatchLabelPdf>,
 ) -> HtmlResult {
-    let visitor = Visitor::of(zone.as_ref());
     let size = at.size;
     let shown = Shown::read(&db, &legacy).await?;
     let labels = labels_of(&shown, size);
     let Some((_, first)) = labels.first() else {
         let why = format!("Buy {size} postage before creating its batch PDF.");
-        return refused(
-            &req,
-            &db,
-            &legacy,
-            visitor,
-            Step::Print,
-            Refusal::Conflict,
-            &why,
-        )
-        .await;
+        return refused(&req, &db, &legacy, Step::Print, Refusal::Conflict, &why).await;
     };
     let mode = first.mode;
     let label = if labels.iter().all(|(_, b)| b.mode == mode) {
@@ -131,16 +108,7 @@ pub async fn create_batch_label(
             Ok(label) => label,
             Err(why) => {
                 let why = format!("Failed to create the batch label PDF: {why}");
-                return refused(
-                    &req,
-                    &db,
-                    &legacy,
-                    visitor,
-                    Step::Print,
-                    Refusal::Upstream,
-                    &why,
-                )
-                .await;
+                return refused(&req, &db, &legacy, Step::Print, Refusal::Upstream, &why).await;
             }
         }
     } else {

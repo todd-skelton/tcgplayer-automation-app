@@ -1,7 +1,7 @@
 use std::{collections::HashMap, time::SystemTime};
 
 use chrono::{Duration, Utc};
-use corten::{ClientZone, Refusal, i18n::Zone, prelude::*};
+use corten::{Refusal, i18n::Zone, prelude::*};
 use serde::Deserialize;
 
 use super::{
@@ -33,7 +33,6 @@ use crate::{
     layout::{Chrome, Layout},
     legacy::Legacy,
     text::Msg,
-    zone::Visitor,
 };
 
 /// How long the orders' intake history is used before it is read again, as the React screen
@@ -267,8 +266,8 @@ async fn refresh_intake(
 
 /// How many hours the visitor's clock is ahead of UTC now: the time zone TCGplayer writes the
 /// pull sheet's and packing slips' dates in.
-pub(super) fn hours_ahead(visitor: Visitor) -> f64 {
-    f64::from(visitor.offset(SystemTime::now())) / 3600.0
+pub(super) fn hours_ahead(req: &Req) -> f64 {
+    f64::from(req.zone().offset(SystemTime::now())) / 3600.0
 }
 
 /// The batch's pull sheet: TCGplayer's for the orders, read with the catalog.
@@ -276,10 +275,10 @@ async fn pull(
     db: &Database,
     legacy: &Legacy,
     batch: &Batch,
-    visitor: Visitor,
+    ahead: f64,
     filters: &SheetQuery,
 ) -> Result<Pulled, String> {
-    let text = sheet::export(legacy, &batch.order_numbers(), hours_ahead(visitor)).await?;
+    let text = sheet::export(legacy, &batch.order_numbers(), ahead).await?;
     let (mut items, order_ids) = pull_sheet::read(db, &text).await?;
     let summary = Summary::of(&items, order_ids.len());
     let values: HashMap<i64, value::SaleValue> = items
@@ -299,7 +298,6 @@ pub async fn show(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::ShippingWorkflow>,
 ) -> HtmlResult {
     let at = url::ShippingWorkflow {
@@ -310,16 +308,7 @@ pub async fn show(
         view: at.view,
         filters: at.filters,
     };
-    page(
-        &req,
-        &db,
-        &legacy,
-        Visitor::of(zone.as_ref()),
-        &at,
-        None,
-        None,
-    )
-    .await
+    page(&req, &db, &legacy, &at, None, None).await
 }
 
 /// A shipment's editor as sent, and why it was refused.
@@ -331,7 +320,6 @@ pub(super) async fn page(
     req: &Req,
     db: &Database,
     legacy: &Legacy,
-    visitor: Visitor,
     at: &url::ShippingWorkflow,
     problem: Option<&str>,
     draft: Option<Draft<'_>>,
@@ -352,7 +340,9 @@ pub(super) async fn page(
         .trim()
         .to_owned();
     let pulled = match step {
-        Step::PullSheet => Some(pull(db, legacy, &shown.batch, visitor, &at.filters).await),
+        Step::PullSheet => {
+            Some(pull(db, legacy, &shown.batch, hours_ahead(req), &at.filters).await)
+        }
         _ => None,
     };
     let coverage = match step {
@@ -392,7 +382,7 @@ pub(super) async fn page(
                 db,
                 legacy,
                 &shown,
-                visitor,
+                hours_ahead(req),
                 at.shipment.as_deref(),
                 at.view.unwrap_or_default(),
             )
@@ -514,7 +504,6 @@ pub(super) async fn refused(
     req: &Req,
     db: &Database,
     legacy: &Legacy,
-    visitor: Visitor,
     step: Step,
     refusal: Refusal,
     why: &str,
@@ -526,7 +515,7 @@ pub(super) async fn refused(
         |patch| async move { patch.draw(html! { <Refused problem={Some(why)} /> }) },
         || async {
             let at = ShippingWorkflow::at(step);
-            page(req, db, legacy, visitor, &at, Some(why), None).await
+            page(req, db, legacy, &at, Some(why), None).await
         },
     )
     .await
@@ -545,7 +534,6 @@ async fn start(
     req: &Req,
     db: &Database,
     legacy: &Legacy,
-    visitor: Visitor,
     loaded: Result<source::Loaded, String>,
     source_of: impl FnOnce(&source::Loaded) -> String,
 ) -> HtmlResult {
@@ -553,16 +541,7 @@ async fn start(
         Ok(loaded) => loaded,
         // Node, or TCGplayer behind it, failed to give the orders.
         Err(why) => {
-            return refused(
-                req,
-                db,
-                legacy,
-                visitor,
-                Step::LoadOrders,
-                Refusal::Upstream,
-                &why,
-            )
-            .await;
+            return refused(req, db, legacy, Step::LoadOrders, Refusal::Upstream, &why).await;
         }
     };
     let configured = shipping_configuration::default_seller_key(db).await?;
@@ -584,18 +563,12 @@ pub async fn load_orders(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Form(input): Form<LoadInput>,
 ) -> HtmlResult {
     let loaded = source::ready_to_ship(&legacy, input.seller_key.trim()).await;
-    start(
-        &req,
-        &db,
-        &legacy,
-        Visitor::of(zone.as_ref()),
-        loaded,
-        |l| format!("Live seller orders: {}", l.seller_key),
-    )
+    start(&req, &db, &legacy, loaded, |l| {
+        format!("Live seller orders: {}", l.seller_key)
+    })
     .await
 }
 
@@ -603,26 +576,15 @@ pub async fn load_order(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Form(input): Form<LoadInput>,
 ) -> HtmlResult {
     let number = input.order_number.trim().to_owned();
-    let visitor = Visitor::of(zone.as_ref());
     if number.is_empty() {
         let why = "Enter a TCGPlayer order number to load a single order.";
-        return refused(
-            &req,
-            &db,
-            &legacy,
-            visitor,
-            Step::LoadOrders,
-            Refusal::Conflict,
-            why,
-        )
-        .await;
+        return refused(&req, &db, &legacy, Step::LoadOrders, Refusal::Conflict, why).await;
     }
     let loaded = source::one(&legacy, input.seller_key.trim(), &number).await;
-    start(&req, &db, &legacy, visitor, loaded, |l| {
+    start(&req, &db, &legacy, loaded, |l| {
         format!(
             "Single TCGPlayer order: {}",
             l.loaded_order_numbers.first().unwrap_or(&number)
@@ -644,20 +606,10 @@ async fn history_changed(
     db: &Database,
     done: Result<(), String>,
     legacy: &Legacy,
-    visitor: Visitor,
 ) -> HtmlResult {
     if let Err(why) = done {
         let why = format!("Failed to update seller order history: {why}");
-        return refused(
-            req,
-            db,
-            legacy,
-            visitor,
-            Step::LoadOrders,
-            Refusal::Upstream,
-            &why,
-        )
-        .await;
+        return refused(req, db, legacy, Step::LoadOrders, Refusal::Upstream, &why).await;
     }
     workflow::change(db, |w| w.intake_read_at = None).await?;
     req.redirect(&ShippingWorkflow::at(Step::LoadOrders))
@@ -674,14 +626,13 @@ pub async fn catch_up(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Form(input): Form<CatchUpInput>,
 ) -> HtmlResult {
     let orders: Vec<String> = workflow::current(&db).await?.map_or_else(Vec::new, |s| {
         s.orders.into_iter().map(|o| o.number).collect()
     });
     let done = source::catch_up(&legacy, input.seller_key.trim(), &orders).await;
-    history_changed(&req, &db, done, &legacy, Visitor::of(zone.as_ref())).await
+    history_changed(&req, &db, done, &legacy).await
 }
 
 /// An order export older than the API's window added to the seller's order history.
@@ -689,7 +640,6 @@ pub async fn import_history(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     mut upload: Upload<HistoryInput>,
 ) -> HtmlResult {
     const MOST_HISTORY: usize = file_import::MOST_BYTES;
@@ -721,7 +671,7 @@ pub async fn import_history(
                 .map(drop)
         }
     };
-    history_changed(&req, &db, done, &legacy, Visitor::of(zone.as_ref())).await
+    history_changed(&req, &db, done, &legacy).await
 }
 
 /// The batch dropped; the screen starts again at Load Orders.

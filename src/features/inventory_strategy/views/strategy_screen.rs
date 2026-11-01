@@ -23,7 +23,6 @@ use crate::{
     layout::{Notice, Tone},
     text::Msg,
     theme::*,
-    zone::Visitor,
 };
 
 /// How often a running analysis is read again, as the React screen polled it.
@@ -92,7 +91,7 @@ pub fn StrategyScreen<'a>(
             }
             <Problem why={screen.problem.as_deref()} />
             if let Some(analysis) = &screen.analysis {
-                <AnalysisStatus analysis={analysis} view={&quiet} t={t} visitor={screen.visitor} />
+                <AnalysisStatus analysis={analysis} view={&quiet} t={t} />
             }
             <PerformancePanel screen={screen} t={t} />
             <MarginTrendPanel trend={screen.margin_trend.as_ref()} t={t} />
@@ -108,12 +107,7 @@ pub fn StrategyScreen<'a>(
 /// The latest analysis batch and where it stands; while it runs it is read again every few
 /// seconds, and the screen is read again once it ends.
 #[component(css = StrategyScreen)]
-pub fn AnalysisStatus<'a>(
-    analysis: &'a Analysis,
-    view: &'a View,
-    t: Msg,
-    visitor: Visitor,
-) -> impl Patch {
+pub fn AnalysisStatus<'a>(analysis: &'a Analysis, view: &'a View, t: Msg) -> impl Patch {
     let active = analysis.active();
     let tone = if active {
         Tone::Info
@@ -137,7 +131,7 @@ pub fn AnalysisStatus<'a>(
                 "Latest analysis: batch "{analysis.batch_number}" is "{&analysis.status}
                 if let Some(at) = analysis.last_priced_at {
                     " \u{b7} completed "
-                    {t.date_time(at, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                    {t.date_time(at, DateStyle::Short, TimeStyle::Medium)}
                 }
             </Notice>
         </div>

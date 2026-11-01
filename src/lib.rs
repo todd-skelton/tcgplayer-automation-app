@@ -14,7 +14,6 @@ mod legacy;
 mod tcgplayer;
 mod text;
 mod theme;
-mod zone;
 
 /// The app, configured from `.env` and the environment.
 pub fn app() -> corten::App {

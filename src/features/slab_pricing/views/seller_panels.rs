@@ -20,7 +20,6 @@ use crate::{
     layout::{Field, Notice, Tone},
     text::Msg,
     theme::*,
-    zone::Visitor,
 };
 
 #[derive(Id)]
@@ -152,11 +151,10 @@ pub fn MaintenanceStatusPart<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
     let from = url::MaintenanceStatus {
         choice: screen.choice.clone(),
     };
-    let visitor = screen.visitor;
     html! {
         <div id={MaintenanceStatusId} class={Stack} aria-live="polite">
             if let Some(view) = view {
-                <MaintenanceStatusLines view={view} t={t} visitor={visitor} />
+                <MaintenanceStatusLines view={view} t={t} />
             }
         </div>
         if following {
@@ -166,7 +164,7 @@ pub fn MaintenanceStatusPart<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
 }
 
 #[component(css = super::slab_screen::SlabScreen)]
-fn MaintenanceStatusLines<'a>(view: &'a View, t: Msg, visitor: Visitor) -> impl Render {
+fn MaintenanceStatusLines<'a>(view: &'a View, t: Msg) -> impl Render {
     let s = &view.settings;
     let last = s.last_cycle_at;
     let next = s.next_cycle_at.filter(|_| s.enabled);
@@ -182,7 +180,7 @@ fn MaintenanceStatusLines<'a>(view: &'a View, t: Msg, visitor: Visitor) -> impl 
             " · Last cycle: "
             match last {
                 Some(last) => {
-                    {t.date_time(last, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                    {t.date_time(last, DateStyle::Short, TimeStyle::Medium)}
                 }
                 None => "Not run",
             }
@@ -191,7 +189,7 @@ fn MaintenanceStatusLines<'a>(view: &'a View, t: Msg, visitor: Visitor) -> impl 
             "Next worker check: "
             match next {
                 Some(next) => {
-                    {t.date_time(next, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                    {t.date_time(next, DateStyle::Short, TimeStyle::Medium)}
                 }
                 None => "Paused",
             }

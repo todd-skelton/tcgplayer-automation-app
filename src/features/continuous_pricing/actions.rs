@@ -1,8 +1,7 @@
 //! The screen and its posts. A post sends the browser back to the page it came from, saying what
 //! it did; a refusal is that page with why, as a conflict.
-// Every handler takes the visitor's zone so the page's dates are the visitor's (corten#387).
 use chrono::Utc;
-use corten::{ClientZone, Refusal, prelude::*};
+use corten::{Refusal, prelude::*};
 use serde::Deserialize;
 
 use super::{
@@ -18,7 +17,6 @@ use crate::{
     layout::{Chrome, Layout},
     tcgplayer::TcgPlayer,
     text::Msg,
-    zone::Visitor,
 };
 
 /// Everything the page shows.
@@ -28,13 +26,12 @@ pub struct Screen {
     pub status: store::Status,
     pub page: store::Page,
     pub runs: Vec<store::Run>,
-    pub visitor: Visitor,
     /// Why the last post was refused.
     pub problem: Option<String>,
 }
 
 impl Screen {
-    pub async fn read(db: &Database, view: &View, visitor: Visitor) -> corten::Result<Screen> {
+    pub async fn read(db: &Database, view: &View) -> corten::Result<Screen> {
         let settings = store::settings(db).await?;
         let seller = settings.seller_key.as_str();
         let (status, page, runs) = if seller.is_empty() {
@@ -59,7 +56,6 @@ impl Screen {
             status,
             page,
             runs,
-            visitor,
             problem: None,
         })
     }
@@ -68,10 +64,9 @@ impl Screen {
 pub async fn show(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::ContinuousPricing>,
 ) -> HtmlResult {
-    let screen = Screen::read(&db, &at.view, Visitor::of(zone.as_ref())).await?;
+    let screen = Screen::read(&db, &at.view).await?;
     let input = ScheduleInput::of(&screen.settings);
     page(&req, &db, &screen, &input, &Errors::new()).await
 }
@@ -163,7 +158,6 @@ impl ScheduleInput {
 pub async fn save(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::SaveSchedule>,
     Form(input): Form<ScheduleInput>,
 ) -> HtmlResult {
@@ -174,7 +168,7 @@ pub async fn save(
             req.redirect_with_notice(&url::ContinuousPricing { view: at.view }, Did::Saved)
         }
         Err(errors) => {
-            let screen = Screen::read(&db, &at.view.clone(), Visitor::of(zone.as_ref())).await?;
+            let screen = Screen::read(&db, &at.view.clone()).await?;
             let form = ScheduleForm {
                 screen: &screen,
                 input: &input,
@@ -196,13 +190,12 @@ fn tcgplayer(db: &Database) -> (TcgPlayerSearch, TcgPlayerMarket) {
 pub async fn refresh(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::Refresh>,
 ) -> HtmlResult {
     let settings = store::settings(&db).await?;
     if settings.seller_key.is_empty() {
         let why = "Save a seller key before refreshing inventory.".to_owned();
-        return refused(&req, &db, zone, &at.view, why).await;
+        return refused(&req, &db, &at.view, why).await;
     }
     let (inventory, market) = tcgplayer(&db);
     match refresh::refresh(
@@ -220,23 +213,18 @@ pub async fn refresh(
                 count: count as i64,
             },
         ),
-        Err(why) => refused(&req, &db, zone, &at.view, why).await,
+        Err(why) => refused(&req, &db, &at.view, why).await,
     }
 }
 
 /// Runs a scheduler cycle now: a refresh when one is due, then a batch of the SKUs due.
-pub async fn run(
-    req: Req,
-    State(db): State<Database>,
-    zone: Option<ClientZone>,
-    Params(at): Params<url::Run>,
-) -> HtmlResult {
+pub async fn run(req: Req, State(db): State<Database>, Params(at): Params<url::Run>) -> HtmlResult {
     let (inventory, market) = tcgplayer(&db);
     match scheduler::cycle(&db, &inventory, &market).await {
         Ok((cycle, _)) => {
             req.redirect_with_notice(&url::ContinuousPricing { view: at.view }, Did::Ran(cycle))
         }
-        Err(why) => refused(&req, &db, zone, &at.view, why).await,
+        Err(why) => refused(&req, &db, &at.view, why).await,
     }
 }
 
@@ -246,13 +234,12 @@ pub async fn run(
 pub async fn apply_policy(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::ApplyPolicy>,
 ) -> HtmlResult {
     let settings = store::settings(&db).await?;
     if !settings.enabled || settings.seller_key.is_empty() {
         let why = "Enable continuous pricing before repricing inventory.".to_owned();
-        return refused(&req, &db, zone, &at.view, why).await;
+        return refused(&req, &db, &at.view, why).await;
     }
     let config = scheduler::job_config(&db).await?;
     let queue = scheduler::Queue::of(&settings, &config);
@@ -262,7 +249,7 @@ pub async fn apply_policy(
             Ok(repriced) => repriced,
             Err(scheduler::Refused::AlreadyQueued) => {
                 let why = scheduler::Refused::AlreadyQueued.to_string();
-                return refused(&req, &db, zone, &at.view, why).await;
+                return refused(&req, &db, &at.view, why).await;
             }
             Err(scheduler::Refused::Failed(error)) => return Err(error.into()),
         };
@@ -284,13 +271,12 @@ pub async fn apply_policy(
 pub async fn mark_due(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::MarkDue>,
 ) -> HtmlResult {
     let settings = store::settings(&db).await?;
     if !settings.enabled || settings.seller_key.is_empty() {
         let why = "Enable continuous pricing before repricing inventory.".to_owned();
-        return refused(&req, &db, zone, &at.view, why).await;
+        return refused(&req, &db, &at.view, why).await;
     }
     let mut conn = db.0.acquire().await?;
     let count = scheduler::make_eligible_inventory_due(&mut conn, &settings.seller_key).await?;
@@ -304,7 +290,7 @@ pub async fn mark_due(
                 cycle,
             },
         ),
-        Err(why) => refused(&req, &db, zone, &at.view, why).await,
+        Err(why) => refused(&req, &db, &at.view, why).await,
     }
 }
 
@@ -319,14 +305,13 @@ pub struct SkuInput {
 pub async fn set_sku(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::SetSku>,
     Form(input): Form<SkuInput>,
 ) -> HtmlResult {
     let settings = store::settings(&db).await?;
     if settings.seller_key.is_empty() {
         let why = "No continuous pricing seller is configured.".to_owned();
-        return refused(&req, &db, zone, &at.view, why).await;
+        return refused(&req, &db, &at.view, why).await;
     }
     if input.sku <= 0
         || !store::set_enabled(&db, &settings.seller_key, input.sku, input.enabled).await?
@@ -335,7 +320,7 @@ pub async fn set_sku(
             "SKU {} is not in the seller's tracked inventory.",
             input.sku
         );
-        return refused(&req, &db, zone, &at.view, why).await;
+        return refused(&req, &db, &at.view, why).await;
     }
     let did = if input.enabled {
         Did::Enabled { sku: input.sku }
@@ -347,18 +332,12 @@ pub async fn set_sku(
 
 /// Why the post was refused, as a conflict: with JavaScript (a `data-patch` form) only the
 /// message; otherwise the page the post came from.
-async fn refused(
-    req: &Req,
-    db: &Database,
-    zone: Option<ClientZone>,
-    view: &View,
-    why: String,
-) -> HtmlResult {
+async fn refused(req: &Req, db: &Database, view: &View, why: String) -> HtmlResult {
     let mut refusal = Errors::new();
     refusal.refuse(Refusal::Conflict, why.as_str());
     let message = html! { <Problem why={Some(why.as_str())} /> };
     req.invalid(&refusal, message, || async {
-        let mut screen = Screen::read(db, &view.clone(), Visitor::of(zone.as_ref())).await?;
+        let mut screen = Screen::read(db, &view.clone()).await?;
         screen.problem = Some(why.clone());
         let input = ScheduleInput::of(&screen.settings);
         page(req, db, &screen, &input, &Errors::new()).await

@@ -18,7 +18,6 @@ use crate::{
     layout::{Notice, Tone},
     text::Msg,
     theme::*,
-    zone::Visitor,
 };
 
 #[derive(Id)]
@@ -47,7 +46,7 @@ pub fn BatchProblem<'a>(message: Option<&'a str>) -> impl Patch {
 /// The batch shown and, while it prices or publishes, the stream that sends its panel again each
 /// time it changes. A post's answer replaces it, so a batch that starts pricing is followed.
 #[component]
-pub fn BatchFollow<'a>(shown: &'a Shown, t: Msg, visitor: Visitor) -> impl Patch {
+pub fn BatchFollow<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
     html! {
         <div id={BatchFollowId}>
             if shown.following() {
@@ -55,10 +54,10 @@ pub fn BatchFollow<'a>(shown: &'a Shown, t: Msg, visitor: Visitor) -> impl Patch
                     src={url::Live { batch: shown.batch.batch_number }}
                     since={shown.version()}
                 >
-                    <BatchPanel shown={shown} t={t} visitor={visitor} />
+                    <BatchPanel shown={shown} t={t} />
                 </corten-live>
             } else {
-                <BatchPanel shown={shown} t={t} visitor={visitor} />
+                <BatchPanel shown={shown} t={t} />
             }
         </div>
     }
@@ -67,7 +66,7 @@ pub fn BatchFollow<'a>(shown: &'a Shown, t: Msg, visitor: Visitor) -> impl Patch
 /// Everything about the batch that changes as it prices or publishes: its card, the actions it
 /// allows now, its progress, its summary and the dialogs its actions open.
 #[component(css)]
-pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg, visitor: Visitor) -> impl Patch {
+pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
     let batch = &shown.batch;
     let n = batch.batch_number;
     let publications = shown.publications.as_ref().ok();
@@ -85,7 +84,7 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg, visitor: Visitor) -> impl Patch 
     html! {
         <div id={BatchPanelId} class={BatchPanel}>
             <section class={panel()}>
-                <SummaryCard batch={batch} t={t} visitor={visitor} />
+                <SummaryCard batch={batch} t={t} />
             </section>
             <section class={panel()}>
                 <h2>"Actions"</h2>
@@ -184,7 +183,6 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg, visitor: Visitor) -> impl Patch 
                     last_priced={batch.last_priced_at}
                     rates={shown.rates}
                     t={t}
-                    visitor={visitor}
                 />
             }
             if let (true, Some(p)) = (can_publish, publications) {
@@ -238,7 +236,7 @@ fn Download<'a>(batch: i32, scope: Scope, label: &'a str, count: i64, ready: boo
 
 /// The batch's number, where it came from, its status and counts, and when it was made and priced.
 #[component(css = BatchPanel)]
-fn SummaryCard<'a>(batch: &'a Batch, t: Msg, visitor: Visitor) -> impl Render {
+fn SummaryCard<'a>(batch: &'a Batch, t: Msg) -> impl Render {
     let source = match batch.source_type.as_str() {
         "seller" => Secondary,
         "csv" => Info,
@@ -281,13 +279,13 @@ fn SummaryCard<'a>(batch: &'a Batch, t: Msg, visitor: Visitor) -> impl Render {
         </div>
         <div class={(row(Space::_2), Timeline)}>
             <span class={(Chip, Filled, Ok)}>
-                "Created "{t.date(batch.created_at, DateStyle::Short).zone(visitor)}
+                "Created "{t.date(batch.created_at, DateStyle::Short)}
             </span>
             <span class={if batch.last_priced_at.is_some() { (Line, Ok) } else { (Line, Plain) }}></span>
             match batch.last_priced_at {
                 Some(at) => {
                     <span class={(Chip, Filled, Ok)}>
-                        "Priced "{t.date(at, DateStyle::Short).zone(visitor)}
+                        "Priced "{t.date(at, DateStyle::Short)}
                     </span>
                 }
                 None => {

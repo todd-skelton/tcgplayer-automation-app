@@ -1,11 +1,11 @@
 //! The Pack step: the shipment being packed, with its cards matched from the pull sheet, or
 //! every shipment in a list; and marking one packed, which moves to the next not packed.
-use corten::{ClientZone, Refusal, prelude::*};
+use corten::{Refusal, prelude::*};
 use serde::Deserialize;
 
 use super::{
     pack::{self, PackView},
-    page::{Shown, hours_ahead},
+    page::Shown,
     sheet,
     steps::Step,
     url::{self, ShippingWorkflow},
@@ -13,9 +13,7 @@ use super::{
     views::{PackCard, PackRow, PackedOrder, Packing},
     workflow,
 };
-use crate::{
-    database::Database, features::pull_sheet, layout::Tone, legacy::Legacy, zone::Visitor,
-};
+use crate::{database::Database, features::pull_sheet, layout::Tone, legacy::Legacy};
 
 /// The Pack step for the shipment `chosen` (the first not packed when none, or one not in the
 /// batch), in `view`. The pull sheet is read only for the card view.
@@ -23,7 +21,7 @@ pub async fn packing<'a>(
     db: &Database,
     legacy: &Legacy,
     shown: &'a Shown,
-    visitor: Visitor,
+    ahead: f64,
     chosen: Option<&str>,
     view: PackView,
 ) -> Packing<'a> {
@@ -56,7 +54,7 @@ pub async fn packing<'a>(
             orders: Vec::new(),
         }),
         (Some(row), PackView::Card) => {
-            Some(card(db, legacy, row, index, visitor, &batch.order_numbers()).await)
+            Some(card(db, legacy, row, index, ahead, &batch.order_numbers()).await)
         }
     };
     Packing { view, rows, card }
@@ -69,12 +67,12 @@ async fn card<'a>(
     legacy: &Legacy,
     row: &PackRow<'a>,
     index: usize,
-    visitor: Visitor,
+    ahead: f64,
     numbers: &[String],
 ) -> PackCard<'a> {
     let has_lines = row.orders.iter().any(|o| !o.lines().is_empty());
     let read = if has_lines {
-        match sheet::export(legacy, numbers, hours_ahead(visitor)).await {
+        match sheet::export(legacy, numbers, ahead).await {
             Ok(text) => pull_sheet::read(db, &text).await.map(|(items, _)| items),
             Err(why) => Err(why),
         }
@@ -161,7 +159,6 @@ pub async fn set_packed(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::ShipmentPacked>,
     Form(input): Form<PackedInput>,
 ) -> HtmlResult {
@@ -175,17 +172,7 @@ pub async fn set_packed(
         .collect();
     if !order.contains(&reference) {
         let why = format!("Shipment {reference} is not in this batch.");
-        let visitor = Visitor::of(zone.as_ref());
-        return super::page::refused(
-            &req,
-            &db,
-            &legacy,
-            visitor,
-            Step::Pack,
-            Refusal::Conflict,
-            &why,
-        )
-        .await;
+        return super::page::refused(&req, &db, &legacy, Step::Pack, Refusal::Conflict, &why).await;
     }
     let packed = input.packed;
     let marked = reference.clone();

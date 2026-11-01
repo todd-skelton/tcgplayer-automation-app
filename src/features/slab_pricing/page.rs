@@ -1,6 +1,6 @@
 use std::{collections::BTreeSet, time::Duration};
 
-use corten::{ClientZone, ReadAgain, prelude::*};
+use corten::{ReadAgain, prelude::*};
 
 use super::{
     comps,
@@ -17,7 +17,6 @@ use crate::{
     database::Database,
     layout::{Chrome, Layout},
     text::Msg,
-    zone::Visitor,
 };
 
 /// The most evidence revisions one calculation reads, as the Node app allows.
@@ -89,13 +88,12 @@ pub struct Screen {
     /// The page of comps reviewed, screened against the identity researched, when one is.
     pub comps: Option<Result<comps::Review, String>>,
     /// Whose time zone dates are written in.
-    pub visitor: Visitor,
     /// Why the last post was refused, and the part of the page that sent it.
     pub problem: Option<(Place, String)>,
 }
 
 impl Screen {
-    pub async fn read(db: &Database, choice: &Choice, visitor: Visitor) -> corten::Result<Screen> {
+    pub async fn read(db: &Database, choice: &Choice) -> corten::Result<Screen> {
         let record = match choice.certificate() {
             Some((grader, cert)) => identity::find(db, grader, cert).await?,
             None => None,
@@ -174,7 +172,6 @@ impl Screen {
             outcomes,
             publication,
             comps,
-            visitor,
             problem: None,
         })
     }
@@ -263,10 +260,9 @@ async fn read_research(db: &Database, id: &str, choice: &Choice) -> Result<Works
 pub async fn show(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::SlabPricing>,
 ) -> HtmlResult {
-    let screen = Screen::read(&db, &at.choice, Visitor::of(zone.as_ref())).await?;
+    let screen = Screen::read(&db, &at.choice).await?;
     page(&req, &db, &screen).await
 }
 
@@ -274,10 +270,9 @@ pub async fn show(
 pub async fn maintenance_status(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::MaintenanceStatus>,
 ) -> HtmlResult {
-    let screen = Screen::read(&db, &at.choice, Visitor::of(zone.as_ref())).await?;
+    let screen = Screen::read(&db, &at.choice).await?;
     let t: Msg = req.t();
     // The view at the top of `html!` owns what it uses; the fallback page reads `screen` too.
     let screen = &screen;
@@ -291,10 +286,9 @@ pub async fn maintenance_status(
 pub async fn evidence(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::Evidence>,
 ) -> HtmlResult {
-    let screen = Screen::read(&db, &at.choice, Visitor::of(zone.as_ref())).await?;
+    let screen = Screen::read(&db, &at.choice).await?;
     let t: Msg = req.t();
     // The view at the top of `html!` owns what it uses; the fallback page reads `screen` too.
     let screen = &screen;

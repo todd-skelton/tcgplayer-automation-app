@@ -5,7 +5,7 @@
 //! The form's body is read twice, once as the shipment ([`ShipmentInput`]) and once as the
 //! choice ([`Choice`]), since a form's fields cannot be flattened from a shared group (corten
 //! #363).
-use corten::{ClientZone, Refusal, axum::body::Bytes, form::from_bytes, prelude::*};
+use corten::{Refusal, axum::body::Bytes, form::from_bytes, prelude::*};
 use serde::Deserialize;
 
 use super::{
@@ -24,7 +24,6 @@ use crate::{
     layout::{Chrome, Layout},
     legacy::Legacy,
     text::Msg,
-    zone::Visitor,
 };
 
 /// Which labels to buy for the order.
@@ -170,7 +169,6 @@ async fn labels_page(
     req: &Req,
     db: &Database,
     legacy: &Legacy,
-    visitor: Visitor,
     number: Option<&str>,
     problem: Option<&str>,
     draft: Option<Draft<'_>>,
@@ -208,7 +206,7 @@ async fn labels_page(
     req.page(html! {
         <Layout req={req} title="Label Management" chrome={chrome} head="">
             <LabelManagement
-                looked={&Looked { number, seller: &seller, problem, visitor, t }}
+                looked={&Looked { number, seller: &seller, problem, t }}
                 found={found}
             >
                 if let Some((found, input, buy, errors)) = form {
@@ -230,11 +228,9 @@ pub async fn show_labels(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::OrderLabels>,
 ) -> HtmlResult {
-    let visitor = Visitor::of(zone.as_ref());
-    labels_page(&req, &db, &legacy, visitor, at.order.as_deref(), None, None).await
+    labels_page(&req, &db, &legacy, at.order.as_deref(), None, None).await
 }
 
 /// The form drawn again for what was chosen: a new service redraws the package for it (a
@@ -243,17 +239,15 @@ pub async fn redraw_labels(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::OrderLabelsForm>,
     body: Bytes,
 ) -> HtmlResult {
-    let visitor = Visitor::of(zone.as_ref());
     let number = at.order;
     let (Ok(input), Ok(choice)) = (
         from_bytes::<ShipmentInput>(&body),
         from_bytes::<Choice>(&body),
     ) else {
-        return labels_page(&req, &db, &legacy, visitor, Some(&number), None, None).await;
+        return labels_page(&req, &db, &legacy, Some(&number), None, None).await;
     };
     let config = shipping_configuration::settings(&db).await?;
     let found = match look_up(&db, &legacy, &config, &number).await? {
@@ -263,7 +257,6 @@ pub async fn redraw_labels(
                 &req,
                 &db,
                 &legacy,
-                visitor,
                 &number,
                 (refusal, &why),
                 kept(&input, &choice),
@@ -294,11 +287,9 @@ pub async fn buy_labels(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::BuyOrderLabels>,
     body: Bytes,
 ) -> HtmlResult {
-    let visitor = Visitor::of(zone.as_ref());
     let number = at.order;
     let mode = EasyPostMode::of_deployment();
     let (input, choice) = match (
@@ -311,7 +302,6 @@ pub async fn buy_labels(
                 &req,
                 &db,
                 &legacy,
-                visitor,
                 &number,
                 (Refusal::Conflict, &why.to_string()),
                 None,
@@ -325,7 +315,6 @@ pub async fn buy_labels(
             &req,
             &db,
             &legacy,
-            visitor,
             &number,
             (Refusal::Conflict, why),
             kept(&input, &choice),
@@ -337,7 +326,6 @@ pub async fn buy_labels(
             &req,
             &db,
             &legacy,
-            visitor,
             &number,
             (Refusal::Conflict, &why),
             kept(&input, &choice),
@@ -352,7 +340,6 @@ pub async fn buy_labels(
                 &req,
                 &db,
                 &legacy,
-                visitor,
                 &number,
                 (refusal, &why),
                 kept(&input, &choice),
@@ -385,15 +372,7 @@ pub async fn buy_labels(
                             buy: choice.buy,
                             errors: &errors,
                         };
-                        labels_page(
-                            &req,
-                            &db,
-                            &legacy,
-                            visitor,
-                            Some(&number),
-                            None,
-                            Some(draft),
-                        )
+                        labels_page(&req, &db, &legacy, Some(&number), None, Some(draft))
                     },
                 )
                 .await;
@@ -405,7 +384,6 @@ pub async fn buy_labels(
             &req,
             &db,
             &legacy,
-            visitor,
             &number,
             (Refusal::Conflict, why),
             kept(&input, &choice),
@@ -444,7 +422,6 @@ pub async fn buy_labels(
                 &req,
                 &db,
                 &legacy,
-                visitor,
                 &number,
                 (Refusal::Upstream, &why),
                 kept(&input, &choice),
@@ -472,7 +449,6 @@ async fn refused(
     req: &Req,
     db: &Database,
     legacy: &Legacy,
-    visitor: Visitor,
     number: &str,
     (refusal, why): (Refusal, &str),
     draft: Option<Draft<'_>>,
@@ -482,7 +458,7 @@ async fn refused(
     req.invalid_with(
         &errors,
         |patch| async move { patch.draw(html! { <Refused problem={Some(why)} /> }) },
-        || labels_page(req, db, legacy, visitor, Some(number), Some(why), draft),
+        || labels_page(req, db, legacy, Some(number), Some(why), draft),
     )
     .await
 }

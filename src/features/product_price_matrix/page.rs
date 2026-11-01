@@ -1,4 +1,4 @@
-use corten::{ClientZone, prelude::*};
+use corten::prelude::*;
 
 use super::{
     matrix::{self, Matrix},
@@ -12,7 +12,6 @@ use crate::{
     layout::{Chrome, Layout},
     legacy::Legacy,
     text::Msg,
-    zone::Visitor,
 };
 
 /// A product as the picker offers it: its id, its label, and the other words that find it.
@@ -148,31 +147,27 @@ pub async fn show(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::ProductPriceMatrix>,
 ) -> HtmlResult {
-    answer(&req, &db, &legacy, zone, &at.choice, false).await
+    answer(&req, &db, &legacy, &at.choice, false).await
 }
 
 pub async fn show_suggested(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::SuggestedPricing>,
 ) -> HtmlResult {
-    answer(&req, &db, &legacy, zone, &at.choice, true).await
+    answer(&req, &db, &legacy, &at.choice, true).await
 }
 
 async fn answer(
     req: &Req,
     db: &Database,
     legacy: &Legacy,
-    zone: Option<ClientZone>,
     choice: &url::Choice,
     suggested: bool,
 ) -> HtmlResult {
-    let visitor = Visitor::of(zone.as_ref());
     let (chrome, screen) = tokio::join!(
         Chrome::read(db),
         Screen::read(db, legacy, choice, suggested)
@@ -181,7 +176,7 @@ async fn answer(
     let t: Msg = req.t();
     req.page(html! {
         <Layout req={req} title="Product Price Matrix" chrome={chrome} head="">
-            <MatrixScreen screen={&screen} visitor={visitor} t={t} />
+            <MatrixScreen screen={&screen} t={t} />
         </Layout>
     })
 }

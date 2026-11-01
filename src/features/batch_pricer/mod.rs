@@ -23,7 +23,7 @@
 //!
 //! The React screen remembered the seller key typed last in the browser; this one starts from
 //! the shipping settings' default seller. Dates are written in the visitor's time zone, which the
-//! browser names after its first page (`App::client_zone`); until then they are in UTC.
+//! browser names after its first page (`App::zoned_dates`); until then they are in UTC.
 mod batches;
 mod import;
 mod page;

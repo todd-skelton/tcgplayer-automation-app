@@ -12,7 +12,6 @@ use crate::{
     layout::{Field, Notice, SubmitsOnChange, Tone},
     text::Msg,
     theme::*,
-    zone::Visitor,
 };
 
 const USD: Currency = Currency::new("USD");
@@ -67,7 +66,7 @@ pub fn ContinuousScreen<'a>(
             <Snapshot screen={screen} t={t} />
             <Controls screen={screen} />
             <Items screen={screen} t={t} />
-            <Runs runs={&screen.runs} t={t} visitor={screen.visitor} />
+            <Runs runs={&screen.runs} t={t} />
         </section>
     }
 }
@@ -187,7 +186,6 @@ fn Snapshot<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     };
     let (awaiting, awaiting_units) = s.awaiting_publication;
     let refresh = s.last_refresh.as_ref();
-    let visitor = screen.visitor;
     html! {
         <section class={(panel(), Stack)} aria-labelledby="continuous-snapshot">
             <div class={Spread}>
@@ -252,7 +250,7 @@ fn Snapshot<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 "Last refresh: "
                 match refresh {
                     Some(r) => {
-                        {t.date_time(r.at(), DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                        {t.date_time(r.at(), DateStyle::Short, TimeStyle::Medium)}
                         " ("{&r.status}")"
                     }
                     None => "never (not started)",
@@ -312,7 +310,7 @@ fn Items<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 <Notice tone={Tone::Info}>"No inventory matches these filters."</Notice>
             }
             for item in &page.items {
-                <SkuRow item={item} view={&screen.view} t={t} visitor={screen.visitor} />
+                <SkuRow item={item} view={&screen.view} t={t} />
             }
             if pages > 1 {
                 <nav class={Line} aria-label="Inventory pages">
@@ -334,7 +332,7 @@ fn Items<'a>(screen: &'a Screen, t: Msg) -> impl Render {
 }
 
 #[component(css = ContinuousScreen)]
-fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg, visitor: Visitor) -> impl Render {
+fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
     let f = SkuInput::FIELDS;
     let price = item
         .current_price
@@ -352,18 +350,18 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg, visitor: Visitor) -> impl 
                     </p>
                     <p class={muted()}>
                         "Next: "
-                        {t.date_time(item.next_price_at, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                        {t.date_time(item.next_price_at, DateStyle::Short, TimeStyle::Medium)}
                         " · Last priced: "
                         match priced {
                             Some(at) => {
-                                {t.date_time(at, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                                {t.date_time(at, DateStyle::Short, TimeStyle::Medium)}
                             }
                             None => "never",
                         }
                         " · Last published: "
                         match published {
                             Some(at) => {
-                                {t.date_time(at, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                                {t.date_time(at, DateStyle::Short, TimeStyle::Medium)}
                             }
                             None => "never",
                         }
@@ -399,7 +397,7 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg, visitor: Visitor) -> impl 
 
 /// The newest automatic batches.
 #[component(css = ContinuousScreen)]
-fn Runs<'a>(runs: &'a [Run], t: Msg, visitor: Visitor) -> impl Render {
+fn Runs<'a>(runs: &'a [Run], t: Msg) -> impl Render {
     html! {
         <section class={(panel(), Stack)} aria-labelledby="continuous-runs">
             <div>
@@ -416,7 +414,7 @@ fn Runs<'a>(runs: &'a [Run], t: Msg, visitor: Visitor) -> impl Render {
                 <div class={(Spread, RunRow)}>
                     <span>
                         "Batch "{run.batch_number}" · "{run.item_count}" SKUs · "
-                        {t.date_time(run.created_at, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                        {t.date_time(run.created_at, DateStyle::Short, TimeStyle::Medium)}
                     </span>
                     <span class={Line}>
                         <span class={Chip}>{&run.status}</span>

@@ -15,7 +15,6 @@ use crate::{
     layout::{Field, Notice, SubmitsOnChange, Tone},
     text::Msg,
     theme::*,
-    zone::Visitor,
 };
 
 /// The turnaround form's id: an answer that refuses it replaces it.
@@ -53,7 +52,6 @@ pub fn TurnaroundPanel<'a>(
     let evidence = selection.evidence.as_ref();
     let fallback =
         selection.setting.mode == Mode::Observed && !selection.fallback_reasons.is_empty();
-    let visitor = screen.visitor;
     html! {
         <section class={panel()} aria-labelledby="capital-turnaround">
             <div class={Title}>
@@ -117,11 +115,11 @@ pub fn TurnaroundPanel<'a>(
             if let Some(e) = evidence {
                 <p class={(muted(), Caption)}>
                     "Evidence as of "
-                    <Day at={Some(&e.report_as_of)} t={t} visitor={visitor} />
+                    <Day at={Some(&e.report_as_of)} t={t} />
                     " \u{b7} sale cohort "
-                    <Day at={e.observation_from.as_deref()} t={t} visitor={visitor} />
+                    <Day at={e.observation_from.as_deref()} t={t} />
                     " to "
-                    <Day at={e.observation_through.as_deref()} t={t} visitor={visitor} />
+                    <Day at={e.observation_through.as_deref()} t={t} />
                     " \u{b7} costs, proceeds, and timing are estimated where records are missing."
                 </p>
             }
@@ -131,10 +129,10 @@ pub fn TurnaroundPanel<'a>(
 
 /// A day in the visitor's zone, or "unavailable".
 #[component]
-fn Day<'a>(at: Option<&'a str>, t: Msg, visitor: Visitor) -> impl Render {
+fn Day<'a>(at: Option<&'a str>, t: Msg) -> impl Render {
     html! {
         match at.and_then(instant) {
-            Some(at) => { {t.date(at, DateStyle::Short).zone(visitor)} }
+            Some(at) => { {t.date(at, DateStyle::Short)} }
             None => { "unavailable" }
         }
     }

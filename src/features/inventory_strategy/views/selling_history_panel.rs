@@ -19,7 +19,6 @@ use crate::{
     layout::{Notice, SubmitsOnChange, Tone},
     text::Msg,
     theme::*,
-    zone::Visitor,
 };
 
 /// "1 unit", "1,234 units".
@@ -48,10 +47,10 @@ fn percentile_words(status: PercentileStatus) -> &'static str {
 
 /// A time in the visitor's zone, or "Unknown".
 #[component]
-fn When<'a>(at: Option<&'a str>, t: Msg, visitor: Visitor) -> impl Render {
+fn When<'a>(at: Option<&'a str>, t: Msg) -> impl Render {
     html! {
         match at.and_then(instant) {
-            Some(at) => { {t.date_time(at, DateStyle::Short, TimeStyle::Medium).zone(visitor)} }
+            Some(at) => { {t.date_time(at, DateStyle::Short, TimeStyle::Medium)} }
             None => { "Unknown" }
         }
     }
@@ -60,7 +59,6 @@ fn When<'a>(at: Option<&'a str>, t: Msg, visitor: Visitor) -> impl Render {
 /// Observed listing exposure and sales outcomes for the current seller.
 #[component(css = super::strategy_screen::StrategyScreen)]
 pub fn SellingHistoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
-    let visitor = screen.visitor;
     html! {
         <section class={panel()} aria-labelledby="selling-history">
             match &screen.selling_history {
@@ -89,9 +87,9 @@ pub fn SellingHistoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                     <ScopeControls scope={&report.scope} lines={&report.available_product_lines} />
                     <p class={muted()}>
                         "Analysis from "
-                        <When at={Some(&report.analysis_from)} t={t} visitor={visitor} />
+                        <When at={Some(&report.analysis_from)} t={t} />
                         " \u{b7} As of "
-                        <When at={Some(&report.as_of)} t={t} visitor={visitor} />
+                        <When at={Some(&report.as_of)} t={t} />
                         ". Time listed is separate from intake-to-sale age."
                     </p>
                     if report.overall.cohort_quantity == 0 {
@@ -103,7 +101,7 @@ pub fn SellingHistoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         <SellThroughTable summary={&report.overall} t={t} />
                         <LineTable report={report} t={t} />
                     }
-                    <CoverageNote report={report} t={t} visitor={visitor} />
+                    <CoverageNote report={report} t={t} />
                 }
             }
         </section>
@@ -268,7 +266,7 @@ fn LineTable<'a>(report: &'a Ready, t: Msg) -> impl Render {
 
 /// How far the order history reaches, and what it is missing.
 #[component(css = super::strategy_screen::StrategyScreen)]
-fn CoverageNote<'a>(report: &'a Ready, t: Msg, visitor: Visitor) -> impl Render {
+fn CoverageNote<'a>(report: &'a Ready, t: Msg) -> impl Render {
     let OrderCoverage {
         status,
         observed_through,
@@ -287,7 +285,7 @@ fn CoverageNote<'a>(report: &'a Ready, t: Msg, visitor: Visitor) -> impl Render 
             "Order history "{words(status)}
             if let Some(through) = observed_through {
                 " through "
-                <When at={Some(through)} t={t} visitor={visitor} />
+                <When at={Some(through)} t={t} />
             }
             {format!(
                 " \u{b7} {} of {} with a known listed date",

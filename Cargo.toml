@@ -7,7 +7,7 @@ description = "TCGPlayer Automation on Corten: screens ported one at a time from
 
 [dependencies]
 # Pinned to one revision of main; bump it on purpose when a fix the port needs lands.
-corten = { git = "https://github.com/todd-skelton/corten", rev = "6c895820", features = ["json", "compress", "types"] }
+corten = { git = "https://github.com/todd-skelton/corten", rev = "6c895820", features = ["json", "compress", "types", "zones"] }
 corten-ui = { git = "https://github.com/todd-skelton/corten", rev = "6c895820" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
@@ -16,7 +16,7 @@ serde_json = { version = "1", features = ["float_roundtrip"] }
 schemars = "1.2"
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "chrono", "macros"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
-# The visitor's time zone, from the name the browser gives (`App::client_zone`).
+# The zones slab evidence is searched and dated in (eBay's, the seller's).
 chrono-tz = { version = "0.10", features = ["case-insensitive"] }
 # The legacy relay to the Node app, and the slab data providers (rustls for their HTTPS). No
 # gzip/brotli features: an encoded answer goes on as it came.

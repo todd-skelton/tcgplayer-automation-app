@@ -1,6 +1,6 @@
 //! The screen and its posts. A post sends the browser back to the screen it came from (its scope
 //! is the post's query), saying what it did; a refusal is that screen with why, as a conflict.
-use corten::{ClientZone, Refusal, prelude::*};
+use corten::{Refusal, prelude::*};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -18,16 +18,14 @@ use crate::{
     layout::{Chrome, Layout},
     legacy::Legacy,
     text::Msg,
-    zone::Visitor,
 };
 
 pub async fn show(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::InventoryStrategy>,
 ) -> HtmlResult {
-    let screen = Screen::read(&db, &at.view, Visitor::of(zone.as_ref())).await?;
+    let screen = Screen::read(&db, &at.view).await?;
     let input = TurnaroundInput::of(&screen);
     page(&req, &db, &screen, &input, &Errors::new()).await
 }
@@ -101,7 +99,6 @@ impl TurnaroundInput {
 pub async fn save_turnaround(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::SaveTurnaround>,
     Form(input): Form<TurnaroundInput>,
 ) -> HtmlResult {
@@ -129,7 +126,7 @@ pub async fn save_turnaround(
         errors: &errors,
     };
     req.invalid(&errors, form, || async {
-        let screen = Screen::read(&db, &view, Visitor::of(zone.as_ref())).await?;
+        let screen = Screen::read(&db, &view).await?;
         page(&req, &db, &screen, &input, &errors).await
     })
     .await
@@ -140,7 +137,6 @@ pub async fn refresh(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::Refresh>,
 ) -> HtmlResult {
     #[derive(Deserialize)]
@@ -158,7 +154,7 @@ pub async fn refresh(
                 Did::Refreshed { count: done.count }.said(t),
             )
         }
-        Err(why) => refused(&req, &db, zone, &at.view, why).await,
+        Err(why) => refused(&req, &db, &at.view, why).await,
     }
 }
 
@@ -167,7 +163,6 @@ pub async fn refresh(
 pub async fn queue_analysis(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::QueueAnalysis>,
 ) -> HtmlResult {
     match analysis_queue::queue_analysis(&db).await {
@@ -186,7 +181,7 @@ pub async fn queue_analysis(
             let t: Msg = req.t();
             req.redirect_with_notice(&url::InventoryStrategy { view: at.view }, did.said(t))
         }
-        Err(why) => refused(&req, &db, zone, &at.view, why).await,
+        Err(why) => refused(&req, &db, &at.view, why).await,
     }
 }
 
@@ -195,10 +190,8 @@ pub async fn queue_analysis(
 pub async fn analysis(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::Analysis>,
 ) -> HtmlResult {
-    let visitor = Visitor::of(zone.as_ref());
     let t: Msg = req.t();
     let view = at.view.clone();
     let back = || async { req.redirect(&url::InventoryStrategy { view: view.clone() }) };
@@ -208,13 +201,12 @@ pub async fn analysis(
                 analysis: &running,
                 view: &view,
                 t,
-                visitor,
             };
             req.patch_or(status, back).await
         }
         _ if req.mode != corten::Mode::Action => back().await,
         _ => {
-            let screen = Screen::read(&db, &view, visitor).await?;
+            let screen = Screen::read(&db, &view).await?;
             let input = TurnaroundInput::of(&screen);
             req.patch(StrategyScreen {
                 screen: &screen,
@@ -228,18 +220,12 @@ pub async fn analysis(
 
 /// Why the post was refused, as a conflict: with JavaScript only the message; otherwise the
 /// screen the post came from.
-async fn refused(
-    req: &Req,
-    db: &Database,
-    zone: Option<ClientZone>,
-    view: &View,
-    why: String,
-) -> HtmlResult {
+async fn refused(req: &Req, db: &Database, view: &View, why: String) -> HtmlResult {
     let mut refusal = Errors::new();
     refusal.refuse(Refusal::Conflict, why.as_str());
     let message = html! { <Problem why={Some(why.as_str())} /> };
     req.invalid(&refusal, message, || async {
-        let mut screen = Screen::read(db, &view.clone(), Visitor::of(zone.as_ref())).await?;
+        let mut screen = Screen::read(db, &view.clone()).await?;
         screen.problem = Some(why.clone());
         let input = TurnaroundInput::of(&screen);
         page(req, db, &screen, &input, &Errors::new()).await

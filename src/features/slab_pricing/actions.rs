@@ -3,8 +3,7 @@
 //! the work. Each then sends the browser back to
 //! the page the post came from (its address is the post's query), showing what changed; a refusal
 //! is that page with why, as a conflict.
-// Every post takes the visitor's zone only so a refusal can draw the page's dates (corten#387).
-use corten::{ClientZone, Refusal, SubmitKey, prelude::*};
+use corten::{Refusal, SubmitKey, prelude::*};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -20,9 +19,7 @@ use super::{
     url::{self, Choice},
     views::Problem,
 };
-use crate::{
-    database::Database, features::slab_evidence::store as evidence, legacy::Legacy, zone::Visitor,
-};
+use crate::{database::Database, features::slab_evidence::store as evidence, legacy::Legacy};
 
 #[derive(Debug, Default, Deserialize, Fields)]
 pub struct LookUpInput {
@@ -51,7 +48,6 @@ pub async fn look_up(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::LookUp>,
     Form(input): Form<LookUpInput>,
 ) -> HtmlResult {
@@ -68,15 +64,7 @@ pub async fn look_up(
             let choice = at
                 .choice
                 .with_certificate(input.grader.trim(), input.cert.trim());
-            refused(
-                Place::LookUp,
-                &req,
-                &db,
-                Visitor::of(zone.as_ref()),
-                &choice,
-                why,
-            )
-            .await
+            refused(Place::LookUp, &req, &db, &choice, why).await
         }
     }
 }
@@ -155,7 +143,6 @@ impl ConfirmInput {
 pub async fn confirm(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::Confirm>,
     Form(input): Form<ConfirmInput>,
 ) -> HtmlResult {
@@ -164,7 +151,6 @@ pub async fn confirm(
             Place::Identity,
             &req,
             &db,
-            Visitor::of(zone.as_ref()),
             &at.choice,
             "Look up a certificate first.".into(),
         )
@@ -185,17 +171,7 @@ pub async fn confirm(
     };
     match confirmed {
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
-        Err(why) => {
-            refused(
-                Place::Identity,
-                &req,
-                &db,
-                Visitor::of(zone.as_ref()),
-                &at.choice,
-                why,
-            )
-            .await
-        }
+        Err(why) => refused(Place::Identity, &req, &db, &at.choice, why).await,
     }
 }
 
@@ -210,7 +186,6 @@ pub async fn open(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::Open>,
     Form(input): Form<OpenInput>,
 ) -> HtmlResult {
@@ -229,22 +204,13 @@ pub async fn open(
                 Place::Inventory,
                 &req,
                 &db,
-                Visitor::of(zone.as_ref()),
                 &at.choice,
                 "Reload the listing; it is not on this page any more.".into(),
             )
             .await;
         }
         Err(why) => {
-            return refused(
-                Place::Inventory,
-                &req,
-                &db,
-                Visitor::of(zone.as_ref()),
-                &at.choice,
-                why,
-            )
-            .await;
+            return refused(Place::Inventory, &req, &db, &at.choice, why).await;
         }
     };
     let looked = if let Some(tied) = &listing.identity {
@@ -267,17 +233,7 @@ pub async fn open(
         )),
         // A listing whose identity was assigned by hand answers with no record: show it as it is.
         Ok(None) => req.redirect(&url::SlabPricing::at(&reviewing)),
-        Err(why) => {
-            refused(
-                Place::Inventory,
-                &req,
-                &db,
-                Visitor::of(zone.as_ref()),
-                &reviewing,
-                why,
-            )
-            .await
-        }
+        Err(why) => refused(Place::Inventory, &req, &db, &reviewing, why).await,
     }
 }
 
@@ -292,17 +248,15 @@ pub async fn assign(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::Assign>,
     Form(input): Form<AssignInput>,
 ) -> HtmlResult {
-    let screen = Screen::read(&db, &at.choice, Visitor::of(zone.as_ref())).await?;
+    let screen = Screen::read(&db, &at.choice).await?;
     let (Some(listing), Some(record)) = (&screen.listing, &screen.record) else {
         return refused(
             Place::Listing,
             &req,
             &db,
-            Visitor::of(zone.as_ref()),
             &at.choice,
             "Open a listing and look up a confirmed certificate first.".into(),
         )
@@ -321,17 +275,7 @@ pub async fn assign(
         .await
     {
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
-        Err(why) => {
-            refused(
-                Place::Listing,
-                &req,
-                &db,
-                Visitor::of(zone.as_ref()),
-                &at.choice,
-                why,
-            )
-            .await
-        }
+        Err(why) => refused(Place::Listing, &req, &db, &at.choice, why).await,
     }
 }
 
@@ -348,7 +292,6 @@ pub async fn import(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::Import>,
     Form(input): Form<ImportInput>,
 ) -> HtmlResult {
@@ -376,17 +319,7 @@ pub async fn import(
             listing: None,
             ..at.choice.clone()
         })),
-        Err(why) => {
-            refused(
-                Place::Inventory,
-                &req,
-                &db,
-                Visitor::of(zone.as_ref()),
-                &at.choice,
-                why,
-            )
-            .await
-        }
+        Err(why) => refused(Place::Inventory, &req, &db, &at.choice, why).await,
     }
 }
 
@@ -403,7 +336,6 @@ pub struct RefreshInput {
 pub async fn refresh(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::Refresh>,
     Form(input): Form<RefreshInput>,
 ) -> HtmlResult {
@@ -423,17 +355,7 @@ pub async fn refresh(
     .await;
     match queued {
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
-        Err(why) => {
-            refused(
-                Place::Research,
-                &req,
-                &db,
-                Visitor::of(zone.as_ref()),
-                &at.choice,
-                why,
-            )
-            .await
-        }
+        Err(why) => refused(Place::Research, &req, &db, &at.choice, why).await,
     }
 }
 
@@ -448,22 +370,13 @@ pub struct CancelInput {
 pub async fn cancel(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::Cancel>,
     Form(input): Form<CancelInput>,
 ) -> HtmlResult {
     match evidence::cancel(&db.0, &input.key, &input.run).await {
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
         Err(evidence::Error::Refused(why)) => {
-            refused(
-                Place::Research,
-                &req,
-                &db,
-                Visitor::of(zone.as_ref()),
-                &at.choice,
-                why.0,
-            )
-            .await
+            refused(Place::Research, &req, &db, &at.choice, why.0).await
         }
         Err(why) => {
             eprintln!("Slab evidence cancel failed: {why}");
@@ -471,7 +384,6 @@ pub async fn cancel(
                 Place::Research,
                 &req,
                 &db,
-                Visitor::of(zone.as_ref()),
                 &at.choice,
                 "Unable to access slab evidence.".to_owned(),
             )
@@ -531,11 +443,9 @@ impl CalculateInput {
 pub async fn refresh_supply(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::RefreshSupply>,
     Form(input): Form<RefreshInput>,
 ) -> HtmlResult {
-    let visitor = Visitor::of(zone.as_ref());
     let window = at.choice.window();
     let queued = async {
         let mut conn = refreshes::connection(&db).await?;
@@ -553,7 +463,7 @@ pub async fn refresh_supply(
         Ok(_) => req.redirect(&url::SlabPricing::at(
             &at.choice.supply_source(None, Vec::new()),
         )),
-        Err(why) => refused(Place::Supply, &req, &db, visitor, &at.choice, why).await,
+        Err(why) => refused(Place::Supply, &req, &db, &at.choice, why).await,
     }
 }
 
@@ -567,7 +477,6 @@ pub struct NextSourcePageInput {
 pub async fn next_source_page(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::NextSourcePage>,
     Form(input): Form<NextSourcePageInput>,
 ) -> HtmlResult {
@@ -588,10 +497,7 @@ pub async fn next_source_page(
                 &at.choice.supply_source(Some(next.key), sources),
             ))
         }
-        Err(why) => {
-            let visitor = Visitor::of(zone.as_ref());
-            refused(Place::Supply, &req, &db, visitor, &at.choice, why).await
-        }
+        Err(why) => refused(Place::Supply, &req, &db, &at.choice, why).await,
     }
 }
 
@@ -613,7 +519,6 @@ pub struct MaintenanceInput {
 pub async fn save_maintenance(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::SaveMaintenance>,
     Form(input): Form<MaintenanceInput>,
 ) -> HtmlResult {
@@ -628,10 +533,7 @@ pub async fn save_maintenance(
     };
     match maintenance::save(&db, &settings).await {
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
-        Err(why) => {
-            let visitor = Visitor::of(zone.as_ref());
-            refused(Place::Maintenance, &req, &db, visitor, &at.choice, why).await
-        }
+        Err(why) => refused(Place::Maintenance, &req, &db, &at.choice, why).await,
     }
 }
 
@@ -645,7 +547,6 @@ pub struct OutcomesInput {
 pub async fn import_outcomes(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::ImportOutcomes>,
     Form(input): Form<OutcomesInput>,
 ) -> HtmlResult {
@@ -665,10 +566,7 @@ pub async fn import_outcomes(
                 imported.inserted, imported.supplied
             ),
         ),
-        Err(why) => {
-            let visitor = Visitor::of(zone.as_ref());
-            refused(Place::Outcomes, &req, &db, visitor, &at.choice, why).await
-        }
+        Err(why) => refused(Place::Outcomes, &req, &db, &at.choice, why).await,
     }
 }
 
@@ -677,28 +575,18 @@ pub async fn calculate(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::Calculate>,
     Form(input): Form<CalculateInput>,
 ) -> HtmlResult {
-    let visitor = Visitor::of(zone.as_ref());
-    let screen = Screen::read(&db, &at.choice, visitor).await?;
+    let screen = Screen::read(&db, &at.choice).await?;
     let (Some(record), Some(revisions)) = (&screen.record, screen.calculable_revisions()) else {
         let why = "Confirm the owned identity, assign it to the selected listing if needed, and return to its grade to calculate.";
-        return refused(
-            Place::Recommendation,
-            &req,
-            &db,
-            visitor,
-            &at.choice,
-            why.into(),
-        )
-        .await;
+        return refused(Place::Recommendation, &req, &db, &at.choice, why.into()).await;
     };
     let mut seller = match input.seller() {
         Ok(seller) => json!(seller),
         Err(why) => {
-            return refused(Place::Recommendation, &req, &db, visitor, &at.choice, why).await;
+            return refused(Place::Recommendation, &req, &db, &at.choice, why).await;
         }
     };
     seller["currency"] = "USD".into();
@@ -715,7 +603,7 @@ pub async fn calculate(
         .await
     {
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
-        Err(why) => refused(Place::Recommendation, &req, &db, visitor, &at.choice, why).await,
+        Err(why) => refused(Place::Recommendation, &req, &db, &at.choice, why).await,
     }
 }
 
@@ -731,7 +619,6 @@ pub struct ReviewAskInput {
 pub async fn review_ask(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::ReviewAsk>,
     Form(input): Form<ReviewAskInput>,
 ) -> HtmlResult {
@@ -748,17 +635,7 @@ pub async fn review_ask(
     };
     match saved {
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
-        Err(why) => {
-            refused(
-                Place::Recommendation,
-                &req,
-                &db,
-                Visitor::of(zone.as_ref()),
-                &at.choice,
-                why,
-            )
-            .await
-        }
+        Err(why) => refused(Place::Recommendation, &req, &db, &at.choice, why).await,
     }
 }
 
@@ -781,24 +658,14 @@ pub struct PrepareInput {
 pub async fn prepare(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::Prepare>,
     Form(input): Form<PrepareInput>,
 ) -> HtmlResult {
-    let visitor = Visitor::of(zone.as_ref());
-    let screen = Screen::read(&db, &at.choice, visitor).await?;
+    let screen = Screen::read(&db, &at.choice).await?;
     let fresh = screen.can_calculate() && screen.recommendation().is_some() && !screen.stale();
     let Some(listing) = screen.listing.as_ref().filter(|_| fresh) else {
         let why = "Recalculate using the current listing and evidence before preparing another price change.";
-        return refused(
-            Place::Publication,
-            &req,
-            &db,
-            visitor,
-            &at.choice,
-            why.into(),
-        )
-        .await;
+        return refused(Place::Publication, &req, &db, &at.choice, why.into()).await;
     };
     let asked = publication::Asked {
         intent_id: input.submit.as_str().to_owned(),
@@ -817,7 +684,7 @@ pub async fn prepare(
             steps: None,
             ..at.choice.clone()
         })),
-        Err(why) => refused(Place::Publication, &req, &db, visitor, &at.choice, why).await,
+        Err(why) => refused(Place::Publication, &req, &db, &at.choice, why).await,
     }
 }
 
@@ -834,7 +701,6 @@ pub struct DryRunInput {
 pub async fn dry_run(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::DryRun>,
     Form(input): Form<DryRunInput>,
 ) -> HtmlResult {
@@ -850,10 +716,7 @@ pub async fn dry_run(
             steps: Some(ran),
             ..at.choice.clone()
         })),
-        Err(why) => {
-            let visitor = Visitor::of(zone.as_ref());
-            refused(Place::DryRun, &req, &db, visitor, &at.choice, why).await
-        }
+        Err(why) => refused(Place::DryRun, &req, &db, &at.choice, why).await,
     }
 }
 
@@ -881,25 +744,15 @@ pub struct CompDecisionInput {
 pub async fn decide_comp(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::DecideComp>,
     Form(input): Form<CompDecisionInput>,
 ) -> HtmlResult {
-    let visitor = Visitor::of(zone.as_ref());
     let Some(record) = (match at.choice.certificate() {
         Some((grader, cert)) => identity::find(&db, grader, cert).await?,
         None => None,
     }) else {
         let why = "Look up a certificate first.";
-        return refused(
-            Place::CompDecision,
-            &req,
-            &db,
-            visitor,
-            &at.choice,
-            why.into(),
-        )
-        .await;
+        return refused(Place::CompDecision, &req, &db, &at.choice, why.into()).await;
     };
     let date = input.date.trim();
     let decided = comps::Decided {
@@ -922,7 +775,7 @@ pub async fn decide_comp(
             comp: None,
             ..at.choice.clone()
         })),
-        Err(why) => refused(Place::CompDecision, &req, &db, visitor, &at.choice, why).await,
+        Err(why) => refused(Place::CompDecision, &req, &db, &at.choice, why).await,
     }
 }
 
@@ -939,7 +792,6 @@ pub struct FetchCompsInput {
 pub async fn fetch_comps(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::FetchComps>,
     Form(input): Form<FetchCompsInput>,
 ) -> HtmlResult {
@@ -961,29 +813,19 @@ pub async fn fetch_comps(
         Ok(queued) => req.redirect(&url::SlabPricing::at(
             &at.choice.with_extra(queued.into_iter().map(|s| s.key)),
         )),
-        Err(why) => {
-            let visitor = Visitor::of(zone.as_ref());
-            refused(place, &req, &db, visitor, &at.choice, why).await
-        }
+        Err(why) => refused(place, &req, &db, &at.choice, why).await,
     }
 }
 
 /// Why the post was refused, as a conflict, in the part of the page that sent it: with
 /// JavaScript (a `data-patch` form) only that part's message, so what the user typed stays;
 /// otherwise the page the post came from.
-async fn refused(
-    at: Place,
-    req: &Req,
-    db: &Database,
-    visitor: Visitor,
-    choice: &Choice,
-    why: String,
-) -> HtmlResult {
+async fn refused(at: Place, req: &Req, db: &Database, choice: &Choice, why: String) -> HtmlResult {
     let mut refusal = Errors::new();
     refusal.refuse(Refusal::Conflict, why.as_str());
     let message = html! { <Problem at={at} why={Some(why.as_str())} /> };
     req.invalid(&refusal, message, || async {
-        let mut screen = Screen::read(db, choice, visitor).await?;
+        let mut screen = Screen::read(db, choice).await?;
         screen.problem = Some((at, why.clone()));
         page(req, db, &screen).await
     })

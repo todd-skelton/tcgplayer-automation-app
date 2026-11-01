@@ -188,7 +188,7 @@ pub fn app(shared: Shared) -> App {
         .components(dashboard::COMPONENTS)
         .messages::<Msg>()
         // Dates are written in the visitor's zone, as the React screens' `toLocaleString`.
-        .client_zone()
+        .zoned_dates()
         // TCGplayer's product pictures.
         .policy(Policy::new().img_src("https://tcgplayer-cdn.tcgplayer.com"))
         .task("forecast evidence backfill", {
@@ -277,6 +277,54 @@ mod tests {
             slab_providers: slab_connections::Transport::default(),
         };
         let _ = app(shared).router();
+    }
+
+    /// A page read from the dev database (`.env`), once with the browser's zone (`corten-zone`)
+    /// and once without: its dates are the visitor's, else UTC and marked so. Reads only; the
+    /// router starts none of the app's tasks, and Node is not reached.
+    #[tokio::test]
+    #[ignore = "reads the dev database"]
+    async fn dates_are_written_in_the_visitors_zone() {
+        use tower::ServiceExt;
+        crate::config::load_env();
+        let read = |path: &'static str, zone: Option<&'static str>| async move {
+            let mut request = corten::axum::http::Request::get(path);
+            if let Some(zone) = zone {
+                request = request.header("cookie", format!("corten-zone={zone}"));
+            }
+            let shared = Shared {
+                db: Database::connect_lazy(&crate::config::database_url()),
+                legacy: Legacy::new("http://localhost:1".into()),
+                slab_providers: slab_connections::Transport::default(),
+            };
+            let answer = app(shared)
+                .router()
+                .oneshot(request.body(corten::axum::body::Body::empty()).unwrap())
+                .await
+                .unwrap();
+            let body = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            String::from_utf8(body.to_vec()).unwrap()
+        };
+        let mut zoned = 0;
+        for path in ["/inventory-strategy", "/pending-inventory-pricer"] {
+            let (utc, chicago) = (
+                read(path, None).await,
+                read(path, Some("America/Chicago")).await,
+            );
+            // Before the browser names its zone a date says it is UTC; after, it is the zone's own.
+            let marked = |page: &str| page.matches(" UTC").count();
+            println!(
+                "{path}: {} dates in UTC, {} with the zone",
+                marked(&utc),
+                marked(&chicago)
+            );
+            assert_eq!(marked(&chicago), 0, "{path}");
+            assert!(marked(&utc) == 0 || chicago.contains(" GMT-"), "{path}");
+            zoned += marked(&utc);
+        }
+        assert!(zoned > 0, "no page wrote a date");
     }
 
     /// The scripts' view classes (`corten/views`), which `corten check` type-checks them against.

@@ -15,13 +15,12 @@ use crate::{
     layout::{Notice, SubmitsOnChange, Tone},
     text::Msg,
     theme::*,
-    zone::Visitor,
 };
 
 /// The screen: the choices that find a product, then its prices by condition and variant, and
 /// once the policy priced it, the condition dispute helper.
 #[component(css)]
-pub fn MatrixScreen<'a>(screen: &'a Screen, visitor: Visitor, t: Msg) -> impl Render {
+pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let f = Choice::FIELDS;
     // The form keeps what it has no control for: the set while searching by number, and the
     // product it was drawn for.
@@ -43,7 +42,7 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, visitor: Visitor, t: Msg) -> impl Re
                         if let Some(at) = priced_at {
                             <span class={Chip}>
                                 "Priced "
-                                {t.date_time(at, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                                {t.date_time(at, DateStyle::Short, TimeStyle::Medium)}
                             </span>
                         }
                         if m.suggested_prices_included {

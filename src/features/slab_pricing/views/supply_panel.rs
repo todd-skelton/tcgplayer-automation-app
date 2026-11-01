@@ -19,7 +19,6 @@ use crate::{
     layout::{Field, Notice, Tone},
     text::Msg,
     theme::*,
-    zone::Visitor,
 };
 
 #[derive(Id)]
@@ -138,7 +137,6 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
     });
     let choice = &screen.choice;
     let seller = screen.supply_seller().to_owned();
-    let visitor = screen.visitor;
     let c = CancelInput::FIELDS;
     html! {
         <div id={SupplyBodyId} class={Stack} aria-live="polite">
@@ -187,7 +185,6 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
                             context={context}
                             choice={choice}
                             t={t}
-                            visitor={visitor}
                         />
                     }
                 }
@@ -204,7 +201,6 @@ fn SupplyContext<'a>(
     context: &'a Context,
     choice: &'a Choice,
     t: Msg,
-    visitor: Visitor,
 ) -> impl Render {
     let at = |when: &str| when.parse::<DateTime<Utc>>().ok();
     let captured = at(&context.captured_at);
@@ -240,7 +236,7 @@ fn SupplyContext<'a>(
         <p class={muted()}>
             if let Some(captured) = captured {
                 "Observed "
-                {t.date_time(captured, DateStyle::Short, TimeStyle::Medium).zone(visitor)}" · "
+                {t.date_time(captured, DateStyle::Short, TimeStyle::Medium)}" · "
             }
             {context.reported_count}" listings in this response · "
             if supply.source_has_more_pages {
@@ -326,11 +322,11 @@ fn SupplyContext<'a>(
                 <p class={muted()}>
                     "Observed from "
                     if let Some(from) = from {
-                        {t.date_time(from, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                        {t.date_time(from, DateStyle::Short, TimeStyle::Medium)}
                     }
                     " through "
                     if let Some(through) = through {
-                        {t.date_time(through, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                        {t.date_time(through, DateStyle::Short, TimeStyle::Medium)}
                     }
                     ": "{changes.changes.len()}
                     " changes. Continuous exposure between observations is unknown."

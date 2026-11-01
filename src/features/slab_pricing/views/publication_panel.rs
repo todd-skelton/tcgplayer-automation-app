@@ -18,7 +18,6 @@ use crate::{
     layout::{Field, Notice, Tone},
     text::Msg,
     theme::*,
-    zone::Visitor,
 };
 
 /// The link that shows or hides the price-change review of the listing reviewed, and the review
@@ -65,7 +64,7 @@ pub fn PublicationPanel<'a>(
                 }
                 if let Some(Ok(review)) = &screen.publication {
                     if let Some(preview) = &review.preview {
-                        <SavedPreview preview={preview} t={t} visitor={screen.visitor} />
+                        <SavedPreview preview={preview} t={t} />
                         <DryRun
                             screen={screen}
                             preview={preview}
@@ -129,7 +128,7 @@ fn PrepareForm<'a>(
 /// The saved price change: the listing, the old and new price, what it rests on, and whether it
 /// needs replacing.
 #[component(css = super::slab_screen::SlabScreen)]
-fn SavedPreview<'a>(preview: &'a Preview, t: Msg, visitor: Visitor) -> impl Render {
+fn SavedPreview<'a>(preview: &'a Preview, t: Msg) -> impl Render {
     let plan = &preview.plan;
     let inventory = &plan.inventory;
     let saved = parsed(&plan.created_at);
@@ -152,11 +151,11 @@ fn SavedPreview<'a>(preview: &'a Preview, t: Msg, visitor: Visitor) -> impl Rend
         <p class={muted()}>
             "Saved "
             if let Some(at) = saved {
-                {t.date_time(at, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                {t.date_time(at, DateStyle::Short, TimeStyle::Medium)}
             }
             " · Review expires "
             if let Some(at) = expires {
-                {t.date_time(at, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                {t.date_time(at, DateStyle::Short, TimeStyle::Medium)}
             }
             " · "{plan.evidence.len()}" evidence revisions"
         </p>
@@ -193,7 +192,6 @@ fn DryRun<'a>(
     let f = DryRunInput::FIELDS;
     let plan: &Plan = &preview.plan;
     let blocked = stale || !preview.conflicts.is_empty() || plan.expired(Utc::now());
-    let visitor = screen.visitor;
     let runs: Vec<(&Run, Option<DateTime<Utc>>, Choice)> = review
         .runs
         .iter()
@@ -241,7 +239,7 @@ fn DryRun<'a>(
                                 }
                                 if let Some(at) = created {
                                     " · "
-                                    {t.date_time(*at, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                                    {t.date_time(*at, DateStyle::Short, TimeStyle::Medium)}
                                 }
                                 if let Some(reason) = &run.reason {
                                     " · "{words(reason)}
@@ -272,7 +270,7 @@ fn DryRun<'a>(
                                 {words(&step.state)}
                                 if let Some(at) = created {
                                     " · "
-                                    {t.date_time(*at, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                                    {t.date_time(*at, DateStyle::Short, TimeStyle::Medium)}
                                 }
                                 if let Some(reason) = &step.reason {
                                     " · "{words(reason)}

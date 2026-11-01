@@ -23,7 +23,6 @@ use crate::{
     layout::{Field, Notice, Tone},
     text::Msg,
     theme::*,
-    zone::Visitor,
 };
 
 /// The form for the order's labels: a refused purchase or a new choice redraws it.
@@ -35,7 +34,6 @@ pub struct Looked<'a> {
     pub number: Option<&'a str>,
     pub seller: &'a str,
     pub problem: Option<&'a str>,
-    pub visitor: Visitor,
     pub t: Msg,
 }
 
@@ -142,7 +140,7 @@ fn PurchasedLabel<'a>(title: &'a str, bought: &'a Bought, looked: &'a Looked<'a>
             if let Some(at) = at {
                 <p class={muted()}>
                     "Purchased "
-                    {t.date_time(at, DateStyle::Short, TimeStyle::Medium).zone(looked.visitor)}
+                    {t.date_time(at, DateStyle::Short, TimeStyle::Medium)}
                 </p>
             }
             if let Some(code) = &result.tracking_code {

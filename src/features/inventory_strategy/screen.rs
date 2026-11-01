@@ -23,7 +23,6 @@ use crate::{
         continuous_pricing::store,
         pricing::capital_cycle::{Economics, Portfolio},
     },
-    zone::Visitor,
 };
 
 /// The latest strategy analysis batch for the seller.
@@ -88,14 +87,13 @@ pub struct Screen {
     pub performance: Option<RealizedPerformance>,
     pub margin_trend: Option<MarginTrend>,
     pub performance_error: Option<&'static str>,
-    pub visitor: Visitor,
     pub now: DateTime<Utc>,
     /// Why the last post was refused.
     pub problem: Option<String>,
 }
 
 impl Screen {
-    pub async fn read(db: &Database, view: &View, visitor: Visitor) -> corten::Result<Screen> {
+    pub async fn read(db: &Database, view: &View) -> corten::Result<Screen> {
         let (settings, config) = tokio::join!(store::settings(db), config::load(db));
         let seller = settings?.seller_key;
         let config = config?;
@@ -159,7 +157,6 @@ impl Screen {
             performance,
             margin_trend,
             performance_error,
-            visitor,
             now,
             problem: None,
         })

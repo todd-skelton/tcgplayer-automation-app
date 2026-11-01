@@ -4,8 +4,7 @@ use std::{
 };
 
 use corten::{
-    ClientZone, Fragment, LiveResponse, LiveSince, Media, Mode, Refusal, axum::http::StatusCode,
-    prelude::*,
+    Fragment, LiveResponse, LiveSince, Media, Mode, Refusal, axum::http::StatusCode, prelude::*,
 };
 use corten_ui::Toast;
 use futures_util::stream;
@@ -22,7 +21,6 @@ use crate::{
     layout::{Chrome, Layout},
     legacy::Legacy,
     text::Msg,
-    zone::Visitor,
 };
 
 /// How often a batch that prices or publishes is read again, as the React screen's stream read it.
@@ -119,27 +117,13 @@ fn unavailable(message: String) -> corten::Error {
 pub async fn show(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::BatchPricer>,
 ) -> HtmlResult {
-    page(
-        &req,
-        &db,
-        at.chosen.batch,
-        Visitor::of(zone.as_ref()),
-        &Drawn::default(),
-    )
-    .await
+    page(&req, &db, at.chosen.batch, &Drawn::default()).await
 }
 
 /// The screen with `chosen`, or the newest batch, shown.
-async fn page(
-    req: &Req,
-    db: &Database,
-    chosen: Option<i32>,
-    visitor: Visitor,
-    drawn: &Drawn<'_>,
-) -> HtmlResult {
+async fn page(req: &Req, db: &Database, chosen: Option<i32>, drawn: &Drawn<'_>) -> HtmlResult {
     let (chrome, list, seller, rates) = tokio::join!(
         Chrome::read(db),
         batches::list(db),
@@ -177,7 +161,6 @@ async fn page(
                 errors={drawn.errors.unwrap_or(&none)}
                 problem={drawn.problem}
                 t={req.t()}
-                visitor={visitor}
             />
         </Layout>
     })
@@ -186,13 +169,7 @@ async fn page(
 /// What a post on a batch did. With JavaScript, the batch's panel as it is now (following it
 /// when it prices or publishes) and the message in a toast, or why it was refused; without, the
 /// page, or the page with why.
-async fn answer(
-    req: &Req,
-    db: &Database,
-    batch: i32,
-    visitor: Visitor,
-    done: Result<String, String>,
-) -> HtmlResult {
+async fn answer(req: &Req, db: &Database, batch: i32, done: Result<String, String>) -> HtmlResult {
     let t: Msg = req.t();
     let message = match done {
         Err(message) => {
@@ -207,7 +184,7 @@ async fn answer(
                             .await
                             .map_err(unavailable)?;
                         patch.draw(html! {
-                            <BatchFollow shown={&shown} t={t} visitor={visitor} />
+                            <BatchFollow shown={&shown} t={t} />
                             <BatchProblem message={Some(message)} />
                         })
                     },
@@ -216,7 +193,7 @@ async fn answer(
                             problem: Some(message),
                             ..Drawn::default()
                         };
-                        page(req, db, Some(batch), visitor, &drawn).await
+                        page(req, db, Some(batch), &drawn).await
                     },
                 )
                 .await;
@@ -229,7 +206,7 @@ async fn answer(
     let rates = success_rates(db).await?;
     let shown = Shown::read(db, batch, rates).await.map_err(unavailable)?;
     req.patch(html! {
-        <BatchFollow shown={&shown} t={t} visitor={visitor} />
+        <BatchFollow shown={&shown} t={t} />
         <BatchProblem message={None} />
         <Toast message={Some(message.as_str())} />
     })
@@ -245,12 +222,11 @@ pub struct PriceInput {
 pub async fn price(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::Price>,
     Form(input): Form<PriceInput>,
 ) -> HtmlResult {
     let done = batches::price(&db, at.batch, input.mode).await;
-    answer(&req, &db, at.batch, Visitor::of(zone.as_ref()), done).await
+    answer(&req, &db, at.batch, done).await
 }
 
 /// The SKUs checked in the publish dialog, each a `sku` field.
@@ -265,7 +241,6 @@ pub struct PublishInput {
 pub async fn publish(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::Publish>,
     Form(input): Form<PublishInput>,
 ) -> HtmlResult {
@@ -282,7 +257,7 @@ pub async fn publish(
             )
         })
         };
-    answer(&req, &db, at.batch, Visitor::of(zone.as_ref()), done).await
+    answer(&req, &db, at.batch, done).await
 }
 
 /// The batch, its items and its results deleted, and the newest batch shown; the database refuses
@@ -290,7 +265,6 @@ pub async fn publish(
 pub async fn delete(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::Delete>,
 ) -> HtmlResult {
     match batches::delete(&db, at.batch).await {
@@ -298,16 +272,7 @@ pub async fn delete(
             &url::BatchPricer::newest(),
             format_args!("Batch {} deleted", at.batch),
         ),
-        Err(message) => {
-            answer(
-                &req,
-                &db,
-                at.batch,
-                Visitor::of(zone.as_ref()),
-                Err(message),
-            )
-            .await
-        }
+        Err(message) => answer(&req, &db, at.batch, Err(message)).await,
     }
 }
 
@@ -336,7 +301,6 @@ pub struct CsvInput {
 pub async fn import_csv(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     mut upload: Upload<CsvInput>,
 ) -> HtmlResult {
     let f = CsvInput::FIELDS;
@@ -362,13 +326,12 @@ pub async fn import_csv(
     } else if errors.is_empty() {
         errors.add(f.file, "Choose a CSV export.");
     }
-    let visitor = Visitor::of(zone.as_ref());
     let drawn = Drawn {
         errors: Some(&errors),
         ..Drawn::default()
     };
     req.invalid(&errors, CsvForm { errors: &errors }, || {
-        page(&req, &db, None, visitor, &drawn)
+        page(&req, &db, None, &drawn)
     })
     .await
 }
@@ -384,7 +347,6 @@ pub async fn import_seller(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Form(input): Form<SellerInput>,
 ) -> HtmlResult {
     let f = SellerInput::FIELDS;
@@ -400,7 +362,6 @@ pub async fn import_seller(
     };
     let mut errors = Errors::new();
     errors.add(f.seller_key, message);
-    let visitor = Visitor::of(zone.as_ref());
     let drawn = Drawn {
         errors: Some(&errors),
         seller: Some(key),
@@ -412,7 +373,7 @@ pub async fn import_seller(
             seller: key,
             errors: &errors,
         },
-        || page(&req, &db, None, visitor, &drawn),
+        || page(&req, &db, None, &drawn),
     )
     .await
 }
@@ -422,14 +383,13 @@ pub async fn import_seller(
 pub async fn live(
     req: Req,
     State(db): State<Database>,
-    zone: Option<ClientZone>,
     since: LiveSince,
     Params(at): Params<url::Live>,
 ) -> LiveResponse {
     let Ok(rates) = success_rates(&db).await else {
         return corten::live(stream::empty::<String>());
     };
-    let (t, visitor): (Msg, Visitor) = (req.t(), Visitor::of(zone.as_ref()));
+    let t: Msg = req.t();
     let follow = Follow {
         db,
         batch: at.batch,
@@ -443,12 +403,7 @@ pub async fn live(
     };
     corten::live(stream::unfold(follow, move |mut follow| async move {
         let (shown, version) = follow.next().await?;
-        let html = BatchPanel {
-            shown: &shown,
-            t,
-            visitor,
-        }
-        .to_html();
+        let html = BatchPanel { shown: &shown, t }.to_html();
         Some((Fragment::new(html).cursor(version), follow))
     }))
 }

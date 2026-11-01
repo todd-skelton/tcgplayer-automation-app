@@ -21,7 +21,6 @@ use crate::{
     layout::{Field, Notice, Tone},
     text::Msg,
     theme::*,
-    zone::Visitor,
 };
 
 #[derive(Id)]
@@ -125,7 +124,6 @@ pub fn EvidenceList<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
         })
     });
     let choice = &screen.choice;
-    let visitor = screen.visitor;
     html! {
         <div id={EvidenceListId} class={Stack} aria-live="polite">
             if statuses.is_empty() && matches!(&screen.research, Some(Ok(_))) {
@@ -134,7 +132,7 @@ pub fn EvidenceList<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
                 </Notice>
             }
             for status in statuses {
-                <EvidenceRow status={status} choice={choice} t={t} visitor={visitor} />
+                <EvidenceRow status={status} choice={choice} t={t} />
             }
         </div>
         {again}
@@ -142,12 +140,7 @@ pub fn EvidenceList<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
 }
 
 #[component(css = super::slab_screen::SlabScreen)]
-fn EvidenceRow<'a>(
-    status: &'a EvidenceStatus,
-    choice: &'a Choice,
-    t: Msg,
-    visitor: Visitor,
-) -> impl Render {
+fn EvidenceRow<'a>(status: &'a EvidenceStatus, choice: &'a Choice, t: Msg) -> impl Render {
     let fetched = status
         .fetched_at
         .as_deref()
@@ -165,7 +158,7 @@ fn EvidenceRow<'a>(
             <span class={muted()}>
                 match fetched {
                     Some(at) => {
-                        {t.date_time(at, DateStyle::Short, TimeStyle::Medium).zone(visitor)}
+                        {t.date_time(at, DateStyle::Short, TimeStyle::Medium)}
                     }
                     None => "Not yet fetched",
                 }

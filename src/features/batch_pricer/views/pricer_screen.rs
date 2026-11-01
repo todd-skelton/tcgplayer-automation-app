@@ -10,7 +10,6 @@ use crate::{
     layout::{Notice, SubmitsOnChange, Tone},
     text::Msg,
     theme::*,
-    zone::Visitor,
 };
 
 /// The CSV form's id: a refused file's answer replaces it.
@@ -31,7 +30,6 @@ pub fn PricerScreen<'a>(
     errors: &'a Errors,
     problem: Option<&'a str>,
     t: Msg,
-    visitor: Visitor,
 ) -> impl Render {
     // A batch linked directly that is older than the newest 100 is still offered.
     let unlisted = number.filter(|n| !list.iter().any(|b| b.batch_number == *n));
@@ -89,7 +87,7 @@ pub fn PricerScreen<'a>(
                 <Notice tone={Tone::Warning}>"Failed to load batch: "{message}</Notice>
             }
             Some(Ok(shown)) => {
-                <BatchFollow shown={shown} t={t} visitor={visitor} />
+                <BatchFollow shown={shown} t={t} />
             }
         }
     }

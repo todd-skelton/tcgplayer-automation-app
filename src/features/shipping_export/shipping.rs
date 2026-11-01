@@ -4,7 +4,7 @@
 //! and shipping again reaches only what did not.
 use std::collections::HashSet;
 
-use corten::{ClientZone, Refusal, prelude::*};
+use corten::{Refusal, prelude::*};
 
 use super::{
     one_at_a_time::OneAtATime,
@@ -14,7 +14,7 @@ use super::{
     url::ShippingWorkflow,
     workflow,
 };
-use crate::{database::Database, legacy::Legacy, zone::Visitor};
+use crate::{database::Database, legacy::Legacy};
 
 /// Buyers hear once: a second click, tab or computer waits for the first to finish.
 static SHIPPING: OneAtATime = OneAtATime::new();
@@ -28,12 +28,10 @@ pub async fn mark_shipped(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
 ) -> HtmlResult {
-    let visitor = Visitor::of(zone.as_ref());
     let refuse = |refusal: Refusal, why: String| {
         let (req, db, legacy) = (&req, &db, &legacy);
-        async move { refused(req, db, legacy, visitor, Step::Ship, refusal, &why).await }
+        async move { refused(req, db, legacy, Step::Ship, refusal, &why).await }
     };
     let Some(_shipping) = SHIPPING.start() else {
         return refuse(Refusal::Conflict, SHIPPING_NOW.into()).await;

@@ -110,10 +110,10 @@ pub fn PerformancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             }
             if let Some(report) = &screen.performance {
                 <p class={(muted(), Caption)}>
-                    "As of "{t.date(report.as_of, DateStyle::Short).zone(screen.visitor)}
+                    "As of "{t.date(report.as_of, DateStyle::Short)}
                     if let Some(first) = report.first_sale_at {
                         " \u{b7} sales on record since "
-                        {t.date(first, DateStyle::Short).zone(screen.visitor)}
+                        {t.date(first, DateStyle::Short)}
                     }
                     ". Opening-balance lots count as held since the inventory was first observed."
                 </p>

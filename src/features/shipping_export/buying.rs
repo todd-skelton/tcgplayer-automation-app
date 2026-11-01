@@ -1,7 +1,7 @@
 //! The Buy Postage step's posts: postage for every shipment or one, a return label, a shipment
 //! edited by hand, and a shipment as EasyPost's CSV.
 use chrono::Utc;
-use corten::{ClientZone, Media, Refusal, prelude::*};
+use corten::{Media, Refusal, prelude::*};
 use serde::Deserialize;
 
 use super::{
@@ -18,7 +18,6 @@ use crate::{
     database::Database,
     features::shipping_configuration::{self, EasyPostMode},
     legacy::Legacy,
-    zone::Visitor,
 };
 
 /// Why postage cannot be bought now: another purchase is running, or the mode has no key.
@@ -41,16 +40,13 @@ pub async fn buy_all(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
 ) -> HtmlResult {
-    let visitor = Visitor::of(zone.as_ref());
     let mode = EasyPostMode::of_deployment();
     let Some(_buying) = postage::BUYING.start() else {
         return refused(
             &req,
             &db,
             &legacy,
-            visitor,
             Step::BuyPostage,
             Refusal::Conflict,
             BUYING,
@@ -62,7 +58,6 @@ pub async fn buy_all(
             &req,
             &db,
             &legacy,
-            visitor,
             Step::BuyPostage,
             Refusal::Conflict,
             &why,
@@ -76,16 +71,7 @@ pub async fn buy_all(
     let batch = plan(&config?, saved?.as_ref());
     if batch.shipments.is_empty() {
         let why = "Load orders before buying postage.";
-        return refused(
-            &req,
-            &db,
-            &legacy,
-            visitor,
-            Step::BuyPostage,
-            Refusal::Conflict,
-            why,
-        )
-        .await;
+        return refused(&req, &db, &legacy, Step::BuyPostage, Refusal::Conflict, why).await;
     }
     for size in batch.label_sizes() {
         let of_size: Vec<Planned> = batch
@@ -108,7 +94,6 @@ pub async fn buy_all(
                     &req,
                     &db,
                     &legacy,
-                    visitor,
                     Step::BuyPostage,
                     Refusal::Upstream,
                     &why,
@@ -135,11 +120,9 @@ pub async fn buy_shipment(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::BuyShipmentPostage>,
     Form(input): Form<BuyInput>,
 ) -> HtmlResult {
-    let visitor = Visitor::of(zone.as_ref());
     let mode = EasyPostMode::of_deployment();
     let reference = at.reference;
     let direction = input.direction;
@@ -148,7 +131,6 @@ pub async fn buy_shipment(
             &req,
             &db,
             &legacy,
-            visitor,
             Step::BuyPostage,
             Refusal::Conflict,
             BUYING,
@@ -160,7 +142,6 @@ pub async fn buy_shipment(
             &req,
             &db,
             &legacy,
-            visitor,
             Step::BuyPostage,
             Refusal::Conflict,
             &why,
@@ -174,7 +155,6 @@ pub async fn buy_shipment(
             &req,
             &db,
             &legacy,
-            visitor,
             Step::BuyPostage,
             Refusal::Conflict,
             &why,
@@ -194,7 +174,6 @@ pub async fn buy_shipment(
             &req,
             &db,
             &legacy,
-            visitor,
             Step::BuyPostage,
             Refusal::Conflict,
             &why,
@@ -222,7 +201,6 @@ pub async fn buy_shipment(
                 &req,
                 &db,
                 &legacy,
-                visitor,
                 Step::BuyPostage,
                 Refusal::Upstream,
                 &why,
@@ -254,7 +232,6 @@ pub async fn buy_shipment(
             &req,
             &db,
             &legacy,
-            visitor,
             Step::BuyPostage,
             Refusal::Upstream,
             &why,
@@ -289,11 +266,9 @@ pub async fn edit_shipment(
     req: Req,
     State(db): State<Database>,
     State(legacy): State<Legacy>,
-    zone: Option<ClientZone>,
     Params(at): Params<url::EditShipment>,
     Form(input): Form<ShipmentInput>,
 ) -> HtmlResult {
-    let visitor = Visitor::of(zone.as_ref());
     let reference = at.reference;
     let (config, saved) = tokio::join!(
         shipping_configuration::settings(&db),
@@ -320,7 +295,6 @@ pub async fn edit_shipment(
             &req,
             &db,
             &legacy,
-            visitor,
             Step::BuyPostage,
             Refusal::Conflict,
             &why,
@@ -351,17 +325,7 @@ pub async fn edit_shipment(
                     input: &input,
                     errors: &errors,
                 },
-                || {
-                    page(
-                        &req,
-                        &db,
-                        &legacy,
-                        visitor,
-                        &editing,
-                        None,
-                        Some((&input, &errors)),
-                    )
-                },
+                || page(&req, &db, &legacy, &editing, None, Some((&input, &errors))),
             )
             .await
         }
