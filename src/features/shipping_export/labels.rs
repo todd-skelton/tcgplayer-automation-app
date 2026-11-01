@@ -111,7 +111,6 @@ async fn seller(db: &Database, config: &ShippingConfig) -> corten::Result<String
 /// The order and the labels already bought for it, or why it could not be read.
 async fn look_up(
     db: &Database,
-    legacy: &Legacy,
     config: &ShippingConfig,
     number: &str,
 ) -> corten::Result<Result<Found, (Refusal, String)>> {
@@ -137,8 +136,8 @@ async fn look_up(
         orders: vec![order.number.clone()],
     }];
     let (outbound, returned) = tokio::join!(
-        postage::bought(legacy, Direction::Outbound, &one),
-        postage::bought(legacy, Direction::Return, &one)
+        postage::bought(&db.0, Direction::Outbound, &one),
+        postage::bought(&db.0, Direction::Return, &one)
     );
     let reference = order.number.clone();
     let take = |p: Result<postage::Postage, String>, what: &str| match p {
@@ -168,7 +167,6 @@ struct Draft<'a> {
 async fn labels_page(
     req: &Req,
     db: &Database,
-    legacy: &Legacy,
     number: Option<&str>,
     problem: Option<&str>,
     draft: Option<Draft<'_>>,
@@ -177,7 +175,7 @@ async fn labels_page(
     let config = config?;
     let number = number.map(str::trim).filter(|n| !n.is_empty());
     let found = match number {
-        Some(n) => Some(look_up(db, legacy, &config, n).await?),
+        Some(n) => Some(look_up(db, &config, n).await?),
         None => None,
     };
     let lookup_problem = found
@@ -227,10 +225,9 @@ async fn labels_page(
 pub async fn show_labels(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::OrderLabels>,
 ) -> HtmlResult {
-    labels_page(&req, &db, &legacy, at.order.as_deref(), None, None).await
+    labels_page(&req, &db, at.order.as_deref(), None, None).await
 }
 
 /// The form drawn again for what was chosen: a new service redraws the package for it (a
@@ -238,7 +235,6 @@ pub async fn show_labels(
 pub async fn redraw_labels(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::OrderLabelsForm>,
     body: Bytes,
 ) -> HtmlResult {
@@ -247,21 +243,13 @@ pub async fn redraw_labels(
         from_bytes::<ShipmentInput>(&body),
         from_bytes::<Choice>(&body),
     ) else {
-        return labels_page(&req, &db, &legacy, Some(&number), None, None).await;
+        return labels_page(&req, &db, Some(&number), None, None).await;
     };
     let config = shipping_configuration::settings(&db).await?;
-    let found = match look_up(&db, &legacy, &config, &number).await? {
+    let found = match look_up(&db, &config, &number).await? {
         Ok(found) => found,
         Err((refusal, why)) => {
-            return refused(
-                &req,
-                &db,
-                &legacy,
-                &number,
-                (refusal, &why),
-                kept(&input, &choice),
-            )
-            .await;
+            return refused(&req, &db, &number, (refusal, &why), kept(&input, &choice)).await;
         }
     };
     let input = if choice.shown_service == Some(input.service) {
@@ -301,7 +289,6 @@ pub async fn buy_labels(
             return refused(
                 &req,
                 &db,
-                &legacy,
                 &number,
                 (Refusal::Conflict, &why.to_string()),
                 None,
@@ -314,7 +301,6 @@ pub async fn buy_labels(
         return refused(
             &req,
             &db,
-            &legacy,
             &number,
             (Refusal::Conflict, why),
             kept(&input, &choice),
@@ -325,7 +311,6 @@ pub async fn buy_labels(
         return refused(
             &req,
             &db,
-            &legacy,
             &number,
             (Refusal::Conflict, &why),
             kept(&input, &choice),
@@ -333,18 +318,10 @@ pub async fn buy_labels(
         .await;
     }
     let config = shipping_configuration::settings(&db).await?;
-    let found = match look_up(&db, &legacy, &config, &number).await? {
+    let found = match look_up(&db, &config, &number).await? {
         Ok(found) => found,
         Err((refusal, why)) => {
-            return refused(
-                &req,
-                &db,
-                &legacy,
-                &number,
-                (refusal, &why),
-                kept(&input, &choice),
-            )
-            .await;
+            return refused(&req, &db, &number, (refusal, &why), kept(&input, &choice)).await;
         }
     };
     // The labels are the order's: its number is the reference, whatever the form says.
@@ -372,7 +349,7 @@ pub async fn buy_labels(
                             buy: choice.buy,
                             errors: &errors,
                         };
-                        labels_page(&req, &db, &legacy, Some(&number), None, Some(draft))
+                        labels_page(&req, &db, Some(&number), None, Some(draft))
                     },
                 )
                 .await;
@@ -383,7 +360,6 @@ pub async fn buy_labels(
         return refused(
             &req,
             &db,
-            &legacy,
             &number,
             (Refusal::Conflict, why),
             kept(&input, &choice),
@@ -421,7 +397,6 @@ pub async fn buy_labels(
             return refused(
                 &req,
                 &db,
-                &legacy,
                 &number,
                 (Refusal::Upstream, &why),
                 kept(&input, &choice),
@@ -448,7 +423,6 @@ fn kept<'a>(input: &'a ShipmentInput, choice: &Choice) -> Option<Draft<'a>> {
 async fn refused(
     req: &Req,
     db: &Database,
-    legacy: &Legacy,
     number: &str,
     (refusal, why): (Refusal, &str),
     draft: Option<Draft<'_>>,
@@ -458,7 +432,7 @@ async fn refused(
     req.invalid_with(
         &errors,
         |patch| async move { patch.draw(html! { <Refused problem={Some(why)} /> }) },
-        || labels_page(req, db, legacy, Some(number), Some(why), draft),
+        || labels_page(req, db, Some(number), Some(why), draft),
     )
     .await
 }

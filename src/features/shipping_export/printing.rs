@@ -21,7 +21,6 @@ use crate::{
 pub async fn packing_slips(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::PackingSlips>,
 ) -> corten::Result<PageOr<Media>> {
     let (config, saved) = tokio::join!(
@@ -36,7 +35,7 @@ pub async fn packing_slips(
         Ok(pdf) => pdf,
         Err(why) => {
             let why = format!("Failed to generate packing slips: {why}");
-            let page = refused(&req, &db, &legacy, Step::Print, Refusal::Upstream, &why).await?;
+            let page = refused(&req, &db, Step::Print, Refusal::Upstream, &why).await?;
             return Ok(page.into());
         }
     };
@@ -79,11 +78,11 @@ pub async fn create_batch_label(
     Params(at): Params<url::BatchLabelPdf>,
 ) -> HtmlResult {
     let size = at.size;
-    let shown = Shown::read(&db, &legacy).await?;
+    let shown = Shown::read(&db).await?;
     let labels = labels_of(&shown, size);
     let Some((_, first)) = labels.first() else {
         let why = format!("Buy {size} postage before creating its batch PDF.");
-        return refused(&req, &db, &legacy, Step::Print, Refusal::Conflict, &why).await;
+        return refused(&req, &db, Step::Print, Refusal::Conflict, &why).await;
     };
     let mode = first.mode;
     let label = if labels.iter().all(|(_, b)| b.mode == mode) {
@@ -97,7 +96,7 @@ pub async fn create_batch_label(
             Ok(label) => label,
             Err(why) => {
                 let why = format!("Failed to create the batch label PDF: {why}");
-                return refused(&req, &db, &legacy, Step::Print, Refusal::Upstream, &why).await;
+                return refused(&req, &db, Step::Print, Refusal::Upstream, &why).await;
             }
         }
     } else {

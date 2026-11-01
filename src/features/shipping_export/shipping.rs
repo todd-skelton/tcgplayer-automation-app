@@ -30,13 +30,13 @@ pub async fn mark_shipped(
     State(legacy): State<Legacy>,
 ) -> HtmlResult {
     let refuse = |refusal: Refusal, why: String| {
-        let (req, db, legacy) = (&req, &db, &legacy);
-        async move { refused(req, db, legacy, Step::Ship, refusal, &why).await }
+        let (req, db) = (&req, &db);
+        async move { refused(req, db, Step::Ship, refusal, &why).await }
     };
     let Some(_shipping) = SHIPPING.start() else {
         return refuse(Refusal::Conflict, SHIPPING_NOW.into()).await;
     };
-    let shown = Shown::read(&db, &legacy).await?;
+    let shown = Shown::read(&db).await?;
     if !shown.has_seller() {
         return refuse(Refusal::Conflict, NO_SELLER.into()).await;
     }

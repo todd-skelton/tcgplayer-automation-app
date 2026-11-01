@@ -1,6 +1,7 @@
-//! Postage, which the Node app buys from EasyPost and records (`/api/shipping-export/postages`,
-//! `postage-lookups` and `batch-labels`). The mode (test or production) is the Node app's
-//! deployment's, as it is here.
+//! Postage, which the Node app buys from EasyPost and records (`/api/shipping-export/postages`
+//! and `batch-labels`); what was bought for a shipment is read here from the record
+//! (`postage-lookups`). The mode (test or production) is the Node app's deployment's, as it is
+//! here.
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
@@ -181,66 +182,140 @@ pub async fn buy(
         .await
 }
 
-/// The postage already bought for each shipment (by exactly its orders, or one order's postage
-/// bought alone), keyed by the shipment.
+/// A successful purchase as recorded (`shipping_postage_purchases`), newest first.
+#[derive(sqlx::FromRow)]
+struct Record {
+    order_numbers: Vec<String>,
+    mode: String,
+    easypost_shipment_id: Option<String>,
+    tracking_code: Option<String>,
+    selected_rate_service: Option<String>,
+    selected_rate_rate: Option<String>,
+    selected_rate_currency: Option<String>,
+    label_url: Option<String>,
+    label_pdf_url: Option<String>,
+    /// As JavaScript's `toISOString` writes it.
+    purchased_at: String,
+}
+
+/// Orders trimmed, without blanks or repeats, in order: how purchases are matched.
+fn order_key(orders: &[String]) -> Vec<String> {
+    let mut key: Vec<String> = orders
+        .iter()
+        .map(|n| n.trim().to_owned())
+        .filter(|n| !n.is_empty())
+        .collect();
+    key.sort();
+    key.dedup();
+    key
+}
+
+fn nonblank(text: Option<String>) -> Option<String> {
+    text.filter(|t| !t.is_empty())
+}
+
+/// The postage already bought for each shipment, keyed by the shipment (`/api/shipping-export/postage-lookups`):
+/// the newest purchase of exactly its orders, else, for a shipment of one order, the newest that
+/// carried that order.
 pub async fn bought(
-    legacy: &Legacy,
+    db: impl sqlx::PgExecutor<'_>,
     direction: Direction,
     shipments: &[Planned],
 ) -> Result<Postage, String> {
     if shipments.is_empty() {
         return Ok(Postage::new());
     }
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Item<'a> {
-        shipment_reference: &'a str,
-        order_numbers: &'a [String],
-    }
-    #[derive(Serialize)]
-    struct Request<'a> {
-        direction: Direction,
-        shipments: Vec<Item<'a>>,
-    }
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Found {
-        shipment_reference: String,
-        mode: EasyPostMode,
-        purchased_at: String,
-        result: Purchase,
-    }
-    #[derive(Deserialize)]
-    struct Answer {
-        results: Vec<Found>,
-    }
-    let request = Request {
-        direction,
-        shipments: shipments
-            .iter()
-            .map(|p| Item {
-                shipment_reference: p.reference(),
-                order_numbers: &p.orders,
-            })
-            .collect(),
-    };
-    let answer: Answer = legacy
-        .send("/api/shipping-export/postage-lookups", &request)
-        .await?;
-    Ok(answer
-        .results
-        .into_iter()
-        .map(|found| {
-            (
-                found.shipment_reference,
-                Bought {
-                    mode: found.mode,
-                    result: found.result,
-                    purchased_at: Some(found.purchased_at),
-                },
-            )
+    let asked: Option<Vec<(&str, Vec<String>)>> = shipments
+        .iter()
+        .map(|p| {
+            let orders: Vec<String> = p
+                .orders
+                .iter()
+                .map(|n| n.trim().to_owned())
+                .filter(|n| !n.is_empty())
+                .collect();
+            let reference = p.reference().trim();
+            (!reference.is_empty() && !orders.is_empty()).then_some((reference, orders))
         })
-        .collect())
+        .collect();
+    let Some(asked) = asked else {
+        return Err(
+            "Each shipment lookup must include a shipmentReference and one or more order numbers."
+                .to_owned(),
+        );
+    };
+    let every: Vec<String> = asked.iter().flat_map(|(_, o)| o.iter().cloned()).collect();
+    let direction = match direction {
+        Direction::Outbound => "outbound",
+        Direction::Return => "return",
+    };
+    let records: Vec<Record> = sqlx::query_as(
+        r#"SELECT order_numbers, mode, easypost_shipment_id, tracking_code, selected_rate_service,
+                  selected_rate_rate, selected_rate_currency, label_url, label_pdf_url,
+                  to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS purchased_at
+           FROM shipping_postage_purchases
+           WHERE direction = $1 AND status = 'purchased' AND order_numbers && $2::text[]
+           ORDER BY created_at DESC, id DESC"#,
+    )
+    .bind(direction)
+    .bind(&every)
+    .fetch_all(db)
+    .await
+    .map_err(|e| format!("Error: {e}"))?;
+    let keyed: Vec<Vec<String>> = records
+        .iter()
+        .map(|r| order_key(&r.order_numbers))
+        .collect();
+    let mut postage = Postage::new();
+    for (reference, orders) in asked {
+        let key = order_key(&orders);
+        let exact = keyed.iter().position(|k| *k == key);
+        let found = exact.or_else(|| match key.as_slice() {
+            [one] => keyed.iter().position(|k| k.contains(one)),
+            _ => None,
+        });
+        let Some(record) = found.map(|i| &records[i]) else {
+            continue;
+        };
+        let mode = match record.mode.as_str() {
+            "production" => EasyPostMode::Production,
+            _ => EasyPostMode::Test,
+        };
+        let rate = match (
+            nonblank(record.selected_rate_service.clone()),
+            nonblank(record.selected_rate_rate.clone()),
+            nonblank(record.selected_rate_currency.clone()),
+        ) {
+            (Some(service), Some(rate), Some(currency)) => Some(Rate {
+                service,
+                rate,
+                currency,
+            }),
+            _ => None,
+        };
+        let result = Purchase {
+            reference: reference.to_owned(),
+            order_numbers: orders,
+            status: Status::Purchased,
+            easypost_shipment_id: record.easypost_shipment_id.clone(),
+            tracking_code: record.tracking_code.clone(),
+            selected_rate: rate,
+            label_url: record.label_url.clone(),
+            label_pdf_url: record.label_pdf_url.clone(),
+            error: None,
+        };
+        // A later shipment with the same reference replaces an earlier one, as the React screen
+        // keyed its results.
+        postage.insert(
+            reference.to_owned(),
+            Bought {
+                mode,
+                result,
+                purchased_at: Some(record.purchased_at.clone()),
+            },
+        );
+    }
+    Ok(postage)
 }
 
 /// One PDF of labels already bought, all in one mode.
@@ -281,7 +356,71 @@ pub async fn batch_label(
 
 #[cfg(test)]
 mod tests {
+    use serde_json::Value;
+
     use super::*;
+    use crate::features::{
+        shipping_configuration::ShippingConfig,
+        shipping_export::{
+            orders::tests::order,
+            shipments::{Shipment, shipment_for},
+        },
+    };
+
+    /// Node's `createShippingPostageLookupsAction` over the cases in `.port-logs/lookups.node.json`,
+    /// with the purchases `lookups-seed.sql` records, in a transaction on the dev database that is
+    /// rolled back: the postage found for each shipment, and refusals.
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
+    async fn postage_is_found_as_node_finds_it() {
+        crate::config::load_env();
+        let db = crate::database::Database::connect_lazy(&crate::config::database_url());
+        let read_log = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let cases: Vec<Value> = serde_json::from_str(&read_log("lookups-cases.json")).unwrap();
+        let node: Vec<Value> = serde_json::from_str(&read_log("lookups.node.json")).unwrap();
+        let mut tx = db.0.begin().await.unwrap();
+        sqlx::raw_sql(&read_log("lookups-seed.sql"))
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        for (case, theirs) in cases.iter().zip(&node) {
+            let name = theirs["name"].as_str().unwrap();
+            let direction: Direction = serde_json::from_value(case["direction"].clone()).unwrap();
+            let shipments: Vec<Planned> = case["shipments"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|s| Planned {
+                    shipment: Shipment {
+                        reference: s["shipmentReference"].as_str().unwrap().to_owned(),
+                        ..shipment_for(&order("A"), &ShippingConfig::default())
+                    },
+                    orders: serde_json::from_value(s["orderNumbers"].clone()).unwrap(),
+                })
+                .collect();
+            let ours = bought(&mut *tx, direction, &shipments).await;
+            let expected = match theirs["status"].as_u64().unwrap() {
+                200 => Ok(theirs["body"]["results"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|found| {
+                        (
+                            found["shipmentReference"].as_str().unwrap().to_owned(),
+                            Bought {
+                                mode: serde_json::from_value(found["mode"].clone()).unwrap(),
+                                result: serde_json::from_value(found["result"].clone()).unwrap(),
+                                purchased_at: found["purchasedAt"].as_str().map(str::to_owned),
+                            },
+                        )
+                    })
+                    .collect::<Postage>()),
+                _ => Err(theirs["body"]["error"].as_str().unwrap().to_owned()),
+            };
+            assert_eq!(ours, expected, "{name}");
+        }
+        tx.rollback().await.unwrap();
+    }
 
     fn purchase(reference: &str, status: Status) -> Purchase {
         Purchase {

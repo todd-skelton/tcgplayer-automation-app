@@ -13,7 +13,7 @@ use super::{
     views::{PackCard, PackRow, PackedOrder, Packing},
     workflow,
 };
-use crate::{database::Database, features::pull_sheet, layout::Tone, legacy::Legacy};
+use crate::{database::Database, features::pull_sheet, layout::Tone};
 
 /// The Pack step for the shipment `chosen` (the first not packed when none, or one not in the
 /// batch), in `view`. The pull sheet is read only for the card view.
@@ -156,12 +156,11 @@ pub struct PackedInput {
 pub async fn set_packed(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::ShipmentPacked>,
     Form(input): Form<PackedInput>,
 ) -> HtmlResult {
     let reference = at.reference;
-    let shown = Shown::read(&db, &legacy).await?;
+    let shown = Shown::read(&db).await?;
     let order: Vec<String> = shown
         .batch
         .shipments
@@ -170,7 +169,7 @@ pub async fn set_packed(
         .collect();
     if !order.contains(&reference) {
         let why = format!("Shipment {reference} is not in this batch.");
-        return super::page::refused(&req, &db, &legacy, Step::Pack, Refusal::Conflict, &why).await;
+        return super::page::refused(&req, &db, Step::Pack, Refusal::Conflict, &why).await;
     }
     let packed = input.packed;
     let marked = reference.clone();
