@@ -1,7 +1,10 @@
 use corten::prelude::*;
 
 use super::super::{page::UploadInput, store::RecentSheet, url};
-use crate::theme::*;
+use crate::{
+    theme::*,
+    ui::button::{Button, ButtonSize, ButtonVariant},
+};
 
 /// The upload form's id: a refused file's answer replaces it.
 #[derive(Id)]
@@ -69,7 +72,9 @@ pub fn UploadForm<'a>(errors: &'a Errors) -> impl Patch {
                         {..e.aria(f.file)}
                     >
                 </label>
-                <button data-primary>"Upload Pull Sheet CSV"</button>
+                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                    <button>"Upload Pull Sheet CSV"</button>
+                </Button>
             </div>
             {e.message(f.file)}
         </form>

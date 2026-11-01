@@ -17,6 +17,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
         table::Table,
     },
 };
@@ -72,7 +73,9 @@ pub fn SlabScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         maxlength="80"
                     >
                 </LabeledControl>
-                <button data-primary>"Look up certificate"</button>
+                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                    <button>"Look up certificate"</button>
+                </Button>
             </form>
             <Problem at={Place::LookUp} why={screen.problem_at(Place::LookUp)} />
             if choice.listing.is_some() {
@@ -140,7 +143,9 @@ fn ReviewedListing<'a>(screen: &'a Screen) -> impl Render {
                             <LabeledControl label="Listing identity correction reason" hint="">
                                 <input name={f.note} required maxlength="1000">
                             </LabeledControl>
-                            <button>"Assign confirmed identity"</button>
+                            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                                <button>"Assign confirmed identity"</button>
+                            </Button>
                             <small class={muted()}>
                                 {&record.grader}" "{&record.certificate_number}
                             </small>
@@ -250,7 +255,9 @@ fn IdentityCard<'a>(
                     <LabeledControl label="Reason for confirmation or correction" hint="">
                         <input name={f.note} required maxlength="1000">
                     </LabeledControl>
-                    <button data-primary>"Confirm owned identity"</button>
+                    <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                        <button>"Confirm owned identity"</button>
+                    </Button>
                 </form>
             </details>
             <Problem at={Place::Identity} why={problem} />
@@ -284,7 +291,9 @@ fn InventoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                             required
                         >
                     </LabeledControl>
-                    <button>"Open inventory"</button>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button>"Open inventory"</button>
+                    </Button>
                     },
                 )}
             </form>
@@ -326,7 +335,9 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
                 <LabeledControl label="Inventory CSV" hint="Paste the CSV, up to 2 MiB.">
                     <textarea name={fi.csv} rows="6" required maxlength="2097152"></textarea>
                 </LabeledControl>
-                <button>"Import into "{seller}</button>
+                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                    <button>"Import into "{seller}</button>
+                </Button>
             </form>
         </details>
         <Table>
@@ -357,7 +368,9 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
                                     data-patch
                                 >
                                     <input type="hidden" name={fo.id} value={&listing.id}>
-                                    <button>"Open slab"</button>
+                                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                                        <button>"Open slab"</button>
+                                    </Button>
                                 </form>
                             </td>
                             <td>

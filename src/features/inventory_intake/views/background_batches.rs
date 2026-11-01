@@ -12,7 +12,10 @@ use crate::{
         },
     },
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
+    },
 };
 
 #[derive(Id)]
@@ -64,14 +67,16 @@ pub fn BackgroundBatches<'a>(
             >
                 <header class={row(Space::_2)}>
                     <h2 id={BatchesHeadingId}>"Background batches"</h2>
-                    <button
-                        type="button"
-                        popovertarget={BatchesPanelId}
-                        popovertargetaction="hide"
-                        aria-label="Close background batches"
-                    >
-                        "×"
-                    </button>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button
+                            type="button"
+                            popovertarget={BatchesPanelId}
+                            popovertargetaction="hide"
+                            aria-label="Close background batches"
+                        >
+                            "×"
+                        </button>
+                    </Button>
                 </header>
                 <p class={muted()}>
                     "Keep adding inventory while queued batches run. Showing the latest 25 handoffs; counts below are SKUs. "
@@ -177,7 +182,9 @@ fn RunItem<'a>(run: &'a Run, selection: &'a Selection, errors: Option<&'a Errors
                             >
                             {e.message(f.per_card_deduction)}
                         </label>
-                        <button data-primary>"Save rate"</button>
+                        <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                            <button>"Save rate"</button>
+                        </Button>
                     </form>
                 </details>
             }

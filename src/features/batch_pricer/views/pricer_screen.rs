@@ -10,7 +10,10 @@ use crate::{
     layout::SubmitsOnChange,
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
+    },
 };
 
 /// The CSV form's id: a refused file's answer replaces it.
@@ -76,7 +79,11 @@ pub fn PricerScreen<'a>(
                                 }
                             </select>
                         </label>
-                        <noscript><button>"Show"</button></noscript>
+                        <noscript>
+                            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                                <button>"Show"</button>
+                            </Button>
+                        </noscript>
                     </form>
                 </SubmitsOnChange>
             }
@@ -128,7 +135,9 @@ pub fn CsvForm<'a>(errors: &'a Errors) -> impl Patch {
                     required
                     {..e.aria(f.file)}
                 >
-                <button data-primary>"Upload CSV"</button>
+                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                    <button>"Upload CSV"</button>
+                </Button>
             </div>
             {e.message(f.file)}
         </form>
@@ -147,7 +156,9 @@ pub fn SellerForm<'a>(seller: &'a str, errors: &'a Errors) -> impl Patch {
                     "Seller Key "
                     <input name={f.seller_key} value={seller} required {..e.aria(f.seller_key)}>
                 </label>
-                <button data-primary>"Snapshot Seller"</button>
+                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                    <button>"Snapshot Seller"</button>
+                </Button>
             </div>
             {e.message(f.seller_key)}
         </form>

@@ -22,7 +22,10 @@ use crate::{
     },
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
+    },
 };
 
 /// How often a running analysis is read again, as the React screen polled it.
@@ -72,15 +75,18 @@ pub fn StrategyScreen<'a>(
                 </div>
                 <div class={Actions}>
                     <form method="post" action={url::Refresh { view: quiet.clone() }}>
-                        <button disabled={!configured}>"Refresh inventory"</button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button disabled={!configured}>"Refresh inventory"</button>
+                        </Button>
                     </form>
                     <form method="post" action={url::QueueAnalysis { view: quiet.clone() }}>
-                        <button
-                            data-primary
-                            disabled={analysis_active || screen.dashboard.overall.sku_count == 0}
-                        >
-                            "Queue fresh analysis"
-                        </button>
+                        <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                            <button
+                                disabled={analysis_active || screen.dashboard.overall.sku_count == 0}
+                            >
+                                "Queue fresh analysis"
+                            </button>
+                        </Button>
                     </form>
                 </div>
             </header>

@@ -12,6 +12,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeVariant},
+        button::{Button, ButtonSize, ButtonVariant},
     },
 };
 
@@ -78,7 +79,9 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
                                     autofocus
                                 >
                             </LabeledControl>
-                            <button>"Use This Seller"</button>
+                            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                                <button>"Use This Seller"</button>
+                            </Button>
                         })}
                     </form>
                 </div>
@@ -91,7 +94,9 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
                         placeholder="Order Number"
                         required
                     >
-                    <button>"Lookup Single Order"</button>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button>"Lookup Single Order"</button>
+                    </Button>
                 </form>
                 <details class={Menu}>
                     <summary>"Order History"</summary>

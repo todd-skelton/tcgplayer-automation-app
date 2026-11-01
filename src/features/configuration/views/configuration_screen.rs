@@ -18,6 +18,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
         table::Table,
     },
 };
@@ -251,7 +252,11 @@ pub fn PricingForm<'a>(section: &'a Section<'a, PricingInput>) -> impl Patch {
                     </fieldset>
                 </div>
             </SubmitsOnChange>
-            <noscript><button>"Save pricing"</button></noscript>
+            <noscript>
+                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                    <button>"Save pricing"</button>
+                </Button>
+            </noscript>
         </form>
     }
 }
@@ -314,7 +319,11 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
                         {e.message(d.default_percentile)}
                     </LabeledControl>
                 </SubmitsOnChange>
-                <noscript><button>"Save default percentile"</button></noscript>
+                <noscript>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button>"Save default percentile"</button>
+                    </Button>
+                </noscript>
             </form>
             <form method="post" action={url::AddProductLine} data-patch class={Add}>
                 <div class={Section}>
@@ -348,7 +357,9 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
                     <input type="checkbox" name={a.skip} checked={lines.add.skip}>
                     "Skip"
                 </label>
-                <button data-primary>"Add"</button>
+                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                    <button>"Add"</button>
+                </Button>
             </form>
             if lines.stored.settings.is_empty() {
                 <Alert variant={AlertVariant::Info}>
@@ -388,9 +399,16 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
                                             action={url::RemoveProductLine { id: *id }}
                                             data-patch
                                         >
-                                            <button aria-label={("Remove ", name(*id).as_str())}>
-                                                "Remove"
-                                            </button>
+                                            <Button
+                                                variant={ButtonVariant::Outline}
+                                                size={ButtonSize::Md}
+                                            >
+                                                <button
+                                                    aria-label={("Remove ", name(*id).as_str())}
+                                                >
+                                                    "Remove"
+                                                </button>
+                                            </Button>
                                         </form>
                                     </td>
                                 </tr>
@@ -478,7 +496,11 @@ pub fn SnapsForm<'a>(section: &'a Section<'a, SnapsInput>) -> impl Patch {
                     </div>
                 </div>
             </SubmitsOnChange>
-            <noscript><button>"Save snaps"</button></noscript>
+            <noscript>
+                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                    <button>"Save snaps"</button>
+                </Button>
+            </noscript>
         </form>
     }
 }
@@ -532,7 +554,11 @@ pub fn SupplyForm<'a>(section: &'a Section<'a, SupplyInput>) -> impl Patch {
                     </div>
                 </div>
             </SubmitsOnChange>
-            <noscript><button>"Save supply analysis"</button></noscript>
+            <noscript>
+                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                    <button>"Save supply analysis"</button>
+                </Button>
+            </noscript>
         </form>
     }
 }

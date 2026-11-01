@@ -21,7 +21,10 @@ use crate::{
     layout::LabeledControl,
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
+    },
 };
 
 #[derive(Id)]
@@ -72,7 +75,9 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
                     <LabeledControl label="Sales through" hint="">
                         <input type="date" name={f.to} value={&window.to} required>
                     </LabeledControl>
-                    <button>"Show evidence"</button>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button>"Show evidence"</button>
+                    </Button>
                     },
                 )}
             </form>
@@ -93,7 +98,9 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
                     >
                         <input type="hidden" name={r.id} value={&record.id}>
                         <input type="hidden" name={r.revision} value={record.revision}>
-                        <button>"Refresh evidence"</button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button>"Refresh evidence"</button>
+                        </Button>
                         <a href={url::SlabPricing::at(choice)}>"Reload saved status"</a>
                         <a href={slab_connections::url::SlabConnections}>"Data connections"</a>
                     </form>
@@ -176,7 +183,9 @@ fn EvidenceRow<'a>(status: &'a EvidenceStatus, choice: &'a Choice, t: Msg) -> im
                 <form method="post" action={url::Cancel { choice: choice.clone() }} data-patch>
                     <input type="hidden" name={c.key} value={&status.key}>
                     <input type="hidden" name={c.run} value={&status.run_id}>
-                    <button>"Cancel refresh"</button>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button>"Cancel refresh"</button>
+                    </Button>
                 </form>
             }
         </div>

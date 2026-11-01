@@ -21,6 +21,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
         table::Table,
     },
 };
@@ -82,7 +83,9 @@ fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
                 >
                     <input type="hidden" name={r.id} value={&record.id}>
                     <input type="hidden" name={r.revision} value={record.revision}>
-                    <button>"Refresh supply"</button>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button>"Refresh supply"</button>
+                    </Button>
                 </form>
             }
             <a href={url::SlabPricing::at(choice)}>"Reload saved supply"</a>
@@ -108,7 +111,9 @@ fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
                                 }
                             </select>
                         </LabeledControl>
-                        <button>"Show source"</button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button>"Show source"</button>
+                        </Button>
                         },
                     )}
                 </form>
@@ -166,7 +171,9 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
                             >
                                 <input type="hidden" name={c.key} value={&status.key}>
                                 <input type="hidden" name={c.run} value={&status.run_id}>
-                                <button>"Cancel supply refresh"</button>
+                                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                                    <button>"Cancel supply refresh"</button>
+                                </Button>
                             </form>
                         }
                     </div>
@@ -303,7 +310,9 @@ fn SupplyContext<'a>(
                     data-patch
                 >
                     <input type="hidden" name={n.revision} value={revision}>
-                    <button>"Fetch next source page"</button>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button>"Fetch next source page"</button>
+                    </Button>
                 </form>
             }
             match &previous_rows {

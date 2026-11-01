@@ -9,6 +9,7 @@ use crate::{
     },
     text::Msg,
     theme::*,
+    ui::button::{Button, ButtonSize, ButtonVariant},
 };
 
 /// What the summary counts, over the whole sheet whatever the filter shows.
@@ -195,7 +196,11 @@ pub fn SheetItems<'a>(
                 "No items match the filter."
             </p>
             <dialog ref={dialog} class={Picture}>
-                <form method="dialog"><button aria-label="Close">"×"</button></form>
+                <form method="dialog">
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button aria-label="Close">"×"</button>
+                    </Button>
+                </form>
                 <img ref={image} alt="">
             </dialog>
         </div>

@@ -83,9 +83,6 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  & button {
-    min-width: 2rem;
-  }
 }
 .quantity {
   width: 3.5rem;

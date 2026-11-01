@@ -14,6 +14,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
         table::Table,
     },
 };
@@ -132,7 +133,9 @@ fn Comps<'a>(review: &'a Review, choice: &'a Choice) -> impl Render {
             if review.next_source_page {
                 <form method="post" action={url::FetchComps { choice: choice.clone() }} data-patch>
                     <input type="hidden" name={f.revision} value={&review.revision_id}>
-                    <button>"Fetch next source page"</button>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button>"Fetch next source page"</button>
+                    </Button>
                 </form>
             }
         </nav>
@@ -193,7 +196,9 @@ fn SaleDialog<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> impl 
                     >
                         <input type="hidden" name={fetch.revision} value={&review.revision_id}>
                         <input type="hidden" name={fetch.transaction} value={&sale.provider_id}>
-                        <button>"Fetch full sale details"</button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button>"Fetch full sale details"</button>
+                        </Button>
                     </form>
                 }
                 <Problem
@@ -253,7 +258,9 @@ fn DecisionForm<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> imp
             <p class={muted()}>
                 "Including a comp does not override a conflicting card identity or unconfirmed sale outcome."
             </p>
-            <button data-primary>"Save decision"</button>
+            <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                <button>"Save decision"</button>
+            </Button>
         </form>
     }
 }

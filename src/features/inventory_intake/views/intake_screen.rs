@@ -13,6 +13,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
         table::Table,
     },
 };
@@ -188,10 +189,16 @@ pub fn IntakeScreen<'a>(
                             value={selection.search.as_deref().unwrap_or("")}
                             autocomplete="off"
                         >
-                        <button>"Search"</button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button>"Search"</button>
+                        </Button>
                     </span>
                 </label>
-                <noscript><button>"Show"</button></noscript>
+                <noscript>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button>"Show"</button>
+                    </Button>
+                </noscript>
             </form>
             <section class={panel()} aria-labelledby={TableHeadingId}>
                 <h2 id={TableHeadingId} class={VisuallyHidden}>"Add new inventory"</h2>
@@ -237,7 +244,11 @@ pub fn IntakeScreen<'a>(
             />
             <dialog id={PictureId} ref={dialog} class={Picture} closedby="any">
                 <img ref={image} alt="Product">
-                <form method="dialog"><button>"Close"</button></form>
+                <form method="dialog">
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button>"Close"</button>
+                    </Button>
+                </form>
             </dialog>
         </section>
     }
@@ -436,7 +447,11 @@ pub fn CountForm<'a>(
             action={url::Count { sku: counted.sku, selection: selection.clone() }}
             data-patch
         >
-            <button type="button" tabindex="-1" data-step="-1" aria-label="One fewer">"−"</button>
+            <Button variant={ButtonVariant::Outline} size={ButtonSize::Icon}>
+                <button type="button" tabindex="-1" data-step="-1" aria-label="One fewer">
+                    "−"
+                </button>
+            </Button>
             <input
                 class={Quantity}
                 name={c.quantity}
@@ -446,7 +461,9 @@ pub fn CountForm<'a>(
                 aria-label={counted.label}
                 data-sku={counted.sku}
             >
-            <button type="button" data-step="1" aria-label="One more">"+"</button>
+            <Button variant={ButtonVariant::Outline} size={ButtonSize::Icon}>
+                <button type="button" data-step="1" aria-label="One more">"+"</button>
+            </Button>
             <input type="hidden" name={c.seen} value={quantity}>
             {SubmitKey::field(c.submit)}
         </form>

@@ -221,8 +221,9 @@ export function clicked(event, to) {
     return to.dialog.showModal();
   }
   const button = target?.closest("button[data-step]");
-  const field = button?.parentElement?.querySelector("input[data-sku]");
-  if (!(button instanceof HTMLButtonElement) || !isCount(field)) return;
+  if (!(button instanceof HTMLButtonElement)) return;
+  const field = button.form?.querySelector("input[data-sku]");
+  if (!isCount(field)) return;
   const by = Number(button.dataset.step);
   step(field, by);
   if (by > 0) focusField(to.search);

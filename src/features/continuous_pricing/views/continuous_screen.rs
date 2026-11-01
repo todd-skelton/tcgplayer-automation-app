@@ -12,7 +12,10 @@ use crate::{
     layout::{LabeledControl, SubmitsOnChange},
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
+    },
 };
 
 const USD: Currency = Currency::new("USD");
@@ -137,7 +140,11 @@ pub fn ScheduleForm<'a>(
                     {e.message(f.batch_size)}
                 </LabeledControl>
             </div>
-            <div><button data-primary>"Save schedule"</button></div>
+            <div>
+                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                    <button>"Save schedule"</button>
+                </Button>
+            </div>
         </form>
     }
 }
@@ -151,16 +158,28 @@ fn Actions<'a>(screen: &'a Screen) -> impl Render {
     html! {
         <div class={Line}>
             <form method="post" action={url::Refresh { view: view.clone() }} data-patch>
-                <button disabled={settings.seller_key.is_empty()}>"Refresh inventory now"</button>
+                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                    <button disabled={settings.seller_key.is_empty()}>
+                        "Refresh inventory now"
+                    </button>
+                </Button>
             </form>
             <form method="post" action={url::Run { view: view.clone() }} data-patch>
-                <button disabled={!settings.enabled}>"Run scheduler cycle"</button>
+                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                    <button disabled={!settings.enabled}>"Run scheduler cycle"</button>
+                </Button>
             </form>
             <form method="post" action={url::ApplyPolicy { view: view.clone() }} data-patch>
-                <button disabled={!repricable}>"Reprice all inventory using saved curves"</button>
+                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                    <button disabled={!repricable}>
+                        "Reprice all inventory using saved curves"
+                    </button>
+                </Button>
             </form>
             <form method="post" action={url::MarkDue { view: view.clone() }} data-patch>
-                <button disabled={!repricable}>"Mark all inventory due"</button>
+                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                    <button disabled={!repricable}>"Mark all inventory due"</button>
+                </Button>
             </form>
         </div>
     }
@@ -293,7 +312,9 @@ fn Controls<'a>(screen: &'a Screen) -> impl Render {
                         }
                     </select>
                 </LabeledControl>
-                <button data-primary>"Apply"</button>
+                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                    <button>"Apply"</button>
+                </Button>
                 <a href={url::ContinuousPricing { view: View::default() }}>"Clear"</a>
             </form>
             <p class={muted()}>"Showing "{screen.page.range()}</p>
@@ -383,7 +404,11 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
                             >
                             {item.state()}
                         </label>
-                        <noscript><button>"Save"</button></noscript>
+                        <noscript>
+                            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                                <button>"Save"</button>
+                            </Button>
+                        </noscript>
                     </SubmitsOnChange>
                 </form>
             </div>
@@ -392,7 +417,9 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
                     <input type="hidden" name={f.sku} value={item.sku}>
                     <input type="hidden" name={f.enabled} value="true">
                     <Alert variant={AlertVariant::Warning}>{reason}</Alert>
-                    <button>"Resume"</button>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button>"Resume"</button>
+                    </Button>
                 </form>
             }
         </article>

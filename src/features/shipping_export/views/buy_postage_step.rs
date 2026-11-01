@@ -17,6 +17,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeVariant},
+        button::{Button, ButtonSize, ButtonVariant},
         table::Table,
     },
 };
@@ -161,18 +162,22 @@ fn ShipmentPostageRow<'a>(
                     </button>
                     <div popover id={ShipmentMenuId(reference)} class={Menu}>
                         if return_again {
-                            <button
-                                type="button"
-                                command="show-modal"
-                                commandfor={BuyAgainId(&return_key)}
-                                disabled={!can_buy}
-                            >
-                                "Buy Another Return Label"
-                            </button>
+                            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                                <button
+                                    type="button"
+                                    command="show-modal"
+                                    commandfor={BuyAgainId(&return_key)}
+                                    disabled={!can_buy}
+                                >
+                                    "Buy Another Return Label"
+                                </button>
+                            </Button>
                         } else {
                             <form method="post" action={&buy} data-patch>
                                 <input type="hidden" name={f.direction} value={Direction::Return}>
-                                <button disabled={!can_buy}>"Buy Return Label"</button>
+                                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                                    <button disabled={!can_buy}>"Buy Return Label"</button>
+                                </Button>
                             </form>
                         }
                         if let Some(label) = row.returned.and_then(Bought::label) {
@@ -296,7 +301,11 @@ fn BuyAgainDialog<'a>(
             >
                 <input type="hidden" name={f.direction} value={direction}>
                 <input type="hidden" name={f.again} value="true">
-                <button type="button" command="close" commandfor={BuyAgainId(key)}>"Cancel"</button>
+                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                    <button type="button" command="close" commandfor={BuyAgainId(key)}>
+                        "Cancel"
+                    </button>
+                </Button>
                 <button class={(Filled, Caution)}>"Buy Again"</button>
             </form>
         </dialog>

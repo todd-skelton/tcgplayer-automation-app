@@ -20,7 +20,10 @@ use crate::{
     layout::LabeledControl,
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
+    },
 };
 
 #[derive(Id)]
@@ -131,9 +134,13 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         </LabeledControl>
                     </div>
                     <div class={Line}>
-                        <button>"Save maintenance settings"</button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button>"Save maintenance settings"</button>
+                        </Button>
                         <a href={url::SlabPricing::at(choice)}>"Reload status"</a>
-                        <button type="reset">"Reset edits"</button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button type="reset">"Reset edits"</button>
+                        </Button>
                     </div>
                 </form>
             }
@@ -252,7 +259,9 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
                     <LabeledControl label="Outcome listing item ID" hint="">
                         <input name={f.item} value={choice.item.as_deref().unwrap_or("")} required>
                     </LabeledControl>
-                    <button>"Read saved outcomes"</button>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button>"Read saved outcomes"</button>
+                    </Button>
                     },
                 )}
             </form>
@@ -270,7 +279,9 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
                     <LabeledControl label="Seller outcome CSV" hint="">
                         <textarea name={o.csv} rows="4" required></textarea>
                     </LabeledControl>
-                    <button>"Save reviewed outcomes"</button>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button>"Save reviewed outcomes"</button>
+                    </Button>
                 </form>
             </details>
             <Problem at={Place::Outcomes} why={screen.problem_at(Place::Outcomes)} />

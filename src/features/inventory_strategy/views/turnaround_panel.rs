@@ -15,8 +15,11 @@ use crate::{
     layout::{LabeledControl, SubmitsOnChange},
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
     ui::badge::{Badge, BadgeVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
+    },
 };
 
 /// The turnaround form's id: an answer that refuses it replaces it.
@@ -200,7 +203,11 @@ pub fn TurnaroundForm<'a>(
                         >
                         {e.message(f.manual_turnaround_days)}
                     </LabeledControl>
-                    <noscript><button disabled={off}>"Save"</button></noscript>
+                    <noscript>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button disabled={off}>"Save"</button>
+                        </Button>
+                    </noscript>
                 </div>
             </SubmitsOnChange>
         </form>

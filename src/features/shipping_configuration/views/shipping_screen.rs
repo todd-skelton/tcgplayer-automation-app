@@ -11,6 +11,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeVariant},
+        button::{Button, ButtonSize, ButtonVariant},
     },
 };
 
@@ -56,7 +57,9 @@ pub fn ShippingScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
                         </p>
                     </div>
                     <form method="post" action={url::ResetShippingSettings}>
-                        <button>"Reset Defaults"</button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button>"Reset Defaults"</button>
+                        </Button>
                     </form>
                 </div>
                 <h3>"EasyPost Purchase Mode"</h3>
@@ -181,7 +184,9 @@ pub fn ShippingSettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) ->
                 " Combine same-address orders into one shipment"
             </label>
             <div>
-                <button data-primary>"Save Settings"</button>
+                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                    <button>"Save Settings"</button>
+                </Button>
             </div>
         </form>
     }

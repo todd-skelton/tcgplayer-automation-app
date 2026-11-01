@@ -11,7 +11,10 @@ use crate::{
     },
     layout::LabeledControl,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
+    },
 };
 
 #[derive(Id)]
@@ -259,10 +262,12 @@ fn line_choice<'a, I: Id>(
 fn Run<'a>(ready: &'a str, working: &'a str) -> impl Render {
     html! {
         <div>
-            <button data-primary>
-                <span class={Ready}>{ready}</span>
-                <span class={Working}>{working}</span>
-            </button>
+            <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                <button>
+                    <span class={Ready}>{ready}</span>
+                    <span class={Working}>{working}</span>
+                </button>
+            </Button>
         </div>
     }
 }

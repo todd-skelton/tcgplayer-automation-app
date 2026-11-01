@@ -9,6 +9,7 @@ use crate::{
         url::{self, Selection},
     },
     theme::*,
+    ui::button::{Button, ButtonSize, ButtonVariant},
 };
 
 #[derive(Id)]
@@ -58,7 +59,9 @@ pub fn QueueTotals<'a>(totals: Totals, counted: &'a str) -> impl Patch {
                 <strong class={Units}>
                     {totals.units}" unqueued units across "{totals.skus}" SKUs"
                 </strong>
-                <button type="button" popovertarget={ClearConfirmId}>"Clear unqueued"</button>
+                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                    <button type="button" popovertarget={ClearConfirmId}>"Clear unqueued"</button>
+                </Button>
             } else {
                 <span class={(muted(), NothingCounted)}>"Nothing counted yet"</span>
             }
@@ -83,9 +86,11 @@ pub fn ClearConfirm<'a>(selection: &'a Selection, totals: Totals) -> impl Patch 
                 class={row(Space::_2)}
             >
                 {SubmitKey::field(ClearInput::FIELDS.submit)}
-                <button type="button" popovertarget={ClearConfirmId} popovertargetaction="hide">
-                    "Cancel"
-                </button>
+                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                    <button type="button" popovertarget={ClearConfirmId} popovertargetaction="hide">
+                        "Cancel"
+                    </button>
+                </Button>
                 <button class={Danger}>"Clear unqueued"</button>
             </form>
         </div>
@@ -238,22 +243,25 @@ pub fn QueueForm<'a>(
                 }
             </div>
             <div class={row(Space::_2)}>
-                <button
-                    data-primary
-                    name={f.workflow}
-                    value={Workflow::PriceOnly}
-                    disabled={!can_queue}
-                >
-                    "Queue pricing only"
-                </button>
-                <button
-                    name={f.workflow}
-                    value={Workflow::Publish}
-                    disabled={!can_publish}
-                    aria-describedby={PublishNoteId}
-                >
-                    "Queue pricing & publishing"
-                </button>
+                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                    <button
+                        name={f.workflow}
+                        value={Workflow::PriceOnly}
+                        disabled={!can_queue}
+                    >
+                        "Queue pricing only"
+                    </button>
+                </Button>
+                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                    <button
+                        name={f.workflow}
+                        value={Workflow::Publish}
+                        disabled={!can_publish}
+                        aria-describedby={PublishNoteId}
+                    >
+                        "Queue pricing & publishing"
+                    </button>
+                </Button>
             </div>
             <p id={PublishNoteId} class={(muted(), PublishNote)}>
                 {publish_note(target)}

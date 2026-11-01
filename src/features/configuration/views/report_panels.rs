@@ -18,6 +18,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
         table::Table,
     },
 };
@@ -134,7 +135,11 @@ fn WindowChoice<'a>(days: u32, windows: &'a [u32], label: &'a str) -> impl Rende
                         </option>
                     }
                 </select>
-                <noscript><button>"Show"</button></noscript>
+                <noscript>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button>"Show"</button>
+                    </Button>
+                </noscript>
             </label>
         </SubmitsOnChange>
     }

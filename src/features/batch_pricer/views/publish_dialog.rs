@@ -8,6 +8,7 @@ use crate::{
     },
     text::Msg,
     theme::*,
+    ui::button::{Button, ButtonSize, ButtonVariant},
 };
 
 /// The dialog's id: the Publish button opens it.
@@ -63,14 +64,20 @@ pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> 
                     " Inventory changes are selected by default so the published quantity matches the batch. Price-only batches default to the 20 smallest price changes."
                 </p>
                 <div class={row(Space::_2)}>
-                    <button type="reset">"Reset recommended selection"</button>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button type="reset">"Reset recommended selection"</button>
+                    </Button>
                     <span ref={tools} hidden class={row(Space::_2)}>
-                        <button type="button" on:click={js::checkAll(selection, true)}>
-                            "Select all ready"
-                        </button>
-                        <button type="button" on:click={js::checkAll(selection, false)}>
-                            "Clear selection"
-                        </button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button type="button" on:click={js::checkAll(selection, true)}>
+                                "Select all ready"
+                            </button>
+                        </Button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button type="button" on:click={js::checkAll(selection, false)}>
+                                "Clear selection"
+                            </button>
+                        </Button>
                     </span>
                 </div>
                 <ul ref={items} class={Items}>
@@ -84,9 +91,11 @@ pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> 
                     }
                 </ul>
                 <div class={(row(Space::_2), Footer)}>
-                    <button type="button" command="close" commandfor={PublishDialogId}>
-                        "Cancel"
-                    </button>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button type="button" command="close" commandfor={PublishDialogId}>
+                            "Cancel"
+                        </button>
+                    </Button>
                     <button ref={submit} class={Publish} disabled={count == 0}>
                         "Publish "{count}" SKUs"
                     </button>

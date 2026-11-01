@@ -22,6 +22,7 @@ use crate::{
     ui::alert::{Alert, AlertVariant},
     ui::{
         badge::{Badge, BadgeVariant},
+        button::{Button, ButtonSize, ButtonVariant},
         table::Table,
     },
 };
@@ -143,7 +144,11 @@ fn ScopeControls<'a>(scope: &'a Scope, lines: &'a [String]) -> impl Render {
                             }
                         </select>
                     </label>
-                    <noscript><button>"Show"</button></noscript>
+                    <noscript>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button>"Show"</button>
+                        </Button>
+                    </noscript>
                 </div>
             </SubmitsOnChange>
         </form>

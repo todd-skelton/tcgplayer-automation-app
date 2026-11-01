@@ -12,7 +12,10 @@ use crate::{
     },
     layout::LabeledControl,
     theme::*,
-    ui::alert::Alert,
+    ui::{
+        alert::Alert,
+        button::{Button, ButtonSize, ButtonVariant},
+    },
 };
 
 /// A provider's card, `connection-alt` or `connection-ebayResearch`: the answer to a post to it
@@ -116,13 +119,19 @@ pub fn ConnectionCard<'a>(
                     </LabeledControl>
                 }
                 <div class={Actions}>
-                    <button data-primary>"Save connection"</button>
-                    <button formaction={url::CheckConnection { provider }} disabled={!saved}>
-                        "Check access"
-                    </button>
-                    <button formaction={url::RemoveConnection { provider }} disabled={!saved}>
-                        "Remove"
-                    </button>
+                    <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                        <button>"Save connection"</button>
+                    </Button>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button formaction={url::CheckConnection { provider }} disabled={!saved}>
+                            "Check access"
+                        </button>
+                    </Button>
+                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                        <button formaction={url::RemoveConnection { provider }} disabled={!saved}>
+                            "Remove"
+                        </button>
+                    </Button>
                 </div>
             </form>
             match answered.and_then(|a| a.outcome) {

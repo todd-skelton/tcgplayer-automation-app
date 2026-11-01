@@ -9,7 +9,10 @@ use crate::{
         },
     },
     theme::*,
-    ui::badge::{Badge, BadgeVariant},
+    ui::{
+        badge::{Badge, BadgeVariant},
+        button::{Button, ButtonSize, ButtonVariant},
+    },
 };
 
 /// One label size as the Print step shows it: its batch PDF, if one was made, and each label of
@@ -51,8 +54,12 @@ pub fn PrintStep<'a>(sheets: &'a [LabelSheet<'a>], has_orders: bool) -> impl Ren
                             "⤓ Download Packing Slips PDF"
                         </a>
                     } else {
-                        <button type="button" disabled>"↗ Open Packing Slips PDF"</button>
-                        <button type="button" disabled>"⤓ Download Packing Slips PDF"</button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button type="button" disabled>"↗ Open Packing Slips PDF"</button>
+                        </Button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button type="button" disabled>"⤓ Download Packing Slips PDF"</button>
+                        </Button>
                     }
                 </div>
             </section>

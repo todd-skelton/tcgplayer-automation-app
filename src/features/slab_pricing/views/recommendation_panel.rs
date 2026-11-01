@@ -16,7 +16,10 @@ use crate::{
     layout::LabeledControl,
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
+    },
 };
 
 /// The owned slab's recommendation: the costs it is calculated from, the market range and ask
@@ -175,9 +178,11 @@ fn CostsForm<'a>(
                 </LabeledControl>
             </div>
             <div class={Line}>
-                <button data-primary disabled={!can_calculate}>
-                    "Calculate from saved evidence"
-                </button>
+                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                    <button disabled={!can_calculate}>
+                        "Calculate from saved evidence"
+                    </button>
+                </Button>
                 <small class={muted()}>{&record.grader}" "{&record.certificate_number}</small>
             </div>
         </form>
@@ -338,7 +343,9 @@ fn ReviewedAsk<'a>(
             <LabeledControl label="Override reason" hint="">
                 <input name={f.note} maxlength="1000" required>
             </LabeledControl>
-            <button disabled={!allowed}>"Save reviewed ask"</button>
+            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                <button disabled={!allowed}>"Save reviewed ask"</button>
+            </Button>
         </form>
     }
 }

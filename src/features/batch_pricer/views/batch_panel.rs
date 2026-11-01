@@ -17,7 +17,10 @@ use crate::{
     },
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
+    },
 };
 
 #[derive(Id)]
@@ -95,15 +98,16 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
                         data-patch
                         class={row(Space::_2)}
                     >
-                        <button
-                            name={mode}
-                            value={Pricing::Full}
-                            data-primary
-                            disabled={busy}
-                            title={format!("Will queue pricing for {} SKUs using the server pricing configuration", batch.item_count)}
-                        >
-                            if priced { "Reprice Batch" } else { "Price Batch" }
-                        </button>
+                        <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
+                            <button
+                                name={mode}
+                                value={Pricing::Full}
+                                disabled={busy}
+                                title={format!("Will queue pricing for {} SKUs using the server pricing configuration", batch.item_count)}
+                            >
+                                if priced { "Reprice Batch" } else { "Price Batch" }
+                            </button>
+                        </Button>
                         <button
                             name={mode}
                             value={Pricing::Errors}
@@ -203,9 +207,11 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
                         data-patch
                         class={row(Space::_2)}
                     >
-                        <button type="button" command="close" commandfor={DeleteDialogId}>
-                            "Cancel"
-                        </button>
+                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                            <button type="button" command="close" commandfor={DeleteDialogId}>
+                                "Cancel"
+                            </button>
+                        </Button>
                         <button class={Danger}>"Delete Batch"</button>
                     </form>
                 </dialog>
@@ -231,7 +237,9 @@ fn Download<'a>(batch: i32, scope: Scope, label: &'a str, count: i64, ready: boo
                 "⤓ "{label}" ("{count}")"
             </a>
         } else {
-            <button type="button" disabled>"⤓ "{label}" ("{count}")"</button>
+            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                <button type="button" disabled>"⤓ "{label}" ("{count}")"</button>
+            </Button>
         }
     }
 }

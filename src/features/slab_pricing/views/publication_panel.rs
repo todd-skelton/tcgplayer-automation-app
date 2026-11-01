@@ -18,7 +18,10 @@ use crate::{
     layout::LabeledControl,
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::{
+        alert::{Alert, AlertVariant},
+        button::{Button, ButtonSize, ButtonVariant},
+    },
 };
 
 /// The link that shows or hides the price-change review of the listing reviewed, and the review
@@ -120,7 +123,9 @@ fn PrepareForm<'a>(
                     }
                 </select>
             </LabeledControl>
-            <button disabled={stale}>"Save price-change preview"</button>
+            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                <button disabled={stale}>"Save price-change preview"</button>
+            </Button>
             <a href={url::SlabPricing::at(&screen.choice)}>"Reload preview"</a>
         </form>
     }
@@ -224,7 +229,9 @@ fn DryRun<'a>(
             >
                 {SubmitKey::field(f.intent)}
                 <input type="hidden" name={f.preview} value={&preview.id}>
-                <button disabled={blocked}>"Run without writing"</button>
+                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                    <button disabled={blocked}>"Run without writing"</button>
+                </Button>
             </form>
             <Problem at={Place::DryRun} why={screen.problem_at(Place::DryRun)} />
             if !runs.is_empty() {
@@ -255,7 +262,9 @@ fn DryRun<'a>(
                                 >
                                     <input type="hidden" name={f.intent} value={&run.id}>
                                     <input type="hidden" name={f.preview} value={&preview.id}>
-                                    <button>"Resume dry run"</button>
+                                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
+                                        <button>"Resume dry run"</button>
+                                    </Button>
                                 </form>
                             }
                         </li>
