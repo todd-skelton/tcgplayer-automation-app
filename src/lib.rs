@@ -14,6 +14,7 @@ mod js_number;
 mod layout;
 mod legacy;
 pub mod migrations;
+mod node_pg;
 mod tcgplayer;
 mod text;
 mod theme;
