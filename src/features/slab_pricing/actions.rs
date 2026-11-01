@@ -1,8 +1,8 @@
-//! The screen's posts. All but the certificate lookups, which ask Alt through the Node app, are
-//! done here (identities, inventory, maintenance settings, evidence refreshes, comp decisions,
-//! outcomes, recommendations, reviewed asks, price-change previews and dry runs). Each then sends the browser back to
-//! the page the post came from (its address is the post's query), showing what changed; a refusal
-//! is that page with why, as a conflict.
+//! The screen's posts: certificate lookups (which ask Alt), identities, inventory, maintenance
+//! settings, evidence refreshes, comp decisions, outcomes, recommendations, reviewed asks,
+//! price-change previews and dry runs. Each then sends the browser back to the page the post
+//! came from (its address is the post's query), showing what changed; a refusal is that page with
+//! why, as a conflict.
 use corten::{Refusal, SubmitKey, prelude::*};
 use serde::Deserialize;
 use serde_json::json;
@@ -10,7 +10,7 @@ use serde_json::json;
 use super::{
     calculation, comps,
     dry_run::dry_run as run_dry,
-    identity::{self, Card, Grading, SlabIdentity},
+    identity::{self, Card, Grading, Record, SlabIdentity},
     inventory, inventory_import, maintenance, outcomes,
     page::{Place, Screen, page},
     publication,
@@ -20,7 +20,13 @@ use super::{
     valuation,
     views::Problem,
 };
-use crate::{database::Database, features::slab_evidence::store as evidence, legacy::Legacy};
+use crate::{
+    database::Database,
+    features::{
+        slab_connections::{DatabaseGate, Transport},
+        slab_evidence::{alt::Alt, store as evidence},
+    },
+};
 
 #[derive(Debug, Default, Deserialize, Fields)]
 pub struct LookUpInput {
@@ -30,37 +36,79 @@ pub struct LookUpInput {
     pub cert: String,
 }
 
-/// The certificate the Node app saved, as it normalized it.
-#[derive(Deserialize)]
-struct Looked {
-    record: Saved,
+/// What to look up with Alt: a certificate, or the one a listing names.
+enum Resolving {
+    Certificate {
+        grader: String,
+        number: String,
+    },
+    Listing {
+        seller: String,
+        id: String,
+        revision: i64,
+    },
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct Saved {
-    grader: String,
-    certificate_number: String,
+/// Looks it up on a connection of its own while the browser waits: leaving the page cancels
+/// Alt's request, and the Alt connection's lease is released either way. A listing tied to an
+/// identity by hand resolves to none; a refusal is in the words of the Node route it replaces.
+async fn resolve(
+    req: &Req,
+    db: &Database,
+    transport: Transport,
+    what: Resolving,
+) -> Result<Option<Record>, String> {
+    let db = db.clone();
+    req.signal()
+        .finish(move |signal| async move {
+            let gate = DatabaseGate(db.clone());
+            let alt = Alt {
+                transport: &transport,
+                gate: &gate,
+            };
+            let cancel = async move {
+                signal.aborted().await;
+            };
+            let conn = db.0.acquire().await;
+            match what {
+                Resolving::Certificate { grader, number } => {
+                    let mut conn = conn.map_err(|_| identity::Unresolved::Unavailable.message())?;
+                    identity::lookup(&mut conn, &alt, (&grader, &number), false, cancel)
+                        .await
+                        .map(Some)
+                        .map_err(|unresolved| unresolved.message())
+                }
+                Resolving::Listing {
+                    seller,
+                    id,
+                    revision,
+                } => {
+                    let mut conn = conn.map_err(|_| inventory_import::UNAVAILABLE.to_owned())?;
+                    inventory_import::resolve(&mut conn, &alt, &seller, &id, revision, cancel).await
+                }
+            }
+        })
+        .await
 }
 
-/// Looks the certificate up (its saved identity, or the provider's when there is none) and shows
-/// it.
+/// Looks the certificate up (its saved identity, or Alt's when there is none) and shows it.
 pub async fn look_up(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
+    State(transport): State<Transport>,
     Params(at): Params<url::LookUp>,
     Form(input): Form<LookUpInput>,
 ) -> HtmlResult {
-    let asked = json!({ "intent": "lookup", "grader": input.grader.trim(), "certificateNumber": input.cert.trim() });
-    match legacy
-        .send::<_, Looked>("/api/slab-identities", &asked)
-        .await
-    {
-        Ok(looked) => req.redirect(&url::SlabPricing::at(
-            &at.choice
-                .with_certificate(&looked.record.grader, &looked.record.certificate_number),
+    let asked = Resolving::Certificate {
+        grader: input.grader.trim().to_owned(),
+        number: input.cert.trim().to_owned(),
+    };
+    match resolve(&req, &db, transport, asked).await {
+        // As saved: the grader upper-cased, both trimmed.
+        Ok(Some(r)) => req.redirect(&url::SlabPricing::at(
+            &at.choice.with_certificate(&r.grader, &r.certificate_number),
         )),
+        Ok(None) => req.redirect(&url::SlabPricing::at(&at.choice)),
         Err(why) => {
             let choice = at
                 .choice
@@ -182,11 +230,11 @@ pub struct OpenInput {
 }
 
 /// Opens a listing for review: its identity's certificate, the one its listing names (resolved
-/// with the provider when it has none), or no certificate at all.
+/// with Alt when it has none), or no certificate at all.
 pub async fn open(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
+    State(transport): State<Transport>,
     Params(at): Params<url::Open>,
     Form(input): Form<OpenInput>,
 ) -> HtmlResult {
@@ -214,23 +262,29 @@ pub async fn open(
             return refused(Place::Inventory, &req, &db, &at.choice, why).await;
         }
     };
-    let looked = if let Some(tied) = &listing.identity {
-        let asked = json!({ "intent": "lookup", "grader": tied.grader, "certificateNumber": tied.certificate_number });
-        legacy
-            .send::<_, Looked>("/api/slab-identities", &asked)
-            .await
-            .map(Some)
-    } else if listing.snapshot.certificate.is_some() {
-        let asked = json!({ "intent": "resolve-identity", "seller": listing.seller, "id": listing.id, "revision": listing.revision });
-        legacy
-            .send::<_, Option<Looked>>("/api/slab-inventory", &asked)
-            .await
+    let asked = if let Some(tied) = &listing.identity {
+        Some(Resolving::Certificate {
+            grader: tied.grader.clone(),
+            number: tied.certificate_number.clone(),
+        })
     } else {
-        Ok(None)
+        listing
+            .snapshot
+            .certificate
+            .is_some()
+            .then(|| Resolving::Listing {
+                seller: listing.seller.clone(),
+                id: listing.id.clone(),
+                revision: listing.revision,
+            })
+    };
+    let looked = match asked {
+        Some(asked) => resolve(&req, &db, transport, asked).await,
+        None => Ok(None),
     };
     match looked {
-        Ok(Some(l)) => req.redirect(&url::SlabPricing::at(
-            &reviewing.with_certificate(&l.record.grader, &l.record.certificate_number),
+        Ok(Some(r)) => req.redirect(&url::SlabPricing::at(
+            &reviewing.with_certificate(&r.grader, &r.certificate_number),
         )),
         // A listing whose identity was assigned by hand answers with no record: show it as it is.
         Ok(None) => req.redirect(&url::SlabPricing::at(&reviewing)),

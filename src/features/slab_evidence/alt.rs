@@ -1,6 +1,7 @@
 //! Reading Alt's evidence for a graded card: its recent sales at every grade, one sale's detail,
 //! and its active listings, each from Alt's GraphQL API through the slab connection's
-//! [`Transport`]. Ported from `evidence/altEvidenceProvider.server.ts` and
+//! [`Transport`]; and what a certificate identifies. Ported from
+//! `evidence/altEvidenceProvider.server.ts`, `identity/altIdentityProvider.server.ts` and
 //! `identity/altIdentityFields.server.ts`.
 //!
 //! An answer is read strictly: anything this does not expect is `invalid-response`, an expired
@@ -18,6 +19,7 @@ use super::spec::Window;
 use crate::features::{
     inventory_economics::ledger::fingerprint::{js_float, js_numbers},
     slab_connections::{Ask, ConnectionStatus as Status, Gate, Provider, Transport},
+    slab_pricing::identity::{normalized_certificate, parse_identity},
 };
 
 const TRANSACTIONS: &str =
@@ -38,6 +40,13 @@ const SUPPLY: &str = "query AssetDetails($id: ID!) { asset(id: $id) { id activeL
   items { id attributes { gradeNumber gradingCompany autograph qualifier } asset { id } }
 } } }";
 /// The most rows one answer may hold.
+// Node's `CERT_QUERY`, as it sends it.
+const CERT: &str = "query Cert($certNumber: String!) {
+  cert(certNumber: $certNumber) {
+    certNumber gradeNumber gradingCompany autograph qualifier
+    asset { id name year subject category brand variety attributes { cardNumber } }
+  }
+}";
 const MAX_ROWS: usize = 2000;
 pub(super) const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_991.0;
 
@@ -506,6 +515,42 @@ pub fn parse_supply(body: &str, asset_id: &str) -> Read<Value> {
         .map(Value::Array)
 }
 
+/// `parseAltCertificate`: the slab Alt's certificate names, as a candidate identity
+/// (`{ grader, certificateNumber, identity }`), or none when Alt has no such certificate.
+pub fn parse_certificate(body: &str) -> Read<Option<Value>> {
+    let data = data(body)?;
+    let cert = match data.get("cert") {
+        None => return invalid(),
+        Some(Value::Null) => return Ok(None),
+        Some(cert) => object(cert)?,
+    };
+    let get = |name: &str| cert.get(name).unwrap_or(&Value::Null);
+    let (grader, certificate_number) =
+        normalized_certificate(get("gradingCompany"), get("certNumber")).or_else(|_| invalid())?;
+    let asset = get("asset");
+    let grade_given = get("gradeNumber").as_str().is_some_and(|g| !g.is_empty());
+    let asset_id = asset.get("id").and_then(Value::as_str).unwrap_or("");
+    if !grade_given || asset_id.is_empty() {
+        return invalid();
+    }
+    let asset = object(asset)?;
+    let identity = parse_identity(&json!({
+        "card": card(asset)?,
+        "grading": grading(cert, &Value::Null)?,
+        "providerAsset": {
+            "provider": "alt",
+            "id": asset_id,
+            "title": asset.get("name").unwrap_or(&Value::Null),
+        },
+    }))
+    .or_else(|_| invalid())?;
+    Ok(Some(json!({
+        "grader": grader,
+        "certificateNumber": certificate_number,
+        "identity": identity,
+    })))
+}
+
 /// Alt's evidence through one connection: each read claims the connection, as every process's
 /// reads do, and stops when `cancel` resolves.
 pub struct Alt<'a, G> {
@@ -599,6 +644,18 @@ impl<G: Gate> Alt<'_, G> {
             cancel,
         )
         .await
+    }
+
+    /// `lookupCertificate`: what the certificate identifies, or none when Alt has no such
+    /// certificate.
+    pub async fn certificate(
+        &self,
+        certificate_number: &str,
+        cancel: impl Future<Output = ()> + Send,
+    ) -> Read<Option<Value>> {
+        let variables = json!({ "certNumber": certificate_number });
+        self.read("Cert", CERT, variables, parse_certificate, cancel)
+            .await
     }
 
     /// `getSupply`: the asset's active listings, Alt's only.

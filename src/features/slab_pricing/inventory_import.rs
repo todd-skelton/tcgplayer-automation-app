@@ -1,23 +1,26 @@
 //! Importing a CSV snapshot of some of the seller's eBay listings (`parseInventoryCsv`,
-//! `reconcileInventory`), and tying a listing to a confirmed identity by hand
-//! (`assignInventoryIdentity`). A file never retires a listing it leaves out; only a complete
+//! `reconcileInventory`), and tying a listing to an identity: its certificate's, looked up with
+//! Alt (`resolveInventoryIdentity`), or a confirmed one by hand (`assignInventoryIdentity`). A file never retires a listing it leaves out; only a complete
 //! read of the seller's active listings could, and that stays the Node app's.
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde_json::{Map, Value, json};
 use sqlx::{Connection, PgConnection};
 
 use super::{
-    identity::{certificate, text_field},
+    identity::{self, Record, Unresolved, certificate, text_field},
     inventory::seller_account,
 };
-use crate::csv_text::{self, Reading};
+use crate::{
+    csv_text::{self, Reading},
+    features::{slab_connections::Gate, slab_evidence::alt::Alt},
+};
 
 /// Refused in Node's words.
 const LISTING: &str =
     "Each listing needs an eBay item ID, title, valid price/currency, quantity, state and format.";
 /// Any identity field refused (`SlabIdentityError`), as the route words it.
 const FIELDS: &str = "Check the inventory request fields.";
-const UNAVAILABLE: &str = "Unable to update slab inventory. Try again.";
+pub(super) const UNAVAILABLE: &str = "Unable to update slab inventory. Try again.";
 const REQUIRED: [&str; 7] = [
     "item_id", "title", "price", "currency", "quantity", "state", "format",
 ];
@@ -388,10 +391,206 @@ pub async fn assign(
     Ok(())
 }
 
+/// The `resolve-identity` route: the seller's listing, at the revision the page showed, tied to
+/// its certificate's identity, looked up with Alt as [`identity::lookup`] does. A listing tied by
+/// hand stays as it is (none); its revision moves only when its identity does. Refused in the
+/// route's words, which include what the listing expects being unreadable.
+pub async fn resolve<G: Gate>(
+    conn: &mut PgConnection,
+    alt: &Alt<'_, G>,
+    seller: &str,
+    listing: &str,
+    revision: i64,
+    cancel: impl Future<Output = ()> + Send,
+) -> Result<Option<Record>, String> {
+    let seller = seller_account(seller)?;
+    if !id_like(listing) || !(1..=9_007_199_254_740_991).contains(&revision) {
+        return Err("Provide a listing ID and revision.".to_owned());
+    }
+    let row: Option<(i64, Option<String>, Value)> = sqlx::query_as(
+        "SELECT revision::int8, identity_source, snapshot FROM slab_inventory WHERE seller = $1 AND id = $2::uuid",
+    )
+    .bind(&seller)
+    .bind(listing)
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(unavailable)?;
+    let Some((_, source, snapshot)) = row.filter(|(at, _, _)| *at == revision) else {
+        return Err("Reload the listing before resolving its certificate.".to_owned());
+    };
+    if source.as_deref() == Some("manual") {
+        return Ok(None);
+    }
+    let certificate = &snapshot["certificate"];
+    if certificate.is_null() {
+        return Err(
+            "Import a certificate or assign a reviewed identity to this listing.".to_owned(),
+        );
+    }
+    let (Some(grader), Some(number)) = (
+        certificate["grader"].as_str(),
+        certificate["certificateNumber"].as_str(),
+    ) else {
+        return Err(FIELDS.to_owned());
+    };
+    identity::expected(&snapshot["expected"]).map_err(|_| FIELDS.to_owned())?;
+    let record = identity::lookup(conn, alt, (grader, number), false, cancel)
+        .await
+        .map_err(|unresolved| match unresolved {
+            Unresolved::Refused(_) => FIELDS.to_owned(),
+            Unresolved::Provider(status) => status.message().to_owned(),
+            Unresolved::Unavailable => UNAVAILABLE.to_owned(),
+        })?;
+    let updated = sqlx::query(
+        "UPDATE slab_inventory SET identity_id = $4::uuid, identity_source = 'certificate',
+           revision = revision + CASE WHEN identity_id IS DISTINCT FROM $4::uuid THEN 1 ELSE 0 END,
+           updated_at = clock_timestamp()
+         WHERE seller = $1 AND id = $2::uuid AND revision = $3",
+    )
+    .bind(&seller)
+    .bind(listing)
+    .bind(revision)
+    .bind(&record.id)
+    .execute(&mut *conn)
+    .await
+    .map_err(unavailable)?;
+    if updated.rows_affected() == 0 {
+        return Err("Listing changed during certificate lookup. Reload it.".to_owned());
+    }
+    Ok(Some(record))
+}
+
 #[cfg(test)]
 mod tests {
+    use std::sync::{Arc, Mutex};
+
     use super::*;
-    use crate::database::Database;
+    use crate::{
+        database::Database,
+        features::slab_connections::{ConnectionStatus as Status, Lease, Provider, Transport},
+    };
+
+    #[derive(Clone)]
+    struct Open;
+
+    impl Gate for Open {
+        async fn claim(&self, _: Provider) -> Result<Lease, Status> {
+            Ok(Lease {
+                id: "lease".into(),
+                revision: 1,
+                secret: "fixture".into(),
+                user_agent: String::new(),
+            })
+        }
+
+        async fn release(
+            &self,
+            _: Provider,
+            _: &Lease,
+            _: Status,
+            _: chrono::DateTime<Utc>,
+        ) -> Result<(), Status> {
+            Ok(())
+        }
+    }
+
+    /// Alt on this machine: each certificate's recorded answer, keeping what it was asked.
+    async fn alt_stand_in(answers: Value) -> (Transport, Arc<Mutex<Vec<Value>>>) {
+        use corten::axum::{Router, extract::Json, http::StatusCode};
+        let asked = Arc::new(Mutex::new(Vec::new()));
+        let kept = asked.clone();
+        let app = Router::new().fallback(move |Json(operation): Json<Value>| {
+            let (kept, answers) = (kept.clone(), answers.clone());
+            async move {
+                let answer = &answers[operation["variables"]["certNumber"].as_str().unwrap()];
+                kept.lock().unwrap().push(operation);
+                let status = answer["status"].as_u64().unwrap_or(200) as u16;
+                (
+                    StatusCode::from_u16(status).unwrap(),
+                    answer["body"].to_string(),
+                )
+            }
+        });
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        tokio::spawn(async move { corten::axum::serve(listener, app).await });
+        (Transport::to(&origin, &origin), asked)
+    }
+
+    /// The lookups and listing resolutions in `.port-logs/slab-lookup-cases.json`, in order, on
+    /// `slab-lookup-seed.sql` in a transaction rolled back, with Alt answering each certificate as
+    /// recorded, against Node's `/api/slab-identities` lookup and `/api/slab-inventory`
+    /// `resolve-identity` over the same answers (`.port-logs/slab-lookup-node.ts`): the record
+    /// answered or why not, what Alt was asked, and every identity and listing after each.
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
+    async fn certificates_resolve_as_node_resolves_them() {
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let read_log = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let given: Value = serde_json::from_str(&read_log("slab-lookup-cases.json")).unwrap();
+        let node: Vec<Value> = serde_json::from_str(&read_log("slab-lookup.node.json")).unwrap();
+        let cases = given["cases"].as_array().unwrap();
+        assert_eq!(cases.len(), node.len());
+        let (transport, asked) = alt_stand_in(given["alt"].clone()).await;
+        let alt = Alt {
+            transport: &transport,
+            gate: &Open,
+        };
+        let capture = read_log("slab-lookup-capture.sql");
+        let mut tx = db.0.begin().await.unwrap();
+        sqlx::raw_sql(&read_log("slab-lookup-seed.sql"))
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        for (case, theirs) in cases.iter().zip(node) {
+            let text = |k: &str| case[k].as_str().unwrap_or_default();
+            let pending = std::future::pending();
+            let answered = if text("kind") == "lookup" {
+                let certificate = (text("grader"), text("certificateNumber"));
+                let refresh = case["refresh"] == true;
+                identity::lookup(&mut tx, &alt, certificate, refresh, pending)
+                    .await
+                    .map(Some)
+                    .map_err(|unresolved| unresolved.message())
+            } else {
+                let revision = case["revision"].as_i64().unwrap();
+                let (seller, id) = (text("seller"), text("id"));
+                resolve(&mut tx, &alt, seller, id, revision, pending).await
+            };
+            let ours = match answered {
+                Ok(Some(r)) => json!({ "record": {
+                    "grader": r.grader, "certificateNumber": r.certificate_number,
+                    "status": r.status, "revision": r.revision, "reviewReasons": r.review_reasons,
+                } }),
+                Ok(None) => json!({ "manual": true }),
+                Err(error) => json!({ "error": error }),
+            };
+            let mut answer = theirs["answer"].clone();
+            if let Some(answer) = answer.as_object_mut() {
+                // What the identity disagrees with is read from the listing, not answered here.
+                answer.remove("reviewReasons");
+            }
+            let name = &case["name"];
+            assert_eq!(ours, answer, "{name}");
+            let alt_asked: Vec<Value> = std::mem::take(&mut *asked.lock().unwrap());
+            let node_asked: Vec<Value> = theirs["asked"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .inspect(|a| assert!(a["url"].as_str().unwrap().ends_with("/graphql/Cert")))
+                .map(|a| a["body"].clone())
+                .collect();
+            assert_eq!(alt_asked, node_asked, "{name}: asked");
+            let captured: Value =
+                sqlx::query_scalar(&format!("SELECT captured FROM ({capture}) AS c"))
+                    .fetch_one(&mut *tx)
+                    .await
+                    .unwrap();
+            assert_eq!(captured, theirs["captured"], "{name}: saved");
+        }
+        tx.rollback().await.unwrap();
+    }
 
     /// The posts in `.port-logs/slab-import-cases.json`, in order, on `slab-import-seed.sql`, in
     /// a transaction rolled back, against Node's `/api/slab-inventory` (`import-csv`,

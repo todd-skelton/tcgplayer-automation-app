@@ -71,28 +71,7 @@ impl Legacy {
         Self::answer(answer).await
     }
 
-    /// What one of the Node app's JSON routes answers to `body` posted as JSON: for a write whose
-    /// rules are still the Node app's. An error is the message the route gave, or why there was
-    /// none to read. It is sent from the Node app's own origin: a route that refuses a post from
-    /// elsewhere (the slab pricer's) takes it, as it takes the React screens' own.
-    pub async fn send<B: serde::Serialize, T: serde::de::DeserializeOwned>(
-        &self,
-        path: &str,
-        body: &B,
-    ) -> Result<T, String> {
-        let body = serde_json::to_vec(body).map_err(|e| e.to_string())?;
-        let answer = self
-            .http
-            .post(format!("{}{path}", self.origin))
-            .header(header::CONTENT_TYPE, "application/json")
-            .header(header::ORIGIN, &self.origin)
-            .body(body)
-            .send()
-            .await
-            .map_err(|_| "The Node app did not answer.".to_owned())?;
-        Self::answer(answer).await
-    }
-
+    #[cfg(test)]
     async fn answer<T: serde::de::DeserializeOwned>(
         answer: reqwest::Response,
     ) -> Result<T, String> {

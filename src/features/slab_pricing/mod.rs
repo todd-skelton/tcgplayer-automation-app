@@ -3,10 +3,10 @@
 //! `app/features/ebay-slab-pricing/routes/slab-pricing.tsx` and its identity editor and
 //! inventory panel.
 //!
-//! The certificate lookups, which ask Alt, stay the Node app's (`/api/slab-identities`,
-//! `/api/slab-inventory` resolve); this screen reads what they saved. An identity is confirmed,
-//! a CSV of listings imported and a listing tied to an identity by hand here (`identity`,
-//! `inventory_import`). What the
+//! A certificate is looked up here with Alt (`identity`), through the slab connection the
+//! connections screen saved, while the browser waits: Alt's proposal is saved for the operator to
+//! confirm or correct. A listing's certificate is resolved the same way, and a CSV of listings
+//! imported and a listing tied to an identity by hand (`inventory_import`). What the
 //! screen shows (the certificate, the seller, the page of listings, the listing being reviewed)
 //! is its address, so each post carries it and sends the browser back to it.
 //!
@@ -65,13 +65,13 @@
 //! | `POST /slab-pricing/comp-decision` | a sale included or excluded from the comps, and why |
 //! | `POST /slab-pricing/fetch-comps` | a sale's details or an eBay source's next page queued, then shown beside the rest |
 //!
-//! A post refused, here or by the Node app, answers 409 with the page and why.
+//! A post refused answers 409 with the page and why.
 mod actions;
 mod calculation;
 mod comp_events;
 mod comps;
 mod dry_run;
-mod identity;
+pub(crate) mod identity;
 mod inventory;
 mod inventory_import;
 mod maintenance;

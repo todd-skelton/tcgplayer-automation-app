@@ -1,11 +1,18 @@
 //! A slab's certificate and what it identifies (`slab_identities`): the card and grade a
-//! provider proposed, and the one the operator confirmed. Looking one up stays the Node app's
-//! (`/api/slab-identities`), since it asks Alt; confirming one is done here.
+//! provider proposed, and the one the operator confirmed. Looking one up with Alt is `lookup`.
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
+use sqlx::PgConnection;
 
-use crate::database::Database;
+use super::inventory::Expected;
+use crate::{
+    database::Database,
+    features::{
+        slab_connections::{ConnectionStatus as Status, Gate},
+        slab_evidence::alt::Alt,
+    },
+};
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -94,28 +101,169 @@ impl Record {
     }
 }
 
+/// A saved identity as JSON, to read as a [`Record`].
+const RECORD: &str = "jsonb_build_object('id', id, 'grader', grader,
+  'certificateNumber', certificate_number, 'candidate', candidate, 'identity', identity,
+  'status', status, 'reviewReasons', review_reasons, 'revision', revision)::text";
+
 /// The saved identity of a certificate, if it was looked up.
 pub async fn find(
     db: &Database,
     grader: &str,
     certificate: &str,
 ) -> corten::Result<Option<Record>> {
-    let row: Option<String> = sqlx::query_scalar(
-        "SELECT jsonb_build_object('id', id, 'grader', grader, 'certificateNumber', certificate_number,
-           'candidate', candidate, 'identity', identity, 'status', status,
-           'reviewReasons', review_reasons, 'revision', revision)::text
-         FROM slab_identities WHERE grader = $1 AND certificate_number = $2",
-    )
+    saved(&db.0, grader, certificate)
+        .await
+        .map_err(corten::Error::new)
+}
+
+/// [`find`] on a connection or in a transaction.
+async fn saved<'c>(
+    on: impl sqlx::PgExecutor<'c>,
+    grader: &str,
+    certificate: &str,
+) -> sqlx::Result<Option<Record>> {
+    let row: Option<String> = sqlx::query_scalar(&format!(
+        "SELECT {RECORD} FROM slab_identities WHERE grader = $1 AND certificate_number = $2"
+    ))
     .bind(grader)
     .bind(certificate)
-    .fetch_optional(&db.0)
-    .await
-    .map_err(corten::Error::new)?;
-    row.map(|json| serde_json::from_str(&json).map_err(corten::Error::new))
+    .fetch_optional(on)
+    .await?;
+    record(row)
+}
+
+fn record(row: Option<String>) -> sqlx::Result<Option<Record>> {
+    row.map(|json| serde_json::from_str(&json).map_err(|e| sqlx::Error::Decode(e.into())))
         .transpose()
 }
 
-/// The card fields, in the order the valuation group key lists them (\`CARD_FIELDS\`).
+/// Why a certificate could not be looked up.
+#[derive(Debug, PartialEq)]
+pub enum Unresolved {
+    /// Refused, in `SlabIdentityError`'s words.
+    Refused(String),
+    /// Alt did not answer, or the connection cannot be used now.
+    Provider(Status),
+    /// The database failed.
+    Unavailable,
+}
+
+impl Unresolved {
+    /// As `/api/slab-identities` words it.
+    pub fn message(&self) -> String {
+        match self {
+            Unresolved::Refused(why) => why.clone(),
+            Unresolved::Provider(status) => status.message().to_owned(),
+            Unresolved::Unavailable => "Unable to resolve the identity. Try again.".to_owned(),
+        }
+    }
+}
+
+fn unavailable(error: sqlx::Error) -> Unresolved {
+    eprintln!("slab identity lookup: {error}");
+    Unresolved::Unavailable
+}
+
+/// `slabIdentityService.lookup`: the certificate's saved identity, else (or, with `refresh`,
+/// while unconfirmed) Alt's proposal for it saved for review, with why it needs one. The
+/// connection is held while Alt answers; `cancel` resolving stops Alt's request.
+///
+/// Node also answers where the identity disagrees with what was expected of it; the screen reads
+/// that from the listing (`inventory`), so it is not returned here.
+pub async fn lookup<G: Gate>(
+    conn: &mut PgConnection,
+    alt: &Alt<'_, G>,
+    (grader, number): (&str, &str),
+    refresh: bool,
+    cancel: impl Future<Output = ()> + Send,
+) -> Result<Record, Unresolved> {
+    let (grader, number) = certificate(grader, number).map_err(Unresolved::Refused)?;
+    let found = saved(&mut *conn, &grader, &number)
+        .await
+        .map_err(unavailable)?;
+    match found {
+        Some(record) if !refresh || record.confirmed() => Ok(record),
+        found => {
+            let candidate = alt
+                .certificate(&number, cancel)
+                .await
+                .map_err(Unresolved::Provider)?;
+            let reasons = review_reasons(&grader, &number, candidate.as_ref());
+            let revision = found.map(|r| r.revision);
+            save_candidate(conn, (&grader, &number), candidate, &reasons, revision).await
+        }
+    }
+}
+
+/// Why Alt's proposal needs the operator: always confirmation, and before it where it differs
+/// from the certificate asked about or leaves the grade's label unknown.
+fn review_reasons(grader: &str, number: &str, candidate: Option<&Value>) -> Vec<&'static str> {
+    let Some(candidate) = candidate else {
+        return vec!["certificate-not-found"];
+    };
+    let mut reasons = Vec::new();
+    if candidate["certificateNumber"] != number {
+        reasons.push("certificate-mismatch");
+    }
+    if candidate["grader"] != grader {
+        reasons.push("grader-mismatch");
+    }
+    if candidate["identity"]["grading"]["label"].is_null() {
+        reasons.push("grade-label-unresolved");
+    }
+    reasons.push("confirmation-required");
+    reasons
+}
+
+/// `saveCandidate`: a new certificate's proposal saved, or an unconfirmed one's replaced at the
+/// revision read; when another lookup saved or confirmed it first, that one.
+async fn save_candidate(
+    conn: &mut PgConnection,
+    (grader, number): (&str, &str),
+    candidate: Option<Value>,
+    reasons: &[&str],
+    revision: Option<i64>,
+) -> Result<Record, Unresolved> {
+    let candidate = candidate.unwrap_or(Value::Null);
+    let reasons = json!(reasons);
+    let row: Option<String> = match revision {
+        None => sqlx::query_scalar(&format!(
+            "INSERT INTO slab_identities (id, grader, certificate_number, candidate, review_reasons)
+             VALUES (gen_random_uuid(), $1, $2, $3, $4)
+             ON CONFLICT (grader, certificate_number) DO NOTHING RETURNING {RECORD}"
+        ))
+        .bind(grader)
+        .bind(number)
+        .bind(&candidate)
+        .bind(&reasons)
+        .fetch_optional(&mut *conn)
+        .await,
+        Some(revision) => sqlx::query_scalar(&format!(
+            "UPDATE slab_identities SET candidate = $3, review_reasons = $4, revision = revision + 1,
+               updated_at = clock_timestamp()
+             WHERE grader = $1 AND certificate_number = $2 AND revision = $5 AND status <> 'confirmed'
+             RETURNING {RECORD}"
+        ))
+        .bind(grader)
+        .bind(number)
+        .bind(&candidate)
+        .bind(&reasons)
+        .bind(revision)
+        .fetch_optional(&mut *conn)
+        .await,
+    }
+    .map_err(unavailable)?;
+    let stored = match record(row).map_err(unavailable)? {
+        Some(stored) => Some(stored),
+        None => saved(&mut *conn, grader, number)
+            .await
+            .map_err(unavailable)?,
+    };
+    stored.ok_or(Unresolved::Unavailable)
+}
+
+/// The card fields, in the order the valuation group key lists them (`CARD_FIELDS`).
 const CARD_FIELDS: [&str; 9] = [
     "name",
     "game",
@@ -130,12 +278,12 @@ const CARD_FIELDS: [&str; 9] = [
 
 const SHORT_TEXT: &str = "Identity fields must be short text values.";
 
-/// JavaScript's \`String.prototype.trim\`.
+/// JavaScript's `String.prototype.trim`.
 pub(super) fn js_trim(value: &str) -> &str {
     value.trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}')
 }
 
-/// \`textField\`: a string of at most \`max\` UTF-16 units without control characters, trimmed,
+/// `textField`: a string of at most `max` UTF-16 units without control characters, trimmed,
 /// or none when it is missing or blank. Anything else is refused.
 pub(super) fn text_field(value: &Value, max: usize) -> Result<Option<String>, String> {
     match value {
@@ -150,6 +298,32 @@ pub(super) fn text_field(value: &Value, max: usize) -> Result<Option<String>, St
     }
 }
 
+/// `normalizeExpectedIdentity`: what a slab is expected to be, each field short text or none, the
+/// grade a number from 1 to 10.
+pub(super) fn expected(value: &Value) -> Result<Expected, String> {
+    let grade_number = match &value["gradeNumber"] {
+        Value::Null => None,
+        Value::Number(n) if n.as_f64().is_some_and(|n| (1.0..=10.0).contains(&n)) => n.as_f64(),
+        _ => return Err("Expected numeric grade must be between 1 and 10.".to_owned()),
+    };
+    let text = |name: &str| text_field(&value[name], 200);
+    Ok(Expected {
+        name: text("name")?,
+        game: text("game")?,
+        language: text("language")?,
+        set: text("set")?,
+        card_number: text("cardNumber")?,
+        year: text("year")?,
+        edition: text("edition")?,
+        finish: text("finish")?,
+        stamp: text("stamp")?,
+        grade_number,
+        grade_label: text("gradeLabel")?,
+        qualifier: text("qualifier")?,
+        autograph: text("autograph")?,
+    })
+}
+
 /// A grade number as JavaScript keeps it: whole ones without a fraction.
 fn grade_number(value: f64) -> Value {
     if value.fract() == 0.0 {
@@ -159,10 +333,18 @@ fn grade_number(value: f64) -> Value {
     }
 }
 
-/// \`normalizeCertificate\`: the grader upper-cased and the number, both trimmed and plain.
+/// `normalizeCertificate`: the grader upper-cased and the number, both trimmed and plain.
 pub(super) fn certificate(grader: &str, number: &str) -> Result<(String, String), String> {
-    let grader = text_field(&json!(grader), 40)?.map(|g| g.to_uppercase());
-    let number = text_field(&json!(number), 80)?;
+    normalized_certificate(&json!(grader), &json!(number))
+}
+
+/// [`certificate`] of values as a provider answers them, which may not be text.
+pub(crate) fn normalized_certificate(
+    grader: &Value,
+    number: &Value,
+) -> Result<(String, String), String> {
+    let grader = text_field(grader, 40)?.map(|g| g.to_uppercase());
+    let number = text_field(number, 80)?;
     match (grader, number) {
         (Some(grader), Some(number))
             if grader.bytes().all(|b| {
@@ -177,9 +359,9 @@ pub(super) fn certificate(grader: &str, number: &str) -> Result<(String, String)
     }
 }
 
-/// \`parseSlabIdentity\`: the card and grade as saved, each field trimmed text or null, the grade
+/// `parseSlabIdentity`: the card and grade as saved, each field trimmed text or null, the grade
 /// a half-step from 1 to 10 or none, and the provider asset an Alt one.
-fn parse_identity(input: &Value) -> Result<Value, String> {
+pub(crate) fn parse_identity(input: &Value) -> Result<Value, String> {
     let truthy = |v: &Value| {
         !matches!(v, Value::Null | Value::Bool(false)) && *v != json!("") && *v != json!(0)
     };
@@ -234,7 +416,7 @@ fn parse_identity(input: &Value) -> Result<Value, String> {
     }))
 }
 
-/// \`valuationGroupKey\`: the SHA-256 of the identity's ordered fields (card lower-cased, the
+/// `valuationGroupKey`: the SHA-256 of the identity's ordered fields (card lower-cased, the
 /// provider asset, the grader, the grade or its encoding, and its label, qualifier and
 /// autograph lower-cased), as JSON. Slabs of one key are valued together.
 fn valuation_group_key(identity: &Value) -> String {
@@ -266,12 +448,12 @@ pub struct Confirmation<'a> {
     pub grader: &'a str,
     pub certificate_number: &'a str,
     pub revision: i64,
-    /// The card and grade as the screen sends them (\`SlabIdentity\` JSON).
+    /// The card and grade as the screen sends them (`SlabIdentity` JSON).
     pub identity: &'a Value,
     pub note: &'a str,
 }
 
-/// \`confirm\`: the identity saved as confirmed by the operator, with why, in its valuation group,
+/// `confirm`: the identity saved as confirmed by the operator, with why, in its valuation group,
 /// while the record is still at the revision they saw. Refused in Node's words.
 pub async fn confirm(conn: &mut sqlx::PgConnection, c: &Confirmation<'_>) -> Result<(), String> {
     let (grader, number) = certificate(c.grader, c.certificate_number)?;
@@ -312,7 +494,7 @@ pub async fn confirm(conn: &mut sqlx::PgConnection, c: &Confirmation<'_>) -> Res
     Ok(())
 }
 
-/// \`grade-label-unresolved\` as "grade label unresolved", as the React screen wrote codes.
+/// `grade-label-unresolved` as "grade label unresolved", as the React screen wrote codes.
 pub fn words(code: &str) -> String {
     code.replace(['-', '_'], " ")
 }
