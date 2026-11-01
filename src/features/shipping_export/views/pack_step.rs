@@ -15,9 +15,9 @@ use crate::{
             value::SaleValue,
         },
     },
-    layout::{Notice, Tone},
     text::Msg,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 /// One shipment as the Pack step lists it.
@@ -42,7 +42,7 @@ pub struct PackedOrder<'a> {
 pub struct PackCard<'a> {
     pub index: usize,
     /// Why its cards are listed rather than shown as pictures, when they are.
-    pub notice: Option<(Tone, String)>,
+    pub notice: Option<(AlertVariant, String)>,
     pub orders: Vec<PackedOrder<'a>>,
 }
 
@@ -77,7 +77,9 @@ pub fn PackStep<'a>(packing: &'a Packing<'a>, t: Msg) -> impl Render {
             match (&packing.card, packing.view) {
                 (Some(card), PackView::Card) => <ShipmentToPack packing={packing} card={card} t={t} />,
                 (_, PackView::List) => <PackList packing={packing} t={t} />,
-                (None, PackView::Card) => <Notice tone={Tone::Info}>"No shipments to pack. Load orders first."</Notice>,
+                (None, PackView::Card) => <Alert variant={AlertVariant::Info}>
+                    "No shipments to pack. Load orders first."
+                </Alert>,
             }
         </div>
     }
@@ -224,7 +226,7 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                 <ViewChoice packing={packing} />
             </header>
             if let Some((tone, notice)) = &card.notice {
-                <Notice tone={*tone}>{notice}</Notice>
+                <Alert variant={*tone}>{notice}</Alert>
             }
             for packed in &card.orders {
                 <section class={OrderBox} aria-label={format!("Order {}", packed.order.number)}>

@@ -12,9 +12,10 @@ use crate::{
             views::{CompReview, RecommendationPanel, ResearchPanel, SellerPanels, SupplyPanel},
         },
     },
-    layout::{LabeledControl, Notice, Tone},
+    layout::LabeledControl,
     text::Msg,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 #[derive(Id)]
@@ -26,7 +27,7 @@ pub fn Problem<'a>(at: Place, why: Option<&'a str>) -> impl Patch {
     html! {
         <div id={ProblemId(at.name())} role="alert">
             if let Some(why) = why {
-                <Notice tone={Tone::Warning}>{why}</Notice>
+                <Alert variant={AlertVariant::Warning}>{why}</Alert>
             }
         </div>
     }
@@ -177,9 +178,9 @@ fn IdentityCard<'a>(
                 <p>{card.summary()}</p>
             }
             if !record.review_reasons.is_empty() {
-                <Notice tone={Tone::Warning}>
+                <Alert variant={AlertVariant::Warning}>
                     {record.review_reasons.iter().map(|r| words(r)).collect::<Vec<_>>().join("; ")}
-                </Notice>
+                </Alert>
             }
             <details>
                 <summary>"Confirm or correct identity"</summary>
@@ -287,7 +288,7 @@ fn InventoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             <Problem at={Place::Inventory} why={screen.problem_at(Place::Inventory)} />
             match &screen.inventory {
                 None => {}
-                Some(Err(why)) => <Notice tone={Tone::Warning}>{why}</Notice>,
+                Some(Err(why)) => <Alert variant={AlertVariant::Warning}>{why}</Alert>,
                 Some(Ok(page)) => {
                     <SellerPanels screen={screen} t={t} />
                     <Listings page={page} choice={choice} />

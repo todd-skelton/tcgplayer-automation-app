@@ -20,7 +20,7 @@ mod parts;
 
 pub use app_bar::{AppBar, AuthCookieWarning};
 pub use icons::{Glyph, Icon};
-pub use parts::{LabeledControl, Notice, SubmitsOnChange, Tone};
+pub use parts::{LabeledControl, SubmitsOnChange};
 
 corten::assets::embed! {
     /// The files in `static/`, compiled into the program: `Static::STYLE_CSS` is `static/style.css`.

@@ -10,8 +10,8 @@ use crate::{
         queue::{self, Batches, QueueInput},
         url::{self, Selection},
     },
-    layout::{Notice, Tone},
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 #[derive(Id)]
@@ -454,7 +454,7 @@ pub fn QueueNotice<'a>(message: Option<&'a str>) -> impl Patch {
     html! {
         <div id={QueueNoticeId} role="status">
             if let Some(message) = message {
-                <Notice tone={Tone::Done}>{message}</Notice>
+                <Alert variant={AlertVariant::Success}>{message}</Alert>
             }
         </div>
     }
@@ -466,7 +466,7 @@ pub fn IntakeError<'a>(message: Option<&'a str>) -> impl Patch {
     html! {
         <div id={IntakeErrorId}>
             if let Some(message) = message {
-                <Notice tone={Tone::Warning}>{message}</Notice>
+                <Alert variant={AlertVariant::Warning}>{message}</Alert>
             }
         </div>
     }

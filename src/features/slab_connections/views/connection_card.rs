@@ -10,8 +10,9 @@ use crate::{
         provider::{Connection, Provider, Status},
         url,
     },
-    layout::{LabeledControl, Notice},
+    layout::LabeledControl,
     theme::*,
+    ui::alert::Alert,
 };
 
 /// A provider's card, `connection-alt` or `connection-ebayResearch`: the answer to a post to it
@@ -125,7 +126,7 @@ pub fn ConnectionCard<'a>(
                 </div>
             </form>
             match answered.and_then(|a| a.outcome) {
-                Some(outcome) => <Notice tone={outcome.tone()}>{outcome.message()}</Notice>,
+                Some(outcome) => <Alert variant={outcome.tone()}>{outcome.message()}</Alert>,
                 None => {}
             }
         </section>

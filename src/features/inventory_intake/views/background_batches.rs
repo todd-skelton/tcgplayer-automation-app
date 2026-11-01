@@ -11,8 +11,8 @@ use crate::{
             url::{self, Selection},
         },
     },
-    layout::{Notice, Tone},
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 #[derive(Id)]
@@ -79,19 +79,19 @@ pub fn BackgroundBatches<'a>(
                 </p>
                 match batches {
                     Err(message) => {
-                        <Notice tone={Tone::Warning}>
+                        <Alert variant={AlertVariant::Warning}>
                             {message}" Previously shown status may be out of date."
-                        </Notice>
+                        </Alert>
                     }
                     Ok(b) => {
                         if b.target.publication_paused {
-                            <Notice tone={Tone::Warning}>
+                            <Alert variant={AlertVariant::Warning}>
                                 "Publication is paused or needs attention. Pricing can continue. "
                                 <a href="/publication-configuration">
                                     "Review publication controls"
                                 </a>
                                 "."
-                            </Notice>
+                            </Alert>
                         }
                         if b.runs.is_empty() {
                             <p>"No background batches queued yet."</p>
@@ -182,7 +182,7 @@ fn RunItem<'a>(run: &'a Run, selection: &'a Selection, errors: Option<&'a Errors
                 </details>
             }
             if let Some(error) = run.planning_error.as_deref().or(run.pricing_error.as_deref()) {
-                <Notice tone={Tone::Warning}>{error}</Notice>
+                <Alert variant={AlertVariant::Warning}>{error}</Alert>
             }
         </li>
     }

@@ -1,4 +1,4 @@
-//! Pieces screens draw the same way: a labeled field, a notice, and a form sent on change.
+//! Pieces screens draw the same way: a labeled field and a form sent on change.
 use corten::prelude::*;
 
 /// A control with its label above and its hint below; `hint` may be empty. The control, and its
@@ -14,26 +14,6 @@ pub fn LabeledControl<'a>(label: &'a str, hint: &'a str, children: impl Render) 
                 <small>{hint}</small>
             }
         </label>
-    }
-}
-
-/// How a [`Notice`] reads: done, for your information, or a problem to act on.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Tone {
-    Done,
-    Info,
-    Warning,
-}
-
-/// A box of text that stands out from the form around it. A `Done` notice is announced.
-#[component(css = LabeledControl)]
-pub fn Notice(tone: Tone, children: impl Render) -> impl Render {
-    html! {
-        match tone {
-            Tone::Done => <div class={(Notice, Done)} role="status">{children}</div>,
-            Tone::Info => <div class={(Notice, Info)}>{children}</div>,
-            Tone::Warning => <div class={(Notice, Warning)}>{children}</div>,
-        }
     }
 }
 

@@ -7,8 +7,9 @@ use crate::{
         steps::Step,
         url,
     },
-    layout::{LabeledControl, Notice, Tone},
+    layout::LabeledControl,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 #[derive(Id)]
@@ -45,10 +46,10 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
     html! {
         <div class={LoadOrdersStep}>
             if !loading.warnings.is_empty() {
-                <Notice tone={Tone::Warning}>
+                <Alert variant={AlertVariant::Warning}>
                     <strong>"Order load warnings"</strong>
                     for warning in loading.warnings { <p>{warning}</p> }
-                </Notice>
+                </Alert>
             }
             <div class={Actions}>
                 <form method="post" action={url::LoadOrders} data-patch>
@@ -131,11 +132,11 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
             }
             match &loading.coverage {
                 Some(Ok(coverage)) if coverage.error.is_some() => {
-                    <Notice tone={Tone::Warning}>{coverage.describe()}</Notice>
+                    <Alert variant={AlertVariant::Warning}>{coverage.describe()}</Alert>
                 }
-                Some(Err(why)) => <Notice tone={Tone::Warning}>
+                Some(Err(why)) => <Alert variant={AlertVariant::Warning}>
                     "Seller order history status is unavailable: "{why}
-                </Notice>,
+                </Alert>,
                 _ => {}
             }
         </div>

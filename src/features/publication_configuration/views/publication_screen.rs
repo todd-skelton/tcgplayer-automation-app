@@ -6,8 +6,9 @@ use crate::{
         form::SettingsInput,
         url,
     },
-    layout::{LabeledControl, Notice, Tone},
+    layout::LabeledControl,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 /// The settings form's id: an answer that refuses it replaces it.
@@ -62,11 +63,11 @@ pub fn PublicationForm<'a>(
                 <div class={PanelBody}>
                     <h2>"Runtime safety"</h2>
                     if runtime.needs_resume() {
-                        <Notice tone={Tone::Warning}>{state}</Notice>
+                        <Alert variant={AlertVariant::Warning}>{state}</Alert>
                     } else if runtime.authentication == Authentication::Healthy {
-                        <Notice tone={Tone::Done}>{state}</Notice>
+                        <Alert variant={AlertVariant::Success}>{state}</Alert>
                     } else {
-                        <Notice tone={Tone::Info}>{state}</Notice>
+                        <Alert variant={AlertVariant::Info}>{state}</Alert>
                     }
                     <label class={Switch}>
                         <input type="checkbox" name={f.global_paused} checked={input.global_paused}>
@@ -170,9 +171,9 @@ pub fn PublicationForm<'a>(
                     </small>
                 </div>
             </section>
-            <Notice tone={Tone::Warning}>
+            <Alert variant={AlertVariant::Warning}>
                 "Quantity values are additive in staged imports. CSV quantity deltas are always excluded from automatic publication. Once an inventory delta is planned, it cannot be recreated under another pricing candidate."
-            </Notice>
+            </Alert>
             <button data-primary>"Save publication settings"</button>
         </form>
     }

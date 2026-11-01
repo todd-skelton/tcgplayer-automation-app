@@ -12,9 +12,10 @@ use crate::{
         turnaround_settings::MAXIMUM_MANUAL_DAYS,
         url::{self, View},
     },
-    layout::{LabeledControl, Notice, SubmitsOnChange, Tone},
+    layout::{LabeledControl, SubmitsOnChange},
     text::Msg,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 /// The turnaround form's id: an answer that refuses it replaces it.
@@ -102,15 +103,15 @@ pub fn TurnaroundPanel<'a>(
             </div>
             <TurnaroundForm view={&screen.view} input={input} errors={errors} />
             if let Some(error) = &screen.reinvestment_error {
-                <Notice tone={Tone::Warning}>{error}</Notice>
+                <Alert variant={AlertVariant::Warning}>{error}</Alert>
             }
             if let Some(error) = screen.settings_error {
-                <Notice tone={Tone::Warning}>{error}</Notice>
+                <Alert variant={AlertVariant::Warning}>{error}</Alert>
             }
             if fallback {
-                <Notice tone={Tone::Info}>
+                <Alert variant={AlertVariant::Info}>
                     "Manual days retained: "{selection.fallback_reasons.join(" ")}
-                </Notice>
+                </Alert>
             }
             if let Some(e) = evidence {
                 <p class={(muted(), Caption)}>

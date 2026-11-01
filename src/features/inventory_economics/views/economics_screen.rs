@@ -8,9 +8,9 @@ use crate::{
         url,
         workspace::{Order, Workspace},
     },
-    layout::{Notice, Tone},
     text::Msg,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 /// The seller's current purchase costs, then each captured order's economics. Without a
@@ -21,9 +21,9 @@ pub fn EconomicsScreen<'a>(workspace: &'a Result<Workspace, String>, t: Msg) -> 
         <div class={EconomicsScreen}>
             match workspace {
                 Err(why) => {
-                    <Notice tone={Tone::Warning}>
+                    <Alert variant={AlertVariant::Warning}>
                         {why}" "<a href={url::InventoryEconomics}>"Retry"</a>
-                    </Notice>
+                    </Alert>
                 }
                 Ok(w) => {
                     <header>

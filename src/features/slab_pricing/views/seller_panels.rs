@@ -17,9 +17,10 @@ use crate::{
             views::Problem,
         },
     },
-    layout::{LabeledControl, Notice, Tone},
+    layout::LabeledControl,
     text::Msg,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 #[derive(Id)]
@@ -72,7 +73,7 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 "Refresh confirmed inventory in small groups and update recommendations from fresh saved evidence. Reviewed price overrides stay in manual review. This never publishes prices."
             </p>
             if let Some(Err(why)) = &screen.maintenance {
-                <Notice tone={Tone::Warning}>{why}</Notice>
+                <Alert variant={AlertVariant::Warning}>{why}</Alert>
             }
             if let Some(view) = view {
                 <form
@@ -195,11 +196,11 @@ fn MaintenanceStatusLines<'a>(view: &'a View, t: Msg) -> impl Render {
             }
             ". Turning maintenance off stops further work; already requested evidence and an in-progress calculation may finish."
         </p>
-        <Notice tone={Tone::Info}>
+        <Alert variant={AlertVariant::Info}>
             "Maintenance requires the existing slab evidence worker to be running."
-        </Notice>
+        </Alert>
         if let Some(error) = &s.last_error {
-            <Notice tone={Tone::Warning}>{words(error)}</Notice>
+            <Alert variant={AlertVariant::Warning}>{words(error)}</Alert>
         }
         if let Some(summary) = &s.last_summary {
             <p class={muted()}>
@@ -212,9 +213,9 @@ fn MaintenanceStatusLines<'a>(view: &'a View, t: Msg) -> impl Render {
             "Connections: "{providers}". "
             <a href={slab_connections::url::SlabConnections}>"Manage connections"</a>
         </p>
-        <Notice tone={Tone::Info}>
+        <Alert variant={AlertVariant::Info}>
             "Automatic publication is unavailable. Live seller access and adopted automation cohorts are required."
-        </Notice>
+        </Alert>
         <details>
             <summary>"Recent listing checks"</summary>
             for item in &view.items {
@@ -275,7 +276,7 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
             <Problem at={Place::Outcomes} why={screen.problem_at(Place::Outcomes)} />
             match &screen.outcomes {
                 None => {}
-                Some(Err(why)) => <Notice tone={Tone::Warning}>{why}</Notice>,
+                Some(Err(why)) => <Alert variant={AlertVariant::Warning}>{why}</Alert>,
                 Some(Ok(review)) => {
                     <p>
                         "Listing "{&review.item_id}": "{review.summary.sales}
@@ -284,10 +285,10 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
                         {review.summary.relists}" relist records."
                     </p>
                     if !review.summary.unresolved.is_empty() {
-                        <Notice tone={Tone::Warning}>
+                        <Alert variant={AlertVariant::Warning}>
                             "Unresolved event IDs: "{review.summary.unresolved.join(", ")}
                             ". Conflicting or unlinked observations are excluded from usable sales."
-                        </Notice>
+                        </Alert>
                     }
                     <p class={muted()}>
                         "Manually reviewed observations only; seller order access is not connected. This is incomplete history, and does not establish continuous exposure, sale probability or time to sell."

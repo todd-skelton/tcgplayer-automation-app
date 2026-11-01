@@ -20,9 +20,10 @@ use crate::{
             url::{self, ShippingWorkflow},
         },
     },
-    layout::{LabeledControl, Notice, Tone},
+    layout::LabeledControl,
     text::Msg,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 /// The form for the order's labels: a refused purchase or a new choice redraws it.
@@ -262,12 +263,12 @@ pub fn LabelForm<'a>(
                 "Apply Choice and Service"
             </button>
             if !mode.has_key() {
-                <Notice tone={Tone::Warning}>
+                <Alert variant={AlertVariant::Warning}>
                     {mode.key_name()}" is not set. Postage purchase is disabled."
-                </Notice>
+                </Alert>
             }
             if !bought.is_empty() {
-                <Notice tone={Tone::Warning}>{repurchase(bought)}</Notice>
+                <Alert variant={AlertVariant::Warning}>{repurchase(bought)}</Alert>
                 <input type="hidden" name={c.again} value="true">
             }
             <button disabled={!mode.has_key()} class={(Button, Primary, test.then_some(TestMode))}>

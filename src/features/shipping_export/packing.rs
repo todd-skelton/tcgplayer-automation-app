@@ -13,7 +13,7 @@ use super::{
     views::{PackCard, PackRow, PackedOrder, Packing},
     workflow,
 };
-use crate::{database::Database, features::pull_sheet, layout::Tone};
+use crate::{database::Database, features::pull_sheet, ui::alert::AlertVariant};
 
 /// The Pack step for the shipment `chosen` (the first not packed when none, or one not in the
 /// batch), in `view`. The pull sheet is read only for the card view.
@@ -81,14 +81,14 @@ async fn card<'a>(
         _ if !has_lines => (
             None,
             Some((
-                Tone::Info,
+                AlertVariant::Info,
                 "Line item details unavailable - refer to the packing slip PDF.".to_owned(),
             )),
         ),
         Err(why) => (
             None,
             Some((
-                Tone::Warning,
+                AlertVariant::Warning,
                 format!(
                     "Visual pull sheet unavailable: {why} Showing the shipment item list instead."
                 ),
@@ -98,7 +98,7 @@ async fn card<'a>(
             let matched = pack::matched(items, &row.orders);
             let notice = matched.fallback.map(|why| {
                 (
-                    Tone::Info,
+                    AlertVariant::Info,
                     format!("{why} Showing the shipment item list instead."),
                 )
             });

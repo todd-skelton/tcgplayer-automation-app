@@ -15,9 +15,9 @@ use crate::{
         screen::Screen,
         url::{InventoryStrategy, View},
     },
-    layout::{Notice, Tone},
     text::Msg,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 #[derive(Id)]
@@ -98,7 +98,7 @@ pub fn PerformancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 "Sold units at their share of the order's net proceeds after fees, postage, and refunds, less the lot's cost. Costs are the estimated purchase rule unless recorded."
             </p>
             if let Some(error) = screen.performance_error {
-                <Notice tone={Tone::Warning}>{error}</Notice>
+                <Alert variant={AlertVariant::Warning}>{error}</Alert>
             }
             if windows.is_empty() {
                 <p class={muted()}>"No sold units with proceeds and cost in this window yet."</p>

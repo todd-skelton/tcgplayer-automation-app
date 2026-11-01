@@ -8,8 +8,8 @@ use crate::{
             url::{OrderLabels, ShippingWorkflow},
         },
     },
-    layout::{Notice, Tone},
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 #[derive(Id)]
@@ -26,7 +26,7 @@ pub fn Refused<'a>(problem: Option<&'a str>) -> impl Patch {
     html! {
         <div id={RefusedId} role="alert">
             if let Some(problem) = problem {
-                <Notice tone={Tone::Warning}>{problem}</Notice>
+                <Alert variant={AlertVariant::Warning}>{problem}</Alert>
             }
         </div>
     }

@@ -7,9 +7,10 @@ use crate::{
         page::{Chosen, CsvInput, SellerInput, Shown},
         url,
     },
-    layout::{Notice, SubmitsOnChange, Tone},
+    layout::SubmitsOnChange,
     text::Msg,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 /// The CSV form's id: a refused file's answer replaces it.
@@ -51,11 +52,11 @@ pub fn PricerScreen<'a>(
                 "The newest 100 manual batches are shown here. Each is a frozen snapshot from Inventory Manager, a seller snapshot, or a CSV upload. Automatic run history is kept on Continuous Pricing, and a direct batch link remains available for older manual batches."
             </p>
             if list.is_empty() && unlisted.is_none() {
-                <Notice tone={Tone::Info}>
+                <Alert variant={AlertVariant::Info}>
                     "No inventory batches exist yet. Create one above or from the "
                     <a href="/inventory-manager">"Inventory Manager"</a>
                     "."
-                </Notice>
+                </Alert>
             } else {
                 <SubmitsOnChange>
                     <form method="get" action={url::BatchPricer::newest()} class={Picker}>
@@ -84,7 +85,7 @@ pub fn PricerScreen<'a>(
         match shown {
             None => {}
             Some(Err(message)) => {
-                <Notice tone={Tone::Warning}>"Failed to load batch: "{message}</Notice>
+                <Alert variant={AlertVariant::Warning}>"Failed to load batch: "{message}</Alert>
             }
             Some(Ok(shown)) => {
                 <BatchFollow shown={shown} t={t} />

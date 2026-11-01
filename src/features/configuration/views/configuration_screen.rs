@@ -14,8 +14,9 @@ use crate::{
         },
         http_configuration,
     },
-    layout::{LabeledControl, Notice, SubmitsOnChange, Tone},
+    layout::{LabeledControl, SubmitsOnChange},
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 #[derive(Id)]
@@ -73,13 +74,13 @@ pub fn ConfigurationScreen<'a>(
                 "Pricing, supply analysis, and product line settings are saved to the server so background pricing jobs use the same configuration."
             </p>
             if auth_cookie_missing {
-                <Notice tone={Tone::Warning}>
+                <Alert variant={AlertVariant::Warning}>
                     <strong>"Authentication Required:"</strong>
                     " You haven't configured your TCGPlayer auth cookie yet. "
                     <a href={http_configuration::url::HttpSettings}>
                         "Configure HTTP Settings"
                     </a>
-                </Notice>
+                </Alert>
             }
             <PricingForm section={pricing} />
             <ProductLinesSection lines={lines} />
@@ -94,9 +95,9 @@ pub fn ConfigurationScreen<'a>(
                 <details>
                     <summary>"Reset to Defaults"</summary>
                     <form method="post" action={url::ResetConfiguration}>
-                        <Notice tone={Tone::Warning}>
+                        <Alert variant={AlertVariant::Warning}>
                             "This resets every setting on this page. It cannot be undone."
-                        </Notice>
+                        </Alert>
                         <button class={Danger}>"Confirm Reset to Defaults"</button>
                     </form>
                 </details>
@@ -347,11 +348,11 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
                 <button data-primary>"Add"</button>
             </form>
             if lines.stored.settings.is_empty() {
-                <Notice tone={Tone::Info}>
+                <Alert variant={AlertVariant::Info}>
                     "No product lines configured. All product lines will use the default percentile ("
                     {lines.stored.default_percentile}
                     ")."
-                </Notice>
+                </Alert>
             } else {
                 <table class={Lines}>
                     <thead>
@@ -509,9 +510,9 @@ pub fn SupplyForm<'a>(section: &'a Section<'a, SupplyInput>) -> impl Patch {
                         "Enable Supply Analysis"
                     </label>
                     <div class={(ForSupply, Section)}>
-                        <Notice tone={Tone::Info}>
+                        <Alert variant={AlertVariant::Info}>
                             "Supply analysis is enabled. This will increase processing time and network usage but provides more accurate time-to-sell estimates by analyzing current market supply."
-                        </Notice>
+                        </Alert>
                         <label class={Switch}>
                             <input
                                 type="checkbox"

@@ -16,9 +16,10 @@ use crate::{
         },
         url::{self, View},
     },
-    layout::{Notice, SubmitsOnChange, Tone},
+    layout::SubmitsOnChange,
     text::Msg,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 /// "1 unit", "1,234 units".
@@ -64,7 +65,7 @@ pub fn SellingHistoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             match &screen.selling_history {
                 Err(why) => {
                     <h2 id="selling-history">"Selling history"</h2>
-                    <Notice tone={Tone::Warning}>{*why}</Notice>
+                    <Alert variant={AlertVariant::Warning}>{*why}</Alert>
                 }
                 Ok(Report::Unavailable(report)) => {
                     <h2 id="selling-history">"Selling history"</h2>

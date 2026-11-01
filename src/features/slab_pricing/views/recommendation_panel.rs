@@ -13,9 +13,10 @@ use crate::{
         url,
         views::{Problem, PublicationPanel},
     },
-    layout::{LabeledControl, Notice, Tone},
+    layout::LabeledControl,
     text::Msg,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 /// The owned slab's recommendation: the costs it is calculated from, the market range and ask
@@ -54,16 +55,16 @@ pub fn RecommendationPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -
                 can_calculate={can_calculate}
             />
             if !can_calculate {
-                <Notice tone={Tone::Info}>
+                <Alert variant={AlertVariant::Info}>
                     "Confirm the owned identity, assign it to the selected listing if needed, and return to its grade to calculate."
-                </Notice>
+                </Alert>
             }
             <Problem at={Place::Recommendation} why={screen.problem_at(Place::Recommendation)} />
             if let Some(recommendation) = recommendation {
                 if stale {
-                    <Notice tone={Tone::Warning}>
+                    <Alert variant={AlertVariant::Warning}>
                         "Inputs or evidence changed. This saved recommendation needs recalculation."
-                    </Notice>
+                    </Alert>
                 }
                 <Outcome recommendation={recommendation} t={t} />
                 <ReviewedAsk
@@ -203,9 +204,9 @@ fn Outcome<'a>(recommendation: &'a Recommendation, t: Msg) -> impl Render {
     let flags = recommendation.flags();
     let (uncertain, rejected) = recommendation.uncertain_and_rejected();
     let tone = if c.ask.requires_review {
-        Tone::Warning
+        AlertVariant::Warning
     } else {
-        Tone::Info
+        AlertVariant::Info
     };
     html! {
         <h3 class={Range}>
@@ -240,9 +241,9 @@ fn Outcome<'a>(recommendation: &'a Recommendation, t: Msg) -> impl Render {
             </p>
         }
         if !flags.is_empty() {
-            <Notice tone={tone}>
+            <Alert variant={tone}>
                 {flags.iter().map(|code| words(code)).collect::<Vec<_>>().join("; ")}
-            </Notice>
+            </Alert>
         }
         <p class={muted()}>
             {uncertain}" uncertain events · "{rejected}
@@ -318,11 +319,11 @@ fn ReviewedAsk<'a>(
     let f = ReviewAskInput::FIELDS;
     html! {
         if let Some(reviewed) = &recommendation.r#override {
-            <Notice tone={Tone::Info}>
+            <Alert variant={AlertVariant::Info}>
                 "Reviewed item ask: "{&reviewed.currency}" "{format!("{:.2}", reviewed.item_price)}
                 " · "{&reviewed.note}
                 ". Proceeds and profit above belong to the original calculation."
-            </Notice>
+            </Alert>
         }
         <form
             method="post"

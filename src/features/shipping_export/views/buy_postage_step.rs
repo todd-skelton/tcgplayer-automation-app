@@ -12,9 +12,9 @@ use crate::{
             value::SaleValue,
         },
     },
-    layout::{Notice, Tone},
     text::Msg,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 /// A shipment's menu of more actions.
@@ -46,9 +46,9 @@ pub fn BuyPostageStep<'a>(rows: &'a [PostageRow<'a>], mode: EasyPostMode, t: Msg
     html! {
         <div class={BuyPostageStep}>
             if !can_buy {
-                <Notice tone={Tone::Warning}>
+                <Alert variant={AlertVariant::Warning}>
                     {mode.key_name()}" is not set. Postage purchase is disabled."
-                </Notice>
+                </Alert>
             }
             <div class={Scroll}>
                 <table class={Shipments}>

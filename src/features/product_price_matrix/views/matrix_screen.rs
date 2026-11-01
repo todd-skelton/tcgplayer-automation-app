@@ -12,9 +12,10 @@ use crate::{
         inventory_intake::catalog::{ProductType, Scope},
         product_price_matrix::{page::Screen, url::Choice},
     },
-    layout::{Notice, SubmitsOnChange, Tone},
+    layout::SubmitsOnChange,
     text::Msg,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 /// The screen: the choices that find a product, then its prices by condition and variant, and
@@ -138,10 +139,10 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 })}
             </form>
             if let Err(why) = &screen.products {
-                <Notice tone={Tone::Warning}>"Failed to load products: "{why}</Notice>
+                <Alert variant={AlertVariant::Warning}>"Failed to load products: "{why}</Alert>
             }
             if none_found {
-                <Notice tone={Tone::Info}>"No matching products found."</Notice>
+                <Alert variant={AlertVariant::Info}>"No matching products found."</Alert>
             }
             if let Some(product) = &screen.product {
                 <section class={(panel(), Product)} aria-label={&product.product_name}>
@@ -175,13 +176,15 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                     </header>
                     match &screen.matrix {
                         Some(Err(why)) => {
-                            <Notice tone={Tone::Warning}>"Failed to load prices: "{why}</Notice>
+                            <Alert variant={AlertVariant::Warning}>
+                                "Failed to load prices: "{why}
+                            </Alert>
                         }
                         Some(Ok(m)) => {
                             if m.cells.is_empty() {
-                                <Notice tone={Tone::Info}>
+                                <Alert variant={AlertVariant::Info}>
                                     "No SKUs are available for the selected language."
-                                </Notice>
+                                </Alert>
                             } else {
                                 <MatrixTable matrix={m} t={t} />
                                 if m.suggested_prices_included {

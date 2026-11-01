@@ -3,7 +3,7 @@
 use corten::{Component, prelude::Errors};
 
 use super::provider::{Provider, Status};
-use crate::layout::Tone;
+use crate::ui::alert::AlertVariant;
 
 mod connection_card;
 
@@ -30,10 +30,12 @@ impl Outcome {
         }
     }
 
-    fn tone(self) -> Tone {
+    fn tone(self) -> AlertVariant {
         match self {
-            Outcome::Saved | Outcome::Removed | Outcome::Checked(Status::Connected) => Tone::Done,
-            Outcome::Checked(_) => Tone::Warning,
+            Outcome::Saved | Outcome::Removed | Outcome::Checked(Status::Connected) => {
+                AlertVariant::Success
+            }
+            Outcome::Checked(_) => AlertVariant::Warning,
         }
     }
 }

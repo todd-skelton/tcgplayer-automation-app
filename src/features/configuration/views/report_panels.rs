@@ -15,8 +15,8 @@ use crate::{
         },
         shipping_thresholds::{TierBasis, outcomes::SaleGroup, report::ShippingReport},
     },
-    layout::{Notice, Tone},
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 #[derive(Id)]
@@ -167,11 +167,11 @@ pub fn CalibrationPanel<'a>(
                 Report::Waiting => <p class={muted()} role="status">
                     "Measuring… "<a href={&at}>"Show the report"</a>
                 </p>,
-                Report::Read(Err(error)) => <Notice tone={Tone::Warning}>{error}</Notice>,
+                Report::Read(Err(error)) => <Alert variant={AlertVariant::Warning}>{error}</Alert>,
                 Report::Read(Ok(r)) => {
                     let whole = r.earlier.plus(&r.held_out);
-                    <Notice
-                        tone={if r.held_out_check == HeldOutCheck::Confirmed { Tone::Info } else { Tone::Warning }}
+                    <Alert
+                        variant={if r.held_out_check == HeldOutCheck::Confirmed { AlertVariant::Info } else { AlertVariant::Warning }}
                     >
                         "Listings sold at "
                         {format!("{:.0}", 100.0 / r.actual_days_per_forecast_day)}
@@ -193,7 +193,7 @@ pub fn CalibrationPanel<'a>(
                             }
                             None => {}
                         }
-                    </Notice>
+                    </Alert>
                     <h3>
                         "Measured from "{date(&r.from)}" through "{date(&r.through)}
                         ", holding out prices listed from "{date(&r.held_out_from)}
@@ -290,7 +290,7 @@ pub fn ShippingReportPanel<'a>(days: u32, report: Report<'a, ShippingReport>) ->
                 Report::Waiting => <p class={muted()} role="status">
                     "Learning shipping costs… "<a href={&at}>"Show the report"</a>
                 </p>,
-                Report::Read(Err(error)) => <Notice tone={Tone::Warning}>{error}</Notice>,
+                Report::Read(Err(error)) => <Alert variant={AlertVariant::Warning}>{error}</Alert>,
                 Report::Read(Ok(r)) => {
                     <h3>
                         "Learned from "{count(r.cost_model.order_count as f64)}" orders and "

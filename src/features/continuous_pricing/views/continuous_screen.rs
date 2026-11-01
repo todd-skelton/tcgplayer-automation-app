@@ -9,9 +9,10 @@ use crate::{
         store::{Item, PAGE_SIZE, RECENT_RUNS, Run, Shown},
         url::{self, View},
     },
-    layout::{LabeledControl, Notice, SubmitsOnChange, Tone},
+    layout::{LabeledControl, SubmitsOnChange},
     text::Msg,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 const USD: Currency = Currency::new("USD");
@@ -33,7 +34,7 @@ pub fn Problem<'a>(why: Option<&'a str>) -> impl Patch {
     html! {
         <div id={ScheduleProblemId} role="alert">
             if let Some(why) = why {
-                <Notice tone={Tone::Warning}>{why}</Notice>
+                <Alert variant={AlertVariant::Warning}>{why}</Alert>
             }
         </div>
     }
@@ -257,7 +258,7 @@ fn Snapshot<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 }
             </p>
             if let Some(error) = refresh.and_then(|r| r.error_message.as_deref()) {
-                <Notice tone={Tone::Warning}>{error}</Notice>
+                <Alert variant={AlertVariant::Warning}>{error}</Alert>
             }
         </section>
     }
@@ -310,7 +311,7 @@ fn Items<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     html! {
         <div class={Stack}>
             if page.items.is_empty() {
-                <Notice tone={Tone::Info}>"No inventory matches these filters."</Notice>
+                <Alert variant={AlertVariant::Info}>"No inventory matches these filters."</Alert>
             }
             for item in &page.items {
                 <SkuRow item={item} view={&screen.view} t={t} />
@@ -390,7 +391,7 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
                 <form method="post" action={action()} class={Review}>
                     <input type="hidden" name={f.sku} value={item.sku}>
                     <input type="hidden" name={f.enabled} value="true">
-                    <Notice tone={Tone::Warning}>{reason}</Notice>
+                    <Alert variant={AlertVariant::Warning}>{reason}</Alert>
                     <button>"Resume"</button>
                 </form>
             }
@@ -411,7 +412,7 @@ fn Runs<'a>(runs: &'a [Run], t: Msg) -> impl Render {
                 </p>
             </div>
             if runs.is_empty() {
-                <Notice tone={Tone::Info}>"No automatic pricing runs yet."</Notice>
+                <Alert variant={AlertVariant::Info}>"No automatic pricing runs yet."</Alert>
             }
             for run in runs {
                 <div class={(Spread, RunRow)}>

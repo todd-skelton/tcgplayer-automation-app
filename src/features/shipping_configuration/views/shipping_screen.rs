@@ -6,8 +6,9 @@ use crate::{
         form::{Kind, PackageInput, PackageInputGroupFields, SettingsInput},
         url,
     },
-    layout::{LabeledControl, Notice, Tone},
+    layout::LabeledControl,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 /// The settings form's id: an answer that refuses it replaces it.
@@ -25,7 +26,7 @@ pub fn ShippingScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
             <p class={(muted(), mb_4())}>
                 "Manage the saved shipping settings used by the EasyPost shipping export workflow. Save a default seller key for live TCGPlayer order loading, then build or rebuild shipments from the export page."
             </p>
-            <Notice tone={Tone::Info}>
+            <Alert variant={AlertVariant::Info}>
                 <div class={(row(Space::_3), justify_between())}>
                     <span>
                         "These settings are stored on the server and used by the shipping export tool when it loads live seller orders and generates EasyPost shipment rows."
@@ -36,12 +37,12 @@ pub fn ShippingScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
                         "Open Shipping Export"
                     </a>
                 </div>
-            </Notice>
+            </Alert>
             if !mode.has_key() {
-                <Notice tone={Tone::Warning}>
+                <Alert variant={AlertVariant::Warning}>
                     {mode.key_name()}
                     " is not set. Direct postage purchasing will stay disabled until it is configured."
-                </Notice>
+                </Alert>
             }
             <section class={panel()}>
                 <div class={(row(Space::_3), justify_between(), mb_4())}>

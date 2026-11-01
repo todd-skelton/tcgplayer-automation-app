@@ -1,65 +1,24 @@
 .screen {
+  display: grid;
+  gap: var(--space-4);
   max-width: 800px;
   margin-inline: auto;
-}
-.notice {
-  margin: 0 0 var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  & ol {
-    margin: var(--space-1) 0 0;
-    padding-inline-start: var(--space-5);
+  & > h1,
+  & > p {
+    margin: 0;
   }
 }
-.info {
-  background: color-mix(in srgb, var(--info) 12%, transparent);
-  margin-top: var(--space-3);
-}
-.warn {
-  background: var(--warning-soft);
-}
-.field {
+.form {
   display: grid;
-  gap: var(--space-1);
-  & input:not([type="checkbox"]) {
-    width: 100%;
-  }
+  gap: var(--space-4);
 }
-.reveal {
-  white-space: nowrap;
-}
-.grid {
+.settings {
   display: grid;
-  gap: var(--space-3);
-}
-.domain-box {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  & + & {
-    margin-top: var(--space-2);
-  }
-  & > summary {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-3) var(--space-4);
-    cursor: pointer;
-  }
-  & > .grid {
-    padding: 0 var(--space-4) var(--space-4);
-  }
-}
-.adaptive-chip {
-  display: none;
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-pill);
-  background: var(--primary);
-  color: var(--primary-foreground);
-  font-size: var(--font-size-sm);
+  gap: var(--space-4);
 }
 .bounds {
   display: none;
-  gap: var(--space-3);
+  gap: var(--space-4);
   border: 0;
   border-top: 1px solid var(--border);
   margin: 0;
@@ -69,29 +28,20 @@
     font-size: var(--font-size-sm);
   }
 }
-.domain-box:has(.switch input:checked) {
-  & .adaptive-chip {
-    display: inline-block;
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.adaptive-badge {
+  display: none;
+}
+/* While the domain's adaptive switch is on: its badge in the summary, and its bounds. */
+.domain-box:has(input[role="switch"]:checked) {
+  & .adaptive-badge {
+    display: inline;
   }
   & .bounds {
     display: grid;
   }
-}
-.confirm > summary {
-  display: inline-block;
-  cursor: pointer;
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
-.confirm[open] > summary {
-  margin-bottom: var(--space-3);
-}
-.danger {
-  background: var(--destructive);
-  border-color: var(--destructive);
-  color: var(--primary-foreground);
-}
-.save-button {
-  margin-top: var(--space-4);
 }

@@ -13,9 +13,9 @@ use crate::{
             value::SaleValue,
         },
     },
-    layout::{Notice, Tone},
     text::Msg,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 /// The batch's pull sheet, as TCGplayer makes it for the orders, read with the catalog.
@@ -62,16 +62,16 @@ pub fn PullSheetStep<'a>(
     };
     html! {
         if !has_lines && !batch.orders.is_empty() {
-            <Notice tone={Tone::Info}>
+            <Alert variant={AlertVariant::Info}>
                 "These orders did not include line items, so this step shows the TCGPlayer pull sheet as it was made rather than a list assembled here."
-            </Notice>
+            </Alert>
         }
         match pulled {
-            Err(why) => <Notice tone={Tone::Warning}>{why}</Notice>,
+            Err(why) => <Alert variant={AlertVariant::Warning}>{why}</Alert>,
             Ok(pulled) if pulled.items.is_empty() => {
-                <Notice tone={Tone::Info}>
+                <Alert variant={AlertVariant::Info}>
                     "No pull sheet rows were generated for the current orders. Packing slips are available on Print."
-                </Notice>
+                </Alert>
             }
             Ok(pulled) => {
                 let here = at(filters.sort);

@@ -15,9 +15,9 @@ use crate::{
         page::{PriceInput, Shown, elapsed},
         url,
     },
-    layout::{Notice, Tone},
     text::Msg,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 #[derive(Id)]
@@ -37,7 +37,7 @@ pub fn BatchProblem<'a>(message: Option<&'a str>) -> impl Patch {
     html! {
         <div id={BatchProblemId} role="alert">
             if let Some(message) = message {
-                <Notice tone={Tone::Warning}>{message}</Notice>
+                <Alert variant={AlertVariant::Warning}>{message}</Alert>
             }
         </div>
     }
@@ -149,32 +149,34 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
                     </button>
                 </div>
                 if let Some(p) = preview {
-                    <Notice tone={if p.excluded_count > 0 { Tone::Warning } else { Tone::Info }}>
+                    <Alert
+                        variant={if p.excluded_count > 0 { AlertVariant::Warning } else { AlertVariant::Info }}
+                    >
                         {p.eligible_count}" SKU"{if p.eligible_count == 1 { "" } else { "s" }}
                         " ready to publish; "{p.excluded_count}" excluded by safety checks."
-                    </Notice>
+                    </Alert>
                 }
                 if let Some(run) = publications.and_then(Publications::latest_run) {
-                    <Notice tone={run_tone(run.status)}>
+                    <Alert variant={run_tone(run.status)}>
                         "Latest pricing run: "{run.status.word()}". Published "{run.published}
                         " across "{run.publications}" publication batch"
                         {if run.publications == 1 { "" } else { "es" }}
                         ", failed "{run.failed}", ambiguous "{run.ambiguous}"."
-                    </Notice>
+                    </Alert>
                 }
                 if let Err(message) = &shown.publications {
-                    <Notice tone={Tone::Warning}>
+                    <Alert variant={AlertVariant::Warning}>
                         "The batch's publications could not be read: "{message}
-                    </Notice>
+                    </Alert>
                 }
             </section>
             if let Some(job) = batch.latest_job.as_ref().filter(|j| j.active()) {
                 <JobProgress job={job} batch={n} />
             }
             if let Some(job) = failed {
-                <Notice tone={Tone::Warning}>
+                <Alert variant={AlertVariant::Warning}>
                     {job.error_message.clone().unwrap_or_else(|| format!("Batch {n} pricing failed"))}
-                </Notice>
+                </Alert>
             }
             if let Some(summary) = &batch.summary {
                 <p class={muted()}>"Current batch summary for the saved pricing results."</p>
@@ -212,11 +214,11 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
     }
 }
 
-fn run_tone(status: RunStatus) -> Tone {
+fn run_tone(status: RunStatus) -> AlertVariant {
     match status {
-        RunStatus::Published => Tone::Done,
-        RunStatus::Failed | RunStatus::Ambiguous => Tone::Warning,
-        RunStatus::InProgress => Tone::Info,
+        RunStatus::Published => AlertVariant::Success,
+        RunStatus::Failed | RunStatus::Ambiguous => AlertVariant::Warning,
+        RunStatus::InProgress => AlertVariant::Info,
     }
 }
 

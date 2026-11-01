@@ -16,9 +16,10 @@ use crate::{
         url::{self, Choice},
         views::Problem,
     },
-    layout::{LabeledControl, Notice, Tone},
+    layout::LabeledControl,
     text::Msg,
     theme::*,
+    ui::alert::{Alert, AlertVariant},
 };
 
 #[derive(Id)]
@@ -49,12 +50,12 @@ pub fn SupplyPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 <SupplyControls screen={screen} />
                 <Problem at={Place::Supply} why={screen.problem_at(Place::Supply)} />
                 match &screen.supply {
-                    Some(Err(why)) => <Notice tone={Tone::Warning}>{why}</Notice>,
+                    Some(Err(why)) => <Alert variant={AlertVariant::Warning}>{why}</Alert>,
                     _ => <SupplyBody screen={screen} t={t} />,
                 }
-                <Notice tone={Tone::Info}>
+                <Alert variant={AlertVariant::Info}>
                     "Seller order outcomes are not connected. Sale probability and time to sell remain unavailable; listing disappearance is not a sale."
-                </Notice>
+                </Alert>
             }
         </section>
     }
@@ -141,9 +142,9 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
     html! {
         <div id={SupplyBodyId} class={Stack} aria-live="polite">
             if changed {
-                <Notice tone={Tone::Warning}>
+                <Alert variant={AlertVariant::Warning}>
                     "The identity changed. Reopen the certificate before using this supply context."
-                </Notice>
+                </Alert>
             }
             if let Some(supply) = supply {
                 for status in &supply.statuses {
@@ -174,9 +175,9 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
                 match supply.context.as_ref().filter(|_| !changed) {
                     None => {
                         if !changed {
-                            <Notice tone={Tone::Info}>
+                            <Alert variant={AlertVariant::Info}>
                                 "No saved active-supply response. Refresh to request one."
-                            </Notice>
+                            </Alert>
                         }
                     }
                     Some(context) => {
@@ -221,9 +222,9 @@ fn SupplyContext<'a>(
     let through = changes.and_then(|c| at(&c.observed_through));
     html! {
         if context.stale {
-            <Notice tone={Tone::Warning}>
+            <Alert variant={AlertVariant::Warning}>
                 "This supply snapshot is stale or its latest refresh failed. Old asks remain visible but are excluded from competition counts."
-            </Notice>
+            </Alert>
         }
         <p>
             {context.equivalent_listings}" equivalent listings · "{context.potential_listings}
