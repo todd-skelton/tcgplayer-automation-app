@@ -129,6 +129,40 @@ pub struct Seller {
     pub fees: Option<Fees>,
 }
 
+impl Seller {
+    /// `minimumSellerAsk`: the lowest item ask that keeps the seller's minimum ask and, when one
+    /// is set, the minimum profit after acquisition, shipping and fees; `None` when that profit
+    /// cannot be worked out from what is known. Not a number when the costs make no sense, as
+    /// Node's `Math.max` gave.
+    pub fn lowest_ask(&self) -> Option<f64> {
+        let floor = self.minimum_ask.unwrap_or(0.0);
+        let Some(profit) = self.minimum_profit else {
+            return Some(floor);
+        };
+        let (Some(acquisition), Some(shipping_cost), Some(shipping_charged), Some(fees)) = (
+            self.acquisition_cost,
+            self.shipping_cost,
+            self.shipping_charged,
+            &self.fees,
+        ) else {
+            return None;
+        };
+        let fee_on_shipping = if fees.basis == "item-plus-shipping" {
+            shipping_charged * fees.rate
+        } else {
+            0.0
+        };
+        let needed = (acquisition + shipping_cost + profit + fees.fixed - shipping_charged
+            + fee_on_shipping)
+            / (1.0 - fees.rate);
+        Some(if needed.is_nan() {
+            needed
+        } else {
+            floor.max(needed)
+        })
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Fees {
     /// A fraction: 0.1325 for 13.25%.

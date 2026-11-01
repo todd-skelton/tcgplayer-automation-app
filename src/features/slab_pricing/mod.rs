@@ -28,9 +28,10 @@
 //!
 //! Once a listing is reviewed and has a recommendation, its price change can be reviewed on
 //! request (`publication=true`): a preview of the calculated or reviewed ask saved with the
-//! listing and its evidence, then a dry run of its publication against the imported inventory.
-//! Each post carries a `SubmitKey`, sent to the Node app as the intent, so a post sent again
-//! applies once. Neither contacts eBay; publishing is not connected.
+//! listing and its evidence, saved here (`publication`), then a dry run of its publication
+//! against the imported inventory, which the Node app runs. Each post carries a `SubmitKey` as
+//! its intent, so a post sent again applies once. Neither contacts eBay; publishing is not
+//! connected.
 //!
 //! The comps of a saved evidence revision are reviewed on request (`comps=<revision>`), fifty
 //! sales a page, each screened here against the identity researched (`screening`). A sale opens in a
@@ -61,7 +62,7 @@
 //! | `POST /slab-pricing/comp-decision` | a sale included or excluded from the comps, and why |
 //! | `POST /slab-pricing/fetch-comps` | a sale's details or an eBay source's next page queued, then shown beside the rest |
 //!
-//! A post the Node app refuses answers 409 with the page and why.
+//! A post refused, here or by the Node app, answers 409 with the page and why.
 mod actions;
 mod comps;
 mod identity;

@@ -1,5 +1,6 @@
-//! The screen's posts. Some are done here (maintenance settings, queuing evidence refreshes,
-//! cancelling one); the rest ask the Node app to do the work. Each then sends the browser back to
+//! The screen's posts. Most are done here (maintenance settings, evidence refreshes, comp
+//! decisions, outcomes, reviewed asks, price-change previews); the rest ask the Node app to do
+//! the work. Each then sends the browser back to
 //! the page the post came from (its address is the post's query), showing what changed; a refusal
 //! is that page with why, as a conflict.
 // Every post takes the visitor's zone only so a refusal can draw the page's dates (corten#387).
@@ -12,6 +13,7 @@ use super::{
     identity::{self, Card, Grading, SlabIdentity},
     inventory, maintenance, outcomes,
     page::{Place, Screen, page},
+    publication,
     recommendation::{self, Fees, Policy, Seller},
     refreshes,
     url::{self, Choice},
@@ -778,7 +780,6 @@ pub struct PrepareInput {
 pub async fn prepare(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::Prepare>,
     Form(input): Form<PrepareInput>,
@@ -798,20 +799,19 @@ pub async fn prepare(
         )
         .await;
     };
-    let reviewed = input.selection == "reviewed";
-    let asked = json!({
-        "intent": "prepare",
-        "intentId": input.submit.as_str(),
-        "inventoryId": listing.id,
-        "inventoryRevision": input.revision,
-        "recommendationId": input.recommendation,
-        "selection": input.selection,
-        "overrideReviewedAt": reviewed.then_some(input.reviewed_at.as_str()),
-    });
-    match legacy
-        .send::<_, serde_json::Value>("/api/slab-publication-previews", &asked)
-        .await
-    {
+    let asked = publication::Asked {
+        intent_id: input.submit.as_str().to_owned(),
+        inventory_id: listing.id.clone(),
+        inventory_revision: input.revision,
+        recommendation_id: input.recommendation,
+        override_reviewed_at: (input.selection == "reviewed").then_some(input.reviewed_at),
+        selection: input.selection,
+    };
+    let prepared = match db.0.acquire().await {
+        Ok(mut conn) => publication::prepare(&mut conn, &asked, chrono::Utc::now()).await,
+        Err(error) => Err(error.to_string()),
+    };
+    match prepared {
         Ok(_) => req.redirect(&url::SlabPricing::at(&Choice {
             steps: None,
             ..at.choice.clone()
