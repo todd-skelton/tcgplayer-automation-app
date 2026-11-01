@@ -333,7 +333,7 @@ impl From<&Diagnostics> for Normalization {
 
 impl Policy {
     /// The active policy as it applies to a product line, with the line's own hurdle for profit
-    /// per day (\`productLinePricingPolicy(activePricingPolicy(..))\`).
+    /// per day (`productLinePricingPolicy(activePricingPolicy(..))`).
     fn of(stored: &StoredConfig, product_line_id: i32) -> Policy {
         match stored.pricing.policy {
             Stored::Percentile => Policy::Percentile,
@@ -350,7 +350,7 @@ impl Policy {
     }
 }
 
-/// The graded conditions, best first (\`INVENTORY_CONDITION_ORDER\`).
+/// The graded conditions, best first (`INVENTORY_CONDITION_ORDER`).
 const GRADED: [&str; 5] = [
     "Near Mint",
     "Lightly Played",
@@ -359,7 +359,7 @@ const GRADED: [&str; 5] = [
     "Damaged",
 ];
 
-/// The variants in the order the matrix shows them (\`DISPLAY_VARIANT_ORDER\`); others follow.
+/// The variants in the order the matrix shows them (`DISPLAY_VARIANT_ORDER`); others follow.
 const VARIANTS: [&str; 7] = [
     "Normal",
     "Holofoil",
@@ -374,7 +374,7 @@ fn graded_rank(condition: &str) -> Option<usize> {
     GRADED.iter().position(|c| *c == condition)
 }
 
-/// \`getConditionSortRank\`: the graded conditions, then Unopened, then the rest.
+/// `getConditionSortRank`: the graded conditions, then Unopened, then the rest.
 fn condition_rank(condition: &str) -> usize {
     graded_rank(condition).unwrap_or(match condition {
         "Unopened" => GRADED.len(),
@@ -397,7 +397,7 @@ struct Step {
     above_better_condition: bool,
 }
 
-/// \`buildConditionLadder\`: from the best graded condition down, a price above a better
+/// `buildConditionLadder`: from the best graded condition down, a price above a better
 /// condition's is clamped to it. Conditions outside the graded order keep their own price.
 fn ladder<'a>(inputs: &[(&'a str, Option<f64>)]) -> HashMap<&'a str, Step> {
     let mut ordered = inputs.to_vec();
@@ -431,7 +431,7 @@ fn ladder<'a>(inputs: &[(&'a str, Option<f64>)]) -> HashMap<&'a str, Step> {
     steps
 }
 
-/// \`ladderCells\` then \`sortCells\`: each variant's conditions in a language laddered, by sell-at
+/// `ladderCells` then `sortCells`: each variant's conditions in a language laddered, by sell-at
 /// and by market price, then the cells by variant, condition and language.
 fn laddered(mut cells: Vec<Cell>) -> Vec<Cell> {
     let mut groups: Vec<(String, Vec<usize>)> = Vec::new();
@@ -486,7 +486,7 @@ fn laddered(mut cells: Vec<Cell>) -> Vec<Cell> {
     out
 }
 
-/// \`sortVariants\`: the display order, then the rest alphabetically.
+/// `sortVariants`: the display order, then the rest alphabetically.
 fn variants(cells: &[Cell]) -> Vec<String> {
     let mut variants: Vec<String> = Vec::new();
     for cell in cells {
@@ -501,7 +501,7 @@ fn variants(cells: &[Cell]) -> Vec<String> {
     variants
 }
 
-/// TCGplayer's price points for SKUs as the gateway answers them (\`getPricePoints\`).
+/// TCGplayer's price points for SKUs as the gateway answers them (`getPricePoints`).
 #[allow(async_fn_in_trait, reason = "used generically within this crate")]
 pub trait PricePoints {
     async fn price_points(&self, skus: &[i64]) -> Result<Vec<Answer>, String>;
@@ -513,7 +513,7 @@ impl PricePoints for TcgPlayerMarket {
     }
 }
 
-/// What prices the matrix's SKUs under the active policy (\`PricingCalculator.calculatePrices\`).
+/// What prices the matrix's SKUs under the active policy (`PricingCalculator.calculatePrices`).
 #[allow(async_fn_in_trait, reason = "used generically within this crate")]
 pub trait Pricer {
     async fn price(
@@ -525,7 +525,7 @@ pub trait Pricer {
 }
 
 /// The calculator over TCGplayer's latest sales and listings, each read once per matrix
-/// (\`resolveSuggestedPrice\` with a fresh \`PricingBatchApiCache\`).
+/// (`resolveSuggestedPrice` with a fresh `PricingBatchApiCache`).
 pub struct LatestSalesPricer {
     pub db: Database,
     pub tcg: TcgPlayer,
@@ -573,7 +573,7 @@ struct Sku {
     language: String,
 }
 
-/// The store's listing of a SKU (\`ContinuousPricingInventoryItem\`).
+/// The store's listing of a SKU (`ContinuousPricingInventoryItem`).
 #[derive(sqlx::FromRow)]
 struct Listed {
     sku: i32,
@@ -583,14 +583,14 @@ struct Listed {
 }
 
 impl Listed {
-    /// \`listedPrice\`: what the store lists it at, when it is listed and in stock.
+    /// `listedPrice`: what the store lists it at, when it is listed and in stock.
     fn price(&self) -> Option<f64> {
         self.current_price
             .filter(|p| self.in_stock && self.quantity > 0 && *p > 0.0)
     }
 }
 
-/// The store's seller key and its listings of \`skus\` (\`findStoreListings\`). The listings sit
+/// The store's seller key and its listings of `skus` (`findStoreListings`). The listings sit
 /// beside the market prices, so when they cannot be read the matrix goes without them.
 async fn store_listings(db: &Database, skus: &[i64]) -> (Option<String>, Vec<Listed>) {
     let read = async {
@@ -620,9 +620,9 @@ async fn store_listings(db: &Database, skus: &[i64]) -> (Option<String>, Vec<Lis
     })
 }
 
-/// \`product\`'s prices in \`language\` (every language without one): TCGplayer's price points
-/// read through \`points\`, the store's listings, and with \`suggested\`, the active policy's prices
-/// from \`pricer\`. A product the catalog does not have is refused.
+/// `product`'s prices in `language` (every language without one): TCGplayer's price points
+/// read through `points`, the store's listings, and with `suggested`, the active policy's prices
+/// from `pricer`. A product the catalog does not have is refused.
 pub async fn matrix(
     db: &Database,
     points: &impl PricePoints,

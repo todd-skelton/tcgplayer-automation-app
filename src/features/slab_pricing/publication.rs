@@ -310,7 +310,7 @@ async fn preview(
     Ok(read.map(|(preview, _)| preview))
 }
 
-/// What the operator asked to preview (\`PreviewRequest\`): the listing and recommendation at the
+/// What the operator asked to preview (`PreviewRequest`): the listing and recommendation at the
 /// revisions shown, and which ask, under an intent id that coalesces a post sent again.
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -319,7 +319,7 @@ pub struct Asked {
     pub inventory_id: String,
     pub inventory_revision: i64,
     pub recommendation_id: String,
-    /// \`calculated\` or \`reviewed\`.
+    /// `calculated` or `reviewed`.
     pub selection: String,
     /// When the reviewed ask chosen was reviewed; only kept for a reviewed selection.
     pub override_reviewed_at: Option<String>,
@@ -338,12 +338,12 @@ const REVIEW_MS: i64 = 15 * 60_000;
 /// The largest plan saved, in bytes of JSON.
 const MOST_PLAN_BYTES: usize = 64 * 1024;
 
-/// A time as \`Date.parse\` reads an ISO one, in milliseconds.
+/// A time as `Date.parse` reads an ISO one, in milliseconds.
 pub(super) fn millis(value: &str) -> Option<i64> {
     time(value).map(|t| t.timestamp_millis())
 }
 
-/// The milliseconds as \`Date.prototype.toISOString\` writes them.
+/// The milliseconds as `Date.prototype.toISOString` writes them.
 pub(super) fn iso(ms: i64) -> String {
     Utc.timestamp_millis_opt(ms)
         .single()
@@ -361,7 +361,7 @@ fn js_number(value: f64) -> Value {
     }
 }
 
-/// JavaScript's \`===\` between two saved numbers, either of which may be null.
+/// JavaScript's `===` between two saved numbers, either of which may be null.
 fn same(a: &Value, b: &Value) -> bool {
     match (a.as_f64(), b.as_f64()) {
         (Some(a), Some(b)) => a == b,
@@ -380,7 +380,7 @@ fn truthy(value: &Value) -> bool {
     }
 }
 
-/// \`previewRequest\`: the request with only what a selection uses, or why it is refused.
+/// `previewRequest`: the request with only what a selection uses, or why it is refused.
 fn checked(asked: &Asked) -> Result<Asked, String> {
     let reviewed = asked.selection == "reviewed";
     let valid = [
@@ -408,7 +408,7 @@ fn checked(asked: &Asked) -> Result<Asked, String> {
     })
 }
 
-/// Whether a saved request asked for exactly this (Node compares each key with \`===\`).
+/// Whether a saved request asked for exactly this (Node compares each key with `===`).
 fn asked_the_same(saved: &Value, asked: &Asked) -> bool {
     let Ok(Value::Object(ours)) = serde_json::to_value(asked) else {
         return false;
@@ -417,7 +417,7 @@ fn asked_the_same(saved: &Value, asked: &Asked) -> bool {
         .all(|(key, value)| saved.get(key) == Some(value))
 }
 
-/// \`cents\`: a USD amount in whole cents, positive and under a billion.
+/// `cents`: a USD amount in whole cents, positive and under a billion.
 fn cents(value: &Value) -> Result<i64, String> {
     match value.as_f64() {
         Some(v) if v > 0.0 && v < 1e9 && (v * 100.0 - (v * 100.0).round()).abs() <= 1e-5 => {
@@ -427,7 +427,7 @@ fn cents(value: &Value) -> Result<i64, String> {
     }
 }
 
-/// The listing as \`buildPublicationPreview\` reads it: reviewed, with its source and its snapshot
+/// The listing as `buildPublicationPreview` reads it: reviewed, with its source and its snapshot
 /// as saved.
 struct Imported {
     listing: Listing,
@@ -435,8 +435,8 @@ struct Imported {
     snapshot: Value,
 }
 
-/// \`buildPublicationPreview\`: the price change of the listing to the selected ask, with what it
-/// rests on, reviewable until \`now\` plus 15 minutes or its evidence's first expiry; or why the
+/// `buildPublicationPreview`: the price change of the listing to the selected ask, with what it
+/// rests on, reviewable until `now` plus 15 minutes or its evidence's first expiry; or why the
 /// listing, recommendation or ask cannot be previewed.
 fn plan_of(
     asked: &Asked,
@@ -592,7 +592,7 @@ fn plan_of(
     }))
 }
 
-/// \`preparePublicationPreview\`: saves the price-change preview of the listing and recommendation
+/// `preparePublicationPreview`: saves the price-change preview of the listing and recommendation
 /// asked for, under its intent id, and clears previews expired a month without a publication.
 /// The same intent asked again is its saved preview; asked for something else, it is refused.
 /// Returns the preview's id.
@@ -862,9 +862,9 @@ mod tests {
         tx.rollback().await.unwrap();
     }
 
-    /// The posts in \`.port-logs/slab-prepare-cases.json\`, in order, on \`slab-prepare-seed.sql\`, in
-    /// a transaction rolled back, against Node's \`/api/slab-publication-previews\` prepare
-    /// (\`.port-logs/slab-prepare-node.ts\`) at the time it ran each: the answer, and every preview
+    /// The posts in `.port-logs/slab-prepare-cases.json`, in order, on `slab-prepare-seed.sql`, in
+    /// a transaction rolled back, against Node's `/api/slab-publication-previews` prepare
+    /// (`.port-logs/slab-prepare-node.ts`) at the time it ran each: the answer, and every preview
     /// saved after it.
     #[tokio::test]
     #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]

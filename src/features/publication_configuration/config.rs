@@ -286,7 +286,7 @@ async fn ensure(conn: &mut sqlx::PgConnection) -> sqlx::Result<()> {
     Ok(())
 }
 
-/// Seller Portal took a publication (\`recordSuccess\`): signed in, the circuit closed and the
+/// Seller Portal took a publication (`recordSuccess`): signed in, the circuit closed and the
 /// failures forgotten.
 pub async fn record_success(conn: &mut sqlx::PgConnection) -> sqlx::Result<()> {
     ensure(conn).await?;
@@ -302,7 +302,7 @@ pub async fn record_success(conn: &mut sqlx::PgConnection) -> sqlx::Result<()> {
     Ok(())
 }
 
-/// Seller Portal failed a publication (\`recordFailure\`): one more failure in a row, and the
+/// Seller Portal failed a publication (`recordFailure`): one more failure in a row, and the
 /// circuit opens at the settings' limit, or at once when it refused the sign-in.
 pub async fn record_failure(
     conn: &mut sqlx::PgConnection,
