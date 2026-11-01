@@ -68,6 +68,7 @@
 //! A post refused answers 409 with the page and why.
 mod actions;
 mod calculation;
+mod comp_decisions_route;
 mod comp_events;
 mod comps;
 mod dry_run;

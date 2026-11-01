@@ -15,7 +15,7 @@ use super::{
     page::{Place, Screen, page},
     publication,
     recommendation::{self, Fees, Seller},
-    refreshes,
+    refreshes, screening,
     url::{self, Choice},
     valuation,
     views::Problem,
@@ -808,10 +808,15 @@ pub async fn decide_comp(
         date: Some(date).filter(|d| !d.is_empty()),
         decision: &input.decision,
         note: &input.note,
-        item_price: input.item_price,
+        item_price: input.item_price.map(|amount| screening::Money {
+            amount,
+            currency: Some("USD".to_owned()),
+        }),
     };
     let saved = match db.0.acquire().await {
-        Ok(mut conn) => comps::decide(&mut conn, &decided).await,
+        Ok(mut conn) => comps::decide(&mut conn, &decided)
+            .await
+            .map_err(|why| why.message().to_owned()),
         Err(error) => Err(error.to_string()),
     };
     match saved {

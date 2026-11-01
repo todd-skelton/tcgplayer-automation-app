@@ -359,12 +359,33 @@ pub struct Decided<'a> {
     pub date: Option<&'a str>,
     pub decision: &'a str,
     pub note: &'a str,
-    pub item_price: Option<f64>,
+    /// The sale's price as the person reviewed it: a positive amount and a three-letter currency.
+    pub item_price: Option<Money>,
+}
+
+/// Why a decision was not saved, as Node's `CompReviewError` and the rest told it apart.
+#[derive(Debug, PartialEq)]
+pub enum NotDecided {
+    /// The request does not name a sale the revision holds, or a decision and a reason for it.
+    Refused(&'static str),
+    /// The slab's identity changed or is not confirmed since the review was read.
+    Conflict(&'static str),
+    /// Saving it failed.
+    Failed(String),
+}
+
+impl NotDecided {
+    pub fn message(&self) -> &str {
+        match self {
+            NotDecided::Refused(why) | NotDecided::Conflict(why) => why,
+            NotDecided::Failed(why) => why,
+        }
+    }
 }
 
 /// `saveCompDecision`: the decision saved for the sale in the slab's valuation group, replacing
 /// one saved before, and the revision kept for as long as the decision is.
-pub async fn decide(conn: &mut PgConnection, d: &Decided<'_>) -> Result<Decision, String> {
+pub async fn decide(conn: &mut PgConnection, d: &Decided<'_>) -> Result<Decision, NotDecided> {
     use sqlx::Connection;
     let uuid = |id: &str| {
         id.len() == 36
@@ -380,7 +401,7 @@ pub async fn decide(conn: &mut PgConnection, d: &Decided<'_>) -> Result<Decision
                 _ => b.is_ascii_digit(),
             })
     };
-    let note = d.note.trim();
+    let note = crate::api::js_trim(d.note);
     if !uuid(d.slab_id)
         || d.identity_revision < 1
         || !uuid(d.revision_id)
@@ -395,16 +416,24 @@ pub async fn decide(conn: &mut PgConnection, d: &Decided<'_>) -> Result<Decision
         || d.note.encode_utf16().count() > 1000
         || d.date.is_some_and(|date| !day(date))
     {
-        return Err("Choose a displayed sale, a review decision and a short reason.".to_owned());
+        return Err(NotDecided::Refused(
+            "Choose a displayed sale, a review decision and a short reason.",
+        ));
     }
-    if d.item_price
-        .is_some_and(|a| !a.is_finite() || a <= 0.0 || a >= 1e9)
-    {
-        return Err("A reviewed item price needs a positive amount and currency.".to_owned());
+    let currency = |c: &str| c.len() == 3 && c.bytes().all(|b| b.is_ascii_uppercase());
+    if d.item_price.as_ref().is_some_and(|price| {
+        !price.amount.is_finite()
+            || price.amount <= 0.0
+            || price.amount >= 1e9
+            || !price.currency.as_deref().is_some_and(currency)
+    }) {
+        return Err(NotDecided::Refused(
+            "A reviewed item price needs a positive amount and currency.",
+        ));
     }
     let failed = |error: sqlx::Error| {
         eprintln!("slab comp decision: {error}");
-        "Unable to save the comp review.".to_owned()
+        NotDecided::Failed("Unable to save the comp review.".to_owned())
     };
     let mut tx = conn.begin().await.map_err(failed)?;
     sqlx::query("SET LOCAL statement_timeout = '10s'")
@@ -420,7 +449,9 @@ pub async fn decide(conn: &mut PgConnection, d: &Decided<'_>) -> Result<Decision
     .await
     .map_err(failed)?;
     let Some(group) = group.flatten().filter(|g| !g.is_empty()) else {
-        return Err("Reload and confirm the slab identity before reviewing comps.".to_owned());
+        return Err(NotDecided::Conflict(
+            "Reload and confirm the slab identity before reviewing comps.",
+        ));
     };
     let payload: Option<Value> = sqlx::query_scalar(
         "SELECT payload FROM slab_evidence_revisions WHERE id = $1::uuid FOR UPDATE",
@@ -447,7 +478,9 @@ pub async fn decide(conn: &mut PgConnection, d: &Decided<'_>) -> Result<Decision
         })
         .collect();
     let [sale] = matches.as_slice() else {
-        return Err("The evidence revision does not contain this exact sale.".to_owned());
+        return Err(NotDecided::Refused(
+            "The evidence revision does not contain this exact sale.",
+        ));
     };
     let decision = Decision {
         revision_id: d.revision_id.to_owned(),
@@ -457,10 +490,7 @@ pub async fn decide(conn: &mut PgConnection, d: &Decided<'_>) -> Result<Decision
         valuation_group_key: group.clone(),
         decision: d.decision.to_owned(),
         note: note.to_owned(),
-        item_price: d.item_price.map(|amount| Money {
-            amount,
-            currency: Some("USD".to_owned()),
-        }),
+        item_price: d.item_price.clone(),
     };
     // `compDecisionKey`.
     let event_key =
@@ -484,7 +514,8 @@ pub async fn decide(conn: &mut PgConnection, d: &Decided<'_>) -> Result<Decision
             .await
             .map_err(failed)?;
     if kept.rows_affected() != 1 {
-        return Err("Evidence expired before it could be retained. Refresh and retry.".to_owned());
+        let why = "Evidence expired before it could be retained. Refresh and retry.";
+        return Err(NotDecided::Failed(why.to_owned()));
     }
     tx.commit().await.map_err(failed)?;
     Ok(decision)
@@ -538,26 +569,22 @@ mod tests {
         }
         for (case, node) in cases.iter().zip(&node) {
             let name = case["name"].as_str().unwrap();
-            let b = &case["body"];
-            let text = |key: &str| b[key].as_str().unwrap_or_default();
-            let decided = Decided {
-                slab_id: text("slabId"),
-                identity_revision: b["identityRevision"].as_i64().unwrap(),
-                revision_id: text("revisionId"),
-                provider: text("provider"),
-                provider_id: text("providerId"),
-                date: b["date"].as_str(),
-                decision: text("decision"),
-                note: text("note"),
-                item_price: b["itemPrice"]["amount"].as_f64(),
-            };
-            match (decide(&mut tx, &decided).await, node["error"].as_str()) {
+            let saved = super::super::comp_decisions_route::saved(&mut tx, &case["body"]).await;
+            let status = node["status"].as_u64().unwrap();
+            match (saved, node["error"].as_str()) {
                 (Ok(decision), None) => {
                     let expected: Decision =
                         serde_json::from_value(node["decision"].clone()).unwrap();
-                    assert_eq!(decision, expected, "{name}");
+                    assert_eq!((decision, 200), (expected, status), "{name}");
                 }
-                (Err(why), Some(error)) => assert_eq!(why, error, "{name}"),
+                (Err(not), Some(error)) => {
+                    let ours = match &not {
+                        NotDecided::Refused(why) => (400, *why),
+                        NotDecided::Conflict(why) => (409, *why),
+                        NotDecided::Failed(_) => (500, "Unable to save the comp review."),
+                    };
+                    assert_eq!(ours, (status, error), "{name}");
+                }
                 (got, _) => panic!("{name}: {got:?} where Node answered {node}"),
             }
             let saved: Value = sqlx::query_scalar(&capture)
@@ -565,6 +592,30 @@ mod tests {
                 .await
                 .unwrap();
             assert_eq!(saved, node["saved"], "{name}: saved");
+        }
+        // Then the decisions read back, as Node's loader read them.
+        let reads: Vec<Value> =
+            serde_json::from_str(&read("slab-comp-decision-reads.node.json")).unwrap();
+        for read in &reads {
+            let (group, revisions) = (
+                read["group"].as_str().unwrap(),
+                read["revisions"].as_str().unwrap(),
+            );
+            let revisions: Vec<&str> = revisions.split(',').filter(|r| !r.is_empty()).collect();
+            let ours =
+                match super::super::comp_decisions_route::decisions(&mut *tx, group, &revisions)
+                    .await
+                {
+                    Ok(decisions) => (200, serde_json::json!({ "decisions": decisions })),
+                    Err(NotDecided::Refused(why)) => (400, serde_json::json!({ "error": why })),
+                    Err(other) => panic!("{other:?}"),
+                };
+            let ours = (ours.0, crate::api::tests::node_numbers(&ours.1));
+            assert_eq!(
+                ours,
+                (read["status"].as_u64().unwrap(), read["body"].clone()),
+                "{read}"
+            );
         }
         tx.rollback().await.unwrap();
     }

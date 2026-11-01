@@ -32,11 +32,12 @@ pub struct SlabRecommendations;
 
 /// The route, added to the app's one API at `/api` (`crate::api`).
 pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
-    api.route::<SlabRecommendations>(get(show).post(act).with_state(shared.clone()))
+    let api = api.route::<SlabRecommendations>(get(show).post(act).with_state(shared.clone()));
+    super::comp_decisions_route::routes(api, shared)
 }
 
 /// An answer no cache keeps, as Node sent each one.
-fn unstored(mut answer: JsonResponse) -> JsonResponse {
+pub(super) fn unstored(mut answer: JsonResponse) -> JsonResponse {
     answer
         .headers_mut()
         .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
@@ -154,7 +155,7 @@ async fn reviewed(db: &Database, input: &Value) -> JsonResponse {
 /// scheme passes, as Corten's own check before it lets one through; Node also held the scheme to
 /// the one its request URL had. A post with no `Origin`, which Corten lets through as not a
 /// browser's, is refused here as Node refused it.
-fn same_origin(headers: &HeaderMap) -> bool {
+pub(super) fn same_origin(headers: &HeaderMap) -> bool {
     let host = headers.get(header::HOST).and_then(|v| v.to_str().ok());
     let origin = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok());
     match (origin, host) {
