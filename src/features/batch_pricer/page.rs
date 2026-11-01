@@ -17,9 +17,11 @@ use super::{
 };
 use crate::{
     database::Database,
-    features::{configuration, shipping_configuration},
+    features::{
+        configuration, continuous_pricing::refresh::TcgPlayerSearch, shipping_configuration,
+    },
     layout::{Chrome, Layout},
-    legacy::Legacy,
+    tcgplayer::TcgPlayer,
     text::Msg,
 };
 
@@ -341,12 +343,11 @@ pub struct SellerInput {
     pub seller_key: String,
 }
 
-/// A batch frozen from a seller's live inventory, and the screen showing it; a seller the Node
-/// app cannot read gets the form back with why.
+/// A batch frozen from a seller's live inventory, and the screen showing it; a seller whose
+/// inventory cannot be read gets the form back with why.
 pub async fn import_seller(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Form(input): Form<SellerInput>,
 ) -> HtmlResult {
     let f = SellerInput::FIELDS;
@@ -354,7 +355,8 @@ pub async fn import_seller(
     let made = if key.is_empty() {
         Err("Enter a seller key.".to_owned())
     } else {
-        batches::import_seller(&legacy, key).await
+        let search = TcgPlayerSearch(TcgPlayer::new(db.clone()));
+        import::seller(&db, &search, key).await
     };
     let message = match made {
         Ok(batch) => return req.redirect(&url::BatchPricer::batch(batch.batch_number)),

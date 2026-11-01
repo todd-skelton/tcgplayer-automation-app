@@ -374,11 +374,16 @@ pub async fn schedule_cached_policy_batches(
 
 /// The pricing configuration a job is queued with now.
 pub async fn job_config(db: &Database) -> sqlx::Result<Value> {
+    job_config_on(&db.0).await
+}
+
+/// [`job_config`], read on `executor` (a transaction's connection).
+pub async fn job_config_on<'e>(executor: impl sqlx::PgExecutor<'e>) -> sqlx::Result<Value> {
     let row: Option<(Value, Value, Value)> = sqlx::query_as(
         "SELECT pricing_json, supply_analysis_json, product_line_pricing_json
          FROM pricing_config WHERE config_key = 'default'",
     )
-    .fetch_optional(&db.0)
+    .fetch_optional(executor)
     .await?;
     let (pricing, supply, lines) = row.unwrap_or_default();
     Ok(pricing_config::normalized(&pricing, &supply, &lines))

@@ -4,11 +4,17 @@
 //! and queued for pricing in full. The Node app saved the batch and queued it in two transactions;
 //! here both are one, so a failed queue leaves no batch behind.
 //!
+//! A batch made from a seller's live inventory (`api.inventory-batches-import-seller`) is the
+//! same: the seller's listings read from TCGplayer's search (`fetchSellerInventorySnapshot`),
+//! skipped product lines left out, each regular listing made the row a CSV export would have
+//! (`convertSellerInventoryToListings`), then kept and saved as a CSV's rows are.
+//!
 //! Numbers are read as JavaScript reads them.
 use std::collections::HashMap;
 
 use chrono::{DurationRound, TimeDelta, Utc};
 use serde_json::{Map, Value};
+use sqlx::PgConnection;
 
 use super::batches::{self, Batch};
 use crate::{
@@ -19,8 +25,12 @@ use crate::{
             imported::{Item, create, refused},
             queue,
         },
-        continuous_pricing::scheduler,
+        continuous_pricing::{
+            refresh::{Product, SellerInventory},
+            scheduler,
+        },
         inventory_economics::ledger::fingerprint::js_float,
+        inventory_strategy::collate,
     },
     js_number,
 };
@@ -63,7 +73,10 @@ fn url_name(name: &str) -> String {
 
 /// `convertCsvListingsToBatchItems`: the rows with a positive SKU whose product line and SKU the
 /// catalog knows, in the export's order.
-pub async fn items(db: &Database, rows: &[Map<String, Value>]) -> Result<Vec<Item>, String> {
+pub async fn items(
+    conn: &mut PgConnection,
+    rows: &[Map<String, Value>],
+) -> Result<Vec<Item>, String> {
     let valid: Vec<(f64, &Map<String, Value>)> = rows
         .iter()
         .filter_map(|row| {
@@ -85,7 +98,7 @@ pub async fn items(db: &Database, rows: &[Map<String, Value>]) -> Result<Vec<Ite
         )
         .bind(name)
         .bind(url_name(name))
-        .fetch_optional(&db.0)
+        .fetch_optional(&mut *conn)
         .await
         .map_err(refused)?;
         lines.insert(name, id);
@@ -102,7 +115,7 @@ pub async fn items(db: &Database, rows: &[Map<String, Value>]) -> Result<Vec<Ite
         )
         .bind(js_float(sku))
         .bind(line)
-        .fetch_optional(&db.0)
+        .fetch_optional(&mut *conn)
         .await
         .map_err(refused)?;
         let Some((product_line_id, set_id, product_id)) = found else {
@@ -128,7 +141,9 @@ pub async fn items(db: &Database, rows: &[Map<String, Value>]) -> Result<Vec<Ite
 /// The batch made from the export named `file_name`, queued for pricing in full.
 pub async fn csv(db: &Database, file_name: &str, bytes: &[u8]) -> Result<Batch, String> {
     let rows = csv_text::parse(&csv_text::decode(bytes));
-    let items = items(db, &rows).await?;
+    let mut conn = db.0.acquire().await.map_err(refused)?;
+    let items = items(&mut conn, &rows).await?;
+    drop(conn);
     if items.is_empty() {
         return Err(format!(
             "No valid CSV rows were available to import from {file_name}"
@@ -145,6 +160,131 @@ pub async fn csv(db: &Database, file_name: &str, bytes: &[u8]) -> Result<Batch, 
         .map_err(refused)?;
     tx.commit().await.map_err(refused)?;
     batches::one(db, batch).await
+}
+
+/// The product lines the pricing configuration skips.
+fn skipped_lines(config: &Value) -> Vec<f64> {
+    config["productLinePricing"]["productLineSettings"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .filter(|(_, setting)| setting["skip"].as_bool() == Some(true))
+        .map(|(id, _)| js_number::number(id))
+        .collect()
+}
+
+/// The seller's products as `fetchSellerInventorySnapshot` keeps them: skipped product lines
+/// left out, sorted by product line, set and name.
+fn snapshot(mut products: Vec<Product>, skipped: &[f64]) -> Vec<Product> {
+    products.retain(|p| {
+        !p.product_line_id
+            .is_some_and(|line| skipped.contains(&line))
+    });
+    let text = |t: &Option<String>| t.clone().unwrap_or_default();
+    products.sort_by(|a, b| {
+        collate::compare(&text(&a.product_line_name), &text(&b.product_line_name))
+            .then_with(|| collate::compare(&text(&a.set_name), &text(&b.set_name)))
+            .then_with(|| collate::compare(&text(&a.product_name), &text(&b.product_name)))
+    });
+    products
+}
+
+/// Each regular listing once, first seen first, as the row `convertProductToListing` makes: a
+/// field the search left out is left out of the row, as `JSON.stringify` leaves it.
+pub fn listing_rows(products: &[Product]) -> Vec<Map<String, Value>> {
+    let mut seen = std::collections::HashSet::new();
+    let mut rows = Vec::new();
+    for product in products {
+        for listing in product.listings.iter().filter(|l| !l.is_custom()) {
+            let id = js_float(listing.product_condition_id);
+            if !seen.insert(id.clone()) {
+                eprintln!("Duplicate SKU ID found: {id}. Skipping duplicate listing.");
+                continue;
+            }
+            let market = product
+                .market_price
+                .filter(|price| *price > 0.0)
+                .map_or_else(String::new, js_float);
+            let mut row = Map::new();
+            let mut put = |name: &str, value: Option<String>| {
+                if let Some(value) = value {
+                    row.insert(name.into(), Value::String(value));
+                }
+            };
+            let empty = || Some(String::new());
+            put("TCGplayer Id", Some(id));
+            put("Product Line", product.product_line_name.clone());
+            put("Set Name", product.set_name.clone());
+            put("Product", product.product_name.clone());
+            put(
+                "Sku Variant",
+                Some(listing.printing.clone().unwrap_or_default()),
+            );
+            put("Sku Condition", listing.condition.clone());
+            put("Sale Count", empty());
+            put("Lowest Sale Price", empty());
+            put("Highest Sale Price", empty());
+            put("TCG Market Price", Some(market));
+            put("Total Quantity", Some(js_float(listing.quantity)));
+            put("Add to Quantity", Some("0".into()));
+            put("TCG Marketplace Price", Some(js_float(listing.price)));
+            for name in [
+                "Previous Price",
+                "Suggested Price",
+                "Percentile Used",
+                "Historical Sales Velocity (Days)",
+                "Estimated Time to Sell (Days)",
+                "Sales Count for Historical Calculation",
+                "Listings Count for Estimated Calculation",
+                "Warning",
+                "Error",
+            ] {
+                put(name, empty());
+            }
+            rows.push(row);
+        }
+    }
+    rows
+}
+
+/// The batch frozen from `seller`'s live inventory, queued for pricing in full.
+pub async fn seller(
+    db: &Database,
+    inventory: &impl SellerInventory,
+    seller: &str,
+) -> Result<Batch, String> {
+    let products = inventory.products(seller).await?;
+    let mut tx = db.0.begin().await.map_err(refused)?;
+    let batch = save_seller(&mut tx, products, seller).await?;
+    tx.commit().await.map_err(refused)?;
+    batches::one(db, batch).await
+}
+
+/// Saves the batch `products` make for `seller` on `conn`, queued for pricing in full; its
+/// number.
+pub async fn save_seller(
+    conn: &mut PgConnection,
+    products: Vec<Product>,
+    seller: &str,
+) -> Result<i32, String> {
+    let config = scheduler::job_config_on(&mut *conn)
+        .await
+        .map_err(refused)?;
+    let rows = listing_rows(&snapshot(products, &skipped_lines(&config)));
+    let items = items(conn, &rows).await?;
+    if items.is_empty() {
+        return Err(format!(
+            "No seller inventory rows were available to import for {seller}"
+        ));
+    }
+    let now = Utc::now()
+        .duration_trunc(TimeDelta::milliseconds(1))
+        .unwrap_or_else(|_| Utc::now());
+    let batch = create(conn, "seller", seller, &items, now).await?;
+    queue::create_or_reuse(conn, batch, "full", &config)
+        .await
+        .map_err(refused)?;
+    Ok(batch)
 }
 
 #[cfg(test)]
@@ -217,7 +357,8 @@ mod tests {
                 csv_text::parse(&csv_text::decode(case["text"].as_str().unwrap().as_bytes()));
             let ours: Vec<Value> = rows.iter().cloned().map(Value::Object).collect();
             assert_eq!(Value::Array(ours), theirs["rows"], "{name}: rows");
-            match (items(&db, &rows).await, theirs.get("error")) {
+            let mut conn = db.0.acquire().await.unwrap();
+            match (items(&mut conn, &rows).await, theirs.get("error")) {
                 (Ok(items), None) => {
                     let mut expected = theirs["items"].as_array().unwrap().clone();
                     for item in &mut expected {
@@ -252,7 +393,8 @@ mod tests {
             let case = cases.iter().find(|c| c["name"] == name).unwrap();
             csv_text::parse(&csv_text::decode(case["text"].as_str().unwrap().as_bytes()))
         };
-        let plain = items(&db, &text("plain")).await.unwrap();
+        let mut conn = db.0.acquire().await.unwrap();
+        let plain = items(&mut conn, &text("plain")).await.unwrap();
         let now = Utc::now()
             .duration_trunc(TimeDelta::milliseconds(1))
             .unwrap();
@@ -305,7 +447,7 @@ mod tests {
             .unwrap();
         assert_eq!(queued.status, "queued");
 
-        let repeated = items(&db, &text("odd-numbers")).await.unwrap();
+        let repeated = items(&mut conn, &text("odd-numbers")).await.unwrap();
         sqlx::query("SAVEPOINT repeated")
             .execute(&mut *tx)
             .await
@@ -314,6 +456,57 @@ mod tests {
             create(&mut tx, "csv", "odd.csv", &repeated, now).await,
             Err("error: duplicate key value violates unique constraint \"inventory_batch_items_pkey\"".into())
         );
+        tx.rollback().await.unwrap();
+    }
+
+    /// The cases in `.port-logs/seller-import-cases.json` on the dev database in one transaction
+    /// rolled back (a savepoint each), against Node's import-seller route given the same products
+    /// by a stand-in search (`.port-logs/seller-import-node.ts`): the batch, its items as saved
+    /// (rows included) and its pricing job, or the refusal.
+    #[tokio::test]
+    #[ignore = "writes the dev database in a transaction it rolls back"]
+    async fn seller_imports_save_what_node_saves() {
+        use sqlx::Connection;
+        crate::config::load_env();
+        let read = |path: &str| std::fs::read_to_string(path).unwrap();
+        let cases: Vec<Value> =
+            serde_json::from_str(&read(".port-logs/seller-import-cases.json")).unwrap();
+        let node: Vec<Value> =
+            serde_json::from_str(&read(".port-logs/seller-import.node.json")).unwrap();
+        let capture = read(".port-logs/seller-import-capture.sql");
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let mut conn = db.0.acquire().await.unwrap();
+        let mut tx = conn.begin().await.unwrap();
+        assert_eq!(cases.len(), node.len());
+        for (case, theirs) in cases.iter().zip(&node) {
+            let name = case["name"].as_str().unwrap();
+            let mut savepoint = tx.begin().await.unwrap();
+            sqlx::raw_sql(case["setup"].as_str().unwrap())
+                .execute(&mut *savepoint)
+                .await
+                .unwrap();
+            let before: i32 =
+                sqlx::query_scalar("SELECT COALESCE(max(batch_number), 0) FROM inventory_batches")
+                    .fetch_one(&mut *savepoint)
+                    .await
+                    .unwrap();
+            let products: Vec<Product> = serde_json::from_value(case["products"].clone()).unwrap();
+            let made =
+                save_seller(&mut savepoint, products, case["seller"].as_str().unwrap()).await;
+            let captured: String = sqlx::query_scalar(&capture)
+                .bind(before)
+                .fetch_one(&mut *savepoint)
+                .await
+                .unwrap();
+            let captured: Value = serde_json::from_str(&captured).unwrap();
+            savepoint.rollback().await.unwrap();
+            assert_eq!(
+                made.err(),
+                theirs["error"].as_str().map(str::to_owned),
+                "{name}"
+            );
+            assert_eq!(captured, theirs["captured"], "{name}");
+        }
         tx.rollback().await.unwrap();
     }
 }

@@ -4,8 +4,7 @@
 //! send) are read here, a batch deleted here, its pricing queued here and its publication
 //! planned here, as `inventoryBatches.server.ts`, `inventoryBatchPricingJobs.server.ts` and
 //! `planInventoryBatchPublications` do; Node's publisher sends what is planned, with its safety
-//! checks. A seller's import still goes through the Node app's `/api/inventory-batches` routes,
-//! as it reads the seller's inventory live.
+//! checks. A batch is made from a CSV export or a seller's live inventory in [`super::import`].
 use std::collections::{BTreeMap, HashSet};
 
 use chrono::{DateTime, Utc};
@@ -22,7 +21,6 @@ use crate::{
             preview,
         },
     },
-    legacy::Legacy,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
@@ -824,25 +822,10 @@ pub async fn publish(db: &Database, batch: i32, skus: &[i64]) -> Result<usize, S
         .map_err(|e| e.to_string())
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SellerRequest<'a> {
-    seller_key: &'a str,
-}
-
-/// A batch frozen from a seller's live inventory, queued for pricing.
-pub async fn import_seller(legacy: &Legacy, seller_key: &str) -> Result<Batch, String> {
-    legacy
-        .send(
-            "/api/inventory-batches/import-seller",
-            &SellerRequest { seller_key },
-        )
-        .await
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::legacy::Legacy;
 
     #[derive(Deserialize)]
     struct Saved {

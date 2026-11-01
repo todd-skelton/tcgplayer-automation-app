@@ -36,6 +36,7 @@ pub struct Product {
     pub product_line_name: Option<String>,
     pub set_name: Option<String>,
     pub product_name: Option<String>,
+    pub product_line_id: Option<f64>,
     pub market_price: Option<f64>,
     pub listings: Vec<Listing>,
 }
@@ -53,7 +54,7 @@ pub struct Listing {
 
 impl Listing {
     /// A custom listing has a price set by hand, which pricing leaves alone.
-    fn is_custom(&self) -> bool {
+    pub(crate) fn is_custom(&self) -> bool {
         self.custom_data
             .as_ref()
             .and_then(|d| d.get("customListingId"))
@@ -93,10 +94,12 @@ impl SellerInventory for TcgPlayerSearch {
     async fn products(&self, seller: &str) -> Result<Vec<Product>, String> {
         let mut products = Vec::new();
         let mut total = 0;
+        // Pages are asked for by their size, as `getAllProducts` asks, whatever each answered.
+        let mut from = 0;
         loop {
             let body = json!({
                 "size": PAGE_SIZE,
-                "from": products.len(),
+                "from": from,
                 "listingSearch": {
                     "context": { "cart": {} },
                     "filters": {
@@ -121,13 +124,14 @@ impl SellerInventory for TcgPlayerSearch {
                 .into_iter()
                 .next()
                 .ok_or("The search answered without results.")?;
-            if products.is_empty() {
+            if from == 0 {
                 total = page.total_results;
             }
             if page.results.is_empty() {
                 break;
             }
             products.extend(page.results);
+            from += PAGE_SIZE;
             if products.len() >= total {
                 break;
             }
