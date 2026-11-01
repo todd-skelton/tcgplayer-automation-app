@@ -131,13 +131,13 @@ const CARD_FIELDS: [&str; 9] = [
 const SHORT_TEXT: &str = "Identity fields must be short text values.";
 
 /// JavaScript's \`String.prototype.trim\`.
-fn js_trim(value: &str) -> &str {
+pub(super) fn js_trim(value: &str) -> &str {
     value.trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}')
 }
 
 /// \`textField\`: a string of at most \`max\` UTF-16 units without control characters, trimmed,
 /// or none when it is missing or blank. Anything else is refused.
-fn text_field(value: &Value, max: usize) -> Result<Option<String>, String> {
+pub(super) fn text_field(value: &Value, max: usize) -> Result<Option<String>, String> {
     match value {
         Value::Null => Ok(None),
         Value::String(s) if s.is_empty() => Ok(None),
@@ -160,7 +160,7 @@ fn grade_number(value: f64) -> Value {
 }
 
 /// \`normalizeCertificate\`: the grader upper-cased and the number, both trimmed and plain.
-fn certificate(grader: &str, number: &str) -> Result<(String, String), String> {
+pub(super) fn certificate(grader: &str, number: &str) -> Result<(String, String), String> {
     let grader = text_field(&json!(grader), 40)?.map(|g| g.to_uppercase());
     let number = text_field(&json!(number), 80)?;
     match (grader, number) {

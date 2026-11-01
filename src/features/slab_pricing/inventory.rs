@@ -1,6 +1,5 @@
 //! The seller's eBay listings the slab pricer knows, a page at a time, and what each needs
-//! reviewed (`getInventory`). Importing them and tying one to an identity stay the Node app's
-//! (`/api/slab-inventory`).
+//! reviewed (`getInventory`). Importing them and tying one to an identity are `inventory_import`.
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

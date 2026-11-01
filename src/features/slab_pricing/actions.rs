@@ -4,14 +4,14 @@
 //! the page the post came from (its address is the post's query), showing what changed; a refusal
 //! is that page with why, as a conflict.
 use corten::{Refusal, SubmitKey, prelude::*};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 
 use super::{
     comps,
     dry_run::dry_run as run_dry,
     identity::{self, Card, Grading, SlabIdentity},
-    inventory, maintenance, outcomes,
+    inventory, inventory_import, maintenance, outcomes,
     page::{Place, Screen, page},
     publication,
     recommendation::{self, Fees, Policy, Seller},
@@ -247,7 +247,6 @@ pub struct AssignInput {
 pub async fn assign(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::Assign>,
     Form(input): Form<AssignInput>,
 ) -> HtmlResult {
@@ -262,19 +261,16 @@ pub async fn assign(
         )
         .await;
     };
-    let asked = json!({
-        "intent": "assign-identity",
-        "seller": listing.seller,
-        "id": listing.id,
-        "revision": listing.revision,
-        "identityId": record.id,
-        "note": input.note.trim(),
-    });
-    match legacy
-        .send::<_, serde_json::Value>("/api/slab-inventory", &asked)
-        .await
-    {
-        Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
+    let assigned = match db.0.acquire().await {
+        Ok(mut conn) => {
+            let (seller, id, note) = (&listing.seller, &listing.id, input.note.trim());
+            inventory_import::assign(&mut conn, seller, id, listing.revision, &record.id, note)
+                .await
+        }
+        Err(error) => Err(error.to_string()),
+    };
+    match assigned {
+        Ok(()) => req.redirect(&url::SlabPricing::at(&at.choice)),
         Err(why) => refused(Place::Listing, &req, &db, &at.choice, why).await,
     }
 }
@@ -291,28 +287,18 @@ pub struct ImportInput {
 pub async fn import(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::Import>,
     Form(input): Form<ImportInput>,
 ) -> HtmlResult {
-    #[derive(Serialize)]
-    struct Asked<'a> {
-        intent: &'static str,
-        seller: &'a str,
-        revision: i64,
-        csv: &'a str,
-    }
     let seller = at.choice.seller.as_deref().unwrap_or("");
-    let asked = Asked {
-        intent: "import-csv",
-        seller,
-        revision: input.revision,
-        csv: &input.csv,
+    let imported = match db.0.acquire().await {
+        Ok(mut conn) => {
+            let now = chrono::Utc::now();
+            inventory_import::import_csv(&mut conn, seller, input.revision, &input.csv, now).await
+        }
+        Err(error) => Err(error.to_string()),
     };
-    match legacy
-        .send::<_, serde_json::Value>("/api/slab-inventory", &asked)
-        .await
-    {
+    match imported {
         Ok(_) => req.redirect(&url::SlabPricing::at(&Choice {
             after: None,
             trail: Vec::new(),
