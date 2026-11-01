@@ -155,7 +155,6 @@ impl ConfirmInput {
 pub async fn confirm(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     zone: Option<ClientZone>,
     Params(at): Params<url::Confirm>,
     Form(input): Form<ConfirmInput>,
@@ -172,18 +171,19 @@ pub async fn confirm(
         .await;
     };
     let record = identity::find(&db, grader, cert).await?;
-    let asked = json!({
-        "intent": "confirm",
-        "grader": grader,
-        "certificateNumber": cert,
-        "revision": input.revision,
-        "identity": input.identity(grader, record.as_ref().and_then(|r| r.shown())),
-        "note": input.note.trim(),
-    });
-    match legacy
-        .send::<_, serde_json::Value>("/api/slab-identities", &asked)
-        .await
-    {
+    let decided = json!(input.identity(grader, record.as_ref().and_then(|r| r.shown())));
+    let confirmation = identity::Confirmation {
+        grader,
+        certificate_number: cert,
+        revision: input.revision,
+        identity: &decided,
+        note: input.note.trim(),
+    };
+    let confirmed = match db.0.acquire().await {
+        Ok(mut conn) => identity::confirm(&mut conn, &confirmation).await,
+        Err(error) => Err(error.to_string()),
+    };
+    match confirmed {
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
         Err(why) => {
             refused(

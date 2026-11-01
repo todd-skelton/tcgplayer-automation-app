@@ -3,8 +3,9 @@
 //! `app/features/ebay-slab-pricing/routes/slab-pricing.tsx` and its identity editor and
 //! inventory panel.
 //!
-//! The certificate lookups, identity decisions and inventory imports stay the Node app's
-//! (`/api/slab-identities`, `/api/slab-inventory`); this screen reads what they saved. What the
+//! The certificate lookups (which ask Alt) and inventory imports stay the Node app's
+//! (`/api/slab-identities`, `/api/slab-inventory`); this screen reads what they saved. An
+//! identity is confirmed here (`identity`). What the
 //! screen shows (the certificate, the seller, the page of listings, the listing being reviewed)
 //! is its address, so each post carries it and sends the browser back to it.
 //!

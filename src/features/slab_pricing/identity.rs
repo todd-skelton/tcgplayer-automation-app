@@ -1,7 +1,9 @@
 //! A slab's certificate and what it identifies (`slab_identities`): the card and grade a
-//! provider proposed, and the one the operator confirmed. Looking one up or confirming it stays
-//! the Node app's (`/api/slab-identities`); this reads what was saved.
+//! provider proposed, and the one the operator confirmed. Looking one up stays the Node app's
+//! (`/api/slab-identities`), since it asks Alt; confirming one is done here.
 use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 
 use crate::database::Database;
 
@@ -113,7 +115,204 @@ pub async fn find(
         .transpose()
 }
 
-/// `grade-label-unresolved` as "grade label unresolved", as the React screen wrote codes.
+/// The card fields, in the order the valuation group key lists them (\`CARD_FIELDS\`).
+const CARD_FIELDS: [&str; 9] = [
+    "name",
+    "game",
+    "language",
+    "set",
+    "cardNumber",
+    "year",
+    "edition",
+    "finish",
+    "stamp",
+];
+
+const SHORT_TEXT: &str = "Identity fields must be short text values.";
+
+/// JavaScript's \`String.prototype.trim\`.
+fn js_trim(value: &str) -> &str {
+    value.trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}')
+}
+
+/// \`textField\`: a string of at most \`max\` UTF-16 units without control characters, trimmed,
+/// or none when it is missing or blank. Anything else is refused.
+fn text_field(value: &Value, max: usize) -> Result<Option<String>, String> {
+    match value {
+        Value::Null => Ok(None),
+        Value::String(s) if s.is_empty() => Ok(None),
+        Value::String(s) if s.encode_utf16().count() <= max && !s.chars().any(|c| c < ' ') => {
+            Ok(Some(js_trim(s))
+                .filter(|t| !t.is_empty())
+                .map(str::to_owned))
+        }
+        _ => Err(SHORT_TEXT.to_owned()),
+    }
+}
+
+/// A grade number as JavaScript keeps it: whole ones without a fraction.
+fn grade_number(value: f64) -> Value {
+    if value.fract() == 0.0 {
+        json!(value as i64)
+    } else {
+        json!(value)
+    }
+}
+
+/// \`normalizeCertificate\`: the grader upper-cased and the number, both trimmed and plain.
+fn certificate(grader: &str, number: &str) -> Result<(String, String), String> {
+    let grader = text_field(&json!(grader), 40)?.map(|g| g.to_uppercase());
+    let number = text_field(&json!(number), 80)?;
+    match (grader, number) {
+        (Some(grader), Some(number))
+            if grader.bytes().all(|b| {
+                b.is_ascii_uppercase() || b.is_ascii_digit() || b == b' ' || b == b'-'
+            }) && number
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'-') =>
+        {
+            Ok((grader, number))
+        }
+        _ => Err("Enter a grader and certificate number.".to_owned()),
+    }
+}
+
+/// \`parseSlabIdentity\`: the card and grade as saved, each field trimmed text or null, the grade
+/// a half-step from 1 to 10 or none, and the provider asset an Alt one.
+fn parse_identity(input: &Value) -> Result<Value, String> {
+    let truthy = |v: &Value| {
+        !matches!(v, Value::Null | Value::Bool(false)) && *v != json!("") && *v != json!(0)
+    };
+    if !input.is_object() || !truthy(&input["card"]) || !truthy(&input["grading"]) {
+        return Err("Provide card identity and grading details.".to_owned());
+    }
+    let mut card = serde_json::Map::new();
+    for field in CARD_FIELDS {
+        card.insert(
+            field.to_owned(),
+            json!(text_field(&input["card"][field], 200)?),
+        );
+    }
+    let grading = &input["grading"];
+    let grader = text_field(&grading["grader"], 40)?.map(|g| g.to_uppercase());
+    let encoding = text_field(&grading["encoding"], 40)?;
+    let number = &grading["number"];
+    let number_ok = match number {
+        Value::Null => true,
+        Value::Number(n) => n
+            .as_f64()
+            .is_some_and(|n| (1.0..=10.0).contains(&n) && (n * 2.0).fract() == 0.0),
+        _ => false,
+    };
+    if card["name"].is_null() || grader.is_none() || encoding.is_none() || !number_ok {
+        return Err("Provide a card name, grader and original grade encoding. Numeric grades must be between 1 and 10.".to_owned());
+    }
+    let asset = &input["providerAsset"];
+    let provider_asset = if truthy(asset) {
+        let id = text_field(&asset["id"], 80)?;
+        let id = id.filter(|id| {
+            asset["provider"] == "alt" && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
+        });
+        let Some(id) = id else {
+            return Err("Provide a valid provider asset reference.".to_owned());
+        };
+        json!({ "provider": "alt", "id": id, "title": text_field(&asset["title"], 500)? })
+    } else {
+        Value::Null
+    };
+    Ok(json!({
+        "card": card,
+        "grading": {
+            "grader": grader,
+            "encoding": encoding,
+            "number": number.as_f64().map_or(Value::Null, grade_number),
+            "label": text_field(&grading["label"], 200)?,
+            "qualifier": text_field(&grading["qualifier"], 200)?,
+            "autograph": text_field(&grading["autograph"], 200)?,
+        },
+        "providerAsset": provider_asset,
+    }))
+}
+
+/// \`valuationGroupKey\`: the SHA-256 of the identity's ordered fields (card lower-cased, the
+/// provider asset, the grader, the grade or its encoding, and its label, qualifier and
+/// autograph lower-cased), as JSON. Slabs of one key are valued together.
+fn valuation_group_key(identity: &Value) -> String {
+    let lowered = |v: &Value| {
+        v.as_str()
+            .map_or(Value::Null, |s| json!(js_trim(s).to_lowercase()))
+    };
+    let grading = &identity["grading"];
+    let asset = &identity["providerAsset"];
+    let mut fields: Vec<Value> = CARD_FIELDS
+        .iter()
+        .map(|f| lowered(&identity["card"][*f]))
+        .collect();
+    fields.push(asset["provider"].clone());
+    fields.push(asset["id"].clone());
+    fields.push(grading["grader"].clone());
+    fields.push(match &grading["number"] {
+        Value::Null => grading["encoding"].clone(),
+        number => number.clone(),
+    });
+    for field in ["label", "qualifier", "autograph"] {
+        fields.push(lowered(&grading[field]));
+    }
+    hex::encode(Sha256::digest(Value::Array(fields).to_string()))
+}
+
+/// The operator's decision on what a certificate identifies, at the revision they saw.
+pub struct Confirmation<'a> {
+    pub grader: &'a str,
+    pub certificate_number: &'a str,
+    pub revision: i64,
+    /// The card and grade as the screen sends them (\`SlabIdentity\` JSON).
+    pub identity: &'a Value,
+    pub note: &'a str,
+}
+
+/// \`confirm\`: the identity saved as confirmed by the operator, with why, in its valuation group,
+/// while the record is still at the revision they saw. Refused in Node's words.
+pub async fn confirm(conn: &mut sqlx::PgConnection, c: &Confirmation<'_>) -> Result<(), String> {
+    let (grader, number) = certificate(c.grader, c.certificate_number)?;
+    let identity = parse_identity(c.identity)?;
+    let note = text_field(&json!(c.note), 1000)?;
+    let label = identity["grading"]["label"]
+        .as_str()
+        .is_some_and(|l| !l.is_empty());
+    let (Some(note), true, true, true) = (
+        note,
+        (1..=9_007_199_254_740_991).contains(&c.revision),
+        identity["grading"]["grader"] == grader.as_str(),
+        label,
+    ) else {
+        return Err("Confirm the grader and exact grade label, and record the reason for this identity decision.".to_owned());
+    };
+    let saved = sqlx::query(
+        "UPDATE slab_identities
+         SET identity = $4, valuation_group_key = $5, status = 'confirmed', review_reasons = '[]',
+           revision = revision + 1, decision_source = 'manual', decision_note = $6, updated_at = clock_timestamp()
+         WHERE grader = $1 AND certificate_number = $2 AND revision = $3",
+    )
+    .bind(&grader)
+    .bind(&number)
+    .bind(c.revision)
+    .bind(&identity)
+    .bind(valuation_group_key(&identity))
+    .bind(&note)
+    .execute(&mut *conn)
+    .await
+    .map_err(|error| {
+        eprintln!("slab identity confirm: {error}");
+        "Unable to resolve the identity. Try again.".to_owned()
+    })?;
+    if saved.rows_affected() == 0 {
+        return Err("The identity changed. Reload it before confirming.".to_owned());
+    }
+    Ok(())
+}
+
+/// \`grade-label-unresolved\` as "grade label unresolved", as the React screen wrote codes.
 pub fn words(code: &str) -> String {
     code.replace(['-', '_'], " ")
 }
@@ -121,6 +320,46 @@ pub fn words(code: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The posts in `.port-logs/slab-confirm-cases.json`, in order, on `slab-confirm-seed.sql`, in
+    /// a transaction rolled back, against Node's `/api/slab-identities` confirm
+    /// (`.port-logs/slab-confirm-node.ts`): the answer, and every identity after it, its
+    /// valuation group key included.
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
+    async fn identities_confirm_as_node_confirms_them() {
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let read_log = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let cases: Vec<Value> = serde_json::from_str(&read_log("slab-confirm-cases.json")).unwrap();
+        let node: Vec<Value> = serde_json::from_str(&read_log("slab-confirm.node.json")).unwrap();
+        assert_eq!(cases.len(), node.len());
+        let capture = read_log("slab-confirm-capture.sql");
+        let mut tx = db.0.begin().await.unwrap();
+        sqlx::raw_sql(&read_log("slab-confirm-seed.sql"))
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        for (case, theirs) in cases.iter().zip(node) {
+            let (name, body) = (&case["name"], &case["body"]);
+            let text = |k: &str| body[k].as_str().unwrap_or_default();
+            let confirmation = Confirmation {
+                grader: text("grader"),
+                certificate_number: text("certificateNumber"),
+                revision: body["revision"].as_i64().unwrap(),
+                identity: &body["identity"],
+                note: text("note"),
+            };
+            let ours = confirm(&mut tx, &confirmation).await.err();
+            assert_eq!(ours.as_deref(), theirs["error"].as_str(), "{name}");
+            let saved: Value = sqlx::query_scalar(capture.as_str())
+                .fetch_one(&mut *tx)
+                .await
+                .unwrap();
+            assert_eq!(saved, theirs["saved"], "{name}");
+        }
+        tx.rollback().await.unwrap();
+    }
 
     #[test]
     fn a_record_shows_its_confirmed_identity_before_the_proposal() {
