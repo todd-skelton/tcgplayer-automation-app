@@ -9,11 +9,13 @@
 //! |---|---|
 //! | `GET /inventory-economics` | the seller's current purchase costs and each order's economics |
 pub mod estimate;
+pub mod json_route;
 pub mod ledger;
 mod page;
 pub mod purchase_cost;
 mod views;
 mod workspace;
+mod workspace_json;
 
 pub use views::COMPONENTS;
 

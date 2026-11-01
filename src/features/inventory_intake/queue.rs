@@ -448,7 +448,7 @@ fn purchase_cost(
 }
 
 /// `parseEstimatedCostRate`: the rate from its fields as sent; only text is read.
-fn cost_rate(fields: &Map<String, Value>) -> Result<CostRate, String> {
+pub fn cost_rate(fields: &Map<String, Value>) -> Result<CostRate, String> {
     let percent = fields
         .get("marketPercent")
         .and_then(Value::as_str)

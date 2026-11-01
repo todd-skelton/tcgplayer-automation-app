@@ -312,7 +312,7 @@ fn economics(
         direct_fee_cents: o.direct_fee_cents,
         refund: match refund {
             Refund::None => RefundState::None,
-            Refund::Known(_) => RefundState::Known,
+            Refund::Known(cents) => RefundState::Known(cents),
             Refund::Unknown => RefundState::Unknown,
         },
         settlement,

@@ -10,15 +10,17 @@ use serde_json::json;
 use crate::{
     app::Shared,
     features::{
-        forecast_calibration, inventory_economics::ledger::fingerprint::js_json, inventory_fifo,
-        inventory_history, inventory_intake, seller_order_history, shipping_thresholds,
-        slab_pricing,
+        forecast_calibration,
+        inventory_economics::{self, ledger::fingerprint::js_json},
+        inventory_fifo, inventory_history, inventory_intake, seller_order_history,
+        shipping_thresholds, slab_pricing,
     },
 };
 
 /// Every ported route, each from its feature.
 pub fn ported<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
     let api = forecast_calibration::json_route::routes(api, shared);
+    let api = inventory_economics::json_route::routes(api, shared);
     let api = inventory_fifo::json_route::routes(api, shared);
     let api = inventory_history::json_route::routes(api, shared);
     let api = inventory_intake::json_route::routes(api, shared);

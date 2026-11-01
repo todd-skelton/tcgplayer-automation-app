@@ -95,8 +95,12 @@ mod tests {
         Order {
             order_number: "8520A14F-22CD78-15571".into(),
             currency: "USD".into(),
+            gross_item_cents: 933,
+            gross_shipping_cents: Some(100),
             gross_order_cents: Some(1033),
+            platform_fee_cents: Some(169),
             provider_net_cents: Some(864),
+            refund_gross_cents: None,
             postage_cents: Some(78),
             other_expense_cents: 0,
             acquisition_cost_cents: None,

@@ -31,11 +31,12 @@ pub enum Provenance {
     Estimated,
 }
 
-/// What the refund records say, for an order's economics.
+/// What the refund records say, for an order's economics: none, a known gross refunded, or not
+/// known.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RefundState {
     None,
-    Known,
+    Known(i64),
     Unknown,
 }
 
@@ -77,8 +78,13 @@ pub struct Evidence {
 pub struct OrderEconomics {
     pub order_number: String,
     pub currency: String,
+    pub gross_item_cents: i64,
+    pub gross_shipping_cents: Option<i64>,
     pub gross_order_cents: Option<i64>,
+    pub platform_fee_cents: Option<i64>,
     pub provider_net_cents: Option<i64>,
+    /// The gross refunded, when the refund records say it.
+    pub refund_gross_cents: Option<i64>,
     pub postage_cents: Option<i64>,
     pub other_expense_cents: i64,
     pub acquisition_cost_cents: Option<i64>,
@@ -93,6 +99,52 @@ pub struct OrderEconomics {
     pub ordered_quantity: i64,
     pub settled_quantity: i64,
     pub cost_known_quantity: i64,
+}
+
+impl OrderEconomics {
+    /// As the Node app's `OrderEconomicsSummary` writes it: a figure not known is left out.
+    pub fn summary(&self) -> serde_json::Value {
+        let mut fields = serde_json::Map::new();
+        let mut put = |key: &str, value: serde_json::Value| {
+            fields.insert(key.to_owned(), value);
+        };
+        put("orderNumber", self.order_number.clone().into());
+        put("currency", self.currency.clone().into());
+        put("grossItemCents", self.gross_item_cents.into());
+        for (key, value) in [
+            ("grossShippingCents", self.gross_shipping_cents),
+            ("grossOrderCents", self.gross_order_cents),
+            ("platformFeeCents", self.platform_fee_cents),
+            ("providerNetCents", self.provider_net_cents),
+            ("refundGrossCents", self.refund_gross_cents),
+            ("postageCents", self.postage_cents),
+        ] {
+            if let Some(cents) = value {
+                put(key, cents.into());
+            }
+        }
+        put("otherExpenseCents", self.other_expense_cents.into());
+        for (key, value) in [
+            ("acquisitionCostCents", self.acquisition_cost_cents),
+            ("reusableCashCents", self.reusable_cash_cents),
+            ("realizedProfitCents", self.realized_profit_cents),
+        ] {
+            if let Some(cents) = value {
+                put(key, cents.into());
+            }
+        }
+        put(
+            "proceedsCoverage",
+            self.proceeds_coverage.to_string().into(),
+        );
+        put("expenseCoverage", self.expense_coverage.to_string().into());
+        put("costCoverage", self.cost_coverage.to_string().into());
+        put("missing", self.missing.clone().into());
+        put("orderedQuantity", self.ordered_quantity.into());
+        put("settledQuantity", self.settled_quantity.into());
+        put("costKnownQuantity", self.cost_known_quantity.into());
+        serde_json::Value::Object(fields)
+    }
 }
 
 pub fn calculate(e: &Evidence) -> OrderEconomics {
@@ -118,7 +170,7 @@ pub fn calculate(e: &Evidence) -> OrderEconomics {
     if e.refund == RefundState::Unknown {
         missing.push("complete refund amounts");
     }
-    let refunded = e.refund == RefundState::Known;
+    let refunded = matches!(e.refund, RefundState::Known(_));
     let unsettled = refunded && e.settlement.is_none();
     if unsettled {
         missing.push("verified refund settlement or fee credit");
@@ -190,8 +242,15 @@ pub fn calculate(e: &Evidence) -> OrderEconomics {
     OrderEconomics {
         order_number: e.order_number.clone(),
         currency: e.currency.clone(),
+        gross_item_cents: e.gross_item_cents,
+        gross_shipping_cents: e.gross_shipping_cents,
         gross_order_cents: e.gross_order_cents,
+        platform_fee_cents: e.platform_fee_cents,
         provider_net_cents: e.provider_net_cents,
+        refund_gross_cents: match e.refund {
+            RefundState::Known(cents) => Some(cents),
+            _ => None,
+        },
         postage_cents: e.postage_cents,
         other_expense_cents,
         acquisition_cost_cents: e.acquisition_cost_cents,
@@ -248,7 +307,7 @@ mod tests {
     fn reusable_proceeds_keep_their_coverage_and_settled_quantities() {
         use SettlementBasis::*;
         let partial = calculate(&Evidence {
-            refund: RefundState::Known,
+            refund: RefundState::Known(2_000),
             settlement: settled(1_800, Provenance::Actual, OriginalNetRefundAdjustment),
             postage_cents: Some(500),
             ..complete()
@@ -259,7 +318,7 @@ mod tests {
         );
 
         let unsettled = calculate(&Evidence {
-            refund: RefundState::Known,
+            refund: RefundState::Known(2_000),
             acquisition_cost_cents: None,
             acquisition_cost_coverage: Coverage::Unknown,
             ..complete()
@@ -268,7 +327,7 @@ mod tests {
         assert!(unsettled.missing.join(" ").contains("refund settlement"));
 
         let adjusted = calculate(&Evidence {
-            refund: RefundState::Known,
+            refund: RefundState::Known(2_000),
             settlement: settled(7_700, Provenance::Actual, AlreadyAdjustedNet),
             postage_cents: Some(500),
             acquisition_cost_cents: None,

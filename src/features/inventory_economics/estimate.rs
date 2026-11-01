@@ -440,6 +440,8 @@ pub struct Recorded {
     pub batch_number: i32,
     pub entry_id: String,
     pub total_amount_cents: i64,
+    /// The batch's cards, every lot's units.
+    pub unit_count: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub corrects_entry_id: Option<String>,
 }
@@ -454,6 +456,39 @@ pub struct Estimated {
     /// Batches estimated under an earlier rule that the current one leaves the same.
     pub unchanged: Vec<i32>,
     pub market_unavailable: BTreeMap<i32, Vec<i32>>,
+}
+
+impl Estimated {
+    /// As Node's `EstimatedPurchaseCostRun` writes it, with the rule it estimated under.
+    pub fn node_json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "rule": {
+                "version": RULE_VERSION,
+                "marketRate": CostRate::DEFAULT.market_rate,
+                "perUnitDeductionCents": CostRate::DEFAULT.per_unit_deduction_cents,
+                "currency": "USD",
+            },
+            "recorded": self.recorded,
+            "repeated": self.repeated,
+            "unchanged": self.unchanged,
+            "marketUnavailable": self.market_unavailable.iter()
+                .map(|(batch, receipts)| serde_json::json!({ "batchNumber": batch, "receiptIds": receipts }))
+                .collect::<Vec<_>>(),
+        })
+    }
+}
+
+/// `recordEstimatedPurchaseCosts`: estimates the seller's batches no entered purchase cost owns,
+/// the first 100 of `batch_numbers` (or of them all), each saved in a transaction of its own.
+pub async fn record_estimates(
+    conn: &mut sqlx::PgConnection,
+    seller: &str,
+    batch_numbers: Option<&[i32]>,
+) -> Result<Estimated, NotRecorded> {
+    let batches = estimable(&mut *conn, seller, batch_numbers, 100)
+        .await
+        .map_err(|e| NotRecorded::Failed(e.to_string()))?;
+    record(conn, seller, &batches).await
 }
 
 /// `recordMissingEstimatedPurchaseCosts`: estimates every batch with a lot no purchase cost owns
@@ -496,6 +531,12 @@ async fn record(
         market_unavailable: run.market_unavailable,
     };
     for cost in run.would_record {
+        let unit_count = batches
+            .iter()
+            .filter(|b| b.batch_number == cost.batch_numbers[0])
+            .flat_map(|b| &b.receipts)
+            .map(|r| i64::from(r.original_quantity))
+            .sum();
         let mut tx = conn.begin().await.map_err(failed)?;
         let saved = super::purchase_cost::record(&mut tx, &cost).await?;
         tx.commit().await.map_err(failed)?;
@@ -507,6 +548,7 @@ async fn record(
                 batch_number,
                 entry_id: saved.entry_id,
                 total_amount_cents: cost.total_amount_cents,
+                unit_count,
                 corrects_entry_id: cost.corrects_entry_id,
             });
         }
@@ -749,15 +791,11 @@ mod tests {
                         sqlx::query_scalar(rates).fetch_one(&mut *tx).await.unwrap();
                     let mut captured: Value = serde_json::from_str(&captured).unwrap();
                     captured["rates"] = serde_json::from_str(&saved).unwrap();
-                    let mut recorded = serde_json::to_value(&estimated.recorded).unwrap();
-                    for one in recorded.as_array_mut().unwrap() {
+                    let mut result = estimated.node_json();
+                    for one in result["recorded"].as_array_mut().unwrap() {
                         one.as_object_mut().unwrap().remove("entryId");
                     }
-                    json!({ "batch": batch, "result": {
-                        "recorded": recorded, "repeated": estimated.repeated,
-                        "unchanged": estimated.unchanged,
-                        "marketUnavailable": estimated.market_unavailable,
-                    }, "captured": captured })
+                    json!({ "batch": batch, "result": result, "captured": captured })
                 }
                 Err(error) => json!({ "batch": batch, "error": error, "captured": null }),
             };
@@ -808,6 +846,44 @@ mod tests {
         );
         assert_eq!(result.unwrap_or_default(), node["result"]);
         assert_eq!(captured, node["captured"]);
+    }
+
+    /// Each case `.port-logs/estimate-backfill-node.ts` ran through Node's
+    /// `recordEstimatedPurchaseCosts` (the economics route's backfill), on the dev database with
+    /// every transaction rolled back: the run as the route answers it, less entry ids, and what
+    /// was written.
+    #[tokio::test]
+    #[ignore = "writes the dev database in a transaction it rolls back"]
+    async fn backfills_as_node_does() {
+        crate::config::load_env();
+        let node: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(".port-logs/estimate-backfill.node.json").unwrap(),
+        )
+        .unwrap();
+        let capture = std::fs::read_to_string(".port-logs/estimate-capture.sql").unwrap();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let seller = node["seller"].as_str().unwrap();
+        for case in node["cases"].as_array().unwrap() {
+            let batches: Option<Vec<i32>> =
+                serde_json::from_value(case["batchNumbers"].clone()).unwrap();
+            let mut tx = db.0.begin().await.unwrap();
+            let estimated = record_estimates(&mut tx, seller, batches.as_deref())
+                .await
+                .unwrap();
+            let captured: String =
+                sqlx::query_scalar(&format!("SELECT captured::text FROM ({capture}) AS c"))
+                    .fetch_one(&mut *tx)
+                    .await
+                    .unwrap();
+            tx.rollback().await.unwrap();
+            let mut result = estimated.node_json();
+            for one in result["recorded"].as_array_mut().unwrap() {
+                one.as_object_mut().unwrap().remove("entryId");
+            }
+            let captured: serde_json::Value = serde_json::from_str(&captured).unwrap();
+            assert_eq!(result, case["result"], "{batches:?}");
+            assert_eq!(captured, case["captured"], "{batches:?}");
+        }
     }
 
     #[test]
