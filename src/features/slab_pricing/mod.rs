@@ -16,8 +16,9 @@
 //! queued or running the evidence list reads itself again every two seconds (`ReadAgain` from
 //! `GET /slab-pricing/evidence`, the whole page without JavaScript).
 //!
-//! The recommendation is calculated by the Node app from the saved evidence only. A saved one is
-//! marked for recalculation when the Node app says it is no longer current, or when newer
+//! The recommendation is calculated here from the saved evidence only (`calculation`, with
+//! `comp_events` and `valuation`), as the Node app calculated it, down to the hash it is saved
+//! by. A saved one is marked for recalculation when it is no longer current, or when newer
 //! evidence is saved than it read. The React panel also marked it while its inputs were being
 //! edited; this one does not, so its reviewed ask can be saved over inputs changed but not
 //! calculated.
@@ -66,6 +67,8 @@
 //!
 //! A post refused, here or by the Node app, answers 409 with the page and why.
 mod actions;
+mod calculation;
+mod comp_events;
 mod comps;
 mod dry_run;
 mod identity;
@@ -80,6 +83,7 @@ mod refreshes;
 mod research;
 mod screening;
 mod supply;
+mod valuation;
 mod views;
 
 pub use views::COMPONENTS;

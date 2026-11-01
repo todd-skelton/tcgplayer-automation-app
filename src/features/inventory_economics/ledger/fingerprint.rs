@@ -24,6 +24,20 @@ pub fn locale_json(value: &Value) -> String {
     out
 }
 
+/// `value` as Postgres hands a JSONB value to Node and `JSON.stringify` writes it back: every
+/// object's keys in JSONB's order (shorter first, then by their bytes) and numbers written as
+/// JavaScript writes them. Keys that are whole numbers, which JavaScript would put first, are
+/// not expected.
+pub fn jsonb_json(value: &Value) -> String {
+    let mut out = String::new();
+    write(value, &mut out, &|a, b| {
+        a.len()
+            .cmp(&b.len())
+            .then_with(|| a.as_bytes().cmp(b.as_bytes()))
+    });
+    out
+}
+
 type KeyOrder = dyn Fn(&str, &str) -> std::cmp::Ordering;
 
 fn write(value: &Value, out: &mut String, order: &KeyOrder) {

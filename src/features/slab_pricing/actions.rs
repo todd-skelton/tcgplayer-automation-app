@@ -1,6 +1,6 @@
-//! The screen's posts. Most are done here (maintenance settings, evidence refreshes, comp
-//! decisions, outcomes, reviewed asks, price-change previews); the rest ask the Node app to do
-//! the work. Each then sends the browser back to
+//! The screen's posts. All but the certificate lookups, which ask Alt through the Node app, are
+//! done here (identities, inventory, maintenance settings, evidence refreshes, comp decisions,
+//! outcomes, recommendations, reviewed asks, price-change previews and dry runs). Each then sends the browser back to
 //! the page the post came from (its address is the post's query), showing what changed; a refusal
 //! is that page with why, as a conflict.
 use corten::{Refusal, SubmitKey, prelude::*};
@@ -8,15 +8,16 @@ use serde::Deserialize;
 use serde_json::json;
 
 use super::{
-    comps,
+    calculation, comps,
     dry_run::dry_run as run_dry,
     identity::{self, Card, Grading, SlabIdentity},
     inventory, inventory_import, maintenance, outcomes,
     page::{Place, Screen, page},
     publication,
-    recommendation::{self, Fees, Policy, Seller},
+    recommendation::{self, Fees, Seller},
     refreshes,
     url::{self, Choice},
+    valuation,
     views::Problem,
 };
 use crate::{database::Database, features::slab_evidence::store as evidence, legacy::Legacy};
@@ -413,6 +414,7 @@ impl CalculateInput {
             }
         };
         Ok(Seller {
+            currency: "USD".to_owned(),
             current_ask: self.current_ask,
             shipping_charged: self.shipping_charged,
             shipping_cost: self.shipping_cost,
@@ -560,7 +562,6 @@ pub async fn import_outcomes(
 pub async fn calculate(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::Calculate>,
     Form(input): Form<CalculateInput>,
 ) -> HtmlResult {
@@ -569,25 +570,27 @@ pub async fn calculate(
         let why = "Confirm the owned identity, assign it to the selected listing if needed, and return to its grade to calculate.";
         return refused(Place::Recommendation, &req, &db, &at.choice, why.into()).await;
     };
-    let mut seller = match input.seller() {
-        Ok(seller) => json!(seller),
+    let seller = match input.seller() {
+        Ok(seller) => seller,
         Err(why) => {
             return refused(Place::Recommendation, &req, &db, &at.choice, why).await;
         }
     };
-    seller["currency"] = "USD".into();
-    let asked = json!({
-        "intent": "calculate",
-        "slabId": record.id,
-        "identityRevision": record.revision,
-        "revisionIds": revisions,
-        "policy": Policy::with_basis(&input.basis),
-        "seller": seller,
-    });
-    match legacy
-        .send::<_, serde_json::Value>("/api/slab-recommendations", &asked)
-        .await
-    {
+    let policy = valuation::Policy::with_basis(&input.basis);
+    let revisions: Vec<String> = revisions.into_iter().collect();
+    let asked = calculation::Asked {
+        slab_id: &record.id,
+        identity_revision: record.revision,
+        revision_ids: &revisions,
+        policy: &policy,
+        seller: &seller,
+    };
+    let as_of = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let calculated = match db.0.acquire().await {
+        Ok(mut conn) => calculation::calculate(&mut conn, &asked, &as_of).await,
+        Err(error) => Err(error.to_string()),
+    };
+    match calculated {
         Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
         Err(why) => refused(Place::Recommendation, &req, &db, &at.choice, why).await,
     }

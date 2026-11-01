@@ -1,44 +1,11 @@
 //! The owned slab's recommendation: a market range from the saved sold evidence, and an item ask
-//! from the seller's costs. Calculating one stays the Node app's (`/api/slab-recommendations`,
-//! from saved evidence only, never a provider); the operator's reviewed ask on the latest is saved
-//! here (`overrideSlabPrice`), and the latest is read with the research.
+//! from the seller's costs, calculated in [`super::calculation`]. The operator's reviewed ask on
+//! the latest is saved here (`overrideSlabPrice`), and the latest is read with the research.
 use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
 
 use crate::features::inventory_economics::ledger::fingerprint::js_float;
-
-/// The valuation policy the React screen sent, with the comparable price basis chosen. The
-/// same values as `DEFAULT_SLAB_POLICY` in `app/features/ebay-slab-pricing/valuation/slabValuation.ts`.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Policy<'a> {
-    currency: &'static str,
-    basis: &'a str,
-    minimum_comps: u32,
-    minimum_effective_count: f64,
-    half_life_days: u32,
-    maximum_age_days: u32,
-    rounding_increment: f64,
-    review_change_fraction: f64,
-    review_spread_ratio: f64,
-}
-
-impl Policy<'_> {
-    pub fn with_basis(basis: &str) -> Policy<'_> {
-        Policy {
-            currency: "USD",
-            basis,
-            minimum_comps: 3,
-            minimum_effective_count: 2.5,
-            half_life_days: 90,
-            maximum_age_days: 365,
-            rounding_increment: 0.01,
-            review_change_fraction: 0.25,
-            review_spread_ratio: 4.0,
-        }
-    }
-}
 
 /// A stored recommendation (`getSlabRecommendation`) as JSON: `current` while its identity,
 /// decisions and evidence are as it was calculated from, and the ask reviewed on it.
@@ -116,17 +83,20 @@ pub struct Basis {
     pub basis: String,
 }
 
-/// The seller's costs the ask was proposed from. Missing ones were unknown.
+/// The seller's costs and floors the ask is proposed from (`SellerPriceContext`), in Node's key
+/// order. Missing ones were unknown.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Seller {
+    #[serde(default)]
+    pub currency: String,
     pub current_ask: Option<f64>,
     pub shipping_charged: Option<f64>,
     pub shipping_cost: Option<f64>,
     pub acquisition_cost: Option<f64>,
+    pub fees: Option<Fees>,
     pub minimum_ask: Option<f64>,
     pub minimum_profit: Option<f64>,
-    pub fees: Option<Fees>,
 }
 
 impl Seller {

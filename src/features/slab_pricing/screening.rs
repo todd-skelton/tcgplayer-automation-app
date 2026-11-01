@@ -37,6 +37,9 @@ pub struct Sale {
     pub extended_title: Option<String>,
     pub card: Option<Card>,
     pub grading: Grading,
+    pub certificate_number: Option<String>,
+    /// The listing the sale was made from, when the provider names it.
+    pub source_item_id: Option<String>,
     pub price: Option<Money>,
     pub converted_price: Option<Money>,
     pub shipping: Option<Money>,
@@ -119,11 +122,14 @@ pub struct Reason {
     pub severity: Severity,
 }
 
-/// How a sale screened: `accepted`, `needs-review` or `rejected`, and why.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// How a sale screened: `accepted`, `needs-review` or `rejected`, and why; with its item price
+/// and its item and shipping price in the currency screened, a reviewed price taking the sale's.
+#[derive(Clone, Debug, PartialEq)]
 pub struct Screened {
     pub status: &'static str,
     pub reasons: Vec<Reason>,
+    pub item_only: Option<f64>,
+    pub item_and_shipping: Option<f64>,
 }
 
 fn review(reasons: &mut Vec<Reason>, code: &str) {
@@ -156,7 +162,7 @@ fn conflict(reasons: &mut Vec<Reason>, field: &str, severity: Severity) {
 /// JavaScript's white space, which its `\s` and `trim` take.
 const JS_SPACE: &str = r"[\t\n\x0B\x0C\r \u{A0}\u{1680}\u{2000}-\u{200A}\u{2028}\u{2029}\u{202F}\u{205F}\u{3000}\u{FEFF}]";
 
-fn js_space(c: char) -> bool {
+pub(super) fn js_space(c: char) -> bool {
     matches!(
         c,
         '\t' | '\n' | '\x0B' | '\x0C' | '\r' | ' ' | '\u{A0}' | '\u{1680}' | '\u{2000}'
@@ -457,6 +463,33 @@ fn title_facts(text: &str) -> Facts {
     }
 }
 
+/// `grade` in `compEvents.ts`: the sale's grade as `grader:number:label:qualifier`, the title's
+/// one grade filling what the provider left unknown; none when the grader, number or label cannot
+/// be told.
+pub(super) fn sale_grade(sale: &Sale) -> Option<String> {
+    let facts = title_facts(sale.title.as_deref().unwrap_or(""));
+    let title = match facts.grades.as_slice() {
+        [only] => Some(only),
+        _ => None,
+    };
+    let g = &sale.grading;
+    let grader = if g.grader == "UNKNOWN" {
+        title.map(|t| t.grader.clone())
+    } else {
+        Some(g.grader.clone())
+    }
+    .filter(|grader| !grader.is_empty())?;
+    let number = g.number.or(title.map(|t| t.number))?;
+    let label = g.label.as_deref().or(title.map(|t| t.label.as_str()));
+    let label = grade_label_key(&grader, label, Some(number))?;
+    let qualifier = g
+        .qualifier
+        .as_deref()
+        .or(title.and_then(|t| t.qualifier.as_deref()))
+        .unwrap_or("");
+    Some(format!("{grader}:{}:{label}:{qualifier}", js_float(number)))
+}
+
 /// The card's fields (`CARD_FIELDS`), in their order, those JavaScript reads as given.
 fn card_fields(card: Option<&Card>) -> [(&'static str, Option<&str>); 9] {
     let field = |read: fn(&Card) -> &Option<String>| card.and_then(|c| filled(read(c)));
@@ -686,6 +719,8 @@ pub(super) fn compare_identity(sale: &Described<'_>, target: &Identity) -> Vec<R
 /// why its parts cannot be told.
 struct Price {
     item_only: Option<f64>,
+    item_and_shipping: Option<f64>,
+    shipping: Option<f64>,
     reasons: Vec<&'static str>,
 }
 
@@ -769,7 +804,12 @@ fn sale_price(sale: &Sale, currency: &str) -> Price {
     if fees.is_none() {
         add("buyer-fees-unknown");
     }
-    Price { item_only, reasons }
+    Price {
+        item_only,
+        item_and_shipping: item_only.zip(shipping).map(|(i, s)| rounded(i + s)),
+        shipping,
+        reasons,
+    }
 }
 
 /// `Date.parse` of an ISO time: whether it reads as one.
@@ -857,6 +897,11 @@ pub fn screen(
         })
         .map(|p| p.amount);
     let item_only = reviewed_price.or(price.item_only);
+    // Node adds the shipping to a reviewed price unrounded.
+    let item_and_shipping = match reviewed_price {
+        Some(reviewed) => price.shipping.map(|s| reviewed + s),
+        None => price.item_and_shipping,
+    };
     let wrong_currency = decision
         .and_then(|d| d.item_price.as_ref())
         .is_some_and(|p| p.currency.as_deref() != Some(currency));
@@ -878,7 +923,12 @@ pub fn screen(
     } else {
         "needs-review"
     };
-    Screened { status, reasons }
+    Screened {
+        status,
+        reasons,
+        item_only,
+        item_and_shipping,
+    }
 }
 
 #[cfg(test)]
