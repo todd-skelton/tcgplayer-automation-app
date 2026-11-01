@@ -561,7 +561,7 @@ pub async fn load_orders(
     State(legacy): State<Legacy>,
     Form(input): Form<LoadInput>,
 ) -> HtmlResult {
-    let loaded = source::ready_to_ship(&legacy, input.seller_key.trim()).await;
+    let loaded = source::from_tcgplayer(&db, &input.seller_key, None).await;
     start(&req, &db, &legacy, loaded, |l| {
         format!("Live seller orders: {}", l.seller_key)
     })
@@ -579,7 +579,7 @@ pub async fn load_order(
         let why = "Enter a TCGPlayer order number to load a single order.";
         return refused(&req, &db, &legacy, Step::LoadOrders, Refusal::Conflict, why).await;
     }
-    let loaded = source::one(&legacy, input.seller_key.trim(), &number).await;
+    let loaded = source::from_tcgplayer(&db, &input.seller_key, Some(&number)).await;
     start(&req, &db, &legacy, loaded, |l| {
         format!(
             "Single TCGPlayer order: {}",

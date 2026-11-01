@@ -99,7 +99,7 @@ pub fn app(shared: Shared) -> App {
     let app = App::new(url::router(shared.clone()))
         .api(|routes| api::api(routes, shared.clone()).deadline(Some(Duration::from_secs(15 * 60))))
         .area(|area| pull_sheet::url::area(area, shared.clone()).components(pull_sheet::COMPONENTS))
-        // A count waits on the Node app, which notes the market price when units are added.
+        // Adding units to a count reads the card's market price from TCGplayer, giving up after 3 s.
         .area(|area| {
             inventory_intake::url::area(area, shared.clone())
                 .components(inventory_intake::COMPONENTS)
@@ -141,7 +141,7 @@ pub fn app(shared: Shared) -> App {
                 .components(inventory_strategy::COMPONENTS)
                 .deadline(Some(Duration::from_secs(5 * 60)))
         })
-        // Suggested pricing reads the product's sales and models each SKU's price on the Node app.
+        // Suggested pricing reads the product's sales from TCGplayer and models each SKU's price.
         .area(|area| {
             product_price_matrix::url::area(area, shared.clone())
                 .components(product_price_matrix::COMPONENTS)

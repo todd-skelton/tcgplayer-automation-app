@@ -116,7 +116,7 @@ async fn look_up(
     number: &str,
 ) -> corten::Result<Result<Found, (Refusal, String)>> {
     let seller = seller(db, config).await?;
-    let order = match source::one(legacy, &seller, number).await {
+    let order = match source::from_tcgplayer(db, &seller, Some(number)).await {
         Ok(loaded) => loaded.orders.into_iter().next(),
         Err(why) => {
             return Ok(Err((
