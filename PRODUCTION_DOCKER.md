@@ -1,6 +1,6 @@
 # Production Docker Deployment
 
-The production stack runs the app and PostgreSQL together. The app is moving from React Router (Node) to Corten (Rust) one screen at a time, so it runs as two containers: the Node app, which waits for the database, applies SQL migrations during startup, and serves the screens not yet ported, and the Corten app in front of it (`web`), which serves the ported screens and relays every other request to the Node app. An nginx proxy owns port `3001` and forwards requests to the Corten app.
+The production stack runs the app and PostgreSQL together. Every screen is now the Corten (Rust) app's, but the Node app keeps its JSON routes and background workers until cutover, so it runs as two containers: the Node app, which waits for the database, applies SQL migrations during startup and answers its JSON routes (`/api/...`), and the Corten app in front of it (`web`), which serves every screen and relays every other request to the Node app. An nginx proxy owns port `3001` and forwards requests to the Corten app.
 
 ## Quick Start
 
