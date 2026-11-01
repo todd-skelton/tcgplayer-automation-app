@@ -11,9 +11,15 @@ mod js_math;
 mod js_number;
 mod layout;
 mod legacy;
+pub mod migrations;
 mod tcgplayer;
 mod text;
 mod theme;
+
+/// The database the app and its migrations use, once `app()` has loaded the environment.
+pub fn database_url() -> String {
+    config::database_url()
+}
 
 /// The app, configured from `.env` and the environment.
 pub fn app() -> corten::App {

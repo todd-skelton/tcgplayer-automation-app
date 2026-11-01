@@ -28,6 +28,8 @@ COPY src /src/src
 COPY static /src/static
 COPY locales /src/locales
 COPY types /src/types
+COPY build.rs /src/build.rs
+COPY db/migrations /src/db/migrations
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target,sharing=locked \
     find . -name target -prune -o -type f -exec touch {} + \

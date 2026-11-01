@@ -1,5 +1,6 @@
-//! The Postgres database the Node app owns. Its migrations (`db/migrations`, applied by
-//! `npm run db:migrate`) stay the schema's one source until the workers move here too.
+//! The Postgres database both apps share. Its schema is `db/migrations`, applied by the Node app
+//! as it starts (`npm run db:migrate`), or by this server when `MIGRATE_ON_START` is set
+//! (`crate::migrations`).
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
 #[derive(Clone)]
