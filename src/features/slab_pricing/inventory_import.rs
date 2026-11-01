@@ -1,7 +1,8 @@
 //! Importing a CSV snapshot of some of the seller's eBay listings (`parseInventoryCsv`,
 //! `reconcileInventory`), and tying a listing to an identity: its certificate's, looked up with
-//! Alt (`resolveInventoryIdentity`), or a confirmed one by hand (`assignInventoryIdentity`). A file never retires a listing it leaves out; only a complete
-//! read of the seller's active listings could, and that stays the Node app's.
+//! Alt (`resolveInventoryIdentity`), or a confirmed one by hand (`assignInventoryIdentity`).
+//! A file never retires a listing it leaves out; only a complete read of the seller's active
+//! listings from eBay could, and neither app has one yet.
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde_json::{Map, Value, json};
 use sqlx::{Connection, PgConnection};

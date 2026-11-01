@@ -20,13 +20,14 @@
 //! | `GET /configuration/shipping-report?days=` | the shipping report panel over that window |
 //! | `GET /configuration/shipping-report/live` | the shipping panel once read, for `<corten-live>` |
 //!
-//! The two reports are still computed by the Node app ([`reports`]); the page draws them waiting
-//! and a `<corten-live>` stream sends each once read, so the settings never wait for them.
+//! The two reports (`features::forecast_calibration`, `features::shipping_thresholds::report`)
+//! can be slow over a long window; the page draws them waiting and a `<corten-live>` stream sends
+//! each once read, so the settings never wait for them.
 //!
 //! Not ported: the React screen's File Configuration and Form Defaults, which lived in the
-//! browser's localStorage (`tcgplayer-file-config`, `tcgplayer-form-defaults`). Only screens
-//! still in React read them, and the batch form still saves its seller key there; they are
-//! decided with the inventory intake and batch pricer ports.
+//! browser's localStorage (`tcgplayer-file-config`, `tcgplayer-form-defaults`). The batch pricer
+//! starts from the shipping settings' default seller instead of a remembered one; no download
+//! in the React app read the file settings' output prefix, so nothing else read them.
 /// The stored pricing configuration, also read by the strategy (what changed between pricing runs).
 pub mod config;
 mod form;
