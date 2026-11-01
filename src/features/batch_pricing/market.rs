@@ -23,12 +23,12 @@ struct Search<'a> {
 /// One SKU's market data as the gateway answers it.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct Answer {
+pub struct Answer {
     pub sku_id: i64,
     pub market_price: Option<f64>,
-    lowest_price: Option<f64>,
-    highest_price: Option<f64>,
-    price_count: Option<f64>,
+    pub lowest_price: Option<f64>,
+    pub highest_price: Option<f64>,
+    pub price_count: Option<f64>,
     pub calculated_at: Option<String>,
 }
 

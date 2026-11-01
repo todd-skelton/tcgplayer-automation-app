@@ -1,16 +1,17 @@
 use corten::prelude::*;
 
 use super::{
-    matrix::{self, Matrix},
+    matrix::{self, LatestSalesPricer, Matrix},
     products::{self, Product},
     url,
     views::MatrixScreen,
 };
 use crate::{
     database::Database,
+    features::batch_pricing::market::TcgPlayerMarket,
     features::inventory_intake::catalog::{self, ProductLine, ProductType, Scope, Set},
     layout::{Chrome, Layout},
-    legacy::Legacy,
+    tcgplayer::TcgPlayer,
     text::Msg,
 };
 
@@ -43,12 +44,7 @@ pub struct Screen {
 }
 
 impl Screen {
-    async fn read(
-        db: &Database,
-        legacy: &Legacy,
-        choice: &url::Choice,
-        suggested: bool,
-    ) -> corten::Result<Screen> {
+    async fn read(db: &Database, choice: &url::Choice, suggested: bool) -> corten::Result<Screen> {
         let lines = catalog::product_lines(db).await?;
         let line = choice
             .line
@@ -94,7 +90,15 @@ impl Screen {
             .unwrap_or_default();
         let chosen = product.as_ref().map(|p| p.product_id);
         let matrix = match &product {
-            Some(p) => Some(matrix::matrix(legacy, p, language.as_deref(), suggested).await),
+            Some(p) => {
+                let tcg = TcgPlayer::new(db.clone());
+                let pricer = LatestSalesPricer {
+                    db: db.clone(),
+                    tcg: tcg.clone(),
+                };
+                let points = TcgPlayerMarket(tcg);
+                Some(matrix::matrix(db, &points, &pricer, p, language.as_deref(), suggested).await)
+            }
             None => None,
         };
         Ok(Screen {
@@ -146,32 +150,21 @@ impl Screen {
 pub async fn show(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::ProductPriceMatrix>,
 ) -> HtmlResult {
-    answer(&req, &db, &legacy, &at.choice, false).await
+    answer(&req, &db, &at.choice, false).await
 }
 
 pub async fn show_suggested(
     req: Req,
     State(db): State<Database>,
-    State(legacy): State<Legacy>,
     Params(at): Params<url::SuggestedPricing>,
 ) -> HtmlResult {
-    answer(&req, &db, &legacy, &at.choice, true).await
+    answer(&req, &db, &at.choice, true).await
 }
 
-async fn answer(
-    req: &Req,
-    db: &Database,
-    legacy: &Legacy,
-    choice: &url::Choice,
-    suggested: bool,
-) -> HtmlResult {
-    let (chrome, screen) = tokio::join!(
-        Chrome::read(db),
-        Screen::read(db, legacy, choice, suggested)
-    );
+async fn answer(req: &Req, db: &Database, choice: &url::Choice, suggested: bool) -> HtmlResult {
+    let (chrome, screen) = tokio::join!(Chrome::read(db), Screen::read(db, choice, suggested));
     let screen = screen?;
     let t: Msg = req.t();
     req.page(html! {

@@ -340,7 +340,7 @@ async fn names(db: &Database, items: &[Item]) -> Result<HashMap<i64, Display>, S
 
 /// The shipping cost model snaps are priced with, when the policy snaps; none when it cannot be
 /// learned, as Node prices without snaps then.
-async fn cost_model(
+pub(crate) async fn cost_model(
     db: &Database,
     stored: &StoredConfig,
     now: DateTime<Utc>,
