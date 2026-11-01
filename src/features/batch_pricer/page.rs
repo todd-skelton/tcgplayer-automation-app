@@ -127,7 +127,7 @@ pub async fn show(
 /// The screen with `chosen`, or the newest batch, shown.
 async fn page(req: &Req, db: &Database, chosen: Option<i32>, drawn: &Drawn<'_>) -> HtmlResult {
     let (chrome, list, seller, rates) = tokio::join!(
-        Chrome::read(db),
+        Chrome::read(req, db),
         batches::list(db),
         shipping_configuration::default_seller_key(db),
         success_rates(db)

@@ -39,7 +39,7 @@ async fn page(
     input: &TurnaroundInput,
     errors: &Errors,
 ) -> HtmlResult {
-    let chrome = Chrome::read(db).await;
+    let chrome = Chrome::read(req, db).await;
     let t: Msg = req.t();
     req.page(html! {
         <Layout req={req} title="Inventory Strategy" chrome={chrome} head="">

@@ -25,7 +25,7 @@ pub async fn upload_page(req: Req, State(db): State<Database>) -> HtmlResult {
 }
 
 async fn upload_screen(req: &Req, db: &Database, errors: &Errors) -> HtmlResult {
-    let (chrome, recent) = tokio::join!(Chrome::read(db), store::recent(db));
+    let (chrome, recent) = tokio::join!(Chrome::read(req, db), store::recent(db));
     let recent = recent?;
     req.page(html! {
         <Layout req={req} title="Pull Sheet" chrome={chrome} head="">
@@ -89,7 +89,7 @@ pub async fn show(
     State(db): State<Database>,
     Params(at): Params<url::PullSheet>,
 ) -> HtmlResult {
-    let (chrome, stored) = tokio::join!(Chrome::read(&db), store::find(&db, at.id));
+    let (chrome, stored) = tokio::join!(Chrome::read(&req, &db), store::find(&db, at.id));
     let stored = stored?.ok_or_else(corten::Error::not_found)?;
     let parsed = sheet::parse(&stored.csv_text).map_err(|e| corten::Error::new(e.to_string()))?;
     let skus = items::find_skus(&db, &parsed.rows).await?;

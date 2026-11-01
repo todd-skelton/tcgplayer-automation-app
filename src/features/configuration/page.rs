@@ -50,7 +50,7 @@ struct Answered {
 async fn page(req: &Req, db: &Database, answered: Answered) -> HtmlResult {
     let config = config::load(db).await?;
     let names = product_lines(db).await?;
-    let chrome = Chrome::read(db).await;
+    let chrome = Chrome::read(req, db).await;
     let none = Errors::new();
     let pricing = answered
         .pricing

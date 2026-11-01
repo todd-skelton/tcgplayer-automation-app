@@ -9,7 +9,7 @@ use crate::{
 pub const COMPONENTS: &[Component] = &[Dashboard];
 
 pub async fn show(req: Req, State(db): State<Database>) -> HtmlResult {
-    let chrome = Chrome::read(&db).await;
+    let chrome = Chrome::read(&req, &db).await;
     // The view at the top of `html!` owns what it uses, and `page` borrows `req` too.
     let req = &req;
     req.page(html! {

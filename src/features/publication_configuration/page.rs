@@ -24,7 +24,7 @@ async fn screen(
     runtime: &Runtime,
     errors: &Errors,
 ) -> HtmlResult {
-    let chrome = Chrome::read(db).await;
+    let chrome = Chrome::read(req, db).await;
     req.page(html! {
         <Layout req={req} title="Inventory Publication" chrome={chrome} head="">
             <PublicationScreen input={input} runtime={runtime} errors={errors} />

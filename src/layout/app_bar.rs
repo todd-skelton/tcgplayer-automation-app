@@ -11,6 +11,10 @@ struct SettingsMenuId;
 #[derive(Id)]
 struct ScreensMenuId;
 
+/// Where the auth cookie warning goes, there or not, so a write that sets the cookie can patch it.
+#[derive(Id)]
+struct AuthCookieWarningId;
+
 /// The bar across the top: the app's name, its screens (in a menu below the widest
 /// breakpoint), the auth cookie warning and the settings menu.
 #[component(css)]
@@ -32,15 +36,7 @@ pub fn AppBar<'a>(req: &'a Req, chrome: Chrome) -> impl Render {
                 }
             </nav>
             <div class={End}>
-                if chrome.auth_cookie_missing {
-                    <a
-                        class={Warning}
-                        href={http_configuration::url::HttpSettings}
-                        title="Auth cookie not configured"
-                    >
-                        "⚠ Auth cookie not configured"
-                    </a>
-                }
+                <AuthCookieWarning missing={chrome.auth_cookie_missing} />
                 <button type="button" class={Settings} popovertarget={SettingsMenuId}>
                     "Settings"
                 </button>
@@ -56,5 +52,24 @@ pub fn AppBar<'a>(req: &'a Req, chrome: Chrome) -> impl Render {
                 }
             </nav>
         </header>
+    }
+}
+
+/// The link to the HTTP settings while TCGplayer's auth cookie is not set. A navigation keeps the
+/// bar a full load drew, so the write that sets the cookie answers with this.
+#[component(css = AppBar)]
+pub fn AuthCookieWarning(missing: bool) -> impl Patch {
+    html! {
+        <span id={AuthCookieWarningId} class={CookieWarning}>
+            if missing {
+                <a
+                    class={Warning}
+                    href={http_configuration::url::HttpSettings}
+                    title="Auth cookie not configured"
+                >
+                    "⚠ Auth cookie not configured"
+                </a>
+            }
+        </span>
     }
 }

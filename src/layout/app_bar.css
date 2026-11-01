@@ -54,6 +54,10 @@
   gap: var(--space-2);
   margin-inline-start: auto;
 }
+/* No box of its own, so an empty one adds no gap in the bar. */
+.cookie-warning {
+  display: contents;
+}
 .warning {
   color: var(--color-warn-soft);
   font-size: var(--font-size-sm);

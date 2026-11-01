@@ -171,7 +171,8 @@ async fn labels_page(
     problem: Option<&str>,
     draft: Option<Draft<'_>>,
 ) -> HtmlResult {
-    let (chrome, config) = tokio::join!(Chrome::read(db), shipping_configuration::settings(db));
+    let (chrome, config) =
+        tokio::join!(Chrome::read(req, db), shipping_configuration::settings(db));
     let config = config?;
     let number = number.map(str::trim).filter(|n| !n.is_empty());
     let found = match number {

@@ -99,7 +99,7 @@ async fn page(req: &Req, db: &Database, selection: &Selection, drawn: &Drawn<'_>
     let (screen, batches, chrome) = tokio::join!(
         Screen::read(db, selection),
         queue::batches(db),
-        Chrome::read(db)
+        Chrome::read(req, db)
     );
     let screen = screen?;
     let (fresh, none) = (QueueInput::new(), Errors::new());

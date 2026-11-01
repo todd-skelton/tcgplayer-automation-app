@@ -18,7 +18,7 @@ mod app_bar;
 mod icons;
 mod parts;
 
-pub use app_bar::AppBar;
+pub use app_bar::{AppBar, AuthCookieWarning};
 pub use icons::{Glyph, Icon};
 pub use parts::{Field, Notice, SubmitsOnChange, Tone};
 
@@ -35,7 +35,15 @@ pub struct Chrome {
 }
 
 impl Chrome {
-    pub async fn read(db: &Database) -> Self {
+    /// Reads nothing for an answer the runtime swaps into the page it has (a navigation, a
+    /// `data-patch` action), which keeps the bar the full load drew. A write that changes the
+    /// cookie redraws the warning itself (`AuthCookieWarning`).
+    pub async fn read(req: &Req, db: &Database) -> Self {
+        if req.mode.swaps() {
+            return Chrome {
+                auth_cookie_missing: false,
+            };
+        }
         let set: Option<bool> = sqlx::query_scalar(
             "SELECT tcg_auth_cookie IS NOT NULL AND tcg_auth_cookie <> '' FROM http_config LIMIT 1",
         )

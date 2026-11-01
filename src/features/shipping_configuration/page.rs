@@ -17,7 +17,7 @@ pub async fn show(req: Req, State(db): State<Database>) -> HtmlResult {
 }
 
 async fn screen(req: &Req, db: &Database, input: &SettingsInput, errors: &Errors) -> HtmlResult {
-    let chrome = Chrome::read(db).await;
+    let chrome = Chrome::read(req, db).await;
     req.page(html! {
         <Layout req={req} title="Shipping Configuration" chrome={chrome} head="">
             <ShippingScreen input={input} errors={errors} />

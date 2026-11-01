@@ -320,7 +320,7 @@ pub(super) async fn page(
     problem: Option<&str>,
     draft: Option<Draft<'_>>,
 ) -> HtmlResult {
-    let (chrome, shown) = tokio::join!(Chrome::read(db), Shown::read(db));
+    let (chrome, shown) = tokio::join!(Chrome::read(req, db), Shown::read(db));
     let shown = shown?;
     let counts = shown.counts();
     let step = at.step.unwrap_or_else(|| shown.resume(counts));

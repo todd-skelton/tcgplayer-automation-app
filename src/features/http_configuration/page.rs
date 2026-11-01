@@ -1,4 +1,5 @@
 use corten::prelude::*;
+use corten_ui::Toast;
 
 use super::{
     config::{self, HttpConfig},
@@ -8,7 +9,7 @@ use super::{
 };
 use crate::{
     database::Database,
-    layout::{Chrome, Layout},
+    layout::{AuthCookieWarning, Chrome, Layout},
 };
 
 pub async fn show(req: Req, State(db): State<Database>) -> HtmlResult {
@@ -17,7 +18,7 @@ pub async fn show(req: Req, State(db): State<Database>) -> HtmlResult {
 }
 
 async fn screen(req: &Req, db: &Database, input: &SettingsInput, errors: &Errors) -> HtmlResult {
-    let chrome = Chrome::read(db).await;
+    let chrome = Chrome::read(req, db).await;
     req.page(html! {
         <Layout req={req} title="HTTP Configuration" chrome={chrome} head="">
             <SettingsScreen input={input} errors={errors} />
@@ -26,7 +27,9 @@ async fn screen(req: &Req, db: &Database, input: &SettingsInput, errors: &Errors
 }
 
 /// Saves the settings and loads the page again, saying so; a setting that does not read gets
-/// the form back with why.
+/// the form back with why. With JavaScript the answer is a patch, since a navigation would keep
+/// the app bar's auth cookie warning as the full load drew it, where the React app's root loader
+/// read it again after every action.
 pub async fn save(
     req: Req,
     State(db): State<Database>,
@@ -35,7 +38,14 @@ pub async fn save(
     match input.read() {
         Ok(config) => {
             config::save(&db, &config).await?;
-            req.redirect_with_notice(&url::HttpSettings, "Configuration saved")
+            if req.mode != Mode::Action {
+                return req.redirect_with_notice(&url::HttpSettings, "Configuration saved");
+            }
+            req.patch(html! {
+                <SettingsForm input={&SettingsInput::of(&config)} errors={&Errors::new()} />
+                <AuthCookieWarning missing={config.tcg_auth_cookie.is_empty()} />
+                <Toast message={Some("Configuration saved")} />
+            })
         }
         Err(errors) => {
             req.invalid(

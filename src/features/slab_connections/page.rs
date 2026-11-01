@@ -25,7 +25,7 @@ async fn screen(
     connections: &[Connection],
     answered: Option<&Answered<'_>>,
 ) -> HtmlResult {
-    let chrome = Chrome::read(db).await;
+    let chrome = Chrome::read(req, db).await;
     req.page(html! {
         <Layout req={req} title="Slab data connections" chrome={chrome} head="">
             <ConnectionsScreen connections={connections} answered={answered} />

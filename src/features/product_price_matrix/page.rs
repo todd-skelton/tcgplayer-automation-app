@@ -164,7 +164,7 @@ pub async fn show_suggested(
 }
 
 async fn answer(req: &Req, db: &Database, choice: &url::Choice, suggested: bool) -> HtmlResult {
-    let (chrome, screen) = tokio::join!(Chrome::read(db), Screen::read(db, choice, suggested));
+    let (chrome, screen) = tokio::join!(Chrome::read(req, db), Screen::read(db, choice, suggested));
     let screen = screen?;
     let t: Msg = req.t();
     req.page(html! {

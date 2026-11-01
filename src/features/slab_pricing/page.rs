@@ -303,7 +303,7 @@ pub async fn evidence(
 }
 
 pub async fn page(req: &Req, db: &Database, screen: &Screen) -> HtmlResult {
-    let chrome = Chrome::read(db).await;
+    let chrome = Chrome::read(req, db).await;
     let t: Msg = req.t();
     // Without JavaScript the whole page is read again; with it, only the evidence list is.
     let again = screen
