@@ -38,7 +38,7 @@ const BUYING: &str = "Postage is already being bought. Try again when that purch
 /// rest.
 pub async fn buy_all(req: Req, State(db): State<Database>) -> HtmlResult {
     let mode = EasyPostMode::of_deployment();
-    let Some(_buying) = postage::BUYING.start() else {
+    let Some(_buying) = postage::BUYING.start(&db).await? else {
         return refused(&req, &db, Step::BuyPostage, Refusal::Conflict, BUYING).await;
     };
     if let Some(why) = cannot_buy(mode) {
@@ -99,7 +99,7 @@ pub async fn buy_shipment(
     let mode = EasyPostMode::of_deployment();
     let reference = at.reference;
     let direction = input.direction;
-    let Some(_buying) = postage::BUYING.start() else {
+    let Some(_buying) = postage::BUYING.start(&db).await? else {
         return refused(&req, &db, Step::BuyPostage, Refusal::Conflict, BUYING).await;
     };
     if let Some(why) = cannot_buy(mode) {

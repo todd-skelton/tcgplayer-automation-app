@@ -17,8 +17,8 @@ use super::{
 };
 use crate::{database::Database, tcgplayer::TcgPlayer};
 
-/// Buyers hear once: a second click, tab or computer waits for the first to finish.
-static SHIPPING: OneAtATime = OneAtATime::new();
+/// Buyers hear once: a second click, tab, computer or app instance waits for the first to finish.
+static SHIPPING: OneAtATime = OneAtATime::new("shipping export ship");
 
 const SHIPPING_NOW: &str = "Orders are already being marked shipped. Try again when that finishes.";
 const NO_SELLER: &str =
@@ -30,7 +30,7 @@ pub async fn mark_shipped(req: Req, State(db): State<Database>) -> HtmlResult {
         let (req, db) = (&req, &db);
         async move { refused(req, db, Step::Ship, refusal, &why).await }
     };
-    let Some(_shipping) = SHIPPING.start() else {
+    let Some(_shipping) = SHIPPING.start(&db).await? else {
         return refuse(Refusal::Conflict, SHIPPING_NOW.into()).await;
     };
     let shown = Shown::read(&db).await?;

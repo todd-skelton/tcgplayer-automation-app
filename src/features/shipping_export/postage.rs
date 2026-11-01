@@ -86,9 +86,9 @@ impl Bought {
 /// Postage by shipment reference.
 pub type Postage = HashMap<String, Bought>;
 
-/// Postage is bought one purchase at a time, across tabs and computers, as the React screen
-/// bought it one at a time in a tab, so two clicks cannot pay twice.
-pub static BUYING: OneAtATime = OneAtATime::new();
+/// Postage is bought one purchase at a time, across tabs, computers and app instances, as the
+/// React screen bought it one at a time in a tab, so two clicks cannot pay twice.
+pub static BUYING: OneAtATime = OneAtATime::new("shipping export postage");
 
 /// Adds new results over old ones; a skip does not hide a purchase made before it.
 pub fn merge(into: &mut Postage, mode: EasyPostMode, results: Vec<Purchase>) {

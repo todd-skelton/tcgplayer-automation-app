@@ -295,7 +295,7 @@ pub async fn buy_labels(
             .await;
         }
     };
-    let Some(_buying) = postage::BUYING.start() else {
+    let Some(_buying) = postage::BUYING.start(&db).await? else {
         let why = "Postage is already being bought. Try again when that purchase finishes.";
         return refused(
             &req,
