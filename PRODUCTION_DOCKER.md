@@ -47,6 +47,21 @@ The production compose file uses the explicit project name `tcgplayer-automation
 
 Docker may show the built image name as `tcgplayer-automation-app-app`. That is only the generated image name. The Compose project name for the production stack is still `tcgplayer-automation-prod`.
 
+## Cutover
+
+Each background job has a Rust worker in the Corten app, off until its switch is set in `.env.production.local` (the `web` containers read it). Move one job at a time, after its Rust worker has matched the Node one: set the switch, release, and remove the Node service from `docker-compose.prod.yml` in the same release, so the job never runs twice.
+
+| Job | Node service today | Corten switch |
+|---|---|---|
+| Batch pricing | `pricing-worker` | `PRICING_WORKER=1` |
+| Publication to Seller Portal | `publication-worker` | `PUBLICATION_WORKER=1` |
+| Slab evidence refreshes and maintenance | `slab-evidence-worker` | `SLAB_EVIDENCE_WORKER=1` |
+| Continuous pricing schedule | `pricing-scheduler` | `CONTINUOUS_PRICING_SCHEDULER=1` |
+| Seller order history, FIFO replay, estimated costs | none (`npm run start:seller-order-history-worker` is not deployed) | `SELLER_ORDER_HISTORY_WORKER=1` |
+| Migrations | the Node app, as it starts | `MIGRATE_ON_START=1` |
+
+The Node app runs no worker itself (`WORKERS_RUN_IN_PROCESS=false`). Migrations move last, and only with the Node app's own run removed from `scripts/docker-start.mjs` in the same release: the two runners take no common lock. Once every job has moved, the Node app answers only JSON routes no screen calls, and it and its relay can go.
+
 ## Configuration
 
 The Corten app answers only to `localhost` and IP addresses unless told the names it is served under; any other `Host` gets `421`. If the app is reached by a name (`http://automation.lan:3001`), list it in `.env.production.local`:
