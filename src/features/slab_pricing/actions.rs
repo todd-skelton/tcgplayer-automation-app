@@ -211,11 +211,11 @@ pub async fn confirm(
     let record = identity::find(&db, grader, cert).await?;
     let decided = json!(input.identity(grader, record.as_ref().and_then(|r| r.shown())));
     let confirmation = identity::Confirmation {
-        grader,
-        certificate_number: cert,
+        grader: &json!(grader),
+        certificate_number: &json!(cert),
         revision: input.revision,
         identity: &decided,
-        note: input.note.trim(),
+        note: &json!(input.note.trim()),
     };
     let confirmed = match db.0.acquire().await {
         Ok(mut conn) => identity::confirm(&mut conn, &confirmation).await,

@@ -176,7 +176,7 @@ impl Unresolved {
         match self {
             Unresolved::Refused(why) => why.clone(),
             Unresolved::Provider(status) => status.message().to_owned(),
-            Unresolved::Unavailable => "Unable to resolve the identity. Try again.".to_owned(),
+            Unresolved::Unavailable => UNABLE.to_owned(),
         }
     }
 }
@@ -466,20 +466,29 @@ fn valuation_group_key(identity: &Value) -> String {
 
 /// The operator's decision on what a certificate identifies, at the revision they saw.
 pub struct Confirmation<'a> {
-    pub grader: &'a str,
-    pub certificate_number: &'a str,
+    /// The certificate and the reason as sent, each refused unless it is short text.
+    pub grader: &'a Value,
+    pub certificate_number: &'a Value,
     pub revision: i64,
     /// The card and grade as the screen sends them (`SlabIdentity` JSON).
     pub identity: &'a Value,
-    pub note: &'a str,
+    pub note: &'a Value,
 }
 
+/// Why a confirmation was refused when the identity changed since it was read.
+pub const CHANGED: &str = "The identity changed. Reload it before confirming.";
+/// What `/api/slab-identities` answered when the database failed.
+pub const UNABLE: &str = "Unable to resolve the identity. Try again.";
+
 /// `confirm`: the identity saved as confirmed by the operator, with why, in its valuation group,
-/// while the record is still at the revision they saw. Refused in Node's words.
-pub async fn confirm(conn: &mut sqlx::PgConnection, c: &Confirmation<'_>) -> Result<(), String> {
-    let (grader, number) = certificate(c.grader, c.certificate_number)?;
+/// while the record is still at the revision they saw: its id. Refused in Node's words.
+pub async fn confirm(
+    conn: &mut sqlx::PgConnection,
+    c: &Confirmation<'_>,
+) -> Result<String, String> {
+    let (grader, number) = normalized_certificate(c.grader, c.certificate_number)?;
     let identity = parse_identity(c.identity)?;
-    let note = text_field(&json!(c.note), 1000)?;
+    let note = text_field(c.note, 1000)?;
     let label = identity["grading"]["label"]
         .as_str()
         .is_some_and(|l| !l.is_empty());
@@ -491,11 +500,11 @@ pub async fn confirm(conn: &mut sqlx::PgConnection, c: &Confirmation<'_>) -> Res
     ) else {
         return Err("Confirm the grader and exact grade label, and record the reason for this identity decision.".to_owned());
     };
-    let saved = sqlx::query(
+    let saved: Option<String> = sqlx::query_scalar(
         "UPDATE slab_identities
          SET identity = $4, valuation_group_key = $5, status = 'confirmed', review_reasons = '[]',
            revision = revision + 1, decision_source = 'manual', decision_note = $6, updated_at = clock_timestamp()
-         WHERE grader = $1 AND certificate_number = $2 AND revision = $3",
+         WHERE grader = $1 AND certificate_number = $2 AND revision = $3 RETURNING id::text",
     )
     .bind(&grader)
     .bind(&number)
@@ -503,16 +512,13 @@ pub async fn confirm(conn: &mut sqlx::PgConnection, c: &Confirmation<'_>) -> Res
     .bind(&identity)
     .bind(valuation_group_key(&identity))
     .bind(&note)
-    .execute(&mut *conn)
+    .fetch_optional(&mut *conn)
     .await
     .map_err(|error| {
         eprintln!("slab identity confirm: {error}");
-        "Unable to resolve the identity. Try again.".to_owned()
+        UNABLE.to_owned()
     })?;
-    if saved.rows_affected() == 0 {
-        return Err("The identity changed. Reload it before confirming.".to_owned());
-    }
-    Ok(())
+    saved.ok_or_else(|| CHANGED.to_owned())
 }
 
 /// `grade-label-unresolved` as "grade label unresolved", as the React screen wrote codes.
@@ -545,13 +551,12 @@ mod tests {
             .unwrap();
         for (case, theirs) in cases.iter().zip(node) {
             let (name, body) = (&case["name"], &case["body"]);
-            let text = |k: &str| body[k].as_str().unwrap_or_default();
             let confirmation = Confirmation {
-                grader: text("grader"),
-                certificate_number: text("certificateNumber"),
+                grader: &body["grader"],
+                certificate_number: &body["certificateNumber"],
                 revision: body["revision"].as_i64().unwrap(),
                 identity: &body["identity"],
-                note: text("note"),
+                note: &body["note"],
             };
             let ours = confirm(&mut tx, &confirmation).await.err();
             assert_eq!(ours.as_deref(), theirs["error"].as_str(), "{name}");
