@@ -33,6 +33,7 @@ pub struct SlabRecommendations;
 /// The route, added to the app's one API at `/api` (`crate::api`).
 pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
     let api = api.route::<SlabRecommendations>(get(show).post(act).with_state(shared.clone()));
+    let api = super::inventory_route::routes(api, shared);
     super::comp_decisions_route::routes(api, shared)
 }
 

@@ -2,10 +2,44 @@
 //! reviewed (`getInventory`). Importing them and tying one to an identity are `inventory_import`.
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use super::identity::{Candidate, SlabIdentity};
-use crate::database::Database;
+use crate::{database::Database, features::slab_connections::ConnectionStatus};
+
+/// What the route answers when the database fails.
+pub(super) const UNAVAILABLE: &str = "Unable to update slab inventory. Try again.";
+
+/// Why an import or an identity change was refused, as the route answers each.
+#[derive(Debug, PartialEq)]
+pub enum Refused {
+    /// The request does not read (`invalid-input`, or a field refused as an identity field): 400.
+    Invalid(String),
+    /// The inventory or listing changed since the page read it: 409.
+    Conflict(&'static str),
+    /// Alt did not answer, or its connection cannot be used now: 503.
+    Provider(ConnectionStatus),
+    /// The database failed: 500.
+    Unavailable,
+}
+
+impl Refused {
+    /// As the route words it.
+    pub fn message(&self) -> String {
+        match self {
+            Refused::Invalid(why) => why.clone(),
+            Refused::Conflict(why) => (*why).to_owned(),
+            Refused::Provider(status) => status.message().to_owned(),
+            Refused::Unavailable => UNAVAILABLE.to_owned(),
+        }
+    }
+}
+
+impl From<String> for Refused {
+    fn from(why: String) -> Self {
+        Refused::Invalid(why)
+    }
+}
 
 /// Listings a page, as the React panel read them.
 pub const PAGE_SIZE: u32 = 25;
@@ -180,7 +214,10 @@ pub fn seller_account(value: &str) -> Result<String, String> {
 }
 
 /// `identityConflicts`: where the identity disagrees with what the listing says it is.
-fn identity_conflicts(identity: Option<&SlabIdentity>, expected: &Expected) -> Vec<String> {
+pub(super) fn identity_conflicts(
+    identity: Option<&SlabIdentity>,
+    expected: &Expected,
+) -> Vec<String> {
     let lower = |value: Option<&String>| value.map(|v| v.to_lowercase());
     let wanted = |value: &Option<String>| {
         value
@@ -290,12 +327,14 @@ fn review_reasons(
 macro_rules! reviewed {
     ($rest:literal) => {
         concat!(
-            r#"SELECT s.id::text, s.seller, s.item_id, s.variation_key, s.snapshot, s.state, s.revision, s.identity_id::text, s.observed_at,
+            r#"SELECT s.id::text AS id, s.seller, s.item_id, s.variation_key, s.snapshot, s.source, s.state, s.revision,
+    s.identity_id::text AS identity_id, s.identity_source, s.identity_note, s.observed_at,
     (SELECT jsonb_build_object('id', i.id, 'grader', i.grader, 'certificateNumber', i.certificate_number, 'candidate', i.candidate,
       'identity', i.identity, 'status', i.status, 'reviewReasons', i.review_reasons, 'valuationGroupKey', i.valuation_group_key,
-      'revision', i.revision) FROM slab_identities i WHERE i.id = s.identity_id),
+      'revision', i.revision) FROM slab_identities i WHERE i.id = s.identity_id) AS identity,
     EXISTS (SELECT 1 FROM slab_inventory other WHERE other.seller = s.seller AND other.id <> s.id AND other.state = 'active'
       AND s.snapshot->'certificate' <> 'null'::jsonb AND other.snapshot->'certificate' = s.snapshot->'certificate')
+      AS duplicate_certificate
     FROM slab_inventory s "#,
             $rest
         )
@@ -306,55 +345,94 @@ const PAGE: &str =
     reviewed!("WHERE seller = $1 AND ($2 = '' OR id > NULLIF($2, '')::uuid) ORDER BY id LIMIT $3");
 const ONE: &str = reviewed!("WHERE id = $1::uuid");
 
-type Row = (
-    String,
-    String,
-    String,
-    String,
-    Value,
-    String,
-    i32,
-    Option<String>,
-    DateTime<Utc>,
-    Option<Value>,
-    bool,
-);
+/// A listing as saved, with the identity it is tied to and whether another active listing names
+/// its certificate.
+#[derive(sqlx::FromRow)]
+struct Saved {
+    id: String,
+    seller: String,
+    item_id: String,
+    variation_key: String,
+    snapshot: Value,
+    source: String,
+    state: String,
+    revision: i32,
+    identity_id: Option<String>,
+    identity_source: Option<String>,
+    identity_note: Option<String>,
+    observed_at: DateTime<Utc>,
+    identity: Option<Value>,
+    duplicate_certificate: bool,
+}
 
-/// `reviewInventoryRow`: the listing as saved, with what it needs reviewed.
-fn reviewed(row: Row) -> Result<Listing, String> {
-    let (
-        id,
-        seller,
-        item_id,
-        variation_key,
-        snapshot,
-        state,
-        revision,
-        identity_id,
-        observed_at,
-        identity,
-        duplicate,
-    ) = row;
-    let unreadable = |e: serde_json::Error| format!("Listing {id} could not be read: {e}");
-    let snapshot: Snapshot = serde_json::from_value(snapshot).map_err(unreadable)?;
-    let identity: Option<ListingIdentity> = identity
-        .map(serde_json::from_value)
-        .transpose()
-        .map_err(unreadable)?;
-    Ok(Listing {
-        review_reasons: review_reasons(&snapshot, identity.as_ref(), duplicate),
-        url: format!("https://www.ebay.com/itm/{item_id}"),
-        id,
-        seller,
-        item_id,
-        variation_key,
-        revision: i64::from(revision),
-        state,
-        snapshot,
-        identity_id,
-        identity,
-        observed_at: observed_at.to_rfc3339_opts(SecondsFormat::Millis, true),
-    })
+impl Saved {
+    /// The snapshot and identity read, and what the listing needs reviewed.
+    fn read(&self) -> Result<(Snapshot, Option<ListingIdentity>, Vec<String>), String> {
+        let unreadable =
+            |e: serde_json::Error| format!("Listing {} could not be read: {e}", self.id);
+        let snapshot: Snapshot =
+            serde_json::from_value(self.snapshot.clone()).map_err(unreadable)?;
+        let identity: Option<ListingIdentity> = self
+            .identity
+            .clone()
+            .map(serde_json::from_value)
+            .transpose()
+            .map_err(unreadable)?;
+        let reasons = review_reasons(&snapshot, identity.as_ref(), self.duplicate_certificate);
+        Ok((snapshot, identity, reasons))
+    }
+
+    fn url(&self) -> String {
+        format!("https://www.ebay.com/itm/{}", self.item_id)
+    }
+
+    fn observed_at(&self) -> String {
+        self.observed_at
+            .to_rfc3339_opts(SecondsFormat::Millis, true)
+    }
+
+    /// `reviewInventoryRow`: the listing as saved, with what it needs reviewed.
+    fn reviewed(self) -> Result<Listing, String> {
+        let (snapshot, identity, review_reasons) = self.read()?;
+        Ok(Listing {
+            review_reasons,
+            url: self.url(),
+            observed_at: self.observed_at(),
+            id: self.id,
+            seller: self.seller,
+            item_id: self.item_id,
+            variation_key: self.variation_key,
+            revision: i64::from(self.revision),
+            state: self.state,
+            snapshot,
+            identity_id: self.identity_id,
+            identity,
+        })
+    }
+
+    /// `reviewInventoryRow` as the Node route answered it: every column, the identity and
+    /// snapshot as saved.
+    fn answered(self) -> Result<Value, String> {
+        let (_, _, review_reasons) = self.read()?;
+        Ok(json!({
+            "id": self.id,
+            "seller": self.seller,
+            "itemId": self.item_id,
+            "variationKey": self.variation_key,
+            "snapshot": self.snapshot,
+            "source": self.source,
+            "state": self.state,
+            "revision": self.revision,
+            "identityId": self.identity_id,
+            "identitySource": self.identity_source,
+            "identityNote": self.identity_note,
+            "observedAt": self.observed_at(),
+            "identity": self.identity,
+            "duplicateCertificate": self.duplicate_certificate,
+            "url": self.url(),
+            "reviewReasons": review_reasons,
+        }))
+    }
 }
 
 /// `getInventoryListing`: one listing, with what it needs reviewed.
@@ -369,12 +447,27 @@ pub(super) async fn listing(
     if !valid {
         return Err("Choose an inventory listing.".to_owned());
     }
-    let row: Option<Row> = sqlx::query_as(ONE)
+    let row: Option<Saved> = sqlx::query_as(ONE)
         .bind(id)
         .fetch_optional(&mut *conn)
         .await
         .map_err(|e| e.to_string())?;
-    row.map(reviewed).transpose()
+    row.map(Saved::reviewed).transpose()
+}
+
+/// A page of listings as saved, whether more follow, and the account's revision.
+struct SavedPage {
+    rows: Vec<Saved>,
+    more: bool,
+    revision: i64,
+}
+
+impl SavedPage {
+    fn next(&self) -> Option<String> {
+        self.more
+            .then(|| self.rows.last().map(|l| l.id.clone()))
+            .flatten()
+    }
 }
 
 /// `getInventory`: `limit` of the seller's listings after the listing `after` (none for the
@@ -385,6 +478,43 @@ async fn read(
     after: &str,
     limit: u32,
 ) -> Result<InventoryPage, String> {
+    let page = saved_page(conn, seller, after, limit).await?;
+    let next = page.next();
+    Ok(InventoryPage {
+        items: page
+            .rows
+            .into_iter()
+            .map(Saved::reviewed)
+            .collect::<Result<_, _>>()?,
+        next,
+        revision: page.revision,
+    })
+}
+
+/// `getInventory` as the Node route answered it: `{ items, next, revision }`, each listing with
+/// every column.
+pub(super) async fn answered_page(
+    conn: &mut sqlx::PgConnection,
+    seller: &str,
+    after: &str,
+    limit: u32,
+) -> Result<Value, String> {
+    let page = saved_page(conn, seller, after, limit).await?;
+    let next = page.next();
+    let items = page
+        .rows
+        .into_iter()
+        .map(Saved::answered)
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(json!({ "items": items, "next": next, "revision": page.revision }))
+}
+
+async fn saved_page(
+    conn: &mut sqlx::PgConnection,
+    seller: &str,
+    after: &str,
+    limit: u32,
+) -> Result<SavedPage, String> {
     let after_ok = after.is_empty()
         || (after.len() == 36
             && after
@@ -395,7 +525,7 @@ async fn read(
     }
     let seller = seller_account(seller)?;
     let failed = |e: sqlx::Error| e.to_string();
-    let rows: Vec<Row> = sqlx::query_as(PAGE)
+    let mut rows: Vec<Saved> = sqlx::query_as(PAGE)
         .bind(&seller)
         .bind(after)
         .bind(i64::from(limit) + 1)
@@ -403,24 +533,16 @@ async fn read(
         .await
         .map_err(failed)?;
     let more = rows.len() > limit as usize;
-    let items = rows
-        .into_iter()
-        .take(limit as usize)
-        .map(reviewed)
-        .collect::<Result<Vec<_>, String>>()?;
+    rows.truncate(limit as usize);
     let revision: Option<i32> =
         sqlx::query_scalar("SELECT revision FROM slab_inventory_accounts WHERE seller = $1")
             .bind(&seller)
             .fetch_optional(&mut *conn)
             .await
             .map_err(failed)?;
-    Ok(InventoryPage {
-        next: if more {
-            items.last().map(|l| l.id.clone())
-        } else {
-            None
-        },
-        items,
+    Ok(SavedPage {
+        rows,
+        more,
         revision: revision.map_or(0, i64::from),
     })
 }
@@ -478,6 +600,14 @@ mod tests {
                 theirs["error"].is_null(),
                 "{shown}: Node refused with {}",
                 theirs["error"]
+            );
+            let answered = answered_page(&mut tx, &case.seller, &case.after, case.limit)
+                .await
+                .unwrap();
+            assert_eq!(
+                crate::api::tests::node_numbers(&answered),
+                theirs,
+                "{shown}: as the route answers it"
             );
             assert_eq!(ours.next.as_deref(), theirs["next"].as_str(), "{shown}");
             assert_eq!(ours.revision, theirs["revision"], "{shown}");

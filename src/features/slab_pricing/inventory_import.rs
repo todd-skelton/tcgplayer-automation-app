@@ -1,15 +1,20 @@
-//! Importing a CSV snapshot of some of the seller's eBay listings (`parseInventoryCsv`,
-//! `reconcileInventory`), and tying a listing to an identity: its certificate's, looked up with
-//! Alt (`resolveInventoryIdentity`), or a confirmed one by hand (`assignInventoryIdentity`).
-//! A file never retires a listing it leaves out; only a complete read of the seller's active
-//! listings from eBay could, and neither app has one yet.
+//! Importing a snapshot of some of the seller's eBay listings, as a CSV (`parseInventoryCsv`) or
+//! as listings entered by hand (`parseListingSnapshot`), saved by `reconcileInventory`; and tying
+//! a listing to an identity: its certificate's, looked up with Alt (`resolveInventoryIdentity`),
+//! or a confirmed one by hand (`assignInventoryIdentity`). An import never retires a listing it
+//! leaves out; only a complete read of the seller's active listings from eBay could, and neither
+//! app has one yet.
+//!
+//! Where a manual import can still differ from Node, on a request the Node app's own client never
+//! sends: two item specifics whose names differ only in surrounding white space keep the value of
+//! the one later in name order here, where Node kept the one later in the request.
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde_json::{Map, Value, json};
 use sqlx::{Connection, PgConnection};
 
 use super::{
-    identity::{self, Record, Unresolved, certificate, text_field},
-    inventory::seller_account,
+    identity::{self, Record, Unresolved, certificate, normalized_certificate, text_field},
+    inventory::{Expected, Refused, identity_conflicts, seller_account},
 };
 use crate::{
     csv_text::{self, Reading},
@@ -21,7 +26,8 @@ const LISTING: &str =
     "Each listing needs an eBay item ID, title, valid price/currency, quantity, state and format.";
 /// Any identity field refused (`SlabIdentityError`), as the route words it.
 const FIELDS: &str = "Check the inventory request fields.";
-pub(super) const UNAVAILABLE: &str = "Unable to update slab inventory. Try again.";
+const LISTING_AND_REVISION: &str = "Provide a listing ID and revision.";
+const IDENTITY_AND_NOTE: &str = "Choose a confirmed identity and record a note.";
 const REQUIRED: [&str; 7] = [
     "item_id", "title", "price", "currency", "quantity", "state", "format",
 ];
@@ -221,14 +227,170 @@ fn listings(csv: &str) -> Result<Vec<Value>, String> {
                 .to_owned(),
         );
     }
+    once_each(table.rows.iter().map(snapshot))
+}
+
+/// `parseListingSnapshot` of a listing entered by hand: the listing as saved, with what it needs
+/// reviewed, or why it is refused, in the order Node checks.
+fn manual_listing(input: &Value) -> Result<Value, String> {
+    // Reading a field of `null` is a TypeError, refused as a field.
+    if input.is_null() {
+        return Err(FIELDS.to_owned());
+    }
+    let item_id = field(&input["itemId"], 20)?;
+    let title = field(&input["title"], 500)?;
+    let currency = field(&input["price"]["currency"], 3)?.map(|c| c.to_uppercase());
+    let amount = input["price"]["amount"].as_f64();
+    let quantity = input["quantity"].as_f64();
+    let state = input["state"].as_str().unwrap_or_default();
+    let format = input["format"].as_str().unwrap_or_default();
+    let valid = item_id
+        .as_deref()
+        .is_some_and(|i| (9..=20).contains(&i.len()) && i.bytes().all(|b| b.is_ascii_digit()))
+        && currency
+            .as_deref()
+            .is_some_and(|c| c.len() == 3 && c.bytes().all(|b| b.is_ascii_uppercase()))
+        && amount.is_some_and(|a| (0.0..=1e9).contains(&a))
+        && quantity.is_some_and(|q| q.fract() == 0.0 && (0.0..=1e7).contains(&q))
+        && ["active", "ended", "sold"].contains(&state)
+        && ["fixed-price", "auction", "unknown"].contains(&format);
+    let (Some(item_id), Some(title), Some(currency), Some(amount), Some(quantity), true) =
+        (item_id, title, currency, amount, quantity, valid)
+    else {
+        return Err(LISTING.to_owned());
+    };
+    // `input.shipping?.amount ?? null`: a shipping that is not an object has no amount.
+    let shipping = &input["shipping"];
+    let shipping_amount = &shipping["amount"];
+    let shipping_currency = field(&shipping["currency"], 3)?.map(|c| c.to_uppercase());
+    let known = match shipping_amount {
+        Value::Null => true,
+        amount => amount.as_f64().is_some_and(|a| (0.0..=1e9).contains(&a)),
+    };
+    if !known
+        || shipping_currency
+            .as_deref()
+            .is_some_and(|c| c.len() != 3 || !c.bytes().all(|b| b.is_ascii_uppercase()))
+    {
+        return Err("Shipping must be a known amount or blank.".to_owned());
+    }
+    let Some(given) = input["specifics"].as_object().filter(|s| s.len() <= 100) else {
+        return Err("Provide at most 100 item specifics.".to_owned());
+    };
+    let mut specifics = Map::new();
+    for (key, values) in given {
+        let name = field(&json!(key), 100)?;
+        let values = values.as_array().filter(|v| v.len() <= 20);
+        let (Some(name), Some(values)) = (name, values) else {
+            return Err("Invalid item specifics.".to_owned());
+        };
+        let values = values
+            .iter()
+            .map(|v| field(v, 500).map(Option::unwrap_or_default))
+            .collect::<Result<Vec<_>, _>>()?;
+        specifics.insert(name, json!(values));
+    }
+    // `input.certificate ? normalizeCertificate(input.certificate) : null`.
+    let certificate = match &input["certificate"] {
+        Value::Null | Value::Bool(false) => Value::Null,
+        Value::String(s) if s.is_empty() => Value::Null,
+        Value::Number(n) if n.as_f64() == Some(0.0) => Value::Null,
+        given => {
+            let (grader, number) =
+                normalized_certificate(&given["grader"], &given["certificateNumber"])
+                    .map_err(|_| FIELDS.to_owned())?;
+            json!({ "grader": grader, "certificateNumber": number })
+        }
+    };
+    let mut reasons = Vec::new();
+    if certificate.is_null() {
+        reasons.push("certificate-required".to_owned());
+    }
+    if quantity > 1.0 {
+        reasons.push("multiple-items-share-certificate".to_owned());
+    }
+    if names_a_lot(&title) {
+        reasons.push("unsupported-lot-review-listing".to_owned());
+    }
+    if format != "fixed-price" {
+        reasons.push("fixed-price-listing-required".to_owned());
+    }
+    let Some(given) = input["reviewReasons"].as_array().filter(|r| r.len() <= 30) else {
+        return Err("Invalid listing review reasons.".to_owned());
+    };
+    for reason in given {
+        if let Some(reason) = field(reason, 100)? {
+            reasons.push(reason);
+        }
+    }
+    // A set, sorted as JavaScript sorts text: by UTF-16 unit.
+    reasons.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
+    reasons.dedup();
+    // `normalizeExpectedIdentity(input.expected)`: none is `{}`, `null` a TypeError.
+    let expected = match input.get("expected") {
+        None => Expected::default(),
+        Some(given) if given.is_null() => return Err(FIELDS.to_owned()),
+        Some(given) => identity::expected(given).map_err(|_| FIELDS.to_owned())?,
+    };
+    Ok(json!({
+        "itemId": item_id,
+        "variationKey": field(&input["variationKey"], 160)?.unwrap_or_default(),
+        "sku": field(&input["sku"], 200)?,
+        "title": title,
+        "price": { "amount": js_number(amount), "currency": currency },
+        "shipping": {
+            "amount": shipping_amount.as_f64().map_or(Value::Null, js_number),
+            "currency": shipping_currency,
+            "policyId": field(&shipping["policyId"], 80)?,
+        },
+        "quantity": js_number(quantity),
+        "state": state,
+        "format": format,
+        "certificate": certificate,
+        "expected": expected_json(&expected),
+        "specifics": specifics,
+        "reviewReasons": reasons,
+    }))
+}
+
+/// What a listing is expected to be, as Node saves it.
+fn expected_json(expected: &Expected) -> Value {
+    json!({
+        "name": expected.name,
+        "game": expected.game,
+        "language": expected.language,
+        "set": expected.set,
+        "cardNumber": expected.card_number,
+        "year": expected.year,
+        "edition": expected.edition,
+        "finish": expected.finish,
+        "stamp": expected.stamp,
+        "gradeNumber": expected.grade_number.map_or(Value::Null, js_number),
+        "gradeLabel": expected.grade_label,
+        "qualifier": expected.qualifier,
+        "autograph": expected.autograph,
+    })
+}
+
+/// `parseInventoryImport` of listings entered by hand: each listing, once per item and variation.
+fn manual_listings(listings: &Value) -> Result<Vec<Value>, String> {
+    let Some(listings) = listings.as_array().filter(|l| l.len() <= MOST_LISTINGS) else {
+        return Err(
+            "Provide a bounded, dated inventory import. CSV and manual imports are always partial."
+                .to_owned(),
+        );
+    };
+    once_each(listings.iter().map(manual_listing))
+}
+
+/// The listings read, refused when one repeats another's item and variation (`listingKey`).
+fn once_each(listings: impl Iterator<Item = Result<Value, String>>) -> Result<Vec<Value>, String> {
     let mut seen = std::collections::HashSet::new();
-    table
-        .rows
-        .iter()
-        .map(|row| {
-            let listing = snapshot(row)?;
-            let key = (listing["itemId"].clone(), listing["variationKey"].clone());
-            if !seen.insert(key.0.to_string() + &key.1.to_string()) {
+    listings
+        .map(|listing| {
+            let listing = listing?;
+            let key = json!([listing["itemId"], listing["variationKey"]]).to_string();
+            if !seen.insert(key) {
                 return Err("The import repeats a listing/variation identity.".to_owned());
             }
             Ok(listing)
@@ -243,12 +405,12 @@ pub struct Imported {
     pub revision: i64,
 }
 
-fn unavailable(error: sqlx::Error) -> String {
+fn unavailable(error: sqlx::Error) -> Refused {
     eprintln!("slab inventory import: {error}");
-    UNAVAILABLE.to_owned()
+    Refused::Unavailable
 }
 
-async fn account_revision(conn: &mut PgConnection, seller: &str) -> Result<i64, String> {
+async fn account_revision(conn: &mut PgConnection, seller: &str) -> Result<i64, Refused> {
     let revision: Option<i32> =
         sqlx::query_scalar("SELECT revision FROM slab_inventory_accounts WHERE seller = $1")
             .bind(seller)
@@ -256,6 +418,25 @@ async fn account_revision(conn: &mut PgConnection, seller: &str) -> Result<i64, 
             .await
             .map_err(unavailable)?;
     Ok(revision.map_or(0, i64::from))
+}
+
+/// The seller, as saved, when the inventory is at the revision the page showed: what every import
+/// checks first.
+pub async fn current(
+    conn: &mut PgConnection,
+    seller: &str,
+    revision: i64,
+) -> Result<String, Refused> {
+    let seller = seller_account(seller)?;
+    if !(0..=9_007_199_254_740_991).contains(&revision) {
+        return Err(Refused::Invalid(
+            "Provide the current inventory revision.".to_owned(),
+        ));
+    }
+    if revision != account_revision(conn, &seller).await? {
+        return Err(Refused::Conflict("Reload inventory before importing."));
+    }
+    Ok(seller)
 }
 
 /// The `import-csv` route: the seller's listings in the CSV saved as of `now`, each tied to the
@@ -267,15 +448,35 @@ pub async fn import_csv(
     revision: i64,
     csv: &str,
     now: DateTime<Utc>,
-) -> Result<Imported, String> {
-    let seller = seller_account(seller)?;
-    if !(0..=9_007_199_254_740_991).contains(&revision) {
-        return Err("Provide the current inventory revision.".to_owned());
-    }
-    if revision != account_revision(conn, &seller).await? {
-        return Err("Reload inventory before importing.".to_owned());
-    }
+) -> Result<Imported, Refused> {
+    let seller = current(conn, seller, revision).await?;
     let listings = listings(csv)?;
+    reconcile(conn, &seller, revision, &listings, "csv", now).await
+}
+
+/// The `import-manual` route: listings entered by hand, saved as [`import_csv`] saves a file's.
+pub async fn import_manual(
+    conn: &mut PgConnection,
+    seller: &str,
+    revision: i64,
+    listings: &Value,
+    now: DateTime<Utc>,
+) -> Result<Imported, Refused> {
+    let seller = current(conn, seller, revision).await?;
+    let listings = manual_listings(listings)?;
+    reconcile(conn, &seller, revision, &listings, "manual", now).await
+}
+
+/// `reconcileInventory` of a partial import from `source`: each listing saved as of `now` over
+/// the inventory revision read, in one transaction.
+async fn reconcile(
+    conn: &mut PgConnection,
+    seller: &str,
+    revision: i64,
+    listings: &[Value],
+    source: &str,
+    now: DateTime<Utc>,
+) -> Result<Imported, Refused> {
     let observed = now.to_rfc3339_opts(SecondsFormat::Millis, true);
     let mut tx = conn.begin().await.map_err(unavailable)?;
     sqlx::query("SET LOCAL statement_timeout = '15s'")
@@ -283,22 +484,22 @@ pub async fn import_csv(
         .await
         .map_err(unavailable)?;
     sqlx::query("INSERT INTO slab_inventory_accounts (seller) VALUES ($1) ON CONFLICT DO NOTHING")
-        .bind(&seller)
+        .bind(seller)
         .execute(&mut *tx)
         .await
         .map_err(unavailable)?;
     let (current, observed_at): (i32, Option<DateTime<Utc>>) = sqlx::query_as(
         "SELECT revision, observed_at FROM slab_inventory_accounts WHERE seller = $1 FOR UPDATE",
     )
-    .bind(&seller)
+    .bind(seller)
     .fetch_one(&mut *tx)
     .await
     .map_err(unavailable)?;
     let at = now.timestamp_millis();
     if i64::from(current) != revision || observed_at.is_some_and(|o| o.timestamp_millis() > at) {
-        return Err(
-            "Inventory changed while this import was running. Start a new import.".to_owned(),
-        );
+        return Err(Refused::Conflict(
+            "Inventory changed while this import was running. Start a new import.",
+        ));
     }
     let rows: Vec<Value> = listings
         .iter()
@@ -310,7 +511,7 @@ pub async fn import_csv(
            FROM jsonb_to_recordset($2::jsonb) AS raw(item_id text, variation_key text, snapshot jsonb)
          )
          INSERT INTO slab_inventory (id, seller, item_id, variation_key, snapshot, source, state, observed_at, identity_id, identity_source)
-         SELECT gen_random_uuid(), $1, x.item_id, x.variation_key, x.snapshot, 'csv', x.snapshot->>'state', $3::timestamptz, i.id,
+         SELECT gen_random_uuid(), $1, x.item_id, x.variation_key, x.snapshot, $4, x.snapshot->>'state', $3::timestamptz, i.id,
            CASE WHEN i.id IS NOT NULL THEN 'certificate' END
          FROM incoming x
          LEFT JOIN slab_identities i ON i.grader = x.snapshot->'certificate'->>'grader'
@@ -324,16 +525,17 @@ pub async fn import_csv(
              OR (slab_inventory.identity_source IS DISTINCT FROM 'manual' AND slab_inventory.identity_id IS DISTINCT FROM EXCLUDED.identity_id) THEN 1 ELSE 0 END,
            updated_at = clock_timestamp()",
     )
-    .bind(&seller)
+    .bind(seller)
     .bind(Value::Array(rows))
     .bind(&observed)
+    .bind(source)
     .execute(&mut *tx)
     .await
     .map_err(unavailable)?;
     sqlx::query(
         "UPDATE slab_inventory_accounts SET revision = revision + 1, observed_at = $2::timestamptz, imported_at = clock_timestamp() WHERE seller = $1",
     )
-    .bind(&seller)
+    .bind(seller)
     .bind(&observed)
     .execute(&mut *tx)
     .await
@@ -362,16 +564,18 @@ pub async fn assign(
     revision: i64,
     identity: &str,
     note: &str,
-) -> Result<(), String> {
+) -> Result<(), Refused> {
     let seller = seller_account(seller)?;
     if !id_like(listing) || !(1..=9_007_199_254_740_991).contains(&revision) {
-        return Err("Provide a listing ID and revision.".to_owned());
+        return Err(Refused::Invalid(LISTING_AND_REVISION.to_owned()));
     }
     if !id_like(identity) {
-        return Err("Choose a confirmed identity and record a note.".to_owned());
+        return Err(Refused::Invalid(IDENTITY_AND_NOTE.to_owned()));
     }
     if note.trim().is_empty() || note.encode_utf16().count() > 1000 {
-        return Err("Record the reason for this listing identity correction.".to_owned());
+        return Err(Refused::Invalid(
+            "Record the reason for this listing identity correction.".to_owned(),
+        ));
     }
     let updated = sqlx::query(
         "UPDATE slab_inventory SET identity_id = $4::uuid, identity_source = 'manual', identity_note = $5,
@@ -387,15 +591,51 @@ pub async fn assign(
     .await
     .map_err(unavailable)?;
     if updated.rows_affected() == 0 {
-        return Err("Reload the listing and choose a confirmed identity.".to_owned());
+        return Err(Refused::Conflict(
+            "Reload the listing and choose a confirmed identity.",
+        ));
     }
     Ok(())
 }
 
+/// How a listing's certificate was resolved.
+#[derive(Debug)]
+pub enum Resolved {
+    /// The listing was tied to an identity by hand, which stays: the one it is tied to.
+    ByHand { identity_id: Option<String> },
+    /// The listing is tied to its certificate's identity, and expects this of it.
+    Looked {
+        record: Box<Record>,
+        expected: Box<Expected>,
+    },
+}
+
+impl Resolved {
+    /// The identity looked up, if one was.
+    pub fn record(self) -> Option<Record> {
+        match self {
+            Resolved::ByHand { .. } => None,
+            Resolved::Looked { record, .. } => Some(*record),
+        }
+    }
+
+    /// Why the identity needs review, and where it disagrees with what the listing expects.
+    pub fn review_reasons(&self) -> Vec<String> {
+        match self {
+            Resolved::ByHand { .. } => Vec::new(),
+            Resolved::Looked { record, expected } => {
+                let mut reasons = record.review_reasons.clone();
+                reasons.extend(identity_conflicts(record.shown(), expected));
+                reasons
+            }
+        }
+    }
+}
+
 /// The `resolve-identity` route: the seller's listing, at the revision the page showed, tied to
 /// its certificate's identity, looked up with Alt as [`identity::lookup`] does. A listing tied by
-/// hand stays as it is (none); its revision moves only when its identity does. Refused in the
-/// route's words, which include what the listing expects being unreadable.
+/// hand stays as it is; its revision moves only when its identity does. Refused in the route's
+/// words, which include what the listing expects being unreadable.
 pub async fn resolve<G: Gate>(
     conn: &mut PgConnection,
     alt: &Alt<'_, G>,
@@ -403,44 +643,48 @@ pub async fn resolve<G: Gate>(
     listing: &str,
     revision: i64,
     cancel: impl Future<Output = ()> + Send,
-) -> Result<Option<Record>, String> {
+) -> Result<Resolved, Refused> {
     let seller = seller_account(seller)?;
     if !id_like(listing) || !(1..=9_007_199_254_740_991).contains(&revision) {
-        return Err("Provide a listing ID and revision.".to_owned());
+        return Err(Refused::Invalid(LISTING_AND_REVISION.to_owned()));
     }
-    let row: Option<(i64, Option<String>, Value)> = sqlx::query_as(
-        "SELECT revision::int8, identity_source, snapshot FROM slab_inventory WHERE seller = $1 AND id = $2::uuid",
+    type Row = (i64, Option<String>, Option<String>, Value);
+    let row: Option<Row> = sqlx::query_as(
+        "SELECT revision::int8, identity_source, identity_id::text, snapshot FROM slab_inventory WHERE seller = $1 AND id = $2::uuid",
     )
     .bind(&seller)
     .bind(listing)
     .fetch_optional(&mut *conn)
     .await
     .map_err(unavailable)?;
-    let Some((_, source, snapshot)) = row.filter(|(at, _, _)| *at == revision) else {
-        return Err("Reload the listing before resolving its certificate.".to_owned());
+    let Some((_, source, identity_id, snapshot)) = row.filter(|(at, ..)| *at == revision) else {
+        return Err(Refused::Conflict(
+            "Reload the listing before resolving its certificate.",
+        ));
     };
     if source.as_deref() == Some("manual") {
-        return Ok(None);
+        return Ok(Resolved::ByHand { identity_id });
     }
     let certificate = &snapshot["certificate"];
     if certificate.is_null() {
-        return Err(
+        return Err(Refused::Invalid(
             "Import a certificate or assign a reviewed identity to this listing.".to_owned(),
-        );
+        ));
     }
+    let fields = || Refused::Invalid(FIELDS.to_owned());
     let (Some(grader), Some(number)) = (
         certificate["grader"].as_str(),
         certificate["certificateNumber"].as_str(),
     ) else {
-        return Err(FIELDS.to_owned());
+        return Err(fields());
     };
-    identity::expected(&snapshot["expected"]).map_err(|_| FIELDS.to_owned())?;
+    let expected = identity::expected(&snapshot["expected"]).map_err(|_| fields())?;
     let record = identity::lookup(conn, alt, (grader, number), false, cancel)
         .await
         .map_err(|unresolved| match unresolved {
-            Unresolved::Refused(_) => FIELDS.to_owned(),
-            Unresolved::Provider(status) => status.message().to_owned(),
-            Unresolved::Unavailable => UNAVAILABLE.to_owned(),
+            Unresolved::Refused(_) => fields(),
+            Unresolved::Provider(status) => Refused::Provider(status),
+            Unresolved::Unavailable => Refused::Unavailable,
         })?;
     let updated = sqlx::query(
         "UPDATE slab_inventory SET identity_id = $4::uuid, identity_source = 'certificate',
@@ -456,9 +700,14 @@ pub async fn resolve<G: Gate>(
     .await
     .map_err(unavailable)?;
     if updated.rows_affected() == 0 {
-        return Err("Listing changed during certificate lookup. Reload it.".to_owned());
+        return Err(Refused::Conflict(
+            "Listing changed during certificate lookup. Reload it.",
+        ));
     }
-    Ok(Some(record))
+    Ok(Resolved::Looked {
+        record: Box::new(record),
+        expected: Box::new(expected),
+    })
 }
 
 #[cfg(test)]
@@ -547,29 +796,41 @@ mod tests {
         for (case, theirs) in cases.iter().zip(node) {
             let text = |k: &str| case[k].as_str().unwrap_or_default();
             let pending = std::future::pending();
-            let answered = if text("kind") == "lookup" {
+            let lookup = text("kind") == "lookup";
+            // A listing's resolution also answers where the identity disagrees with the listing.
+            let answered = if lookup {
                 let certificate = (text("grader"), text("certificateNumber"));
                 let refresh = case["refresh"] == true;
                 identity::lookup(&mut tx, &alt, certificate, refresh, pending)
                     .await
-                    .map(Some)
+                    .map(|r| (Some(r), None))
                     .map_err(|unresolved| unresolved.message())
             } else {
                 let revision = case["revision"].as_i64().unwrap();
                 let (seller, id) = (text("seller"), text("id"));
-                resolve(&mut tx, &alt, seller, id, revision, pending).await
+                resolve(&mut tx, &alt, seller, id, revision, pending)
+                    .await
+                    .map(|resolved| (Some(resolved.review_reasons()), resolved.record()))
+                    .map(|(reasons, record)| (record, reasons))
+                    .map_err(|refused| refused.message())
             };
             let ours = match answered {
-                Ok(Some(r)) => json!({ "record": {
-                    "grader": r.grader, "certificateNumber": r.certificate_number,
-                    "status": r.status, "revision": r.revision, "reviewReasons": r.review_reasons,
-                } }),
-                Ok(None) => json!({ "manual": true }),
+                Ok((Some(r), reasons)) => {
+                    let mut ours = json!({ "record": {
+                        "grader": r.grader, "certificateNumber": r.certificate_number,
+                        "status": r.status, "revision": r.revision, "reviewReasons": r.review_reasons,
+                    } });
+                    if let Some(reasons) = reasons {
+                        ours["reviewReasons"] = json!(reasons);
+                    }
+                    ours
+                }
+                Ok((None, _)) => json!({ "manual": true }),
                 Err(error) => json!({ "error": error }),
             };
             let mut answer = theirs["answer"].clone();
-            if let Some(answer) = answer.as_object_mut() {
-                // What the identity disagrees with is read from the listing, not answered here.
+            if let (true, Some(answer)) = (lookup, answer.as_object_mut()) {
+                // `identity::lookup` leaves what the identity disagrees with to the screen.
                 answer.remove("reviewReasons");
             }
             let name = &case["name"];
@@ -600,11 +861,25 @@ mod tests {
     #[tokio::test]
     #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
     async fn imports_and_assignments_save_as_node_saves_them() {
+        saves_as_node("import").await;
+    }
+
+    /// The same for the listings entered by hand in `.port-logs/slab-manual-cases.json`
+    /// (`import-manual`; `slab-import-node.ts manual`).
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
+    async fn manual_imports_save_as_node_saves_them() {
+        saves_as_node("manual").await;
+    }
+
+    async fn saves_as_node(cases: &str) {
         crate::config::load_env();
         let db = Database::connect_lazy(&crate::config::database_url());
         let read_log = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
-        let cases: Vec<Value> = serde_json::from_str(&read_log("slab-import-cases.json")).unwrap();
-        let node: Vec<Value> = serde_json::from_str(&read_log("slab-import.node.json")).unwrap();
+        let file = format!("slab-{cases}-cases.json");
+        let cases: Vec<Value> = serde_json::from_str(&read_log(&file)).unwrap();
+        let node: Vec<Value> =
+            serde_json::from_str(&read_log(&file.replace("-cases.json", ".node.json"))).unwrap();
         assert_eq!(cases.len(), node.len());
         let capture = read_log("slab-import-capture.sql");
         let mut tx = db.0.begin().await.unwrap();
@@ -616,22 +891,31 @@ mod tests {
             let (name, body) = (&case["name"], &case["body"]);
             let text = |k: &str| body[k].as_str().unwrap_or_default();
             let revision = theirs["revision"].as_i64().unwrap();
-            let ours = if text("intent") == "assign-identity" {
-                assign(
-                    &mut tx,
-                    text("seller"),
-                    text("id"),
-                    revision,
-                    text("identityId"),
-                    text("note"),
-                )
-                .await
-            } else {
-                let at: DateTime<Utc> = theirs["at"].as_str().unwrap().parse().unwrap();
-                import_csv(&mut tx, text("seller"), revision, text("csv"), at)
+            let at: DateTime<Utc> = theirs["at"].as_str().unwrap().parse().unwrap();
+            let ours = match text("intent") {
+                "assign-identity" => {
+                    let (identity, note) = (text("identityId"), text("note"));
+                    assign(
+                        &mut tx,
+                        text("seller"),
+                        text("id"),
+                        revision,
+                        identity,
+                        note,
+                    )
                     .await
-                    .map(|_| ())
+                }
+                "import-manual" => {
+                    let listings = &body["listings"];
+                    import_manual(&mut tx, text("seller"), revision, listings, at)
+                        .await
+                        .map(|_| ())
+                }
+                _ => import_csv(&mut tx, text("seller"), revision, text("csv"), at)
+                    .await
+                    .map(|_| ()),
             };
+            let ours = ours.map_err(|refused| refused.message());
             assert_eq!(ours.err().as_deref(), theirs["error"].as_str(), "{name}");
             let saved: Value = sqlx::query_scalar(capture.as_str())
                 .fetch_one(&mut *tx)

@@ -83,8 +83,11 @@ async fn resolve(
                     id,
                     revision,
                 } => {
-                    let mut conn = conn.map_err(|_| inventory_import::UNAVAILABLE.to_owned())?;
-                    inventory_import::resolve(&mut conn, &alt, &seller, &id, revision, cancel).await
+                    let mut conn = conn.map_err(|_| inventory::UNAVAILABLE.to_owned())?;
+                    inventory_import::resolve(&mut conn, &alt, &seller, &id, revision, cancel)
+                        .await
+                        .map(inventory_import::Resolved::record)
+                        .map_err(|refused| refused.message())
                 }
             }
         })
@@ -321,6 +324,7 @@ pub async fn assign(
             let (seller, id, note) = (&listing.seller, &listing.id, input.note.trim());
             inventory_import::assign(&mut conn, seller, id, listing.revision, &record.id, note)
                 .await
+                .map_err(|refused| refused.message())
         }
         Err(error) => Err(error.to_string()),
     };
@@ -349,7 +353,9 @@ pub async fn import(
     let imported = match db.0.acquire().await {
         Ok(mut conn) => {
             let now = chrono::Utc::now();
-            inventory_import::import_csv(&mut conn, seller, input.revision, &input.csv, now).await
+            inventory_import::import_csv(&mut conn, seller, input.revision, &input.csv, now)
+                .await
+                .map_err(|refused| refused.message())
         }
         Err(error) => Err(error.to_string()),
     };

@@ -1,5 +1,6 @@
 //! A slab's certificate and what it identifies (`slab_identities`): the card and grade a
 //! provider proposed, and the one the operator confirmed. Looking one up with Alt is `lookup`.
+use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -105,6 +106,26 @@ impl Record {
 const RECORD: &str = "jsonb_build_object('id', id, 'grader', grader,
   'certificateNumber', certificate_number, 'candidate', candidate, 'identity', identity,
   'status', status, 'reviewReasons', review_reasons, 'revision', revision)::text";
+
+/// A saved identity as Node's routes answer it (`COLUMNS`): every column but when it was made,
+/// `updatedAt` to the millisecond as JavaScript writes a date.
+pub(crate) async fn answered(conn: &mut PgConnection, id: &str) -> sqlx::Result<Option<Value>> {
+    let row: Option<(Value, DateTime<Utc>)> = sqlx::query_as(
+        "SELECT jsonb_build_object('id', id, 'grader', grader, 'certificateNumber', certificate_number,
+           'candidate', candidate, 'identity', identity, 'status', status, 'reviewReasons', review_reasons,
+           'valuationGroupKey', valuation_group_key, 'revision', revision, 'decisionSource', decision_source,
+           'decisionNote', decision_note), updated_at
+         FROM slab_identities WHERE id = $1::uuid",
+    )
+    .bind(id)
+    .fetch_optional(conn)
+    .await?;
+    Ok(row.map(|(mut record, updated_at)| {
+        let at = updated_at.to_rfc3339_opts(SecondsFormat::Millis, true);
+        record["updatedAt"] = json!(at);
+        record
+    }))
+}
 
 /// The saved identity of a certificate, if it was looked up.
 pub async fn find(

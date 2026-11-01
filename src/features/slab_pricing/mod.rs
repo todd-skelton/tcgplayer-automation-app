@@ -75,6 +75,7 @@ mod dry_run;
 pub(crate) mod identity;
 mod inventory;
 mod inventory_import;
+mod inventory_route;
 pub mod json_route;
 mod maintenance;
 pub mod maintenance_cycle;
