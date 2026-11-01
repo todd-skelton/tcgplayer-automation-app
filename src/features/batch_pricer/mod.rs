@@ -27,6 +27,7 @@
 pub mod batch_json;
 mod batches;
 mod import;
+pub mod json_route;
 mod page;
 mod views;
 
