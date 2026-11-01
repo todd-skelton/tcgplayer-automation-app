@@ -5,6 +5,7 @@
 #![allow(dead_code, reason = "the engine lands before the pricers that call it")]
 use serde::{Deserialize, Serialize};
 
+pub mod api;
 pub mod cost_model;
 pub mod evidence;
 pub mod outcomes;

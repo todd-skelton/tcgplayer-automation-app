@@ -3,6 +3,7 @@
 //! cutover, and every path this app does not serve is relayed to it (`legacy`), so one origin
 //! serves both. The app is this library, so tests and examples reach it;
 //! `main.rs` only serves it.
+mod api;
 mod app;
 mod config;
 mod csv_text;

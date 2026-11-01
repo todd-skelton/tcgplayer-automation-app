@@ -57,8 +57,9 @@ pub mod url {
     }
 }
 
-/// The React app's JSON routes. Some (imports, slab evidence) answer after the page deadline, and
-/// the batch pricing stream stays open for as long as the page does.
+/// The JSON routes: the ones ported so far (`crate::api::ported`), and the relay to the Node app
+/// for the rest. Some (imports, slab evidence) answer after the page deadline, and the batch
+/// pricing stream stays open for as long as the page does.
 #[corten::routes(api = LegacyApi, state = Shared)]
 pub mod api {
     #[route("/api", get = forward, post = forward)]
@@ -93,11 +94,21 @@ async fn forward_api(
     forward(legacy, upgrade, req).await
 }
 
+/// The API's own failures (an unknown method, the deadline, the Node app out of reach) in the Node
+/// app's shape.
+fn node_shaped<P: corten::Route>(api: corten::Api<P>) -> corten::Api<P> {
+    api.errors(|_, message| serde_json::json!({ "error": message }))
+}
+
 pub fn app(shared: Shared) -> App {
     let ready = shared.db.clone();
     let db = shared.db.clone();
     let app = App::new(url::router(shared.clone()))
-        .api(|routes| api::api(routes, shared.clone()).deadline(Some(Duration::from_secs(15 * 60))))
+        .api(|routes| {
+            let routes =
+                api::api(routes, shared.clone()).deadline(Some(Duration::from_secs(15 * 60)));
+            node_shaped(crate::api::ported(routes, &shared))
+        })
         .area(|area| pull_sheet::url::area(area, shared.clone()).components(pull_sheet::COMPONENTS))
         // Adding units to a count reads the card's market price from TCGplayer, giving up after 3 s.
         .area(|area| {
