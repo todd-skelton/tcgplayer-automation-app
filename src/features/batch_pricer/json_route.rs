@@ -1,17 +1,28 @@
 //! `/api/inventory-batches`: the newest batches made by hand (`GET`), one batch (`GET` and
-//! `DELETE /{batch}`) and its items (`GET /{batch}/items?scope=`), as the Node routes answered
-//! them. Making a batch from the counted inventory (`POST`), and making one from a CSV or a
-//! seller (`/import-csv`, `/import-seller`), still go to the Node app; so do a batch's results,
-//! publications, pricing jobs and pricing stream, under the relay for every path not ported.
+//! `DELETE /{batch}`), its items (`GET /{batch}/items?scope=`), its saved results
+//! (`GET /{batch}/results?scope=`) and its pricing (`POST /{batch}/pricing-jobs`), as the Node
+//! routes answered them. Making a batch from the counted inventory (`POST`), making one from a
+//! CSV or a seller (`/import-csv`, `/import-seller`) and saving results priced in the browser
+//! (`POST /{batch}/results`, which no screen sends now) still go to the Node app; so do a batch's
+//! publications, under the relay for every path not ported.
+//!
+//! A batch's pricing stream (`GET /{batch}/pricing-stream`) is server-sent events of JSON: the
+//! batch each time it changes, a heartbeat, and an error when there is no such batch. Corten
+//! answers server-sent events only as live HTML patches (`corten::live`) or a feed's rows, so the
+//! stream is a body of its own, sent as a `Relay`.
+use std::{convert::Infallible, time::Duration};
+
 use corten::{
-    Api, JsonError, JsonResponse, Prefix,
+    Api, JsonError, JsonResponse, Prefix, Relay,
     axum::{
+        body::{Body, to_bytes},
         extract::{RawQuery, Request},
-        http::StatusCode,
+        http::{HeaderMap, HeaderValue, StatusCode, header},
     },
     prelude::*,
 };
-use serde_json::json;
+use futures_util::{Stream, StreamExt};
+use serde_json::{Value, json};
 use sqlx::PgConnection;
 
 use super::batch_json;
@@ -19,6 +30,10 @@ use crate::{
     api,
     app::Shared,
     database::Database,
+    features::{
+        batch_pricing::queue, continuous_pricing::scheduler,
+        inventory_economics::ledger::fingerprint::js_json,
+    },
     legacy::{Legacy, relay_request},
     node_pg,
 };
@@ -48,6 +63,31 @@ pub struct InventoryBatchItems<'a> {
     pub batch: &'a str,
 }
 
+#[derive(Route)]
+#[route("/api/inventory-batches/{batch}/results")]
+pub struct InventoryBatchResults<'a> {
+    pub batch: &'a str,
+}
+
+#[derive(Route)]
+#[route("/api/inventory-batches/{batch}/pricing-jobs")]
+pub struct InventoryBatchPricingJobs<'a> {
+    pub batch: &'a str,
+}
+
+#[derive(Route)]
+#[route("/api/inventory-batches/{batch}/pricing-stream")]
+pub struct InventoryBatchPricingStream<'a> {
+    pub batch: &'a str,
+}
+
+/// How often the pricing stream reads the batch, and how often it sends a heartbeat.
+const STREAM_POLL: Duration = Duration::from_secs(1);
+const STREAM_HEARTBEAT: Duration = Duration::from_secs(15);
+
+/// The largest pricing request read: it holds only a mode.
+const MAX_PRICING_BODY_BYTES: usize = 64 * 1024;
+
 pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
     api.route::<InventoryBatches>(get(list).post(relay).with_state(shared.clone()))
         .route::<ImportCsv>(relayed().with_state(shared.clone()))
@@ -61,6 +101,22 @@ pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
                 .with_state(shared.clone()),
         )
         .route::<InventoryBatchItems<'_>>(get(items).with_state(shared.clone()))
+        .route::<InventoryBatchResults<'_>>(
+            get(results)
+                .post(relay)
+                .put(relay)
+                .patch(relay)
+                .delete(relay)
+                .with_state(shared.clone()),
+        )
+        .route::<InventoryBatchPricingJobs<'_>>(
+            post(price)
+                .put(pricing_not_allowed)
+                .patch(pricing_not_allowed)
+                .delete(pricing_not_allowed)
+                .with_state(shared.clone()),
+        )
+        .route::<InventoryBatchPricingStream<'_>>(get(pricing_stream).with_state(shared.clone()))
 }
 
 /// Every method the relay at `/api/{*rest}` takes, sent on to the Node app.
@@ -192,6 +248,212 @@ async fn items(
     }
 }
 
+/// `?scope=manual-review`: the results that need a look; anything else, the successful ones.
+async fn results(
+    State(db): State<Database>,
+    Params(at): Params<InventoryBatchResults<'_>>,
+    RawQuery(query): RawQuery,
+) -> JsonResponse {
+    let batch = match batch_number(&at.batch) {
+        Ok(batch) => batch,
+        Err(refused) => return refused.into(),
+    };
+    let manual_review = api::first(query.as_deref(), "scope").as_deref() == Some("manual-review");
+    let listed = match db.0.acquire().await {
+        Ok(mut conn) => batch_json::results(&mut conn, batch, manual_review).await,
+        Err(error) => Err(node_pg::thrown(error)),
+    };
+    match listed {
+        Ok(results) => api::node_json(&results),
+        Err(error) => failed(error),
+    }
+}
+
+/// `createOrReuseActiveJob` under the pricing configuration as it is now: the job queued, or the
+/// one already queued or pricing, with 202. The pricing worker claims it from the queue.
+async fn price(
+    State(db): State<Database>,
+    Params(at): Params<InventoryBatchPricingJobs<'_>>,
+    request: Request,
+) -> JsonResponse {
+    let batch = match batch_number(&at.batch) {
+        Ok(batch) => batch,
+        Err(refused) => return refused.into(),
+    };
+    let body = match to_bytes(request.into_body(), MAX_PRICING_BODY_BYTES).await {
+        Ok(body) => body,
+        Err(error) => return failed(format!("Error: {error}")),
+    };
+    let mut tx = match db.0.begin().await {
+        Ok(tx) => tx,
+        Err(error) => return failed(node_pg::thrown(error)),
+    };
+    let answer = queued(&mut tx, batch, &body).await;
+    match tx.commit().await {
+        Ok(()) => answer,
+        Err(error) => failed(node_pg::thrown(error)),
+    }
+}
+
+/// The pricing a request asks for, in Node's order: the batch, then the body's `mode`.
+async fn queued(conn: &mut PgConnection, batch: i32, body: &[u8]) -> JsonResponse {
+    match batch_json::find(conn, batch).await {
+        Ok(Some(_)) => {}
+        Ok(None) => return not_found(batch),
+        Err(error) => return failed(error),
+    }
+    let payload: Value = match serde_json::from_slice(body) {
+        Ok(payload) => payload,
+        Err(error) => return failed(format!("SyntaxError: {error}")),
+    };
+    if payload.is_null() {
+        return failed("TypeError: Cannot read properties of null (reading 'mode')");
+    }
+    let Some(mode) = payload["mode"]
+        .as_str()
+        .filter(|m| matches!(*m, "full" | "errors"))
+    else {
+        return api::error(StatusCode::BAD_REQUEST, "Invalid pricing mode");
+    };
+    let job = async {
+        let config = scheduler::job_config_on(&mut *conn)
+            .await
+            .map_err(node_pg::thrown)?;
+        let Some(queued) = queue::create_or_reuse(conn, batch, mode, &config)
+            .await
+            .map_err(node_pg::thrown)?
+        else {
+            return Ok(None);
+        };
+        batch_json::job(conn, queued.id).await.map(Some)
+    };
+    match job.await {
+        Ok(Some(job)) => api::node_json(&job).with_status(StatusCode::ACCEPTED),
+        Ok(None) => not_found(batch),
+        Err(error) => failed(error),
+    }
+}
+
+/// Any other write to a batch's pricing jobs: Node's action, which read the batch number first.
+async fn pricing_not_allowed(Params(at): Params<InventoryBatchPricingJobs<'_>>) -> JsonResponse {
+    match batch_number(&at.batch) {
+        Ok(_) => api::error(StatusCode::METHOD_NOT_ALLOWED, "Method not allowed"),
+        Err(refused) => refused.into(),
+    }
+}
+
+/// The batch as it changes while it is priced, until the client leaves.
+async fn pricing_stream(
+    State(db): State<Database>,
+    Params(at): Params<InventoryBatchPricingStream<'_>>,
+) -> JsonResponse {
+    let batch = match batch_number(&at.batch) {
+        Ok(batch) => batch,
+        Err(refused) => return refused.into(),
+    };
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("text/event-stream"),
+    );
+    headers.insert(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static("no-cache, no-transform"),
+    );
+    let events = pricing_events(db, batch).map(Ok::<_, Infallible>);
+    Relay::new(StatusCode::OK, headers, Body::from_stream(events)).into()
+}
+
+/// A pricing stream's state: the batch it watches and the version of it last sent.
+struct Watching {
+    db: Database,
+    batch: i32,
+    poll: tokio::time::Interval,
+    heartbeat: tokio::time::Interval,
+    sent: Option<Value>,
+    ended: bool,
+}
+
+/// The stream's events: the batch now, again each time it changes (read every second), and a
+/// heartbeat every 15 seconds; an `error` event ends it when the batch is not there.
+fn pricing_events(db: Database, batch: i32) -> impl Stream<Item = String> + Send + 'static {
+    let mut poll = tokio::time::interval(STREAM_POLL);
+    poll.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    let start = tokio::time::Instant::now() + STREAM_HEARTBEAT;
+    let watching = Watching {
+        db,
+        batch,
+        poll,
+        heartbeat: tokio::time::interval_at(start, STREAM_HEARTBEAT),
+        sent: None,
+        ended: false,
+    };
+    futures_util::stream::unfold(watching, |mut watching| async move {
+        if watching.ended {
+            return None;
+        }
+        loop {
+            tokio::select! {
+                _ = watching.poll.tick() => if let Some(event) = watching.snapshot().await {
+                    return Some((event, watching));
+                },
+                _ = watching.heartbeat.tick() => {
+                    return Some((sse_event("heartbeat", &json!({})), watching));
+                }
+            }
+        }
+    })
+}
+
+impl Watching {
+    /// The batch's event when it changed since the last one sent; none when it did not, or the
+    /// read failed (Node's interval dropped that failure too, and read again a second later).
+    async fn snapshot(&mut self) -> Option<String> {
+        let found = match self.db.0.acquire().await {
+            Ok(mut conn) => batch_json::find(&mut conn, self.batch).await,
+            Err(error) => Err(node_pg::thrown(error)),
+        };
+        match found {
+            Ok(Some(batch)) => {
+                let version = batch_version(&batch);
+                if self.sent.as_ref() == Some(&version) {
+                    return None;
+                }
+                self.sent = Some(version);
+                Some(sse_event("batch", &json!({ "batch": batch })))
+            }
+            Ok(None) => {
+                self.ended = true;
+                let error = format!("Batch {} not found", self.batch);
+                Some(sse_event("error", &json!({ "error": error })))
+            }
+            Err(error) => {
+                eprintln!("Pricing stream for batch {}: {error}", self.batch);
+                None
+            }
+        }
+    }
+}
+
+/// `getBatchVersion`: what a change the screen shows changes.
+fn batch_version(batch: &Value) -> Value {
+    let job = &batch["latestJob"];
+    json!([
+        batch["updatedAt"],
+        batch["status"],
+        batch["lastPricedAt"],
+        job["id"],
+        job["status"],
+        job["updatedAt"],
+        job["errorMessage"],
+    ])
+}
+
+/// One server-sent event, its data written as `JSON.stringify` writes it.
+fn sse_event(name: &str, payload: &Value) -> String {
+    format!("event: {name}\ndata: {}\n\n", js_json(payload))
+}
+
 #[cfg(test)]
 mod tests {
     use corten::axum::response::IntoResponse;
@@ -199,6 +461,129 @@ mod tests {
     use sqlx::Connection;
 
     use super::*;
+
+    /// Node's pricing stream on dev batches (`.port-logs/pricing-stream-node.ts`), through the
+    /// app's router: the status and headers, and what it sent first, the batch or the error event,
+    /// or its JSON refusal.
+    #[tokio::test]
+    #[ignore = "reads the dev database, and Node's answers in .port-logs"]
+    async fn the_pricing_stream_starts_as_node_started_it() {
+        use http_body_util::BodyExt;
+        crate::config::load_env();
+        let read = std::fs::read_to_string(".port-logs/pricing-stream.node.json").unwrap();
+        let node: Vec<Value> = serde_json::from_str(&read).unwrap();
+        let router = crate::app::app(Shared {
+            db: Database::connect_lazy(&crate::config::database_url()),
+            legacy: Legacy::new("http://127.0.0.1:1".into()),
+            slab_providers: crate::features::slab_connections::Transport::default(),
+        })
+        .router();
+        let event = |text: &str| -> (String, Value) {
+            let (name, data) = text.trim_end().split_once('\n').unwrap();
+            let data = data.strip_prefix("data: ").unwrap();
+            (name.to_owned(), serde_json::from_str(data).unwrap())
+        };
+        for theirs in &node {
+            let batch = theirs["batch"].as_str().unwrap();
+            let path = format!("/api/inventory-batches/{batch}/pricing-stream");
+            let request = corten::axum::http::Request::get(&path)
+                .body(Body::empty())
+                .unwrap();
+            let answer = tower::ServiceExt::oneshot(router.clone(), request)
+                .await
+                .unwrap();
+            assert_eq!(
+                u64::from(answer.status().as_u16()),
+                theirs["status"],
+                "{path}"
+            );
+            let kind = answer.headers()[header::CONTENT_TYPE]
+                .to_str()
+                .unwrap()
+                .to_owned();
+            assert!(
+                kind.starts_with(theirs["contentType"].as_str().unwrap()),
+                "{path}: {kind}"
+            );
+            if let Some(cache) = theirs["cacheControl"].as_str() {
+                assert_eq!(answer.headers()[header::CACHE_CONTROL], cache, "{path}");
+            }
+            let mut body = answer.into_body();
+            let mut text = String::new();
+            while !text.ends_with("\n\n") && !kind.starts_with("application/json") {
+                let frame = tokio::time::timeout(Duration::from_secs(5), body.frame())
+                    .await
+                    .unwrap();
+                let Some(frame) = frame else { break };
+                if let Ok(data) = frame.unwrap().into_data() {
+                    text.push_str(std::str::from_utf8(&data).unwrap());
+                }
+            }
+            let expected = theirs["text"].as_str().unwrap();
+            if kind.starts_with("application/json") {
+                let bytes = body.collect().await.unwrap().to_bytes();
+                let ours: Value = serde_json::from_slice(&bytes).unwrap();
+                assert_eq!(
+                    ours,
+                    serde_json::from_str::<Value>(expected).unwrap(),
+                    "{path}"
+                );
+            } else {
+                assert_eq!(event(&text), event(expected), "{path}");
+            }
+        }
+    }
+
+    /// The pricing requests in `.port-logs/pricing-jobs-cases.json` on the dev database, in order in
+    /// one transaction rolled back, against Node's action over the same
+    /// (`.port-logs/pricing-jobs-node.ts`): the answer, and batch 146's status after it. A job
+    /// queued in each run has its own id and times; one queued in one case is the one the next
+    /// case for its batch reuses.
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
+    async fn pricing_requests_answer_as_node_answered() {
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let read_log = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let cases: Vec<Value> = serde_json::from_str(&read_log("pricing-jobs-cases.json")).unwrap();
+        let node: Vec<Value> = serde_json::from_str(&read_log("pricing-jobs.node.json")).unwrap();
+        assert_eq!(cases.len(), node.len());
+        let mut ids = std::collections::HashMap::new();
+        let mut tx = db.0.begin().await.unwrap();
+        for (case, theirs) in cases.iter().zip(&node) {
+            let name = &case["name"];
+            let answer = match batch_number(case["batch"].as_str().unwrap()) {
+                Ok(batch) => queued(&mut tx, batch, case["body"].to_string().as_bytes()).await,
+                Err(refused) => refused.into(),
+            };
+            let status: Option<String> =
+                sqlx::query_scalar("SELECT status FROM inventory_batches WHERE batch_number = 146")
+                    .fetch_optional(&mut *tx)
+                    .await
+                    .unwrap();
+            let answer = answer.into_response();
+            let code = answer.status().as_u16();
+            let body = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let mut ours: Value = serde_json::from_slice(&body).unwrap();
+            let mut expected = theirs["body"].clone();
+            if ours["id"] != expected["id"] {
+                let mapped = ids
+                    .entry(expected["id"].clone())
+                    .or_insert(ours["id"].clone());
+                assert_eq!(*mapped, ours["id"], "{name}: not the job queued before");
+                for timed in ["/id", "/createdAt", "/updatedAt"] {
+                    *ours.pointer_mut(timed).unwrap() = Value::Null;
+                    *expected.pointer_mut(timed).unwrap() = Value::Null;
+                }
+            }
+            assert_eq!(u64::from(code), theirs["status"], "{name}");
+            assert_eq!(ours, expected, "{name}");
+            assert_eq!(Value::from(status), theirs["batch146"], "{name}");
+        }
+        tx.rollback().await.unwrap();
+    }
 
     /// The deletes in `.port-logs/batch-delete-cases.json` on the dev database, each in a savepoint
     /// rolled back after it, against Node's action over the same
@@ -262,6 +647,7 @@ mod tests {
             "inventory-batches",
             "inventory-batch",
             "inventory-batch-items",
+            "inventory-batch-results",
         ] {
             crate::api::tests::answers_as_node(name, &[]).await;
         }

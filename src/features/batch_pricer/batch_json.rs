@@ -178,7 +178,11 @@ LEFT JOIN inventory_batch_items i
   b.successful_count,
   b.manual_review_count"#;
 
-const LATEST_JOB: &str = r#"SELECT
+/// `jobSelect`: a pricing job's row.
+macro_rules! job_select {
+    ($rest:literal) => {
+        concat!(
+            r#"SELECT
   id,
   batch_number AS "batchNumber",
   priority,
@@ -196,9 +200,69 @@ const LATEST_JOB: &str = r#"SELECT
   created_at AS "createdAt",
   updated_at AS "updatedAt"
 FROM inventory_batch_pricing_jobs
-      WHERE batch_number = $1
+"#,
+            $rest
+        )
+    };
+}
+
+const LATEST_JOB: &str = job_select!(
+    r#"      WHERE batch_number = $1
       ORDER BY created_at DESC, id DESC
-      LIMIT 1"#;
+      LIMIT 1"#
+);
+
+const JOB: &str = job_select!("WHERE id = $1");
+
+/// `findResults`: the saved results in a scope, by product line, set, product and SKU.
+const RESULTS: &str = r#"SELECT
+        r.batch_number AS "batchNumber",
+        r.sku,
+        r.result_status AS "resultStatus",
+        r.row_json AS "row",
+        r.pricing_details_json AS "pricingDetails",
+        r.error_messages AS "errorMessages",
+        r.warning_messages AS "warningMessages",
+        r.priced_at AS "pricedAt"
+      FROM inventory_batch_results r
+      WHERE r.batch_number = $1
+        AND "#;
+
+/// The batch's saved results: its successful ones, or with `manual_review` the rest.
+pub async fn results(
+    conn: &mut PgConnection,
+    batch_number: i32,
+    manual_review: bool,
+) -> Result<Value, String> {
+    let status = if manual_review {
+        "r.result_status <> 'successful'"
+    } else {
+        "r.result_status = 'successful'"
+    };
+    let rows = sqlx::query(&format!(
+        "{RESULTS}{status}
+      ORDER BY
+        COALESCE(r.row_json->>'Product Line', ''),
+        COALESCE(r.row_json->>'Set Name', ''),
+        COALESCE(r.row_json->>'Product', ''),
+        r.sku"
+    ))
+    .bind(batch_number)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(node_pg::thrown)?;
+    node_pg::rows(&rows)
+}
+
+/// A pricing job as Node's repository returns it.
+pub async fn job(conn: &mut PgConnection, id: i64) -> Result<Value, String> {
+    let row = sqlx::query(JOB)
+        .bind(id)
+        .fetch_one(&mut *conn)
+        .await
+        .map_err(node_pg::thrown)?;
+    node_pg::row(&row)
+}
 
 /// The batch with its `latestJob` (`null` before any), or none when there is no such batch.
 pub async fn find(conn: &mut PgConnection, batch_number: i32) -> Result<Option<Value>, String> {
