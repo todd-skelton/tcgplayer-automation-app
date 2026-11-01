@@ -1,6 +1,6 @@
-//! Marking orders shipped: their tracking applied on TCGplayer here, through its order management
-//! API (`/api/shipping-export/tcgplayer-tracking`), then their buyers told through the Node app,
-//! which reads each shipment's tracking page from EasyPost (`tcgplayer-shipped-messages`). Only production
+//! Marking orders shipped: their tracking applied on TCGplayer through its order management API
+//! (`/api/shipping-export/tcgplayer-tracking`), then their buyers told through its messages API
+//! with each shipment's public tracking page from EasyPost (`tcgplayer-shipped-messages`). Only production
 //! postage is real, so only it is sent. What is still to send is worked out from what was sent,
 //! so sending again after a lost answer or a reload reaches only what has not gone.
 use std::collections::{HashMap, HashSet};
@@ -10,13 +10,16 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::{
+    easypost::TrackingPages,
     orders::Order,
     postage::{Postage, Purchase},
     shipments::Planned,
 };
 use crate::{
-    features::{http_configuration::config::Domain, seller_order_history::api::component},
-    legacy::Legacy,
+    features::{
+        http_configuration::config::Domain, seller_order_history::api::component,
+        shipping_configuration::EasyPostMode,
+    },
     tcgplayer::{Call, TcgPlayer},
 };
 
@@ -275,22 +278,139 @@ pub async fn apply_tracking(
     .await)
 }
 
-pub async fn send_messages(legacy: &Legacy, messages: &[Message]) -> Result<Vec<Messaged>, String> {
-    #[derive(Serialize)]
-    struct Request<'a> {
-        messages: &'a [Message],
+/// Where buyers are written to: TCGplayer's messages API.
+#[allow(async_fn_in_trait, reason = "used generically within this crate")]
+pub trait MessagesApi {
+    /// Starts a message thread with `body`, answering why it failed.
+    async fn start_thread(&self, body: &Value) -> Result<(), String>;
+}
+
+/// The API, through the app's TCGplayer client and its rate limits; the answer is not read.
+pub struct TcgPlayerMessages(pub TcgPlayer);
+
+impl MessagesApi for TcgPlayerMessages {
+    async fn start_thread(&self, body: &Value) -> Result<(), String> {
+        self.0
+            .post_for_bytes(
+                Domain::MessagesApi,
+                "/messages/threads?api-version=1.0",
+                body,
+                AXIOS_ACCEPT,
+                Call::default(),
+            )
+            .await
+            .map(drop)
+            .map_err(|e| e.to_string())
     }
-    #[derive(Deserialize)]
-    struct Answer {
-        results: Vec<Messaged>,
+}
+
+const STORE_NAME: &str = "Pok\u{e9}Bash TCG";
+const SUPPORT_SIGNATURE: &str = "Pok\u{e9}Bash TCG Support Team";
+
+/// The message a buyer gets when their order ships (`buildShippedMessageBody`).
+fn shipped_message(tracking_url: &str) -> String {
+    let url = tracking_url.replace('&', "&amp;").replace('"', "&quot;");
+    [
+        "<b>TLDR: Your order has shipped! Use the tracking link below for updates, and please reply if you have any questions or issues. Your satisfaction is guaranteed.</b>",
+        "",
+        "Greetings,",
+        "",
+        "Great news \u{2014} your order is on its way! We\u{2019}re excited to get your cards into your hands.",
+        "",
+        "You can track your shipment here:",
+        "",
+        &format!("<a href=\"{url}\" target=\"_blank\">{STORE_NAME} Tracking</a>"),
+        "",
+        "Please keep in mind that it can take 24\u{2013}48 hours for the first scan to appear, so a short delay in updates is completely normal.",
+        "",
+        "If your order has not arrived within a week of shipping, please reply to this message and we\u{2019}ll gladly look into it for you.",
+        "",
+        "We\u{2019}re committed to your satisfaction with a 100% satisfaction guarantee. If anything about your order is not as expected, including card condition or delivery concerns, please contact us right away and we\u{2019}ll work to make it right.",
+        "",
+        "Your feedback means a lot to us. Once your order arrives, we\u{2019}d greatly appreciate it if you took a moment to leave a review of your purchase.",
+        "",
+        &format!("Thank you again for choosing {STORE_NAME}. We hope you love your new cards!"),
+        "",
+        "Warm regards,",
+        SUPPORT_SIGNATURE,
+    ]
+    .join("\n")
+}
+
+/// Each order's buyer told their order shipped, with its production shipment's public tracking
+/// page, the first message of an order only, each shipment's page read once
+/// (`sendShippedMessagesToSellerOrders`); a message without an order number, seller or shipment
+/// is refused as the Node route refuses it.
+pub async fn send_messages(
+    api: &impl MessagesApi,
+    pages: &impl TrackingPages,
+    messages: &[Message],
+) -> Result<Vec<Messaged>, String> {
+    if messages.is_empty() {
+        return Err("messages must be a non-empty array.".to_owned());
     }
-    let answer: Answer = legacy
-        .send(
-            "/api/shipping-export/tcgplayer-shipped-messages",
-            &Request { messages },
-        )
-        .await?;
-    Ok(answer.results)
+    let blank = |m: &Message| {
+        [&m.order_number, &m.seller_key, &m.easypost_shipment_id]
+            .iter()
+            .any(|s| s.trim().is_empty())
+    };
+    if messages.iter().any(blank) {
+        return Err(
+            "Each shipped message must include an orderNumber, sellerKey, and easypostShipmentId."
+                .to_owned(),
+        );
+    }
+    let mut seen = HashSet::new();
+    let firsts: Vec<Message> = messages
+        .iter()
+        .map(|m| Message {
+            order_number: m.order_number.trim().to_owned(),
+            seller_key: m.seller_key.trim().to_owned(),
+            easypost_shipment_id: m.easypost_shipment_id.trim().to_owned(),
+        })
+        .filter(|m| seen.insert(m.order_number.clone()))
+        .collect();
+    let mut shipments: Vec<String> = Vec::new();
+    for m in &firsts {
+        if !shipments.contains(&m.easypost_shipment_id) {
+            shipments.push(m.easypost_shipment_id.clone());
+        }
+    }
+    let urls: HashMap<String, Result<String, String>> =
+        join_all(shipments.into_iter().map(|id| async move {
+            let url = pages.tracking_url(EasyPostMode::Production, &id).await;
+            (id, url)
+        }))
+        .await
+        .into_iter()
+        .collect();
+    Ok(join_all(firsts.into_iter().map(|m| {
+        let url = urls[&m.easypost_shipment_id].clone();
+        async move {
+            let sent = match url {
+                Ok(url) => {
+                    let body = json!({
+                        "sellerKey": m.seller_key,
+                        "subjectId": "2",
+                        "messageBody": shipped_message(&url),
+                        "associationType": "SellerOrder",
+                        "associationValue": m.order_number,
+                    });
+                    api.start_thread(&body).await.map(|()| url)
+                }
+                Err(e) => Err(e),
+            };
+            Messaged {
+                order_number: m.order_number,
+                seller_key: m.seller_key,
+                easypost_shipment_id: m.easypost_shipment_id,
+                status: if sent.is_ok() { "sent" } else { "failed" }.to_owned(),
+                error: sent.as_ref().err().map(|e| format!("Error: {e}")),
+                tracking_url: sent.ok(),
+            }
+        }
+    }))
+    .await)
 }
 
 #[cfg(test)]
@@ -318,6 +438,107 @@ mod tests {
                 Some((_, why)) => Err(why.as_str().unwrap().to_owned()),
                 None => Ok(()),
             }
+        }
+    }
+
+    impl MessagesApi for Scripted {
+        async fn start_thread(&self, body: &Value) -> Result<(), String> {
+            self.posted
+                .lock()
+                .unwrap()
+                .push(json!({ "path": "/messages/threads?api-version=1.0", "body": body }));
+            match &self.fail[body["associationValue"].as_str().unwrap()] {
+                Value::String(why) => Err(why.clone()),
+                _ => Ok(()),
+            }
+        }
+    }
+
+    /// EasyPost as `.port-logs/messages-cases.json` scripts its shipments, noting each request.
+    async fn easypost_stand_in(
+        shipments: Value,
+    ) -> (
+        crate::features::shipping_export::easypost::EasyPost,
+        std::sync::Arc<Mutex<Vec<Value>>>,
+    ) {
+        use corten::axum::{
+            Router,
+            http::{HeaderMap, Method, StatusCode, Uri},
+        };
+        let asked = std::sync::Arc::new(Mutex::new(Vec::new()));
+        let kept = asked.clone();
+        let app = Router::new().fallback(move |method: Method, uri: Uri, headers: HeaderMap| {
+            let (kept, shipments) = (kept.clone(), shipments.clone());
+            async move {
+                let auth = headers
+                    .get("authorization")
+                    .and_then(|v| v.to_str().ok())
+                    .map(str::to_owned);
+                kept.lock()
+                    .unwrap()
+                    .push(json!({ "method": method.as_str(), "path": uri.path(), "auth": auth }));
+                let id = uri.path().rsplit('/').next().unwrap_or("");
+                let s = &shipments[id];
+                let status =
+                    StatusCode::from_u16(s["status"].as_u64().unwrap_or(404) as u16).unwrap();
+                (
+                    status,
+                    [("content-type", "application/json")],
+                    s["body"].to_string(),
+                )
+            }
+        });
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        tokio::spawn(async move { corten::axum::serve(listener, app).await });
+        let easypost = crate::features::shipping_export::easypost::EasyPost::stand_in(
+            &origin,
+            "EZTK_standin_production",
+        );
+        (easypost, asked)
+    }
+
+    /// Node's `createShippingTcgplayerShippedMessagesAction` over the cases in
+    /// `.port-logs/messages.node.json`, Node's EasyPost client against the same stand-in: results,
+    /// refusals, every EasyPost request and every message thread started.
+    #[tokio::test]
+    #[ignore = "reads Node's answers in .port-logs"]
+    async fn buyers_are_told_as_node_tells_them() {
+        let read_log = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let script: Value = serde_json::from_str(&read_log("messages-cases.json")).unwrap();
+        let node: Vec<Value> = serde_json::from_str(&read_log("messages.node.json")).unwrap();
+        let sorted = |mut list: Vec<Value>| {
+            list.sort_by_key(|v| v.to_string());
+            list
+        };
+        for (case, theirs) in script["cases"].as_array().unwrap().iter().zip(node) {
+            let name = theirs["name"].as_str().unwrap();
+            let messages: Vec<Message> = serde_json::from_value(case["messages"].clone()).unwrap();
+            let api = Scripted {
+                fail: case["threadFails"].clone(),
+                posted: Mutex::new(Vec::new()),
+            };
+            let (easypost, asked) = easypost_stand_in(script["shipments"].clone()).await;
+            let ours = send_messages(&api, &easypost, &messages).await;
+            let expected = match theirs["status"].as_u64().unwrap() {
+                200 => Ok(serde_json::from_value::<Vec<Messaged>>(
+                    theirs["body"]["results"].clone(),
+                )
+                .unwrap()),
+                _ => Err(theirs["body"]["error"].as_str().unwrap().to_owned()),
+            };
+            assert_eq!(ours, expected, "{name}");
+            let asked = asked.lock().unwrap().clone();
+            assert_eq!(
+                sorted(asked),
+                sorted(theirs["asked"].as_array().unwrap().clone()),
+                "{name}: EasyPost"
+            );
+            assert_eq!(
+                sorted(api.posted.into_inner().unwrap()),
+                sorted(theirs["threads"].as_array().unwrap().clone()),
+                "{name}: threads"
+            );
         }
     }
 

@@ -7,6 +7,7 @@ use std::collections::HashSet;
 use corten::{Refusal, prelude::*};
 
 use super::{
+    easypost::EasyPost,
     one_at_a_time::OneAtATime,
     page::{Shown, refused},
     ship::{self, Message},
@@ -14,7 +15,7 @@ use super::{
     url::ShippingWorkflow,
     workflow,
 };
-use crate::{database::Database, legacy::Legacy, tcgplayer::TcgPlayer};
+use crate::{database::Database, tcgplayer::TcgPlayer};
 
 /// Buyers hear once: a second click, tab or computer waits for the first to finish.
 static SHIPPING: OneAtATime = OneAtATime::new();
@@ -24,11 +25,7 @@ const NO_SELLER: &str =
     "Set the seller key on Load Orders before shipping. Buyers can only be notified with it.";
 const NOTHING_PENDING: &str = "No order is waiting to be marked shipped.";
 
-pub async fn mark_shipped(
-    req: Req,
-    State(db): State<Database>,
-    State(legacy): State<Legacy>,
-) -> HtmlResult {
+pub async fn mark_shipped(req: Req, State(db): State<Database>) -> HtmlResult {
     let refuse = |refusal: Refusal, why: String| {
         let (req, db) = (&req, &db);
         async move { refused(req, db, Step::Ship, refusal, &why).await }
@@ -84,7 +81,13 @@ pub async fn mark_shipped(
         .filter(|m| !untracked.contains(&m.order_number))
         .collect();
     if !messages.is_empty() {
-        let results = match ship::send_messages(&legacy, &messages).await {
+        let results = match ship::send_messages(
+            &ship::TcgPlayerMessages(TcgPlayer::new(db.clone())),
+            &EasyPost::default(),
+            &messages,
+        )
+        .await
+        {
             Ok(results) => results,
             Err(why) => {
                 return refuse(
