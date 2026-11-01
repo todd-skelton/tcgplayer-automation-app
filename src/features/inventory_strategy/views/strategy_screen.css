@@ -51,13 +51,13 @@
   white-space: nowrap;
 }
 .good {
-  color: var(--color-ok);
+  color: var(--success);
 }
 .caution {
-  color: var(--color-warn);
+  color: var(--warning);
 }
 .warn {
-  color: var(--color-warn);
+  color: var(--warning);
 }
 .window-choice {
   display: inline-flex;
@@ -77,7 +77,7 @@
   & span {
     display: inline-block;
     padding: var(--space-1) var(--space-3);
-    border: 1px solid var(--color-line);
+    border: 1px solid var(--border);
     font-size: var(--font-size-sm);
   }
   & label:first-of-type span {
@@ -90,12 +90,12 @@
     border-left: 0;
   }
   & input:checked + span {
-    background: var(--color-raised);
-    color: var(--color-accent);
+    background: var(--muted);
+    color: var(--primary);
     font-weight: 600;
   }
   & input:focus-visible + span {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--primary);
     outline-offset: 2px;
   }
   &:disabled span {
@@ -124,7 +124,7 @@
     font-weight: 500;
   }
   & small {
-    color: var(--color-muted);
+    color: var(--muted-foreground);
     font-size: var(--font-size-xs);
   }
 }
@@ -151,7 +151,7 @@
   & th,
   & td {
     padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--border);
     text-align: start;
     vertical-align: top;
   }
@@ -163,7 +163,7 @@
   }
   & small {
     display: block;
-    color: var(--color-muted);
+    color: var(--muted-foreground);
     font-size: var(--font-size-xs);
   }
 }
@@ -178,7 +178,7 @@
   font-weight: 700 !important;
 }
 .configured {
-  background: var(--color-raised);
+  background: var(--muted);
   & .value {
     font-weight: 700;
   }
@@ -192,40 +192,40 @@
   }
 }
 .grid {
-  stroke: var(--color-line);
+  stroke: var(--border);
 }
 .zero {
-  stroke: var(--color-line);
+  stroke: var(--border);
   stroke-width: 1.5;
 }
 .axis {
-  fill: var(--color-muted);
+  fill: var(--muted-foreground);
 }
 .change {
-  stroke: var(--color-warn);
+  stroke: var(--warning);
   stroke-dasharray: 4 3;
 }
 .change-label {
-  fill: var(--color-warn);
+  fill: var(--warning);
 }
 .week-line {
   fill: none;
-  stroke: var(--color-muted);
+  stroke: var(--muted-foreground);
   stroke-width: 1;
   opacity: 0.6;
 }
 .trailing-line {
   fill: none;
-  stroke: var(--color-accent);
+  stroke: var(--primary);
   stroke-width: 2.5;
 }
 .point {
-  fill: var(--color-muted);
-  stroke: var(--color-muted);
+  fill: var(--muted-foreground);
+  stroke: var(--muted-foreground);
   stroke-width: 1.5;
 }
 .hollow {
-  fill: var(--color-surface);
+  fill: var(--card);
 }
 .changes {
   margin: 0;
@@ -246,9 +246,9 @@
   display: grid;
   gap: var(--space-1);
   font-size: var(--font-size-sm);
-  color: var(--color-muted);
+  color: var(--muted-foreground);
   & select {
     min-width: 11rem;
-    color: var(--color-ink);
+    color: var(--foreground);
   }
 }

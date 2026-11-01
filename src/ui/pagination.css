@@ -1,0 +1,15 @@
+/* corten ui 0.1.0: pagination 052db4b82cb84d56 */
+.pagination > ul { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .25rem; margin: 0; padding: 0; list-style: none; }
+.page, .step {
+  display: inline-flex; align-items: center; justify-content: center; gap: .25rem; height: 2.25rem; min-width: 2.25rem;
+  padding: 0 .625rem; box-sizing: border-box; font-size: .875rem; font-weight: 500; color: var(--foreground);
+  text-decoration: none; border: 1px solid transparent; border-radius: calc(var(--radius) - 2px); transition: background-color .15s;
+}
+.page:hover, a.step:hover { background: var(--accent); color: var(--accent-foreground); }
+.page:focus-visible, .step:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.page[aria-current="page"] { border-color: var(--input); background: var(--background); }
+.step[aria-disabled="true"] { opacity: .5; }
+.previous::before, .next::after { content: ""; width: .375rem; height: .375rem; border: solid currentColor; border-width: 1.5px 1.5px 0 0; }
+.previous::before { transform: rotate(-135deg); }
+.next::after { transform: rotate(45deg); }
+.gap::before { content: "\2026"; display: inline-flex; width: 2.25rem; justify-content: center; color: var(--muted-foreground); }

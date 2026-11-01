@@ -12,22 +12,22 @@
   }
 }
 .primary {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-accent-ink);
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
 }
 .seller-button {
   border-color: transparent;
   background: none;
-  color: var(--color-accent);
+  color: var(--primary);
 }
 .unset {
-  color: var(--color-warn);
+  color: var(--warning);
 }
 .popover {
   width: 360px;
   padding: var(--space-4);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   & form {
@@ -37,7 +37,7 @@
 }
 .divider {
   align-self: stretch;
-  border-inline-start: 1px solid var(--color-line);
+  border-inline-start: 1px solid var(--border);
 }
 .menu {
   margin-inline-start: auto;
@@ -55,8 +55,8 @@
   gap: var(--space-2);
   width: 440px;
   padding: var(--space-3);
-  background: var(--color-surface);
-  border: 1px solid var(--color-line);
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   & button,
@@ -67,18 +67,18 @@
     width: 100%;
   }
   & small {
-    color: var(--color-muted);
+    color: var(--muted-foreground);
     white-space: normal;
   }
 }
 .chip {
   display: inline-block;
   padding: 2px var(--space-3);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   font-size: var(--font-size-sm);
 }
 .accent {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
+  border-color: var(--primary);
+  color: var(--primary);
 }

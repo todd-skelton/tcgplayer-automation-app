@@ -1,0 +1,15 @@
+/* corten ui 0.1.0: switch a2e47d46d3436644 */
+.switch { display: inline-flex; align-items: center; gap: .5rem; font-size: .875rem; line-height: 1.25rem; cursor: pointer; }
+.switch > input {
+  appearance: none; flex: none; display: inline-flex; align-items: center; margin: 0; padding: 1px;
+  width: 2rem; height: 1.15rem; border: 1px solid transparent; border-radius: 999px;
+  background: var(--input); cursor: inherit; transition: background-color .15s;
+}
+.switch > input::before {
+  content: ""; width: 1rem; height: 1rem; border-radius: 50%; background: var(--background);
+  box-shadow: 0 1px 2px rgb(0 0 0 / .2); transition: transform .15s;
+}
+.switch > input:checked { background: var(--primary); }
+.switch > input:checked::before { transform: translateX(calc(2rem - 1rem - 4px)); }
+.switch > input:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.switch:has(> input:disabled) { opacity: .5; cursor: not-allowed; }

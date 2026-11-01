@@ -10,7 +10,7 @@ use crate::{
         url::{self, Choice},
         views::Problem,
     },
-    layout::{Field, Notice, Tone},
+    layout::{LabeledControl, Notice, Tone},
     theme::*,
 };
 
@@ -227,23 +227,23 @@ fn DecisionForm<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> imp
             <input type="hidden" name={f.provider} value={&sale.provider}>
             <input type="hidden" name={f.provider_id} value={&sale.provider_id}>
             <input type="hidden" name={f.date} value={sale.date.as_deref().unwrap_or("")}>
-            <Field label="Comp decision" hint="">
+            <LabeledControl label="Comp decision" hint="">
                 <select name={f.decision}>
                     <option value="accept" selected={!excluded}>"Include after review"</option>
                     <option value="exclude" selected={excluded}>"Exclude"</option>
                 </select>
-            </Field>
-            <Field
+            </LabeledControl>
+            <LabeledControl
                 label="Verified item price in USD (optional)"
                 hint="Use only an item amount verified from the sale. Shipping and fees remain separate."
             >
                 <input type="number" name={f.item_price} value={price} min="0.01" step="0.01">
-            </Field>
-            <Field label="Review reason" hint="">
+            </LabeledControl>
+            <LabeledControl label="Review reason" hint="">
                 <textarea name={f.note} rows="3" maxlength="1000" required>
                     {saved.map_or("", |d| d.note.as_str())}
                 </textarea>
-            </Field>
+            </LabeledControl>
             <p class={muted()}>
                 "Including a comp does not override a conflicting card identity or unconfirmed sale outcome."
             </p>

@@ -1,181 +1,390 @@
 {
-  "color": {
+  "background": {
     "$type": "color",
-    "ink": {
-      "$value": {
-        "colorSpace": "srgb",
-        "components": [
-          0.1098,
-          0.1216,
-          0.149
-        ],
-        "hex": "#1c1f26"
-      }
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9608,
+        0.9647,
+        0.9725
+      ],
+      "hex": "#f5f6f8"
     },
-    "muted": {
-      "$value": {
-        "colorSpace": "srgb",
-        "components": [
-          0.3725,
-          0.4,
-          0.4471
-        ],
-        "hex": "#5f6672"
-      }
+    "$description": "The page behind everything."
+  },
+  "foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1098,
+        0.1216,
+        0.149
+      ],
+      "hex": "#1c1f26"
     },
-    "line": {
-      "$value": {
-        "colorSpace": "srgb",
-        "components": [
-          0.8784,
-          0.8902,
-          0.9098
-        ],
-        "hex": "#e0e3e8"
-      }
+    "$description": "Text on the page."
+  },
+  "card": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
     },
-    "bg": {
-      "$value": {
-        "colorSpace": "srgb",
-        "components": [
-          0.9608,
-          0.9647,
-          0.9725
-        ],
-        "hex": "#f5f6f8"
-      }
+    "$description": "A raised surface: a panel, a card."
+  },
+  "card-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1098,
+        0.1216,
+        0.149
+      ],
+      "hex": "#1c1f26"
+    }
+  },
+  "popover": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
     },
-    "surface": {
-      "$value": {
-        "colorSpace": "srgb",
-        "components": [
-          1,
-          1,
-          1
-        ],
-        "hex": "#ffffff"
-      }
+    "$description": "A surface over the page: a menu, a popover, a dialog."
+  },
+  "popover-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1098,
+        0.1216,
+        0.149
+      ],
+      "hex": "#1c1f26"
+    }
+  },
+  "primary": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.0824,
+        0.3961,
+        0.7529
+      ],
+      "hex": "#1565c0"
     },
-    "raised": {
-      "$value": {
-        "colorSpace": "srgb",
-        "components": [
-          0.9412,
-          0.949,
-          0.9608
-        ],
-        "hex": "#f0f2f5"
-      }
+    "$description": "The brand: the main action, links, the focus ring."
+  },
+  "primary-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
+    }
+  },
+  "secondary": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9412,
+        0.949,
+        0.9608
+      ],
+      "hex": "#f0f2f5"
     },
-    "accent": {
-      "$value": {
-        "colorSpace": "srgb",
-        "components": [
-          0.098,
-          0.4627,
-          0.8235
-        ],
-        "hex": "#1976d2"
-      }
+    "$description": "A quieter action."
+  },
+  "secondary-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1098,
+        0.1216,
+        0.149
+      ],
+      "hex": "#1c1f26"
+    }
+  },
+  "muted": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9412,
+        0.949,
+        0.9608
+      ],
+      "hex": "#f0f2f5"
     },
-    "accent-ink": {
-      "$value": {
-        "colorSpace": "srgb",
-        "components": [
-          1,
-          1,
-          1
-        ],
-        "hex": "#ffffff"
-      }
+    "$description": "A subdued surface: a table header, a stripe; muted-foreground is secondary text."
+  },
+  "muted-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.3725,
+        0.4,
+        0.4471
+      ],
+      "hex": "#5f6672"
+    }
+  },
+  "accent": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9333,
+        0.949,
+        0.9686
+      ],
+      "hex": "#eef2f7"
     },
-    "bar": {
-      "$value": {
-        "colorSpace": "srgb",
-        "components": [
-          0.098,
-          0.4627,
-          0.8235
-        ],
-        "hex": "#1976d2"
-      }
+    "$description": "What a pointer is over: a row, a ghost button."
+  },
+  "accent-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1098,
+        0.1216,
+        0.149
+      ],
+      "hex": "#1c1f26"
+    }
+  },
+  "destructive": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.7765,
+        0.1569,
+        0.1569
+      ],
+      "hex": "#c62828"
     },
-    "bar-ink": {
-      "$value": {
-        "colorSpace": "srgb",
-        "components": [
-          1,
-          1,
-          1
-        ],
-        "hex": "#ffffff"
-      }
+    "$description": "Something lost or failed."
+  },
+  "destructive-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
+    }
+  },
+  "destructive-soft": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9922,
+        0.9255,
+        0.9176
+      ],
+      "hex": "#fdecea"
+    }
+  },
+  "success": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1647,
+        0.451,
+        0.1882
+      ],
+      "hex": "#2a7330"
     },
-    "warn": {
-      "$value": {
-        "colorSpace": "srgb",
-        "components": [
-          0.698,
-          0.4157,
-          0
-        ],
-        "hex": "#b26a00"
-      }
+    "$description": "Something done or healthy."
+  },
+  "success-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
+    }
+  },
+  "success-soft": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9294,
+        0.9686,
+        0.9333
+      ],
+      "hex": "#edf7ee"
+    }
+  },
+  "warning": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.6039,
+        0.3569,
+        0
+      ],
+      "hex": "#9a5b00"
     },
-    "warn-soft": {
-      "$value": {
-        "colorSpace": "srgb",
-        "components": [
-          1,
-          0.9569,
-          0.898
-        ],
-        "hex": "#fff4e5"
-      }
+    "$description": "Something to look at before going on."
+  },
+  "warning-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
+    }
+  },
+  "warning-soft": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        0.9569,
+        0.898
+      ],
+      "hex": "#fff4e5"
+    }
+  },
+  "info": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.0431,
+        0.4196,
+        0.7961
+      ],
+      "hex": "#0b6bcb"
     },
-    "danger": {
-      "$value": {
-        "colorSpace": "srgb",
-        "components": [
-          0.7765,
-          0.1569,
-          0.1569
-        ],
-        "hex": "#c62828"
-      }
+    "$description": "Something to know."
+  },
+  "info-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
+    }
+  },
+  "info-soft": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9098,
+        0.9451,
+        0.9882
+      ],
+      "hex": "#e8f1fc"
+    }
+  },
+  "border": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.8784,
+        0.8902,
+        0.9098
+      ],
+      "hex": "#e0e3e8"
     },
-    "danger-soft": {
-      "$value": {
-        "colorSpace": "srgb",
-        "components": [
-          0.9922,
-          0.9255,
-          0.9176
-        ],
-        "hex": "#fdecea"
-      }
+    "$description": "A line between parts."
+  },
+  "input": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.5255,
+        0.5529,
+        0.5961
+      ],
+      "hex": "#868d98"
     },
-    "info": {
-      "$value": {
-        "colorSpace": "srgb",
-        "components": [
-          0.0431,
-          0.4196,
-          0.7961
-        ],
-        "hex": "#0b6bcb"
-      }
+    "$description": "A control's border, 3:1 on its surface."
+  },
+  "ring": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.0824,
+        0.3961,
+        0.7529
+      ],
+      "hex": "#1565c0"
     },
-    "ok": {
-      "$value": {
-        "colorSpace": "srgb",
-        "components": [
-          0.1804,
-          0.4902,
-          0.1961
-        ],
-        "hex": "#2e7d32"
-      }
+    "$description": "The keyboard focus outline."
+  },
+  "app-bar": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.098,
+        0.4627,
+        0.8235
+      ],
+      "hex": "#1976d2"
+    },
+    "$description": "The bar across the top of every page."
+  },
+  "app-bar-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
     }
   },
   "space": {
@@ -231,6 +440,13 @@
   },
   "radius": {
     "$type": "dimension",
+    "$root": {
+      "$value": {
+        "value": 8,
+        "unit": "px"
+      },
+      "$description": "The kit's corner: its parts round by this, less for the small ones."
+    },
     "sm": {
       "$value": {
         "value": 4,
@@ -486,11 +702,20 @@
         },
         "fg": {
           "property": "color",
-          "group": "color"
+          "values": {
+            "muted": "var(--muted-foreground)",
+            "primary": "var(--primary)",
+            "success": "var(--success)",
+            "warning": "var(--warning)",
+            "destructive": "var(--destructive)"
+          }
         },
         "bg": {
           "property": "background-color",
-          "group": "color"
+          "values": {
+            "card": "var(--card)",
+            "muted": "var(--muted)"
+          }
         },
         "rounded": {
           "property": "border-radius",

@@ -6,7 +6,7 @@ use crate::{
         form::SettingsInput,
         url,
     },
-    layout::{Field, Notice, Tone},
+    layout::{LabeledControl, Notice, Tone},
     theme::*,
 };
 
@@ -112,7 +112,7 @@ pub fn PublicationForm<'a>(
                 <div class={PanelBody}>
                     <h2>"Guardrails"</h2>
                     <div class={Numbers}>
-                        <Field label="Failure limit" hint="">
+                        <LabeledControl label="Failure limit" hint="">
                             <input
                                 type="number"
                                 min="1"
@@ -122,8 +122,8 @@ pub fn PublicationForm<'a>(
                                 {..e.aria(f.consecutive_failure_limit)}
                             >
                             {e.message(f.consecutive_failure_limit)}
-                        </Field>
-                        <Field label="Minimum price change ($)" hint="">
+                        </LabeledControl>
+                        <LabeledControl label="Minimum price change ($)" hint="">
                             <input
                                 type="number"
                                 min="0"
@@ -133,8 +133,8 @@ pub fn PublicationForm<'a>(
                                 {..e.aria(f.minimum_absolute_price_change)}
                             >
                             {e.message(f.minimum_absolute_price_change)}
-                        </Field>
-                        <Field label="Candidate maximum age (minutes)" hint="">
+                        </LabeledControl>
+                        <LabeledControl label="Candidate maximum age (minutes)" hint="">
                             <input
                                 type="number"
                                 min="1"
@@ -144,8 +144,8 @@ pub fn PublicationForm<'a>(
                                 {..e.aria(f.maximum_candidate_age_minutes)}
                             >
                             {e.message(f.maximum_candidate_age_minutes)}
-                        </Field>
-                        <Field label="Staged micro-batch maximum" hint="">
+                        </LabeledControl>
+                        <LabeledControl label="Staged micro-batch maximum" hint="">
                             <input
                                 type="number"
                                 min="1"
@@ -155,7 +155,7 @@ pub fn PublicationForm<'a>(
                                 {..e.aria(f.staged_micro_batch_maximum)}
                             >
                             {e.message(f.staged_micro_batch_maximum)}
-                        </Field>
+                        </LabeledControl>
                     </div>
                     <label class={Switch}>
                         <input

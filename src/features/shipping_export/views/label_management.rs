@@ -20,7 +20,7 @@ use crate::{
             url::{self, ShippingWorkflow},
         },
     },
-    layout::{Field, Notice, Tone},
+    layout::{LabeledControl, Notice, Tone},
     text::Msg,
     theme::*,
 };
@@ -61,14 +61,14 @@ pub fn LabelManagement<'a>(
                 "Seller key: "<strong>{seller}</strong>". Set the seller key on Load Orders."
             </p>
             <form method="get" action={url::OrderLabels { order: None }} class={Lookup}>
-                <Field label="Order Number" hint="">
+                <LabeledControl label="Order Number" hint="">
                     <input
                         name="order"
                         value={looked.number.unwrap_or_default()}
                         placeholder="Enter order number"
                         required
                     >
-                </Field>
+                </LabeledControl>
                 <button class={(Button, Secondary)}>"Lookup Order"</button>
             </form>
             if let Some(found) = found {

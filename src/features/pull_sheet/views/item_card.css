@@ -7,7 +7,7 @@
   border: 3px solid var(--edge);
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: var(--color-surface);
+  background: var(--card);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   &:hover {
     transform: translateY(-2px);
@@ -54,8 +54,8 @@
   z-index: 4;
   padding: 0 var(--space-2);
   border-radius: var(--radius-pill);
-  background: var(--color-accent);
-  color: var(--color-accent-ink);
+  background: var(--primary);
+  color: var(--primary-foreground);
   font-weight: 700;
   font-size: var(--font-size-sm);
 }
@@ -66,7 +66,7 @@
   justify-content: center;
   aspect-ratio: 3 / 4;
   overflow: hidden;
-  background: var(--color-raised);
+  background: var(--muted);
   cursor: pointer;
   &::after {
     content: "";
@@ -92,12 +92,12 @@
   pointer-events: none;
 }
 .face:has(.hide-details:focus-visible) {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--primary);
   outline-offset: -2px;
 }
 .missing {
   font-size: 48px;
-  color: var(--color-warn);
+  color: var(--warning);
 }
 .shimmer {
   position: absolute;

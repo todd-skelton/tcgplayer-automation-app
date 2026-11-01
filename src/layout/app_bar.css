@@ -6,8 +6,8 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-4);
-  background: var(--color-bar);
-  color: var(--color-bar-ink);
+  background: var(--app-bar);
+  color: var(--app-bar-foreground);
   box-shadow: var(--shadow-md);
   & a {
     color: inherit;
@@ -59,7 +59,7 @@
   display: contents;
 }
 .warning {
-  color: var(--color-warn-soft);
+  color: var(--warning-soft);
   font-size: var(--font-size-sm);
 }
 .settings {
@@ -74,10 +74,10 @@
   right: var(--space-4);
   min-width: 14rem;
   padding: var(--space-2) 0;
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-ink);
+  background: var(--card);
+  color: var(--foreground);
   box-shadow: var(--shadow-md);
   &:popover-open {
     display: grid;
@@ -87,6 +87,6 @@
   }
   & a:hover,
   & a[aria-current="page"] {
-    background: var(--color-raised);
+    background: var(--muted);
   }
 }

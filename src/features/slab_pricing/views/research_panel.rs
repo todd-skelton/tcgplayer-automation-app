@@ -18,7 +18,7 @@ use crate::{
             views::Problem,
         },
     },
-    layout::{Field, Notice, Tone},
+    layout::{LabeledControl, Notice, Tone},
     text::Msg,
     theme::*,
 };
@@ -53,7 +53,7 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
                         ..choice.clone()
                     }),
                     html! {
-                    <Field label="Research grade" hint="">
+                    <LabeledControl label="Research grade" hint="">
                         <select name={f.grade}>
                             <option value="owned" selected={grade == "owned"}>
                                 "Owned "{&record.grader}" "{owned}
@@ -64,13 +64,13 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
                                 }
                             }
                         </select>
-                    </Field>
-                    <Field label="Sales from" hint="">
+                    </LabeledControl>
+                    <LabeledControl label="Sales from" hint="">
                         <input type="date" name={f.from} value={&window.from} required>
-                    </Field>
-                    <Field label="Sales through" hint="">
+                    </LabeledControl>
+                    <LabeledControl label="Sales through" hint="">
                         <input type="date" name={f.to} value={&window.to} required>
-                    </Field>
+                    </LabeledControl>
                     <button>"Show evidence"</button>
                     },
                 )}

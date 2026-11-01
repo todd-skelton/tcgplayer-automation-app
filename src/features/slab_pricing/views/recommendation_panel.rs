@@ -13,7 +13,7 @@ use crate::{
         url,
         views::{Problem, PublicationPanel},
     },
-    layout::{Field, Notice, Tone},
+    layout::{LabeledControl, Notice, Tone},
     text::Msg,
     theme::*,
 };
@@ -140,17 +140,17 @@ fn CostsForm<'a>(
             class={Stack}
         >
             <div class={Line}>
-                <Field label="Comparable price basis" hint="">
+                <LabeledControl label="Comparable price basis" hint="">
                     <BasisSelect name={f.basis} chosen={basis} />
-                </Field>
+                </LabeledControl>
                 for (label, name, value) in costs {
-                    <Field label={label} hint="">
+                    <LabeledControl label={label} hint="">
                         <input type="number" name={name} value={number(value)} min="0" step="0.01">
-                    </Field>
+                    </LabeledControl>
                 }
             </div>
             <div class={Line}>
-                <Field label="Seller fee (%)" hint="">
+                <LabeledControl label="Seller fee (%)" hint="">
                     <input
                         type="number"
                         name={f.fee_rate}
@@ -159,8 +159,8 @@ fn CostsForm<'a>(
                         max="99.99"
                         step="0.01"
                     >
-                </Field>
-                <Field label="Fixed fee (USD)" hint="">
+                </LabeledControl>
+                <LabeledControl label="Fixed fee (USD)" hint="">
                     <input
                         type="number"
                         name={f.fee_fixed}
@@ -168,10 +168,10 @@ fn CostsForm<'a>(
                         min="0"
                         step="0.01"
                     >
-                </Field>
-                <Field label="Fee basis" hint="">
+                </LabeledControl>
+                <LabeledControl label="Fee basis" hint="">
                     <BasisSelect name={f.fee_basis} chosen={fee_basis.as_str()} />
-                </Field>
+                </LabeledControl>
             </div>
             <div class={Line}>
                 <button data-primary disabled={!can_calculate}>
@@ -331,12 +331,12 @@ fn ReviewedAsk<'a>(
             class={Line}
         >
             <input type="hidden" name={f.recommendation} value={&recommendation.id}>
-            <Field label="Override item ask (USD)" hint="">
+            <LabeledControl label="Override item ask (USD)" hint="">
                 <input type="number" name={f.item_price} min="0.01" step="0.01" required>
-            </Field>
-            <Field label="Override reason" hint="">
+            </LabeledControl>
+            <LabeledControl label="Override reason" hint="">
                 <input name={f.note} maxlength="1000" required>
-            </Field>
+            </LabeledControl>
             <button disabled={!allowed}>"Save reviewed ask"</button>
         </form>
     }

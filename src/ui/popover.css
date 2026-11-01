@@ -1,0 +1,10 @@
+/* corten ui 0.1.0: popover 6285b796f3b2a8df */
+.popover { display: contents; }
+.popover > [popover] {
+  box-sizing: border-box; width: 18rem; max-width: calc(100vw - 1rem); padding: 1rem; font-size: .875rem;
+  background: var(--popover); color: var(--popover-foreground); border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px); box-shadow: 0 4px 16px rgb(0 0 0 / .12);
+}
+@supports (position-area: block-end) {
+  .popover > [popover] { inset: auto; margin: .25rem 0; position-area: block-end span-inline-end; position-try-fallbacks: flip-block, flip-inline; }
+}

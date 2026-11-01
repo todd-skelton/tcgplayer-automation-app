@@ -1,0 +1,16 @@
+/* corten ui 0.1.0: tabs cbc464d85973568d */
+.tabs { display: contents; }
+.tabs [role="tablist"] {
+  display: inline-flex; align-items: center; gap: .25rem; padding: .25rem;
+  background: var(--muted); color: var(--muted-foreground); border-radius: var(--radius);
+}
+.tabs [role="tab"] {
+  display: inline-flex; align-items: center; justify-content: center; height: 2rem; padding: 0 .75rem;
+  font: inherit; font-size: .875rem; font-weight: 500; white-space: nowrap; color: inherit; text-decoration: none;
+  background: transparent; border: 0; border-radius: calc(var(--radius) - 2px); cursor: pointer; transition: color .15s;
+}
+.tabs [role="tab"]:hover { color: var(--foreground); }
+.tabs [role="tab"][aria-selected="true"] { background: var(--background); color: var(--foreground); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+.tabs [role="tab"]:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.tabs [role="tabpanel"] { padding-top: 1rem; font-size: .875rem; }
+.tabs [role="tabpanel"]:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 2px; }

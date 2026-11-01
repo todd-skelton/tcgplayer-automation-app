@@ -7,7 +7,7 @@ use crate::{
         steps::Step,
         url,
     },
-    layout::{Field, Notice, Tone},
+    layout::{LabeledControl, Notice, Tone},
     theme::*,
 };
 
@@ -66,14 +66,14 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
                 <div popover id={SellerPopoverId} class={Popover}>
                     <form method="get" action={&here}>
                         {keep_query(&here, html! {
-                            <Field label="Seller Key" hint={&hint}>
+                            <LabeledControl label="Seller Key" hint={&hint}>
                                 <input
                                     name={q.seller}
                                     value={seller}
                                     placeholder={if loading.configured.is_empty() { "Enter seller key" } else { loading.configured }}
                                     autofocus
                                 >
-                            </Field>
+                            </LabeledControl>
                             <button>"Use This Seller"</button>
                         })}
                     </form>

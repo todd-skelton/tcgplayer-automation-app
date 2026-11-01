@@ -17,7 +17,7 @@ use crate::{
             views::Problem,
         },
     },
-    layout::{Field, Notice, Tone},
+    layout::{LabeledControl, Notice, Tone},
     text::Msg,
     theme::*,
 };
@@ -95,7 +95,7 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                             >
                             "Include active supply"
                         </label>
-                        <Field label="Refresh interval (minutes)" hint="">
+                        <LabeledControl label="Refresh interval (minutes)" hint="">
                             <input
                                 type="number"
                                 name={f.interval_minutes}
@@ -105,8 +105,8 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                 step="1"
                                 required
                             >
-                        </Field>
-                        <Field label="Listings per cycle" hint="">
+                        </LabeledControl>
+                        <LabeledControl label="Listings per cycle" hint="">
                             <input
                                 type="number"
                                 name={f.batch_size}
@@ -116,8 +116,8 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                 step="1"
                                 required
                             >
-                        </Field>
-                        <Field label="Refresh jobs per cycle" hint="">
+                        </LabeledControl>
+                        <LabeledControl label="Refresh jobs per cycle" hint="">
                             <input
                                 type="number"
                                 name={f.refresh_budget}
@@ -127,7 +127,7 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                 step="1"
                                 required
                             >
-                        </Field>
+                        </LabeledControl>
                     </div>
                     <div class={Line}>
                         <button>"Save maintenance settings"</button>
@@ -248,9 +248,9 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
                 {keep_query(
                     &url::SlabPricing::at(choice),
                     html! {
-                    <Field label="Outcome listing item ID" hint="">
+                    <LabeledControl label="Outcome listing item ID" hint="">
                         <input name={f.item} value={choice.item.as_deref().unwrap_or("")} required>
-                    </Field>
+                    </LabeledControl>
                     <button>"Read saved outcomes"</button>
                     },
                 )}
@@ -266,9 +266,9 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
                     <p class={muted()}>
                         "Paste up to 50 rows. Required columns: event_id, item_id, kind, occurred_at, quantity, note. Use sale, cancellation or relist; quantity must be 1. Use a UTC time such as 2026-09-01T12:00:00Z. Optional sale columns: price, currency (item price only). Cancellations require related_sale_id; relists require next_item_id. Use a stable event ID and a note describing the evidence. Import each original listing into this seller's inventory first."
                     </p>
-                    <Field label="Seller outcome CSV" hint="">
+                    <LabeledControl label="Seller outcome CSV" hint="">
                         <textarea name={o.csv} rows="4" required></textarea>
-                    </Field>
+                    </LabeledControl>
                     <button>"Save reviewed outcomes"</button>
                 </form>
             </details>

@@ -20,7 +20,7 @@ mod parts;
 
 pub use app_bar::{AppBar, AuthCookieWarning};
 pub use icons::{Glyph, Icon};
-pub use parts::{Field, Notice, SubmitsOnChange, Tone};
+pub use parts::{LabeledControl, Notice, SubmitsOnChange, Tone};
 
 corten::assets::embed! {
     /// The files in `static/`, compiled into the program: `Static::STYLE_CSS` is `static/style.css`.
@@ -60,7 +60,7 @@ impl Chrome {
 /// A page: the app bar, the screen, and the toaster that says what an action did: the notice a
 /// write's redirect left (`req.redirect_with_notice`), or a patch's `Toast`. `head` is what the
 /// page adds to its head (`""` for nothing), such as a `ReadAgain` while it waits on a job.
-#[component(css = parts::Field)]
+#[component(css = parts::LabeledControl)]
 pub fn Layout<'a>(
     req: &'a Req,
     title: &'a str,

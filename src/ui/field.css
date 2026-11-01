@@ -1,0 +1,11 @@
+/* corten ui 0.1.0: field 417e1216f513c5a1 */
+.field { display: grid; gap: .5rem; }
+.field > label { font-size: .875rem; font-weight: 500; line-height: 1; }
+/* The control's row: a component's root (a corten-ui widget's) lays its parts out in it. */
+.control { display: flex; align-items: center; gap: .25rem; }
+.control > [data-scope] { display: contents; }
+.note { font-size: .8125rem; color: var(--muted-foreground); }
+.note:empty { display: none; }
+.note > p { margin: 0; }
+/* The server's message for the field (e.message(..)). */
+.note > [id$="-error"] { color: var(--destructive); }

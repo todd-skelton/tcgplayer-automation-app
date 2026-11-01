@@ -31,21 +31,21 @@
   }
   & label {
     padding: var(--space-1) var(--space-3);
-    border: 1px solid var(--color-line);
+    border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     cursor: pointer;
   }
   & label:has(:checked) {
-    background: var(--color-accent);
-    border-color: var(--color-accent);
-    color: var(--color-accent-ink);
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-foreground);
   }
   & input {
     position: absolute;
     opacity: 0;
   }
   & label:has(:focus-visible) {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--primary);
     outline-offset: 2px;
   }
 }
@@ -56,20 +56,20 @@
 .chip {
   display: inline-block;
   padding: 2px var(--space-3);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   font-size: var(--font-size-sm);
 }
 .filled {
-  background: var(--color-raised);
+  background: var(--muted);
 }
 .warning {
-  border-color: var(--color-warn);
-  color: var(--color-warn);
+  border-color: var(--warning);
+  color: var(--warning);
 }
 .info {
-  border-color: var(--color-info);
-  color: var(--color-info);
+  border-color: var(--info);
+  color: var(--info);
 }
 .cards {
   display: grid;
@@ -79,7 +79,7 @@
 .table-box {
   display: none;
   overflow-x: auto;
-  background: var(--color-surface);
+  background: var(--card);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
 }
@@ -95,7 +95,7 @@
   & th {
     text-align: start;
     padding: var(--space-2) var(--space-3);
-    border-bottom: 2px solid var(--color-line);
+    border-bottom: 2px solid var(--border);
     white-space: nowrap;
     font-weight: 600;
   }

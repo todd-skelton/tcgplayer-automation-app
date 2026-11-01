@@ -18,6 +18,9 @@ mod node_pg;
 mod tcgplayer;
 mod text;
 mod theme;
+/// The design system's components (`corten ui`): public, so a component not used yet is not a
+/// warning.
+pub mod ui;
 
 /// The database the app and its migrations use, once `app()` has loaded the environment.
 pub fn database_url() -> String {

@@ -15,7 +15,7 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) 0;
-  background: var(--color-surface);
+  background: var(--card);
 }
 .stepper {
   display: inline-flex;
@@ -37,22 +37,22 @@
 }
 .chip {
   padding: 0 var(--space-2);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   font-size: var(--font-size-sm);
 }
 .status {
   &[data-status="good"] {
-    border-color: var(--color-ok);
-    color: var(--color-ok);
+    border-color: var(--success);
+    color: var(--success);
   }
   &[data-status="bad"] {
-    border-color: var(--color-danger);
-    color: var(--color-danger);
+    border-color: var(--destructive);
+    color: var(--destructive);
   }
   &[data-status="caution"] {
-    border-color: var(--color-warn);
-    color: var(--color-warn);
+    border-color: var(--warning);
+    color: var(--warning);
   }
 }
 .spacer {
@@ -60,8 +60,8 @@
 }
 .toggle {
   & button {
-    border-color: var(--color-ok);
-    color: var(--color-ok);
+    border-color: var(--success);
+    color: var(--success);
     white-space: nowrap;
   }
   &[aria-busy] button::after {
@@ -69,19 +69,19 @@
   }
 }
 .packed {
-  background: var(--color-ok);
-  color: var(--color-accent-ink);
+  background: var(--success);
+  color: var(--primary-foreground);
   .toggle & {
-    color: var(--color-accent-ink);
+    color: var(--primary-foreground);
   }
 }
 .hint {
-  color: var(--color-muted);
+  color: var(--muted-foreground);
   cursor: help;
 }
 .views {
   display: inline-flex;
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   & a {
     padding: var(--space-1) var(--space-2);
@@ -89,15 +89,15 @@
     text-decoration: none;
   }
   & a[aria-current] {
-    background: var(--color-accent);
-    color: var(--color-accent-ink);
+    background: var(--primary);
+    color: var(--primary-foreground);
   }
 }
 .order-box {
   display: grid;
   gap: var(--space-2);
   padding: var(--space-3);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
 .cards {
@@ -114,17 +114,17 @@
   & th,
   & td {
     padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--border);
     text-align: start;
     vertical-align: top;
   }
   & th {
     font-size: var(--font-size-sm);
-    color: var(--color-muted);
+    color: var(--muted-foreground);
     font-weight: 500;
   }
   & tr[aria-current] {
-    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
   }
 }
 .end {

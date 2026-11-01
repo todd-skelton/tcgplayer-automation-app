@@ -1,0 +1,16 @@
+/* corten ui 0.1.0: dialog c707f2c20be08a76 */
+.dialog { display: contents; }
+.dialog > dialog {
+  box-sizing: border-box; width: calc(100% - 2rem); max-width: 32rem; max-height: calc(100% - 2rem); padding: 1.5rem;
+  background: var(--background); color: var(--foreground); border: 1px solid var(--border); box-shadow: 0 10px 30px rgb(0 0 0 / .2); border-radius: var(--radius);
+}
+.dialog > dialog[open] { display: grid; gap: 1rem; }
+.dialog > dialog > :is(h2, h3) { margin: 0; font-size: 1.125rem; font-weight: 600; line-height: 1.2; }
+.dialog > dialog > p { margin: 0; font-size: .875rem; color: var(--muted-foreground); }
+.dialog > dialog::backdrop { background: rgb(0 0 0 / .5); }
+.dialog > dialog:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .dialog > dialog[open] { animation: dialog-in .15s ease-out; }
+  @keyframes dialog-in { from { opacity: 0; transform: scale(.96); } }
+}

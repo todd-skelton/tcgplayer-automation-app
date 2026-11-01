@@ -16,7 +16,7 @@ use crate::{
         url::{self, Choice},
         views::Problem,
     },
-    layout::{Field, Notice, Tone},
+    layout::{LabeledControl, Notice, Tone},
     text::Msg,
     theme::*,
 };
@@ -92,7 +92,7 @@ fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
                             ..choice.clone()
                         }),
                         html! {
-                        <Field label="Supply source" hint="">
+                        <LabeledControl label="Supply source" hint="">
                             <select name={f.source}>
                                 for status in &supply.statuses {
                                     <option
@@ -103,7 +103,7 @@ fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
                                     </option>
                                 }
                             </select>
-                        </Field>
+                        </LabeledControl>
                         <button>"Show source"</button>
                         },
                     )}

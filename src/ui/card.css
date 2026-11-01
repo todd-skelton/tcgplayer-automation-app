@@ -1,0 +1,12 @@
+/* corten ui 0.1.0: card 79c5ce659bd1862d */
+.card {
+  display: flex; flex-direction: column; gap: 1.5rem; padding-block: 1.5rem;
+  background: var(--card); color: var(--card-foreground);
+  border: 1px solid var(--border); border-radius: calc(var(--radius) + 4px);
+  box-shadow: 0 1px 2px rgb(0 0 0 / .05);
+}
+.header { display: grid; gap: .375rem; padding-inline: 1.5rem; }
+.header > :is(h1, h2, h3, h4, h5, h6) { margin: 0; font-size: 1rem; font-weight: 600; line-height: 1.25; }
+.header > p { margin: 0; font-size: .875rem; color: var(--muted-foreground); }
+.content { display: grid; gap: 1.25rem; padding-inline: 1.5rem; }
+.footer { display: flex; align-items: center; gap: .5rem; padding-inline: 1.5rem; }

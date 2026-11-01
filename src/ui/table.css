@@ -1,0 +1,10 @@
+/* corten ui 0.1.0: table aaf186899d1c011c */
+.table { width: 100%; overflow-x: auto; }
+.table > table { width: 100%; border-collapse: collapse; font-size: .875rem; font-variant-numeric: tabular-nums; caption-side: bottom; }
+.table > table > caption { margin-top: 1rem; font-size: .875rem; color: var(--muted-foreground); }
+.table :is(th, td) { padding: .5rem; text-align: left; vertical-align: middle; white-space: nowrap; }
+.table th { height: 2.5rem; font-weight: 500; color: var(--foreground); }
+.table tr { border-bottom: 1px solid var(--border); transition: background-color .15s; }
+.table > table > tbody > tr:last-child { border-bottom: 0; }
+.table > table > tbody > tr:hover { background: color-mix(in oklab, var(--muted) 50%, transparent); }
+.table > table > tfoot { font-weight: 500; background: color-mix(in oklab, var(--muted) 50%, transparent); border-top: 1px solid var(--border); }

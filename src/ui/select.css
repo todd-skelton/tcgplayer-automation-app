@@ -1,0 +1,21 @@
+/* corten ui 0.1.0: select b8597d1ee5c2c2a0 */
+.select { display: contents; }
+.select > select {
+  box-sizing: border-box; height: 2.25rem; padding: 0 .75rem; font: inherit; font-size: .875rem;
+  color: var(--foreground); background: var(--background);
+  border: 1px solid var(--input); border-radius: calc(var(--radius) - 2px); box-shadow: 0 1px 2px rgb(0 0 0 / .05);
+}
+.select > select:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 35%, transparent); }
+.select > select:disabled { opacity: .5; cursor: not-allowed; }
+.select > select:user-invalid, .select > select[aria-invalid="true"] { border-color: var(--destructive); }
+@supports (appearance: base-select) {
+  .select > select, .select > select::picker(select) { appearance: base-select; }
+  .select > select { display: inline-flex; align-items: center; gap: .5rem; }
+  .select > select::picker(select) {
+    margin-block: .25rem; padding: .25rem; color: var(--popover-foreground); background: var(--popover);
+    border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); box-shadow: 0 4px 12px rgb(0 0 0 / .1);
+  }
+  .select > select option { padding: .375rem .5rem; border-radius: calc(var(--radius) - 4px); }
+  .select > select option:hover, .select > select option:focus-visible { background: var(--accent); color: var(--accent-foreground); }
+  .select > select option::checkmark { order: 1; margin-left: auto; }
+}

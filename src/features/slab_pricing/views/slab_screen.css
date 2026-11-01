@@ -34,7 +34,7 @@
   & th,
   & td {
     padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--border);
     text-align: start;
     vertical-align: middle;
   }
@@ -42,7 +42,7 @@
     font-weight: 700;
   }
   & tr[aria-current] > * {
-    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
   }
 }
 /* The panels, each in a file of its own beside this one. */
@@ -92,24 +92,24 @@
 }
 .chip {
   padding: 0 var(--space-2);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   font-size: var(--font-size-sm);
 }
 .fresh {
-  border-color: var(--color-ok);
-  color: var(--color-ok);
+  border-color: var(--success);
+  color: var(--success);
 }
 .stale {
-  border-color: var(--color-warn);
-  color: var(--color-warn);
+  border-color: var(--warning);
+  color: var(--warning);
 }
 .seller-panels {
   gap: var(--space-4);
 }
 .panel {
   padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   & h3 {
     margin: 0;

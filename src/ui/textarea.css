@@ -1,0 +1,12 @@
+/* corten ui 0.1.0: textarea 8fd0123d362bf9d4 */
+.textarea { display: contents; }
+.textarea > textarea {
+  box-sizing: border-box; display: block; width: 100%; min-height: 4rem; padding: .5rem .75rem;
+  font: inherit; font-size: .875rem; color: var(--foreground); background: transparent;
+  border: 1px solid var(--input); border-radius: calc(var(--radius) - 2px);
+  box-shadow: 0 1px 2px rgb(0 0 0 / .05); field-sizing: content; resize: vertical;
+}
+.textarea > textarea::placeholder { color: var(--muted-foreground); }
+.textarea > textarea:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 35%, transparent); }
+.textarea > textarea:disabled { opacity: .5; cursor: not-allowed; }
+.textarea > textarea:user-invalid, .textarea > textarea[aria-invalid="true"] { border-color: var(--destructive); }

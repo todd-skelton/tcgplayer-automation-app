@@ -1,10 +1,10 @@
 .empty {
   padding: var(--space-8) var(--space-5);
   text-align: center;
-  background: var(--color-raised);
+  background: var(--muted);
   border-radius: var(--radius-md);
   & h2 {
-    color: var(--color-muted);
+    color: var(--muted-foreground);
   }
 }
 .recent {

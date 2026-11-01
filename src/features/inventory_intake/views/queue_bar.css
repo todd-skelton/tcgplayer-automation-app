@@ -14,7 +14,7 @@
   display: none;
 }
 .units {
-  color: var(--color-accent);
+  color: var(--primary);
   font-weight: 500;
 }
 .queue-form {
@@ -44,7 +44,7 @@
   gap: var(--space-2);
   margin: var(--space-2) 0 0;
   padding: var(--space-3);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   & h2 {
     font-size: var(--font-size-md);
@@ -68,7 +68,7 @@
   flex: 1;
   min-width: 0;
   text-align: end;
-  color: var(--color-warning, inherit);
+  color: var(--warning);
 }
 .publish-note {
   flex-basis: 100%;
@@ -83,7 +83,7 @@
   }
 }
 .danger {
-  background: var(--color-danger);
-  border-color: var(--color-danger);
-  color: var(--color-accent-ink);
+  background: var(--destructive);
+  border-color: var(--destructive);
+  color: var(--primary-foreground);
 }

@@ -26,7 +26,7 @@
   display: grid;
   gap: var(--space-3);
   padding-top: var(--space-4);
-  border-top: 1px solid var(--color-line);
+  border-top: 1px solid var(--border);
   & h2 {
     margin: 0;
     font-size: 1rem;
@@ -39,7 +39,7 @@
   & h3 {
     margin: 0;
     font-size: var(--font-size-sm);
-    color: var(--color-muted);
+    color: var(--muted-foreground);
     font-weight: 500;
   }
 }
@@ -59,7 +59,7 @@
   gap: var(--space-2);
   margin: 0;
   padding: var(--space-3);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   & label {
     display: flex;
@@ -77,42 +77,42 @@
 }
 .chip {
   padding: 0 var(--space-2);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   font-size: var(--font-size-sm);
 }
 .good {
-  border-color: var(--color-ok);
-  color: var(--color-ok);
+  border-color: var(--success);
+  color: var(--success);
 }
 .bad {
-  border-color: var(--color-danger);
-  color: var(--color-danger);
+  border-color: var(--destructive);
+  color: var(--destructive);
 }
 .warn {
-  border-color: var(--color-warn);
-  color: var(--color-warn);
+  border-color: var(--warning);
+  color: var(--warning);
 }
 .button {
   display: inline-block;
   justify-self: start;
   padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  background: var(--card);
   color: inherit;
   text-decoration: none;
 }
 .secondary {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 .primary {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-accent-ink);
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
 }
 .test-mode {
-  background: var(--color-warn);
-  border-color: var(--color-warn);
+  background: var(--warning);
+  border-color: var(--warning);
 }

@@ -1,7 +1,7 @@
 .row {
   & td {
     padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--border);
     vertical-align: middle;
   }
   & a {
@@ -30,7 +30,7 @@
   white-space: nowrap;
 }
 .condition {
-  background: var(--color-raised);
+  background: var(--muted);
 }
 .lightly-played {
   background: #2196f3;
@@ -49,10 +49,10 @@
   color: #fff;
 }
 .near-mint {
-  background: var(--color-raised);
+  background: var(--muted);
 }
 .printed {
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
 }
 .holo {
   border-color: #fcd34d;

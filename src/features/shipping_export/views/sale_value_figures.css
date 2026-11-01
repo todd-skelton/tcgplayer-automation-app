@@ -26,10 +26,10 @@
   font-weight: 600;
 }
 .above {
-  color: var(--color-ok);
+  color: var(--success);
 }
 .below {
-  color: var(--color-danger);
+  color: var(--destructive);
 }
 /* Over card art: lighter tones that stay readable. */
 .on-image {

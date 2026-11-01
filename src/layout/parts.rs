@@ -2,11 +2,12 @@
 use corten::prelude::*;
 
 /// A control with its label above and its hint below; `hint` may be empty. The control, and its
-/// error message after it, are the children.
+/// error message after it, are the children. The design system's field is `ui::field::Field`,
+/// whose label names its control by id; a form moves to it as its page moves to `crate::ui`.
 #[component(css)]
-pub fn Field<'a>(label: &'a str, hint: &'a str, children: impl Render) -> impl Render {
+pub fn LabeledControl<'a>(label: &'a str, hint: &'a str, children: impl Render) -> impl Render {
     html! {
-        <label class={Field}>
+        <label class={LabeledControl}>
             <span>{label}</span>
             {children}
             if !hint.is_empty() {
@@ -25,7 +26,7 @@ pub enum Tone {
 }
 
 /// A box of text that stands out from the form around it. A `Done` notice is announced.
-#[component(css = Field)]
+#[component(css = LabeledControl)]
 pub fn Notice(tone: Tone, children: impl Render) -> impl Render {
     html! {
         match tone {

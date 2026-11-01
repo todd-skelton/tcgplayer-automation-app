@@ -15,7 +15,7 @@ use crate::{
         url::{self, Choice},
         views::Problem,
     },
-    layout::{Field, Notice, Tone},
+    layout::{LabeledControl, Notice, Tone},
     text::Msg,
     theme::*,
 };
@@ -107,7 +107,7 @@ fn PrepareForm<'a>(
             if let Some(reviewed) = reviewed {
                 <input type="hidden" name={f.reviewed_at} value={&reviewed.reviewed_at}>
             }
-            <Field label="Price to review" hint="">
+            <LabeledControl label="Price to review" hint="">
                 <select name={f.selection}>
                     <option value="calculated" selected={reviewed.is_none()}>
                         "Calculated ask · "{calculated}
@@ -118,7 +118,7 @@ fn PrepareForm<'a>(
                         </option>
                     }
                 </select>
-            </Field>
+            </LabeledControl>
             <button disabled={stale}>"Save price-change preview"</button>
             <a href={url::SlabPricing::at(&screen.choice)}>"Reload preview"</a>
         </form>

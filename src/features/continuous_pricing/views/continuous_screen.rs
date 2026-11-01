@@ -9,7 +9,7 @@ use crate::{
         store::{Item, PAGE_SIZE, RECENT_RUNS, Run, Shown},
         url::{self, View},
     },
-    layout::{Field, Notice, SubmitsOnChange, Tone},
+    layout::{LabeledControl, Notice, SubmitsOnChange, Tone},
     text::Msg,
     theme::*,
 };
@@ -92,7 +92,7 @@ pub fn ScheduleForm<'a>(
                 <input type="checkbox" name={f.enabled} checked={input.enabled}>
                 "Enable continuous pricing scheduler"
             </label>
-            <Field label="Seller key" hint="">
+            <LabeledControl label="Seller key" hint="">
                 <input
                     name={f.seller_key}
                     value={&input.seller_key}
@@ -100,9 +100,9 @@ pub fn ScheduleForm<'a>(
                     {..e.aria(f.seller_key)}
                 >
                 {e.message(f.seller_key)}
-            </Field>
+            </LabeledControl>
             <div class={Numbers}>
-                <Field label="Minimum pricing interval (minutes)" hint="">
+                <LabeledControl label="Minimum pricing interval (minutes)" hint="">
                     <input
                         type="number"
                         min="15"
@@ -112,8 +112,8 @@ pub fn ScheduleForm<'a>(
                         {..e.aria(f.minimum_interval_minutes)}
                     >
                     {e.message(f.minimum_interval_minutes)}
-                </Field>
-                <Field label="Inventory refresh interval (minutes)" hint="">
+                </LabeledControl>
+                <LabeledControl label="Inventory refresh interval (minutes)" hint="">
                     <input
                         type="number"
                         min="5"
@@ -123,8 +123,8 @@ pub fn ScheduleForm<'a>(
                         {..e.aria(f.inventory_refresh_minutes)}
                     >
                     {e.message(f.inventory_refresh_minutes)}
-                </Field>
-                <Field label="Batch size" hint="">
+                </LabeledControl>
+                <LabeledControl label="Batch size" hint="">
                     <input
                         type="number"
                         min="1"
@@ -134,7 +134,7 @@ pub fn ScheduleForm<'a>(
                         {..e.aria(f.batch_size)}
                     >
                     {e.message(f.batch_size)}
-                </Field>
+                </LabeledControl>
             </div>
             <div><button data-primary>"Save schedule"</button></div>
         </form>
@@ -279,16 +279,19 @@ fn Controls<'a>(screen: &'a Screen) -> impl Render {
                 action={url::ContinuousPricing { view: View::default() }}
                 class={Line}
             >
-                <Field label="Search SKU, product, set, condition, or product line" hint="">
+                <LabeledControl
+                    label="Search SKU, product, set, condition, or product line"
+                    hint=""
+                >
                     <input type="search" name={f.q} value={screen.view.search()}>
-                </Field>
-                <Field label="State" hint="">
+                </LabeledControl>
+                <LabeledControl label="State" hint="">
                     <select name={f.state}>
                         for state in Shown::ALL {
                             <option value={state} selected={state == shown}>{state.label()}</option>
                         }
                     </select>
-                </Field>
+                </LabeledControl>
                 <button data-primary>"Apply"</button>
                 <a href={url::ContinuousPricing { view: View::default() }}>"Clear"</a>
             </form>

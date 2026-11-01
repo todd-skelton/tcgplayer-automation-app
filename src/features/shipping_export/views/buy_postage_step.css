@@ -11,13 +11,13 @@
   & th,
   & td {
     padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--border);
     text-align: start;
     vertical-align: top;
   }
   & th {
     font-size: var(--font-size-sm);
-    color: var(--color-muted);
+    color: var(--muted-foreground);
     font-weight: 500;
   }
 }
@@ -41,24 +41,24 @@
 .chip {
   display: inline-block;
   padding: 0 var(--space-2);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   font-size: var(--font-size-sm);
 }
 .good {
-  border-color: var(--color-ok);
-  color: var(--color-ok);
+  border-color: var(--success);
+  color: var(--success);
 }
 .bad {
-  border-color: var(--color-danger);
-  color: var(--color-danger);
+  border-color: var(--destructive);
+  color: var(--destructive);
 }
 .caution {
-  border-color: var(--color-warn);
-  color: var(--color-warn);
+  border-color: var(--warning);
+  color: var(--warning);
 }
 .error {
-  color: var(--color-danger);
+  color: var(--destructive);
 }
 .actions {
   display: inline-flex;
@@ -72,17 +72,17 @@
   white-space: nowrap;
 }
 .filled {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-accent-ink);
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
   &.test,
   &.caution {
-    background: var(--color-warn);
-    border-color: var(--color-warn);
+    background: var(--warning);
+    border-color: var(--warning);
   }
 }
 .test {
-  border-color: var(--color-warn);
+  border-color: var(--warning);
 }
 .more {
   border-color: transparent;
@@ -94,7 +94,7 @@
   position-try-fallbacks: flip-block;
   margin: var(--space-1) 0;
   padding: var(--space-2);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   text-align: start;
@@ -116,13 +116,13 @@
   }
   & a:hover,
   & button:hover:enabled {
-    background: var(--color-line);
+    background: var(--border);
   }
 }
 .confirm {
   max-width: 480px;
   padding: var(--space-5);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   text-align: start;
 }

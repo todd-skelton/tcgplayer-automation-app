@@ -23,7 +23,7 @@
   display: none;
 }
 .saved {
-  color: var(--color-ok);
+  color: var(--success);
   font-size: var(--font-size-sm);
 }
 .add {
@@ -32,7 +32,7 @@
   grid-template-columns: minmax(14rem, 2fr) repeat(2, minmax(8rem, 1fr)) auto auto;
   align-items: end;
   padding: var(--space-3);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
 .lines {
@@ -40,7 +40,7 @@
   & th,
   & td {
     padding: var(--space-1) var(--space-2);
-    border-bottom: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--border);
     text-align: center;
   }
   & th:first-child,
@@ -52,9 +52,9 @@
   }
 }
 .danger {
-  background: var(--color-danger);
-  border-color: var(--color-danger);
-  color: var(--color-accent-ink);
+  background: var(--destructive);
+  border-color: var(--destructive);
+  color: var(--primary-foreground);
 }
 /* Both report panels; each is a section patched on its own. */
 .report-section {
@@ -77,7 +77,7 @@
   & th,
   & td {
     padding: var(--space-1) var(--space-2);
-    border-bottom: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--border);
     text-align: end;
   }
   & th:first-child,

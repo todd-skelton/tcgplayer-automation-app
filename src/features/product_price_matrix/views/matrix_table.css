@@ -10,16 +10,16 @@
   & th,
   & td {
     padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--border);
     text-align: start;
     vertical-align: top;
-    background: var(--color-surface);
+    background: var(--card);
   }
   & thead th {
     font-weight: 700;
   }
   & tbody tr {
-    --tint: var(--color-muted);
+    --tint: var(--muted-foreground);
   }
   & tbody tr:hover > * {
     background-image: linear-gradient(
@@ -29,23 +29,23 @@
   }
   & small {
     display: block;
-    color: var(--color-muted);
+    color: var(--muted-foreground);
   }
 }
 .lp {
-  --tint: var(--color-info) !important;
+  --tint: var(--info) !important;
 }
 .mp {
-  --tint: var(--color-ok) !important;
+  --tint: var(--success) !important;
 }
 .hp {
-  --tint: var(--color-warn) !important;
+  --tint: var(--warning) !important;
 }
 .dmg {
-  --tint: var(--color-danger) !important;
+  --tint: var(--destructive) !important;
 }
 .starts > * {
-  border-top: 2px solid var(--color-line);
+  border-top: 2px solid var(--border);
 }
 .sticky {
   position: sticky;
@@ -56,7 +56,7 @@
   width: 150px;
   min-width: 150px;
   white-space: nowrap;
-  border-left: 4px solid var(--tint, var(--color-line));
+  border-left: 4px solid var(--tint, var(--border));
   background-image: linear-gradient(
     color-mix(in srgb, var(--tint, transparent) 6%, transparent),
     color-mix(in srgb, var(--tint, transparent) 6%, transparent)
@@ -72,14 +72,14 @@
   left: 300px;
   width: 110px;
   min-width: 110px;
-  border-right: 1px solid var(--color-line);
+  border-right: 1px solid var(--border);
 }
 .end {
   text-align: end !important;
 }
 .sell-at {
   min-width: 190px;
-  border-left: 1px solid var(--tint, var(--color-line));
+  border-left: 1px solid var(--tint, var(--border));
 }
 .priced {
   background-image: linear-gradient(
@@ -99,24 +99,24 @@
 .chip {
   display: inline-block;
   padding: 0 var(--space-2);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-pill);
 }
 .above {
-  border-color: var(--color-ok);
-  color: var(--color-ok);
+  border-color: var(--success);
+  color: var(--success);
 }
 .below {
-  border-color: var(--color-danger);
-  color: var(--color-danger);
+  border-color: var(--destructive);
+  color: var(--destructive);
 }
 .warn {
-  border-color: var(--color-warn);
-  color: var(--color-warn);
+  border-color: var(--warning);
+  color: var(--warning);
 }
 .bad {
-  border-color: var(--color-danger);
-  color: var(--color-danger);
+  border-color: var(--destructive);
+  color: var(--destructive);
 }
 .filled {
   background: color-mix(in srgb, currentColor 15%, transparent);
@@ -127,5 +127,5 @@
   gap: var(--space-1);
 }
 .muted {
-  color: var(--color-muted);
+  color: var(--muted-foreground);
 }

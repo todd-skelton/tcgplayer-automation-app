@@ -12,7 +12,7 @@ use crate::{
             views::{CompReview, RecommendationPanel, ResearchPanel, SellerPanels, SupplyPanel},
         },
     },
-    layout::{Field, Notice, Tone},
+    layout::{LabeledControl, Notice, Tone},
     text::Msg,
     theme::*,
 };
@@ -52,22 +52,22 @@ pub fn SlabScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 data-patch
                 class={(panel(), Line)}
             >
-                <Field label="Grader" hint="">
+                <LabeledControl label="Grader" hint="">
                     <input
                         name={f.grader}
                         value={choice.grader.as_deref().unwrap_or("PSA")}
                         required
                         maxlength="40"
                     >
-                </Field>
-                <Field label="Certificate number" hint="">
+                </LabeledControl>
+                <LabeledControl label="Certificate number" hint="">
                     <input
                         name={f.cert}
                         value={choice.cert.as_deref().unwrap_or("")}
                         required
                         maxlength="80"
                     >
-                </Field>
+                </LabeledControl>
                 <button data-primary>"Look up certificate"</button>
             </form>
             <Problem at={Place::LookUp} why={screen.problem_at(Place::LookUp)} />
@@ -133,9 +133,9 @@ fn ReviewedListing<'a>(screen: &'a Screen) -> impl Render {
                             data-patch
                             class={Line}
                         >
-                            <Field label="Listing identity correction reason" hint="">
+                            <LabeledControl label="Listing identity correction reason" hint="">
                                 <input name={f.note} required maxlength="1000">
-                            </Field>
+                            </LabeledControl>
                             <button>"Assign confirmed identity"</button>
                             <small class={muted()}>
                                 {&record.grader}" "{&record.certificate_number}
@@ -194,34 +194,34 @@ fn IdentityCard<'a>(
                     </p>
                     <input type="hidden" name={f.revision} value={record.revision}>
                     <div class={Line}>
-                        <Field label="name" hint="">
+                        <LabeledControl label="name" hint="">
                             <input
                                 name={f.name}
                                 value={card.name.as_deref().unwrap_or("")}
                                 required
                                 maxlength="200"
                             >
-                        </Field>
+                        </LabeledControl>
                         for (label, name, value) in [("game", f.game, &card.game), ("language", f.language, &card.language), ("set", f.set, &card.set), ("card number", f.card_number, &card.card_number), ("year", f.year, &card.year), ("edition", f.edition, &card.edition), ("finish", f.finish, &card.finish), ("stamp", f.stamp, &card.stamp)] {
-                            <Field label={label} hint="">
+                            <LabeledControl label={label} hint="">
                                 <input
                                     name={name}
                                     value={value.as_deref().unwrap_or("")}
                                     maxlength="200"
                                 >
-                            </Field>
+                            </LabeledControl>
                         }
                     </div>
                     <div class={Line}>
-                        <Field label="Original grade encoding" hint="">
+                        <LabeledControl label="Original grade encoding" hint="">
                             <input
                                 name={f.encoding}
                                 value={&grading.encoding}
                                 required
                                 maxlength="40"
                             >
-                        </Field>
-                        <Field label="Numeric grade" hint="">
+                        </LabeledControl>
+                        <LabeledControl label="Numeric grade" hint="">
                             <select name={f.number}>
                                 <option value="" selected={grading.number.is_none()}>
                                     "Unmapped"
@@ -232,20 +232,20 @@ fn IdentityCard<'a>(
                                     </option>
                                 }
                             </select>
-                        </Field>
+                        </LabeledControl>
                         for (label, name, value) in [("label", f.label, &grading.label), ("qualifier", f.qualifier, &grading.qualifier), ("autograph", f.autograph, &grading.autograph)] {
-                            <Field label={label} hint="">
+                            <LabeledControl label={label} hint="">
                                 <input
                                     name={name}
                                     value={value.as_deref().unwrap_or("")}
                                     maxlength="40"
                                 >
-                            </Field>
+                            </LabeledControl>
                         }
                     </div>
-                    <Field label="Reason for confirmation or correction" hint="">
+                    <LabeledControl label="Reason for confirmation or correction" hint="">
                         <input name={f.note} required maxlength="1000">
-                    </Field>
+                    </LabeledControl>
                     <button data-primary>"Confirm owned identity"</button>
                 </form>
             </details>
@@ -273,13 +273,13 @@ fn InventoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         ..choice.clone()
                     }),
                     html! {
-                    <Field label="Seller username" hint="">
+                    <LabeledControl label="Seller username" hint="">
                         <input
                             name={f.seller}
                             value={choice.seller.as_deref().unwrap_or("pokebash")}
                             required
                         >
-                    </Field>
+                    </LabeledControl>
                     <button>"Open inventory"</button>
                     },
                 )}
@@ -319,9 +319,9 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
                     ". Required columns: item_id, title, price, currency, quantity, state, format. Add grader and certificate_number for certificate lookup. Existing rows are matched by item_id and variation_key."
                 </p>
                 <input type="hidden" name={fi.revision} value={page.revision}>
-                <Field label="Inventory CSV" hint="Paste the CSV, up to 2 MiB.">
+                <LabeledControl label="Inventory CSV" hint="Paste the CSV, up to 2 MiB.">
                     <textarea name={fi.csv} rows="6" required maxlength="2097152"></textarea>
-                </Field>
+                </LabeledControl>
                 <button>"Import into "{seller}</button>
             </form>
         </details>

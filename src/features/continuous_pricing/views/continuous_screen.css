@@ -49,22 +49,22 @@
   display: grid;
   gap: var(--space-1);
   padding: var(--space-3);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   & strong {
     font-size: var(--font-size-2xl);
   }
 }
 .above {
-  color: var(--color-success, green);
+  color: var(--success);
 }
 .below {
-  color: var(--color-danger, crimson);
+  color: var(--destructive, crimson);
 }
 .chip {
   padding: 0 var(--space-2);
   border-radius: 999px;
-  background: var(--color-line);
+  background: var(--border);
   font-size: var(--font-size-sm);
 }
 .due {
@@ -72,7 +72,7 @@
 }
 .outlined {
   background: none;
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
 }
 .sku-card {
   display: grid;
@@ -88,5 +88,5 @@
 }
 .run-row {
   padding-top: var(--space-2);
-  border-top: 1px solid var(--color-line);
+  border-top: 1px solid var(--border);
 }

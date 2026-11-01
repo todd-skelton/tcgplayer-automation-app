@@ -12,7 +12,7 @@ use crate::{
         turnaround_settings::MAXIMUM_MANUAL_DAYS,
         url::{self, View},
     },
-    layout::{Field, Notice, SubmitsOnChange, Tone},
+    layout::{LabeledControl, Notice, SubmitsOnChange, Tone},
     text::Msg,
     theme::*,
 };
@@ -181,7 +181,7 @@ pub fn TurnaroundForm<'a>(
                             <span>"Manual"</span>
                         </label>
                     </fieldset>
-                    <Field
+                    <LabeledControl
                         label="Manual days"
                         hint="Used when manual is selected or observed evidence is too thin"
                     >
@@ -196,7 +196,7 @@ pub fn TurnaroundForm<'a>(
                             {..e.aria(f.manual_turnaround_days)}
                         >
                         {e.message(f.manual_turnaround_days)}
-                    </Field>
+                    </LabeledControl>
                     <noscript><button disabled={off}>"Save"</button></noscript>
                 </div>
             </SubmitsOnChange>

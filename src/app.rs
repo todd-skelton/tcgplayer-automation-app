@@ -22,7 +22,7 @@ use crate::{
     layout::{self, Static},
     legacy::{Legacy, forward},
     text::Msg,
-    theme,
+    theme, ui,
 };
 
 /// What the handlers share: the database, the React app behind this one, and the slab data
@@ -189,10 +189,11 @@ pub fn app(shared: Shared) -> App {
                 .deadline(Some(Duration::from_secs(45)))
         })
         .assets(Static)
+        .components(&[theme::TOKENS])
+        .components(ui::COMPONENTS)
         .components(&[
-            theme::TOKENS,
             layout::AppBar,
-            layout::Field,
+            layout::LabeledControl,
             layout::SubmitsOnChange,
         ])
         .components(corten_ui::COMPONENTS)

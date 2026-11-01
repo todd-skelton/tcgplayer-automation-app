@@ -30,7 +30,7 @@
 }
 .said {
   padding: var(--space-3);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   white-space: pre-wrap;
   & p {
@@ -38,10 +38,10 @@
   }
 }
 .complete {
-  border-color: var(--color-success, green);
+  border-color: var(--success);
 }
 .failed {
-  border-color: var(--color-danger, crimson);
+  border-color: var(--destructive, crimson);
 }
 .idle {
   margin: 0;

@@ -1,0 +1,16 @@
+/* corten ui 0.1.0: accordion 251fc6671ca8b438 */
+.accordion > details { border-bottom: 1px solid var(--border); }
+.accordion > details > summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 0;
+  font-size: .875rem; font-weight: 500; list-style: none; cursor: pointer; border-radius: 2px;
+}
+.accordion > details > summary::-webkit-details-marker { display: none; }
+.accordion > details > summary:hover { text-decoration: underline; }
+.accordion > details > summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* The chevron is drawn, so a screen reader does not read it. */
+.accordion > details > summary::after {
+  content: ""; flex: none; width: .4rem; height: .4rem; margin-right: .25rem; border: solid var(--muted-foreground);
+  border-width: 0 1.5px 1.5px 0; transform: translateY(-25%) rotate(45deg); transition: transform .2s;
+}
+.accordion > details[open] > summary::after { transform: translateY(25%) rotate(-135deg); }
+.accordion > details > :not(summary) { margin: 0 0 1rem; font-size: .875rem; }

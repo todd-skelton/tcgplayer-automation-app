@@ -1,0 +1,28 @@
+/* corten ui 0.1.0: dropdown_menu 06a6e2ba2bc86045 */
+.menu { display: contents; }
+.menu [aria-haspopup="menu"] {
+  display: inline-flex; align-items: center; gap: .5rem; height: 2.25rem; padding: 0 1rem;
+  font: inherit; font-size: .875rem; font-weight: 500; color: var(--foreground); background: var(--background);
+  border: 1px solid var(--input); border-radius: calc(var(--radius) - 2px); cursor: pointer;
+}
+.menu [aria-haspopup="menu"]:hover, .menu [aria-haspopup="menu"][aria-expanded="true"] { background: var(--accent); color: var(--accent-foreground); }
+.menu [aria-haspopup="menu"]:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.menu [aria-haspopup="menu"]::after { content: ""; width: .35rem; height: .35rem; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: translateY(-25%) rotate(45deg); opacity: .6; }
+/* A popover's display applies only while it is open, or it would show closed. */
+.menu [role="menu"]:popover-open {
+  display: grid; box-sizing: border-box; min-width: 10rem; padding: .25rem; margin: .25rem 0;
+  background: var(--popover); color: var(--popover-foreground); border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px); box-shadow: 0 4px 16px rgb(0 0 0 / .12);
+}
+@supports (position-area: block-end) {
+  .menu [role="menu"] { inset: auto; position-area: block-end span-inline-end; position-try-fallbacks: flip-block, flip-inline; }
+}
+.menu [role="menu"] form { display: contents; }
+.menu [role^="menuitem"] {
+  display: flex; align-items: center; gap: .5rem; box-sizing: border-box; width: 100%; padding: .375rem .5rem;
+  font: inherit; font-size: .875rem; color: inherit; text-align: left; text-decoration: none;
+  background: none; border: 0; border-radius: calc(var(--radius) - 4px); cursor: default;
+}
+.menu [role^="menuitem"]:is(:hover, :focus-visible) { background: var(--accent); color: var(--accent-foreground); outline: none; }
+.menu [role^="menuitem"][aria-disabled="true"] { opacity: .5; }
+.menu [role="menu"] [role="separator"] { height: 1px; margin: .25rem -.25rem; background: var(--border); border: 0; }

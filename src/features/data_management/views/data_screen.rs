@@ -9,7 +9,7 @@ use crate::{
         },
         http_configuration,
     },
-    layout::{Field, Notice, Tone},
+    layout::{LabeledControl, Notice, Tone},
     theme::*,
 };
 
@@ -154,7 +154,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                         class={(Stack, JobForm)}
                     >
                         {line_choice(ProductInput::FIELDS.product_line, lines, screen.product.product_line, &e)}
-                        <Field label="Product ID" hint="">
+                        <LabeledControl label="Product ID" hint="">
                             <input
                                 type="number"
                                 min="1"
@@ -165,7 +165,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                                 {..e.aria(ProductInput::FIELDS.product)}
                             >
                             {e.message(ProductInput::FIELDS.product)}
-                        </Field>
+                        </LabeledControl>
                         <Run ready="Repair Product and SKUs" working="Repairing Product..." />
                         <Outcome
                             ran={ran}
@@ -187,7 +187,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                         data-patch
                         class={(Stack, JobForm)}
                     >
-                        <Field label="Set name" hint="">
+                        <LabeledControl label="Set name" hint="">
                             <input
                                 required
                                 name={SetInput::FIELDS.set_name}
@@ -196,8 +196,8 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                                 {..e.aria(SetInput::FIELDS.set_name)}
                             >
                             {e.message(SetInput::FIELDS.set_name)}
-                        </Field>
-                        <Field label="Product line" hint="">
+                        </LabeledControl>
+                        <LabeledControl label="Product line" hint="">
                             <select
                                 name={SetInput::FIELDS.product_line}
                                 required
@@ -213,7 +213,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                                 }
                             </select>
                             {e.message(SetInput::FIELDS.product_line)}
-                        </Field>
+                        </LabeledControl>
                         <label class={Check}>
                             <input
                                 type="checkbox"
@@ -242,14 +242,14 @@ fn line_choice<'a, I: Id>(
     e: &'a Within<'a, I>,
 ) -> impl Render + 'a {
     html! {
-        <Field label="Product line" hint="">
+        <LabeledControl label="Product line" hint="">
             <select name={name} required {..e.aria(name)}>
                 for line in lines {
                     <option value={line.id} selected={chosen == Some(line.id)}>{&line.name}</option>
                 }
             </select>
             {e.message(name)}
-        </Field>
+        </LabeledControl>
     }
 }
 

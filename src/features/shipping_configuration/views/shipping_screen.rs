@@ -6,7 +6,7 @@ use crate::{
         form::{Kind, PackageInput, PackageInputGroupFields, SettingsInput},
         url,
     },
-    layout::{Field, Notice, Tone},
+    layout::{LabeledControl, Notice, Tone},
     theme::*,
 };
 
@@ -101,44 +101,46 @@ pub fn ShippingSettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) ->
             <p class={muted()}>
                 "This seller key is used as the default when the shipping export page loads live seller orders directly from TCGPlayer."
             </p>
-            <Field
+            <LabeledControl
                 label="Default Seller Key"
                 hint="Leave blank to require entering a seller key on the shipping page."
             >
                 <input name={f.default_seller_key} value={&input.default_seller_key}>
-            </Field>
+            </LabeledControl>
             <h3>"From Address"</h3>
             <div class={Columns}>
-                <Field label="Sender" hint="">
+                <LabeledControl label="Sender" hint="">
                     <input name={f.from.name} value={&input.from.name}>
-                </Field>
-                <Field label="Company" hint="">
+                </LabeledControl>
+                <LabeledControl label="Company" hint="">
                     <input name={f.from.company} value={&input.from.company}>
-                </Field>
-                <Field label="Phone" hint="">
+                </LabeledControl>
+                <LabeledControl label="Phone" hint="">
                     <input type="tel" name={f.from.phone} value={&input.from.phone}>
-                </Field>
-                <Field label="Email" hint="">
+                </LabeledControl>
+                <LabeledControl label="Email" hint="">
                     <input type="email" name={f.from.email} value={&input.from.email}>
-                </Field>
+                </LabeledControl>
             </div>
-            <Field label="Street 1" hint="">
+            <LabeledControl label="Street 1" hint="">
                 <input name={f.from.street1} value={&input.from.street1}>
-            </Field>
-            <Field label="Street 2" hint="">
+            </LabeledControl>
+            <LabeledControl label="Street 2" hint="">
                 <input name={f.from.street2} value={&input.from.street2}>
-            </Field>
+            </LabeledControl>
             <div class={Columns}>
-                <Field label="City" hint="">
+                <LabeledControl label="City" hint="">
                     <input name={f.from.city} value={&input.from.city}>
-                </Field>
-                <Field label="State" hint="">
+                </LabeledControl>
+                <LabeledControl label="State" hint="">
                     <input name={f.from.state} value={&input.from.state}>
-                </Field>
-                <Field label="Zip" hint=""><input name={f.from.zip} value={&input.from.zip}></Field>
-                <Field label="Country" hint="">
+                </LabeledControl>
+                <LabeledControl label="Zip" hint="">
+                    <input name={f.from.zip} value={&input.from.zip}>
+                </LabeledControl>
+                <LabeledControl label="Country" hint="">
                     <input name={f.from.country} value={&input.from.country}>
-                </Field>
+                </LabeledControl>
             </div>
             for kind in Kind::ALL {
                 <h3>{kind.title()}</h3>
@@ -149,7 +151,7 @@ pub fn ShippingSettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) ->
                 />
             }
             <div class={Columns}>
-                <Field label="Label Format" hint="">
+                <LabeledControl label="Label Format" hint="">
                     <select name={f.label_format}>
                         for format in LabelFormat::ALL {
                             <option value={format} selected={format == input.label_format}>
@@ -157,8 +159,8 @@ pub fn ShippingSettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) ->
                             </option>
                         }
                     </select>
-                </Field>
-                <Field label="Expedited Service" hint="">
+                </LabeledControl>
+                <LabeledControl label="Expedited Service" hint="">
                     <select name={f.expedited_service}>
                         for service in Service::EXPEDITED {
                             <option value={service} selected={service == input.expedited_service}>
@@ -166,7 +168,7 @@ pub fn ShippingSettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) ->
                             </option>
                         }
                     </select>
-                </Field>
+                </LabeledControl>
             </div>
             <label>
                 <input type="checkbox" name={f.combine_orders} checked={input.combine_orders}>
@@ -190,14 +192,14 @@ pub fn PackageFields<'a>(
     let e = errors.within(ShippingSettingsFormId);
     html! {
         <div class={Columns}>
-            <Field label="Label Size" hint="">
+            <LabeledControl label="Label Size" hint="">
                 <select name={f.label_size}>
                     for size in LabelSize::ALL {
                         <option value={size} selected={size == package.label_size}>{size}</option>
                     }
                 </select>
-            </Field>
-            <Field label="Base Weight (oz)" hint="">
+            </LabeledControl>
+            <LabeledControl label="Base Weight (oz)" hint="">
                 <input
                     type="number"
                     step="any"
@@ -207,8 +209,8 @@ pub fn PackageFields<'a>(
                     {..e.aria(f.base_weight_oz)}
                 >
                 {e.message(f.base_weight_oz)}
-            </Field>
-            <Field label="Per Item Weight (oz)" hint="">
+            </LabeledControl>
+            <LabeledControl label="Per Item Weight (oz)" hint="">
                 <input
                     type="number"
                     step="any"
@@ -218,9 +220,9 @@ pub fn PackageFields<'a>(
                     {..e.aria(f.per_item_weight_oz)}
                 >
                 {e.message(f.per_item_weight_oz)}
-            </Field>
+            </LabeledControl>
             if let (Some(count), Some(value)) = (&package.max_item_count, &package.max_value_usd) {
-                <Field label="Max Item Count" hint="">
+                <LabeledControl label="Max Item Count" hint="">
                     <input
                         type="number"
                         step="any"
@@ -230,8 +232,8 @@ pub fn PackageFields<'a>(
                         {..e.aria(f.max_item_count)}
                     >
                     {e.message(f.max_item_count)}
-                </Field>
-                <Field label="Max Value (USD)" hint="">
+                </LabeledControl>
+                <LabeledControl label="Max Value (USD)" hint="">
                     <input
                         type="number"
                         step="any"
@@ -241,9 +243,9 @@ pub fn PackageFields<'a>(
                         {..e.aria(f.max_value_usd)}
                     >
                     {e.message(f.max_value_usd)}
-                </Field>
+                </LabeledControl>
             }
-            <Field label="Length (in)" hint="">
+            <LabeledControl label="Length (in)" hint="">
                 <input
                     type="number"
                     step="any"
@@ -253,8 +255,8 @@ pub fn PackageFields<'a>(
                     {..e.aria(f.length_in)}
                 >
                 {e.message(f.length_in)}
-            </Field>
-            <Field label="Width (in)" hint="">
+            </LabeledControl>
+            <LabeledControl label="Width (in)" hint="">
                 <input
                     type="number"
                     step="any"
@@ -264,8 +266,8 @@ pub fn PackageFields<'a>(
                     {..e.aria(f.width_in)}
                 >
                 {e.message(f.width_in)}
-            </Field>
-            <Field label="Height (in)" hint="">
+            </LabeledControl>
+            <LabeledControl label="Height (in)" hint="">
                 <input
                     type="number"
                     step="any"
@@ -275,7 +277,7 @@ pub fn PackageFields<'a>(
                     {..e.aria(f.height_in)}
                 >
                 {e.message(f.height_in)}
-            </Field>
+            </LabeledControl>
         </div>
     }
 }

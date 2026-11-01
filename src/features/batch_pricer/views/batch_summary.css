@@ -11,7 +11,7 @@
   & th,
   & td {
     padding: var(--space-1) var(--space-2);
-    border-bottom: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--border);
     text-align: right;
   }
   & th:first-child,
@@ -33,7 +33,7 @@
 }
 .card {
   padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   & h3 {
     margin: 0 0 var(--space-2);
@@ -41,13 +41,13 @@
   }
 }
 .above {
-  color: var(--color-ok);
+  color: var(--success);
 }
 .below {
-  color: var(--color-danger);
+  color: var(--destructive);
 }
 .caution {
-  color: var(--color-warn);
+  color: var(--warning);
 }
 .chip {
   display: inline-block;

@@ -10,7 +10,7 @@ use crate::{
         provider::{Connection, Provider, Status},
         url,
     },
-    layout::{Field, Notice},
+    layout::{LabeledControl, Notice},
     theme::*,
 };
 
@@ -87,7 +87,7 @@ pub fn ConnectionCard<'a>(
                 autocomplete="off"
                 data-patch
             >
-                <Field
+                <LabeledControl
                     label={match provider {
                         Provider::Alt => "Alt authorization token",
                         Provider::EbayResearch => "eBay research Cookie header",
@@ -102,9 +102,9 @@ pub fn ConnectionCard<'a>(
                         {..e.aria(f.credential)}
                     >
                     {e.message(f.credential)}
-                </Field>
+                </LabeledControl>
                 if provider == Provider::EbayResearch {
-                    <Field label="Browser User-Agent" hint="">
+                    <LabeledControl label="Browser User-Agent" hint="">
                         <input
                             name={f.user_agent}
                             value={answered.map_or("", |a| a.user_agent)}
@@ -112,7 +112,7 @@ pub fn ConnectionCard<'a>(
                             {..e.aria(f.user_agent)}
                         >
                         {e.message(f.user_agent)}
-                    </Field>
+                    </LabeledControl>
                 }
                 <div class={Actions}>
                     <button data-primary>"Save connection"</button>

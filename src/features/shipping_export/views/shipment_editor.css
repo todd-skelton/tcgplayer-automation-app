@@ -7,7 +7,7 @@
   margin: 0;
   padding: var(--space-5);
   border: 0;
-  border-inline-start: 1px solid var(--color-line);
+  border-inline-start: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
   overflow-y: auto;
 }
@@ -40,7 +40,7 @@
   gap: var(--space-3);
 }
 .save {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-accent-ink);
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
 }
