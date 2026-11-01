@@ -44,7 +44,7 @@ pub struct Cycle {
     pub estimated: Result<Vec<i32>, String>,
 }
 
-fn iso_now() -> String {
+pub fn iso_now() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 

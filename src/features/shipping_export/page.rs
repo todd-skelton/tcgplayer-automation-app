@@ -627,7 +627,7 @@ pub async fn catch_up(
     let orders: Vec<String> = workflow::current(&db).await?.map_or_else(Vec::new, |s| {
         s.orders.into_iter().map(|o| o.number).collect()
     });
-    let done = source::catch_up(&legacy, input.seller_key.trim(), &orders).await;
+    let done = source::catch_up(&db, &input.seller_key, &orders).await;
     history_changed(&req, &db, done, &legacy).await
 }
 

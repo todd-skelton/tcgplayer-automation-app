@@ -4,9 +4,9 @@
 //!
 //! TCGplayer's order exports (the pull sheet and the packing slips) are read here
 //! ([`sheet`]), and so are the orders themselves, from TCGplayer's order management API with
-//! their market prices and intake history ([`source`]); postage and marking orders shipped, with
-//! their records, and moving the order history scan on stay the Node app's and go through its
-//! routes. The batch in progress
+//! their market prices and intake history, and the seller's order history scan is moved on here too
+//! ([`source`]); postage and marking orders shipped, with their records, stay the Node app's and
+//! go through its routes. The batch in progress
 //! is kept in the database (`workflow`), where the React screen kept it in each browser's
 //! localStorage: a reload, a second tab or another computer continues the same batch. The step is
 //! the page's address; with none, the screen opens at the first step not done.

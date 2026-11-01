@@ -1,10 +1,10 @@
 //! Where the orders come from: TCGplayer's Ready to Ship queue or one order, read from its order
 //! management API with each line's market price and the configured seller's intake history
 //! (`/api/shipping-export/tcgplayer-orders`, `tcgplayerSellerOrders`), and the seller's order
-//! history record: how far its scan has got is read and an export is imported here; moving the
-//! scan on stays the Node app's (`/api/seller-order-history`).
+//! history record: how far its scan has got is read, the scan moved on a step (the batch's orders
+//! first) and an export imported here (`/api/seller-order-history`).
 use futures_util::future::join_all;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::{
@@ -17,10 +17,9 @@ use crate::{
         batch_pricing::{job::MarketData, market::TcgPlayerMarket},
         continuous_pricing::refresh::market_prices,
         http_configuration::config::Domain,
-        seller_order_history::file_import,
+        seller_order_history::{self as history, file_import},
         shipping_configuration,
     },
-    legacy::Legacy,
     tcgplayer::{Call, TcgPlayer},
 };
 
@@ -499,24 +498,22 @@ pub async fn coverage(db: impl sqlx::PgExecutor<'_>, seller_key: &str) -> Result
     })
 }
 
-/// Moves the seller's order history scan on, these orders first.
-pub async fn catch_up(legacy: &Legacy, seller_key: &str, orders: &[String]) -> Result<(), String> {
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Request<'a> {
-        seller_key: &'a str,
-        action: &'static str,
-        order_numbers: &'a [String],
-    }
-    legacy
-        .send::<_, serde_json::Value>(
-            "/api/seller-order-history",
-            &Request {
-                seller_key,
-                action: "catch_up",
-                order_numbers: orders,
-            },
-        )
+/// Moves the seller's order history scan on a step, reading these orders from TCGplayer first:
+/// the seller named, else the default shipping seller (as the Node route resolves it).
+pub async fn catch_up(db: &Database, seller_key: &str, orders: &[String]) -> Result<(), String> {
+    let failed = |e: sqlx::Error| format!("Error: {e}");
+    let configured = match seller_key.trim() {
+        "" => shipping_configuration::default_seller_key(db)
+            .await
+            .map_err(failed)?,
+        _ => String::new(),
+    };
+    let (seller, priority) = history::catch_up::asked(seller_key, &configured, orders)?;
+    let tcgplayer = TcgPlayer::new(db.clone());
+    let mut conn = db.0.acquire().await.map_err(failed)?;
+    let orders_api = history::api::OrderManagement(&tcgplayer);
+    let now = history::worker::iso_now;
+    history::catch_up::catch_up(&mut conn, &orders_api, &seller, &priority, &now)
         .await
         .map(drop)
 }
