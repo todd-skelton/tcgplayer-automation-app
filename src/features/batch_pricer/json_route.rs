@@ -38,7 +38,9 @@ use crate::{
         batch_pricing::queue,
         continuous_pricing::scheduler,
         inventory_economics::ledger::fingerprint::js_json,
+        inventory_intake::queue::{self as intake, NotQueued},
         inventory_publication::{plan, preview, publication_json},
+        shipping_configuration,
     },
     legacy::{Legacy, relay_request},
     node_pg,
@@ -97,46 +99,56 @@ pub struct InventoryBatchPricingStream<'a> {
 const STREAM_POLL: Duration = Duration::from_secs(1);
 const STREAM_HEARTBEAT: Duration = Duration::from_secs(15);
 
+/// The largest batch request read: a request id and a purchase total.
+const MAX_CREATE_BODY_BYTES: usize = 64 * 1024;
+
 /// The largest pricing request read: it holds only a mode.
 const MAX_PRICING_BODY_BYTES: usize = 64 * 1024;
 
 pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
-    api.route::<InventoryBatches>(get(list).post(relay).with_state(shared.clone()))
-        .route::<ImportCsv>(relayed().with_state(shared.clone()))
-        .route::<ImportSeller>(relayed().with_state(shared.clone()))
-        .route::<InventoryBatch<'_>>(
-            get(one)
-                .delete(delete)
-                .post(not_allowed)
-                .put(not_allowed)
-                .patch(not_allowed)
-                .with_state(shared.clone()),
-        )
-        .route::<InventoryBatchItems<'_>>(get(items).with_state(shared.clone()))
-        .route::<InventoryBatchResults<'_>>(
-            get(results)
-                .post(relay)
-                .put(relay)
-                .patch(relay)
-                .delete(relay)
-                .with_state(shared.clone()),
-        )
-        .route::<InventoryBatchPricingJobs<'_>>(
-            post(price)
-                .put(pricing_not_allowed)
-                .patch(pricing_not_allowed)
-                .delete(pricing_not_allowed)
-                .with_state(shared.clone()),
-        )
-        .route::<InventoryBatchPricingStream<'_>>(get(pricing_stream).with_state(shared.clone()))
-        .route::<InventoryBatchPublications<'_>>(
-            get(publications)
-                .post(publish)
-                .patch(relay)
-                .put(publications_not_allowed)
-                .delete(publications_not_allowed)
-                .with_state(shared.clone()),
-        )
+    api.route::<InventoryBatches>(
+        get(list)
+            .post(create)
+            .put(list_not_allowed)
+            .patch(list_not_allowed)
+            .delete(list_not_allowed)
+            .with_state(shared.clone()),
+    )
+    .route::<ImportCsv>(relayed().with_state(shared.clone()))
+    .route::<ImportSeller>(relayed().with_state(shared.clone()))
+    .route::<InventoryBatch<'_>>(
+        get(one)
+            .delete(delete)
+            .post(not_allowed)
+            .put(not_allowed)
+            .patch(not_allowed)
+            .with_state(shared.clone()),
+    )
+    .route::<InventoryBatchItems<'_>>(get(items).with_state(shared.clone()))
+    .route::<InventoryBatchResults<'_>>(
+        get(results)
+            .post(relay)
+            .put(relay)
+            .patch(relay)
+            .delete(relay)
+            .with_state(shared.clone()),
+    )
+    .route::<InventoryBatchPricingJobs<'_>>(
+        post(price)
+            .put(pricing_not_allowed)
+            .patch(pricing_not_allowed)
+            .delete(pricing_not_allowed)
+            .with_state(shared.clone()),
+    )
+    .route::<InventoryBatchPricingStream<'_>>(get(pricing_stream).with_state(shared.clone()))
+    .route::<InventoryBatchPublications<'_>>(
+        get(publications)
+            .post(publish)
+            .patch(relay)
+            .put(publications_not_allowed)
+            .delete(publications_not_allowed)
+            .with_state(shared.clone()),
+    )
 }
 
 /// Every method the relay at `/api/{*rest}` takes, sent on to the Node app.
@@ -193,6 +205,87 @@ async fn list(State(db): State<Database>) -> JsonResponse {
     match listed {
         Ok(batches) => api::node_json(&batches),
         Err(error) => failed(error),
+    }
+}
+
+/// Any other write to the list: Node's action.
+async fn list_not_allowed() -> JsonResponse {
+    api::error(StatusCode::METHOD_NOT_ALLOWED, "Method not allowed")
+}
+
+/// The counts as a batch, in a transaction kept only when the batch is answered.
+async fn create(State(db): State<Database>, request: Request) -> JsonResponse {
+    let body = match to_bytes(request.into_body(), MAX_CREATE_BODY_BYTES).await {
+        Ok(body) => body,
+        Err(error) => return failed(format!("Error: {error}")),
+    };
+    // `getShippingExportConfig` answers its defaults when the saved one cannot be read.
+    let seller = shipping_configuration::default_seller_key(&db)
+        .await
+        .unwrap_or_default();
+    let mut tx = match db.0.begin().await {
+        Ok(tx) => tx,
+        Err(error) => return failed(node_pg::thrown(error)),
+    };
+    match batch_created(&mut tx, &body, api::js_trim(&seller)).await {
+        Ok(answer) => match tx.commit().await {
+            Ok(()) => answer,
+            Err(error) => failed(node_pg::thrown(error)),
+        },
+        Err(answer) => {
+            let _ = tx.rollback().await;
+            *answer
+        }
+    }
+}
+
+/// The action of `POST /api/inventory-batches`: the body's request id checked, then the batch
+/// it makes (see [`intake::created`]) answered, or why not, each in Node's words and status.
+async fn batch_created(
+    conn: &mut PgConnection,
+    body: &[u8],
+    seller: &str,
+) -> Result<JsonResponse, Box<JsonResponse>> {
+    // `request.json()`, a body that is not JSON read as none.
+    let payload: Value = serde_json::from_slice(body).unwrap_or(Value::Null);
+    let request_id = payload
+        .get("requestId")
+        .and_then(Value::as_str)
+        .map_or("", api::js_trim);
+    if request_id.is_empty() || request_id.encode_utf16().count() > 200 {
+        return Err(Box::new(api::error(
+            StatusCode::BAD_REQUEST,
+            "requestId is required",
+        )));
+    }
+    let purchase = payload.get("purchaseCost").filter(|cost| truthy(cost));
+    let batch = intake::created(conn, request_id, purchase, seller)
+        .await
+        .map_err(|not| {
+            Box::new(match not {
+                NotQueued::Refused(corten::Refusal::Conflict, why) => {
+                    api::error(StatusCode::CONFLICT, why)
+                }
+                NotQueued::Refused(_, why) => api::error(StatusCode::BAD_REQUEST, why),
+                NotQueued::Unrecorded(why) => failed(format!("Error: {why}")),
+                NotQueued::Failed(why) => failed(why),
+            })
+        })?;
+    match batch_json::find(conn, batch).await {
+        Ok(Some(found)) => Ok(api::node_json(&found).with_status(StatusCode::CREATED)),
+        Ok(None) => Err(Box::new(not_found(batch))),
+        Err(error) => Err(Box::new(failed(error))),
+    }
+}
+
+/// JavaScript's truthiness, which decides whether a purchase cost was entered.
+fn truthy(value: &Value) -> bool {
+    match value {
+        Value::Null => false,
+        Value::Bool(b) => *b,
+        Value::Number(n) => n.as_f64() != Some(0.0),
+        Value::String(text) => !text.is_empty(),
+        Value::Array(_) | Value::Object(_) => true,
     }
 }
 
@@ -796,6 +889,100 @@ mod tests {
             assert_eq!(u64::from(code), theirs["status"], "{name}");
             assert_eq!(ours, expected, "{name}");
             assert_eq!(Value::from(status), theirs["batch146"], "{name}");
+        }
+        tx.rollback().await.unwrap();
+    }
+
+    /// The requests in `.port-logs/batch-create-cases.json`, from the counts
+    /// `.port-logs/pending-seed.sql` leaves, inside a transaction rolled back (a savepoint each),
+    /// against Node's action over the same (`.port-logs/batch-create-node.ts`): each answer, the
+    /// batch it made, and the batches, lots and costs left. A case's seller is the saved one
+    /// unless the case names another.
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
+    async fn creates_as_node_created() {
+        use crate::features::inventory_intake::queue::tests::{fingerprints_checked, untimed};
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let read_log = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let cases: Vec<Value> = serde_json::from_str(&read_log("batch-create-cases.json")).unwrap();
+        let node: Vec<Value> = serde_json::from_str(&read_log("batch-create.node.json")).unwrap();
+        assert_eq!(cases.len(), node.len());
+        let saved = shipping_configuration::default_seller_key(&db)
+            .await
+            .unwrap();
+        let mut tx = db.0.begin().await.unwrap();
+        sqlx::raw_sql(&read_log("pending-seed.sql"))
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        let capture = read_log("batch-create-capture.sql");
+        for (case, theirs) in cases.iter().zip(&node) {
+            let name = case["name"].as_str().unwrap();
+            let seller = case["seller"].as_str().unwrap_or(api::js_trim(&saved));
+            let mut each = tx.begin().await.unwrap();
+            if let Some(setup) = case["setup"].as_str() {
+                sqlx::raw_sql(setup).execute(&mut *each).await.unwrap();
+            }
+            let mut batches: Vec<i64> = Vec::new();
+            let mut answers = Vec::new();
+            let mut bodies = Vec::new();
+            for step in case["steps"].as_array().unwrap() {
+                if let Some(sql) = step["sql"].as_str() {
+                    sqlx::raw_sql(sql).execute(&mut *each).await.unwrap();
+                    continue;
+                }
+                let body = step["body"].as_str().unwrap().as_bytes();
+                let mut attempt = each.begin().await.unwrap();
+                let answer = batch_created(&mut attempt, body, seller).await;
+                match answer {
+                    Ok(_) => attempt.commit().await.unwrap(),
+                    Err(_) => attempt.rollback().await.unwrap(),
+                }
+                let answer = answer.unwrap_or_else(|refused| *refused).into_response();
+                let status = answer.status().as_u16();
+                let bytes = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
+                    .await
+                    .unwrap();
+                let answered: Value = serde_json::from_slice(&bytes).unwrap();
+                let label = |batches: &[i64], n: i64| {
+                    format!("B{}", batches.iter().position(|b| *b == n).unwrap() + 1)
+                };
+                if status == 201 {
+                    let n = answered["batchNumber"].as_i64().unwrap();
+                    if !batches.contains(&n) {
+                        batches.push(n);
+                    }
+                    answers.push(json!({ "status": status, "batch": label(&batches, n) }));
+                    bodies.push(untimed(answered, &label(&batches, n)));
+                } else {
+                    let mut error = answered["error"].as_str().unwrap().to_owned();
+                    if let Some((before, n)) = error.rsplit_once("batch ")
+                        && let Ok(n) = n.parse::<i64>()
+                        && batches.contains(&n)
+                    {
+                        error = format!("{before}batch {}", label(&batches, n));
+                    }
+                    answers.push(json!({ "status": status, "error": error }));
+                }
+            }
+            let captured: String = sqlx::query_scalar(&capture)
+                .fetch_one(&mut *each)
+                .await
+                .unwrap();
+            each.rollback().await.unwrap();
+            assert_eq!(Value::from(answers), theirs["answers"], "{name}");
+            let node_bodies = theirs["bodies"].as_array().unwrap();
+            assert_eq!(bodies.len(), node_bodies.len(), "{name}");
+            for (ours, theirs) in bodies.iter().zip(node_bodies) {
+                let label = ours["batchNumber"].as_str().unwrap();
+                assert_eq!(*ours, untimed(theirs.clone(), label), "{name}");
+            }
+            assert_eq!(
+                fingerprints_checked(serde_json::from_str(&captured).unwrap()),
+                fingerprints_checked(theirs["captured"].clone()),
+                "{name}"
+            );
         }
         tx.rollback().await.unwrap();
     }
