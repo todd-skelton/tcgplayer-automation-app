@@ -24,6 +24,14 @@ pub fn row(row: &PgRow) -> Result<Value, String> {
     Ok(Value::Object(object))
 }
 
+/// `String(error)` of what node-pg threw: a database's error is named `error`.
+pub fn thrown(e: sqlx::Error) -> String {
+    match e.as_database_error() {
+        Some(database) => format!("error: {}", database.message()),
+        None => format!("Error: {e}"),
+    }
+}
+
 /// Every row, in order.
 pub fn rows(rows: &[PgRow]) -> Result<Value, String> {
     rows.iter()

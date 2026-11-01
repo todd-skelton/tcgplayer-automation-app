@@ -65,14 +65,6 @@ const LINE_HOLDS: &str = r#"SELECT orders.order_number AS "orderNumber",line.ord
       JOIN seller_orders orders ON orders.id=line.order_id WHERE line.seller_key=$1 AND line.state='held'
         AND line.sku>$2::bigint ORDER BY line.sku,orders.order_time,orders.order_number,line.order_line_sku_id LIMIT $3::bigint"#;
 
-/// `String(error)` of what node-pg threw: a database's error is named `error`.
-fn failed(e: sqlx::Error) -> String {
-    match e.as_database_error() {
-        Some(database) => format!("error: {}", database.message()),
-        None => format!("Error: {e}"),
-    }
-}
-
 /// `Number.isInteger`.
 fn integer(n: f64) -> bool {
     n.is_finite() && n.fract() == 0.0
@@ -97,7 +89,7 @@ pub async fn order_allocation(db: &Database, seller: &str, order: &str) -> Resul
         .bind(order.trim())
         .fetch_all(&db.0)
         .await
-        .map_err(failed)?;
+        .map_err(node_pg::thrown)?;
     node_pg::rows(&rows)
 }
 
@@ -124,7 +116,7 @@ pub async fn line_revisions(
         .bind(limit as i64)
         .fetch_all(&db.0)
         .await
-        .map_err(failed)?;
+        .map_err(node_pg::thrown)?;
     node_pg::rows(&rows)
 }
 
@@ -150,7 +142,7 @@ pub async fn holds(
             .bind(limit as i64)
             .fetch_all(&db.0)
     };
-    let queue = page(QUEUE_HOLDS).await.map_err(failed)?;
-    let lines = page(LINE_HOLDS).await.map_err(failed)?;
+    let queue = page(QUEUE_HOLDS).await.map_err(node_pg::thrown)?;
+    let lines = page(LINE_HOLDS).await.map_err(node_pg::thrown)?;
     Ok(json!({ "queue": node_pg::rows(&queue)?, "lines": node_pg::rows(&lines)? }))
 }

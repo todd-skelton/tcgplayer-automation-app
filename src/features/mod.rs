@@ -12,6 +12,7 @@ pub mod inventory_economics;
 pub mod inventory_fifo;
 pub mod inventory_history;
 pub mod inventory_intake;
+pub mod inventory_opening_balance;
 pub mod inventory_publication;
 pub mod inventory_strategy;
 pub mod pricing;
