@@ -23,6 +23,7 @@ pub mod input;
 pub mod pagination;
 pub mod panel;
 pub mod popover;
+pub mod progress_bar;
 pub mod radio_group;
 pub mod segmented;
 pub mod select;
@@ -54,6 +55,7 @@ pub const COMPONENTS: &[Component] = &[
     pagination::Pagination,
     panel::Panel,
     popover::Popover,
+    progress_bar::ProgressBar,
     radio_group::RadioGroup,
     segmented::Segmented,
     select::Select,
