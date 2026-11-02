@@ -349,18 +349,26 @@ mod tests {
 
     /// Every screen, read from the dev database (`.env`) under Corten's dev check: a page that
     /// renders a component whose stylesheet it does not link (one listed in another area only)
-    /// is a 500 there, where a release build serves it unstyled. Reads only, as above.
+    /// is a 500 there, where a release build serves it unstyled (corten#619). Each screen is read
+    /// empty and, where the database has one, with a batch, sheet, slab or order chosen. Reads
+    /// only, as above; the slab providers are a closed port, and no screen here asks TCGplayer
+    /// (the price matrix with a product chosen would, so it is read without one).
     #[tokio::test]
     #[ignore = "reads the dev database"]
     async fn every_screen_links_the_stylesheets_of_what_it_renders() {
         use tower::ServiceExt;
         crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
         let shared = Shared {
-            db: Database::connect_lazy(&crate::config::database_url()),
+            db: db.clone(),
             legacy: Legacy::new("http://localhost:1".into()),
-            slab_providers: slab_connections::Transport::default(),
+            slab_providers: slab_connections::Transport::to(
+                "http://127.0.0.1:1",
+                "http://127.0.0.1:1",
+            ),
         };
         let router = app(shared).dev(true).router();
+        let chosen = chosen_screens(&db).await;
         let steps = [
             "load-orders",
             "pull-sheet",
@@ -390,11 +398,20 @@ mod tests {
             "/shipping-export?step=pack&view=list",
         ]
         .map(String::from);
+        assert!(
+            chosen.len() >= 10,
+            "the dev database has too little to choose: {chosen:#?}"
+        );
         let mut failed = Vec::new();
-        for path in screens.into_iter().chain(steps) {
-            let request = corten::axum::http::Request::get(&path)
-                .body(corten::axum::body::Body::empty())
-                .unwrap();
+        for path in screens.into_iter().chain(steps).chain(chosen) {
+            let request = match path.strip_prefix(PATCH) {
+                Some(view) => {
+                    corten::axum::http::Request::get(view).header(corten::MODE_HEADER, "action")
+                }
+                None => corten::axum::http::Request::get(&path),
+            }
+            .body(corten::axum::body::Body::empty())
+            .unwrap();
             let answer = router.clone().oneshot(request).await.unwrap();
             if !answer.status().is_success() {
                 let status = answer.status();
@@ -409,6 +426,141 @@ mod tests {
             }
         }
         assert!(failed.is_empty(), "{failed:#?}");
+    }
+
+    /// A view only the runtime asks for (it patches it into the page), marked so the test asks
+    /// as the runtime does; without the header it redirects to its screen.
+    fn patch(path: String) -> String {
+        format!("{PATCH}{path}")
+    }
+
+    const PATCH: &str = "patch:";
+
+    /// The screens that show something chosen from the database: the newest batch, pull sheet,
+    /// slab and workflow order, and a product line with one of its sets.
+    async fn chosen_screens(db: &Database) -> Vec<String> {
+        use corten::Route;
+        let one = |sql: &'static str| async move {
+            sqlx::query_as::<_, (String, String)>(sql)
+                .fetch_optional(&db.0)
+                .await
+                .expect("the dev database answers")
+        };
+        let mut chosen = Vec::new();
+        if let Some((batch, _)) = one(
+            "SELECT b.batch_number::text, '' FROM inventory_batches b ORDER BY b.batch_number DESC LIMIT 1",
+        )
+        .await
+        {
+            let batch: i32 = batch.parse().unwrap();
+            chosen.push(batch_pricer::url::BatchPricer::batch(batch).href());
+            chosen.push(patch(
+                inventory_strategy::url::Analysis {
+                    batch,
+                    view: Default::default(),
+                }
+                .href(),
+            ));
+        }
+        if let Some((id, _)) = one(
+            "SELECT s.pull_sheet_id::text, '' FROM pull_sheets s ORDER BY s.pull_sheet_id DESC LIMIT 1",
+        )
+        .await
+        {
+            chosen.push(
+                pull_sheet::url::PullSheet {
+                    id: id.parse().unwrap(),
+                    filters: Default::default(),
+                }
+                .href(),
+            );
+        }
+        if let Some((order, _)) = one(
+            "SELECT workflow_json->'orders'->0->>'Order #', '' FROM shipping_workflows
+             WHERE workflow_key = 'current' AND workflow_json->'orders'->0 ? 'Order #'",
+        )
+        .await
+        {
+            chosen.push(shipping_export::url::OrderLabels { order: Some(order) }.href());
+        }
+        if let Some((grader, cert)) =
+            one("SELECT grader, certificate_number FROM slab_identities LIMIT 1").await
+        {
+            let slab = slab_pricing::url::Choice {
+                grader: Some(grader),
+                cert: Some(cert),
+                ..Default::default()
+            };
+            for choice in [
+                slab.clone(),
+                slab_pricing::url::Choice {
+                    supply: Some(true),
+                    ..slab.clone()
+                },
+                slab_pricing::url::Choice {
+                    maintenance: Some(true),
+                    outcomes: Some(true),
+                    publication: Some(true),
+                    ..slab.clone()
+                },
+            ] {
+                chosen.push(slab_pricing::url::SlabPricing::at(&choice).href());
+            }
+            chosen.push(
+                slab_pricing::url::Evidence {
+                    choice: slab.clone(),
+                }
+                .href(),
+            );
+            chosen.push(slab_pricing::url::MaintenanceStatus { choice: slab }.href());
+        }
+        if let Some((line, set)) = one(
+            "SELECT s.category_id::text, s.set_name_id::text FROM category_sets s ORDER BY s.set_name_id DESC LIMIT 1",
+        )
+        .await
+        {
+            let (line, set) = (Some(line.parse().unwrap()), Some(set.parse().unwrap()));
+            chosen.push(
+                product_price_matrix::url::ProductPriceMatrix {
+                    choice: product_price_matrix::url::Choice {
+                        line,
+                        set,
+                        ..Default::default()
+                    },
+                }
+                .href(),
+            );
+            chosen.push(
+                inventory_intake::url::InventoryManager {
+                    selection: inventory_intake::url::Selection {
+                        line,
+                        set,
+                        ..Default::default()
+                    },
+                }
+                .href(),
+            );
+        }
+        chosen.push(patch(
+            inventory_intake::url::Batches {
+                selection: Default::default(),
+            }
+            .href(),
+        ));
+        chosen.push(
+            configuration::url::CalibrationReport {
+                window: Default::default(),
+            }
+            .href(),
+        );
+        chosen.push(
+            configuration::url::ShippingReport {
+                window: Default::default(),
+            }
+            .href(),
+        );
+        chosen.push(shipping_export::url::PackingSlips { open: None }.href());
+        chosen
     }
 
     /// The scripts' view classes (`corten/views`), which `corten check` type-checks them against.
