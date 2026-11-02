@@ -10,7 +10,7 @@ use corten::Signal;
 use serde::{Deserialize, Serialize};
 use tokio::time::{MissedTickBehavior, interval};
 
-use super::purchase_cost::NotRecorded;
+use super::series::NotRecorded;
 use crate::database::Database;
 
 /// How an estimate turns a card's market price at intake into its cost: a share of it, less a
@@ -123,7 +123,7 @@ pub struct Batch {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExplicitAllocation {
-    pub receipt_id: i32,
+    pub receipt_id: i64,
     pub amount_cents: i64,
 }
 
@@ -142,6 +142,9 @@ pub struct PurchaseCost {
     pub batch_numbers: Vec<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub purchased_at: Option<String>,
+    /// When the market a frozen-market split weighs by was observed, as `toISOString` writes it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub market_observed_at: Option<String>,
     pub explicit_allocations: Vec<ExplicitAllocation>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub corrects_entry_id: Option<String>,
@@ -197,7 +200,7 @@ pub fn estimate(
             }
             let unit = unit_cost_cents(receipt.market_value.unwrap_or_default(), rate);
             Ok(ExplicitAllocation {
-                receipt_id: receipt.receipt_id,
+                receipt_id: i64::from(receipt.receipt_id),
                 amount_cents: i64::from(receipt.original_quantity) * unit,
             })
         })
@@ -223,6 +226,7 @@ pub fn estimate(
             allocation_rule: "explicit",
             batch_numbers: vec![batch_number],
             purchased_at,
+            market_observed_at: None,
             explicit_allocations: allocations,
             corrects_entry_id: None,
             correction_reason: None,
@@ -264,7 +268,7 @@ pub fn plan(seller: &str, batches: &[Batch]) -> Result<Run, Refused> {
                 batch
                     .receipts
                     .iter()
-                    .find(|r| r.receipt_id == allocation.receipt_id)
+                    .find(|r| i64::from(r.receipt_id) == allocation.receipt_id)
                     .and_then(|r| r.allocated_amount_cents)
                     == Some(allocation.amount_cents as f64)
             });

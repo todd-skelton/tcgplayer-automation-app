@@ -1,28 +1,27 @@
-//! Recording a purchase cost, ported from `inventoryEconomicsRepository.recordPurchaseCost` for the
-//! two rules the app records: explicit, the one estimates use, where each receipt lot of the
-//! batches is given its amount; and quantity, an entered total split across the lots by their
-//! units.
+//! Recording a purchase cost, ported from `inventoryEconomicsRepository.recordPurchaseCost`, by
+//! each of its rules: explicit, where each receipt lot of the batches is given its amount (the rule
+//! estimates use); quantity, an entered total split across the lots by their units; and frozen
+//! market, split by each lot's market value at intake times its units. And the lots a purchase
+//! of some batches would split across (`findPurchaseAllocationTargets`), for the screen to ask
+//! amounts of.
 //!
 //! A request is recorded once. Its fingerprint is the one Node computes, so a request either app
 //! repeats is answered with the entry already saved, and one reused for other evidence is refused.
 //! Entries are immutable: a change is a correction that names the series' current entry.
-use serde_json::json;
+use serde_json::{Value, json};
 use sqlx::PgConnection;
 
+pub use super::series::{NotRecorded, Saved};
 use super::{
+    details::{distinct, postgres_integer, required_text},
     estimate::{ExplicitAllocation, PurchaseCost},
     ledger::{
-        fingerprint::{sha256_hex, stable_json},
-        money::allocate,
+        fingerprint::{js_float, sha256_hex, stable_json},
+        money::allocate_weighted,
     },
+    series::{self, Ledger, failed},
 };
-
-/// The entry a request saved, or found already saved for it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Saved {
-    pub entry_id: String,
-    pub repeated: bool,
-}
+use crate::node_pg;
 
 fn batch_numbers(cost: &PurchaseCost) -> Vec<i32> {
     let mut numbers = cost.batch_numbers.clone();
@@ -49,52 +48,28 @@ pub fn request_fingerprint(cost: &PurchaseCost) -> String {
         "allocationRule": cost.allocation_rule,
         "batchNumbers": batch_numbers(cost),
         "purchasedAt": cost.purchased_at,
-        "marketObservedAt": null,
+        "marketObservedAt": cost.market_observed_at,
         "correctsEntryId": cost.corrects_entry_id,
         "correctionReason": cost.correction_reason,
         "explicitAllocations": allocations(cost),
     })))
 }
 
-/// Why a purchase cost was not recorded.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum NotRecorded {
-    /// It conflicts with what is recorded: a request id reused for other evidence, a correction
-    /// of an entry that is not the current one, or a lot another purchase owns. Node's
-    /// `InventoryEconomicsConflictError`.
-    Conflict(String),
-    /// Anything else: input it does not take, lots it cannot find, the database failing.
-    Failed(String),
-}
-
-impl From<&str> for NotRecorded {
-    fn from(message: &str) -> Self {
-        NotRecorded::Failed(message.to_owned())
-    }
-}
-
-impl From<String> for NotRecorded {
-    fn from(message: String) -> Self {
-        NotRecorded::Failed(message)
-    }
-}
-
-impl From<NotRecorded> for String {
-    fn from(not: NotRecorded) -> Self {
-        match not {
-            NotRecorded::Conflict(message) | NotRecorded::Failed(message) => message,
-        }
-    }
-}
-
 /// Records `cost` on `conn`, which the caller holds in a transaction.
 pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Saved, NotRecorded> {
-    let failed = |e: sqlx::Error| NotRecorded::Failed(e.to_string());
-    let explicit = match cost.allocation_rule {
-        "explicit" => true,
-        "quantity" => false,
-        _ => return Err("Only explicit and quantity purchase costs are recorded here.".into()),
-    };
+    if !matches!(
+        cost.allocation_rule,
+        "explicit" | "quantity" | "frozen_market"
+    ) {
+        return Err("Purchase allocation rule is invalid.".into());
+    }
+    if cost.allocation_rule == "frozen_market" && cost.market_observed_at.is_none() {
+        return Err("Frozen market allocation requires a market evidence instant.".into());
+    }
+    if cost.corrects_entry_id.is_some() != cost.correction_reason.is_some() {
+        return Err("A correction requires both the current entry and a reason.".into());
+    }
+    let explicit = cost.allocation_rule == "explicit";
     let batch_numbers = batch_numbers(cost);
     if batch_numbers.is_empty()
         || batch_numbers.len() > 100
@@ -103,9 +78,6 @@ pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Save
         return Err("Purchase costs require 1 to 100 positive batch numbers.".into());
     }
     let allocations = allocations(cost);
-    if !explicit && !allocations.is_empty() {
-        return Err("Explicit receipt amounts require the explicit allocation rule.".into());
-    }
     if explicit
         && (allocations.is_empty()
             || allocations.iter().any(|a| a.receipt_id <= 0)
@@ -115,78 +87,30 @@ pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Save
     {
         return Err("Explicit allocations require each receipt exactly once.".into());
     }
-    if cost.corrects_entry_id.is_some() != cost.correction_reason.is_some() {
-        return Err("A correction requires both the current entry and a reason.".into());
+    if !explicit && !allocations.is_empty() {
+        return Err("Explicit receipt amounts require the explicit allocation rule.".into());
     }
     let fingerprint = request_fingerprint(cost);
-
-    sqlx::query("SELECT pg_advisory_xact_lock(hashtext($1))")
-        .bind(format!("inventory-economics:{}", cost.request_id))
-        .execute(&mut *conn)
-        .await
-        .map_err(failed)?;
-    let repeated: Option<(String, String)> = sqlx::query_as(
-        "SELECT id::text, request_fingerprint FROM inventory_purchase_cost_entries WHERE request_id=$1",
-    )
-    .bind(&cost.request_id)
-    .fetch_optional(&mut *conn)
-    .await
-    .map_err(failed)?;
-    if let Some((entry_id, saved)) = repeated {
-        if saved != fingerprint {
-            return Err(NotRecorded::Conflict(
-                "Request ID was already used for different inventory economics evidence.".into(),
-            ));
-        }
-        return Ok(Saved {
-            entry_id,
-            repeated: true,
-        });
+    let ledger = Ledger::PurchaseCosts;
+    if let Some(saved) = series::repeated(conn, ledger, &cost.request_id, &fingerprint).await? {
+        return Ok(saved);
     }
-
-    sqlx::query(
-        "INSERT INTO inventory_purchase_cost_series (seller_key,purchase_reference,currency)
-         VALUES ($1,$2,$3) ON CONFLICT DO NOTHING",
+    let series = series::lock_series(
+        conn,
+        ledger,
+        &cost.seller_key,
+        &cost.purchase_reference,
+        &cost.currency,
     )
-    .bind(&cost.seller_key)
-    .bind(&cost.purchase_reference)
-    .bind(&cost.currency)
-    .execute(&mut *conn)
-    .await
-    .map_err(failed)?;
-    let series: String = sqlx::query_scalar(
-        "SELECT id::text FROM inventory_purchase_cost_series
-         WHERE seller_key=$1 AND purchase_reference=$2 AND currency=$3 FOR UPDATE",
+    .await?;
+    let correction = series::next_correction(
+        conn,
+        ledger,
+        &series,
+        cost.corrects_entry_id.as_deref(),
+        cost.correction_reason.as_deref(),
     )
-    .bind(&cost.seller_key)
-    .bind(&cost.purchase_reference)
-    .bind(&cost.currency)
-    .fetch_one(&mut *conn)
-    .await
-    .map_err(failed)?;
-
-    let current: Option<(String, i32)> = sqlx::query_as(
-        "SELECT id::text,sequence FROM inventory_purchase_cost_entries
-         WHERE series_id=$1::bigint ORDER BY sequence DESC LIMIT 1",
-    )
-    .bind(&series)
-    .fetch_optional(&mut *conn)
-    .await
-    .map_err(failed)?;
-    let sequence = match (current, &cost.corrects_entry_id) {
-        (None, None) => 1,
-        (None, Some(_)) => {
-            return Err(NotRecorded::Conflict(
-                "An initial entry cannot be a correction.".into(),
-            ));
-        }
-        (Some((id, sequence)), Some(corrects)) if *corrects == id => sequence + 1,
-        (Some((id, _)), _) => {
-            return Err(NotRecorded::Conflict(format!(
-                "A correction must reference the current entry {id}."
-            )));
-        }
-    };
+    .await?;
 
     let receipt_ids: Vec<i32> = sqlx::query_scalar(
         "SELECT receipt.receipt_id FROM inventory_receipts receipt
@@ -238,12 +162,13 @@ pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Save
         ));
     }
 
-    let receipts: Vec<(i32, Option<String>, i32)> = sqlx::query_as(
-        "SELECT receipt.receipt_id,receipt.seller_key,receipt.original_quantity
+    let receipts: Vec<Lot> = sqlx::query_as(
+        "SELECT receipt.receipt_id,receipt.seller_key,receipt.original_quantity,
+           receipt.market_value::float8 AS market_value
          FROM inventory_receipt_batch_links link
          JOIN inventory_receipts receipt ON receipt.receipt_id=link.receipt_id
          WHERE link.batch_number=ANY($1::int[])
-         GROUP BY receipt.receipt_id,receipt.seller_key,receipt.original_quantity
+         GROUP BY receipt.receipt_id,receipt.original_quantity,receipt.market_value,receipt.seller_key
          ORDER BY receipt.receipt_id",
     )
     .bind(&batch_numbers)
@@ -253,46 +178,48 @@ pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Save
     if receipts.is_empty() {
         return Err("No receipt lots were found for the selected batches.".into());
     }
-    if receipts
-        .iter()
-        .any(|(_, seller, _)| seller.as_deref().is_some_and(|s| s != cost.seller_key))
-    {
+    if receipts.iter().any(|lot| {
+        lot.seller_key
+            .as_deref()
+            .is_some_and(|s| s != cost.seller_key)
+    }) {
         return Err("Purchase receipts cannot cross sellers.".into());
     }
-    let receipt_ids: Vec<i32> = receipts.iter().map(|(id, _, _)| *id).collect();
+    let receipt_ids: Vec<i32> = receipts.iter().map(|lot| lot.receipt_id).collect();
     let (amounts, weights) = if explicit {
         explicit_amounts(&receipt_ids, &allocations, cost.total_amount_cents)?
     } else {
-        by_quantity(&receipts, cost.total_amount_cents)?
+        by_weight(&receipts, cost.allocation_rule, cost.total_amount_cents)?
     };
 
     let entry_id: String = sqlx::query_scalar(
         "INSERT INTO inventory_purchase_cost_entries
           (series_id,request_id,request_fingerprint,sequence,total_amount_cents,provenance,source,allocation_rule,
            batch_numbers,purchased_at,market_observed_at,corrects_entry_id,correction_reason,evidence)
-         VALUES ($1::bigint,$2,$3,$4,$5,$6,$7,$8,$9,$10::date,NULL,$11::bigint,$12,$13::jsonb)
+         VALUES ($1::bigint,$2,$3,$4,$5,$6,$7,$8,$9,$10::date,$11::timestamptz,$12::bigint,$13,$14::jsonb)
          RETURNING id::text",
     )
     .bind(&series)
     .bind(&cost.request_id)
     .bind(&fingerprint)
-    .bind(sequence)
+    .bind(correction.sequence)
     .bind(cost.total_amount_cents)
     .bind(cost.provenance)
     .bind(cost.source)
     .bind(cost.allocation_rule)
     .bind(&batch_numbers)
     .bind(&cost.purchased_at)
-    .bind(&cost.corrects_entry_id)
-    .bind(&cost.correction_reason)
+    .bind(&cost.market_observed_at)
+    .bind(&correction.corrects_entry_id)
+    .bind(&correction.reason)
     .bind(json!({ "allocationRule": cost.allocation_rule, "batchNumbers": batch_numbers }).to_string())
     .fetch_one(&mut *conn)
     .await
     .map_err(failed)?;
     sqlx::query(
         "INSERT INTO inventory_purchase_cost_allocations (entry_id,receipt_id,allocated_amount_cents,allocation_weight)
-         SELECT $1::bigint,receipt_id,amount,weight
-         FROM unnest($2::int[],$3::bigint[],$4::bigint[]) AS lot(receipt_id,amount,weight)",
+         SELECT $1::bigint,receipt_id,amount,weight::numeric
+         FROM unnest($2::int[],$3::bigint[],$4::text[]) AS lot(receipt_id,amount,weight)",
     )
     .bind(&entry_id)
     .bind(&receipt_ids)
@@ -307,6 +234,16 @@ pub async fn record(conn: &mut PgConnection, cost: &PurchaseCost) -> Result<Save
     })
 }
 
+/// A receipt lot of the purchase's batches.
+#[derive(sqlx::FromRow)]
+struct Lot {
+    receipt_id: i32,
+    seller_key: Option<String>,
+    original_quantity: i32,
+    /// Its unit market value at intake, as node-pg reads `numeric::float8`.
+    market_value: Option<f64>,
+}
+
 /// Each lot's amount and weight under the explicit rule: the amount it was given, which is also
 /// its weight. Both lists are sorted by receipt, so every receipt is named once exactly when the
 /// ids line up.
@@ -314,12 +251,12 @@ fn explicit_amounts(
     receipt_ids: &[i32],
     allocations: &[ExplicitAllocation],
     total_amount_cents: i64,
-) -> Result<(Vec<i64>, Vec<i64>), String> {
+) -> Result<(Vec<i64>, Vec<String>), String> {
     if receipt_ids.len() != allocations.len()
         || receipt_ids
             .iter()
             .zip(allocations)
-            .any(|(id, a)| *id != a.receipt_id)
+            .any(|(id, a)| i64::from(*id) != a.receipt_id)
     {
         return Err("Explicit allocations must name every selected receipt exactly once.".into());
     }
@@ -327,25 +264,44 @@ fn explicit_amounts(
         return Err("Explicit receipt allocations must equal the purchase total.".into());
     }
     let amounts: Vec<i64> = allocations.iter().map(|a| a.amount_cents).collect();
-    Ok((amounts.clone(), amounts))
+    let weights = amounts.iter().map(i64::to_string).collect();
+    Ok((amounts, weights))
 }
 
-/// Each lot's amount and weight under the quantity rule: the total split by the lots' units, to
-/// the cent, the cents left over going to the largest remainders and then by receipt id as text
-/// (`allocateAmountCents`).
-fn by_quantity(
-    receipts: &[(i32, Option<String>, i32)],
+/// Each lot's amount and weight under the quantity rule (its units) or the frozen market rule
+/// (its unit market value times its units, as JavaScript multiplies them): the total split by
+/// weight to the cent, the cents left over going to the largest remainders and then by receipt
+/// id as text (`allocateAmountCents`). The weight is kept as JavaScript prints it, which is what
+/// Node saved.
+fn by_weight(
+    receipts: &[Lot],
+    rule: &str,
     total_amount_cents: i64,
-) -> Result<(Vec<i64>, Vec<i64>), String> {
-    let ids: Vec<String> = receipts.iter().map(|(id, _, _)| id.to_string()).collect();
-    let mut targets = Vec::with_capacity(receipts.len());
-    for ((_, _, quantity), id) in receipts.iter().zip(&ids) {
-        let weight = u64::try_from(*quantity)
-            .map_err(|_| format!("Allocation weight for {id} must be nonnegative."))?;
-        targets.push((id.as_str(), weight));
+) -> Result<(Vec<i64>, Vec<String>), String> {
+    let ids: Vec<String> = receipts
+        .iter()
+        .map(|lot| lot.receipt_id.to_string())
+        .collect();
+    let weights: Vec<f64> = receipts
+        .iter()
+        .map(|lot| {
+            let units = f64::from(lot.original_quantity);
+            match (rule, lot.market_value) {
+                ("quantity", _) => units,
+                (_, Some(market)) => market * units,
+                (_, None) => f64::NAN,
+            }
+        })
+        .collect();
+    if weights.iter().any(|w| !w.is_finite()) {
+        return Err("Frozen market allocation requires market evidence for every receipt.".into());
     }
-    let shares = allocate(total_amount_cents, &targets)
-        .ok_or("Allocation weights must include a positive value.")?;
+    let targets: Vec<(&str, f64)> = ids
+        .iter()
+        .map(String::as_str)
+        .zip(weights.iter().copied())
+        .collect();
+    let shares = allocate_weighted(total_amount_cents, &targets)?;
     let amounts = ids
         .iter()
         .map(|id| {
@@ -356,8 +312,54 @@ fn by_quantity(
                 .expect("every lot has a share")
         })
         .collect();
-    let weights = receipts.iter().map(|(_, _, q)| i64::from(*q)).collect();
-    Ok((amounts, weights))
+    Ok((amounts, weights.into_iter().map(js_float).collect()))
+}
+
+/// `findPurchaseAllocationTargets`, as written.
+const ALLOCATION_TARGETS: &str = r#"SELECT receipt.receipt_id AS "receiptId",receipt.sku,receipt.original_quantity AS "originalQuantity",
+        COALESCE(sku.product_name || CASE WHEN sku.condition<>'' THEN ' · '||sku.condition ELSE '' END,
+          'SKU '||receipt.sku::text) AS "itemLabel",
+        ARRAY_AGG(link.batch_number ORDER BY link.batch_number) AS "batchNumbers",
+        receipt.intake_at AS "intakeAt"
+      FROM inventory_receipts receipt
+      JOIN inventory_receipt_batch_links link ON link.receipt_id=receipt.receipt_id
+      LEFT JOIN skus sku ON sku.sku=receipt.sku
+      WHERE link.batch_number=ANY($1::int[]) AND (receipt.seller_key IS NULL OR receipt.seller_key=$2)
+      GROUP BY receipt.receipt_id,receipt.sku,receipt.original_quantity,sku.product_name,sku.condition,receipt.intake_at
+      ORDER BY receipt.intake_at NULLS LAST,receipt.receipt_id LIMIT 10001"#;
+
+/// The most lots the screen is given to ask amounts of.
+const MOST_TARGETS: usize = 10_000;
+
+/// `findPurchaseAllocationTargets`: the seller's lots (and lots of no seller yet) in the batches,
+/// first received first, as node-pg reads them; and whether that is all of them. `batch_numbers`
+/// are whole and positive, as `parseBatchNumbers` leaves them.
+pub async fn allocation_targets(
+    conn: &mut PgConnection,
+    seller_key: &str,
+    batch_numbers: &[f64],
+) -> Result<(Vec<Value>, bool), String> {
+    let seller = required_text(seller_key, "Seller key")?;
+    let batches = distinct(batch_numbers);
+    if batches.is_empty() || batches.len() > 100 {
+        return Err("Purchase allocations require 1 to 100 positive batch numbers.".to_owned());
+    }
+    let batches: Vec<i32> = batches
+        .into_iter()
+        .map(postgres_integer)
+        .collect::<Result<_, _>>()?;
+    let rows = sqlx::query(ALLOCATION_TARGETS)
+        .bind(&batches)
+        .bind(&seller)
+        .fetch_all(&mut *conn)
+        .await
+        .map_err(|e| String::from(failed(e)))?;
+    let Value::Array(mut targets) = node_pg::rows(&rows)? else {
+        unreachable!("rows are a list");
+    };
+    let complete = targets.len() <= MOST_TARGETS;
+    targets.truncate(MOST_TARGETS);
+    Ok((targets, complete))
 }
 
 #[cfg(test)]
@@ -376,6 +378,7 @@ mod tests {
             allocation_rule: "explicit",
             batch_numbers: vec![7],
             purchased_at: Some("2026-01-02".into()),
+            market_observed_at: None,
             explicit_allocations: vec![
                 ExplicitAllocation {
                     receipt_id: 12,

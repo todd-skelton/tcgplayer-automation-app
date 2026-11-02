@@ -5,6 +5,8 @@
 use serde_json::{Value, json};
 
 use super::ledger::{evidence, orders::calculate_orders, proceeds::iso};
+use sqlx::PgConnection;
+
 use crate::{database::Database, node_pg};
 
 /// How many of each the workspace reads, as Node's does.
@@ -91,11 +93,11 @@ const ORDER_EXPENSES: &str = r#"WITH selected_series AS (
        WHERE entry.history_rank<=25
        ORDER BY entry.latest_recorded_at DESC,series.id DESC,entry.sequence DESC"#;
 
-async fn list(db: &Database, sql: &str, seller: &str) -> Result<Value, String> {
+async fn list(db: impl sqlx::PgExecutor<'_>, sql: &str, seller: &str) -> Result<Value, String> {
     let rows = sqlx::query(sql)
         .bind(seller.trim())
         .bind(RECENT)
-        .fetch_all(&db.0)
+        .fetch_all(db)
         .await
         .map_err(|e| e.to_string())?;
     node_pg::rows(&rows)
@@ -105,22 +107,50 @@ async fn list(db: &Database, sql: &str, seller: &str) -> Result<Value, String> {
 pub async fn read(db: &Database, seller: &str) -> Result<Value, String> {
     let seller = seller.trim();
     let (purchase_costs, funding_adjustments, order_expenses, evidence) = tokio::join!(
-        list(db, PURCHASE_COSTS, seller),
-        list(db, FUNDING_ADJUSTMENTS, seller),
-        list(db, ORDER_EXPENSES, seller),
+        list(&db.0, PURCHASE_COSTS, seller),
+        list(&db.0, FUNDING_ADJUSTMENTS, seller),
+        list(&db.0, ORDER_EXPENSES, seller),
         evidence::find(db, seller, RECENT),
     );
     let evidence = evidence.map_err(|e| e.to_string())?;
-    let orders: Vec<Value> = calculate_orders(seller, &evidence)?
+    workspace(
+        seller,
+        [purchase_costs?, funding_adjustments?, order_expenses?],
+        &evidence,
+    )
+}
+
+/// [`read`] on one connection, so it sees what the connection's transaction recorded.
+pub async fn read_on(conn: &mut PgConnection, seller: &str) -> Result<Value, String> {
+    let seller = seller.trim();
+    let purchase_costs = list(&mut *conn, PURCHASE_COSTS, seller).await?;
+    let funding_adjustments = list(&mut *conn, FUNDING_ADJUSTMENTS, seller).await?;
+    let order_expenses = list(&mut *conn, ORDER_EXPENSES, seller).await?;
+    let evidence = evidence::find_in(conn, seller, RECENT)
+        .await
+        .map_err(|e| e.to_string())?;
+    workspace(
+        seller,
+        [purchase_costs, funding_adjustments, order_expenses],
+        &evidence,
+    )
+}
+
+fn workspace(
+    seller: &str,
+    [purchase_costs, funding_adjustments, order_expenses]: [Value; 3],
+    evidence: &evidence::Evidence,
+) -> Result<Value, String> {
+    let orders: Vec<Value> = calculate_orders(seller, evidence)?
         .iter()
         .map(|order| order.summary())
         .collect();
     Ok(json!({
         "sellerKey": seller,
         "generatedAt": iso(chrono::Utc::now()),
-        "purchaseCosts": purchase_costs?,
-        "fundingAdjustments": funding_adjustments?,
-        "orderExpenses": order_expenses?,
+        "purchaseCosts": purchase_costs,
+        "fundingAdjustments": funding_adjustments,
+        "orderExpenses": order_expenses,
         "orders": orders,
     }))
 }

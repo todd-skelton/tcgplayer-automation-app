@@ -23,6 +23,7 @@ use crate::{
         batch_pricing::queue as batch_queue,
         continuous_pricing::{self, scheduler},
         inventory_economics::{
+            details::{calendar_date, dollars_to_cents, js_dollars, js_length, required_text},
             estimate::{self, PurchaseCost},
             purchase_cost::{self, NotRecorded},
         },
@@ -314,85 +315,6 @@ fn unrecorded(not: NotRecorded) -> NotQueued {
     }
 }
 
-/// JavaScript's `length`: UTF-16 units.
-fn js_length(text: &str) -> usize {
-    text.encode_utf16().count()
-}
-
-/// The largest whole number JavaScript counts exactly.
-const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;
-
-/// `dollarsToCents`: a nonnegative amount with at most two decimals, in cents.
-fn dollars_to_cents(text: &str, label: &str) -> Result<i64, String> {
-    let text = js_trim(text);
-    let (whole, fraction) = match text.split_once('.') {
-        Some((whole, fraction)) => (whole, Some(fraction)),
-        None => (text, None),
-    };
-    let digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
-    if !digits(whole) || fraction.is_some_and(|f| !digits(f) || f.len() > 2) {
-        return Err(format!(
-            "{label} must be a nonnegative amount with at most two decimal places."
-        ));
-    }
-    let fraction = format!("{:0<2}", fraction.unwrap_or(""));
-    whole
-        .parse::<i64>()
-        .ok()
-        .and_then(|w| w.checked_mul(100)?.checked_add(fraction.parse().ok()?))
-        .filter(|cents| *cents <= MAX_SAFE_INTEGER)
-        .ok_or_else(|| format!("{label} is outside the supported range."))
-}
-
-/// `requiredText`: trimmed, and at most 200 characters.
-fn required_text(text: &str, label: &str) -> Result<String, String> {
-    let text = js_trim(text);
-    if text.is_empty() || js_length(text) > 200 {
-        return Err(format!(
-            "{label} is required and limited to 200 characters."
-        ));
-    }
-    Ok(text.to_owned())
-}
-
-/// `calendarDate`: none when blank, else a real `YYYY-MM-DD` date (as `Date.UTC` reads it,
-/// which takes years below 100 for the 1900s, so those are refused).
-fn calendar_date(text: Option<&str>) -> Result<Option<String>, String> {
-    let Some(text) = text.map(js_trim).filter(|t| !t.is_empty()) else {
-        return Ok(None);
-    };
-    if js_length(text) > 200 {
-        return Err("Purchase date is limited to 200 characters.".to_owned());
-    }
-    let refused = || "Purchase date must be a calendar date in YYYY-MM-DD format.".to_owned();
-    let bytes = text.as_bytes();
-    let shaped = bytes.len() == 10
-        && bytes[4] == b'-'
-        && bytes[7] == b'-'
-        && [0, 1, 2, 3, 5, 6, 8, 9]
-            .iter()
-            .all(|&i| bytes[i].is_ascii_digit());
-    if !shaped {
-        return Err(refused());
-    }
-    let number = |range: std::ops::Range<usize>| text[range].parse::<u32>().unwrap_or(0);
-    let year = i32::try_from(number(0..4)).unwrap_or(0);
-    if year < 100 || chrono::NaiveDate::from_ymd_opt(year, number(5..7), number(8..10)).is_none() {
-        return Err(refused());
-    }
-    Ok(Some(text.to_owned()))
-}
-
-/// `dollarsToCents` of a JSON value: only text is an amount.
-fn js_dollars(value: Option<&Value>, label: &str) -> Result<i64, String> {
-    match value {
-        Some(Value::String(text)) => dollars_to_cents(text, label),
-        _ => Err(format!(
-            "{label} must be a nonnegative amount with at most two decimal places."
-        )),
-    }
-}
-
 /// `parseIntakePurchaseCost`: the entered total as the purchase cost the batch records, split
 /// across its lots by their units, or why not, each field checked in Node's order. It names no
 /// batch until the batch exists.
@@ -441,6 +363,7 @@ fn purchase_cost(
         allocation_rule: "quantity",
         batch_numbers: Vec::new(),
         purchased_at,
+        market_observed_at: None,
         explicit_allocations: Vec::new(),
         corrects_entry_id: None,
         correction_reason: None,
@@ -1189,6 +1112,7 @@ pub(crate) mod tests {
                     allocation_rule: "quantity",
                     batch_numbers: vec![batch_number.as_i64().unwrap() as i32],
                     purchased_at: fields["purchasedAt"].as_str().map(str::to_owned),
+                    market_observed_at: None,
                     explicit_allocations: Vec::new(),
                     corrects_entry_id: None,
                     correction_reason: None,
@@ -1349,7 +1273,7 @@ pub(crate) mod tests {
         );
         assert_eq!(
             dollars_to_cents("90071992547409.91", "Purchase total"),
-            Ok(MAX_SAFE_INTEGER)
+            Ok(crate::features::inventory_economics::details::MAX_SAFE_INTEGER)
         );
         assert_eq!(
             calendar_date(Some(" 2024-02-29 ")),

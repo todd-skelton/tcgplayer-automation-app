@@ -115,6 +115,19 @@ pub fn js_number(text: &str) -> Option<f64> {
     t.parse().ok()
 }
 
+/// JavaScript's `Number(value)` of a JSON value: `null` is 0, a boolean 0 or 1, text as
+/// [`js_number`] reads it, and a list or object as its `String` is read.
+pub fn js_to_number(value: &serde_json::Value) -> f64 {
+    use serde_json::Value;
+    match value {
+        Value::Null => 0.0,
+        Value::Bool(b) => f64::from(u8::from(*b)),
+        Value::Number(n) => n.as_f64().unwrap_or(f64::NAN),
+        Value::String(text) => js_number(text).unwrap_or(f64::NAN),
+        Value::Array(_) | Value::Object(_) => js_number(&js_string(value)).unwrap_or(f64::NAN),
+    }
+}
+
 #[cfg(test)]
 pub mod tests {
     use serde_json::Value;
