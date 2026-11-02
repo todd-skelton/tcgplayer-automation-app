@@ -2,10 +2,7 @@
 //! (`syncNewCatalogProducts`, `catalogSyncPlan`, `catalogSyncSummary`): one search counts every set's
 //! products, and only the sets whose count differs from what is stored, or was last verified, are
 //! searched, and only their missing or misfiled products read.
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Mutex,
-};
+use std::collections::HashMap;
 
 use sqlx::PgConnection;
 
@@ -52,40 +49,58 @@ fn stored_in(placed: Option<&(i32, i64)>, set_name_id: i32) -> bool {
     placed.is_some_and(|(set, skus)| *set == set_name_id && *skus > 0)
 }
 
-/// The product lines being synced now, so one is not synced twice at once.
-static SYNCING: Mutex<Option<HashSet<i32>>> = Mutex::new(None);
-
-struct Syncing(i32);
-
-impl Syncing {
-    fn start(category_id: i32) -> Result<Syncing, String> {
-        let mut syncing = SYNCING.lock().expect("the sync lock");
-        if !syncing.get_or_insert_with(HashSet::new).insert(category_id) {
-            return Err("A sync is already running for this product line".to_owned());
-        }
-        Ok(Syncing(category_id))
-    }
+/// The lock that keeps one product line synced once at a time.
+fn lock_key(category_id: i32) -> String {
+    format!("catalog-sync:{category_id}")
 }
 
-impl Drop for Syncing {
-    fn drop(&mut self) {
-        if let Some(syncing) = SYNCING.lock().expect("the sync lock").as_mut() {
-            syncing.remove(&self.0);
-        }
+/// Takes the product line's sync lock on `conn`, or refuses as Node's in-process set did. The lock
+/// is the session's, so it holds across every process (this app's instances, a release's two
+/// sides), where Node's set held within one. A session lock outlives a dropped future, so the
+/// caller's connection must close when it is dropped (`close_on_drop`), ending the lock with the
+/// session if the sync is cut off (corten#607).
+async fn start(conn: &mut PgConnection, category_id: i32) -> Result<(), String> {
+    let taken: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
+        .bind(lock_key(category_id))
+        .fetch_one(&mut *conn)
+        .await
+        .map_err(failed)?;
+    if !taken {
+        return Err("A sync is already running for this product line".to_owned());
     }
+    Ok(())
+}
+
+/// Releases the lock `start` took. A failure leaves it to the session's end.
+async fn finish(conn: &mut PgConnection, category_id: i32) {
+    let _ = sqlx::query("SELECT pg_advisory_unlock(hashtext($1))")
+        .bind(lock_key(category_id))
+        .execute(&mut *conn)
+        .await;
 }
 
 fn failed(e: sqlx::Error) -> String {
     e.to_string()
 }
 
-/// Syncs the product line `category_id`, one at a time per product line.
+/// Syncs the product line `category_id`, one at a time per product line (see `start` for what
+/// the connection must be).
 pub async fn sync(
     conn: &mut PgConnection,
     catalog: &impl Catalog,
     category_id: i32,
 ) -> Result<Synced, String> {
-    let _syncing = Syncing::start(category_id)?;
+    start(conn, category_id).await?;
+    let synced = sync_line(conn, catalog, category_id).await;
+    finish(conn, category_id).await;
+    synced
+}
+
+async fn sync_line(
+    conn: &mut PgConnection,
+    catalog: &impl Catalog,
+    category_id: i32,
+) -> Result<Synced, String> {
     let (sets, line) = refresh::sets(conn, catalog, category_id).await?;
     let (listed_product_count, listed) =
         source::set_counts(catalog, &line.product_line_url_name).await?;
@@ -315,14 +330,29 @@ mod tests {
         assert!(!needs_sync(10, 12, Some(10)));
     }
 
-    #[test]
-    fn one_product_line_is_synced_once_at_a_time() {
-        let first = Syncing::start(7).unwrap();
+    /// Two connections, as two processes: the second is refused while the first syncs, and
+    /// takes the lock once the first finishes or its connection closes.
+    #[tokio::test]
+    #[ignore = "needs the dev database"]
+    async fn one_product_line_is_synced_once_at_a_time_across_processes() {
+        use sqlx::Connection;
+        crate::config::load_env();
+        let url = crate::config::database_url();
+        let (mut one, mut two) = (
+            PgConnection::connect(&url).await.unwrap(),
+            PgConnection::connect(&url).await.unwrap(),
+        );
+        let line = -7;
+        start(&mut one, line).await.unwrap();
         assert_eq!(
-            Syncing::start(7).err().as_deref(),
+            start(&mut two, line).await.err().as_deref(),
             Some("A sync is already running for this product line")
         );
-        drop(first);
-        assert!(Syncing::start(7).is_ok());
+        finish(&mut one, line).await;
+        start(&mut two, line).await.unwrap();
+        two.close().await.unwrap();
+        start(&mut one, line).await.unwrap();
+        finish(&mut one, line).await;
+        one.close().await.unwrap();
     }
 }

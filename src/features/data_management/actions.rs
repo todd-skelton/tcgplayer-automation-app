@@ -93,6 +93,9 @@ async fn run(
         }
     };
     let mut conn = db.0.acquire().await?;
+    // A job may hold a session lock (a product line's sync); a request cut off mid-job closes the
+    // connection, ending the lock with it, instead of pooling it locked.
+    conn.close_on_drop();
     let catalog = TcgPlayerCatalog(TcgPlayer::new(db.clone()));
     let answer = maintenance::run(&mut conn, &catalog, &request).await;
     match answer.outcome {
