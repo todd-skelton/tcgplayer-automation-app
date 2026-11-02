@@ -347,9 +347,9 @@ mod tests {
         assert!(zoned > 0, "no page wrote a date");
     }
 
-    /// Every screen, read from the dev database (`.env`) under Corten's dev check: a page that
-    /// renders a component whose stylesheet it does not link (one listed in another area only)
-    /// is a 500 there, where a release build serves it unstyled (corten#619). Each screen is read
+    /// Every screen, read from the dev database (`.env`) under the check every debug build runs: a
+    /// page that renders a component whose stylesheet it does not link (one listed in another area
+    /// only) is a 500 there, where a release build serves it unstyled (corten#619). Each screen is read
     /// empty and, where the database has one, with a batch, sheet, slab or order chosen. Reads
     /// only, as above; the slab providers are a closed port, and no screen here asks TCGplayer
     /// (the price matrix with a product chosen would, so it is read without one).
@@ -367,7 +367,7 @@ mod tests {
                 "http://127.0.0.1:1",
             ),
         };
-        let router = app(shared).dev(true).router();
+        let router = app(shared).router();
         let chosen = chosen_screens(&db).await;
         let steps = [
             "load-orders",

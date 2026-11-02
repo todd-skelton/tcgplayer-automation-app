@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: dropdown_menu 47f10d2541201041 */
+/* corten ui 0.1.0: dropdown_menu 672822f5e379a798 */
 .menu { display: contents; }
 .menu [aria-haspopup="menu"] {
   display: inline-flex; align-items: center; gap: .5rem; height: var(--control-height); padding: 0 1rem;
@@ -8,7 +8,7 @@
 .menu [aria-haspopup="menu"]:hover, .menu [aria-haspopup="menu"][aria-expanded="true"] { background: var(--accent); color: var(--accent-foreground); }
 .menu [aria-haspopup="menu"]:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .menu [aria-haspopup="menu"]::after { content: ""; width: .35rem; height: .35rem; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: translateY(-25%) rotate(45deg); opacity: .6; }
-/* A popover's display applies only while it is open, or it would show closed. */
+/* The menu's drawing is for while it is open; components.css keeps it hidden while closed. */
 .menu [role="menu"]:popover-open {
   display: grid; box-sizing: border-box; min-width: 10rem; padding: .25rem; margin: .25rem 0;
   background: var(--popover); color: var(--popover-foreground); border: 1px solid var(--border);

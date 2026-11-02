@@ -22,7 +22,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
-        panel::Panel,
+        card::{CardCompact, CardPanel},
         select::Select,
         table::Table,
     },
@@ -43,7 +43,7 @@ pub fn SupplyPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     };
     html! {
         <section
-            class={(Panel {}, Stack, SupplyPanel)}
+            class={(CardPanel {}, CardCompact {}, Stack, SupplyPanel)}
             aria-labelledby="slab-supply"
         >
             <div class={(Line, Head)}>

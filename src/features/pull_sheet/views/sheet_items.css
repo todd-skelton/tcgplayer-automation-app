@@ -72,8 +72,8 @@
 .toolbar:has(.table-choice:checked) ~ .table-box {
   display: block;
 }
-/* The kit's Table draws the rows; the sort header is the screen's until the kit's SortHeader
-   draws its arrow from aria-sort, which the in-place sort changes (corten#606). */
+/* The kit's Table draws the rows; the sort header is the screen's: each link carries its column's
+   typed in-place sort (js::sortBy), which the kit's SortHeader has no way to take (corten#635). */
 .table-box {
   & th a {
     color: inherit;

@@ -12,7 +12,7 @@ use crate::{
     },
     text::Msg,
     theme::*,
-    ui::panel::Panel,
+    ui::card::{CardCompact, CardPanel},
     ui::table::{Table, TableNumeric},
 };
 
@@ -204,7 +204,7 @@ pub fn MarginTrendPanel<'a>(trend: Option<&'a MarginTrend>, t: Msg) -> impl Rend
     let rule = CostRate::DEFAULT;
     html! {
         if let Some(trend) = trend.filter(|t| !t.weeks.is_empty()) {
-            <section class={Panel {}} aria-labelledby="margin-over-time">
+            <section class={(CardPanel {}, CardCompact {})} aria-labelledby="margin-over-time">
                 <h2 id="margin-over-time">"Margin over time"</h2>
                 <p class={muted()}>
                     "Each week's realized margin (thin line) and the margin over the trailing "

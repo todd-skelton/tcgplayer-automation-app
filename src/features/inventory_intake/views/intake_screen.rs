@@ -15,9 +15,9 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{CardCompact, CardPanel},
         checkbox::Checkbox,
         input::Input,
-        panel::Panel,
         select::Select,
         switch::Switch,
         table::Table,
@@ -102,7 +102,7 @@ pub fn IntakeScreen<'a>(
                 ref={filters}
                 method="get"
                 action={url::InventoryManager { selection: Selection::default() }}
-                class={(Panel {}, Filters)}
+                class={(CardPanel {}, CardCompact {}, Filters)}
                 aria-label="Filters"
                 on:change={js::filtered(event, keys)}
             >
@@ -215,7 +215,7 @@ pub fn IntakeScreen<'a>(
                     </button>
                 </noscript>
             </form>
-            <section class={Panel {}} aria-labelledby={TableHeadingId}>
+            <section class={(CardPanel {}, CardCompact {})} aria-labelledby={TableHeadingId}>
                 <h2 id={TableHeadingId} class={VisuallyHidden}>"Add new inventory"</h2>
                 <Table>
                     <table>

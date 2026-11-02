@@ -1,4 +1,4 @@
-// corten ui 0.1.0: table 756c7f78dcf9630d
+// corten ui 0.1.0: table 8e246a16a3710ae2
 //! A table's look, on the `<table>` written inside it: the rows, headers and caption stay the
 //! app's markup. The wrapper scrolls sideways when the table is wider than the page, so it is a box
 //! of its own. Cells wrap as text does and headers stay on one line; a number column takes the
@@ -56,10 +56,12 @@ pub enum Sort {
 /// with the order the app chooses for a second click), so it works without a script, and
 /// `aria-sort` on the column the table is sorted by now (`sort`, `None` for the others). The
 /// direction is drawn, not written, so a screen reader reads the label and the column's sort
-/// state, not an arrow's name. `class` is the header's look (`TableNumeric {}` over a number
-/// column, `()` for none). A page that sorts its rows in place without a request handles the
-/// links' clicks once, on the `<table>` (`on:click`, with `event.target.closest("a")`), so
-/// the link still sorts a page loaded without the script.
+/// state, not an arrow's name: the arrow is drawn from the header's `aria-sort`, so it follows
+/// the one state both the server and a script write. `class` is the header's look
+/// (`TableNumeric {}` over a number column, `()` for none). A page that sorts its rows in place
+/// without a request handles the links' clicks once, on the `<table>` (`on:click`, with
+/// `event.target.closest("a")`), sets `aria-sort` on the header it sorted by and removes it from
+/// the others; the link still sorts a page loaded without the script.
 #[component(css = Table)]
 pub fn SortHeader<'a, L: Render, C: ClassList>(
     label: L,
@@ -67,16 +69,14 @@ pub fn SortHeader<'a, L: Render, C: ClassList>(
     link: &'a dyn Href,
     class: C,
 ) -> impl Render {
-    let (aria, arrow) = match sort {
-        Some(Sort::Ascending) => (Some("ascending"), Some(Up)),
-        Some(Sort::Descending) => (Some("descending"), Some(Down)),
-        None => (None, None),
+    let aria = match sort {
+        Some(Sort::Ascending) => Some("ascending"),
+        Some(Sort::Descending) => Some("descending"),
+        None => None,
     };
     html! {
         <th scope="col" class={class} aria-sort={aria}>
-            <a class={Sorter} href={link}>
-                {label}<span class={(Arrow, arrow)} aria-hidden="true"></span>
-            </a>
+            <a class={Sorter} href={link}>{label}<span class={Arrow} aria-hidden="true"></span></a>
         </th>
     }
 }

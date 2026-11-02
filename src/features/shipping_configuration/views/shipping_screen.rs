@@ -12,8 +12,8 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{CardCompact, CardPanel},
         input::Input,
-        panel::Panel,
         select::Select,
         switch::Switch,
     },
@@ -52,7 +52,7 @@ pub fn ShippingScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
                     " is not set. Direct postage purchasing will stay disabled until it is configured."
                 </Alert>
             }
-            <section class={Panel {}}>
+            <section class={(CardPanel {}, CardCompact {})}>
                 <div class={(row(Space::_3), justify_between(), mb_4())}>
                     <div>
                         <h2>"Shipping Configuration"</h2>

@@ -16,9 +16,9 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{CardCompact, CardPanel},
         field::Field,
         input::Input,
-        panel::Panel,
         select::Select,
         switch::Switch,
     },
@@ -83,7 +83,10 @@ pub fn ContinuousScreen<'a>(
                 </p>
             </header>
             <Problem why={screen.problem.as_deref()} />
-            <section class={(Panel {}, Stack)} aria-labelledby="continuous-schedule">
+            <section
+                class={(CardPanel {}, CardCompact {}, Stack)}
+                aria-labelledby="continuous-schedule"
+            >
                 <h2 id="continuous-schedule">"Schedule"</h2>
                 <ScheduleForm screen={screen} input={input} errors={errors} />
                 <Actions screen={screen} />
@@ -252,7 +255,10 @@ fn Snapshot<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let (awaiting, awaiting_units) = s.awaiting_publication;
     let refresh = s.last_refresh.as_ref();
     html! {
-        <section class={(Panel {}, Stack)} aria-labelledby="continuous-snapshot">
+        <section
+            class={(CardPanel {}, CardCompact {}, Stack)}
+            aria-labelledby="continuous-snapshot"
+        >
             <div class={Spread}>
                 <div>
                     <h2 id="continuous-snapshot">"Current inventory snapshot"</h2>
@@ -344,7 +350,10 @@ fn Controls<'a>(screen: &'a Screen) -> impl Render {
     let f = View::FIELDS;
     let shown = screen.view.shown();
     html! {
-        <section class={(Panel {}, Stack)} aria-labelledby="continuous-controls">
+        <section
+            class={(CardPanel {}, CardCompact {}, Stack)}
+            aria-labelledby="continuous-controls"
+        >
             <h2 id="continuous-controls">"Inventory controls"</h2>
             <p class={muted()}>
                 "Search and manage one bounded page at a time. Filters are retained in the URL so a review view can be bookmarked."
@@ -430,7 +439,7 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
     let (priced, published) = (item.last_priced_at, item.last_published_at);
     let action = || url::SetSku { view: view.clone() };
     html! {
-        <article class={(Panel {}, SkuCard)}>
+        <article class={(CardPanel {}, CardCompact {}, SkuCard)}>
             <div class={Spread}>
                 <div>
                     <strong>{&item.product_name}</strong>
@@ -499,7 +508,7 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
 #[component(css = ContinuousScreen)]
 fn Runs<'a>(runs: &'a [Run], t: Msg) -> impl Render {
     html! {
-        <section class={(Panel {}, Stack)} aria-labelledby="continuous-runs">
+        <section class={(CardPanel {}, CardCompact {}, Stack)} aria-labelledby="continuous-runs">
             <div>
                 <h2 id="continuous-runs">"Recent automatic runs"</h2>
                 <p class={muted()}>

@@ -12,8 +12,8 @@ use crate::{
     ui::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{CardCompact, CardPanel},
         input::Input,
-        panel::Panel,
         table::{Table, TableNumeric},
     },
 };
@@ -99,7 +99,7 @@ pub fn SheetItems<'a>(
     ];
     html! {
         <div>
-            <div class={(Panel {}, mb_4(), Toolbar)}>
+            <div class={(CardPanel {}, CardCompact {}, mb_4(), Toolbar)}>
                 {lead}
                 <form method="get" action={paging.here} class={(row(Space::_2), Filter)}>
                     {keep_query(paging.here, html! {

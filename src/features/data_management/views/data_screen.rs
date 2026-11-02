@@ -14,9 +14,9 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{CardCompact, CardPanel},
         checkbox::Checkbox,
         input::Input,
-        panel::Panel,
         select::Select,
     },
 };
@@ -68,7 +68,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                 let e = errors.within(ProductLinesCardId);
                 <section
                     id={ProductLinesCardId}
-                    class={(Panel {}, Stack)}
+                    class={(CardPanel {}, CardCompact {}, Stack)}
                     aria-labelledby="job-product-lines"
                 >
                     <h2 id="job-product-lines">"Refresh product lines"</h2>
@@ -93,7 +93,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                 let e = errors.within(NewProductsCardId);
                 <section
                     id={NewProductsCardId}
-                    class={(Panel {}, Stack)}
+                    class={(CardPanel {}, CardCompact {}, Stack)}
                     aria-labelledby="job-new-products"
                 >
                     <h2 id="job-new-products">"Sync new products"</h2>
@@ -122,7 +122,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                 let e = errors.within(EveryProductCardId);
                 <section
                     id={EveryProductCardId}
-                    class={(Panel {}, Stack)}
+                    class={(CardPanel {}, CardCompact {}, Stack)}
                     aria-labelledby="job-every-product"
                 >
                     <h2 id="job-every-product">"Check every product in a product line"</h2>
@@ -148,7 +148,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                 let e = errors.within(RepairProductCardId);
                 <section
                     id={RepairProductCardId}
-                    class={(Panel {}, Stack)}
+                    class={(CardPanel {}, CardCompact {}, Stack)}
                     aria-labelledby="job-product"
                 >
                     <h2 id="job-product">"Repair one product"</h2>
@@ -187,7 +187,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                 let e = errors.within(HydrateSetCardId);
                 <section
                     id={HydrateSetCardId}
-                    class={(Panel {}, Stack)}
+                    class={(CardPanel {}, CardCompact {}, Stack)}
                     aria-labelledby="job-set"
                 >
                     <h2 id="job-set">"Hydrate one set"</h2>

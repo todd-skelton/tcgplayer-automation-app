@@ -4,7 +4,7 @@ use super::super::{page::UploadInput, store::RecentSheet, url};
 use crate::{
     theme::*,
     ui::button::{Button, ButtonSize, ButtonVariant},
-    ui::panel::Panel,
+    ui::card::{CardCompact, CardPanel},
 };
 
 /// The upload form's id: a refused file's answer replaces it.
@@ -16,7 +16,7 @@ pub struct UploadFormId;
 pub fn UploadScreen<'a>(recent: &'a [RecentSheet], errors: &'a Errors) -> impl Render {
     html! {
         <h1>"Pull Sheet"</h1>
-        <div class={(Panel {}, mb_5())}>
+        <div class={(CardPanel {}, CardCompact {}, mb_5())}>
             <UploadForm errors={errors} />
         </div>
         if recent.is_empty() {
@@ -27,7 +27,7 @@ pub fn UploadScreen<'a>(recent: &'a [RecentSheet], errors: &'a Errors) -> impl R
                 </p>
             </div>
         } else {
-            <section class={Panel {}}>
+            <section class={(CardPanel {}, CardCompact {})}>
                 <h2 class={mb_3()}>"Recent pull sheets"</h2>
                 <ul class={Recent}>
                     for sheet in recent {

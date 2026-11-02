@@ -19,9 +19,9 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{CardCompact, CardPanel},
         checkbox::Checkbox,
         input::Input,
-        panel::Panel,
         select::Select,
         switch::Switch,
         table::Table,
@@ -96,7 +96,7 @@ pub fn ConfigurationScreen<'a>(
             <SnapsForm section={snaps} />
             <ReportPanels reports={reports} />
             <SupplyForm section={supply} />
-            <section class={(Panel {}, Section)}>
+            <section class={(CardPanel {}, CardCompact {}, Section)}>
                 <h2>"Reset Configuration"</h2>
                 <p class={muted()}>
                     "Reset all configuration settings back to their original default values."
@@ -157,7 +157,7 @@ pub fn PricingForm<'a>(section: &'a Section<'a, PricingInput>) -> impl Patch {
             method="post"
             action={url::SavePricing}
             data-patch
-            class={(Panel {}, Section, Horizon)}
+            class={(CardPanel {}, CardCompact {}, Section, Horizon)}
         >
             <SubmitsOnChange>
                 <div class={Section}>
@@ -306,7 +306,7 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
         };
         let (min, max) = (lines.percentiles.0.to_string(), lines.percentiles.1.to_string());
         let hurdle = lines.default_hurdle.to_string();
-        <section id={ProductLinesId} class={(Panel {}, Section)}>
+        <section id={ProductLinesId} class={(CardPanel {}, CardCompact {}, Section)}>
             <h2>"Product Line Pricing"</h2>
             <p class={muted()}>
                 "Configure a different percentile or profit-per-day hurdle for specific product lines. You can also skip product lines entirely. Non-configured product lines use the defaults."
@@ -444,7 +444,7 @@ pub fn SnapsForm<'a>(section: &'a Section<'a, SnapsInput>) -> impl Patch {
             method="post"
             action={url::SaveSnaps}
             data-patch
-            class={(Panel {}, Section)}
+            class={(CardPanel {}, CardCompact {}, Section)}
         >
             <SubmitsOnChange>
                 <div class={Section}>
@@ -533,7 +533,7 @@ pub fn SupplyForm<'a>(section: &'a Section<'a, SupplyInput>) -> impl Patch {
             method="post"
             action={url::SaveSupply}
             data-patch
-            class={(Panel {}, Section, Supply)}
+            class={(CardPanel {}, CardCompact {}, Section, Supply)}
         >
             <SubmitsOnChange>
                 <div class={Section}>

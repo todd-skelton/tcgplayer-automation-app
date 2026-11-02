@@ -25,8 +25,8 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{CardCompact, CardPanel},
         input::Input,
-        panel::Panel,
         select::Select,
     },
 };
@@ -46,7 +46,7 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
     let r = RefreshInput::FIELDS;
     html! {
         <section
-            class={(Panel {}, Stack, ResearchPanel)}
+            class={(CardPanel {}, CardCompact {}, Stack, ResearchPanel)}
             aria-labelledby="slab-research"
         >
             <h2 id="slab-research">"Research evidence"</h2>

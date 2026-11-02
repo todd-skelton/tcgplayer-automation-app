@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: table 4955e6d3b25f04fe */
+/* corten ui 0.1.0: table 336856cb222d0b6a */
 .table { width: 100%; overflow-x: auto; }
 .table > table { width: 100%; border-collapse: collapse; font-size: .875rem; caption-side: bottom; }
 .table > table > caption { margin-top: 1rem; font-size: .875rem; color: var(--muted-foreground); }
@@ -15,7 +15,8 @@
 .sorter:hover { text-decoration: underline; text-underline-offset: 4px; }
 .sorter:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 2px; }
 .arrow { display: inline-block; width: .5rem; height: .375rem; background: currentColor; opacity: .35; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
-.arrow.up { opacity: 1; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
-.arrow.down { opacity: 1; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+/* Drawn from the header's aria-sort, which the server writes and a script that sorts in place sets. */
+[aria-sort="ascending"] > .sorter > .arrow { opacity: 1; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+[aria-sort="descending"] > .sorter > .arrow { opacity: 1; clip-path: polygon(0 0, 100% 0, 50% 100%); }
 /* Forced colors drop backgrounds: the arrow keeps the text's system color. */
 @media (forced-colors: active) { .arrow { forced-color-adjust: none; background: CanvasText; } }

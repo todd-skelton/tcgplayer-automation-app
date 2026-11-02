@@ -19,8 +19,8 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{CardCompact, CardPanel},
         input::Input,
-        panel::Panel,
     },
 };
 
@@ -60,7 +60,7 @@ pub fn TurnaroundPanel<'a>(
     let fallback =
         selection.setting.mode == Mode::Observed && !selection.fallback_reasons.is_empty();
     html! {
-        <section class={Panel {}} aria-labelledby="capital-turnaround">
+        <section class={(CardPanel {}, CardCompact {})} aria-labelledby="capital-turnaround">
             <div class={Title}>
                 <h2 id="capital-turnaround">"Capital turnaround"</h2>
                 <span
