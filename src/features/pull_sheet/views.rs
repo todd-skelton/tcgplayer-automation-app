@@ -16,6 +16,10 @@ pub use upload_screen::{UploadForm, UploadScreen};
 
 pub const COMPONENTS: &[Component] = &[UploadScreen, SheetItems, ItemCard, ItemRow];
 
+/// The sheet's items as another screen shows them (the Shipping Workflow's Pull Sheet and Pack
+/// steps). That screen's area lists them too, or its pages render them without their stylesheet.
+pub const ITEMS: &[Component] = &[SheetItems, ItemCard, ItemRow];
+
 /// A column the table sorts by: the browser sorts with JavaScript (the handler takes it as
 /// JSON, and `types/app.d.ts` gives the script its names), the server from `?sort=`.
 #[derive(
