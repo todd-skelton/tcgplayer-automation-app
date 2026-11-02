@@ -11,6 +11,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         dialog::{Dialog, DialogFooter},
     },
@@ -83,7 +84,11 @@ pub fn ShippingWorkflowScreen<'a>(
                     </ol>
                 </nav>
                 if let Some(warning) = mode_warning(mode) {
-                    <span class={ModeChip}>{warning}</span>
+                    <span
+                        class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Outline }}
+                    >
+                        {warning}
+                    </span>
                 }
                 <a
                     class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}

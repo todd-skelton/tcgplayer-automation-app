@@ -10,6 +10,7 @@ use crate::{
     text::Msg,
     theme::*,
     ui::{
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         input::Input,
     },
@@ -124,15 +125,29 @@ pub fn SheetItems<'a>(
                 </fieldset>
             </div>
             <div class={(row(Space::_2), mb_4())}>
-                <span class={(Chip, Filled)}>{summary.items}" items"</span>
-                <span class={Chip}>{summary.quantity}" total qty"</span>
+                <span class={Badge { tone: BadgeTone::Primary, emphasis: BadgeEmphasis::Soft }}>
+                    {summary.items}" items"
+                </span>
+                <span class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}>
+                    {summary.quantity}" total qty"
+                </span>
                 if summary.not_found > 0 {
-                    <span class={(Chip, Warning)}>{summary.not_found}" not in database"</span>
+                    <span
+                        class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Outline }}
+                    >
+                        {summary.not_found}" not in database"
+                    </span>
                 }
                 if summary.orders > 0 {
-                    <span class={(Chip, Info)}>{summary.orders}" orders"</span>
+                    <span class={Badge { tone: BadgeTone::Info, emphasis: BadgeEmphasis::Outline }}>
+                        {summary.orders}" orders"
+                    </span>
                 }
-                <output ref={shown} class={(Chip, Info)} hidden={q.is_empty()}>
+                <output
+                    ref={shown}
+                    class={Badge { tone: BadgeTone::Info, emphasis: BadgeEmphasis::Outline }}
+                    hidden={q.is_empty()}
+                >
                     if !q.is_empty() { "Showing "{items.len()}" of "{summary.items} }
                 </output>
             </div>

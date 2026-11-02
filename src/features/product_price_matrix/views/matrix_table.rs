@@ -6,6 +6,7 @@ use corten::{
 use crate::{
     features::product_price_matrix::matrix::{self, Cell, Decision, Matrix},
     text::Msg,
+    ui::badge::{Badge, BadgeEmphasis, BadgeTone},
 };
 
 const USD: Currency = Currency::new("USD");
@@ -180,8 +181,15 @@ fn AgainstMarket(price: Option<f64>, market: Option<f64>, t: Msg) -> impl Render
             None => <span class={Muted}>"—"</span>,
             Some(r) => {
                 let tenths = (r * 1000.0).round();
+                let tone = if tenths > 0.0 {
+                    BadgeTone::Success
+                } else if tenths < 0.0 {
+                    BadgeTone::Destructive
+                } else {
+                    BadgeTone::Neutral
+                };
                 <span
-                    class={(Chip, (tenths > 0.0).then_some(Above), (tenths < 0.0).then_some(Below))}
+                    class={Badge { tone, emphasis: BadgeEmphasis::Outline }}
                     title="Sell-at versus market"
                 >
                     {t.change(Decimal::new(tenths as i128, 3), 1)}
@@ -221,11 +229,13 @@ pub fn ConditionNotes<'a>(cell: &'a Cell, errors: bool, t: Msg) -> impl Render {
     html! {
         <span class={Notes}>
             if cell.tcg_market_price.is_none() {
-                <span class={Chip}>"No market"</span>
+                <span class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}>
+                    "No market"
+                </span>
             }
             if let Some(anchor) = anchor {
                 <span
-                    class={Chip}
+                    class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
                     title={format!("No market price for {}, so it is valued as {anchor} until its own sales say otherwise.", cell.condition)}
                 >
                     "Valued as "{anchor}
@@ -233,7 +243,7 @@ pub fn ConditionNotes<'a>(cell: &'a Cell, errors: bool, t: Msg) -> impl Render {
             }
             if normalization.is_some_and(|n| n.method == "neutral-condition-fallback") {
                 <span
-                    class={(Chip, Warn)}
+                    class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Outline }}
                     title="No sales or market price for this or any sibling condition, so it is priced from the other conditions without a condition discount. Treat the sell-at price as an upper bound."
                 >
                     "No condition data"
@@ -242,17 +252,27 @@ pub fn ConditionNotes<'a>(cell: &'a Cell, errors: bool, t: Msg) -> impl Render {
             if cell.above_better_condition {
                 let ladder = cell.ladder_price.map(|p| t.money(cents(p), USD).to_string()).unwrap_or_else(|| "N/A".into());
                 <span
-                    class={(Chip, Warn)}
+                    class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Outline }}
                     title={format!("The model priced this condition above a better one; refunds use {ladder} instead.")}
                 >
                     "Above a better condition"
                 </span>
             }
             if errors && !cell.warnings.is_empty() {
-                <span class={(Chip, Warn, Filled)} title={cell.warnings.join(" ")}>"Warning"</span>
+                <span
+                    class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Soft }}
+                    title={cell.warnings.join(" ")}
+                >
+                    "Warning"
+                </span>
             }
             if errors && !cell.errors.is_empty() {
-                <span class={(Chip, Bad, Filled)} title={cell.errors.join(" ")}>"Error"</span>
+                <span
+                    class={Badge { tone: BadgeTone::Destructive, emphasis: BadgeEmphasis::Soft }}
+                    title={cell.errors.join(" ")}
+                >
+                    "Error"
+                </span>
             }
         </span>
     }

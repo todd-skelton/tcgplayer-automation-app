@@ -53,13 +53,6 @@ a[aria-current] .number {
   background: var(--success);
   color: var(--primary-foreground);
 }
-.mode-chip {
-  padding: 2px var(--space-3);
-  border: 1px solid var(--warning);
-  border-radius: var(--radius-pill);
-  color: var(--warning);
-  font-size: var(--font-size-sm);
-}
 .settings {
   font-size: 1.25rem;
   text-decoration: none;

@@ -354,7 +354,7 @@ fn SkuLabel<'a>(product: &'a Product, condition: Option<Condition>) -> impl Rend
         .is_some_and(|v| v.to_lowercase().contains("1st") || v.to_lowercase().contains("first"));
     html! {
         <span
-            class={(Chip, shown, holo.then_some(Holo), first.then_some(First), sku.is_none().then_some(Missing))}
+            class={(Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }, shown, holo.then_some(Holo), first.then_some(First), sku.is_none().then_some(Missing))}
         >
             if sku.is_some() {
                 {name}

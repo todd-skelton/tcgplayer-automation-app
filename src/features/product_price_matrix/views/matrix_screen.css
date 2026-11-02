@@ -51,16 +51,6 @@
   display: grid;
   gap: var(--space-4);
 }
-.chip {
-  padding: 0 var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-sm);
-}
-.policy {
-  border-color: var(--primary);
-  color: var(--primary);
-}
 /* Only while the page is still on its way: a navigation stopped short leaves no mark. */
 main[aria-busy] .reads [aria-busy]::after {
   content: " …";

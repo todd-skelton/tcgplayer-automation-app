@@ -96,31 +96,6 @@
   color: var(--tint);
   font-weight: 700;
 }
-.chip {
-  display: inline-block;
-  padding: 0 var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-}
-.above {
-  border-color: var(--success);
-  color: var(--success);
-}
-.below {
-  border-color: var(--destructive);
-  color: var(--destructive);
-}
-.warn {
-  border-color: var(--warning);
-  color: var(--warning);
-}
-.bad {
-  border-color: var(--destructive);
-  color: var(--destructive);
-}
-.filled {
-  background: color-mix(in srgb, currentColor 15%, transparent);
-}
 .notes {
   display: flex;
   flex-wrap: wrap;

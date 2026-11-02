@@ -19,6 +19,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
     },
 };
@@ -262,16 +263,16 @@ fn Download<'a>(batch: i32, scope: Scope, label: &'a str, count: i64, ready: boo
 #[component(css = BatchPanel)]
 fn SummaryCard<'a>(batch: &'a Batch, t: Msg) -> impl Render {
     let source = match batch.source_type.as_str() {
-        "seller" => Secondary,
-        "csv" => Info,
-        _ => Ok,
+        "seller" => BadgeTone::Primary,
+        "csv" => BadgeTone::Info,
+        _ => BadgeTone::Success,
     };
     let status = match batch.status {
-        BatchStatus::Priced => Ok,
-        BatchStatus::Queued => Info,
-        BatchStatus::Pricing => Accent,
-        BatchStatus::Failed => Bad,
-        BatchStatus::Pending => Plain,
+        BatchStatus::Priced => BadgeTone::Success,
+        BatchStatus::Queued => BadgeTone::Info,
+        BatchStatus::Pricing => BadgeTone::Primary,
+        BatchStatus::Failed => BadgeTone::Destructive,
+        BatchStatus::Pending => BadgeTone::Neutral,
     };
     let produced_none = batch
         .latest_job
@@ -279,10 +280,10 @@ fn SummaryCard<'a>(batch: &'a Batch, t: Msg) -> impl Render {
         .is_some_and(|j| j.status == JobStatus::Completed);
     let job = batch.latest_job.as_ref().map(|job| {
         let tone = match job.status {
-            JobStatus::Completed => Ok,
-            JobStatus::Queued => Info,
-            JobStatus::Pricing => Accent,
-            JobStatus::Failed => Bad,
+            JobStatus::Completed => BadgeTone::Success,
+            JobStatus::Queued => BadgeTone::Info,
+            JobStatus::Pricing => BadgeTone::Primary,
+            JobStatus::Failed => BadgeTone::Destructive,
         };
         (
             format!("{} job: {}", job.mode.word(), job.status.word()),
@@ -292,28 +293,42 @@ fn SummaryCard<'a>(batch: &'a Batch, t: Msg) -> impl Render {
     html! {
         <div class={row(Space::_2)}>
             <h2>"Batch "{batch.batch_number}</h2>
-            <span class={(Chip, source)}>{batch.source()}</span>
-            <span class={(Chip, Info)}>{batch.item_count}" SKUs"</span>
-            <span class={(Chip, Filled, status)}>{batch.status.word()}</span>
+            <span class={Badge { tone: source, emphasis: BadgeEmphasis::Outline }}>
+                {batch.source()}
+            </span>
+            <span class={Badge { tone: BadgeTone::Info, emphasis: BadgeEmphasis::Outline }}>
+                {batch.item_count}" SKUs"
+            </span>
+            <span class={Badge { tone: status, emphasis: BadgeEmphasis::Solid }}>
+                {batch.status.word()}
+            </span>
             if let Some((words, tone)) = &job {
-                <span class={(Chip, *tone)}>{words}</span>
+                <span class={Badge { tone: *tone, emphasis: BadgeEmphasis::Outline }}>{words}</span>
             }
-            <span class={(Chip, Ok)}>{batch.successful_count}" successful"</span>
-            <span class={(Chip, Warn)}>{batch.manual_review_count}" manual review/errors"</span>
+            <span class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Outline }}>
+                {batch.successful_count}" successful"
+            </span>
+            <span class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Outline }}>
+                {batch.manual_review_count}" manual review/errors"
+            </span>
         </div>
         <div class={(row(Space::_2), Timeline)}>
-            <span class={(Chip, Filled, Ok)}>
+            <span class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Solid }}>
                 "Created "{t.date(batch.created_at, DateStyle::Short)}
             </span>
             <span class={if batch.last_priced_at.is_some() { (Line, Ok) } else { (Line, Plain) }}></span>
             match batch.last_priced_at {
                 Some(at) => {
-                    <span class={(Chip, Filled, Ok)}>
+                    <span
+                        class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Solid }}
+                    >
                         "Priced "{t.date(at, DateStyle::Short)}
                     </span>
                 }
                 None => {
-                    <span class={(Chip, Dashed)}>
+                    <span
+                        class={(Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }, Dashed)}
+                    >
                         if produced_none { "No prices produced" } else { "Not yet priced" }
                     </span>
                 }
@@ -346,7 +361,11 @@ fn JobProgress<'a>(job: &'a Job, batch: i32) -> impl Render {
             <header class={row(Space::_2)}>
                 <h2>"Processing Progress"</h2>
                 if let Some(phase) = &p.phase {
-                    <span class={(Chip, Accent)}>{phase}</span>
+                    <span
+                        class={Badge { tone: BadgeTone::Primary, emphasis: BadgeEmphasis::Outline }}
+                    >
+                        {phase}
+                    </span>
                     if let Some(since) = &since {
                         <small class={muted()}>{since}</small>
                     }
@@ -388,10 +407,20 @@ fn JobProgress<'a>(job: &'a Job, batch: i32) -> impl Render {
                 </div>
             }
             <div class={row(Space::_2)}>
-                <span class={(Chip, Filled, Ok)}>"Processed: "{p.processed}</span>
-                <span class={(Chip, Filled, Info)}>"Skipped: "{p.skipped}</span>
-                <span class={(Chip, Filled, Warn)}>"Warnings: "{p.warnings}</span>
-                <span class={(Chip, Filled, Bad)}>"Errors: "{p.errors}</span>
+                <span class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Solid }}>
+                    "Processed: "{p.processed}
+                </span>
+                <span class={Badge { tone: BadgeTone::Info, emphasis: BadgeEmphasis::Solid }}>
+                    "Skipped: "{p.skipped}
+                </span>
+                <span class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Solid }}>
+                    "Warnings: "{p.warnings}
+                </span>
+                <span
+                    class={Badge { tone: BadgeTone::Destructive, emphasis: BadgeEmphasis::Solid }}
+                >
+                    "Errors: "{p.errors}
+                </span>
             </div>
         </section>
     }

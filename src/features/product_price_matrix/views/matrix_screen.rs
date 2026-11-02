@@ -196,7 +196,11 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                     {screen.language.as_deref().unwrap_or("No language")}
                                 </span>
                                 if let Some(policy) = matrix.and_then(|m| m.policy.as_ref()) {
-                                    <span class={(Chip, Policy)}>{policy.describe()}</span>
+                                    <span
+                                        class={Badge { tone: BadgeTone::Primary, emphasis: BadgeEmphasis::Outline }}
+                                    >
+                                        {policy.describe()}
+                                    </span>
                                 }
                             </div>
                         </div>

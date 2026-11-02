@@ -53,24 +53,6 @@
 .table-choice {
   margin: 0;
 }
-.chip {
-  display: inline-block;
-  padding: 2px var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-sm);
-}
-.filled {
-  background: var(--muted);
-}
-.warning {
-  border-color: var(--warning);
-  color: var(--warning);
-}
-.info {
-  border-color: var(--info);
-  color: var(--info);
-}
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));

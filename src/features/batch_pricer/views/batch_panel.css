@@ -12,60 +12,16 @@
   align-items: center;
   margin-bottom: var(--space-3);
 }
-.chip {
-  display: inline-block;
-  padding: 0 var(--space-2);
-  border: 1px solid currentColor;
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-sm);
-}
+/* The timeline's line between its dates takes the color of how far the batch got. */
 .ok {
   color: var(--success);
-}
-.info {
-  color: var(--info);
-}
-.accent {
-  color: var(--primary);
-}
-.secondary {
-  color: #9c27b0;
-}
-.warn {
-  color: var(--warning);
-}
-.bad {
-  color: var(--destructive);
 }
 .plain {
   color: var(--muted-foreground);
 }
-/* A filled chip is its tone's color with white text. */
-.chip.filled.ok {
-  background: var(--success);
-}
-.chip.filled.info {
-  background: var(--info);
-}
-.chip.filled.accent {
-  background: var(--primary);
-}
-.chip.filled.warn {
-  background: var(--warning);
-}
-.chip.filled.bad {
-  background: var(--destructive);
-}
-.chip.filled.plain {
-  background: var(--muted-foreground);
-}
-.chip.filled {
-  border-color: transparent;
-  color: var(--primary-foreground);
-}
+/* A date the batch has not reached yet. */
 .dashed {
   border-style: dashed;
-  color: var(--muted-foreground);
 }
 .timeline {
   margin-top: var(--space-3);
