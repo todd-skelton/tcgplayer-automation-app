@@ -31,11 +31,13 @@ pub struct Asked<'a> {
     pub replacing: Option<&'a str>,
 }
 
-/// A recommendation saved: its id, and whether its ask needs the operator's review.
+/// A recommendation saved: its id, whether its ask needs the operator's review, and the
+/// calculation as Node wrote it (the JSON its input key hashes).
 #[derive(Debug)]
 pub struct Calculated {
     pub id: String,
     pub requires_review: bool,
+    pub calculation: String,
 }
 
 /// Node's answer to anything but a refusal it words.
@@ -380,6 +382,7 @@ pub async fn calculate(
     Ok(Calculated {
         id,
         requires_review: ask.requires_review,
+        calculation,
     })
 }
 
