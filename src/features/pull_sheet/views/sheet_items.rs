@@ -14,6 +14,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         input::Input,
         panel::Panel,
+        table::{Table, TableNumeric},
     },
 };
 
@@ -164,52 +165,56 @@ pub fn SheetItems<'a>(
                 }
             </div>
             <div class={TableBox}>
-                <table class={Table}>
-                    <thead>
-                        <tr>
-                            <th><span class={Hidden}>"Picture"</span></th>
-                            for (by, label) in columns {
-                                <th
-                                    aria-sort={(paging.filters.sort == Some(by)).then_some("ascending")}
-                                >
-                                    <a
-                                        href={(paging.link)(by)}
-                                        on:click={js::sortBy(event, target, found, by)}
+                <Table>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th><span class={Hidden}>"Picture"</span></th>
+                                for (by, label) in columns {
+                                    <th
+                                        scope="col"
+                                        class={(by == SortBy::Quantity).then_some(TableNumeric {})}
+                                        aria-sort={(paging.filters.sort == Some(by)).then_some("ascending")}
                                     >
-                                        {label}
-                                    </a>
-                                </th>
+                                        <a
+                                            href={(paging.link)(by)}
+                                            on:click={js::sortBy(event, target, found, by)}
+                                        >
+                                            {label}
+                                        </a>
+                                    </th>
+                                }
+                                <th>"Order"</th>
+                                if detail.is_some() { <th>"Value"</th> }
+                            </tr>
+                        </thead>
+                        <tbody
+                            ref={rows}
+                            on:click={js::showPicture(event, open.closest(), dialog, image)}
+                        >
+                            for (key, item) in items.iter().enumerate() {
+                                let drawn = detail.map(|d| d(item, false));
+                                <ItemRow
+                                    key={key}
+                                    search={&item.search_text()}
+                                    name={&item.product_name}
+                                    number={&item.number}
+                                    set={&item.set}
+                                    condition={item.shown_condition()}
+                                    grade={Grade::of(item.shown_condition())}
+                                    printing={&Printing::of(item.variant())}
+                                    rarity={&item.rarity}
+                                    quantity={item.quantity}
+                                    product_line={&item.product_line}
+                                    order={&item.order_quantity}
+                                    picture={item.catalog.as_ref().map(|c| picture(c.product_id, "400x400"))}
+                                    open={open}
+                                    detail={drawn.as_ref().map(|d| d as &dyn Render)}
+                                />
                             }
-                            <th>"Order"</th>
-                            if detail.is_some() { <th>"Value"</th> }
-                        </tr>
-                    </thead>
-                    <tbody
-                        ref={rows}
-                        on:click={js::showPicture(event, open.closest(), dialog, image)}
-                    >
-                        for (key, item) in items.iter().enumerate() {
-                            let drawn = detail.map(|d| d(item, false));
-                            <ItemRow
-                                key={key}
-                                search={&item.search_text()}
-                                name={&item.product_name}
-                                number={&item.number}
-                                set={&item.set}
-                                condition={item.shown_condition()}
-                                grade={Grade::of(item.shown_condition())}
-                                printing={&Printing::of(item.variant())}
-                                rarity={&item.rarity}
-                                quantity={item.quantity}
-                                product_line={&item.product_line}
-                                order={&item.order_quantity}
-                                picture={item.catalog.as_ref().map(|c| picture(c.product_id, "400x400"))}
-                                open={open}
-                                detail={drawn.as_ref().map(|d| d as &dyn Render)}
-                            />
-                        }
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </Table>
             </div>
             <p ref={empty} class={muted()} hidden={!items.is_empty()}>
                 "No items match the filter."

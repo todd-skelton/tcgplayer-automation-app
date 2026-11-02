@@ -1,9 +1,4 @@
 .row {
-  & td {
-    padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--border);
-    vertical-align: middle;
-  }
   & a {
     text-decoration: none;
   }

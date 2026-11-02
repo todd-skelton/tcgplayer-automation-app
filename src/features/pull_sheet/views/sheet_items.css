@@ -72,15 +72,9 @@
 .toolbar:has(.table-choice:checked) ~ .table-box {
   display: block;
 }
-.table {
-  width: 100%;
-  & th {
-    text-align: start;
-    padding: var(--space-2) var(--space-3);
-    border-bottom: 2px solid var(--border);
-    white-space: nowrap;
-    font-weight: 600;
-  }
+/* The kit's Table draws the rows; the sort header is the screen's until the kit's SortHeader
+   draws its arrow from aria-sort, which the in-place sort changes (corten#606). */
+.table-box {
   & th a {
     color: inherit;
     text-decoration: none;
