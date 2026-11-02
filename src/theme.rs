@@ -12,11 +12,6 @@ corten::style::tokens!("tokens/tokens.resolver.json");
 
 use corten::style::ClassList;
 
-/// A raised panel: the surface, its border, and room inside.
-pub fn panel() -> impl ClassList {
-    (bg_card(), rounded_md(), shadow_sm(), p_4())
-}
-
 /// A row of items, vertically centered, `space` apart, wrapping on a narrow screen.
 pub fn row(space: Space) -> impl ClassList {
     (display_flex(), items_center(), flex_wrap(), gap(space))

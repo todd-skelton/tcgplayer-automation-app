@@ -73,7 +73,7 @@ pub fn BatchSummary<'a>(
         .as_ref()
         .filter(|l| !l.is_empty());
     html! {
-        <section class={(panel(), BatchSummary)} aria-label="Batch summary">
+        <section class={(Card {}, CardContent {}, BatchSummary)} aria-label="Batch summary">
             <h2>"Batch Summary"</h2>
             <p><strong>"Batch: "</strong>{&summary.file_name}</p>
             <p class={muted()}>"Current aggregate for the saved batch pricing results."</p>

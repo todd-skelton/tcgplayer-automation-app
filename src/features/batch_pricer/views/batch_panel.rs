@@ -21,6 +21,7 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{Card, CardContent},
     },
 };
 
@@ -87,10 +88,10 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
         .filter(|j| j.status == JobStatus::Failed);
     html! {
         <div id={BatchPanelId} class={BatchPanel}>
-            <section class={panel()}>
+            <section class={(Card {}, CardContent {})}>
                 <SummaryCard batch={batch} t={t} />
             </section>
-            <section class={panel()}>
+            <section class={(Card {}, CardContent {})}>
                 <h2>"Actions"</h2>
                 <div class={Actions}>
                     <form
@@ -357,7 +358,7 @@ fn JobProgress<'a>(job: &'a Job, batch: i32) -> impl Render {
     };
     let since = p.phase_start_time.map(|at| elapsed(at, SystemTime::now()));
     html! {
-        <section class={(panel(), JobProgress)} aria-label="Processing progress">
+        <section class={(Card {}, CardContent {}, JobProgress)} aria-label="Processing progress">
             <header class={row(Space::_2)}>
                 <h2>"Processing Progress"</h2>
                 if let Some(phase) = &p.phase {

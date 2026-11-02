@@ -15,6 +15,7 @@ use crate::{
     ui::{
         alert::Alert,
         button::{Button, ButtonSize, ButtonVariant},
+        card::{Card, CardContent},
         input::Input,
     },
 };
@@ -66,7 +67,10 @@ pub fn ConnectionCard<'a>(
         Status::NotConfigured
     };
     html! {
-        <section id={ConnectionId(connection.provider.as_ref())} class={(panel(), Card)}>
+        <section
+            id={ConnectionId(connection.provider.as_ref())}
+            class={(Card {}, CardContent {}, Connection)}
+        >
             <h2>{provider.name()}</h2>
             <p>{status.message()}</p>
             match connection.checked_at {

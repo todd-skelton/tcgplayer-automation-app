@@ -19,6 +19,7 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{Card, CardContent},
         input::Input,
         select::Select,
     },
@@ -73,7 +74,7 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             <form
                 method="get"
                 action={&here}
-                class={(panel(), Choices)}
+                class={(Card {}, CardContent {}, Choices)}
                 aria-label="Choose a product"
                 data-keep-place
             >
@@ -161,7 +162,10 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 <Alert variant={AlertVariant::Info}>"No matching products found."</Alert>
             }
             if let Some(product) = &screen.product {
-                <section class={(panel(), Product)} aria-label={&product.product_name}>
+                <section
+                    class={(Card {}, CardContent {}, Product)}
+                    aria-label={&product.product_name}
+                >
                     <header class={Head}>
                         <div>
                             <h2>{&product.product_name}</h2>

@@ -15,6 +15,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{Card, CardContent},
         input::Input,
         select::Select,
         table::Table,
@@ -33,7 +34,7 @@ pub fn CompReview<'a>(screen: &'a Screen) -> impl Render {
         ..choice.clone()
     };
     html! {
-        <section class={(panel(), Stack, CompReview)} aria-labelledby="slab-comps">
+        <section class={(Card {}, CardContent {}, Stack, CompReview)} aria-labelledby="slab-comps">
             <div class={Head}>
                 <h2 id="slab-comps">"Saved comps"</h2>
                 <a href={url::SlabPricing::at(&close)}>"Close comps"</a>

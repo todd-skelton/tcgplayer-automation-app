@@ -21,6 +21,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{Card, CardContent},
         select::Select,
     },
 };
@@ -47,7 +48,10 @@ pub fn PublicationPanel<'a>(
             if shown { "Hide price-change review" } else { "Review listing price change" }
         </a>
         if shown {
-            <section class={(panel(), Stack, PublicationPanel)} aria-labelledby="slab-publication">
+            <section
+                class={(Card {}, CardContent {}, Stack, PublicationPanel)}
+                aria-labelledby="slab-publication"
+            >
                 <h3 id="slab-publication">"Review a listing price change"</h3>
                 <p>
                     "Save the selected ask with this listing and its evidence. A preview uses imported inventory; a live seller read is still required before approval."

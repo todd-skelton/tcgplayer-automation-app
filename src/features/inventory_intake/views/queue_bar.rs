@@ -11,6 +11,7 @@ use crate::{
     theme::*,
     ui::{
         button::{Button, ButtonSize, ButtonVariant},
+        card::{Card, CardContent},
         input::Input,
     },
 };
@@ -38,7 +39,7 @@ pub fn QueueBar<'a>(
     errors: &'a Errors,
 ) -> impl Render {
     html! {
-        <section class={(panel(), QueueBar)} aria-label="Unqueued inventory">
+        <section class={(Card {}, CardContent {}, QueueBar)} aria-label="Unqueued inventory">
             <QueueTotals totals={totals} counted={counted} />
             <QueueForm selection={selection} input={input} target={target} errors={errors} />
             <ClearConfirm selection={selection} totals={totals} />
@@ -80,7 +81,7 @@ pub fn QueueTotals<'a>(totals: Totals, counted: &'a str) -> impl Patch {
 #[component(css = QueueBar)]
 pub fn ClearConfirm<'a>(selection: &'a Selection, totals: Totals) -> impl Patch {
     html! {
-        <div id={ClearConfirmId} popover class={(panel(), Confirm)}>
+        <div id={ClearConfirmId} popover class={(Card {}, CardContent {}, Confirm)}>
             <h2>"Clear unqueued inventory?"</h2>
             <p>
                 "This removes "{totals.units}" units across "{totals.skus}

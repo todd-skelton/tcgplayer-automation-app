@@ -8,11 +8,11 @@ use crate::{
             url::{OrderLabels, ShippingWorkflow},
         },
     },
-    theme::*,
     ui::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{Card, CardContent},
         dialog::{Dialog, DialogFooter},
     },
 };
@@ -106,7 +106,9 @@ pub fn ShippingWorkflowScreen<'a>(
                 </a>
             </header>
             <Refused problem={problem} />
-            <section aria-label={step.label()} class={(panel(), StepPanel)}>{children}</section>
+            <section aria-label={step.label()} class={(Card {}, CardContent {}, StepPanel)}>
+                {children}
+            </section>
             {bar}
         </div>
     }

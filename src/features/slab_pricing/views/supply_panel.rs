@@ -22,6 +22,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{Card, CardContent},
         select::Select,
         table::Table,
     },
@@ -41,7 +42,10 @@ pub fn SupplyPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
         ..choice.supply_source(None, Vec::new())
     };
     html! {
-        <section class={(panel(), Stack, SupplyPanel)} aria-labelledby="slab-supply">
+        <section
+            class={(Card {}, CardContent {}, Stack, SupplyPanel)}
+            aria-labelledby="slab-supply"
+        >
             <div class={(Line, Head)}>
                 <h2 id="slab-supply">"Supply context"</h2>
                 <a href={url::SlabPricing::at(&toggled)}>

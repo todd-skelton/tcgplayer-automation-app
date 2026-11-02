@@ -15,6 +15,7 @@ use crate::{
     theme::*,
     ui::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
+        card::{Card, CardContent},
         table::Table,
     },
 };
@@ -139,7 +140,7 @@ pub fn VerdictPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
         },
     );
     html! {
-        <section class={panel()} aria-label="Active policy">
+        <section class={(Card {}, CardContent {})} aria-label="Active policy">
             <div class={Title}>
                 <h2>{policy_label(screen)}</h2>
                 <span class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Soft }}>
@@ -194,7 +195,7 @@ pub fn HurdleSweep<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     hurdles.sort_by(f64::total_cmp);
     hurdles.dedup();
     html! {
-        <section class={panel()} aria-labelledby="hurdle-sweep">
+        <section class={(Card {}, CardContent {})} aria-labelledby="hurdle-sweep">
             <h2 id="hurdle-sweep">"Hurdle sweep"</h2>
             <p class={muted()}>
                 "Listed value, median / P90 wait, and SKUs raised / lowered against current prices at each daily return hurdle. The shaded cell is the configured hurdle."

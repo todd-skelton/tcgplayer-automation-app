@@ -25,6 +25,7 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{Card, CardContent},
         input::Input,
         select::Select,
     },
@@ -44,7 +45,10 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
     let f = Choice::FIELDS;
     let r = RefreshInput::FIELDS;
     html! {
-        <section class={(panel(), Stack, ResearchPanel)} aria-labelledby="slab-research">
+        <section
+            class={(Card {}, CardContent {}, Stack, ResearchPanel)}
+            aria-labelledby="slab-research"
+        >
             <h2 id="slab-research">"Research evidence"</h2>
             <form method="get" action={url::SlabPricing::at(&Choice::default())} class={Line}>
                 // A new grade or window starts the evidence over: its source, comps and extras reset.

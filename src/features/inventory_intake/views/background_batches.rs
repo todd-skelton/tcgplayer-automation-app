@@ -16,6 +16,7 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{Card, CardContent},
         input::Input,
     },
 };
@@ -65,7 +66,7 @@ pub fn BackgroundBatches<'a>(
                 popover
                 role="region"
                 aria-labelledby={BatchesHeadingId}
-                class={(panel(), Drawer)}
+                class={(Card {}, CardContent {}, Drawer)}
             >
                 <header class={row(Space::_2)}>
                     <h2 id={BatchesHeadingId}>"Background batches"</h2>

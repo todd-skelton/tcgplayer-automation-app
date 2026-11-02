@@ -20,6 +20,7 @@ use crate::{
     ui::alert::{Alert, AlertVariant},
     ui::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
+        card::{Card, CardContent},
         table::Table,
     },
 };
@@ -76,7 +77,7 @@ pub fn PerformancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let windows = screen.windows();
     let choice = realized_choice(screen);
     html! {
-        <section class={panel()} aria-labelledby="realized-performance">
+        <section class={(Card {}, CardContent {})} aria-labelledby="realized-performance">
             <div class={Title}>
                 <h2 id="realized-performance">"Realized performance"</h2>
                 for (window, shown) in windows.iter().filter_map(|w| Some((w, RealizedWindow::of(w.window_days)?))) {
@@ -233,7 +234,7 @@ fn LineTable<'a>(lines: &'a [PerformanceSummary], t: Msg) -> impl Render {
 #[component(css = super::strategy_screen::StrategyScreen)]
 pub fn Levers<'a>(levers: &'a [Lever], t: Msg) -> impl Render {
     html! {
-        <section class={panel()} aria-label="How to improve">
+        <section class={(Card {}, CardContent {})} aria-label="How to improve">
             <h2>"How to improve"</h2>
             if levers.is_empty() {
                 <p class={muted()}>

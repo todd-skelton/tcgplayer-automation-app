@@ -13,6 +13,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        card::{Card, CardContent},
         input::Input,
         select::Select,
     },
@@ -41,7 +42,7 @@ pub fn PricerScreen<'a>(
     let unlisted = number.filter(|n| !list.iter().any(|b| b.batch_number == *n));
     html! {
         <h1>"Inventory Batch Pricer"</h1>
-        <section class={(panel(), mb_5())}>
+        <section class={(Card {}, CardContent {}, mb_5())}>
             <h2>"New Batch"</h2>
             <p class={muted()}>
                 "Freeze a CSV export or a seller's live inventory into a batch. Pricing uses the server configuration."
@@ -51,7 +52,7 @@ pub fn PricerScreen<'a>(
                 <SellerForm seller={seller} errors={errors} />
             </div>
         </section>
-        <section class={(panel(), mb_5())}>
+        <section class={(Card {}, CardContent {}, mb_5())}>
             <h2>"Select Inventory Batch"</h2>
             <p class={muted()}>
                 "The newest 100 manual batches are shown here. Each is a frozen snapshot from Inventory Manager, a seller snapshot, or a CSV upload. Automatic run history is kept on Continuous Pricing, and a direct batch link remains available for older manual batches."
