@@ -16,7 +16,7 @@ use serde_json::{Map, Value, json};
 
 use super::{estimate, ledger::fingerprint::js_float, workspace_json};
 use crate::{
-    api,
+    api::{self, js_string},
     app::Shared,
     database::Database,
     features::{inventory_intake::queue::cost_rate, shipping_configuration},
@@ -123,29 +123,6 @@ async fn estimated(db: &Database, payload: &Map<String, Value>) -> Result<Value,
     let rate = cost_rate(payload)?;
     let run = estimate::change_rate(db, integer(batch)?, rate).await?;
     Ok(json!({ "result": run.node_json() }))
-}
-
-/// JavaScript's `String(value)` of a JSON value.
-fn js_string(value: &Value) -> String {
-    match value {
-        Value::String(text) => text.clone(),
-        Value::Number(n) => js_float(n.as_f64().unwrap_or(f64::NAN)),
-        Value::Bool(b) => b.to_string(),
-        Value::Null => "null".to_owned(),
-        // `join` writes null as nothing.
-        Value::Array(items) => items
-            .iter()
-            .map(|item| {
-                if item.is_null() {
-                    String::new()
-                } else {
-                    js_string(item)
-                }
-            })
-            .collect::<Vec<_>>()
-            .join(","),
-        Value::Object(_) => "[object Object]".to_owned(),
-    }
 }
 
 /// A batch number as Postgres's `integer`, or refused as Postgres refused it in Node's query.

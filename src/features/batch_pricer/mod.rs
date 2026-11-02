@@ -26,7 +26,7 @@
 //! browser names after its first page (`App::zoned_dates`); until then they are in UTC.
 pub mod batch_json;
 mod batches;
-mod import;
+pub mod import;
 pub mod json_route;
 mod page;
 mod views;

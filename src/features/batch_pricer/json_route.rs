@@ -1,10 +1,13 @@
 //! `/api/inventory-batches`: the newest batches made by hand (`GET`), one batch (`GET` and
 //! `DELETE /{batch}`), its items (`GET /{batch}/items?scope=`), its saved results
 //! (`GET /{batch}/results?scope=`) and its pricing (`POST /{batch}/pricing-jobs`), as the Node
-//! routes answered them. Making a batch from the counted inventory (`POST`), making one from a
-//! CSV or a seller (`/import-csv`, `/import-seller`) and saving results priced in the browser
-//! (`POST /{batch}/results`, which no screen sends now) still go to the Node app, and so does
-//! confirming an ambiguous publication item (`PATCH /{batch}/publications`). A batch's
+//! routes answered them, and so are making a batch from the counted inventory (`POST`) and from
+//! a CSV export or a seller's live inventory (`POST /import-csv`, `POST /import-seller`). An
+//! export is read up to 20 MB, as the screen's form reads it; Node read any size. A file input
+//! left empty is no file ("CSV file is required"), where Node read a file with no name and no
+//! rows. Saving results
+//! priced in the browser (`POST /{batch}/results`, which no screen sends now) still goes to the
+//! Node app, and so does confirming an ambiguous publication item (`PATCH /{batch}/publications`). A batch's
 //! publications and preview (`GET /{batch}/publications`) and planning its publication (`POST`)
 //! are answered here.
 //!
@@ -20,7 +23,7 @@ use corten::{
     Api, JsonError, JsonResponse, Prefix, Relay,
     axum::{
         body::{Body, to_bytes},
-        extract::{RawQuery, Request},
+        extract::{FromRequest, RawQuery, Request},
         http::{HeaderMap, HeaderValue, StatusCode, header},
     },
     prelude::*,
@@ -29,14 +32,20 @@ use futures_util::{Stream, StreamExt};
 use serde_json::{Value, json};
 use sqlx::PgConnection;
 
-use super::batch_json;
+use super::{
+    batch_json,
+    import::{self, MOST_EXPORT_BYTES, NotImported},
+};
 use crate::{
     api,
     app::Shared,
     database::Database,
     features::{
         batch_pricing::queue,
-        continuous_pricing::scheduler,
+        continuous_pricing::{
+            refresh::{SellerInventory, TcgPlayerSearch},
+            scheduler,
+        },
         inventory_economics::ledger::fingerprint::js_json,
         inventory_intake::queue::{self as intake, NotQueued},
         inventory_publication::{plan, preview, publication_json},
@@ -44,13 +53,14 @@ use crate::{
     },
     legacy::{Legacy, relay_request},
     node_pg,
+    tcgplayer::TcgPlayer,
 };
 
 #[derive(Route)]
 #[route("/api/inventory-batches")]
 pub struct InventoryBatches;
 
-/// Static, so a batch's route does not take them for a batch: still the Node app's.
+/// Static, so a batch's route does not take them for a batch.
 #[derive(Route)]
 #[route("/api/inventory-batches/import-csv")]
 pub struct ImportCsv;
@@ -114,8 +124,20 @@ pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
             .delete(list_not_allowed)
             .with_state(shared.clone()),
     )
-    .route::<ImportCsv>(relayed().with_state(shared.clone()))
-    .route::<ImportSeller>(relayed().with_state(shared.clone()))
+    .route::<ImportCsv>(
+        post(import_csv)
+            .put(list_not_allowed)
+            .patch(list_not_allowed)
+            .delete(list_not_allowed)
+            .with_state(shared.clone()),
+    )
+    .route::<ImportSeller>(
+        post(import_seller)
+            .put(list_not_allowed)
+            .patch(list_not_allowed)
+            .delete(list_not_allowed)
+            .with_state(shared.clone()),
+    )
     .route::<InventoryBatch<'_>>(
         get(one)
             .delete(delete)
@@ -149,11 +171,6 @@ pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
             .delete(publications_not_allowed)
             .with_state(shared.clone()),
     )
-}
-
-/// Every method the relay at `/api/{*rest}` takes, sent on to the Node app.
-fn relayed() -> Methods<Shared> {
-    get(relay).post(relay).put(relay).patch(relay).delete(relay)
 }
 
 /// The request sent to the Node app, its answer passed on as it came.
@@ -227,16 +244,8 @@ async fn create(State(db): State<Database>, request: Request) -> JsonResponse {
         Ok(tx) => tx,
         Err(error) => return failed(node_pg::thrown(error)),
     };
-    match batch_created(&mut tx, &body, api::js_trim(&seller)).await {
-        Ok(answer) => match tx.commit().await {
-            Ok(()) => answer,
-            Err(error) => failed(node_pg::thrown(error)),
-        },
-        Err(answer) => {
-            let _ = tx.rollback().await;
-            *answer
-        }
-    }
+    let answer = batch_created(&mut tx, &body, api::js_trim(&seller)).await;
+    finished(tx, answer).await
 }
 
 /// The action of `POST /api/inventory-batches`: the body's request id checked, then the batch
@@ -275,6 +284,157 @@ async fn batch_created(
         Ok(Some(found)) => Ok(api::node_json(&found).with_status(StatusCode::CREATED)),
         Ok(None) => Err(Box::new(not_found(batch))),
         Err(error) => Err(Box::new(failed(error))),
+    }
+}
+
+/// The first `file` of a multipart body, and its name, as `formData.get("file")` finds it; none
+/// when that is text or missing. A body undici would not read as a form is Node's 500.
+async fn exported_file(request: Request) -> Result<Option<(String, Vec<u8>)>, Box<JsonResponse>> {
+    let content_type = request
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("");
+    let essence = content_type.split(';').next().unwrap_or("").trim();
+    if essence.eq_ignore_ascii_case("application/x-www-form-urlencoded") {
+        // A form of text fields has no file.
+        return Ok(None);
+    }
+    if !essence.eq_ignore_ascii_case("multipart/form-data") {
+        return Err(Box::new(failed(
+            "TypeError: Content-Type was not one of \"multipart/form-data\" or \"application/x-www-form-urlencoded\".",
+        )));
+    }
+    let mut upload = Upload::<ExportForm>::from_request(request, &())
+        .await
+        .map_err(|_| Box::new(failed("TypeError: Failed to parse body as FormData.")))?;
+    upload.limit(MOST_EXPORT_BYTES + (64 << 10));
+    let unread = |error: UploadError| Box::new(failed(format!("TypeError: {error}")));
+    while let Some(mut file) = upload.next_file().await.map_err(unread)? {
+        if file.field() != "file" {
+            continue;
+        }
+        let name = file.filename().to_owned();
+        return match file.bytes_up_to(MOST_EXPORT_BYTES).await.map_err(unread)? {
+            Some(bytes) => Ok(Some((name, bytes.to_vec()))),
+            None => Err(Box::new(api::error(
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "A CSV export can be up to 20 MB.",
+            ))),
+        };
+    }
+    Ok(None)
+}
+
+/// The multipart body of an import: its `file`.
+#[derive(serde::Deserialize, Fields)]
+struct ExportForm {
+    #[allow(dead_code)]
+    file: Files,
+}
+
+/// `POST /api/inventory-batches/import-csv`: the export as a batch queued for pricing in full.
+async fn import_csv(State(db): State<Database>, request: Request) -> JsonResponse {
+    let file = match exported_file(request).await {
+        Ok(file) => file,
+        Err(answer) => return *answer,
+    };
+    let Some((name, bytes)) = file else {
+        return api::error(StatusCode::BAD_REQUEST, "CSV file is required");
+    };
+    let mut tx = match db.0.begin().await {
+        Ok(tx) => tx,
+        Err(error) => return failed(node_pg::thrown(error)),
+    };
+    let saved = import::save_csv(&mut tx, &name, &bytes).await;
+    let answer = imported(&mut tx, saved).await;
+    finished(tx, answer).await
+}
+
+/// `POST /api/inventory-batches/import-seller`: the seller's live inventory as a batch queued
+/// for pricing in full.
+async fn import_seller(State(db): State<Database>, request: Request) -> JsonResponse {
+    let seller = match seller_key(request).await {
+        Ok(seller) => seller,
+        Err(answer) => return *answer,
+    };
+    let search = TcgPlayerSearch(TcgPlayer::new(db.clone()));
+    let products = match search.products(&seller).await {
+        Ok(products) => products,
+        Err(error) => return failed(error),
+    };
+    let mut tx = match db.0.begin().await {
+        Ok(tx) => tx,
+        Err(error) => return failed(node_pg::thrown(error)),
+    };
+    let saved = import::save_seller(&mut tx, products, &seller).await;
+    let answer = imported(&mut tx, saved).await;
+    finished(tx, answer).await
+}
+
+/// The seller key of an import-seller body, `String(body.sellerKey ?? "").trim()`, or Node's
+/// refusal of the body.
+async fn seller_key(request: Request) -> Result<String, Box<JsonResponse>> {
+    let body = to_bytes(request.into_body(), MAX_CREATE_BODY_BYTES)
+        .await
+        .map_err(|error| Box::new(failed(format!("Error: {error}"))))?;
+    seller_of(&body)
+}
+
+fn seller_of(body: &[u8]) -> Result<String, Box<JsonResponse>> {
+    let body: Value = serde_json::from_slice(body)
+        .map_err(|error| Box::new(failed(format!("SyntaxError: {error}"))))?;
+    if body.is_null() {
+        return Err(Box::new(failed(
+            "TypeError: Cannot read properties of null (reading 'sellerKey')",
+        )));
+    }
+    let seller = match body.get("sellerKey") {
+        None | Some(Value::Null) => String::new(),
+        Some(key) => api::js_trim(&api::js_string(key)).to_owned(),
+    };
+    if seller.is_empty() {
+        return Err(Box::new(api::error(
+            StatusCode::BAD_REQUEST,
+            "Seller key is required",
+        )));
+    }
+    Ok(seller)
+}
+
+/// An import's answer: the batch it queued, as `findByBatchNumber` reads it, with 201; or why
+/// not, a 400 when there was nothing to import.
+async fn imported(
+    conn: &mut PgConnection,
+    made: Result<i32, NotImported>,
+) -> Result<JsonResponse, Box<JsonResponse>> {
+    let batch = made.map_err(|not| {
+        Box::new(match not {
+            NotImported::Nothing(why) => api::error(StatusCode::BAD_REQUEST, why),
+            NotImported::Failed(why) => failed(why),
+        })
+    })?;
+    match batch_json::find(conn, batch).await {
+        Ok(Some(found)) => Ok(api::node_json(&found).with_status(StatusCode::CREATED)),
+        Ok(None) => Err(Box::new(not_found(batch))),
+        Err(error) => Err(Box::new(failed(error))),
+    }
+}
+
+/// The answer, with the transaction kept only when it is the batch.
+async fn finished(
+    tx: sqlx::Transaction<'_, sqlx::Postgres>,
+    answer: Result<JsonResponse, Box<JsonResponse>>,
+) -> JsonResponse {
+    match answer {
+        Ok(answer) => match tx.commit().await {
+            Ok(()) => answer,
+            Err(error) => failed(node_pg::thrown(error)),
+        },
+        Err(answer) => {
+            let _ = tx.rollback().await;
+            *answer
+        }
     }
 }
 
@@ -891,6 +1051,109 @@ mod tests {
             assert_eq!(Value::from(status), theirs["batch146"], "{name}");
         }
         tx.rollback().await.unwrap();
+    }
+
+    /// The imports in `.port-logs/batch-import-cases.json` on the dev database, each in a
+    /// savepoint rolled back after it, against Node's actions over the same
+    /// (`.port-logs/batch-import-node.ts`): each export's answer and the batch and job it left,
+    /// and each seller body's refusal. Node's `SyntaxError` is V8's words; only its name is
+    /// compared.
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
+    async fn imports_answer_as_node_answered() {
+        use crate::features::inventory_intake::queue::tests::untimed;
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let read_log = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let cases: Value = serde_json::from_str(&read_log("batch-import-cases.json")).unwrap();
+        let node: Value = serde_json::from_str(&read_log("batch-import.node.json")).unwrap();
+        let capture = read_log("batch-import-capture.sql");
+        let answered = |answer: JsonResponse| async move {
+            let answer = answer.into_response();
+            let status = answer.status().as_u16();
+            let bytes = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            (status, serde_json::from_slice::<Value>(&bytes).unwrap())
+        };
+        let mut tx = db.0.begin().await.unwrap();
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtext('inventory_batch_pricing_jobs tests'))")
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        let imports = cases["imports"].as_array().unwrap();
+        let node_imports = node["imports"].as_array().unwrap();
+        assert_eq!(imports.len(), node_imports.len());
+        for (case, theirs) in imports.iter().zip(node_imports) {
+            let name = case["name"].as_str().unwrap();
+            let mut each = tx.begin().await.unwrap();
+            let before: i32 =
+                sqlx::query_scalar("SELECT COALESCE(max(batch_number), 0) FROM inventory_batches")
+                    .fetch_one(&mut *each)
+                    .await
+                    .unwrap();
+            let mut request = Request::builder().method("POST");
+            if let Some(content_type) = case["contentType"].as_str() {
+                request = request.header(header::CONTENT_TYPE, content_type);
+            }
+            let request = request
+                .body(Body::from(case["body"].as_str().unwrap().to_owned()))
+                .unwrap();
+            let answer = match exported_file(request).await {
+                Err(answer) => Err(answer),
+                Ok(None) => Err(Box::new(api::error(
+                    StatusCode::BAD_REQUEST,
+                    "CSV file is required",
+                ))),
+                Ok(Some((file, bytes))) => {
+                    let saved = import::save_csv(&mut each, &file, &bytes).await;
+                    imported(&mut each, saved).await
+                }
+            };
+            let (status, mut body) = answered(answer.unwrap_or_else(|refused| *refused)).await;
+            let captured: String = sqlx::query_scalar(&capture)
+                .bind(before)
+                .fetch_one(&mut *each)
+                .await
+                .unwrap();
+            each.rollback().await.unwrap();
+            let mut expected = theirs["body"].clone();
+            if name == "an empty file input" {
+                // Corten reads an empty file input as no file; undici, as a file with no name.
+                assert_eq!(
+                    expected["error"],
+                    "No valid CSV rows were available to import from "
+                );
+                expected = json!({ "error": "CSV file is required" });
+            }
+            if status == 201 {
+                body = untimed(body, "B");
+                expected = untimed(expected, "B");
+            }
+            assert_eq!(u64::from(status), theirs["status"], "{name}");
+            assert_eq!(body, expected, "{name}");
+            let captured: Value = serde_json::from_str(&captured).unwrap();
+            assert_eq!(captured, theirs["captured"], "{name}");
+        }
+        tx.rollback().await.unwrap();
+        let sellers = cases["sellers"].as_array().unwrap();
+        let node_sellers = node["sellers"].as_array().unwrap();
+        assert_eq!(sellers.len(), node_sellers.len());
+        for (case, theirs) in sellers.iter().zip(node_sellers) {
+            let name = case["name"].as_str().unwrap();
+            let refused = seller_of(case["body"].as_str().unwrap().as_bytes()).expect_err(name);
+            let (status, body) = answered(*refused).await;
+            assert_eq!(u64::from(status), theirs["status"], "{name}");
+            let (ours, expected) = (
+                body["error"].as_str().unwrap(),
+                theirs["body"]["error"].as_str().unwrap(),
+            );
+            if expected.starts_with("SyntaxError: ") {
+                assert!(ours.starts_with("SyntaxError: "), "{name}: {ours}");
+            } else {
+                assert_eq!(ours, expected, "{name}");
+            }
+        }
     }
 
     /// The requests in `.port-logs/batch-create-cases.json`, from the counts

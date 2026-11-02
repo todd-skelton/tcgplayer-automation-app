@@ -11,7 +11,10 @@ use crate::{
     app::Shared,
     features::{
         batch_pricer, forecast_calibration,
-        inventory_economics::{self, ledger::fingerprint::js_json},
+        inventory_economics::{
+            self,
+            ledger::fingerprint::{js_float, js_json},
+        },
         inventory_fifo, inventory_history, inventory_intake, inventory_opening_balance,
         seller_order_history, shipping_export, shipping_thresholds, slab_pricing,
     },
@@ -41,6 +44,27 @@ pub fn node_json(value: &impl Serialize) -> JsonResponse {
 /// Node's error answer: `data({ error }, { status })`.
 pub fn error(status: StatusCode, message: impl std::fmt::Display) -> JsonResponse {
     Json(json!({ "error": message.to_string() })).with_status(status)
+}
+
+/// JavaScript's `String(value)` of a JSON value.
+pub fn js_string(value: &serde_json::Value) -> String {
+    use serde_json::Value;
+    match value {
+        Value::Null => "null".into(),
+        Value::Bool(b) => b.to_string(),
+        Value::Number(n) => js_float(n.as_f64().unwrap_or(f64::NAN)),
+        Value::String(text) => text.clone(),
+        // `join` writes null as nothing.
+        Value::Array(items) => items
+            .iter()
+            .map(|item| match item {
+                Value::Null => String::new(),
+                item => js_string(item),
+            })
+            .collect::<Vec<_>>()
+            .join(","),
+        Value::Object(_) => "[object Object]".into(),
+    }
 }
 
 /// `new URL(request.url).searchParams.get(name)`: the first value sent for `name`.

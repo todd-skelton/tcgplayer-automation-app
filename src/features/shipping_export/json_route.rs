@@ -18,10 +18,10 @@ use super::{
     orders::{IntakeHistory, Line, Order},
 };
 use crate::{
-    api,
+    api::{self, js_string},
     app::Shared,
     database::Database,
-    features::{inventory_economics::ledger::fingerprint::js_float, shipping_configuration},
+    features::shipping_configuration,
 };
 
 /// The largest body read: 500 orders and their lines.
@@ -221,25 +221,6 @@ fn inventory_identity(product: &Value) -> Result<Option<String>, String> {
         Some(_) => return Err("TypeError: line.inventorySkuId?.trim is not a function".into()),
     }
     Ok(product.get("skuId").map(js_string))
-}
-
-/// JavaScript's `String(value)`.
-fn js_string(value: &Value) -> String {
-    match value {
-        Value::Null => "null".into(),
-        Value::Bool(b) => b.to_string(),
-        Value::Number(n) => js_float(n.as_f64().unwrap_or(f64::NAN)),
-        Value::String(text) => text.clone(),
-        Value::Array(items) => items
-            .iter()
-            .map(|item| match item {
-                Value::Null => String::new(),
-                item => js_string(item),
-            })
-            .collect::<Vec<_>>()
-            .join(","),
-        Value::Object(_) => "[object Object]".into(),
-    }
 }
 
 #[cfg(test)]

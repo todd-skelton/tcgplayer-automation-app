@@ -16,7 +16,6 @@ use chrono::{DurationRound, TimeDelta, Utc};
 use serde_json::{Map, Value};
 use sqlx::PgConnection;
 
-use super::batches::{self, Batch};
 use crate::{
     csv_text,
     database::Database,
@@ -138,28 +137,64 @@ pub async fn items(
     Ok(items)
 }
 
-/// The batch made from the export named `file_name`, queued for pricing in full.
-pub async fn csv(db: &Database, file_name: &str, bytes: &[u8]) -> Result<Batch, String> {
-    let rows = csv_text::parse(&csv_text::decode(bytes));
-    let mut conn = db.0.acquire().await.map_err(refused)?;
-    let items = items(&mut conn, &rows).await?;
-    drop(conn);
-    if items.is_empty() {
-        return Err(format!(
-            "No valid CSV rows were available to import from {file_name}"
-        ));
+/// The largest CSV export taken, by the screen and the JSON route alike.
+pub const MOST_EXPORT_BYTES: usize = 20 << 20;
+
+/// Why no batch was made, in the Node app's words: nothing in the import it could keep (its
+/// 400), or anything else failing (its 500).
+#[derive(Debug, PartialEq)]
+pub enum NotImported {
+    Nothing(String),
+    Failed(String),
+}
+
+impl std::fmt::Display for NotImported {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NotImported::Nothing(why) | NotImported::Failed(why) => f.write_str(why),
+        }
     }
-    let config = scheduler::job_config(db).await.map_err(refused)?;
+}
+
+impl From<String> for NotImported {
+    fn from(why: String) -> Self {
+        NotImported::Failed(why)
+    }
+}
+
+/// The batch made from the export named `file_name`, queued for pricing in full; its number.
+pub async fn csv(db: &Database, file_name: &str, bytes: &[u8]) -> Result<i32, NotImported> {
+    let mut tx = db.0.begin().await.map_err(refused)?;
+    let batch = save_csv(&mut tx, file_name, bytes).await?;
+    tx.commit().await.map_err(refused)?;
+    Ok(batch)
+}
+
+/// Saves the batch the export named `file_name` makes on `conn`, queued for pricing in full;
+/// its number.
+pub async fn save_csv(
+    conn: &mut PgConnection,
+    file_name: &str,
+    bytes: &[u8],
+) -> Result<i32, NotImported> {
+    let rows = csv_text::parse(&csv_text::decode(bytes));
+    let items = items(conn, &rows).await?;
+    if items.is_empty() {
+        return Err(NotImported::Nothing(format!(
+            "No valid CSV rows were available to import from {file_name}"
+        )));
+    }
+    let config = scheduler::job_config_on(&mut *conn)
+        .await
+        .map_err(refused)?;
     let now = Utc::now()
         .duration_trunc(TimeDelta::milliseconds(1))
         .unwrap_or_else(|_| Utc::now());
-    let mut tx = db.0.begin().await.map_err(refused)?;
-    let batch = create(&mut tx, "csv", file_name, &items, now).await?;
-    queue::create_or_reuse(&mut tx, batch, "full", &config)
+    let batch = create(conn, "csv", file_name, &items, now).await?;
+    queue::create_or_reuse(conn, batch, "full", &config)
         .await
         .map_err(refused)?;
-    tx.commit().await.map_err(refused)?;
-    batches::one(db, batch).await
+    Ok(batch)
 }
 
 /// The product lines the pricing configuration skips.
@@ -247,17 +282,17 @@ pub fn listing_rows(products: &[Product]) -> Vec<Map<String, Value>> {
     rows
 }
 
-/// The batch frozen from `seller`'s live inventory, queued for pricing in full.
+/// The batch frozen from `seller`'s live inventory, queued for pricing in full; its number.
 pub async fn seller(
     db: &Database,
     inventory: &impl SellerInventory,
     seller: &str,
-) -> Result<Batch, String> {
+) -> Result<i32, NotImported> {
     let products = inventory.products(seller).await?;
     let mut tx = db.0.begin().await.map_err(refused)?;
     let batch = save_seller(&mut tx, products, seller).await?;
     tx.commit().await.map_err(refused)?;
-    batches::one(db, batch).await
+    Ok(batch)
 }
 
 /// Saves the batch `products` make for `seller` on `conn`, queued for pricing in full; its
@@ -266,16 +301,16 @@ pub async fn save_seller(
     conn: &mut PgConnection,
     products: Vec<Product>,
     seller: &str,
-) -> Result<i32, String> {
+) -> Result<i32, NotImported> {
     let config = scheduler::job_config_on(&mut *conn)
         .await
         .map_err(refused)?;
     let rows = listing_rows(&snapshot(products, &skipped_lines(&config)));
     let items = items(conn, &rows).await?;
     if items.is_empty() {
-        return Err(format!(
+        return Err(NotImported::Nothing(format!(
             "No seller inventory rows were available to import for {seller}"
-        ));
+        )));
     }
     let now = Utc::now()
         .duration_trunc(TimeDelta::milliseconds(1))
@@ -501,7 +536,7 @@ mod tests {
             let captured: Value = serde_json::from_str(&captured).unwrap();
             savepoint.rollback().await.unwrap();
             assert_eq!(
-                made.err(),
+                made.err().map(|not| not.to_string()),
                 theirs["error"].as_str().map(str::to_owned),
                 "{name}"
             );

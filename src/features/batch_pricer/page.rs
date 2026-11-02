@@ -33,7 +33,7 @@ const RELOAD_EVERY: Duration = Duration::from_secs(5);
 /// Reads in a row that fail before a follow gives up (the batch was deleted, the database went).
 const MOST_FAILURES: u32 = 10;
 /// The largest CSV export the screen takes.
-const MOST: usize = 20 << 20;
+const MOST: usize = import::MOST_EXPORT_BYTES;
 
 impl url::BatchPricer {
     pub fn newest() -> Self {
@@ -322,8 +322,8 @@ pub async fn import_csv(
     upload.fields().await?;
     if let (Some((name, bytes)), true) = (chosen, errors.is_empty()) {
         match import::csv(&db, &name, &bytes).await {
-            Ok(batch) => return req.redirect(&url::BatchPricer::batch(batch.batch_number)),
-            Err(message) => errors.add(f.file, message),
+            Ok(batch) => return req.redirect(&url::BatchPricer::batch(batch)),
+            Err(not) => errors.add(f.file, not.to_string()),
         }
     } else if errors.is_empty() {
         errors.add(f.file, "Choose a CSV export.");
@@ -353,14 +353,16 @@ pub async fn import_seller(
     let f = SellerInput::FIELDS;
     let key = input.seller_key.trim();
     let made = if key.is_empty() {
-        Err("Enter a seller key.".to_owned())
+        Err(import::NotImported::Nothing(
+            "Enter a seller key.".to_owned(),
+        ))
     } else {
         let search = TcgPlayerSearch(TcgPlayer::new(db.clone()));
         import::seller(&db, &search, key).await
     };
     let message = match made {
-        Ok(batch) => return req.redirect(&url::BatchPricer::batch(batch.batch_number)),
-        Err(message) => message,
+        Ok(batch) => return req.redirect(&url::BatchPricer::batch(batch)),
+        Err(not) => not.to_string(),
     };
     let mut errors = Errors::new();
     errors.add(f.seller_key, message);
