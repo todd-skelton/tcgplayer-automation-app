@@ -9,13 +9,14 @@ use crate::{
         store::{Item, PAGE_SIZE, RECENT_RUNS, Run, Shown},
         url::{self, View},
     },
-    layout::{LabeledControl, SubmitsOnChange},
+    layout::SubmitsOnChange,
     text::Msg,
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        field::Field,
         input::Input,
         panel::Panel,
         select::Select,
@@ -31,6 +32,24 @@ fn cents(dollars: f64) -> Minor<i64> {
 
 #[derive(Id)]
 struct ScheduleProblemId;
+
+#[derive(Id)]
+struct SellerKeyId;
+
+#[derive(Id)]
+struct MinimumIntervalId;
+
+#[derive(Id)]
+struct RefreshIntervalId;
+
+#[derive(Id)]
+struct BatchSizeId;
+
+#[derive(Id)]
+struct SkuSearchId;
+
+#[derive(Id)]
+struct ShownStateId;
 
 /// The schedule form's id: an answer that refuses it replaces it.
 #[derive(Id)]
@@ -100,20 +119,26 @@ pub fn ScheduleForm<'a>(
             <Switch label="Enable continuous pricing scheduler">
                 <input type="checkbox" role="switch" name={f.enabled} checked={input.enabled}>
             </Switch>
-            <LabeledControl label="Seller key" hint="">
+            <Field id={SellerKeyId} label="Seller key" hint="" error={e.message(f.seller_key)}>
                 <input
                     class={Input {}}
+                    id={SellerKeyId}
                     name={f.seller_key}
                     value={&input.seller_key}
                     maxlength="200"
                     {..e.aria(f.seller_key)}
                 >
-                {e.message(f.seller_key)}
-            </LabeledControl>
+            </Field>
             <div class={Numbers}>
-                <LabeledControl label="Minimum pricing interval (minutes)" hint="">
+                <Field
+                    id={MinimumIntervalId}
+                    label="Minimum pricing interval (minutes)"
+                    hint=""
+                    error={e.message(f.minimum_interval_minutes)}
+                >
                     <input
                         class={Input {}}
+                        id={MinimumIntervalId}
                         type="number"
                         min="15"
                         max="43200"
@@ -121,11 +146,16 @@ pub fn ScheduleForm<'a>(
                         value={&input.minimum_interval_minutes}
                         {..e.aria(f.minimum_interval_minutes)}
                     >
-                    {e.message(f.minimum_interval_minutes)}
-                </LabeledControl>
-                <LabeledControl label="Inventory refresh interval (minutes)" hint="">
+                </Field>
+                <Field
+                    id={RefreshIntervalId}
+                    label="Inventory refresh interval (minutes)"
+                    hint=""
+                    error={e.message(f.inventory_refresh_minutes)}
+                >
                     <input
                         class={Input {}}
+                        id={RefreshIntervalId}
                         type="number"
                         min="5"
                         max="10080"
@@ -133,11 +163,11 @@ pub fn ScheduleForm<'a>(
                         value={&input.inventory_refresh_minutes}
                         {..e.aria(f.inventory_refresh_minutes)}
                     >
-                    {e.message(f.inventory_refresh_minutes)}
-                </LabeledControl>
-                <LabeledControl label="Batch size" hint="">
+                </Field>
+                <Field id={BatchSizeId} label="Batch size" hint="" error={e.message(f.batch_size)}>
                     <input
                         class={Input {}}
+                        id={BatchSizeId}
                         type="number"
                         min="1"
                         max="750"
@@ -145,8 +175,7 @@ pub fn ScheduleForm<'a>(
                         value={&input.batch_size}
                         {..e.aria(f.batch_size)}
                     >
-                    {e.message(f.batch_size)}
-                </LabeledControl>
+                </Field>
             </div>
             <div>
                 <button class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}>
@@ -325,21 +354,29 @@ fn Controls<'a>(screen: &'a Screen) -> impl Render {
                 action={url::ContinuousPricing { view: View::default() }}
                 class={Line}
             >
-                <LabeledControl
+                <Field
+                    id={SkuSearchId}
                     label="Search SKU, product, set, condition, or product line"
                     hint=""
+                    error=""
                 >
-                    <input class={Input {}} type="search" name={f.q} value={screen.view.search()}>
-                </LabeledControl>
-                <LabeledControl label="State" hint="">
-                    <select class={Select {}} name={f.state}>
+                    <input
+                        class={Input {}}
+                        id={SkuSearchId}
+                        type="search"
+                        name={f.q}
+                        value={screen.view.search()}
+                    >
+                </Field>
+                <Field id={ShownStateId} label="State" hint="" error="">
+                    <select class={Select {}} id={ShownStateId} name={f.state}>
                         for state in Shown::ALL {
                             <option value={state} selected={state == shown}>
                                 {state.label()}
                             </option>
                         }
                     </select>
-                </LabeledControl>
+                </Field>
                 <button class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}>
                     "Apply"
                 </button>
