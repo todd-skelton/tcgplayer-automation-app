@@ -15,8 +15,8 @@ use crate::{
     ui::{
         alert::Alert,
         button::{Button, ButtonSize, ButtonVariant},
-        card::{Card, CardContent},
         input::Input,
+        panel::Panel,
     },
 };
 
@@ -69,7 +69,7 @@ pub fn ConnectionCard<'a>(
     html! {
         <section
             id={ConnectionId(connection.provider.as_ref())}
-            class={(Card {}, CardContent {}, Connection)}
+            class={(Panel {}, Connection)}
         >
             <h2>{provider.name()}</h2>
             <p>{status.message()}</p>

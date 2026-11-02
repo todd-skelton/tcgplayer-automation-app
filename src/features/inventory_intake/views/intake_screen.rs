@@ -15,9 +15,11 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{Card, CardContent},
+        checkbox::Checkbox,
         input::Input,
+        panel::Panel,
         select::Select,
+        switch::Switch,
         table::Table,
     },
 };
@@ -100,7 +102,7 @@ pub fn IntakeScreen<'a>(
                 ref={filters}
                 method="get"
                 action={url::InventoryManager { selection: Selection::default() }}
-                class={(Card {}, CardContent {}, Filters)}
+                class={(Panel {}, Filters)}
                 aria-label="Filters"
                 on:change={js::filtered(event, keys)}
             >
@@ -130,15 +132,15 @@ pub fn IntakeScreen<'a>(
                         }
                     </select>
                 </label>
-                <label class={Toggle}>
+                <Switch label="All sets">
                     <input
                         type="checkbox"
+                        role="switch"
                         name={f.scope}
                         value={Scope::AllSets}
                         checked={screen.scope == Scope::AllSets}
                     >
-                    "All sets"
-                </label>
+                </Switch>
                 <label>
                     "Condition"
                     <select
@@ -172,15 +174,14 @@ pub fn IntakeScreen<'a>(
                     <fieldset class={Languages}>
                         <legend>"Languages (none chosen: all)"</legend>
                         for language in LANGUAGES {
-                            <label class={Toggle}>
+                            <Checkbox label={language}>
                                 <input
                                     type="checkbox"
                                     name={f.language}
                                     value={language}
                                     checked={selection.language.iter().any(|l| l == language)}
                                 >
-                                {language}
-                            </label>
+                            </Checkbox>
                         }
                     </fieldset>
                 </details>
@@ -214,7 +215,7 @@ pub fn IntakeScreen<'a>(
                     </button>
                 </noscript>
             </form>
-            <section class={(Card {}, CardContent {})} aria-labelledby={TableHeadingId}>
+            <section class={Panel {}} aria-labelledby={TableHeadingId}>
                 <h2 id={TableHeadingId} class={VisuallyHidden}>"Add new inventory"</h2>
                 <Table>
                     <table>

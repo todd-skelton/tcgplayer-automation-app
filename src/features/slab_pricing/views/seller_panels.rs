@@ -23,6 +23,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
+        checkbox::Checkbox,
         input::Input,
     },
 };
@@ -88,18 +89,16 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 >
                     <input type="hidden" name={f.revision} value={view.settings.revision}>
                     <div class={Line}>
-                        <label class={Check}>
+                        <Checkbox label="Enable maintenance">
                             <input type="checkbox" name={f.enabled} checked={view.settings.enabled}>
-                            "Enable maintenance"
-                        </label>
-                        <label class={Check}>
+                        </Checkbox>
+                        <Checkbox label="Include active supply">
                             <input
                                 type="checkbox"
                                 name={f.include_supply}
                                 checked={view.settings.include_supply}
                             >
-                            "Include active supply"
-                        </label>
+                        </Checkbox>
                         <LabeledControl label="Refresh interval (minutes)" hint="">
                             <input
                                 class={Input {}}

@@ -14,8 +14,9 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{Card, CardContent},
+        checkbox::Checkbox,
         input::Input,
+        panel::Panel,
         select::Select,
     },
 };
@@ -67,7 +68,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                 let e = errors.within(ProductLinesCardId);
                 <section
                     id={ProductLinesCardId}
-                    class={(Card {}, CardContent {}, Stack)}
+                    class={(Panel {}, Stack)}
                     aria-labelledby="job-product-lines"
                 >
                     <h2 id="job-product-lines">"Refresh product lines"</h2>
@@ -92,7 +93,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                 let e = errors.within(NewProductsCardId);
                 <section
                     id={NewProductsCardId}
-                    class={(Card {}, CardContent {}, Stack)}
+                    class={(Panel {}, Stack)}
                     aria-labelledby="job-new-products"
                 >
                     <h2 id="job-new-products">"Sync new products"</h2>
@@ -121,7 +122,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                 let e = errors.within(EveryProductCardId);
                 <section
                     id={EveryProductCardId}
-                    class={(Card {}, CardContent {}, Stack)}
+                    class={(Panel {}, Stack)}
                     aria-labelledby="job-every-product"
                 >
                     <h2 id="job-every-product">"Check every product in a product line"</h2>
@@ -147,7 +148,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                 let e = errors.within(RepairProductCardId);
                 <section
                     id={RepairProductCardId}
-                    class={(Card {}, CardContent {}, Stack)}
+                    class={(Panel {}, Stack)}
                     aria-labelledby="job-product"
                 >
                     <h2 id="job-product">"Repair one product"</h2>
@@ -186,7 +187,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                 let e = errors.within(HydrateSetCardId);
                 <section
                     id={HydrateSetCardId}
-                    class={(Card {}, CardContent {}, Stack)}
+                    class={(Panel {}, Stack)}
                     aria-labelledby="job-set"
                 >
                     <h2 id="job-set">"Hydrate one set"</h2>
@@ -228,14 +229,13 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                             </select>
                             {e.message(SetInput::FIELDS.product_line)}
                         </LabeledControl>
-                        <label class={Check}>
+                        <Checkbox label="Delete existing set data first and fully refetch it">
                             <input
                                 type="checkbox"
                                 name={SetInput::FIELDS.delete_existing}
                                 checked={screen.set.delete_existing}
                             >
-                            "Delete existing set data first and fully refetch it"
-                        </label>
+                        </Checkbox>
                         <Run ready="Hydrate Set Products and SKUs" working="Hydrating Set..." />
                         <Outcome
                             ran={ran}

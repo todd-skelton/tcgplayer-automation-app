@@ -1,6 +1,6 @@
 .segmented { display: contents; }
 .segmented [role="radiogroup"] {
-  display: inline-flex; align-items: center; gap: .25rem; padding: .25rem;
+  display: inline-flex; width: fit-content; align-items: center; gap: .25rem; padding: .25rem;
   background: var(--muted); color: var(--muted-foreground); border-radius: var(--radius);
 }
 .segmented [role="radio"] {

@@ -23,7 +23,7 @@ use crate::{
     ui::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{Card, CardContent},
+        panel::Panel,
         select::Select,
         table::{Table, TableNumeric},
     },
@@ -68,7 +68,7 @@ fn When<'a>(at: Option<&'a str>, t: Msg) -> impl Render {
 #[component(css = super::strategy_screen::StrategyScreen)]
 pub fn SellingHistoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     html! {
-        <section class={(Card {}, CardContent {})} aria-labelledby="selling-history">
+        <section class={Panel {}} aria-labelledby="selling-history">
             match &screen.selling_history {
                 Err(why) => {
                     <h2 id="selling-history">"Selling history"</h2>

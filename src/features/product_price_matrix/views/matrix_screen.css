@@ -42,11 +42,6 @@
   gap: var(--space-1);
   font-size: var(--font-size-sm);
 }
-.toggle {
-  display: flex !important;
-  align-items: center;
-  gap: var(--space-2);
-}
 .product {
   display: grid;
   gap: var(--space-4);

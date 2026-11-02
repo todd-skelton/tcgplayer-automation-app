@@ -12,8 +12,8 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{Card, CardContent},
         dialog::{Dialog, DialogFooter},
+        panel::Panel,
     },
 };
 
@@ -106,7 +106,7 @@ pub fn ShippingWorkflowScreen<'a>(
                 </a>
             </header>
             <Refused problem={problem} />
-            <section aria-label={step.label()} class={(Card {}, CardContent {}, StepPanel)}>
+            <section aria-label={step.label()} class={(Panel {}, StepPanel)}>
                 {children}
             </section>
             {bar}

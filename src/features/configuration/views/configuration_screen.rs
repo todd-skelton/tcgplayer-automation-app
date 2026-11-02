@@ -19,9 +19,11 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{Card, CardContent},
+        checkbox::Checkbox,
         input::Input,
+        panel::Panel,
         select::Select,
+        switch::Switch,
         table::Table,
     },
 };
@@ -94,7 +96,7 @@ pub fn ConfigurationScreen<'a>(
             <SnapsForm section={snaps} />
             <ReportPanels reports={reports} />
             <SupplyForm section={supply} />
-            <section class={(Card {}, CardContent {}, Section)}>
+            <section class={(Panel {}, Section)}>
                 <h2>"Reset Configuration"</h2>
                 <p class={muted()}>
                     "Reset all configuration settings back to their original default values."
@@ -155,7 +157,7 @@ pub fn PricingForm<'a>(section: &'a Section<'a, PricingInput>) -> impl Patch {
             method="post"
             action={url::SavePricing}
             data-patch
-            class={(Card {}, CardContent {}, Section, Horizon)}
+            class={(Panel {}, Section, Horizon)}
         >
             <SubmitsOnChange>
                 <div class={Section}>
@@ -304,7 +306,7 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
         };
         let (min, max) = (lines.percentiles.0.to_string(), lines.percentiles.1.to_string());
         let hurdle = lines.default_hurdle.to_string();
-        <section id={ProductLinesId} class={(Card {}, CardContent {}, Section)}>
+        <section id={ProductLinesId} class={(Panel {}, Section)}>
             <h2>"Product Line Pricing"</h2>
             <p class={muted()}>
                 "Configure a different percentile or profit-per-day hurdle for specific product lines. You can also skip product lines entirely. Non-configured product lines use the defaults."
@@ -369,10 +371,9 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
                     >
                     {e.message(a.daily_return_hurdle)}
                 </LabeledControl>
-                <label class={Switch}>
+                <Checkbox label="Skip">
                     <input type="checkbox" name={a.skip} checked={lines.add.skip}>
-                    "Skip"
-                </label>
+                </Checkbox>
                 <button class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}>
                     "Add"
                 </button>
@@ -443,7 +444,7 @@ pub fn SnapsForm<'a>(section: &'a Section<'a, SnapsInput>) -> impl Patch {
             method="post"
             action={url::SaveSnaps}
             data-patch
-            class={(Card {}, CardContent {}, Section)}
+            class={(Panel {}, Section)}
         >
             <SubmitsOnChange>
                 <div class={Section}>
@@ -452,22 +453,25 @@ pub fn SnapsForm<'a>(section: &'a Section<'a, SnapsInput>) -> impl Patch {
                     <p class={muted()}>
                         "Under the profit-per-day policy, a price just above $5, $50, or $250 is compared with one cent under. Each price is valued after the shipping it is expected to cost, learned from recent orders and the baskets buyers place, and discounted over its forecast sell time. The lower price is listed only when it returns more and stays at or above the price floor."
                     </p>
-                    <label class={Switch}>
-                        <input type="checkbox" name={f.enabled} checked={input.enabled}>
-                        "Snap prices just under shipping thresholds"
-                    </label>
+                    <Switch label="Snap prices just under shipping thresholds">
+                        <input
+                            type="checkbox"
+                            role="switch"
+                            name={f.enabled}
+                            checked={input.enabled}
+                        >
+                    </Switch>
                     <div class={row(Space::_3)}>
                         for threshold in SHIPPING_THRESHOLDS {
-                            <label class={Switch}>
+                            let label = format!("${threshold} (list at ${:.2})", f64::from(threshold) - 0.01);
+                            <Checkbox label={&label}>
                                 <input
                                     type="checkbox"
                                     name={f.thresholds}
                                     value={threshold}
                                     checked={input.thresholds.contains(&threshold)}
                                 >
-                                "$"{threshold}" (list at $"
-                                {format!("{:.2}", f64::from(threshold) - 0.01)}")"
-                            </label>
+                            </Checkbox>
                         }
                     </div>
                     <div class={Row}>
@@ -529,7 +533,7 @@ pub fn SupplyForm<'a>(section: &'a Section<'a, SupplyInput>) -> impl Patch {
             method="post"
             action={url::SaveSupply}
             data-patch
-            class={(Card {}, CardContent {}, Section, Supply)}
+            class={(Panel {}, Section, Supply)}
         >
             <SubmitsOnChange>
                 <div class={Section}>
@@ -541,27 +545,27 @@ pub fn SupplyForm<'a>(section: &'a Section<'a, SupplyInput>) -> impl Patch {
                         <strong>"Note:"</strong>
                         " Enabling this feature significantly increases network calls (1 listing API call per SKU)."
                     </p>
-                    <label class={Switch}>
+                    <Switch label="Enable Supply Analysis">
                         <input
                             type="checkbox"
+                            role="switch"
                             name={f.enabled}
                             checked={input.enabled}
                             data-enables
                         >
-                        "Enable Supply Analysis"
-                    </label>
+                    </Switch>
                     <div class={(ForSupply, Section)}>
                         <Alert variant={AlertVariant::Info}>
                             "Supply analysis is enabled. This will increase processing time and network usage but provides more accurate time-to-sell estimates by analyzing current market supply."
                         </Alert>
-                        <label class={Switch}>
+                        <Switch label="Include Unverified Sellers">
                             <input
                                 type="checkbox"
+                                role="switch"
                                 name={f.include_unverified_sellers}
                                 checked={input.include_unverified_sellers}
                             >
-                            "Include Unverified Sellers"
-                        </label>
+                        </Switch>
                         <p class={muted()}>
                             "When enabled, includes listings from all sellers in the analysis. When disabled, only verified sellers are considered (recommended for quality)."
                         </p>

@@ -12,9 +12,10 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{Card, CardContent},
         input::Input,
+        panel::Panel,
         select::Select,
+        switch::Switch,
     },
 };
 
@@ -51,7 +52,7 @@ pub fn ShippingScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
                     " is not set. Direct postage purchasing will stay disabled until it is configured."
                 </Alert>
             }
-            <section class={(Card {}, CardContent {})}>
+            <section class={Panel {}}>
                 <div class={(row(Space::_3), justify_between(), mb_4())}>
                     <div>
                         <h2>"Shipping Configuration"</h2>
@@ -203,10 +204,14 @@ pub fn ShippingSettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) ->
                     </select>
                 </LabeledControl>
             </div>
-            <label>
-                <input type="checkbox" name={f.combine_orders} checked={input.combine_orders}>
-                " Combine same-address orders into one shipment"
-            </label>
+            <Switch label="Combine same-address orders into one shipment">
+                <input
+                    type="checkbox"
+                    role="switch"
+                    name={f.combine_orders}
+                    checked={input.combine_orders}
+                >
+            </Switch>
             <div>
                 <button class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}>
                     "Save Settings"

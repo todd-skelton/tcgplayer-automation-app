@@ -19,9 +19,10 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{Card, CardContent},
         input::Input,
+        panel::Panel,
         select::Select,
+        switch::Switch,
     },
 };
 
@@ -74,7 +75,7 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             <form
                 method="get"
                 action={&here}
-                class={(Card {}, CardContent {}, Choices)}
+                class={(Panel {}, Choices)}
                 aria-label="Choose a product"
                 data-keep-place
             >
@@ -101,15 +102,15 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                 }
                             </select>
                         </label>
-                        <label class={Toggle}>
+                        <Switch label="All sets">
                             <input
                                 type="checkbox"
+                                role="switch"
                                 name={f.scope}
                                 value={Scope::AllSets}
                                 checked={screen.scope == Scope::AllSets}
                             >
-                            "All sets"
-                        </label>
+                        </Switch>
                     </div>
                     <div class={Line}>
                         if screen.scope == Scope::Set {
@@ -163,7 +164,7 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             }
             if let Some(product) = &screen.product {
                 <section
-                    class={(Card {}, CardContent {}, Product)}
+                    class={(Panel {}, Product)}
                     aria-label={&product.product_name}
                 >
                     <header class={Head}>

@@ -16,9 +16,10 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{Card, CardContent},
         input::Input,
+        panel::Panel,
         select::Select,
+        switch::Switch,
     },
 };
 
@@ -63,7 +64,7 @@ pub fn ContinuousScreen<'a>(
                 </p>
             </header>
             <Problem why={screen.problem.as_deref()} />
-            <section class={(Card {}, CardContent {}, Stack)} aria-labelledby="continuous-schedule">
+            <section class={(Panel {}, Stack)} aria-labelledby="continuous-schedule">
                 <h2 id="continuous-schedule">"Schedule"</h2>
                 <ScheduleForm screen={screen} input={input} errors={errors} />
                 <Actions screen={screen} />
@@ -96,10 +97,9 @@ pub fn ScheduleForm<'a>(
             class={Stack}
         >
             {errors.form_message()}
-            <label class={Switch}>
-                <input type="checkbox" name={f.enabled} checked={input.enabled}>
-                "Enable continuous pricing scheduler"
-            </label>
+            <Switch label="Enable continuous pricing scheduler">
+                <input type="checkbox" role="switch" name={f.enabled} checked={input.enabled}>
+            </Switch>
             <LabeledControl label="Seller key" hint="">
                 <input
                     class={Input {}}
@@ -223,7 +223,7 @@ fn Snapshot<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let (awaiting, awaiting_units) = s.awaiting_publication;
     let refresh = s.last_refresh.as_ref();
     html! {
-        <section class={(Card {}, CardContent {}, Stack)} aria-labelledby="continuous-snapshot">
+        <section class={(Panel {}, Stack)} aria-labelledby="continuous-snapshot">
             <div class={Spread}>
                 <div>
                     <h2 id="continuous-snapshot">"Current inventory snapshot"</h2>
@@ -315,7 +315,7 @@ fn Controls<'a>(screen: &'a Screen) -> impl Render {
     let f = View::FIELDS;
     let shown = screen.view.shown();
     html! {
-        <section class={(Card {}, CardContent {}, Stack)} aria-labelledby="continuous-controls">
+        <section class={(Panel {}, Stack)} aria-labelledby="continuous-controls">
             <h2 id="continuous-controls">"Inventory controls"</h2>
             <p class={muted()}>
                 "Search and manage one bounded page at a time. Filters are retained in the URL so a review view can be bookmarked."
@@ -393,7 +393,7 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
     let (priced, published) = (item.last_priced_at, item.last_published_at);
     let action = || url::SetSku { view: view.clone() };
     html! {
-        <article class={(Card {}, CardContent {}, SkuCard)}>
+        <article class={(Panel {}, SkuCard)}>
             <div class={Spread}>
                 <div>
                     <strong>{&item.product_name}</strong>
@@ -423,15 +423,15 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
                 <form method="post" action={action()}>
                     <input type="hidden" name={f.sku} value={item.sku}>
                     <SubmitsOnChange>
-                        <label class={Switch}>
+                        <Switch label={item.state()}>
                             <input
                                 type="checkbox"
+                                role="switch"
                                 name={f.enabled}
                                 checked={item.on()}
                                 disabled={!item.pricing_eligible}
                             >
-                            {item.state()}
-                        </label>
+                        </Switch>
                         <noscript>
                             <button
                                 class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
@@ -462,7 +462,7 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
 #[component(css = ContinuousScreen)]
 fn Runs<'a>(runs: &'a [Run], t: Msg) -> impl Render {
     html! {
-        <section class={(Card {}, CardContent {}, Stack)} aria-labelledby="continuous-runs">
+        <section class={(Panel {}, Stack)} aria-labelledby="continuous-runs">
             <div>
                 <h2 id="continuous-runs">"Recent automatic runs"</h2>
                 <p class={muted()}>

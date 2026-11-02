@@ -18,8 +18,8 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{Card, CardContent},
         input::Input,
+        panel::Panel,
         select::Select,
         table::Table,
     },
@@ -58,7 +58,7 @@ pub fn SlabScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 method="post"
                 action={url::LookUp { choice: choice.clone() }}
                 data-patch
-                class={(Card {}, CardContent {}, Line)}
+                class={(Panel {}, Line)}
             >
                 <LabeledControl label="Grader" hint="">
                     <input
@@ -105,7 +105,7 @@ pub fn SlabScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                     }
                 }
                 (Some((grader, cert)), None) => {
-                    <p class={(Card {}, CardContent {})}>
+                    <p class={Panel {}}>
                         {grader}" certificate "{cert}" has not been looked up yet."
                     </p>
                 }
@@ -126,7 +126,7 @@ fn ReviewedListing<'a>(screen: &'a Screen) -> impl Render {
     };
     let f = AssignInput::FIELDS;
     html! {
-        <section class={(Card {}, CardContent {}, Stack)} aria-label="Selected listing">
+        <section class={(Panel {}, Stack)} aria-label="Selected listing">
             match &screen.listing {
                 None => <p>"The listing is not on this page of the inventory any more."</p>,
                 Some(listing) => {
@@ -179,7 +179,7 @@ fn IdentityCard<'a>(
     let f = ConfirmInput::FIELDS;
     let grades: Vec<f64> = (2..=20).map(|half| f64::from(half) / 2.0).collect();
     html! {
-        <section class={(Card {}, CardContent {}, Stack)} aria-labelledby="slab-identity">
+        <section class={(Panel {}, Stack)} aria-labelledby="slab-identity">
             <h2 id="slab-identity">
                 {card.name.as_deref().unwrap_or("Card identity")}
                 " · Owned "{&record.grader}" "
@@ -285,7 +285,7 @@ fn InventoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let choice = &screen.choice;
     let f = Choice::FIELDS;
     html! {
-        <section class={(Card {}, CardContent {}, Stack)} aria-labelledby="slab-inventory">
+        <section class={(Panel {}, Stack)} aria-labelledby="slab-inventory">
             <h2 id="slab-inventory">"eBay inventory"</h2>
             <form method="get" action={url::SlabPricing::at(&Choice::default())} class={Line}>
                 // Another seller's inventory opens at its first page, no listing open.

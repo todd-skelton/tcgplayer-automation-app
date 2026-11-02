@@ -21,6 +21,7 @@ pub mod dropdown_menu;
 pub mod field;
 pub mod input;
 pub mod pagination;
+pub mod panel;
 pub mod popover;
 pub mod radio_group;
 pub mod segmented;
@@ -51,6 +52,7 @@ pub const COMPONENTS: &[Component] = &[
     field::Field,
     input::Input,
     pagination::Pagination,
+    panel::Panel,
     popover::Popover,
     radio_group::RadioGroup,
     segmented::Segmented,
