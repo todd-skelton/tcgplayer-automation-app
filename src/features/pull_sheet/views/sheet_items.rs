@@ -13,6 +13,7 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
+        dialog::Dialog,
         input::Input,
         table::{Table, TableNumeric},
     },
@@ -219,7 +220,7 @@ pub fn SheetItems<'a>(
             <p ref={empty} class={muted()} hidden={!items.is_empty()}>
                 "No items match the filter."
             </p>
-            <dialog ref={dialog} class={Picture}>
+            <dialog ref={dialog} class={(Dialog {}, Picture)}>
                 <form method="dialog">
                     <button
                         class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}

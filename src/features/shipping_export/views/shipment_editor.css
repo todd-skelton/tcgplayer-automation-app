@@ -1,14 +1,5 @@
+/* The kit's right sheet; its form is longer than a window, so it scrolls. */
 .shipment-editor {
-  inset-inline: auto 0;
-  inset-block: 0;
-  width: min(420px, 100vw);
-  max-height: 100dvh;
-  height: 100dvh;
-  margin: 0;
-  padding: var(--space-5);
-  border: 0;
-  border-inline-start: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
   overflow-y: auto;
 }
 .head {
@@ -38,9 +29,4 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
-}
-.save {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--primary-foreground);
 }

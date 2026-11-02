@@ -14,6 +14,8 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         input::Input,
+        popover::Popover,
+        separator::{Orientation, Separator},
     },
 };
 
@@ -68,12 +70,15 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
                 <button
                     type="button"
                     popovertarget={SellerPopoverId}
-                    class={(SellerButton, seller.is_empty().then_some(Unset))}
+                    class={(
+                        Button { variant: ButtonVariant::Link, size: ButtonSize::Md },
+                        seller.is_empty().then_some(Unset),
+                    )}
                 >
                     "Seller: "
                     if seller.is_empty() { "not set" } else { {seller} }
                 </button>
-                <div popover id={SellerPopoverId} class={Popover}>
+                <div popover id={SellerPopoverId} class={(Popover {}, Seller)}>
                     <form method="get" action={&here}>
                         {keep_query(&here, html! {
                             <LabeledControl label="Seller Key" hint={&hint}>
@@ -88,7 +93,7 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
                         })}
                     </form>
                 </div>
-                <span class={Divider}></span>
+                <Separator orientation={Orientation::Vertical} />
                 <form method="post" action={url::LoadOrder} class={row(Space::_2)} data-patch>
                     <input type="hidden" name={l.seller_key} value={seller}>
                     <input

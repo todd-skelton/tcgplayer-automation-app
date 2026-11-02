@@ -16,6 +16,7 @@ use crate::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
+        dialog::Dialog,
         input::Input,
         select::Select,
         table::Table,
@@ -179,7 +180,7 @@ fn SaleDialog<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> impl 
             open
             closedby="any"
             aria-labelledby="slab-comp-sale"
-            class={Sale}
+            class={(Dialog {}, Sale)}
             on:connect={dialog::modalClosedBy(target, close, signal)}
         >
             <div class={Head}>

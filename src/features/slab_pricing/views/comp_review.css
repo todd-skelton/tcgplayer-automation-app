@@ -34,10 +34,7 @@
     background: color-mix(in srgb, var(--primary) 10%, transparent);
   }
 }
+/* Wider than the kit's dialog, which has one width (corten#646). */
 .sale {
-  width: min(560px, calc(100vw - 2 * var(--space-4)));
-  padding: var(--space-5);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
+  max-width: 35rem;
 }

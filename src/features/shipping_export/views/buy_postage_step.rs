@@ -18,6 +18,7 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        dialog::{Dialog, DialogFooter},
         table::{Table, TableNumeric},
     },
 };
@@ -296,7 +297,11 @@ fn BuyAgainDialog<'a>(
         Direction::Return => ("return label", "A return label"),
     };
     html! {
-        <dialog id={BuyAgainId(key)} aria-label={format!("Buy another {what}?")} class={Confirm}>
+        <dialog
+            id={BuyAgainId(key)}
+            aria-label={format!("Buy another {what}?")}
+            class={(Dialog {}, Confirm)}
+        >
             <h2>"Buy another "{what}"?"</h2>
             <p>
                 {bought}" was already bought for shipment "{reference}" in "{mode.name()}
@@ -305,7 +310,7 @@ fn BuyAgainDialog<'a>(
             <form
                 method="post"
                 action={url::BuyShipmentPostage { reference: reference.to_owned() }}
-                class={row(Space::_2)}
+                class={DialogFooter {}}
                 data-patch
             >
                 <input type="hidden" name={f.direction} value={direction}>

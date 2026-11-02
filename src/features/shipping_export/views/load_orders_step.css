@@ -11,28 +11,14 @@
     content: " …";
   }
 }
-.seller-button {
-  border-color: transparent;
-  background: none;
-  color: var(--primary);
-}
 .unset {
   color: var(--warning);
 }
-.popover {
-  width: 360px;
-  padding: var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
+.seller {
   & form {
     display: grid;
     gap: var(--space-3);
   }
-}
-.divider {
-  align-self: stretch;
-  border-inline-start: 1px solid var(--border);
 }
 .menu {
   margin-inline-start: auto;

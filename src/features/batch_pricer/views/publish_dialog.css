@@ -1,11 +1,6 @@
+/* A list to choose from: wider than the kit's dialog, which has one width (corten#646). */
 .publish-dialog {
-  width: min(56rem, 100vw - 2rem);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-5);
-  &::backdrop {
-    background: rgb(0 0 0 / 0.4);
-  }
+  max-width: 56rem;
   & form {
     display: grid;
     gap: var(--space-3);
@@ -50,19 +45,4 @@
   & small {
     color: var(--muted-foreground);
   }
-}
-.ready {
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-pill);
-  background: var(--success);
-  color: var(--primary-foreground);
-  font-size: var(--font-size-sm);
-}
-.footer {
-  justify-content: flex-end;
-}
-.publish {
-  background: var(--success);
-  border-color: var(--success);
-  color: var(--primary-foreground);
 }

@@ -87,13 +87,3 @@ form[aria-busy="true"] button {
 table {
   border-collapse: collapse;
 }
-:where(dialog) {
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--card);
-  color: var(--foreground);
-  box-shadow: var(--shadow-md);
-}
-:where(dialog)::backdrop {
-  background: rgb(0 0 0 / 0.5);
-}

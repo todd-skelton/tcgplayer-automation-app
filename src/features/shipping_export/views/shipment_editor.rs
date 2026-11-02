@@ -12,7 +12,12 @@ use crate::{
         },
     },
     layout::LabeledControl,
-    ui::{input::Input, select::Select},
+    ui::{
+        button::{Button, ButtonSize, ButtonVariant},
+        input::Input,
+        select::Select,
+        sheet::{Sheet, Side},
+    },
 };
 
 /// The editor's form: a refused save replaces it with the fields as sent and why.
@@ -33,7 +38,7 @@ pub fn ShipmentEditor<'a>(
             open
             closedby="any"
             aria-label="Edit Shipment"
-            class={ShipmentEditor}
+            class={(Sheet { side: Side::Right }, ShipmentEditor)}
             on:connect={dialog::modalClosedBy(target, close, signal)}
         >
             <header class={Head}>
@@ -79,7 +84,11 @@ pub fn ShipmentEditorForm<'a>(
                 {e.message(f.reference)}
             </LabeledControl>
             <PackageFields input={input} e={&e} />
-            <button class={Save}>"Save Shipment Changes"</button>
+            <button
+                class={(Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }, Save)}
+            >
+                "Save Shipment Changes"
+            </button>
         </form>
     }
 }

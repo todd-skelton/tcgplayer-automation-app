@@ -8,7 +8,11 @@ use crate::{
     },
     text::Msg,
     theme::*,
-    ui::button::{Button, ButtonSize, ButtonVariant},
+    ui::{
+        badge::{Badge, BadgeEmphasis, BadgeTone},
+        button::{Button, ButtonSize, ButtonVariant},
+        dialog::{Dialog, DialogFooter},
+    },
 };
 
 /// The dialog's id: the Publish button opens it.
@@ -40,7 +44,11 @@ pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> 
         number: t.js().number(),
     };
     html! {
-        <dialog id={PublishDialogId} aria-labelledby={PublishHeadingId} class={PublishDialog}>
+        <dialog
+            id={PublishDialogId}
+            aria-labelledby={PublishHeadingId}
+            class={(Dialog {}, PublishDialog)}
+        >
             <form
                 method="post"
                 action={url::Publish { batch }}
@@ -97,7 +105,7 @@ pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> 
                         />
                     }
                 </ul>
-                <div class={(row(Space::_2), Footer)}>
+                <div class={DialogFooter {}}>
                     <button
                         class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
                         type="button"
@@ -106,7 +114,11 @@ pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> 
                     >
                         "Cancel"
                     </button>
-                    <button ref={submit} class={Publish} disabled={count == 0}>
+                    <button
+                        ref={submit}
+                        class={Button { variant: ButtonVariant::Success, size: ButtonSize::Md }}
+                        disabled={count == 0}
+                    >
                         "Publish "{count}" SKUs"
                     </button>
                 </div>
@@ -163,7 +175,9 @@ pub fn PublishItem(key: i64, delta: i64, checked: bool, candidate: Described) ->
             <span class={row(Space::_2)}>
                 <span>{&candidate.change}</span>
                 <span>"Qty "{format!("{delta:+}")}</span>
-                <span class={Ready}>"Ready"</span>
+                <span class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Solid }}>
+                    "Ready"
+                </span>
             </span>
         </li>
     }

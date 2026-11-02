@@ -93,9 +93,9 @@
   overflow: hidden;
   clip-path: inset(50%);
 }
+/* A picture: wider than the kit's dialog, which has one width (corten#646). */
 .picture {
-  max-width: min(90vw, 640px);
-  padding: var(--space-5);
+  max-width: 40rem;
   & form {
     position: absolute;
     top: var(--space-2);

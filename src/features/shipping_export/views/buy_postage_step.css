@@ -71,10 +71,7 @@
     background: var(--border);
   }
 }
+/* Opened from a table cell, whose alignment it would otherwise inherit. */
 .confirm {
-  max-width: 480px;
-  padding: var(--space-5);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
   text-align: start;
 }

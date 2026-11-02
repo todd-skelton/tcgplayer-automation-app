@@ -17,6 +17,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         checkbox::Checkbox,
+        dialog::{Dialog, DialogFooter},
         input::Input,
         select::Select,
         switch::Switch,
@@ -257,9 +258,9 @@ pub fn IntakeScreen<'a>(
                 target={queuing.batches.ok().map(|b| &b.target)}
                 errors={queuing.errors}
             />
-            <dialog id={PictureId} ref={dialog} class={Picture} closedby="any">
+            <dialog id={PictureId} ref={dialog} class={(Dialog {}, Picture)} closedby="any">
                 <img ref={image} alt="Product">
-                <form method="dialog">
+                <form method="dialog" class={DialogFooter {}}>
                     <button
                         class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
                     >
