@@ -80,10 +80,6 @@
   & header {
     justify-content: space-between;
   }
-  & progress {
-    width: 100%;
-    height: 10px;
-  }
   & p {
     margin: 0;
   }
@@ -98,9 +94,6 @@
   gap: var(--space-1);
   padding-left: var(--space-3);
   border-left: 3px solid var(--primary);
-  & progress {
-    height: 6px;
-  }
 }
 .confirm {
   max-width: 32rem;

@@ -22,6 +22,7 @@ pub mod field;
 pub mod input;
 pub mod pagination;
 pub mod popover;
+pub mod progress_bar;
 pub mod radio_group;
 pub mod select;
 pub mod separator;
@@ -51,6 +52,7 @@ pub const COMPONENTS: &[Component] = &[
     input::Input,
     pagination::Pagination,
     popover::Popover,
+    progress_bar::ProgressBar,
     radio_group::RadioGroup,
     select::Select,
     separator::Separator,
