@@ -1,0 +1,36 @@
+/* corten ui 0.1.0: nav_bar 8eb1ed09a2795f58 */
+.bar {
+  display: flex; align-items: center; gap: 1.5rem; min-height: 3.25rem; padding-inline: 1.5rem;
+  background: var(--card); color: var(--card-foreground); border-bottom: 1px solid var(--border);
+}
+.brand { flex: none; display: inline-flex; align-items: center; gap: .5rem; color: var(--foreground); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.brand:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 2px; }
+/* The links are one row the height of the bar, scrolling sideways when it is too narrow. A shadow
+   at an edge says more links are past it: each is covered by the bar's color at that end of the
+   links (attached to them, so it scrolls with them) and shows once the end has scrolled away. */
+.sections {
+  display: flex; flex: 1 1 auto; align-self: stretch; min-width: 0; overflow-x: auto; scrollbar-width: thin;
+  background:
+    linear-gradient(to right, var(--card) 40%, transparent) left / 2rem 100% no-repeat local,
+    linear-gradient(to left, var(--card) 40%, transparent) right / 2rem 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, color-mix(in oklab, var(--foreground) 20%, transparent), transparent) left / .75rem 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, color-mix(in oklab, var(--foreground) 20%, transparent), transparent) right / .75rem 100% no-repeat scroll;
+}
+/* A touch screen swipes the row, so its scrollbar goes; a mouse needs one, and so does forced
+   colors, which drop the shadows (below). */
+@media (pointer: coarse) { .sections { scrollbar-width: none; } }
+.sections > a {
+  display: flex; flex: none; align-items: center; padding-inline: .75rem; white-space: nowrap;
+  color: var(--muted-foreground); font-size: var(--control-font-size); font-weight: 500; text-decoration: none; transition: color .15s;
+}
+.sections > a:hover { color: var(--foreground); }
+.sections > a:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; border-radius: 2px; }
+.sections > a[aria-current="page"] { color: var(--foreground); box-shadow: inset 0 -2px var(--primary); }
+.actions { display: flex; flex: none; align-items: center; gap: .5rem; margin-inline-start: auto; }
+@media (max-width: 40rem) { .bar { gap: .75rem; padding-inline: 1rem; } }
+/* Forced colors drop the shadows: the current link is underlined instead, and the links keep their
+   scrollbar on a touch screen too. */
+@media (forced-colors: active) {
+  .sections { scrollbar-width: thin; }
+  .sections > a[aria-current="page"] { text-decoration: underline; text-underline-offset: 6px; }
+}

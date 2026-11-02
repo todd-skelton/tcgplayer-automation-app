@@ -20,6 +20,7 @@ pub mod dialog;
 pub mod dropdown_menu;
 pub mod field;
 pub mod input;
+pub mod nav_bar;
 pub mod pagination;
 pub mod popover;
 pub mod progress;
@@ -31,6 +32,7 @@ pub mod sheet;
 pub mod skeleton;
 pub mod slider;
 pub mod stats;
+pub mod steps;
 pub mod switch;
 pub mod table;
 pub mod tabs;
@@ -52,6 +54,7 @@ pub const COMPONENTS: &[Component] = &[
     dropdown_menu::DropdownMenu,
     field::Field,
     input::Input,
+    nav_bar::NavBar,
     pagination::Pagination,
     popover::Popover,
     progress::Progress,
@@ -63,6 +66,7 @@ pub const COMPONENTS: &[Component] = &[
     skeleton::Skeleton,
     slider::Slider,
     stats::Stats,
+    steps::Steps,
     switch::Switch,
     table::Table,
     tabs::Tabs,

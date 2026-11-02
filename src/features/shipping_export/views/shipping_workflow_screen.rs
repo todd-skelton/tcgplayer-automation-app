@@ -14,6 +14,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         dialog::{Dialog, DialogFooter},
+        steps::{Step as StepLink, StepState, Steps},
     },
 };
 
@@ -65,24 +66,14 @@ pub fn ShippingWorkflowScreen<'a>(
     children: impl Render,
 ) -> impl Render {
     html! {
+        let links = Step::ALL.map(ShippingWorkflow::at);
+        let steps = steps(step, &links);
         <div class={ShippingWorkflowScreen}>
             <header class={Header}>
                 <h1>"Shipping Workflow"</h1>
-                <nav aria-label="Steps" class={Stepper}>
-                    <ol>
-                        for (i, each) in Step::ALL.into_iter().enumerate() {
-                            <li class={each.before(step).then_some(Done)}>
-                                <a
-                                    href={ShippingWorkflow::at(each)}
-                                    aria-current={(each == step).then_some("step")}
-                                >
-                                    <span class={Number}>{i + 1}</span>
-                                    {each.label()}
-                                </a>
-                            </li>
-                        }
-                    </ol>
-                </nav>
+                <div class={StepsSlot}>
+                    <Steps label="Steps" steps={&steps} />
+                </div>
                 if let Some(warning) = mode_warning(mode) {
                     <span
                         class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Outline }}
@@ -112,6 +103,26 @@ pub fn ShippingWorkflowScreen<'a>(
             {bar}
         </div>
     }
+}
+
+/// The workflow's steps for the kit's `Steps`: those before the current one done, the rest not
+/// started, each a link to its step.
+fn steps<'a>(current: Step, links: &'a [ShippingWorkflow; 6]) -> Vec<StepLink<'a>> {
+    Step::ALL
+        .iter()
+        .zip(links)
+        .map(|(&each, link)| StepLink {
+            label: each.label(),
+            link: Some(link),
+            state: if each == current {
+                StepState::Current
+            } else if each.before(current) {
+                StepState::Done("(done)")
+            } else {
+                StepState::Todo("(not started)")
+            },
+        })
+        .collect()
 }
 
 /// Where the step stands, the value of what it works on, its one action, and the way to the next
