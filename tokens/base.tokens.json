@@ -472,6 +472,62 @@
       }
     }
   },
+  "control-height": {
+    "$type": "dimension",
+    "$value": {
+      "value": 2.25,
+      "unit": "rem"
+    },
+    "$description": "A kit control of the default size: button, field, select, menu button, page link."
+  },
+  "control-height-sm": {
+    "$type": "dimension",
+    "$value": {
+      "value": 2,
+      "unit": "rem"
+    },
+    "$description": "A small button and a tab."
+  },
+  "control-height-lg": {
+    "$type": "dimension",
+    "$value": {
+      "value": 2.5,
+      "unit": "rem"
+    },
+    "$description": "A large button."
+  },
+  "control-padding": {
+    "$type": "dimension",
+    "$value": {
+      "value": 0.75,
+      "unit": "rem"
+    },
+    "$description": "The inline padding of a field, a small button and a tab."
+  },
+  "control-font-size": {
+    "$type": "dimension",
+    "$value": {
+      "value": 0.875,
+      "unit": "rem"
+    },
+    "$description": "The text of a field, select, combobox, textarea, tab, page link, menu button and button."
+  },
+  "card-padding": {
+    "$type": "dimension",
+    "$value": {
+      "value": 1.5,
+      "unit": "rem"
+    },
+    "$description": "A kit card's padding and the gap between its parts."
+  },
+  "card-heading-font-size": {
+    "$type": "dimension",
+    "$value": {
+      "value": 1,
+      "unit": "rem"
+    },
+    "$description": "A kit card's heading."
+  },
   "font-size": {
     "$type": "dimension",
     "xs": {
