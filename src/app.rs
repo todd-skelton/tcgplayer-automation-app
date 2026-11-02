@@ -163,6 +163,8 @@ pub fn app(shared: Shared) -> App {
         .area(|area| {
             shipping_export::url::area(area, shared.clone())
                 .components(shipping_export::COMPONENTS)
+                // Its Pull Sheet and Pack steps show the pull sheet's items.
+                .components(pull_sheet::ITEMS)
                 .deadline(Some(Duration::from_secs(5 * 60)))
         })
         .area(|area| {
@@ -343,6 +345,70 @@ mod tests {
             zoned += marked(&utc);
         }
         assert!(zoned > 0, "no page wrote a date");
+    }
+
+    /// Every screen, read from the dev database (`.env`) under Corten's dev check: a page that
+    /// renders a component whose stylesheet it does not link (one listed in another area only)
+    /// is a 500 there, where a release build serves it unstyled. Reads only, as above.
+    #[tokio::test]
+    #[ignore = "reads the dev database"]
+    async fn every_screen_links_the_stylesheets_of_what_it_renders() {
+        use tower::ServiceExt;
+        crate::config::load_env();
+        let shared = Shared {
+            db: Database::connect_lazy(&crate::config::database_url()),
+            legacy: Legacy::new("http://localhost:1".into()),
+            slab_providers: slab_connections::Transport::default(),
+        };
+        let router = app(shared).dev(true).router();
+        let steps = [
+            "load-orders",
+            "pull-sheet",
+            "buy-postage",
+            "print",
+            "pack",
+            "ship",
+        ]
+        .map(|step| format!("/shipping-export?step={step}"));
+        let screens = [
+            "/",
+            "/inventory-manager",
+            "/pending-inventory-pricer",
+            "/continuous-pricing",
+            "/slab-pricing",
+            "/slab-connections",
+            "/product-price-matrix",
+            "/inventory-economics",
+            "/inventory-strategy",
+            "/pull-sheet",
+            "/data-management",
+            "/configuration",
+            "/publication-configuration",
+            "/shipping-configuration",
+            "/http-configuration",
+            "/shipping-export/order-labels",
+            "/shipping-export?step=pack&view=list",
+        ]
+        .map(String::from);
+        let mut failed = Vec::new();
+        for path in screens.into_iter().chain(steps) {
+            let request = corten::axum::http::Request::get(&path)
+                .body(corten::axum::body::Body::empty())
+                .unwrap();
+            let answer = router.clone().oneshot(request).await.unwrap();
+            if !answer.status().is_success() {
+                let status = answer.status();
+                let body = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
+                    .await
+                    .unwrap();
+                let body = String::from_utf8_lossy(&body);
+                let said = body
+                    .find("renders ")
+                    .map_or("", |at| &body[at..(at + 200).min(body.len())]);
+                failed.push(format!("{path}: {status} {said}"));
+            }
+        }
+        assert!(failed.is_empty(), "{failed:#?}");
     }
 
     /// The scripts' view classes (`corten/views`), which `corten check` type-checks them against.
