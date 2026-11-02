@@ -5,12 +5,10 @@
 .scroll {
   overflow-x: auto;
 }
-/* What the kit's Table leaves to the page: a shipment's cells wrap and sit at the top, as an
-   address needs (corten#559). */
 .shipments {
   & :is(th, td) {
-    white-space: normal !important;
-    vertical-align: top !important;
+    white-space: normal;
+    vertical-align: top;
   }
 }
 .parcel {

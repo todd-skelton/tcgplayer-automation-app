@@ -143,8 +143,9 @@
 .no-wrap {
   white-space: nowrap;
 }
-.overall {
-  font-weight: 700 !important;
+/* The whole inventory's row heading, bolder than the other rows' (`.cells tbody th`). */
+.cells .overall {
+  font-weight: 700;
 }
 .configured {
   background: var(--muted);

@@ -53,9 +53,8 @@
   overflow: hidden;
   clip-path: inset(50%);
 }
-/* A product's name wraps; the kit's Table keeps every other cell on one line (corten#559). */
 .name {
-  white-space: normal !important;
+  white-space: normal;
 }
 .holo {
   font-style: italic;

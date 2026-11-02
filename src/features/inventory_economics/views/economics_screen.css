@@ -26,6 +26,6 @@
 }
 .coverage {
   min-width: 320px;
-  white-space: normal !important;
+  white-space: normal;
   color: var(--muted-foreground);
 }

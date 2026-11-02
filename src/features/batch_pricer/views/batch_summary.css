@@ -17,14 +17,12 @@
     min-width: 20rem;
   }
 }
-/* A figure reads from its end, its label from the start. The kit's Table aligns every cell to
-   the start, so these outrank it (corten#559). */
 .figures {
   & :is(th, td) {
-    text-align: end !important;
+    text-align: end;
   }
   & :is(th, td):first-child {
-    text-align: start !important;
+    text-align: start;
   }
 }
 .above {
