@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Timelike, Utc};
 use serde_json::{Value, json};
-use sqlx::{Connection, PgConnection, types::Json};
+use sqlx::{Connection, PgConnection, Postgres, pool::PoolConnection, types::Json};
 
 use super::*;
 use crate::{
@@ -650,13 +650,8 @@ pub async fn load(db: &Database, seller: &str, as_of: DateTime<Utc>) -> Result<R
         });
     }
     let e = |e: sqlx::Error| e.to_string();
-    let mut conn = db.0.acquire().await.map_err(e)?;
     let lock = format!("inventory-reinvestment:{seller}");
-    sqlx::query("SELECT pg_advisory_lock(hashtext($1))")
-        .bind(&lock)
-        .execute(&mut *conn)
-        .await
-        .map_err(e)?;
+    let mut conn = locked(db, &lock).await?;
     let result = async {
         let mut tx = conn.begin().await.map_err(e)?;
         sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
@@ -669,15 +664,28 @@ pub async fn load(db: &Database, seller: &str, as_of: DateTime<Utc>) -> Result<R
         Ok(saved)
     }
     .await;
-    let unlocked = sqlx::query("SELECT pg_advisory_unlock(hashtext($1))")
+    // Closing the connection would release it too; unlocking first lets Node's waiter go at once.
+    let _ = sqlx::query("SELECT pg_advisory_unlock(hashtext($1))")
         .bind(&lock)
         .execute(&mut *conn)
         .await;
-    if unlocked.is_err() {
-        // A lock that cannot be released must not go back to the pool.
-        conn.detach();
-    }
     result
+}
+
+/// A connection holding Postgres's session advisory lock `key`, the lock the Node app takes for
+/// the same work. A session lock outlives a dropped future: a page whose client left, or that
+/// passed its deadline, between the lock and the unlock would put the connection back in the pool
+/// still holding it, and every later rebuild would wait on it. So the connection closes when it
+/// is dropped, which ends the session and the lock with it, and never goes back to the pool.
+async fn locked(db: &Database, key: &str) -> Result<PoolConnection<Postgres>, String> {
+    let mut conn = db.0.acquire().await.map_err(|e| e.to_string())?;
+    conn.close_on_drop();
+    sqlx::query("SELECT pg_advisory_lock(hashtext($1))")
+        .bind(key)
+        .execute(&mut *conn)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(conn)
 }
 
 /// The saved current report for the seller, if any.
@@ -719,6 +727,39 @@ pub async fn load_with_recovery(db: &Database, seller: &str) -> (Option<Report>,
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A rebuild dropped while it holds the lock (its page's client left) does not leave the lock
+    /// on a pooled connection: another session takes it at once.
+    #[tokio::test]
+    #[ignore = "needs the dev database"]
+    async fn a_dropped_rebuild_releases_its_lock() {
+        crate::config::load_env();
+        let url = crate::config::database_url();
+        let db = Database::connect_lazy(&url);
+        let key = "inventory-reinvestment:a dropped rebuild's test";
+        drop(locked(&db, key).await.unwrap());
+        let mut other = PgConnection::connect(&url).await.unwrap();
+        let taken: bool = tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
+                .bind(key)
+                .fetch_one(&mut other),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        // The close is a moment behind the drop: wait for it before calling the lock kept.
+        let taken = taken || {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
+                .bind(key)
+                .fetch_one(&mut other)
+                .await
+                .unwrap()
+        };
+        assert!(taken, "the dropped connection's lock is gone");
+        other.close().await.unwrap();
+    }
 
     type Counts = (i64, i64, i64, Option<i64>);
 
