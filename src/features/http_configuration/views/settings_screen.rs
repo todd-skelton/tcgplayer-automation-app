@@ -78,14 +78,16 @@ pub fn SettingsScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
                     </p>
                 </header>
                 <div class={CardContent {}}>
-                    <button
-                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
-                        type="button"
-                        command="show-modal"
-                        commandfor={ResetDialogId}
-                    >
-                        "Reset to Defaults"
-                    </button>
+                    <div>
+                        <button
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                            type="button"
+                            command="show-modal"
+                            commandfor={ResetDialogId}
+                        >
+                            "Reset to Defaults"
+                        </button>
+                    </div>
                 </div>
             </div>
             <dialog
@@ -280,141 +282,144 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                         "Configure rate limiting settings for each TCGPlayer API domain. Each domain has its own isolated rate limiter, so hitting a rate limit on one domain won't affect requests to other domains."
                     </p>
                 </header>
-                <div class={(CardContent {}, Accordion {})}>
-                    for (domain, row) in &input.domains {
-                        let r = f.domains.at(domain);
-                        let invalid = [r.request_delay_ms, r.rate_limit_cooldown_ms, r.max_concurrent_requests, r.min_request_delay_ms, r.max_request_delay_ms, r.learned_min_delay_ms].into_iter().any(|n| errors.has(n));
-                        let key = domain.key();
-                        <details class={DomainBox} open={invalid}>
-                            <summary>
-                                <span class={Title}>
-                                    <strong>{domain.label()}</strong>
-                                    <span class={AdaptiveBadge}>
-                                        <span
-                                            class={Badge { tone: BadgeTone::Primary, emphasis: BadgeEmphasis::Solid }}
-                                        >
-                                            "Adaptive"
+                <div class={CardContent {}}>
+                    // One block, so the content's gap does not open between the domains.
+                    <div>
+                        for (domain, row) in &input.domains {
+                            let r = f.domains.at(domain);
+                            let invalid = [r.request_delay_ms, r.rate_limit_cooldown_ms, r.max_concurrent_requests, r.min_request_delay_ms, r.max_request_delay_ms, r.learned_min_delay_ms].into_iter().any(|n| errors.has(n));
+                            let key = domain.key();
+                            <details class={(Accordion {}, DomainBox)} open={invalid}>
+                                <summary>
+                                    <span class={Title}>
+                                        <strong>{domain.label()}</strong>
+                                        <span class={AdaptiveBadge}>
+                                            <span
+                                                class={Badge { tone: BadgeTone::Primary, emphasis: BadgeEmphasis::Solid }}
+                                            >
+                                                "Adaptive"
+                                            </span>
                                         </span>
                                     </span>
-                                </span>
-                            </summary>
-                            <div class={Settings}>
-                                <Switch label="Enable Adaptive Rate Limiting">
-                                    <input
-                                        type="checkbox"
-                                        role="switch"
-                                        name={r.adaptive}
-                                        checked={row.adaptive}
-                                    >
-                                </Switch>
-                                <Field
-                                    id={RequestDelayId(&key)}
-                                    label="Request Delay (ms)"
-                                    hint="Delay between consecutive requests (auto-adjusted when adaptive is enabled)"
-                                    error={e.message(r.request_delay_ms)}
-                                >
-                                    <input
-                                        class={Input {}}
+                                </summary>
+                                <div class={Settings}>
+                                    <Switch label="Enable Adaptive Rate Limiting">
+                                        <input
+                                            type="checkbox"
+                                            role="switch"
+                                            name={r.adaptive}
+                                            checked={row.adaptive}
+                                        >
+                                    </Switch>
+                                    <Field
                                         id={RequestDelayId(&key)}
-                                        type="number"
-                                        min="0"
-                                        step="100"
-                                        name={r.request_delay_ms}
-                                        value={&row.request_delay_ms}
-                                        {..e.aria(r.request_delay_ms).hint(&FieldHintId(&RequestDelayId(&key)))}
-                                    >
-                                </Field>
-                                <Field
-                                    id={RateLimitCooldownId(&key)}
-                                    label="Rate Limit Cooldown (ms)"
-                                    hint="Cooldown after 403/429 response"
-                                    error={e.message(r.rate_limit_cooldown_ms)}
-                                >
-                                    <input
-                                        class={Input {}}
-                                        id={RateLimitCooldownId(&key)}
-                                        type="number"
-                                        min="0"
-                                        step="1000"
-                                        name={r.rate_limit_cooldown_ms}
-                                        value={&row.rate_limit_cooldown_ms}
-                                        {..e.aria(r.rate_limit_cooldown_ms).hint(&FieldHintId(&RateLimitCooldownId(&key)))}
-                                    >
-                                </Field>
-                                <Field
-                                    id={MaxConcurrentId(&key)}
-                                    label="Max Concurrent Requests"
-                                    hint="Maximum simultaneous requests to this domain"
-                                    error={e.message(r.max_concurrent_requests)}
-                                >
-                                    <input
-                                        class={Input {}}
-                                        id={MaxConcurrentId(&key)}
-                                        type="number"
-                                        min="1"
-                                        max="10"
-                                        name={r.max_concurrent_requests}
-                                        value={&row.max_concurrent_requests}
-                                        {..e.aria(r.max_concurrent_requests).hint(&FieldHintId(&MaxConcurrentId(&key)))}
-                                    >
-                                </Field>
-                                <fieldset class={Bounds}>
-                                    <legend>"Adaptive Bounds"</legend>
-                                    <Field
-                                        id={MinDelayId(&key)}
-                                        label="Min Request Delay (ms)"
-                                        hint="Absolute minimum delay (starting point for probing)"
-                                        error={e.message(r.min_request_delay_ms)}
+                                        label="Request Delay (ms)"
+                                        hint="Delay between consecutive requests (auto-adjusted when adaptive is enabled)"
+                                        error={e.message(r.request_delay_ms)}
                                     >
                                         <input
                                             class={Input {}}
-                                            id={MinDelayId(&key)}
-                                            type="number"
-                                            min="0"
-                                            step="50"
-                                            name={r.min_request_delay_ms}
-                                            value={&row.min_request_delay_ms}
-                                            {..e.aria(r.min_request_delay_ms).hint(&FieldHintId(&MinDelayId(&key)))}
-                                        >
-                                    </Field>
-                                    <Field
-                                        id={MaxDelayId(&key)}
-                                        label="Max Request Delay (ms)"
-                                        hint="Maximum delay cap"
-                                        error={e.message(r.max_request_delay_ms)}
-                                    >
-                                        <input
-                                            class={Input {}}
-                                            id={MaxDelayId(&key)}
-                                            type="number"
-                                            min="1000"
-                                            step="1000"
-                                            name={r.max_request_delay_ms}
-                                            value={&row.max_request_delay_ms}
-                                            {..e.aria(r.max_request_delay_ms).hint(&FieldHintId(&MaxDelayId(&key)))}
-                                        >
-                                    </Field>
-                                    <Field
-                                        id={LearnedMinDelayId(&key)}
-                                        label="Learned Min Delay (ms)"
-                                        hint="Runtime-learned floor (ratchets up on rate limits, reset by setting to Min Request Delay)"
-                                        error={e.message(r.learned_min_delay_ms)}
-                                    >
-                                        <input
-                                            class={Input {}}
-                                            id={LearnedMinDelayId(&key)}
+                                            id={RequestDelayId(&key)}
                                             type="number"
                                             min="0"
                                             step="100"
-                                            name={r.learned_min_delay_ms}
-                                            value={&row.learned_min_delay_ms}
-                                            {..e.aria(r.learned_min_delay_ms).hint(&FieldHintId(&LearnedMinDelayId(&key)))}
+                                            name={r.request_delay_ms}
+                                            value={&row.request_delay_ms}
+                                            {..e.aria(r.request_delay_ms).hint(&FieldHintId(&RequestDelayId(&key)))}
                                         >
                                     </Field>
-                                </fieldset>
-                            </div>
-                        </details>
-                    }
+                                    <Field
+                                        id={RateLimitCooldownId(&key)}
+                                        label="Rate Limit Cooldown (ms)"
+                                        hint="Cooldown after 403/429 response"
+                                        error={e.message(r.rate_limit_cooldown_ms)}
+                                    >
+                                        <input
+                                            class={Input {}}
+                                            id={RateLimitCooldownId(&key)}
+                                            type="number"
+                                            min="0"
+                                            step="1000"
+                                            name={r.rate_limit_cooldown_ms}
+                                            value={&row.rate_limit_cooldown_ms}
+                                            {..e.aria(r.rate_limit_cooldown_ms).hint(&FieldHintId(&RateLimitCooldownId(&key)))}
+                                        >
+                                    </Field>
+                                    <Field
+                                        id={MaxConcurrentId(&key)}
+                                        label="Max Concurrent Requests"
+                                        hint="Maximum simultaneous requests to this domain"
+                                        error={e.message(r.max_concurrent_requests)}
+                                    >
+                                        <input
+                                            class={Input {}}
+                                            id={MaxConcurrentId(&key)}
+                                            type="number"
+                                            min="1"
+                                            max="10"
+                                            name={r.max_concurrent_requests}
+                                            value={&row.max_concurrent_requests}
+                                            {..e.aria(r.max_concurrent_requests).hint(&FieldHintId(&MaxConcurrentId(&key)))}
+                                        >
+                                    </Field>
+                                    <fieldset class={Bounds}>
+                                        <legend>"Adaptive Bounds"</legend>
+                                        <Field
+                                            id={MinDelayId(&key)}
+                                            label="Min Request Delay (ms)"
+                                            hint="Absolute minimum delay (starting point for probing)"
+                                            error={e.message(r.min_request_delay_ms)}
+                                        >
+                                            <input
+                                                class={Input {}}
+                                                id={MinDelayId(&key)}
+                                                type="number"
+                                                min="0"
+                                                step="50"
+                                                name={r.min_request_delay_ms}
+                                                value={&row.min_request_delay_ms}
+                                                {..e.aria(r.min_request_delay_ms).hint(&FieldHintId(&MinDelayId(&key)))}
+                                            >
+                                        </Field>
+                                        <Field
+                                            id={MaxDelayId(&key)}
+                                            label="Max Request Delay (ms)"
+                                            hint="Maximum delay cap"
+                                            error={e.message(r.max_request_delay_ms)}
+                                        >
+                                            <input
+                                                class={Input {}}
+                                                id={MaxDelayId(&key)}
+                                                type="number"
+                                                min="1000"
+                                                step="1000"
+                                                name={r.max_request_delay_ms}
+                                                value={&row.max_request_delay_ms}
+                                                {..e.aria(r.max_request_delay_ms).hint(&FieldHintId(&MaxDelayId(&key)))}
+                                            >
+                                        </Field>
+                                        <Field
+                                            id={LearnedMinDelayId(&key)}
+                                            label="Learned Min Delay (ms)"
+                                            hint="Runtime-learned floor (ratchets up on rate limits, reset by setting to Min Request Delay)"
+                                            error={e.message(r.learned_min_delay_ms)}
+                                        >
+                                            <input
+                                                class={Input {}}
+                                                id={LearnedMinDelayId(&key)}
+                                                type="number"
+                                                min="0"
+                                                step="100"
+                                                name={r.learned_min_delay_ms}
+                                                value={&row.learned_min_delay_ms}
+                                                {..e.aria(r.learned_min_delay_ms).hint(&FieldHintId(&LearnedMinDelayId(&key)))}
+                                            >
+                                        </Field>
+                                    </fieldset>
+                                </div>
+                            </details>
+                        }
+                    </div>
                 </div>
             </div>
             <div>

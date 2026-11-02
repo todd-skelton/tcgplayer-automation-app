@@ -44,6 +44,11 @@
   background: var(--border);
   font-size: var(--font-size-sm);
 }
+/* The current step's number keeps its contrast on the primary fill. */
+a[aria-current] .number {
+  background: var(--primary-foreground);
+  color: var(--primary);
+}
 .done .number {
   background: var(--success);
   color: var(--primary-foreground);
