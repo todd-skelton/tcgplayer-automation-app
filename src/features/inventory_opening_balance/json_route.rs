@@ -1,8 +1,8 @@
 //! `POST /api/inventory-opening-balance`: an operator's opening balance actions for the configured
 //! seller, as the Node route answered them. Its four pages (an observation's differences and
-//! items, a run's application differences and preview items) are read here, and a difference is
-//! acknowledged here. Capturing an observation and previewing and applying a run still go to the
-//! Node app: capture and apply read the seller's inventory from TCGplayer.
+//! items, a run's application differences and preview items) are read here, a difference is
+//! acknowledged here, and an observation is previewed as a run here. Capturing an observation and
+//! applying a run still go to the Node app: both read the seller's inventory from TCGplayer.
 use corten::{
     Api, JsonError, JsonResponse, Prefix,
     axum::{
@@ -17,7 +17,7 @@ use sqlx::PgConnection;
 
 use super::{
     acknowledgement::{self, Acknowledgement},
-    pages,
+    pages, preview,
 };
 use crate::{
     api,
@@ -32,7 +32,7 @@ use crate::{
 const MAX_BODY_BYTES: usize = 1024 * 1024;
 
 /// The actions still answered by the Node app.
-const RELAYED: [&str; 3] = ["capture", "preview", "apply"];
+const RELAYED: [&str; 2] = ["capture", "apply"];
 
 #[derive(Route)]
 #[route("/api/inventory-opening-balance")]
@@ -179,6 +179,15 @@ async fn acted(db: &Database, conn: &mut PgConnection, body: &[u8]) -> Result<Ac
             };
             json!({ "result": acknowledgement::acknowledge(conn, &input).await.map_err(failed)? })
         }
+        Some("preview") => {
+            let (Some(request_id), Some(observation_id)) =
+                (text("requestId"), text("observationId"))
+            else {
+                return Err(bad("Request and observation IDs are required."));
+            };
+            let preview = preview::preview(conn, request_id, seller, observation_id);
+            json!({ "preview": preview.await.map_err(failed)? })
+        }
         Some("list_preview_items") => {
             let run = text("runId").ok_or_else(|| bad("Run ID is required."))?;
             let page =
@@ -246,6 +255,80 @@ mod tests {
         tx.rollback().await.unwrap();
     }
 
+    /// The previews in `.port-logs/opening-preview-cases.json` (each case's `setup` first) on the
+    /// dev database's observations, in a transaction rolled back (a savepoint each), against
+    /// Node's action over the same (`.port-logs/opening-preview-node.ts`): each answer, a run it
+    /// made named by its order (`RUN1`), and the runs and items each case left
+    /// (`.port-logs/opening-preview-capture.sql`).
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
+    async fn previews_answer_as_node_answered() {
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let read_log = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let cases: Vec<Value> =
+            serde_json::from_str(&read_log("opening-preview-cases.json")).unwrap();
+        let node: Vec<Value> =
+            serde_json::from_str(&read_log("opening-preview.node.json")).unwrap();
+        let capture = read_log("opening-preview-capture.sql");
+        assert_eq!(cases.len(), node.len());
+        let mut tx = db.0.begin().await.unwrap();
+        for (case, theirs) in cases.iter().zip(&node) {
+            let name = case["name"].as_str().unwrap();
+            let mut each = tx.begin().await.unwrap();
+            if let Some(setup) = case["setup"].as_str() {
+                sqlx::raw_sql(setup).execute(&mut *each).await.unwrap();
+            }
+            let mut answers = Vec::new();
+            for body in case["steps"].as_array().unwrap() {
+                let body = body.as_str().unwrap().as_bytes();
+                let mut attempt = each.begin().await.unwrap();
+                let answer = acted(&db, &mut attempt, body).await;
+                match answer {
+                    Ok(_) => attempt.commit().await.unwrap(),
+                    Err(_) => attempt.rollback().await.unwrap(),
+                }
+                let runs: Vec<String> = sqlx::query_scalar(
+                    "SELECT id::text FROM inventory_opening_balance_runs WHERE created_at=now() ORDER BY id",
+                )
+                .fetch_all(&mut *each)
+                .await
+                .unwrap();
+                answers.push(match answer {
+                    Ok(Acted::Answer(mut answer)) => {
+                        let id = &mut answer["preview"]["id"];
+                        if let Some(n) = runs.iter().position(|r| Some(r.as_str()) == id.as_str()) {
+                            *id = Value::from(format!("RUN{}", n + 1));
+                        }
+                        serde_json::json!({ "status": 200, "body": crate::api::tests::node_numbers(&answer) })
+                    }
+                    Ok(Acted::Node) => panic!("{name}: sent to the Node app"),
+                    Err((status, error)) => serde_json::json!({
+                        "status": status.as_u16(),
+                        "body": { "error": error },
+                    }),
+                });
+            }
+            let captured: String = sqlx::query_scalar(&capture)
+                .fetch_one(&mut *each)
+                .await
+                .unwrap();
+            each.rollback().await.unwrap();
+            let node_answers = theirs["answers"].as_array().unwrap();
+            assert_eq!(answers.len(), node_answers.len(), "{name}");
+            for (ours, expected) in answers.iter().zip(node_answers) {
+                if case["syntax"] == true {
+                    assert_eq!(ours["status"], expected["status"], "{name}");
+                } else {
+                    assert_eq!(*ours, *expected, "{name}");
+                }
+            }
+            let captured: Value = serde_json::from_str(&captured).unwrap();
+            assert_eq!(captured, theirs["captured"], "{name}");
+        }
+        tx.rollback().await.unwrap();
+    }
+
     /// Node's answers on the dev database (`.port-logs/api-node.ts inventory-opening-balance`):
     /// each page as the dev seller's observations and run have them, and every refusal.
     #[tokio::test]
@@ -254,8 +337,8 @@ mod tests {
         crate::api::tests::answers_as_node("inventory-opening-balance", &[]).await;
     }
 
-    /// Capturing, previewing and applying are the Node app's to answer, even for another seller
-    /// and with no database, so each is passed on: here to a Node app that is not there.
+    /// Capturing and applying are the Node app's to answer, even for another seller and with no
+    /// database, so each is passed on: here to a Node app that is not there.
     #[tokio::test]
     async fn the_writes_still_go_to_the_node_app() {
         use corten::axum::{body::Body, http::Request};
@@ -271,7 +354,6 @@ mod tests {
         .router();
         for body in [
             r#"{"action":"capture","requestId":"r"}"#,
-            r#"{"action":"preview"}"#,
             r#"{"action":"apply","sellerKey":"someone-else"}"#,
         ] {
             let post = Request::post("/api/inventory-opening-balance")
