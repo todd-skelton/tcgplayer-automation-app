@@ -1,4 +1,5 @@
 use corten::prelude::*;
+use corten_ui::MenuButton;
 
 use super::SaleValueFigures;
 use crate::{
@@ -19,13 +20,10 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         dialog::{Dialog, DialogFooter},
+        dropdown_menu::DropdownMenu,
         table::{Table, TableNumeric},
     },
 };
-
-/// A shipment's menu of more actions.
-#[derive(Id)]
-struct ShipmentMenuId<'a>(&'a str);
 
 /// The dialog that asks before a second label is bought: `outbound-` or `return-`, then the
 /// shipment's reference.
@@ -94,6 +92,8 @@ fn ShipmentPostageRow<'a>(
 ) -> impl Render {
     let s = &row.planned.shipment;
     let reference = s.reference.as_str();
+    // corten-ui's MenuButton takes its id as text, not a typed Id (corten#656).
+    let menu_id = format!("shipment-menu-{reference}");
     let a = &s.to_address;
     let again = row.outbound.is_some_and(|b| b.bought_in(mode));
     let return_again = row.returned.is_some_and(|b| b.bought_in(mode));
@@ -160,43 +160,50 @@ fn ShipmentPostageRow<'a>(
                             </button>
                         </form>
                     }
-                    <button
-                        type="button"
-                        popovertarget={ShipmentMenuId(reference)}
-                        aria-label={format!("More actions for {reference}")}
-                        class={More}
-                    >
-                        "⋮"
-                    </button>
-                    <div popover id={ShipmentMenuId(reference)} class={Menu}>
-                        if return_again {
-                            <button
-                                class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
-                                type="button"
-                                command="show-modal"
-                                commandfor={BuyAgainId(&return_key)}
-                                disabled={!can_buy}
-                            >
-                                "Buy Another Return Label"
-                            </button>
-                        } else {
-                            <form method="post" action={&buy} data-patch>
-                                <input type="hidden" name={f.direction} value={Direction::Return}>
+                    <DropdownMenu>
+                        <MenuButton
+                            id={&menu_id}
+                            label={html! {
+                                <span aria-hidden="true">"⋮"</span>
+                                <span class={VisuallyHidden}>"More actions for "{reference}</span>
+                            }}
+                        >
+                            if return_again {
                                 <button
-                                    class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                                    type="button"
+                                    role="menuitem"
+                                    command="show-modal"
+                                    commandfor={BuyAgainId(&return_key)}
                                     disabled={!can_buy}
                                 >
-                                    "Buy Return Label"
+                                    "Buy Another Return Label"
                                 </button>
-                            </form>
-                        }
-                        if let Some(label) = row.returned.and_then(Bought::label) {
-                            <a href={label} target="_blank" rel="noreferrer">"Open Return Label"</a>
-                        }
-                        <a href={ShippingWorkflow::editing(reference)}>"Edit Shipment"</a>
-                        <a href={csv(None)} download>"Download Shipment CSV"</a>
-                        <a href={csv(Some(Direction::Return))} download>"Download Return CSV"</a>
-                    </div>
+                            } else {
+                                <form method="post" action={&buy} data-patch>
+                                    <input
+                                        type="hidden"
+                                        name={f.direction}
+                                        value={Direction::Return}
+                                    >
+                                    <button role="menuitem" disabled={!can_buy}>
+                                        "Buy Return Label"
+                                    </button>
+                                </form>
+                            }
+                            if let Some(label) = row.returned.and_then(Bought::label) {
+                                <a role="menuitem" href={label} target="_blank" rel="noreferrer">
+                                    "Open Return Label"
+                                </a>
+                            }
+                            <a role="menuitem" href={ShippingWorkflow::editing(reference)}>
+                                "Edit Shipment"
+                            </a>
+                            <a role="menuitem" href={csv(None)} download>"Download Shipment CSV"</a>
+                            <a role="menuitem" href={csv(Some(Direction::Return))} download>
+                                "Download Return CSV"
+                            </a>
+                        </MenuButton>
+                    </DropdownMenu>
                 </div>
                 if again {
                     <BuyAgainDialog
