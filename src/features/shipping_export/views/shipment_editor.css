@@ -17,6 +17,10 @@
 .form {
   display: grid;
   gap: var(--space-3);
+  /* A select fills its field as an input does; the kit's takes its options' width (corten#659). */
+  & select {
+    width: 100%;
+  }
   & h3 {
     margin: var(--space-2) 0 0;
     font-size: var(--font-size-sm);

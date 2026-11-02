@@ -278,7 +278,7 @@ pub fn LabelForm<'a>(
             <p class={muted()}>
                 "Starts from the TCGplayer order. Changes apply only to labels bought here; the order itself is not updated."
             </p>
-            <AddressFields input={input} />
+            <AddressFields input={input} e={&e} />
             <h3>"Package"</h3>
             <PackageFields input={input} e={&e} />
             <input type="hidden" name={f.reference} value={number}>

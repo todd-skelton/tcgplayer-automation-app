@@ -11,9 +11,9 @@ use crate::{
             url::{self, ShippingWorkflow},
         },
     },
-    layout::LabeledControl,
     ui::{
         button::{Button, ButtonSize, ButtonVariant},
+        field::Field,
         input::Input,
         select::Select,
         sheet::{Sheet, Side},
@@ -71,18 +71,16 @@ pub fn ShipmentEditorForm<'a>(
         >
             {errors.form_message()}
             <h3>"To Address"</h3>
-            <AddressFields input={input} />
+            <AddressFields input={input} e={&e} />
             <h3>"Shipment Details"</h3>
-            <LabeledControl label="Reference" hint="">
+            <Field id={e.id(f.reference)} label="Reference" hint="" error={e.message(f.reference)}>
                 <input
                     class={Input {}}
-                    name={f.reference}
                     value={&input.reference}
                     required
-                    {..e.aria(f.reference)}
+                    {..e.control(f.reference)}
                 >
-                {e.message(f.reference)}
-            </LabeledControl>
+            </Field>
             <PackageFields input={input} e={&e} />
             <button
                 class={(Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }, Save)}
@@ -93,30 +91,31 @@ pub fn ShipmentEditorForm<'a>(
     }
 }
 
-/// Where a shipment goes. Nothing in it is checked: the React screens sent it as typed.
+/// Where a shipment goes, in the form `e` is of. Nothing in it is checked: the React screens sent
+/// it as typed.
 #[component(css = ShipmentEditor)]
-pub fn AddressFields<'a>(input: &'a ShipmentInput) -> impl Render {
+pub fn AddressFields<'a, I: Id>(input: &'a ShipmentInput, e: &'a Within<'a, I>) -> impl Render {
     let f = ShipmentInput::FIELDS;
     html! {
-        <LabeledControl label="Name" hint="">
-            <input class={Input {}} name={f.name} value={&input.name}>
-        </LabeledControl>
-        <LabeledControl label="Street 1" hint="">
-            <input class={Input {}} name={f.street1} value={&input.street1}>
-        </LabeledControl>
-        <LabeledControl label="Street 2" hint="">
-            <input class={Input {}} name={f.street2} value={&input.street2}>
-        </LabeledControl>
-        <LabeledControl label="City" hint="">
-            <input class={Input {}} name={f.city} value={&input.city}>
-        </LabeledControl>
+        <Field id={e.id(f.name)} label="Name" hint="" error="">
+            <input class={Input {}} value={&input.name} {..e.control(f.name)}>
+        </Field>
+        <Field id={e.id(f.street1)} label="Street 1" hint="" error="">
+            <input class={Input {}} value={&input.street1} {..e.control(f.street1)}>
+        </Field>
+        <Field id={e.id(f.street2)} label="Street 2" hint="" error="">
+            <input class={Input {}} value={&input.street2} {..e.control(f.street2)}>
+        </Field>
+        <Field id={e.id(f.city)} label="City" hint="" error="">
+            <input class={Input {}} value={&input.city} {..e.control(f.city)}>
+        </Field>
         <div class={Pair}>
-            <LabeledControl label="State" hint="">
-                <input class={Input {}} name={f.state} value={&input.state}>
-            </LabeledControl>
-            <LabeledControl label="Zip" hint="">
-                <input class={Input {}} name={f.zip} value={&input.zip}>
-            </LabeledControl>
+            <Field id={e.id(f.state)} label="State" hint="" error="">
+                <input class={Input {}} value={&input.state} {..e.control(f.state)}>
+            </Field>
+            <Field id={e.id(f.zip)} label="Zip" hint="" error="">
+                <input class={Input {}} value={&input.zip} {..e.control(f.zip)}>
+            </Field>
         </div>
     }
 }
@@ -127,15 +126,15 @@ pub fn AddressFields<'a>(input: &'a ShipmentInput) -> impl Render {
 pub fn PackageFields<'a, I: Id>(input: &'a ShipmentInput, e: &'a Within<'a, I>) -> impl Render {
     let f = ShipmentInput::FIELDS;
     html! {
-        <LabeledControl label="Service" hint="">
-            <select class={Select {}} name={f.service} data-redraws>
+        <Field id={e.id(f.service)} label="Service" hint="" error="">
+            <select class={Select {}} data-redraws {..e.control(f.service)}>
                 for service in [Service::First, Service::GroundAdvantage, Service::Priority, Service::Express] {
                     <option value={service} selected={service == input.service}>
                         {service.label()}
                     </option>
                 }
             </select>
-        </LabeledControl>
+        </Field>
         <div class={Pair}>
             <Measure label="Length (in)" name={f.length} value={&input.length} e={e} />
             <Measure label="Width (in)" name={f.width} value={&input.width} e={e} />
@@ -144,22 +143,22 @@ pub fn PackageFields<'a, I: Id>(input: &'a ShipmentInput, e: &'a Within<'a, I>) 
             <Measure label="Height (in)" name={f.height} value={&input.height} e={e} />
             <Measure label="Weight (oz)" name={f.weight} value={&input.weight} e={e} />
         </div>
-        <LabeledControl label="Label Format" hint="">
-            <select class={Select {}} name={f.label_format}>
+        <Field id={e.id(f.label_format)} label="Label Format" hint="" error="">
+            <select class={Select {}} {..e.control(f.label_format)}>
                 for format in LabelFormat::ALL {
                     <option value={format} selected={format == input.label_format}>
                         {format}
                     </option>
                 }
             </select>
-        </LabeledControl>
-        <LabeledControl label="Label Size" hint="">
-            <select class={Select {}} name={f.label_size}>
+        </Field>
+        <Field id={e.id(f.label_size)} label="Label Size" hint="" error="">
+            <select class={Select {}} {..e.control(f.label_size)}>
                 for size in LabelSize::ALL {
                     <option value={size} selected={size == input.label_size}>{size}</option>
                 }
             </select>
-        </LabeledControl>
+        </Field>
     }
 }
 
@@ -171,17 +170,15 @@ fn Measure<'a, I: Id>(
     e: &'a Within<'a, I>,
 ) -> impl Render {
     html! {
-        <LabeledControl label={label} hint="">
+        <Field id={e.id(name)} label={label} hint="" error={e.message(name)}>
             <input
                 class={Input {}}
                 type="number"
                 step="any"
                 min="0"
-                name={name}
                 value={value}
-                {..e.aria(name)}
+                {..e.control(name)}
             >
-            {e.message(name)}
-        </LabeledControl>
+        </Field>
     }
 }
