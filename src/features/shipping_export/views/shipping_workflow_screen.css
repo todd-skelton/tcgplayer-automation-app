@@ -44,6 +44,13 @@
   flex: 1;
   min-width: 0;
 }
+/* On a phone the figures take the bar's width, a row under where the step stands. */
+@media (max-width: 40rem) {
+  .value {
+    flex-basis: 100%;
+    order: 1;
+  }
+}
 .act[aria-busy] button::after {
   content: " …";
 }

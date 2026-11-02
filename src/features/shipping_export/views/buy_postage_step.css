@@ -2,7 +2,10 @@
   display: grid;
   gap: var(--space-4);
 }
+/* Positioned, so the menus' hidden text (absolute) is clipped by this scroll box instead of
+   widening the page past it (corten#674). */
 .scroll {
+  position: relative;
   overflow-x: auto;
 }
 .shipments {
