@@ -84,9 +84,11 @@ fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
                 >
                     <input type="hidden" name={r.id} value={&record.id}>
                     <input type="hidden" name={r.revision} value={record.revision}>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button>"Refresh supply"</button>
-                    </Button>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    >
+                        "Refresh supply"
+                    </button>
                 </form>
             }
             <a href={url::SlabPricing::at(choice)}>"Reload saved supply"</a>
@@ -101,22 +103,18 @@ fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
                         }),
                         html! {
                         <LabeledControl label="Supply source" hint="">
-                            <Select>
-                                <select name={f.source}>
-                                    for status in &supply.statuses {
-                                        <option
-                                            value={&status.key}
-                                            selected={supply.selected_key.as_deref() == Some(status.key.as_str())}
-                                        >
-                                            {source_name(status)}" · "{words(&status.state)}
-                                        </option>
-                                    }
-                                </select>
-                            </Select>
+                            <select class={Select {}} name={f.source}>
+                                for status in &supply.statuses {
+                                    <option
+                                        value={&status.key}
+                                        selected={supply.selected_key.as_deref() == Some(status.key.as_str())}
+                                    >
+                                        {source_name(status)}" · "{words(&status.state)}
+                                    </option>
+                                }
+                            </select>
                         </LabeledControl>
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <button>"Show source"</button>
-                        </Button>
+                        <button class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}>"Show source"</button>
                         },
                     )}
                 </form>
@@ -174,9 +172,11 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
                             >
                                 <input type="hidden" name={c.key} value={&status.key}>
                                 <input type="hidden" name={c.run} value={&status.run_id}>
-                                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                                    <button>"Cancel supply refresh"</button>
-                                </Button>
+                                <button
+                                    class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                                >
+                                    "Cancel supply refresh"
+                                </button>
                             </form>
                         }
                     </div>
@@ -313,9 +313,11 @@ fn SupplyContext<'a>(
                     data-patch
                 >
                     <input type="hidden" name={n.revision} value={revision}>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button>"Fetch next source page"</button>
-                    </Button>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    >
+                        "Fetch next source page"
+                    </button>
                 </form>
             }
             match &previous_rows {

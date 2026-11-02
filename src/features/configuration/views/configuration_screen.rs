@@ -104,9 +104,11 @@ pub fn ConfigurationScreen<'a>(
                         <Alert variant={AlertVariant::Warning}>
                             "This resets every setting on this page. It cannot be undone."
                         </Alert>
-                        <Button variant={ButtonVariant::Destructive} size={ButtonSize::Md}>
-                            <button>"Confirm Reset to Defaults"</button>
-                        </Button>
+                        <button
+                            class={Button { variant: ButtonVariant::Destructive, size: ButtonSize::Md }}
+                        >
+                            "Confirm Reset to Defaults"
+                        </button>
                     </form>
                 </details>
             </section>
@@ -133,17 +135,16 @@ pub fn PricingForm<'a>(section: &'a Section<'a, PricingInput>) -> impl Patch {
                        max: &'static str| {
         let e = errors.within(PricingFormId);
         html! {
-            <Input>
-                <input
-                    type="number"
-                    name={name}
-                    value={value}
-                    step={step}
-                    min={min}
-                    max={max}
-                    {..e.aria(name)}
-                >
-            </Input>
+            <input
+                class={Input {}}
+                type="number"
+                name={name}
+                value={value}
+                step={step}
+                min={min}
+                max={max}
+                {..e.aria(name)}
+            >
             {e.message(name)}
         }
     };
@@ -163,22 +164,20 @@ pub fn PricingForm<'a>(section: &'a Section<'a, PricingInput>) -> impl Patch {
                         label="Active Pricing Policy"
                         hint="Percentile uses the product-line settings below. Target horizon applies one median sell-time target across inventory. Profit per day prices each SKU where net proceeds, discounted at the daily return hurdle over its sell time, are highest."
                     >
-                        <Select>
-                            <select name={f.policy}>
-                                for (method, label) in [
-                                    (Method::Percentile, "Configured percentile"),
-                                    (Method::TargetHorizon, "Target sell horizon"),
-                                    (Method::ProfitPerDay, "Profit per day"),
-                                ] {
-                                    <option
-                                        value={method.as_ref()}
-                                        selected={input.policy == method}
-                                    >
-                                        {label}
-                                    </option>
-                                }
-                            </select>
-                        </Select>
+                        <select class={Select {}} name={f.policy}>
+                            for (method, label) in [
+                                (Method::Percentile, "Configured percentile"),
+                                (Method::TargetHorizon, "Target sell horizon"),
+                                (Method::ProfitPerDay, "Profit per day"),
+                            ] {
+                                <option
+                                    value={method.as_ref()}
+                                    selected={input.policy == method}
+                                >
+                                    {label}
+                                </option>
+                            }
+                        </select>
                     </LabeledControl>
                     <div class={ForHorizon}>
                         <LabeledControl
@@ -236,9 +235,7 @@ pub fn PricingForm<'a>(section: &'a Section<'a, PricingInput>) -> impl Patch {
                         label="Skip Prefix"
                         hint="Prefix to identify items to skip during processing"
                     >
-                        <Input>
-                            <input name={f.skip_prefix} value={&input.skip_prefix}>
-                        </Input>
+                        <input class={Input {}} name={f.skip_prefix} value={&input.skip_prefix}>
                     </LabeledControl>
                     <div class={Row}>
                         <LabeledControl
@@ -266,9 +263,9 @@ pub fn PricingForm<'a>(section: &'a Section<'a, PricingInput>) -> impl Patch {
                 </div>
             </SubmitsOnChange>
             <noscript>
-                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                    <button>"Save pricing"</button>
-                </Button>
+                <button class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}>
+                    "Save pricing"
+                </button>
             </noscript>
         </form>
     }
@@ -321,23 +318,24 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
                         label="Default Percentile for Non-Configured Lines"
                         hint="Percentile used for product lines not explicitly configured below"
                     >
-                        <Input>
-                            <input
-                                type="number"
-                                name={d.default_percentile}
-                                value={&lines.default.default_percentile}
-                                min={&min}
-                                max={&max}
-                                {..e.aria(d.default_percentile)}
-                            >
-                        </Input>
+                        <input
+                            class={Input {}}
+                            type="number"
+                            name={d.default_percentile}
+                            value={&lines.default.default_percentile}
+                            min={&min}
+                            max={&max}
+                            {..e.aria(d.default_percentile)}
+                        >
                         {e.message(d.default_percentile)}
                     </LabeledControl>
                 </SubmitsOnChange>
                 <noscript>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button>"Save default percentile"</button>
-                    </Button>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    >
+                        "Save default percentile"
+                    </button>
                 </noscript>
             </form>
             <form method="post" action={url::AddProductLine} data-patch class={Add}>
@@ -347,38 +345,36 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
                     {e.message(a.product_line)}
                 </div>
                 <LabeledControl label="Percentile" hint="">
-                    <Input>
-                        <input
-                            type="number"
-                            name={a.percentile}
-                            value={&lines.add.percentile}
-                            min={&min}
-                            max={&max}
-                            {..e.aria(a.percentile)}
-                        >
-                    </Input>
+                    <input
+                        class={Input {}}
+                        type="number"
+                        name={a.percentile}
+                        value={&lines.add.percentile}
+                        min={&min}
+                        max={&max}
+                        {..e.aria(a.percentile)}
+                    >
                     {e.message(a.percentile)}
                 </LabeledControl>
                 <LabeledControl label="Daily return hurdle" hint="Blank uses the default">
-                    <Input>
-                        <input
-                            type="number"
-                            step="0.001"
-                            name={a.daily_return_hurdle}
-                            value={&lines.add.daily_return_hurdle}
-                            placeholder={&hurdle}
-                            {..e.aria(a.daily_return_hurdle)}
-                        >
-                    </Input>
+                    <input
+                        class={Input {}}
+                        type="number"
+                        step="0.001"
+                        name={a.daily_return_hurdle}
+                        value={&lines.add.daily_return_hurdle}
+                        placeholder={&hurdle}
+                        {..e.aria(a.daily_return_hurdle)}
+                    >
                     {e.message(a.daily_return_hurdle)}
                 </LabeledControl>
                 <label class={Switch}>
                     <input type="checkbox" name={a.skip} checked={lines.add.skip}>
                     "Skip"
                 </label>
-                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                    <button>"Add"</button>
-                </Button>
+                <button class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}>
+                    "Add"
+                </button>
             </form>
             if lines.stored.settings.is_empty() {
                 <Alert variant={AlertVariant::Info}>
@@ -418,16 +414,12 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
                                             action={url::RemoveProductLine { id: *id }}
                                             data-patch
                                         >
-                                            <Button
-                                                variant={ButtonVariant::Outline}
-                                                size={ButtonSize::Md}
+                                            <button
+                                                class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                                                aria-label={("Remove ", name(*id).as_str())}
                                             >
-                                                <button
-                                                    aria-label={("Remove ", name(*id).as_str())}
-                                                >
-                                                    "Remove"
-                                                </button>
-                                            </Button>
+                                                "Remove"
+                                            </button>
                                         </form>
                                     </td>
                                 </tr>
@@ -482,47 +474,45 @@ pub fn SnapsForm<'a>(section: &'a Section<'a, SnapsInput>) -> impl Patch {
                             label="Snap range"
                             hint="A price up to this fraction above a threshold may be snapped under it; 0.1 is 10%"
                         >
-                            <Input>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0.01"
-                                    max="0.5"
-                                    name={f.snap_range}
-                                    value={&input.snap_range}
-                                    {..e.aria(f.snap_range)}
-                                >
-                            </Input>
+                            <input
+                                class={Input {}}
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                max="0.5"
+                                name={f.snap_range}
+                                value={&input.snap_range}
+                                {..e.aria(f.snap_range)}
+                            >
                             {e.message(f.snap_range)}
                         </LabeledControl>
                         <LabeledControl
                             label="Learn shipping costs from"
                             hint="Trailing orders the shipping cost model learns from"
                         >
-                            <Select>
-                                <select
-                                    name={f.evidence_window_days}
-                                    {..e.aria(f.evidence_window_days)}
-                                >
-                                    for days in EVIDENCE_WINDOWS {
-                                        <option
-                                            value={days}
-                                            selected={input.evidence_window_days == days}
-                                        >
-                                            "Last "{days}" days"
-                                        </option>
-                                    }
-                                </select>
-                            </Select>
+                            <select
+                                class={Select {}}
+                                name={f.evidence_window_days}
+                                {..e.aria(f.evidence_window_days)}
+                            >
+                                for days in EVIDENCE_WINDOWS {
+                                    <option
+                                        value={days}
+                                        selected={input.evidence_window_days == days}
+                                    >
+                                        "Last "{days}" days"
+                                    </option>
+                                }
+                            </select>
                             {e.message(f.evidence_window_days)}
                         </LabeledControl>
                     </div>
                 </div>
             </SubmitsOnChange>
             <noscript>
-                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                    <button>"Save snaps"</button>
-                </Button>
+                <button class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}>
+                    "Save snaps"
+                </button>
             </noscript>
         </form>
     }
@@ -578,9 +568,9 @@ pub fn SupplyForm<'a>(section: &'a Section<'a, SupplyInput>) -> impl Patch {
                 </div>
             </SubmitsOnChange>
             <noscript>
-                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                    <button>"Save supply analysis"</button>
-                </Button>
+                <button class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}>
+                    "Save supply analysis"
+                </button>
             </noscript>
         </form>
     }

@@ -14,7 +14,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
-        badge::{Badge, BadgeVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         input::Input,
         select::Select,
@@ -100,61 +100,57 @@ pub fn ScheduleForm<'a>(
                 "Enable continuous pricing scheduler"
             </label>
             <LabeledControl label="Seller key" hint="">
-                <Input>
-                    <input
-                        name={f.seller_key}
-                        value={&input.seller_key}
-                        maxlength="200"
-                        {..e.aria(f.seller_key)}
-                    >
-                </Input>
+                <input
+                    class={Input {}}
+                    name={f.seller_key}
+                    value={&input.seller_key}
+                    maxlength="200"
+                    {..e.aria(f.seller_key)}
+                >
                 {e.message(f.seller_key)}
             </LabeledControl>
             <div class={Numbers}>
                 <LabeledControl label="Minimum pricing interval (minutes)" hint="">
-                    <Input>
-                        <input
-                            type="number"
-                            min="15"
-                            max="43200"
-                            name={f.minimum_interval_minutes}
-                            value={&input.minimum_interval_minutes}
-                            {..e.aria(f.minimum_interval_minutes)}
-                        >
-                    </Input>
+                    <input
+                        class={Input {}}
+                        type="number"
+                        min="15"
+                        max="43200"
+                        name={f.minimum_interval_minutes}
+                        value={&input.minimum_interval_minutes}
+                        {..e.aria(f.minimum_interval_minutes)}
+                    >
                     {e.message(f.minimum_interval_minutes)}
                 </LabeledControl>
                 <LabeledControl label="Inventory refresh interval (minutes)" hint="">
-                    <Input>
-                        <input
-                            type="number"
-                            min="5"
-                            max="10080"
-                            name={f.inventory_refresh_minutes}
-                            value={&input.inventory_refresh_minutes}
-                            {..e.aria(f.inventory_refresh_minutes)}
-                        >
-                    </Input>
+                    <input
+                        class={Input {}}
+                        type="number"
+                        min="5"
+                        max="10080"
+                        name={f.inventory_refresh_minutes}
+                        value={&input.inventory_refresh_minutes}
+                        {..e.aria(f.inventory_refresh_minutes)}
+                    >
                     {e.message(f.inventory_refresh_minutes)}
                 </LabeledControl>
                 <LabeledControl label="Batch size" hint="">
-                    <Input>
-                        <input
-                            type="number"
-                            min="1"
-                            max="750"
-                            name={f.batch_size}
-                            value={&input.batch_size}
-                            {..e.aria(f.batch_size)}
-                        >
-                    </Input>
+                    <input
+                        class={Input {}}
+                        type="number"
+                        min="1"
+                        max="750"
+                        name={f.batch_size}
+                        value={&input.batch_size}
+                        {..e.aria(f.batch_size)}
+                    >
                     {e.message(f.batch_size)}
                 </LabeledControl>
             </div>
             <div>
-                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                    <button>"Save schedule"</button>
-                </Button>
+                <button class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}>
+                    "Save schedule"
+                </button>
             </div>
         </form>
     }
@@ -169,28 +165,36 @@ fn Actions<'a>(screen: &'a Screen) -> impl Render {
     html! {
         <div class={Line}>
             <form method="post" action={url::Refresh { view: view.clone() }} data-patch>
-                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                    <button disabled={settings.seller_key.is_empty()}>
-                        "Refresh inventory now"
-                    </button>
-                </Button>
+                <button
+                    class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    disabled={settings.seller_key.is_empty()}
+                >
+                    "Refresh inventory now"
+                </button>
             </form>
             <form method="post" action={url::Run { view: view.clone() }} data-patch>
-                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                    <button disabled={!settings.enabled}>"Run scheduler cycle"</button>
-                </Button>
+                <button
+                    class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    disabled={!settings.enabled}
+                >
+                    "Run scheduler cycle"
+                </button>
             </form>
             <form method="post" action={url::ApplyPolicy { view: view.clone() }} data-patch>
-                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                    <button disabled={!repricable}>
-                        "Reprice all inventory using saved curves"
-                    </button>
-                </Button>
+                <button
+                    class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    disabled={!repricable}
+                >
+                    "Reprice all inventory using saved curves"
+                </button>
             </form>
             <form method="post" action={url::MarkDue { view: view.clone() }} data-patch>
-                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                    <button disabled={!repricable}>"Mark all inventory due"</button>
-                </Button>
+                <button
+                    class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    disabled={!repricable}
+                >
+                    "Mark all inventory due"
+                </button>
             </form>
         </div>
     }
@@ -227,15 +231,21 @@ fn Snapshot<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                     </p>
                 </div>
                 <div class={Line}>
-                    <Badge variant={BadgeVariant::Secondary}>
+                    <span
+                        class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Solid }}
+                    >
                         {s.enabled_in_stock_count}" enabled"
-                    </Badge>
-                    <Badge
-                        variant={if s.due_count > 0 { BadgeVariant::Warning } else { BadgeVariant::Secondary }}
+                    </span>
+                    <span
+                        class={Badge { tone: if s.due_count > 0 { BadgeTone::Warning } else { BadgeTone::Neutral }, emphasis: BadgeEmphasis::Soft }}
                     >
                         {s.due_count}" due"
-                    </Badge>
-                    <Badge variant={BadgeVariant::Secondary}>{s.inventory_count}" tracked"</Badge>
+                    </span>
+                    <span
+                        class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Solid }}
+                    >
+                        {s.inventory_count}" tracked"
+                    </span>
                 </div>
             </div>
             <div class={Metrics}>
@@ -318,24 +328,20 @@ fn Controls<'a>(screen: &'a Screen) -> impl Render {
                     label="Search SKU, product, set, condition, or product line"
                     hint=""
                 >
-                    <Input>
-                        <input type="search" name={f.q} value={screen.view.search()}>
-                    </Input>
+                    <input class={Input {}} type="search" name={f.q} value={screen.view.search()}>
                 </LabeledControl>
                 <LabeledControl label="State" hint="">
-                    <Select>
-                        <select name={f.state}>
-                            for state in Shown::ALL {
-                                <option value={state} selected={state == shown}>
-                                    {state.label()}
-                                </option>
-                            }
-                        </select>
-                    </Select>
+                    <select class={Select {}} name={f.state}>
+                        for state in Shown::ALL {
+                            <option value={state} selected={state == shown}>
+                                {state.label()}
+                            </option>
+                        }
+                    </select>
                 </LabeledControl>
-                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                    <button>"Apply"</button>
-                </Button>
+                <button class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}>
+                    "Apply"
+                </button>
                 <a href={url::ContinuousPricing { view: View::default() }}>"Clear"</a>
             </form>
             <p class={muted()}>"Showing "{screen.page.range()}</p>
@@ -426,9 +432,11 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
                             {item.state()}
                         </label>
                         <noscript>
-                            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                                <button>"Save"</button>
-                            </Button>
+                            <button
+                                class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                            >
+                                "Save"
+                            </button>
                         </noscript>
                     </SubmitsOnChange>
                 </form>
@@ -438,9 +446,11 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
                     <input type="hidden" name={f.sku} value={item.sku}>
                     <input type="hidden" name={f.enabled} value="true">
                     <Alert variant={AlertVariant::Warning}>{reason}</Alert>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button>"Resume"</button>
-                    </Button>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    >
+                        "Resume"
+                    </button>
                 </form>
             }
         </article>
@@ -469,11 +479,17 @@ fn Runs<'a>(runs: &'a [Run], t: Msg) -> impl Render {
                         {t.date_time(run.created_at, DateStyle::Short, TimeStyle::Medium)}
                     </span>
                     <span class={Line}>
-                        <Badge variant={BadgeVariant::Secondary}>{&run.status}</Badge>
+                        <span
+                            class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Solid }}
+                        >
+                            {&run.status}
+                        </span>
                         if let Some(priority) = run.priority {
-                            <Badge variant={BadgeVariant::Outline}>
+                            <span
+                                class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                            >
                                 if priority > 0 { "New / retry priority" } else { "Routine" }
-                            </Badge>
+                            </span>
                         }
                     </span>
                 </div>

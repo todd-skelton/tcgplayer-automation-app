@@ -31,13 +31,11 @@ fn Dashboard<'a>(req: &'a Req, screens: &'a [Entry]) -> impl Render {
                 for e in screens {
                     <li>
                         <ScreenLink req={req} screen={&e.screen}>
-                            <Card>
-                                <CardHeader>
-                                    <span class={Icon}><Glyph icon={e.icon} /></span>
-                                    <h2>{e.label}</h2>
-                                    <p>{e.description}</p>
-                                </CardHeader>
-                            </Card>
+                            <div class={(Card {}, CardHeader {})}>
+                                <span class={Icon}><Glyph icon={e.icon} /></span>
+                                <h2>{e.label}</h2>
+                                <p>{e.description}</p>
+                            </div>
                         </ScreenLink>
                     </li>
                 }

@@ -14,7 +14,7 @@ use crate::{
     text::Msg,
     theme::*,
     ui::{
-        badge::{Badge, BadgeVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         table::Table,
     },
 };
@@ -142,7 +142,9 @@ pub fn VerdictPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
         <section class={panel()} aria-label="Active policy">
             <div class={Title}>
                 <h2>{policy_label(screen)}</h2>
-                <Badge variant={BadgeVariant::Success}>"Active"</Badge>
+                <span class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Soft }}>
+                    "Active"
+                </span>
             </div>
             <p class={muted()}>
                 "Modeled returns assume net proceeds are reinvested after the capital turnaround below; they are directional, not observed growth."

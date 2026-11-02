@@ -4,7 +4,7 @@ use crate::{
     features::shipping_export::ship::{Messaged, Tracked},
     ui::{
         alert::{Alert, AlertVariant},
-        badge::{Badge, BadgeVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         table::Table,
     },
 };
@@ -105,7 +105,13 @@ pub fn ShipStep<'a>(shipping: &'a Shipping<'a>) -> impl Render {
                 if !shipping.pending.is_empty() {
                     <ul class={Pending} aria-label="Orders to ship">
                         for order in &shipping.pending {
-                            <li><Badge variant={BadgeVariant::Outline}>{*order}</Badge></li>
+                            <li>
+                                <span
+                                    class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                                >
+                                    {*order}
+                                </span>
+                            </li>
                         }
                     </ul>
                 }
@@ -180,11 +186,11 @@ pub fn ShipStep<'a>(shipping: &'a Shipping<'a>) -> impl Render {
 fn Status<'a>(label: Option<&'a str>, succeeded: &'a str) -> impl Render {
     html! {
         if let Some(label) = label {
-            <Badge
-                variant={if label == succeeded { BadgeVariant::Success } else { BadgeVariant::Destructive }}
+            <span
+                class={Badge { tone: if label == succeeded { BadgeTone::Success } else { BadgeTone::Destructive }, emphasis: BadgeEmphasis::Soft }}
             >
                 {label}
-            </Badge>
+            </span>
         } else {
             "-"
         }

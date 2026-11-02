@@ -10,7 +10,7 @@ use crate::{
     },
     theme::*,
     ui::{
-        badge::{Badge, BadgeVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
     },
 };
@@ -42,27 +42,36 @@ pub fn PrintStep<'a>(sheets: &'a [LabelSheet<'a>], has_orders: bool) -> impl Ren
                 <h2>"Packing Slips"</h2>
                 <div class={row(Space::_2)}>
                     if has_orders {
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <a
-                                href={url::PackingSlips { open: Some(true) }}
-                                target="_blank"
-                                data-reload
-                            >
-                                "↗ Open Packing Slips PDF"
-                            </a>
-                        </Button>
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <a href={url::PackingSlips { open: None }} download>
-                                "⤓ Download Packing Slips PDF"
-                            </a>
-                        </Button>
+                        <a
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                            href={url::PackingSlips { open: Some(true) }}
+                            target="_blank"
+                            data-reload
+                        >
+                            "↗ Open Packing Slips PDF"
+                        </a>
+                        <a
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                            href={url::PackingSlips { open: None }}
+                            download
+                        >
+                            "⤓ Download Packing Slips PDF"
+                        </a>
                     } else {
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <button type="button" disabled>"↗ Open Packing Slips PDF"</button>
-                        </Button>
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <button type="button" disabled>"⤓ Download Packing Slips PDF"</button>
-                        </Button>
+                        <button
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                            type="button"
+                            disabled
+                        >
+                            "↗ Open Packing Slips PDF"
+                        </button>
+                        <button
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                            type="button"
+                            disabled
+                        >
+                            "⤓ Download Packing Slips PDF"
+                        </button>
                     }
                 </div>
             </section>
@@ -97,19 +106,20 @@ fn SizeLabels<'a>(sheet: &'a LabelSheet<'a>) -> impl Render {
                 match batch.status {
                     BatchLabelStatus::Ready => {
                         if let Some(href) = &batch.label_url {
-                            <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                                <a
-                                    href={href}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    "↗ Open Batch Label PDF"
-                                </a>
-                            </Button>
+                            <a
+                                class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}
+                                href={href}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                "↗ Open Batch Label PDF"
+                            </a>
                         }
-                        <Badge variant={BadgeVariant::Success}>
+                        <span
+                            class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Soft }}
+                        >
                             {batch.shipment_references.len()}" labels in batch"
-                        </Badge>
+                        </span>
                     }
                     BatchLabelStatus::Pending => <p class={muted()}>
                         {batch.message.as_deref().unwrap_or("EasyPost is still generating the batch PDF.")}
@@ -124,22 +134,24 @@ fn SizeLabels<'a>(sheet: &'a LabelSheet<'a>) -> impl Render {
             }
             if status != Some(BatchLabelStatus::Ready) {
                 if sheet.can_combine() {
-                    <Badge variant={BadgeVariant::Info}>{sheet.labels.len()}" saved labels"</Badge>
+                    <span class={Badge { tone: BadgeTone::Info, emphasis: BadgeEmphasis::Soft }}>
+                        {sheet.labels.len()}" saved labels"
+                    </span>
                     <form
                         method="post"
                         action={url::BatchLabelPdf { size: sheet.size }}
                         class={Act}
                         data-patch
                     >
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <button>
-                                if status.is_some() {
-                                    "Create Batch Label PDF Again"
-                                } else {
-                                    "Create Batch Label PDF"
-                                }
-                            </button>
-                        </Button>
+                        <button
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                        >
+                            if status.is_some() {
+                                "Create Batch Label PDF Again"
+                            } else {
+                                "Create Batch Label PDF"
+                            }
+                        </button>
                     </form>
                 } else if sheet.batch.is_none() {
                     <p class={muted()}>

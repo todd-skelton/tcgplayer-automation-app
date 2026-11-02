@@ -19,7 +19,7 @@ use crate::{
     theme::*,
     ui::alert::{Alert, AlertVariant},
     ui::{
-        badge::{Badge, BadgeVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         table::Table,
     },
 };
@@ -82,15 +82,15 @@ pub fn PerformancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 for (window, shown) in windows.iter().filter_map(|w| Some((w, RealizedWindow::of(w.window_days)?))) {
                     if let Some(rate) = window.overall.daily_return_percent {
                         <ShownFor choice={&choice} values={&[shown]}>
-                            <Badge
-                                variant={if rate >= hurdle * 100.0 { BadgeVariant::Success } else { BadgeVariant::Warning }}
+                            <span
+                                class={Badge { tone: if rate >= hurdle * 100.0 { BadgeTone::Success } else { BadgeTone::Warning }, emphasis: BadgeEmphasis::Soft }}
                             >
                                 {&format!(
                                         "{} on capital \u{b7} hurdle {}",
                                         percent_per_day(Some(rate), ""),
                                         format_hurdle(hurdle)
                                     )}
-                            </Badge>
+                            </span>
                         </ShownFor>
                     }
                 }

@@ -1,42 +1,59 @@
-// corten ui 0.1.0: badge 37abab51a2d97fc8
-//! A short label: a status, a count, a tag. `<Badge variant={BadgeVariant::Secondary}>"Draft"</Badge>`.
+// corten ui 0.1.0: badge 6c281e31632a271d
+//! A short label: a status, a count, a tag, as the classes of the element you write, so a
+//! `title`, an id or a patch target is on the badge itself. Its tone and its emphasis are separate,
+//! so one tone can be a filled status, a soft one and an outlined count:
+//!
+//! ```rust,ignore
+//! <span class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Solid }} title={tracking}>"Shipped"</span>
+//! <span class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Outline }}>{count}" successful"</span>
+//! ```
+//!
+//! The text of each tone and emphasis meets WCAG AA contrast in both themes (the kit's test).
 use corten::prelude::*;
 
-/// Each variant is a class in `badge.css`, so one without a rule does not compile.
+/// Each tone is a class in `badge.css`, so one without a rule does not compile.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BadgeVariant {
+pub enum BadgeTone {
+    Neutral,
     Primary,
-    Secondary,
-    Outline,
-    Destructive,
-    /// A status that is done or healthy.
-    Success,
-    /// A status to look at.
-    Warning,
-    /// A status to know.
     Info,
+    Success,
+    Warning,
+    Destructive,
 }
 
-/// A variant without a rule in `badge.css` does not compile:
+/// How much the badge stands out: filled with its tone, a tint of it, or an outline.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BadgeEmphasis {
+    Solid,
+    Soft,
+    Outline,
+}
+
+/// A tone without a rule in `badge.css` does not compile:
 ///
 /// ```compile_fail
 /// use corten::prelude::*;
 ///
 /// #[component(css)]
-/// fn Badge() -> impl Render {
-///     html! { <span class={(Badge, Shiny)}></span> }
+/// fn Badge() -> impl ClassList {
+///     (Badge, Shiny)
 /// }
 /// ```
 #[component(css)]
-pub fn Badge<C: Render>(variant: BadgeVariant, children: C) -> impl Render {
-    let variant = match variant {
-        BadgeVariant::Primary => Primary,
-        BadgeVariant::Secondary => Secondary,
-        BadgeVariant::Outline => Outline,
-        BadgeVariant::Destructive => Destructive,
-        BadgeVariant::Success => Success,
-        BadgeVariant::Warning => Warning,
-        BadgeVariant::Info => Info,
+pub fn Badge(tone: BadgeTone, emphasis: BadgeEmphasis) -> impl ClassList {
+    let tone = match tone {
+        BadgeTone::Neutral => Neutral,
+        BadgeTone::Primary => Primary,
+        BadgeTone::Info => Info,
+        BadgeTone::Success => Success,
+        BadgeTone::Warning => Warning,
+        BadgeTone::Destructive => Destructive,
     };
-    html! { <span class={(Badge, variant)}>{children}</span> }
+    let emphasis = match emphasis {
+        BadgeEmphasis::Solid => Solid,
+        BadgeEmphasis::Soft => Soft,
+        BadgeEmphasis::Outline => Outline,
+    };
+    (Badge, tone, emphasis)
 }

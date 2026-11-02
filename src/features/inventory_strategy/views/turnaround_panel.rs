@@ -15,7 +15,7 @@ use crate::{
     layout::{LabeledControl, SubmitsOnChange},
     text::Msg,
     theme::*,
-    ui::badge::{Badge, BadgeVariant},
+    ui::badge::{Badge, BadgeEmphasis, BadgeTone},
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
@@ -62,15 +62,15 @@ pub fn TurnaroundPanel<'a>(
         <section class={panel()} aria-labelledby="capital-turnaround">
             <div class={Title}>
                 <h2 id="capital-turnaround">"Capital turnaround"</h2>
-                <Badge
-                    variant={if selection.effective_source == EffectiveSource::ManualFallback { BadgeVariant::Warning } else { BadgeVariant::Success }}
+                <span
+                    class={Badge { tone: if selection.effective_source == EffectiveSource::ManualFallback { BadgeTone::Warning } else { BadgeTone::Success }, emphasis: BadgeEmphasis::Soft }}
                 >
                     {&format!(
                             "Using {} days \u{b7} {}",
                             fixed(selection.effective_days, 1),
                             source_words(selection.effective_source)
                         )}
-                </Badge>
+                </span>
             </div>
             <p class={muted()}>
                 "Days from a sale until its proceeds are back on sale as replacement inventory, estimated from the last 90 days of completed cycles."
@@ -192,24 +192,26 @@ pub fn TurnaroundForm<'a>(
                         label="Manual days"
                         hint="Used when manual is selected or observed evidence is too thin"
                     >
-                        <Input>
-                            <input
-                                type="number"
-                                min="0"
-                                max={MAXIMUM_MANUAL_DAYS}
-                                step="1"
-                                name={f.manual_turnaround_days}
-                                value={&input.manual_turnaround_days}
-                                disabled={off}
-                                {..e.aria(f.manual_turnaround_days)}
-                            >
-                        </Input>
+                        <input
+                            class={Input {}}
+                            type="number"
+                            min="0"
+                            max={MAXIMUM_MANUAL_DAYS}
+                            step="1"
+                            name={f.manual_turnaround_days}
+                            value={&input.manual_turnaround_days}
+                            disabled={off}
+                            {..e.aria(f.manual_turnaround_days)}
+                        >
                         {e.message(f.manual_turnaround_days)}
                     </LabeledControl>
                     <noscript>
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <button disabled={off}>"Save"</button>
-                        </Button>
+                        <button
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                            disabled={off}
+                        >
+                            "Save"
+                        </button>
                     </noscript>
                 </div>
             </SubmitsOnChange>

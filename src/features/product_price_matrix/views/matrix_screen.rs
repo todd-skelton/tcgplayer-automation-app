@@ -17,7 +17,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
-        badge::{Badge, BadgeVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         input::Input,
         select::Select,
@@ -47,17 +47,25 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 if let Some(m) = matrix {
                     <div class={row(Space::_2)}>
                         if let Some(at) = priced_at {
-                            <Badge variant={BadgeVariant::Outline}>
+                            <span
+                                class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                            >
                                 "Priced "
                                 {t.date_time(at, DateStyle::Short, TimeStyle::Medium)}
-                            </Badge>
+                            </span>
                         }
                         if m.suggested_prices_included {
-                            <Badge variant={BadgeVariant::Success}>
+                            <span
+                                class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Soft }}
+                            >
                                 "Suggested prices included"
-                            </Badge>
+                            </span>
                         } else {
-                            <Badge variant={BadgeVariant::Outline}>"Market prices only"</Badge>
+                            <span
+                                class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                            >
+                                "Market prices only"
+                            </span>
                         }
                     </div>
                 }
@@ -74,27 +82,23 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                     <div class={Line}>
                         <label>
                             "Product Line"
-                            <Select>
-                                <select name={f.line}>
-                                    for l in &screen.lines {
-                                        <option value={l.id} selected={l.id == screen.line}>
-                                            {&l.name}
-                                        </option>
-                                    }
-                                </select>
-                            </Select>
+                            <select class={Select {}} name={f.line}>
+                                for l in &screen.lines {
+                                    <option value={l.id} selected={l.id == screen.line}>
+                                        {&l.name}
+                                    </option>
+                                }
+                            </select>
                         </label>
                         <label>
                             "Product Type"
-                            <Select>
-                                <select name={f.product_type}>
-                                    for (value, text) in [(ProductType::All, "All Products"), (ProductType::UnsealedOnly, "Unsealed Only"), (ProductType::SealedOnly, "Sealed Only")] {
-                                        <option value={value} selected={screen.product_type == value}>
-                                            {text}
-                                        </option>
-                                    }
-                                </select>
-                            </Select>
+                            <select class={Select {}} name={f.product_type}>
+                                for (value, text) in [(ProductType::All, "All Products"), (ProductType::UnsealedOnly, "Unsealed Only"), (ProductType::SealedOnly, "Sealed Only")] {
+                                    <option value={value} selected={screen.product_type == value}>
+                                        {text}
+                                    </option>
+                                }
+                            </select>
                         </label>
                         <label class={Toggle}>
                             <input
@@ -110,22 +114,18 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         if screen.scope == Scope::Set {
                             <label class={Wide}>
                                 "Set"
-                                <Select>
-                                    <select name={f.set}>
-                                        for s in &screen.sets {
-                                            <option value={s.id} selected={Some(s.id) == screen.set}>
-                                                {s.label()}
-                                            </option>
-                                        }
-                                    </select>
-                                </Select>
+                                <select class={Select {}} name={f.set}>
+                                    for s in &screen.sets {
+                                        <option value={s.id} selected={Some(s.id) == screen.set}>
+                                            {s.label()}
+                                        </option>
+                                    }
+                                </select>
                             </label>
                         } else {
                             <label class={Wide}>
                                 "Card Number"
-                                <Input>
-                                    <input name={f.number} value={&screen.number} inputmode="search">
-                                </Input>
+                                <input class={Input {}} name={f.number} value={&screen.number} inputmode="search">
                             </label>
                         }
                         <div class={(Wide, Picked)}>
@@ -134,26 +134,22 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         </div>
                         <label>
                             "Language"
-                            <Select>
-                                <select name={f.language} disabled={screen.product.is_none()}>
-                                    if let Some(p) = &screen.product {
-                                        for language in &p.languages {
-                                            <option
-                                                value={language}
-                                                selected={screen.language.as_ref() == Some(language)}
-                                            >
-                                                {language}
-                                            </option>
-                                        }
+                            <select class={Select {}} name={f.language} disabled={screen.product.is_none()}>
+                                if let Some(p) = &screen.product {
+                                    for language in &p.languages {
+                                        <option
+                                            value={language}
+                                            selected={screen.language.as_ref() == Some(language)}
+                                        >
+                                            {language}
+                                        </option>
                                     }
-                                </select>
-                            </Select>
+                                }
+                            </select>
                         </label>
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <button>
-                                if screen.scope == Scope::AllSets { "Search" } else { "Show" }
-                            </button>
-                        </Button>
+                        <button class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}>
+                            if screen.scope == Scope::AllSets { "Search" } else { "Show" }
+                        </button>
                     </div>
                 </SubmitsOnChange>
                 })}
@@ -171,18 +167,34 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                             <h2>{&product.product_name}</h2>
                             <div class={row(Space::_2)}>
                                 if let Some(number) = product.card_number.as_deref().filter(|n| !n.is_empty()) {
-                                    <Badge variant={BadgeVariant::Outline}>"#"{number}</Badge>
+                                    <span
+                                        class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                                    >
+                                        "#"{number}
+                                    </span>
                                 }
-                                <Badge variant={BadgeVariant::Outline}>{&product.set_name}</Badge>
+                                <span
+                                    class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                                >
+                                    {&product.set_name}
+                                </span>
                                 if let Some(rarity) = product.rarity_name.as_deref().filter(|r| !r.is_empty()) {
-                                    <Badge variant={BadgeVariant::Outline}>{rarity}</Badge>
+                                    <span
+                                        class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                                    >
+                                        {rarity}
+                                    </span>
                                 }
-                                <Badge variant={BadgeVariant::Outline}>
+                                <span
+                                    class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                                >
                                     {product.sku_count}" SKUs"
-                                </Badge>
-                                <Badge variant={BadgeVariant::Outline}>
+                                </span>
+                                <span
+                                    class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                                >
                                     {screen.language.as_deref().unwrap_or("No language")}
-                                </Badge>
+                                </span>
                                 if let Some(policy) = matrix.and_then(|m| m.policy.as_ref()) {
                                     <span class={(Chip, Policy)}>{policy.describe()}</span>
                                 }
@@ -190,14 +202,18 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         </div>
                         // The runtime marks the link busy until the priced page arrives.
                         <div class={(row(Space::_2), Reads)}>
-                            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                                <a href={screen.market()}>"↻ Refresh Market"</a>
-                            </Button>
-                            <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                                <a href={screen.suggested()}>
-                                    "Suggested Pricing"
-                                </a>
-                            </Button>
+                            <a
+                                class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                                href={screen.market()}
+                            >
+                                "↻ Refresh Market"
+                            </a>
+                            <a
+                                class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}
+                                href={screen.suggested()}
+                            >
+                                "Suggested Pricing"
+                            </a>
                         </div>
                     </header>
                     match &screen.matrix {

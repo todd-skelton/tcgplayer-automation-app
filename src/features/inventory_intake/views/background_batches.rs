@@ -14,7 +14,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
-        badge::{Badge, BadgeVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         input::Input,
     },
@@ -69,16 +69,15 @@ pub fn BackgroundBatches<'a>(
             >
                 <header class={row(Space::_2)}>
                     <h2 id={BatchesHeadingId}>"Background batches"</h2>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button
-                            type="button"
-                            popovertarget={BatchesPanelId}
-                            popovertargetaction="hide"
-                            aria-label="Close background batches"
-                        >
-                            "×"
-                        </button>
-                    </Button>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                        type="button"
+                        popovertarget={BatchesPanelId}
+                        popovertargetaction="hide"
+                        aria-label="Close background batches"
+                    >
+                        "×"
+                    </button>
                 </header>
                 <p class={muted()}>
                     "Keep adding inventory while queued batches run. Showing the latest 25 handoffs; counts below are SKUs. "
@@ -134,7 +133,9 @@ fn RunItem<'a>(run: &'a Run, selection: &'a Selection, errors: Option<&'a Errors
                 <a href={BatchPricer::batch(run.batch_number)}>
                     "Batch "{run.batch_number}
                 </a>
-                <Badge variant={BadgeVariant::Outline}>{run.status().word()}</Badge>
+                <span class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}>
+                    {run.status().word()}
+                </span>
                 <span class={muted()}>
                     match run.workflow {
                         Workflow::Publish => "Publish when ready",
@@ -164,33 +165,33 @@ fn RunItem<'a>(run: &'a Run, selection: &'a Selection, errors: Option<&'a Errors
                         {errors.form_message()}
                         <label>
                             "Percent of market"
-                            <Input>
-                                <input
-                                    name={f.market_percent}
-                                    value={rate.market_percent()}
-                                    inputmode="decimal"
-                                    required
-                                    {..e.aria(f.market_percent)}
-                                >
-                            </Input>
+                            <input
+                                class={Input {}}
+                                name={f.market_percent}
+                                value={rate.market_percent()}
+                                inputmode="decimal"
+                                required
+                                {..e.aria(f.market_percent)}
+                            >
                             {e.message(f.market_percent)}
                         </label>
                         <label>
                             "Less per card ($)"
-                            <Input>
-                                <input
-                                    name={f.per_card_deduction}
-                                    value={rate.per_card_deduction()}
-                                    inputmode="decimal"
-                                    required
-                                    {..e.aria(f.per_card_deduction)}
-                                >
-                            </Input>
+                            <input
+                                class={Input {}}
+                                name={f.per_card_deduction}
+                                value={rate.per_card_deduction()}
+                                inputmode="decimal"
+                                required
+                                {..e.aria(f.per_card_deduction)}
+                            >
                             {e.message(f.per_card_deduction)}
                         </label>
-                        <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                            <button>"Save rate"</button>
-                        </Button>
+                        <button
+                            class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}
+                        >
+                            "Save rate"
+                        </button>
                     </form>
                 </details>
             }

@@ -1,16 +1,26 @@
-// corten ui 0.1.0: table 316401ee046d241a
+// corten ui 0.1.0: table 756c7f78dcf9630d
 //! A table's look, on the `<table>` written inside it: the rows, headers and caption stay the
-//! app's markup. The wrapper scrolls sideways when the table is wider than the page.
+//! app's markup. The wrapper scrolls sideways when the table is wider than the page, so it is a box
+//! of its own. Cells wrap as text does and headers stay on one line; a number column takes the
+//! `TableNumeric` look (aligned to its end, tabular figures, on one line), and a column the table
+//! sorts by has a `SortHeader`. The kit's cell rules have no specificity (`:where`), so one class
+//! of the app's on a cell wins.
 //!
 //! ```rust,ignore
 //! <Table>
 //!     <table>
 //!         <caption>"Recent orders"</caption>
-//!         <thead><tr><th scope="col">"Order"</th><th scope="col">"Total"</th></tr></thead>
-//!         <tbody>..</tbody>
+//!         <thead>
+//!             <tr>
+//!                 <th scope="col">"Buyer"</th>
+//!                 <SortHeader label="Total" sort={None} link={&url::Orders { sort: Some(By::Total) }} class={TableNumeric {}} />
+//!             </tr>
+//!         </thead>
+//!         <tbody>.. <td class={TableNumeric {}}>{total}</td> ..</tbody>
 //!     </table>
 //! </Table>
 //! ```
+use corten::Href;
 use corten::prelude::*;
 
 /// A part without a rule does not compile:
@@ -26,4 +36,47 @@ use corten::prelude::*;
 #[component(css)]
 pub fn Table<C: Render>(children: C) -> impl Render {
     html! { <div class={Table}>{children}</div> }
+}
+
+/// A number column's cells and header: aligned to the end, so digits line up, in tabular figures,
+/// on one line.
+#[component(css = Table)]
+pub fn TableNumeric() -> impl ClassList {
+    Numeric
+}
+
+/// The order a column is sorted in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Sort {
+    Ascending,
+    Descending,
+}
+
+/// A column header the table can be sorted by: a link to the page sorted by it (a typed route,
+/// with the order the app chooses for a second click), so it works without a script, and
+/// `aria-sort` on the column the table is sorted by now (`sort`, `None` for the others). The
+/// direction is drawn, not written, so a screen reader reads the label and the column's sort
+/// state, not an arrow's name. `class` is the header's look (`TableNumeric {}` over a number
+/// column, `()` for none). A page that sorts its rows in place without a request handles the
+/// links' clicks once, on the `<table>` (`on:click`, with `event.target.closest("a")`), so
+/// the link still sorts a page loaded without the script.
+#[component(css = Table)]
+pub fn SortHeader<'a, L: Render, C: ClassList>(
+    label: L,
+    sort: Option<Sort>,
+    link: &'a dyn Href,
+    class: C,
+) -> impl Render {
+    let (aria, arrow) = match sort {
+        Some(Sort::Ascending) => (Some("ascending"), Some(Up)),
+        Some(Sort::Descending) => (Some("descending"), Some(Down)),
+        None => (None, None),
+    };
+    html! {
+        <th scope="col" class={class} aria-sort={aria}>
+            <a class={Sorter} href={link}>
+                {label}<span class={(Arrow, arrow)} aria-hidden="true"></span>
+            </a>
+        </th>
+    }
 }

@@ -1,13 +1,12 @@
-// corten ui 0.1.0: popover 911da49c3fb9576e
+// corten ui 0.1.0: popover d331ee1e620d3573
 //! Content that opens over the page next to the button that opened it: the platform's
-//! `popover`, written inside it, opened by `popovertarget` (or `command="toggle-popover"`
-//! with `commandfor`) with no script. A click outside or Escape closes it.
+//! `popover`, as the classes of the element you write, opened by `popovertarget` (or
+//! `command="toggle-popover"` with `commandfor`) with no script. A click outside or Escape
+//! closes it.
 //!
 //! ```rust,ignore
-//! <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-//!     <button type="button" popovertarget={ShareId}>"Share"</button>
-//! </Button>
-//! <Popover><div id={ShareId} popover>..</div></Popover>
+//! <button class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }} type="button" popovertarget={ShareId}>"Share"</button>
+//! <div class={Popover {}} id={ShareId} popover>..</div>
 //! ```
 //!
 //! Where the browser has anchor positioning, it sits under the button (above it when there is no
@@ -20,11 +19,11 @@ use corten::prelude::*;
 /// use corten::prelude::*;
 ///
 /// #[component(css)]
-/// fn Popover() -> impl Render {
-///     html! { <div class={(Popover, Arrow)}></div> }
+/// fn Popover() -> impl ClassList {
+///     (Popover, Arrow)
 /// }
 /// ```
 #[component(css)]
-pub fn Popover<C: Render>(children: C) -> impl Render {
-    html! { <div class={Popover}>{children}</div> }
+pub fn Popover() -> impl ClassList {
+    Popover
 }

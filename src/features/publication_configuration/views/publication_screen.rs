@@ -25,6 +25,18 @@ pub struct PublicationFormId;
 #[derive(Id)]
 struct WarningsHintId;
 
+#[derive(Id)]
+struct FailureLimitId;
+
+#[derive(Id)]
+struct MinimumPriceChangeId;
+
+#[derive(Id)]
+struct CandidateMaximumAgeId;
+
+#[derive(Id)]
+struct StagedMicroBatchMaximumId;
+
 /// The screen: what the last post did, and the form. It shares the form's stylesheet.
 #[component(css = PublicationForm)]
 pub fn PublicationScreen<'a>(
@@ -70,9 +82,9 @@ pub fn PublicationForm<'a>(
             data-patch
         >
             {errors.form_message()}
-            <Card>
-                <CardHeader><h2>"Runtime safety"</h2></CardHeader>
-                <CardContent>
+            <div class={Card {}}>
+                <header class={CardHeader {}}><h2>"Runtime safety"</h2></header>
+                <div class={CardContent {}}>
                     if runtime.needs_resume() {
                         <Alert variant={AlertVariant::Warning}><p>{state}</p></Alert>
                     } else if runtime.authentication == Authentication::Healthy {
@@ -90,18 +102,19 @@ pub fn PublicationForm<'a>(
                     </Switch>
                     if runtime.needs_resume() {
                         <div>
-                            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                                <button formaction={url::ResumePublication}>
-                                    "Resume after authentication is refreshed"
-                                </button>
-                            </Button>
+                            <button
+                                class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                                formaction={url::ResumePublication}
+                            >
+                                "Resume after authentication is refreshed"
+                            </button>
                         </div>
                     }
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader><h2>"Automatic publication"</h2></CardHeader>
-                <CardContent>
+                </div>
+            </div>
+            <div class={Card {}}>
+                <header class={CardHeader {}}><h2>"Automatic publication"</h2></header>
+                <div class={CardContent {}}>
                     <Switch label="Enable automatic publication globally">
                         <input
                             type="checkbox"
@@ -123,79 +136,79 @@ pub fn PublicationForm<'a>(
                             </Checkbox>
                         }
                     </fieldset>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader><h2>"Guardrails"</h2></CardHeader>
-                <CardContent>
+                </div>
+            </div>
+            <div class={Card {}}>
+                <header class={CardHeader {}}><h2>"Guardrails"</h2></header>
+                <div class={CardContent {}}>
                     <div class={Numbers}>
                         <Field
-                            id="failure-limit"
+                            id={FailureLimitId}
                             label="Failure limit"
-                            note={e.message(f.consecutive_failure_limit)}
+                            hint=""
+                            error={e.message(f.consecutive_failure_limit)}
                         >
-                            <Input>
-                                <input
-                                    id="failure-limit"
-                                    type="number"
-                                    min="1"
-                                    max="100"
-                                    name={f.consecutive_failure_limit}
-                                    value={&input.consecutive_failure_limit}
-                                    {..e.aria(f.consecutive_failure_limit)}
-                                >
-                            </Input>
+                            <input
+                                class={Input {}}
+                                id={FailureLimitId}
+                                type="number"
+                                min="1"
+                                max="100"
+                                name={f.consecutive_failure_limit}
+                                value={&input.consecutive_failure_limit}
+                                {..e.aria(f.consecutive_failure_limit)}
+                            >
                         </Field>
                         <Field
-                            id="minimum-price-change"
+                            id={MinimumPriceChangeId}
                             label="Minimum price change ($)"
-                            note={e.message(f.minimum_absolute_price_change)}
+                            hint=""
+                            error={e.message(f.minimum_absolute_price_change)}
                         >
-                            <Input>
-                                <input
-                                    id="minimum-price-change"
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    name={f.minimum_absolute_price_change}
-                                    value={&input.minimum_absolute_price_change}
-                                    {..e.aria(f.minimum_absolute_price_change)}
-                                >
-                            </Input>
+                            <input
+                                class={Input {}}
+                                id={MinimumPriceChangeId}
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                name={f.minimum_absolute_price_change}
+                                value={&input.minimum_absolute_price_change}
+                                {..e.aria(f.minimum_absolute_price_change)}
+                            >
                         </Field>
                         <Field
-                            id="candidate-maximum-age"
+                            id={CandidateMaximumAgeId}
                             label="Candidate maximum age (minutes)"
-                            note={e.message(f.maximum_candidate_age_minutes)}
+                            hint=""
+                            error={e.message(f.maximum_candidate_age_minutes)}
                         >
-                            <Input>
-                                <input
-                                    id="candidate-maximum-age"
-                                    type="number"
-                                    min="1"
-                                    max="10080"
-                                    name={f.maximum_candidate_age_minutes}
-                                    value={&input.maximum_candidate_age_minutes}
-                                    {..e.aria(f.maximum_candidate_age_minutes)}
-                                >
-                            </Input>
+                            <input
+                                class={Input {}}
+                                id={CandidateMaximumAgeId}
+                                type="number"
+                                min="1"
+                                max="10080"
+                                name={f.maximum_candidate_age_minutes}
+                                value={&input.maximum_candidate_age_minutes}
+                                {..e.aria(f.maximum_candidate_age_minutes)}
+                            >
                         </Field>
                         <Field
-                            id="staged-micro-batch-maximum"
+                            id={StagedMicroBatchMaximumId}
                             label="Staged micro-batch maximum"
-                            note={e.message(f.staged_micro_batch_maximum)}
+                            hint=""
+                            error={e.message(f.staged_micro_batch_maximum)}
                         >
-                            <Input>
-                                <input
-                                    id="staged-micro-batch-maximum"
-                                    type="number"
-                                    min="1"
-                                    max="750"
-                                    name={f.staged_micro_batch_maximum}
-                                    value={&input.staged_micro_batch_maximum}
-                                    {..e.aria(f.staged_micro_batch_maximum)}
-                                >
-                            </Input>
+                            <input
+                                class={Input {}}
+                                id={StagedMicroBatchMaximumId}
+                                type="number"
+                                min="1"
+                                max="750"
+                                name={f.staged_micro_batch_maximum}
+                                value={&input.staged_micro_batch_maximum}
+                                {..e.aria(f.staged_micro_batch_maximum)}
+                            >
                         </Field>
                     </div>
                     <div class={Warnings}>
@@ -212,17 +225,17 @@ pub fn PublicationForm<'a>(
                             "When off, a warned price still publishes if it was forecast from the curve, anchored by a market price, and profitable. Fallback and reference prices wait for review."
                         </small>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </div>
             <Alert variant={AlertVariant::Warning}>
                 <p>
                     "Quantity values are additive in staged imports. CSV quantity deltas are always excluded from automatic publication. Once an inventory delta is planned, it cannot be recreated under another pricing candidate."
                 </p>
             </Alert>
             <div>
-                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                    <button>"Save publication settings"</button>
-                </Button>
+                <button class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}>
+                    "Save publication settings"
+                </button>
             </div>
         </form>
     }

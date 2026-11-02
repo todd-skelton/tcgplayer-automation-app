@@ -67,26 +67,26 @@ pub fn PricerScreen<'a>(
                     <form method="get" action={url::BatchPricer::newest()} class={Picker}>
                         <label>
                             "Batch"
-                            <Select>
-                                <select name={Chosen::FIELDS.batch}>
-                                    if let Some(n) = unlisted {
-                                        <option value={n} selected>"Batch "{n}</option>
-                                    }
-                                    for batch in list {
-                                        <option
-                                            value={batch.batch_number}
-                                            selected={Some(batch.batch_number) == number}
-                                        >
-                                            {choice(batch)}
-                                        </option>
-                                    }
-                                </select>
-                            </Select>
+                            <select class={Select {}} name={Chosen::FIELDS.batch}>
+                                if let Some(n) = unlisted {
+                                    <option value={n} selected>"Batch "{n}</option>
+                                }
+                                for batch in list {
+                                    <option
+                                        value={batch.batch_number}
+                                        selected={Some(batch.batch_number) == number}
+                                    >
+                                        {choice(batch)}
+                                    </option>
+                                }
+                            </select>
                         </label>
                         <noscript>
-                            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                                <button>"Show"</button>
-                            </Button>
+                            <button
+                                class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                            >
+                                "Show"
+                            </button>
                         </noscript>
                     </form>
                 </SubmitsOnChange>
@@ -139,9 +139,9 @@ pub fn CsvForm<'a>(errors: &'a Errors) -> impl Patch {
                     required
                     {..e.aria(f.file)}
                 >
-                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                    <button>"Upload CSV"</button>
-                </Button>
+                <button class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}>
+                    "Upload CSV"
+                </button>
             </div>
             {e.message(f.file)}
         </form>
@@ -158,13 +158,17 @@ pub fn SellerForm<'a>(seller: &'a str, errors: &'a Errors) -> impl Patch {
             <div class={row(Space::_2)}>
                 <label>
                     "Seller Key "
-                    <Input>
-                        <input name={f.seller_key} value={seller} required {..e.aria(f.seller_key)}>
-                    </Input>
+                    <input
+                        class={Input {}}
+                        name={f.seller_key}
+                        value={seller}
+                        required
+                        {..e.aria(f.seller_key)}
+                    >
                 </label>
-                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                    <button>"Snapshot Seller"</button>
-                </Button>
+                <button class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}>
+                    "Snapshot Seller"
+                </button>
             </div>
             {e.message(f.seller_key)}
         </form>

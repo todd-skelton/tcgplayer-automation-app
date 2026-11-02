@@ -21,7 +21,7 @@ use crate::{
     theme::*,
     ui::alert::{Alert, AlertVariant},
     ui::{
-        badge::{Badge, BadgeVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         select::Select,
         table::Table,
@@ -80,15 +80,21 @@ pub fn SellingHistoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         "Selling history is unavailable: "{reason_words(report.reason)}"."
                     </p>
                     <div>
-                        <Badge variant={BadgeVariant::Warning}>
+                        <span
+                            class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Soft }}
+                        >
                             {&format!("Order history: {}", words(&report.order_coverage.status))}
-                        </Badge>
+                        </span>
                     </div>
                 }
                 Ok(Report::Ready(report)) => {
                     <div class={Title}>
                         <h2 id="selling-history">"Selling history"</h2>
-                        <Badge variant={BadgeVariant::Success}>"Observed listing exposure"</Badge>
+                        <span
+                            class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Soft }}
+                        >
+                            "Observed listing exposure"
+                        </span>
                     </div>
                     <ScopeControls scope={&report.scope} lines={&report.available_product_lines} />
                     <p class={muted()}>
@@ -125,36 +131,34 @@ fn ScopeControls<'a>(scope: &'a Scope, lines: &'a [String]) -> impl Render {
                 <div class={Line}>
                     <label class={Choice}>
                         <span>"History window"</span>
-                        <Select>
-                            <select name={f.history_days}>
-                                for window in Window::ALL {
-                                    <option
-                                        value={window}
-                                        selected={window.days() == scope.window_days}
-                                    >
-                                        "Last "{window.days()}" days"
-                                    </option>
-                                }
-                            </select>
-                        </Select>
+                        <select class={Select {}} name={f.history_days}>
+                            for window in Window::ALL {
+                                <option
+                                    value={window}
+                                    selected={window.days() == scope.window_days}
+                                >
+                                    "Last "{window.days()}" days"
+                                </option>
+                            }
+                        </select>
                     </label>
                     <label class={Choice}>
                         <span>"Product line"</span>
-                        <Select>
-                            <select name={f.history_product_line}>
-                                <option value="" selected={line.is_empty()}>
-                                    "All product lines"
-                                </option>
-                                for name in lines {
-                                    <option value={name} selected={name == line}>{name}</option>
-                                }
-                            </select>
-                        </Select>
+                        <select class={Select {}} name={f.history_product_line}>
+                            <option value="" selected={line.is_empty()}>
+                                "All product lines"
+                            </option>
+                            for name in lines {
+                                <option value={name} selected={name == line}>{name}</option>
+                            }
+                        </select>
                     </label>
                     <noscript>
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <button>"Show"</button>
-                        </Button>
+                        <button
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                        >
+                            "Show"
+                        </button>
                     </noscript>
                 </div>
             </SubmitsOnChange>

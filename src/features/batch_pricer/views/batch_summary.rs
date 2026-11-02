@@ -13,7 +13,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
-        badge::{Badge, BadgeVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         card::{Card, CardContent, CardHeader},
         table::Table,
     },
@@ -87,11 +87,9 @@ pub fn BatchSummary<'a>(
                 }
             </p>
             <div class={Cards}>
-                <Card>
-                    <CardHeader>
-                        <h3>"Record Statistics"</h3>
-                    </CardHeader>
-                    <CardContent>
+                <div class={Card {}}>
+                    <header class={CardHeader {}}><h3>"Record Statistics"</h3></header>
+                    <div class={CardContent {}}>
                         <Table>
                             <table class={Figures}>
                                 <tbody>
@@ -128,13 +126,11 @@ pub fn BatchSummary<'a>(
                                 </tbody>
                             </table>
                         </Table>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <h3>"Quantity Summary"</h3>
-                    </CardHeader>
-                    <CardContent>
+                    </div>
+                </div>
+                <div class={Card {}}>
+                    <header class={CardHeader {}}><h3>"Quantity Summary"</h3></header>
+                    <div class={CardContent {}}>
                         <Table>
                             <table class={Figures}>
                                 <tbody>
@@ -153,16 +149,16 @@ pub fn BatchSummary<'a>(
                                 </tbody>
                             </table>
                         </Table>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
             </div>
             if let Some(lines) = lines {
-                <Card>
-                    <CardHeader>
+                <div class={Card {}}>
+                    <header class={CardHeader {}}>
                         <h3>"Product Line Breakdown"</h3>
                         <p>"Current successful rows grouped by product line."</p>
-                    </CardHeader>
-                    <CardContent>
+                    </header>
+                    <div class={CardContent {}}>
                         <Table>
                             <table class={Figures}>
                                 <thead>
@@ -185,14 +181,14 @@ pub fn BatchSummary<'a>(
                                 </tbody>
                             </table>
                         </Table>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
             }
-            <Card>
-                <CardHeader>
+            <div class={Card {}}>
+                <header class={CardHeader {}}>
                     <h3>"Price Totals (Weighted by Quantity)"</h3>
-                </CardHeader>
-                <CardContent>
+                </header>
+                <div class={CardContent {}}>
                     <Table>
                         <table class={Figures}>
                             <thead>
@@ -243,17 +239,17 @@ pub fn BatchSummary<'a>(
                             </tbody>
                         </table>
                     </Table>
-                </CardContent>
-            </Card>
+                </div>
+            </div>
             if !keys.is_empty() {
-                <Card>
-                    <CardHeader>
+                <div class={Card {}}>
+                    <header class={CardHeader {}}>
                         <h3>"Percentile Analysis"</h3>
                         <p>
                             "Rebuilt from the saved pricing details on successful rows."
                         </p>
-                    </CardHeader>
-                    <CardContent>
+                    </header>
+                    <div class={CardContent {}}>
                         <Table>
                             <table class={Figures}>
                                 <thead>
@@ -272,25 +268,27 @@ pub fn BatchSummary<'a>(
                                 </tbody>
                             </table>
                         </Table>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
             }
             <div class={row(Space::_2)}>
-                <Badge variant={BadgeVariant::Success}>
+                <span class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Soft }}>
                     {t.number(whole(summary.processed_rows))}" successful"
-                </Badge>
-                <Badge variant={BadgeVariant::Warning}>
+                </span>
+                <span class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Soft }}>
                     {t.number(whole(summary.manual_review_rows))}" manual review"
-                </Badge>
+                </span>
                 if summary.skipped_rows > 0.0 {
-                    <Badge variant={BadgeVariant::Outline}>
+                    <span
+                        class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                    >
                         {t.number(whole(summary.skipped_rows))}" not yet priced"
-                    </Badge>
+                    </span>
                 }
                 if summary.warning_rows > 0.0 {
-                    <Badge variant={BadgeVariant::Warning}>
+                    <span class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Soft }}>
                         {t.number(whole(summary.warning_rows))}" rows with warnings"
-                    </Badge>
+                    </span>
                 }
             </div>
             if summary.success_rate < rates.low {

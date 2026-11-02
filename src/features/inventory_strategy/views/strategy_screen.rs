@@ -75,18 +75,20 @@ pub fn StrategyScreen<'a>(
                 </div>
                 <div class={Actions}>
                     <form method="post" action={url::Refresh { view: quiet.clone() }}>
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <button disabled={!configured}>"Refresh inventory"</button>
-                        </Button>
+                        <button
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                            disabled={!configured}
+                        >
+                            "Refresh inventory"
+                        </button>
                     </form>
                     <form method="post" action={url::QueueAnalysis { view: quiet.clone() }}>
-                        <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                            <button
-                                disabled={analysis_active || screen.dashboard.overall.sku_count == 0}
-                            >
-                                "Queue fresh analysis"
-                            </button>
-                        </Button>
+                        <button
+                            class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}
+                            disabled={analysis_active || screen.dashboard.overall.sku_count == 0}
+                        >
+                            "Queue fresh analysis"
+                        </button>
                     </form>
                 </div>
             </header>

@@ -135,9 +135,11 @@ fn Comps<'a>(review: &'a Review, choice: &'a Choice) -> impl Render {
             if review.next_source_page {
                 <form method="post" action={url::FetchComps { choice: choice.clone() }} data-patch>
                     <input type="hidden" name={f.revision} value={&review.revision_id}>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button>"Fetch next source page"</button>
-                    </Button>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    >
+                        "Fetch next source page"
+                    </button>
                 </form>
             }
         </nav>
@@ -198,9 +200,11 @@ fn SaleDialog<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> impl 
                     >
                         <input type="hidden" name={fetch.revision} value={&review.revision_id}>
                         <input type="hidden" name={fetch.transaction} value={&sale.provider_id}>
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <button>"Fetch full sale details"</button>
-                        </Button>
+                        <button
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                        >
+                            "Fetch full sale details"
+                        </button>
                     </form>
                 }
                 <Problem
@@ -241,20 +245,23 @@ fn DecisionForm<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> imp
             <input type="hidden" name={f.provider_id} value={&sale.provider_id}>
             <input type="hidden" name={f.date} value={sale.date.as_deref().unwrap_or("")}>
             <LabeledControl label="Comp decision" hint="">
-                <Select>
-                    <select name={f.decision}>
-                        <option value="accept" selected={!excluded}>"Include after review"</option>
-                        <option value="exclude" selected={excluded}>"Exclude"</option>
-                    </select>
-                </Select>
+                <select class={Select {}} name={f.decision}>
+                    <option value="accept" selected={!excluded}>"Include after review"</option>
+                    <option value="exclude" selected={excluded}>"Exclude"</option>
+                </select>
             </LabeledControl>
             <LabeledControl
                 label="Verified item price in USD (optional)"
                 hint="Use only an item amount verified from the sale. Shipping and fees remain separate."
             >
-                <Input>
-                    <input type="number" name={f.item_price} value={price} min="0.01" step="0.01">
-                </Input>
+                <input
+                    class={Input {}}
+                    type="number"
+                    name={f.item_price}
+                    value={price}
+                    min="0.01"
+                    step="0.01"
+                >
             </LabeledControl>
             <LabeledControl label="Review reason" hint="">
                 <textarea name={f.note} rows="3" maxlength="1000" required>
@@ -264,9 +271,9 @@ fn DecisionForm<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> imp
             <p class={muted()}>
                 "Including a comp does not override a conflicting card identity or unconfirmed sale outcome."
             </p>
-            <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                <button>"Save decision"</button>
-            </Button>
+            <button class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}>
+                "Save decision"
+            </button>
         </form>
     }
 }

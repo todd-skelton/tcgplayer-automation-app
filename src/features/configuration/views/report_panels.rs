@@ -129,19 +129,19 @@ fn WindowChoice<'a>(days: u32, windows: &'a [u32], label: &'a str) -> impl Rende
         <SubmitsOnChange>
             <label class={WindowSelect}>
                 {label}
-                <Select>
-                    <select name={f.days}>
-                        for window in windows {
-                            <option value={*window} selected={*window == days}>
-                                "Last "{*window}" days"
-                            </option>
-                        }
-                    </select>
-                </Select>
+                <select class={Select {}} name={f.days}>
+                    for window in windows {
+                        <option value={*window} selected={*window == days}>
+                            "Last "{*window}" days"
+                        </option>
+                    }
+                </select>
                 <noscript>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button>"Show"</button>
-                    </Button>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    >
+                        "Show"
+                    </button>
                 </noscript>
             </label>
         </SubmitsOnChange>

@@ -62,9 +62,13 @@ pub fn QueueTotals<'a>(totals: Totals, counted: &'a str) -> impl Patch {
                 <strong class={Units}>
                     {totals.units}" unqueued units across "{totals.skus}" SKUs"
                 </strong>
-                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                    <button type="button" popovertarget={ClearConfirmId}>"Clear unqueued"</button>
-                </Button>
+                <button
+                    class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    type="button"
+                    popovertarget={ClearConfirmId}
+                >
+                    "Clear unqueued"
+                </button>
             } else {
                 <span class={(muted(), NothingCounted)}>"Nothing counted yet"</span>
             }
@@ -89,14 +93,19 @@ pub fn ClearConfirm<'a>(selection: &'a Selection, totals: Totals) -> impl Patch 
                 class={row(Space::_2)}
             >
                 {SubmitKey::field(ClearInput::FIELDS.submit)}
-                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                    <button type="button" popovertarget={ClearConfirmId} popovertargetaction="hide">
-                        "Cancel"
-                    </button>
-                </Button>
-                <Button variant={ButtonVariant::Destructive} size={ButtonSize::Md}>
-                    <button>"Clear unqueued"</button>
-                </Button>
+                <button
+                    class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    type="button"
+                    popovertarget={ClearConfirmId}
+                    popovertargetaction="hide"
+                >
+                    "Cancel"
+                </button>
+                <button
+                    class={Button { variant: ButtonVariant::Destructive, size: ButtonSize::Md }}
+                >
+                    "Clear unqueued"
+                </button>
             </form>
         </div>
     }
@@ -170,28 +179,26 @@ pub fn QueueForm<'a>(
                         <div class={(RateFields, row(Space::_3))}>
                             <label>
                                 "Percent of market"
-                                <Input>
-                                    <input
-                                        name={f.market_percent}
-                                        value={&input.market_percent}
-                                        inputmode="decimal"
-                                        pattern="\\d+(\\.\\d{1,2})?"
-                                        {..e.aria(f.market_percent)}
-                                    >
-                                </Input>
+                                <input
+                                    class={Input {}}
+                                    name={f.market_percent}
+                                    value={&input.market_percent}
+                                    inputmode="decimal"
+                                    pattern="\\d+(\\.\\d{1,2})?"
+                                    {..e.aria(f.market_percent)}
+                                >
                                 {e.message(f.market_percent)}
                             </label>
                             <label>
                                 "Less per card ($)"
-                                <Input>
-                                    <input
-                                        name={f.per_card_deduction}
-                                        value={&input.per_card_deduction}
-                                        inputmode="decimal"
-                                        pattern="\\d+(\\.\\d{1,2})?"
-                                        {..e.aria(f.per_card_deduction)}
-                                    >
-                                </Input>
+                                <input
+                                    class={Input {}}
+                                    name={f.per_card_deduction}
+                                    value={&input.per_card_deduction}
+                                    inputmode="decimal"
+                                    pattern="\\d+(\\.\\d{1,2})?"
+                                    {..e.aria(f.per_card_deduction)}
+                                >
                                 {e.message(f.per_card_deduction)}
                             </label>
                             <p class={muted()}>
@@ -203,25 +210,23 @@ pub fn QueueForm<'a>(
                         <div class={(PurchaseFields, row(Space::_3))}>
                             <label>
                                 "Purchase reference"
-                                <Input>
-                                    <input
-                                        name={f.purchase_reference}
-                                        value={&input.purchase_reference}
-                                        {..e.aria(f.purchase_reference)}
-                                    >
-                                </Input>
+                                <input
+                                    class={Input {}}
+                                    name={f.purchase_reference}
+                                    value={&input.purchase_reference}
+                                    {..e.aria(f.purchase_reference)}
+                                >
                                 {e.message(f.purchase_reference)}
                             </label>
                             <label>
                                 "Purchase total (USD)"
-                                <Input>
-                                    <input
-                                        name={f.purchase_total}
-                                        value={&input.purchase_total}
-                                        inputmode="decimal"
-                                        {..e.aria(f.purchase_total)}
-                                    >
-                                </Input>
+                                <input
+                                    class={Input {}}
+                                    name={f.purchase_total}
+                                    value={&input.purchase_total}
+                                    inputmode="decimal"
+                                    {..e.aria(f.purchase_total)}
+                                >
                                 {e.message(f.purchase_total)}
                             </label>
                         </div>
@@ -229,13 +234,12 @@ pub fn QueueForm<'a>(
                     <div class={(PurchaseFields, row(Space::_3))}>
                         <label>
                             "Purchase date"
-                            <Input>
-                                <input
-                                    type="date"
-                                    name={f.purchase_date}
-                                    value={&input.purchase_date}
-                                >
-                            </Input>
+                            <input
+                                class={Input {}}
+                                type="date"
+                                name={f.purchase_date}
+                                value={&input.purchase_date}
+                            >
                         </label>
                         <label class={Choice}>
                             <input
@@ -262,25 +266,23 @@ pub fn QueueForm<'a>(
                 }
             </div>
             <div class={row(Space::_2)}>
-                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                    <button
-                        name={f.workflow}
-                        value={Workflow::PriceOnly}
-                        disabled={!can_queue}
-                    >
-                        "Queue pricing only"
-                    </button>
-                </Button>
-                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                    <button
-                        name={f.workflow}
-                        value={Workflow::Publish}
-                        disabled={!can_publish}
-                        aria-describedby={PublishNoteId}
-                    >
-                        "Queue pricing & publishing"
-                    </button>
-                </Button>
+                <button
+                    class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}
+                    name={f.workflow}
+                    value={Workflow::PriceOnly}
+                    disabled={!can_queue}
+                >
+                    "Queue pricing only"
+                </button>
+                <button
+                    class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    name={f.workflow}
+                    value={Workflow::Publish}
+                    disabled={!can_publish}
+                    aria-describedby={PublishNoteId}
+                >
+                    "Queue pricing & publishing"
+                </button>
             </div>
             <p id={PublishNoteId} class={(muted(), PublishNote)}>
                 {publish_note(target)}

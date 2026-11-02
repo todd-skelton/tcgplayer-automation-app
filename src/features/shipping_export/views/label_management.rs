@@ -25,7 +25,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
-        badge::{Badge, BadgeVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         input::Input,
     },
@@ -68,32 +68,37 @@ pub fn LabelManagement<'a>(
             </p>
             <form method="get" action={url::OrderLabels { order: None }} class={Lookup}>
                 <LabeledControl label="Order Number" hint="">
-                    <Input>
-                        <input
-                            name="order"
-                            value={looked.number.unwrap_or_default()}
-                            placeholder="Enter order number"
-                            required
-                        >
-                    </Input>
+                    <input
+                        class={Input {}}
+                        name="order"
+                        value={looked.number.unwrap_or_default()}
+                        placeholder="Enter order number"
+                        required
+                    >
                 </LabeledControl>
-                <Button variant={ButtonVariant::Secondary} size={ButtonSize::Md}>
-                    <button>"Lookup Order"</button>
-                </Button>
+                <button class={Button { variant: ButtonVariant::Secondary, size: ButtonSize::Md }}>
+                    "Lookup Order"
+                </button>
             </form>
             if let Some(found) = found {
                 <section class={Section}>
                     <h2>"Order "{&found.order.number}</h2>
                     <div class={row(Space::_2)}>
-                        <Badge variant={BadgeVariant::Outline}>
+                        <span
+                            class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                        >
                             {found.order.item_count}" items"
-                        </Badge>
-                        <Badge variant={BadgeVariant::Outline}>
+                        </span>
+                        <span
+                            class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                        >
                             {format!("${:.2}", found.order.value_of_products)}
-                        </Badge>
-                        <Badge variant={BadgeVariant::Outline}>
+                        </span>
+                        <span
+                            class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                        >
                             {&found.order.shipping_method}
-                        </Badge>
+                        </span>
                     </div>
                 </section>
                 <section class={Section}>
@@ -128,9 +133,9 @@ pub fn LabelManagement<'a>(
 fn PurchasedLabel<'a>(title: &'a str, bought: &'a Bought, looked: &'a Looked<'a>) -> impl Render {
     let result = &bought.result;
     let (status, tone) = match result.status {
-        Status::Purchased => ("PURCHASED", BadgeVariant::Success),
-        Status::Failed => ("FAILED", BadgeVariant::Destructive),
-        Status::Skipped => ("SKIPPED", BadgeVariant::Warning),
+        Status::Purchased => ("PURCHASED", BadgeTone::Success),
+        Status::Failed => ("FAILED", BadgeTone::Destructive),
+        Status::Skipped => ("SKIPPED", BadgeTone::Warning),
     };
     let at = bought
         .purchased_at
@@ -145,14 +150,16 @@ fn PurchasedLabel<'a>(title: &'a str, bought: &'a Bought, looked: &'a Looked<'a>
         <article class={Label}>
             <h3>{title}</h3>
             <div class={row(Space::_2)}>
-                <Badge variant={tone}>{status}</Badge>
-                <Badge variant={BadgeVariant::Outline}>
+                <span class={Badge { tone, emphasis: BadgeEmphasis::Soft }}>{status}</span>
+                <span class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}>
                     if bought.mode == EasyPostMode::Test { "TEST" } else { "PRODUCTION" }
-                </Badge>
+                </span>
                 if let Some(rate) = &result.selected_rate {
-                    <Badge variant={BadgeVariant::Outline}>
+                    <span
+                        class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                    >
                         {&rate.service}" "{&rate.rate}" "{&rate.currency}
-                    </Badge>
+                    </span>
                 }
             </div>
             if let Some(at) = at {
@@ -165,11 +172,14 @@ fn PurchasedLabel<'a>(title: &'a str, bought: &'a Bought, looked: &'a Looked<'a>
                 <p>"Tracking: "{code}</p>
             }
             if let Some(href) = href {
-                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                    <a href={href} target="_blank" rel="noreferrer">
-                        if result.label_pdf_url.is_some() { "Open Label PDF" } else { "Open Label" }
-                    </a>
-                </Button>
+                <a
+                    class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                >
+                    if result.label_pdf_url.is_some() { "Open Label PDF" } else { "Open Label" }
+                </a>
             }
             if let Some(error) = &result.error {
                 <p class={Bad}>{error}</p>
@@ -274,14 +284,13 @@ pub fn LabelForm<'a>(
             <input type="hidden" name={f.reference} value={number}>
             <input type="hidden" name={c.shown_service} value={input.service}>
             <p class={muted()}>"Return labels use the same package with the addresses swapped."</p>
-            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                <button
-                    ref={redraw}
-                    formaction={url::OrderLabelsForm { order: order.clone() }}
-                >
-                    "Apply Choice and Service"
-                </button>
-            </Button>
+            <button
+                class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                ref={redraw}
+                formaction={url::OrderLabelsForm { order: order.clone() }}
+            >
+                "Apply Choice and Service"
+            </button>
             if !mode.has_key() {
                 <Alert variant={AlertVariant::Warning}>
                     {mode.key_name()}" is not set. Postage purchase is disabled."
@@ -291,15 +300,13 @@ pub fn LabelForm<'a>(
                 <Alert variant={AlertVariant::Warning}>{repurchase(bought)}</Alert>
                 <input type="hidden" name={c.again} value="true">
             }
-            <Button
-                variant={if test { ButtonVariant::Warning } else { ButtonVariant::Primary }}
-                size={ButtonSize::Md}
+            <button
+                class={Button { variant: if test { ButtonVariant::Warning } else { ButtonVariant::Primary }, size: ButtonSize::Md }}
+                disabled={!mode.has_key()}
             >
-                <button disabled={!mode.has_key()}>
-                    if bought.is_empty() { "Buy " } else { "Buy Another " }
-                    {buy.label()}
-                </button>
-            </Button>
+                if bought.is_empty() { "Buy " } else { "Buy Another " }
+                {buy.label()}
+            </button>
         </form>
     }
 }

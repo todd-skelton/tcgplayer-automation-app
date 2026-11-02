@@ -1,14 +1,17 @@
-/* corten ui 0.1.0: badge 33c6675cb1bf4078 */
+/* corten ui 0.1.0: badge 06a51c92be7ec143 */
 .badge {
   display: inline-flex; align-items: center; gap: .25rem; width: fit-content; white-space: nowrap;
   padding: .125rem .5rem; font-size: .75rem; font-weight: 500; line-height: 1rem;
   border: 1px solid transparent; border-radius: calc(var(--radius) - 2px);
 }
-.primary { background: var(--primary); color: var(--primary-foreground); }
-.secondary { background: var(--secondary); color: var(--secondary-foreground); }
-.outline { color: var(--foreground); border-color: var(--border); }
-.destructive { background: var(--destructive); color: var(--destructive-foreground); }
-/* The app's tones: the tone's text on its soft surface, with a border of the two. */
-.success { background: var(--success-soft); color: var(--success); border-color: color-mix(in oklab, var(--success) 35%, transparent); }
-.warning { background: var(--warning-soft); color: var(--warning); border-color: color-mix(in oklab, var(--warning) 35%, transparent); }
-.info { background: var(--info-soft); color: var(--info); border-color: color-mix(in oklab, var(--info) 35%, transparent); }
+/* A tone is its color (soft and outline text), and the fill and text of a solid badge. */
+.neutral { --tone: var(--foreground); --tone-fill: var(--secondary); --tone-text: var(--secondary-foreground); }
+.primary { --tone: var(--primary); --tone-fill: var(--primary); --tone-text: var(--primary-foreground); }
+.info { --tone: var(--info); --tone-fill: var(--info); --tone-text: var(--info-foreground); }
+.success { --tone: var(--success); --tone-fill: var(--success); --tone-text: var(--success-foreground); }
+.warning { --tone: var(--warning); --tone-fill: var(--warning); --tone-text: var(--warning-foreground); }
+.destructive { --tone: var(--destructive); --tone-fill: var(--destructive); --tone-text: var(--destructive-foreground); }
+/* Mixed in sRGB, which the kit's contrast test computes exactly. */
+.solid { background: var(--tone-fill); color: var(--tone-text); }
+.soft { background: color-mix(in srgb, var(--tone) 12%, var(--card)); color: color-mix(in srgb, var(--tone) 85%, var(--foreground)); }
+.outline { background: transparent; color: var(--tone); border-color: color-mix(in srgb, var(--tone) 50%, var(--border)); }

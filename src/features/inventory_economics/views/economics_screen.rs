@@ -38,9 +38,9 @@ pub fn EconomicsScreen<'a>(workspace: &'a Result<Workspace, String>, t: Msg) -> 
                             "."
                         </p>
                     </header>
-                    <Card>
-                        <CardHeader><h2>"Purchase costs"</h2></CardHeader>
-                        <CardContent>
+                    <div class={Card {}}>
+                        <header class={CardHeader {}}><h2>"Purchase costs"</h2></header>
+                        <div class={CardContent {}}>
                             let current = &w.purchase_costs;
                             if current.is_empty() {
                                 <p class={muted()}>"No purchase cost records."</p>
@@ -60,8 +60,8 @@ pub fn EconomicsScreen<'a>(workspace: &'a Result<Workspace, String>, t: Msg) -> 
                                     }
                                 </ul>
                             }
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </div>
                     <OrderTable orders={&w.orders} t={t} />
                 }
             }
@@ -73,79 +73,77 @@ pub fn EconomicsScreen<'a>(workspace: &'a Result<Workspace, String>, t: Msg) -> 
 #[component(css = EconomicsScreen)]
 fn OrderTable<'a>(orders: &'a [Order], t: Msg) -> impl Render {
     html! {
-        <Card>
-            <CardContent>
-                <Table>
-                    <table aria-label="Order economics">
-                        <thead>
-                            <tr>
-                                <th>"Order"</th>
-                                <th class={End}>"Gross"</th>
-                                <th class={End}>"Provider net"</th>
-                                <th class={End}>"Postage"</th>
-                                <th class={End}>"Cost"</th>
-                                <th class={End}>"Reusable cash"</th>
-                                <th class={End}>"Realized profit"</th>
-                                <th>"Coverage"</th>
+        <div class={(Card {}, CardContent {})}>
+            <Table>
+                <table aria-label="Order economics">
+                    <thead>
+                        <tr>
+                            <th>"Order"</th>
+                            <th class={End}>"Gross"</th>
+                            <th class={End}>"Provider net"</th>
+                            <th class={End}>"Postage"</th>
+                            <th class={End}>"Cost"</th>
+                            <th class={End}>"Reusable cash"</th>
+                            <th class={End}>"Realized profit"</th>
+                            <th>"Coverage"</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        if orders.is_empty() {
+                            <tr><td colspan="8">"No captured seller orders yet."</td></tr>
+                        }
+                        for o in orders {
+                            <tr key={&o.order_number}>
+                                <th scope="row">{&o.order_number}</th>
+                                <td class={End}>
+                                    <Money
+                                        cents={o.gross_order_cents}
+                                        currency={&o.currency}
+                                        t={t}
+                                    />
+                                </td>
+                                <td class={End}>
+                                    <Money
+                                        cents={o.provider_net_cents}
+                                        currency={&o.currency}
+                                        t={t}
+                                    />
+                                </td>
+                                <td class={End}>
+                                    <Money
+                                        cents={o.postage_cents}
+                                        currency={&o.currency}
+                                        t={t}
+                                    />
+                                </td>
+                                <td class={End}>
+                                    <Money
+                                        cents={o.acquisition_cost_cents}
+                                        currency={&o.currency}
+                                        t={t}
+                                    />
+                                </td>
+                                <td class={End}>
+                                    <Money
+                                        cents={o.reusable_cash_cents}
+                                        currency={&o.currency}
+                                        t={t}
+                                    />
+                                </td>
+                                <td class={End}>
+                                    <Money
+                                        cents={o.realized_profit_cents}
+                                        currency={&o.currency}
+                                        t={t}
+                                    />
+                                </td>
+                                <td class={Coverage}>{o.coverage()}</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            if orders.is_empty() {
-                                <tr><td colspan="8">"No captured seller orders yet."</td></tr>
-                            }
-                            for o in orders {
-                                <tr key={&o.order_number}>
-                                    <th scope="row">{&o.order_number}</th>
-                                    <td class={End}>
-                                        <Money
-                                            cents={o.gross_order_cents}
-                                            currency={&o.currency}
-                                            t={t}
-                                        />
-                                    </td>
-                                    <td class={End}>
-                                        <Money
-                                            cents={o.provider_net_cents}
-                                            currency={&o.currency}
-                                            t={t}
-                                        />
-                                    </td>
-                                    <td class={End}>
-                                        <Money
-                                            cents={o.postage_cents}
-                                            currency={&o.currency}
-                                            t={t}
-                                        />
-                                    </td>
-                                    <td class={End}>
-                                        <Money
-                                            cents={o.acquisition_cost_cents}
-                                            currency={&o.currency}
-                                            t={t}
-                                        />
-                                    </td>
-                                    <td class={End}>
-                                        <Money
-                                            cents={o.reusable_cash_cents}
-                                            currency={&o.currency}
-                                            t={t}
-                                        />
-                                    </td>
-                                    <td class={End}>
-                                        <Money
-                                            cents={o.realized_profit_cents}
-                                            currency={&o.currency}
-                                            t={t}
-                                        />
-                                    </td>
-                                    <td class={Coverage}>{o.coverage()}</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </Table>
-            </CardContent>
-        </Card>
+                        }
+                    </tbody>
+                </table>
+            </Table>
+        </div>
     }
 }
 

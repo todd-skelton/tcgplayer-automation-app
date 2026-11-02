@@ -13,7 +13,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
-        badge::{Badge, BadgeVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         input::Input,
         select::Select,
@@ -105,32 +105,29 @@ pub fn IntakeScreen<'a>(
             >
                 <label>
                     "Product Line"
-                    <Select>
-                        <select name={f.line}>
-                            for l in &screen.lines {
-                                <option value={l.id} selected={l.id == screen.line}>
-                                    {&l.name}
-                                </option>
-                            }
-                        </select>
-                    </Select>
+                    <select class={Select {}} name={f.line}>
+                        for l in &screen.lines {
+                            <option value={l.id} selected={l.id == screen.line}>
+                                {&l.name}
+                            </option>
+                        }
+                    </select>
                 </label>
                 <label>
                     "Set"
-                    <Select>
-                        <select
-                            id={SetSelectId}
-                            ref={sets}
-                            name={f.set}
-                            disabled={screen.scope == Scope::AllSets}
-                        >
-                            for s in &screen.sets {
-                                <option value={s.id} selected={Some(s.id) == screen.set}>
-                                    {s.label()}
-                                </option>
-                            }
-                        </select>
-                    </Select>
+                    <select
+                        class={Select {}}
+                        id={SetSelectId}
+                        ref={sets}
+                        name={f.set}
+                        disabled={screen.scope == Scope::AllSets}
+                    >
+                        for s in &screen.sets {
+                            <option value={s.id} selected={Some(s.id) == screen.set}>
+                                {s.label()}
+                            </option>
+                        }
+                    </select>
                 </label>
                 <label class={Toggle}>
                     <input
@@ -143,37 +140,33 @@ pub fn IntakeScreen<'a>(
                 </label>
                 <label>
                     "Condition"
-                    <Select>
-                        <select
-                            id={ConditionSelectId}
-                            ref={conditions}
-                            name={f.condition}
-                            class={ConditionSelect}
-                        >
-                            for c in Condition::ALL {
-                                <option value={c} selected={c == screen.condition}>
-                                    {c.name()}
-                                </option>
-                            }
-                        </select>
-                    </Select>
+                    <select
+                        id={ConditionSelectId}
+                        ref={conditions}
+                        name={f.condition}
+                        class={(Select {}, ConditionSelect)}
+                    >
+                        for c in Condition::ALL {
+                            <option value={c} selected={c == screen.condition}>
+                                {c.name()}
+                            </option>
+                        }
+                    </select>
                 </label>
                 <details class={More}>
                     <summary>{more_filters(selection)}</summary>
                     <label>
                         "Product Type"
-                        <Select>
-                            <select name={f.product_type}>
-                                for (value, text) in [(ProductType::All, "All Products"), (ProductType::SealedOnly, "Sealed Only"), (ProductType::UnsealedOnly, "Unsealed Only")] {
-                                    <option
-                                        value={value}
-                                        selected={selection.product_type.unwrap_or_default() == value}
-                                    >
-                                        {text}
-                                    </option>
-                                }
-                            </select>
-                        </Select>
+                        <select class={Select {}} name={f.product_type}>
+                            for (value, text) in [(ProductType::All, "All Products"), (ProductType::SealedOnly, "Sealed Only"), (ProductType::UnsealedOnly, "Unsealed Only")] {
+                                <option
+                                    value={value}
+                                    selected={selection.product_type.unwrap_or_default() == value}
+                                >
+                                    {text}
+                                </option>
+                            }
+                        </select>
                     </label>
                     <fieldset class={Languages}>
                         <legend>"Languages (none chosen: all)"</legend>
@@ -196,25 +189,28 @@ pub fn IntakeScreen<'a>(
                         Scope::AllSets => "Card number, in every set",
                     }
                     <span class={row(Space::_2)}>
-                        <Input>
-                            <input
-                                id={SearchId}
-                                ref={search}
-                                type="search"
-                                name={f.search}
-                                value={selection.search.as_deref().unwrap_or("")}
-                                autocomplete="off"
-                            >
-                        </Input>
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <button>"Search"</button>
-                        </Button>
+                        <input
+                            class={Input {}}
+                            id={SearchId}
+                            ref={search}
+                            type="search"
+                            name={f.search}
+                            value={selection.search.as_deref().unwrap_or("")}
+                            autocomplete="off"
+                        >
+                        <button
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                        >
+                            "Search"
+                        </button>
                     </span>
                 </label>
                 <noscript>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button>"Show"</button>
-                    </Button>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    >
+                        "Show"
+                    </button>
                 </noscript>
             </form>
             <section class={panel()} aria-labelledby={TableHeadingId}>
@@ -262,9 +258,11 @@ pub fn IntakeScreen<'a>(
             <dialog id={PictureId} ref={dialog} class={Picture} closedby="any">
                 <img ref={image} alt="Product">
                 <form method="dialog">
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button>"Close"</button>
-                    </Button>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    >
+                        "Close"
+                    </button>
                 </form>
             </dialog>
         </section>
@@ -308,7 +306,11 @@ fn ProductRow<'a>(product: &'a Product, screen: &'a Screen) -> impl Render {
             <td>
                 <a href={picture(product.product_id)} tabindex="-1">"View"</a>
             </td>
-            <td><Badge variant={BadgeVariant::Outline}>{set}</Badge></td>
+            <td>
+                <span class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}>
+                    {set}
+                </span>
+            </td>
             <td>
                 if product.sealed {
                     <SkuLabel product={product} condition={None} />
@@ -464,11 +466,15 @@ pub fn CountForm<'a>(
             action={url::Count { sku: counted.sku, selection: selection.clone() }}
             data-patch
         >
-            <Button variant={ButtonVariant::Outline} size={ButtonSize::Icon}>
-                <button type="button" tabindex="-1" data-step="-1" aria-label="One fewer">
-                    "−"
-                </button>
-            </Button>
+            <button
+                class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Icon }}
+                type="button"
+                tabindex="-1"
+                data-step="-1"
+                aria-label="One fewer"
+            >
+                "−"
+            </button>
             <input
                 class={Quantity}
                 name={c.quantity}
@@ -478,9 +484,14 @@ pub fn CountForm<'a>(
                 aria-label={counted.label}
                 data-sku={counted.sku}
             >
-            <Button variant={ButtonVariant::Outline} size={ButtonSize::Icon}>
-                <button type="button" data-step="1" aria-label="One more">"+"</button>
-            </Button>
+            <button
+                class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Icon }}
+                type="button"
+                data-step="1"
+                aria-label="One more"
+            >
+                "+"
+            </button>
             <input type="hidden" name={c.seen} value={quantity}>
             {SubmitKey::field(c.submit)}
         </form>

@@ -1,11 +1,11 @@
-// corten ui 0.1.0: combobox 4342f021669335e0
+// corten ui 0.1.0: combobox 3cd79eee4266c4ec
 //! The look of corten-ui's `ComboBox` written inside it: an input like `Input` and a list under
 //! it, the option Enter would pick highlighted and the chosen one checked. Before its script runs
 //! (or without one) it is the native `<select>`, styled like `Select`. The app lists
 //! `corten_ui::COMPONENTS` too.
 //!
 //! ```rust,ignore
-//! <Field label={t.color()} note=""><Combobox><ComboBox field={&picker} /></Combobox></Field>
+//! <Field id={ColorId} label={t.color()} hint="" error=""><Combobox><ComboBox field={&picker} /></Combobox></Field>
 //! ```
 use corten::prelude::*;
 

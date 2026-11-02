@@ -113,22 +113,23 @@ fn PrepareForm<'a>(
                 <input type="hidden" name={f.reviewed_at} value={&reviewed.reviewed_at}>
             }
             <LabeledControl label="Price to review" hint="">
-                <Select>
-                    <select name={f.selection}>
-                        <option value="calculated" selected={reviewed.is_none()}>
-                            "Calculated ask · "{calculated}
+                <select class={Select {}} name={f.selection}>
+                    <option value="calculated" selected={reviewed.is_none()}>
+                        "Calculated ask · "{calculated}
+                    </option>
+                    if let Some(reviewed) = reviewed {
+                        <option value="reviewed" selected>
+                            "Reviewed ask · "{amount(Some(reviewed.item_price))}
                         </option>
-                        if let Some(reviewed) = reviewed {
-                            <option value="reviewed" selected>
-                                "Reviewed ask · "{amount(Some(reviewed.item_price))}
-                            </option>
-                        }
-                    </select>
-                </Select>
+                    }
+                </select>
             </LabeledControl>
-            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                <button disabled={stale}>"Save price-change preview"</button>
-            </Button>
+            <button
+                class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                disabled={stale}
+            >
+                "Save price-change preview"
+            </button>
             <a href={url::SlabPricing::at(&screen.choice)}>"Reload preview"</a>
         </form>
     }
@@ -232,9 +233,12 @@ fn DryRun<'a>(
             >
                 {SubmitKey::field(f.intent)}
                 <input type="hidden" name={f.preview} value={&preview.id}>
-                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                    <button disabled={blocked}>"Run without writing"</button>
-                </Button>
+                <button
+                    class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    disabled={blocked}
+                >
+                    "Run without writing"
+                </button>
             </form>
             <Problem at={Place::DryRun} why={screen.problem_at(Place::DryRun)} />
             if !runs.is_empty() {
@@ -265,9 +269,11 @@ fn DryRun<'a>(
                                 >
                                     <input type="hidden" name={f.intent} value={&run.id}>
                                     <input type="hidden" name={f.preview} value={&preview.id}>
-                                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                                        <button>"Resume dry run"</button>
-                                    </Button>
+                                    <button
+                                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                                    >
+                                        "Resume dry run"
+                                    </button>
                                 </form>
                             }
                         </li>

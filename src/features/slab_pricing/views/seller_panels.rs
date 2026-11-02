@@ -101,53 +101,55 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                             "Include active supply"
                         </label>
                         <LabeledControl label="Refresh interval (minutes)" hint="">
-                            <Input>
-                                <input
-                                    type="number"
-                                    name={f.interval_minutes}
-                                    value={view.settings.interval_minutes}
-                                    min="15"
-                                    max="1440"
-                                    step="1"
-                                    required
-                                >
-                            </Input>
+                            <input
+                                class={Input {}}
+                                type="number"
+                                name={f.interval_minutes}
+                                value={view.settings.interval_minutes}
+                                min="15"
+                                max="1440"
+                                step="1"
+                                required
+                            >
                         </LabeledControl>
                         <LabeledControl label="Listings per cycle" hint="">
-                            <Input>
-                                <input
-                                    type="number"
-                                    name={f.batch_size}
-                                    value={view.settings.batch_size}
-                                    min="1"
-                                    max="25"
-                                    step="1"
-                                    required
-                                >
-                            </Input>
+                            <input
+                                class={Input {}}
+                                type="number"
+                                name={f.batch_size}
+                                value={view.settings.batch_size}
+                                min="1"
+                                max="25"
+                                step="1"
+                                required
+                            >
                         </LabeledControl>
                         <LabeledControl label="Refresh jobs per cycle" hint="">
-                            <Input>
-                                <input
-                                    type="number"
-                                    name={f.refresh_budget}
-                                    value={view.settings.refresh_budget}
-                                    min="1"
-                                    max="50"
-                                    step="1"
-                                    required
-                                >
-                            </Input>
+                            <input
+                                class={Input {}}
+                                type="number"
+                                name={f.refresh_budget}
+                                value={view.settings.refresh_budget}
+                                min="1"
+                                max="50"
+                                step="1"
+                                required
+                            >
                         </LabeledControl>
                     </div>
                     <div class={Line}>
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <button>"Save maintenance settings"</button>
-                        </Button>
+                        <button
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                        >
+                            "Save maintenance settings"
+                        </button>
                         <a href={url::SlabPricing::at(choice)}>"Reload status"</a>
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <button type="reset">"Reset edits"</button>
-                        </Button>
+                        <button
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                            type="reset"
+                        >
+                            "Reset edits"
+                        </button>
                     </div>
                 </form>
             }
@@ -264,13 +266,9 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
                     &url::SlabPricing::at(choice),
                     html! {
                     <LabeledControl label="Outcome listing item ID" hint="">
-                        <Input>
-                            <input name={f.item} value={choice.item.as_deref().unwrap_or("")} required>
-                        </Input>
+                        <input class={Input {}} name={f.item} value={choice.item.as_deref().unwrap_or("")} required>
                     </LabeledControl>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button>"Read saved outcomes"</button>
-                    </Button>
+                    <button class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}>"Read saved outcomes"</button>
                     },
                 )}
             </form>
@@ -288,9 +286,11 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
                     <LabeledControl label="Seller outcome CSV" hint="">
                         <textarea name={o.csv} rows="4" required></textarea>
                     </LabeledControl>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button>"Save reviewed outcomes"</button>
-                    </Button>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    >
+                        "Save reviewed outcomes"
+                    </button>
                 </form>
             </details>
             <Problem at={Place::Outcomes} why={screen.problem_at(Place::Outcomes)} />

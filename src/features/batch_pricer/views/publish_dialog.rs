@@ -64,20 +64,27 @@ pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> 
                     " Inventory changes are selected by default so the published quantity matches the batch. Price-only batches default to the 20 smallest price changes."
                 </p>
                 <div class={row(Space::_2)}>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button type="reset">"Reset recommended selection"</button>
-                    </Button>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                        type="reset"
+                    >
+                        "Reset recommended selection"
+                    </button>
                     <span ref={tools} hidden class={row(Space::_2)}>
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <button type="button" on:click={js::checkAll(selection, true)}>
-                                "Select all ready"
-                            </button>
-                        </Button>
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <button type="button" on:click={js::checkAll(selection, false)}>
-                                "Clear selection"
-                            </button>
-                        </Button>
+                        <button
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                            type="button"
+                            on:click={js::checkAll(selection, true)}
+                        >
+                            "Select all ready"
+                        </button>
+                        <button
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                            type="button"
+                            on:click={js::checkAll(selection, false)}
+                        >
+                            "Clear selection"
+                        </button>
                     </span>
                 </div>
                 <ul ref={items} class={Items}>
@@ -91,11 +98,14 @@ pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> 
                     }
                 </ul>
                 <div class={(row(Space::_2), Footer)}>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button type="button" command="close" commandfor={PublishDialogId}>
-                            "Cancel"
-                        </button>
-                    </Button>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                        type="button"
+                        command="close"
+                        commandfor={PublishDialogId}
+                    >
+                        "Cancel"
+                    </button>
                     <button ref={submit} class={Publish} disabled={count == 0}>
                         "Publish "{count}" SKUs"
                     </button>

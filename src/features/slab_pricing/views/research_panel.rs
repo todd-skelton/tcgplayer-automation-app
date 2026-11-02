@@ -23,7 +23,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
-        badge::{Badge, BadgeVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         input::Input,
         select::Select,
@@ -61,32 +61,24 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
                     }),
                     html! {
                     <LabeledControl label="Research grade" hint="">
-                        <Select>
-                            <select name={f.grade}>
-                                <option value="owned" selected={grade == "owned"}>
-                                    "Owned "{&record.grader}" "{owned}
-                                </option>
-                                if record.grader == "PSA" {
-                                    for n in PSA_GRADES {
-                                        <option value={n} selected={grade == n}>"Explore PSA "{n}</option>
-                                    }
+                        <select class={Select {}} name={f.grade}>
+                            <option value="owned" selected={grade == "owned"}>
+                                "Owned "{&record.grader}" "{owned}
+                            </option>
+                            if record.grader == "PSA" {
+                                for n in PSA_GRADES {
+                                    <option value={n} selected={grade == n}>"Explore PSA "{n}</option>
                                 }
-                            </select>
-                        </Select>
+                            }
+                        </select>
                     </LabeledControl>
                     <LabeledControl label="Sales from" hint="">
-                        <Input>
-                            <input type="date" name={f.from} value={&window.from} required>
-                        </Input>
+                        <input class={Input {}} type="date" name={f.from} value={&window.from} required>
                     </LabeledControl>
                     <LabeledControl label="Sales through" hint="">
-                        <Input>
-                            <input type="date" name={f.to} value={&window.to} required>
-                        </Input>
+                        <input class={Input {}} type="date" name={f.to} value={&window.to} required>
                     </LabeledControl>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button>"Show evidence"</button>
-                    </Button>
+                    <button class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}>"Show evidence"</button>
                     },
                 )}
             </form>
@@ -107,9 +99,11 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
                     >
                         <input type="hidden" name={r.id} value={&record.id}>
                         <input type="hidden" name={r.revision} value={record.revision}>
-                        <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                            <button>"Refresh evidence"</button>
-                        </Button>
+                        <button
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                        >
+                            "Refresh evidence"
+                        </button>
                         <a href={url::SlabPricing::at(choice)}>"Reload saved status"</a>
                         <a href={slab_connections::url::SlabConnections}>"Data connections"</a>
                     </form>
@@ -166,11 +160,17 @@ fn EvidenceRow<'a>(status: &'a EvidenceStatus, choice: &'a Choice, t: Msg) -> im
     html! {
         <div class={(Line, Row)}>
             <strong>{words(&status.spec.kind)}</strong>
-            <Badge variant={BadgeVariant::Outline}>{words(&status.state)}</Badge>
+            <span class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}>
+                {words(&status.state)}
+            </span>
             if status.stale {
-                <Badge variant={BadgeVariant::Warning}>"Stale or not fetched"</Badge>
+                <span class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Soft }}>
+                    "Stale or not fetched"
+                </span>
             } else {
-                <Badge variant={BadgeVariant::Success}>"Fresh"</Badge>
+                <span class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Soft }}>
+                    "Fresh"
+                </span>
             }
             <span class={muted()}>
                 match fetched {
@@ -192,9 +192,11 @@ fn EvidenceRow<'a>(status: &'a EvidenceStatus, choice: &'a Choice, t: Msg) -> im
                 <form method="post" action={url::Cancel { choice: choice.clone() }} data-patch>
                     <input type="hidden" name={c.key} value={&status.key}>
                     <input type="hidden" name={c.run} value={&status.run_id}>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button>"Cancel refresh"</button>
-                    </Button>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    >
+                        "Cancel refresh"
+                    </button>
                 </form>
             }
         </div>

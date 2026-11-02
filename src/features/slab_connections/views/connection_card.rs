@@ -99,44 +99,48 @@ pub fn ConnectionCard<'a>(
                     }}
                     hint=""
                 >
-                    <Input>
-                        <input
-                            type="password"
-                            name={f.credential}
-                            autocomplete="new-password"
-                            maxlength="32768"
-                            {..e.aria(f.credential)}
-                        >
-                    </Input>
+                    <input
+                        class={Input {}}
+                        type="password"
+                        name={f.credential}
+                        autocomplete="new-password"
+                        maxlength="32768"
+                        {..e.aria(f.credential)}
+                    >
                     {e.message(f.credential)}
                 </LabeledControl>
                 if provider == Provider::EbayResearch {
                     <LabeledControl label="Browser User-Agent" hint="">
-                        <Input>
-                            <input
-                                name={f.user_agent}
-                                value={answered.map_or("", |a| a.user_agent)}
-                                maxlength="512"
-                                {..e.aria(f.user_agent)}
-                            >
-                        </Input>
+                        <input
+                            class={Input {}}
+                            name={f.user_agent}
+                            value={answered.map_or("", |a| a.user_agent)}
+                            maxlength="512"
+                            {..e.aria(f.user_agent)}
+                        >
                         {e.message(f.user_agent)}
                     </LabeledControl>
                 }
                 <div class={Actions}>
-                    <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                        <button>"Save connection"</button>
-                    </Button>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button formaction={url::CheckConnection { provider }} disabled={!saved}>
-                            "Check access"
-                        </button>
-                    </Button>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button formaction={url::RemoveConnection { provider }} disabled={!saved}>
-                            "Remove"
-                        </button>
-                    </Button>
+                    <button
+                        class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}
+                    >
+                        "Save connection"
+                    </button>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                        formaction={url::CheckConnection { provider }}
+                        disabled={!saved}
+                    >
+                        "Check access"
+                    </button>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                        formaction={url::RemoveConnection { provider }}
+                        disabled={!saved}
+                    >
+                        "Remove"
+                    </button>
                 </div>
             </form>
             match answered.and_then(|a| a.outcome) {

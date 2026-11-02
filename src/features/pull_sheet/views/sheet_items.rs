@@ -100,16 +100,14 @@ pub fn SheetItems<'a>(
                 {lead}
                 <form method="get" action={paging.here} class={(row(Space::_2), Filter)}>
                     {keep_query(paging.here, html! {
-                        <Input>
-                            <input
-                                type="search"
-                                name={f.q}
-                                value={q}
-                                placeholder="Filter items..."
-                                aria-label="Filter items"
-                                on:input={js::filter(target, found)}
-                            >
-                        </Input>
+                        <input class={Input {}}
+                            type="search"
+                            name={f.q}
+                            value={q}
+                            placeholder="Filter items..."
+                            aria-label="Filter items"
+                            on:input={js::filter(target, found)}
+                        >
                         <button class={NoScript}>"Filter"</button>
                     })}
                 </form>
@@ -202,9 +200,12 @@ pub fn SheetItems<'a>(
             </p>
             <dialog ref={dialog} class={Picture}>
                 <form method="dialog">
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button aria-label="Close">"×"</button>
-                    </Button>
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                        aria-label="Close"
+                    >
+                        "×"
+                    </button>
                 </form>
                 <img ref={image} alt="">
             </dialog>

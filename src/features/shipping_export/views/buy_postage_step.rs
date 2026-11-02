@@ -16,7 +16,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
-        badge::{Badge, BadgeVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         table::Table,
     },
@@ -126,7 +126,11 @@ fn ShipmentPostageRow<'a>(
                         if row.items == 1 { " item" } else { " items" }
                     </span>
                     if s.options.delivery_confirmation == DeliveryConfirmation::Signature {
-                        <Badge variant={BadgeVariant::Warning}>"Sig. Required"</Badge>
+                        <span
+                            class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Soft }}
+                        >
+                            "Sig. Required"
+                        </span>
                     }
                 </div>
                 <SaleValueFigures value={&row.value} on_image={false} t={t} />
@@ -135,30 +139,24 @@ fn ShipmentPostageRow<'a>(
             <td class={End}>
                 <div class={Actions}>
                     if again {
-                        <Button
-                            variant={if test { ButtonVariant::Warning } else { ButtonVariant::Outline }}
-                            size={ButtonSize::Md}
+                        <button
+                            class={Button { variant: if test { ButtonVariant::Warning } else { ButtonVariant::Outline }, size: ButtonSize::Md }}
+                            type="button"
+                            command="show-modal"
+                            commandfor={BuyAgainId(&outbound_key)}
+                            disabled={!can_buy}
                         >
-                            <button
-                                type="button"
-                                command="show-modal"
-                                commandfor={BuyAgainId(&outbound_key)}
-                                disabled={!can_buy}
-                            >
-                                "Buy Again"
-                            </button>
-                        </Button>
+                            "Buy Again"
+                        </button>
                     } else {
                         <form method="post" action={&buy} data-patch>
                             <input type="hidden" name={f.direction} value={Direction::Outbound}>
-                            <Button
-                                variant={if test { ButtonVariant::Warning } else { ButtonVariant::Primary }}
-                                size={ButtonSize::Md}
+                            <button
+                                class={Button { variant: if test { ButtonVariant::Warning } else { ButtonVariant::Primary }, size: ButtonSize::Md }}
+                                disabled={!can_buy}
                             >
-                                <button disabled={!can_buy}>
-                                    "Buy Postage"
-                                </button>
-                            </Button>
+                                "Buy Postage"
+                            </button>
                         </form>
                     }
                     <button
@@ -171,22 +169,24 @@ fn ShipmentPostageRow<'a>(
                     </button>
                     <div popover id={ShipmentMenuId(reference)} class={Menu}>
                         if return_again {
-                            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                                <button
-                                    type="button"
-                                    command="show-modal"
-                                    commandfor={BuyAgainId(&return_key)}
-                                    disabled={!can_buy}
-                                >
-                                    "Buy Another Return Label"
-                                </button>
-                            </Button>
+                            <button
+                                class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                                type="button"
+                                command="show-modal"
+                                commandfor={BuyAgainId(&return_key)}
+                                disabled={!can_buy}
+                            >
+                                "Buy Another Return Label"
+                            </button>
                         } else {
                             <form method="post" action={&buy} data-patch>
                                 <input type="hidden" name={f.direction} value={Direction::Return}>
-                                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                                    <button disabled={!can_buy}>"Buy Return Label"</button>
-                                </Button>
+                                <button
+                                    class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                                    disabled={!can_buy}
+                                >
+                                    "Buy Return Label"
+                                </button>
                             </form>
                         }
                         if let Some(label) = row.returned.and_then(Bought::label) {
@@ -227,15 +227,15 @@ fn PostageStatus<'a>(entry: Option<&'a Bought>) -> impl Render {
             None => <span class={muted()}>"Not purchased"</span>,
             Some(bought) => {
                 <div class={Postage}>
-                    <Badge
-                        variant={match bought.result.status {
-                            Status::Purchased => BadgeVariant::Success,
-                            Status::Failed => BadgeVariant::Destructive,
-                            Status::Skipped => BadgeVariant::Warning,
-                        }}
+                    <span
+                        class={Badge { tone: match bought.result.status {
+                                Status::Purchased => BadgeTone::Success,
+                                Status::Failed => BadgeTone::Destructive,
+                                Status::Skipped => BadgeTone::Warning,
+                            }, emphasis: BadgeEmphasis::Soft }}
                     >
                         <span title={details(bought)}>{status_word(bought)}</span>
-                    </Badge>
+                    </span>
                     if let Some(label) = bought.label() {
                         <a
                             href={label}
@@ -310,14 +310,17 @@ fn BuyAgainDialog<'a>(
             >
                 <input type="hidden" name={f.direction} value={direction}>
                 <input type="hidden" name={f.again} value="true">
-                <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                    <button type="button" command="close" commandfor={BuyAgainId(key)}>
-                        "Cancel"
-                    </button>
-                </Button>
-                <Button variant={ButtonVariant::Warning} size={ButtonSize::Md}>
-                    <button>"Buy Again"</button>
-                </Button>
+                <button
+                    class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    type="button"
+                    command="close"
+                    commandfor={BuyAgainId(key)}
+                >
+                    "Cancel"
+                </button>
+                <button class={Button { variant: ButtonVariant::Warning, size: ButtonSize::Md }}>
+                    "Buy Again"
+                </button>
             </form>
         </dialog>
     }

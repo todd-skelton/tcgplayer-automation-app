@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: alert 27a6a1b70746459b */
+/* corten ui 0.1.0: alert 88d6f3d084d73adb */
 .alert {
   display: grid; gap: .25rem; padding: .75rem 1rem; font-size: .875rem;
   border: 1px solid var(--border); border-radius: var(--radius);

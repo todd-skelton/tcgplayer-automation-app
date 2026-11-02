@@ -19,7 +19,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
-        badge::{Badge, BadgeVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         table::Table,
     },
 };
@@ -66,11 +66,11 @@ fn at(reference: &str, view: PackView) -> ShippingWorkflow {
     }
 }
 
-fn postage_chip(bought: &Bought) -> (&'static str, BadgeVariant) {
+fn postage_chip(bought: &Bought) -> (&'static str, BadgeTone) {
     match bought.result.status {
-        Status::Purchased => ("PURCHASED", BadgeVariant::Success),
-        Status::Failed => ("FAILED", BadgeVariant::Destructive),
-        Status::Skipped => ("SKIPPED", BadgeVariant::Warning),
+        Status::Purchased => ("PURCHASED", BadgeTone::Success),
+        Status::Failed => ("FAILED", BadgeTone::Destructive),
+        Status::Skipped => ("SKIPPED", BadgeTone::Warning),
     }
 }
 
@@ -199,18 +199,22 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                     </span>
                 }
                 if numbers.len() > 1 {
-                    <Badge variant={BadgeVariant::Outline}>
+                    <span
+                        class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                    >
                         <span title={numbers.join(", ")}>
                             "Combined shipment of "{numbers.len()}" orders"
                         </span>
-                    </Badge>
+                    </span>
                 }
                 if let Some(bought) = current.postage {
-                    <Badge variant={postage_chip(bought).1}>
+                    <span
+                        class={Badge { tone: postage_chip(bought).1, emphasis: BadgeEmphasis::Soft }}
+                    >
                         <span title={bought.result.tracking_code.as_deref().unwrap_or("")}>
                             {postage_chip(bought).0}
                         </span>
-                    </Badge>
+                    </span>
                 }
                 <span class={Spacer}></span>
                 <PackedToggle
@@ -349,9 +353,11 @@ fn PackList<'a>(packing: &'a Packing<'a>, t: Msg) -> impl Render {
                                     </td>
                                     <td>
                                         match row.postage {
-                                            Some(bought) => <Badge variant={postage_chip(bought).1}>
+                                            Some(bought) => <span
+                                                class={Badge { tone: postage_chip(bought).1, emphasis: BadgeEmphasis::Soft }}
+                                            >
                                                 {postage_chip(bought).0}
-                                            </Badge>,
+                                            </span>,
                                             None => "-",
                                         }
                                     </td>

@@ -161,17 +161,16 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                     >
                         {line_choice(ProductInput::FIELDS.product_line, lines, screen.product.product_line, &e)}
                         <LabeledControl label="Product ID" hint="">
-                            <Input>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    required
-                                    name={ProductInput::FIELDS.product}
-                                    value={screen.product.product}
-                                    placeholder="Enter the exact TCGPlayer product ID"
-                                    {..e.aria(ProductInput::FIELDS.product)}
-                                >
-                            </Input>
+                            <input
+                                class={Input {}}
+                                type="number"
+                                min="1"
+                                required
+                                name={ProductInput::FIELDS.product}
+                                value={screen.product.product}
+                                placeholder="Enter the exact TCGPlayer product ID"
+                                {..e.aria(ProductInput::FIELDS.product)}
+                            >
                             {e.message(ProductInput::FIELDS.product)}
                         </LabeledControl>
                         <Run ready="Repair Product and SKUs" working="Repairing Product..." />
@@ -196,34 +195,32 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                         class={(Stack, JobForm)}
                     >
                         <LabeledControl label="Set name" hint="">
-                            <Input>
-                                <input
-                                    required
-                                    name={SetInput::FIELDS.set_name}
-                                    value={&screen.set.set_name}
-                                    placeholder="Example: Duskmourn: House of Horror"
-                                    {..e.aria(SetInput::FIELDS.set_name)}
-                                >
-                            </Input>
+                            <input
+                                class={Input {}}
+                                required
+                                name={SetInput::FIELDS.set_name}
+                                value={&screen.set.set_name}
+                                placeholder="Example: Duskmourn: House of Horror"
+                                {..e.aria(SetInput::FIELDS.set_name)}
+                            >
                             {e.message(SetInput::FIELDS.set_name)}
                         </LabeledControl>
                         <LabeledControl label="Product line" hint="">
-                            <Select>
-                                <select
-                                    name={SetInput::FIELDS.product_line}
-                                    required
-                                    {..e.aria(SetInput::FIELDS.product_line)}
-                                >
-                                    for line in lines {
-                                        <option
-                                            value={&line.url_name}
-                                            selected={line.url_name == screen.set.product_line}
-                                        >
-                                            {&line.name}
-                                        </option>
-                                    }
-                                </select>
-                            </Select>
+                            <select
+                                class={Select {}}
+                                name={SetInput::FIELDS.product_line}
+                                required
+                                {..e.aria(SetInput::FIELDS.product_line)}
+                            >
+                                for line in lines {
+                                    <option
+                                        value={&line.url_name}
+                                        selected={line.url_name == screen.set.product_line}
+                                    >
+                                        {&line.name}
+                                    </option>
+                                }
+                            </select>
                             {e.message(SetInput::FIELDS.product_line)}
                         </LabeledControl>
                         <label class={Check}>
@@ -255,15 +252,13 @@ fn line_choice<'a, I: Id>(
 ) -> impl Render + 'a {
     html! {
         <LabeledControl label="Product line" hint="">
-            <Select>
-                <select name={name} required {..e.aria(name)}>
-                    for line in lines {
-                        <option value={line.id} selected={chosen == Some(line.id)}>
-                            {&line.name}
-                        </option>
-                    }
-                </select>
-            </Select>
+            <select class={Select {}} name={name} required {..e.aria(name)}>
+                for line in lines {
+                    <option value={line.id} selected={chosen == Some(line.id)}>
+                        {&line.name}
+                    </option>
+                }
+            </select>
             {e.message(name)}
         </LabeledControl>
     }
@@ -274,12 +269,10 @@ fn line_choice<'a, I: Id>(
 fn Run<'a>(ready: &'a str, working: &'a str) -> impl Render {
     html! {
         <div>
-            <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                <button>
-                    <span class={Ready}>{ready}</span>
-                    <span class={Working}>{working}</span>
-                </button>
-            </Button>
+            <button class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}>
+                <span class={Ready}>{ready}</span>
+                <span class={Working}>{working}</span>
+            </button>
         </div>
     }
 }

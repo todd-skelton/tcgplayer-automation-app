@@ -11,7 +11,7 @@ use crate::{
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
-        badge::{Badge, BadgeVariant},
+        badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         input::Input,
     },
@@ -59,9 +59,11 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
             <div class={Actions}>
                 <form method="post" action={url::LoadOrders} data-patch>
                     <input type="hidden" name={l.seller_key} value={seller}>
-                    <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                        <button>"Load Live TCGPlayer Orders"</button>
-                    </Button>
+                    <button
+                        class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}
+                    >
+                        "Load Live TCGPlayer Orders"
+                    </button>
                 </form>
                 <button
                     type="button"
@@ -75,35 +77,32 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
                     <form method="get" action={&here}>
                         {keep_query(&here, html! {
                             <LabeledControl label="Seller Key" hint={&hint}>
-                                <Input>
-                                    <input
-                                        name={q.seller}
-                                        value={seller}
-                                        placeholder={if loading.configured.is_empty() { "Enter seller key" } else { loading.configured }}
-                                        autofocus
-                                    >
-                                </Input>
+                                <input class={Input {}}
+                                    name={q.seller}
+                                    value={seller}
+                                    placeholder={if loading.configured.is_empty() { "Enter seller key" } else { loading.configured }}
+                                    autofocus
+                                >
                             </LabeledControl>
-                            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                                <button>"Use This Seller"</button>
-                            </Button>
+                            <button class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}>"Use This Seller"</button>
                         })}
                     </form>
                 </div>
                 <span class={Divider}></span>
                 <form method="post" action={url::LoadOrder} class={row(Space::_2)} data-patch>
                     <input type="hidden" name={l.seller_key} value={seller}>
-                    <Input>
-                        <input
-                            name={l.order_number}
-                            aria-label="Order Number"
-                            placeholder="Order Number"
-                            required
-                        >
-                    </Input>
-                    <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                        <button>"Lookup Single Order"</button>
-                    </Button>
+                    <input
+                        class={Input {}}
+                        name={l.order_number}
+                        aria-label="Order Number"
+                        placeholder="Order Number"
+                        required
+                    >
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                    >
+                        "Lookup Single Order"
+                    </button>
                 </form>
                 <details class={Menu}>
                     <summary>"Order History"</summary>
@@ -141,8 +140,16 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
             </div>
             if let Some((source, count)) = loading.source {
                 <p class={row(Space::_2)}>
-                    <Badge variant={BadgeVariant::Primary}>{source}</Badge>
-                    <Badge variant={BadgeVariant::Outline}>{count}" orders loaded"</Badge>
+                    <span
+                        class={Badge { tone: BadgeTone::Primary, emphasis: BadgeEmphasis::Solid }}
+                    >
+                        {source}
+                    </span>
+                    <span
+                        class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
+                    >
+                        {count}" orders loaded"
+                    </span>
                 </p>
             }
             match &loading.coverage {

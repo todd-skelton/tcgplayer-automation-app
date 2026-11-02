@@ -151,52 +151,50 @@ fn CostsForm<'a>(
                 </LabeledControl>
                 for (label, name, value) in costs {
                     <LabeledControl label={label} hint="">
-                        <Input>
-                            <input
-                                type="number"
-                                name={name}
-                                value={number(value)}
-                                min="0"
-                                step="0.01"
-                            >
-                        </Input>
+                        <input
+                            class={Input {}}
+                            type="number"
+                            name={name}
+                            value={number(value)}
+                            min="0"
+                            step="0.01"
+                        >
                     </LabeledControl>
                 }
             </div>
             <div class={Line}>
                 <LabeledControl label="Seller fee (%)" hint="">
-                    <Input>
-                        <input
-                            type="number"
-                            name={f.fee_rate}
-                            value={fee_rate}
-                            min="0"
-                            max="99.99"
-                            step="0.01"
-                        >
-                    </Input>
+                    <input
+                        class={Input {}}
+                        type="number"
+                        name={f.fee_rate}
+                        value={fee_rate}
+                        min="0"
+                        max="99.99"
+                        step="0.01"
+                    >
                 </LabeledControl>
                 <LabeledControl label="Fixed fee (USD)" hint="">
-                    <Input>
-                        <input
-                            type="number"
-                            name={f.fee_fixed}
-                            value={fee_fixed}
-                            min="0"
-                            step="0.01"
-                        >
-                    </Input>
+                    <input
+                        class={Input {}}
+                        type="number"
+                        name={f.fee_fixed}
+                        value={fee_fixed}
+                        min="0"
+                        step="0.01"
+                    >
                 </LabeledControl>
                 <LabeledControl label="Fee basis" hint="">
                     <BasisSelect name={f.fee_basis} chosen={fee_basis.as_str()} />
                 </LabeledControl>
             </div>
             <div class={Line}>
-                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                    <button disabled={!can_calculate}>
-                        "Calculate from saved evidence"
-                    </button>
-                </Button>
+                <button
+                    class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}
+                    disabled={!can_calculate}
+                >
+                    "Calculate from saved evidence"
+                </button>
                 <small class={muted()}>{&record.grader}" "{&record.certificate_number}</small>
             </div>
         </form>
@@ -206,13 +204,11 @@ fn CostsForm<'a>(
 #[component(css = super::slab_screen::SlabScreen)]
 fn BasisSelect<'a>(name: FieldName<String>, chosen: &'a str) -> impl Render {
     html! {
-        <Select>
-            <select name={name}>
-                for (value, label) in BASES {
-                    <option value={value} selected={chosen == value}>{label}</option>
-                }
-            </select>
-        </Select>
+        <select class={Select {}} name={name}>
+            for (value, label) in BASES {
+                <option value={value} selected={chosen == value}>{label}</option>
+            }
+        </select>
     }
 }
 
@@ -354,18 +350,24 @@ fn ReviewedAsk<'a>(
         >
             <input type="hidden" name={f.recommendation} value={&recommendation.id}>
             <LabeledControl label="Override item ask (USD)" hint="">
-                <Input>
-                    <input type="number" name={f.item_price} min="0.01" step="0.01" required>
-                </Input>
+                <input
+                    class={Input {}}
+                    type="number"
+                    name={f.item_price}
+                    min="0.01"
+                    step="0.01"
+                    required
+                >
             </LabeledControl>
             <LabeledControl label="Override reason" hint="">
-                <Input>
-                    <input name={f.note} maxlength="1000" required>
-                </Input>
+                <input class={Input {}} name={f.note} maxlength="1000" required>
             </LabeledControl>
-            <Button variant={ButtonVariant::Outline} size={ButtonSize::Md}>
-                <button disabled={!allowed}>"Save reviewed ask"</button>
-            </Button>
+            <button
+                class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                disabled={!allowed}
+            >
+                "Save reviewed ask"
+            </button>
         </form>
     }
 }

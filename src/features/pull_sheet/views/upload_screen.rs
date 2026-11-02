@@ -72,9 +72,9 @@ pub fn UploadForm<'a>(errors: &'a Errors) -> impl Patch {
                         {..e.aria(f.file)}
                     >
                 </label>
-                <Button variant={ButtonVariant::Primary} size={ButtonSize::Md}>
-                    <button>"Upload Pull Sheet CSV"</button>
-                </Button>
+                <button class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}>
+                    "Upload Pull Sheet CSV"
+                </button>
             </div>
             {e.message(f.file)}
         </form>
