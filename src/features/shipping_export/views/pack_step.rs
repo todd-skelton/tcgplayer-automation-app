@@ -20,6 +20,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
+        segmented::SegmentedLinks,
         table::{Table, TableNumeric},
     },
 };
@@ -98,7 +99,7 @@ fn ViewChoice<'a>(packing: &'a Packing<'a>) -> impl Render {
         .and_then(|c| packing.rows.get(c.index))
         .map_or("", |r| r.planned.reference());
     html! {
-        <nav aria-label="View" class={Views}>
+        <nav aria-label="View" class={SegmentedLinks {}}>
             <a
                 href={at(current, PackView::Card)}
                 aria-current={(packing.view == PackView::Card).then_some("page")}

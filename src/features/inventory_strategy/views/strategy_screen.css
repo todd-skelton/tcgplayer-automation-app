@@ -45,6 +45,7 @@
 .warn {
   color: var(--warning);
 }
+/* A no-script choice: native radios, which the kit's Segmented does not draw (corten#657). */
 .window-choice {
   display: inline-flex;
   margin: 0;
