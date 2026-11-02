@@ -23,6 +23,7 @@ pub mod input;
 pub mod pagination;
 pub mod popover;
 pub mod radio_group;
+pub mod segmented;
 pub mod select;
 pub mod separator;
 pub mod sheet;
@@ -52,6 +53,7 @@ pub const COMPONENTS: &[Component] = &[
     pagination::Pagination,
     popover::Popover,
     radio_group::RadioGroup,
+    segmented::Segmented,
     select::Select,
     separator::Separator,
     sheet::Sheet,

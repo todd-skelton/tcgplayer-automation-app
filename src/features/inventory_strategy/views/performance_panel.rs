@@ -21,6 +21,7 @@ use crate::{
     ui::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         card::{Card, CardContent},
+        segmented::Segmented,
         table::{Table, TableNumeric},
     },
 };
@@ -65,7 +66,9 @@ fn WindowChoice<'a>(
                 link: Some(link as &dyn Href),
             })
             .collect();
-        <ChoiceGroup choice={choice} label="Performance window" options={&options} />
+        <Segmented>
+            <ChoiceGroup choice={choice} label="Performance window" options={&options} />
+        </Segmented>
     }
 }
 
