@@ -24,11 +24,6 @@
     color: var(--muted-foreground);
   }
 }
-/* An amount's column reads from its end. The kit table aligns every cell left and keeps it on one
-   line, so these outrank it (corten#559). */
-.end {
-  text-align: end !important;
-}
 .coverage {
   min-width: 320px;
   white-space: normal !important;

@@ -11,10 +11,6 @@
     font-size: var(--font-size-xs);
   }
 }
-.number {
-  text-align: end;
-  font-variant-numeric: tabular-nums;
-}
 .chips {
   display: flex;
   flex-wrap: wrap;

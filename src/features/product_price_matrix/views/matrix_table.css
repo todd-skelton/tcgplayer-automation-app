@@ -74,9 +74,6 @@
   min-width: 110px;
   border-right: 1px solid var(--border);
 }
-.end {
-  text-align: end !important;
-}
 .sell-at {
   min-width: 190px;
   border-left: 1px solid var(--tint, var(--border));

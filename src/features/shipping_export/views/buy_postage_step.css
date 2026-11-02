@@ -13,9 +13,6 @@
     vertical-align: top !important;
   }
 }
-.end {
-  text-align: end !important;
-}
 .parcel {
   display: flex;
   flex-wrap: wrap;

@@ -18,7 +18,7 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        table::Table,
+        table::{Table, TableNumeric},
     },
 };
 
@@ -64,7 +64,7 @@ pub fn BuyPostageStep<'a>(rows: &'a [PostageRow<'a>], mode: EasyPostMode, t: Msg
                                 <th>"Recipient"</th>
                                 <th>"Parcel and value"</th>
                                 <th>"Postage"</th>
-                                <th class={End}>"Actions"</th>
+                                <th class={TableNumeric {}}>"Actions"</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -136,7 +136,7 @@ fn ShipmentPostageRow<'a>(
                 <SaleValueFigures value={&row.value} on_image={false} t={t} />
             </td>
             <td><PostageStatus entry={row.outbound} /></td>
-            <td class={End}>
+            <td class={TableNumeric {}}>
                 <div class={Actions}>
                     if again {
                         <button

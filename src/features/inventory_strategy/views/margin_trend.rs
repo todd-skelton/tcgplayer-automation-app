@@ -13,7 +13,7 @@ use crate::{
     text::Msg,
     theme::*,
     ui::card::{Card, CardContent},
-    ui::table::Table,
+    ui::table::{Table, TableNumeric},
 };
 
 /// Share of a week's sales that must be costed for its margin to be read as complete.
@@ -232,14 +232,16 @@ pub fn MarginTrendPanel<'a>(trend: Option<&'a MarginTrend>, t: Msg) -> impl Rend
                         <thead>
                             <tr>
                                 <th>"Week of"</th>
-                                <th class={End}>"Sold"</th>
-                                <th class={End}>"Sales costed"</th>
-                                <th class={End}>"Margin"</th>
-                                <th class={End}>{TRAILING_MARGIN_WEEKS}"-week margin"</th>
-                                <th class={End}>"Return on capital"</th>
-                                <th class={End}>"Price vs market"</th>
-                                <th class={End}>"Market since intake"</th>
-                                <th class={End}>"Net of fees"</th>
+                                <th class={TableNumeric {}}>"Sold"</th>
+                                <th class={TableNumeric {}}>"Sales costed"</th>
+                                <th class={TableNumeric {}}>"Margin"</th>
+                                <th class={TableNumeric {}}>
+                                    {TRAILING_MARGIN_WEEKS}"-week margin"
+                                </th>
+                                <th class={TableNumeric {}}>"Return on capital"</th>
+                                <th class={TableNumeric {}}>"Price vs market"</th>
+                                <th class={TableNumeric {}}>"Market since intake"</th>
+                                <th class={TableNumeric {}}>"Net of fees"</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -249,30 +251,32 @@ pub fn MarginTrendPanel<'a>(trend: Option<&'a MarginTrend>, t: Msg) -> impl Rend
                                         {month_day(t, &week.week_start)}
                                         if !week.ended { " (so far)" }
                                     </th>
-                                    <td class={End}>{count(t, week.summary.units_sold)}</td>
-                                    <td class={End}>
+                                    <td class={TableNumeric {}}>
+                                        {count(t, week.summary.units_sold)}
+                                    </td>
+                                    <td class={TableNumeric {}}>
                                         if week.summary.gross_cents > 0 {
                                             {(costed_share(week) * 100.0).round()}"%"
                                         } else {
                                             "N/A"
                                         }
                                     </td>
-                                    <td class={End}>
+                                    <td class={TableNumeric {}}>
                                         {percent(week.summary.margin_percent, "N/A")}
                                     </td>
-                                    <td class={End}>
+                                    <td class={TableNumeric {}}>
                                         {percent(week.trailing_margin_percent, "N/A")}
                                     </td>
-                                    <td class={End}>
+                                    <td class={TableNumeric {}}>
                                         {percent_per_day(week.summary.daily_return_percent, "N/A")}
                                     </td>
-                                    <td class={End}>
+                                    <td class={TableNumeric {}}>
                                         {percent(week.drivers.price_to_market_percent, "N/A")}
                                     </td>
-                                    <td class={End}>
+                                    <td class={TableNumeric {}}>
                                         {percent(week.drivers.market_change_percent, "N/A")}
                                     </td>
-                                    <td class={End}>
+                                    <td class={TableNumeric {}}>
                                         {percent(week.drivers.net_to_gross_percent, "N/A")}
                                     </td>
                                 </tr>

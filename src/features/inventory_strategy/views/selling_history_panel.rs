@@ -25,7 +25,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         card::{Card, CardContent},
         select::Select,
-        table::Table,
+        table::{Table, TableNumeric},
     },
 };
 
@@ -221,18 +221,18 @@ fn SellThroughTable<'a>(summary: &'a Summary, t: Msg) -> impl Render {
                 <thead>
                     <tr>
                         <th>"Age-eligible sell-through"</th>
-                        <th class={End}>"Eligible"</th>
-                        <th class={End}>"Sold"</th>
-                        <th class={End}>"Rate"</th>
+                        <th class={TableNumeric {}}>"Eligible"</th>
+                        <th class={TableNumeric {}}>"Sold"</th>
+                        <th class={TableNumeric {}}>"Rate"</th>
                     </tr>
                 </thead>
                 <tbody>
                     for horizon in &summary.sell_through {
                         <tr key={horizon.days}>
                             <th scope="row">{horizon.days}" days"</th>
-                            <td class={End}>{units(t, horizon.eligible_quantity)}</td>
-                            <td class={End}>{units(t, horizon.sold_quantity)}</td>
-                            <td class={End}>
+                            <td class={TableNumeric {}}>{units(t, horizon.eligible_quantity)}</td>
+                            <td class={TableNumeric {}}>{units(t, horizon.sold_quantity)}</td>
+                            <td class={TableNumeric {}}>
                                 match (horizon.rate, horizon.status) {
                                     (Some(rate), _) => { {fixed(rate * 100.0, 1)}"%" }
                                     (None, SellThroughStatus::UnsettledOutcomes) => {
@@ -258,22 +258,26 @@ fn LineTable<'a>(report: &'a Ready, t: Msg) -> impl Render {
                     <thead>
                         <tr>
                             <th>"Product line"</th>
-                            <th class={End}>"Cohort"</th>
-                            <th class={End}>"Sold"</th>
-                            <th class={End}>"Sold-only average"</th>
-                            <th class={End}>"Remaining known age"</th>
+                            <th class={TableNumeric {}}>"Cohort"</th>
+                            <th class={TableNumeric {}}>"Sold"</th>
+                            <th class={TableNumeric {}}>"Sold-only average"</th>
+                            <th class={TableNumeric {}}>"Remaining known age"</th>
                         </tr>
                     </thead>
                     <tbody>
                         for line in &report.product_lines {
                             <tr key={&line.product_line}>
                                 <th scope="row">{&line.product_line}</th>
-                                <td class={End}>{units(t, line.summary.cohort_quantity)}</td>
-                                <td class={End}>{units(t, line.summary.sold_quantity)}</td>
-                                <td class={End}>
+                                <td class={TableNumeric {}}>
+                                    {units(t, line.summary.cohort_quantity)}
+                                </td>
+                                <td class={TableNumeric {}}>
+                                    {units(t, line.summary.sold_quantity)}
+                                </td>
+                                <td class={TableNumeric {}}>
                                     {days(line.summary.sold_only_average_days, "Unavailable")}
                                 </td>
-                                <td class={End}>
+                                <td class={TableNumeric {}}>
                                     {units(t, line.summary.remaining_with_known_age_quantity)}
                                 </td>
                             </tr>

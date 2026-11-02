@@ -20,7 +20,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
-        table::Table,
+        table::{Table, TableNumeric},
     },
 };
 
@@ -260,7 +260,7 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                                 <thead>
                                     <tr>
                                         <th>"Card"</th>
-                                        <th class={End}>"Qty"</th>
+                                        <th class={TableNumeric {}}>"Qty"</th>
                                         <th>"Value"</th>
                                     </tr>
                                 </thead>
@@ -268,7 +268,7 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                                     for card in &packed.listed {
                                         <tr>
                                             <td>{&card.name}</td>
-                                            <td class={End}>{card.quantity}</td>
+                                            <td class={TableNumeric {}}>{card.quantity}</td>
                                             <td>
                                                 match &card.value {
                                                     Some(value) => <SaleValueFigures
@@ -313,7 +313,7 @@ fn PackList<'a>(packing: &'a Packing<'a>, t: Msg) -> impl Render {
                                 <th>"Order(s)"</th>
                                 <th>"Recipient"</th>
                                 <th>"Method"</th>
-                                <th class={End}>"Items"</th>
+                                <th class={TableNumeric {}}>"Items"</th>
                                 <th>"Value"</th>
                                 <th>"Postage"</th>
                             </tr>
@@ -343,7 +343,7 @@ fn PackList<'a>(packing: &'a Packing<'a>, t: Msg) -> impl Render {
                                     <td>
                                         {row.orders.first().map_or("-", |o| o.shipping_method.as_str())}
                                     </td>
-                                    <td class={End}>{row.items}</td>
+                                    <td class={TableNumeric {}}>{row.items}</td>
                                     <td class={Wide}>
                                         <SaleValueFigures
                                             value={&row.value}

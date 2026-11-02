@@ -1,6 +1,9 @@
 use corten::prelude::*;
 
-use crate::features::pull_sheet::items::{Finish, Grade, Printing};
+use crate::{
+    features::pull_sheet::items::{Finish, Grade, Printing},
+    ui::table::TableNumeric,
+};
 
 /// A card to pull, as a table row. A view: the filter reads `search`, and each column's sort
 /// reads its field (`name`, `set`, `quantity`, ...) by name. The picture is a link to it, which
@@ -63,7 +66,7 @@ pub fn ItemRow<'a>(
                 </span>
             </td>
             <td>{rarity}</td>
-            <td class={Number}>{quantity}</td>
+            <td class={TableNumeric {}}>{quantity}</td>
             <td>{product_line}</td>
             <td><code>{order}</code></td>
             if let Some(detail) = detail {

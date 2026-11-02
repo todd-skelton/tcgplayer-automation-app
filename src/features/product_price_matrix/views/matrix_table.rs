@@ -6,7 +6,10 @@ use corten::{
 use crate::{
     features::product_price_matrix::matrix::{self, Cell, Decision, Matrix},
     text::Msg,
-    ui::badge::{Badge, BadgeEmphasis, BadgeTone},
+    ui::{
+        badge::{Badge, BadgeEmphasis, BadgeTone},
+        table::TableNumeric,
+    },
 };
 
 const USD: Currency = Currency::new("USD");
@@ -35,17 +38,17 @@ pub fn MatrixTable<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
                     <tr>
                         <th class={(Sticky, VariantColumn)}>"Variant"</th>
                         <th class={(Sticky, ConditionColumn)}>"Condition"</th>
-                        <th class={(Sticky, MarketColumn, End)}>"Market"</th>
-                        <th class={End}>"Low"</th>
-                        <th class={End}>"High"</th>
-                        <th class={End}>"Sales"</th>
+                        <th class={(Sticky, MarketColumn, TableNumeric {})}>"Market"</th>
+                        <th class={TableNumeric {}}>"Low"</th>
+                        <th class={TableNumeric {}}>"High"</th>
+                        <th class={TableNumeric {}}>"Sales"</th>
                         if matrix.listings_included {
-                            <th class={End}>"Your listing"</th>
+                            <th class={TableNumeric {}}>"Your listing"</th>
                         }
-                        <th class={(End, SellAt)}>"Sell at"</th>
-                        <th class={End}>"vs market"</th>
+                        <th class={(TableNumeric {}, SellAt)}>"Sell at"</th>
+                        <th class={TableNumeric {}}>"vs market"</th>
                         if let Some(method) = shadow {
-                            <th class={End}>{method.label()}</th>
+                            <th class={TableNumeric {}}>{method.label()}</th>
                         }
                         <th>"Notes"</th>
                     </tr>
@@ -61,17 +64,21 @@ pub fn MatrixTable<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
                             <td class={(Sticky, ConditionColumn)}>
                                 <span class={ConditionChip}>{&cell.condition}</span>
                             </td>
-                            <td class={(Sticky, MarketColumn, End)}>
+                            <td class={(Sticky, MarketColumn, TableNumeric {})}>
                                 <strong><Usd value={cell.tcg_market_price} t={t} /></strong>
                             </td>
-                            <td class={End}><Usd value={cell.lowest_sale_price} t={t} /></td>
-                            <td class={End}><Usd value={cell.highest_sale_price} t={t} /></td>
-                            <td class={End}>{t.number(cell.sale_count)}</td>
+                            <td class={TableNumeric {}}>
+                                <Usd value={cell.lowest_sale_price} t={t} />
+                            </td>
+                            <td class={TableNumeric {}}>
+                                <Usd value={cell.highest_sale_price} t={t} />
+                            </td>
+                            <td class={TableNumeric {}}>{t.number(cell.sale_count)}</td>
                             if matrix.listings_included {
-                                <td class={End}><Listed cell={cell} t={t} /></td>
+                                <td class={TableNumeric {}}><Listed cell={cell} t={t} /></td>
                             }
                             <td
-                                class={(End, SellAt, cell.sell_at_price.is_some().then_some(Priced))}
+                                class={(TableNumeric {}, SellAt, cell.sell_at_price.is_some().then_some(Priced))}
                             >
                                 <SellAtPrice
                                     cell={cell}
@@ -79,7 +86,7 @@ pub fn MatrixTable<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
                                     t={t}
                                 />
                             </td>
-                            <td class={End}>
+                            <td class={TableNumeric {}}>
                                 <AgainstMarket
                                     price={cell.sell_at_price}
                                     market={cell.tcg_market_price}
@@ -87,7 +94,7 @@ pub fn MatrixTable<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
                                 />
                             </td>
                             if shadow.is_some() {
-                                <td class={End}>
+                                <td class={TableNumeric {}}>
                                     <Shadow
                                         decision={cell.shadow_pricing_decision.as_ref()}
                                         t={t}

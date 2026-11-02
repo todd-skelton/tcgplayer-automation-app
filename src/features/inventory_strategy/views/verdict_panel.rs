@@ -16,7 +16,7 @@ use crate::{
     ui::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         card::{Card, CardContent},
-        table::Table,
+        table::{Table, TableNumeric},
     },
 };
 
@@ -206,7 +206,7 @@ pub fn HurdleSweep<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         <tr>
                             <th>"Product line"</th>
                             for hurdle in &hurdles {
-                                <th class={End}>{format_hurdle(*hurdle)}</th>
+                                <th class={TableNumeric {}}>{format_hurdle(*hurdle)}</th>
                             }
                         </tr>
                     </thead>
@@ -219,7 +219,9 @@ pub fn HurdleSweep<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                 for hurdle in &hurdles {
                                     match line.hurdle_sweep.iter().find(|s| s.daily_return_hurdle == *hurdle) {
                                         Some(s) => {
-                                            <td class={(End, s.configured.then_some(Configured))}>
+                                            <td
+                                                class={(TableNumeric {}, s.configured.then_some(Configured))}
+                                            >
                                                 <span class={Value}>
                                                     {dollars(t, s.summary.physical_value)}
                                                 </span>
@@ -240,7 +242,7 @@ pub fn HurdleSweep<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                                 </small>
                                             </td>
                                         }
-                                        None => { <td class={End}>"\u{2014}"</td> }
+                                        None => { <td class={TableNumeric {}}>"\u{2014}"</td> }
                                     }
                                 }
                             </tr>

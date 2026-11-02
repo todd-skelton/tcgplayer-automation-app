@@ -13,7 +13,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         card::{Card, CardContent, CardHeader},
-        table::Table,
+        table::{Table, TableNumeric},
     },
 };
 
@@ -80,12 +80,12 @@ fn OrderTable<'a>(orders: &'a [Order], t: Msg) -> impl Render {
                         <thead>
                             <tr>
                                 <th>"Order"</th>
-                                <th class={End}>"Gross"</th>
-                                <th class={End}>"Provider net"</th>
-                                <th class={End}>"Postage"</th>
-                                <th class={End}>"Cost"</th>
-                                <th class={End}>"Reusable cash"</th>
-                                <th class={End}>"Realized profit"</th>
+                                <th class={TableNumeric {}}>"Gross"</th>
+                                <th class={TableNumeric {}}>"Provider net"</th>
+                                <th class={TableNumeric {}}>"Postage"</th>
+                                <th class={TableNumeric {}}>"Cost"</th>
+                                <th class={TableNumeric {}}>"Reusable cash"</th>
+                                <th class={TableNumeric {}}>"Realized profit"</th>
                                 <th>"Coverage"</th>
                             </tr>
                         </thead>
@@ -96,42 +96,42 @@ fn OrderTable<'a>(orders: &'a [Order], t: Msg) -> impl Render {
                             for o in orders {
                                 <tr key={&o.order_number}>
                                     <th scope="row">{&o.order_number}</th>
-                                    <td class={End}>
+                                    <td class={TableNumeric {}}>
                                         <Money
                                             cents={o.gross_order_cents}
                                             currency={&o.currency}
                                             t={t}
                                         />
                                     </td>
-                                    <td class={End}>
+                                    <td class={TableNumeric {}}>
                                         <Money
                                             cents={o.provider_net_cents}
                                             currency={&o.currency}
                                             t={t}
                                         />
                                     </td>
-                                    <td class={End}>
+                                    <td class={TableNumeric {}}>
                                         <Money
                                             cents={o.postage_cents}
                                             currency={&o.currency}
                                             t={t}
                                         />
                                     </td>
-                                    <td class={End}>
+                                    <td class={TableNumeric {}}>
                                         <Money
                                             cents={o.acquisition_cost_cents}
                                             currency={&o.currency}
                                             t={t}
                                         />
                                     </td>
-                                    <td class={End}>
+                                    <td class={TableNumeric {}}>
                                         <Money
                                             cents={o.reusable_cash_cents}
                                             currency={&o.currency}
                                             t={t}
                                         />
                                     </td>
-                                    <td class={End}>
+                                    <td class={TableNumeric {}}>
                                         <Money
                                             cents={o.realized_profit_cents}
                                             currency={&o.currency}

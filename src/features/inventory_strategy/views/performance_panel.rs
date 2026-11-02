@@ -21,7 +21,7 @@ use crate::{
     ui::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         card::{Card, CardContent},
-        table::Table,
+        table::{Table, TableNumeric},
     },
 };
 
@@ -199,28 +199,32 @@ fn LineTable<'a>(lines: &'a [PerformanceSummary], t: Msg) -> impl Render {
                     <thead>
                         <tr>
                             <th>"Product line"</th>
-                            <th class={End}>"Sold"</th>
-                            <th class={End}>"Net proceeds"</th>
-                            <th class={End}>"Cost"</th>
-                            <th class={End}>"Profit"</th>
-                            <th class={End}>"Margin"</th>
-                            <th class={End}>"Return on capital"</th>
-                            <th class={End}>"Days held"</th>
+                            <th class={TableNumeric {}}>"Sold"</th>
+                            <th class={TableNumeric {}}>"Net proceeds"</th>
+                            <th class={TableNumeric {}}>"Cost"</th>
+                            <th class={TableNumeric {}}>"Profit"</th>
+                            <th class={TableNumeric {}}>"Margin"</th>
+                            <th class={TableNumeric {}}>"Return on capital"</th>
+                            <th class={TableNumeric {}}>"Days held"</th>
                         </tr>
                     </thead>
                     <tbody>
                         for line in lines {
                             <tr key={&line.product_line}>
                                 <th scope="row">{&line.product_line}</th>
-                                <td class={End}>{count(t, line.units_sold)}</td>
-                                <td class={End}>{cents(t, line.proceeds_cents)}</td>
-                                <td class={End}>{cents(t, line.cost_cents)}</td>
-                                <td class={End}>{cents(t, line.profit_cents)}</td>
-                                <td class={End}>{percent(line.margin_percent, "Unavailable")}</td>
-                                <td class={End}>
+                                <td class={TableNumeric {}}>{count(t, line.units_sold)}</td>
+                                <td class={TableNumeric {}}>{cents(t, line.proceeds_cents)}</td>
+                                <td class={TableNumeric {}}>{cents(t, line.cost_cents)}</td>
+                                <td class={TableNumeric {}}>{cents(t, line.profit_cents)}</td>
+                                <td class={TableNumeric {}}>
+                                    {percent(line.margin_percent, "Unavailable")}
+                                </td>
+                                <td class={TableNumeric {}}>
                                     {percent_per_day(line.daily_return_percent, "Unavailable")}
                                 </td>
-                                <td class={End}>{days(line.average_days_held, "Unavailable")}</td>
+                                <td class={TableNumeric {}}>
+                                    {days(line.average_days_held, "Unavailable")}
+                                </td>
                             </tr>
                         }
                     </tbody>

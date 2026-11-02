@@ -99,9 +99,6 @@
     background: color-mix(in srgb, var(--primary) 10%, transparent);
   }
 }
-.end {
-  text-align: end !important;
-}
 .wide {
   min-width: 420px;
 }
