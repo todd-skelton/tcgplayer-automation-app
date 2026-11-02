@@ -22,6 +22,7 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         panel::Panel,
+        progress_bar::{ProgressBar, ProgressSize},
     },
 };
 
@@ -384,11 +385,11 @@ fn JobProgress<'a>(job: &'a Job, batch: i32) -> impl Render {
                     <strong class={muted()}>{percent.round()}"%"</strong>
                 }
             </div>
-            if p.total == 0.0 {
-                <progress aria-label="Batch pricing progress"></progress>
-            } else {
-                <progress max="100" value={percent} aria-label="Batch pricing progress"></progress>
-            }
+            <ProgressBar
+                size={ProgressSize::Md}
+                done={(p.total > 0.0).then_some(percent)}
+                label="Batch pricing progress"
+            />
             <p>{&p.status}</p>
             if let Some(sub) = &p.sub_progress {
                 <div class={Sub}>
@@ -399,11 +400,11 @@ fn JobProgress<'a>(job: &'a Job, batch: i32) -> impl Render {
                             "%"
                         </strong>
                     </div>
-                    <progress
-                        max="100"
-                        value={if sub.total > 0.0 { sub.current / sub.total * 100.0 } else { 0.0 }}
-                        aria-label="Items in this step"
-                    ></progress>
+                    <ProgressBar
+                        size={ProgressSize::Sm}
+                        done={Some(if sub.total > 0.0 { sub.current / sub.total * 100.0 } else { 0.0 })}
+                        label="Items in this step"
+                    />
                     <small class={muted()}>{&sub.status}</small>
                 </div>
             }
