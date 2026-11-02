@@ -29,6 +29,10 @@
   padding: var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+  /* A field's control stays inside a column narrower than its natural width (corten#686). */
+  & > * {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 /* On a phone two columns: the product line across both, the two numbers, then Skip and Add. */
 @media (max-width: 40rem) {

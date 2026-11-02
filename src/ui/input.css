@@ -1,6 +1,6 @@
-/* corten ui 0.1.0: input f3610d6aad65345a */
+/* corten ui 0.1.0: input 10912ee070cf5a5f */
 .input {
-  box-sizing: border-box; width: 100%; min-width: 0; height: var(--control-height); padding: .25rem var(--control-padding);
+  box-sizing: border-box; min-width: 0; height: var(--control-height); padding: .25rem var(--control-padding);
   font: inherit; font-size: var(--control-font-size); color: var(--foreground); background: transparent;
   border: 1px solid var(--input); border-radius: calc(var(--radius) - 2px);
   box-shadow: 0 1px 2px rgb(0 0 0 / .05); transition: border-color .15s, box-shadow .15s;

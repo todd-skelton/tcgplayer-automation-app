@@ -504,6 +504,9 @@
     },
     "$description": "The inline padding of a field, a small button and a tab."
   },
+  "control-width-sm": { "$type": "dimension", "$value": { "value": 8, "unit": "rem" }, "$description": "A short control outside a field: a code, a count." },
+  "control-width-md": { "$type": "dimension", "$value": { "value": 16, "unit": "rem" }, "$description": "A control outside a field: a search box beside its button." },
+  "control-width-lg": { "$type": "dimension", "$value": { "value": 24, "unit": "rem" }, "$description": "A long control outside a field." },
   "control-font-size": {
     "$type": "dimension",
     "$value": {

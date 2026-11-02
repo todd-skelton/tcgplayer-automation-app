@@ -1,0 +1,9 @@
+/* corten ui 0.1.0: control_width 223c9ed3a2c769fd */
+/* A control's width, from the theme's sizes, never wider than its container. Its max-width is the
+   same, so a control a Field grows to fill its row stops at it. Two classes, so it outweighs the
+   control's own look (a textarea's width: 100%) wherever the stylesheets come. */
+.control-width { box-sizing: border-box; }
+.control-width.sm { width: min(var(--control-width-sm), 100%); max-width: min(var(--control-width-sm), 100%); }
+.control-width.md { width: min(var(--control-width-md), 100%); max-width: min(var(--control-width-md), 100%); }
+.control-width.lg { width: min(var(--control-width-lg), 100%); max-width: min(var(--control-width-lg), 100%); }
+.control-width.full { width: 100%; max-width: 100%; }

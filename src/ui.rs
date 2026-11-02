@@ -16,6 +16,7 @@ pub mod button;
 pub mod card;
 pub mod checkbox;
 pub mod combobox;
+pub mod control_width;
 pub mod dialog;
 pub mod dropdown_menu;
 pub mod field;
@@ -50,6 +51,7 @@ pub const COMPONENTS: &[Component] = &[
     card::Card,
     checkbox::Checkbox,
     combobox::Combobox,
+    control_width::ControlWidth,
     dialog::Dialog,
     dropdown_menu::DropdownMenu,
     field::Field,
