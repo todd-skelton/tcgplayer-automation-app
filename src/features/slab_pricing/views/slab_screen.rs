@@ -12,21 +12,36 @@ use crate::{
             views::{CompReview, RecommendationPanel, ResearchPanel, SellerPanels, SupplyPanel},
         },
     },
-    layout::LabeledControl,
     text::Msg,
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
+        field::Field,
         input::Input,
         select::Select,
         table::Table,
+        textarea::Textarea,
     },
 };
 
 #[derive(Id)]
 struct ProblemId(&'static str);
+
+// The slab forms' answers carry no field errors: a refusal is the place's Problem. Their fields
+// are named from the form's id through an empty Errors until a form without errors can name them
+// (corten#685).
+#[derive(Id)]
+struct LookUpFormId;
+#[derive(Id)]
+struct AssignFormId;
+#[derive(Id)]
+struct ConfirmFormId;
+#[derive(Id)]
+struct InventoryFormId;
+#[derive(Id)]
+struct ImportFormId;
 
 /// Why a post from `at` was refused, or an empty slot a refusal's patch fills.
 #[component]
@@ -54,30 +69,33 @@ pub fn SlabScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                     "Review sold evidence and set a considered ask for your graded cards."
                 </p>
             </header>
+            let none = Errors::new();
+            let e = none.within(LookUpFormId);
             <form
+                id={LookUpFormId}
                 method="post"
                 action={url::LookUp { choice: choice.clone() }}
                 data-patch
                 class={(CardPanel {}, CardCompact {}, Line)}
             >
-                <LabeledControl label="Grader" hint="">
+                <Field id={e.id(f.grader)} label="Grader" hint="" error="">
                     <input
                         class={Input {}}
-                        name={f.grader}
                         value={choice.grader.as_deref().unwrap_or("PSA")}
                         required
                         maxlength="40"
+                        {..e.control(f.grader)}
                     >
-                </LabeledControl>
-                <LabeledControl label="Certificate number" hint="">
+                </Field>
+                <Field id={e.id(f.cert)} label="Certificate number" hint="" error="">
                     <input
                         class={Input {}}
-                        name={f.cert}
                         value={choice.cert.as_deref().unwrap_or("")}
                         required
                         maxlength="80"
+                        {..e.control(f.cert)}
                     >
-                </LabeledControl>
+                </Field>
                 <button class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}>
                     "Look up certificate"
                 </button>
@@ -139,15 +157,28 @@ fn ReviewedListing<'a>(screen: &'a Screen) -> impl Render {
                         "Look up and confirm a certificate to correct this listing's identity."
                     </p>
                     if let Some(record) = screen.record.as_ref().filter(|r| r.confirmed() && listing.identity_id.as_deref() != Some(r.id.as_str())) {
+                        let none = Errors::new();
+                        let e = none.within(AssignFormId);
                         <form
+                            id={AssignFormId}
                             method="post"
                             action={url::Assign { choice: choice.clone() }}
                             data-patch
                             class={Line}
                         >
-                            <LabeledControl label="Listing identity correction reason" hint="">
-                                <input class={Input {}} name={f.note} required maxlength="1000">
-                            </LabeledControl>
+                            <Field
+                                id={e.id(f.note)}
+                                label="Listing identity correction reason"
+                                hint=""
+                                error=""
+                            >
+                                <input
+                                    class={Input {}}
+                                    required
+                                    maxlength="1000"
+                                    {..e.control(f.note)}
+                                >
+                            </Field>
                             <button
                                 class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
                             >
@@ -199,7 +230,10 @@ fn IdentityCard<'a>(
             }
             <details>
                 <summary>"Confirm or correct identity"</summary>
+                let none = Errors::new();
+                let e = none.within(ConfirmFormId);
                 <form
+                    id={ConfirmFormId}
                     method="post"
                     action={url::Confirm { choice: choice.clone() }}
                     data-patch
@@ -210,38 +244,43 @@ fn IdentityCard<'a>(
                     </p>
                     <input type="hidden" name={f.revision} value={record.revision}>
                     <div class={Line}>
-                        <LabeledControl label="name" hint="">
+                        <Field id={e.id(f.name)} label="name" hint="" error="">
                             <input
                                 class={Input {}}
-                                name={f.name}
                                 value={card.name.as_deref().unwrap_or("")}
                                 required
                                 maxlength="200"
+                                {..e.control(f.name)}
                             >
-                        </LabeledControl>
+                        </Field>
                         for (label, name, value) in [("game", f.game, &card.game), ("language", f.language, &card.language), ("set", f.set, &card.set), ("card number", f.card_number, &card.card_number), ("year", f.year, &card.year), ("edition", f.edition, &card.edition), ("finish", f.finish, &card.finish), ("stamp", f.stamp, &card.stamp)] {
-                            <LabeledControl label={label} hint="">
+                            <Field id={e.id(name)} label={label} hint="" error="">
                                 <input
                                     class={Input {}}
-                                    name={name}
                                     value={value.as_deref().unwrap_or("")}
                                     maxlength="200"
+                                    {..e.control(name)}
                                 >
-                            </LabeledControl>
+                            </Field>
                         }
                     </div>
                     <div class={Line}>
-                        <LabeledControl label="Original grade encoding" hint="">
+                        <Field
+                            id={e.id(f.encoding)}
+                            label="Original grade encoding"
+                            hint=""
+                            error=""
+                        >
                             <input
                                 class={Input {}}
-                                name={f.encoding}
                                 value={&grading.encoding}
                                 required
                                 maxlength="40"
+                                {..e.control(f.encoding)}
                             >
-                        </LabeledControl>
-                        <LabeledControl label="Numeric grade" hint="">
-                            <select class={Select {}} name={f.number}>
+                        </Field>
+                        <Field id={e.id(f.number)} label="Numeric grade" hint="" error="">
+                            <select class={Select {}} {..e.control(f.number)}>
                                 <option value="" selected={grading.number.is_none()}>
                                     "Unmapped"
                                 </option>
@@ -251,21 +290,26 @@ fn IdentityCard<'a>(
                                     </option>
                                 }
                             </select>
-                        </LabeledControl>
+                        </Field>
                         for (label, name, value) in [("label", f.label, &grading.label), ("qualifier", f.qualifier, &grading.qualifier), ("autograph", f.autograph, &grading.autograph)] {
-                            <LabeledControl label={label} hint="">
+                            <Field id={e.id(name)} label={label} hint="" error="">
                                 <input
                                     class={Input {}}
-                                    name={name}
                                     value={value.as_deref().unwrap_or("")}
                                     maxlength="40"
+                                    {..e.control(name)}
                                 >
-                            </LabeledControl>
+                            </Field>
                         }
                     </div>
-                    <LabeledControl label="Reason for confirmation or correction" hint="">
-                        <input class={Input {}} name={f.note} required maxlength="1000">
-                    </LabeledControl>
+                    <Field
+                        id={e.id(f.note)}
+                        label="Reason for confirmation or correction"
+                        hint=""
+                        error=""
+                    >
+                        <input class={Input {}} required maxlength="1000" {..e.control(f.note)}>
+                    </Field>
                     <button
                         class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}
                     >
@@ -287,7 +331,14 @@ fn InventoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     html! {
         <section class={(CardPanel {}, CardCompact {}, Stack)} aria-labelledby="slab-inventory">
             <h2 id="slab-inventory">"eBay inventory"</h2>
-            <form method="get" action={url::SlabPricing::at(&Choice::default())} class={Line}>
+            let none = Errors::new();
+            let e = none.within(InventoryFormId);
+            <form
+                id={InventoryFormId}
+                method="get"
+                action={url::SlabPricing::at(&Choice::default())}
+                class={Line}
+            >
                 // Another seller's inventory opens at its first page, no listing open.
                 {keep_query(
                     &url::SlabPricing::at(&Choice {
@@ -297,13 +348,13 @@ fn InventoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         ..choice.clone()
                     }),
                     html! {
-                    <LabeledControl label="Seller username" hint="">
+                    <Field id={e.id(f.seller)} label="Seller username" hint="" error="">
                         <input class={Input {}}
-                            name={f.seller}
                             value={choice.seller.as_deref().unwrap_or("pokebash")}
                             required
+                            {..e.control(f.seller)}
                         >
-                    </LabeledControl>
+                    </Field>
                     <button class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}>"Open inventory"</button>
                     },
                 )}
@@ -332,7 +383,10 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
         </p>
         <details>
             <summary>"Import CSV"</summary>
+            let none = Errors::new();
+            let e = none.within(ImportFormId);
             <form
+                id={ImportFormId}
                 method="post"
                 action={url::Import { choice: choice.clone() }}
                 data-patch
@@ -343,9 +397,20 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
                     ". Required columns: item_id, title, price, currency, quantity, state, format. Add grader and certificate_number for certificate lookup. Existing rows are matched by item_id and variation_key."
                 </p>
                 <input type="hidden" name={fi.revision} value={page.revision}>
-                <LabeledControl label="Inventory CSV" hint="Paste the CSV, up to 2 MiB.">
-                    <textarea name={fi.csv} rows="6" required maxlength="2097152"></textarea>
-                </LabeledControl>
+                <Field
+                    id={e.id(fi.csv)}
+                    label="Inventory CSV"
+                    hint="Paste the CSV, up to 2 MiB."
+                    error=""
+                >
+                    <textarea
+                        class={Textarea {}}
+                        rows="6"
+                        required
+                        maxlength="2097152"
+                        {..e.control(fi.csv).hint()}
+                    ></textarea>
+                </Field>
                 <button class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}>
                     "Import into "{seller}
                 </button>
