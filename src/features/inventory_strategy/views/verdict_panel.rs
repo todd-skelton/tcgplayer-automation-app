@@ -150,7 +150,7 @@ pub fn VerdictPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             <p class={muted()}>
                 "Modeled returns assume net proceeds are reinvested after the capital turnaround below; they are directional, not observed growth."
             </p>
-            <div class={Stats}>
+            <dl class={Stats}>
                 <Stat
                     label="Modeled value"
                     value={&dollars(t, modeled)}
@@ -176,7 +176,7 @@ pub fn VerdictPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         curve_age(overall, screen)
                     )}
                 />
-            </div>
+            </dl>
         </section>
     }
 }

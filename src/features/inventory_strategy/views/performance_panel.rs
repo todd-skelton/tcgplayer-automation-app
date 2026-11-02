@@ -149,7 +149,7 @@ fn WindowFigures<'a>(window: &'a PerformanceWindow, t: Msg) -> impl Render {
         if o.units_sold == 0 {
             <p class={muted()}>"No sold units with proceeds and cost in this window yet."</p>
         } else {
-            <div class={Stats}>
+            <dl class={Stats}>
                 <Stat
                     label="Profit per day"
                     value={&o.profit_per_day_cents.map_or_else(
@@ -187,7 +187,7 @@ fn WindowFigures<'a>(window: &'a PerformanceWindow, t: Msg) -> impl Render {
                         cents(t, o.cost_cents)
                     )}
                 />
-            </div>
+            </dl>
             <LineTable lines={&window.product_lines} t={t} />
         }
     }
