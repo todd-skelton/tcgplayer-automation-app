@@ -113,6 +113,7 @@ fn steps<'a>(current: Step, links: &'a [ShippingWorkflow; 6]) -> Vec<StepLink<'a
         .zip(links)
         .map(|(&each, link)| StepLink {
             label: each.label(),
+            description: None,
             link: Some(link),
             state: if each == current {
                 StepState::Current

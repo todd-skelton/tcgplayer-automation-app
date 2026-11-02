@@ -1,18 +1,21 @@
-// corten ui 0.1.0: steps 78af14b544d2b88b
+// corten ui 0.1.0: steps fea3d6bb989f05b3
 //! The steps of a workflow, in order: a `<nav>` named by `label` around the `<ol>` of them,
 //! which tells a screen reader which step each is. A step is a link to its page (a GET, so it can
 //! be linked to and works without a script), or text for one with no page to go to. Its state is
 //! written, not worked out from where it is: a done step is drawn with a check mark in place of its
 //! number and says its words after its name to a screen reader ("(done)"), which the page does not
-//! show; the current one is `aria-current="step"`; any other is numbered, with its words
-//! ("(not started)", "(skipped)"). So a skipped step is not drawn done, and a finished workflow is
-//! every step done.
+//! show; the current one is `aria-current="step"`; a blocked one (it cannot start until
+//! something before it is fixed) is drawn with `!` in the warning color in place of its number,
+//! with its words ("(blocked)"); any other is numbered, with its words ("(not started)",
+//! "(skipped)"). So a skipped step is not drawn done, and a finished workflow is every step done.
+//! A step's `description` is a line under its name, outside its link, so the link is named by the
+//! step's name alone; on a narrow screen (under 40rem) it is not shown and is still read.
 //!
 //! ```rust,ignore
 //! <Steps label={t.steps()} steps={&[
-//!     Step { label: t.load(), link: Some(&url::Load), state: StepState::Done(t.done()) },
-//!     Step { label: t.pick(), link: Some(&url::Pick), state: StepState::Current },
-//!     Step { label: t.ship(), link: None, state: StepState::Todo(t.not_started()) },
+//!     Step { label: t.load(), description: None, link: Some(&url::Load), state: StepState::Done(t.done()) },
+//!     Step { label: t.pick(), description: Some(t.pick_note()), link: Some(&url::Pick), state: StepState::Current },
+//!     Step { label: t.ship(), description: None, link: None, state: StepState::Blocked(t.blocked()) },
 //! ]} />
 //! ```
 use corten::{Href, prelude::*};
@@ -29,11 +32,17 @@ pub enum StepState<'a> {
     /// Not finished: its number, and these words after its name, read and not shown
     /// ("(not started)", "(skipped)").
     Todo(&'a str),
+    /// Cannot start until something before it is fixed: `!` in the warning color in place of its
+    /// number, and these words after its name, read and not shown ("(blocked)"). Say what to fix
+    /// on the page: a phone does not show the step's `description`.
+    Blocked(&'a str),
 }
 
-/// One step: its name, a link to its page (`None` for a step with no page to go to) and its state.
+/// One step: its name, a line under it (`None` for none), a link to its page (`None` for a step
+/// with no page to go to) and its state.
 pub struct Step<'a> {
     pub label: &'a str,
+    pub description: Option<&'a str>,
     pub link: Option<&'a dyn Href>,
     pub state: StepState<'a>,
 }
@@ -61,16 +70,17 @@ pub fn Steps<'a>(label: &'a str, steps: &'a [Step<'a>]) -> impl Render {
     }
 }
 
-/// A step's `<li>`: its link or text, with its words for a screen reader.
+/// A step's `<li>`: its link or text, with its words for a screen reader, and its description.
 #[component(css = Steps)]
 fn StepItem<'a>(step: &'a Step<'a>) -> impl Render {
-    let (done, current, words) = match step.state {
-        StepState::Done(words) => (Some(Done), None, words),
-        StepState::Current => (None, Some("step"), ""),
-        StepState::Todo(words) => (None, None, words),
+    let (done, blocked, current, words) = match step.state {
+        StepState::Done(words) => (Some(Done), None, None, words),
+        StepState::Current => (None, None, Some("step"), ""),
+        StepState::Todo(words) => (None, None, None, words),
+        StepState::Blocked(words) => (None, Some(Blocked), None, words),
     };
     html! {
-        <li class={done}>
+        <li class={(done, blocked)}>
             if let Some(link) = step.link {
                 <a href={link} aria-current={current}>
                     {step.label}
@@ -81,6 +91,9 @@ fn StepItem<'a>(step: &'a Step<'a>) -> impl Render {
                     {step.label}
                     if !words.is_empty() { <span class={Status}>{words}</span> }
                 </span>
+            }
+            if let Some(description) = step.description {
+                <small class={Description}>{description}</small>
             }
         </li>
     }
