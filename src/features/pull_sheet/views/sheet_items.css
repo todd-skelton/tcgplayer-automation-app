@@ -16,40 +16,6 @@
     display: none;
   }
 }
-/* A no-script choice: native radios, which the kit's Segmented does not draw (corten#657). */
-.choice {
-  display: flex;
-  gap: var(--space-1);
-  margin: 0;
-  padding: 0;
-  border: 0;
-  & legend {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
-  & label {
-    padding: var(--space-1) var(--space-3);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-  }
-  & label:has(:checked) {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: var(--primary-foreground);
-  }
-  & input {
-    position: absolute;
-    opacity: 0;
-  }
-  & label:has(:focus-visible) {
-    outline: 2px solid var(--primary);
-    outline-offset: 2px;
-  }
-}
 .grid-choice,
 .table-choice {
   margin: 0;

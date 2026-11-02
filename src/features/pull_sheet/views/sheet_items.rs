@@ -15,6 +15,7 @@ use crate::{
         card::{CardCompact, CardPanel},
         dialog::Dialog,
         input::Input,
+        segmented::{Legend, SegmentedRadio, SegmentedRadios},
         table::{Table, TableNumeric},
     },
 };
@@ -115,17 +116,14 @@ pub fn SheetItems<'a>(
                         <button class={NoScript}>"Filter"</button>
                     })}
                 </form>
-                <fieldset class={Choice}>
-                    <legend>"Show as"</legend>
-                    <label>
+                <SegmentedRadios legend={Legend::Hidden("Show as")}>
+                    <SegmentedRadio label="Grid">
                         <input type="radio" name={l.layout} value="grid" class={GridChoice} checked>
-                        "Grid"
-                    </label>
-                    <label>
+                    </SegmentedRadio>
+                    <SegmentedRadio label="Table">
                         <input type="radio" name={l.layout} value="table" class={TableChoice}>
-                        "Table"
-                    </label>
-                </fieldset>
+                    </SegmentedRadio>
+                </SegmentedRadios>
             </div>
             <div class={(row(Space::_2), mb_4())}>
                 <span class={Badge { tone: BadgeTone::Primary, emphasis: BadgeEmphasis::Soft }}>

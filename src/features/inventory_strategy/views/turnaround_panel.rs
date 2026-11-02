@@ -18,6 +18,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         input::Input,
+        segmented::{Legend, SegmentedRadio, SegmentedRadios},
         stats::{Stat, StatTone, Stats, StatsSurface},
     },
 };
@@ -170,27 +171,26 @@ pub fn TurnaroundForm<'a>(
             <input type="hidden" name={f.seller_key} value={&input.seller_key}>
             <SubmitsOnChange>
                 <div class={Line}>
-                    <fieldset class={WindowChoice} disabled={off}>
-                        <legend class={VisuallyHidden}>"Turnaround source"</legend>
-                        <label>
+                    <SegmentedRadios legend={Legend::Hidden("Turnaround source")}>
+                        <SegmentedRadio label="Observed">
                             <input
                                 type="radio"
                                 name={f.mode}
                                 value="observed"
                                 checked={input.mode == "observed"}
+                                disabled={off}
                             >
-                            <span>"Observed"</span>
-                        </label>
-                        <label>
+                        </SegmentedRadio>
+                        <SegmentedRadio label="Manual">
                             <input
                                 type="radio"
                                 name={f.mode}
                                 value="manual"
                                 checked={input.mode == "manual"}
+                                disabled={off}
                             >
-                            <span>"Manual"</span>
-                        </label>
-                    </fieldset>
+                        </SegmentedRadio>
+                    </SegmentedRadios>
                     <LabeledControl
                         label="Manual days"
                         hint="Used when manual is selected or observed evidence is too thin"

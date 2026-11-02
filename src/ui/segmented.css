@@ -1,25 +1,35 @@
-/* corten ui 0.1.0: segmented c9dea614bb879cb7 */
+/* corten ui 0.1.0: segmented 216ae9d69415cfa3 */
 /* Drawn as tabs.css draws the tab list: its surface, sizes and raised choice. */
 .segmented { display: contents; }
 /* As wide as its choices, also as a grid or flex item, where inline-flex computes to flex. */
-.segmented [role="radiogroup"], .links {
+.segmented [role="radiogroup"], .links, .track {
   display: inline-flex; align-items: center; gap: .25rem; padding: .25rem; width: fit-content; max-width: 100%;
   background: var(--muted); color: var(--muted-foreground); border-radius: var(--radius);
 }
-.segmented [role="radio"], .links > a {
+.segmented [role="radio"], .links > a, .choice {
   display: inline-flex; align-items: center; justify-content: center; height: var(--control-height-sm); padding: 0 var(--control-padding);
   font: inherit; font-size: var(--control-font-size); font-weight: 500; white-space: nowrap; color: inherit; text-decoration: none;
   background: transparent; border: 0; border-radius: calc(var(--radius) - 2px); cursor: pointer; transition: color .15s;
 }
-.segmented [role="radio"]:hover, .links > a:hover { color: var(--foreground); }
-.segmented [role="radio"][aria-checked="true"], .links > a[aria-current="page"] {
+.segmented [role="radio"]:hover, .links > a:hover, .choice:not(:has(> input:disabled)):hover { color: var(--foreground); }
+.segmented [role="radio"][aria-checked="true"], .links > a[aria-current="page"], .choice:has(> input:checked) {
   background: var(--background); color: var(--foreground); box-shadow: 0 1px 2px rgb(0 0 0 / .08);
 }
-.segmented [role="radio"]:focus-visible, .links > a:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.segmented [role="radio"]:focus-visible, .links > a:focus-visible, .choice:has(> input:focus-visible) { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* Native radios: the fieldset holds the legend over the track, which the choices sit in. Each input
+   is hidden under its label, still focused and moved by the arrow keys; its label draws its state. */
+.radios { display: grid; justify-items: start; min-width: 0; margin: 0; padding: 0; border: 0; }
+.radios > legend { margin-bottom: .5rem; padding: 0; font-size: .875rem; font-weight: 500; color: var(--foreground); }
+/* A hidden legend: read, not drawn, and taking no room over the track. */
+.radios > .hidden { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.choice { position: relative; }
+.choice > input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: inherit; }
+.choice:has(> input:disabled) { opacity: .5; cursor: not-allowed; }
 /* Forced colors drop the raised background: the chosen one is outlined inside its box, which takes
    no room, so no option moves when the choice changes. */
 @media (forced-colors: active) {
-  .segmented [role="radio"][aria-checked="true"]:not(:focus-visible), .links > a[aria-current="page"]:not(:focus-visible) {
+  .segmented [role="radio"][aria-checked="true"]:not(:focus-visible), .links > a[aria-current="page"]:not(:focus-visible),
+  .choice:has(> input:checked:not(:focus-visible)) {
     outline: 1px solid CanvasText; outline-offset: -1px;
   }
 }

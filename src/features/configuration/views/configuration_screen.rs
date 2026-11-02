@@ -14,19 +14,33 @@ use crate::{
         },
         http_configuration,
     },
-    layout::{LabeledControl, SubmitsOnChange},
+    layout::SubmitsOnChange,
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         checkbox::Checkbox,
+        field::Field,
         input::Input,
         select::Select,
         switch::Switch,
         table::Table,
     },
 };
+
+/// The control's attributes, with its hint in its description when the hint has text
+/// (corten#682).
+fn described<'a, I, P>(
+    control: corten::form::Control<'a, I, P>,
+    hint: &str,
+) -> corten::form::Control<'a, I, P> {
+    if hint.is_empty() {
+        control
+    } else {
+        control.hint()
+    }
+}
 
 #[derive(Id)]
 pub struct PricingFormId;
@@ -131,27 +145,29 @@ fn saved(saved: bool) -> impl Render {
 pub fn PricingForm<'a>(section: &'a Section<'a, PricingInput>) -> impl Patch {
     let (input, errors) = (section.input, section.errors);
     let f = PricingInput::FIELDS;
-    let number = move |name: FieldName<String>,
-                       value: &'a str,
-                       step: &'static str,
-                       min: &'static str,
-                       max: &'static str| {
-        let e = errors.within(PricingFormId);
-        html! {
-            <input
-                class={Input {}}
-                type="number"
-                name={name}
-                value={value}
-                step={step}
-                min={min}
-                max={max}
-                {..e.aria(name)}
-            >
-            {e.message(name)}
-        }
-    };
+    let number =
+        move |name: FieldName<String>,
+              label: &'static str,
+              hint: &'static str,
+              value: &'a str,
+              (step, min, max): (&'static str, &'static str, &'static str)| {
+            html! {
+                let e = errors.within(PricingFormId);
+                <Field id={e.id(name)} label={label} hint={hint} error={e.message(name)}>
+                    <input
+                        class={Input {}}
+                        type="number"
+                        value={value}
+                        step={step}
+                        min={min}
+                        max={max}
+                        {..described(e.control(name), hint)}
+                    >
+                </Field>
+            }
+        };
     html! {
+        let e = errors.within(PricingFormId);
         <form
             id={PricingFormId}
             method="post"
@@ -163,11 +179,13 @@ pub fn PricingForm<'a>(section: &'a Section<'a, PricingInput>) -> impl Patch {
                 <div class={Section}>
                     <h2>"Pricing Configuration"</h2>
                     <span class={Saved}>{saved(section.saved)}</span>
-                    <LabeledControl
+                    <Field
+                        id={e.id(f.policy)}
                         label="Active Pricing Policy"
                         hint="Percentile uses the product-line settings below. Target horizon applies one median sell-time target across inventory. Profit per day prices each SKU where net proceeds, discounted at the daily return hurdle over its sell time, are highest."
+                        error={e.message(f.policy)}
                     >
-                        <select class={Select {}} name={f.policy}>
+                        <select class={Select {}} {..e.control(f.policy).hint()}>
                             for (method, label) in [
                                 (Method::Percentile, "Configured percentile"),
                                 (Method::TargetHorizon, "Target sell horizon"),
@@ -181,87 +199,45 @@ pub fn PricingForm<'a>(section: &'a Section<'a, PricingInput>) -> impl Patch {
                                 </option>
                             }
                         </select>
-                    </LabeledControl>
+                    </Field>
                     <div class={ForHorizon}>
-                        <LabeledControl
-                            label="Target Median Sell Time (days)"
-                            hint="Calibrate this value from the complete inventory portfolio; continuous pricing keeps it fixed as markets move."
-                        >
-                            {number(f.horizon_days, &input.horizon_days, "0.1", "0.1", "")}
-                        </LabeledControl>
+                        {number(f.horizon_days, "Target Median Sell Time (days)", "Calibrate this value from the complete inventory portfolio; continuous pricing keeps it fixed as markets move.", &input.horizon_days, ("0.1", "0.1", ""))}
                     </div>
                     <h3>"Profit per day settings"</h3>
                     <p class={muted()}>
                         "Used by the profit-per-day policy and by the inventory strategy dashboard's profit-per-day row."
                     </p>
                     <div class={Row}>
-                        <LabeledControl
-                            label="Daily return hurdle"
-                            hint="Fraction of capital earned per day when proceeds are redeployed; 0.005 is 0.5% per day"
-                        >
-                            {number(f.daily_return_hurdle, &input.daily_return_hurdle, "0.001", "", "")}
-                        </LabeledControl>
-                        <LabeledControl
-                            label="Relative overhead"
-                            hint="Share of each sale lost to fees"
-                        >
-                            {number(f.relative_overhead, &input.relative_overhead, "0.01", "0", "")}
-                        </LabeledControl>
-                        <LabeledControl
-                            label="Static overhead per unit"
-                            hint="Dollars lost per unit sold"
-                        >
-                            {number(f.static_overhead_per_unit, &input.static_overhead_per_unit, "0.05", "0", "")}
-                        </LabeledControl>
+                        {number(f.daily_return_hurdle, "Daily return hurdle", "Fraction of capital earned per day when proceeds are redeployed; 0.005 is 0.5% per day", &input.daily_return_hurdle, ("0.001", "", ""))}
+                        {number(f.relative_overhead, "Relative overhead", "Share of each sale lost to fees", &input.relative_overhead, ("0.01", "0", ""))}
+                        {number(f.static_overhead_per_unit, "Static overhead per unit", "Dollars lost per unit sold", &input.static_overhead_per_unit, ("0.05", "0", ""))}
                     </div>
-                    <LabeledControl
-                        label="Default Percentile"
-                        hint="Default percentile for pricing calculations"
-                    >
-                        {number(f.default_percentile, &input.default_percentile, "any", "0", "100")}
-                    </LabeledControl>
+                    {number(f.default_percentile, "Default Percentile", "Default percentile for pricing calculations", &input.default_percentile, ("any", "0", "100"))}
                     <div class={Row}>
-                        <LabeledControl label="Min Percentile" hint="">
-                            {number(f.min_percentile, &input.min_percentile, "any", "0", "100")}
-                        </LabeledControl>
-                        <LabeledControl label="Max Percentile" hint="">
-                            {number(f.max_percentile, &input.max_percentile, "any", "0", "100")}
-                        </LabeledControl>
+                        {number(f.min_percentile, "Min Percentile", "", &input.min_percentile, ("any", "0", "100"))}
+                        {number(f.max_percentile, "Max Percentile", "", &input.max_percentile, ("any", "0", "100"))}
                     </div>
-                    <LabeledControl
-                        label="Percentile Step"
-                        hint="Step size for percentile calculations"
-                    >
-                        {number(f.percentile_step, &input.percentile_step, "any", "1", "20")}
-                    </LabeledControl>
-                    <LabeledControl
+                    {number(f.percentile_step, "Percentile Step", "Step size for percentile calculations", &input.percentile_step, ("any", "1", "20"))}
+                    <Field
+                        id={e.id(f.skip_prefix)}
                         label="Skip Prefix"
                         hint="Prefix to identify items to skip during processing"
+                        error={e.message(f.skip_prefix)}
                     >
-                        <input class={Input {}} name={f.skip_prefix} value={&input.skip_prefix}>
-                    </LabeledControl>
+                        <input
+                            class={Input {}}
+                            value={&input.skip_prefix}
+                            {..e.control(f.skip_prefix).hint()}
+                        >
+                    </Field>
                     <div class={Row}>
-                        <LabeledControl
-                            label="Min Price Multiplier"
-                            hint="Multiplier for minimum price calculation"
-                        >
-                            {number(f.min_price_multiplier, &input.min_price_multiplier, "any", "0", "2")}
-                        </LabeledControl>
-                        <LabeledControl
-                            label="Min Price Constant"
-                            hint="Constant added to minimum price"
-                        >
-                            {number(f.min_price_constant, &input.min_price_constant, "any", "0", "1")}
-                        </LabeledControl>
+                        {number(f.min_price_multiplier, "Min Price Multiplier", "Multiplier for minimum price calculation", &input.min_price_multiplier, ("any", "0", "2"))}
+                        {number(f.min_price_constant, "Min Price Constant", "Constant added to minimum price", &input.min_price_constant, ("any", "0", "1"))}
                     </div>
                     <fieldset class={Row}>
                         <legend>"Success Rate Thresholds"</legend>
-                        <LabeledControl label="Low Threshold" hint="">
-                            {number(f.success_rate_low, &input.success_rate_low, "any", "0", "100")}
-                        </LabeledControl>
-                        <LabeledControl label="High Threshold" hint="">
-                            {number(f.success_rate_high, &input.success_rate_high, "any", "0", "100")}
-                        </LabeledControl>
+                        {number(f.success_rate_low, "Low Threshold", "", &input.success_rate_low, ("any", "0", "100"))}
+                        {number(f.success_rate_high, "High Threshold", "", &input.success_rate_high, ("any", "0", "100"))}
                     </fieldset>
                 </div>
             </SubmitsOnChange>
@@ -317,21 +293,21 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
             }
             <form method="post" action={url::SaveDefaultPercentile} data-patch>
                 <SubmitsOnChange>
-                    <LabeledControl
+                    <Field
+                        id={e.id(d.default_percentile)}
                         label="Default Percentile for Non-Configured Lines"
                         hint="Percentile used for product lines not explicitly configured below"
+                        error={e.message(d.default_percentile)}
                     >
                         <input
                             class={Input {}}
                             type="number"
-                            name={d.default_percentile}
                             value={&lines.default.default_percentile}
                             min={&min}
                             max={&max}
-                            {..e.aria(d.default_percentile)}
+                            {..e.control(d.default_percentile).hint()}
                         >
-                        {e.message(d.default_percentile)}
-                    </LabeledControl>
+                    </Field>
                 </SubmitsOnChange>
                 <noscript>
                     <button
@@ -347,30 +323,36 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
                     <ComboBox field={&picker} />
                     {e.message(a.product_line)}
                 </div>
-                <LabeledControl label="Percentile" hint="">
+                <Field
+                    id={e.id(a.percentile)}
+                    label="Percentile"
+                    hint=""
+                    error={e.message(a.percentile)}
+                >
                     <input
                         class={Input {}}
                         type="number"
-                        name={a.percentile}
                         value={&lines.add.percentile}
                         min={&min}
                         max={&max}
-                        {..e.aria(a.percentile)}
+                        {..e.control(a.percentile)}
                     >
-                    {e.message(a.percentile)}
-                </LabeledControl>
-                <LabeledControl label="Daily return hurdle" hint="Blank uses the default">
+                </Field>
+                <Field
+                    id={e.id(a.daily_return_hurdle)}
+                    label="Daily return hurdle"
+                    hint="Blank uses the default"
+                    error={e.message(a.daily_return_hurdle)}
+                >
                     <input
                         class={Input {}}
                         type="number"
                         step="0.001"
-                        name={a.daily_return_hurdle}
                         value={&lines.add.daily_return_hurdle}
                         placeholder={&hurdle}
-                        {..e.aria(a.daily_return_hurdle)}
+                        {..e.control(a.daily_return_hurdle).hint()}
                     >
-                    {e.message(a.daily_return_hurdle)}
-                </LabeledControl>
+                </Field>
                 <Checkbox label="Skip">
                     <input type="checkbox" name={a.skip} checked={lines.add.skip}>
                 </Checkbox>
@@ -475,9 +457,11 @@ pub fn SnapsForm<'a>(section: &'a Section<'a, SnapsInput>) -> impl Patch {
                         }
                     </div>
                     <div class={Row}>
-                        <LabeledControl
+                        <Field
+                            id={e.id(f.snap_range)}
                             label="Snap range"
                             hint="A price up to this fraction above a threshold may be snapped under it; 0.1 is 10%"
+                            error={e.message(f.snap_range)}
                         >
                             <input
                                 class={Input {}}
@@ -485,21 +469,17 @@ pub fn SnapsForm<'a>(section: &'a Section<'a, SnapsInput>) -> impl Patch {
                                 step="0.01"
                                 min="0.01"
                                 max="0.5"
-                                name={f.snap_range}
                                 value={&input.snap_range}
-                                {..e.aria(f.snap_range)}
+                                {..e.control(f.snap_range).hint()}
                             >
-                            {e.message(f.snap_range)}
-                        </LabeledControl>
-                        <LabeledControl
+                        </Field>
+                        <Field
+                            id={e.id(f.evidence_window_days)}
                             label="Learn shipping costs from"
                             hint="Trailing orders the shipping cost model learns from"
+                            error={e.message(f.evidence_window_days)}
                         >
-                            <select
-                                class={Select {}}
-                                name={f.evidence_window_days}
-                                {..e.aria(f.evidence_window_days)}
-                            >
+                            <select class={Select {}} {..e.control(f.evidence_window_days).hint()}>
                                 for days in EVIDENCE_WINDOWS {
                                     <option
                                         value={days}
@@ -509,8 +489,7 @@ pub fn SnapsForm<'a>(section: &'a Section<'a, SnapsInput>) -> impl Patch {
                                     </option>
                                 }
                             </select>
-                            {e.message(f.evidence_window_days)}
-                        </LabeledControl>
+                        </Field>
                     </div>
                 </div>
             </SubmitsOnChange>
