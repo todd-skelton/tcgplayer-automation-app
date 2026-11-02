@@ -171,7 +171,7 @@ fn HistorySummary<'a>(summary: &'a Summary, t: Msg) -> impl Render {
     let unknown = (remaining - known).max(0);
     let none = "Unavailable";
     html! {
-        <div class={Stats}>
+        <dl class={Stats}>
             <Stat
                 label="Sold"
                 value={&units(t, summary.sold_quantity)}
@@ -204,7 +204,7 @@ fn HistorySummary<'a>(summary: &'a Summary, t: Msg) -> impl Render {
                     units(t, unknown)
                 )}
             />
-        </div>
+        </dl>
     }
 }
 

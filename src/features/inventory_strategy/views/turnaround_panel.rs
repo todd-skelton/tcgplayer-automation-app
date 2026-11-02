@@ -75,7 +75,7 @@ pub fn TurnaroundPanel<'a>(
             <p class={muted()}>
                 "Days from a sale until its proceeds are back on sale as replacement inventory, estimated from the last 90 days of completed cycles."
             </p>
-            <div class={Stats}>
+            <dl class={Stats}>
                 <Stat
                     label="Typical"
                     value={&days(evidence.and_then(|e| e.typical_days), "Unavailable")}
@@ -106,7 +106,7 @@ pub fn TurnaroundPanel<'a>(
                         |d| format!("Proceeds not yet republished \u{b7} oldest {} days", fixed(d, 1)),
                     )}
                 />
-            </div>
+            </dl>
             <TurnaroundForm view={&screen.view} input={input} errors={errors} />
             if let Some(error) = &screen.reinvestment_error {
                 <Alert variant={AlertVariant::Warning}>{error}</Alert>
