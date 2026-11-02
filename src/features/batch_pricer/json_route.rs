@@ -5,11 +5,10 @@
 //! a CSV export or a seller's live inventory (`POST /import-csv`, `POST /import-seller`). An
 //! export is read up to 20 MB, as the screen's form reads it; Node read any size. A file input
 //! left empty is no file ("CSV file is required"), where Node read a file with no name and no
-//! rows. Saving results
-//! priced in the browser (`POST /{batch}/results`, which no screen sends now) still goes to the
-//! Node app, and so does confirming an ambiguous publication item (`PATCH /{batch}/publications`). A batch's
-//! publications and preview (`GET /{batch}/publications`) and planning its publication (`POST`)
-//! are answered here.
+//! rows. A batch's publications and preview (`GET /{batch}/publications`), planning its
+//! publication (`POST`) and confirming an ambiguous item live (`PATCH`) are answered here too.
+//! Only saving results priced in the browser (`POST /{batch}/results`, which no screen sends now)
+//! still goes to the Node app.
 //!
 //! A batch's pricing stream (`GET /{batch}/pricing-stream`) is server-sent events of JSON: the
 //! batch each time it changes, a heartbeat, and an error when there is no such batch. Corten
@@ -48,7 +47,10 @@ use crate::{
         },
         inventory_economics::ledger::fingerprint::js_json,
         inventory_intake::queue::{self as intake, NotQueued},
-        inventory_publication::{plan, preview, publication_json},
+        inventory_publication::{
+            confirmation::{self, NotConfirmed},
+            plan, preview, publication_json,
+        },
         shipping_configuration,
     },
     legacy::{Legacy, relay_request},
@@ -166,7 +168,7 @@ pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
     .route::<InventoryBatchPublications<'_>>(
         get(publications)
             .post(publish)
-            .patch(relay)
+            .patch(confirm)
             .put(publications_not_allowed)
             .delete(publications_not_allowed)
             .with_state(shared.clone()),
@@ -856,6 +858,63 @@ async fn planned(conn: &mut PgConnection, batch: i32, selected: Option<&[i64]>) 
     .with_status(status)
 }
 
+/// The largest confirmation read: ids, a time and the evidence.
+const MAX_CONFIRM_BODY_BYTES: usize = 64 * 1024;
+
+/// `PATCH`: an ambiguous item confirmed live, in a transaction kept only when it is answered.
+async fn confirm(
+    State(db): State<Database>,
+    Params(at): Params<InventoryBatchPublications<'_>>,
+    request: Request,
+) -> JsonResponse {
+    let batch = match batch_number(&at.batch) {
+        Ok(batch) => batch,
+        Err(refused) => return refused.into(),
+    };
+    let body = match to_bytes(request.into_body(), MAX_CONFIRM_BODY_BYTES).await {
+        Ok(body) => body,
+        Err(error) => return failed(format!("Error: {error}")),
+    };
+    let mut tx = match db.0.begin().await {
+        Ok(tx) => tx,
+        Err(error) => return failed(node_pg::thrown(error)),
+    };
+    let answer = confirmed(&mut tx, batch, &body, Utc::now()).await;
+    finished(tx, answer).await
+}
+
+/// The publication once the body's confirmation is saved, or Node's refusal of it.
+async fn confirmed(
+    conn: &mut PgConnection,
+    batch: i32,
+    body: &[u8],
+    now: chrono::DateTime<Utc>,
+) -> Result<JsonResponse, Box<JsonResponse>> {
+    let body: Value = serde_json::from_slice(body)
+        .map_err(|error| Box::new(failed(format!("SyntaxError: {error}"))))?;
+    if body.is_null() {
+        return Err(Box::new(failed(
+            "TypeError: Cannot read properties of null (reading 'publicationId')",
+        )));
+    }
+    let refused = |not: NotConfirmed| {
+        let status = match not {
+            NotConfirmed::Invalid => StatusCode::BAD_REQUEST,
+            NotConfirmed::Failed(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            _ => StatusCode::CONFLICT,
+        };
+        Box::new(api::error(status, not.message()))
+    };
+    let confirmation = confirmation::read(&body, now).map_err(refused)?;
+    let id = confirmation::confirm(conn, batch, &confirmation)
+        .await
+        .map_err(refused)?;
+    let publications = publication_json::by_ids(conn, &[id])
+        .await
+        .map_err(|error| Box::new(failed(error)))?;
+    Ok(api::node_json(&publications[0]))
+}
+
 /// Any other write to a batch's publications: Node's action, which read the batch number first.
 async fn publications_not_allowed(
     Params(at): Params<InventoryBatchPublications<'_>>,
@@ -1154,6 +1213,97 @@ mod tests {
                 assert_eq!(ours, expected, "{name}");
             }
         }
+    }
+
+    /// The confirmations in `.port-logs/publication-confirm-cases.json` on the dev database, each
+    /// in a savepoint rolled back after it, against Node's action over the same
+    /// (`.port-logs/publication-confirm-node.ts`): each answer, and the publication, item, lots
+    /// and replay queue left. Times the database sets are compared only for being there.
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
+    async fn confirmations_answer_as_node_answered() {
+        fn untimed(value: &mut Value) {
+            match value {
+                Value::Object(fields) => {
+                    for (key, field) in fields.iter_mut() {
+                        if key == "updatedAt" || key == "createdAt" {
+                            *field = Value::Bool(!field.is_null());
+                        } else {
+                            untimed(field);
+                        }
+                    }
+                }
+                Value::Array(items) => items.iter_mut().for_each(untimed),
+                _ => {}
+            }
+        }
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let read_log = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let cases: Vec<Value> =
+            serde_json::from_str(&read_log("publication-confirm-cases.json")).unwrap();
+        let node: Vec<Value> =
+            serde_json::from_str(&read_log("publication-confirm.node.json")).unwrap();
+        let capture = read_log("publication-confirm-capture.sql");
+        assert_eq!(cases.len(), node.len());
+        let mut tx = db.0.begin().await.unwrap();
+        for (case, theirs) in cases.iter().zip(&node) {
+            let name = case["name"].as_str().unwrap();
+            let mut each = tx.begin().await.unwrap();
+            if let Some(setup) = case["setup"].as_str() {
+                sqlx::raw_sql(setup).execute(&mut *each).await.unwrap();
+            }
+            let mut answers = Vec::new();
+            for body in case["steps"].as_array().unwrap() {
+                let answer = match batch_number(case["batch"].as_str().unwrap()) {
+                    Err(refused) => refused.into(),
+                    Ok(batch) => {
+                        let mut attempt = each.begin().await.unwrap();
+                        let body = body.as_str().unwrap().as_bytes();
+                        let answer = confirmed(&mut attempt, batch, body, Utc::now()).await;
+                        match answer {
+                            Ok(answer) => {
+                                attempt.commit().await.unwrap();
+                                answer
+                            }
+                            Err(refused) => {
+                                attempt.rollback().await.unwrap();
+                                *refused
+                            }
+                        }
+                    }
+                };
+                let answer = answer.into_response();
+                let status = answer.status().as_u16();
+                let bytes = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
+                    .await
+                    .unwrap();
+                let mut body: Value = serde_json::from_slice(&bytes).unwrap();
+                untimed(&mut body);
+                answers.push((status, body));
+            }
+            let captured: String = sqlx::query_scalar(&capture)
+                .fetch_one(&mut *each)
+                .await
+                .unwrap();
+            each.rollback().await.unwrap();
+            let node_answers = theirs["answers"].as_array().unwrap();
+            assert_eq!(answers.len(), node_answers.len(), "{name}");
+            for ((status, ours), expected) in answers.iter().zip(node_answers) {
+                let mut body = expected["body"].clone();
+                untimed(&mut body);
+                assert_eq!(u64::from(*status), expected["status"], "{name}");
+                match body["error"].as_str() {
+                    Some(error) if error.starts_with("SyntaxError: ") => {
+                        assert!(ours["error"].as_str().unwrap().starts_with("SyntaxError: "))
+                    }
+                    _ => assert_eq!(*ours, body, "{name}"),
+                }
+            }
+            let captured: Value = serde_json::from_str(&captured).unwrap();
+            assert_eq!(captured, theirs["captured"], "{name}");
+        }
+        tx.rollback().await.unwrap();
     }
 
     /// The requests in `.port-logs/batch-create-cases.json`, from the counts

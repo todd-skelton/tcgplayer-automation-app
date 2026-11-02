@@ -2,6 +2,7 @@
 //! a batch plans, and the worker that publishes it ([`worker`]). Ported from
 //! `app/features/inventory-publication`. The Node app publishes until cutover (port decision 3):
 //! the worker here runs only when `PUBLICATION_WORKER` is set.
+pub mod confirmation;
 pub mod execution;
 pub mod plan;
 pub mod policy;
