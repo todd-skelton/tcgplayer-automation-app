@@ -97,28 +97,6 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.stats {
-  display: grid;
-  gap: var(--space-4);
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  margin: 0;
-}
-.stat {
-  display: grid;
-  gap: var(--space-1);
-  align-content: start;
-  & :is(dt, dd) {
-    margin: 0;
-  }
-}
-.stat-value {
-  font-size: var(--font-size-xl);
-  font-weight: 500;
-}
-.stat-detail {
-  color: var(--muted-foreground);
-  font-size: var(--font-size-xs);
-}
 .caption {
   font-size: var(--font-size-xs);
 }

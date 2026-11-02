@@ -1,9 +1,6 @@
 use corten::prelude::*;
 
-use super::{
-    format::{age, count, coverage, days_delta, delta_dollars, dollars, fixed, per_day},
-    strategy_screen::Stat,
-};
+use super::format::{age, count, coverage, days_delta, delta_dollars, dollars, fixed, per_day};
 use crate::{
     features::inventory_strategy::{
         dashboard::{ProductLine, Role},
@@ -16,6 +13,7 @@ use crate::{
     ui::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         card::{CardCompact, CardPanel},
+        stats::{Stat, StatTone, Stats, StatsSurface},
         table::{Table, TableNumeric},
     },
 };
@@ -150,31 +148,39 @@ pub fn VerdictPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             <p class={muted()}>
                 "Modeled returns assume net proceeds are reinvested after the capital turnaround below; they are directional, not observed growth."
             </p>
-            <dl class={Stats}>
+            <dl class={Stats { surface: StatsSurface::Plain }}>
                 <Stat
                     label="Modeled value"
                     value={&dollars(t, modeled)}
-                    detail={&format!(
+                    note={&format!(
                         "{} against {} listed now",
                         delta_dollars(t, modeled - overall.current_listed_value),
                         dollars(t, overall.current_listed_value)
                     )}
+                    tone={StatTone::Neutral}
                 />
                 <Stat
                     label="Expected wait"
                     value={&wait}
-                    detail="Median / P90 until the next sale, weighted by units; not liquidation of every unit"
+                    note="Median / P90 until the next sale, weighted by units; not liquidation of every unit"
+                    tone={StatTone::Neutral}
                 />
-                <Stat label="Best hurdle" value={&best} detail={&best_detail} />
+                <Stat
+                    label="Best hurdle"
+                    value={&best}
+                    note={&best_detail}
+                    tone={StatTone::Neutral}
+                />
                 <Stat
                     label="Modeled coverage"
                     value={&coverage(overall.modeled_unit_count, overall.unit_count)}
-                    detail={&format!(
+                    note={&format!(
                         "{} of {} SKUs \u{b7} {}",
                         count(t, overall.modeled_sku_count as i64),
                         count(t, overall.sku_count as i64),
                         curve_age(overall, screen)
                     )}
+                    tone={StatTone::Neutral}
                 />
             </dl>
         </section>

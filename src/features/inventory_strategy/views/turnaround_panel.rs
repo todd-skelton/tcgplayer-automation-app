@@ -1,9 +1,6 @@
 use corten::{i18n::DateStyle, prelude::*};
 
-use super::{
-    format::{cents, days, fixed, instant},
-    strategy_screen::Stat,
-};
+use super::format::{cents, days, fixed, instant};
 use crate::{
     features::inventory_strategy::{
         actions::TurnaroundInput,
@@ -21,6 +18,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         input::Input,
+        stats::{Stat, StatTone, Stats, StatsSurface},
     },
 };
 
@@ -76,21 +74,23 @@ pub fn TurnaroundPanel<'a>(
             <p class={muted()}>
                 "Days from a sale until its proceeds are back on sale as replacement inventory, estimated from the last 90 days of completed cycles."
             </p>
-            <dl class={Stats}>
+            <dl class={Stats { surface: StatsSurface::Plain }}>
                 <Stat
                     label="Typical"
                     value={&days(evidence.and_then(|e| e.typical_days), "Unavailable")}
-                    detail="Dollar-weighted mean of completed cycles"
+                    note="Dollar-weighted mean of completed cycles"
+                    tone={StatTone::Neutral}
                 />
                 <Stat
                     label="Slower"
                     value={&days(evidence.and_then(|e| e.slower_days), "Unavailable")}
-                    detail="Dollar-weighted p90 scenario, not a confidence bound"
+                    note="Dollar-weighted p90 scenario, not a confidence bound"
+                    tone={StatTone::Neutral}
                 />
                 <Stat
                     label="Evidence"
                     value={&evidence.map_or_else(|| "None".to_owned(), |e| format!("{} purchases", e.completed_purchase_count))}
-                    detail={&evidence.map_or_else(
+                    note={&evidence.map_or_else(
                         || "No completed sale-to-publication cycles yet".to_owned(),
                         |e| format!(
                             "{} confidence \u{b7} {} completed",
@@ -98,14 +98,16 @@ pub fn TurnaroundPanel<'a>(
                             cents(t, e.completed_cents)
                         ),
                     )}
+                    tone={StatTone::Neutral}
                 />
                 <Stat
                     label="Waiting"
                     value={&evidence.map_or_else(|| "Unavailable".to_owned(), |e| cents(t, e.waiting_cents))}
-                    detail={&evidence.and_then(|e| e.oldest_waiting_days).map_or_else(
+                    note={&evidence.and_then(|e| e.oldest_waiting_days).map_or_else(
                         || "Proceeds not yet republished".to_owned(),
                         |d| format!("Proceeds not yet republished \u{b7} oldest {} days", fixed(d, 1)),
                     )}
+                    tone={StatTone::Neutral}
                 />
             </dl>
             <TurnaroundForm view={&screen.view} input={input} errors={errors} />

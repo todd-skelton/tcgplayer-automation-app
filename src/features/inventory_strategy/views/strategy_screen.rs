@@ -147,20 +147,6 @@ pub fn AnalysisStatus<'a>(analysis: &'a Analysis, view: &'a View, t: Msg) -> imp
     }
 }
 
-/// A figure in a `<dl class={Stats}>`: what it is (the term, so a screen reader reads it with
-/// the value), its value large, and what it means. The kit's `Stat` draws each figure as a card,
-/// and these sit in a panel's card (corten#625).
-#[component(css = StrategyScreen)]
-pub fn Stat<'a>(label: &'a str, value: &'a str, detail: &'a str) -> impl Render {
-    html! {
-        <div class={Stat}>
-            <dt class={muted()}>{label}</dt>
-            <dd class={StatValue}>{value}</dd>
-            <dd class={StatDetail}>{detail}</dd>
-        </div>
-    }
-}
-
 /// What to change, once per performance window: the levers read the window shown.
 #[component(css = StrategyScreen)]
 fn LeversPanels<'a>(screen: &'a Screen, t: Msg) -> impl Render {

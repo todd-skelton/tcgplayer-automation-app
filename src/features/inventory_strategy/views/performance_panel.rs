@@ -1,11 +1,8 @@
 use corten::{Href, i18n::DateStyle, prelude::*};
 use corten_ui::{ChoiceGroup, ChoiceOption, Chosen, ShownFor};
 
-use super::{
-    format::{
-        cents, count, days, dollars, fixed, per_day, percent, percent_per_day, signed_dollars,
-    },
-    strategy_screen::Stat,
+use super::format::{
+    cents, count, days, dollars, fixed, per_day, percent, percent_per_day, signed_dollars,
 };
 use crate::{
     features::inventory_strategy::{
@@ -22,6 +19,7 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         card::{CardCompact, CardPanel},
         segmented::Segmented,
+        stats::{Stat, StatTone, Stats, StatsSurface},
         table::{Table, TableNumeric},
     },
 };
@@ -149,43 +147,47 @@ fn WindowFigures<'a>(window: &'a PerformanceWindow, t: Msg) -> impl Render {
         if o.units_sold == 0 {
             <p class={muted()}>"No sold units with proceeds and cost in this window yet."</p>
         } else {
-            <dl class={Stats}>
+            <dl class={Stats { surface: StatsSurface::Plain }}>
                 <Stat
                     label="Profit per day"
                     value={&o.profit_per_day_cents.map_or_else(
                         || "Unavailable".to_owned(),
                         |c| format!("{}/day", dollars(t, c / 100.0)),
                     )}
-                    detail={&format!(
+                    note={&format!(
                         "{} profit over {} days",
                         cents(t, o.profit_cents),
                         fixed(window.covered_days, 0)
                     )}
+                    tone={StatTone::Neutral}
                 />
                 <Stat
                     label="Margin"
                     value={&percent(o.margin_percent, "Unavailable")}
-                    detail={&format!(
+                    note={&format!(
                         "Profit over net proceeds \u{b7} {} over cost",
                         percent(o.markup_percent, "Unavailable")
                     )}
+                    tone={StatTone::Neutral}
                 />
                 <Stat
                     label="Return on capital"
                     value={&percent_per_day(o.daily_return_percent, "Unavailable")}
-                    detail={&format!(
+                    note={&format!(
                         "Profit over cost-days \u{b7} held {} on average",
                         days(o.average_days_held, "Unavailable")
                     )}
+                    tone={StatTone::Neutral}
                 />
                 <Stat
                     label="Sold"
                     value={&format!("{} units", count(t, o.units_sold))}
-                    detail={&format!(
+                    note={&format!(
                         "{} net proceeds \u{b7} {} cost{excluded}",
                         cents(t, o.proceeds_cents),
                         cents(t, o.cost_cents)
                     )}
+                    tone={StatTone::Neutral}
                 />
             </dl>
             <LineTable lines={&window.product_lines} t={t} />

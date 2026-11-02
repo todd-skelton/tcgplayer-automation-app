@@ -3,10 +3,7 @@ use corten::{
     prelude::*,
 };
 
-use super::{
-    format::{count, days, fixed, instant, words},
-    strategy_screen::Stat,
-};
+use super::format::{count, days, fixed, instant, words};
 use crate::{
     features::inventory_strategy::{
         screen::Screen,
@@ -25,6 +22,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         select::Select,
+        stats::{Stat, StatTone, Stats, StatsSurface},
         table::{Table, TableNumeric},
     },
 };
@@ -176,16 +174,18 @@ fn HistorySummary<'a>(summary: &'a Summary, t: Msg) -> impl Render {
     let unknown = (remaining - known).max(0);
     let none = "Unavailable";
     html! {
-        <dl class={Stats}>
+        <dl class={Stats { surface: StatsSurface::Plain }}>
             <Stat
                 label="Sold"
                 value={&units(t, summary.sold_quantity)}
-                detail={&format!("{} with a known listed date", units(t, summary.sold_with_known_listed_date_quantity))}
+                note={&format!("{} with a known listed date", units(t, summary.sold_with_known_listed_date_quantity))}
+                tone={StatTone::Neutral}
             />
             <Stat
                 label="Sold-only average"
                 value={&days(summary.sold_only_average_days, none)}
-                detail="Observed time listed before sale; it is not an expected wait for all inventory"
+                note="Observed time listed before sale; it is not an expected wait for all inventory"
+                tone={StatTone::Neutral}
             />
             <Stat
                 label="Median / P90"
@@ -194,20 +194,22 @@ fn HistorySummary<'a>(summary: &'a Summary, t: Msg) -> impl Render {
                     days(summary.median_days_to_sale, none),
                     days(summary.p90_days_to_sale, none)
                 )}
-                detail={&match summary.percentile_status {
+                note={&match summary.percentile_status {
                     PercentileStatus::Estimable => "Time listed before sale".to_owned(),
                     other => format!("Unavailable: {}", percentile_words(other)),
                 }}
+                tone={StatTone::Neutral}
             />
             <Stat
                 label="Ledger expected remaining"
                 value={&units(t, remaining)}
-                detail={&format!(
+                note={&format!(
                     "{} with known age \u{b7} {} uncertain presence \u{b7} {} unknown listed date",
                     units(t, summary.remaining_with_known_age_quantity),
                     units(t, summary.remaining_with_uncertain_presence_quantity),
                     units(t, unknown)
                 )}
+                tone={StatTone::Neutral}
             />
         </dl>
     }
