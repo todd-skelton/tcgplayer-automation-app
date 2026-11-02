@@ -29,6 +29,9 @@ use crate::{
 /// shipment's reference.
 #[derive(Id)]
 struct BuyAgainId<'a>(&'a str);
+/// A shipment's actions menu, by its reference.
+#[derive(Id)]
+struct ShipmentMenuId<'a>(&'a str);
 
 /// One shipment as the Buy Postage step shows it.
 pub struct PostageRow<'a> {
@@ -92,8 +95,6 @@ fn ShipmentPostageRow<'a>(
 ) -> impl Render {
     let s = &row.planned.shipment;
     let reference = s.reference.as_str();
-    // corten-ui's MenuButton takes its id as text, not a typed Id (corten#656).
-    let menu_id = format!("shipment-menu-{reference}");
     let a = &s.to_address;
     let again = row.outbound.is_some_and(|b| b.bought_in(mode));
     let return_again = row.returned.is_some_and(|b| b.bought_in(mode));
@@ -162,7 +163,7 @@ fn ShipmentPostageRow<'a>(
                     }
                     <DropdownMenu>
                         <MenuButton
-                            id={&menu_id}
+                            id={ShipmentMenuId(reference)}
                             label={html! {
                                 <span aria-hidden="true">"⋮"</span>
                                 <span class={VisuallyHidden}>"More actions for "{reference}</span>

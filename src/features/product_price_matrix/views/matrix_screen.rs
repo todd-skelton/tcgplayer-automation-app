@@ -26,6 +26,10 @@ use crate::{
     },
 };
 
+/// The product picker, which its label names.
+#[derive(Id)]
+struct ProductPickId;
+
 /// The screen: the choices that find a product, then its prices by condition and variant, and
 /// once the policy priced it, the condition dispute helper.
 #[component(css)]
@@ -131,7 +135,7 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                             </label>
                         }
                         <div class={(Wide, Picked)}>
-                            <label for="product">"Product"</label>
+                            <label for={ProductPickId}>"Product"</label>
                             <ProductPicker screen={screen} />
                         </div>
                         <label>
@@ -257,7 +261,7 @@ fn ProductPicker<'a>(screen: &'a Screen) -> impl Render {
     let f = Choice::FIELDS;
     html! {
         let options: Vec<Option_<i32, String>> = screen.choices.iter().map(|c| Option_::new(c.id, &c.label).terms(&c.terms)).collect();
-        let picker = Picker { value: screen.chosen, disabled: options.is_empty(), ..Picker::new("product", f.product, "Choose a product", "No matching products", &options) };
+        let picker = Picker { value: screen.chosen, disabled: options.is_empty(), ..Picker::new(ProductPickId, f.product, "Choose a product", "No matching products", &options) };
         <ComboBox field={&picker} />
     }
 }

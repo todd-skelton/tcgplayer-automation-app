@@ -278,7 +278,7 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
         let picker = Picker {
             value: lines.add.product_line,
             attrs: &aria,
-            ..Picker::new("product-line-pick", a.product_line, "Search product lines...", "No matches", &choices)
+            ..Picker::new(ProductLinePickId, a.product_line, "Search product lines...", "No matches", &choices)
         };
         let (min, max) = (lines.percentiles.0.to_string(), lines.percentiles.1.to_string());
         let hurdle = lines.default_hurdle.to_string();
