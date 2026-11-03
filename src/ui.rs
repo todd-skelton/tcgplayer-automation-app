@@ -21,6 +21,7 @@ pub mod dialog;
 pub mod dropdown_menu;
 pub mod field;
 pub mod input;
+pub mod input_group;
 pub mod nav_bar;
 pub mod pagination;
 pub mod popover;
@@ -39,6 +40,7 @@ pub mod table;
 pub mod tabs;
 pub mod textarea;
 pub mod toasts;
+pub mod visually_hidden;
 
 /// Each component with a stylesheet, after the tokens: `App::components(ui::COMPONENTS)`.
 pub const COMPONENTS: &[Component] = &[
@@ -56,6 +58,7 @@ pub const COMPONENTS: &[Component] = &[
     dropdown_menu::DropdownMenu,
     field::Field,
     input::Input,
+    input_group::InputGroup,
     nav_bar::NavBar,
     pagination::Pagination,
     popover::Popover,
@@ -74,6 +77,7 @@ pub const COMPONENTS: &[Component] = &[
     tabs::Tabs,
     textarea::Textarea,
     toasts::Toasts,
+    visually_hidden::VisuallyHidden,
 ];
 
 /// Asserts each `<label for>` in `html` names exactly one element's id: a kit `Field` is given its

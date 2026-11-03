@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: field 6f12f8d4da855398 */
+/* corten ui 0.1.0: field e84dc37827bd0a7f */
 /* One column no wider than the field: a control's natural width (an input's is about 11rem) does
    not widen it past a narrow column of the page's grid. */
 .field { display: grid; grid-template-columns: minmax(0, 1fr); gap: .5rem; }
@@ -7,9 +7,11 @@
 .control { display: flex; align-items: center; gap: .25rem; }
 .control > [data-scope] { display: contents; }
 /* The field's control fills the row, whichever it is (an input, a select, a textarea, a widget's
-   input); a widget's buttons keep their size, and a ControlWidth's limit holds. By element, since
-   a component's stylesheet does not name another's classes. */
+   input, a <span> drawn around an input with what goes inside its border); a widget's buttons keep
+   their size, and a ControlWidth's limit holds. By element, since a component's stylesheet does
+   not name another's classes. */
 .control > :is(input:not([type="checkbox"], [type="radio"]), select, textarea),
+.control > span:has(> input:not([type="checkbox"], [type="radio"])),
 .control > [data-scope] > :is(input:not([type="checkbox"], [type="radio"]), select, textarea) { flex: 1 1 auto; min-width: 0; }
 /* A widget whose root holds a combobox (corten-ui's ComboBox) fills the row as a whole. */
 .control [data-scope]:has(> [role="combobox"]) { flex: 1 1 auto; min-width: 0; }

@@ -9,9 +9,10 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         card::{Card, CardContent, CardHeader},
-        dialog::{Dialog, DialogFooter},
+        dialog::{Dialog, DialogFooter, DialogSize},
         field::Field,
         input::Input,
+        input_group::InputGroup,
         switch::Switch,
     },
 };
@@ -55,7 +56,7 @@ pub fn SettingsScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
                 </div>
             </div>
             <dialog
-                class={Dialog {}}
+                class={Dialog { size: DialogSize::Sm }}
                 id={ResetDialogId}
                 closedby="any"
                 aria-labelledby="reset-dialog-title"
@@ -112,21 +113,24 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                         hint="Your TCGAuthTicket_Production cookie value (without the key name)"
                         error={e.message(f.tcg_auth_cookie)}
                     >
-                        <input
-                            class={Input {}}
-                            ref={cookie}
-                            type="password"
-                            value={&input.tcg_auth_cookie}
-                            autocomplete="off"
-                            {..e.control(f.tcg_auth_cookie).hint()}
-                        >
-                        <Switch label="Show">
+                        <span class={InputGroup {}}>
                             <input
-                                type="checkbox"
-                                role="switch"
-                                on:change={js::reveal(target, cookie)}
+                                class={Input {}}
+                                ref={cookie}
+                                type="password"
+                                value={&input.tcg_auth_cookie}
+                                autocomplete="off"
+                                {..e.control(f.tcg_auth_cookie).hint()}
                             >
-                        </Switch>
+                            <button
+                                class={Button { variant: ButtonVariant::Ghost, size: ButtonSize::Sm }}
+                                type="button"
+                                aria-pressed="false"
+                                on:click={js::reveal(target, cookie)}
+                            >
+                                "Show"
+                            </button>
+                        </span>
                     </Field>
                     <Alert variant={AlertVariant::Info}>
                         <strong>"To get your auth cookie:"</strong>

@@ -11,7 +11,7 @@ use crate::{
     ui::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        dialog::{Dialog, DialogFooter},
+        dialog::{Dialog, DialogFooter, DialogSize},
     },
 };
 
@@ -47,7 +47,7 @@ pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> 
         <dialog
             id={PublishDialogId}
             aria-labelledby={PublishHeadingId}
-            class={(Dialog {}, PublishDialog)}
+            class={(Dialog { size: DialogSize::Xl }, PublishDialog)}
         >
             <form
                 method="post"

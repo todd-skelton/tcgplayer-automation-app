@@ -1,4 +1,4 @@
-// corten ui 0.1.0: button 6620d9fa56c598fc
+// corten ui 0.1.0: button becb0e1703a38ac7
 //! A button's look, as the classes of the `<button>` or `<a>` you write. The element is yours,
 //! so `html!` still checks everything it takes (`type`, `disabled`, `href={url::Home}`,
 //! `on:click`, `commandfor`), and the page has no element of the kit's around it:
@@ -29,7 +29,8 @@ pub enum ButtonSize {
     Sm,
     Md,
     Lg,
-    /// A square button holding an icon; give the element an `aria-label`.
+    /// A square button holding an icon. Name the `<button>` you write with `aria-label`; a
+    /// control whose element the kit draws (a `MenuButton`'s trigger) takes `VisuallyHidden` text.
     Icon,
 }
 

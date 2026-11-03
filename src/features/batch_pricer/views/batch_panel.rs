@@ -22,7 +22,7 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
-        dialog::{Dialog, DialogFooter},
+        dialog::{Dialog, DialogFooter, DialogSize},
         progress::{Progress as ProgressLook, ProgressSize},
     },
 };
@@ -198,7 +198,11 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
                 <PublishDialog batch={n} publications={p} t={t} />
             }
             if can_delete {
-                <dialog id={DeleteDialogId} aria-labelledby={DeleteHeadingId} class={Dialog {}}>
+                <dialog
+                    id={DeleteDialogId}
+                    aria-labelledby={DeleteHeadingId}
+                    class={Dialog { size: DialogSize::Sm }}
+                >
                     <h2 id={DeleteHeadingId}>"Delete Batch "{n}"?"</h2>
                     <p>
                         "This removes the batch, its "{batch.item_count}

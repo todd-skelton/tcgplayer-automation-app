@@ -19,9 +19,10 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        dialog::{Dialog, DialogFooter},
-        dropdown_menu::DropdownMenu,
-        table::{Table, TableNumeric},
+        dialog::{Dialog, DialogFooter, DialogSize},
+        dropdown_menu::{DropdownMenu, MenuTrigger},
+        table::{Table, TableLayout, TableNumeric},
+        visually_hidden::VisuallyHidden,
     },
 };
 
@@ -57,26 +58,24 @@ pub fn BuyPostageStep<'a>(rows: &'a [PostageRow<'a>], mode: EasyPostMode, t: Msg
                     {mode.key_name()}" is not set. Postage purchase is disabled."
                 </Alert>
             }
-            <div class={Scroll}>
-                <Table>
-                    <table class={Shipments}>
-                        <thead>
-                            <tr>
-                                <th>"Orders"</th>
-                                <th>"Recipient"</th>
-                                <th>"Parcel and value"</th>
-                                <th>"Postage"</th>
-                                <th class={TableNumeric {}}>"Actions"</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            for row in rows {
-                                <ShipmentPostageRow row={row} mode={mode} can_buy={can_buy} t={t} />
-                            }
-                        </tbody>
-                    </table>
-                </Table>
-            </div>
+            <Table layout={TableLayout::Scroll}>
+                <table class={Shipments}>
+                    <thead>
+                        <tr>
+                            <th>"Orders"</th>
+                            <th>"Recipient"</th>
+                            <th>"Parcel and value"</th>
+                            <th>"Postage"</th>
+                            <th class={TableNumeric {}}>"Actions"</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        for row in rows {
+                            <ShipmentPostageRow row={row} mode={mode} can_buy={can_buy} t={t} />
+                        }
+                    </tbody>
+                </table>
+            </Table>
         </div>
     }
 }
@@ -161,12 +160,12 @@ fn ShipmentPostageRow<'a>(
                             </button>
                         </form>
                     }
-                    <DropdownMenu>
+                    <DropdownMenu trigger={MenuTrigger::Icon}>
                         <MenuButton
                             id={ShipmentMenuId(reference)}
                             label={html! {
                                 <span aria-hidden="true">"⋮"</span>
-                                <span class={VisuallyHidden}>"More actions for "{reference}</span>
+                                <span class={VisuallyHidden {}}>"More actions for "{reference}</span>
                             }}
                         >
                             if return_again {
@@ -308,7 +307,7 @@ fn BuyAgainDialog<'a>(
         <dialog
             id={BuyAgainId(key)}
             aria-label={format!("Buy another {what}?")}
-            class={(Dialog {}, Confirm)}
+            class={(Dialog { size: DialogSize::Sm }, Confirm)}
         >
             <h2>"Buy another "{what}"?"</h2>
             <p>

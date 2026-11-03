@@ -21,7 +21,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         select::Select,
-        table::Table,
+        table::{Table, TableLayout},
     },
 };
 
@@ -210,7 +210,7 @@ pub fn CalibrationPanel<'a>(
                         "Measured from "{date(&r.from)}" through "{date(&r.through)}
                         ", holding out prices listed from "{date(&r.held_out_from)}
                     </h3>
-                    <Table>
+                    <Table layout={TableLayout::Scroll}>
                         <table class={Figures}>
                             <thead>
                                 <tr>
@@ -311,7 +311,7 @@ pub fn ShippingReportPanel<'a>(days: u32, report: Report<'a, ShippingReport>) ->
                         {count(r.cost_model.basket_count as f64)}
                         " units sold in the last "{r.cost_model.evidence_window_days}" days"
                     </h3>
-                    <Table>
+                    <Table layout={TableLayout::Scroll}>
                         <table class={Figures}>
                             <thead>
                                 <tr>
@@ -340,7 +340,7 @@ pub fn ShippingReportPanel<'a>(days: u32, report: Report<'a, ShippingReport>) ->
                             </tbody>
                         </table>
                     </Table>
-                    <Table>
+                    <Table layout={TableLayout::Scroll}>
                         <table class={Figures}>
                             <thead>
                                 <tr>
@@ -373,7 +373,7 @@ pub fn ShippingReportPanel<'a>(days: u32, report: Report<'a, ShippingReport>) ->
                             {outcome.listings.kept}" kept above, "{outcome.listings.floor}
                             " held by the price floor"
                         </p>
-                        <Table>
+                        <Table layout={TableLayout::Scroll}>
                             <table class={Figures}>
                                 <thead>
                                     <tr>

@@ -21,7 +21,7 @@ use crate::{
         field::Field,
         input::Input,
         select::Select,
-        table::Table,
+        table::{Table, TableLayout},
         textarea::Textarea,
     },
 };
@@ -410,7 +410,7 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
                 </button>
             </form>
         </details>
-        <Table>
+        <Table layout={TableLayout::Scroll}>
             <table class={Cells} aria-label="Saved eBay listings">
                 <thead>
                     <tr>

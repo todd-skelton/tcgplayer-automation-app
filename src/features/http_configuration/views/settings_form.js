@@ -1,7 +1,10 @@
 // @ts-check
-// SettingsForm (settings_screen.rs): shows or hides the auth cookie as it is typed.
+// SettingsForm (settings_screen.rs): the button inside the auth cookie's box shows or hides it.
+// Its name stays "Show"; aria-pressed says whether the cookie is shown.
 
-/** @param {HTMLInputElement} toggle @param {HTMLInputElement} cookie */
+/** @param {HTMLButtonElement} toggle @param {HTMLInputElement} cookie */
 export function reveal(toggle, cookie) {
-  cookie.type = toggle.checked ? "text" : "password";
+  const shown = cookie.type === "password";
+  cookie.type = shown ? "text" : "password";
+  toggle.setAttribute("aria-pressed", String(shown));
 }

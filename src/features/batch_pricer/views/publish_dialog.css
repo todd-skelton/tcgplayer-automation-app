@@ -1,6 +1,4 @@
-/* A list to choose from: wider than the kit's dialog, which has one width (corten#646). */
 .publish-dialog {
-  max-width: 56rem;
   & form {
     display: grid;
     gap: var(--space-3);

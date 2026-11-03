@@ -5,7 +5,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
-        table::Table,
+        table::{Table, TableLayout},
     },
 };
 
@@ -133,7 +133,7 @@ pub fn ShipStep<'a>(shipping: &'a Shipping<'a>) -> impl Render {
             }
             if !outcomes.is_empty() {
                 <div class={Scroll}>
-                    <Table>
+                    <Table layout={TableLayout::Scroll}>
                         <table class={Outcomes}>
                             <thead>
                                 <tr>

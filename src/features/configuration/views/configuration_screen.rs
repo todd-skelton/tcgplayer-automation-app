@@ -25,7 +25,7 @@ use crate::{
         input::Input,
         select::Select,
         switch::Switch,
-        table::Table,
+        table::{Table, TableLayout},
     },
 };
 
@@ -354,7 +354,7 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
                     ")."
                 </Alert>
             } else {
-                <Table>
+                <Table layout={TableLayout::Scroll}>
                     <table class={Lines}>
                         <thead>
                             <tr>

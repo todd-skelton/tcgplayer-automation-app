@@ -20,7 +20,7 @@ use crate::{
         card::{CardCompact, CardPanel},
         segmented::Segmented,
         stats::{Stat, StatTone, Stats, StatsSurface},
-        table::{Table, TableNumeric},
+        table::{Table, TableLayout, TableNumeric},
     },
 };
 
@@ -199,7 +199,7 @@ fn WindowFigures<'a>(window: &'a PerformanceWindow, t: Msg) -> impl Render {
 fn LineTable<'a>(lines: &'a [PerformanceSummary], t: Msg) -> impl Render {
     html! {
         if !lines.is_empty() {
-            <Table>
+            <Table layout={TableLayout::Scroll}>
                 <table class={Cells} aria-label="Realized performance by product line">
                     <thead>
                         <tr>

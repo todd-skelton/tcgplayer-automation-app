@@ -1,16 +1,33 @@
-/* corten ui 0.1.0: sheet d99b4704fd96cd7f */
+/* corten ui 0.1.0: sheet de82775d7453adfa */
 .sheet {
-  box-sizing: border-box; position: fixed; margin: 0; padding: 1.5rem; max-width: 100%; max-height: 100%;
+  --kit-sheet-inset: 1.5rem;
+  box-sizing: border-box; position: fixed; margin: 0; padding: var(--kit-sheet-inset); max-width: 100%; max-height: 100%;
   background: var(--background); color: var(--foreground); border: 1px solid var(--border); box-shadow: 0 10px 30px rgb(0 0 0 / .2);
 }
-.sheet[open] { display: flex; flex-direction: column; gap: 1rem; }
+.sheet[open] { display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; }
+/* A sheet longer than the window scrolls as a whole: no part shrinks to fit (one that scrolls on
+   its own, a table's wrapper, would shrink to nothing). */
+.sheet[open] > * { flex-shrink: 0; }
 .sheet > :is(h2, h3) { margin: 0; font-size: 1.125rem; font-weight: 600; }
 .sheet > p { margin: 0; font-size: .875rem; color: var(--muted-foreground); }
 .sheet::backdrop { background: rgb(0 0 0 / .5); }
-.sheet.right { inset: 0 0 0 auto; width: min(24rem, 85%); height: 100%; border-width: 0 0 0 1px; }
-.sheet.left { inset: 0 auto 0 0; width: min(24rem, 85%); height: 100%; border-width: 0 1px 0 0; }
+.sheet.right { inset: 0 0 0 auto; height: 100%; border-width: 0 0 0 1px; }
+.sheet.left { inset: 0 auto 0 0; height: 100%; border-width: 0 1px 0 0; }
 .sheet.top { inset: 0 0 auto 0; width: 100%; height: auto; border-width: 0 0 1px 0; }
 .sheet.bottom { inset: auto 0 0 0; width: 100%; height: auto; border-width: 1px 0 0 0; }
+/* A side sheet's width, never more than most of the window. */
+.sm { width: min(20rem, 85%); }
+.md { width: min(24rem, 85%); }
+.lg { width: min(32rem, 85%); }
+.xl { width: min(40rem, 85%); }
+/* As a dialog's header: held at the top while a long sheet scrolls, over its padding
+   (--kit-sheet-inset), with a focused control scrolled in below it. */
+.header {
+  position: sticky; top: calc(-1 * var(--kit-sheet-inset)); z-index: 1; display: flex; align-items: center; gap: .5rem;
+  margin-top: calc(-1 * var(--kit-sheet-inset)); padding-top: var(--kit-sheet-inset); background: var(--background);
+}
+.sheet:has(> .header) { scroll-padding-block-start: calc(var(--kit-sheet-inset) + 3rem); }
+.header > :where(h2, h3) { flex: 1 1 auto; margin: 0; font-size: 1.125rem; font-weight: 600; line-height: 1.2; }
 @media (prefers-reduced-motion: no-preference) {
   .sheet.right[open] { animation: sheet-from-right .2s ease-out; }
   .sheet.left[open] { animation: sheet-from-left .2s ease-out; }

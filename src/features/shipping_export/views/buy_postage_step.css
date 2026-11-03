@@ -2,12 +2,6 @@
   display: grid;
   gap: var(--space-4);
 }
-/* Positioned, so the menus' hidden text (absolute) is clipped by this scroll box instead of
-   widening the page past it (corten#674). */
-.scroll {
-  position: relative;
-  overflow-x: auto;
-}
 .shipments {
   & :is(th, td) {
     white-space: normal;
@@ -38,15 +32,6 @@
   & form[aria-busy] button::after {
     content: " …";
   }
-}
-/* Text for a screen reader beside an icon, as the menu's ⋮ (the kit has none, corten#655). */
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 /* Opened from a table cell, whose alignment it would otherwise inherit. */
 .confirm {

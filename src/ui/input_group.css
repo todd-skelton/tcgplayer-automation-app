@@ -1,0 +1,24 @@
+/* corten ui 0.1.0: input_group bb7a905268c657db */
+/* The <span> around a control and its adornments draws the box the input draws alone: its border,
+   its ring while the input has focus, and its invalid and disabled states. */
+.input-group {
+  box-sizing: border-box; display: inline-flex; align-items: center; min-width: 0; height: var(--control-height);
+  color: var(--foreground); background: transparent;
+  border: 1px solid var(--input); border-radius: calc(var(--radius) - 2px);
+  box-shadow: 0 1px 2px rgb(0 0 0 / .05); transition: border-color .15s, box-shadow .15s;
+}
+.input-group:has(> input:focus-visible) { outline: 2px solid transparent; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 35%, transparent); }
+.input-group:has(> input:user-invalid, > input[aria-invalid="true"]) { border-color: var(--destructive); }
+.input-group:has(> input:disabled) { opacity: .5; cursor: not-allowed; }
+/* The input inside fills the group and leaves the box to it, in every state its look draws. */
+.input-group > input, .input-group > input:is(:focus-visible, :user-invalid, [aria-invalid="true"], :disabled) {
+  flex: 1 1 auto; min-width: 0; height: 100%; border: 0; box-shadow: none; outline: none; opacity: 1;
+}
+.input-group > .adornment + input { padding-inline-start: .375rem; }
+.input-group > input:has(+ .adornment) { padding-inline-end: .375rem; }
+.adornment { flex: none; padding-inline: var(--control-padding); font-size: var(--control-font-size); color: var(--muted-foreground); white-space: nowrap; }
+.adornment:first-child { padding-inline-end: 0; }
+.adornment:last-child { padding-inline-start: 0; }
+/* A button inside sits within the border, whatever its size (an Icon one is the control's height,
+   and so is a Sm one under taller touch-target sizes). */
+.input-group > button { flex: none; max-height: calc(100% - .25rem); margin-inline: .25rem; }

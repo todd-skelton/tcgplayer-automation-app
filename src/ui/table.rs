@@ -1,13 +1,22 @@
-// corten ui 0.1.0: table e483ff268574124e
+// corten ui 0.1.0: table a377410de95e7427
 //! A table's look, on the `<table>` written inside it: the rows, headers and caption stay the
-//! app's markup. The wrapper scrolls sideways when the table is wider than the page, so it is a box
-//! of its own. Cells wrap as text does and headers stay on one line; a number column takes the
-//! `TableNumeric` look (aligned to its end, tabular figures, on one line), and a column the table
-//! sorts by has a `SortHeader`. The kit's cell rules have no specificity (`:where`), so one class
-//! of the app's on a cell wins.
+//! app's markup. `layout` is `TableLayout::Scroll` for a table that keeps its columns: the wrapper
+//! scrolls sideways when the table is wider than the page, so it is a box of its own.
+//! `TableLayout::Stack` is for a table read one row at a time (an account, an order): on a phone
+//! (40rem, as the kit's other parts), each row is a block of its cells, one per line, each led by
+//! its column's name from the `CellLabel` in it, with the rest of the cell beside it, where text
+//! wraps and each element starts a line (wrap text and an element in one `<span>` to keep them
+//! on one); a row header (`<th scope="row">`) is laid out the same, and a cell without a
+//! `CellLabel` is a block of its content. The column headers are drawn as a row when they hold a
+//! link or a button (a `SortHeader`), so the table still sorts by touch, and are hidden otherwise.
+//! It stays a table to a screen reader, which names each cell's column from the headers, so a
+//! `CellLabel` is hidden from it. Cells wrap as text does and headers stay on one line; a number
+//! column takes the `TableNumeric` look (aligned to its end, tabular figures, on one line), and
+//! a column the table sorts by has a `SortHeader`. The kit's cell rules have no specificity
+//! (`:where`), so one class of the app's on a cell wins.
 //!
 //! ```rust,ignore
-//! <Table>
+//! <Table layout={TableLayout::Scroll}>
 //!     <table>
 //!         <caption>"Recent orders"</caption>
 //!         <thead>
@@ -26,8 +35,29 @@
 //!     </table>
 //! </Table>
 //! ```
+//!
+//! A stacked table names each cell's column in it:
+//!
+//! ```rust,ignore
+//! <Table layout={TableLayout::Stack}>
+//!     <table>
+//!         <thead><tr><th scope="col">"Buyer"</th>..</tr></thead>
+//!         <tbody>.. <td><CellLabel>"Buyer"</CellLabel>{buyer}</td> ..</tbody>
+//!     </table>
+//! </Table>
+//! ```
 use corten::Href;
 use corten::prelude::*;
+
+/// How a table fits a box narrower than it. Each is a class in `table.css`, so one without a rule
+/// does not compile.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TableLayout {
+    /// Columns at every width; the wrapper scrolls sideways.
+    Scroll,
+    /// On a phone, each row a block of labelled cells; elsewhere as `Scroll`.
+    Stack,
+}
 
 /// A part without a rule does not compile:
 ///
@@ -40,8 +70,19 @@ use corten::prelude::*;
 /// }
 /// ```
 #[component(css)]
-pub fn Table<C: Render>(children: C) -> impl Render {
-    html! { <div class={Table}>{children}</div> }
+pub fn Table<C: Render>(layout: TableLayout, children: C) -> impl Render {
+    let layout = match layout {
+        TableLayout::Scroll => None,
+        TableLayout::Stack => Some(Stacked),
+    };
+    html! { <div class={(Table, layout)}>{children}</div> }
+}
+
+/// A cell's column name, shown before its value when a `TableLayout::Stack` table is stacked and
+/// hidden otherwise; a screen reader skips it, since the table's headers name the column.
+#[component(css = Table)]
+pub fn CellLabel<C: Render>(children: C) -> impl Render {
+    html! { <span class={Label} aria-hidden="true">{children}</span> }
 }
 
 /// A number column's cells and header: aligned to the end, so digits line up, in tabular figures,

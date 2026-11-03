@@ -23,7 +23,7 @@ use crate::{
         card::{CardCompact, CardPanel},
         select::Select,
         stats::{Stat, StatTone, Stats, StatsSurface},
-        table::{Table, TableNumeric},
+        table::{Table, TableLayout, TableNumeric},
     },
 };
 
@@ -218,7 +218,7 @@ fn HistorySummary<'a>(summary: &'a Summary, t: Msg) -> impl Render {
 #[component(css = super::strategy_screen::StrategyScreen)]
 fn SellThroughTable<'a>(summary: &'a Summary, t: Msg) -> impl Render {
     html! {
-        <Table>
+        <Table layout={TableLayout::Scroll}>
             <table class={Cells} aria-label="Age-eligible sell-through">
                 <thead>
                     <tr>
@@ -255,7 +255,7 @@ fn SellThroughTable<'a>(summary: &'a Summary, t: Msg) -> impl Render {
 fn LineTable<'a>(report: &'a Ready, t: Msg) -> impl Render {
     html! {
         if !report.product_lines.is_empty() {
-            <Table>
+            <Table layout={TableLayout::Scroll}>
                 <table class={Cells} aria-label="Product-line selling history">
                     <thead>
                         <tr>

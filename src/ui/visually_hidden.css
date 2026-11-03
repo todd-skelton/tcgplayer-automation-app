@@ -1,0 +1,7 @@
+/* corten ui 0.1.0: visually_hidden 07087ba46f0428f4 */
+/* Text a screen reader reads and the page does not draw: out of the flow, one pixel, clipped, on
+   one line so the reader does not run its words together. */
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}

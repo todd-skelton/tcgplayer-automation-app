@@ -14,7 +14,7 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         card::{CardCompact, CardPanel},
         stats::{Stat, StatTone, Stats, StatsSurface},
-        table::{Table, TableNumeric},
+        table::{Table, TableLayout, TableNumeric},
     },
 };
 
@@ -206,7 +206,7 @@ pub fn HurdleSweep<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             <p class={muted()}>
                 "Listed value, median / P90 wait, and SKUs raised / lowered against current prices at each daily return hurdle. The shaded cell is the configured hurdle."
             </p>
-            <Table>
+            <Table layout={TableLayout::Scroll}>
                 <table class={Cells}>
                     <thead>
                         <tr>

@@ -16,7 +16,7 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         card::{Card, CardContent, CardHeader},
         card::{CardCompact, CardPanel},
-        table::Table,
+        table::{Table, TableLayout},
     },
 };
 
@@ -91,7 +91,7 @@ pub fn BatchSummary<'a>(
                 <div class={Card {}}>
                     <header class={CardHeader {}}><h3>"Record Statistics"</h3></header>
                     <div class={CardContent {}}>
-                        <Table>
+                        <Table layout={TableLayout::Scroll}>
                             <table class={Figures}>
                                 <tbody>
                                     <tr>
@@ -132,7 +132,7 @@ pub fn BatchSummary<'a>(
                 <div class={Card {}}>
                     <header class={CardHeader {}}><h3>"Quantity Summary"</h3></header>
                     <div class={CardContent {}}>
-                        <Table>
+                        <Table layout={TableLayout::Scroll}>
                             <table class={Figures}>
                                 <tbody>
                                     <tr>
@@ -160,7 +160,7 @@ pub fn BatchSummary<'a>(
                         <p>"Current successful rows grouped by product line."</p>
                     </header>
                     <div class={CardContent {}}>
-                        <Table>
+                        <Table layout={TableLayout::Scroll}>
                             <table class={Figures}>
                                 <thead>
                                     <tr>
@@ -190,7 +190,7 @@ pub fn BatchSummary<'a>(
                     <h3>"Price Totals (Weighted by Quantity)"</h3>
                 </header>
                 <div class={CardContent {}}>
-                    <Table>
+                    <Table layout={TableLayout::Scroll}>
                         <table class={Figures}>
                             <thead>
                                 <tr>
@@ -251,7 +251,7 @@ pub fn BatchSummary<'a>(
                         </p>
                     </header>
                     <div class={CardContent {}}>
-                        <Table>
+                        <Table layout={TableLayout::Scroll}>
                             <table class={Figures}>
                                 <thead>
                                     <tr>

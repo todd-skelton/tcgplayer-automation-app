@@ -34,7 +34,3 @@
     background: color-mix(in srgb, var(--primary) 10%, transparent);
   }
 }
-/* Wider than the kit's dialog, which has one width (corten#646). */
-.sale {
-  max-width: 35rem;
-}

@@ -17,11 +17,12 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         checkbox::Checkbox,
-        dialog::{Dialog, DialogFooter},
+        dialog::{Dialog, DialogFooter, DialogSize},
         input::Input,
         select::Select,
         switch::Switch,
-        table::Table,
+        table::{Table, TableLayout},
+        visually_hidden::VisuallyHidden,
     },
 };
 
@@ -217,8 +218,8 @@ pub fn IntakeScreen<'a>(
                 </noscript>
             </form>
             <section class={(CardPanel {}, CardCompact {})} aria-labelledby={TableHeadingId}>
-                <h2 id={TableHeadingId} class={VisuallyHidden}>"Add new inventory"</h2>
-                <Table>
+                <h2 id={TableHeadingId} class={VisuallyHidden {}}>"Add new inventory"</h2>
+                <Table layout={TableLayout::Scroll}>
                     <table>
                         <thead>
                             <tr>
@@ -258,7 +259,12 @@ pub fn IntakeScreen<'a>(
                 target={queuing.batches.ok().map(|b| &b.target)}
                 errors={queuing.errors}
             />
-            <dialog id={PictureId} ref={dialog} class={(Dialog {}, Picture)} closedby="any">
+            <dialog
+                id={PictureId}
+                ref={dialog}
+                class={(Dialog { size: DialogSize::Md }, Picture)}
+                closedby="any"
+            >
                 <img ref={image} alt="Product">
                 <form method="dialog" class={DialogFooter {}}>
                     <button

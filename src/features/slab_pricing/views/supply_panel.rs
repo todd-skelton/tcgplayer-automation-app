@@ -24,7 +24,7 @@ use crate::{
         card::{CardCompact, CardPanel},
         field::Field,
         select::Select,
-        table::Table,
+        table::{Table, TableLayout},
     },
 };
 
@@ -274,7 +274,7 @@ fn SupplyContext<'a>(
                 "Search coverage is incomplete."
             }
         </p>
-        <Table>
+        <Table layout={TableLayout::Scroll}>
             <table class={Cells} aria-label="Active supply">
                 <thead>
                     <tr>

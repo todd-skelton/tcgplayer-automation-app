@@ -16,7 +16,7 @@ use crate::{
         field::Field,
         input::Input,
         select::Select,
-        sheet::{Sheet, Side},
+        sheet::{Sheet, SheetHeader, SheetWidth, Side},
     },
 };
 
@@ -38,15 +38,19 @@ pub fn ShipmentEditor<'a>(
             open
             closedby="any"
             aria-label="Edit Shipment"
-            class={(Sheet { side: Side::Right }, ShipmentEditor)}
+            class={Sheet { side: Side::Right(SheetWidth::Lg) }}
             on:connect={dialog::modalClosedBy(target, close, signal)}
         >
-            <header class={Head}>
+            <div class={SheetHeader {}}>
                 <h2>"Edit Shipment"</h2>
-                <a ref={close} href={ShippingWorkflow::at(Step::BuyPostage)} aria-label="Close">
-                    "✕"
+                <a
+                    ref={close}
+                    class={Button { variant: ButtonVariant::Ghost, size: ButtonSize::Sm }}
+                    href={ShippingWorkflow::at(Step::BuyPostage)}
+                >
+                    "Close"
                 </a>
-            </header>
+            </div>
             <ShipmentEditorForm reference={reference} input={input} errors={errors} />
         </dialog>
     }

@@ -13,7 +13,7 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
-        dialog::{Dialog, DialogFooter},
+        dialog::{Dialog, DialogFooter, DialogSize},
         popover::Popover,
         steps::{Step as StepLink, StepState, Steps, StepsLayout},
     },
@@ -213,7 +213,11 @@ pub fn StepBar<'a>(
                 }
             }
             if let Some(warning) = unshipped_warning {
-                <dialog class={Dialog {}} id={NewBatchDialogId} aria-labelledby={NewBatchHeadingId}>
+                <dialog
+                    class={Dialog { size: DialogSize::Sm }}
+                    id={NewBatchDialogId}
+                    aria-labelledby={NewBatchHeadingId}
+                >
                     <h2 id={NewBatchHeadingId}>"Start a new batch?"</h2>
                     <p>{warning}</p>
                     <form method="post" action={super::super::url::NewBatch}>

@@ -13,12 +13,17 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
-        dialog::Dialog,
+        dialog::{Dialog, DialogHeader, DialogSize},
         input::Input,
         segmented::{Legend, SegmentedRadio, SegmentedRadios},
-        table::{Sort, SortHeader, Table, TableNumeric},
+        table::{Sort, SortHeader, Table, TableLayout, TableNumeric},
+        visually_hidden::VisuallyHidden,
     },
 };
+
+/// The picture dialog's heading.
+#[derive(Id)]
+struct PictureHeadingId;
 
 /// What the summary counts, over the whole sheet whatever the filter shows.
 pub struct Summary {
@@ -164,11 +169,11 @@ pub fn SheetItems<'a>(
                 }
             </div>
             <div class={TableBox}>
-                <Table>
+                <Table layout={TableLayout::Scroll}>
                     <table>
                         <thead>
                             <tr>
-                                <th><span class={Hidden}>"Picture"</span></th>
+                                <th><span class={VisuallyHidden {}}>"Picture"</span></th>
                                 for (by, label) in columns {
                                     <SortHeader
                                         label={label}
@@ -213,15 +218,21 @@ pub fn SheetItems<'a>(
             <p ref={empty} class={muted()} hidden={!items.is_empty()}>
                 "No items match the filter."
             </p>
-            <dialog ref={dialog} class={(Dialog {}, Picture)}>
-                <form method="dialog">
-                    <button
-                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
-                        aria-label="Close"
-                    >
-                        "×"
-                    </button>
-                </form>
+            <dialog
+                ref={dialog}
+                class={(Dialog { size: DialogSize::Lg }, Picture)}
+                aria-labelledby={PictureHeadingId}
+            >
+                <div class={DialogHeader {}}>
+                    <h2 id={PictureHeadingId}>"Picture"</h2>
+                    <form method="dialog">
+                        <button
+                            class={Button { variant: ButtonVariant::Ghost, size: ButtonSize::Sm }}
+                        >
+                            "Close"
+                        </button>
+                    </form>
+                </div>
                 <img ref={image} alt="">
             </dialog>
         </div>

@@ -13,7 +13,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         card::{Card, CardContent, CardHeader},
-        table::{Table, TableNumeric},
+        table::{Table, TableLayout, TableNumeric},
     },
 };
 
@@ -75,7 +75,7 @@ fn OrderTable<'a>(orders: &'a [Order], t: Msg) -> impl Render {
     html! {
         <div class={Card {}}>
             <div class={CardContent {}}>
-                <Table>
+                <Table layout={TableLayout::Scroll}>
                     <table aria-label="Order economics">
                         <thead>
                             <tr>

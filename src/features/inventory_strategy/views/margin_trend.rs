@@ -13,7 +13,7 @@ use crate::{
     text::Msg,
     theme::*,
     ui::card::{CardCompact, CardPanel},
-    ui::table::{Table, TableNumeric},
+    ui::table::{Table, TableLayout, TableNumeric},
 };
 
 /// Share of a week's sales that must be costed for its margin to be read as complete.
@@ -227,7 +227,7 @@ pub fn MarginTrendPanel<'a>(trend: Option<&'a MarginTrend>, t: Msg) -> impl Rend
                         }
                     </ol>
                 }
-                <Table>
+                <Table layout={TableLayout::Scroll}>
                     <table class={Cells} aria-label="Realized margin by week">
                         <thead>
                             <tr>

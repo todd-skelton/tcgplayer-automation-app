@@ -21,7 +21,7 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         segmented::SegmentedLinks,
-        table::{Table, TableNumeric},
+        table::{Table, TableLayout, TableNumeric},
     },
 };
 
@@ -256,7 +256,7 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                             }
                         </div>
                     } else if !packed.listed.is_empty() {
-                        <Table>
+                        <Table layout={TableLayout::Scroll}>
                             <table class={Listed}>
                                 <thead>
                                     <tr>
@@ -306,7 +306,7 @@ fn PackList<'a>(packing: &'a Packing<'a>, t: Msg) -> impl Render {
                 <ViewChoice packing={packing} />
             </header>
             <div class={Scroll}>
-                <Table>
+                <Table layout={TableLayout::Scroll}>
                     <table class={Listed}>
                         <thead>
                             <tr>

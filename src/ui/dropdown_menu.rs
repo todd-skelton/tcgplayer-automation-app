@@ -1,10 +1,10 @@
-// corten ui 0.1.0: dropdown_menu 0722c6ffbbbe0084
-//! The look of corten-ui's `MenuButton` written inside it: an outline trigger and a menu under
-//! it. The items are the app's (`role="menuitem"` links, post forms, dialog commands), so the
-//! app lists `corten_ui::COMPONENTS` too. A `<hr role="separator">` between items groups them.
+// corten ui 0.1.0: dropdown_menu a93686d44ac623af
+//! The look of corten-ui's `MenuButton` written inside it: a trigger and a menu under it. The
+//! items are the app's (`role="menuitem"` links, post forms, dialog commands), so the app lists
+//! `corten_ui::COMPONENTS` too. A `<hr role="separator">` between items groups them.
 //!
 //! ```rust,ignore
-//! <DropdownMenu>
+//! <DropdownMenu trigger={MenuTrigger::Text}>
 //!     <MenuButton id={AccountMenuId} label="Account">
 //!         <a role="menuitem" href={url::Orders}>"Orders"</a>
 //!         <hr role="separator">
@@ -12,7 +12,21 @@
 //!     </MenuButton>
 //! </DropdownMenu>
 //! ```
+//!
+//! `MenuTrigger::Icon` is a row's "more actions" menu: the trigger holds an icon a screen reader
+//! skips (`aria-hidden="true"`) and its name in `VisuallyHidden` text.
 use corten::prelude::*;
+
+/// What the trigger holds. `Icon` is a class in `dropdown_menu.css`, so it does not compile
+/// without its rule; `Text` is the trigger as it is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MenuTrigger {
+    /// Its name, in an outline button with a chevron after it.
+    Text,
+    /// An icon, in a square ghost button at the control's height with no chevron; its name is
+    /// visually hidden text.
+    Icon,
+}
 
 /// A part without a rule does not compile:
 ///
@@ -25,6 +39,11 @@ use corten::prelude::*;
 /// }
 /// ```
 #[component(css)]
-pub fn DropdownMenu<C: Render>(children: C) -> impl Render {
-    html! { <div class={Menu}>{children}</div> }
+pub fn DropdownMenu<C: Render>(trigger: MenuTrigger, children: C) -> impl Render {
+    html! {
+        match trigger {
+            MenuTrigger::Text => <div class={Menu}>{children}</div>,
+            MenuTrigger::Icon => <div class={(Menu, Icon)}>{children}</div>,
+        }
+    }
 }

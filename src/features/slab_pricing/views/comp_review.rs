@@ -15,11 +15,11 @@ use crate::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
-        dialog::Dialog,
+        dialog::{Dialog, DialogHeader, DialogSize},
         field::Field,
         input::Input,
         select::Select,
-        table::Table,
+        table::{Table, TableLayout},
         textarea::Textarea,
     },
 };
@@ -103,7 +103,7 @@ fn Comps<'a>(review: &'a Review, choice: &'a Choice) -> impl Render {
                 "No sold observations in this saved response."
             </Alert>
         }
-        <Table>
+        <Table layout={TableLayout::Scroll}>
             <table class={Cells} aria-label="Saved comps">
                 <thead>
                     <tr>
@@ -186,12 +186,18 @@ fn SaleDialog<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> impl 
             open
             closedby="any"
             aria-labelledby="slab-comp-sale"
-            class={(Dialog {}, Sale)}
+            class={Dialog { size: DialogSize::Lg }}
             on:connect={dialog::modalClosedBy(target, close, signal)}
         >
-            <div class={Head}>
+            <div class={DialogHeader {}}>
                 <h3 id="slab-comp-sale">"Review sold evidence"</h3>
-                <a ref={close} href={url::SlabPricing::at(&closed)} aria-label="Close">"✕"</a>
+                <a
+                    ref={close}
+                    class={Button { variant: ButtonVariant::Ghost, size: ButtonSize::Sm }}
+                    href={url::SlabPricing::at(&closed)}
+                >
+                    "Close"
+                </a>
             </div>
             <div class={Stack}>
                 <p>{sale.name()}</p>

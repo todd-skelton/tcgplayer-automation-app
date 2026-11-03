@@ -9,6 +9,7 @@ use crate::{
         control_width::{ControlWidth, Width},
         field::Field,
         input::Input,
+        input_group::{Adornment, InputGroup},
         select::Select,
     },
 };
@@ -216,17 +217,17 @@ pub fn RefundHelper<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
                         }
                     </select>
                 </Field>
-                // The kit has no adornment inside a control's box (corten#698): the dollar sign
-                // sits beside it in the field's row.
-                <Field id={DisputePaidId} label="Price paid" hint="" error="">
-                    <span aria-hidden="true">"$"</span>
-                    <input
-                        class={(Input {}, ControlWidth { width: Width::Sm })}
-                        id={DisputePaidId}
-                        ref={paid}
-                        value={&paid_text}
-                        inputmode="decimal"
-                    >
+                <Field id={DisputePaidId} label="Price paid (USD)" hint="" error="">
+                    <span class={(InputGroup {}, ControlWidth { width: Width::Sm })}>
+                        <Adornment>"$"</Adornment>
+                        <input
+                            class={Input {}}
+                            id={DisputePaidId}
+                            ref={paid}
+                            value={&paid_text}
+                            inputmode="decimal"
+                        >
+                    </span>
                 </Field>
             </div>
             // The script shows one of these at a time; each is the kit's Alert in a box it hides.
