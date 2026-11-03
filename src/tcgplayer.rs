@@ -273,6 +273,17 @@ impl TcgPlayer {
             .await
     }
 
+    /// GET `path` on `domain`, the answer as sent (a page, a CSV).
+    pub async fn get_bytes(
+        &self,
+        domain: Domain,
+        path: &str,
+        call: Call,
+    ) -> Result<Vec<u8>, Failure> {
+        self.send_bytes(domain, Method::GET, path, None::<&()>, None, call)
+            .await
+    }
+
     /// POST `body` as JSON to `path` on `domain`, the answer read as JSON.
     pub async fn post<B: Serialize + ?Sized, T: DeserializeOwned>(
         &self,

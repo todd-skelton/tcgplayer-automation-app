@@ -161,31 +161,17 @@ async fn previewed(
         }
         return Ok(existing);
     }
-    let observation: Option<Observation> = sqlx::query_as(
-        r#"SELECT seller_key,status,cutoff_at,started_at,quantity_fingerprint,supported_quantity_fingerprint,
-          item_count,positive_item_count,total_quantity AS observed_total_quantity,
-          supported_positive_sku_count AS positive_sku_count,supported_total_quantity AS total_quantity,
-          unsupported_positive_item_count,unsupported_positive_quantity
-         FROM inventory_complete_observations WHERE id=$1::bigint"#,
-    )
-    .bind(observation_id)
-    .fetch_optional(&mut *db)
-    .await
-    .map_err(failed)?;
+    let observation: Option<Observation> = sqlx::query_as(OBSERVATION)
+        .bind(observation_id)
+        .fetch_optional(&mut *db)
+        .await
+        .map_err(failed)?;
     let Some(observation) = observation.filter(|o| o.seller_key == seller) else {
         return Err(thrown(
             "Complete inventory observation does not match seller.",
         ));
     };
-    let items: Vec<Item> = sqlx::query_as(
-        r#"SELECT inventory_key,sku,quantity FROM inventory_complete_observation_items
-         WHERE observation_id=$1::bigint ORDER BY inventory_key COLLATE "C""#,
-    )
-    .bind(observation_id)
-    .fetch_all(&mut *db)
-    .await
-    .map_err(failed)?;
-    if items_evidence(&items) != observation.evidence() {
+    if !items_agree(db, &observation, observation_id).await? {
         return Err(thrown(
             "Complete inventory observation item evidence is unavailable or inconsistent.",
         ));
@@ -310,12 +296,11 @@ async fn previewed(
 
     let source_evidence =
         source_evidence(db, seller, observation.cutoff_at, observation_id).await?;
-    let fingerprint = sha256_hex(&format!(
-        r#"{{"observation":{},"orderCoverage":{},"sourceEvidence":{}}}"#,
-        Value::from(observation.supported_quantity_fingerprint.as_str()),
-        coverage_id,
-        Value::from(source_evidence.as_str()),
-    ));
+    let fingerprint = evidence_fingerprint(
+        Some(&observation.supported_quantity_fingerprint),
+        Some(&coverage_id),
+        &source_evidence,
+    );
     let status = if unresolved.is_empty() {
         "previewed"
     } else {
@@ -373,13 +358,74 @@ async fn previewed(
     }))
 }
 
+/// An observation's counts and fingerprints.
+const OBSERVATION: &str = r#"SELECT seller_key,status,cutoff_at,started_at,quantity_fingerprint,supported_quantity_fingerprint,
+          item_count,positive_item_count,total_quantity AS observed_total_quantity,
+          supported_positive_sku_count AS positive_sku_count,supported_total_quantity AS total_quantity,
+          unsupported_positive_item_count,unsupported_positive_quantity
+         FROM inventory_complete_observations WHERE id=$1::bigint"#;
+
+/// Whether the observation's saved items say what its counts and fingerprints say.
+async fn items_agree(
+    db: &mut PgConnection,
+    observation: &Observation,
+    observation_id: &str,
+) -> Result<bool, String> {
+    let items: Vec<Item> = sqlx::query_as(
+        r#"SELECT inventory_key,sku,quantity FROM inventory_complete_observation_items
+         WHERE observation_id=$1::bigint ORDER BY inventory_key COLLATE "C""#,
+    )
+    .bind(observation_id)
+    .fetch_all(&mut *db)
+    .await
+    .map_err(node_pg::thrown)?;
+    Ok(items_evidence(&items) == observation.evidence())
+}
+
+/// Whether observation `observation_id` is there and its saved items agree with it.
+pub(super) async fn observation_items_consistent(
+    db: &mut PgConnection,
+    observation_id: &str,
+) -> Result<bool, String> {
+    let observation: Option<Observation> = sqlx::query_as(OBSERVATION)
+        .bind(observation_id)
+        .fetch_optional(&mut *db)
+        .await
+        .map_err(node_pg::thrown)?;
+    match observation {
+        Some(observation) => items_agree(db, &observation, observation_id).await,
+        None => Ok(false),
+    }
+}
+
+/// The run's evidence fingerprint: `JSON.stringify({observation, orderCoverage, sourceEvidence})`
+/// hashed, a key that is `undefined` left out.
+pub(super) fn evidence_fingerprint(
+    observation: Option<&str>,
+    coverage: Option<&Value>,
+    source_evidence: &str,
+) -> String {
+    let mut fields = Vec::new();
+    if let Some(observation) = observation {
+        fields.push(format!(r#""observation":{}"#, Value::from(observation)));
+    }
+    if let Some(coverage) = coverage {
+        fields.push(format!(r#""orderCoverage":{coverage}"#));
+    }
+    fields.push(format!(
+        r#""sourceEvidence":{}"#,
+        Value::from(source_evidence)
+    ));
+    sha256_hex(&format!("{{{}}}", fields.join(",")))
+}
+
 /// A positive SKU and its product line, set and product, any of which the catalog may lack.
 type CatalogIdentity = (i32, Option<i32>, Option<i32>, Option<i32>);
 
 /// `evidence`: the fingerprint of what the opening balance rests on besides the observation:
 /// the seller's orders before the cutoff (and their revisions), the publications live before it,
 /// and the catalog identity of each positive SKU.
-async fn source_evidence(
+pub(super) async fn source_evidence(
     db: &mut PgConnection,
     seller: &str,
     cutoff_at: DateTime<Utc>,
