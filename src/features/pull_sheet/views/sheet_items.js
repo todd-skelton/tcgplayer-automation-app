@@ -62,10 +62,12 @@ const FIELDS = {
 
 /**
  * Sorts by one column, ascending then descending (text in the page's language's order, numbers
- * as numbers), and puts the cards in the same order as the rows.
- * @param {MouseEvent} event @param {HTMLAnchorElement} link @param {Found} found @param {SortBy} by
+ * as numbers), and puts the cards in the same order as the rows. A click with a modifier key is
+ * left to the link, which opens or saves the sorted page.
+ * @param {Event} event @param {HTMLElement} link @param {Found} found @param {SortBy} by
  */
 export function sortBy(event, link, found, by) {
+  if (event instanceof MouseEvent && (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)) return;
   const field = FIELDS[by];
   event.preventDefault();
   const th = /** @type {HTMLTableCellElement} */ (link.closest("th"));

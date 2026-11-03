@@ -16,7 +16,7 @@ use crate::{
         dialog::Dialog,
         input::Input,
         segmented::{Legend, SegmentedRadio, SegmentedRadios},
-        table::{Table, TableNumeric},
+        table::{Sort, SortHeader, Table, TableNumeric},
     },
 };
 
@@ -170,18 +170,13 @@ pub fn SheetItems<'a>(
                             <tr>
                                 <th><span class={Hidden}>"Picture"</span></th>
                                 for (by, label) in columns {
-                                    <th
-                                        scope="col"
+                                    <SortHeader
+                                        label={label}
+                                        sort={(paging.filters.sort == Some(by)).then_some(Sort::Ascending)}
+                                        link={&*(paging.link)(by)}
                                         class={(by == SortBy::Quantity).then_some(TableNumeric {})}
-                                        aria-sort={(paging.filters.sort == Some(by)).then_some("ascending")}
-                                    >
-                                        <a
-                                            href={(paging.link)(by)}
-                                            on:click={js::sortBy(event, target, found, by)}
-                                        >
-                                            {label}
-                                        </a>
-                                    </th>
+                                        on:sort={js::sortBy(event, target, found, by)}
+                                    />
                                 }
                                 <th>"Order"</th>
                                 if detail.is_some() { <th>"Value"</th> }
