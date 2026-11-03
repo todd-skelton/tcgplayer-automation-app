@@ -25,7 +25,7 @@ use crate::{
 };
 
 // These forms' answers carry no field errors: a refusal is the place's Problem. Their fields are
-// named from the form's id through an empty Errors (corten#685).
+// named from the form's id through Within::none.
 #[derive(Id)]
 struct CompDecisionFormId;
 
@@ -244,8 +244,7 @@ fn DecisionForm<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> imp
         .and_then(|d| d.item_price.as_ref())
         .map_or_else(String::new, |p| p.amount.to_string());
     html! {
-        let none = Errors::new();
-        let e = none.within(CompDecisionFormId);
+        let e = Within::none(CompDecisionFormId);
         <form
             id={CompDecisionFormId}
             method="post"

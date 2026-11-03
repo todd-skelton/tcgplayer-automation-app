@@ -27,7 +27,7 @@ use crate::{
 };
 
 // These forms' answers carry no field errors: a refusal is the place's Problem. Their fields are
-// named from the form's id through an empty Errors (corten#685).
+// named from the form's id through Within::none.
 #[derive(Id)]
 struct PrepareFormId;
 
@@ -109,8 +109,7 @@ fn PrepareForm<'a>(
     let reviewed = recommendation.r#override.as_ref();
     let calculated = amount(recommendation.calculation.ask.proposed_item_ask);
     html! {
-        let none = Errors::new();
-        let e = none.within(PrepareFormId);
+        let e = Within::none(PrepareFormId);
         <form
             id={PrepareFormId}
             method="post"

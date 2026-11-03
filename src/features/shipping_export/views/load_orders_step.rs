@@ -20,7 +20,7 @@ use crate::{
 };
 
 // The seller form is a link with a query: it has no field errors, so its field is named from its
-// id through an empty Errors (corten#685).
+// id through Within::none.
 #[derive(Id)]
 struct LoadOrdersSellerFormId;
 
@@ -86,8 +86,7 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
                     if seller.is_empty() { "not set" } else { {seller} }
                 </button>
                 <div popover id={SellerPopoverId} class={(Popover {}, Seller)}>
-                    let none = Errors::new();
-                    let e = none.within(LoadOrdersSellerFormId);
+                    let e = Within::none(LoadOrdersSellerFormId);
                     <form id={LoadOrdersSellerFormId} method="get" action={&here}>
                         {keep_query(&here, html! {
                             <Field id={e.id(q.seller)} label="Seller Key" hint={&hint} error="">

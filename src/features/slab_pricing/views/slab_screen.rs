@@ -30,8 +30,7 @@ use crate::{
 struct ProblemId(&'static str);
 
 // The slab forms' answers carry no field errors: a refusal is the place's Problem. Their fields
-// are named from the form's id through an empty Errors until a form without errors can name them
-// (corten#685).
+// are named from the form's id through Within::none.
 #[derive(Id)]
 struct LookUpFormId;
 #[derive(Id)]
@@ -69,8 +68,7 @@ pub fn SlabScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                     "Review sold evidence and set a considered ask for your graded cards."
                 </p>
             </header>
-            let none = Errors::new();
-            let e = none.within(LookUpFormId);
+            let e = Within::none(LookUpFormId);
             <form
                 id={LookUpFormId}
                 method="post"
@@ -157,8 +155,7 @@ fn ReviewedListing<'a>(screen: &'a Screen) -> impl Render {
                         "Look up and confirm a certificate to correct this listing's identity."
                     </p>
                     if let Some(record) = screen.record.as_ref().filter(|r| r.confirmed() && listing.identity_id.as_deref() != Some(r.id.as_str())) {
-                        let none = Errors::new();
-                        let e = none.within(AssignFormId);
+                        let e = Within::none(AssignFormId);
                         <form
                             id={AssignFormId}
                             method="post"
@@ -230,8 +227,7 @@ fn IdentityCard<'a>(
             }
             <details>
                 <summary>"Confirm or correct identity"</summary>
-                let none = Errors::new();
-                let e = none.within(ConfirmFormId);
+                let e = Within::none(ConfirmFormId);
                 <form
                     id={ConfirmFormId}
                     method="post"
@@ -331,8 +327,7 @@ fn InventoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     html! {
         <section class={(CardPanel {}, CardCompact {}, Stack)} aria-labelledby="slab-inventory">
             <h2 id="slab-inventory">"eBay inventory"</h2>
-            let none = Errors::new();
-            let e = none.within(InventoryFormId);
+            let e = Within::none(InventoryFormId);
             <form
                 id={InventoryFormId}
                 method="get"
@@ -383,8 +378,7 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
         </p>
         <details>
             <summary>"Import CSV"</summary>
-            let none = Errors::new();
-            let e = none.within(ImportFormId);
+            let e = Within::none(ImportFormId);
             <form
                 id={ImportFormId}
                 method="post"

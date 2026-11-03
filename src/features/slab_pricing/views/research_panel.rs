@@ -32,7 +32,7 @@ use crate::{
 };
 
 // These forms' answers carry no field errors: a refusal is the place's Problem. Their fields are
-// named from the form's id through an empty Errors (corten#685).
+// named from the form's id through Within::none.
 #[derive(Id)]
 struct ResearchFormId;
 
@@ -55,8 +55,7 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
             aria-labelledby="slab-research"
         >
             <h2 id="slab-research">"Research evidence"</h2>
-            let none = Errors::new();
-            let e = none.within(ResearchFormId);
+            let e = Within::none(ResearchFormId);
             <form
                 id={ResearchFormId}
                 method="get"

@@ -30,7 +30,7 @@ use crate::{
 };
 
 // These forms' answers carry no field errors: a refusal is the place's Problem. Their fields are
-// named from the form's id through an empty Errors (corten#685).
+// named from the form's id through Within::none.
 #[derive(Id)]
 struct MaintenanceFormId;
 #[derive(Id)]
@@ -91,8 +91,7 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 <Alert variant={AlertVariant::Warning}>{why}</Alert>
             }
             if let Some(view) = view {
-                let none = Errors::new();
-                let e = none.within(MaintenanceFormId);
+                let e = Within::none(MaintenanceFormId);
                 <form
                     id={MaintenanceFormId}
                     method="post"
@@ -283,8 +282,7 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
             <p class={muted()}>
                 "Record reviewed sales, cancellations and relists for imported listings. Observations keep their first recorded time and source; repeated imports do not duplicate them. Conflicting claims remain unresolved. Inventory and prices are unchanged."
             </p>
-            let none = Errors::new();
-            let e = none.within(OutcomeListingFormId);
+            let e = Within::none(OutcomeListingFormId);
             <form
                 id={OutcomeListingFormId}
                 method="get"
@@ -303,8 +301,7 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
             </form>
             <details>
                 <summary>"Import reviewed outcomes"</summary>
-                let none = Errors::new();
-                let o_e = none.within(ImportOutcomesFormId);
+                let o_e = Within::none(ImportOutcomesFormId);
                 <form
                     id={ImportOutcomesFormId}
                     method="post"

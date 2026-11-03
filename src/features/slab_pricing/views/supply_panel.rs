@@ -29,7 +29,7 @@ use crate::{
 };
 
 // These forms' answers carry no field errors: a refusal is the place's Problem. Their fields are
-// named from the form's id through an empty Errors (corten#685).
+// named from the form's id through Within::none.
 #[derive(Id)]
 struct SupplySourceFormId;
 
@@ -102,8 +102,7 @@ fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
             }
             <a href={url::SlabPricing::at(choice)}>"Reload saved supply"</a>
             if let Some(supply) = supply.filter(|s| !s.statuses.is_empty()) {
-                let none = Errors::new();
-                let e = none.within(SupplySourceFormId);
+                let e = Within::none(SupplySourceFormId);
                 <form
                     id={SupplySourceFormId}
                     method="get"

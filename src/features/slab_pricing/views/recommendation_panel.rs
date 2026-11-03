@@ -26,7 +26,7 @@ use crate::{
 };
 
 // The recommendation forms' answers carry no field errors: a refusal is the place's Problem.
-// Their fields are named from the form's id through an empty Errors (corten#685).
+// Their fields are named from the form's id through Within::none.
 #[derive(Id)]
 struct CalculateFormId;
 #[derive(Id)]
@@ -147,8 +147,7 @@ fn CostsForm<'a>(
     let fee_fixed = number(fees.map(|f| f.fixed));
     let fee_basis = fees.map_or_else(|| "item-plus-shipping".to_owned(), |f| f.basis.clone());
     html! {
-        let none = Errors::new();
-        let e = none.within(CalculateFormId);
+        let e = Within::none(CalculateFormId);
         <form
             id={CalculateFormId}
             method="post"
@@ -346,8 +345,7 @@ fn ReviewedAsk<'a>(
 ) -> impl Render {
     let f = ReviewAskInput::FIELDS;
     html! {
-        let none = Errors::new();
-        let e = none.within(ReviewAskFormId);
+        let e = Within::none(ReviewAskFormId);
         if let Some(reviewed) = &recommendation.r#override {
             <Alert variant={AlertVariant::Info}>
                 "Reviewed item ask: "{&reviewed.currency}" "{format!("{:.2}", reviewed.item_price)}
