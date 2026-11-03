@@ -39,6 +39,7 @@ pub mod switch;
 pub mod table;
 pub mod tabs;
 pub mod textarea;
+pub mod tip;
 pub mod toasts;
 pub mod visually_hidden;
 
@@ -76,6 +77,7 @@ pub const COMPONENTS: &[Component] = &[
     table::Table,
     tabs::Tabs,
     textarea::Textarea,
+    tip::Tip,
     toasts::Toasts,
     visually_hidden::VisuallyHidden,
 ];

@@ -96,8 +96,15 @@
   outline-offset: -2px;
 }
 .missing {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
   font-size: 48px;
   color: var(--warning);
+  & small {
+    font-size: .75rem;
+    color: var(--muted-foreground);
+  }
 }
 .shimmer {
   position: absolute;

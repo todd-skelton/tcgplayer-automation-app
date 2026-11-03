@@ -101,3 +101,15 @@
 .muted {
   color: var(--muted-foreground);
 }
+
+/* A caveat badge is a button that opens its reason. */
+.caveat-button {
+  font: inherit;
+  font-size: .75rem;
+  cursor: pointer;
+}
+.caveat-reason {
+  max-width: min(20rem, 90vw);
+  font-size: .875rem;
+  white-space: normal;
+}

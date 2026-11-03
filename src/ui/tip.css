@@ -1,0 +1,12 @@
+/* corten ui 0.1.0: tip d199ec55f256e556 */
+.tip {
+  box-sizing: border-box; max-width: min(20rem, calc(100vw - 1rem)); padding: .25rem .5rem;
+  font-size: .75rem; line-height: 1.4; overflow-wrap: break-word;
+  background: var(--foreground); color: var(--background); border: 0; border-radius: calc(var(--radius) - 4px);
+}
+/* Above its control, where the browser has anchor positioning; elsewhere where a popover goes. */
+@supports (position-area: block-start) {
+  .tip { inset: auto; margin: .25rem 0; position-area: block-start; position-try-fallbacks: flip-block; }
+}
+/* Forced colors draw the box's background as the page's: a border keeps it apart. */
+@media (forced-colors: active) { .tip { border: 1px solid CanvasText; } }

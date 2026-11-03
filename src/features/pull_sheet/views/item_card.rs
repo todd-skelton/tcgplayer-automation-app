@@ -50,7 +50,10 @@ pub fn ItemCard<'a>(
                 >
                 match &item.catalog {
                     Some(sku) => <img src={picture(sku.product_id, "400x400")} alt={&name} loading="lazy">,
-                    None => <span class={Missing} title="Product not found in database">"⚠"</span>,
+                    None => <span class={Missing}>
+                        <span aria-hidden="true">"⚠"</span>
+                        <small>"Product not found in database"</small>
+                    </span>,
                 }
                 if item.catalog.is_some() && finish.is_some() {
                     <span class={Shimmer}></span>

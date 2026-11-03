@@ -56,7 +56,6 @@ pub fn AuthCookieWarning(missing: bool) -> impl Patch {
                 <a
                     class={Warning}
                     href={http_configuration::url::HttpSettings}
-                    title="Auth cookie not configured"
                 >
                     "⚠ Auth cookie not configured"
                 </a>

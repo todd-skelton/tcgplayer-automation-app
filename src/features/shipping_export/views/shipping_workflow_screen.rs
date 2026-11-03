@@ -1,4 +1,5 @@
 use corten::prelude::*;
+use corten_ui::Tooltip;
 
 use crate::{
     features::{
@@ -16,6 +17,7 @@ use crate::{
         dialog::{Dialog, DialogFooter, DialogSize},
         popover::Popover,
         steps::{Step as StepLink, StepState, Steps, StepsLayout},
+        tip::Tip,
     },
 };
 
@@ -28,6 +30,8 @@ struct RefusedId;
 /// The split button's other way on: skip ahead before the step is done.
 #[derive(Id)]
 struct SkipPopoverId;
+#[derive(Id)]
+struct ShippingSettingsTipId;
 
 /// Why the last post on the page was refused; empty when it was not. A refused post with
 /// JavaScript replaces it alone, so the page keeps what the user had in front of them.
@@ -93,12 +97,15 @@ pub fn ShippingWorkflowScreen<'a>(
                 </a>
                 <a
                     href={shipping_configuration::url::ShippingSettings}
-                    aria-label="Shipping configuration"
-                    title="Shipping configuration"
+                    interestfor={ShippingSettingsTipId}
+                    aria-labelledby={ShippingSettingsTipId}
                     class={Settings}
                 >
-                    "⚙"
+                    <span aria-hidden="true">"⚙"</span>
                 </a>
+                <Tooltip id={ShippingSettingsTipId} class={Tip {}}>
+                    "Shipping configuration"
+                </Tooltip>
             </header>
             <Refused problem={problem} />
             <section aria-label={step.label()} class={(CardPanel {}, CardCompact {}, StepPanel)}>

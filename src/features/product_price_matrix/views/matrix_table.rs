@@ -8,9 +8,14 @@ use crate::{
     text::Msg,
     ui::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
+        popover::Popover,
         table::TableNumeric,
     },
 };
+
+/// A caveat's reason, by a key naming its list (the table or the refund helper), SKU and kind.
+#[derive(Id)]
+struct CaveatId<'a>(&'a str);
 
 const USD: Currency = Currency::new("USD");
 
@@ -233,6 +238,13 @@ fn Shadow<'a>(decision: Option<&'a Decision>, t: Msg) -> impl Render {
 pub fn ConditionNotes<'a>(cell: &'a Cell, errors: bool, t: Msg) -> impl Render {
     let normalization = cell.condition_normalization.as_ref();
     let anchor = normalization.and_then(|n| n.anchor_condition.as_deref());
+    let key = |kind: &str| {
+        format!(
+            "{}-{}-{kind}",
+            if errors { "table" } else { "refund" },
+            cell.sku
+        )
+    };
     html! {
         <span class={Notes}>
             if cell.tcg_market_price.is_none() {
@@ -241,46 +253,73 @@ pub fn ConditionNotes<'a>(cell: &'a Cell, errors: bool, t: Msg) -> impl Render {
                 </span>
             }
             if let Some(anchor) = anchor {
-                <span
-                    class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
-                    title={format!("No market price for {}, so it is valued as {anchor} until its own sales say otherwise.", cell.condition)}
-                >
-                    "Valued as "{anchor}
-                </span>
+                <Caveat
+                    key={&key("valued-as")}
+                    tone={BadgeTone::Neutral}
+                    emphasis={BadgeEmphasis::Outline}
+                    label={&format!("Valued as {anchor}")}
+                    reason={&format!("No market price for {}, so it is valued as {anchor} until its own sales say otherwise.", cell.condition)}
+                />
             }
             if normalization.is_some_and(|n| n.method == "neutral-condition-fallback") {
-                <span
-                    class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Outline }}
-                    title="No sales or market price for this or any sibling condition, so it is priced from the other conditions without a condition discount. Treat the sell-at price as an upper bound."
-                >
-                    "No condition data"
-                </span>
+                <Caveat
+                    key={&key("no-condition-data")}
+                    tone={BadgeTone::Warning}
+                    emphasis={BadgeEmphasis::Outline}
+                    label="No condition data"
+                    reason="No sales or market price for this or any sibling condition, so it is priced from the other conditions without a condition discount. Treat the sell-at price as an upper bound."
+                />
             }
             if cell.above_better_condition {
                 let ladder = cell.ladder_price.map(|p| t.money(cents(p), USD).to_string()).unwrap_or_else(|| "N/A".into());
-                <span
-                    class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Outline }}
-                    title={format!("The model priced this condition above a better one; refunds use {ladder} instead.")}
-                >
-                    "Above a better condition"
-                </span>
+                <Caveat
+                    key={&key("above-better")}
+                    tone={BadgeTone::Warning}
+                    emphasis={BadgeEmphasis::Outline}
+                    label="Above a better condition"
+                    reason={&format!("The model priced this condition above a better one; refunds use {ladder} instead.")}
+                />
             }
             if errors && !cell.warnings.is_empty() {
-                <span
-                    class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Soft }}
-                    title={cell.warnings.join(" ")}
-                >
-                    "Warning"
-                </span>
+                <Caveat
+                    key={&key("warning")}
+                    tone={BadgeTone::Warning}
+                    emphasis={BadgeEmphasis::Soft}
+                    label="Warning"
+                    reason={&cell.warnings.join(" ")}
+                />
             }
             if errors && !cell.errors.is_empty() {
-                <span
-                    class={Badge { tone: BadgeTone::Destructive, emphasis: BadgeEmphasis::Soft }}
-                    title={cell.errors.join(" ")}
-                >
-                    "Error"
-                </span>
+                <Caveat
+                    key={&key("error")}
+                    tone={BadgeTone::Destructive}
+                    emphasis={BadgeEmphasis::Soft}
+                    label="Error"
+                    reason={&cell.errors.join(" ")}
+                />
             }
         </span>
+    }
+}
+
+/// A caveat as a badge that opens its reason beside it. The reason decides whether the price can
+/// be trusted, so a click or a tap shows it (a popover), not a pointer resting on the badge.
+#[component(css = MatrixTable)]
+fn Caveat<'a>(
+    key: &'a str,
+    tone: BadgeTone,
+    emphasis: BadgeEmphasis,
+    label: &'a str,
+    reason: &'a str,
+) -> impl Render {
+    html! {
+        <button
+            type="button"
+            class={(Badge { tone, emphasis }, CaveatButton)}
+            popovertarget={CaveatId(key)}
+        >
+            {label}
+        </button>
+        <span id={CaveatId(key)} popover class={(Popover {}, CaveatReason)}>{reason}</span>
     }
 }

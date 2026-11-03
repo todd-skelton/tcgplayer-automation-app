@@ -1,4 +1,5 @@
 use corten::prelude::*;
+use corten_ui::Tooltip;
 
 use super::SaleValueFigures;
 use crate::{
@@ -20,10 +21,17 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
+        button::{Button, ButtonSize, ButtonVariant},
         segmented::SegmentedLinks,
         table::{CellLabel, Table, TableLayout, TableNumeric},
+        tip::Tip,
+        visually_hidden::VisuallyHidden,
     },
 };
+
+/// The pack screen's keyboard help.
+#[derive(Id)]
+struct PackKeysTipId;
 
 /// One shipment as the Pack step lists it.
 pub struct PackRow<'a> {
@@ -225,13 +233,18 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                     view={PackView::Card}
                     label={if current.packed { "Packed" } else { "Mark Packed" }}
                 />
-                <span
-                    class={Hint}
-                    title="Space marks the shipment packed and moves to the next one, or unmarks a packed one. Left and right arrows move between shipments."
-                    aria-label="Keyboard shortcuts: Space marks the shipment packed, or unmarks it; Left and Right move between shipments."
+                <button
+                    type="button"
+                    class={(Button { variant: ButtonVariant::Ghost, size: ButtonSize::Sm }, Hint)}
+                    interestfor={PackKeysTipId}
+                    aria-describedby={PackKeysTipId}
                 >
-                    "⌨"
-                </span>
+                    <span aria-hidden="true">"⌨"</span>
+                    <span class={VisuallyHidden {}}>"Keyboard shortcuts"</span>
+                </button>
+                <Tooltip id={PackKeysTipId} class={Tip {}}>
+                    "Space marks the shipment packed and moves to the next one, or unmarks a packed one. Left and right arrows move between shipments."
+                </Tooltip>
                 <ViewChoice packing={packing} />
             </header>
             if let Some((tone, notice)) = &card.notice {

@@ -1,6 +1,7 @@
 use std::time::SystemTime;
 
 use corten::{i18n::DateStyle, prelude::*};
+use corten_ui::Tooltip;
 
 use super::{
     batch_summary::BatchSummary,
@@ -24,6 +25,7 @@ use crate::{
         card::{CardCompact, CardPanel},
         dialog::{Dialog, DialogFooter, DialogSize},
         progress::{Progress as ProgressLook, ProgressSize},
+        tip::Tip,
     },
 };
 
@@ -33,6 +35,9 @@ pub struct BatchFollowId;
 pub struct BatchPanelId;
 #[derive(Id)]
 pub struct BatchProblemId;
+/// What pricing the batch queues.
+#[derive(Id)]
+struct PriceBatchTipId;
 #[derive(Id)]
 struct DeleteDialogId;
 #[derive(Id)]
@@ -107,10 +112,15 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
                             name={mode}
                             value={Pricing::Full}
                             disabled={busy}
-                            title={format!("Will queue pricing for {} SKUs using the server pricing configuration", batch.item_count)}
+                            interestfor={PriceBatchTipId}
+                            aria-describedby={PriceBatchTipId}
                         >
                             if priced { "Reprice Batch" } else { "Price Batch" }
                         </button>
+                        <Tooltip id={PriceBatchTipId} class={Tip {}}>
+                            "Will queue pricing for "{batch.item_count}
+                            " SKUs using the server pricing configuration"
+                        </Tooltip>
                         <button
                             class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
                             name={mode}

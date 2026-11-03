@@ -1,5 +1,5 @@
 use corten::prelude::*;
-use corten_ui::MenuButton;
+use corten_ui::{MenuButton, Tooltip};
 
 use super::SaleValueFigures;
 use crate::{
@@ -22,6 +22,7 @@ use crate::{
         dialog::{Dialog, DialogFooter, DialogSize},
         dropdown_menu::{DropdownMenu, MenuTrigger},
         table::{CellLabel, Table, TableLayout, TableNumeric},
+        tip::Tip,
         visually_hidden::VisuallyHidden,
     },
 };
@@ -33,6 +34,9 @@ struct BuyAgainId<'a>(&'a str);
 /// A shipment's actions menu, by its reference.
 #[derive(Id)]
 struct ShipmentMenuId<'a>(&'a str);
+/// The name of a shipment's open-label link, by its reference.
+#[derive(Id)]
+struct OpenLabelTipId<'a>(&'a str);
 
 /// One shipment as the Buy Postage step shows it.
 pub struct PostageRow<'a> {
@@ -141,7 +145,7 @@ fn ShipmentPostageRow<'a>(
             </td>
             <td>
                 <CellLabel>"Postage"</CellLabel>
-                <PostageStatus entry={row.outbound} />
+                <PostageStatus entry={row.outbound} reference={reference} />
             </td>
             <td class={TableNumeric {}}>
                 <CellLabel>"Actions"</CellLabel>
@@ -236,7 +240,7 @@ fn ShipmentPostageRow<'a>(
 /// A purchase's status, with its mode, tracking and rate on hover, its label, and why it bought
 /// none.
 #[component(css = BuyPostageStep)]
-fn PostageStatus<'a>(entry: Option<&'a Bought>) -> impl Render {
+fn PostageStatus<'a>(entry: Option<&'a Bought>, reference: &'a str) -> impl Render {
     html! {
         match entry {
             None => <span class={muted()}>"Not purchased"</span>,
@@ -256,11 +260,14 @@ fn PostageStatus<'a>(entry: Option<&'a Bought>) -> impl Render {
                             href={label}
                             target="_blank"
                             rel="noreferrer"
-                            aria-label="Open label"
-                            title="Open label"
+                            interestfor={OpenLabelTipId(reference)}
+                            aria-labelledby={OpenLabelTipId(reference)}
                         >
-                            "↗"
+                            <span aria-hidden="true">"↗"</span>
                         </a>
+                        <Tooltip id={OpenLabelTipId(reference)} class={Tip {}}>
+                            "Open label"
+                        </Tooltip>
                     }
                     if let Some(error) = &bought.result.error {
                         <small class={Error}>{error}</small>
