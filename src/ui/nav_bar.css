@@ -1,33 +1,50 @@
-/* corten ui 0.1.0: nav_bar 8eb1ed09a2795f58 */
+/* corten ui 0.1.0: nav_bar 1bf1ec23a61b24a5 */
 .bar {
   display: flex; align-items: center; gap: 1.5rem; min-height: 3.25rem; padding-inline: 1.5rem;
   background: var(--card); color: var(--card-foreground); border-bottom: 1px solid var(--border);
 }
-.brand { flex: none; display: inline-flex; align-items: center; gap: .5rem; color: var(--foreground); font-weight: 600; text-decoration: none; white-space: nowrap; }
-.brand:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 2px; }
-/* The links are one row the height of the bar, scrolling sideways when it is too narrow. A shadow
+/* Every part is drawn from the bar's own two colors, so a bar recolored by them (a brand-colored
+   bar) keeps its name, links, current mark and focus rings readable on it. */
+.brand { flex: none; display: inline-flex; align-items: center; gap: .5rem; color: var(--card-foreground); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.brand:focus-visible { outline: 2px solid var(--card-foreground); outline-offset: 2px; border-radius: 2px; }
+/* The links are one row the height of the bar, scrolling sideways when it is too narrow (positioned,
+   so an icon link's hidden text scrolls with it rather than widening the page). A shadow
    at an edge says more links are past it: each is covered by the bar's color at that end of the
    links (attached to them, so it scrolls with them) and shows once the end has scrolled away. */
 .sections {
-  display: flex; flex: 1 1 auto; align-self: stretch; min-width: 0; overflow-x: auto; scrollbar-width: thin;
+  position: relative; display: flex; flex: 1 1 auto; align-self: stretch; min-width: 0; overflow-x: auto; scrollbar-width: thin;
   background:
     linear-gradient(to right, var(--card) 40%, transparent) left / 2rem 100% no-repeat local,
     linear-gradient(to left, var(--card) 40%, transparent) right / 2rem 100% no-repeat local,
-    radial-gradient(farthest-side at 0 50%, color-mix(in oklab, var(--foreground) 20%, transparent), transparent) left / .75rem 100% no-repeat scroll,
-    radial-gradient(farthest-side at 100% 50%, color-mix(in oklab, var(--foreground) 20%, transparent), transparent) right / .75rem 100% no-repeat scroll;
+    radial-gradient(farthest-side at 0 50%, color-mix(in oklab, var(--card-foreground) 20%, transparent), transparent) left / .75rem 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, color-mix(in oklab, var(--card-foreground) 20%, transparent), transparent) right / .75rem 100% no-repeat scroll;
 }
 /* A touch screen swipes the row, so its scrollbar goes; a mouse needs one, and so does forced
    colors, which drop the shadows (below). */
 @media (pointer: coarse) { .sections { scrollbar-width: none; } }
 .sections > a {
   display: flex; flex: none; align-items: center; padding-inline: .75rem; white-space: nowrap;
-  color: var(--muted-foreground); font-size: var(--control-font-size); font-weight: 500; text-decoration: none; transition: color .15s;
+  color: var(--card-foreground); font-size: var(--control-font-size); font-weight: 500; text-decoration: none;
 }
-.sections > a:hover { color: var(--foreground); }
-.sections > a:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; border-radius: 2px; }
-.sections > a[aria-current="page"] { color: var(--foreground); box-shadow: inset 0 -2px var(--primary); }
+/* The links are the bar's text color in full (a mix would fall under 4.5:1 on a bar whose own pair
+   only just passes), so a hovered link is marked by a faint underline and the current one by a
+   solid one, each in that color. */
+.sections > a:hover { box-shadow: inset 0 -2px color-mix(in oklab, var(--card-foreground) 35%, var(--card)); }
+.sections > a:focus-visible { outline: 2px solid var(--card-foreground); outline-offset: -2px; border-radius: 2px; }
+/* A browser that tabs to a scrolling row (Firefox) rings it inside, in the bar's color too. */
+.sections:focus-visible { outline: 2px solid var(--card-foreground); outline-offset: -2px; }
+.sections > a[aria-current="page"] { color: var(--card-foreground); box-shadow: inset 0 -2px var(--card-foreground); }
 .actions { display: flex; flex: none; align-items: center; gap: .5rem; margin-inline-start: auto; }
-@media (max-width: 40rem) { .bar { gap: .75rem; padding-inline: 1rem; } }
+/* On a phone the links take a row of their own under the name and the actions, the bar's width, so
+   a long name or an action does not leave them a strip. */
+@media (max-width: 40rem) {
+  .bar { flex-wrap: wrap; column-gap: .75rem; row-gap: 0; padding-inline: 1rem; }
+  /* The name's row is the bar's height, with room above the name for its focus ring (2px wide, 2px
+     out: pixels, so a theme's smaller root font does not leave it short). */
+  .brand { min-height: calc(3.25rem - 8px); margin-block: 4px; }
+  .actions { min-height: 3.25rem; }
+  .sections { order: 1; flex-basis: 100%; min-height: 2.75rem; margin-inline: -1rem; padding-inline: .25rem; }
+}
 /* Forced colors drop the shadows: the current link is underlined instead, and the links keep their
    scrollbar on a touch screen too. */
 @media (forced-colors: active) {

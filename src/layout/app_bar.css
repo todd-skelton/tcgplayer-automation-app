@@ -1,33 +1,13 @@
-/* The kit's NavBar in the app's bar colors, at the top while the page scrolls. The kit draws the
-   bar in --card, but its name, links, current mark and focus ring in --foreground,
-   --muted-foreground, --primary and --ring, which on the bar's blue are 3.6:1, 1.3:1, 1.3:1 and
-   about 1:1, so the bar sets those too (corten#672). The menu inside is a popover in
-   --popover, which the bar leaves alone. */
+/* The kit's NavBar in the app's bar colors, which it draws every part from, at the top while the
+   page scrolls. On a phone the kit gives the links a row of their own. The menu inside is a
+   popover in --popover, which the bar leaves alone. */
 .bar {
   --card: var(--app-bar);
   --card-foreground: var(--app-bar-foreground);
-  --foreground: var(--app-bar-foreground);
-  --muted-foreground: color-mix(in oklab, var(--app-bar-foreground) 85%, var(--app-bar));
-  --primary: var(--app-bar-foreground);
-  --ring: var(--app-bar-foreground);
   position: sticky;
   top: 0;
   z-index: 10;
   box-shadow: var(--shadow-md);
-}
-/* On a phone the name and Settings leave the links a sliver, so they take a row of their own
-   under them (corten#673). */
-@media (max-width: 40rem) {
-  .bar {
-    flex-wrap: wrap;
-    row-gap: 0;
-    padding-block-start: var(--space-2);
-  }
-  .bar > nav:first-of-type {
-    order: 1;
-    flex-basis: 100%;
-    min-height: 2.75rem;
-  }
 }
 /* No box of its own, so an empty one adds no gap in the bar. */
 .cookie-warning {
