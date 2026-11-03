@@ -15,7 +15,7 @@ use crate::{
         card::{CardCompact, CardPanel},
         dialog::{Dialog, DialogFooter},
         popover::Popover,
-        steps::{Step as StepLink, StepState, Steps},
+        steps::{Step as StepLink, StepState, Steps, StepsLayout},
     },
 };
 
@@ -76,7 +76,7 @@ pub fn ShippingWorkflowScreen<'a>(
             <header class={Header}>
                 <h1>"Shipping Workflow"</h1>
                 <div class={StepsSlot}>
-                    <Steps label="Steps" steps={&steps} />
+                    <Steps label="Steps" layout={StepsLayout::Row} steps={&steps} />
                 </div>
                 if let Some(warning) = mode_warning(mode) {
                     <span
