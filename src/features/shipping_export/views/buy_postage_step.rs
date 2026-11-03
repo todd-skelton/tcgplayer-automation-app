@@ -21,7 +21,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         dialog::{Dialog, DialogFooter, DialogSize},
         dropdown_menu::{DropdownMenu, MenuTrigger},
-        table::{Table, TableLayout, TableNumeric},
+        table::{CellLabel, Table, TableLayout, TableNumeric},
         visually_hidden::VisuallyHidden,
     },
 };
@@ -58,15 +58,15 @@ pub fn BuyPostageStep<'a>(rows: &'a [PostageRow<'a>], mode: EasyPostMode, t: Msg
                     {mode.key_name()}" is not set. Postage purchase is disabled."
                 </Alert>
             }
-            <Table layout={TableLayout::Scroll}>
+            <Table layout={TableLayout::Stack}>
                 <table class={Shipments}>
                     <thead>
                         <tr>
-                            <th>"Orders"</th>
-                            <th>"Recipient"</th>
-                            <th>"Parcel and value"</th>
-                            <th>"Postage"</th>
-                            <th class={TableNumeric {}}>"Actions"</th>
+                            <th scope="col">"Orders"</th>
+                            <th scope="col">"Recipient"</th>
+                            <th scope="col">"Parcel and value"</th>
+                            <th scope="col">"Postage"</th>
+                            <th scope="col" class={TableNumeric {}}>"Actions"</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -113,13 +113,16 @@ fn ShipmentPostageRow<'a>(
     html! {
         <tr>
             <td>
+                <CellLabel>"Orders"</CellLabel>
                 for number in &row.planned.orders { <div>{number}</div> }
             </td>
             <td title={s.recipient()}>
+                <CellLabel>"Recipient"</CellLabel>
                 <div>{&a.name}</div>
                 <small class={muted()}>{&a.city}", "{&a.state}" "{&a.zip}</small>
             </td>
             <td>
+                <CellLabel>"Parcel and value"</CellLabel>
                 <div class={Parcel}>
                     <span>
                         {s.parcel.predefined_package.label()}" · "{ounces(s.parcel.weight)}"oz · "
@@ -136,8 +139,12 @@ fn ShipmentPostageRow<'a>(
                 </div>
                 <SaleValueFigures value={&row.value} on_image={false} t={t} />
             </td>
-            <td><PostageStatus entry={row.outbound} /></td>
+            <td>
+                <CellLabel>"Postage"</CellLabel>
+                <PostageStatus entry={row.outbound} />
+            </td>
             <td class={TableNumeric {}}>
+                <CellLabel>"Actions"</CellLabel>
                 <div class={Actions}>
                     if again {
                         <button

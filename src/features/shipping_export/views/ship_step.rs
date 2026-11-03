@@ -5,7 +5,7 @@ use crate::{
     ui::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
-        table::{Table, TableLayout},
+        table::{CellLabel, Table, TableLayout},
     },
 };
 
@@ -133,31 +133,37 @@ pub fn ShipStep<'a>(shipping: &'a Shipping<'a>) -> impl Render {
             }
             if !outcomes.is_empty() {
                 <div class={Scroll}>
-                    <Table layout={TableLayout::Scroll}>
+                    <Table layout={TableLayout::Stack}>
                         <table class={Outcomes}>
                             <thead>
                                 <tr>
-                                    <th>"Order"</th>
-                                    <th>"Tracking"</th>
-                                    <th>"Tracking number"</th>
-                                    <th>"Shipped message"</th>
-                                    <th>"Error"</th>
+                                    <th scope="col">"Order"</th>
+                                    <th scope="col">"Tracking"</th>
+                                    <th scope="col">"Tracking number"</th>
+                                    <th scope="col">"Shipped message"</th>
+                                    <th scope="col">"Error"</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 for outcome in &outcomes {
                                     <tr>
-                                        <td>{outcome.order}</td>
                                         <td>
+                                            <CellLabel>"Order"</CellLabel>
+                                            {outcome.order}
+                                        </td>
+                                        <td>
+                                            <CellLabel>"Tracking"</CellLabel>
                                             <Status
                                                 label={outcome.tracked.map(|t| t.status.as_str())}
                                                 succeeded="applied"
                                             />
                                         </td>
                                         <td>
+                                            <CellLabel>"Tracking number"</CellLabel>
                                             {outcome.tracked.map_or("-", |t| t.tracking_number.as_str())}
                                         </td>
                                         <td>
+                                            <CellLabel>"Shipped message"</CellLabel>
                                             <Status
                                                 label={outcome.messaged.map(|m| m.status.as_str())}
                                                 succeeded="sent"
@@ -169,7 +175,10 @@ pub fn ShipStep<'a>(shipping: &'a Shipping<'a>) -> impl Render {
                                                 </a>
                                             }
                                         </td>
-                                        <td class={Failed}>{outcome.errors()}</td>
+                                        <td class={Failed}>
+                                            <CellLabel>"Error"</CellLabel>
+                                            {outcome.errors()}
+                                        </td>
                                     </tr>
                                 }
                             </tbody>

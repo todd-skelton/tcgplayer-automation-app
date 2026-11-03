@@ -21,7 +21,7 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         segmented::SegmentedLinks,
-        table::{Table, TableLayout, TableNumeric},
+        table::{CellLabel, Table, TableLayout, TableNumeric},
     },
 };
 
@@ -306,23 +306,24 @@ fn PackList<'a>(packing: &'a Packing<'a>, t: Msg) -> impl Render {
                 <ViewChoice packing={packing} />
             </header>
             <div class={Scroll}>
-                <Table layout={TableLayout::Scroll}>
+                <Table layout={TableLayout::Stack}>
                     <table class={Listed}>
                         <thead>
                             <tr>
-                                <th>"Packed"</th>
-                                <th>"Order(s)"</th>
-                                <th>"Recipient"</th>
-                                <th>"Method"</th>
-                                <th class={TableNumeric {}}>"Items"</th>
-                                <th>"Value"</th>
-                                <th>"Postage"</th>
+                                <th scope="col">"Packed"</th>
+                                <th scope="col">"Order(s)"</th>
+                                <th scope="col">"Recipient"</th>
+                                <th scope="col">"Method"</th>
+                                <th scope="col" class={TableNumeric {}}>"Items"</th>
+                                <th scope="col">"Value"</th>
+                                <th scope="col">"Postage"</th>
                             </tr>
                         </thead>
                         <tbody>
                             for (i, row) in packing.rows.iter().enumerate() {
                                 <tr aria-current={(current == Some(i)).then_some("true")}>
                                     <td>
+                                        <CellLabel>"Packed"</CellLabel>
                                         <PackedToggle
                                             form={forms}
                                             reference={row.planned.reference()}
@@ -332,6 +333,7 @@ fn PackList<'a>(packing: &'a Packing<'a>, t: Msg) -> impl Render {
                                         />
                                     </td>
                                     <td>
+                                        <CellLabel>"Order(s)"</CellLabel>
                                         <a href={at(row.planned.reference(), PackView::Card)}>
                                             for number in &row.planned.orders {
                                                 <div>{number}</div>
@@ -339,13 +341,19 @@ fn PackList<'a>(packing: &'a Packing<'a>, t: Msg) -> impl Render {
                                         </a>
                                     </td>
                                     <td>
+                                        <CellLabel>"Recipient"</CellLabel>
                                         {row.orders.first().map(|o| o.recipient()).unwrap_or_else(|| "-".into())}
                                     </td>
                                     <td>
+                                        <CellLabel>"Method"</CellLabel>
                                         {row.orders.first().map_or("-", |o| o.shipping_method.as_str())}
                                     </td>
-                                    <td class={TableNumeric {}}>{row.items}</td>
+                                    <td class={TableNumeric {}}>
+                                        <CellLabel>"Items"</CellLabel>
+                                        {row.items}
+                                    </td>
                                     <td class={Wide}>
+                                        <CellLabel>"Value"</CellLabel>
                                         <SaleValueFigures
                                             value={&row.value}
                                             on_image={false}
@@ -353,6 +361,7 @@ fn PackList<'a>(packing: &'a Packing<'a>, t: Msg) -> impl Render {
                                         />
                                     </td>
                                     <td>
+                                        <CellLabel>"Postage"</CellLabel>
                                         match row.postage {
                                             Some(bought) => <span
                                                 class={Badge { tone: postage_chip(bought).1, emphasis: BadgeEmphasis::Soft }}
