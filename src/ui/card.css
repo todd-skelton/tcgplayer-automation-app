@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: card 1296f3dcf85d2b37 */
+/* corten ui 0.1.0: card 289ce11b7545c5f1 */
 /* The surface a card and a panel share. Its spaces are the kit's own properties (--kit-), set on
    each card from the theme's --card-padding, so a card inside a compact one is roomy again, and an
    app's own properties neither reach a card nor are hidden inside one. */
@@ -24,5 +24,7 @@
 .header > :where(h1, h2, h3, h4, h5, h6) { flex: 1 1 auto; margin: 0; font-size: var(--card-heading-font-size); font-weight: 600; line-height: 1.25; }
 .header > :where(p) { margin: 0; font-size: .875rem; color: var(--muted-foreground); }
 .header > .action { flex: 0 0 auto; display: flex; align-items: center; gap: .5rem; margin-inline-start: auto; }
-.content { display: grid; gap: var(--kit-card-gap); padding-inline: var(--kit-card-inset); }
+/* One column no wider than the card: a part in a wrapper (corten-ui's ShownFor, an app's div)
+   shrinks with it, so a wide table in it scrolls rather than widening the page. */
+.content { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--kit-card-gap); padding-inline: var(--kit-card-inset); }
 .footer { display: flex; align-items: center; gap: .5rem; padding-inline: var(--kit-card-inset); }

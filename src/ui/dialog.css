@@ -1,9 +1,10 @@
-/* corten ui 0.1.0: dialog d3c089a9b71f9f5f */
+/* corten ui 0.1.0: dialog bd49d26a9241b4ed */
 .dialog {
   box-sizing: border-box; width: calc(100% - 2rem); max-width: 32rem; max-height: calc(100% - 2rem); padding: 1.5rem;
   background: var(--background); color: var(--foreground); border: 1px solid var(--border); box-shadow: 0 10px 30px rgb(0 0 0 / .2); border-radius: var(--radius);
 }
-.dialog[open] { display: grid; gap: 1rem; }
+/* One column no wider than the dialog, so wide content in a wrapper scrolls inside it. */
+.dialog[open] { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
 .dialog > :is(h2, h3) { margin: 0; font-size: 1.125rem; font-weight: 600; line-height: 1.2; }
 .dialog > p { margin: 0; font-size: .875rem; color: var(--muted-foreground); }
 .dialog::backdrop { background: rgb(0 0 0 / .5); }
