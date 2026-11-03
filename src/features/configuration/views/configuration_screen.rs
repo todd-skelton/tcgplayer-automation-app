@@ -29,19 +29,6 @@ use crate::{
     },
 };
 
-/// The control's attributes, with its hint in its description when the hint has text
-/// (corten#682).
-fn described<'a, I, P>(
-    control: corten::form::Control<'a, I, P>,
-    hint: &str,
-) -> corten::form::Control<'a, I, P> {
-    if hint.is_empty() {
-        control
-    } else {
-        control.hint()
-    }
-}
-
 #[derive(Id)]
 pub struct PricingFormId;
 #[derive(Id)]
@@ -161,7 +148,7 @@ pub fn PricingForm<'a>(section: &'a Section<'a, PricingInput>) -> impl Patch {
                         step={step}
                         min={min}
                         max={max}
-                        {..described(e.control(name), hint)}
+                        {..e.control(name).hint()}
                     >
                 </Field>
             }
