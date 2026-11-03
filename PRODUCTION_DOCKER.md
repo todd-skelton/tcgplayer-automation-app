@@ -74,7 +74,10 @@ The production compose file sets:
 
 ```bash
 DATABASE_URL=postgresql://postgres:postgres@postgres:5432/tcgplayer_automation
+SELLER_PORTAL_WRITES_ENABLED=true
 ```
+
+Seller Portal posts (prices, quantities, staged pricing imports) change the live store. Both apps refuse them, and their publication workers claim nothing, unless `SELLER_PORTAL_WRITES_ENABLED=true`. Only this compose file sets it; development never does, so a local pricing run that plans a publication leaves it planned.
 
 Optional startup flags:
 

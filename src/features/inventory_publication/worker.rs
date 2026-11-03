@@ -29,9 +29,18 @@ const HEARTBEAT: Duration = Duration::from_millis(5_000);
 /// How often the queue is looked at again when nothing was published.
 const POLL: Duration = Duration::from_millis(1_000);
 
-/// Whether `PUBLICATION_WORKER` turns the worker on.
+/// Whether `PUBLICATION_WORKER` turns the worker on. It stays off without Seller Portal writes,
+/// so planned publications wait for a process that may send them.
 pub fn on() -> bool {
-    crate::config::is_set("PUBLICATION_WORKER")
+    let wanted = crate::config::is_set("PUBLICATION_WORKER");
+    if wanted && !crate::config::seller_portal_writes() {
+        eprintln!(
+            "Inventory publication worker is off: PUBLICATION_WORKER is set but {} is not true",
+            crate::config::SELLER_PORTAL_WRITES
+        );
+        return false;
+    }
+    wanted
 }
 
 pub fn worker_id() -> String {

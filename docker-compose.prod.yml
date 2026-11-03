@@ -28,6 +28,8 @@ x-app: &app
     DB_STARTUP_RETRIES: 30
     DB_STARTUP_DELAY_MS: 2000
     WORKERS_RUN_IN_PROCESS: "false"
+    # Production may change the live store; nothing else sends Seller Portal posts.
+    SELLER_PORTAL_WRITES_ENABLED: "true"
   restart: unless-stopped
   # Lets in-flight requests finish after the proxy has moved on.
   stop_grace_period: 30s
@@ -54,6 +56,7 @@ x-web-environment: &web-environment
   PORT: 3000
   # Requests arrive from the proxy on the compose network; its X-Forwarded-For names the client.
   PROXIES: 172.16.0.0/12
+  SELLER_PORTAL_WRITES_ENABLED: "true"
 
 x-web: &web
   image: tcgplayer-automation-web:prod
@@ -97,6 +100,7 @@ x-worker: &worker
     DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tcgplayer_automation
     NODE_ENV: production
     WORKERS_RUN_IN_PROCESS: "false"
+    SELLER_PORTAL_WRITES_ENABLED: "true"
   restart: unless-stopped
   healthcheck:
     test: ["CMD-SHELL", "kill -0 1"]

@@ -192,6 +192,17 @@ pub struct Unanswered {
     pub message: String,
 }
 
+/// A Seller Portal post refused before it is sent, as writes are off in this process.
+fn writes_disabled(path: &str) -> Unanswered {
+    Unanswered {
+        timed_out: false,
+        message: format!(
+            "Seller Portal writes are disabled, so {path} was not sent. Set {}=true where the live store may change.",
+            crate::config::SELLER_PORTAL_WRITES
+        ),
+    }
+}
+
 /// The TCGplayer client. Cloning it shares the throttles.
 #[derive(Clone)]
 pub struct TcgPlayer {
@@ -306,6 +317,9 @@ impl TcgPlayer {
         form: &str,
         timeout: Duration,
     ) -> Result<FormAnswer, Unanswered> {
+        if domain == Domain::SellerPortal && !crate::config::seller_portal_writes() {
+            return Err(writes_disabled(path));
+        }
         let url = format!("https://{}{path}", host(domain));
         let lane = self.lane(domain);
         let (config, limits) = self.settings(domain).await.map_err(|failure| Unanswered {
@@ -503,6 +517,35 @@ mod tests {
             learned_min_delay_ms: floor,
             ..Domain::OrderManagementApi.default_limits()
         }
+    }
+
+    /// Development never sets the variable, so the post is refused before the database or the
+    /// network is reached (the database here does not exist).
+    #[tokio::test]
+    async fn a_seller_portal_post_is_refused_without_writes() {
+        if crate::config::seller_portal_writes() {
+            return;
+        }
+        let client = TcgPlayer::new(crate::database::Database::connect_lazy(
+            "postgresql://localhost:1/unused",
+        ));
+        let Err(refused) = client
+            .post_form(
+                Domain::SellerPortal,
+                "/admin/pricing/movetolive",
+                "uploadId=1",
+                Duration::from_secs(1),
+            )
+            .await
+        else {
+            panic!("the post was sent");
+        };
+        assert!(!refused.timed_out);
+        assert!(
+            refused
+                .message
+                .contains("/admin/pricing/movetolive was not sent")
+        );
     }
 
     #[test]

@@ -15,6 +15,15 @@ pub fn production() -> bool {
     mode() == "production"
 }
 
+/// The variable that lets Seller Portal posts through.
+pub const SELLER_PORTAL_WRITES: &str = "SELLER_PORTAL_WRITES_ENABLED";
+
+/// Whether this process may change the live store through Seller Portal: only when
+/// `SELLER_PORTAL_WRITES_ENABLED=true`, which production alone sets, as the Node app reads it.
+pub fn seller_portal_writes() -> bool {
+    std::env::var(SELLER_PORTAL_WRITES).is_ok_and(|value| value == "true")
+}
+
 /// Whether the environment sets `name` to something other than blanks.
 pub fn is_set(name: &str) -> bool {
     std::env::var(name).is_ok_and(|value| !value.trim().is_empty())

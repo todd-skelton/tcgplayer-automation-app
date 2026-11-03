@@ -10,6 +10,11 @@ import {
   DEFAULT_ADAPTIVE_CONFIG,
   type DomainRateLimitConfig,
 } from "../config/httpConfig.shared";
+import {
+  requireSellerPortalWrites,
+  SellerPortalWritesDisabledError,
+  sellerPortalWritesEnabled,
+} from "./sellerPortalWrites.server";
 
 type TestCase = {
   name: string;
@@ -32,6 +37,46 @@ function createDomainConfig(
 }
 
 const testCases: TestCase[] = [
+  {
+    name: "Seller Portal writes are enabled only by SELLER_PORTAL_WRITES_ENABLED=true",
+    run: () => {
+      assert.equal(sellerPortalWritesEnabled({}), false);
+      assert.equal(sellerPortalWritesEnabled({ SELLER_PORTAL_WRITES_ENABLED: "1" }), false);
+      assert.equal(sellerPortalWritesEnabled({ SELLER_PORTAL_WRITES_ENABLED: "true" }), true);
+      assert.doesNotThrow(() =>
+        requireSellerPortalWrites("/x", { SELLER_PORTAL_WRITES_ENABLED: "true" }),
+      );
+      assert.throws(
+        () => requireSellerPortalWrites("/admin/pricing/movetolive", {}),
+        (error) =>
+          error instanceof SellerPortalWritesDisabledError &&
+          error.message.includes("/admin/pricing/movetolive was not sent"),
+      );
+    },
+  },
+  {
+    name: "DomainHttpClient.post refuses a guarded post before any request is queued",
+    run: async () => {
+      const client = new DomainHttpClient(
+        DOMAIN_KEYS.SELLER_PORTAL,
+        "https://synthetic.invalid",
+        (path) => requireSellerPortalWrites(path, {}),
+      );
+      let sent = false;
+      const internals = client as unknown as {
+        executeWithRetry: () => Promise<unknown>;
+      };
+      internals.executeWithRetry = async () => {
+        sent = true;
+        return null;
+      };
+      await assert.rejects(
+        client.post("/admin/pricing/initializeexportcsv", new URLSearchParams()),
+        SellerPortalWritesDisabledError,
+      );
+      assert.equal(sent, false);
+    },
+  },
   {
     name: "DomainHttpClient.post exposes bounded metadata without changing request behavior",
     run: async () => {
