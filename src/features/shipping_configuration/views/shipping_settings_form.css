@@ -20,8 +20,4 @@
   @media (min-width: 60rem) {
     grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   }
-  /* A field's control stays inside a column narrower than its natural width (corten#686). */
-  & > * {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
