@@ -32,7 +32,7 @@ use crate::{
             buyer_arrival_rate::LATEST_SALES_LIMIT,
             policy::SupplyStatus,
             sale::Sale,
-            sku_price::{Evidence, Failure, History, HistoryBucket, Sku},
+            sku_price::{Competitors, Evidence, Failure, History, HistoryBucket, Sku},
             supply_analysis::Observation as Supply,
         },
     },
@@ -163,14 +163,14 @@ impl Evidence for Ledgers<'_> {
         (!skus.is_empty()).then_some(skus)
     }
 
-    async fn listings(&self, _: &Sku, _: Option<f64>, _: Option<&str>) -> Supply {
+    async fn listings(&self, _: &Sku, _: Option<f64>, _: Competitors<'_>) -> Supply {
         Supply {
             status: SupplyStatus::Unavailable,
             listings: Vec::new(),
         }
     }
 
-    async fn lowest_listing_price(&self, _: &Sku, _: Option<&str>) -> Option<f64> {
+    async fn lowest_listing_price(&self, _: &Sku, _: Competitors<'_>) -> Option<f64> {
         None
     }
 }

@@ -148,6 +148,7 @@ impl<E: Evidence> Resolve for LatestSales<'_, E> {
             available_since: release_date.flatten().as_deref().and_then(release_ms),
             supply_analysis: request.supply_analysis,
             excluded_seller_key: request.excluded_seller_key.map(str::to_string),
+            include_unverified_sellers: request.include_unverified_sellers,
             ..Config::default()
         };
         let priced = sku_price::price(&sku, &config, self.evidence, self.now).await?;

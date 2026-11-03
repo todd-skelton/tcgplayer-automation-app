@@ -11,7 +11,7 @@ use super::calculator::{self, Aggregated, PricerSku};
 use super::policy::SupplyStatus;
 use super::resolver::LatestSales;
 use super::sale::Sale;
-use super::sku_price::{Evidence, Failure, History, HistoryBucket, Sku};
+use super::sku_price::{Competitors, Evidence, Failure, History, HistoryBucket, Sku};
 use super::supply_analysis::{Listing, Observation as Supply};
 use crate::{
     database::Database,
@@ -157,22 +157,22 @@ impl Evidence for Recorded<'_> {
         )
     }
 
-    async fn listings(&self, sku: &Sku, ceiling: Option<f64>, excluded: Option<&str>) -> Supply {
+    async fn listings(&self, sku: &Sku, ceiling: Option<f64>, c: Competitors<'_>) -> Supply {
         self.ceilings
             .borrow_mut()
             .insert(sku.sku.to_string(), ceiling);
         Supply {
             status: SupplyStatus::Observed,
             listings: self
-                .asks(sku, excluded)
+                .asks(sku, c.excluded_seller_key)
                 .into_iter()
                 .filter(|l| ceiling.is_none_or(|c| l.delivered() <= c))
                 .collect(),
         }
     }
 
-    async fn lowest_listing_price(&self, sku: &Sku, excluded: Option<&str>) -> Option<f64> {
-        self.asks(sku, excluded)
+    async fn lowest_listing_price(&self, sku: &Sku, c: Competitors<'_>) -> Option<f64> {
+        self.asks(sku, c.excluded_seller_key)
             .into_iter()
             .find(|l| l.condition == sku.condition)
             .map(|l| l.delivered())

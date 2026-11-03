@@ -60,21 +60,25 @@ pub trait Evidence {
     async fn latest_sales(&self, sku: &Sku) -> Result<Vec<Sale>, Failure>;
     /// The product's annual price history, every SKU; none when unavailable.
     async fn price_history(&self, product_id: i64) -> Option<Vec<History>>;
-    /// Every seller's cheapest ask per condition delivered at or under the ceiling, without the
-    /// excluded seller's; unavailable when the listings cannot be read.
+    /// Every competitor's cheapest ask per condition delivered at or under the ceiling;
+    /// unavailable when the listings cannot be read.
     async fn listings(
         &self,
         sku: &Sku,
         ceiling: Option<f64>,
-        excluded_seller_key: Option<&str>,
+        competitors: Competitors<'_>,
     ) -> Supply;
-    /// The cheapest delivered ask in the SKU's own condition, from someone other than the
-    /// excluded seller.
-    async fn lowest_listing_price(
-        &self,
-        sku: &Sku,
-        excluded_seller_key: Option<&str>,
-    ) -> Option<f64>;
+    /// The cheapest delivered ask from a competitor in the SKU's own condition.
+    async fn lowest_listing_price(&self, sku: &Sku, competitors: Competitors<'_>) -> Option<f64>;
+}
+
+/// Whose asks compete with the SKU (`SupplyAnalysisConfig`): verified sellers', and unverified
+/// sellers' too when the configuration includes them, never the excluded seller's.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Competitors<'a> {
+    /// The store's own seller key.
+    pub excluded_seller_key: Option<&'a str>,
+    pub include_unverified_sellers: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -86,6 +90,7 @@ pub struct Config {
     pub supply_analysis: bool,
     /// The store's own seller key, kept out of the competing asks.
     pub excluded_seller_key: Option<String>,
+    pub include_unverified_sellers: bool,
 }
 
 impl Default for Config {
@@ -97,6 +102,7 @@ impl Default for Config {
             available_since: None,
             supply_analysis: false,
             excluded_seller_key: None,
+            include_unverified_sellers: false,
         }
     }
 }
@@ -159,14 +165,17 @@ pub async fn price(
     evidence: &impl Evidence,
     now: f64,
 ) -> Result<Priced, Failure> {
-    let excluded = config
-        .excluded_seller_key
-        .as_deref()
-        .filter(|key| !key.is_empty());
+    let competitors = Competitors {
+        excluded_seller_key: config
+            .excluded_seller_key
+            .as_deref()
+            .filter(|key| !key.is_empty()),
+        include_unverified_sellers: config.include_unverified_sellers,
+    };
     let all_sales = evidence.latest_sales(sku).await?;
     if all_sales.len() < 2 {
         return Ok(Priced {
-            lowest_listing_price: evidence.lowest_listing_price(sku, excluded).await,
+            lowest_listing_price: evidence.lowest_listing_price(sku, competitors).await,
             ..Priced::default()
         });
     }
@@ -230,7 +239,7 @@ pub async fn price(
                 },
             )
         };
-        evidence.listings(sku, ceiling, excluded).await
+        evidence.listings(sku, ceiling, competitors).await
     } else {
         Supply::disabled()
     };
@@ -258,7 +267,8 @@ pub async fn price(
         .filter(|p| *p > 0.0)
         .reduce(f64::min);
     // Without the store's own listing excluded, the second ask may be the cheapest competitor.
-    let second_cheapest_ask_price = excluded
+    let second_cheapest_ask_price = competitors
+        .excluded_seller_key
         .and_then(|_| own_condition.get(1))
         .map(supply_analysis::Listing::delivered);
     let price_evidence = (own_condition_low_sale_price.is_some()
@@ -323,16 +333,16 @@ mod tests {
         async fn price_history(&self, _: i64) -> Option<Vec<History>> {
             self.history.clone()
         }
-        async fn listings(&self, _: &Sku, ceiling: Option<f64>, excluded: Option<&str>) -> Supply {
+        async fn listings(&self, _: &Sku, ceiling: Option<f64>, c: Competitors<'_>) -> Supply {
             let under: Vec<Listing> = self
                 .listings
                 .iter()
                 .filter(|l| ceiling.is_none_or(|c| l.delivered() <= c))
                 .cloned()
                 .collect();
-            supply_analysis::cheapest_asks(under, excluded)
+            supply_analysis::cheapest_asks(under, c.excluded_seller_key)
         }
-        async fn lowest_listing_price(&self, _: &Sku, _: Option<&str>) -> Option<f64> {
+        async fn lowest_listing_price(&self, _: &Sku, _: Competitors<'_>) -> Option<f64> {
             self.lowest
         }
     }
@@ -459,6 +469,53 @@ mod tests {
         );
         assert!(priced.used_cross_condition_analysis);
         assert!(priced.condition_normalization.is_some());
+    }
+
+    /// The configuration's unverified-sellers setting and the store's key reach both listing
+    /// reads, as `supplyAnalysisConfig` reaches `SupplyAnalysisService`.
+    #[tokio::test]
+    async fn the_competitors_the_configuration_names_reach_the_listing_reads() {
+        struct Asked(std::sync::Mutex<Vec<(bool, Option<String>)>>);
+        impl Evidence for Asked {
+            async fn latest_sales(&self, _: &Sku) -> Result<Vec<Sale>, Failure> {
+                Ok(vec![
+                    sale("Near Mint", 10.0, 1.0),
+                    sale("Near Mint", 9.0, 2.0),
+                ])
+            }
+            async fn price_history(&self, _: i64) -> Option<Vec<History>> {
+                None
+            }
+            async fn listings(&self, _: &Sku, _: Option<f64>, c: Competitors<'_>) -> Supply {
+                let seen = (
+                    c.include_unverified_sellers,
+                    c.excluded_seller_key.map(str::to_owned),
+                );
+                self.0.lock().unwrap().push(seen);
+                Supply::disabled()
+            }
+            async fn lowest_listing_price(&self, _: &Sku, c: Competitors<'_>) -> Option<f64> {
+                let seen = (
+                    c.include_unverified_sellers,
+                    c.excluded_seller_key.map(str::to_owned),
+                );
+                self.0.lock().unwrap().push(seen);
+                None
+            }
+        }
+        let asked = Asked(std::sync::Mutex::new(Vec::new()));
+        let config = Config {
+            supply_analysis: true,
+            excluded_seller_key: Some("store".into()),
+            include_unverified_sellers: true,
+            ..Config::default()
+        };
+        price(&sku("Near Mint"), &config, &asked, NOW)
+            .await
+            .unwrap();
+        let seen = asked.0.into_inner().unwrap();
+        assert!(!seen.is_empty());
+        assert!(seen.iter().all(|s| *s == (true, Some("store".to_owned()))));
     }
 
     #[test]

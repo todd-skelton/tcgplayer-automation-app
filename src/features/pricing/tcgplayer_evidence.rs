@@ -2,16 +2,17 @@
 //! price history (a GET), and the competing listings (`getAllListings`, read as
 //! `SupplyAnalysisService` reads them: standard listings in the SKU's variant and language, cheapest
 //! delivered first, from verified sellers unless the configuration includes unverified ones). All
-//! are reads, though the sales and listings searches are POSTs. Nothing read here is recorded yet:
-//! Node keeps the sales, weekly sales and listing ledgers while its worker runs.
+//! are reads, though the sales and listings searches are POSTs. What is read is kept in the sales,
+//! weekly sales and listing ledgers beside the price ([`ledger`](super::ledger)).
 use std::{future::Future, time::Duration};
 
 use serde::{Deserialize, Serialize};
 
 use super::buyer_arrival_rate::LATEST_SALES_LIMIT;
+use super::ledger::{self, HistorySku};
 use super::policy::SupplyStatus;
 use super::sale::Sale;
-use super::sku_price::{Evidence, Failure, History, HistoryBucket, Sku};
+use super::sku_price::{Competitors, Evidence, Failure, History, HistoryBucket, Sku};
 use super::supply_analysis::{self, Listing, Observation as Supply};
 use crate::{
     database::Database,
@@ -238,26 +239,7 @@ pub fn could_be_anonymous(sale_count: usize, max: usize) -> bool {
 #[serde(rename_all = "camelCase")]
 struct HistoryAnswer {
     #[serde(default)]
-    result: Vec<HistoryEntry>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct HistoryEntry {
-    sku_id: String,
-    condition: String,
-    variant: String,
-    language: String,
-    #[serde(default)]
-    buckets: Vec<HistoryEntryBucket>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct HistoryEntryBucket {
-    market_price: String,
-    transaction_count: String,
-    bucket_start_date: String,
+    result: Vec<HistorySku>,
 }
 
 /// JavaScript's `Number(text)` for the history's numeric strings.
@@ -270,20 +252,20 @@ fn number(text: &str) -> f64 {
     }
 }
 
-impl From<HistoryEntry> for History {
-    fn from(entry: HistoryEntry) -> Self {
+impl From<&HistorySku> for History {
+    fn from(entry: &HistorySku) -> Self {
         History {
             sku_id: number(&entry.sku_id) as i64,
-            condition: entry.condition,
-            variant: entry.variant,
-            language: entry.language,
+            condition: entry.condition.clone(),
+            variant: entry.variant.clone().unwrap_or_default(),
+            language: entry.language.clone().unwrap_or_default(),
             buckets: entry
                 .buckets
-                .into_iter()
+                .iter()
                 .map(|b| HistoryBucket {
-                    market_price: number(&b.market_price),
+                    market_price: number(b.market_price.as_deref().unwrap_or("")),
                     transaction_count: number(&b.transaction_count),
-                    bucket_start_date: b.bucket_start_date,
+                    bucket_start_date: b.bucket_start_date.clone(),
                 })
                 .collect(),
         }
@@ -302,8 +284,6 @@ const READ: Call = Call {
 pub struct TcgPlayerEvidence {
     pub tcg: TcgPlayer,
     pub db: Database,
-    /// Listings from unverified sellers compete too (`includeUnverifiedSellers`).
-    pub include_unverified_sellers: bool,
 }
 
 impl TcgPlayerEvidence {
@@ -403,6 +383,13 @@ impl Evidence for TcgPlayerEvidence {
         if could_be_anonymous(sales.len(), max) {
             self.assert_full_history().await?;
         }
+        if !sales.is_empty() {
+            let (product_id, recorded) = (sku.product_id, sales.clone());
+            let what = format!("{} sales for product {product_id}", sales.len());
+            ledger::in_background(&self.db, what, move |mut conn| async move {
+                ledger::record_sales(&mut conn, product_id, &recorded).await
+            });
+        }
         Ok(sales)
     }
 
@@ -416,16 +403,16 @@ impl Evidence for TcgPlayerEvidence {
                 eprintln!("Failed to fetch price history for product {product_id}: {e}")
             })
             .ok()?;
-        Some(answer.result.into_iter().map(History::from).collect())
+        let weeks = ledger::weekly_sales(product_id, &answer.result);
+        let what = format!("weekly sales for product {product_id}");
+        ledger::in_background(&self.db, what, move |mut conn| async move {
+            ledger::record_weeks(&mut conn, &weeks).await
+        });
+        Some(answer.result.iter().map(History::from).collect())
     }
 
-    async fn listings(&self, sku: &Sku, ceiling: Option<f64>, excluded: Option<&str>) -> Supply {
-        let query = ListingsQuery::new(
-            sku,
-            None,
-            self.include_unverified_sellers,
-            LISTINGS_PAGE_SIZE,
-        );
+    async fn listings(&self, sku: &Sku, ceiling: Option<f64>, c: Competitors<'_>) -> Supply {
+        let query = ListingsQuery::new(sku, None, c.include_unverified_sellers, LISTINGS_PAGE_SIZE);
         let path = format!("/v1/product/{}/listings", sku.product_id);
         match all_listings(query, ceiling, |q| {
             let path = path.clone();
@@ -433,10 +420,21 @@ impl Evidence for TcgPlayerEvidence {
         })
         .await
         {
-            Ok(asks) => supply_analysis::cheapest_asks(
-                asks.into_iter().map(ListedAsk::into_listing).collect(),
-                excluded,
-            ),
+            Ok(asks) => {
+                let supply = supply_analysis::cheapest_asks(
+                    asks.into_iter().map(ListedAsk::into_listing).collect(),
+                    c.excluded_seller_key,
+                );
+                if supply.status == SupplyStatus::Observed {
+                    let snapshots =
+                        ledger::snapshots(sku, &supply.listings, chrono::Utc::now().date_naive());
+                    let what = format!("listings for product {}", sku.product_id);
+                    ledger::in_background(&self.db, what, move |mut conn| async move {
+                        ledger::record_snapshots(&mut conn, &snapshots).await
+                    });
+                }
+                supply
+            }
             Err(e) => {
                 eprintln!(
                     "Failed to fetch listings for product {} ({}, {}): {e}",
@@ -450,12 +448,16 @@ impl Evidence for TcgPlayerEvidence {
         }
     }
 
-    async fn lowest_listing_price(&self, sku: &Sku, excluded: Option<&str>) -> Option<f64> {
-        let size = if excluded.is_some() { 50 } else { 1 };
+    async fn lowest_listing_price(&self, sku: &Sku, c: Competitors<'_>) -> Option<f64> {
+        let size = if c.excluded_seller_key.is_some() {
+            50
+        } else {
+            1
+        };
         let query = ListingsQuery::new(
             sku,
             Some(&sku.condition),
-            self.include_unverified_sellers,
+            c.include_unverified_sellers,
             size,
         );
         let path = format!("/v1/product/{}/listings", sku.product_id);
@@ -467,7 +469,7 @@ impl Evidence for TcgPlayerEvidence {
             .ok()?;
         lowest_ask(
             answer.results.first().map_or(&[][..], |p| &p.results),
-            excluded,
+            c.excluded_seller_key,
         )
     }
 }
@@ -718,7 +720,6 @@ mod tests {
         let evidence = TcgPlayerEvidence {
             tcg,
             db: db.clone(),
-            include_unverified_sellers: false,
         };
         let (product_id, product_line_id, variant, language): (i32, i32, String, String) =
             sqlx::query_as(
@@ -820,12 +821,12 @@ mod tests {
 
     #[test]
     fn history_numbers_read_as_javascript_reads_them() {
-        let entry: HistoryEntry = serde_json::from_value(serde_json::json!({
+        let entry: HistorySku = serde_json::from_value(serde_json::json!({
             "skuId": "8123", "condition": "Near Mint", "variant": "Normal", "language": "English",
             "buckets": [{ "marketPrice": "1.25", "transactionCount": "", "bucketStartDate": "2026-10-26" }]
         }))
         .unwrap();
-        let history = History::from(entry);
+        let history = History::from(&entry);
         assert_eq!(history.sku_id, 8123);
         assert_eq!(history.buckets[0].market_price, 1.25);
         assert_eq!(history.buckets[0].transaction_count, 0.0);

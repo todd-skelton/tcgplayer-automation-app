@@ -94,6 +94,7 @@ pub fn config_of(
         },
         supply_analysis: stored.supply.enabled,
         excluded_seller_key,
+        include_unverified_sellers: stored.supply.include_unverified_sellers,
     }
 }
 
@@ -131,6 +132,8 @@ pub struct Config {
     pub floor: Floor,
     pub supply_analysis: bool,
     pub excluded_seller_key: Option<String>,
+    /// Unverified sellers' asks compete too (`includeUnverifiedSellers`).
+    pub include_unverified_sellers: bool,
 }
 
 impl Default for Config {
@@ -142,6 +145,7 @@ impl Default for Config {
             floor: DEFAULT_FLOOR,
             supply_analysis: false,
             excluded_seller_key: None,
+            include_unverified_sellers: false,
         }
     }
 }
@@ -155,6 +159,7 @@ pub struct Request<'a> {
     pub additional_percentiles: &'a [f64],
     pub supply_analysis: bool,
     pub excluded_seller_key: Option<&'a str>,
+    pub include_unverified_sellers: bool,
 }
 
 /// The resolver's answer for one SKU (`SuggestedPriceResult`).
@@ -656,6 +661,7 @@ pub async fn calculate(
             additional_percentiles: &additional,
             supply_analysis: config.supply_analysis,
             excluded_seller_key: config.excluded_seller_key.as_deref(),
+            include_unverified_sellers: config.include_unverified_sellers,
         };
         let result = match resolver.resolve(&request).await {
             Ok(result) => result,

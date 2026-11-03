@@ -5,7 +5,7 @@ use std::{collections::HashMap, sync::Mutex};
 
 use crate::features::pricing::{
     sale::Sale,
-    sku_price::{Evidence, Failure, History, Sku},
+    sku_price::{Competitors, Evidence, Failure, History, Sku},
     supply_analysis::Observation as Supply,
 };
 
@@ -54,12 +54,12 @@ impl<E: Evidence> Evidence for Cached<'_, E> {
         read
     }
 
-    async fn listings(&self, sku: &Sku, ceiling: Option<f64>, excluded: Option<&str>) -> Supply {
-        self.evidence.listings(sku, ceiling, excluded).await
+    async fn listings(&self, sku: &Sku, ceiling: Option<f64>, c: Competitors<'_>) -> Supply {
+        self.evidence.listings(sku, ceiling, c).await
     }
 
-    async fn lowest_listing_price(&self, sku: &Sku, excluded: Option<&str>) -> Option<f64> {
-        self.evidence.lowest_listing_price(sku, excluded).await
+    async fn lowest_listing_price(&self, sku: &Sku, c: Competitors<'_>) -> Option<f64> {
+        self.evidence.lowest_listing_price(sku, c).await
     }
 }
 
@@ -85,13 +85,13 @@ mod tests {
             self.history.set(self.history.get() + 1);
             None
         }
-        async fn listings(&self, _: &Sku, _: Option<f64>, _: Option<&str>) -> Supply {
+        async fn listings(&self, _: &Sku, _: Option<f64>, _: Competitors<'_>) -> Supply {
             Supply {
                 status: SupplyStatus::Unavailable,
                 listings: Vec::new(),
             }
         }
-        async fn lowest_listing_price(&self, _: &Sku, _: Option<&str>) -> Option<f64> {
+        async fn lowest_listing_price(&self, _: &Sku, _: Competitors<'_>) -> Option<f64> {
             None
         }
     }

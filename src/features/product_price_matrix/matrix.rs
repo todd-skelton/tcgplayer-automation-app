@@ -541,7 +541,6 @@ impl Pricer for LatestSalesPricer {
         let evidence = TcgPlayerEvidence {
             tcg: self.tcg.clone(),
             db: self.db.clone(),
-            include_unverified_sellers: false,
         };
         let cached = Cached::new(&evidence);
         let now = Utc::now();
