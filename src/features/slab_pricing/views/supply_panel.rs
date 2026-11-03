@@ -16,17 +16,22 @@ use crate::{
         url::{self, Choice},
         views::Problem,
     },
-    layout::LabeledControl,
     text::Msg,
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
+        field::Field,
         select::Select,
         table::Table,
     },
 };
+
+// These forms' answers carry no field errors: a refusal is the place's Problem. Their fields are
+// named from the form's id through an empty Errors (corten#685).
+#[derive(Id)]
+struct SupplySourceFormId;
 
 #[derive(Id)]
 struct SupplyBodyId;
@@ -97,7 +102,14 @@ fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
             }
             <a href={url::SlabPricing::at(choice)}>"Reload saved supply"</a>
             if let Some(supply) = supply.filter(|s| !s.statuses.is_empty()) {
-                <form method="get" action={url::SlabPricing::at(&Choice::default())} class={Line}>
+                let none = Errors::new();
+                let e = none.within(SupplySourceFormId);
+                <form
+                    id={SupplySourceFormId}
+                    method="get"
+                    action={url::SlabPricing::at(&Choice::default())}
+                    class={Line}
+                >
                     // Another source starts at its first row, with no earlier sources to go back to.
                     {keep_query(
                         &url::SlabPricing::at(&Choice {
@@ -106,8 +118,8 @@ fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
                             ..choice.clone()
                         }),
                         html! {
-                        <LabeledControl label="Supply source" hint="">
-                            <select class={Select {}} name={f.source}>
+                        <Field id={e.id(f.source)} label="Supply source" hint="" error="">
+                            <select class={Select {}} {..e.control(f.source)}>
                                 for status in &supply.statuses {
                                     <option
                                         value={&status.key}
@@ -117,7 +129,7 @@ fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
                                     </option>
                                 }
                             </select>
-                        </LabeledControl>
+                        </Field>
                         <button class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}>"Show source"</button>
                         },
                     )}

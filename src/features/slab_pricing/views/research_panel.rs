@@ -18,7 +18,6 @@ use crate::{
             views::Problem,
         },
     },
-    layout::LabeledControl,
     text::Msg,
     theme::*,
     ui::{
@@ -26,10 +25,16 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
+        field::Field,
         input::Input,
         select::Select,
     },
 };
+
+// These forms' answers carry no field errors: a refusal is the place's Problem. Their fields are
+// named from the form's id through an empty Errors (corten#685).
+#[derive(Id)]
+struct ResearchFormId;
 
 #[derive(Id)]
 struct EvidenceListId;
@@ -50,7 +55,14 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
             aria-labelledby="slab-research"
         >
             <h2 id="slab-research">"Research evidence"</h2>
-            <form method="get" action={url::SlabPricing::at(&Choice::default())} class={Line}>
+            let none = Errors::new();
+            let e = none.within(ResearchFormId);
+            <form
+                id={ResearchFormId}
+                method="get"
+                action={url::SlabPricing::at(&Choice::default())}
+                class={Line}
+            >
                 // A new grade or window starts the evidence over: its source, comps and extras reset.
                 {keep_query(
                     &url::SlabPricing::at(&Choice {
@@ -64,8 +76,8 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
                         ..choice.clone()
                     }),
                     html! {
-                    <LabeledControl label="Research grade" hint="">
-                        <select class={Select {}} name={f.grade}>
+                    <Field id={e.id(f.grade)} label="Research grade" hint="" error="">
+                        <select class={Select {}} {..e.control(f.grade)}>
                             <option value="owned" selected={grade == "owned"}>
                                 "Owned "{&record.grader}" "{owned}
                             </option>
@@ -75,13 +87,13 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
                                 }
                             }
                         </select>
-                    </LabeledControl>
-                    <LabeledControl label="Sales from" hint="">
-                        <input class={Input {}} type="date" name={f.from} value={&window.from} required>
-                    </LabeledControl>
-                    <LabeledControl label="Sales through" hint="">
-                        <input class={Input {}} type="date" name={f.to} value={&window.to} required>
-                    </LabeledControl>
+                    </Field>
+                    <Field id={e.id(f.from)} label="Sales from" hint="" error="">
+                        <input class={Input {}} type="date" value={&window.from} required {..e.control(f.from)}>
+                    </Field>
+                    <Field id={e.id(f.to)} label="Sales through" hint="" error="">
+                        <input class={Input {}} type="date" value={&window.to} required {..e.control(f.to)}>
+                    </Field>
                     <button class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}>"Show evidence"</button>
                     },
                 )}

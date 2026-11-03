@@ -9,13 +9,13 @@ use crate::{
         },
         http_configuration,
     },
-    layout::LabeledControl,
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         checkbox::Checkbox,
+        field::Field,
         input::Input,
         select::Select,
     },
@@ -162,19 +162,22 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                         class={(Stack, JobForm)}
                     >
                         {line_choice(ProductInput::FIELDS.product_line, lines, screen.product.product_line, &e)}
-                        <LabeledControl label="Product ID" hint="">
+                        <Field
+                            id={e.id(ProductInput::FIELDS.product)}
+                            label="Product ID"
+                            hint=""
+                            error={e.message(ProductInput::FIELDS.product)}
+                        >
                             <input
                                 class={Input {}}
                                 type="number"
                                 min="1"
                                 required
-                                name={ProductInput::FIELDS.product}
                                 value={screen.product.product}
                                 placeholder="Enter the exact TCGPlayer product ID"
-                                {..e.aria(ProductInput::FIELDS.product)}
+                                {..e.control(ProductInput::FIELDS.product)}
                             >
-                            {e.message(ProductInput::FIELDS.product)}
-                        </LabeledControl>
+                        </Field>
                         <Run ready="Repair Product and SKUs" working="Repairing Product..." />
                         <Outcome
                             ran={ran}
@@ -200,23 +203,30 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                         data-patch
                         class={(Stack, JobForm)}
                     >
-                        <LabeledControl label="Set name" hint="">
+                        <Field
+                            id={e.id(SetInput::FIELDS.set_name)}
+                            label="Set name"
+                            hint=""
+                            error={e.message(SetInput::FIELDS.set_name)}
+                        >
                             <input
                                 class={Input {}}
                                 required
-                                name={SetInput::FIELDS.set_name}
                                 value={&screen.set.set_name}
                                 placeholder="Example: Duskmourn: House of Horror"
-                                {..e.aria(SetInput::FIELDS.set_name)}
+                                {..e.control(SetInput::FIELDS.set_name)}
                             >
-                            {e.message(SetInput::FIELDS.set_name)}
-                        </LabeledControl>
-                        <LabeledControl label="Product line" hint="">
+                        </Field>
+                        <Field
+                            id={e.id(SetInput::FIELDS.product_line)}
+                            label="Product line"
+                            hint=""
+                            error={e.message(SetInput::FIELDS.product_line)}
+                        >
                             <select
                                 class={Select {}}
-                                name={SetInput::FIELDS.product_line}
                                 required
-                                {..e.aria(SetInput::FIELDS.product_line)}
+                                {..e.control(SetInput::FIELDS.product_line)}
                             >
                                 for line in lines {
                                     <option
@@ -227,8 +237,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                                     </option>
                                 }
                             </select>
-                            {e.message(SetInput::FIELDS.product_line)}
-                        </LabeledControl>
+                        </Field>
                         <Checkbox label="Delete existing set data first and fully refetch it">
                             <input
                                 type="checkbox"
@@ -256,16 +265,15 @@ fn line_choice<'a, I: Id>(
     e: &'a Within<'a, I>,
 ) -> impl Render + 'a {
     html! {
-        <LabeledControl label="Product line" hint="">
-            <select class={Select {}} name={name} required {..e.aria(name)}>
+        <Field id={e.id(name)} label="Product line" hint="" error={e.message(name)}>
+            <select class={Select {}} required {..e.control(name)}>
                 for line in lines {
                     <option value={line.id} selected={chosen == Some(line.id)}>
                         {&line.name}
                     </option>
                 }
             </select>
-            {e.message(name)}
-        </LabeledControl>
+        </Field>
     }
 }
 

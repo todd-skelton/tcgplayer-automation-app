@@ -20,13 +20,13 @@ use crate::{
             url::{self, ShippingWorkflow},
         },
     },
-    layout::LabeledControl,
     text::Msg,
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        field::Field,
         input::Input,
     },
 };
@@ -34,6 +34,10 @@ use crate::{
 /// The form for the order's labels: a refused purchase or a new choice redraws it.
 #[derive(Id)]
 pub struct LabelFormId;
+
+/// The order number to look up, a query the lookup's link carries.
+#[derive(Id)]
+struct OrderNumberId;
 
 /// What the page was asked for and how it writes dates.
 pub struct Looked<'a> {
@@ -67,15 +71,16 @@ pub fn LabelManagement<'a>(
                 "Seller key: "<strong>{seller}</strong>". Set the seller key on Load Orders."
             </p>
             <form method="get" action={url::OrderLabels { order: None }} class={Lookup}>
-                <LabeledControl label="Order Number" hint="">
+                <Field id={OrderNumberId} label="Order Number" hint="" error="">
                     <input
                         class={Input {}}
+                        id={OrderNumberId}
                         name="order"
                         value={looked.number.unwrap_or_default()}
                         placeholder="Enter order number"
                         required
                     >
-                </LabeledControl>
+                </Field>
                 <button class={Button { variant: ButtonVariant::Secondary, size: ButtonSize::Md }}>
                     "Lookup Order"
                 </button>

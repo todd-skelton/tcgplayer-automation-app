@@ -15,16 +15,21 @@ use crate::{
         url::{self, Choice},
         views::Problem,
     },
-    layout::LabeledControl,
     text::Msg,
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
+        field::Field,
         select::Select,
     },
 };
+
+// These forms' answers carry no field errors: a refusal is the place's Problem. Their fields are
+// named from the form's id through an empty Errors (corten#685).
+#[derive(Id)]
+struct PrepareFormId;
 
 /// The link that shows or hides the price-change review of the listing reviewed, and the review
 /// when it is shown.
@@ -104,7 +109,10 @@ fn PrepareForm<'a>(
     let reviewed = recommendation.r#override.as_ref();
     let calculated = amount(recommendation.calculation.ask.proposed_item_ask);
     html! {
+        let none = Errors::new();
+        let e = none.within(PrepareFormId);
         <form
+            id={PrepareFormId}
             method="post"
             action={url::Prepare { choice: screen.choice.clone() }}
             data-patch
@@ -116,8 +124,8 @@ fn PrepareForm<'a>(
             if let Some(reviewed) = reviewed {
                 <input type="hidden" name={f.reviewed_at} value={&reviewed.reviewed_at}>
             }
-            <LabeledControl label="Price to review" hint="">
-                <select class={Select {}} name={f.selection}>
+            <Field id={e.id(f.selection)} label="Price to review" hint="" error="">
+                <select class={Select {}} {..e.control(f.selection)}>
                     <option value="calculated" selected={reviewed.is_none()}>
                         "Calculated ask · "{calculated}
                     </option>
@@ -127,7 +135,7 @@ fn PrepareForm<'a>(
                         </option>
                     }
                 </select>
-            </LabeledControl>
+            </Field>
             <button
                 class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
                 disabled={stale}

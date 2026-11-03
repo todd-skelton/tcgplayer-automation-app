@@ -9,7 +9,7 @@ use crate::{
         turnaround_settings::MAXIMUM_MANUAL_DAYS,
         url::{self, View},
     },
-    layout::{LabeledControl, SubmitsOnChange},
+    layout::SubmitsOnChange,
     text::Msg,
     theme::*,
     ui::badge::{Badge, BadgeEmphasis, BadgeTone},
@@ -17,6 +17,7 @@ use crate::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
+        field::Field,
         input::Input,
         segmented::{Legend, SegmentedRadio, SegmentedRadios},
         stats::{Stat, StatTone, Stats, StatsSurface},
@@ -191,9 +192,11 @@ pub fn TurnaroundForm<'a>(
                             >
                         </SegmentedRadio>
                     </SegmentedRadios>
-                    <LabeledControl
+                    <Field
+                        id={e.id(f.manual_turnaround_days)}
                         label="Manual days"
                         hint="Used when manual is selected or observed evidence is too thin"
+                        error={e.message(f.manual_turnaround_days)}
                     >
                         <input
                             class={Input {}}
@@ -201,13 +204,11 @@ pub fn TurnaroundForm<'a>(
                             min="0"
                             max={MAXIMUM_MANUAL_DAYS}
                             step="1"
-                            name={f.manual_turnaround_days}
                             value={&input.manual_turnaround_days}
                             disabled={off}
-                            {..e.aria(f.manual_turnaround_days)}
+                            {..e.control(f.manual_turnaround_days).hint()}
                         >
-                        {e.message(f.manual_turnaround_days)}
-                    </LabeledControl>
+                    </Field>
                     <noscript>
                         <button
                             class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}

@@ -7,17 +7,22 @@ use crate::{
         steps::Step,
         url,
     },
-    layout::LabeledControl,
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        field::Field,
         input::Input,
         popover::Popover,
         separator::{Orientation, Separator},
     },
 };
+
+// The seller form is a link with a query: it has no field errors, so its field is named from its
+// id through an empty Errors (corten#685).
+#[derive(Id)]
+struct LoadOrdersSellerFormId;
 
 #[derive(Id)]
 struct SellerPopoverId;
@@ -79,16 +84,18 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
                     if seller.is_empty() { "not set" } else { {seller} }
                 </button>
                 <div popover id={SellerPopoverId} class={(Popover {}, Seller)}>
-                    <form method="get" action={&here}>
+                    let none = Errors::new();
+                    let e = none.within(LoadOrdersSellerFormId);
+                    <form id={LoadOrdersSellerFormId} method="get" action={&here}>
                         {keep_query(&here, html! {
-                            <LabeledControl label="Seller Key" hint={&hint}>
+                            <Field id={e.id(q.seller)} label="Seller Key" hint={&hint} error="">
                                 <input class={Input {}}
-                                    name={q.seller}
                                     value={seller}
                                     placeholder={if loading.configured.is_empty() { "Enter seller key" } else { loading.configured }}
                                     autofocus
+                                    {..e.control(q.seller).hint()}
                                 >
-                            </LabeledControl>
+                            </Field>
                             <button class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}>"Use This Seller"</button>
                         })}
                     </form>

@@ -13,17 +13,24 @@ use crate::{
         url,
         views::{Problem, PublicationPanel},
     },
-    layout::LabeledControl,
     text::Msg,
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
+        field::Field,
         input::Input,
         select::Select,
     },
 };
+
+// The recommendation forms' answers carry no field errors: a refusal is the place's Problem.
+// Their fields are named from the form's id through an empty Errors (corten#685).
+#[derive(Id)]
+struct CalculateFormId;
+#[derive(Id)]
+struct ReviewAskFormId;
 
 /// The owned slab's recommendation: the costs it is calculated from, the market range and ask
 /// it gave, how it used the evidence, and the ask the operator reviewed.
@@ -140,54 +147,57 @@ fn CostsForm<'a>(
     let fee_fixed = number(fees.map(|f| f.fixed));
     let fee_basis = fees.map_or_else(|| "item-plus-shipping".to_owned(), |f| f.basis.clone());
     html! {
+        let none = Errors::new();
+        let e = none.within(CalculateFormId);
         <form
+            id={CalculateFormId}
             method="post"
             action={url::Calculate { choice: screen.choice.clone() }}
             data-patch
             class={Stack}
         >
             <div class={Line}>
-                <LabeledControl label="Comparable price basis" hint="">
-                    <BasisSelect name={f.basis} chosen={basis} />
-                </LabeledControl>
+                <Field id={e.id(f.basis)} label="Comparable price basis" hint="" error="">
+                    <BasisSelect control={e.control(f.basis)} chosen={basis} />
+                </Field>
                 for (label, name, value) in costs {
-                    <LabeledControl label={label} hint="">
+                    <Field id={e.id(name)} label={label} hint="" error="">
                         <input
                             class={Input {}}
                             type="number"
-                            name={name}
                             value={number(value)}
                             min="0"
                             step="0.01"
+                            {..e.control(name)}
                         >
-                    </LabeledControl>
+                    </Field>
                 }
             </div>
             <div class={Line}>
-                <LabeledControl label="Seller fee (%)" hint="">
+                <Field id={e.id(f.fee_rate)} label="Seller fee (%)" hint="" error="">
                     <input
                         class={Input {}}
                         type="number"
-                        name={f.fee_rate}
                         value={fee_rate}
                         min="0"
                         max="99.99"
                         step="0.01"
+                        {..e.control(f.fee_rate)}
                     >
-                </LabeledControl>
-                <LabeledControl label="Fixed fee (USD)" hint="">
+                </Field>
+                <Field id={e.id(f.fee_fixed)} label="Fixed fee (USD)" hint="" error="">
                     <input
                         class={Input {}}
                         type="number"
-                        name={f.fee_fixed}
                         value={fee_fixed}
                         min="0"
                         step="0.01"
+                        {..e.control(f.fee_fixed)}
                     >
-                </LabeledControl>
-                <LabeledControl label="Fee basis" hint="">
-                    <BasisSelect name={f.fee_basis} chosen={fee_basis.as_str()} />
-                </LabeledControl>
+                </Field>
+                <Field id={e.id(f.fee_basis)} label="Fee basis" hint="" error="">
+                    <BasisSelect control={e.control(f.fee_basis)} chosen={fee_basis.as_str()} />
+                </Field>
             </div>
             <div class={Line}>
                 <button
@@ -203,9 +213,9 @@ fn CostsForm<'a>(
 }
 
 #[component(css = super::slab_screen::SlabScreen)]
-fn BasisSelect<'a>(name: FieldName<String>, chosen: &'a str) -> impl Render {
+fn BasisSelect<'a, I: Id>(control: corten::form::Control<'a, I>, chosen: &'a str) -> impl Render {
     html! {
-        <select class={Select {}} name={name}>
+        <select class={Select {}} {..control}>
             for (value, label) in BASES {
                 <option value={value} selected={chosen == value}>{label}</option>
             }
@@ -336,6 +346,8 @@ fn ReviewedAsk<'a>(
 ) -> impl Render {
     let f = ReviewAskInput::FIELDS;
     html! {
+        let none = Errors::new();
+        let e = none.within(ReviewAskFormId);
         if let Some(reviewed) = &recommendation.r#override {
             <Alert variant={AlertVariant::Info}>
                 "Reviewed item ask: "{&reviewed.currency}" "{format!("{:.2}", reviewed.item_price)}
@@ -344,25 +356,26 @@ fn ReviewedAsk<'a>(
             </Alert>
         }
         <form
+            id={ReviewAskFormId}
             method="post"
             action={url::ReviewAsk { choice: screen.choice.clone() }}
             data-patch
             class={Line}
         >
             <input type="hidden" name={f.recommendation} value={&recommendation.id}>
-            <LabeledControl label="Override item ask (USD)" hint="">
+            <Field id={e.id(f.item_price)} label="Override item ask (USD)" hint="" error="">
                 <input
                     class={Input {}}
                     type="number"
-                    name={f.item_price}
                     min="0.01"
                     step="0.01"
                     required
+                    {..e.control(f.item_price)}
                 >
-            </LabeledControl>
-            <LabeledControl label="Override reason" hint="">
-                <input class={Input {}} name={f.note} maxlength="1000" required>
-            </LabeledControl>
+            </Field>
+            <Field id={e.id(f.note)} label="Override reason" hint="" error="">
+                <input class={Input {}} maxlength="1000" required {..e.control(f.note)}>
+            </Field>
             <button
                 class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
                 disabled={!allowed}

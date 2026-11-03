@@ -10,18 +10,24 @@ use crate::{
         url::{self, Choice},
         views::Problem,
     },
-    layout::LabeledControl,
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         dialog::Dialog,
+        field::Field,
         input::Input,
         select::Select,
         table::Table,
+        textarea::Textarea,
     },
 };
+
+// These forms' answers carry no field errors: a refusal is the place's Problem. Their fields are
+// named from the form's id through an empty Errors (corten#685).
+#[derive(Id)]
+struct CompDecisionFormId;
 
 /// The saved comps of the revision reviewed, fifty a page, each screened against the identity
 /// researched, and the sale open for a decision.
@@ -238,7 +244,10 @@ fn DecisionForm<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> imp
         .and_then(|d| d.item_price.as_ref())
         .map_or_else(String::new, |p| p.amount.to_string());
     html! {
+        let none = Errors::new();
+        let e = none.within(CompDecisionFormId);
         <form
+            id={CompDecisionFormId}
             method="post"
             action={url::DecideComp { choice: screen.choice.clone() }}
             data-patch
@@ -249,30 +258,38 @@ fn DecisionForm<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> imp
             <input type="hidden" name={f.provider} value={&sale.provider}>
             <input type="hidden" name={f.provider_id} value={&sale.provider_id}>
             <input type="hidden" name={f.date} value={sale.date.as_deref().unwrap_or("")}>
-            <LabeledControl label="Comp decision" hint="">
-                <select class={Select {}} name={f.decision}>
+            <Field id={e.id(f.decision)} label="Comp decision" hint="" error="">
+                <select class={Select {}} {..e.control(f.decision)}>
                     <option value="accept" selected={!excluded}>"Include after review"</option>
                     <option value="exclude" selected={excluded}>"Exclude"</option>
                 </select>
-            </LabeledControl>
-            <LabeledControl
+            </Field>
+            <Field
+                id={e.id(f.item_price)}
                 label="Verified item price in USD (optional)"
                 hint="Use only an item amount verified from the sale. Shipping and fees remain separate."
+                error=""
             >
                 <input
                     class={Input {}}
                     type="number"
-                    name={f.item_price}
                     value={price}
                     min="0.01"
                     step="0.01"
+                    {..e.control(f.item_price).hint()}
                 >
-            </LabeledControl>
-            <LabeledControl label="Review reason" hint="">
-                <textarea name={f.note} rows="3" maxlength="1000" required>
+            </Field>
+            <Field id={e.id(f.note)} label="Review reason" hint="" error="">
+                <textarea
+                    class={Textarea {}}
+                    rows="3"
+                    maxlength="1000"
+                    required
+                    {..e.control(f.note)}
+                >
                     {saved.map_or("", |d| d.note.as_str())}
                 </textarea>
-            </LabeledControl>
+            </Field>
             <p class={muted()}>
                 "Including a comp does not override a conflicting card identity or unconfirmed sale outcome."
             </p>

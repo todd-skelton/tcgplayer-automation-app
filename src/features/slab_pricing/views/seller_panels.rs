@@ -17,16 +17,26 @@ use crate::{
             views::Problem,
         },
     },
-    layout::LabeledControl,
     text::Msg,
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
         button::{Button, ButtonSize, ButtonVariant},
         checkbox::Checkbox,
+        field::Field,
         input::Input,
+        textarea::Textarea,
     },
 };
+
+// These forms' answers carry no field errors: a refusal is the place's Problem. Their fields are
+// named from the form's id through an empty Errors (corten#685).
+#[derive(Id)]
+struct MaintenanceFormId;
+#[derive(Id)]
+struct OutcomeListingFormId;
+#[derive(Id)]
+struct ImportOutcomesFormId;
 
 #[derive(Id)]
 struct MaintenanceStatusId;
@@ -81,7 +91,10 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 <Alert variant={AlertVariant::Warning}>{why}</Alert>
             }
             if let Some(view) = view {
+                let none = Errors::new();
+                let e = none.within(MaintenanceFormId);
                 <form
+                    id={MaintenanceFormId}
                     method="post"
                     action={url::SaveMaintenance { choice: choice.clone() }}
                     data-patch
@@ -99,42 +112,52 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                 checked={view.settings.include_supply}
                             >
                         </Checkbox>
-                        <LabeledControl label="Refresh interval (minutes)" hint="">
+                        <Field
+                            id={e.id(f.interval_minutes)}
+                            label="Refresh interval (minutes)"
+                            hint=""
+                            error=""
+                        >
                             <input
                                 class={Input {}}
                                 type="number"
-                                name={f.interval_minutes}
                                 value={view.settings.interval_minutes}
                                 min="15"
                                 max="1440"
                                 step="1"
                                 required
+                                {..e.control(f.interval_minutes)}
                             >
-                        </LabeledControl>
-                        <LabeledControl label="Listings per cycle" hint="">
+                        </Field>
+                        <Field id={e.id(f.batch_size)} label="Listings per cycle" hint="" error="">
                             <input
                                 class={Input {}}
                                 type="number"
-                                name={f.batch_size}
                                 value={view.settings.batch_size}
                                 min="1"
                                 max="25"
                                 step="1"
                                 required
+                                {..e.control(f.batch_size)}
                             >
-                        </LabeledControl>
-                        <LabeledControl label="Refresh jobs per cycle" hint="">
+                        </Field>
+                        <Field
+                            id={e.id(f.refresh_budget)}
+                            label="Refresh jobs per cycle"
+                            hint=""
+                            error=""
+                        >
                             <input
                                 class={Input {}}
                                 type="number"
-                                name={f.refresh_budget}
                                 value={view.settings.refresh_budget}
                                 min="1"
                                 max="50"
                                 step="1"
                                 required
+                                {..e.control(f.refresh_budget)}
                             >
-                        </LabeledControl>
+                        </Field>
                     </div>
                     <div class={Line}>
                         <button
@@ -260,20 +283,30 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
             <p class={muted()}>
                 "Record reviewed sales, cancellations and relists for imported listings. Observations keep their first recorded time and source; repeated imports do not duplicate them. Conflicting claims remain unresolved. Inventory and prices are unchanged."
             </p>
-            <form method="get" action={url::SlabPricing::at(&Choice::default())} class={Line}>
+            let none = Errors::new();
+            let e = none.within(OutcomeListingFormId);
+            <form
+                id={OutcomeListingFormId}
+                method="get"
+                action={url::SlabPricing::at(&Choice::default())}
+                class={Line}
+            >
                 {keep_query(
                     &url::SlabPricing::at(choice),
                     html! {
-                    <LabeledControl label="Outcome listing item ID" hint="">
-                        <input class={Input {}} name={f.item} value={choice.item.as_deref().unwrap_or("")} required>
-                    </LabeledControl>
+                    <Field id={e.id(f.item)} label="Outcome listing item ID" hint="" error="">
+                        <input class={Input {}} value={choice.item.as_deref().unwrap_or("")} required {..e.control(f.item)}>
+                    </Field>
                     <button class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}>"Read saved outcomes"</button>
                     },
                 )}
             </form>
             <details>
                 <summary>"Import reviewed outcomes"</summary>
+                let none = Errors::new();
+                let o_e = none.within(ImportOutcomesFormId);
                 <form
+                    id={ImportOutcomesFormId}
                     method="post"
                     action={url::ImportOutcomes { choice: choice.clone() }}
                     data-patch
@@ -282,9 +315,9 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
                     <p class={muted()}>
                         "Paste up to 50 rows. Required columns: event_id, item_id, kind, occurred_at, quantity, note. Use sale, cancellation or relist; quantity must be 1. Use a UTC time such as 2026-09-01T12:00:00Z. Optional sale columns: price, currency (item price only). Cancellations require related_sale_id; relists require next_item_id. Use a stable event ID and a note describing the evidence. Import each original listing into this seller's inventory first."
                     </p>
-                    <LabeledControl label="Seller outcome CSV" hint="">
-                        <textarea name={o.csv} rows="4" required></textarea>
-                    </LabeledControl>
+                    <Field id={o_e.id(o.csv)} label="Seller outcome CSV" hint="" error="">
+                        <textarea class={Textarea {}} rows="4" required {..o_e.control(o.csv)}></textarea>
+                    </Field>
                     <button
                         class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
                     >

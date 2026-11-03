@@ -10,12 +10,12 @@ use crate::{
         provider::{Connection, Provider, Status},
         url,
     },
-    layout::LabeledControl,
     theme::*,
     ui::{
         alert::Alert,
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
+        field::Field,
         input::Input,
     },
 };
@@ -96,34 +96,37 @@ pub fn ConnectionCard<'a>(
                 autocomplete="off"
                 data-patch
             >
-                <LabeledControl
+                <Field
+                    id={e.id(f.credential)}
                     label={match provider {
                         Provider::Alt => "Alt authorization token",
                         Provider::EbayResearch => "eBay research Cookie header",
                     }}
                     hint=""
+                    error={e.message(f.credential)}
                 >
                     <input
                         class={Input {}}
                         type="password"
-                        name={f.credential}
                         autocomplete="new-password"
                         maxlength="32768"
-                        {..e.aria(f.credential)}
+                        {..e.control(f.credential)}
                     >
-                    {e.message(f.credential)}
-                </LabeledControl>
+                </Field>
                 if provider == Provider::EbayResearch {
-                    <LabeledControl label="Browser User-Agent" hint="">
+                    <Field
+                        id={e.id(f.user_agent)}
+                        label="Browser User-Agent"
+                        hint=""
+                        error={e.message(f.user_agent)}
+                    >
                         <input
                             class={Input {}}
-                            name={f.user_agent}
                             value={answered.map_or("", |a| a.user_agent)}
                             maxlength="512"
-                            {..e.aria(f.user_agent)}
+                            {..e.control(f.user_agent)}
                         >
-                        {e.message(f.user_agent)}
-                    </LabeledControl>
+                    </Field>
                 }
                 <div class={Actions}>
                     <button
