@@ -186,10 +186,14 @@ pub fn batch_summary(
         let lowest = figure(d, "lowestSalePrice", row, "Lowest Sale Price");
         let listed = figure(d, "marketplacePrice", row, "TCG Marketplace Price");
         let suggested = figure(d, "suggestedPrice", row, "Suggested Price");
-        let line = row["Product Line"]
-            .as_str()
-            .filter(|l| !l.is_empty())
-            .unwrap_or("Unknown");
+        // `row["Product Line"] || "Unknown"`, a line that is not text (sent by a browser) named as
+        // its `String` is.
+        let line = match &row["Product Line"] {
+            Value::Null | Value::Bool(false) => "Unknown".to_owned(),
+            Value::String(l) if l.is_empty() => "Unknown".to_owned(),
+            Value::Number(n) if n.as_f64() == Some(0.0) => "Unknown".to_owned(),
+            other => crate::api::js_string(other),
+        };
         quantity_total += quantity;
         add_total += add_quantity;
         market += tcg_market * combined;
@@ -201,9 +205,7 @@ pub fn batch_summary(
             marketplace_wm += listed * combined;
             quantity_wm += combined;
         }
-        let entry = lines
-            .entry(line.to_string())
-            .or_insert((0, Vec::new(), 0.0));
+        let entry = lines.entry(line).or_insert((0, Vec::new(), 0.0));
         entry.0 += 1;
         entry.2 += suggested * combined;
         let percentile_used = figure(d, "percentileUsed", row, "Percentile Used");

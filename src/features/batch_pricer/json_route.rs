@@ -7,8 +7,8 @@
 //! left empty is no file ("CSV file is required"), where Node read a file with no name and no
 //! rows. A batch's publications and preview (`GET /{batch}/publications`), planning its
 //! publication (`POST`) and confirming an ambiguous item live (`PATCH`) are answered here too.
-//! Only saving results priced in the browser (`POST /{batch}/results`, which no screen sends now)
-//! still goes to the Node app.
+//! So is saving results priced in the browser (`POST /{batch}/results`, which no screen sends
+//! now; `browser_results`).
 //!
 //! A batch's pricing stream (`GET /{batch}/pricing-stream`) is server-sent events of JSON: the
 //! batch each time it changes, a heartbeat, and an error when there is no such batch. Corten
@@ -19,7 +19,7 @@ use std::{convert::Infallible, time::Duration};
 use chrono::Utc;
 
 use corten::{
-    Api, JsonError, JsonResponse, Prefix, Relay,
+    Api, JsonResponse, Prefix, Relay,
     axum::{
         body::{Body, to_bytes},
         extract::{FromRequest, RawQuery, Request},
@@ -32,7 +32,7 @@ use serde_json::{Value, json};
 use sqlx::PgConnection;
 
 use super::{
-    batch_json,
+    batch_json, browser_results,
     import::{self, MOST_EXPORT_BYTES, NotImported},
 };
 use crate::{
@@ -53,7 +53,6 @@ use crate::{
         },
         shipping_configuration,
     },
-    legacy::{Legacy, relay_request},
     node_pg,
     tcgplayer::TcgPlayer,
 };
@@ -151,10 +150,10 @@ pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
     .route::<InventoryBatchItems<'_>>(get(items).with_state(shared.clone()))
     .route::<InventoryBatchResults<'_>>(
         get(results)
-            .post(relay)
-            .put(relay)
-            .patch(relay)
-            .delete(relay)
+            .post(save_results)
+            .put(results_not_allowed)
+            .patch(results_not_allowed)
+            .delete(results_not_allowed)
             .with_state(shared.clone()),
     )
     .route::<InventoryBatchPricingJobs<'_>>(
@@ -175,9 +174,63 @@ pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
     )
 }
 
-/// The request sent to the Node app, its answer passed on as it came.
-async fn relay(State(legacy): State<Legacy>, request: Request) -> Result<JsonResponse, JsonError> {
-    Ok(relay_request(&legacy, request).await?.into())
+/// The largest body of results priced in the browser read: a batch's priced SKUs.
+const MAX_RESULTS_BODY_BYTES: usize = 64 * 1024 * 1024;
+
+/// Results priced in the browser, saved as the batch's (`browser_results`).
+async fn save_results(
+    State(db): State<Database>,
+    Params(at): Params<InventoryBatchResults<'_>>,
+    request: Request,
+) -> JsonResponse {
+    let body = match to_bytes(request.into_body(), MAX_RESULTS_BODY_BYTES).await {
+        Ok(body) => body,
+        Err(error) => return failed(format!("Error: {error}")),
+    };
+    // A JavaScript `Date`, to the millisecond.
+    let now = chrono::DateTime::from_timestamp_millis(Utc::now().timestamp_millis())
+        .expect("now is in range");
+    let saved = match db.0.acquire().await {
+        Ok(mut conn) => results_saved(&mut conn, &at.batch, &body, now).await,
+        Err(error) => Err((StatusCode::INTERNAL_SERVER_ERROR, node_pg::thrown(error))),
+    };
+    match saved {
+        Ok(batch) => api::node_json(&batch),
+        Err((status, message)) => api::error(status, message),
+    }
+}
+
+/// The action on `conn`: the batch `raw` names, with `body`'s results saved at `now`, or Node's
+/// status and message.
+async fn results_saved(
+    conn: &mut PgConnection,
+    raw: &str,
+    body: &[u8],
+    now: chrono::DateTime<Utc>,
+) -> Result<Value, (StatusCode, String)> {
+    let batch = batch_number(raw).map_err(Refused::answer)?;
+    let payload: Value = serde_json::from_slice(body).map_err(|error| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("SyntaxError: {error}"),
+        )
+    })?;
+    browser_results::save_results(conn, batch, &payload, now)
+        .await
+        .map_err(|refused| match refused {
+            browser_results::Refused::Bad(message) => (StatusCode::BAD_REQUEST, message.into()),
+            browser_results::Refused::Thrown(message) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, message)
+            }
+        })
+}
+
+/// Any other write to a batch's results: Node's action, after the batch number.
+async fn results_not_allowed(Params(at): Params<InventoryBatchResults<'_>>) -> JsonResponse {
+    match batch_number(&at.batch) {
+        Ok(_) => api::error(StatusCode::METHOD_NOT_ALLOWED, "Method not allowed"),
+        Err(refused) => refused.into(),
+    }
 }
 
 /// `parseBatchNumber`: `Number(raw)`, a whole number above zero. One past a Postgres `integer`
@@ -196,14 +249,23 @@ enum Refused {
     OutOfRange(i64),
 }
 
+impl Refused {
+    /// Node's status and message.
+    fn answer(self) -> (StatusCode, String) {
+        match self {
+            Refused::Invalid => (StatusCode::BAD_REQUEST, "Invalid batch number".into()),
+            Refused::OutOfRange(n) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("error: value \"{n}\" is out of range for type integer"),
+            ),
+        }
+    }
+}
+
 impl From<Refused> for JsonResponse {
     fn from(refused: Refused) -> Self {
-        match refused {
-            Refused::Invalid => api::error(StatusCode::BAD_REQUEST, "Invalid batch number"),
-            Refused::OutOfRange(n) => failed(format!(
-                "error: value \"{n}\" is out of range for type integer"
-            )),
-        }
+        let (status, message) = refused.answer();
+        api::error(status, message)
     }
 }
 
@@ -931,6 +993,8 @@ mod tests {
     use serde_json::Value;
     use sqlx::Connection;
 
+    use crate::legacy::Legacy;
+
     use super::*;
 
     /// Node's pricing stream on dev batches (`.port-logs/pricing-stream-node.ts`), through the
@@ -1449,6 +1513,79 @@ mod tests {
                 (left, _) => left,
             };
             assert_eq!(left.as_ref().unwrap_or(&Value::Null), expected, "{name}");
+        }
+        tx.rollback().await.unwrap();
+    }
+
+    /// The saves in `.port-logs/browser-results-cases.json` on the dev database in a transaction
+    /// rolled back (a savepoint each), against Node's action over the same
+    /// (`.port-logs/browser-results-node.ts`): each answer, its ISO times named `TIME`, and what
+    /// each case left of batch 146 (`.port-logs/browser-results-capture.sql`). A body that is not
+    /// JSON is compared by its status: the parsers word their errors apart.
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
+    async fn browser_results_save_as_node_saved_them() {
+        use sqlx::Connection;
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let read_log = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let cases: Vec<Value> =
+            serde_json::from_str(&read_log("browser-results-cases.json")).unwrap();
+        let node: Vec<Value> =
+            serde_json::from_str(&read_log("browser-results.node.json")).unwrap();
+        let capture = read_log("browser-results-capture.sql");
+        assert_eq!(cases.len(), node.len());
+        fn timeless(value: &Value) -> Value {
+            let iso = regex::Regex::new(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$").unwrap();
+            match value {
+                Value::Array(items) => Value::Array(items.iter().map(timeless).collect()),
+                Value::Object(fields) => Value::Object(
+                    fields
+                        .iter()
+                        .map(|(k, v)| (k.clone(), timeless(v)))
+                        .collect(),
+                ),
+                Value::String(text) if iso.is_match(text) => Value::from("TIME"),
+                other => other.clone(),
+            }
+        }
+        let mut tx = db.0.begin().await.unwrap();
+        for (case, theirs) in cases.iter().zip(&node) {
+            let name = case["name"].as_str().unwrap();
+            let raw = case["path"].as_str().unwrap().split('/').nth(3).unwrap();
+            let mut each = tx.begin().await.unwrap();
+            let now =
+                chrono::DateTime::from_timestamp_millis(Utc::now().timestamp_millis()).unwrap();
+            let (status, body) = if case["method"] == "POST" {
+                let body = case["body"].as_str().unwrap().as_bytes();
+                match results_saved(&mut each, raw, body, now).await {
+                    Ok(batch) => (200, crate::api::tests::node_numbers(&batch)),
+                    Err((status, error)) => (status.as_u16(), json!({ "error": error })),
+                }
+            } else {
+                match batch_number(raw) {
+                    Ok(_) => (405, json!({ "error": "Method not allowed" })),
+                    Err(refused) => {
+                        let (status, error) = refused.answer();
+                        (status.as_u16(), json!({ "error": error }))
+                    }
+                }
+            };
+            let captured: String = sqlx::query_scalar(&capture)
+                .fetch_one(&mut *each)
+                .await
+                .unwrap();
+            each.rollback().await.unwrap();
+            assert_eq!(
+                u64::from(status),
+                theirs["status"].as_u64().unwrap(),
+                "{name}"
+            );
+            if case["syntax"] != true {
+                assert_eq!(timeless(&body), theirs["body"], "{name}");
+            }
+            let captured: Value = serde_json::from_str(&captured).unwrap();
+            assert_eq!(captured, theirs["captured"], "{name}");
         }
         tx.rollback().await.unwrap();
     }
