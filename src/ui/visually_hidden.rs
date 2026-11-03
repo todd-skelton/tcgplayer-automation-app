@@ -1,4 +1,4 @@
-// corten ui 0.1.0: visually_hidden ebe3cfdbe55af836
+// corten ui 0.1.0: visually_hidden 62d1f0b626959fae
 //! Text a screen reader reads and the page does not draw, as the class of the element you write:
 //! the name of an icon control whose element the kit draws (a `MenuButton`'s trigger takes markup,
 //! not attributes; a `<button>` you write takes `aria-label`), a legend a layout does not need to
@@ -9,7 +9,7 @@
 //!     <MenuButton
 //!         id={RowMenuId(&row.reference)}
 //!         label={html! {
-//!             <span aria-hidden="true">"⋮"</span>
+//!             <Icon glyph={icon::ELLIPSIS_VERTICAL} />
 //!             <span class={VisuallyHidden {}}>"More actions for "{&row.reference}</span>
 //!         }}
 //!     >
@@ -18,7 +18,8 @@
 //! </DropdownMenu>
 //! ```
 //!
-//! Text no one should read is `hidden`, and a mark that only decorates is `aria-hidden="true"`.
+//! (`Icon` is the kit's, `corten ui add icon`.) Text no one should read is `hidden`, and a mark
+//! that only decorates is `aria-hidden="true"`.
 //!
 //! It is placed out of the flow, against the nearest positioned element around it, so a box of
 //! the app's that scrolls sideways around it (`overflow-x: auto`) is positioned

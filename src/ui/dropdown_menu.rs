@@ -1,4 +1,4 @@
-// corten ui 0.1.0: dropdown_menu a93686d44ac623af
+// corten ui 0.1.0: dropdown_menu b51b420b35a4c0e3
 //! The look of corten-ui's `MenuButton` written inside it: a trigger and a menu under it. The
 //! items are the app's (`role="menuitem"` links, post forms, dialog commands), so the app lists
 //! `corten_ui::COMPONENTS` too. A `<hr role="separator">` between items groups them.
@@ -14,7 +14,8 @@
 //! ```
 //!
 //! `MenuTrigger::Icon` is a row's "more actions" menu: the trigger holds an icon a screen reader
-//! skips (`aria-hidden="true"`) and its name in `VisuallyHidden` text.
+//! skips (the kit's `Icon`, `corten ui add icon`, which is `aria-hidden`) and its name in
+//! `VisuallyHidden` text.
 use corten::prelude::*;
 
 /// What the trigger holds. `Icon` is a class in `dropdown_menu.css`, so it does not compile

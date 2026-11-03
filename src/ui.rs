@@ -20,6 +20,7 @@ pub mod control_width;
 pub mod dialog;
 pub mod dropdown_menu;
 pub mod field;
+pub mod icon;
 pub mod input;
 pub mod input_group;
 pub mod nav_bar;
@@ -58,6 +59,7 @@ pub const COMPONENTS: &[Component] = &[
     dialog::Dialog,
     dropdown_menu::DropdownMenu,
     field::Field,
+    icon::Icon,
     input::Input,
     input_group::InputGroup,
     nav_bar::NavBar,

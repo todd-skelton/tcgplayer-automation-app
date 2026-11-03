@@ -5,6 +5,7 @@ use crate::{
     app,
     features::http_configuration,
     ui::{
+        icon::{self, Icon},
         nav_bar::{NavActions, NavBar, NavBrand, NavSections},
         popover::Popover,
     },
@@ -57,7 +58,8 @@ pub fn AuthCookieWarning(missing: bool) -> impl Patch {
                     class={Warning}
                     href={http_configuration::url::HttpSettings}
                 >
-                    "⚠ Auth cookie not configured"
+                    <Icon glyph={icon::TRIANGLE_ALERT} />
+                    "Auth cookie not configured"
                 </a>
             }
         </span>

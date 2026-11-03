@@ -12,6 +12,7 @@ use crate::{
     ui::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        icon::{self, Icon},
     },
 };
 
@@ -48,7 +49,8 @@ pub fn PrintStep<'a>(sheets: &'a [LabelSheet<'a>], has_orders: bool) -> impl Ren
                             target="_blank"
                             data-reload
                         >
-                            "↗ Open Packing Slips PDF"
+                            <Icon glyph={icon::EXTERNAL_LINK} />
+                            "Open Packing Slips PDF"
                         </a>
                         <a
                             class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
@@ -63,7 +65,8 @@ pub fn PrintStep<'a>(sheets: &'a [LabelSheet<'a>], has_orders: bool) -> impl Ren
                             type="button"
                             disabled
                         >
-                            "↗ Open Packing Slips PDF"
+                            <Icon glyph={icon::EXTERNAL_LINK} />
+                            "Open Packing Slips PDF"
                         </button>
                         <button
                             class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
@@ -112,7 +115,8 @@ fn SizeLabels<'a>(sheet: &'a LabelSheet<'a>) -> impl Render {
                                 target="_blank"
                                 rel="noreferrer"
                             >
-                                "↗ Open Batch Label PDF"
+                                <Icon glyph={icon::EXTERNAL_LINK} />
+                                "Open Batch Label PDF"
                             </a>
                         }
                         <span

@@ -12,14 +12,13 @@ use crate::{
         slab_connections, slab_pricing,
     },
     theme::*,
+    ui::icon::{self, Glyph},
 };
 
 mod app_bar;
-mod icons;
 mod parts;
 
 pub use app_bar::{AppBar, AuthCookieWarning};
-pub use icons::{Glyph, Icon};
 pub use parts::SubmitsOnChange;
 
 corten::assets::embed! {
@@ -115,14 +114,14 @@ pub struct Entry {
     pub screen: Screen,
     pub label: &'static str,
     pub description: &'static str,
-    pub icon: Icon,
+    pub icon: Glyph,
 }
 
 const fn entry(
     screen: Screen,
     label: &'static str,
     description: &'static str,
-    icon: Icon,
+    icon: Glyph,
 ) -> Entry {
     Entry {
         screen,
@@ -138,61 +137,61 @@ pub const PRIMARY: [Entry; 10] = [
         Screen::InventoryManager,
         "Inventory",
         "Add new inventory and freeze it into a pricing batch",
-        icons::INVENTORY,
+        icon::PACKAGE,
     ),
     entry(
         Screen::BatchPricer,
         "Batch Pricer",
         "Create, price, publish, and download inventory batches",
-        icons::BATCH_PREDICTION,
+        icon::LAYERS,
     ),
     entry(
         Screen::ContinuousPricing,
         "Continuous Pricing",
         "Automatic repricing runs for live inventory",
-        icons::LOOP,
+        icon::REPEAT,
     ),
     entry(
         Screen::SlabPricing,
         "Slab Pricing",
         "Research and price graded cards for eBay",
-        icons::PRICE_CHECK,
+        icon::BADGE_DOLLAR_SIGN,
     ),
     entry(
         Screen::ProductPriceMatrix,
         "Price Matrix",
         "Compare one product across conditions and variants",
-        icons::PRICE_CHECK,
+        icon::LAYOUT_GRID,
     ),
     entry(
         Screen::InventoryStrategy,
         "Inventory Strategy",
         "Pricing hurdle, capital turnaround, and selling speed",
-        icons::QUERY_STATS,
+        icon::CHART_LINE,
     ),
     entry(
         Screen::InventoryEconomics,
         "Inventory Economics",
         "Estimated cost, proceeds, and realized profit by order",
-        icons::WALLET,
+        icon::WALLET,
     ),
     entry(
         Screen::PullSheet,
         "Pull Sheet",
         "Upload and view pull sheets",
-        icons::VIEW_LIST,
+        icon::LIST,
     ),
     entry(
         Screen::ShippingWorkflow,
         "Shipping Export",
         "Review shipments, buy postage, and notify buyers",
-        icons::LOCAL_SHIPPING,
+        icon::TRUCK,
     ),
     entry(
         Screen::DataManagement,
         "Data Mgmt",
         "Refresh product lines, sets, products, and SKUs",
-        icons::STORAGE,
+        icon::DATABASE,
     ),
 ];
 
@@ -202,31 +201,31 @@ pub const SETTINGS: [Entry; 5] = [
         Screen::Configuration,
         "Configuration",
         "Pricing rules and defaults",
-        icons::SETTINGS,
+        icon::SETTINGS,
     ),
     entry(
         Screen::PublicationConfiguration,
         "Inventory Publication",
         "Automatic publication and guardrails",
-        icons::PUBLISH,
+        icon::UPLOAD,
     ),
     entry(
         Screen::ShippingConfiguration,
         "Shipping Configuration",
         "Postage and shipping defaults",
-        icons::LOCAL_SHIPPING,
+        icon::TRUCK,
     ),
     entry(
         Screen::HttpConfiguration,
         "HTTP Configuration",
         "TCGPlayer authentication and rate limits",
-        icons::HTTP,
+        icon::GLOBE,
     ),
     entry(
         Screen::SlabConnections,
         "Slab data connections",
         "eBay research and Alt credentials",
-        icons::HTTP,
+        icon::GLOBE,
     ),
 ];
 

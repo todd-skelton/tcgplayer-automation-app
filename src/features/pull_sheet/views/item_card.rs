@@ -1,7 +1,10 @@
 use corten::prelude::*;
 
 use super::picture;
-use crate::features::pull_sheet::items::{Finish, Grade, Item, Printing};
+use crate::{
+    features::pull_sheet::items::{Finish, Grade, Item, Printing},
+    ui::icon::{self, Icon},
+};
 
 /// A card to pull, as its picture: the border and the panel colored by condition, a shimmer for
 /// a holo or reverse holo, a badge for a first edition, and the quantity when more than one. A
@@ -51,7 +54,7 @@ pub fn ItemCard<'a>(
                 match &item.catalog {
                     Some(sku) => <img src={picture(sku.product_id, "400x400")} alt={&name} loading="lazy">,
                     None => <span class={Missing}>
-                        <span aria-hidden="true">"⚠"</span>
+                        <Icon glyph={icon::TRIANGLE_ALERT} />
                         <small>"Product not found in database"</small>
                     </span>,
                 }

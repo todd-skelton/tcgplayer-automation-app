@@ -21,6 +21,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         dialog::{Dialog, DialogFooter, DialogSize},
         dropdown_menu::{DropdownMenu, MenuTrigger},
+        icon::{self, Icon},
         table::{CellLabel, Table, TableLayout, TableNumeric},
         tip::Tip,
         visually_hidden::VisuallyHidden,
@@ -175,7 +176,7 @@ fn ShipmentPostageRow<'a>(
                         <MenuButton
                             id={ShipmentMenuId(reference)}
                             label={html! {
-                                <span aria-hidden="true">"⋮"</span>
+                                <Icon glyph={icon::ELLIPSIS_VERTICAL} />
                                 <span class={VisuallyHidden {}}>"More actions for "{reference}</span>
                             }}
                         >
@@ -263,7 +264,7 @@ fn PostageStatus<'a>(entry: Option<&'a Bought>, reference: &'a str) -> impl Rend
                             interestfor={OpenLabelTipId(reference)}
                             aria-labelledby={OpenLabelTipId(reference)}
                         >
-                            <span aria-hidden="true">"↗"</span>
+                            <Icon glyph={icon::EXTERNAL_LINK} />
                         </a>
                         <Tooltip id={OpenLabelTipId(reference)} class={Tip {}}>
                             "Open label"

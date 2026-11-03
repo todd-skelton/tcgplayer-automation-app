@@ -1,0 +1,6 @@
+/* corten ui 0.1.0: icon e1e4556da189a187 */
+/* An <svg> at the text's size, its lines drawn in the text's color as Lucide draws them. */
+.icon {
+  flex: none; width: 1em; height: 1em; vertical-align: -.125em;
+  fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}

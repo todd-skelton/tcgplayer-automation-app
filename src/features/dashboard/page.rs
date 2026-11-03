@@ -2,9 +2,12 @@ use corten::{Component, prelude::*};
 
 use crate::{
     database::Database,
-    layout::{Chrome, Entry, Glyph, Layout, PRIMARY, ScreenLink},
+    layout::{Chrome, Entry, Layout, PRIMARY, ScreenLink},
     theme::*,
-    ui::card::{Card, CardHeader},
+    ui::{
+        card::{Card, CardHeader},
+        icon::Icon as KitIcon,
+    },
 };
 
 pub const COMPONENTS: &[Component] = &[Dashboard];
@@ -33,7 +36,7 @@ fn Dashboard<'a>(req: &'a Req, screens: &'a [Entry]) -> impl Render {
                         <ScreenLink req={req} screen={&e.screen}>
                             <div class={Card {}}>
                                 <div class={CardHeader {}}>
-                                    <span class={Icon}><Glyph icon={e.icon} /></span>
+                                    <span class={Icon}><KitIcon glyph={e.icon} /></span>
                                     <h2>{e.label}</h2>
                                     <p>{e.description}</p>
                                 </div>

@@ -15,6 +15,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         dialog::{Dialog, DialogFooter, DialogSize},
+        icon::{self, Icon},
         popover::Popover,
         steps::{Step as StepLink, StepState, Steps, StepsLayout},
         tip::Tip,
@@ -101,7 +102,7 @@ pub fn ShippingWorkflowScreen<'a>(
                     aria-labelledby={ShippingSettingsTipId}
                     class={Settings}
                 >
-                    <span aria-hidden="true">"⚙"</span>
+                    <Icon glyph={icon::SETTINGS} />
                 </a>
                 <Tooltip id={ShippingSettingsTipId} class={Tip {}}>
                     "Shipping configuration"
@@ -207,7 +208,7 @@ pub fn StepBar<'a>(
                                     popovertarget={SkipPopoverId}
                                     aria-label="More ways to continue"
                                 >
-                                    "▾"
+                                    <Icon glyph={icon::CHEVRON_DOWN} />
                                 </button>
                                 <div popover id={SkipPopoverId} class={(Popover {}, Skip)}>
                                     <a href={ShippingWorkflow::at(next)}>

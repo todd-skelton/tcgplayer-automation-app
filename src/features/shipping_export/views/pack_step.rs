@@ -22,6 +22,7 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        icon::{self, Icon},
         segmented::SegmentedLinks,
         table::{CellLabel, Table, TableLayout, TableNumeric},
         tip::Tip,
@@ -239,7 +240,7 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                     interestfor={PackKeysTipId}
                     aria-describedby={PackKeysTipId}
                 >
-                    <span aria-hidden="true">"⌨"</span>
+                    <Icon glyph={icon::KEYBOARD} />
                     <span class={VisuallyHidden {}}>"Keyboard shortcuts"</span>
                 </button>
                 <Tooltip id={PackKeysTipId} class={Tip {}}>

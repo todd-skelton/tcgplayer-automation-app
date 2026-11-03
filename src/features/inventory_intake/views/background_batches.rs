@@ -16,6 +16,7 @@ use crate::{
         alert::{Alert, AlertVariant},
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        icon::{self, Icon},
         input::Input,
         popover::Popover,
     },
@@ -77,7 +78,7 @@ pub fn BackgroundBatches<'a>(
                         popovertargetaction="hide"
                         aria-label="Close background batches"
                     >
-                        "×"
+                        <Icon glyph={icon::X} />
                     </button>
                 </header>
                 <p class={muted()}>

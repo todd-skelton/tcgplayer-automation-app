@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: table 00ff1627c2ddb25e */
+/* corten ui 0.1.0: table 33e3134bf4a19326 */
 /* Positioned, so what a cell places absolutely (an icon button's hidden text) is inside the box that
    scrolls it, not past the page's edge. */
 .table { position: relative; width: 100%; overflow-x: auto; }
@@ -38,5 +38,8 @@
   :where(.stacked > table > :is(tbody, tfoot)) :where(th, td) { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); column-gap: 1rem; align-items: start; padding-block: .25rem; white-space: normal; overflow-wrap: break-word; text-align: start; }
   :where(.stacked > table > :is(tbody, tfoot)) :where(th, td) > :not(.label) { grid-column: 2; }
   :where(.stacked > table > :is(tbody, tfoot)) :where(th, td):not(:has(> .label)) { display: block; }
+  /* As specific as .numeric and after it, so a number's label lines up with the others and the
+     number starts its column; an app class on the cell still wins when it comes later. */
+  :where(.stacked > table > :is(tbody, tfoot)) :where(th, td).numeric { text-align: start; }
   .stacked .label { display: block; grid-row: 1 / span 20; font-weight: 500; color: var(--muted-foreground); white-space: normal; }
 }
