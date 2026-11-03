@@ -1,8 +1,9 @@
-//! Evidence read live from TCGplayer for the batch pricing shadow: a product's latest sales
-//! (`getAllLatestSales`, a read-only POST approved for dev shadow runs) and its annual price history
-//! (a GET). Listings and price points are POSTs that are not approved, so supply reads as
-//! unavailable and the shadow compares prices that do not lean on competing asks. Nothing read here
-//! is recorded: the ledgers stay Node's while the shadow runs.
+//! Evidence read live from TCGplayer: a product's latest sales (`getAllLatestSales`), its annual
+//! price history (a GET), and the competing listings (`getAllListings`, read as
+//! `SupplyAnalysisService` reads them: standard listings in the SKU's variant and language, cheapest
+//! delivered first, from verified sellers unless the configuration includes unverified ones). All
+//! are reads, though the sales and listings searches are POSTs. Nothing read here is recorded yet:
+//! Node keeps the sales, weekly sales and listing ledgers while its worker runs.
 use std::{future::Future, time::Duration};
 
 use serde::{Deserialize, Serialize};
@@ -11,7 +12,7 @@ use super::buyer_arrival_rate::LATEST_SALES_LIMIT;
 use super::policy::SupplyStatus;
 use super::sale::Sale;
 use super::sku_price::{Evidence, Failure, History, HistoryBucket, Sku};
-use super::supply_analysis::Observation as Supply;
+use super::supply_analysis::{self, Listing, Observation as Supply};
 use crate::{
     database::Database,
     features::http_configuration::config::Domain,
@@ -23,6 +24,157 @@ pub const ANONYMOUS_SALES_LIMIT: usize = 5;
 /// The page size TCGplayer's latest sales are asked for in.
 const PAGE_SIZE: usize = 25;
 const BUSIEST_PRODUCT_LOOKBACK_DAYS: i64 = 7;
+/// The page size the competing listings are asked for in.
+const LISTINGS_PAGE_SIZE: usize = 50;
+
+/// The body of a listings search (`GetListingsRequestBody`): standard listings of one product,
+/// cheapest delivered first.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct ListingsQuery {
+    pub filters: ListingFilters,
+    pub from: usize,
+    pub size: usize,
+    pub sort: ListingSort,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct ListingFilters {
+    pub term: ListingTerm,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct ListingTerm {
+    #[serde(rename = "listingType")]
+    pub listing_type: [&'static str; 1],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub condition: Option<[String; 1]>,
+    pub language: [String; 1],
+    pub printing: [String; 1],
+    /// `true` for verified sellers only; absent to include every seller.
+    #[serde(rename = "verified-seller", skip_serializing_if = "Option::is_none")]
+    pub verified_seller: Option<bool>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct ListingSort {
+    pub field: &'static str,
+    pub order: &'static str,
+}
+
+impl ListingsQuery {
+    /// The SKU's product in its variant and language, every condition unless `condition` names one.
+    pub fn new(sku: &Sku, condition: Option<&str>, unverified: bool, size: usize) -> Self {
+        ListingsQuery {
+            filters: ListingFilters {
+                term: ListingTerm {
+                    listing_type: ["standard"],
+                    condition: condition.map(|c| [c.to_owned()]),
+                    language: [sku.language.clone()],
+                    printing: [sku.variant.clone()],
+                    verified_seller: (!unverified).then_some(true),
+                },
+            },
+            from: 0,
+            size,
+            sort: ListingSort {
+                field: "price+shipping",
+                order: "asc",
+            },
+        }
+    }
+}
+
+/// One page of a listings search: TCGplayer answers a list with one result set.
+#[derive(Debug, Default, Deserialize)]
+#[serde(default)]
+pub struct ListingsAnswer {
+    pub results: Vec<ListingsPage>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ListingsPage {
+    pub total_results: usize,
+    pub results: Vec<ListedAsk>,
+}
+
+/// A listing as the search reports it, the fields supply analysis reads.
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ListedAsk {
+    pub listing_id: i64,
+    pub condition: String,
+    pub price: f64,
+    pub seller_shipping_price: f64,
+    pub seller_id: String,
+    pub seller_key: String,
+}
+
+impl ListedAsk {
+    fn delivered(&self) -> f64 {
+        self.price + self.seller_shipping_price
+    }
+
+    fn into_listing(self) -> Listing {
+        Listing {
+            condition: self.condition,
+            price: self.price,
+            shipping_cost: self.seller_shipping_price,
+            seller_id: self.seller_id,
+            seller_key: self.seller_key,
+            listing_id: self.listing_id,
+        }
+    }
+}
+
+/// Every listing the query finds, as `getAllListings` pages them: pages of the query's size until
+/// the total is read, stopping after a page that reaches an ask delivered above `ceiling` (that
+/// page is kept whole).
+pub async fn all_listings<F, Fut>(
+    query: ListingsQuery,
+    ceiling: Option<f64>,
+    mut page: F,
+) -> Result<Vec<ListedAsk>, tcgplayer::Failure>
+where
+    F: FnMut(ListingsQuery) -> Fut,
+    Fut: Future<Output = Result<ListingsAnswer, tcgplayer::Failure>>,
+{
+    let size = query.size;
+    let mut from = 0;
+    let mut total = 0;
+    let mut listings = Vec::new();
+    loop {
+        let answer = page(ListingsQuery {
+            from,
+            ..query.clone()
+        })
+        .await?;
+        let Some(first) = answer.results.into_iter().next() else {
+            return Err(tcgplayer::Failure::Unreadable(
+                "a listings answer with no result set".into(),
+            ));
+        };
+        if from == 0 {
+            total = first.total_results;
+        }
+        let past_ceiling = ceiling.is_some_and(|c| first.results.iter().any(|l| l.delivered() > c));
+        listings.extend(first.results);
+        from += size;
+        if past_ceiling || listings.len() >= total || from >= total {
+            return Ok(listings);
+        }
+    }
+}
+
+/// The cheapest delivered ask on a page from someone other than the excluded seller, when it is
+/// a price (`fetchLowestListingPrice`).
+pub fn lowest_ask(page: &[ListedAsk], excluded_seller_key: Option<&str>) -> Option<f64> {
+    let ask = page
+        .iter()
+        .find(|l| excluded_seller_key.is_none_or(|key| l.seller_key != key))?;
+    let delivered = ask.delivered();
+    (delivered.is_finite() && delivered > 0.0).then_some(delivered)
+}
 
 /// The body of a latest-sales request (`GetLastestSalesRequestBody`).
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -150,6 +302,8 @@ const READ: Call = Call {
 pub struct TcgPlayerEvidence {
     pub tcg: TcgPlayer,
     pub db: Database,
+    /// Listings from unverified sellers compete too (`includeUnverifiedSellers`).
+    pub include_unverified_sellers: bool,
 }
 
 impl TcgPlayerEvidence {
@@ -265,15 +419,56 @@ impl Evidence for TcgPlayerEvidence {
         Some(answer.result.into_iter().map(History::from).collect())
     }
 
-    async fn listings(&self, _: &Sku, _: Option<f64>, _: Option<&str>) -> Supply {
-        Supply {
-            status: SupplyStatus::Unavailable,
-            listings: Vec::new(),
+    async fn listings(&self, sku: &Sku, ceiling: Option<f64>, excluded: Option<&str>) -> Supply {
+        let query = ListingsQuery::new(
+            sku,
+            None,
+            self.include_unverified_sellers,
+            LISTINGS_PAGE_SIZE,
+        );
+        let path = format!("/v1/product/{}/listings", sku.product_id);
+        match all_listings(query, ceiling, |q| {
+            let path = path.clone();
+            async move { self.tcg.post(Domain::MpSearchApi, &path, &q, READ).await }
+        })
+        .await
+        {
+            Ok(asks) => supply_analysis::cheapest_asks(
+                asks.into_iter().map(ListedAsk::into_listing).collect(),
+                excluded,
+            ),
+            Err(e) => {
+                eprintln!(
+                    "Failed to fetch listings for product {} ({}, {}): {e}",
+                    sku.product_id, sku.variant, sku.language
+                );
+                Supply {
+                    status: SupplyStatus::Unavailable,
+                    listings: Vec::new(),
+                }
+            }
         }
     }
 
-    async fn lowest_listing_price(&self, _: &Sku, _: Option<&str>) -> Option<f64> {
-        None
+    async fn lowest_listing_price(&self, sku: &Sku, excluded: Option<&str>) -> Option<f64> {
+        let size = if excluded.is_some() { 50 } else { 1 };
+        let query = ListingsQuery::new(
+            sku,
+            Some(&sku.condition),
+            self.include_unverified_sellers,
+            size,
+        );
+        let path = format!("/v1/product/{}/listings", sku.product_id);
+        let answer: ListingsAnswer = self
+            .tcg
+            .post(Domain::MpSearchApi, &path, &query, READ)
+            .await
+            .inspect_err(|e| eprintln!("Failed to fetch lowest listing for SKU {}: {e}", sku.sku))
+            .ok()?;
+        lowest_ask(
+            answer.results.first().map_or(&[][..], |p| &p.results),
+            excluded,
+        )
     }
 }
 
@@ -296,6 +491,129 @@ mod tests {
 
     fn sales(count: usize) -> Vec<Sale> {
         vec![Sale::default(); count]
+    }
+
+    fn ask(id: i64, condition: &str, price: f64, shipping: f64, seller: &str) -> ListedAsk {
+        ListedAsk {
+            listing_id: id,
+            condition: condition.into(),
+            price,
+            seller_shipping_price: shipping,
+            seller_id: String::new(),
+            seller_key: seller.into(),
+        }
+    }
+
+    fn sku() -> Sku {
+        Sku {
+            sku: 4410660,
+            product_id: 213155,
+            product_line_id: 3,
+            condition: "Near Mint".into(),
+            variant: "Holofoil".into(),
+            language: "English".into(),
+        }
+    }
+
+    #[test]
+    fn a_listings_search_asks_as_node_does() {
+        let body = serde_json::to_value(ListingsQuery::new(&sku(), None, false, 50)).unwrap();
+        assert_eq!(
+            body,
+            serde_json::json!({
+                "filters": {"term": {
+                    "listingType": ["standard"],
+                    "language": ["English"],
+                    "printing": ["Holofoil"],
+                    "verified-seller": true
+                }},
+                "from": 0,
+                "size": 50,
+                "sort": {"field": "price+shipping", "order": "asc"}
+            })
+        );
+        let own =
+            serde_json::to_value(ListingsQuery::new(&sku(), Some("Near Mint"), true, 1)).unwrap();
+        assert_eq!(
+            own["filters"]["term"]["condition"],
+            serde_json::json!(["Near Mint"])
+        );
+        assert!(own["filters"]["term"].get("verified-seller").is_none());
+    }
+
+    fn pages(
+        total: usize,
+        prices: Vec<Vec<f64>>,
+    ) -> impl FnMut(ListingsQuery) -> std::future::Ready<Result<ListingsAnswer, tcgplayer::Failure>>
+    {
+        move |q| {
+            let page = prices.get(q.from / q.size).cloned().unwrap_or_default();
+            std::future::ready(Ok(ListingsAnswer {
+                results: vec![ListingsPage {
+                    total_results: total,
+                    results: page
+                        .into_iter()
+                        .enumerate()
+                        .map(|(i, p)| ask(i as i64, "Near Mint", p, 0.0, "s"))
+                        .collect(),
+                }],
+            }))
+        }
+    }
+
+    #[tokio::test]
+    async fn listings_page_until_the_total_is_read() {
+        let q = ListingsQuery::new(&sku(), None, false, 2);
+        let all = all_listings(
+            q,
+            None,
+            pages(5, vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0]]),
+        )
+        .await
+        .unwrap();
+        assert_eq!(all.len(), 5);
+    }
+
+    #[tokio::test]
+    async fn listings_stop_after_the_page_that_passes_the_ceiling() {
+        let q = ListingsQuery::new(&sku(), None, false, 2);
+        let all = all_listings(
+            q,
+            Some(3.5),
+            pages(6, vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0, 6.0]]),
+        )
+        .await
+        .unwrap();
+        // The page holding 4.00 is kept whole; the next is not asked for.
+        assert_eq!(
+            all.iter().map(|l| l.price).collect::<Vec<_>>(),
+            [1.0, 2.0, 3.0, 4.0]
+        );
+    }
+
+    #[tokio::test]
+    async fn an_answer_with_no_result_set_fails_the_fetch() {
+        let q = ListingsQuery::new(&sku(), None, false, 50);
+        let failed = all_listings(q, None, |_| {
+            std::future::ready(Ok(ListingsAnswer::default()))
+        })
+        .await;
+        assert!(failed.is_err());
+    }
+
+    #[test]
+    fn the_lowest_ask_skips_the_store_and_needs_a_price() {
+        let page = [
+            ask(1, "Near Mint", 2.0, 0.99, "store"),
+            ask(2, "Near Mint", 3.0, 1.0, "other"),
+        ];
+        assert_eq!(lowest_ask(&page, Some("store")), Some(4.0));
+        assert_eq!(lowest_ask(&page, None), Some(2.99));
+        assert_eq!(
+            lowest_ask(&[ask(3, "Near Mint", 0.0, 0.0, "x")], None),
+            None
+        );
+        assert_eq!(lowest_ask(&[], None), None);
     }
 
     #[tokio::test]
@@ -400,6 +718,7 @@ mod tests {
         let evidence = TcgPlayerEvidence {
             tcg,
             db: db.clone(),
+            include_unverified_sellers: false,
         };
         let (product_id, product_line_id, variant, language): (i32, i32, String, String) =
             sqlx::query_as(

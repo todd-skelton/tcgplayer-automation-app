@@ -135,6 +135,7 @@ pub async fn start(db: crate::database::Database, signal: Signal) {
         evidence: crate::features::pricing::tcgplayer_evidence::TcgPlayerEvidence {
             tcg: tcg.clone(),
             db: db.clone(),
+            include_unverified_sellers: false,
         },
         market: super::market::TcgPlayerMarket(tcg),
         db,
