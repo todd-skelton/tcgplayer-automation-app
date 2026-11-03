@@ -15,9 +15,10 @@ import { PricedCondition, rows } from "corten/views";
  * @property {HTMLSelectElement} sold
  * @property {HTMLSelectElement} received
  * @property {HTMLInputElement} paid
- * @property {HTMLParagraphElement} same
- * @property {HTMLParagraphElement} enter
- * @property {HTMLParagraphElement} unpriced
+ * @property {HTMLDivElement} same
+ * @property {HTMLDivElement} enter
+ * @property {HTMLDivElement} unpriced
+ * @property {HTMLParagraphElement} unpriced_line
  * @property {HTMLDivElement} results
  * @property {HTMLElement} refund
  * @property {HTMLParagraphElement} keeps
@@ -107,7 +108,7 @@ function draw(d) {
   d.same.hidden = !same;
   d.enter.hidden = same || paid !== null;
   d.unpriced.hidden = same || paid === null || bySellAt !== null;
-  d.unpriced.textContent = d.unpriced_text({ condition: receivedName });
+  d.unpriced_line.textContent = d.unpriced_text({ condition: receivedName });
   d.results.hidden = same || bySellAt === null;
   if (bySellAt === null || paid === null) return;
   d.refund.textContent = usd(d, bySellAt.refund);

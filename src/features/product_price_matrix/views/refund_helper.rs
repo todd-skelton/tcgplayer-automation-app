@@ -4,7 +4,24 @@ use super::matrix_table::{ConditionNotes, Usd, cents};
 use crate::{
     features::product_price_matrix::matrix::{self, Cell, Matrix, Refund},
     text::Msg,
+    ui::{
+        alert::{Alert, AlertVariant},
+        control_width::{ControlWidth, Width},
+        field::Field,
+        input::Input,
+        select::Select,
+    },
 };
+
+// The dispute's controls, which the script reads; nothing posts them.
+#[derive(Id)]
+struct DisputeVariantId;
+#[derive(Id)]
+struct DisputeSoldId;
+#[derive(Id)]
+struct DisputeReceivedId;
+#[derive(Id)]
+struct DisputePaidId;
 
 const USD: Currency = Currency::new("USD");
 
@@ -99,7 +116,8 @@ pub fn PricedCondition<'a>(
 #[component(css, js)]
 pub fn RefundHelper<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
     let d = Dispute::opening(matrix);
-    let (variant, sold, received, paid, same, enter, unpriced, results, refund) = refs();
+    let (variant, sold, received, paid, same, enter, unpriced, unpriced_line, results, refund) =
+        refs();
     let (keeps, no_loss, sells, market, versus, no_market, relist, relist_note, notes, cells) =
         refs();
     let dispute = js::Dispute {
@@ -110,6 +128,7 @@ pub fn RefundHelper<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
         same,
         enter,
         unpriced,
+        unpriced_line,
         results,
         refund,
         keeps,
@@ -162,17 +181,17 @@ pub fn RefundHelper<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
                 "The refund that leaves the buyer paying what the received condition would sell for."
             </p>
             <div class={Controls}>
-                <label hidden={matrix.variants.len() <= 1}>
-                    "Variant"
-                    <select ref={variant}>
-                        for v in &matrix.variants {
-                            <option value={v} selected={v == d.variant}>{v}</option>
-                        }
-                    </select>
-                </label>
-                <label>
-                    "Sold as"
-                    <select ref={sold}>
+                <div hidden={matrix.variants.len() <= 1}>
+                    <Field id={DisputeVariantId} label="Variant" hint="" error="">
+                        <select class={Select {}} id={DisputeVariantId} ref={variant}>
+                            for v in &matrix.variants {
+                                <option value={v} selected={v == d.variant}>{v}</option>
+                            }
+                        </select>
+                    </Field>
+                </div>
+                <Field id={DisputeSoldId} label="Sold as" hint="" error="">
+                    <select class={Select {}} id={DisputeSoldId} ref={sold}>
                         for c in &all_conditions {
                             <option
                                 value={*c}
@@ -183,10 +202,9 @@ pub fn RefundHelper<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
                             </option>
                         }
                     </select>
-                </label>
-                <label>
-                    "Received as"
-                    <select ref={received}>
+                </Field>
+                <Field id={DisputeReceivedId} label="Received as" hint="" error="">
+                    <select class={Select {}} id={DisputeReceivedId} ref={received}>
                         for c in &all_conditions {
                             <option
                                 value={*c}
@@ -197,27 +215,39 @@ pub fn RefundHelper<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
                             </option>
                         }
                     </select>
-                </label>
-                <label>
-                    "Price paid"
-                    <span class={Paid}>
-                        "$"<input ref={paid} value={&paid_text} inputmode="decimal" size="8">
-                    </span>
-                </label>
+                </Field>
+                // The kit has no adornment inside a control's box (corten#698): the dollar sign
+                // sits beside it in the field's row.
+                <Field id={DisputePaidId} label="Price paid" hint="" error="">
+                    <span aria-hidden="true">"$"</span>
+                    <input
+                        class={(Input {}, ControlWidth { width: Width::Sm })}
+                        id={DisputePaidId}
+                        ref={paid}
+                        value={&paid_text}
+                        inputmode="decimal"
+                    >
+                </Field>
             </div>
-            <p ref={same} class={(Notice, Info)} hidden={!d.same()}>
-                "Sold and received conditions match, so there is nothing to refund."
-            </p>
-            <p ref={enter} class={(Notice, Warn)} hidden={d.same() || d.paid.is_some()}>
-                "Enter the price the buyer paid."
-            </p>
-            <p
+            // The script shows one of these at a time; each is the kit's Alert in a box it hides.
+            <div ref={same} hidden={!d.same()}>
+                <Alert variant={AlertVariant::Info}>
+                    <p>"Sold and received conditions match, so there is nothing to refund."</p>
+                </Alert>
+            </div>
+            <div ref={enter} hidden={d.same() || d.paid.is_some()}>
+                <Alert variant={AlertVariant::Warning}>
+                    <p>"Enter the price the buyer paid."</p>
+                </Alert>
+            </div>
+            <div
                 ref={unpriced}
-                class={(Notice, Warn)}
                 hidden={d.same() || d.paid.is_none() || by_sell_at.is_some()}
             >
-                {t.price_matrix_unpriced(received_name)}
-            </p>
+                <Alert variant={AlertVariant::Warning}>
+                    <p ref={unpriced_line}>{t.price_matrix_unpriced(received_name)}</p>
+                </Alert>
+            </div>
             <div ref={results} class={Results} hidden={!shown}>
                 <div>
                     <small class={Overline}>"Refund by what you would sell at"</small>
@@ -307,6 +337,51 @@ pub fn RefundHelper<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Two conditions of one variant, priced, as suggested pricing draws them.
+    fn priced() -> Matrix {
+        serde_json::from_value(serde_json::json!({
+            "variants": ["Normal"],
+            "suggestedPricesIncluded": true,
+            "pricedAt": "2026-11-03T00:00:00Z",
+            "cells": [
+                {"sku": 1, "condition": "Near Mint", "variant": "Normal", "language": "English",
+                 "tcgMarketPrice": 10.0, "lowestSalePrice": null, "highestSalePrice": null,
+                 "listing": null, "sellAtPrice": 10.0, "ladderPrice": 10.0, "marketLadderPrice": 10.0,
+                 "estimatedTimeToSellDays": null, "pricingDecision": null,
+                 "shadowPricingDecision": null, "conditionNormalization": null},
+                {"sku": 2, "condition": "Lightly Played", "variant": "Normal", "language": "English",
+                 "tcgMarketPrice": 8.0, "lowestSalePrice": null, "highestSalePrice": null,
+                 "listing": null, "sellAtPrice": 8.0, "ladderPrice": 8.0, "marketLadderPrice": 8.0,
+                 "estimatedTimeToSellDays": null, "pricingDecision": null,
+                 "shadowPricingDecision": null, "conditionNormalization": null}
+            ]
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn each_control_is_a_kit_field_its_label_names() {
+        let html = RefundHelper {
+            matrix: &priced(),
+            t: Msg::default(),
+        }
+        .to_html();
+        for id in ["dispute-sold", "dispute-received", "dispute-paid"] {
+            assert!(
+                html.contains(&format!("for=\"{id}\"")),
+                "{id} has no label: {html}"
+            );
+            assert!(
+                html.contains(&format!("id=\"{id}\"")),
+                "{id} has no control: {html}"
+            );
+        }
+        // Near Mint sold, Lightly Played received, $10 paid: a $2 refund, no notice shown.
+        assert!(html.contains("value=\"10.00\""), "{html}");
+        assert!(html.contains("$2.00"), "{html}");
+        assert_eq!(html.matches("alert__alert").count(), 3, "{html}");
+    }
 
     #[test]
     fn a_difference_is_written_with_its_sign() {

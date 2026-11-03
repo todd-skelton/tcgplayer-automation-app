@@ -14,6 +14,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         dialog::{Dialog, DialogFooter},
+        popover::Popover,
         steps::{Step as StepLink, StepState, Steps},
     },
 };
@@ -24,6 +25,9 @@ struct NewBatchDialogId;
 struct NewBatchHeadingId;
 #[derive(Id)]
 struct RefusedId;
+/// The split button's other way on: skip ahead before the step is done.
+#[derive(Id)]
+struct SkipPopoverId;
 
 /// Why the last post on the page was refused; empty when it was not. A refused post with
 /// JavaScript replaces it alone, so the page keeps what the user had in front of them.
@@ -190,17 +194,19 @@ pub fn StepBar<'a>(
                                 "Continue to "{next.label()}
                             </button>
                             if progress.can_skip {
-                                <details class={Skip}>
-                                    <summary
-                                        aria-label="More ways to continue"
-                                        class={SkipToggle}
-                                    >
-                                        "▾"
-                                    </summary>
+                                <button
+                                    class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}
+                                    type="button"
+                                    popovertarget={SkipPopoverId}
+                                    aria-label="More ways to continue"
+                                >
+                                    "▾"
+                                </button>
+                                <div popover id={SkipPopoverId} class={(Popover {}, Skip)}>
                                     <a href={ShippingWorkflow::at(next)}>
                                         "Skip to "{next.label()}" before this step is done"
                                     </a>
-                                </details>
+                                </div>
                             }
                         </span>
                     }

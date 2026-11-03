@@ -13,27 +13,9 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
-  & label {
-    display: grid;
-    gap: var(--space-1);
+  & > * {
     min-width: 180px;
-    font-size: var(--font-size-sm);
   }
-}
-.paid {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-.notice {
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-}
-.info {
-  background: color-mix(in srgb, var(--info) 12%, transparent);
-}
-.warn {
-  background: color-mix(in srgb, var(--warning) 14%, transparent);
 }
 .results {
   display: flex;

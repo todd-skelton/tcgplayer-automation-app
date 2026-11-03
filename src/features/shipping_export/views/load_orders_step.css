@@ -20,35 +20,29 @@
     gap: var(--space-3);
   }
 }
-.menu {
+.history {
   margin-inline-start: auto;
-  position: relative;
-  & summary {
-    cursor: pointer;
-    padding: var(--space-1) var(--space-3);
-  }
 }
-.menu-items {
-  position: absolute;
-  inset-inline-end: 0;
-  z-index: 10;
+/* Wider than the kit's popover: each form says what it does under its name. */
+[popover].history-forms {
   display: grid;
-  gap: var(--space-2);
-  width: 440px;
-  padding: var(--space-3);
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  & button,
+  gap: var(--space-3);
+  width: min(27.5rem, calc(100vw - 1rem));
+  & form {
+    display: grid;
+    gap: var(--space-2);
+  }
+  & form > button:first-of-type:has(strong),
   & label {
     display: grid;
     gap: 2px;
+    height: auto;
+    justify-items: start;
     text-align: start;
-    width: 100%;
+    white-space: normal;
   }
   & small {
     color: var(--muted-foreground);
-    white-space: normal;
+    font-weight: 400;
   }
 }

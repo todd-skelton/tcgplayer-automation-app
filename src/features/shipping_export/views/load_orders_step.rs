@@ -26,6 +26,8 @@ struct LoadOrdersSellerFormId;
 
 #[derive(Id)]
 struct SellerPopoverId;
+#[derive(Id)]
+struct OrderHistoryPopoverId;
 
 /// What the Load Orders step shows.
 pub struct Loading<'a> {
@@ -116,39 +118,50 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
                         "Lookup Single Order"
                     </button>
                 </form>
-                <details class={Menu}>
-                    <summary>"Order History"</summary>
-                    <div class={MenuItems}>
-                        <form method="post" action={url::OrderHistory} data-patch>
-                            <input type="hidden" name={h.seller_key} value={seller}>
-                            <button>
-                                <strong>"Catch Up Order History"</strong>
-                                <small>
-                                    match &loading.coverage {
-                                        Some(Ok(coverage)) => { {coverage.describe()} }
-                                        _ => "Advances a saved scan of TCGPlayer's last three months, so orders stay on record after they ship.",
-                                    }
-                                </small>
-                            </button>
-                        </form>
-                        <form
-                            method="post"
-                            action={url::ImportHistory}
-                            enctype="multipart/form-data"
-                            data-patch
+                // Two forms, one with a file, not a list of commands: the kit's Popover, not its menu.
+                <button
+                    type="button"
+                    popovertarget={OrderHistoryPopoverId}
+                    class={(Button { variant: ButtonVariant::Ghost, size: ButtonSize::Md }, History)}
+                >
+                    "Order History"
+                </button>
+                <div popover id={OrderHistoryPopoverId} class={(Popover {}, HistoryForms)}>
+                    <form method="post" action={url::OrderHistory} data-patch>
+                        <input type="hidden" name={h.seller_key} value={seller}>
+                        <button
+                            class={Button { variant: ButtonVariant::Ghost, size: ButtonSize::Md }}
                         >
-                            <input type="hidden" name={h.seller_key} value={seller}>
-                            <label>
-                                <strong>"Import Older Order CSV"</strong>
-                                <small>
-                                    "A USD order export for orders older than the three-month API window."
-                                </small>
-                                <input type="file" name={h.file} accept=".csv,text/csv" required>
-                            </label>
-                            <button>"Import"</button>
-                        </form>
-                    </div>
-                </details>
+                            <strong>"Catch Up Order History"</strong>
+                            <small>
+                                match &loading.coverage {
+                                    Some(Ok(coverage)) => { {coverage.describe()} }
+                                    _ => "Advances a saved scan of TCGPlayer's last three months, so orders stay on record after they ship.",
+                                }
+                            </small>
+                        </button>
+                    </form>
+                    <form
+                        method="post"
+                        action={url::ImportHistory}
+                        enctype="multipart/form-data"
+                        data-patch
+                    >
+                        <input type="hidden" name={h.seller_key} value={seller}>
+                        <label>
+                            <strong>"Import Older Order CSV"</strong>
+                            <small>
+                                "A USD order export for orders older than the three-month API window."
+                            </small>
+                            <input type="file" name={h.file} accept=".csv,text/csv" required>
+                        </label>
+                        <button
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                        >
+                            "Import"
+                        </button>
+                    </form>
+                </div>
             </div>
             if let Some((source, count)) = loading.source {
                 <p class={row(Space::_2)}>
