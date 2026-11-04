@@ -23,11 +23,8 @@ pub async fn packing_slips(
     req: Req,
     State(db): State<Database>,
     Params(at): Params<url::PackingSlips>,
-) -> NoStore<corten::Result<PageOr<Media>>> {
-    NoStore(packing_slips_pdf(req, db, at.open == Some(true)).await)
-}
-
-async fn packing_slips_pdf(req: Req, db: Database, open: bool) -> corten::Result<PageOr<Media>> {
+) -> corten::Result<PageOr<Media>> {
+    let open = at.open == Some(true);
     let (config, saved) = tokio::join!(
         shipping_configuration::settings(&db),
         workflow::current(&db)

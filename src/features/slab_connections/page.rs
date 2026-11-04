@@ -15,14 +15,9 @@ use crate::{
 };
 
 /// The connections and their status, which nothing keeps (React's loader said `no-store`).
-pub async fn show(req: Req, State(db): State<Database>) -> NoStore<HtmlResult> {
-    NoStore(
-        async {
-            let connections = store::connections(&db.0).await?;
-            screen(&req, &db, &connections, None).await
-        }
-        .await,
-    )
+pub async fn show(req: Req, State(db): State<Database>) -> HtmlResult {
+    let connections = store::connections(&db.0).await?;
+    screen(&req, &db, &connections, None).await
 }
 
 async fn screen(

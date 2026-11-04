@@ -124,7 +124,7 @@ pub mod url {
     }
 
     /// `open` shows the PDF in the browser's viewer; without it, it is saved.
-    #[route("/shipping-export/packing-slips", get = packing_slips)]
+    #[route("/shipping-export/packing-slips", get = packing_slips, no_store)]
     pub struct PackingSlips {
         pub open: Option<bool>,
     }

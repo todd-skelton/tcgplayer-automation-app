@@ -33,7 +33,7 @@ use page::{check, remove, save, show};
 pub mod url {
     use super::provider::Provider;
 
-    #[route("/slab-connections", get = show)]
+    #[route("/slab-connections", get = show, no_store)]
     pub struct SlabConnections;
 
     #[route("/slab-connections/{provider}", post = save)]
