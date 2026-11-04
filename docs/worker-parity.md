@@ -18,8 +18,21 @@ order number, their lines and FIFO lines by SKU id, revisions by revision number
 | Batch pricing, full job | `twin-pricing-worker.mjs 3471 full` | 2026-11-03 | same tables, rows and 17 listing snapshots; numbers moved with the market only |
 | Continuous pricing scheduler | `twin-continuous-scheduler.mjs` | 2026-11-04 | one live refresh (802 listings) and one 50-SKU batch each; 56,471 values, 0 differ |
 | Seller order history (sync, FIFO replay, cost estimates) | `twin-seller-order-history.mjs` | 2026-11-04 | sync complete on both (1,640 orders, 78 details read); 13 tables, 533,113 values, 0 differ |
-| Slab evidence | not yet | | |
-| Inventory publication | not yet; only with Seller Portal writes off | | |
+| Slab evidence | no twin: the dev database holds no slab data | | see below |
+| Inventory publication | no twin: it posts to Seller Portal | | see below |
+
+Where a twin cannot run, Node's code is recorded instead, against the same committed provider
+fixtures or dev batches the Rust tests replay:
+
+1. `scripts/parity/slab-parsers.ts`: Node's Alt and eBay Research readers over the provider
+   fixtures and 34 edge cases (`tests/fixtures/node/slab/*-parse.json`), checked in every gate.
+2. `scripts/parity/slab-evidence.mjs`: Node's evidence queue, worker job (a stand-in fetch) and
+   supply scans on a schema-only database (`tests/fixtures/node/slab`).
+3. `scripts/parity/publish-selections.mjs`: Node's publication planning of ten dev cases, each on a
+   fresh copy of the dev database (`tests/fixtures/node/publication`).
+
+Still waiting on a recording: the publication worker's turns against a stand-in Seller Portal, and
+the slab maintenance cycle.
 
 The unit tests that replayed Node's answers from `.port-logs` (never committed) are being replaced
 by these runs, worker by worker. Those still waiting on theirs are marked
