@@ -287,7 +287,7 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 [[package]]
 name = "corten"
 version = "0.1.0"
-source = "git+https://github.com/todd-skelton/corten?rev=d3c67515#d3c67515995908f7e0503039818af89d696e0d21"
+source = "git+https://github.com/todd-skelton/corten?rev=c933e8da#c933e8daf1e63f58f47ab45e7e2e915ac00683cf"
 dependencies = [
  "axum",
  "brotli",
@@ -315,12 +315,12 @@ dependencies = [
 [[package]]
 name = "corten-macros"
 version = "0.1.0"
-source = "git+https://github.com/todd-skelton/corten?rev=d3c67515#d3c67515995908f7e0503039818af89d696e0d21"
+source = "git+https://github.com/todd-skelton/corten?rev=c933e8da#c933e8daf1e63f58f47ab45e7e2e915ac00683cf"
 
 [[package]]
 name = "corten-ui"
 version = "0.1.0"
-source = "git+https://github.com/todd-skelton/corten?rev=d3c67515#d3c67515995908f7e0503039818af89d696e0d21"
+source = "git+https://github.com/todd-skelton/corten?rev=c933e8da#c933e8daf1e63f58f47ab45e7e2e915ac00683cf"
 dependencies = [
  "corten",
 ]
@@ -512,7 +512,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1519,7 +1519,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
