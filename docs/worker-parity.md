@@ -56,6 +56,9 @@ Workers move to Rust in dev one at a time; production keeps Node's until Todd ap
 | Worker | Dev owner | Switch |
 | --- | --- | --- |
 | Batch pricing | Corten app | `PRICING_WORKER=1` in `.env.development.local`; Node's `ensureInventoryBatchPricingWorker` reads it and stays off |
-| Continuous pricing scheduler, seller order history, slab evidence, inventory publication | Node | unchanged |
+| Continuous pricing scheduler | Corten app | `CONTINUOUS_PRICING_SCHEDULER=1` in `.env.development.local`; Node's scheduler (`app/workers/continuous-pricing-scheduler.server.ts`, which `npm run dev` does not start) exits at once when it sees it |
+| Seller order history, slab evidence, inventory publication | Node | unchanged |
+
+The Rust scheduler's first dev run, from `.env.development.local` alone: it refreshed the seller's inventory and queued batch 3771 (job 3704) and, once the worker claimed that, batch 3772 (job 3705), 50 SKUs each in full mode. The Rust worker priced job 3704 in 30 m 34 s, 50 of 50 results successful, and the pricing planned continuous publication 8217 with 41 items, left planned since dev publishes nothing. Node's recent full continuous jobs of 36 SKUs took 23 to 34 minutes. The run was stopped with job 3705 claimed; the next worker reclaims it when the claim expires. Node's scheduler entry, started with the switch set, printed that it was off and exited.
 
 Batch pricing's first dev jobs under the Rust worker, queued from the port's Batch Pricer: job 3702 (batch 3516, cached, 36 SKUs) in 0.6 s, and job 3703 (batch 2730, full, 16 SKUs, live TCGplayer reads) in 6 m 13 s, 16 processed, 0 errors, 2 warnings, as Node's last full job of that batch (2735) had.

@@ -504,8 +504,8 @@ fn pause(cycle: &Cycle, settings: &Settings) -> std::time::Duration {
     std::time::Duration::from_millis((seconds.max(0) as u64 * 1_000).max(1_000))
 }
 
-/// Whether `CONTINUOUS_PRICING_SCHEDULER` turns the scheduler on: Node's scheduler queues the
-/// batches until cutover, and both read the seller's inventory from TCGplayer.
+/// Whether `CONTINUOUS_PRICING_SCHEDULER` turns the scheduler on. Dev sets it, and Node's
+/// scheduler exits when it sees it; production keeps Node's until cutover is approved.
 pub fn on() -> bool {
     crate::config::is_set("CONTINUOUS_PRICING_SCHEDULER")
 }

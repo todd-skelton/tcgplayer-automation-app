@@ -5,8 +5,8 @@
 //!
 //! Everything is read and written here, with the Node app's queries: the schedule, the inventory,
 //! pausing or enabling a SKU, refreshing the inventory from TCGplayer ([`refresh`]), a scheduler
-//! cycle and repricing from saved curves ([`scheduler`]). The scheduler's own task is off unless
-//! `CONTINUOUS_PRICING_SCHEDULER` is set, so Node's keeps queueing until cutover.
+//! cycle and repricing from saved curves ([`scheduler`]). The scheduler's own task runs when
+//! `CONTINUOUS_PRICING_SCHEDULER` is set, as dev sets it; production keeps Node's until cutover.
 //!
 //! | Route | Answer |
 //! |---|---|
