@@ -16,6 +16,7 @@ use super::{
 use crate::{
     database::Database,
     features::{batch_pricing::market::TcgPlayerMarket, inventory_economics::estimate},
+    js_number,
     layout::{Chrome, Layout},
     tcgplayer::TcgPlayer,
 };
@@ -99,10 +100,11 @@ pub async fn show(
     page(&req, &db, &at.selection, &Drawn::default()).await
 }
 
-/// What a page is drawn with besides the stored state: a refused change, and the queue form as
-/// sent with its errors. What the last queue did is the layout's notice.
+/// What a page is drawn with besides the stored state: its status, a refused change, and the queue
+/// form as sent with its errors. What the last queue did is the layout's notice.
 #[derive(Default)]
 struct Drawn<'a> {
+    status: StatusCode,
     error: Option<&'a str>,
     input: Option<&'a QueueInput>,
     errors: Option<&'a Errors>,
@@ -122,24 +124,43 @@ async fn page(req: &Req, db: &Database, selection: &Selection, drawn: &Drawn<'_>
         input: drawn.input.unwrap_or(&fresh),
         errors: drawn.errors.unwrap_or(&none),
     };
-    req.page(html! {
-        <Layout req={req} title="Inventory Manager" chrome={chrome} head="">
-            <IntakeScreen screen={&screen} error={drawn.error} queuing={&queuing} />
-        </Layout>
-    })
+    req.page_with_status(
+        drawn.status,
+        html! {
+            <Layout req={req} title="Inventory Manager" chrome={chrome} head="">
+                <IntakeScreen screen={&screen} error={drawn.error} queuing={&queuing} />
+            </Layout>
+        },
+    )
 }
 
-/// A SKU's count as its form sends it: the count, the count the server last answered (so a count
-/// changed meanwhile is refused), and the key the change is applied once by.
+/// A SKU's count as its form sends it: the count as typed, the count the server last answered (so
+/// a count changed meanwhile is refused), and the key the change is applied once by.
 #[derive(Clone, Debug, Deserialize, Fields)]
 pub struct CountInput {
-    pub quantity: u32,
+    pub quantity: String,
     pub seen: u32,
     pub submit: SubmitKey,
 }
 
+impl CountInput {
+    /// The count typed, read as the screen's script reads it (`Number.parseInt`, never below
+    /// zero, nothing readable is zero), so a form sent without the script counts the same.
+    pub fn quantity(&self) -> Result<u32, String> {
+        typed_count(&self.quantity)
+    }
+}
+
+fn typed_count(text: &str) -> Result<u32, String> {
+    let typed = js_number::parse_int(text).unwrap_or(0.0).max(0.0);
+    if typed > f64::from(i32::MAX) {
+        return Err(format!("A count of {typed} is too large."));
+    }
+    Ok(typed as u32)
+}
+
 /// The SKU's form with the count stored, the totals, and what went wrong, if anything. Without
-/// JavaScript, the screen again.
+/// JavaScript, the screen again, with why when the change was refused.
 pub async fn count(
     req: Req,
     State(db): State<Database>,
@@ -155,20 +176,35 @@ pub async fn count(
         product_id: product.product_id,
     };
     let market = TcgPlayerMarket(TcgPlayer::new(db.clone()));
-    let applied = pending::set(
-        &db,
-        &market,
-        input.submit.as_str(),
-        at.sku,
-        place,
-        input.quantity,
-        input.seen,
-    )
-    .await;
+    let applied = match input.quantity() {
+        Ok(quantity) => {
+            pending::set(
+                &db,
+                &market,
+                input.submit.as_str(),
+                at.sku,
+                place,
+                quantity,
+                input.seen,
+            )
+            .await
+        }
+        Err(message) => Err(message),
+    };
     if req.mode != Mode::Action {
-        return req.redirect(&url::InventoryManager {
-            selection: at.selection,
-        });
+        return match applied {
+            Ok(_) => req.redirect(&url::InventoryManager {
+                selection: at.selection,
+            }),
+            Err(message) => {
+                let drawn = Drawn {
+                    status: StatusCode::CONFLICT,
+                    error: Some(&message),
+                    ..Drawn::default()
+                };
+                page(&req, &db, &at.selection, &drawn).await
+            }
+        };
     }
     let quantities = pending::quantities(&db).await?;
     let stored = quantities.get(&at.sku).copied().unwrap_or(0);
@@ -484,4 +520,30 @@ pub async fn change_rate(
         />
         {ReadAgain { after: BATCHES_EVERY }.from(&again)}
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::typed_count;
+
+    #[test]
+    fn a_count_reads_as_the_script_reads_it() {
+        for (typed, count) in [
+            ("2", 2),
+            (" 2", 2),
+            ("1.0", 1),
+            ("3 cards", 3),
+            ("1e3", 1),
+            ("-1", 0),
+            ("", 0),
+            ("abc", 0),
+            ("2147483647", 2_147_483_647),
+        ] {
+            assert_eq!(typed_count(typed), Ok(count), "{typed:?}");
+        }
+        assert_eq!(
+            typed_count("99999999999"),
+            Err("A count of 99999999999 is too large.".to_owned())
+        );
+    }
 }
