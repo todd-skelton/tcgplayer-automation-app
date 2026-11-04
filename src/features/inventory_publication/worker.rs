@@ -165,7 +165,7 @@ mod tests {
     use super::*;
     use crate::features::inventory_publication::seller_portal::{Answer, Unsuccessful};
 
-    /// Seller Portal as `.port-logs/pubworker-node.ts` stands it in: each post answered with the
+    /// Seller Portal as `scripts/parity/pubworker.ts` stands it in: each post answered with the
     /// case's next scripted answer (`$rows` the rows the post carried, `$uploaded` every SKU
     /// uploaded so far, published) and its form recorded.
     struct StandIn {
@@ -261,20 +261,24 @@ mod tests {
         }
     }
 
-    /// The cases in `.port-logs/pubworker-cases.json` on the dev database, a turn at a time
-    /// against Seller Portal stood in, in one transaction rolled back (a savepoint each): the
-    /// turns, the forms posted and everything written as Node's worker did
-    /// (`.port-logs/pubworker-node.ts`). Received inventory planned from its intake run and made
-    /// live; a continuous publication's refused row, warning, error and missing outcome; a
-    /// refused sign-in, a refused upload, a partial one whose rollback fails, a failed move to
-    /// live, a refused finalize and an unreadable upload id; lost workers' publications put
-    /// right; intake runs left for review; a direct publication.
+    /// The cases in `tests/fixtures/node/publication/pubworker-cases.json` on the dev database,
+    /// a turn at a time against Seller Portal stood in, in one transaction rolled back (a
+    /// savepoint each): the turns, the forms posted and everything written as Node's worker did
+    /// (`scripts/parity/pubworker.ts`, a fresh copy of dev for each case). Received inventory
+    /// planned from its intake run and made live; a continuous publication's refused row,
+    /// warning, error and missing outcome; a refused, challenged or unreachable sign-in, an
+    /// unreadable upload id, a refused upload, a partial one whose rollback fails, a refused
+    /// finalize, and a move to live that failed or was refused; lost workers' publications put
+    /// right; intake runs left for review; a direct publication; paused publishing and an open
+    /// circuit.
     #[tokio::test]
     #[ignore = "writes the dev database in a transaction it rolls back"]
     async fn turns_run_as_node_runs_them() {
         crate::config::load_env();
         let db = Database::connect_lazy(&crate::config::database_url());
-        let read = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
+        let read = |name: &str| {
+            std::fs::read_to_string(format!("tests/fixtures/node/publication/{name}")).unwrap()
+        };
         let node: Vec<Value> = serde_json::from_str(&read("pubworker.node.json")).unwrap();
         let cases: Vec<Value> = serde_json::from_str(&read("pubworker-cases.json")).unwrap();
         let capture = read("pubworker-capture.sql");

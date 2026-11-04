@@ -1,0 +1,8417 @@
+[
+ {
+  "name": "received inventory planned from its intake run and made live",
+  "turns": [
+   "published inventory-batch-pricing-job:990000001:selection",
+   "nothing planned"
+  ],
+  "calls": [
+   {
+    "path": "/admin/pricing/initializeexportcsv",
+    "form": "filename=inventory-publication-ID.csv&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/uploadexportcsv",
+    "form": "data%5B0%5D%5BId%5D=0&data%5B0%5D%5BProductConditionId%5D=4170370&data%5B0%5D%5BAddToQuantity%5D=1&data%5B0%5D%5BMyPrice%5D=7.47&data%5B1%5D%5BId%5D=1&data%5B1%5D%5BProductConditionId%5D=4479454&data%5B1%5D%5BAddToQuantity%5D=1&data%5B1%5D%5BMyPrice%5D=25.93&data%5B2%5D%5BId%5D=2&data%5B2%5D%5BProductConditionId%5D=4529895&data%5B2%5D%5BAddToQuantity%5D=2&data%5B2%5D%5BMyPrice%5D=5.23&data%5B3%5D%5BId%5D=3&data%5B3%5D%5BProductConditionId%5D=4529896&data%5B3%5D%5BAddToQuantity%5D=1&data%5B3%5D%5BMyPrice%5D=2.87&data%5B4%5D%5BId%5D=4&data%5B4%5D%5BProductConditionId%5D=3765549&data%5B4%5D%5BAddToQuantity%5D=1&data%5B4%5D%5BMyPrice%5D=2.28&data%5B5%5D%5BId%5D=5&data%5B5%5D%5BProductConditionId%5D=4279660&data%5B5%5D%5BAddToQuantity%5D=2&data%5B5%5D%5BMyPrice%5D=0.96&data%5B6%5D%5BId%5D=6&data%5B6%5D%5BProductConditionId%5D=4173710&data%5B6%5D%5BAddToQuantity%5D=2&data%5B6%5D%5BMyPrice%5D=36.88&data%5B7%5D%5BId%5D=7&data%5B7%5D%5BProductConditionId%5D=4173706&data%5B7%5D%5BAddToQuantity%5D=1&data%5B7%5D%5BMyPrice%5D=2.08&data%5B8%5D%5BId%5D=8&data%5B8%5D%5BProductConditionId%5D=3369472&data%5B8%5D%5BAddToQuantity%5D=2&data%5B8%5D%5BMyPrice%5D=5.97&data%5B9%5D%5BId%5D=9&data%5B9%5D%5BProductConditionId%5D=8013892&data%5B9%5D%5BAddToQuantity%5D=1&data%5B9%5D%5BMyPrice%5D=36.99&data%5B10%5D%5BId%5D=10&data%5B10%5D%5BProductConditionId%5D=4218044&data%5B10%5D%5BAddToQuantity%5D=1&data%5B10%5D%5BMyPrice%5D=1.48&data%5B11%5D%5BId%5D=11&data%5B11%5D%5BProductConditionId%5D=4218045&data%5B11%5D%5BAddToQuantity%5D=1&data%5B11%5D%5BMyPrice%5D=1.17&data%5B12%5D%5BId%5D=12&data%5B12%5D%5BProductConditionId%5D=8428989&data%5B12%5D%5BAddToQuantity%5D=3&data%5B12%5D%5BMyPrice%5D=3.62&data%5B13%5D%5BId%5D=13&data%5B13%5D%5BProductConditionId%5D=3840859&data%5B13%5D%5BAddToQuantity%5D=2&data%5B13%5D%5BMyPrice%5D=15.77&data%5B14%5D%5BId%5D=14&data%5B14%5D%5BProductConditionId%5D=3840860&data%5B14%5D%5BAddToQuantity%5D=2&data%5B14%5D%5BMyPrice%5D=9.89&data%5B15%5D%5BId%5D=15&data%5B15%5D%5BProductConditionId%5D=3263413&data%5B15%5D%5BAddToQuantity%5D=2&data%5B15%5D%5BMyPrice%5D=4.66&stagedPricingUploadId=7001&fileName=inventory-publication-ID.csv&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/finalizeexportcsv",
+    "form": "stagedPricingUploadId=7001&productCount=16&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/movetolive",
+    "form": "scope=3&connectionId=&stagedPricingUploadId=7001&type=Pricing"
+   }
+  ],
+  "left": 0,
+  "captured": {
+   "publications": [
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "batch": 990001,
+     "job": 990000001,
+     "method": "staged_delta",
+     "source": "pending_inventory",
+     "seller": "pubworker",
+     "status": "published",
+     "upload": 7001,
+     "config": {
+      "mode": "manual",
+      "policy": {
+       "allowWarnings": false,
+       "automaticSources": {
+        "csv": false,
+        "seller": false,
+        "continuous": true,
+        "pending_inventory": true
+       },
+       "stagedFlushWindowMs": 60000,
+       "maximumCandidateAgeMs": 86400000,
+       "stagedMicroBatchMaximum": 250,
+       "automaticPublishingEnabled": true,
+       "minimumAbsolutePriceChange": 0.01,
+       "minimumRelativePriceChangePercent": 0
+      },
+      "selectedSkus": [
+       4170370,
+       4479454,
+       4529895,
+       4529896,
+       3765549,
+       4279660,
+       4173710,
+       4173706,
+       3369472,
+       8013892,
+       4218044,
+       4218045,
+       8428989,
+       3840859,
+       3840860,
+       3263413
+      ]
+     },
+     "progress": null,
+     "errorCode": null,
+     "errorMessage": null,
+     "attempts": 1,
+     "claimedBy": null,
+     "leased": false,
+     "staged": true,
+     "publishing": true,
+     "published": true,
+     "completed": true,
+     "publishedWithItems": false
+    }
+   ],
+   "items": [
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 3263413,
+     "batch": 990001,
+     "productId": 127137,
+     "condition": "Lightly Played Holofoil",
+     "previousPrice": null,
+     "desiredPrice": 4.66,
+     "quantityDelta": 2,
+     "deltaKey": true,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "recorded"
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 3369472,
+     "batch": 990001,
+     "productId": 131740,
+     "condition": "Lightly Played Reverse Holofoil",
+     "previousPrice": null,
+     "desiredPrice": 5.97,
+     "quantityDelta": 2,
+     "deltaKey": true,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "recorded"
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 3765549,
+     "batch": 990001,
+     "productId": 169142,
+     "condition": "Lightly Played Reverse Holofoil",
+     "previousPrice": null,
+     "desiredPrice": 2.28,
+     "quantityDelta": 1,
+     "deltaKey": true,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "recorded"
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 3840859,
+     "batch": 990001,
+     "productId": 174503,
+     "condition": "Near Mint Reverse Holofoil",
+     "previousPrice": null,
+     "desiredPrice": 15.77,
+     "quantityDelta": 2,
+     "deltaKey": true,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "recorded"
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 3840860,
+     "batch": 990001,
+     "productId": 174503,
+     "condition": "Lightly Played Reverse Holofoil",
+     "previousPrice": null,
+     "desiredPrice": 9.89,
+     "quantityDelta": 2,
+     "deltaKey": true,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "recorded"
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4170370,
+     "batch": 990001,
+     "productId": 197853,
+     "condition": "Near Mint Holofoil",
+     "previousPrice": null,
+     "desiredPrice": 7.47,
+     "quantityDelta": 1,
+     "deltaKey": true,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "recorded"
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4173706,
+     "batch": 990001,
+     "productId": 198227,
+     "condition": "Lightly Played Reverse Holofoil",
+     "previousPrice": null,
+     "desiredPrice": 2.08,
+     "quantityDelta": 1,
+     "deltaKey": true,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "recorded"
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4173710,
+     "batch": 990001,
+     "productId": 198228,
+     "condition": "Near Mint Reverse Holofoil",
+     "previousPrice": null,
+     "desiredPrice": 36.88,
+     "quantityDelta": 2,
+     "deltaKey": true,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "recorded"
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4218044,
+     "batch": 990001,
+     "productId": 199679,
+     "condition": "Near Mint Reverse Holofoil",
+     "previousPrice": null,
+     "desiredPrice": 1.48,
+     "quantityDelta": 1,
+     "deltaKey": true,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "recorded"
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4218045,
+     "batch": 990001,
+     "productId": 199679,
+     "condition": "Lightly Played Reverse Holofoil",
+     "previousPrice": null,
+     "desiredPrice": 1.17,
+     "quantityDelta": 1,
+     "deltaKey": true,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "recorded"
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4279660,
+     "batch": 990001,
+     "productId": 205311,
+     "condition": "Near Mint Reverse Holofoil",
+     "previousPrice": null,
+     "desiredPrice": 0.96,
+     "quantityDelta": 2,
+     "deltaKey": true,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "recorded"
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4479454,
+     "batch": 990001,
+     "productId": 216699,
+     "condition": "Near Mint Holofoil",
+     "previousPrice": null,
+     "desiredPrice": 25.93,
+     "quantityDelta": 1,
+     "deltaKey": true,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "recorded"
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4529895,
+     "batch": 990001,
+     "productId": 189786,
+     "condition": "Near Mint Holofoil",
+     "previousPrice": null,
+     "desiredPrice": 5.23,
+     "quantityDelta": 2,
+     "deltaKey": true,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "recorded"
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4529896,
+     "batch": 990001,
+     "productId": 189786,
+     "condition": "Lightly Played Holofoil",
+     "previousPrice": null,
+     "desiredPrice": 2.87,
+     "quantityDelta": 1,
+     "deltaKey": true,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "recorded"
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 8013892,
+     "batch": 990001,
+     "productId": 557107,
+     "condition": "Near Mint Reverse Holofoil",
+     "previousPrice": null,
+     "desiredPrice": 36.99,
+     "quantityDelta": 1,
+     "deltaKey": true,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "recorded"
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 8428989,
+     "batch": 990001,
+     "productId": 605076,
+     "condition": "Near Mint Reverse Holofoil",
+     "previousPrice": null,
+     "desiredPrice": 3.62,
+     "quantityDelta": 3,
+     "deltaKey": true,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "recorded"
+    }
+   ],
+   "links": [
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 3263413,
+     "receipt": 990000001,
+     "planned": 2,
+     "seller": "pubworker",
+     "liveWithItem": true,
+     "live": true,
+     "activated": true,
+     "evidence": {
+      "source": "seller_portal_move_to_live",
+      "stagedPricingUploadId": 7001
+     }
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 3369472,
+     "receipt": 990000002,
+     "planned": 2,
+     "seller": "pubworker",
+     "liveWithItem": true,
+     "live": true,
+     "activated": true,
+     "evidence": {
+      "source": "seller_portal_move_to_live",
+      "stagedPricingUploadId": 7001
+     }
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 3765549,
+     "receipt": 990000003,
+     "planned": 1,
+     "seller": "pubworker",
+     "liveWithItem": true,
+     "live": true,
+     "activated": true,
+     "evidence": {
+      "source": "seller_portal_move_to_live",
+      "stagedPricingUploadId": 7001
+     }
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 3840859,
+     "receipt": 990000004,
+     "planned": 2,
+     "seller": "pubworker",
+     "liveWithItem": true,
+     "live": true,
+     "activated": true,
+     "evidence": {
+      "source": "seller_portal_move_to_live",
+      "stagedPricingUploadId": 7001
+     }
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 3840860,
+     "receipt": 990000005,
+     "planned": 2,
+     "seller": "pubworker",
+     "liveWithItem": true,
+     "live": true,
+     "activated": true,
+     "evidence": {
+      "source": "seller_portal_move_to_live",
+      "stagedPricingUploadId": 7001
+     }
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4170370,
+     "receipt": 990000006,
+     "planned": 1,
+     "seller": "pubworker",
+     "liveWithItem": true,
+     "live": true,
+     "activated": true,
+     "evidence": {
+      "source": "seller_portal_move_to_live",
+      "stagedPricingUploadId": 7001
+     }
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4173706,
+     "receipt": 990000007,
+     "planned": 1,
+     "seller": "pubworker",
+     "liveWithItem": true,
+     "live": true,
+     "activated": true,
+     "evidence": {
+      "source": "seller_portal_move_to_live",
+      "stagedPricingUploadId": 7001
+     }
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4173710,
+     "receipt": 990000008,
+     "planned": 2,
+     "seller": "pubworker",
+     "liveWithItem": true,
+     "live": true,
+     "activated": true,
+     "evidence": {
+      "source": "seller_portal_move_to_live",
+      "stagedPricingUploadId": 7001
+     }
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4218044,
+     "receipt": 990000009,
+     "planned": 1,
+     "seller": "pubworker",
+     "liveWithItem": true,
+     "live": true,
+     "activated": true,
+     "evidence": {
+      "source": "seller_portal_move_to_live",
+      "stagedPricingUploadId": 7001
+     }
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4218045,
+     "receipt": 990000010,
+     "planned": 1,
+     "seller": "pubworker",
+     "liveWithItem": true,
+     "live": true,
+     "activated": true,
+     "evidence": {
+      "source": "seller_portal_move_to_live",
+      "stagedPricingUploadId": 7001
+     }
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4279660,
+     "receipt": 990000011,
+     "planned": 2,
+     "seller": "pubworker",
+     "liveWithItem": true,
+     "live": true,
+     "activated": true,
+     "evidence": {
+      "source": "seller_portal_move_to_live",
+      "stagedPricingUploadId": 7001
+     }
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4479454,
+     "receipt": 990000012,
+     "planned": 1,
+     "seller": "pubworker",
+     "liveWithItem": true,
+     "live": true,
+     "activated": true,
+     "evidence": {
+      "source": "seller_portal_move_to_live",
+      "stagedPricingUploadId": 7001
+     }
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4529895,
+     "receipt": 990000013,
+     "planned": 2,
+     "seller": "pubworker",
+     "liveWithItem": true,
+     "live": true,
+     "activated": true,
+     "evidence": {
+      "source": "seller_portal_move_to_live",
+      "stagedPricingUploadId": 7001
+     }
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 4529896,
+     "receipt": 990000014,
+     "planned": 1,
+     "seller": "pubworker",
+     "liveWithItem": true,
+     "live": true,
+     "activated": true,
+     "evidence": {
+      "source": "seller_portal_move_to_live",
+      "stagedPricingUploadId": 7001
+     }
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 8013892,
+     "receipt": 990000015,
+     "planned": 1,
+     "seller": "pubworker",
+     "liveWithItem": true,
+     "live": true,
+     "activated": true,
+     "evidence": {
+      "source": "seller_portal_move_to_live",
+      "stagedPricingUploadId": 7001
+     }
+    },
+    {
+     "key": "inventory-batch-pricing-job:990000001:selection:18bd26aed152c837",
+     "sku": 8428989,
+     "receipt": 990000016,
+     "planned": 3,
+     "seller": "pubworker",
+     "liveWithItem": true,
+     "live": true,
+     "activated": true,
+     "evidence": {
+      "source": "seller_portal_move_to_live",
+      "stagedPricingUploadId": 7001
+     }
+    }
+   ],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": "pubworker"
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": "pubworker"
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": "pubworker"
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": "pubworker"
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": "pubworker"
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": "pubworker"
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": "pubworker"
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": "pubworker"
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": "pubworker"
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": "pubworker"
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": "pubworker"
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": "pubworker"
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": "pubworker"
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": "pubworker"
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": "pubworker"
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": "pubworker"
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "healthy",
+    "circuitOpen": false,
+    "failures": 0,
+    "pauseReason": null,
+    "succeeded": true,
+    "failed": false
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4.66,
+     "lastPublishedPrice": 4.66,
+     "republished": true,
+     "priced": true,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": true,
+     "priced": true,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.28,
+     "lastPublishedPrice": 2.28,
+     "republished": true,
+     "priced": true,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 15.77,
+     "lastPublishedPrice": 15.77,
+     "republished": true,
+     "priced": true,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 9.89,
+     "lastPublishedPrice": 9.89,
+     "republished": true,
+     "priced": true,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 7.47,
+     "lastPublishedPrice": 7.47,
+     "republished": true,
+     "priced": true,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 2.08,
+     "lastPublishedPrice": 2.08,
+     "republished": true,
+     "priced": true,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 36.88,
+     "lastPublishedPrice": 36.88,
+     "republished": true,
+     "priced": true,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.48,
+     "lastPublishedPrice": 1.48,
+     "republished": true,
+     "priced": true,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.17,
+     "lastPublishedPrice": 1.17,
+     "republished": true,
+     "priced": true,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.96,
+     "lastPublishedPrice": 0.96,
+     "republished": true,
+     "priced": true,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": true,
+     "priced": true,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.23,
+     "lastPublishedPrice": 5.23,
+     "republished": true,
+     "priced": true,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.87,
+     "lastPublishedPrice": 2.87,
+     "republished": true,
+     "priced": true,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": true,
+     "priced": true,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 3.62,
+     "lastPublishedPrice": 3.62,
+     "republished": true,
+     "priced": true,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [
+    {
+     "sku": 3263413,
+     "batch": 990001,
+     "pricedWithResult": true,
+     "details": true
+    },
+    {
+     "sku": 3369472,
+     "batch": 990001,
+     "pricedWithResult": true,
+     "details": true
+    },
+    {
+     "sku": 3765549,
+     "batch": 990001,
+     "pricedWithResult": true,
+     "details": true
+    },
+    {
+     "sku": 3840859,
+     "batch": 990001,
+     "pricedWithResult": true,
+     "details": true
+    },
+    {
+     "sku": 3840860,
+     "batch": 990001,
+     "pricedWithResult": true,
+     "details": true
+    },
+    {
+     "sku": 4170370,
+     "batch": 990001,
+     "pricedWithResult": true,
+     "details": true
+    },
+    {
+     "sku": 4173706,
+     "batch": 990001,
+     "pricedWithResult": true,
+     "details": true
+    },
+    {
+     "sku": 4173710,
+     "batch": 990001,
+     "pricedWithResult": true,
+     "details": true
+    },
+    {
+     "sku": 4218044,
+     "batch": 990001,
+     "pricedWithResult": true,
+     "details": true
+    },
+    {
+     "sku": 4218045,
+     "batch": 990001,
+     "pricedWithResult": true,
+     "details": true
+    },
+    {
+     "sku": 4279660,
+     "batch": 990001,
+     "pricedWithResult": true,
+     "details": true
+    },
+    {
+     "sku": 4479454,
+     "batch": 990001,
+     "pricedWithResult": true,
+     "details": true
+    },
+    {
+     "sku": 4529895,
+     "batch": 990001,
+     "pricedWithResult": true,
+     "details": true
+    },
+    {
+     "sku": 4529896,
+     "batch": 990001,
+     "pricedWithResult": true,
+     "details": true
+    },
+    {
+     "sku": 8013892,
+     "batch": 990001,
+     "pricedWithResult": true,
+     "details": true
+    },
+    {
+     "sku": 8428989,
+     "batch": 990001,
+     "pricedWithResult": true,
+     "details": true
+    }
+   ],
+   "fifo": [
+    {
+     "sku": 3263413,
+     "status": "pending",
+     "generation": 1,
+     "fromLive": true
+    },
+    {
+     "sku": 3369472,
+     "status": "pending",
+     "generation": 1,
+     "fromLive": true
+    },
+    {
+     "sku": 3765549,
+     "status": "pending",
+     "generation": 1,
+     "fromLive": true
+    },
+    {
+     "sku": 3840859,
+     "status": "pending",
+     "generation": 1,
+     "fromLive": true
+    },
+    {
+     "sku": 3840860,
+     "status": "pending",
+     "generation": 1,
+     "fromLive": true
+    },
+    {
+     "sku": 4170370,
+     "status": "pending",
+     "generation": 1,
+     "fromLive": true
+    },
+    {
+     "sku": 4173706,
+     "status": "pending",
+     "generation": 1,
+     "fromLive": true
+    },
+    {
+     "sku": 4173710,
+     "status": "pending",
+     "generation": 1,
+     "fromLive": true
+    },
+    {
+     "sku": 4218044,
+     "status": "pending",
+     "generation": 1,
+     "fromLive": true
+    },
+    {
+     "sku": 4218045,
+     "status": "pending",
+     "generation": 1,
+     "fromLive": true
+    },
+    {
+     "sku": 4279660,
+     "status": "pending",
+     "generation": 1,
+     "fromLive": true
+    },
+    {
+     "sku": 4479454,
+     "status": "pending",
+     "generation": 1,
+     "fromLive": true
+    },
+    {
+     "sku": 4529895,
+     "status": "pending",
+     "generation": 1,
+     "fromLive": true
+    },
+    {
+     "sku": 4529896,
+     "status": "pending",
+     "generation": 1,
+     "fromLive": true
+    },
+    {
+     "sku": 8013892,
+     "status": "pending",
+     "generation": 1,
+     "fromLive": true
+    },
+    {
+     "sku": 8428989,
+     "status": "pending",
+     "generation": 1,
+     "fromLive": true
+    }
+   ],
+   "intake": [
+    {
+     "status": "planned",
+     "error": null,
+     "attempts": 0,
+     "retryLater": false
+    }
+   ]
+  }
+ },
+ {
+  "name": "a continuous publication's refused row, warning, error and missing outcome",
+  "turns": [
+   "published pubworker:outcomes"
+  ],
+  "calls": [
+   {
+    "path": "/admin/pricing/initializeexportcsv",
+    "form": "filename=inventory-publication-ID.csv&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/uploadexportcsv",
+    "form": "data%5B0%5D%5BId%5D=0&data%5B0%5D%5BProductConditionId%5D=447529&data%5B0%5D%5BAddToQuantity%5D=0&data%5B0%5D%5BMyPrice%5D=2.23&data%5B1%5D%5BId%5D=1&data%5B1%5D%5BProductConditionId%5D=447569&data%5B1%5D%5BAddToQuantity%5D=0&data%5B1%5D%5BMyPrice%5D=7.04&data%5B2%5D%5BId%5D=2&data%5B2%5D%5BProductConditionId%5D=447673&data%5B2%5D%5BAddToQuantity%5D=0&data%5B2%5D%5BMyPrice%5D=5.18&data%5B3%5D%5BId%5D=3&data%5B3%5D%5BProductConditionId%5D=446597&data%5B3%5D%5BAddToQuantity%5D=0&data%5B3%5D%5BMyPrice%5D=4.55&data%5B4%5D%5BId%5D=4&data%5B4%5D%5BProductConditionId%5D=446147&data%5B4%5D%5BAddToQuantity%5D=0&data%5B4%5D%5BMyPrice%5D=4.38&stagedPricingUploadId=7002&fileName=inventory-publication-ID.csv&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/finalizeexportcsv",
+    "form": "stagedPricingUploadId=7002&productCount=4&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/movetolive",
+    "form": "scope=3&connectionId=&stagedPricingUploadId=7002&type=Pricing"
+   }
+  ],
+  "left": 0,
+  "captured": {
+   "publications": [
+    {
+     "key": "pubworker:outcomes",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "ambiguous",
+     "upload": 7002,
+     "config": {},
+     "progress": null,
+     "errorCode": "seller_portal_item_outcome_ambiguous",
+     "errorMessage": "One or more Seller Portal item outcomes require reconciliation.",
+     "attempts": 1,
+     "claimedBy": null,
+     "leased": false,
+     "staged": true,
+     "publishing": true,
+     "published": false,
+     "completed": false,
+     "publishedWithItems": null
+    }
+   ],
+   "items": [
+    {
+     "key": "pubworker:outcomes",
+     "sku": 446147,
+     "batch": null,
+     "productId": 42363,
+     "condition": "Heavily Played",
+     "previousPrice": 3.88,
+     "desiredPrice": 4.38,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "failed",
+     "errorCode": "seller_portal_product_details_mismatch",
+     "errorMessage": "TCGplayer reports that this SKU does not match its product details.",
+     "published": false,
+     "provenance": "unknown"
+    },
+    {
+     "key": "pubworker:outcomes",
+     "sku": 446597,
+     "batch": null,
+     "productId": 42358,
+     "condition": "Heavily Played",
+     "previousPrice": 4.05,
+     "desiredPrice": 4.55,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "ambiguous",
+     "errorCode": "seller_portal_item_warning",
+     "errorMessage": "Price is far from the market.",
+     "published": false,
+     "provenance": "unknown"
+    },
+    {
+     "key": "pubworker:outcomes",
+     "sku": 447529,
+     "batch": null,
+     "productId": 42379,
+     "condition": "Lightly Played",
+     "previousPrice": 1.73,
+     "desiredPrice": 2.23,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "unknown"
+    },
+    {
+     "key": "pubworker:outcomes",
+     "sku": 447569,
+     "batch": null,
+     "productId": 42402,
+     "condition": "Lightly Played",
+     "previousPrice": 6.54,
+     "desiredPrice": 7.04,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "failed",
+     "errorCode": "seller_portal_item_error",
+     "errorMessage": "Listing is locked.",
+     "published": false,
+     "provenance": "unknown"
+    },
+    {
+     "key": "pubworker:outcomes",
+     "sku": 447673,
+     "batch": null,
+     "productId": 42362,
+     "condition": "Lightly Played",
+     "previousPrice": 4.68,
+     "desiredPrice": 5.18,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "ambiguous",
+     "errorCode": "seller_portal_item_missing",
+     "errorMessage": "TCGplayer did not return a move-to-live outcome for this item.",
+     "published": false,
+     "provenance": "unknown"
+    }
+   ],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "healthy",
+    "circuitOpen": false,
+    "failures": 0,
+    "pauseReason": null,
+    "succeeded": true,
+    "failed": false
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": "Seller product details do not match this SKU; review required."
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": "Ambiguous publication outcome requires reconciliation."
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 2.23,
+     "lastPublishedPrice": 2.23,
+     "republished": true,
+     "priced": false,
+     "heldForInterval": false,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": "Ambiguous publication outcome requires reconciliation."
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": []
+  }
+ },
+ {
+  "name": "a refused sign-in stops the next turn",
+  "turns": [
+   "published pubworker:sign-in",
+   "stopped"
+  ],
+  "calls": [
+   {
+    "path": "/admin/pricing/initializeexportcsv",
+    "form": "filename=inventory-publication-ID.csv&type=Pricing"
+   }
+  ],
+  "left": 0,
+  "captured": {
+   "publications": [
+    {
+     "key": "pubworker:after-sign-in",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "planned",
+     "upload": null,
+     "config": {},
+     "progress": null,
+     "errorCode": null,
+     "errorMessage": null,
+     "attempts": 0,
+     "claimedBy": null,
+     "leased": false,
+     "staged": false,
+     "publishing": false,
+     "published": false,
+     "completed": false,
+     "publishedWithItems": null
+    },
+    {
+     "key": "pubworker:sign-in",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "failed",
+     "upload": null,
+     "config": {},
+     "progress": null,
+     "errorCode": "staged_initialization_authentication_required",
+     "errorMessage": "Seller Portal required authentication for staged pricing initialization (status=401; contentType=html; redirected=true; response=html; fields=none; transport=other).",
+     "attempts": 1,
+     "claimedBy": null,
+     "leased": false,
+     "staged": false,
+     "publishing": false,
+     "published": false,
+     "completed": true,
+     "publishedWithItems": null
+    }
+   ],
+   "items": [
+    {
+     "key": "pubworker:after-sign-in",
+     "sku": 448279,
+     "batch": null,
+     "productId": 42422,
+     "condition": "Lightly Played",
+     "previousPrice": 4.75,
+     "desiredPrice": 5.25,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "planned",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": false,
+     "provenance": "unknown"
+    },
+    {
+     "key": "pubworker:sign-in",
+     "sku": 447950,
+     "batch": null,
+     "productId": 45147,
+     "condition": "Lightly Played",
+     "previousPrice": 1.23,
+     "desiredPrice": 1.73,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "failed",
+     "errorCode": "staged_initialization_authentication_required",
+     "errorMessage": "Seller Portal required authentication for staged pricing initialization (status=401; contentType=html; redirected=true; response=html; fields=none; transport=other).",
+     "published": false,
+     "provenance": "unknown"
+    },
+    {
+     "key": "pubworker:sign-in",
+     "sku": 448163,
+     "batch": null,
+     "productId": 42359,
+     "condition": "Lightly Played",
+     "previousPrice": 5.44,
+     "desiredPrice": 5.94,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "failed",
+     "errorCode": "staged_initialization_authentication_required",
+     "errorMessage": "Seller Portal required authentication for staged pricing initialization (status=401; contentType=html; redirected=true; response=html; fields=none; transport=other).",
+     "published": false,
+     "provenance": "unknown"
+    }
+   ],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "invalid",
+    "circuitOpen": true,
+    "failures": 1,
+    "pauseReason": "Seller Portal authentication requires attention.",
+    "succeeded": false,
+    "failed": true
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": []
+  }
+ },
+ {
+  "name": "a challenged sign-in",
+  "turns": [
+   "published pubworker:challenge"
+  ],
+  "calls": [
+   {
+    "path": "/admin/pricing/initializeexportcsv",
+    "form": "filename=inventory-publication-ID.csv&type=Pricing"
+   }
+  ],
+  "left": 0,
+  "captured": {
+   "publications": [
+    {
+     "key": "pubworker:challenge",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "failed",
+     "upload": null,
+     "config": {},
+     "progress": null,
+     "errorCode": "staged_initialization_challenge",
+     "errorMessage": "Seller Portal challenged the staged pricing initialization request (status=200; contentType=html; redirected=false; response=html; fields=none).",
+     "attempts": 1,
+     "claimedBy": null,
+     "leased": false,
+     "staged": false,
+     "publishing": false,
+     "published": false,
+     "completed": true,
+     "publishedWithItems": null
+    }
+   ],
+   "items": [
+    {
+     "key": "pubworker:challenge",
+     "sku": 448306,
+     "batch": null,
+     "productId": 44437,
+     "condition": "Lightly Played",
+     "previousPrice": 1.03,
+     "desiredPrice": 1.53,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "failed",
+     "errorCode": "staged_initialization_challenge",
+     "errorMessage": "Seller Portal challenged the staged pricing initialization request (status=200; contentType=html; redirected=false; response=html; fields=none).",
+     "published": false,
+     "provenance": "unknown"
+    }
+   ],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "healthy",
+    "circuitOpen": false,
+    "failures": 1,
+    "pauseReason": null,
+    "succeeded": false,
+    "failed": true
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": []
+  }
+ },
+ {
+  "name": "an unreadable upload id",
+  "turns": [
+   "published pubworker:unreadable"
+  ],
+  "calls": [
+   {
+    "path": "/admin/pricing/initializeexportcsv",
+    "form": "filename=inventory-publication-ID.csv&type=Pricing"
+   }
+  ],
+  "left": 0,
+  "captured": {
+   "publications": [
+    {
+     "key": "pubworker:unreadable",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "failed",
+     "upload": null,
+     "config": {},
+     "progress": null,
+     "errorCode": "staged_initialization_response_invalid",
+     "errorMessage": "Seller Portal returned an invalid staged pricing initialization response (status=200; contentType=json; redirected=false; response=object; fields=StagedPricingUploadId:string).",
+     "attempts": 1,
+     "claimedBy": null,
+     "leased": false,
+     "staged": false,
+     "publishing": false,
+     "published": false,
+     "completed": true,
+     "publishedWithItems": null
+    }
+   ],
+   "items": [
+    {
+     "key": "pubworker:unreadable",
+     "sku": 448635,
+     "batch": null,
+     "productId": 42377,
+     "condition": "Lightly Played",
+     "previousPrice": 1.51,
+     "desiredPrice": 2.01,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "failed",
+     "errorCode": "staged_initialization_response_invalid",
+     "errorMessage": "Seller Portal returned an invalid staged pricing initialization response (status=200; contentType=json; redirected=false; response=object; fields=StagedPricingUploadId:string).",
+     "published": false,
+     "provenance": "unknown"
+    }
+   ],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "healthy",
+    "circuitOpen": false,
+    "failures": 1,
+    "pauseReason": null,
+    "succeeded": false,
+    "failed": true
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": []
+  }
+ },
+ {
+  "name": "Seller Portal unreachable",
+  "turns": [
+   "published pubworker:unreachable"
+  ],
+  "calls": [
+   {
+    "path": "/admin/pricing/initializeexportcsv",
+    "form": "filename=inventory-publication-ID.csv&type=Pricing"
+   }
+  ],
+  "left": 0,
+  "captured": {
+   "publications": [
+    {
+     "key": "pubworker:unreachable",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "failed",
+     "upload": null,
+     "config": {},
+     "progress": null,
+     "errorCode": "staged_initialization_transport_failed",
+     "errorMessage": "Seller Portal staged pricing initialization failed before a response was confirmed (status=unknown; contentType=unknown; redirected=unknown; response=missing; fields=none; transport=ECONNREFUSED).",
+     "attempts": 1,
+     "claimedBy": null,
+     "leased": false,
+     "staged": false,
+     "publishing": false,
+     "published": false,
+     "completed": true,
+     "publishedWithItems": null
+    }
+   ],
+   "items": [
+    {
+     "key": "pubworker:unreachable",
+     "sku": 448708,
+     "batch": null,
+     "productId": 42408,
+     "condition": "Lightly Played",
+     "previousPrice": 2.89,
+     "desiredPrice": 3.39,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "failed",
+     "errorCode": "staged_initialization_transport_failed",
+     "errorMessage": "Seller Portal staged pricing initialization failed before a response was confirmed (status=unknown; contentType=unknown; redirected=unknown; response=missing; fields=none; transport=ECONNREFUSED).",
+     "published": false,
+     "provenance": "unknown"
+    }
+   ],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "healthy",
+    "circuitOpen": false,
+    "failures": 1,
+    "pauseReason": null,
+    "succeeded": false,
+    "failed": true
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": []
+  }
+ },
+ {
+  "name": "a refused upload rolled back",
+  "turns": [
+   "published pubworker:refused-upload"
+  ],
+  "calls": [
+   {
+    "path": "/admin/pricing/initializeexportcsv",
+    "form": "filename=inventory-publication-ID.csv&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/uploadexportcsv",
+    "form": "data%5B0%5D%5BId%5D=0&data%5B0%5D%5BProductConditionId%5D=446147&data%5B0%5D%5BAddToQuantity%5D=0&data%5B0%5D%5BMyPrice%5D=4.38&data%5B1%5D%5BId%5D=1&data%5B1%5D%5BProductConditionId%5D=448817&data%5B1%5D%5BAddToQuantity%5D=0&data%5B1%5D%5BMyPrice%5D=1.61&stagedPricingUploadId=7006&fileName=inventory-publication-ID.csv&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/rollbackexportcsv",
+    "form": "stagedPricingUploadId=7006&type=Pricing"
+   }
+  ],
+  "left": 0,
+  "captured": {
+   "publications": [
+    {
+     "key": "pubworker:refused-upload",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "rolled_back",
+     "upload": 7006,
+     "config": {},
+     "progress": null,
+     "errorCode": "staged_publication_rolled_back",
+     "errorMessage": "TCGplayer did not accept staged pricing upload 7006.",
+     "attempts": 1,
+     "claimedBy": null,
+     "leased": false,
+     "staged": false,
+     "publishing": false,
+     "published": false,
+     "completed": true,
+     "publishedWithItems": null
+    }
+   ],
+   "items": [
+    {
+     "key": "pubworker:refused-upload",
+     "sku": 446147,
+     "batch": null,
+     "productId": 42363,
+     "condition": "Heavily Played",
+     "previousPrice": 3.88,
+     "desiredPrice": 4.38,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "failed",
+     "errorCode": "staged_publication_rolled_back",
+     "errorMessage": "TCGplayer did not accept staged pricing upload 7006.",
+     "published": false,
+     "provenance": "unknown"
+    },
+    {
+     "key": "pubworker:refused-upload",
+     "sku": 448817,
+     "batch": null,
+     "productId": 44438,
+     "condition": "Lightly Played",
+     "previousPrice": 1.11,
+     "desiredPrice": 1.61,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "failed",
+     "errorCode": "staged_publication_rolled_back",
+     "errorMessage": "TCGplayer did not accept staged pricing upload 7006.",
+     "published": false,
+     "provenance": "unknown"
+    }
+   ],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "healthy",
+    "circuitOpen": false,
+    "failures": 1,
+    "pauseReason": null,
+    "succeeded": false,
+    "failed": true
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": []
+  }
+ },
+ {
+  "name": "a partial upload whose rollback fails",
+  "turns": [
+   "published pubworker:partial"
+  ],
+  "calls": [
+   {
+    "path": "/admin/pricing/initializeexportcsv",
+    "form": "filename=inventory-publication-ID.csv&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/uploadexportcsv",
+    "form": "data%5B0%5D%5BId%5D=0&data%5B0%5D%5BProductConditionId%5D=447529&data%5B0%5D%5BAddToQuantity%5D=0&data%5B0%5D%5BMyPrice%5D=2.23&data%5B1%5D%5BId%5D=1&data%5B1%5D%5BProductConditionId%5D=447569&data%5B1%5D%5BAddToQuantity%5D=0&data%5B1%5D%5BMyPrice%5D=7.04&data%5B2%5D%5BId%5D=2&data%5B2%5D%5BProductConditionId%5D=446597&data%5B2%5D%5BAddToQuantity%5D=0&data%5B2%5D%5BMyPrice%5D=4.55&stagedPricingUploadId=7007&fileName=inventory-publication-ID.csv&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/rollbackexportcsv",
+    "form": "stagedPricingUploadId=7007&type=Pricing"
+   }
+  ],
+  "left": 0,
+  "captured": {
+   "publications": [
+    {
+     "key": "pubworker:partial",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "ambiguous",
+     "upload": 7007,
+     "config": {},
+     "progress": null,
+     "errorCode": "staged_rollback_ambiguous",
+     "errorMessage": "TCGplayer accepted 1 of 3 staged pricing rows. Seller Portal messages: Row 2 has an invalid price; {\"Row\":3,\"Text\":\"Quantity is required\"} Rollback also failed: socket hang up",
+     "attempts": 1,
+     "claimedBy": null,
+     "leased": false,
+     "staged": false,
+     "publishing": false,
+     "published": false,
+     "completed": false,
+     "publishedWithItems": null
+    }
+   ],
+   "items": [
+    {
+     "key": "pubworker:partial",
+     "sku": 446597,
+     "batch": null,
+     "productId": 42358,
+     "condition": "Heavily Played",
+     "previousPrice": 4.05,
+     "desiredPrice": 4.55,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "ambiguous",
+     "errorCode": "staged_rollback_ambiguous",
+     "errorMessage": "TCGplayer accepted 1 of 3 staged pricing rows. Seller Portal messages: Row 2 has an invalid price; {\"Row\":3,\"Text\":\"Quantity is required\"} Rollback also failed: socket hang up",
+     "published": false,
+     "provenance": "unknown"
+    },
+    {
+     "key": "pubworker:partial",
+     "sku": 447529,
+     "batch": null,
+     "productId": 42379,
+     "condition": "Lightly Played",
+     "previousPrice": 1.73,
+     "desiredPrice": 2.23,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "ambiguous",
+     "errorCode": "staged_rollback_ambiguous",
+     "errorMessage": "TCGplayer accepted 1 of 3 staged pricing rows. Seller Portal messages: Row 2 has an invalid price; {\"Row\":3,\"Text\":\"Quantity is required\"} Rollback also failed: socket hang up",
+     "published": false,
+     "provenance": "unknown"
+    },
+    {
+     "key": "pubworker:partial",
+     "sku": 447569,
+     "batch": null,
+     "productId": 42402,
+     "condition": "Lightly Played",
+     "previousPrice": 6.54,
+     "desiredPrice": 7.04,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "ambiguous",
+     "errorCode": "staged_rollback_ambiguous",
+     "errorMessage": "TCGplayer accepted 1 of 3 staged pricing rows. Seller Portal messages: Row 2 has an invalid price; {\"Row\":3,\"Text\":\"Quantity is required\"} Rollback also failed: socket hang up",
+     "published": false,
+     "provenance": "unknown"
+    }
+   ],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "healthy",
+    "circuitOpen": false,
+    "failures": 1,
+    "pauseReason": null,
+    "succeeded": false,
+    "failed": true
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": []
+  }
+ },
+ {
+  "name": "a refused finalize rolled back",
+  "turns": [
+   "published pubworker:finalize"
+  ],
+  "calls": [
+   {
+    "path": "/admin/pricing/initializeexportcsv",
+    "form": "filename=inventory-publication-ID.csv&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/uploadexportcsv",
+    "form": "data%5B0%5D%5BId%5D=0&data%5B0%5D%5BProductConditionId%5D=447673&data%5B0%5D%5BAddToQuantity%5D=0&data%5B0%5D%5BMyPrice%5D=5.18&stagedPricingUploadId=7008&fileName=inventory-publication-ID.csv&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/finalizeexportcsv",
+    "form": "stagedPricingUploadId=7008&productCount=1&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/rollbackexportcsv",
+    "form": "stagedPricingUploadId=7008&type=Pricing"
+   }
+  ],
+  "left": 0,
+  "captured": {
+   "publications": [
+    {
+     "key": "pubworker:finalize",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "rolled_back",
+     "upload": 7008,
+     "config": {},
+     "progress": null,
+     "errorCode": "staged_publication_rolled_back",
+     "errorMessage": "TCGplayer did not finalize staged pricing upload 7008.",
+     "attempts": 1,
+     "claimedBy": null,
+     "leased": false,
+     "staged": false,
+     "publishing": false,
+     "published": false,
+     "completed": true,
+     "publishedWithItems": null
+    }
+   ],
+   "items": [
+    {
+     "key": "pubworker:finalize",
+     "sku": 447673,
+     "batch": null,
+     "productId": 42362,
+     "condition": "Lightly Played",
+     "previousPrice": 4.68,
+     "desiredPrice": 5.18,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "failed",
+     "errorCode": "staged_publication_rolled_back",
+     "errorMessage": "TCGplayer did not finalize staged pricing upload 7008.",
+     "published": false,
+     "provenance": "unknown"
+    }
+   ],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "healthy",
+    "circuitOpen": false,
+    "failures": 1,
+    "pauseReason": null,
+    "succeeded": false,
+    "failed": true
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": []
+  }
+ },
+ {
+  "name": "a failed move to live",
+  "turns": [
+   "published pubworker:move"
+  ],
+  "calls": [
+   {
+    "path": "/admin/pricing/initializeexportcsv",
+    "form": "filename=inventory-publication-ID.csv&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/uploadexportcsv",
+    "form": "data%5B0%5D%5BId%5D=0&data%5B0%5D%5BProductConditionId%5D=447950&data%5B0%5D%5BAddToQuantity%5D=0&data%5B0%5D%5BMyPrice%5D=1.73&data%5B1%5D%5BId%5D=1&data%5B1%5D%5BProductConditionId%5D=448163&data%5B1%5D%5BAddToQuantity%5D=0&data%5B1%5D%5BMyPrice%5D=5.94&stagedPricingUploadId=7009&fileName=inventory-publication-ID.csv&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/finalizeexportcsv",
+    "form": "stagedPricingUploadId=7009&productCount=2&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/movetolive",
+    "form": "scope=3&connectionId=&stagedPricingUploadId=7009&type=Pricing"
+   }
+  ],
+  "left": 0,
+  "captured": {
+   "publications": [
+    {
+     "key": "pubworker:move",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "ambiguous",
+     "upload": 7009,
+     "config": {},
+     "progress": null,
+     "errorCode": "move_to_live_ambiguous",
+     "errorMessage": "timeout of 30000ms exceeded",
+     "attempts": 1,
+     "claimedBy": null,
+     "leased": false,
+     "staged": true,
+     "publishing": true,
+     "published": false,
+     "completed": false,
+     "publishedWithItems": null
+    }
+   ],
+   "items": [
+    {
+     "key": "pubworker:move",
+     "sku": 447950,
+     "batch": null,
+     "productId": 45147,
+     "condition": "Lightly Played",
+     "previousPrice": 1.23,
+     "desiredPrice": 1.73,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "ambiguous",
+     "errorCode": "move_to_live_ambiguous",
+     "errorMessage": "timeout of 30000ms exceeded",
+     "published": false,
+     "provenance": "unknown"
+    },
+    {
+     "key": "pubworker:move",
+     "sku": 448163,
+     "batch": null,
+     "productId": 42359,
+     "condition": "Lightly Played",
+     "previousPrice": 5.44,
+     "desiredPrice": 5.94,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "ambiguous",
+     "errorCode": "move_to_live_ambiguous",
+     "errorMessage": "timeout of 30000ms exceeded",
+     "published": false,
+     "provenance": "unknown"
+    }
+   ],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "healthy",
+    "circuitOpen": false,
+    "failures": 1,
+    "pauseReason": null,
+    "succeeded": false,
+    "failed": true
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": []
+  }
+ },
+ {
+  "name": "a move to live refused with a status",
+  "turns": [
+   "published pubworker:move-refused"
+  ],
+  "calls": [
+   {
+    "path": "/admin/pricing/initializeexportcsv",
+    "form": "filename=inventory-publication-ID.csv&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/uploadexportcsv",
+    "form": "data%5B0%5D%5BId%5D=0&data%5B0%5D%5BProductConditionId%5D=448279&data%5B0%5D%5BAddToQuantity%5D=0&data%5B0%5D%5BMyPrice%5D=5.25&stagedPricingUploadId=7010&fileName=inventory-publication-ID.csv&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/finalizeexportcsv",
+    "form": "stagedPricingUploadId=7010&productCount=1&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/movetolive",
+    "form": "scope=3&connectionId=&stagedPricingUploadId=7010&type=Pricing"
+   }
+  ],
+  "left": 0,
+  "captured": {
+   "publications": [
+    {
+     "key": "pubworker:move-refused",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "ambiguous",
+     "upload": 7010,
+     "config": {},
+     "progress": null,
+     "errorCode": "move_to_live_ambiguous",
+     "errorMessage": "Request failed with status code 500",
+     "attempts": 1,
+     "claimedBy": null,
+     "leased": false,
+     "staged": true,
+     "publishing": true,
+     "published": false,
+     "completed": false,
+     "publishedWithItems": null
+    }
+   ],
+   "items": [
+    {
+     "key": "pubworker:move-refused",
+     "sku": 448279,
+     "batch": null,
+     "productId": 42422,
+     "condition": "Lightly Played",
+     "previousPrice": 4.75,
+     "desiredPrice": 5.25,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "ambiguous",
+     "errorCode": "move_to_live_ambiguous",
+     "errorMessage": "Request failed with status code 500",
+     "published": false,
+     "provenance": "unknown"
+    }
+   ],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "healthy",
+    "circuitOpen": false,
+    "failures": 1,
+    "pauseReason": null,
+    "succeeded": false,
+    "failed": true
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": []
+  }
+ },
+ {
+  "name": "lost workers' publications put right",
+  "turns": [
+   "published pubworker:lost-unopened",
+   "nothing planned"
+  ],
+  "calls": [
+   {
+    "path": "/admin/pricing/initializeexportcsv",
+    "form": "filename=inventory-publication-ID.csv&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/uploadexportcsv",
+    "form": "data%5B0%5D%5BId%5D=0&data%5B0%5D%5BProductConditionId%5D=448306&data%5B0%5D%5BAddToQuantity%5D=0&data%5B0%5D%5BMyPrice%5D=1.53&stagedPricingUploadId=7011&fileName=inventory-publication-ID.csv&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/finalizeexportcsv",
+    "form": "stagedPricingUploadId=7011&productCount=1&type=Pricing"
+   },
+   {
+    "path": "/admin/pricing/movetolive",
+    "form": "scope=3&connectionId=&stagedPricingUploadId=7011&type=Pricing"
+   }
+  ],
+  "left": 0,
+  "captured": {
+   "publications": [
+    {
+     "key": "pubworker:lost-opened",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "ambiguous",
+     "upload": 6002,
+     "config": {},
+     "progress": null,
+     "errorCode": "worker_lease_expired",
+     "errorMessage": "Worker lease expired after Seller Portal state may have changed.",
+     "attempts": 1,
+     "claimedBy": null,
+     "leased": false,
+     "staged": false,
+     "publishing": false,
+     "published": false,
+     "completed": false,
+     "publishedWithItems": null
+    },
+    {
+     "key": "pubworker:lost-publishing",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "ambiguous",
+     "upload": 6001,
+     "config": {},
+     "progress": null,
+     "errorCode": "worker_lease_expired",
+     "errorMessage": "Worker lease expired after Seller Portal state may have changed.",
+     "attempts": 1,
+     "claimedBy": null,
+     "leased": false,
+     "staged": true,
+     "publishing": true,
+     "published": false,
+     "completed": false,
+     "publishedWithItems": null
+    },
+    {
+     "key": "pubworker:lost-unopened",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "published",
+     "upload": 7011,
+     "config": {},
+     "progress": null,
+     "errorCode": null,
+     "errorMessage": null,
+     "attempts": 2,
+     "claimedBy": null,
+     "leased": false,
+     "staged": true,
+     "publishing": true,
+     "published": true,
+     "completed": true,
+     "publishedWithItems": false
+    },
+    {
+     "key": "pubworker:saved-outcomes",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "published",
+     "upload": 6003,
+     "config": {},
+     "progress": null,
+     "errorCode": null,
+     "errorMessage": null,
+     "attempts": 0,
+     "claimedBy": null,
+     "leased": false,
+     "staged": false,
+     "publishing": false,
+     "published": true,
+     "completed": true,
+     "publishedWithItems": true
+    }
+   ],
+   "items": [
+    {
+     "key": "pubworker:lost-opened",
+     "sku": 448708,
+     "batch": null,
+     "productId": 42408,
+     "condition": "Lightly Played",
+     "previousPrice": 2.89,
+     "desiredPrice": 3.39,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "ambiguous",
+     "errorCode": "worker_lease_expired",
+     "errorMessage": "Worker lease expired after Seller Portal state may have changed.",
+     "published": false,
+     "provenance": "unknown"
+    },
+    {
+     "key": "pubworker:lost-publishing",
+     "sku": 448635,
+     "batch": null,
+     "productId": 42377,
+     "condition": "Lightly Played",
+     "previousPrice": 1.51,
+     "desiredPrice": 2.01,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "ambiguous",
+     "errorCode": "worker_lease_expired",
+     "errorMessage": "Worker lease expired after Seller Portal state may have changed.",
+     "published": false,
+     "provenance": "unknown"
+    },
+    {
+     "key": "pubworker:lost-unopened",
+     "sku": 448306,
+     "batch": null,
+     "productId": 44437,
+     "condition": "Lightly Played",
+     "previousPrice": 1.03,
+     "desiredPrice": 1.53,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "unknown"
+    },
+    {
+     "key": "pubworker:saved-outcomes",
+     "sku": 446147,
+     "batch": null,
+     "productId": 42363,
+     "condition": "Heavily Played",
+     "previousPrice": 3.88,
+     "desiredPrice": 4.38,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "failed",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": false,
+     "provenance": "unknown"
+    },
+    {
+     "key": "pubworker:saved-outcomes",
+     "sku": 448817,
+     "batch": null,
+     "productId": 44438,
+     "condition": "Lightly Played",
+     "previousPrice": 1.11,
+     "desiredPrice": 1.61,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "published",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": true,
+     "provenance": "unknown"
+    }
+   ],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "healthy",
+    "circuitOpen": false,
+    "failures": 0,
+    "pauseReason": null,
+    "succeeded": true,
+    "failed": false
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.53,
+     "lastPublishedPrice": 1.53,
+     "republished": true,
+     "priced": false,
+     "heldForInterval": false,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": []
+  }
+ },
+ {
+  "name": "an intake run whose seller changed is left for review",
+  "turns": [
+   "nothing planned"
+  ],
+  "calls": [],
+  "left": 0,
+  "captured": {
+   "publications": [],
+   "items": [],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "healthy",
+    "circuitOpen": false,
+    "failures": 0,
+    "pauseReason": null,
+    "succeeded": false,
+    "failed": false
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": [
+    {
+     "status": "needs_review",
+     "error": "Pricing failed, was run again, or the publication seller changed. Review this batch before publishing.",
+     "attempts": 0,
+     "retryLater": false
+    }
+   ]
+  }
+ },
+ {
+  "name": "an intake run whose pricing failed is left for review",
+  "turns": [
+   "nothing planned"
+  ],
+  "calls": [],
+  "left": 0,
+  "captured": {
+   "publications": [],
+   "items": [],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "healthy",
+    "circuitOpen": false,
+    "failures": 0,
+    "pauseReason": null,
+    "succeeded": false,
+    "failed": false
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": [
+    {
+     "status": "needs_review",
+     "error": "Pricing failed, was run again, or the publication seller changed. Review this batch before publishing.",
+     "attempts": 0,
+     "retryLater": false
+    }
+   ]
+  }
+ },
+ {
+  "name": "an intake run with no fresh results is left for review",
+  "turns": [
+   "nothing planned"
+  ],
+  "calls": [],
+  "left": 0,
+  "captured": {
+   "publications": [],
+   "items": [],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "healthy",
+    "circuitOpen": false,
+    "failures": 0,
+    "pauseReason": null,
+    "succeeded": false,
+    "failed": false
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": [
+    {
+     "status": "needs_review",
+     "error": "No eligible results. Open the batch to review pricing and publication exclusions.",
+     "attempts": 0,
+     "retryLater": false
+    }
+   ]
+  }
+ },
+ {
+  "name": "a direct publication",
+  "turns": [
+   "published pubworker:direct"
+  ],
+  "calls": [],
+  "left": 0,
+  "captured": {
+   "publications": [
+    {
+     "key": "pubworker:direct",
+     "batch": null,
+     "job": null,
+     "method": "direct_absolute",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "failed",
+     "upload": null,
+     "config": {},
+     "progress": null,
+     "errorCode": "unsupported_publication_method",
+     "errorMessage": "The direct absolute publication worker is not implemented.",
+     "attempts": 1,
+     "claimedBy": null,
+     "leased": false,
+     "staged": false,
+     "publishing": true,
+     "published": false,
+     "completed": true,
+     "publishedWithItems": null
+    }
+   ],
+   "items": [
+    {
+     "key": "pubworker:direct",
+     "sku": 447529,
+     "batch": null,
+     "productId": 42379,
+     "condition": "Lightly Played",
+     "previousPrice": 1.73,
+     "desiredPrice": 2.23,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "failed",
+     "errorCode": "unsupported_publication_method",
+     "errorMessage": "The direct absolute publication worker is not implemented.",
+     "published": false,
+     "provenance": "unknown"
+    }
+   ],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "healthy",
+    "circuitOpen": false,
+    "failures": 0,
+    "pauseReason": null,
+    "succeeded": false,
+    "failed": false
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": []
+  }
+ },
+ {
+  "name": "paused publishing",
+  "turns": [
+   "stopped"
+  ],
+  "calls": [],
+  "left": 0,
+  "captured": {
+   "publications": [
+    {
+     "key": "pubworker:paused",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "planned",
+     "upload": null,
+     "config": {},
+     "progress": null,
+     "errorCode": null,
+     "errorMessage": null,
+     "attempts": 0,
+     "claimedBy": null,
+     "leased": false,
+     "staged": false,
+     "publishing": false,
+     "published": false,
+     "completed": false,
+     "publishedWithItems": null
+    }
+   ],
+   "items": [
+    {
+     "key": "pubworker:paused",
+     "sku": 447569,
+     "batch": null,
+     "productId": 42402,
+     "condition": "Lightly Played",
+     "previousPrice": 6.54,
+     "desiredPrice": 7.04,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "planned",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": false,
+     "provenance": "unknown"
+    }
+   ],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": true,
+    "authentication": "healthy",
+    "circuitOpen": false,
+    "failures": 0,
+    "pauseReason": null,
+    "succeeded": false,
+    "failed": false
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": []
+  }
+ },
+ {
+  "name": "an open circuit",
+  "turns": [
+   "stopped"
+  ],
+  "calls": [],
+  "left": 0,
+  "captured": {
+   "publications": [
+    {
+     "key": "pubworker:circuit",
+     "batch": null,
+     "job": null,
+     "method": "staged_delta",
+     "source": "continuous",
+     "seller": "pubworker",
+     "status": "planned",
+     "upload": null,
+     "config": {},
+     "progress": null,
+     "errorCode": null,
+     "errorMessage": null,
+     "attempts": 0,
+     "claimedBy": null,
+     "leased": false,
+     "staged": false,
+     "publishing": false,
+     "published": false,
+     "completed": false,
+     "publishedWithItems": null
+    }
+   ],
+   "items": [
+    {
+     "key": "pubworker:circuit",
+     "sku": 447569,
+     "batch": null,
+     "productId": 42402,
+     "condition": "Lightly Played",
+     "previousPrice": 6.54,
+     "desiredPrice": 7.04,
+     "quantityDelta": 0,
+     "deltaKey": false,
+     "observedQuantity": null,
+     "absoluteQuantity": null,
+     "reasons": [],
+     "status": "planned",
+     "errorCode": null,
+     "errorMessage": null,
+     "published": false,
+     "provenance": "unknown"
+    }
+   ],
+   "links": [],
+   "receipts": [
+    {
+     "receipt": 990000001,
+     "sku": 3263413,
+     "seller": null
+    },
+    {
+     "receipt": 990000002,
+     "sku": 3369472,
+     "seller": null
+    },
+    {
+     "receipt": 990000003,
+     "sku": 3765549,
+     "seller": null
+    },
+    {
+     "receipt": 990000004,
+     "sku": 3840859,
+     "seller": null
+    },
+    {
+     "receipt": 990000005,
+     "sku": 3840860,
+     "seller": null
+    },
+    {
+     "receipt": 990000006,
+     "sku": 4170370,
+     "seller": null
+    },
+    {
+     "receipt": 990000007,
+     "sku": 4173706,
+     "seller": null
+    },
+    {
+     "receipt": 990000008,
+     "sku": 4173710,
+     "seller": null
+    },
+    {
+     "receipt": 990000009,
+     "sku": 4218044,
+     "seller": null
+    },
+    {
+     "receipt": 990000010,
+     "sku": 4218045,
+     "seller": null
+    },
+    {
+     "receipt": 990000011,
+     "sku": 4279660,
+     "seller": null
+    },
+    {
+     "receipt": 990000012,
+     "sku": 4479454,
+     "seller": null
+    },
+    {
+     "receipt": 990000013,
+     "sku": 4529895,
+     "seller": null
+    },
+    {
+     "receipt": 990000014,
+     "sku": 4529896,
+     "seller": null
+    },
+    {
+     "receipt": 990000015,
+     "sku": 8013892,
+     "seller": null
+    },
+    {
+     "receipt": 990000016,
+     "sku": 8428989,
+     "seller": null
+    }
+   ],
+   "settings": {
+    "paused": false,
+    "authentication": "healthy",
+    "circuitOpen": true,
+    "failures": 0,
+    "pauseReason": "Too many failures.",
+    "succeeded": false,
+    "failed": false
+   },
+   "inventory": [
+    {
+     "sku": 446147,
+     "currentPrice": 3.88,
+     "lastPublishedPrice": 3.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 446597,
+     "currentPrice": 4.05,
+     "lastPublishedPrice": 4.05,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447529,
+     "currentPrice": 1.73,
+     "lastPublishedPrice": 1.73,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447569,
+     "currentPrice": 6.54,
+     "lastPublishedPrice": 6.54,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447673,
+     "currentPrice": 4.68,
+     "lastPublishedPrice": 4.68,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 447950,
+     "currentPrice": 1.23,
+     "lastPublishedPrice": 1.23,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448163,
+     "currentPrice": 5.44,
+     "lastPublishedPrice": 5.44,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448279,
+     "currentPrice": 4.75,
+     "lastPublishedPrice": 4.75,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448306,
+     "currentPrice": 1.03,
+     "lastPublishedPrice": 1.03,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448635,
+     "currentPrice": 1.51,
+     "lastPublishedPrice": 1.51,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448708,
+     "currentPrice": 2.89,
+     "lastPublishedPrice": 2.89,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 448817,
+     "currentPrice": 1.11,
+     "lastPublishedPrice": 1.11,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3263413,
+     "currentPrice": 4,
+     "lastPublishedPrice": 4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3369472,
+     "currentPrice": 5.97,
+     "lastPublishedPrice": 5.97,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3765549,
+     "currentPrice": 2.4,
+     "lastPublishedPrice": 2.4,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840859,
+     "currentPrice": 13.91,
+     "lastPublishedPrice": 13.91,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 3840860,
+     "currentPrice": 7.84,
+     "lastPublishedPrice": 7.84,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4170370,
+     "currentPrice": 9.78,
+     "lastPublishedPrice": 9.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173706,
+     "currentPrice": 3.78,
+     "lastPublishedPrice": 3.78,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4173710,
+     "currentPrice": 39.16,
+     "lastPublishedPrice": 39.16,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218044,
+     "currentPrice": 1.43,
+     "lastPublishedPrice": 1.43,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4218045,
+     "currentPrice": 1.14,
+     "lastPublishedPrice": 1.14,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4279660,
+     "currentPrice": 0.92,
+     "lastPublishedPrice": 0.92,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4479454,
+     "currentPrice": 25.93,
+     "lastPublishedPrice": 25.93,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529895,
+     "currentPrice": 5.19,
+     "lastPublishedPrice": 5.19,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 4529896,
+     "currentPrice": 2.88,
+     "lastPublishedPrice": 2.88,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8013892,
+     "currentPrice": 36.99,
+     "lastPublishedPrice": 36.99,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    },
+    {
+     "sku": 8428989,
+     "currentPrice": 5.74,
+     "lastPublishedPrice": 5.74,
+     "republished": false,
+     "priced": false,
+     "heldForInterval": true,
+     "pauseReason": null
+    }
+   ],
+   "curves": [],
+   "fifo": [],
+   "intake": []
+  }
+ }
+]

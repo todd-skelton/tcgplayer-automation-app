@@ -30,9 +30,15 @@ fixtures or dev batches the Rust tests replay:
    supply scans on a schema-only database (`tests/fixtures/node/slab`).
 3. `scripts/parity/publish-selections.mjs`: Node's publication planning of ten dev cases, each on a
    fresh copy of the dev database (`tests/fixtures/node/publication`).
+4. `scripts/parity/pubworker.mjs`: Node's publication worker, a turn at a time, over 18 cases, each
+   on a fresh copy of the dev database seeded with its own seller, received batch and live
+   inventory (`pubworker-seed.sql`). Seller Portal's client is stood in with scripted answers, so
+   nothing is posted and its writes stay off. The cases cover a received batch planned from its
+   intake run and made live, every move-to-live outcome, a refused, challenged or unreachable
+   sign-in, failed uploads, finalizes and moves with their rollbacks, lost workers' publications,
+   intake runs left for review, a direct publication, and paused publishing.
 
-Still waiting on a recording: the publication worker's turns against a stand-in Seller Portal, and
-the slab maintenance cycle.
+Still waiting on a recording: the slab maintenance cycle.
 
 The unit tests that replayed Node's answers from `.port-logs` (never committed) are being replaced
 by these runs, worker by worker. Those still waiting on theirs are marked
