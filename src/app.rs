@@ -197,6 +197,7 @@ pub fn app(shared: Shared) -> App {
         .components(corten_ui::COMPONENTS)
         .components(dashboard::COMPONENTS)
         .messages::<Msg>()
+        .error_page(layout::error_page, ())
         // Dates are written in the visitor's zone, as the React screens' `toLocaleString`.
         .zoned_dates()
         // TCGplayer's product pictures.
@@ -293,6 +294,37 @@ mod tests {
             slab_providers: slab_connections::Transport::default(),
         };
         let _ = app(shared).router();
+    }
+
+    /// A failed page is drawn in the app's layout, as the React app's `ErrorBoundary` was in its
+    /// theme: here a path no screen claims, relayed to a Node app that does not answer. It reads
+    /// no database (the pool points nowhere).
+    #[tokio::test]
+    async fn a_failed_page_is_in_the_layout() {
+        use tower::ServiceExt;
+        let shared = Shared {
+            db: Database::connect_lazy("postgresql://localhost:1/unused"),
+            legacy: Legacy::new("http://localhost:1".into()),
+            slab_providers: slab_connections::Transport::default(),
+        };
+        let request = corten::axum::http::Request::get("/no-such-screen")
+            .body(corten::axum::body::Body::empty())
+            .unwrap();
+        let answer = app(shared).router().oneshot(request).await.unwrap();
+        assert_eq!(answer.status(), corten::axum::http::StatusCode::BAD_GATEWAY);
+        let body = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let page = String::from_utf8_lossy(&body);
+        assert!(
+            page.contains("<title>Something went wrong | TCGPlayer Automation</title>"),
+            "{page}"
+        );
+        assert!(
+            page.contains(">TCGPlayer Automation</a>"),
+            "the app bar: {page}"
+        );
+        assert!(page.contains("Go to the home page"), "{page}");
     }
 
     /// A page read from the dev database (`.env`), once with the browser's zone (`corten-zone`)

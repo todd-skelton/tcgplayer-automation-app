@@ -17,9 +17,11 @@ use crate::{
 };
 
 mod app_bar;
+mod error_page;
 mod parts;
 
 pub use app_bar::{AppBar, AuthCookieWarning};
+pub use error_page::error_page;
 pub use parts::SubmitsOnChange;
 
 corten::assets::embed! {
