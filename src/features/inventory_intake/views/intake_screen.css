@@ -66,6 +66,13 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  /* The - and + buttons step the count only through the script; without it the field is typed
+     and sent with Enter, so they are not drawn (corten#799). */
+  @media (scripting: none) {
+    & button[data-step] {
+      display: none;
+    }
+  }
 }
 .quantity {
   width: 3.5rem;
