@@ -14,6 +14,7 @@ use super::{
 use crate::{
     database::Database,
     features::batch_pricing::market::TcgPlayerMarket,
+    html_number,
     layout::{Chrome, Layout},
     tcgplayer::TcgPlayer,
     text::Msg,
@@ -115,15 +116,14 @@ impl ScheduleInput {
     pub fn read(&self, saved: &Settings) -> Result<Settings, Errors> {
         let f = Self::FIELDS;
         let mut errors = Errors::new();
-        let mut whole = |field, text: &str, range: std::ops::RangeInclusive<i64>| match text
-            .trim()
-            .parse::<i64>(
-        ) {
-            Ok(n) if range.contains(&n) => n,
-            _ => {
-                let (low, high) = range.into_inner();
-                errors.add(field, format!("Enter a whole number from {low} to {high}."));
-                low
+        let mut whole = |field, text: &str, range: std::ops::RangeInclusive<i64>| {
+            match html_number::whole(text) {
+                Some(n) if range.contains(&n) => n,
+                _ => {
+                    let (low, high) = range.into_inner();
+                    errors.add(field, format!("Enter a whole number from {low} to {high}."));
+                    low
+                }
             }
         };
         let minimum_interval_minutes = whole(

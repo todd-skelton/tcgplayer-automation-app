@@ -4,6 +4,7 @@ use corten::prelude::*;
 use serde::Deserialize;
 
 use super::config::{Settings, Source, range};
+use crate::html_number;
 
 #[derive(Clone, Debug, Default, Deserialize, Fields)]
 pub struct SettingsInput {
@@ -41,15 +42,14 @@ impl SettingsInput {
     pub fn read(&self) -> Result<Settings, Errors> {
         let f = Self::FIELDS;
         let mut errors = Errors::new();
-        let mut whole = |field, text: &str, range: std::ops::RangeInclusive<u32>| match text
-            .trim()
-            .parse::<u32>(
-        ) {
-            Ok(n) if range.contains(&n) => n,
-            _ => {
-                let (low, high) = range.into_inner();
-                errors.add(field, format!("Enter a whole number from {low} to {high}."));
-                low
+        let mut whole = |field, text: &str, range: std::ops::RangeInclusive<u32>| {
+            match html_number::whole(text).and_then(|n| u32::try_from(n).ok()) {
+                Some(n) if range.contains(&n) => n,
+                _ => {
+                    let (low, high) = range.into_inner();
+                    errors.add(field, format!("Enter a whole number from {low} to {high}."));
+                    low
+                }
             }
         };
         let consecutive_failure_limit = whole(

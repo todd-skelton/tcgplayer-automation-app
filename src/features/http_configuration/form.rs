@@ -7,6 +7,7 @@ use corten::prelude::*;
 use serde::Deserialize;
 
 use super::config::{Adaptive, Domain, HttpConfig, Limits};
+use crate::html_number;
 
 #[derive(Clone, Debug, Default, Deserialize, Fields)]
 pub struct SettingsInput {
@@ -56,8 +57,8 @@ fn whole_number<P: corten::form::Place>(
     what: &str,
     least: u32,
 ) -> u32 {
-    match text.trim().parse::<u32>() {
-        Ok(n) if n >= least => n,
+    match html_number::whole(text).and_then(|n| u32::try_from(n).ok()) {
+        Some(n) if n >= least => n,
         _ => {
             errors.add(
                 field,
