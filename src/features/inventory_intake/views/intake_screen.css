@@ -1,8 +1,5 @@
 .intake-screen {
   display: grid;
-  /* One column no wider than the screen, so the products table scrolls on a phone instead of
-     widening its panel and the page (corten#796; corten#661 fixed the kit's own grids only). */
-  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   & h1 {
     flex: 1;
