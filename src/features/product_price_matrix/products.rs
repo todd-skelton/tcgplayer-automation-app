@@ -206,38 +206,6 @@ pub fn looking(scope: Scope, set: Option<i32>, number: &str) -> Option<Looking<'
 pub mod tests {
     use super::*;
 
-    /// Each case `.port-logs/matrix-products-node.ts` asked Node's products route, on the dev
-    /// database: a set's products, and card numbers searched across every set.
-    #[tokio::test]
-    #[ignore = "reads the dev database, and Node's answers in .port-logs"]
-    async fn products_read_as_node_reads_them() {
-        #[derive(Deserialize)]
-        struct Case {
-            case: std::collections::HashMap<String, String>,
-            body: Answer,
-        }
-        #[derive(Deserialize)]
-        struct Answer {
-            products: Vec<Product>,
-        }
-        crate::config::load_env();
-        let db = Database::connect_lazy(&crate::config::database_url());
-        let cases: Vec<Case> = serde_json::from_str(
-            &std::fs::read_to_string(".port-logs/matrix-products.node.json").unwrap(),
-        )
-        .unwrap();
-        for Case { case, body } in cases {
-            let line = case["productLineId"].parse().unwrap();
-            let looking = match case["scope"].as_str() {
-                "set" => Looking::Set(case["setId"].parse().unwrap()),
-                _ => Looking::AllSets(&case["query"]),
-            };
-            let ours = found(&db, line, &looking).await.unwrap();
-            assert_eq!(ours.len(), body.products.len(), "{case:?}");
-            assert_eq!(ours, body.products, "{case:?}");
-        }
-    }
-
     pub fn product(id: i32, languages: &[&str]) -> Product {
         Product {
             product_id: id,

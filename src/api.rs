@@ -224,11 +224,6 @@ pub mod tests {
         }
     }
 
-    /// `value` with its numbers written as `node_json` writes them, to compare with a recording.
-    pub fn node_numbers(value: &impl Serialize) -> Value {
-        serde_json::from_str(&js_json(value)).unwrap()
-    }
-
     #[test]
     fn numbers_read_as_javascript_reads_them() {
         for (text, number) in [

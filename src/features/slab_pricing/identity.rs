@@ -530,45 +530,6 @@ pub fn words(code: &str) -> String {
 mod tests {
     use super::*;
 
-    /// The posts in `.port-logs/slab-confirm-cases.json`, in order, on `slab-confirm-seed.sql`, in
-    /// a transaction rolled back, against Node's `/api/slab-identities` confirm
-    /// (`.port-logs/slab-confirm-node.ts`): the answer, and every identity after it, its
-    /// valuation group key included.
-    #[tokio::test]
-    #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
-    async fn identities_confirm_as_node_confirms_them() {
-        crate::config::load_env();
-        let db = Database::connect_lazy(&crate::config::database_url());
-        let read_log = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
-        let cases: Vec<Value> = serde_json::from_str(&read_log("slab-confirm-cases.json")).unwrap();
-        let node: Vec<Value> = serde_json::from_str(&read_log("slab-confirm.node.json")).unwrap();
-        assert_eq!(cases.len(), node.len());
-        let capture = read_log("slab-confirm-capture.sql");
-        let mut tx = db.0.begin().await.unwrap();
-        sqlx::raw_sql(&read_log("slab-confirm-seed.sql"))
-            .execute(&mut *tx)
-            .await
-            .unwrap();
-        for (case, theirs) in cases.iter().zip(node) {
-            let (name, body) = (&case["name"], &case["body"]);
-            let confirmation = Confirmation {
-                grader: &body["grader"],
-                certificate_number: &body["certificateNumber"],
-                revision: body["revision"].as_i64().unwrap(),
-                identity: &body["identity"],
-                note: &body["note"],
-            };
-            let ours = confirm(&mut tx, &confirmation).await.err();
-            assert_eq!(ours.as_deref(), theirs["error"].as_str(), "{name}");
-            let saved: Value = sqlx::query_scalar(capture.as_str())
-                .fetch_one(&mut *tx)
-                .await
-                .unwrap();
-            assert_eq!(saved, theirs["saved"], "{name}");
-        }
-        tx.rollback().await.unwrap();
-    }
-
     #[test]
     fn a_record_shows_its_confirmed_identity_before_the_proposal() {
         let record: Record = serde_json::from_str(

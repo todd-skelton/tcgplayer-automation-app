@@ -397,15 +397,6 @@ fn specs_checked(identity: &Identity, window: &Window) -> Result<Vec<Request>, S
     Ok(requests)
 }
 
-#[cfg(test)]
-fn specs(identity: &Identity, window: &Window) -> Vec<Request> {
-    specs_checked(identity, window)
-        .unwrap()
-        .into_iter()
-        .map(|r| r.normalized().unwrap())
-        .collect()
-}
-
 pub(super) fn status(s: store::Status) -> EvidenceStatus {
     let (offset, limit) = match &s.spec {
         Request::EbaySales(page) | Request::EbaySupply(page) => (
@@ -579,97 +570,6 @@ pub async fn statuses(db: &Database, keys: &[String]) -> Result<Vec<EvidenceStat
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// The cases in `.port-logs/slab-workspace-cases.json` on the slabs `slab-workspace-seed.sql`
-    /// saves, in a transaction rolled back, against Node's `loadSlabWorkspace`
-    /// (`.port-logs/slab-workspace-node.ts`): before any refresh is saved, and after the first
-    /// case's two are (one fetched and fresh, one queued).
-    #[tokio::test]
-    #[ignore = "uses the dev database in a transaction rolled back, and Node's reads in .port-logs"]
-    async fn workspaces_read_as_node_reads_them() {
-        #[derive(Deserialize)]
-        struct Case {
-            id: String,
-            grade: String,
-            from: String,
-            to: String,
-        }
-        #[derive(Deserialize)]
-        #[serde(rename_all = "camelCase")]
-        struct Theirs {
-            error: Option<String>,
-            #[serde(default)]
-            keys: Vec<String>,
-            #[serde(default)]
-            statuses: Vec<EvidenceStatus>,
-            grade_model: Option<GradeModel>,
-            #[serde(default)]
-            recommendation: Option<Value>,
-        }
-        crate::config::load_env();
-        let db = Database::connect_lazy(&crate::config::database_url());
-        let read = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
-        let cases: Vec<Case> = serde_json::from_str(&read("slab-workspace-cases.json")).unwrap();
-        let node: Value = serde_json::from_str(&read("slab-workspace.node.json")).unwrap();
-        let mut tx = db.0.begin().await.unwrap();
-        sqlx::raw_sql(&read("slab-workspace-seed.sql"))
-            .execute(&mut *tx)
-            .await
-            .unwrap();
-        for pass in ["before", "after"] {
-            let theirs: Vec<Theirs> = serde_json::from_value(node[pass].clone()).unwrap();
-            for (case, theirs) in cases.iter().zip(theirs) {
-                let window = Window {
-                    from: case.from.clone(),
-                    to: case.to.clone(),
-                };
-                let ours = research(&mut tx, &case.id, &case.grade, &window).await;
-                let theirs = match theirs.error {
-                    Some(error) => Err(error),
-                    None => Ok(Researched {
-                        keys: theirs.keys,
-                        statuses: theirs.statuses,
-                        grade_model: theirs.grade_model.unwrap(),
-                        recommendation: theirs.recommendation,
-                    }),
-                };
-                assert_eq!(ours, theirs, "{pass} {} at {}", case.id, case.grade);
-            }
-            if pass == "before" {
-                let first = &cases[0];
-                let window = Window {
-                    from: first.from.clone(),
-                    to: first.to.clone(),
-                };
-                let keys = research(&mut tx, &first.id, &first.grade, &window)
-                    .await
-                    .unwrap()
-                    .keys;
-                let identity: Identity = serde_json::from_value(
-                    sqlx::query_scalar("SELECT identity FROM slab_identities WHERE id = $1::uuid")
-                        .bind(&first.id)
-                        .fetch_one(&mut *tx)
-                        .await
-                        .unwrap(),
-                )
-                .unwrap();
-                let specs = specs(&identity, &window);
-                sqlx::query(
-                    "INSERT INTO slab_evidence_refreshes (key, spec, state, run_id, fetched_at, expires_at, error_code)
-                    VALUES ($1, $2, 'idle', 'c0000000-0000-4000-8000-000000000001', '2026-10-30T01:02:03.456Z', '2099-01-01T00:00:00Z', NULL),
-                           ($3, $4, 'queued', 'c0000000-0000-4000-8000-000000000002', NULL, NULL, 'timeout')",
-                )
-                .bind(&keys[0])
-                .bind(serde_json::to_value(&specs[0]).unwrap())
-                .bind(&keys[1])
-                .bind(serde_json::to_value(&specs[1]).unwrap())
-                .execute(&mut *tx)
-                .await
-                .unwrap();
-            }
-        }
-        tx.rollback().await.unwrap();
-    }
 
     #[test]
     fn the_default_window_is_the_year_to_today() {

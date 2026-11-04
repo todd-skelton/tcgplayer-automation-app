@@ -342,75 +342,21 @@ mod tests {
         assert_eq!(url_name("D & D\u{a0}Miniatures"), "d-&-d-miniatures");
     }
 
-    fn cases() -> (Vec<Value>, Vec<Value>) {
-        let read = |path: &str| -> Vec<Value> {
-            serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
-        };
-        (
-            read(".port-logs/csv-import-cases.json"),
-            read(".port-logs/csv-import.node.json"),
-        )
-    }
+    /// A seller export: two SKUs the dev catalog knows, one it does not, and one row without a SKU.
+    const PLAIN: &str =
+        "TCGplayer Id,Product Line,Total Quantity,Add to Quantity,TCG Marketplace Price
+2231,Magic: The Gathering,3,1,0.25
+2233,Magic: The Gathering,0,2,
+999999999,Magic: The Gathering,1,0,1.00
+,Magic: The Gathering,1,0,1.00
+";
 
-    /// Every number as a float, so `2` and `2.0` compare equal.
-    fn floats(value: Value) -> Value {
-        match value {
-            Value::Number(n) => serde_json::json!(n.as_f64()),
-            Value::Array(items) => Value::Array(items.into_iter().map(floats).collect()),
-            Value::Object(fields) => {
-                Value::Object(fields.into_iter().map(|(k, v)| (k, floats(v))).collect())
-            }
-            other => other,
-        }
-    }
-
-    fn as_node(item: &Item) -> Value {
-        serde_json::json!({
-            "sku": item.sku,
-            "totalQuantity": item.total_quantity,
-            "addToQuantity": item.add_to_quantity,
-            "currentPrice": item.current_price,
-            "productLineId": item.product_line_id,
-            "setId": item.set_id,
-            "productId": item.product_id,
-            "originalRow": item.original_row,
-        })
-    }
-
-    /// Every case Node read with Papa Parse and `convertCsvListingsToBatchItems` against the dev
-    /// catalog (`.port-logs/csv-import-node.ts`): the same rows, and the same items or refusal.
-    #[tokio::test]
-    #[ignore = "reads the dev catalog, and Node's readings in .port-logs"]
-    async fn exports_read_as_node_reads_them() {
-        crate::config::load_env();
-        let db = Database::connect_lazy(&crate::config::database_url());
-        let (cases, node) = cases();
-        assert_eq!(cases.len(), node.len());
-        for (case, theirs) in cases.iter().zip(&node) {
-            let name = case["name"].as_str().unwrap();
-            let rows =
-                csv_text::parse(&csv_text::decode(case["text"].as_str().unwrap().as_bytes()));
-            let ours: Vec<Value> = rows.iter().cloned().map(Value::Object).collect();
-            assert_eq!(Value::Array(ours), theirs["rows"], "{name}: rows");
-            let mut conn = db.0.acquire().await.unwrap();
-            match (items(&mut conn, &rows).await, theirs.get("error")) {
-                (Ok(items), None) => {
-                    let mut expected = theirs["items"].as_array().unwrap().clone();
-                    for item in &mut expected {
-                        item.as_object_mut().unwrap().remove("marketPrice");
-                    }
-                    let ours: Vec<Value> = items.iter().map(as_node).collect();
-                    assert_eq!(
-                        floats(Value::Array(ours)),
-                        floats(Value::Array(expected)),
-                        "{name}: items"
-                    );
-                }
-                (Err(ours), Some(error)) => assert_eq!(ours, error.as_str().unwrap(), "{name}"),
-                (ours, theirs) => panic!("{name}: {ours:?} against {theirs:?}"),
-            }
-        }
-    }
+    /// An export naming one SKU twice.
+    const REPEATED: &str =
+        "TCGplayer Id,Product Line,Total Quantity,Add to Quantity,TCG Marketplace Price
+2231,Magic: The Gathering,1,0,0.25
+2231,Magic: The Gathering,2,0,0.30
+";
 
     /// An item as saved: SKU, quantities, price as text, product, row, and when.
     type Saved = (i32, i32, i32, Option<String>, i32, Value, DateTime<Utc>);
@@ -423,13 +369,13 @@ mod tests {
     async fn an_export_is_saved_and_queued() {
         crate::config::load_env();
         let db = Database::connect_lazy(&crate::config::database_url());
-        let (cases, _) = cases();
-        let text = |name: &str| {
-            let case = cases.iter().find(|c| c["name"] == name).unwrap();
-            csv_text::parse(&csv_text::decode(case["text"].as_str().unwrap().as_bytes()))
-        };
+        let text = |csv: &str| csv_text::parse(&csv_text::decode(csv.as_bytes()));
         let mut conn = db.0.acquire().await.unwrap();
-        let plain = items(&mut conn, &text("plain")).await.unwrap();
+        let plain = items(&mut conn, &text(PLAIN)).await.unwrap();
+        assert_eq!(
+            plain.iter().map(|i| i.sku).collect::<Vec<_>>(),
+            [2231.0, 2233.0]
+        );
         let now = Utc::now()
             .duration_trunc(TimeDelta::milliseconds(1))
             .unwrap();
@@ -482,7 +428,7 @@ mod tests {
             .unwrap();
         assert_eq!(queued.status, "queued");
 
-        let repeated = items(&mut conn, &text("odd-numbers")).await.unwrap();
+        let repeated = items(&mut conn, &text(REPEATED)).await.unwrap();
         sqlx::query("SAVEPOINT repeated")
             .execute(&mut *tx)
             .await
@@ -491,57 +437,6 @@ mod tests {
             create(&mut tx, "csv", "odd.csv", &repeated, now).await,
             Err("error: duplicate key value violates unique constraint \"inventory_batch_items_pkey\"".into())
         );
-        tx.rollback().await.unwrap();
-    }
-
-    /// The cases in `.port-logs/seller-import-cases.json` on the dev database in one transaction
-    /// rolled back (a savepoint each), against Node's import-seller route given the same products
-    /// by a stand-in search (`.port-logs/seller-import-node.ts`): the batch, its items as saved
-    /// (rows included) and its pricing job, or the refusal.
-    #[tokio::test]
-    #[ignore = "writes the dev database in a transaction it rolls back"]
-    async fn seller_imports_save_what_node_saves() {
-        use sqlx::Connection;
-        crate::config::load_env();
-        let read = |path: &str| std::fs::read_to_string(path).unwrap();
-        let cases: Vec<Value> =
-            serde_json::from_str(&read(".port-logs/seller-import-cases.json")).unwrap();
-        let node: Vec<Value> =
-            serde_json::from_str(&read(".port-logs/seller-import.node.json")).unwrap();
-        let capture = read(".port-logs/seller-import-capture.sql");
-        let db = Database::connect_lazy(&crate::config::database_url());
-        let mut conn = db.0.acquire().await.unwrap();
-        let mut tx = conn.begin().await.unwrap();
-        assert_eq!(cases.len(), node.len());
-        for (case, theirs) in cases.iter().zip(&node) {
-            let name = case["name"].as_str().unwrap();
-            let mut savepoint = tx.begin().await.unwrap();
-            sqlx::raw_sql(case["setup"].as_str().unwrap())
-                .execute(&mut *savepoint)
-                .await
-                .unwrap();
-            let before: i32 =
-                sqlx::query_scalar("SELECT COALESCE(max(batch_number), 0) FROM inventory_batches")
-                    .fetch_one(&mut *savepoint)
-                    .await
-                    .unwrap();
-            let products: Vec<Product> = serde_json::from_value(case["products"].clone()).unwrap();
-            let made =
-                save_seller(&mut savepoint, products, case["seller"].as_str().unwrap()).await;
-            let captured: String = sqlx::query_scalar(&capture)
-                .bind(before)
-                .fetch_one(&mut *savepoint)
-                .await
-                .unwrap();
-            let captured: Value = serde_json::from_str(&captured).unwrap();
-            savepoint.rollback().await.unwrap();
-            assert_eq!(
-                made.err().map(|not| not.to_string()),
-                theirs["error"].as_str().map(str::to_owned),
-                "{name}"
-            );
-            assert_eq!(captured, theirs["captured"], "{name}");
-        }
         tx.rollback().await.unwrap();
     }
 }

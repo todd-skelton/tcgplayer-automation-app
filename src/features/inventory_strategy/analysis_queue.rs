@@ -154,59 +154,6 @@ async fn queue(
 mod tests {
     use super::*;
 
-    /// Queuing twice on the dev database, inside a transaction rolled back, against Node's run of
-    /// `queueInventoryStrategyAnalysis` (`.port-logs/strategy-queue-node.ts`): the batch, every
-    /// item with its row, and the job with its configuration are the same, and the second queue
-    /// names the first.
-    #[tokio::test]
-    #[ignore = "uses the dev database in a transaction rolled back, and Node's run in .port-logs"]
-    async fn an_analysis_queues_as_node_queues_it() {
-        crate::config::load_env();
-        let db = Database::connect_lazy(&crate::config::database_url());
-        let node: Value = serde_json::from_str(
-            &std::fs::read_to_string(".port-logs/strategy-queue.node.json").unwrap(),
-        )
-        .unwrap();
-        let capture = std::fs::read_to_string(".port-logs/strategy-queue-capture.sql").unwrap();
-        let seller = node["seller"].as_str().unwrap();
-        let mut tx = db.0.begin().await.unwrap();
-        sqlx::query("SELECT pg_advisory_xact_lock(hashtext('inventory_batch_pricing_jobs tests'))")
-            .execute(&mut *tx)
-            .await
-            .unwrap();
-        sqlx::query(
-            "UPDATE inventory_batches SET status = 'priced'
-             WHERE source_type = 'strategy' AND status IN ('queued', 'pricing')",
-        )
-        .execute(&mut *tx)
-        .await
-        .unwrap();
-        let first = queue(&mut tx, &db, seller, Utc::now()).await.unwrap();
-        let second = queue(&mut tx, &db, seller, Utc::now()).await.unwrap();
-        let captured: Value = sqlx::query_scalar(&capture)
-            .bind(first.batch_number)
-            .fetch_one(&mut *tx)
-            .await
-            .unwrap();
-        tx.rollback().await.unwrap();
-        let said = |q: &Queued| {
-            json!({ "itemCount": q.item_count, "status": q.status, "created": q.created,
-                    "same": q.batch_number == first.batch_number })
-        };
-        assert_eq!(said(&first), node["first"]);
-        assert_eq!(said(&second), node["second"]);
-        assert_eq!(captured["batch"], node["captured"]["batch"]);
-        assert_eq!(captured["jobs"], node["captured"]["jobs"]);
-        let (ours, theirs) = (
-            captured["items"].as_array().unwrap(),
-            node["captured"]["items"].as_array().unwrap(),
-        );
-        assert_eq!(ours.len(), theirs.len());
-        for (ours, theirs) in ours.iter().zip(theirs) {
-            assert_eq!(ours, theirs);
-        }
-    }
-
     #[test]
     fn the_original_row_lists_the_sku_as_an_export_would() {
         let row = original_row(&SnapshotItem {

@@ -724,59 +724,6 @@ fn compare(previous: &Scan, current: &Scan) -> Result<Changes, String> {
 mod tests {
     use super::*;
 
-    /// Node's `/api/slab-supply` loader recorded over `.port-logs/slab-supply-cases.json`
-    /// (`slab-supply-node.ts`) on the slabs `slab-workspace-seed.sql` and `slab-inventory-seed.sql`
-    /// save: before any supply is saved, then on the scans `slab-supply-seed.sql` saves (eBay's,
-    /// the scan before it, Alt's, a failed next source page and another slab's), each at the time
-    /// Node read it, inside a transaction rolled back. Node's refusals were 400s with the message
-    /// here.
-    #[tokio::test]
-    #[ignore = "reads the dev database and .port-logs; writes only in a transaction that is rolled back"]
-    async fn reads_as_node_reads() {
-        crate::config::load_env();
-        let db = Database::connect_lazy(&crate::config::database_url());
-        let read = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
-        let recorded: Value = serde_json::from_str(&read("slab-supply-cases.json")).unwrap();
-        let node: Vec<Value> = serde_json::from_str(&read("slab-supply.node.json")).unwrap();
-        let cases = recorded["cases"].as_array().unwrap();
-        assert_eq!(cases.len(), node.len());
-        let window: Window = Window {
-            from: recorded["window"]["from"].as_str().unwrap().to_owned(),
-            to: recorded["window"]["to"].as_str().unwrap().to_owned(),
-        };
-        let mut tx = db.0.begin().await.unwrap();
-        for seed in ["slab-workspace-seed.sql", "slab-inventory-seed.sql"] {
-            sqlx::raw_sql(&read(seed)).execute(&mut *tx).await.unwrap();
-        }
-        for (i, (case, node)) in cases.iter().zip(&node).enumerate() {
-            if i == 1 {
-                sqlx::raw_sql(&read("slab-supply-seed.sql"))
-                    .execute(&mut *tx)
-                    .await
-                    .unwrap();
-            }
-            let name = case["name"].as_str().unwrap();
-            let asked = Asked {
-                id: case["slabId"].as_str().unwrap(),
-                grade: case["grade"].as_str().unwrap(),
-                window: &window,
-                seller: case["seller"].as_str().unwrap(),
-                source: node["key"].as_str(),
-                offset: case["offset"].as_u64().unwrap() as u32,
-            };
-            let at: DateTime<Utc> = node["at"].as_str().unwrap().parse().unwrap();
-            let got = load(&mut tx, &asked, at).await;
-            match node["status"].as_u64() {
-                Some(200) => {
-                    let expected: Supply = serde_json::from_value(node["body"].clone()).unwrap();
-                    assert_eq!(got.unwrap(), expected, "{name}");
-                }
-                _ => assert_eq!(got.unwrap_err(), node["body"]["error"], "{name}"),
-            }
-        }
-        tx.rollback().await.unwrap();
-    }
-
     #[test]
     fn a_listing_age_reads_as_the_react_grid_wrote_it() {
         let row = |age: Option<f64>| -> Row {

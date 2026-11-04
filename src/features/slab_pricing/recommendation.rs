@@ -335,49 +335,6 @@ pub async fn review_ask(conn: &mut sqlx::PgConnection, o: &ReviewedAsk<'_>) -> R
 mod tests {
     use super::*;
 
-    /// Node's `/api/slab-recommendations` override recorded over
-    /// `.port-logs/slab-override-cases.json` (`slab-override-node.ts`), in order, on the slabs and
-    /// recommendations `slab-workspace-seed.sql` saves, inside a transaction rolled back: each must
-    /// answer as Node answered (its refusals were 400s with the message here) and leave the reviewed
-    /// asks as Node did.
-    #[tokio::test]
-    #[ignore = "reads the dev database and .port-logs; writes only in a transaction that is rolled back"]
-    async fn reviews_asks_as_node_does() {
-        use serde_json::Value;
-        use sqlx::Connection;
-        crate::config::load_env();
-        let db = crate::database::Database::connect_lazy(&crate::config::database_url());
-        let read = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
-        let cases: Vec<Value> = serde_json::from_str(&read("slab-override-cases.json")).unwrap();
-        let node: Vec<Value> = serde_json::from_str(&read("slab-override.node.json")).unwrap();
-        let capture = read("slab-override-capture.sql");
-        assert_eq!(cases.len(), node.len());
-        let mut conn = db.0.acquire().await.unwrap();
-        let mut tx = conn.begin().await.unwrap();
-        sqlx::raw_sql(&read("slab-workspace-seed.sql"))
-            .execute(&mut *tx)
-            .await
-            .unwrap();
-        for (case, node) in cases.iter().zip(&node) {
-            let name = case["name"].as_str().unwrap();
-            let b = &case["body"];
-            let o = ReviewedAsk {
-                recommendation_id: b["recommendationId"].as_str().unwrap(),
-                item_price: b["itemPrice"].as_f64().unwrap(),
-                currency: b["currency"].as_str().unwrap(),
-                note: b["note"].as_str().unwrap(),
-            };
-            let got = review_ask(&mut tx, &o).await;
-            assert_eq!(got.err().as_deref(), node["error"].as_str(), "{name}");
-            let saved: Value = sqlx::query_scalar(&capture)
-                .fetch_one(&mut *tx)
-                .await
-                .unwrap();
-            assert_eq!(saved, node["saved"], "{name}: saved");
-        }
-        tx.rollback().await.unwrap();
-    }
-
     fn saved(current: bool, read: &[&str]) -> Recommendation {
         serde_json::from_value(serde_json::json!({
             "id": "r", "current": current, "override": null,

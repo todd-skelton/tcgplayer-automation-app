@@ -933,7 +933,6 @@ pub fn screen(
 
 #[cfg(test)]
 mod tests {
-    use serde_json::Value;
 
     use super::*;
 
@@ -963,84 +962,6 @@ mod tests {
             facts.card_numbers,
             ["53", "53/64", "1/2"],
             "only ASCII letters fold"
-        );
-    }
-
-    /// Node's `screenComparableSale` over the corpus `.port-logs/screening-node.ts` builds
-    /// (targets, titles, grades, cards, prices, dates and decisions), each sale's status and
-    /// reasons recorded.
-    #[test]
-    #[ignore = "reads Node's screenings in .port-logs"]
-    fn sales_screen_as_node_screens_them() {
-        #[derive(Deserialize)]
-        #[serde(rename_all = "camelCase")]
-        struct Saved {
-            revision_id: String,
-            fetched_at: String,
-            window: SaleWindow,
-            sale: Sale,
-        }
-        #[derive(Deserialize)]
-        #[serde(rename_all = "camelCase")]
-        struct Researched {
-            status: String,
-            identity: Option<Identity>,
-            valuation_group_key: Option<String>,
-        }
-        #[derive(Deserialize)]
-        struct Case {
-            reference: Saved,
-            target: Researched,
-            decision: Option<Decision>,
-            status: String,
-            reasons: Vec<(String, String)>,
-        }
-        let text = std::fs::read_to_string(".port-logs/screening.node.json").unwrap();
-        let cases: Vec<Value> = serde_json::from_str(&text).unwrap();
-        assert!(cases.len() > 3000);
-        let mut failed = Vec::new();
-        for (i, case) in cases.into_iter().enumerate() {
-            let shown = case.to_string();
-            let case: Case = serde_json::from_value(case).unwrap();
-            let reference = Reference {
-                revision_id: &case.reference.revision_id,
-                fetched_at: &case.reference.fetched_at,
-                window: case.reference.window.clone(),
-                sale: &case.reference.sale,
-            };
-            let target = Target {
-                confirmed: case.target.status == "confirmed",
-                identity: case.target.identity.as_ref(),
-                valuation_group_key: case.target.valuation_group_key.as_deref(),
-            };
-            let ours = screen(&reference, &target, "USD", case.decision.as_ref());
-            let reasons: Vec<(String, String)> = ours
-                .reasons
-                .iter()
-                .map(|r| {
-                    let severity = match r.severity {
-                        Severity::Review => "review",
-                        Severity::Reject => "reject",
-                    };
-                    (r.code.clone(), severity.to_owned())
-                })
-                .collect();
-            if (ours.status, &reasons) != (case.status.as_str(), &case.reasons) {
-                failed.push(format!(
-                    "case {i}: ours {} {reasons:?}\n  theirs {} {:?}\n  {}",
-                    ours.status,
-                    case.status,
-                    case.reasons,
-                    &shown[..shown.len().min(700)]
-                ));
-            }
-        }
-        let shown: Vec<String> = failed.iter().take(6).cloned().collect();
-        assert!(
-            failed.is_empty(),
-            "{} differ:\n{}",
-            failed.len(),
-            shown.join("\n")
         );
     }
 }

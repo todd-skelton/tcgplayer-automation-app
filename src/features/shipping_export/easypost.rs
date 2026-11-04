@@ -100,8 +100,6 @@ pub trait Api {
 pub struct EasyPost {
     http: reqwest::Client,
     origin: String,
-    /// A key for every mode, in a test; otherwise each mode's from the environment.
-    key: Option<String>,
 }
 
 impl Default for EasyPost {
@@ -118,24 +116,11 @@ impl EasyPost {
                 .build()
                 .expect("the HTTP client builds"),
             origin: origin.trim_end_matches('/').to_owned(),
-            key: None,
-        }
-    }
-
-    /// A stand-in at `origin` that every mode reaches with `key`.
-    #[cfg(test)]
-    pub(crate) fn stand_in(origin: &str, key: &str) -> Self {
-        EasyPost {
-            key: Some(key.to_owned()),
-            ..EasyPost::at(origin)
         }
     }
 
     /// The mode's API key (`getEasyPostApiKey`).
     fn key(&self, mode: EasyPostMode) -> Result<String, Failure> {
-        if let Some(key) = &self.key {
-            return Ok(key.clone());
-        }
         std::env::var(mode.key_name())
             .ok()
             .map(|k| k.trim().to_owned())

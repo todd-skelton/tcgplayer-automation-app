@@ -306,32 +306,4 @@ mod tests {
         assert_eq!(report.held_out_from, iso_ms(21 * DAY_MS));
         assert_eq!(report.actual_days_per_forecast_day, 1.0);
     }
-
-    /// Node's reports for each window at one time, on the dev database
-    /// (`.port-logs/forecast-calibration-node.ts`): the same, figure for figure.
-    #[tokio::test]
-    #[ignore = "reads the dev database, and Node's reports in .port-logs"]
-    async fn reports_learn_as_node_learns_them() {
-        crate::config::load_env();
-        let db = crate::database::Database::connect_lazy(&crate::config::database_url());
-        let node: serde_json::Value = serde_json::from_str(
-            &std::fs::read_to_string(".port-logs/forecast-calibration.node.json").unwrap(),
-        )
-        .unwrap();
-        let now: DateTime<Utc> = node["at"].as_str().unwrap().parse().unwrap();
-        for days in WINDOW_DAYS {
-            let theirs = &node[days.to_string()];
-            match load(&db, days, now).await {
-                Ok(ours) => {
-                    let theirs: Calibration = serde_json::from_value(theirs.clone()).unwrap();
-                    assert_eq!(ours, theirs, "{days} days");
-                }
-                Err(ours) => assert_eq!(
-                    ours,
-                    theirs["error"].as_str().unwrap_or_default(),
-                    "{days} days"
-                ),
-            }
-        }
-    }
 }

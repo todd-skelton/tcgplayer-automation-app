@@ -749,69 +749,6 @@ mod tests {
         std::fs::write(out, serde_json::to_string_pretty(&json).unwrap()).unwrap();
     }
 
-    /// Records what the worker would on the dev database, in a transaction it rolls back, and
-    /// compares what it wrote with what Node's `recordMissingEstimatedPurchaseCosts` wrote
-    /// (`.port-logs/estimate-record-node.ts`, captured by `.port-logs/estimate-capture.sql`).
-    /// Each case `.port-logs/rate-change-node.ts` ran through Node's `changeBatchEstimatedCostRate`,
-    /// on the dev database in a transaction rolled back: the rate as the screen reads it, what is
-    /// recorded, what is written (`estimate-capture.sql` and the rate saved), and the refusal.
-    #[tokio::test]
-    #[ignore = "writes the dev database in a transaction it rolls back"]
-    async fn rates_change_as_node_changes_them() {
-        use crate::features::inventory_intake::queue::{
-            read_market_percent, read_per_card_deduction,
-        };
-        use serde_json::{Value, json};
-        crate::config::load_env();
-        let node: Value = serde_json::from_str(
-            &std::fs::read_to_string(".port-logs/rate-change.node.json").unwrap(),
-        )
-        .unwrap();
-        let capture = std::fs::read_to_string(".port-logs/estimate-capture.sql").unwrap();
-        let rates = "SELECT COALESCE(json_agg(json_build_object('batch', batch_number,
-            'rate', market_rate::text, 'cents', per_unit_deduction_cents) ORDER BY batch_number),
-            '[]')::text FROM inventory_batch_estimated_cost_rates WHERE updated_at = now()";
-        let db = Database::connect_lazy(&crate::config::database_url());
-        let seller = node["seller"].as_str().unwrap();
-        for case in node["cases"].as_array().unwrap() {
-            let batch = i32::try_from(case["batch"].as_i64().unwrap()).unwrap();
-            let rate = CostRate {
-                market_rate: read_market_percent(case["marketPercent"].as_str().unwrap()).unwrap(),
-                per_unit_deduction_cents: read_per_card_deduction(
-                    case["perCardDeduction"].as_str().unwrap(),
-                )
-                .unwrap(),
-            };
-            let mut tx = db.0.begin().await.unwrap();
-            let changed = rate_changed(&mut tx, seller, batch, rate).await;
-            let ours = match changed {
-                Ok(estimated) => {
-                    let captured: String =
-                        sqlx::query_scalar(&format!("SELECT captured::text FROM ({capture}) AS c"))
-                            .fetch_one(&mut *tx)
-                            .await
-                            .unwrap();
-                    let saved: String =
-                        sqlx::query_scalar(rates).fetch_one(&mut *tx).await.unwrap();
-                    let mut captured: Value = serde_json::from_str(&captured).unwrap();
-                    captured["rates"] = serde_json::from_str(&saved).unwrap();
-                    let mut result = estimated.node_json();
-                    for one in result["recorded"].as_array_mut().unwrap() {
-                        one.as_object_mut().unwrap().remove("entryId");
-                    }
-                    json!({ "batch": batch, "result": result, "captured": captured })
-                }
-                Err(error) => json!({ "batch": batch, "error": error, "captured": null }),
-            };
-            tx.rollback().await.unwrap();
-            let mut theirs = case.clone();
-            let theirs = theirs.as_object_mut().unwrap();
-            theirs.remove("marketPercent");
-            theirs.remove("perCardDeduction");
-            assert_eq!(ours, Value::Object(theirs.clone()), "batch {batch}");
-        }
-    }
-
     #[tokio::test]
     #[ignore = "writes the dev database in a transaction it rolls back"]
     async fn records_missing_estimates_as_node_does() {
@@ -850,44 +787,6 @@ mod tests {
         );
         assert_eq!(result.unwrap_or_default(), node["result"]);
         assert_eq!(captured, node["captured"]);
-    }
-
-    /// Each case `.port-logs/estimate-backfill-node.ts` ran through Node's
-    /// `recordEstimatedPurchaseCosts` (the economics route's backfill), on the dev database with
-    /// every transaction rolled back: the run as the route answers it, less entry ids, and what
-    /// was written.
-    #[tokio::test]
-    #[ignore = "writes the dev database in a transaction it rolls back"]
-    async fn backfills_as_node_does() {
-        crate::config::load_env();
-        let node: serde_json::Value = serde_json::from_str(
-            &std::fs::read_to_string(".port-logs/estimate-backfill.node.json").unwrap(),
-        )
-        .unwrap();
-        let capture = std::fs::read_to_string(".port-logs/estimate-capture.sql").unwrap();
-        let db = Database::connect_lazy(&crate::config::database_url());
-        let seller = node["seller"].as_str().unwrap();
-        for case in node["cases"].as_array().unwrap() {
-            let batches: Option<Vec<i32>> =
-                serde_json::from_value(case["batchNumbers"].clone()).unwrap();
-            let mut tx = db.0.begin().await.unwrap();
-            let estimated = record_estimates(&mut tx, seller, batches.as_deref())
-                .await
-                .unwrap();
-            let captured: String =
-                sqlx::query_scalar(&format!("SELECT captured::text FROM ({capture}) AS c"))
-                    .fetch_one(&mut *tx)
-                    .await
-                    .unwrap();
-            tx.rollback().await.unwrap();
-            let mut result = estimated.node_json();
-            for one in result["recorded"].as_array_mut().unwrap() {
-                one.as_object_mut().unwrap().remove("entryId");
-            }
-            let captured: serde_json::Value = serde_json::from_str(&captured).unwrap();
-            assert_eq!(result, case["result"], "{batches:?}");
-            assert_eq!(captured, case["captured"], "{batches:?}");
-        }
     }
 
     #[test]

@@ -147,7 +147,7 @@ pub async fn record(conn: &mut PgConnection, funding: &Funding) -> Result<Saved,
 mod tests {
     use super::*;
 
-    /// Node's `fingerprint` of the same (`.port-logs/fp-check.ts`).
+    /// Node's `fingerprint` of the same.
     #[test]
     fn fingerprints_a_correction_as_node_does() {
         let funding = Funding {

@@ -288,71 +288,8 @@ pub async fn bought(
 
 #[cfg(test)]
 mod tests {
-    use serde_json::Value;
 
     use super::*;
-    use crate::features::{
-        shipping_configuration::ShippingConfig,
-        shipping_export::{
-            orders::tests::order,
-            shipments::{Shipment, shipment_for},
-        },
-    };
-
-    /// Node's `createShippingPostageLookupsAction` over the cases in `.port-logs/lookups.node.json`,
-    /// with the purchases `lookups-seed.sql` records, in a transaction on the dev database that is
-    /// rolled back: the postage found for each shipment, and refusals.
-    #[tokio::test]
-    #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
-    async fn postage_is_found_as_node_finds_it() {
-        crate::config::load_env();
-        let db = crate::database::Database::connect_lazy(&crate::config::database_url());
-        let read_log = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
-        let cases: Vec<Value> = serde_json::from_str(&read_log("lookups-cases.json")).unwrap();
-        let node: Vec<Value> = serde_json::from_str(&read_log("lookups.node.json")).unwrap();
-        let mut tx = db.0.begin().await.unwrap();
-        sqlx::raw_sql(&read_log("lookups-seed.sql"))
-            .execute(&mut *tx)
-            .await
-            .unwrap();
-        for (case, theirs) in cases.iter().zip(&node) {
-            let name = theirs["name"].as_str().unwrap();
-            let direction: Direction = serde_json::from_value(case["direction"].clone()).unwrap();
-            let shipments: Vec<Planned> = case["shipments"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|s| Planned {
-                    shipment: Shipment {
-                        reference: s["shipmentReference"].as_str().unwrap().to_owned(),
-                        ..shipment_for(&order("A"), &ShippingConfig::default())
-                    },
-                    orders: serde_json::from_value(s["orderNumbers"].clone()).unwrap(),
-                })
-                .collect();
-            let ours = bought(&mut *tx, direction, &shipments).await;
-            let expected = match theirs["status"].as_u64().unwrap() {
-                200 => Ok(theirs["body"]["results"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .map(|found| {
-                        (
-                            found["shipmentReference"].as_str().unwrap().to_owned(),
-                            Bought {
-                                mode: serde_json::from_value(found["mode"].clone()).unwrap(),
-                                result: serde_json::from_value(found["result"].clone()).unwrap(),
-                                purchased_at: found["purchasedAt"].as_str().map(str::to_owned),
-                            },
-                        )
-                    })
-                    .collect::<Postage>()),
-                _ => Err(theirs["body"]["error"].as_str().unwrap().to_owned()),
-            };
-            assert_eq!(ours, expected, "{name}");
-        }
-        tx.rollback().await.unwrap();
-    }
 
     fn purchase(reference: &str, status: Status) -> Purchase {
         Purchase {

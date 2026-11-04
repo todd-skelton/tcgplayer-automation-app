@@ -462,7 +462,7 @@ mod tests {
         Value::Array(parse(text).into_iter().map(Value::Object).collect())
     }
 
-    /// Readings Papa Parse 5.7 gave in the Node app (`.port-logs/csv-import-node.ts`).
+    /// Readings Papa Parse 5.7 gave in the Node app.
     #[test]
     fn exports_read_as_papa_parse_reads_them() {
         assert_eq!(

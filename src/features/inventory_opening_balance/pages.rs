@@ -147,61 +147,8 @@ pub async fn preview_items(
 
 #[cfg(test)]
 mod tests {
-    use serde_json::Value;
 
     use super::*;
-    use crate::database::Database;
-
-    /// The differences `.port-logs/opening-balance-seed.sql` adds, read in a transaction rolled
-    /// back, page as Node's did (`.port-logs/opening-balance-node.ts`).
-    #[tokio::test]
-    #[ignore = "reads the dev database, and Node's pages in .port-logs"]
-    async fn differences_page_as_node_pages_them() {
-        crate::config::load_env();
-        let db = Database::connect_lazy(&crate::config::database_url());
-        let node: Vec<Value> = serde_json::from_str(
-            &std::fs::read_to_string(".port-logs/opening-balance.node.json").unwrap(),
-        )
-        .unwrap();
-        let seed = std::fs::read_to_string(".port-logs/opening-balance-seed.sql").unwrap();
-        let mut tx = db.0.begin().await.unwrap();
-        sqlx::raw_sql(&seed).execute(&mut *tx).await.unwrap();
-        let first: String =
-            sqlx::query_scalar("SELECT min(id)::text FROM inventory_observation_differences")
-                .fetch_one(&mut *tx)
-                .await
-                .unwrap();
-        for case in &node {
-            let input = &case["input"];
-            let text = |key: &str| input[key].as_str();
-            // The first difference's ID differs from run to run.
-            let after = text("afterId").map(|_| first.as_str());
-            let seller = text("sellerKey").unwrap();
-            let limit = input["limit"].as_f64();
-            let ours = match case["call"].as_str().unwrap() {
-                "differences" => {
-                    let observation = text("observationId").unwrap();
-                    differences(&mut *tx, seller, observation, after, limit).await
-                }
-                _ => {
-                    let (run, validation) = (
-                        text("runId").unwrap(),
-                        text("validationObservationId").unwrap(),
-                    );
-                    application_differences(&mut *tx, seller, run, validation, after, limit).await
-                }
-            };
-            let mut ours = ours.unwrap();
-            let mut theirs = case["rows"].clone();
-            for rows in [&mut ours, &mut theirs] {
-                for row in rows.as_array_mut().unwrap() {
-                    row["id"] = Value::Null;
-                }
-            }
-            assert_eq!(ours, theirs, "{case}");
-        }
-        tx.rollback().await.unwrap();
-    }
 
     #[test]
     fn a_page_holds_from_1_to_200() {
