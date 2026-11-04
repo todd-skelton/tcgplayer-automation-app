@@ -123,7 +123,7 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                                 {..e.control(f.tcg_auth_cookie).hint()}
                             >
                             <button
-                                class={Button { variant: ButtonVariant::Ghost, size: ButtonSize::Sm }}
+                                class={(Button { variant: ButtonVariant::Ghost, size: ButtonSize::Sm }, Reveal)}
                                 type="button"
                                 aria-pressed="false"
                                 on:click={js::reveal(target, cookie)}
