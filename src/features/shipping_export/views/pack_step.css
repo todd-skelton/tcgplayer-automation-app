@@ -35,10 +35,6 @@
 .lines {
   white-space: pre-line;
 }
-/* The kit's segmented choices set no gap, so an icon would touch its label (corten#793). */
-.view-switch > a {
-  gap: var(--space-1);
-}
 .who {
   font-size: 1.5rem;
   font-weight: 700;
