@@ -77,6 +77,15 @@ export function spawnInheritedProcess(command, args) {
 }
 
 /** Runs sibling long-lived processes as one service and never leaves an orphan. */
+/**
+ * Node's seller order history worker, run with `args`, unless SELLER_ORDER_HISTORY_WORKER hands
+ * the history to the Corten app's worker. A child that exits stops every other one, so the worker
+ * is left out rather than started to exit at once.
+ */
+export function sellerOrderHistoryWorker(args) {
+  return process.env.SELLER_ORDER_HISTORY_WORKER?.trim() ? [] : [{ command: process.execPath, args }];
+}
+
 export function spawnInheritedProcesses(processes) {
   const children = [];
   const running = new Set();
