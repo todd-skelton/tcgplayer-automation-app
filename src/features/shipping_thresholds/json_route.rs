@@ -53,10 +53,10 @@ async fn report(State(db): State<Database>, RawQuery(query): RawQuery) -> JsonRe
 
 #[cfg(test)]
 mod tests {
-    /// Each query Node's loader was asked (`.port-logs/api-node.ts shipping-thresholds`) gets the
+    /// Each query Node's loader was asked (`scripts/parity/record-node-answers.ts shipping-thresholds`) gets the
     /// status and JSON it gave, on the dev database. When the cost model was learned differs.
     #[tokio::test]
-    #[ignore = "reads the dev database, and Node's answers in .port-logs"]
+    #[ignore = "reads the dev database, and Node's answers in tests/fixtures/node"]
     async fn the_route_answers_as_node_answered() {
         crate::api::tests::answers_as_node("shipping-thresholds", &["/costModel/learnedAt"]).await;
     }

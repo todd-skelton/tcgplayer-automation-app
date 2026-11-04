@@ -1,0 +1,866 @@
+[
+  {
+    "path": "/api/inventory-batches/3471/publications",
+    "status": 200,
+    "body": {
+      "preview": {
+        "batchNumber": 3471,
+        "pricingJobId": "3476",
+        "planningKey": "inventory-batch-pricing-job:3476",
+        "sourceType": "continuous",
+        "sourceLabel": "8520a14f",
+        "successfulResultCount": 5,
+        "existingManualReviewCount": 0,
+        "eligibleCount": 0,
+        "excludedCount": 5,
+        "items": [
+          {
+            "sku": 6649705,
+            "productId": 449119,
+            "productLine": "Magic: The Gathering",
+            "setName": "30th Anniversary Edition",
+            "productName": "Clockwork Beast",
+            "condition": "Near Mint",
+            "previousPrice": 24.99,
+            "desiredPrice": 9.85,
+            "originalQuantityDelta": 0,
+            "quantityDelta": 0,
+            "inventoryDeltaAlreadyPlanned": false,
+            "pricedAt": "2026-10-03T22:37:24.442Z",
+            "eligible": false,
+            "reasons": [
+              "pricing_warning",
+              "candidate_stale"
+            ],
+            "candidateKey": "pricing-result:3471:6649705:2026-10-03T22:37:24.442Z",
+            "inventoryDeltaKey": null,
+            "forecastEvidence": {
+              "source": "publication_candidate",
+              "schemaVersion": 2,
+              "pricedAt": "2026-10-03T22:37:24.442Z",
+              "pricingModelVersion": "pooled-supply-v1",
+              "policy": {
+                "method": "profit-per-day",
+                "relativeOverhead": 0.15,
+                "dailyReturnHurdle": 0.005,
+                "staticOverheadPerUnit": 0
+              },
+              "decision": {
+                "basis": "market-and-listing-reference",
+                "method": "profit-per-day",
+                "constraint": "none",
+                "selectedPrice": 9.85,
+                "forecastStatus": "unavailable",
+                "dailyReturnHurdle": 0.005,
+                "unconstrainedPrice": 9.85
+              }
+            }
+          },
+          {
+            "sku": 6927410,
+            "productId": 478173,
+            "productLine": "Pokemon",
+            "setName": "SWSH: Crown Zenith",
+            "productName": "Mewtwo",
+            "condition": "Near Mint Reverse Holofoil",
+            "previousPrice": 3.42,
+            "desiredPrice": 3.51,
+            "originalQuantityDelta": 0,
+            "quantityDelta": 0,
+            "inventoryDeltaAlreadyPlanned": false,
+            "pricedAt": "2026-10-03T22:37:24.442Z",
+            "eligible": false,
+            "reasons": [
+              "candidate_stale",
+              "pricing_candidate_already_used"
+            ],
+            "candidateKey": "pricing-result:3471:6927410:2026-10-03T22:37:24.442Z",
+            "inventoryDeltaKey": null,
+            "forecastEvidence": {
+              "source": "publication_candidate",
+              "schemaVersion": 2,
+              "pricedAt": "2026-10-03T22:37:24.442Z",
+              "pricingModelVersion": "pooled-supply-v1",
+              "policy": {
+                "method": "profit-per-day",
+                "relativeOverhead": 0.15,
+                "dailyReturnHurdle": 0.005,
+                "staticOverheadPerUnit": 0
+              },
+              "decision": {
+                "basis": "modeled",
+                "method": "profit-per-day",
+                "constraint": "none",
+                "supplyStatus": "observed",
+                "historyCapped": true,
+                "listingsCount": 21.351914361291364,
+                "selectedPrice": 3.51,
+                "storeWinShare": 0.04539915540017839,
+                "forecastStatus": "interpolated",
+                "buyerIntervalDays": 1.0116901278203785,
+                "dailyReturnHurdle": 0.005,
+                "unconstrainedPrice": 3.51,
+                "equivalentPercentile": 70.8449464758071,
+                "qualifyingSalesCount": 34.81707493387006,
+                "estimatedMedianSellDays": 15.446326115931898
+              },
+              "buyerChoiceForecast": {
+                "calibration": "2026-08-11-cohort",
+                "medianSellDays": 43.765536877447204
+              },
+              "conditionRateForecast": {
+                "method": "annual-buckets-v1",
+                "intervalDays": 0.3667506297229219,
+                "transactions": 957,
+                "medianSellDays": 5.5994910636603805
+              },
+              "estimatedTimeToSellDays": 15.446326115931898
+            }
+          },
+          {
+            "sku": 6926611,
+            "productId": 478059,
+            "productLine": "Pokemon",
+            "setName": "SWSH: Crown Zenith: Galarian Gallery",
+            "productName": "Turtwig",
+            "condition": "Near Mint Holofoil",
+            "previousPrice": 11.47,
+            "desiredPrice": 11.39,
+            "originalQuantityDelta": 0,
+            "quantityDelta": 0,
+            "inventoryDeltaAlreadyPlanned": false,
+            "pricedAt": "2026-10-03T22:37:24.442Z",
+            "eligible": false,
+            "reasons": [
+              "candidate_stale",
+              "pricing_candidate_already_used"
+            ],
+            "candidateKey": "pricing-result:3471:6926611:2026-10-03T22:37:24.442Z",
+            "inventoryDeltaKey": null,
+            "forecastEvidence": {
+              "source": "publication_candidate",
+              "schemaVersion": 2,
+              "pricedAt": "2026-10-03T22:37:24.442Z",
+              "pricingModelVersion": "pooled-supply-v1",
+              "policy": {
+                "method": "profit-per-day",
+                "relativeOverhead": 0.15,
+                "dailyReturnHurdle": 0.005,
+                "staticOverheadPerUnit": 0
+              },
+              "decision": {
+                "basis": "modeled",
+                "method": "profit-per-day",
+                "constraint": "none",
+                "supplyStatus": "observed",
+                "historyCapped": true,
+                "listingsCount": 48,
+                "selectedPrice": 11.39,
+                "storeWinShare": 0.02040816326530612,
+                "forecastStatus": "interpolated",
+                "buyerIntervalDays": 0.35546391203703703,
+                "dailyReturnHurdle": 0.005,
+                "unconstrainedPrice": 11.39,
+                "equivalentPercentile": 55,
+                "qualifyingSalesCount": 49,
+                "estimatedMedianSellDays": 12.073051612544752
+              },
+              "buyerChoiceForecast": {
+                "calibration": "2026-08-11-cohort",
+                "medianSellDays": 32.59642142799804
+              },
+              "conditionRateForecast": {
+                "method": "annual-buckets-v1",
+                "intervalDays": 0.14081237911025143,
+                "transactions": 2810,
+                "medianSellDays": 4.782581474842238
+              },
+              "estimatedTimeToSellDays": 12.073051612544752
+            }
+          },
+          {
+            "sku": 7022253,
+            "productId": 487435,
+            "productLine": "Pokemon",
+            "setName": "SV: Scarlet & Violet Promo Cards",
+            "productName": "Mimikyu ex - 004",
+            "condition": "Near Mint Holofoil",
+            "previousPrice": 2.36,
+            "desiredPrice": 2.41,
+            "originalQuantityDelta": 0,
+            "quantityDelta": 0,
+            "inventoryDeltaAlreadyPlanned": false,
+            "pricedAt": "2026-10-03T22:37:24.442Z",
+            "eligible": false,
+            "reasons": [
+              "candidate_stale",
+              "pricing_candidate_already_used"
+            ],
+            "candidateKey": "pricing-result:3471:7022253:2026-10-03T22:37:24.442Z",
+            "inventoryDeltaKey": null,
+            "forecastEvidence": {
+              "source": "publication_candidate",
+              "schemaVersion": 2,
+              "pricedAt": "2026-10-03T22:37:24.442Z",
+              "pricingModelVersion": "pooled-supply-v1",
+              "policy": {
+                "method": "profit-per-day",
+                "relativeOverhead": 0.15,
+                "dailyReturnHurdle": 0.005,
+                "staticOverheadPerUnit": 0
+              },
+              "decision": {
+                "basis": "modeled",
+                "method": "profit-per-day",
+                "constraint": "none",
+                "supplyStatus": "observed",
+                "historyCapped": true,
+                "listingsCount": 60.184238570041764,
+                "selectedPrice": 2.41,
+                "storeWinShare": 0.01635206858970542,
+                "forecastStatus": "interpolated",
+                "buyerIntervalDays": 1.29453134115765,
+                "dailyReturnHurdle": 0.005,
+                "unconstrainedPrice": 2.41,
+                "equivalentPercentile": 90.07676607085074,
+                "qualifyingSalesCount": 11.907880714979118,
+                "estimatedMedianSellDays": 54.87383717524356
+              },
+              "buyerChoiceForecast": {
+                "calibration": "2026-08-11-cohort",
+                "medianSellDays": 35.94939297571778
+              },
+              "conditionRateForecast": {
+                "method": "annual-buckets-v1",
+                "intervalDays": 0.17873803093542842,
+                "transactions": 2009,
+                "medianSellDays": 7.5765192349869155
+              },
+              "estimatedTimeToSellDays": 54.87383717524356
+            }
+          },
+          {
+            "sku": 6724309,
+            "productId": 453640,
+            "productLine": "YuGiOh",
+            "setName": "Battles of Legend: Crystal Revenge",
+            "productName": "Crystal Beast Amber Mammoth",
+            "condition": "Near Mint 1st Edition",
+            "previousPrice": 0.24,
+            "desiredPrice": 0.25,
+            "originalQuantityDelta": 0,
+            "quantityDelta": 0,
+            "inventoryDeltaAlreadyPlanned": false,
+            "pricedAt": "2026-10-03T22:37:24.442Z",
+            "eligible": false,
+            "reasons": [
+              "candidate_stale",
+              "pricing_candidate_already_used"
+            ],
+            "candidateKey": "pricing-result:3471:6724309:2026-10-03T22:37:24.442Z",
+            "inventoryDeltaKey": null,
+            "forecastEvidence": {
+              "source": "publication_candidate",
+              "schemaVersion": 2,
+              "pricedAt": "2026-10-03T22:37:24.442Z",
+              "pricingModelVersion": "pooled-supply-v1",
+              "policy": {
+                "method": "profit-per-day",
+                "relativeOverhead": 0.15,
+                "dailyReturnHurdle": 0.005,
+                "staticOverheadPerUnit": 0
+              },
+              "decision": {
+                "basis": "modeled",
+                "method": "profit-per-day",
+                "constraint": "none",
+                "supplyStatus": "observed",
+                "historyCapped": true,
+                "listingsCount": 37.08016364443005,
+                "selectedPrice": 0.25,
+                "storeWinShare": 0.02817962923707946,
+                "forecastStatus": "interpolated",
+                "buyerIntervalDays": 1.5472847800197973,
+                "dailyReturnHurdle": 0.005,
+                "unconstrainedPrice": 0.25,
+                "equivalentPercentile": 51.41603272888601,
+                "qualifyingSalesCount": 51.03510835911917,
+                "estimatedMedianSellDays": 38.05926876365075
+              },
+              "buyerChoiceForecast": {
+                "calibration": "2026-08-11-cohort",
+                "medianSellDays": 258.14404596820293
+              },
+              "conditionRateForecast": {
+                "method": "annual-buckets-v1",
+                "intervalDays": 1.2338983050847459,
+                "transactions": 302,
+                "medianSellDays": 30.350758843263876
+              },
+              "estimatedTimeToSellDays": 38.05926876365075
+            }
+          }
+        ]
+      },
+      "publications": [
+        {
+          "id": 2865,
+          "planningKey": "inventory-batch-pricing-job:3476",
+          "batchNumber": 3471,
+          "pricingJobId": 3476,
+          "method": "staged_delta",
+          "sourceType": "continuous",
+          "sellerKey": "8520a14f",
+          "status": "published",
+          "stagedPricingUploadId": 17456531,
+          "config": {
+            "mode": "automatic",
+            "policy": {
+              "allowWarnings": false,
+              "automaticSources": {
+                "csv": false,
+                "seller": false,
+                "continuous": true,
+                "pending_inventory": true
+              },
+              "stagedFlushWindowMs": 60000,
+              "maximumCandidateAgeMs": 86400000,
+              "stagedMicroBatchMaximum": 250,
+              "automaticPublishingEnabled": true,
+              "minimumAbsolutePriceChange": 0.01,
+              "minimumRelativePriceChangePercent": 0
+            },
+            "selectedSkus": null
+          },
+          "progress": null,
+          "errorCode": null,
+          "errorMessage": null,
+          "attemptCount": 1,
+          "claimedBy": null,
+          "claimExpiresAt": null,
+          "stagedAt": "2026-10-03T22:37:51.459Z",
+          "publishingAt": "2026-10-03T22:37:51.467Z",
+          "publishedAt": "2026-10-03T22:37:51.840Z",
+          "completedAt": "2026-10-03T22:37:51.840Z",
+          "createdAt": "2026-10-03T22:37:24.559Z",
+          "updatedAt": "2026-10-03T22:37:51.840Z",
+          "items": [
+            {
+              "id": 51014,
+              "publicationId": 2865,
+              "candidateKey": "pricing-result:3471:6927410:2026-10-03T22:37:24.442Z",
+              "inventoryDeltaKey": null,
+              "batchNumber": 3471,
+              "sku": 6927410,
+              "productId": 478173,
+              "productLine": "Pokemon",
+              "setName": "SWSH: Crown Zenith",
+              "productName": "Mewtwo",
+              "condition": "Near Mint Reverse Holofoil",
+              "previousPrice": 3.42,
+              "desiredPrice": 3.51,
+              "quantityDelta": 0,
+              "observedQuantity": null,
+              "desiredAbsoluteQuantity": null,
+              "pricedAt": "2026-10-03T22:37:24.442Z",
+              "eligibilityReasons": [],
+              "forecastEvidence": {
+                "policy": {
+                  "method": "profit-per-day",
+                  "relativeOverhead": 0.15,
+                  "dailyReturnHurdle": 0.005,
+                  "staticOverheadPerUnit": 0
+                },
+                "source": "publication_candidate",
+                "decision": {
+                  "basis": "modeled",
+                  "method": "profit-per-day",
+                  "constraint": "none",
+                  "supplyStatus": "observed",
+                  "historyCapped": true,
+                  "listingsCount": 21.351914361291364,
+                  "selectedPrice": 3.51,
+                  "storeWinShare": 0.04539915540017839,
+                  "forecastStatus": "interpolated",
+                  "buyerIntervalDays": 1.0116901278203785,
+                  "dailyReturnHurdle": 0.005,
+                  "unconstrainedPrice": 3.51,
+                  "equivalentPercentile": 70.8449464758071,
+                  "qualifyingSalesCount": 34.81707493387006,
+                  "estimatedMedianSellDays": 15.446326115931898
+                },
+                "pricedAt": "2026-10-03T22:37:24.442Z",
+                "schemaVersion": 2,
+                "buyerChoiceForecast": {
+                  "calibration": "2026-08-11-cohort",
+                  "medianSellDays": 43.765536877447204
+                },
+                "pricingModelVersion": "pooled-supply-v1",
+                "conditionRateForecast": {
+                  "method": "annual-buckets-v1",
+                  "intervalDays": 0.3667506297229219,
+                  "transactions": 957,
+                  "medianSellDays": 5.5994910636603805
+                },
+                "estimatedTimeToSellDays": 15.446326115931898
+              },
+              "forecastEvidenceProvenance": "recorded",
+              "status": "published",
+              "errorCode": null,
+              "errorMessage": null,
+              "publishedAt": "2026-10-03T22:37:51.826Z",
+              "createdAt": "2026-10-03T22:37:24.559Z",
+              "updatedAt": "2026-10-03T22:37:51.826Z"
+            },
+            {
+              "id": 51015,
+              "publicationId": 2865,
+              "candidateKey": "pricing-result:3471:6926611:2026-10-03T22:37:24.442Z",
+              "inventoryDeltaKey": null,
+              "batchNumber": 3471,
+              "sku": 6926611,
+              "productId": 478059,
+              "productLine": "Pokemon",
+              "setName": "SWSH: Crown Zenith: Galarian Gallery",
+              "productName": "Turtwig",
+              "condition": "Near Mint Holofoil",
+              "previousPrice": 11.47,
+              "desiredPrice": 11.39,
+              "quantityDelta": 0,
+              "observedQuantity": null,
+              "desiredAbsoluteQuantity": null,
+              "pricedAt": "2026-10-03T22:37:24.442Z",
+              "eligibilityReasons": [],
+              "forecastEvidence": {
+                "policy": {
+                  "method": "profit-per-day",
+                  "relativeOverhead": 0.15,
+                  "dailyReturnHurdle": 0.005,
+                  "staticOverheadPerUnit": 0
+                },
+                "source": "publication_candidate",
+                "decision": {
+                  "basis": "modeled",
+                  "method": "profit-per-day",
+                  "constraint": "none",
+                  "supplyStatus": "observed",
+                  "historyCapped": true,
+                  "listingsCount": 48,
+                  "selectedPrice": 11.39,
+                  "storeWinShare": 0.02040816326530612,
+                  "forecastStatus": "interpolated",
+                  "buyerIntervalDays": 0.35546391203703703,
+                  "dailyReturnHurdle": 0.005,
+                  "unconstrainedPrice": 11.39,
+                  "equivalentPercentile": 55,
+                  "qualifyingSalesCount": 49,
+                  "estimatedMedianSellDays": 12.073051612544752
+                },
+                "pricedAt": "2026-10-03T22:37:24.442Z",
+                "schemaVersion": 2,
+                "buyerChoiceForecast": {
+                  "calibration": "2026-08-11-cohort",
+                  "medianSellDays": 32.59642142799804
+                },
+                "pricingModelVersion": "pooled-supply-v1",
+                "conditionRateForecast": {
+                  "method": "annual-buckets-v1",
+                  "intervalDays": 0.14081237911025143,
+                  "transactions": 2810,
+                  "medianSellDays": 4.782581474842238
+                },
+                "estimatedTimeToSellDays": 12.073051612544752
+              },
+              "forecastEvidenceProvenance": "recorded",
+              "status": "published",
+              "errorCode": null,
+              "errorMessage": null,
+              "publishedAt": "2026-10-03T22:37:51.826Z",
+              "createdAt": "2026-10-03T22:37:24.559Z",
+              "updatedAt": "2026-10-03T22:37:51.826Z"
+            },
+            {
+              "id": 51016,
+              "publicationId": 2865,
+              "candidateKey": "pricing-result:3471:7022253:2026-10-03T22:37:24.442Z",
+              "inventoryDeltaKey": null,
+              "batchNumber": 3471,
+              "sku": 7022253,
+              "productId": 487435,
+              "productLine": "Pokemon",
+              "setName": "SV: Scarlet & Violet Promo Cards",
+              "productName": "Mimikyu ex - 004",
+              "condition": "Near Mint Holofoil",
+              "previousPrice": 2.36,
+              "desiredPrice": 2.41,
+              "quantityDelta": 0,
+              "observedQuantity": null,
+              "desiredAbsoluteQuantity": null,
+              "pricedAt": "2026-10-03T22:37:24.442Z",
+              "eligibilityReasons": [],
+              "forecastEvidence": {
+                "policy": {
+                  "method": "profit-per-day",
+                  "relativeOverhead": 0.15,
+                  "dailyReturnHurdle": 0.005,
+                  "staticOverheadPerUnit": 0
+                },
+                "source": "publication_candidate",
+                "decision": {
+                  "basis": "modeled",
+                  "method": "profit-per-day",
+                  "constraint": "none",
+                  "supplyStatus": "observed",
+                  "historyCapped": true,
+                  "listingsCount": 60.184238570041764,
+                  "selectedPrice": 2.41,
+                  "storeWinShare": 0.01635206858970542,
+                  "forecastStatus": "interpolated",
+                  "buyerIntervalDays": 1.29453134115765,
+                  "dailyReturnHurdle": 0.005,
+                  "unconstrainedPrice": 2.41,
+                  "equivalentPercentile": 90.07676607085074,
+                  "qualifyingSalesCount": 11.907880714979118,
+                  "estimatedMedianSellDays": 54.87383717524356
+                },
+                "pricedAt": "2026-10-03T22:37:24.442Z",
+                "schemaVersion": 2,
+                "buyerChoiceForecast": {
+                  "calibration": "2026-08-11-cohort",
+                  "medianSellDays": 35.94939297571778
+                },
+                "pricingModelVersion": "pooled-supply-v1",
+                "conditionRateForecast": {
+                  "method": "annual-buckets-v1",
+                  "intervalDays": 0.17873803093542842,
+                  "transactions": 2009,
+                  "medianSellDays": 7.5765192349869155
+                },
+                "estimatedTimeToSellDays": 54.87383717524356
+              },
+              "forecastEvidenceProvenance": "recorded",
+              "status": "published",
+              "errorCode": null,
+              "errorMessage": null,
+              "publishedAt": "2026-10-03T22:37:51.826Z",
+              "createdAt": "2026-10-03T22:37:24.559Z",
+              "updatedAt": "2026-10-03T22:37:51.826Z"
+            },
+            {
+              "id": 51017,
+              "publicationId": 2865,
+              "candidateKey": "pricing-result:3471:6724309:2026-10-03T22:37:24.442Z",
+              "inventoryDeltaKey": null,
+              "batchNumber": 3471,
+              "sku": 6724309,
+              "productId": 453640,
+              "productLine": "YuGiOh",
+              "setName": "Battles of Legend: Crystal Revenge",
+              "productName": "Crystal Beast Amber Mammoth",
+              "condition": "Near Mint 1st Edition",
+              "previousPrice": 0.24,
+              "desiredPrice": 0.25,
+              "quantityDelta": 0,
+              "observedQuantity": null,
+              "desiredAbsoluteQuantity": null,
+              "pricedAt": "2026-10-03T22:37:24.442Z",
+              "eligibilityReasons": [],
+              "forecastEvidence": {
+                "policy": {
+                  "method": "profit-per-day",
+                  "relativeOverhead": 0.15,
+                  "dailyReturnHurdle": 0.005,
+                  "staticOverheadPerUnit": 0
+                },
+                "source": "publication_candidate",
+                "decision": {
+                  "basis": "modeled",
+                  "method": "profit-per-day",
+                  "constraint": "none",
+                  "supplyStatus": "observed",
+                  "historyCapped": true,
+                  "listingsCount": 37.08016364443005,
+                  "selectedPrice": 0.25,
+                  "storeWinShare": 0.02817962923707946,
+                  "forecastStatus": "interpolated",
+                  "buyerIntervalDays": 1.5472847800197973,
+                  "dailyReturnHurdle": 0.005,
+                  "unconstrainedPrice": 0.25,
+                  "equivalentPercentile": 51.41603272888601,
+                  "qualifyingSalesCount": 51.03510835911917,
+                  "estimatedMedianSellDays": 38.05926876365075
+                },
+                "pricedAt": "2026-10-03T22:37:24.442Z",
+                "schemaVersion": 2,
+                "buyerChoiceForecast": {
+                  "calibration": "2026-08-11-cohort",
+                  "medianSellDays": 258.14404596820293
+                },
+                "pricingModelVersion": "pooled-supply-v1",
+                "conditionRateForecast": {
+                  "method": "annual-buckets-v1",
+                  "intervalDays": 1.2338983050847459,
+                  "transactions": 302,
+                  "medianSellDays": 30.350758843263876
+                },
+                "estimatedTimeToSellDays": 38.05926876365075
+              },
+              "forecastEvidenceProvenance": "recorded",
+              "status": "published",
+              "errorCode": null,
+              "errorMessage": null,
+              "publishedAt": "2026-10-03T22:37:51.826Z",
+              "createdAt": "2026-10-03T22:37:24.559Z",
+              "updatedAt": "2026-10-03T22:37:51.826Z"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/inventory-batches/2725/publications",
+    "status": 200,
+    "body": {
+      "preview": {
+        "batchNumber": 2725,
+        "pricingJobId": "2730",
+        "planningKey": "inventory-batch-pricing-job:2730",
+        "sourceType": "pending_inventory",
+        "sourceLabel": "Inventory Manager",
+        "successfulResultCount": 1,
+        "existingManualReviewCount": 0,
+        "eligibleCount": 0,
+        "excludedCount": 1,
+        "items": [
+          {
+            "sku": 9399692,
+            "productId": 704862,
+            "productLine": "Pokemon",
+            "setName": "ME05: Pitch Black",
+            "productName": "Crushing Hammer - 105/084 - Ultra Rare",
+            "condition": "Near Mint Holofoil",
+            "previousPrice": null,
+            "desiredPrice": 6.68,
+            "originalQuantityDelta": 1,
+            "quantityDelta": 0,
+            "inventoryDeltaAlreadyPlanned": true,
+            "pricedAt": "2026-09-26T15:52:59.892Z",
+            "eligible": false,
+            "reasons": [
+              "candidate_stale",
+              "pricing_candidate_already_used"
+            ],
+            "candidateKey": "pricing-result:2725:9399692:2026-09-26T15:52:59.892Z",
+            "inventoryDeltaKey": null,
+            "forecastEvidence": {
+              "source": "publication_candidate",
+              "schemaVersion": 2,
+              "pricedAt": "2026-09-26T15:52:59.892Z",
+              "pricingModelVersion": "pooled-supply-v1",
+              "policy": {
+                "method": "profit-per-day",
+                "relativeOverhead": 0.15,
+                "dailyReturnHurdle": 0.005,
+                "staticOverheadPerUnit": 0
+              },
+              "decision": {
+                "basis": "modeled",
+                "method": "profit-per-day",
+                "constraint": "none",
+                "supplyStatus": "observed",
+                "historyCapped": true,
+                "listingsCount": 36,
+                "selectedPrice": 6.68,
+                "storeWinShare": 0.02702702702702703,
+                "forecastStatus": "interpolated",
+                "buyerIntervalDays": 0.4827015509259259,
+                "dailyReturnHurdle": 0.005,
+                "unconstrainedPrice": 6.68,
+                "equivalentPercentile": 95,
+                "qualifyingSalesCount": 7,
+                "estimatedMedianSellDays": 12.379579105820081
+              },
+              "buyerChoiceForecast": {
+                "calibration": "2026-08-11-cohort",
+                "medianSellDays": 12.673380852036193
+              },
+              "conditionRateForecast": {
+                "method": "annual-buckets-v1",
+                "intervalDays": 0.02596442001727724,
+                "transactions": 2760,
+                "medianSellDays": 0.6658950876044472
+              },
+              "estimatedTimeToSellDays": 12.379579105820081
+            }
+          }
+        ]
+      },
+      "publications": [
+        {
+          "id": 2263,
+          "planningKey": "inventory-batch-pricing-job:2730:selection:7c090b192f22665a",
+          "batchNumber": 2725,
+          "pricingJobId": 2730,
+          "method": "staged_delta",
+          "sourceType": "pending_inventory",
+          "sellerKey": "8520a14f",
+          "status": "published",
+          "stagedPricingUploadId": 17265616,
+          "config": {
+            "mode": "manual",
+            "policy": {
+              "allowWarnings": false,
+              "automaticSources": {
+                "csv": false,
+                "seller": false,
+                "continuous": true,
+                "pending_inventory": true
+              },
+              "stagedFlushWindowMs": 60000,
+              "maximumCandidateAgeMs": 86400000,
+              "stagedMicroBatchMaximum": 250,
+              "automaticPublishingEnabled": true,
+              "minimumAbsolutePriceChange": 0.01,
+              "minimumRelativePriceChangePercent": 0
+            },
+            "selectedSkus": [
+              9399692
+            ]
+          },
+          "progress": null,
+          "errorCode": null,
+          "errorMessage": null,
+          "attemptCount": 1,
+          "claimedBy": null,
+          "claimExpiresAt": null,
+          "stagedAt": "2026-09-26T16:06:11.083Z",
+          "publishingAt": "2026-09-26T16:06:11.088Z",
+          "publishedAt": "2026-09-26T16:06:12.003Z",
+          "completedAt": "2026-09-26T16:06:12.003Z",
+          "createdAt": "2026-09-26T16:05:59.687Z",
+          "updatedAt": "2026-09-26T16:06:12.003Z",
+          "items": [
+            {
+              "id": 45578,
+              "publicationId": 2263,
+              "candidateKey": "pricing-result:2725:9399692:2026-09-26T15:52:59.892Z",
+              "inventoryDeltaKey": "inventory-batch-item:2725:9399692",
+              "batchNumber": 2725,
+              "sku": 9399692,
+              "productId": 704862,
+              "productLine": "Pokemon",
+              "setName": "ME05: Pitch Black",
+              "productName": "Crushing Hammer - 105/084 - Ultra Rare",
+              "condition": "Near Mint Holofoil",
+              "previousPrice": null,
+              "desiredPrice": 6.68,
+              "quantityDelta": 1,
+              "observedQuantity": null,
+              "desiredAbsoluteQuantity": null,
+              "pricedAt": "2026-09-26T15:52:59.892Z",
+              "eligibilityReasons": [],
+              "forecastEvidence": {
+                "policy": {
+                  "method": "profit-per-day",
+                  "relativeOverhead": 0.15,
+                  "dailyReturnHurdle": 0.005,
+                  "staticOverheadPerUnit": 0
+                },
+                "source": "publication_candidate",
+                "decision": {
+                  "basis": "modeled",
+                  "method": "profit-per-day",
+                  "constraint": "none",
+                  "supplyStatus": "observed",
+                  "historyCapped": true,
+                  "listingsCount": 36,
+                  "selectedPrice": 6.68,
+                  "storeWinShare": 0.02702702702702703,
+                  "forecastStatus": "interpolated",
+                  "buyerIntervalDays": 0.4827015509259259,
+                  "dailyReturnHurdle": 0.005,
+                  "unconstrainedPrice": 6.68,
+                  "equivalentPercentile": 95,
+                  "qualifyingSalesCount": 7,
+                  "estimatedMedianSellDays": 12.379579105820081
+                },
+                "pricedAt": "2026-09-26T15:52:59.892Z",
+                "schemaVersion": 2,
+                "buyerChoiceForecast": {
+                  "calibration": "2026-08-11-cohort",
+                  "medianSellDays": 12.673380852036193
+                },
+                "pricingModelVersion": "pooled-supply-v1",
+                "conditionRateForecast": {
+                  "method": "annual-buckets-v1",
+                  "intervalDays": 0.02596442001727724,
+                  "transactions": 2760,
+                  "medianSellDays": 0.6658950876044472
+                },
+                "estimatedTimeToSellDays": 12.379579105820081
+              },
+              "forecastEvidenceProvenance": "recorded",
+              "status": "published",
+              "errorCode": null,
+              "errorMessage": null,
+              "publishedAt": "2026-09-26T16:06:11.953Z",
+              "createdAt": "2026-09-26T16:05:59.687Z",
+              "updatedAt": "2026-09-26T16:06:11.954Z"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/inventory-batches/999999999/publications",
+    "status": 404,
+    "body": {
+      "error": "Batch 999999999 not found"
+    }
+  },
+  {
+    "path": "/api/inventory-batches/abc/publications",
+    "status": 400,
+    "body": {
+      "error": "Invalid batch number"
+    }
+  },
+  {
+    "path": "/api/inventory-batches/3471/publications",
+    "post": "{\"selectedSkus\":\"all\"}",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 400,
+    "body": {
+      "error": "selectedSkus must contain valid SKU numbers"
+    }
+  },
+  {
+    "path": "/api/inventory-batches/3471/publications",
+    "post": "{\"selectedSkus\":[1,-2]}",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 400,
+    "body": {
+      "error": "selectedSkus must contain valid SKU numbers"
+    }
+  },
+  {
+    "path": "/api/inventory-batches/abc/publications",
+    "post": "{}",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 400,
+    "body": {
+      "error": "Invalid batch number"
+    }
+  }
+]

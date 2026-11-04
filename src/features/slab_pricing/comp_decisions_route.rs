@@ -185,11 +185,11 @@ pub(super) async fn saved(conn: &mut PgConnection, input: &Value) -> Result<Deci
 
 #[cfg(test)]
 mod tests {
-    /// Node's answers on the dev database (`.port-logs/api-node.ts slab-comp-decisions`): its
+    /// Node's answers on the dev database (`scripts/parity/record-node-answers.ts slab-comp-decisions`): its
     /// refusals, since dev has no slab to review. What a save writes is compared with Node's in
     /// `comps::tests`.
     #[tokio::test]
-    #[ignore = "reads the dev database, and Node's answers in .port-logs"]
+    #[ignore = "reads the dev database, and Node's answers in tests/fixtures/node"]
     async fn the_route_answers_as_node_answered() {
         crate::api::tests::answers_as_node("slab-comp-decisions", &[]).await;
     }

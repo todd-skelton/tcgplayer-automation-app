@@ -1,0 +1,52 @@
+[
+  {
+    "path": "/api/inventory-intake-runs",
+    "status": 200,
+    "body": {
+      "runs": [],
+      "target": {
+        "sellerKey": "8520a14f",
+        "publicationSellerKey": "8520a14f",
+        "canPublish": true,
+        "publishingUnavailableReason": null,
+        "publicationPaused": false
+      }
+    }
+  },
+  {
+    "path": "/api/inventory-intake-runs",
+    "post": "{}",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 400,
+    "body": {
+      "error": "A request ID and valid queue options are required."
+    }
+  },
+  {
+    "path": "/api/inventory-intake-runs",
+    "post": "not json",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 400,
+    "body": {
+      "error": "A request ID and valid queue options are required."
+    }
+  },
+  {
+    "path": "/api/inventory-intake-runs",
+    "post": "{\"requestId\":\"parity\",\"workflow\":\"sell\"}",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 400,
+    "body": {
+      "error": "A request ID and valid queue options are required."
+    }
+  }
+]

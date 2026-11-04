@@ -16,6 +16,8 @@ mod layout;
 mod legacy;
 pub mod migrations;
 mod node_pg;
+#[cfg(test)]
+mod parity_fixture;
 mod tcgplayer;
 mod text;
 mod theme;

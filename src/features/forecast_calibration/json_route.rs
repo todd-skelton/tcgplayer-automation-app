@@ -50,10 +50,10 @@ mod tests {
         legacy::Legacy,
     };
 
-    /// Each query Node's loader was asked (`.port-logs/api-node.ts forecast-calibration`) gets the
+    /// Each query Node's loader was asked (`scripts/parity/record-node-answers.ts forecast-calibration`) gets the
     /// status and JSON it gave, on the dev database. When it was learned is the only difference.
     #[tokio::test]
-    #[ignore = "reads the dev database, and Node's answers in .port-logs"]
+    #[ignore = "reads the dev database, and Node's answers in tests/fixtures/node"]
     async fn the_route_answers_as_node_answered() {
         crate::api::tests::answers_as_node("forecast-calibration", &["/learnedAt"]).await;
     }

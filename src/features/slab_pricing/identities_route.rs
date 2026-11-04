@@ -326,12 +326,12 @@ mod tests {
         tx.rollback().await.unwrap();
     }
 
-    /// Node's answers on the dev database (`.port-logs/api-node.ts slab-identities`): every
+    /// Node's answers on the dev database (`scripts/parity/record-node-answers.ts slab-identities`): every
     /// refusal before Alt is asked or anything is saved. What a lookup asks Alt and saves, and
     /// what a confirmation saves, are compared with Node's in `identity::tests` and
     /// `inventory_import::tests`.
     #[tokio::test]
-    #[ignore = "reads the dev database, and Node's answers in .port-logs"]
+    #[ignore = "reads the dev database, and Node's answers in tests/fixtures/node"]
     async fn the_route_answers_as_node_answered() {
         crate::api::tests::answers_as_node("slab-identities", &[]).await;
     }

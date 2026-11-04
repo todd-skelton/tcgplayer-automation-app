@@ -1,0 +1,87 @@
+[
+  {
+    "path": "/api/inventory-history-diagnostics",
+    "status": 200,
+    "body": {
+      "diagnostics": {
+        "sellerKey": "8520a14f",
+        "generatedAt": "2026-11-04T03:05:47.697Z",
+        "orderCoverage": {
+          "sellerKey": "8520a14f",
+          "source": "tcgplayer_api",
+          "status": "complete",
+          "searchRange": "LastThreeMonths",
+          "observedFrom": "2026-07-30T22:22:50.473Z",
+          "observedThrough": "2026-10-30T20:48:20.537Z",
+          "lastAttemptAt": "2026-10-30T21:55:28.094Z",
+          "completedAt": "2026-10-30T21:55:28.094Z",
+          "expectedTotal": 1677,
+          "ordersObserved": 1677,
+          "detailsRecorded": 620,
+          "nextOffset": 1677,
+          "gaps": []
+        },
+        "openingBalance": {
+          "status": "applied",
+          "runId": "1",
+          "cutoffAt": "2026-09-08T03:34:04.106Z",
+          "appliedAt": "2026-09-08T03:39:49.814Z",
+          "validationObservationId": "2",
+          "unsupportedPositiveItemCount": 1,
+          "unsupportedPositiveQuantity": 1
+        },
+        "fifo": {
+          "queue": {
+            "pending": 0,
+            "processing": 0,
+            "held": 0
+          },
+          "lines": {
+            "allocated": 2151,
+            "partial": 2,
+            "unmatched": 382,
+            "pending": 0,
+            "held": 0,
+            "unsupported": 0,
+            "excludedPreCutoff": 1322,
+            "removed": 0
+          },
+          "queuedLineProjections": {
+            "pending": 0,
+            "processing": 0,
+            "held": 0
+          },
+          "settledOrderedQuantity": 3173,
+          "settledMatchedQuantity": 2723,
+          "settledUnmatchedQuantity": 450,
+          "pendingOrProcessingQuantity": 0,
+          "heldQuantity": 0,
+          "priceUnavailableQuantity": 468,
+          "dateUnavailableQuantity": 467
+        },
+        "stockDifferences": {
+          "observedCount": 0,
+          "unacknowledgedCount": 0,
+          "acknowledgedCount": 0,
+          "affectedSkuCount": 0,
+          "absoluteQuantity": 0
+        },
+        "receivedLots": {
+          "receiptCount": 1669,
+          "receivedQuantity": 2792,
+          "missingMarketSnapshotQuantity": 1,
+          "missingIntakeDateQuantity": 0
+        },
+        "publications": {
+          "planned": 0,
+          "active": 0,
+          "ambiguous": 0,
+          "failed": 10,
+          "retried": 0,
+          "oldestPlannedAt": null,
+          "lastPublishedAt": "2026-11-03T21:38:54.910Z"
+        }
+      }
+    }
+  }
+]

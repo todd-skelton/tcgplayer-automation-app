@@ -1,0 +1,51 @@
+[
+  {
+    "path": "/api/forecast-calibration",
+    "status": 500,
+    "body": {
+      "error": "Order history was last synced through 2026-10-30T20:48:20.537Z; forecast calibration waits for a current sync."
+    }
+  },
+  {
+    "path": "/api/forecast-calibration?days=28",
+    "status": 500,
+    "body": {
+      "error": "Order history was last synced through 2026-10-30T20:48:20.537Z; forecast calibration waits for a current sync."
+    }
+  },
+  {
+    "path": "/api/forecast-calibration?days=56",
+    "status": 500,
+    "body": {
+      "error": "Order history was last synced through 2026-10-30T20:48:20.537Z; forecast calibration waits for a current sync."
+    }
+  },
+  {
+    "path": "/api/forecast-calibration?days=0",
+    "status": 400,
+    "body": {
+      "error": "days must be one of 28, 56, 84."
+    }
+  },
+  {
+    "path": "/api/forecast-calibration?days=abc",
+    "status": 400,
+    "body": {
+      "error": "days must be one of 28, 56, 84."
+    }
+  },
+  {
+    "path": "/api/forecast-calibration?days=2.5",
+    "status": 400,
+    "body": {
+      "error": "days must be one of 28, 56, 84."
+    }
+  },
+  {
+    "path": "/api/forecast-calibration?days=28&days=7",
+    "status": 500,
+    "body": {
+      "error": "Order history was last synced through 2026-10-30T20:48:20.537Z; forecast calibration waits for a current sync."
+    }
+  }
+]

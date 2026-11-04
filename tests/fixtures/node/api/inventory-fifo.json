@@ -1,0 +1,172 @@
+[
+  {
+    "path": "/api/inventory-fifo",
+    "post": "{\"action\":\"list_holds\",\"limit\":5}",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 200,
+    "body": {
+      "holds": {
+        "queue": [],
+        "lines": []
+      }
+    }
+  },
+  {
+    "path": "/api/inventory-fifo",
+    "post": "{\"action\":\"find_order\",\"orderNumber\":\"ORDER-d4ab8bd29df4\"}",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 200,
+    "body": {
+      "lines": [
+        {
+          "id": "10636",
+          "skuId": "3443289",
+          "sku": 3443289,
+          "state": "allocated",
+          "holdReason": null,
+          "orderedQuantity": 1,
+          "currentOrderedQuantity": 1,
+          "matchedQuantity": 1,
+          "unmatchedQuantity": 0,
+          "priceKnownQuantity": 1,
+          "dateKnownQuantity": 1,
+          "intakeMarketTotal": 8.2,
+          "weightedDaysHeld": 56.295867,
+          "revisionId": "11749",
+          "sourceOrderRevision": 1,
+          "allocatedSourceOrderRevision": 1,
+          "replayStatus": null,
+          "allocationPending": false,
+          "allocations": [
+            {
+              "quantity": 1,
+              "receiptId": 2770,
+              "supplyKey": "receipt:2770",
+              "availableAt": "2026-09-04T13:42:17.621+00:00",
+              "dispositionId": null,
+              "quantityCorrectionId": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/inventory-fifo",
+    "post": "{\"action\":\"find_order\",\"orderNumber\":\"NOT-AN-ORDER\"}",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 200,
+    "body": {
+      "lines": []
+    }
+  },
+  {
+    "path": "/api/inventory-fifo",
+    "post": "{\"action\":\"find_order\"}",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 409,
+    "body": {
+      "error": "Error: Order number is required."
+    }
+  },
+  {
+    "path": "/api/inventory-fifo",
+    "post": "{\"action\":\"list_revisions\",\"lineId\":\"10636\",\"limit\":5}",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 200,
+    "body": {
+      "revisions": [
+        {
+          "id": "11749",
+          "revisionNumber": 1,
+          "sourceOrderRevision": 1,
+          "orderTime": "2026-10-30T20:48:20.537Z",
+          "triggerReason": "seller_sku_replay",
+          "state": "allocated",
+          "holdReason": null,
+          "orderedQuantity": 1,
+          "matchedQuantity": 1,
+          "unmatchedQuantity": 0,
+          "priceKnownQuantity": 1,
+          "dateKnownQuantity": 1,
+          "intakeMarketTotal": 8.2,
+          "weightedDaysHeld": 56.295867,
+          "recordedAt": "2026-10-30T22:56:29.389Z",
+          "allocations": [
+            {
+              "quantity": 1,
+              "receiptId": 2770,
+              "supplyKey": "receipt:2770",
+              "availableAt": "2026-09-04T13:42:17.621+00:00",
+              "dispositionId": null,
+              "quantityCorrectionId": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/inventory-fifo",
+    "post": "{\"action\":\"list_revisions\"}",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 409,
+    "body": {
+      "error": "Error: FIFO line ID is required."
+    }
+  },
+  {
+    "path": "/api/inventory-fifo",
+    "post": "{\"action\":\"record_disposition\",\"requestId\":\"parity\"}",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 409,
+    "body": {
+      "error": "Error: Complete disposition identity, quantity, availability, lineage, and evidence are required."
+    }
+  },
+  {
+    "path": "/api/inventory-fifo",
+    "post": "{\"action\":\"unknown\"}",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 409,
+    "body": {
+      "error": "Error: Unknown inventory FIFO action."
+    }
+  },
+  {
+    "path": "/api/inventory-fifo",
+    "post": "{\"action\":\"list_holds\",\"sellerKey\":\"another-seller\"}",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 400,
+    "body": {
+      "error": "Seller key must match the configured seller."
+    }
+  }
+]

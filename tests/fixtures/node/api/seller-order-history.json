@@ -1,0 +1,61 @@
+[
+  {
+    "path": "/api/seller-order-history",
+    "status": 200,
+    "body": {
+      "coverage": {
+        "sellerKey": "8520a14f",
+        "source": "tcgplayer_api",
+        "status": "complete",
+        "searchRange": "LastThreeMonths",
+        "observedFrom": "2026-07-30T22:22:50.473Z",
+        "observedThrough": "2026-10-30T20:48:20.537Z",
+        "lastAttemptAt": "2026-10-30T21:55:28.094Z",
+        "completedAt": "2026-10-30T21:55:28.094Z",
+        "expectedTotal": 1677,
+        "ordersObserved": 1677,
+        "detailsRecorded": 620,
+        "nextOffset": 1677,
+        "gaps": []
+      }
+    }
+  },
+  {
+    "path": "/api/seller-order-history?sellerKey=another-seller",
+    "status": 200,
+    "body": {
+      "coverage": {
+        "sellerKey": "another-seller",
+        "source": "tcgplayer_api",
+        "status": "not_started",
+        "ordersObserved": 0,
+        "detailsRecorded": 0,
+        "gaps": []
+      }
+    }
+  },
+  {
+    "path": "/api/seller-order-history",
+    "post": "{\"action\":\"unknown\"}",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 400,
+    "body": {
+      "error": "Unknown seller order history action."
+    }
+  },
+  {
+    "path": "/api/seller-order-history",
+    "post": "{\"action\":\"import_csv\"}",
+    "headers": {
+      "origin": "http://localhost",
+      "sec-fetch-site": "same-origin"
+    },
+    "status": 400,
+    "body": {
+      "error": "A seller order CSV file is required."
+    }
+  }
+]

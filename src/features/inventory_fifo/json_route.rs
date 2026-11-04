@@ -374,11 +374,11 @@ mod tests {
         tx.rollback().await.unwrap();
     }
 
-    /// Node's answers on the dev database (`.port-logs/api-node.ts inventory-fifo`): an order's
+    /// Node's answers on the dev database (`scripts/parity/record-node-answers.ts inventory-fifo`): an order's
     /// allocation, a line's revisions, the holds, and every refusal before them. A replay writes,
     /// so it is `queue::process_next`'s, compared with Node's in the shadow.
     #[tokio::test]
-    #[ignore = "reads the dev database, and Node's answers in .port-logs"]
+    #[ignore = "reads the dev database, and Node's answers in tests/fixtures/node"]
     async fn the_route_answers_as_node_answered() {
         crate::api::tests::answers_as_node("inventory-fifo", &[]).await;
     }

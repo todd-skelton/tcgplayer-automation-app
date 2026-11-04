@@ -229,10 +229,10 @@ mod tests {
 
     use super::{inventory_identity, js_string};
 
-    /// Each request `.port-logs/api/shipping-intake-history.cases.json` asked the Node route
+    /// Each request `scripts/parity/record-node-answers.ts shipping-intake-history` asked the Node route
     /// (orders the dev seller has, as loaded and changed, and every refusal) gets Node's answer.
     #[tokio::test]
-    #[ignore = "reads the dev database, and Node's answers in .port-logs"]
+    #[ignore = "reads the dev database, and Node's answers in tests/fixtures/node"]
     async fn the_route_answers_as_node_answered() {
         let refreshed: Vec<String> = (0..500)
             .map(|i| format!("/histories/{i}/refreshedAt"))

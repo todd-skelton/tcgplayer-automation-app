@@ -145,16 +145,18 @@ pub mod tests {
         legacy::Legacy,
     };
 
-    /// Each request Node's route was asked (`.port-logs/api-node.ts <name>`, recorded in
-    /// `.port-logs/api/<name>.node.json` as `{path, post?, headers?, status, cacheControl?, body}`,
-    /// `post` the JSON a post sent with any `headers` added, from a page at `http://localhost`) gets
-    /// the status, `Cache-Control` and JSON it gave, through the app's router, on the dev database. `timed` are JSON pointers to what
-    /// says when it was read, which differ by when each ran. Numbers are compared as written, since
-    /// serde_json reads `2` and `2.0` as different values.
+    /// Each request Node's route was asked (`scripts/parity/record-node-answers.ts <name>`,
+    /// recorded in `tests/fixtures/node/api/<name>.json` as
+    /// `{path, post?, headers?, status, cacheControl?, body}`, `post` the JSON a post sent with any
+    /// `headers` added, from a page at `http://localhost`) gets the status, `Cache-Control` and JSON
+    /// it gave, through the app's router, on the dev database. Order numbers are recorded as their
+    /// aliases (`crate::parity_fixture`). `timed` are JSON pointers to what says when it was read,
+    /// which differ by when each ran. Numbers are compared as written, since serde_json reads `2`
+    /// and `2.0` as different values.
     pub async fn answers_as_node(name: &str, timed: &[&str]) {
         crate::config::load_env();
-        let recorded = std::fs::read_to_string(format!(".port-logs/api/{name}.node.json")).unwrap();
-        let node: Vec<Value> = serde_json::from_str(&recorded).unwrap();
+        let node: Vec<Value> = crate::parity_fixture::read(&format!("node/api/{name}.json"));
+        let orders = crate::parity_fixture::Orders::of_dev_database().await;
         let router = app(Shared {
             db: Database::connect_lazy(&crate::config::database_url()),
             legacy: Legacy::new("http://127.0.0.1:1".into()),
@@ -174,7 +176,7 @@ pub mod tests {
             let path = expected["path"].as_str().unwrap();
             let asked = format!("{path} {}", expected["post"]);
             // A post was sent to the action as JSON; anything else is a `GET`.
-            let request = match expected["post"].as_str() {
+            let request = match expected["post"].as_str().map(|body| orders.real(body)) {
                 Some(body) => {
                     let mut post = corten::axum::http::Request::post(path)
                         .header("host", "localhost")
@@ -187,7 +189,7 @@ pub mod tests {
                             value,
                         );
                     }
-                    post.body(corten::axum::body::Body::from(body.to_owned()))
+                    post.body(corten::axum::body::Body::from(body))
                 }
                 None => {
                     corten::axum::http::Request::get(path).body(corten::axum::body::Body::empty())
@@ -204,7 +206,7 @@ pub mod tests {
             let body = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
                 .await
                 .unwrap();
-            let body: Value = serde_json::from_slice(&body).unwrap();
+            let body = crate::parity_fixture::scrub(serde_json::from_slice(&body).unwrap());
             assert!(kind.starts_with("application/json"), "{asked}: {kind}");
             assert_eq!(
                 u64::from(status),

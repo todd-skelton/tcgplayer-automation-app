@@ -37,9 +37,9 @@ async fn show(State(db): State<Database>) -> JsonResponse {
 
 #[cfg(test)]
 mod tests {
-    /// Node's answer on the dev database (`.port-logs/api-node.ts inventory-history-diagnostics`).
+    /// Node's answer on the dev database (`scripts/parity/record-node-answers.ts inventory-history-diagnostics`).
     #[tokio::test]
-    #[ignore = "reads the dev database, and Node's answers in .port-logs"]
+    #[ignore = "reads the dev database, and Node's answers in tests/fixtures/node"]
     async fn the_route_answers_as_node_answered() {
         crate::api::tests::answers_as_node(
             "inventory-history-diagnostics",

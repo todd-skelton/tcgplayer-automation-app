@@ -625,11 +625,11 @@ mod tests {
         );
     }
 
-    /// Node's answers on the dev database (`.port-logs/api-node.ts inventory-economics`): the
+    /// Node's answers on the dev database (`scripts/parity/record-node-answers.ts inventory-economics`): the
     /// workspace, and each estimate action's refusals before it writes. What a backfill or a rate
     /// change writes is compared with Node's in `estimate::tests`.
     #[tokio::test]
-    #[ignore = "reads the dev database, and Node's answers in .port-logs"]
+    #[ignore = "reads the dev database, and Node's answers in tests/fixtures/node"]
     async fn the_route_answers_as_node_answered() {
         crate::api::tests::answers_as_node("inventory-economics", &["/workspace/generatedAt"])
             .await;

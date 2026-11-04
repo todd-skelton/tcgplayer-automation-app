@@ -371,11 +371,11 @@ mod tests {
         tx.rollback().await.unwrap();
     }
 
-    /// Each request Node's route was asked (`.port-logs/api-node.ts slab-recommendations`) gets the
+    /// Each request Node's route was asked (`scripts/parity/record-node-answers.ts slab-recommendations`) gets the
     /// status, `Cache-Control` and JSON it gave, on the dev database: its refusals, since dev has
     /// no recommendation to read or review.
     #[tokio::test]
-    #[ignore = "reads the dev database, and Node's answers in .port-logs"]
+    #[ignore = "reads the dev database, and Node's answers in tests/fixtures/node"]
     async fn the_route_answers_as_node_answered() {
         crate::api::tests::answers_as_node("slab-recommendations", &[]).await;
     }

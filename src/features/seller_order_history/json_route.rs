@@ -128,11 +128,11 @@ async fn acted(db: &Database, request: Request) -> Result<JsonResponse, String> 
 
 #[cfg(test)]
 mod tests {
-    /// Node's answers on the dev database (`.port-logs/api-node.ts seller-order-history`): the
+    /// Node's answers on the dev database (`scripts/parity/record-node-answers.ts seller-order-history`): the
     /// coverage of the sellers asked about, and the posts it refuses before writing. A catch-up and
     /// an import are `catch_up`'s and `file_import`'s, tested against Node there.
     #[tokio::test]
-    #[ignore = "reads the dev database, and Node's answers in .port-logs"]
+    #[ignore = "reads the dev database, and Node's answers in tests/fixtures/node"]
     async fn the_route_answers_as_node_answered() {
         crate::api::tests::answers_as_node("seller-order-history", &[]).await;
     }

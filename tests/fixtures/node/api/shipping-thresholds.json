@@ -1,0 +1,364 @@
+[
+  {
+    "path": "/api/shipping-thresholds",
+    "status": 200,
+    "body": {
+      "sellerKey": "8520a14f",
+      "settings": {
+        "enabled": true,
+        "thresholds": [
+          5,
+          50,
+          250
+        ],
+        "snapRange": 0.1,
+        "evidenceWindowDays": 90
+      },
+      "costModel": {
+        "learnedAt": "2026-11-04T03:05:45.266Z",
+        "evidenceWindowDays": 90,
+        "orderCount": 1563,
+        "tiers": [
+          {
+            "fromOrderValue": 0,
+            "buyerShipping": 1.52,
+            "postage": 0.81,
+            "orderCount": 121,
+            "postageOrderCount": 75,
+            "basis": "observed"
+          },
+          {
+            "fromOrderValue": 5,
+            "buyerShipping": 0.04,
+            "postage": 0.88,
+            "orderCount": 1049,
+            "postageOrderCount": 785,
+            "basis": "observed"
+          },
+          {
+            "fromOrderValue": 50,
+            "buyerShipping": 0.15,
+            "postage": 5.58,
+            "orderCount": 359,
+            "postageOrderCount": 245,
+            "basis": "observed"
+          },
+          {
+            "fromOrderValue": 250,
+            "buyerShipping": 0.15,
+            "postage": 8.63,
+            "orderCount": 34,
+            "postageOrderCount": 26,
+            "basis": "observed"
+          }
+        ],
+        "basketCount": 3681
+      },
+      "thresholdCosts": [
+        {
+          "threshold": 5,
+          "snapPriceShippingCost": 0.13,
+          "thresholdShippingCost": 0.37,
+          "basketCount": 1333
+        },
+        {
+          "threshold": 50,
+          "snapPriceShippingCost": 1.27,
+          "thresholdShippingCost": 3.89,
+          "basketCount": 633
+        },
+        {
+          "threshold": 250,
+          "snapPriceShippingCost": 5,
+          "thresholdShippingCost": 7.48,
+          "basketCount": 59
+        }
+      ],
+      "outcomeWindowDays": 90,
+      "outcomes": [
+        {
+          "threshold": 5,
+          "snapPrice": 4.99,
+          "listings": {
+            "snapped": 1,
+            "kept": 0,
+            "floor": 0
+          },
+          "snapped": {
+            "units": 0,
+            "orders": 0,
+            "largestOrderUnits": 0
+          },
+          "kept": {
+            "units": 0,
+            "orders": 0,
+            "largestOrderUnits": 0
+          },
+          "justAbove": {
+            "units": 96,
+            "orders": 69,
+            "unitsPerOrder": 4.07,
+            "otherItemsValuePerOrder": 18.78,
+            "ordersWithAddOns": 0.493,
+            "largestOrderUnits": 15,
+            "bulkOrderUnitShare": 0.292,
+            "shippingCostPerOrder": 1.47
+          }
+        },
+        {
+          "threshold": 50,
+          "snapPrice": 49.99,
+          "listings": {
+            "snapped": 0,
+            "kept": 0,
+            "floor": 0
+          },
+          "snapped": {
+            "units": 0,
+            "orders": 0,
+            "largestOrderUnits": 0
+          },
+          "kept": {
+            "units": 0,
+            "orders": 0,
+            "largestOrderUnits": 0
+          },
+          "justAbove": {
+            "units": 48,
+            "orders": 41,
+            "unitsPerOrder": 2.07,
+            "otherItemsValuePerOrder": 14.83,
+            "ordersWithAddOns": 0.268,
+            "largestOrderUnits": 5,
+            "bulkOrderUnitShare": 0.167,
+            "shippingCostPerOrder": 5.11
+          }
+        },
+        {
+          "threshold": 250,
+          "snapPrice": 249.99,
+          "listings": {
+            "snapped": 0,
+            "kept": 0,
+            "floor": 0
+          },
+          "snapped": {
+            "units": 0,
+            "orders": 0,
+            "largestOrderUnits": 0
+          },
+          "kept": {
+            "units": 0,
+            "orders": 0,
+            "largestOrderUnits": 0
+          },
+          "justAbove": {
+            "units": 5,
+            "orders": 4,
+            "unitsPerOrder": 1.25,
+            "otherItemsValuePerOrder": 0,
+            "ordersWithAddOns": 0,
+            "largestOrderUnits": 2,
+            "bulkOrderUnitShare": 0,
+            "shippingCostPerOrder": 8.06
+          }
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/shipping-thresholds?days=28",
+    "status": 400,
+    "body": {
+      "error": "days must be one of 30, 60, 90, 180, 365."
+    }
+  },
+  {
+    "path": "/api/shipping-thresholds?days=90",
+    "status": 200,
+    "body": {
+      "sellerKey": "8520a14f",
+      "settings": {
+        "enabled": true,
+        "thresholds": [
+          5,
+          50,
+          250
+        ],
+        "snapRange": 0.1,
+        "evidenceWindowDays": 90
+      },
+      "costModel": {
+        "learnedAt": "2026-11-04T03:05:46.005Z",
+        "evidenceWindowDays": 90,
+        "orderCount": 1563,
+        "tiers": [
+          {
+            "fromOrderValue": 0,
+            "buyerShipping": 1.52,
+            "postage": 0.81,
+            "orderCount": 121,
+            "postageOrderCount": 75,
+            "basis": "observed"
+          },
+          {
+            "fromOrderValue": 5,
+            "buyerShipping": 0.04,
+            "postage": 0.88,
+            "orderCount": 1049,
+            "postageOrderCount": 785,
+            "basis": "observed"
+          },
+          {
+            "fromOrderValue": 50,
+            "buyerShipping": 0.15,
+            "postage": 5.58,
+            "orderCount": 359,
+            "postageOrderCount": 245,
+            "basis": "observed"
+          },
+          {
+            "fromOrderValue": 250,
+            "buyerShipping": 0.15,
+            "postage": 8.63,
+            "orderCount": 34,
+            "postageOrderCount": 26,
+            "basis": "observed"
+          }
+        ],
+        "basketCount": 3681
+      },
+      "thresholdCosts": [
+        {
+          "threshold": 5,
+          "snapPriceShippingCost": 0.13,
+          "thresholdShippingCost": 0.37,
+          "basketCount": 1333
+        },
+        {
+          "threshold": 50,
+          "snapPriceShippingCost": 1.27,
+          "thresholdShippingCost": 3.89,
+          "basketCount": 633
+        },
+        {
+          "threshold": 250,
+          "snapPriceShippingCost": 5,
+          "thresholdShippingCost": 7.48,
+          "basketCount": 59
+        }
+      ],
+      "outcomeWindowDays": 90,
+      "outcomes": [
+        {
+          "threshold": 5,
+          "snapPrice": 4.99,
+          "listings": {
+            "snapped": 1,
+            "kept": 0,
+            "floor": 0
+          },
+          "snapped": {
+            "units": 0,
+            "orders": 0,
+            "largestOrderUnits": 0
+          },
+          "kept": {
+            "units": 0,
+            "orders": 0,
+            "largestOrderUnits": 0
+          },
+          "justAbove": {
+            "units": 96,
+            "orders": 69,
+            "unitsPerOrder": 4.07,
+            "otherItemsValuePerOrder": 18.78,
+            "ordersWithAddOns": 0.493,
+            "largestOrderUnits": 15,
+            "bulkOrderUnitShare": 0.292,
+            "shippingCostPerOrder": 1.47
+          }
+        },
+        {
+          "threshold": 50,
+          "snapPrice": 49.99,
+          "listings": {
+            "snapped": 0,
+            "kept": 0,
+            "floor": 0
+          },
+          "snapped": {
+            "units": 0,
+            "orders": 0,
+            "largestOrderUnits": 0
+          },
+          "kept": {
+            "units": 0,
+            "orders": 0,
+            "largestOrderUnits": 0
+          },
+          "justAbove": {
+            "units": 48,
+            "orders": 41,
+            "unitsPerOrder": 2.07,
+            "otherItemsValuePerOrder": 14.83,
+            "ordersWithAddOns": 0.268,
+            "largestOrderUnits": 5,
+            "bulkOrderUnitShare": 0.167,
+            "shippingCostPerOrder": 5.11
+          }
+        },
+        {
+          "threshold": 250,
+          "snapPrice": 249.99,
+          "listings": {
+            "snapped": 0,
+            "kept": 0,
+            "floor": 0
+          },
+          "snapped": {
+            "units": 0,
+            "orders": 0,
+            "largestOrderUnits": 0
+          },
+          "kept": {
+            "units": 0,
+            "orders": 0,
+            "largestOrderUnits": 0
+          },
+          "justAbove": {
+            "units": 5,
+            "orders": 4,
+            "unitsPerOrder": 1.25,
+            "otherItemsValuePerOrder": 0,
+            "ordersWithAddOns": 0,
+            "largestOrderUnits": 2,
+            "bulkOrderUnitShare": 0,
+            "shippingCostPerOrder": 8.06
+          }
+        }
+      ]
+    }
+  },
+  {
+    "path": "/api/shipping-thresholds?days=0",
+    "status": 400,
+    "body": {
+      "error": "days must be one of 30, 60, 90, 180, 365."
+    }
+  },
+  {
+    "path": "/api/shipping-thresholds?days=abc",
+    "status": 400,
+    "body": {
+      "error": "days must be one of 30, 60, 90, 180, 365."
+    }
+  },
+  {
+    "path": "/api/shipping-thresholds?days=2.5",
+    "status": 400,
+    "body": {
+      "error": "days must be one of 30, 60, 90, 180, 365."
+    }
+  }
+]

@@ -1590,10 +1590,10 @@ mod tests {
         tx.rollback().await.unwrap();
     }
 
-    /// Node's answers on the dev database's batches (`.port-logs/api-node.ts inventory-batches`),
+    /// Node's answers on the dev database's batches (`scripts/parity/record-node-answers.ts inventory-batches`),
     /// read only: the list, batches and their items, and every refusal before a write.
     #[tokio::test]
-    #[ignore = "reads the dev database, and Node's answers in .port-logs"]
+    #[ignore = "reads the dev database, and Node's answers in tests/fixtures/node"]
     async fn the_routes_answer_as_node_answered() {
         for name in [
             "inventory-batches",

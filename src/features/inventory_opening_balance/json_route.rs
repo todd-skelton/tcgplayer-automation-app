@@ -541,10 +541,10 @@ mod tests {
         tx.rollback().await.unwrap();
     }
 
-    /// Node's answers on the dev database (`.port-logs/api-node.ts inventory-opening-balance`):
+    /// Node's answers on the dev database (`scripts/parity/record-node-answers.ts inventory-opening-balance`):
     /// each page as the dev seller's observations and run have them, and every refusal.
     #[tokio::test]
-    #[ignore = "reads the dev database, and Node's answers in .port-logs"]
+    #[ignore = "reads the dev database, and Node's answers in tests/fixtures/node"]
     async fn the_route_answers_as_node_answered() {
         crate::api::tests::answers_as_node("inventory-opening-balance", &[]).await;
     }

@@ -207,12 +207,12 @@ async fn act(State(db): State<Database>, request: Request) -> JsonResponse {
 
 #[cfg(test)]
 mod tests {
-    /// Each request Node's route was asked (`.port-logs/api-node.ts inventory-intake-runs`) gets
+    /// Each request Node's route was asked (`scripts/parity/record-node-answers.ts inventory-intake-runs`) gets
     /// the status and JSON it gave, on the dev database, which has no counts: a well-formed
     /// request is refused as counts that moved, so none writes. A queued batch's JSON is checked
     /// against Node's in `queue::tests::queues_as_node_queues`.
     #[tokio::test]
-    #[ignore = "reads the dev database, and Node's answers in .port-logs"]
+    #[ignore = "reads the dev database, and Node's answers in tests/fixtures/node"]
     async fn the_route_answers_as_node_answered() {
         use sqlx::Connection;
         // The tests that queue against seeded counts hold this lock while their counts exist;
