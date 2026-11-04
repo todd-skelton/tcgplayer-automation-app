@@ -67,6 +67,12 @@ use page::{catch_up, import_history, load_order, load_orders, new_batch, show};
 use printing::{create_batch_label, packing_slips};
 use shipping::mark_shipped;
 
+/// Whether a hover may fetch the workflow at `at`: not when it calls TCGplayer as it is drawn.
+fn cheap(at: &url::ShippingWorkflow) -> bool {
+    at.step
+        .is_some_and(|step| !matches!(step, steps::Step::PullSheet | steps::Step::Pack))
+}
+
 #[corten::routes(area = ShippingWorkflow, state = crate::app::Shared)]
 pub mod url {
     use super::{pack::PackView, shipments::Direction, steps::Step};
@@ -77,10 +83,9 @@ pub mod url {
     /// sheet's filter and sort without JavaScript; `shipment` the one Pack shows, and `view`
     /// whether as cards or a list.
     ///
-    /// Never prefetched: the Pull Sheet and Pack steps read TCGplayer's pull sheet export when
-    /// drawn, so a hover over a step link would call TCGplayer. Only some steps do, but an opt-out
-    /// is the route's (corten#798).
-    #[route("/shipping-export", get = show, prefetch = false)]
+    /// Prefetched only for a step named other than Pull Sheet and Pack (`cheap`): those read
+    /// TCGplayer's pull sheet export when drawn, and a visit without a step may open either.
+    #[route("/shipping-export", get = show, prefetch = cheap)]
     pub struct ShippingWorkflow {
         pub step: Option<Step>,
         pub seller: Option<String>,
