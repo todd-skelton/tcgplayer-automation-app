@@ -134,9 +134,10 @@ pub async fn run<J: Jobs>(jobs: J, queued: Arc<Notify>, signal: Signal) {
     }
 }
 
-/// Whether `PRICING_WORKER` turns the worker on. Node's worker owns the jobs until cutover (port
-/// decisions 3 and 26); turned on beside it, the two claim jobs from one queue under their own
-/// leases, so a job is priced by one or the other.
+/// Whether `PRICING_WORKER` turns the worker on. Set in dev, it is this worker's alone: Node's
+/// in-process worker reads the same switch and stays off (`ensureInventoryBatchPricingWorker`).
+/// In production Node's worker owns the jobs until cutover; turned on beside a Node worker that
+/// does not read it, the two claim from one queue under their own leases.
 pub fn on() -> bool {
     crate::config::is_set("PRICING_WORKER")
 }

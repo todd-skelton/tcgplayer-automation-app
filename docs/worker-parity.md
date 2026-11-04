@@ -48,3 +48,12 @@ fixtures or dev batches the Rust tests replay:
 Every worker now has its Node recording committed; no test reads the uncommitted `.port-logs`.
 The recordings' Rust tests are `#[ignore]` only because they use the dev database, in a
 transaction rolled back.
+
+## Dev cutover
+
+Workers move to Rust in dev one at a time; production keeps Node's until Todd approves a deploy.
+
+| Worker | Dev owner | Switch |
+| --- | --- | --- |
+| Batch pricing | Corten app | `PRICING_WORKER=1` in `.env.development.local`; Node's `ensureInventoryBatchPricingWorker` reads it and stays off |
+| Continuous pricing scheduler, seller order history, slab evidence, inventory publication | Node | unchanged |

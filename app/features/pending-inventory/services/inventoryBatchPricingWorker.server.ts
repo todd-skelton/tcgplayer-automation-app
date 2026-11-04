@@ -288,8 +288,9 @@ export function startInventoryBatchPricingWorkerProcess(): void {
   scheduleNextTick(state, 0);
 }
 
+// PRICING_WORKER hands the queue to the Corten app's worker, which reads the same env files.
 export function ensureInventoryBatchPricingWorker(): void {
-  if (process.env.WORKERS_RUN_IN_PROCESS === "false") {
+  if (process.env.WORKERS_RUN_IN_PROCESS === "false" || process.env.PRICING_WORKER?.trim()) {
     return;
   }
   startInventoryBatchPricingWorkerProcess();
