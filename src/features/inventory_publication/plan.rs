@@ -889,23 +889,26 @@ mod tests {
         assert!(different.is_empty());
     }
 
-    /// Node's publish route (`POST /api/inventory-batches/:batch/publications`) recorded over dev batches
-    /// (`.port-logs/publish-*`): received, csv and continuous batches, selections split at a maximum,
-    /// a selection planned twice, no seller, stale candidates and refused batches. Each case is
-    /// planned here as it stood, inside a transaction that is rolled back, and must answer as Node
-    /// answered (its refusals are 500s whose message carries an `Error: ` prefix) and save what Node
-    /// saved.
+    /// Node's publish route's planning recorded over dev batches (`tests/fixtures/node/publication/publish.json`, by
+    /// `scripts/parity/publish-selections.mjs`, each case on a fresh copy of the dev database):
+    /// received, csv, continuous and strategy batches, selections, a selection planned twice, a
+    /// split at a smaller maximum, no seller, no maximum, stale candidates and a missing batch.
+    /// Each case is planned here on the dev database as it stood, inside a transaction that is
+    /// rolled back, and must answer as Node answered (its refusals are 500s whose message carries
+    /// an `Error: ` prefix) and save what Node saved. Recorded again when the dev batches change.
     #[tokio::test]
-    #[ignore = "reads the dev database and .port-logs; writes only in a transaction that is rolled back"]
+    #[ignore = "reads the dev database; writes only in a transaction that is rolled back"]
     async fn selections_plan_as_node_plans() {
         use sqlx::Connection;
         crate::config::load_env();
         let db = Database::connect_lazy(&crate::config::database_url());
         let read = |path: &str| std::fs::read_to_string(path).unwrap();
         let cases: Vec<Value> =
-            serde_json::from_str(&read(".port-logs/publish-cases.json")).unwrap();
-        let node: Vec<Value> = serde_json::from_str(&read(".port-logs/publish.node.json")).unwrap();
-        let capture = read(".port-logs/publish-capture.sql");
+            serde_json::from_str(&read("tests/fixtures/node/publication/publish-cases.json"))
+                .unwrap();
+        let node: Vec<Value> =
+            serde_json::from_str(&read("tests/fixtures/node/publication/publish.json")).unwrap();
+        let capture = read("tests/fixtures/node/publication/publish-capture.sql");
         assert_eq!(cases.len(), node.len());
         let mut tx = db.0.begin().await.unwrap();
         let mut planned_some = 0;
@@ -933,7 +936,7 @@ mod tests {
                 .await
                 {
                     Ok(planned) => json!({
-                        "status": 201,
+                        "status": if planned.created > 0 { 201 } else { 200 },
                         "publications": planned.publication_ids.len(),
                         "created": planned.created,
                     }),
