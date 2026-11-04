@@ -670,6 +670,7 @@
           "value": 40,
           "unit": "rem"
         },
+        "wide": "{sm}",
         "md": {
           "value": 60,
           "unit": "rem"

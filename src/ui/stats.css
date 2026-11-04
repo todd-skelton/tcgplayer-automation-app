@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: stats 7a6eae3e79ffd3fd */
+/* corten ui 0.1.0: stats 81f7b4b982a54124 */
 /* As many figures to a row as fit, two on a phone. A figure is never broken: a card is at least
    as wide as its figure, so a long one takes a row of its own. A card left alone on a row takes the
    row's width. */
@@ -25,7 +25,7 @@
 .warning > .value { color: var(--warning); }
 .destructive > .value { color: var(--destructive); }
 /* After the rules it changes, which have the same specificity. */
-@media not (--sm) {
+@media not (--wide) {
   .stats { gap: .75rem; }
   .stats > * { flex-basis: calc((100% - .75rem) / 2); }
   .value { font-size: 1.25rem; }

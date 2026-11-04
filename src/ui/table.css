@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: table e56743e3aa5e29ce */
+/* corten ui 0.1.0: table fa17caaee3b5df10 */
 /* Positioned, so what a cell places absolutely (an icon button's hidden text) is inside the box that
    scrolls it, not past the page's edge. */
 .table { position: relative; width: 100%; overflow-x: auto; }
@@ -22,7 +22,7 @@
 [aria-sort="descending"] > .sorter > .arrow { opacity: 1; clip-path: polygon(0 0, 100% 0, 50% 100%); }
 /* Forced colors drop backgrounds: the arrow keeps the text's system color. */
 @media (forced-colors: active) { .arrow { forced-color-adjust: none; background: CanvasText; } }
-/* Stacked on a phone (below the theme's sm): each row a block of its cells, one per line, a
+/* Stacked on a phone (below the theme's wide): each row a block of its cells, one per line, a
    cell's label in the first column and what follows it in the second, where text wraps and each
    element after the label starts a line, as wide as its content (a button, a pill; a block the
    app wants across the column sets its own width), never wider than the column. A tooltip,
@@ -32,7 +32,7 @@
    SortHeader), so a sortable table still sorts by touch. A cell's label is hidden at other widths
    and in a table that scrolls. */
 .label { display: none; }
-@media not (--sm) {
+@media not (--wide) {
   .stacked > table, .stacked > table > :is(caption, thead, tbody, tfoot) { display: block; }
   .stacked > table > thead:not(:has(a, button)) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .stacked tr { display: grid; padding-block: .5rem; }
