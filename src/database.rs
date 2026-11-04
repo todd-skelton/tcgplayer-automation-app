@@ -10,10 +10,6 @@ use sqlx::{PgPool, postgres::PgPoolOptions};
 /// a page that says so, not one that waits out the deadline.
 const CONNECTION_WAIT: Duration = Duration::from_secs(10);
 
-/// How long `/health/ready` waits for its query: under the proxy's and Docker's probe timeouts,
-/// so a database that is down reads as unavailable rather than as a probe that timed out.
-const READY_WAIT: Duration = Duration::from_secs(3);
-
 #[derive(Clone)]
 pub struct Database(pub PgPool);
 
@@ -31,9 +27,10 @@ impl Database {
         Database(pool)
     }
 
-    /// Whether a query gets an answer: what `/health/ready` reports.
+    /// Whether a query gets an answer: what `/health/ready` reports. Corten answers
+    /// `unavailable` when this has not finished in 800 ms (`App::ready_within`), so it needs no
+    /// timeout of its own.
     pub async fn reachable(&self) -> bool {
-        let answered = sqlx::query("SELECT 1").execute(&self.0);
-        matches!(tokio::time::timeout(READY_WAIT, answered).await, Ok(Ok(_)))
+        sqlx::query("SELECT 1").execute(&self.0).await.is_ok()
     }
 }
