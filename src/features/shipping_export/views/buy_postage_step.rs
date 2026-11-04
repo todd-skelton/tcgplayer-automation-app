@@ -23,7 +23,7 @@ use crate::{
         dropdown_menu::{DropdownMenu, MenuTrigger},
         icon::{self, Icon},
         table::{CellLabel, Table, TableLayout, TableNumeric},
-        tip::Tip,
+        tip::{Tip, TipText},
         visually_hidden::VisuallyHidden,
     },
 };
@@ -132,7 +132,7 @@ fn ShipmentPostageRow<'a>(
                 <div>
                     <button
                         type="button"
-                        class={TipText}
+                        class={TipText {}}
                         interestfor={RecipientTipId(reference)}
                         aria-describedby={RecipientTipId(reference)}
                     >
@@ -272,7 +272,7 @@ fn PostageStatus<'a>(entry: Option<&'a Bought>, reference: &'a str) -> impl Rend
                     >
                         <button
                             type="button"
-                            class={TipText}
+                            class={TipText {}}
                             interestfor={PurchaseTipId(reference)}
                             aria-describedby={PurchaseTipId(reference)}
                         >

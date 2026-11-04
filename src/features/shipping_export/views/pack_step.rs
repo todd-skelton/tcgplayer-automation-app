@@ -25,7 +25,7 @@ use crate::{
         icon::{self, Icon},
         segmented::SegmentedLinks,
         table::{CellLabel, Table, TableLayout, TableNumeric},
-        tip::Tip,
+        tip::{Tip, TipText},
         visually_hidden::VisuallyHidden,
     },
 };
@@ -210,7 +210,7 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                 if let Some(order) = first {
                     <button
                         type="button"
-                        class={(TipText, Who)}
+                        class={(TipText {}, Who)}
                         interestfor={AddressTipId}
                         aria-describedby={AddressTipId}
                     >
@@ -229,7 +229,7 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                     >
                         <button
                             type="button"
-                            class={TipText}
+                            class={TipText {}}
                             interestfor={OrdersTipId}
                             aria-describedby={OrdersTipId}
                         >
@@ -245,7 +245,7 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                         if let Some(code) = &bought.result.tracking_code {
                             <button
                                 type="button"
-                                class={TipText}
+                                class={TipText {}}
                                 interestfor={TrackingTipId}
                                 aria-describedby={TrackingTipId}
                             >

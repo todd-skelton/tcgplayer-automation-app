@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: tip d199ec55f256e556 */
+/* corten ui 0.1.0: tip 26f2e0e8c61fa04b */
 .tip {
   box-sizing: border-box; max-width: min(20rem, calc(100vw - 1rem)); padding: .25rem .5rem;
   font-size: .75rem; line-height: 1.4; overflow-wrap: break-word;
@@ -10,3 +10,14 @@
 }
 /* Forced colors draw the box's background as the page's: a border keeps it apart. */
 @media (forced-colors: active) { .tip { border: 1px solid CanvasText; } }
+/* TipText: a button that shows a tooltip, drawn as the text around it. `html button` (two
+   elements) wins over an app's own `button {}` rule, and the class in :where() adds nothing, so
+   an app class on the same button that sets its size still wins in any order. */
+html button:where(.text) {
+  appearance: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: none;
+  color: inherit; font: inherit; letter-spacing: inherit; word-spacing: inherit;
+  text-transform: inherit; text-align: inherit; text-shadow: inherit;
+  cursor: default; text-decoration: underline dotted; text-underline-offset: .2em;
+  -webkit-tap-highlight-color: transparent;
+}
+html button:where(.text):focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
