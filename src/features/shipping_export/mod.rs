@@ -76,7 +76,11 @@ pub mod url {
     /// Orders step loads for; `edit` the shipment whose editor is open; `filters` the pull
     /// sheet's filter and sort without JavaScript; `shipment` the one Pack shows, and `view`
     /// whether as cards or a list.
-    #[route("/shipping-export", get = show)]
+    ///
+    /// Never prefetched: the Pull Sheet and Pack steps read TCGplayer's pull sheet export when
+    /// drawn, so a hover over a step link would call TCGplayer. Only some steps do, but an opt-out
+    /// is the route's (corten#798).
+    #[route("/shipping-export", get = show, prefetch = false)]
     pub struct ShippingWorkflow {
         pub step: Option<Step>,
         pub seller: Option<String>,
