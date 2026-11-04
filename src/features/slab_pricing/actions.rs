@@ -572,7 +572,7 @@ pub async fn save_maintenance(
     Form(input): Form<MaintenanceInput>,
 ) -> HtmlResult {
     // A number that does not read is below every range, so the save refuses it with the ranges,
-    // as Node refused one that was not an integer.
+    // as Node refused one that was not an integer. Text, not i64, so it reaches here (corten#846).
     let number = |text: &str| html_number::whole(text).unwrap_or(-1);
     let settings = maintenance::Saved {
         seller: at.choice.seller.as_deref().unwrap_or(""),

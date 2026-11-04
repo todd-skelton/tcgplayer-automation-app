@@ -275,7 +275,7 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                                         // No step: the adaptive limiter writes this delay (a floor of
                                         // 250 is a delay of 250), and a step would keep the whole form
                                         // from being sent until it was changed. React's form did not
-                                        // check.
+                                        // check (corten#850).
                                         <input
                                             class={Input {}}
                                             type="number"

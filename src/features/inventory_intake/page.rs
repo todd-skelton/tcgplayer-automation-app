@@ -145,7 +145,8 @@ pub struct CountInput {
 
 impl CountInput {
     /// The count typed, read as the screen's script reads it (`Number.parseInt`, never below
-    /// zero, nothing readable is zero), so a form sent without the script counts the same.
+    /// zero, nothing readable is zero), so a form sent without the script counts the same. Text,
+    /// since a typed field that does not read is Corten's error page, not this form (corten#846).
     pub fn quantity(&self) -> Result<u32, String> {
         typed_count(&self.quantity)
     }
