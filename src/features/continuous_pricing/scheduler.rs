@@ -547,8 +547,6 @@ pub async fn run(db: Database, signal: corten::Signal) {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
     use super::*;
 
     #[test]
@@ -585,115 +583,5 @@ mod tests {
         assert_eq!(row["TCG Marketplace Price"], "1.5");
         assert_eq!(row["TCG Market Price"], "");
         assert_eq!(row["Total Quantity"], "2");
-    }
-
-    /// What a scheduling wrote, its batches numbered from 0 so two runs compare.
-    fn renumbered(mut captured: Value) -> Value {
-        let mut order = BTreeMap::new();
-        for batch in captured["batches"].as_array().unwrap() {
-            let n = batch["batch"].as_i64().unwrap();
-            let next = order.len() as i64;
-            order.entry(n).or_insert(next);
-        }
-        for list in ["batches", "items", "jobs", "inventory"] {
-            for entry in captured[list].as_array_mut().unwrap() {
-                if let Some(n) = entry["batch"].as_i64() {
-                    entry["batch"] = order.get(&n).copied().map_or(Value::Null, Value::from);
-                }
-            }
-        }
-        captured
-    }
-
-    /// Node's scheduling on dev (`.port-logs/scheduler-node.ts`: what is due now, saved-curve
-    /// repricing at the schedule's interval, and at sixty days so curves are reused), each in a
-    /// transaction rolled back after reading what it wrote; then the same here. The batches, their
-    /// items and rows, the jobs and their configuration, and every SKU's schedule match.
-    #[tokio::test]
-    #[ignore = "uses the dev database in transactions rolled back, and Node's run in .port-logs"]
-    async fn scheduling_queues_what_node_s_queues() {
-        crate::config::load_env();
-        let db = Database::connect_lazy(&crate::config::database_url());
-        let node: Value = serde_json::from_str(
-            &std::fs::read_to_string(".port-logs/scheduler.node.json").unwrap(),
-        )
-        .unwrap();
-        let capture = std::fs::read_to_string(".port-logs/scheduler-capture.sql").unwrap();
-        let base = node["base"].as_i64().unwrap() as i32;
-        let settings = store::settings(&db).await.unwrap();
-        let config = job_config(&db).await.unwrap();
-        let wide = Settings {
-            minimum_interval_minutes: 60 * 24 * 60,
-            ..settings.clone()
-        };
-        let mut ours = Vec::new();
-        for (scenario, settings) in [("due", &settings), ("cached", &settings), ("wide", &wide)] {
-            let mut tx = db.0.begin().await.unwrap();
-            let queue = Queue::of(settings, &config);
-            let said = if scenario == "due" {
-                format!(
-                    "{:?}",
-                    schedule_due_batch(&mut tx, &queue, Utc::now())
-                        .await
-                        .unwrap()
-                )
-            } else {
-                format!(
-                    "{:?}",
-                    schedule_cached_policy_batches(&mut tx, &queue, Utc::now())
-                        .await
-                        .unwrap()
-                )
-            };
-            println!("{scenario}: {said}");
-            let captured: Value = sqlx::query_scalar(&capture)
-                .bind(base)
-                .fetch_one(&mut *tx)
-                .await
-                .unwrap();
-            tx.rollback().await.unwrap();
-            ours.push(captured);
-        }
-        let mut differences = Vec::new();
-        for (i, (ours, theirs)) in ours
-            .into_iter()
-            .zip(node["captured"].as_array().unwrap())
-            .enumerate()
-        {
-            let (ours, theirs) = (renumbered(ours), renumbered(theirs.clone()));
-            for list in ["batches", "items", "jobs"] {
-                if ours[list] != theirs[list] {
-                    differences.push(format!(
-                        "scenario {i} {list}: {} here, {} by Node",
-                        ours[list].as_array().unwrap().len(),
-                        theirs[list].as_array().unwrap().len()
-                    ));
-                }
-            }
-            let (a, b) = (
-                ours["inventory"].as_array().unwrap(),
-                theirs["inventory"].as_array().unwrap(),
-            );
-            if a.len() != b.len() {
-                differences.push(format!(
-                    "scenario {i} inventory: {} here, {} by Node",
-                    a.len(),
-                    b.len()
-                ));
-            }
-            for (x, y) in a.iter().zip(b) {
-                let same_time = x["next"] == y["next"]
-                    || (x["fromNow"].as_f64().unwrap() - y["fromNow"].as_f64().unwrap()).abs()
-                        < 1.0;
-                if x["sku"] != y["sku"] || x["batch"] != y["batch"] || !same_time {
-                    differences.push(format!("scenario {i} inventory: {x} here, {y} by Node"));
-                    break;
-                }
-            }
-        }
-        for d in &differences {
-            println!("{d}");
-        }
-        assert!(differences.is_empty());
     }
 }

@@ -35,6 +35,23 @@ pub fn on() -> bool {
     crate::config::is_set("SELLER_ORDER_HISTORY_WORKER")
 }
 
+/// The operator's pause (`docs/inventory-history-rollout.md`): while
+/// `INVENTORY_HISTORY_WORKER_ENABLED` says `0`, `false`, `off` or `disabled`, the worker takes no
+/// step at all, neither syncing orders nor replaying FIFO nor estimating costs.
+pub fn paused() -> bool {
+    paused_by(
+        std::env::var("INVENTORY_HISTORY_WORKER_ENABLED")
+            .ok()
+            .as_deref(),
+    )
+}
+
+fn paused_by(value: Option<&str>) -> bool {
+    value.is_some_and(|value| {
+        ["0", "false", "off", "disabled"].contains(&value.trim().to_lowercase().as_str())
+    })
+}
+
 /// What a cycle did.
 #[derive(Debug)]
 pub struct Cycle {
@@ -154,12 +171,25 @@ fn report(cycle: &Cycle) {
 /// The app's task: a cycle at once, then each after its pause, until shutdown.
 pub async fn run(db: Database, signal: Signal) {
     println!("Seller order history worker started");
+    if paused() {
+        println!(
+            "Seller order history worker: synchronization and FIFO replay are paused by configuration"
+        );
+    }
     let tcg = TcgPlayer::new(db.clone());
     let orders = OrderManagement(&tcg);
     let mut due = Instant::now();
     loop {
         if signal.is_aborted() {
             return;
+        }
+        if paused() {
+            tokio::select! {
+                biased;
+                _ = signal.aborted() => return,
+                _ = sleep(IDLE) => {}
+            }
+            continue;
         }
         let seller = match shipping_configuration::default_seller_key(&db).await {
             Ok(seller) => seller.trim().to_owned(),
@@ -217,6 +247,16 @@ async fn step(
 mod tests {
     use super::*;
     use crate::features::seller_order_history::fixtures::RecordedOrders;
+
+    #[test]
+    fn the_operator_pauses_the_worker_as_node_s_policy_reads_it() {
+        for value in ["0", "false", " OFF ", "Disabled"] {
+            assert!(paused_by(Some(value)), "{value}");
+        }
+        for value in [None, Some(""), Some("true"), Some("1"), Some("no")] {
+            assert!(!paused_by(value), "{value:?}");
+        }
+    }
 
     fn synced(status: &str, error: Option<&str>) -> Option<Result<Coverage, String>> {
         Some(Ok(Coverage {

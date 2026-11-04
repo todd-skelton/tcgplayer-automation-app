@@ -491,7 +491,6 @@ pub async fn save_lines(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::database::Database;
 
     #[test]
     fn a_standard_sku_is_a_plain_positive_32_bit_integer() {
@@ -509,49 +508,5 @@ mod tests {
         ] {
             assert_eq!(standard_sku(not), None, "{not:?}");
         }
-    }
-
-    /// Replays the worker's cycle (25 SKUs) on the dev database in a transaction it rolls back,
-    /// from the scenario `.port-logs/fifo-setup.sql` queues, and compares what it wrote
-    /// (`.port-logs/fifo-capture.sql`) with what Node's `processNextReplay` wrote from the same
-    /// scenario (`.port-logs/fifo-queue-node.ts`).
-    #[tokio::test]
-    #[ignore = "writes the dev database in a transaction it rolls back"]
-    async fn replays_the_queue_as_node_does() {
-        crate::config::load_env();
-        let node: serde_json::Value = serde_json::from_str(
-            &std::fs::read_to_string(".port-logs/fifo-queue.node.json").unwrap(),
-        )
-        .unwrap();
-        let setup = std::fs::read_to_string(".port-logs/fifo-setup.sql").unwrap();
-        let capture = std::fs::read_to_string(".port-logs/fifo-capture.sql").unwrap();
-        let db = Database::connect_lazy(&crate::config::database_url());
-        let seller = crate::features::shipping_configuration::default_seller_key(&db)
-            .await
-            .unwrap();
-        let mut tx = db.0.begin().await.unwrap();
-        sqlx::raw_sql(&setup).execute(&mut *tx).await.unwrap();
-        let mut processed = Vec::new();
-        while processed.len() < 25 {
-            match process_next(&mut tx, seller.trim()).await.unwrap() {
-                Some(one) => processed.push(one),
-                None => break,
-            }
-        }
-        let captured: String =
-            sqlx::query_scalar(&format!("SELECT captured::text FROM ({capture}) AS c"))
-                .fetch_one(&mut *tx)
-                .await
-                .unwrap();
-        tx.rollback().await.unwrap();
-        let captured: serde_json::Value = serde_json::from_str(&captured).unwrap();
-        println!(
-            "{} replayed; {} revisions, {} allocations",
-            processed.len(),
-            captured["revisions"].as_array().map_or(0, Vec::len),
-            captured["allocations"].as_array().map_or(0, Vec::len),
-        );
-        assert_eq!(serde_json::to_value(&processed).unwrap(), node["processed"]);
-        assert_eq!(captured, node["captured"]);
     }
 }

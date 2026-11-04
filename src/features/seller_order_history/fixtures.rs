@@ -398,14 +398,6 @@ impl RecordedOrders {
             failed_once: std::sync::atomic::AtomicBool::new(false),
         }
     }
-
-    /// The orders found by number, which a sync is asked about first.
-    pub fn found_numbers(&self) -> Vec<String> {
-        self.found
-            .iter()
-            .filter_map(|s| s["orderNumber"].as_str().map(str::to_owned))
-            .collect()
-    }
 }
 
 impl super::sync::Orders for RecordedOrders {

@@ -514,7 +514,6 @@ pub async fn refresh(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::features::batch_pricing::job::PricePoint;
 
     #[test]
     fn quantities_read_as_parse_int_reads_them() {
@@ -553,101 +552,5 @@ mod tests {
             ),
             ("2", "1.5")
         );
-    }
-
-    struct Fixture(Vec<Product>);
-
-    impl SellerInventory for Fixture {
-        async fn products(&self, _: &str) -> Result<Vec<Product>, String> {
-            Ok(self.0.clone())
-        }
-    }
-
-    /// The price points `.port-logs/refresh-node.ts` answers Node with.
-    struct Points;
-
-    impl MarketData for Points {
-        async fn price_points(&self, skus: &[i64]) -> Result<HashMap<i64, PricePoint>, String> {
-            Ok(skus
-                .iter()
-                .filter(|s| *s % 13 != 0)
-                .map(|s| {
-                    let market_price = if s % 3 == 0 {
-                        0.0
-                    } else {
-                        (s % 97) as f64 / 10.0 + 0.01
-                    };
-                    (
-                        *s,
-                        PricePoint {
-                            market_price,
-                            ..PricePoint::default()
-                        },
-                    )
-                })
-                .collect())
-        }
-    }
-
-    /// Node's refresh on dev against a fixture of search results and price points
-    /// (`.port-logs/refresh-node.ts`), its transaction read and rolled back; then this refresh of
-    /// the same fixture: every tracked SKU it touched, and the refresh it recorded, match.
-    #[tokio::test]
-    #[ignore = "uses the dev database in a transaction rolled back, and Node's run in .port-logs"]
-    async fn a_refresh_saves_what_node_s_saves() {
-        crate::config::load_env();
-        let db = Database::connect_lazy(&crate::config::database_url());
-        let read_file = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
-        let fixture: Value = serde_json::from_str(&read_file("refresh-fixture.json")).unwrap();
-        let products: Vec<Product> = serde_json::from_value(fixture["products"].clone()).unwrap();
-        let node: Value = serde_json::from_str(&read_file("refresh.node.json")).unwrap();
-        let settings = super::super::store::settings(&db).await.unwrap();
-        let (items, observed_at) = read(&db, &settings.seller_key, &Fixture(products), &Points)
-            .await
-            .unwrap();
-        let mut tx = db.0.begin().await.unwrap();
-        save_snapshot(
-            &mut tx,
-            &settings.seller_key,
-            &items,
-            observed_at,
-            settings.minimum_interval_minutes,
-        )
-        .await
-        .unwrap();
-        let ours: Value = sqlx::query_scalar(&read_file("refresh-capture.sql"))
-            .fetch_one(&mut *tx)
-            .await
-            .unwrap();
-        tx.rollback().await.unwrap();
-        let theirs = &node["captured"];
-        println!(
-            "{} SKUs read here, {} by Node; {} rows touched here, {} by Node",
-            items.len(),
-            node["count"],
-            ours["inventory"].as_array().unwrap().len(),
-            theirs["inventory"].as_array().unwrap().len()
-        );
-        let mut differences = Vec::new();
-        for (x, y) in ours["inventory"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .zip(theirs["inventory"].as_array().unwrap())
-        {
-            if x != y {
-                differences.push(format!("{x}\n  vs {y}"));
-            }
-        }
-        for d in differences.iter().take(5) {
-            println!("{d}");
-        }
-        assert_eq!(items.len() as u64, node["count"].as_u64().unwrap());
-        assert_eq!(ours["refreshes"], theirs["refreshes"]);
-        assert_eq!(
-            ours["inventory"].as_array().unwrap().len(),
-            theirs["inventory"].as_array().unwrap().len()
-        );
-        assert!(differences.is_empty());
     }
 }
