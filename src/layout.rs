@@ -11,6 +11,7 @@ use crate::{
         publication_configuration, pull_sheet, shipping_configuration, shipping_export,
         slab_connections, slab_pricing,
     },
+    glyphs,
     theme::*,
     ui::icon::{self, Glyph},
 };
@@ -137,25 +138,25 @@ pub const PRIMARY: [Entry; 10] = [
         Screen::InventoryManager,
         "Inventory",
         "Add new inventory and freeze it into a pricing batch",
-        icon::PACKAGE,
+        glyphs::PACKAGE,
     ),
     entry(
         Screen::BatchPricer,
         "Batch Pricer",
         "Create, price, publish, and download inventory batches",
-        icon::LAYERS,
+        glyphs::LAYERS,
     ),
     entry(
         Screen::ContinuousPricing,
         "Continuous Pricing",
         "Automatic repricing runs for live inventory",
-        icon::REPEAT,
+        glyphs::REPEAT,
     ),
     entry(
         Screen::SlabPricing,
         "Slab Pricing",
         "Research and price graded cards for eBay",
-        icon::BADGE_DOLLAR_SIGN,
+        glyphs::BADGE_DOLLAR_SIGN,
     ),
     entry(
         Screen::ProductPriceMatrix,
@@ -167,13 +168,13 @@ pub const PRIMARY: [Entry; 10] = [
         Screen::InventoryStrategy,
         "Inventory Strategy",
         "Pricing hurdle, capital turnaround, and selling speed",
-        icon::CHART_LINE,
+        glyphs::CHART_LINE,
     ),
     entry(
         Screen::InventoryEconomics,
         "Inventory Economics",
         "Estimated cost, proceeds, and realized profit by order",
-        icon::WALLET,
+        glyphs::WALLET,
     ),
     entry(
         Screen::PullSheet,
@@ -185,13 +186,13 @@ pub const PRIMARY: [Entry; 10] = [
         Screen::ShippingWorkflow,
         "Shipping Export",
         "Review shipments, buy postage, and notify buyers",
-        icon::TRUCK,
+        glyphs::TRUCK,
     ),
     entry(
         Screen::DataManagement,
         "Data Mgmt",
         "Refresh product lines, sets, products, and SKUs",
-        icon::DATABASE,
+        glyphs::DATABASE,
     ),
 ];
 
@@ -213,19 +214,19 @@ pub const SETTINGS: [Entry; 5] = [
         Screen::ShippingConfiguration,
         "Shipping Configuration",
         "Postage and shipping defaults",
-        icon::TRUCK,
+        glyphs::TRUCK,
     ),
     entry(
         Screen::HttpConfiguration,
         "HTTP Configuration",
         "TCGPlayer authentication and rate limits",
-        icon::GLOBE,
+        glyphs::GLOBE,
     ),
     entry(
         Screen::SlabConnections,
         "Slab data connections",
         "eBay research and Alt credentials",
-        icon::GLOBE,
+        glyphs::GLOBE,
     ),
 ];
 

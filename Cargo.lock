@@ -287,7 +287,7 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 [[package]]
 name = "corten"
 version = "0.1.0"
-source = "git+https://github.com/todd-skelton/corten?rev=8bcafbaf#8bcafbaff60a0c2ca6c24c5d96a22906fd1f1071"
+source = "git+https://github.com/todd-skelton/corten?rev=a2bb2c28#a2bb2c284d37e27f51400f5e2bddcabc3f48d3ca"
 dependencies = [
  "axum",
  "brotli",
@@ -315,12 +315,12 @@ dependencies = [
 [[package]]
 name = "corten-macros"
 version = "0.1.0"
-source = "git+https://github.com/todd-skelton/corten?rev=8bcafbaf#8bcafbaff60a0c2ca6c24c5d96a22906fd1f1071"
+source = "git+https://github.com/todd-skelton/corten?rev=a2bb2c28#a2bb2c284d37e27f51400f5e2bddcabc3f48d3ca"
 
 [[package]]
 name = "corten-ui"
 version = "0.1.0"
-source = "git+https://github.com/todd-skelton/corten?rev=8bcafbaf#8bcafbaff60a0c2ca6c24c5d96a22906fd1f1071"
+source = "git+https://github.com/todd-skelton/corten?rev=a2bb2c28#a2bb2c284d37e27f51400f5e2bddcabc3f48d3ca"
 dependencies = [
  "corten",
 ]

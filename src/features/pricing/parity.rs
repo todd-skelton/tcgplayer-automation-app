@@ -1,6 +1,6 @@
-//! Parity with the Node pricer on identical evidence: `.port-logs/pricing-parity.ts` prices dev
-//! SKUs from the ledgers through Node's resolver and calculator and writes the evidence it served
-//! with its answers; this prices the same SKUs from the same evidence and compares every value.
+//! Parity with the Node pricer on identical evidence: `scripts/parity/pricing-parity.ts` prices a
+//! batch's SKUs through Node's resolver and calculator and writes the evidence it served with its
+//! answers; this prices the same SKUs from the same evidence and compares every value.
 use std::{cell::RefCell, collections::HashMap};
 
 use chrono::{DateTime, Utc};
