@@ -1,3 +1,4 @@
+-- online: a new table; the running release never reads it.
 -- Pull sheets uploaded to the Pull Sheet screen, kept so the screen has an address per sheet
 -- (reload, back, a second tab) and lists the recent ones.
 CREATE TABLE IF NOT EXISTS pull_sheets (

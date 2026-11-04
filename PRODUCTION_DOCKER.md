@@ -57,7 +57,7 @@ Each background job has a Rust worker in the Corten app, off until its switch is
 | Publication to Seller Portal | `publication-worker` | `PUBLICATION_WORKER=1` |
 | Slab evidence refreshes and maintenance | `slab-evidence-worker` | `SLAB_EVIDENCE_WORKER=1` |
 | Continuous pricing schedule | `pricing-scheduler` | `CONTINUOUS_PRICING_SCHEDULER=1` |
-| Seller order history, FIFO replay, estimated costs | none (`npm run start:seller-order-history-worker` is not deployed) | `SELLER_ORDER_HISTORY_WORKER=1` |
+| Seller order history, FIFO replay, estimated costs | none: the Node app's container starts it (`scripts/docker-start.mjs`), and leaves it out when the switch is set | `SELLER_ORDER_HISTORY_WORKER=1` |
 | Migrations | the Node app, as it starts | `MIGRATE_ON_START=1` |
 
 The Node app runs no worker itself (`WORKERS_RUN_IN_PROCESS=false`). Migrations move last, and only with the Node app's own run removed from `scripts/docker-start.mjs` in the same release: the two runners take no common lock. Once every job has moved, the Node app answers only JSON routes no screen calls, and it and its relay can go.
