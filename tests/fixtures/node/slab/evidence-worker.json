@@ -1,0 +1,366 @@
+{
+ "steps": [
+  {
+   "key": "8ce5f977db0afb96ed456e303a58c21b7bd56628ad156ba97bb51ef9cb01f610",
+   "kind": "alt-sale-detail",
+   "saved": true
+  },
+  {
+   "key": "1f8bdc140506b2eec53c8347ad78f28482bde5a35d55ed1bad7a5281773e9957",
+   "kind": "alt-sales",
+   "saved": true
+  },
+  {
+   "key": "8426014778b1b22af95efeb8c25513310d201542378507245ddfc265e9d8de7b",
+   "kind": "ebay-sales",
+   "saved": false
+  },
+  {
+   "key": "80428040d81e7763de3c2fa831f8ae899e011c5acab3218f6805e8863dcaddb1",
+   "kind": "ebay-supply",
+   "saved": false
+  },
+  {
+   "key": "f1046668388a8c46a9c59d6ef5910cda74b4b1db3bb5fafca37a0010cd44c6f9",
+   "kind": "alt-sales",
+   "saved": false
+  },
+  {
+   "key": "f55852ef09c3534d07f93c4d56ec7c9d5b1deab9b9b1c40b523ec4c2a8025434",
+   "kind": "alt-sale-detail",
+   "saved": false
+  }
+ ],
+ "captured": {
+  "scans": [],
+  "versions": [],
+  "refreshes": [
+   {
+    "key": "1f8bdc140506b2eec53c8347ad78f28482bde5a35d55ed1bad7a5281773e9957",
+    "ttl": 21600,
+    "spec": {
+     "kind": "alt-sales",
+     "window": {
+      "to": "2026-10-30",
+      "from": "2025-10-30"
+     },
+     "assetId": "asset-1",
+     "limitPerGrade": 16
+    },
+    "wait": 0,
+    "error": null,
+    "saved": true,
+    "state": "idle",
+    "leased": false,
+    "fetched": true,
+    "attempts": 1,
+    "duration": 2,
+    "priority": 200
+   },
+   {
+    "key": "80428040d81e7763de3c2fa831f8ae899e011c5acab3218f6805e8863dcaddb1",
+    "ttl": null,
+    "spec": {
+     "kind": "ebay-supply",
+     "limit": 50,
+     "offset": 50,
+     "window": {
+      "to": "2026-10-30",
+      "from": "2025-10-30"
+     },
+     "groupKey": "abababababababababababababababababababababababababababababababab",
+     "keywords": "PSA 10 Charizard Base Set",
+     "timezone": "America/Chicago"
+    },
+    "wait": 30,
+    "error": "unavailable",
+    "saved": false,
+    "state": "queued",
+    "leased": false,
+    "fetched": false,
+    "attempts": 1,
+    "duration": null,
+    "priority": 200
+   },
+   {
+    "key": "8426014778b1b22af95efeb8c25513310d201542378507245ddfc265e9d8de7b",
+    "ttl": null,
+    "spec": {
+     "kind": "ebay-sales",
+     "limit": 50,
+     "offset": 0,
+     "window": {
+      "to": "2026-10-30",
+      "from": "2025-10-30"
+     },
+     "groupKey": "abababababababababababababababababababababababababababababababab",
+     "keywords": "PSA 10 Charizard Base Set",
+     "timezone": "America/Chicago"
+    },
+    "wait": 30,
+    "error": "rate-limited",
+    "saved": false,
+    "state": "queued",
+    "leased": false,
+    "fetched": false,
+    "attempts": 1,
+    "duration": null,
+    "priority": 200
+   },
+   {
+    "key": "8ce5f977db0afb96ed456e303a58c21b7bd56628ad156ba97bb51ef9cb01f610",
+    "ttl": 86400,
+    "spec": {
+     "kind": "alt-sale-detail",
+     "transactionId": "tx-9"
+    },
+    "wait": 0,
+    "error": null,
+    "saved": true,
+    "state": "idle",
+    "leased": false,
+    "fetched": true,
+    "attempts": 1,
+    "duration": 2,
+    "priority": 200
+   },
+   {
+    "key": "f1046668388a8c46a9c59d6ef5910cda74b4b1db3bb5fafca37a0010cd44c6f9",
+    "ttl": null,
+    "spec": {
+     "kind": "alt-sales",
+     "window": {
+      "to": "2026-10-30",
+      "from": "2025-10-30"
+     },
+     "assetId": "asset-2",
+     "limitPerGrade": 16
+    },
+    "wait": 600,
+    "error": "invalid-response",
+    "saved": false,
+    "state": "failed",
+    "leased": false,
+    "fetched": false,
+    "attempts": 1,
+    "duration": null,
+    "priority": 200
+   },
+   {
+    "key": "f55852ef09c3534d07f93c4d56ec7c9d5b1deab9b9b1c40b523ec4c2a8025434",
+    "ttl": null,
+    "spec": {
+     "kind": "alt-sale-detail",
+     "transactionId": "tx-10"
+    },
+    "wait": 30,
+    "error": "unavailable",
+    "saved": false,
+    "state": "queued",
+    "leased": false,
+    "fetched": false,
+    "attempts": 1,
+    "duration": null,
+    "priority": 200
+   }
+  ],
+  "revisions": [
+   {
+    "key": "1f8bdc140506b2eec53c8347ad78f28482bde5a35d55ed1bad7a5281773e9957",
+    "bytes": 2317,
+    "supply": false,
+    "payload": {
+     "data": {
+      "asOf": "2026-10-30T12:00:00.000Z",
+      "sales": [
+       {
+        "card": null,
+        "date": "2026-09-04",
+        "fees": null,
+        "kind": "transaction",
+        "price": {
+         "amount": 79.2,
+         "currency": null
+        },
+        "title": null,
+        "venue": "Alt",
+        "format": "AUCTION",
+        "assetId": "asset-1",
+        "grading": {
+         "label": "PSA 9",
+         "grader": "PSA",
+         "number": 9,
+         "encoding": "9.0",
+         "autograph": null,
+         "qualifier": null
+        },
+        "provider": "alt",
+        "quantity": null,
+        "shipping": null,
+        "sourceUrl": null,
+        "providerId": "d7bcc0d1-1305-48e4-ab06-b17451f02780",
+        "sourceItemId": null,
+        "skippedReason": "PENDING",
+        "convertedPrice": null,
+        "sourceReference": "ab984d1c-d1ad-44ab-961e-fb3b3a63bba2",
+        "subjectToChange": false,
+        "shippingIncluded": null,
+        "certificateNumber": null,
+        "buyerPremiumIncluded": null
+       },
+       {
+        "card": null,
+        "date": "2026-08-02",
+        "fees": null,
+        "kind": "transaction",
+        "price": {
+         "amount": 15.6,
+         "currency": null
+        },
+        "title": null,
+        "venue": "PWCC Weekly Auctions",
+        "format": "AUCTION",
+        "assetId": "asset-1",
+        "grading": {
+         "label": null,
+         "grader": "CGC",
+         "number": null,
+         "encoding": "0.0",
+         "autograph": null,
+         "qualifier": null
+        },
+        "provider": "alt",
+        "quantity": null,
+        "shipping": null,
+        "sourceUrl": "https://www.fanaticscollect.com/weekly/1d1e4946-879c-11f1-be85-0ad68bfbd9dd",
+        "providerId": "52d35b8b-c1d8-438d-96f0-4b58c9addba2",
+        "sourceItemId": null,
+        "skippedReason": null,
+        "convertedPrice": null,
+        "sourceReference": "https://www.fanaticscollect.com/weekly/1d1e4946-879c-11f1-be85-0ad68bfbd9dd",
+        "subjectToChange": false,
+        "shippingIncluded": null,
+        "certificateNumber": null,
+        "buyerPremiumIncluded": null
+       },
+       {
+        "card": null,
+        "date": "2026-09-05",
+        "fees": null,
+        "kind": "transaction",
+        "price": {
+         "amount": 27.46,
+         "currency": null
+        },
+        "title": null,
+        "venue": "eBay",
+        "format": "BEST_OFFER",
+        "assetId": "asset-1",
+        "grading": {
+         "label": "PSA 4",
+         "grader": "PSA",
+         "number": 4,
+         "encoding": "4.0",
+         "autograph": null,
+         "qualifier": null
+        },
+        "provider": "alt",
+        "quantity": null,
+        "shipping": null,
+        "sourceUrl": "https://www.ebay.com/itm/335037487554",
+        "providerId": "11020cc4-2783-494b-86b8-7d90c3ecc298",
+        "sourceItemId": "335037487554",
+        "skippedReason": null,
+        "convertedPrice": null,
+        "sourceReference": "https://www.ebay.com/itm/335037487554",
+        "subjectToChange": false,
+        "shippingIncluded": null,
+        "certificateNumber": null,
+        "buyerPremiumIncluded": null
+       }
+      ],
+      "coverage": {
+       "reason": "capped-per-grade",
+       "complete": false,
+       "sourceCount": 4,
+       "limitPerGrade": 16,
+       "observedWindow": {
+        "to": "2026-09-05",
+        "from": "2024-11-03"
+       },
+       "requestedWindow": {
+        "to": "2026-10-30",
+        "from": "2025-10-30"
+       }
+      }
+     },
+     "kind": "alt-sales"
+    },
+    "retained": false,
+    "observations": 3
+   },
+   {
+    "key": "8ce5f977db0afb96ed456e303a58c21b7bd56628ad156ba97bb51ef9cb01f610",
+    "bytes": 970,
+    "supply": false,
+    "payload": {
+     "data": {
+      "card": {
+       "set": "Pokemon Base Set",
+       "game": "Pokemon",
+       "name": "Ponyta",
+       "year": "1999",
+       "stamp": null,
+       "finish": null,
+       "edition": "1st Edition",
+       "language": null,
+       "cardNumber": "60"
+      },
+      "date": "2026-09-05",
+      "fees": null,
+      "kind": "transaction",
+      "price": {
+       "amount": 27.46,
+       "currency": null
+      },
+      "title": "1999 Ponyta 60/102 Base Set 1st Edition PSA 4 VG-EX Pokemon TCG",
+      "venue": "eBay",
+      "format": "BEST_OFFER",
+      "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+      "grading": {
+       "label": "PSA 4",
+       "grader": "PSA",
+       "number": 4,
+       "encoding": "4.0",
+       "autograph": null,
+       "qualifier": null
+      },
+      "provider": "alt",
+      "quantity": null,
+      "shipping": {
+       "amount": 17.59,
+       "currency": null
+      },
+      "sourceUrl": "https://www.ebay.com/itm/335037487554",
+      "providerId": "tx-9",
+      "sourceItemId": "335037487554",
+      "skippedReason": null,
+      "convertedPrice": {
+       "amount": 27.46,
+       "currency": "USD"
+      },
+      "sourceReference": "https://www.ebay.com/itm/335037487554",
+      "subjectToChange": false,
+      "shippingIncluded": null,
+      "certificateNumber": null,
+      "buyerPremiumIncluded": null
+     },
+     "kind": "alt-sale-detail"
+    },
+    "retained": false,
+    "observations": 1
+   }
+  ],
+  "observations": []
+ }
+}

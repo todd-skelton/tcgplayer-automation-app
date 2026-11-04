@@ -1,0 +1,839 @@
+{
+ "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+ "detailId": "11020cc4-2783-494b-86b8-7d90c3ecc298",
+ "asOf": "2026-09-05T22:00:00.000Z",
+ "results": [
+  {
+   "name": "sales",
+   "kind": "sales",
+   "body": "{\"data\":{\"asset\":{\"id\":\"cd3ecabf-7d43-4375-9428-1a7cdfe66426\",\"marketTransactions\":[{\"id\":\"d7bcc0d1-1305-48e4-ab06-b17451f02780\",\"date\":\"2026-09-04\",\"auctionHouse\":\"Alt\",\"auctionType\":\"AUCTION\",\"price\":\"79.20\",\"attributes\":{\"gradeNumber\":\"9.0\",\"gradingCompany\":\"PSA\",\"url\":\"ab984d1c-d1ad-44ab-961e-fb3b3a63bba2\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":\"PENDING\",\"label\":\"\"},{\"id\":\"52d35b8b-c1d8-438d-96f0-4b58c9addba2\",\"date\":\"2026-08-02\",\"auctionHouse\":\"PWCC Weekly Auctions\",\"auctionType\":\"AUCTION\",\"price\":\"15.60\",\"attributes\":{\"gradeNumber\":\"0.0\",\"gradingCompany\":\"CGC\",\"url\":\"https://www.fanaticscollect.com/weekly/1d1e4946-879c-11f1-be85-0ad68bfbd9dd\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":null,\"label\":\"\"},{\"id\":\"1eb317f0-3048-467c-81e5-e6000cbc548c\",\"date\":\"2024-11-03\",\"auctionHouse\":\"PWCC Weekly Auctions\",\"auctionType\":\"AUCTION\",\"price\":\"336.00\",\"attributes\":{\"gradeNumber\":\"10.5\",\"gradingCompany\":\"CGC\",\"url\":\"https://www.fanaticscollect.com/weekly/b09db9dc-868a-11ef-b578-0a58a9feac02\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":null,\"label\":\"\"},{\"id\":\"11020cc4-2783-494b-86b8-7d90c3ecc298\",\"date\":\"2026-09-05\",\"auctionHouse\":\"eBay\",\"auctionType\":\"BEST_OFFER\",\"price\":\"27.46\",\"attributes\":{\"gradeNumber\":\"4.0\",\"gradingCompany\":\"PSA\",\"url\":\"https://www.ebay.com/itm/335037487554\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":null,\"label\":\"\"}]}}}",
+   "args": [
+    {
+     "from": "2020-01-01",
+     "to": "2026-09-05"
+    },
+    16
+   ],
+   "out": {
+    "sales": [
+     {
+      "provider": "alt",
+      "providerId": "d7bcc0d1-1305-48e4-ab06-b17451f02780",
+      "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+      "sourceUrl": null,
+      "sourceItemId": null,
+      "sourceReference": "ab984d1c-d1ad-44ab-961e-fb3b3a63bba2",
+      "venue": "Alt",
+      "kind": "transaction",
+      "date": "2026-09-04",
+      "format": "AUCTION",
+      "title": null,
+      "card": null,
+      "grading": {
+       "grader": "PSA",
+       "encoding": "9.0",
+       "number": 9,
+       "label": "PSA 9",
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 79.2,
+       "currency": null
+      },
+      "convertedPrice": null,
+      "shipping": null,
+      "fees": null,
+      "shippingIncluded": null,
+      "buyerPremiumIncluded": null,
+      "quantity": null,
+      "subjectToChange": false,
+      "skippedReason": "PENDING"
+     },
+     {
+      "provider": "alt",
+      "providerId": "52d35b8b-c1d8-438d-96f0-4b58c9addba2",
+      "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+      "sourceUrl": "https://www.fanaticscollect.com/weekly/1d1e4946-879c-11f1-be85-0ad68bfbd9dd",
+      "sourceItemId": null,
+      "sourceReference": "https://www.fanaticscollect.com/weekly/1d1e4946-879c-11f1-be85-0ad68bfbd9dd",
+      "venue": "PWCC Weekly Auctions",
+      "kind": "transaction",
+      "date": "2026-08-02",
+      "format": "AUCTION",
+      "title": null,
+      "card": null,
+      "grading": {
+       "grader": "CGC",
+       "encoding": "0.0",
+       "number": null,
+       "label": null,
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 15.6,
+       "currency": null
+      },
+      "convertedPrice": null,
+      "shipping": null,
+      "fees": null,
+      "shippingIncluded": null,
+      "buyerPremiumIncluded": null,
+      "quantity": null,
+      "subjectToChange": false,
+      "skippedReason": null
+     },
+     {
+      "provider": "alt",
+      "providerId": "1eb317f0-3048-467c-81e5-e6000cbc548c",
+      "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+      "sourceUrl": "https://www.fanaticscollect.com/weekly/b09db9dc-868a-11ef-b578-0a58a9feac02",
+      "sourceItemId": null,
+      "sourceReference": "https://www.fanaticscollect.com/weekly/b09db9dc-868a-11ef-b578-0a58a9feac02",
+      "venue": "PWCC Weekly Auctions",
+      "kind": "transaction",
+      "date": "2024-11-03",
+      "format": "AUCTION",
+      "title": null,
+      "card": null,
+      "grading": {
+       "grader": "CGC",
+       "encoding": "10.5",
+       "number": null,
+       "label": null,
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 336,
+       "currency": null
+      },
+      "convertedPrice": null,
+      "shipping": null,
+      "fees": null,
+      "shippingIncluded": null,
+      "buyerPremiumIncluded": null,
+      "quantity": null,
+      "subjectToChange": false,
+      "skippedReason": null
+     },
+     {
+      "provider": "alt",
+      "providerId": "11020cc4-2783-494b-86b8-7d90c3ecc298",
+      "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+      "sourceUrl": "https://www.ebay.com/itm/335037487554",
+      "sourceItemId": "335037487554",
+      "sourceReference": "https://www.ebay.com/itm/335037487554",
+      "venue": "eBay",
+      "kind": "transaction",
+      "date": "2026-09-05",
+      "format": "BEST_OFFER",
+      "title": null,
+      "card": null,
+      "grading": {
+       "grader": "PSA",
+       "encoding": "4.0",
+       "number": 4,
+       "label": "PSA 4",
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 27.46,
+       "currency": null
+      },
+      "convertedPrice": null,
+      "shipping": null,
+      "fees": null,
+      "shippingIncluded": null,
+      "buyerPremiumIncluded": null,
+      "quantity": null,
+      "subjectToChange": false,
+      "skippedReason": null
+     }
+    ],
+    "asOf": "2026-09-05T22:00:00.000Z",
+    "coverage": {
+     "requestedWindow": {
+      "from": "2020-01-01",
+      "to": "2026-09-05"
+     },
+     "observedWindow": {
+      "from": "2024-11-03",
+      "to": "2026-09-05"
+     },
+     "complete": false,
+     "reason": "capped-per-grade",
+     "sourceCount": 4,
+     "limitPerGrade": 16
+    }
+   }
+  },
+  {
+   "name": "sales in a narrow window",
+   "kind": "sales",
+   "body": "{\"data\":{\"asset\":{\"id\":\"cd3ecabf-7d43-4375-9428-1a7cdfe66426\",\"marketTransactions\":[{\"id\":\"d7bcc0d1-1305-48e4-ab06-b17451f02780\",\"date\":\"2026-09-04\",\"auctionHouse\":\"Alt\",\"auctionType\":\"AUCTION\",\"price\":\"79.20\",\"attributes\":{\"gradeNumber\":\"9.0\",\"gradingCompany\":\"PSA\",\"url\":\"ab984d1c-d1ad-44ab-961e-fb3b3a63bba2\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":\"PENDING\",\"label\":\"\"},{\"id\":\"52d35b8b-c1d8-438d-96f0-4b58c9addba2\",\"date\":\"2026-08-02\",\"auctionHouse\":\"PWCC Weekly Auctions\",\"auctionType\":\"AUCTION\",\"price\":\"15.60\",\"attributes\":{\"gradeNumber\":\"0.0\",\"gradingCompany\":\"CGC\",\"url\":\"https://www.fanaticscollect.com/weekly/1d1e4946-879c-11f1-be85-0ad68bfbd9dd\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":null,\"label\":\"\"},{\"id\":\"1eb317f0-3048-467c-81e5-e6000cbc548c\",\"date\":\"2024-11-03\",\"auctionHouse\":\"PWCC Weekly Auctions\",\"auctionType\":\"AUCTION\",\"price\":\"336.00\",\"attributes\":{\"gradeNumber\":\"10.5\",\"gradingCompany\":\"CGC\",\"url\":\"https://www.fanaticscollect.com/weekly/b09db9dc-868a-11ef-b578-0a58a9feac02\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":null,\"label\":\"\"},{\"id\":\"11020cc4-2783-494b-86b8-7d90c3ecc298\",\"date\":\"2026-09-05\",\"auctionHouse\":\"eBay\",\"auctionType\":\"BEST_OFFER\",\"price\":\"27.46\",\"attributes\":{\"gradeNumber\":\"4.0\",\"gradingCompany\":\"PSA\",\"url\":\"https://www.ebay.com/itm/335037487554\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":null,\"label\":\"\"}]}}}",
+   "args": [
+    {
+     "from": "2026-09-04",
+     "to": "2026-09-05"
+    },
+    16
+   ],
+   "out": {
+    "sales": [
+     {
+      "provider": "alt",
+      "providerId": "d7bcc0d1-1305-48e4-ab06-b17451f02780",
+      "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+      "sourceUrl": null,
+      "sourceItemId": null,
+      "sourceReference": "ab984d1c-d1ad-44ab-961e-fb3b3a63bba2",
+      "venue": "Alt",
+      "kind": "transaction",
+      "date": "2026-09-04",
+      "format": "AUCTION",
+      "title": null,
+      "card": null,
+      "grading": {
+       "grader": "PSA",
+       "encoding": "9.0",
+       "number": 9,
+       "label": "PSA 9",
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 79.2,
+       "currency": null
+      },
+      "convertedPrice": null,
+      "shipping": null,
+      "fees": null,
+      "shippingIncluded": null,
+      "buyerPremiumIncluded": null,
+      "quantity": null,
+      "subjectToChange": false,
+      "skippedReason": "PENDING"
+     },
+     {
+      "provider": "alt",
+      "providerId": "11020cc4-2783-494b-86b8-7d90c3ecc298",
+      "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+      "sourceUrl": "https://www.ebay.com/itm/335037487554",
+      "sourceItemId": "335037487554",
+      "sourceReference": "https://www.ebay.com/itm/335037487554",
+      "venue": "eBay",
+      "kind": "transaction",
+      "date": "2026-09-05",
+      "format": "BEST_OFFER",
+      "title": null,
+      "card": null,
+      "grading": {
+       "grader": "PSA",
+       "encoding": "4.0",
+       "number": 4,
+       "label": "PSA 4",
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 27.46,
+       "currency": null
+      },
+      "convertedPrice": null,
+      "shipping": null,
+      "fees": null,
+      "shippingIncluded": null,
+      "buyerPremiumIncluded": null,
+      "quantity": null,
+      "subjectToChange": false,
+      "skippedReason": null
+     }
+    ],
+    "asOf": "2026-09-05T22:00:00.000Z",
+    "coverage": {
+     "requestedWindow": {
+      "from": "2026-09-04",
+      "to": "2026-09-05"
+     },
+     "observedWindow": {
+      "from": "2024-11-03",
+      "to": "2026-09-05"
+     },
+     "complete": false,
+     "reason": "capped-per-grade",
+     "sourceCount": 4,
+     "limitPerGrade": 16
+    }
+   }
+  },
+  {
+   "name": "sales with no transactions",
+   "kind": "sales",
+   "body": "{\"data\":{\"asset\":{\"id\":\"cd3ecabf-7d43-4375-9428-1a7cdfe66426\",\"marketTransactions\":[]}}}",
+   "args": [
+    {
+     "from": "2020-01-01",
+     "to": "2026-09-05"
+    },
+    4
+   ],
+   "out": {
+    "sales": [],
+    "asOf": "2026-09-05T22:00:00.000Z",
+    "coverage": {
+     "requestedWindow": {
+      "from": "2020-01-01",
+      "to": "2026-09-05"
+     },
+     "observedWindow": null,
+     "complete": false,
+     "reason": "capped-per-grade",
+     "sourceCount": 0,
+     "limitPerGrade": 4
+    }
+   }
+  },
+  {
+   "name": "sales null",
+   "kind": "sales",
+   "body": "{\"data\":{\"asset\":{\"id\":\"cd3ecabf-7d43-4375-9428-1a7cdfe66426\",\"marketTransactions\":null}}}",
+   "args": [
+    {
+     "from": "2020-01-01",
+     "to": "2026-09-05"
+    },
+    16
+   ],
+   "error": "invalid-response"
+  },
+  {
+   "name": "sales with errors",
+   "kind": "sales",
+   "body": "{\"data\":{\"asset\":{\"id\":\"cd3ecabf-7d43-4375-9428-1a7cdfe66426\",\"marketTransactions\":[{\"id\":\"d7bcc0d1-1305-48e4-ab06-b17451f02780\",\"date\":\"2026-09-04\",\"auctionHouse\":\"Alt\",\"auctionType\":\"AUCTION\",\"price\":\"79.20\",\"attributes\":{\"gradeNumber\":\"9.0\",\"gradingCompany\":\"PSA\",\"url\":\"ab984d1c-d1ad-44ab-961e-fb3b3a63bba2\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":\"PENDING\",\"label\":\"\"},{\"id\":\"52d35b8b-c1d8-438d-96f0-4b58c9addba2\",\"date\":\"2026-08-02\",\"auctionHouse\":\"PWCC Weekly Auctions\",\"auctionType\":\"AUCTION\",\"price\":\"15.60\",\"attributes\":{\"gradeNumber\":\"0.0\",\"gradingCompany\":\"CGC\",\"url\":\"https://www.fanaticscollect.com/weekly/1d1e4946-879c-11f1-be85-0ad68bfbd9dd\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":null,\"label\":\"\"},{\"id\":\"1eb317f0-3048-467c-81e5-e6000cbc548c\",\"date\":\"2024-11-03\",\"auctionHouse\":\"PWCC Weekly Auctions\",\"auctionType\":\"AUCTION\",\"price\":\"336.00\",\"attributes\":{\"gradeNumber\":\"10.5\",\"gradingCompany\":\"CGC\",\"url\":\"https://www.fanaticscollect.com/weekly/b09db9dc-868a-11ef-b578-0a58a9feac02\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":null,\"label\":\"\"},{\"id\":\"11020cc4-2783-494b-86b8-7d90c3ecc298\",\"date\":\"2026-09-05\",\"auctionHouse\":\"eBay\",\"auctionType\":\"BEST_OFFER\",\"price\":\"27.46\",\"attributes\":{\"gradeNumber\":\"4.0\",\"gradingCompany\":\"PSA\",\"url\":\"https://www.ebay.com/itm/335037487554\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":null,\"label\":\"\"}]}},\"errors\":[{\"message\":\"partial response\"}]}",
+   "args": [
+    {
+     "from": "2020-01-01",
+     "to": "2026-09-05"
+    },
+    16
+   ],
+   "error": "invalid-response"
+  },
+  {
+   "name": "sales of another asset",
+   "kind": "sales",
+   "body": "{\"data\":{\"asset\":{\"id\":\"wrong\",\"marketTransactions\":[]}}}",
+   "args": [
+    {
+     "from": "2020-01-01",
+     "to": "2026-09-05"
+    },
+    16
+   ],
+   "error": "invalid-response"
+  },
+  {
+   "name": "sales unauthenticated",
+   "kind": "sales",
+   "body": "{\"errors\":[{\"extensions\":{\"code\":\"UNAUTHENTICATED\"}}]}",
+   "args": [
+    {
+     "from": "2020-01-01",
+     "to": "2026-09-05"
+    },
+    16
+   ],
+   "error": "reconnect-required"
+  },
+  {
+   "name": "sales not JSON",
+   "kind": "sales",
+   "body": "<html>",
+   "args": [
+    {
+     "from": "2020-01-01",
+     "to": "2026-09-05"
+    },
+    16
+   ],
+   "error": "invalid-response"
+  },
+  {
+   "name": "sales with an incomplete row",
+   "kind": "sales",
+   "body": "{\"data\":{\"asset\":{\"id\":\"cd3ecabf-7d43-4375-9428-1a7cdfe66426\",\"marketTransactions\":[{\"id\":\"d7bcc0d1-1305-48e4-ab06-b17451f02780\",\"date\":null,\"auctionHouse\":\"Alt\",\"auctionType\":\"AUCTION\",\"price\":null,\"attributes\":{\"gradeNumber\":\"9.0\",\"gradingCompany\":\"PSA\",\"url\":\"ab984d1c-d1ad-44ab-961e-fb3b3a63bba2\",\"autograph\":null},\"subjectToChange\":true,\"consolidatedSkippedReason\":\"PENDING\",\"label\":\"\"},{\"id\":\"52d35b8b-c1d8-438d-96f0-4b58c9addba2\",\"date\":\"2026-08-02\",\"auctionHouse\":\"PWCC Weekly Auctions\",\"auctionType\":\"AUCTION\",\"price\":\"15.60\",\"attributes\":{\"gradeNumber\":\"0.0\",\"gradingCompany\":\"CGC\",\"url\":\"https://www.fanaticscollect.com/weekly/1d1e4946-879c-11f1-be85-0ad68bfbd9dd\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":null,\"label\":\"\"},{\"id\":\"1eb317f0-3048-467c-81e5-e6000cbc548c\",\"date\":\"2024-11-03\",\"auctionHouse\":\"PWCC Weekly Auctions\",\"auctionType\":\"AUCTION\",\"price\":\"336.00\",\"attributes\":{\"gradeNumber\":\"10.5\",\"gradingCompany\":\"CGC\",\"url\":\"https://www.fanaticscollect.com/weekly/b09db9dc-868a-11ef-b578-0a58a9feac02\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":null,\"label\":\"\"},{\"id\":\"11020cc4-2783-494b-86b8-7d90c3ecc298\",\"date\":\"2026-09-05\",\"auctionHouse\":\"eBay\",\"auctionType\":\"BEST_OFFER\",\"price\":\"27.46\",\"attributes\":{\"gradeNumber\":\"4.0\",\"gradingCompany\":\"PSA\",\"url\":\"https://www.ebay.com/itm/335037487554\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":null,\"label\":\"\"}]}}}",
+   "args": [
+    {
+     "from": "2020-01-01",
+     "to": "2026-09-05"
+    },
+    16
+   ],
+   "out": {
+    "sales": [
+     {
+      "provider": "alt",
+      "providerId": "d7bcc0d1-1305-48e4-ab06-b17451f02780",
+      "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+      "sourceUrl": null,
+      "sourceItemId": null,
+      "sourceReference": "ab984d1c-d1ad-44ab-961e-fb3b3a63bba2",
+      "venue": "Alt",
+      "kind": "transaction",
+      "date": null,
+      "format": "AUCTION",
+      "title": null,
+      "card": null,
+      "grading": {
+       "grader": "PSA",
+       "encoding": "9.0",
+       "number": 9,
+       "label": "PSA 9",
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": null,
+      "convertedPrice": null,
+      "shipping": null,
+      "fees": null,
+      "shippingIncluded": null,
+      "buyerPremiumIncluded": null,
+      "quantity": null,
+      "subjectToChange": true,
+      "skippedReason": "PENDING"
+     },
+     {
+      "provider": "alt",
+      "providerId": "52d35b8b-c1d8-438d-96f0-4b58c9addba2",
+      "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+      "sourceUrl": "https://www.fanaticscollect.com/weekly/1d1e4946-879c-11f1-be85-0ad68bfbd9dd",
+      "sourceItemId": null,
+      "sourceReference": "https://www.fanaticscollect.com/weekly/1d1e4946-879c-11f1-be85-0ad68bfbd9dd",
+      "venue": "PWCC Weekly Auctions",
+      "kind": "transaction",
+      "date": "2026-08-02",
+      "format": "AUCTION",
+      "title": null,
+      "card": null,
+      "grading": {
+       "grader": "CGC",
+       "encoding": "0.0",
+       "number": null,
+       "label": null,
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 15.6,
+       "currency": null
+      },
+      "convertedPrice": null,
+      "shipping": null,
+      "fees": null,
+      "shippingIncluded": null,
+      "buyerPremiumIncluded": null,
+      "quantity": null,
+      "subjectToChange": false,
+      "skippedReason": null
+     },
+     {
+      "provider": "alt",
+      "providerId": "1eb317f0-3048-467c-81e5-e6000cbc548c",
+      "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+      "sourceUrl": "https://www.fanaticscollect.com/weekly/b09db9dc-868a-11ef-b578-0a58a9feac02",
+      "sourceItemId": null,
+      "sourceReference": "https://www.fanaticscollect.com/weekly/b09db9dc-868a-11ef-b578-0a58a9feac02",
+      "venue": "PWCC Weekly Auctions",
+      "kind": "transaction",
+      "date": "2024-11-03",
+      "format": "AUCTION",
+      "title": null,
+      "card": null,
+      "grading": {
+       "grader": "CGC",
+       "encoding": "10.5",
+       "number": null,
+       "label": null,
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 336,
+       "currency": null
+      },
+      "convertedPrice": null,
+      "shipping": null,
+      "fees": null,
+      "shippingIncluded": null,
+      "buyerPremiumIncluded": null,
+      "quantity": null,
+      "subjectToChange": false,
+      "skippedReason": null
+     },
+     {
+      "provider": "alt",
+      "providerId": "11020cc4-2783-494b-86b8-7d90c3ecc298",
+      "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+      "sourceUrl": "https://www.ebay.com/itm/335037487554",
+      "sourceItemId": "335037487554",
+      "sourceReference": "https://www.ebay.com/itm/335037487554",
+      "venue": "eBay",
+      "kind": "transaction",
+      "date": "2026-09-05",
+      "format": "BEST_OFFER",
+      "title": null,
+      "card": null,
+      "grading": {
+       "grader": "PSA",
+       "encoding": "4.0",
+       "number": 4,
+       "label": "PSA 4",
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 27.46,
+       "currency": null
+      },
+      "convertedPrice": null,
+      "shipping": null,
+      "fees": null,
+      "shippingIncluded": null,
+      "buyerPremiumIncluded": null,
+      "quantity": null,
+      "subjectToChange": false,
+      "skippedReason": null
+     }
+    ],
+    "asOf": "2026-09-05T22:00:00.000Z",
+    "coverage": {
+     "requestedWindow": {
+      "from": "2020-01-01",
+      "to": "2026-09-05"
+     },
+     "observedWindow": {
+      "from": "2024-11-03",
+      "to": "2026-09-05"
+     },
+     "complete": false,
+     "reason": "capped-per-grade",
+     "sourceCount": 4,
+     "limitPerGrade": 16
+    }
+   }
+  },
+  {
+   "name": "sales with an unsafe URL",
+   "kind": "sales",
+   "body": "{\"data\":{\"asset\":{\"id\":\"cd3ecabf-7d43-4375-9428-1a7cdfe66426\",\"marketTransactions\":[{\"id\":\"d7bcc0d1-1305-48e4-ab06-b17451f02780\",\"date\":\"2026-09-04\",\"auctionHouse\":\"Alt\",\"auctionType\":\"AUCTION\",\"price\":\"79.20\",\"attributes\":{\"gradeNumber\":\"9.0\",\"gradingCompany\":\"PSA\",\"url\":\"javascript:alert(1)\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":\"PENDING\",\"label\":\"\"},{\"id\":\"52d35b8b-c1d8-438d-96f0-4b58c9addba2\",\"date\":\"2026-08-02\",\"auctionHouse\":\"PWCC Weekly Auctions\",\"auctionType\":\"AUCTION\",\"price\":\"15.60\",\"attributes\":{\"gradeNumber\":\"0.0\",\"gradingCompany\":\"CGC\",\"url\":\"https://www.fanaticscollect.com/weekly/1d1e4946-879c-11f1-be85-0ad68bfbd9dd\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":null,\"label\":\"\"},{\"id\":\"1eb317f0-3048-467c-81e5-e6000cbc548c\",\"date\":\"2024-11-03\",\"auctionHouse\":\"PWCC Weekly Auctions\",\"auctionType\":\"AUCTION\",\"price\":\"336.00\",\"attributes\":{\"gradeNumber\":\"10.5\",\"gradingCompany\":\"CGC\",\"url\":\"https://www.fanaticscollect.com/weekly/b09db9dc-868a-11ef-b578-0a58a9feac02\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":null,\"label\":\"\"},{\"id\":\"11020cc4-2783-494b-86b8-7d90c3ecc298\",\"date\":\"2026-09-05\",\"auctionHouse\":\"eBay\",\"auctionType\":\"BEST_OFFER\",\"price\":\"27.46\",\"attributes\":{\"gradeNumber\":\"4.0\",\"gradingCompany\":\"PSA\",\"url\":\"https://www.ebay.com/itm/335037487554\",\"autograph\":null},\"subjectToChange\":false,\"consolidatedSkippedReason\":null,\"label\":\"\"}]}}}",
+   "args": [
+    {
+     "from": "2020-01-01",
+     "to": "2026-09-05"
+    },
+    16
+   ],
+   "out": {
+    "sales": [
+     {
+      "provider": "alt",
+      "providerId": "d7bcc0d1-1305-48e4-ab06-b17451f02780",
+      "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+      "sourceUrl": null,
+      "sourceItemId": null,
+      "sourceReference": "javascript:alert(1)",
+      "venue": "Alt",
+      "kind": "transaction",
+      "date": "2026-09-04",
+      "format": "AUCTION",
+      "title": null,
+      "card": null,
+      "grading": {
+       "grader": "PSA",
+       "encoding": "9.0",
+       "number": 9,
+       "label": "PSA 9",
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 79.2,
+       "currency": null
+      },
+      "convertedPrice": null,
+      "shipping": null,
+      "fees": null,
+      "shippingIncluded": null,
+      "buyerPremiumIncluded": null,
+      "quantity": null,
+      "subjectToChange": false,
+      "skippedReason": "PENDING"
+     },
+     {
+      "provider": "alt",
+      "providerId": "52d35b8b-c1d8-438d-96f0-4b58c9addba2",
+      "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+      "sourceUrl": "https://www.fanaticscollect.com/weekly/1d1e4946-879c-11f1-be85-0ad68bfbd9dd",
+      "sourceItemId": null,
+      "sourceReference": "https://www.fanaticscollect.com/weekly/1d1e4946-879c-11f1-be85-0ad68bfbd9dd",
+      "venue": "PWCC Weekly Auctions",
+      "kind": "transaction",
+      "date": "2026-08-02",
+      "format": "AUCTION",
+      "title": null,
+      "card": null,
+      "grading": {
+       "grader": "CGC",
+       "encoding": "0.0",
+       "number": null,
+       "label": null,
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 15.6,
+       "currency": null
+      },
+      "convertedPrice": null,
+      "shipping": null,
+      "fees": null,
+      "shippingIncluded": null,
+      "buyerPremiumIncluded": null,
+      "quantity": null,
+      "subjectToChange": false,
+      "skippedReason": null
+     },
+     {
+      "provider": "alt",
+      "providerId": "1eb317f0-3048-467c-81e5-e6000cbc548c",
+      "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+      "sourceUrl": "https://www.fanaticscollect.com/weekly/b09db9dc-868a-11ef-b578-0a58a9feac02",
+      "sourceItemId": null,
+      "sourceReference": "https://www.fanaticscollect.com/weekly/b09db9dc-868a-11ef-b578-0a58a9feac02",
+      "venue": "PWCC Weekly Auctions",
+      "kind": "transaction",
+      "date": "2024-11-03",
+      "format": "AUCTION",
+      "title": null,
+      "card": null,
+      "grading": {
+       "grader": "CGC",
+       "encoding": "10.5",
+       "number": null,
+       "label": null,
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 336,
+       "currency": null
+      },
+      "convertedPrice": null,
+      "shipping": null,
+      "fees": null,
+      "shippingIncluded": null,
+      "buyerPremiumIncluded": null,
+      "quantity": null,
+      "subjectToChange": false,
+      "skippedReason": null
+     },
+     {
+      "provider": "alt",
+      "providerId": "11020cc4-2783-494b-86b8-7d90c3ecc298",
+      "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+      "sourceUrl": "https://www.ebay.com/itm/335037487554",
+      "sourceItemId": "335037487554",
+      "sourceReference": "https://www.ebay.com/itm/335037487554",
+      "venue": "eBay",
+      "kind": "transaction",
+      "date": "2026-09-05",
+      "format": "BEST_OFFER",
+      "title": null,
+      "card": null,
+      "grading": {
+       "grader": "PSA",
+       "encoding": "4.0",
+       "number": 4,
+       "label": "PSA 4",
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 27.46,
+       "currency": null
+      },
+      "convertedPrice": null,
+      "shipping": null,
+      "fees": null,
+      "shippingIncluded": null,
+      "buyerPremiumIncluded": null,
+      "quantity": null,
+      "subjectToChange": false,
+      "skippedReason": null
+     }
+    ],
+    "asOf": "2026-09-05T22:00:00.000Z",
+    "coverage": {
+     "requestedWindow": {
+      "from": "2020-01-01",
+      "to": "2026-09-05"
+     },
+     "observedWindow": {
+      "from": "2024-11-03",
+      "to": "2026-09-05"
+     },
+     "complete": false,
+     "reason": "capped-per-grade",
+     "sourceCount": 4,
+     "limitPerGrade": 16
+    }
+   }
+  },
+  {
+   "name": "detail",
+   "kind": "detail",
+   "body": "{\"data\":{\"externalTransaction\":{\"date\":\"2026-09-05\",\"id\":\"11020cc4-2783-494b-86b8-7d90c3ecc298\",\"auctionHouse\":\"eBay\",\"auctionName\":\"1999 Ponyta 60/102 Base Set 1st Edition PSA 4 VG-EX Pokemon TCG\",\"auctionType\":\"BEST_OFFER\",\"displayPrice\":27.46,\"label\":\"\",\"fees\":null,\"shipping\":17.59,\"usdAmount\":27.46,\"consolidatedSkippedReason\":null,\"currency\":null,\"asset\":{\"id\":\"cd3ecabf-7d43-4375-9428-1a7cdfe66426\",\"name\":\"1999 Pokemon Base Set 1st Edition Ponyta #60\",\"year\":1999,\"subject\":\"Ponyta\",\"category\":\"POKEMON_CARDS\",\"brand\":\"Pokemon Base Set\",\"variety\":\"1st Edition\",\"attributes\":{\"cardNumber\":\"60\",\"printRun\":null}},\"attributes\":{\"grade\":\"4.0\",\"gradingCompany\":\"PSA\",\"cert\":null,\"url\":\"https://www.ebay.com/itm/335037487554\",\"autograph\":null},\"subjectToChange\":false}}}",
+   "out": {
+    "provider": "alt",
+    "providerId": "11020cc4-2783-494b-86b8-7d90c3ecc298",
+    "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+    "sourceUrl": "https://www.ebay.com/itm/335037487554",
+    "sourceItemId": "335037487554",
+    "sourceReference": "https://www.ebay.com/itm/335037487554",
+    "venue": "eBay",
+    "kind": "transaction",
+    "date": "2026-09-05",
+    "format": "BEST_OFFER",
+    "title": "1999 Ponyta 60/102 Base Set 1st Edition PSA 4 VG-EX Pokemon TCG",
+    "card": {
+     "name": "Ponyta",
+     "game": "Pokemon",
+     "language": null,
+     "set": "Pokemon Base Set",
+     "cardNumber": "60",
+     "year": "1999",
+     "edition": "1st Edition",
+     "finish": null,
+     "stamp": null
+    },
+    "grading": {
+     "grader": "PSA",
+     "encoding": "4.0",
+     "number": 4,
+     "label": "PSA 4",
+     "qualifier": null,
+     "autograph": null
+    },
+    "certificateNumber": null,
+    "price": {
+     "amount": 27.46,
+     "currency": null
+    },
+    "convertedPrice": {
+     "amount": 27.46,
+     "currency": "USD"
+    },
+    "shipping": {
+     "amount": 17.59,
+     "currency": null
+    },
+    "fees": null,
+    "shippingIncluded": null,
+    "buyerPremiumIncluded": null,
+    "quantity": null,
+    "subjectToChange": false,
+    "skippedReason": null
+   }
+  },
+  {
+   "name": "detail not found",
+   "kind": "detail",
+   "body": "{\"data\":{\"externalTransaction\":null}}",
+   "out": null
+  },
+  {
+   "name": "detail of another sale",
+   "kind": "detail",
+   "body": "{\"data\":{\"externalTransaction\":{\"date\":\"2026-09-05\",\"id\":\"other\",\"auctionHouse\":\"eBay\",\"auctionName\":\"1999 Ponyta 60/102 Base Set 1st Edition PSA 4 VG-EX Pokemon TCG\",\"auctionType\":\"BEST_OFFER\",\"displayPrice\":27.46,\"label\":\"\",\"fees\":null,\"shipping\":17.59,\"usdAmount\":27.46,\"consolidatedSkippedReason\":null,\"currency\":null,\"asset\":{\"id\":\"cd3ecabf-7d43-4375-9428-1a7cdfe66426\",\"name\":\"1999 Pokemon Base Set 1st Edition Ponyta #60\",\"year\":1999,\"subject\":\"Ponyta\",\"category\":\"POKEMON_CARDS\",\"brand\":\"Pokemon Base Set\",\"variety\":\"1st Edition\",\"attributes\":{\"cardNumber\":\"60\",\"printRun\":null}},\"attributes\":{\"grade\":\"4.0\",\"gradingCompany\":\"PSA\",\"cert\":null,\"url\":\"https://www.ebay.com/itm/335037487554\",\"autograph\":null},\"subjectToChange\":false}}}",
+   "error": "invalid-response"
+  },
+  {
+   "name": "supply empty",
+   "kind": "supply",
+   "body": "{\"data\":{\"asset\":{\"id\":\"cd3ecabf-7d43-4375-9428-1a7cdfe66426\",\"activeListings\":[]}}}",
+   "out": []
+  },
+  {
+   "name": "supply",
+   "kind": "supply",
+   "body": "{\"data\":{\"asset\":{\"id\":\"cd3ecabf-7d43-4375-9428-1a7cdfe66426\",\"activeListings\":[{\"id\":\"listing\",\"state\":\"ACTIVE\",\"type\":\"unknown-new-format\",\"listPrice\":\"123.45\",\"createdAt\":\"2026-09-01T00:00:00Z\",\"expiresAt\":null,\"items\":[{\"asset\":{\"id\":\"cd3ecabf-7d43-4375-9428-1a7cdfe66426\"},\"attributes\":{\"gradingCompany\":\"PSA\",\"gradeNumber\":\"9.0\"}},{\"asset\":null}]}]}}}",
+   "out": [
+    {
+     "provider": "alt",
+     "providerId": "listing",
+     "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+     "venue": "Alt",
+     "sourceUrl": null,
+     "format": "unknown-new-format",
+     "state": "ACTIVE",
+     "price": {
+      "amount": 123.45,
+      "currency": null
+     },
+     "priceKind": "unknown",
+     "shipping": null,
+     "quantity": null,
+     "startedAt": "2026-09-01T00:00:00Z",
+     "endsAt": null,
+     "items": [
+      {
+       "assetId": "cd3ecabf-7d43-4375-9428-1a7cdfe66426",
+       "grading": {
+        "grader": "PSA",
+        "encoding": "9.0",
+        "number": 9,
+        "label": "PSA 9",
+        "qualifier": null,
+        "autograph": null
+       }
+      },
+      {
+       "assetId": null,
+       "grading": {
+        "grader": "UNKNOWN",
+        "encoding": "unknown",
+        "number": null,
+        "label": null,
+        "qualifier": null,
+        "autograph": null
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "supply of another asset",
+   "kind": "supply",
+   "body": "{\"data\":{\"asset\":{\"id\":\"wrong\",\"activeListings\":[]}}}",
+   "error": "invalid-response"
+  }
+ ]
+}

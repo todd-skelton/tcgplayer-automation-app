@@ -317,7 +317,7 @@ mod tests {
         }
     }
 
-    /// Node: `evidenceKey` of the same requests (`.port-logs/slab-evidence-keys.ts`).
+    /// Node's `evidenceKey` of the same requests.
     #[test]
     fn keys_are_the_ones_node_computes() {
         let specs = [

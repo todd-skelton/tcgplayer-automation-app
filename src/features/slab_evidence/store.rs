@@ -680,22 +680,23 @@ mod tests {
         }
     }
 
-    /// The scenario of `.port-logs/slab-evidence-node.ts` (requests, claims, two saved, a retry, a
-    /// failure, a cancel, a forced request) on the dev database in a transaction rolled back,
-    /// compared with what Node answered and wrote (`.port-logs/slab-evidence-capture.sql`).
+    /// The queue scenario of `scripts/parity/slab-evidence.ts` (requests, claims, two saved, a
+    /// retry, a failure, a cancel, a forced request) on the dev database in a transaction rolled
+    /// back, compared with what Node answered and wrote (`tests/fixtures/node/slab/evidence-queue.json`, read back
+    /// with `tests/fixtures/node/slab/capture.sql`).
     #[tokio::test]
     #[ignore = "writes the dev database in a transaction it rolls back"]
     async fn the_queue_runs_as_node_runs_it() {
         crate::config::load_env();
         let node: Value = serde_json::from_str(
-            &std::fs::read_to_string(".port-logs/slab-evidence.node.json").unwrap(),
+            &std::fs::read_to_string("tests/fixtures/node/slab/evidence-queue.json").unwrap(),
         )
         .unwrap();
         let scenario: Value = serde_json::from_str(
-            &std::fs::read_to_string(".port-logs/slab-evidence-scenario.json").unwrap(),
+            &std::fs::read_to_string("tests/fixtures/node/slab/evidence-scenario.json").unwrap(),
         )
         .unwrap();
-        let capture = std::fs::read_to_string(".port-logs/slab-evidence-capture.sql").unwrap();
+        let capture = std::fs::read_to_string("tests/fixtures/node/slab/capture.sql").unwrap();
         let window = Window {
             from: "2025-10-30".into(),
             to: "2026-10-30".into(),

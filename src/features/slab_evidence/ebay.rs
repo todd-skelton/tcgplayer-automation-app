@@ -755,14 +755,13 @@ mod tests {
         assert_eq!(frames("a\nb"), ["a\nb"]);
     }
 
-    /// Node's reader over the recorded fixtures and edge cases built from them
-    /// (`.port-logs/ebay-parse-node.ts`): the search asked, and each answer or the status it
-    /// refused with, are Node's.
+    /// Node's reader over the provider fixtures and edge cases built from them
+    /// (`tests/fixtures/node/slab/ebay-parse.json`, by `scripts/parity/slab-parsers.ts`): the
+    /// search asked, and each answer or the status it refused with, are Node's.
     #[test]
-    #[ignore = "reads .port-logs/ebay-parse.node.json, which Node writes"]
     fn answers_are_read_as_node_reads_them() {
         let node: Value = serde_json::from_str(
-            &std::fs::read_to_string(".port-logs/ebay-parse.node.json").unwrap(),
+            &std::fs::read_to_string("tests/fixtures/node/slab/ebay-parse.json").unwrap(),
         )
         .unwrap();
         let as_of = node["asOf"].as_str().unwrap();

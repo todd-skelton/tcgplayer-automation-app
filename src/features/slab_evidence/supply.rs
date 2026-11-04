@@ -275,20 +275,22 @@ mod tests {
         );
     }
 
-    /// The scans of `.port-logs/supply-scan-scenario.json` (a copy collapsed, the same scan again,
+    /// The scans of `tests/fixtures/node/slab/supply-scan-scenario.json` (a copy collapsed, the same scan again,
     /// changed content under one run, reordered and changed listings, contradictory copies, the
     /// wrong source, an eBay scan, an unchanged scan copied) and a supply refresh completed, on the
     /// dev database in a transaction rolled back, compared with what Node's
-    /// `.port-logs/supply-scan-node.ts` answered and wrote.
+    /// `scripts/parity/slab-evidence.ts` answered and wrote.
     #[tokio::test]
     #[ignore = "writes the dev database in a transaction it rolls back"]
     async fn scans_are_recorded_as_node_records_them() {
         crate::config::load_env();
         let read = |path: &str| std::fs::read_to_string(path).unwrap();
-        let node: Value = serde_json::from_str(&read(".port-logs/supply-scan.node.json")).unwrap();
+        let node: Value =
+            serde_json::from_str(&read("tests/fixtures/node/slab/supply-scan.json")).unwrap();
         let scenario: Value =
-            serde_json::from_str(&read(".port-logs/supply-scan-scenario.json")).unwrap();
-        let capture = read(".port-logs/supply-scan-capture.sql");
+            serde_json::from_str(&read("tests/fixtures/node/slab/supply-scan-scenario.json"))
+                .unwrap();
+        let capture = read("tests/fixtures/node/slab/capture.sql");
         let db = Database::connect_lazy(&crate::config::database_url());
         let mut conn = db.0.acquire().await.unwrap();
         let mut tx = conn.begin().await.unwrap();

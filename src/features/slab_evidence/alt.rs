@@ -789,13 +789,13 @@ mod tests {
         assert_eq!(asked.lock().unwrap().len(), 3);
     }
 
-    /// Node's parsers over the recorded fixtures and edge cases built from them
-    /// (`.port-logs/alt-parse-node.ts`): each answer, or the status it refused with, is Node's.
+    /// Node's parsers over the provider fixtures and edge cases built from them
+    /// (`tests/fixtures/node/slab/alt-parse.json`, by `scripts/parity/slab-parsers.ts`): each
+    /// answer, or the status it refused with, is Node's.
     #[test]
-    #[ignore = "reads .port-logs/alt-parse.node.json, which Node writes"]
     fn answers_are_read_as_node_reads_them() {
         let node: Value = serde_json::from_str(
-            &std::fs::read_to_string(".port-logs/alt-parse.node.json").unwrap(),
+            &std::fs::read_to_string("tests/fixtures/node/slab/alt-parse.json").unwrap(),
         )
         .unwrap();
         let asset_id = node["assetId"].as_str().unwrap();

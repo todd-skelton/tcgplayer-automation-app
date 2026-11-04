@@ -1,0 +1,458 @@
+{
+ "steps": [
+  {
+   "run": "00000000-0000-4000-8000-000000000001",
+   "ok": true
+  },
+  {
+   "run": "00000000-0000-4000-8000-000000000001",
+   "ok": true
+  },
+  {
+   "run": "00000000-0000-4000-8000-000000000001",
+   "error": "Supply revision content changed."
+  },
+  {
+   "run": "00000000-0000-4000-8000-000000000002",
+   "ok": true
+  },
+  {
+   "run": "00000000-0000-4000-8000-000000000003",
+   "error": "A supply scan contains contradictory copies of a listing."
+  },
+  {
+   "run": "00000000-0000-4000-8000-000000000004",
+   "error": "Supply does not match its source request."
+  },
+  {
+   "run": "00000000-0000-4000-8000-000000000005",
+   "ok": true
+  },
+  {
+   "run": "00000000-0000-4000-8000-000000000006",
+   "ok": true
+  },
+  {
+   "completed": "b0a7ccc1c5f445e3d70e6fd660198f0791755b585326ce2d78ffe7d56ed51545",
+   "saved": true
+  }
+ ],
+ "captured": {
+  "scans": [
+   {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "asset": "asset-1",
+    "group": null,
+    "source": "d8766db59c2816ff7e1eed58c48c0acc87683fc4e7573ae3739df2dc97ff3619",
+    "stored": 2,
+    "content": "9c6bb28ff76772cf697c84aff0909d1754ad17ec061fb4b38259a793dade68ae",
+    "captured": "2026-10-01T00:00:00.000Z",
+    "complete": false,
+    "provider": "alt",
+    "reported": 3
+   },
+   {
+    "id": "00000000-0000-4000-8000-000000000002",
+    "asset": "asset-1",
+    "group": null,
+    "source": "d8766db59c2816ff7e1eed58c48c0acc87683fc4e7573ae3739df2dc97ff3619",
+    "stored": 2,
+    "content": "46935c628f0ea7d1d78290d37b064947fbc80777c171b95c151be32b42aa1893",
+    "captured": "2026-10-02T00:00:00.000Z",
+    "complete": false,
+    "provider": "alt",
+    "reported": 2
+   },
+   {
+    "id": "00000000-0000-4000-8000-000000000005",
+    "asset": null,
+    "group": "abababababababababababababababababababababababababababababababab",
+    "source": "c955753ef5f7d8b133f6e286d284191ad07788ee094e1f5e6290b8cf92b6b911",
+    "stored": 2,
+    "content": "1bc006573dc4f74c7cef2a01e0b93630c77ff48caf759bf15d4d8cb2f509b331",
+    "captured": "2026-10-03T00:00:00.000Z",
+    "complete": false,
+    "provider": "ebayResearch",
+    "reported": 2
+   },
+   {
+    "id": "00000000-0000-4000-8000-000000000006",
+    "asset": "asset-1",
+    "group": null,
+    "source": "d8766db59c2816ff7e1eed58c48c0acc87683fc4e7573ae3739df2dc97ff3619",
+    "stored": 2,
+    "content": "46935c628f0ea7d1d78290d37b064947fbc80777c171b95c151be32b42aa1893",
+    "captured": "2026-10-04T00:00:00.000Z",
+    "complete": false,
+    "provider": "alt",
+    "reported": 2
+   },
+   {
+    "id": "completed-run",
+    "asset": "asset-2",
+    "group": null,
+    "source": "b0a7ccc1c5f445e3d70e6fd660198f0791755b585326ce2d78ffe7d56ed51545",
+    "stored": 1,
+    "content": "fbae4d8688e44c7defb8efc0dcf50b4942e25a6bd98be08e3c267926c82a6dfc",
+    "captured": "2026-10-05T00:00:00.000Z",
+    "complete": false,
+    "provider": "alt",
+    "reported": 1
+   }
+  ],
+  "versions": [
+   {
+    "hash": "12f1aa9b18b91260e599f7a3f9d0a7ef059edd9be595d6e78a6cbc2943a6e1a6",
+    "listing": "alt:l-2",
+    "payload": {
+     "items": [
+      {
+       "assetId": "asset-1",
+       "grading": {
+        "label": "PSA 9",
+        "grader": "PSA",
+        "number": 9,
+        "encoding": "9.0",
+        "autograph": null,
+        "qualifier": null
+       }
+      },
+      {
+       "assetId": "asset-1",
+       "grading": {
+        "label": null,
+        "grader": "BGS",
+        "number": null,
+        "encoding": "9.5",
+        "autograph": null,
+        "qualifier": null
+       }
+      }
+     ],
+     "price": {
+      "amount": 75,
+      "currency": null
+     },
+     "state": "ACTIVE",
+     "title": null,
+     "venue": "Alt",
+     "endsAt": null,
+     "format": "FIXED_PRICE",
+     "assetId": "asset-1",
+     "provider": "alt",
+     "quantity": null,
+     "shipping": null,
+     "priceKind": "unknown",
+     "sourceUrl": null,
+     "startedAt": "2026-10-01T00:00:00Z",
+     "providerId": "l-2",
+     "extendedTitle": null
+    }
+   },
+   {
+    "hash": "56dbdcebb86e5d28e29c496cc57d36383556a9bb184ce440cc197ac2d27f6fb8",
+    "listing": "alt:l-1",
+    "payload": {
+     "items": [
+      {
+       "assetId": "asset-1",
+       "grading": {
+        "label": "PSA 9",
+        "grader": "PSA",
+        "number": 9,
+        "encoding": "9.0",
+        "autograph": null,
+        "qualifier": null
+       }
+      },
+      {
+       "assetId": "asset-1",
+       "grading": {
+        "label": null,
+        "grader": "BGS",
+        "number": null,
+        "encoding": "9.5",
+        "autograph": null,
+        "qualifier": null
+       }
+      }
+     ],
+     "price": {
+      "amount": 100,
+      "currency": null
+     },
+     "state": "ACTIVE",
+     "title": null,
+     "venue": "Alt",
+     "endsAt": null,
+     "format": "FIXED_PRICE",
+     "assetId": "asset-1",
+     "provider": "alt",
+     "quantity": null,
+     "shipping": null,
+     "priceKind": "unknown",
+     "sourceUrl": null,
+     "startedAt": "2026-10-01T00:00:00Z",
+     "providerId": "l-1",
+     "extendedTitle": null
+    }
+   },
+   {
+    "hash": "5f255281f63669ba2238593467767e43070402a6daf4684aceb30d23e4ff06b4",
+    "listing": "ebayResearch:e-2",
+    "payload": {
+     "items": [
+      {
+       "assetId": null,
+       "grading": {
+        "label": null,
+        "grader": "PSA",
+        "number": 10,
+        "encoding": "10",
+        "autograph": null,
+        "qualifier": null
+       }
+      }
+     ],
+     "price": {
+      "amount": 395.5,
+      "currency": "USD"
+     },
+     "state": "ACTIVE",
+     "title": "PSA 10 Charizard e-2",
+     "venue": "eBay",
+     "endsAt": null,
+     "format": "FIXED_PRICE",
+     "assetId": null,
+     "provider": "ebayResearch",
+     "quantity": null,
+     "shipping": {
+      "amount": 0,
+      "currency": "USD"
+     },
+     "priceKind": "ask",
+     "sourceUrl": "https://www.ebay.com/itm/e-2",
+     "startedAt": null,
+     "providerId": "e-2",
+     "extendedTitle": null
+    }
+   },
+   {
+    "hash": "9cdcaf8b96fdba7236b5431a2fed4a58cccb365314091517a06cbaa83c7e5271",
+    "listing": "alt:l-2",
+    "payload": {
+     "items": [
+      {
+       "assetId": "asset-1",
+       "grading": {
+        "label": "PSA 9",
+        "grader": "PSA",
+        "number": 9,
+        "encoding": "9.0",
+        "autograph": null,
+        "qualifier": null
+       }
+      },
+      {
+       "assetId": "asset-1",
+       "grading": {
+        "label": null,
+        "grader": "BGS",
+        "number": null,
+        "encoding": "9.5",
+        "autograph": null,
+        "qualifier": null
+       }
+      }
+     ],
+     "price": {
+      "amount": 80,
+      "currency": null
+     },
+     "state": "ACTIVE",
+     "title": null,
+     "venue": "Alt",
+     "endsAt": null,
+     "format": "FIXED_PRICE",
+     "assetId": "asset-1",
+     "provider": "alt",
+     "quantity": null,
+     "shipping": null,
+     "priceKind": "unknown",
+     "sourceUrl": null,
+     "startedAt": "2026-10-01T00:00:00Z",
+     "providerId": "l-2",
+     "extendedTitle": null
+    }
+   },
+   {
+    "hash": "b1da50076123bf60ef08606247c5ca3bf8c32dc75ff29e6204a9a952e5e26813",
+    "listing": "alt:l-9",
+    "payload": {
+     "items": [
+      {
+       "assetId": "asset-2",
+       "grading": {
+        "label": "PSA 8",
+        "grader": "PSA",
+        "number": 8,
+        "encoding": "8.0",
+        "autograph": null,
+        "qualifier": null
+       }
+      }
+     ],
+     "price": {
+      "amount": 60,
+      "currency": null
+     },
+     "state": "ACTIVE",
+     "title": null,
+     "venue": "Alt",
+     "endsAt": null,
+     "format": "FIXED_PRICE",
+     "assetId": "asset-2",
+     "provider": "alt",
+     "quantity": null,
+     "shipping": null,
+     "priceKind": "unknown",
+     "sourceUrl": null,
+     "startedAt": "2026-10-01T00:00:00Z",
+     "providerId": "l-9",
+     "extendedTitle": null
+    }
+   },
+   {
+    "hash": "c59cf10b4609129469d32162be8ffc1e0deac9fb94051389fb06ce2d7f041ec2",
+    "listing": "ebayResearch:e-1",
+    "payload": {
+     "items": [
+      {
+       "assetId": null,
+       "grading": {
+        "label": null,
+        "grader": "PSA",
+        "number": 10,
+        "encoding": "10",
+        "autograph": null,
+        "qualifier": null
+       }
+      }
+     ],
+     "price": {
+      "amount": 410,
+      "currency": "USD"
+     },
+     "state": "ACTIVE",
+     "title": "PSA 10 Charizard e-1",
+     "venue": "eBay",
+     "endsAt": null,
+     "format": "FIXED_PRICE",
+     "assetId": null,
+     "provider": "ebayResearch",
+     "quantity": null,
+     "shipping": {
+      "amount": 0,
+      "currency": "USD"
+     },
+     "priceKind": "ask",
+     "sourceUrl": "https://www.ebay.com/itm/e-1",
+     "startedAt": null,
+     "providerId": "e-1",
+     "extendedTitle": null
+    }
+   }
+  ],
+  "refreshes": [
+   {
+    "key": "b0a7ccc1c5f445e3d70e6fd660198f0791755b585326ce2d78ffe7d56ed51545",
+    "ttl": 900,
+    "spec": {
+     "kind": "alt-supply",
+     "assetId": "asset-2"
+    },
+    "wait": 0,
+    "error": null,
+    "saved": true,
+    "state": "idle",
+    "leased": false,
+    "fetched": true,
+    "attempts": 1,
+    "duration": 10,
+    "priority": 200
+   }
+  ],
+  "revisions": [
+   {
+    "key": "b0a7ccc1c5f445e3d70e6fd660198f0791755b585326ce2d78ffe7d56ed51545",
+    "bytes": 503,
+    "supply": true,
+    "payload": {
+     "data": {
+      "asOf": "2026-10-05T00:00:00.000Z",
+      "scope": "alt-only"
+     },
+     "kind": "alt-supply"
+    },
+    "retained": false,
+    "observations": 1
+   }
+  ],
+  "observations": [
+   {
+    "scan": "00000000-0000-4000-8000-000000000001",
+    "listing": "alt:l-1",
+    "version": "56dbdcebb86e5d28e29c496cc57d36383556a9bb184ce440cc197ac2d27f6fb8",
+    "position": 0
+   },
+   {
+    "scan": "00000000-0000-4000-8000-000000000001",
+    "listing": "alt:l-2",
+    "version": "9cdcaf8b96fdba7236b5431a2fed4a58cccb365314091517a06cbaa83c7e5271",
+    "position": 1
+   },
+   {
+    "scan": "00000000-0000-4000-8000-000000000002",
+    "listing": "alt:l-2",
+    "version": "12f1aa9b18b91260e599f7a3f9d0a7ef059edd9be595d6e78a6cbc2943a6e1a6",
+    "position": 0
+   },
+   {
+    "scan": "00000000-0000-4000-8000-000000000002",
+    "listing": "alt:l-1",
+    "version": "56dbdcebb86e5d28e29c496cc57d36383556a9bb184ce440cc197ac2d27f6fb8",
+    "position": 1
+   },
+   {
+    "scan": "00000000-0000-4000-8000-000000000005",
+    "listing": "ebayResearch:e-1",
+    "version": "c59cf10b4609129469d32162be8ffc1e0deac9fb94051389fb06ce2d7f041ec2",
+    "position": 0
+   },
+   {
+    "scan": "00000000-0000-4000-8000-000000000005",
+    "listing": "ebayResearch:e-2",
+    "version": "5f255281f63669ba2238593467767e43070402a6daf4684aceb30d23e4ff06b4",
+    "position": 1
+   },
+   {
+    "scan": "00000000-0000-4000-8000-000000000006",
+    "listing": "alt:l-2",
+    "version": "12f1aa9b18b91260e599f7a3f9d0a7ef059edd9be595d6e78a6cbc2943a6e1a6",
+    "position": 0
+   },
+   {
+    "scan": "00000000-0000-4000-8000-000000000006",
+    "listing": "alt:l-1",
+    "version": "56dbdcebb86e5d28e29c496cc57d36383556a9bb184ce440cc197ac2d27f6fb8",
+    "position": 1
+   },
+   {
+    "scan": "completed-run",
+    "listing": "alt:l-9",
+    "version": "b1da50076123bf60ef08606247c5ca3bf8c32dc75ff29e6204a9a952e5e26813",
+    "position": 0
+   }
+  ]
+ }
+}

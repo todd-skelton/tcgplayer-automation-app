@@ -260,7 +260,7 @@ mod tests {
         assert!(!retried(Status::ReconnectRequired));
     }
 
-    /// The answers of `.port-logs/slab-worker-node.ts`'s stand-in fetch: no provider is called.
+    /// The answers of `scripts/parity/slab-evidence.ts`'s stand-in fetch: no provider is called.
     struct StandIn(Value);
 
     impl Provider for StandIn {
@@ -305,10 +305,11 @@ mod tests {
     async fn refreshes_run_as_node_runs_them() {
         crate::config::load_env();
         let read = |path: &str| std::fs::read_to_string(path).unwrap();
-        let node: Value = serde_json::from_str(&read(".port-logs/slab-worker.node.json")).unwrap();
+        let node: Value =
+            serde_json::from_str(&read("tests/fixtures/node/slab/evidence-worker.json")).unwrap();
         let scenario: Value =
-            serde_json::from_str(&read(".port-logs/slab-evidence-scenario.json")).unwrap();
-        let capture = read(".port-logs/slab-evidence-capture.sql");
+            serde_json::from_str(&read("tests/fixtures/node/slab/evidence-scenario.json")).unwrap();
+        let capture = read("tests/fixtures/node/slab/capture.sql");
         let window = Window {
             from: "2025-10-30".into(),
             to: "2026-10-30".into(),
