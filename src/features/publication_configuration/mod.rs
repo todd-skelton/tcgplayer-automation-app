@@ -9,6 +9,7 @@
 //! | `POST /publication-configuration/resume` | the circuit closed and the failures forgotten |
 pub mod config;
 mod form;
+pub mod json_route;
 mod page;
 mod views;
 
