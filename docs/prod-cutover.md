@@ -62,6 +62,26 @@ Docker would restart them in a loop.
 3. Optional, and it reads production: refresh the dev database from production
    (`npm run dev:db:refresh`) and run the gate and the twin scripts against that copy.
 
+## The proxy
+
+`deploy/nginx/app.conf` against Corten's list of what a proxy must do (`docs/guide/deploy.md` at
+Corten a0215cc9):
+
+1. It passes `Host` as the browser sent it, sets `X-Forwarded-For` (the `web` containers list
+   the compose network in `PROXIES`), turns buffering off for event streams, keeps the app's
+   error bodies, and allows 50 MB uploads.
+2. The `web` containers' health check reads `/health/ready`, which also checks the database,
+   rather than `/`.
+3. It reuses no upstream connection: `proxy_pass` names a variable and there is no `upstream`
+   block. nginx 1.29.7 and later reuse them by default for 60 s, longer than the app's 30 s idle
+   limit, so a move off `nginx:1.27-alpine` needs `keepalive_timeout` under 30 s.
+4. It listens on plain HTTP, so a browser reaching port 3001 directly speaks HTTP/1.1, about six
+   connections per host. A `<corten-live>` stream holds one while it is open: the batch panel's
+   while a batch prices or publishes, and the configuration page's two report panels until they are
+   read. Several tabs on those pages can queue other requests. Through Tailscale Serve, HTTPS ends
+   before nginx; whether it speaks HTTP/2 to the browser was not checked. Serving HTTP/2 from
+   nginx needs TLS there (a certificate for the name used).
+
 ## Checks after each release
 
 1. `http://localhost:3001/proxy-health` names the new slot color, and `npm run prod:status` shows
@@ -94,5 +114,7 @@ its first run that posts.
 
 1. Approval to merge `codex/corten-port` into master, and for release 1.
 2. Whether to refresh dev from production first (step 3 before release 1).
-3. How long each worker should run in production before the next release. The suggestion is one
+3. Whether browsers reach production through Tailscale Serve only, or also directly on port
+   3001, where nginx would need TLS to serve HTTP/2 (see The proxy, point 4).
+4. How long each worker should run in production before the next release. The suggestion is one
    full day of normal use, since the schedule and order history run hourly.
