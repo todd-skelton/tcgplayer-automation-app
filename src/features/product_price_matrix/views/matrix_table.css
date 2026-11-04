@@ -13,7 +13,8 @@
     border-bottom: 1px solid var(--border);
     text-align: start;
     vertical-align: top;
-    background: var(--card);
+    /* The color alone: the shorthand would reset the tints' background-image below. */
+    background-color: var(--card);
   }
   & thead th {
     font-weight: 700;
@@ -23,8 +24,8 @@
   }
   & tbody tr:hover > * {
     background-image: linear-gradient(
-      color-mix(in srgb, var(--tint) 10%, transparent),
-      color-mix(in srgb, var(--tint) 10%, transparent)
+      color-mix(in srgb, var(--tint) calc(var(--tint-strength-hover) * 1%), transparent),
+      color-mix(in srgb, var(--tint) calc(var(--tint-strength-hover) * 1%), transparent)
     );
   }
   & small {
@@ -51,22 +52,23 @@
   position: sticky;
   z-index: 1;
 }
-.variant-column {
-  left: 0;
+/* A row's label cells carry its condition's tone faintly, as React's matrix did. */
+.variant-column,
+.condition-column {
   width: 150px;
   min-width: 150px;
   white-space: nowrap;
-  border-left: 4px solid var(--tint, var(--border));
   background-image: linear-gradient(
-    color-mix(in srgb, var(--tint, transparent) 6%, transparent),
-    color-mix(in srgb, var(--tint, transparent) 6%, transparent)
+    color-mix(in srgb, var(--tint, transparent) calc(var(--tint-strength-faint) * 1%), transparent),
+    color-mix(in srgb, var(--tint, transparent) calc(var(--tint-strength-faint) * 1%), transparent)
   );
+}
+.variant-column {
+  left: 0;
+  border-left: 4px solid var(--tint, var(--border));
 }
 .condition-column {
   left: 150px;
-  width: 150px;
-  min-width: 150px;
-  white-space: nowrap;
 }
 .market-column {
   left: 300px;
@@ -80,8 +82,8 @@
 }
 .priced {
   background-image: linear-gradient(
-    color-mix(in srgb, var(--tint) 10%, transparent),
-    color-mix(in srgb, var(--tint) 10%, transparent)
+    color-mix(in srgb, var(--tint) calc(var(--tint-strength-strong) * 1%), transparent),
+    color-mix(in srgb, var(--tint) calc(var(--tint-strength-strong) * 1%), transparent)
   );
 }
 .condition-chip {

@@ -23,21 +23,22 @@
 .condition {
   background: var(--muted);
 }
+/* MUI's filled info, success, warning and error chips: the theme's tones, light and dark. */
 .lightly-played {
-  background: #2196f3;
-  color: #fff;
+  background: var(--info);
+  color: var(--info-foreground);
 }
 .moderately-played {
-  background: #4caf50;
-  color: #fff;
+  background: var(--success);
+  color: var(--success-foreground);
 }
 .heavily-played {
-  background: #ff9800;
-  color: #1c1f26;
+  background: var(--warning);
+  color: var(--warning-foreground);
 }
 .damaged {
-  background: #f44336;
-  color: #fff;
+  background: var(--destructive);
+  color: var(--destructive-foreground);
 }
 .near-mint {
   background: var(--muted);

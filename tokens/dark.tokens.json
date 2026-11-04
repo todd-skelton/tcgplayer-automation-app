@@ -370,5 +370,16 @@
       ],
       "hex": "#ffffff"
     }
+  },
+  "tint-strength": {
+    "$type": "number",
+    "faint": { "$value": 16 },
+    "hover": { "$value": 20 },
+    "strong": { "$value": 24 }
+  },
+  "app-bar-warning": {
+    "$type": "color",
+    "$value": "{warning}",
+    "$description": "On the dark bar the soft tone is dark too, so the warning takes the theme's light warning tone, as MUI's warning.light."
   }
 }

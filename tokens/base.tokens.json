@@ -387,6 +387,18 @@
       "hex": "#ffffff"
     }
   },
+  "tint-strength": {
+    "$type": "number",
+    "$description": "How much of a tone a tinted cell mixes in, in percent; a dark page needs more to show it.",
+    "faint": { "$value": 6, "$description": "A row's label cells." },
+    "hover": { "$value": 10, "$description": "A row under the pointer." },
+    "strong": { "$value": 10, "$description": "A cell that holds the answer, as the price matrix's sell-at price." }
+  },
+  "app-bar-warning": {
+    "$type": "color",
+    "$value": "{warning-soft}",
+    "$description": "The auth cookie warning on the app bar: readable on its blue."
+  },
   "space": {
     "0": {
       "$value": {
