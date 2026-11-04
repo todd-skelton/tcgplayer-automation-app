@@ -21,10 +21,15 @@ pub const FOLLOWING: std::time::Duration = std::time::Duration::from_secs(5);
 /// How many recent listing checks are shown.
 const RECENT_CHECKS: i64 = 25;
 
-/// What a seller's settings may be (`maintenanceSettings`).
-const INTERVAL_MINUTES: std::ops::RangeInclusive<i64> = 15..=1440;
-const BATCH_SIZE: std::ops::RangeInclusive<i64> = 1..=25;
-const REFRESH_BUDGET: std::ops::RangeInclusive<i64> = 1..=50;
+/// What a seller's settings may be (`maintenanceSettings`): checked on save, and the panel's
+/// inputs take their bounds from them.
+pub mod range {
+    use std::ops::RangeInclusive;
+    pub const INTERVAL_MINUTES: RangeInclusive<i64> = 15..=1440;
+    pub const BATCH_SIZE: RangeInclusive<i64> = 1..=25;
+    pub const REFRESH_BUDGET: RangeInclusive<i64> = 1..=50;
+}
+use range::{BATCH_SIZE, INTERVAL_MINUTES, REFRESH_BUDGET};
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -154,16 +159,7 @@ pub async fn save(db: &Database, saved: &Saved<'_>) -> Result<Settings, String> 
 }
 
 async fn record(conn: &mut PgConnection, saved: &Saved<'_>) -> Result<Settings, String> {
-    if !INTERVAL_MINUTES.contains(&saved.interval_minutes)
-        || !BATCH_SIZE.contains(&saved.batch_size)
-        || !REFRESH_BUDGET.contains(&saved.refresh_budget)
-        || saved.revision < 0
-    {
-        return Err(
-            "Choose a 15–1,440 minute interval, 1–25 listings and 1–50 refresh jobs per cycle."
-                .to_owned(),
-        );
-    }
+    in_range(saved)?;
     let seller = seller_account(saved.seller)?;
     let revision = i32::try_from(saved.revision).map_err(|_| CHANGED.to_owned())?;
     let values = (
@@ -215,4 +211,71 @@ const CHANGED: &str = "Maintenance settings changed. Reload before saving.";
 fn unavailable(error: sqlx::Error) -> String {
     eprintln!("slab maintenance: {error}");
     "Maintenance is unavailable.".to_owned()
+}
+
+/// The settings' numbers are in their ranges, or the refusal naming them.
+fn in_range(saved: &Saved<'_>) -> Result<(), String> {
+    let ok = INTERVAL_MINUTES.contains(&saved.interval_minutes)
+        && BATCH_SIZE.contains(&saved.batch_size)
+        && REFRESH_BUDGET.contains(&saved.refresh_budget)
+        && saved.revision >= 0;
+    ok.then_some(()).ok_or_else(|| {
+        format!(
+            "Choose a {}–{} minute interval, {}–{} listings and {}–{} refresh jobs per cycle.",
+            INTERVAL_MINUTES.start(),
+            grouped(*INTERVAL_MINUTES.end()),
+            BATCH_SIZE.start(),
+            BATCH_SIZE.end(),
+            REFRESH_BUDGET.start(),
+            REFRESH_BUDGET.end(),
+        )
+    })
+}
+
+/// `1440` as `1,440`, as the React panel's message wrote it.
+fn grouped(n: i64) -> String {
+    let digits = n.to_string();
+    let mut out = String::new();
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn saved(interval_minutes: i64, batch_size: i64, refresh_budget: i64) -> Saved<'static> {
+        Saved {
+            seller: "s",
+            enabled: true,
+            include_supply: false,
+            interval_minutes,
+            batch_size,
+            refresh_budget,
+            revision: 0,
+        }
+    }
+
+    /// The ends of each range save; one past refuses with React's words.
+    #[test]
+    fn settings_are_checked_against_the_ranges_the_panel_draws() {
+        assert_eq!(in_range(&saved(15, 1, 1)), Ok(()));
+        assert_eq!(in_range(&saved(1440, 25, 50)), Ok(()));
+        for wrong in [
+            saved(14, 1, 1),
+            saved(1441, 1, 1),
+            saved(15, 26, 1),
+            saved(15, 1, 51),
+        ] {
+            assert_eq!(
+                in_range(&wrong).unwrap_err(),
+                "Choose a 15–1,440 minute interval, 1–25 listings and 1–50 refresh jobs per cycle."
+            );
+        }
+    }
 }

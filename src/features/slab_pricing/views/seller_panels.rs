@@ -11,7 +11,7 @@ use crate::{
         slab_pricing::{
             actions::{MaintenanceInput, OutcomesInput},
             identity::words,
-            maintenance::{FOLLOWING, View},
+            maintenance::{FOLLOWING, View, range},
             page::{Place, Screen},
             url::{self, Choice},
             views::Problem,
@@ -121,8 +121,8 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                 class={Input {}}
                                 type="number"
                                 value={view.settings.interval_minutes}
-                                min="15"
-                                max="1440"
+                                min={range::INTERVAL_MINUTES.start()}
+                                max={range::INTERVAL_MINUTES.end()}
                                 step="1"
                                 required
                                 {..e.control(f.interval_minutes)}
@@ -133,8 +133,8 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                 class={Input {}}
                                 type="number"
                                 value={view.settings.batch_size}
-                                min="1"
-                                max="25"
+                                min={range::BATCH_SIZE.start()}
+                                max={range::BATCH_SIZE.end()}
                                 step="1"
                                 required
                                 {..e.control(f.batch_size)}
@@ -150,8 +150,8 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                 class={Input {}}
                                 type="number"
                                 value={view.settings.refresh_budget}
-                                min="1"
-                                max="50"
+                                min={range::REFRESH_BUDGET.start()}
+                                max={range::REFRESH_BUDGET.end()}
                                 step="1"
                                 required
                                 {..e.control(f.refresh_budget)}
