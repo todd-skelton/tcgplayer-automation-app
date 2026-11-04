@@ -394,6 +394,32 @@
     "hover": { "$value": 10, "$description": "A row under the pointer." },
     "strong": { "$value": 10, "$description": "A cell that holds the answer, as the price matrix's sell-at price." }
   },
+  "holo": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.6313725490196078,
+        0.3843137254901961,
+        0.027450980392156862
+      ],
+      "hex": "#a16207"
+    },
+    "$description": "A Holo variant's chip text, React's fixed gold."
+  },
+  "reverse-holo": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.42745098039215684,
+        0.1568627450980392,
+        0.8509803921568627
+      ],
+      "hex": "#6d28d9"
+    },
+    "$description": "A Reverse Holo variant's chip text, React's fixed purple."
+  },
   "app-bar-warning": {
     "$type": "color",
     "$value": "{warning-soft}",

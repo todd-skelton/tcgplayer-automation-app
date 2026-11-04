@@ -377,6 +377,32 @@
     "hover": { "$value": 20 },
     "strong": { "$value": 24 }
   },
+  "holo": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.996078431372549,
+        0.9411764705882353,
+        0.5411764705882353
+      ],
+      "hex": "#fef08a"
+    },
+    "$description": "On a dark page, the light gold React's card art uses."
+  },
+  "reverse-holo": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9294117647058824,
+        0.9137254901960784,
+        0.996078431372549
+      ],
+      "hex": "#ede9fe"
+    },
+    "$description": "On a dark page, the lavender React's card art uses."
+  },
   "app-bar-warning": {
     "$type": "color",
     "$value": "{warning}",
