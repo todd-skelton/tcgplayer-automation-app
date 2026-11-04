@@ -282,6 +282,17 @@ pub fn listing_rows(products: &[Product]) -> Vec<Map<String, Value>> {
     rows
 }
 
+/// The seller whose live inventory made the newest batch, if one did: what the New Batch form
+/// starts from, as the React screen remembered the last seller key it sent.
+pub async fn last_seller(conn: impl sqlx::PgExecutor<'_>) -> sqlx::Result<Option<String>> {
+    sqlx::query_scalar(
+        "SELECT source_label FROM inventory_batches WHERE source_type = 'seller'
+         ORDER BY batch_number DESC LIMIT 1",
+    )
+    .fetch_optional(conn)
+    .await
+}
+
 /// The batch frozen from `seller`'s live inventory, queued for pricing in full; its number.
 pub async fn seller(
     db: &Database,
@@ -327,6 +338,31 @@ mod tests {
     use chrono::DateTime;
 
     use super::*;
+
+    /// The New Batch form starts from the seller of the newest seller batch, whatever batches
+    /// were made after it from a CSV.
+    #[tokio::test]
+    #[ignore = "uses the dev database in a transaction it rolls back"]
+    async fn the_last_seller_is_the_newest_seller_batch() {
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let mut tx = db.0.begin().await.unwrap();
+        sqlx::query("DELETE FROM inventory_batches WHERE source_type = 'seller'")
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        assert_eq!(last_seller(&mut *tx).await.unwrap(), None);
+        for (source, label) in [("seller", "first"), ("seller", "second"), ("csv", "a.csv")] {
+            create(&mut tx, source, label, &[], Utc::now())
+                .await
+                .unwrap();
+        }
+        assert_eq!(
+            last_seller(&mut *tx).await.unwrap().as_deref(),
+            Some("second")
+        );
+        tx.rollback().await.unwrap();
+    }
 
     #[test]
     fn quantities_and_prices_read_as_node_reads_them() {

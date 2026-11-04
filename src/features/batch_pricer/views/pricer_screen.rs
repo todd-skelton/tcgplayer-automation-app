@@ -149,8 +149,8 @@ pub fn CsvForm<'a>(errors: &'a Errors) -> impl Patch {
     }
 }
 
-/// A seller whose live inventory to freeze into a batch, the shipping settings' default seller
-/// at first.
+/// A seller whose live inventory to freeze into a batch, the last one frozen at first (the
+/// shipping settings' default seller before any was).
 #[component(css = PricerScreen)]
 pub fn SellerForm<'a>(seller: &'a str, errors: &'a Errors) -> impl Patch {
     let (f, e) = (SellerInput::FIELDS, errors.within(SellerFormId));

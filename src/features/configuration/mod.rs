@@ -24,10 +24,15 @@
 //! can be slow over a long window; the page draws them waiting and a `<corten-live>` stream sends
 //! each once read, so the settings never wait for them.
 //!
-//! Not ported: the React screen's File Configuration and Form Defaults, which lived in the
-//! browser's localStorage (`tcgplayer-file-config`, `tcgplayer-form-defaults`). The batch pricer
-//! starts from the shipping settings' default seller instead of a remembered one; no download
-//! in the React app read the file settings' output prefix, so nothing else read them.
+//! Not drawn here: the React screen's File Configuration and Form Defaults, which lived in one
+//! browser's localStorage (`tcgplayer-file-config`, `tcgplayer-form-defaults`). What each did:
+//!
+//! - The default seller key, which the batch pricer's New Batch form started from and saved on
+//!   each snapshot, is the seller the newest seller batch was frozen from
+//!   (`batch_pricer::import::last_seller`), so every browser starts from it.
+//! - The accept pattern only filtered the CSV picker; the pricer's picker takes `.csv,text/csv`.
+//! - The output prefix, MIME type and form percentile were read by no form or download in the
+//!   React app.
 /// The stored pricing configuration, also read by the strategy (what changed between pricing runs).
 pub mod config;
 mod form;

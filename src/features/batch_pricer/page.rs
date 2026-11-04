@@ -124,12 +124,21 @@ pub async fn show(
     page(&req, &db, at.chosen.batch, &Drawn::default()).await
 }
 
+/// The seller the New Batch form starts from: the last one a batch was frozen from, or the
+/// shipping settings' default seller before any was.
+async fn starting_seller(db: &Database) -> sqlx::Result<String> {
+    match import::last_seller(&db.0).await? {
+        Some(seller) => Ok(seller),
+        None => shipping_configuration::default_seller_key(db).await,
+    }
+}
+
 /// The screen with `chosen`, or the newest batch, shown.
 async fn page(req: &Req, db: &Database, chosen: Option<i32>, drawn: &Drawn<'_>) -> HtmlResult {
     let (chrome, list, seller, rates) = tokio::join!(
         Chrome::read(req, db),
         batches::list(db),
-        shipping_configuration::default_seller_key(db),
+        starting_seller(db),
         success_rates(db)
     );
     let (list, rates) = (list.map_err(unavailable)?, rates?);
