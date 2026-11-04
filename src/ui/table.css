@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: table fa17caaee3b5df10 */
+/* corten ui 0.1.0: table 8d6762073ae2fb3f */
 /* Positioned, so what a cell places absolutely (an icon button's hidden text) is inside the box that
    scrolls it, not past the page's edge. */
 .table { position: relative; width: 100%; overflow-x: auto; }
@@ -26,18 +26,18 @@
    cell's label in the first column and what follows it in the second, where text wraps and each
    element after the label starts a line, as wide as its content (a button, a pill; a block the
    app wants across the column sets its own width), never wider than the column. A tooltip,
-   popover or dialog in the cell keeps its own place and size. A row header is a cell too. A cell
-   with no label is a block. The headers stay for a screen reader (the table keeps its roles in
-   Chromium's accessibility tree), drawn as a row only when they hold a link or button (a
-   SortHeader), so a sortable table still sorts by touch. A cell's label is hidden at other widths
-   and in a table that scrolls. */
+   popover or dialog in the cell keeps its own place and size. A row header is a cell too, as tall
+   as one (not a column header's height). A cell with no label is a block. The headers stay for a
+   screen reader (the table keeps its roles in Chromium's accessibility tree), drawn as a row only
+   when they hold a link or button (a SortHeader), so a sortable table still sorts by touch. A
+   cell's label is hidden at other widths and in a table that scrolls. */
 .label { display: none; }
 @media not (--wide) {
   .stacked > table, .stacked > table > :is(caption, thead, tbody, tfoot) { display: block; }
   .stacked > table > thead:not(:has(a, button)) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .stacked tr { display: grid; padding-block: .5rem; }
   .stacked > table > thead > tr { display: flex; flex-wrap: wrap; column-gap: 1rem; }
-  :where(.stacked > table > :is(tbody, tfoot)) :where(th, td) { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); column-gap: 1rem; align-items: start; padding-block: .25rem; white-space: normal; overflow-wrap: break-word; text-align: start; }
+  :where(.stacked > table > :is(tbody, tfoot)) :where(th, td) { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); column-gap: 1rem; align-items: start; height: auto; padding-block: .25rem; white-space: normal; overflow-wrap: break-word; text-align: start; }
   :where(.stacked > table > :is(tbody, tfoot)) :where(th, td) > :not(.label) { grid-column: 2; }
   :where(.stacked > table > :is(tbody, tfoot)) :where(th, td):where(:has(> .label)) > :not(.label, dialog, [popover]) { justify-self: start; max-width: 100%; max-width: -moz-available; max-width: -webkit-fill-available; max-width: stretch; }
   :where(.stacked > table > :is(tbody, tfoot)) :where(th, td):not(:has(> .label)) { display: block; }
