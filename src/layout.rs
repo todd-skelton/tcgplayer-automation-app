@@ -30,7 +30,8 @@ corten::assets::embed! {
 }
 
 /// What the app bar shows that comes from the database: whether TCGplayer's auth cookie is set.
-/// Read by each page's handler, since the layout cannot read it itself (corten#209).
+/// Read by each page's handler and passed to the layout as a prop, as Corten's guide says a layout
+/// gets such a value (corten#209); corten#580 asks for a way that does not touch every handler.
 #[derive(Clone, Copy)]
 pub struct Chrome {
     pub auth_cookie_missing: bool,

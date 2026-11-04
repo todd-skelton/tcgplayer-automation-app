@@ -11,13 +11,9 @@
   & form {
     margin: 0;
   }
-  /* One column no wider than the panel, as the kit's CardContent has, so a table in ShownFor's
-     wrapper scrolls rather than widening the page (corten#661). */
   & section {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-3);
-    min-width: 0;
   }
 }
 .heading {
