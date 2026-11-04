@@ -196,18 +196,18 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                         ref={previous}
                         href={before.map(|r| at(r.planned.reference(), PackView::Card))}
                         aria-disabled={before.is_none().then_some("true")}
-                        aria-label="Previous shipment"
                     >
                         <Icon glyph={icon::CHEVRON_LEFT} />
+                        <span class={VisuallyHidden {}}>"Previous shipment"</span>
                     </a>
                     <strong>"Shipment "{card.index + 1}" of "{rows.len()}</strong>
                     <a
                         ref={next}
                         href={after.map(|r| at(r.planned.reference(), PackView::Card))}
                         aria-disabled={after.is_none().then_some("true")}
-                        aria-label="Next shipment"
                     >
                         <Icon glyph={icon::CHEVRON_RIGHT} />
+                        <span class={VisuallyHidden {}}>"Next shipment"</span>
                     </a>
                 </span>
                 if let Some(order) = first {

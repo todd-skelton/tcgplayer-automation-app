@@ -23,6 +23,8 @@
   gap: var(--space-1);
   white-space: nowrap;
   & a {
+    /* Holds the link's VisuallyHidden name in place. */
+    position: relative;
     display: inline-flex;
     padding: 0 var(--space-2);
     font-size: 1.25rem;
