@@ -38,3 +38,8 @@ pub const DATABASE: Glyph = Glyph::new(
 pub const GLOBE: Glyph = Glyph::new(
     r#"<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>"#,
 );
+/// `square`: a shipment not packed yet.
+pub const SQUARE: Glyph = Glyph::new(r#"<rect width="18" height="18" x="3" y="3" rx="2"/>"#);
+/// `square-check`: a shipment packed.
+pub const SQUARE_CHECK: Glyph =
+    Glyph::new(r#"<rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/>"#);

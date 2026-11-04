@@ -24,6 +24,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         dialog::{Dialog, DialogFooter, DialogSize},
+        icon::{self, Icon},
         progress::{Progress as ProgressLook, ProgressSize},
         tip::Tip,
     },
@@ -262,7 +263,8 @@ fn Download<'a>(batch: i32, scope: Scope, label: &'a str, count: i64, ready: boo
                 href={url::Results { batch, scope }}
                 download
             >
-                "⤓ "{label}" ("{count}")"
+                <Icon glyph={icon::DOWNLOAD} />
+                {label}" ("{count}")"
             </a>
         } else {
             <button
@@ -270,7 +272,8 @@ fn Download<'a>(batch: i32, scope: Scope, label: &'a str, count: i64, ready: boo
                 type="button"
                 disabled
             >
-                "⤓ "{label}" ("{count}")"
+                <Icon glyph={icon::DOWNLOAD} />
+                {label}" ("{count}")"
             </button>
         }
     }

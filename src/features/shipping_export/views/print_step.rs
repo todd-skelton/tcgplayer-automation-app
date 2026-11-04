@@ -57,7 +57,8 @@ pub fn PrintStep<'a>(sheets: &'a [LabelSheet<'a>], has_orders: bool) -> impl Ren
                             href={url::PackingSlips { open: None }}
                             download
                         >
-                            "⤓ Download Packing Slips PDF"
+                            <Icon glyph={icon::DOWNLOAD} />
+                            "Download Packing Slips PDF"
                         </a>
                     } else {
                         <button
@@ -73,7 +74,8 @@ pub fn PrintStep<'a>(sheets: &'a [LabelSheet<'a>], has_orders: bool) -> impl Ren
                             type="button"
                             disabled
                         >
-                            "⤓ Download Packing Slips PDF"
+                            <Icon glyph={icon::DOWNLOAD} />
+                            "Download Packing Slips PDF"
                         </button>
                     }
                 </div>

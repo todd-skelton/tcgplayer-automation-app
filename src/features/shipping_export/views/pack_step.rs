@@ -16,6 +16,7 @@ use crate::{
             value::SaleValue,
         },
     },
+    glyphs,
     text::Msg,
     theme::*,
     ui::{
@@ -115,18 +116,20 @@ fn ViewChoice<'a>(packing: &'a Packing<'a>) -> impl Render {
         .and_then(|c| packing.rows.get(c.index))
         .map_or("", |r| r.planned.reference());
     html! {
-        <nav aria-label="View" class={SegmentedLinks {}}>
+        <nav aria-label="View" class={(SegmentedLinks {}, ViewSwitch)}>
             <a
                 href={at(current, PackView::Card)}
                 aria-current={(packing.view == PackView::Card).then_some("page")}
             >
-                "▦ Cards"
+                <Icon glyph={icon::LAYOUT_GRID} />
+                "Cards"
             </a>
             <a
                 href={at(current, PackView::List)}
                 aria-current={(packing.view == PackView::List).then_some("page")}
             >
-                "☰ List"
+                <Icon glyph={icon::LIST} />
+                "List"
             </a>
         </nav>
     }
@@ -157,7 +160,7 @@ fn PackedToggle<'a>(
                 aria-pressed={if packed { "true" } else { "false" }}
                 class={packed.then_some(Packed)}
             >
-                if packed { "☑ " } else { "☐ " }
+                <Icon glyph={if packed { glyphs::SQUARE_CHECK } else { glyphs::SQUARE }} />
                 {label}
             </button>
         </form>
@@ -195,7 +198,7 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                         aria-disabled={before.is_none().then_some("true")}
                         aria-label="Previous shipment"
                     >
-                        "‹"
+                        <Icon glyph={icon::CHEVRON_LEFT} />
                     </a>
                     <strong>"Shipment "{card.index + 1}" of "{rows.len()}</strong>
                     <a
@@ -204,7 +207,7 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                         aria-disabled={after.is_none().then_some("true")}
                         aria-label="Next shipment"
                     >
-                        "›"
+                        <Icon glyph={icon::CHEVRON_RIGHT} />
                     </a>
                 </span>
                 if let Some(order) = first {

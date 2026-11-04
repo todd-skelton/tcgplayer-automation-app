@@ -23,6 +23,7 @@
   gap: var(--space-1);
   white-space: nowrap;
   & a {
+    display: inline-flex;
     padding: 0 var(--space-2);
     font-size: 1.25rem;
     text-decoration: none;
@@ -34,6 +35,10 @@
 .lines {
   white-space: pre-line;
 }
+/* The kit's segmented choices set no gap, so an icon would touch its label (corten#793). */
+.view-switch > a {
+  gap: var(--space-1);
+}
 .who {
   font-size: 1.5rem;
   font-weight: 700;
@@ -43,6 +48,9 @@
 }
 .toggle {
   & button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
     border-color: var(--success);
     color: var(--success);
     white-space: nowrap;

@@ -20,6 +20,7 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
+        icon::{self, Icon},
         input::Input,
         select::Select,
         switch::Switch,
@@ -219,7 +220,8 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                 class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
                                 href={screen.market()}
                             >
-                                "↻ Refresh Market"
+                                <Icon glyph={icon::REFRESH} />
+                                "Refresh Market"
                             </a>
                             <a
                                 class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}
