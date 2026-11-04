@@ -7,13 +7,12 @@ description = "TCGPlayer Automation on Corten: every screen, beside the Node app
 
 [dependencies]
 # Pinned to one revision of main; bump it on purpose when a fix the port needs lands.
-corten = { git = "https://github.com/todd-skelton/corten", rev = "88107571", features = ["json", "compress", "types", "zones"] }
-corten-ui = { git = "https://github.com/todd-skelton/corten", rev = "88107571" }
+corten = { git = "https://github.com/todd-skelton/corten", rev = "2293663a", features = ["json", "compress", "types", "zones"] }
+corten-ui = { git = "https://github.com/todd-skelton/corten", rev = "2293663a" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
 # Correctly rounded float parsing, so numbers the Node app wrote read back to the same bits.
 serde_json = { version = "1", features = ["float_roundtrip"] }
-schemars = "1.2"
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "chrono", "macros"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
 # The zones slab evidence is searched and dated in (eBay's, the seller's).
