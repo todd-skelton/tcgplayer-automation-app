@@ -38,6 +38,12 @@ struct ShipmentMenuId<'a>(&'a str);
 /// The name of a shipment's open-label link, by its reference.
 #[derive(Id)]
 struct OpenLabelTipId<'a>(&'a str);
+/// A shipment's full address, by its reference.
+#[derive(Id)]
+struct RecipientTipId<'a>(&'a str);
+/// A purchase's mode, tracking and rate, by its shipment's reference.
+#[derive(Id)]
+struct PurchaseTipId<'a>(&'a str);
 
 /// One shipment as the Buy Postage step shows it.
 pub struct PostageRow<'a> {
@@ -121,9 +127,19 @@ fn ShipmentPostageRow<'a>(
                 <CellLabel>"Orders"</CellLabel>
                 for number in &row.planned.orders { <div>{number}</div> }
             </td>
-            <td title={s.recipient()}>
+            <td>
                 <CellLabel>"Recipient"</CellLabel>
-                <div>{&a.name}</div>
+                <div>
+                    <button
+                        type="button"
+                        class={TipText}
+                        interestfor={RecipientTipId(reference)}
+                        aria-describedby={RecipientTipId(reference)}
+                    >
+                        {&a.name}
+                    </button>
+                    <Tooltip id={RecipientTipId(reference)} class={Tip {}}>{s.recipient()}</Tooltip>
+                </div>
                 <small class={muted()}>{&a.city}", "{&a.state}" "{&a.zip}</small>
             </td>
             <td>
@@ -238,8 +254,8 @@ fn ShipmentPostageRow<'a>(
     }
 }
 
-/// A purchase's status, with its mode, tracking and rate on hover, its label, and why it bought
-/// none.
+/// A purchase's status, with its mode, tracking and rate in a tooltip, its label, and why it
+/// bought none.
 #[component(css = BuyPostageStep)]
 fn PostageStatus<'a>(entry: Option<&'a Bought>, reference: &'a str) -> impl Render {
     html! {
@@ -254,8 +270,18 @@ fn PostageStatus<'a>(entry: Option<&'a Bought>, reference: &'a str) -> impl Rend
                                 Status::Skipped => BadgeTone::Warning,
                             }, emphasis: BadgeEmphasis::Soft }}
                     >
-                        <span title={details(bought)}>{status_word(bought)}</span>
+                        <button
+                            type="button"
+                            class={TipText}
+                            interestfor={PurchaseTipId(reference)}
+                            aria-describedby={PurchaseTipId(reference)}
+                        >
+                            {status_word(bought)}
+                        </button>
                     </span>
+                    <Tooltip id={PurchaseTipId(reference)} class={Tip {}}>
+                        {details(bought)}
+                    </Tooltip>
                     if let Some(label) = bought.label() {
                         <a
                             href={label}

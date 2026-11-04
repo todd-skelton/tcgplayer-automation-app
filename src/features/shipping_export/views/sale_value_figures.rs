@@ -59,15 +59,15 @@ fn Against<'a>(comparison: Option<&'a Comparison>, t: Msg) -> impl Render {
     }
 }
 
-/// A figure with a star and a note when it covers only part of the sale.
+/// A figure, with how much of the sale it covers when that is only part of it.
 #[component(css = SaleValueFigures)]
 fn Figure<'a>(label: &'a str, partial: Option<&'a str>, children: impl Render) -> impl Render {
     html! {
-        <div title={partial.map(|p| format!("Partial: {p}. The comparison covers only those."))}>
+        <div>
             <dt>{label}</dt>
             <dd>
                 {children}
-                if partial.is_some() { "*" }
+                if let Some(p) = partial { " "<small class={Partial}>"("{p}")"</small> }
             </dd>
         </div>
     }

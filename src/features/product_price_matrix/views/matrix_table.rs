@@ -202,7 +202,6 @@ fn AgainstMarket(price: Option<f64>, market: Option<f64>, t: Msg) -> impl Render
                 };
                 <span
                     class={Badge { tone, emphasis: BadgeEmphasis::Outline }}
-                    title="Sell-at versus market"
                 >
                     {t.change(Decimal::new(tenths as i128, 3), 1)}
                 </span>

@@ -33,6 +33,13 @@ use crate::{
 /// The pack screen's keyboard help.
 #[derive(Id)]
 struct PackKeysTipId;
+/// The shown shipment's full address, its order numbers and its tracking code.
+#[derive(Id)]
+struct AddressTipId;
+#[derive(Id)]
+struct OrdersTipId;
+#[derive(Id)]
+struct TrackingTipId;
 
 /// One shipment as the Pack step lists it.
 pub struct PackRow<'a> {
@@ -201,7 +208,15 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                     </a>
                 </span>
                 if let Some(order) = first {
-                    <span class={Who} title={address(order)}>{order.recipient()}</span>
+                    <button
+                        type="button"
+                        class={(TipText, Who)}
+                        interestfor={AddressTipId}
+                        aria-describedby={AddressTipId}
+                    >
+                        {order.recipient()}
+                    </button>
+                    <Tooltip id={AddressTipId} class={(Tip {}, Lines)}>{address(order)}</Tooltip>
                     <span class={muted()}>
                         {&order.city}", "{&order.state}" · "{&order.shipping_method}" · "
                         {current.items}
@@ -212,18 +227,34 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                     <span
                         class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}
                     >
-                        <span title={numbers.join(", ")}>
+                        <button
+                            type="button"
+                            class={TipText}
+                            interestfor={OrdersTipId}
+                            aria-describedby={OrdersTipId}
+                        >
                             "Combined shipment of "{numbers.len()}" orders"
-                        </span>
+                        </button>
+                        <Tooltip id={OrdersTipId} class={Tip {}}>{numbers.join(", ")}</Tooltip>
                     </span>
                 }
                 if let Some(bought) = current.postage {
                     <span
                         class={Badge { tone: postage_chip(bought).1, emphasis: BadgeEmphasis::Soft }}
                     >
-                        <span title={bought.result.tracking_code.as_deref().unwrap_or("")}>
+                        if let Some(code) = &bought.result.tracking_code {
+                            <button
+                                type="button"
+                                class={TipText}
+                                interestfor={TrackingTipId}
+                                aria-describedby={TrackingTipId}
+                            >
+                                {postage_chip(bought).0}
+                            </button>
+                            <Tooltip id={TrackingTipId} class={Tip {}}>"Tracking "{code}</Tooltip>
+                        } else {
                             {postage_chip(bought).0}
-                        </span>
+                        }
                     </span>
                 }
                 <span class={Spacer}></span>

@@ -31,6 +31,22 @@
     opacity: 0.35;
   }
 }
+/* Text that shows a tooltip: a button, so the pointer and the keyboard both reach it, drawn as
+   the text around it (corten#757). Before .who, which sets its size. */
+.tip-text {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: start;
+  cursor: default;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+}
+.lines {
+  white-space: pre-line;
+}
 .who {
   font-size: 1.5rem;
   font-weight: 700;
