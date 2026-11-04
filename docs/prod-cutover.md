@@ -55,7 +55,10 @@ Docker would restart them in a loop.
    needs approval.
 2. Build the `web` image target from the merged commit under a tag other than `:prod`, so a
    failed Rust build is found before the release. The release builds both images first and
-   changes nothing if a build fails, so this only saves time.
+   changes nothing if a build fails, so this only saves time. Done on 2026-11-04 from 5bc12b1d7
+   (Corten 62f3199f): the release build took 15 m 34 s in Docker, the image is 117 MB, and run
+   against the dev database with no switches it started every worker off and answered 200 on all
+   16 screens and `/health/ready`. Repeat it from the merged commit.
 3. Optional, and it reads production: refresh the dev database from production
    (`npm run dev:db:refresh`) and run the gate and the twin scripts against that copy.
 
