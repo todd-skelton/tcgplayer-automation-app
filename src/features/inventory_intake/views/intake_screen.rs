@@ -5,7 +5,7 @@ use corten::prelude::*;
 use super::{background_batches::BackgroundBatches, queue_bar::QueueBar};
 use crate::{
     features::inventory_intake::{
-        catalog::{Condition, LANGUAGES, Product, ProductType, Scope},
+        catalog::{Condition, LANGUAGES, PageSize, Product, ProductType, Scope},
         page::{CountInput, Screen},
         queue::{self, Batches, QueueInput},
         url::{self, Selection},
@@ -19,6 +19,7 @@ use crate::{
         checkbox::Checkbox,
         dialog::{Dialog, DialogFooter, DialogSize},
         input::Input,
+        pagination::Pagination,
         select::Select,
         switch::Switch,
         table::{Table, TableLayout},
@@ -209,6 +210,19 @@ pub fn IntakeScreen<'a>(
                         </button>
                     </span>
                 </label>
+                <label>
+                    "Rows per page"
+                    <select class={Select {}} name={f.rows}>
+                        for size in PageSize::ALL {
+                            <option
+                                value={size}
+                                selected={selection.rows.unwrap_or_default() == size}
+                            >
+                                {size.count()}
+                            </option>
+                        }
+                    </select>
+                </label>
                 <noscript>
                     <button
                         class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
@@ -242,6 +256,21 @@ pub fn IntakeScreen<'a>(
                         </tbody>
                     </table>
                 </Table>
+                if screen.pages > 1 {
+                    <div class={(row(Space::_3), Paging)}>
+                        <span class={muted()}>{shown_of(screen)}</span>
+                        <Pagination
+                            label="Product pages"
+                            previous_label="Previous"
+                            next_label="Next"
+                            pages={screen.pages}
+                            current={screen.page}
+                            link={&|page| Box::new(url::InventoryManager {
+                                selection: Selection { page: Some(page), ..selection.clone() },
+                            })}
+                        />
+                    </div>
+                }
                 if screen.products.is_empty() {
                     <p class={muted()}>
                         match screen.scope {
@@ -279,6 +308,15 @@ pub fn IntakeScreen<'a>(
 }
 
 /// "More filters: Unsealed only, English": the summary says what the hidden filters do.
+/// "101–200 of 1,390", as the React grid's footer counted them.
+fn shown_of(screen: &Screen) -> String {
+    let size = screen.selection.rows.unwrap_or_default().count();
+    let first = (screen.page - 1) * size + 1;
+    let last = first + screen.products.len() - 1;
+    let t = crate::text::Msg::default();
+    format!("{first}–{last} of {}", t.number(screen.matched as i64))
+}
+
 fn more_filters(selection: &Selection) -> String {
     let sealed = match selection.product_type.unwrap_or_default() {
         ProductType::All => None,

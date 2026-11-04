@@ -223,26 +223,13 @@ fn in_range(saved: &Saved<'_>) -> Result<(), String> {
         format!(
             "Choose a {}–{} minute interval, {}–{} listings and {}–{} refresh jobs per cycle.",
             INTERVAL_MINUTES.start(),
-            grouped(*INTERVAL_MINUTES.end()),
+            crate::text::Msg::default().number(*INTERVAL_MINUTES.end()),
             BATCH_SIZE.start(),
             BATCH_SIZE.end(),
             REFRESH_BUDGET.start(),
             REFRESH_BUDGET.end(),
         )
     })
-}
-
-/// `1440` as `1,440`, as the React panel's message wrote it.
-fn grouped(n: i64) -> String {
-    let digits = n.to_string();
-    let mut out = String::new();
-    for (i, c) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i).is_multiple_of(3) {
-            out.push(',');
-        }
-        out.push(c);
-    }
-    out
 }
 
 #[cfg(test)]

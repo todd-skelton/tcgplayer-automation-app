@@ -29,7 +29,12 @@ pub struct Screen {
     pub set: Option<i32>,
     pub scope: Scope,
     pub condition: Condition,
+    /// The page of products shown.
     pub products: Vec<Product>,
+    /// Which page that is, of how many, and how many products match in all.
+    pub page: usize,
+    pub pages: usize,
+    pub matched: usize,
     pub quantities: HashMap<i32, i32>,
     pub totals: Totals,
 }
@@ -62,6 +67,12 @@ impl Screen {
             Scope::Set => catalog::search(products, search),
             Scope::AllSets => products,
         };
+        let matched = products.len();
+        let (products, page, pages) = catalog::page_of(
+            products,
+            selection.page.unwrap_or(1),
+            selection.rows.unwrap_or_default(),
+        );
         Ok(Screen {
             selection: selection.clone(),
             lines,
@@ -71,6 +82,9 @@ impl Screen {
             scope,
             condition: selection.condition.unwrap_or_default(),
             products,
+            page,
+            pages,
+            matched,
             totals: Totals::of(&quantities),
             quantities,
         })

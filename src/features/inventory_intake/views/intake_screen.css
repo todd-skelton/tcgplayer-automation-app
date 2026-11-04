@@ -81,3 +81,9 @@
     max-width: min(80vw, 400px);
   }
 }
+
+.paging {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}

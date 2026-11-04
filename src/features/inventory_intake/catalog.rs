@@ -55,6 +55,44 @@ impl Condition {
     }
 }
 
+/// How many products a page shows, as the React grid offered (`pageSizeOptions`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, UrlValue, Deserialize)]
+pub enum PageSize {
+    #[serde(rename = "25")]
+    Rows25,
+    #[serde(rename = "50")]
+    Rows50,
+    #[default]
+    #[serde(rename = "100")]
+    Rows100,
+}
+
+impl PageSize {
+    pub const ALL: [PageSize; 3] = [PageSize::Rows25, PageSize::Rows50, PageSize::Rows100];
+
+    pub fn count(self) -> usize {
+        match self {
+            PageSize::Rows25 => 25,
+            PageSize::Rows50 => 50,
+            PageSize::Rows100 => 100,
+        }
+    }
+}
+
+/// One page of `items`, counting from 1, and how many pages there are (at least one). A page
+/// past the end is the last.
+pub fn page_of<T>(items: Vec<T>, page: usize, size: PageSize) -> (Vec<T>, usize, usize) {
+    let size = size.count();
+    let pages = items.len().div_ceil(size).max(1);
+    let page = page.clamp(1, pages);
+    let kept = items
+        .into_iter()
+        .skip((page - 1) * size)
+        .take(size)
+        .collect();
+    (kept, page, pages)
+}
+
 /// Which products show: sealed, unsealed, or both.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, UrlValue, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -188,10 +226,10 @@ const SKU_COLUMNS: &str = "s.sku, s.condition, s.variant, s.language, p.product_
 /// Every SKU of a set's products.
 pub async fn set_skus(db: &Database, product_line: i32, set: i32) -> sqlx::Result<Vec<Sku>> {
     sqlx::query_as(&format!(
-        "SELECT {SKU_COLUMNS},
-            (SELECT sp.number FROM set_products sp WHERE sp.set_name_id = $1 AND sp.product_id = p.product_id LIMIT 1) AS card_number,
+        "SELECT {SKU_COLUMNS}, sp.number AS card_number,
             (SELECT cs.release_date FROM category_sets cs WHERE cs.category_id = $2 AND cs.set_name_id = $1) AS release_date
          FROM products p
+         LEFT JOIN set_products sp ON sp.product_id = p.product_id AND sp.set_name_id = $1
          CROSS JOIN LATERAL jsonb_to_recordset(p.skus_json) AS s(sku int, condition text, variant text, language text)
          WHERE p.set_id = $1 AND p.product_line_id = $2"
     ))
@@ -493,6 +531,25 @@ pub fn matches_number(query: &str, field: Option<&str>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// 250 products are three pages of 100; a page past the end is the last, and none is one.
+    #[test]
+    fn products_are_paged_as_the_react_grid_paged_them() {
+        let items: Vec<u32> = (1..=250).collect();
+        let (kept, page, pages) = page_of(items.clone(), 1, PageSize::default());
+        assert_eq!(
+            (kept.first(), kept.len(), page, pages),
+            (Some(&1), 100, 1, 3)
+        );
+        let (kept, page, _) = page_of(items.clone(), 3, PageSize::Rows100);
+        assert_eq!((kept.first(), kept.len(), page), (Some(&201), 50, 3));
+        let (kept, page, _) = page_of(items.clone(), 9, PageSize::Rows25);
+        assert_eq!((kept.first(), page), (Some(&201), 9));
+        let (kept, page, _) = page_of(items.clone(), 99, PageSize::Rows25);
+        assert_eq!((kept.first(), page), (Some(&226), 10));
+        let (kept, page, pages) = page_of(Vec::<u32>::new(), 0, PageSize::Rows50);
+        assert_eq!((kept.len(), page, pages), (0, 1, 1));
+    }
 
     fn sku(
         sku: i32,

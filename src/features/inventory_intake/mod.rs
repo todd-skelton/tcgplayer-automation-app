@@ -75,8 +75,10 @@ pub mod url {
     }
 
     /// What the screen shows: the product line and set, the search and where it looks, the
-    /// product type and languages kept, and the condition counted. A missing value is the
-    /// screen's default: Pokemon, its newest set, Near Mint, unsealed products.
+    /// product type and languages kept, the condition counted, and the page of products. A
+    /// missing value is the screen's default: Pokemon, its newest set, Near Mint, unsealed
+    /// products, the first page of 100. The filters send no page, so a new filter starts on the
+    /// first.
     #[derive(Clone, Debug, Default, serde::Deserialize, corten::Route, corten::Fields)]
     #[route(query)]
     pub struct Selection {
@@ -88,5 +90,7 @@ pub mod url {
         #[serde(default)]
         pub language: Vec<String>,
         pub condition: Option<Condition>,
+        pub page: Option<usize>,
+        pub rows: Option<super::catalog::PageSize>,
     }
 }
