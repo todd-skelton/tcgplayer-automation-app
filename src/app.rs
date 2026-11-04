@@ -327,6 +327,31 @@ mod tests {
         assert!(page.contains("Go to the home page"), "{page}");
     }
 
+    /// What carries buyers' addresses or a provider's status is kept by nothing, as React's
+    /// `Cache-Control: no-store` said: the packing slips PDF and the slab connections page. A
+    /// failure under it is not kept either, so the database need not answer.
+    #[tokio::test]
+    async fn private_answers_are_not_stored() {
+        use tower::ServiceExt;
+        let shared = Shared {
+            db: Database::connect_lazy("postgresql://localhost:1/unused"),
+            legacy: Legacy::new("http://localhost:1".into()),
+            slab_providers: slab_connections::Transport::default(),
+        };
+        let router = app(shared).router();
+        let paths = [
+            shipping_export::url::PackingSlips { open: Some(true) }.href(),
+            slab_connections::url::SlabConnections.href(),
+        ];
+        for path in paths {
+            let request = corten::axum::http::Request::get(path.as_str())
+                .body(corten::axum::body::Body::empty())
+                .unwrap();
+            let answer = router.clone().oneshot(request).await.unwrap();
+            assert_eq!(answer.headers()["cache-control"], "no-store", "{path}");
+        }
+    }
+
     /// A page read from the dev database (`.env`), once with the browser's zone (`corten-zone`)
     /// and once without: its dates are the visitor's, else UTC and marked so. Reads only; the
     /// router starts none of the app's tasks, and Node is not reached.

@@ -18,11 +18,16 @@ use crate::{
 
 /// The batch's packing slips as one PDF, in the order the shipments go: shown in the browser's
 /// viewer (`?open=true`) or saved. When the Node app cannot make them, the Print step saying why.
+/// Nothing keeps it, the browser's disk cache included: it carries the buyers' names and addresses.
 pub async fn packing_slips(
     req: Req,
     State(db): State<Database>,
     Params(at): Params<url::PackingSlips>,
-) -> corten::Result<PageOr<Media>> {
+) -> NoStore<corten::Result<PageOr<Media>>> {
+    NoStore(packing_slips_pdf(req, db, at.open == Some(true)).await)
+}
+
+async fn packing_slips_pdf(req: Req, db: Database, open: bool) -> corten::Result<PageOr<Media>> {
     let (config, saved) = tokio::join!(
         shipping_configuration::settings(&db),
         workflow::current(&db)
@@ -43,7 +48,7 @@ pub async fn packing_slips(
     let made = chrono::Utc::now().format("%Y-%m-%dT%H-%M-%S-%3fZ");
     let name = format!("packing-slips-{made}.pdf");
     let media = Media::new("application/pdf", pdf);
-    Ok(if at.open == Some(true) {
+    Ok(if open {
         media.inline(&name)
     } else {
         media.attachment(&name)
