@@ -4,7 +4,7 @@ use corten::{Mode, Refusal, axum::http::StatusCode, prelude::*};
 use serde::Deserialize;
 
 use super::{
-    catalog::{self, Condition, Product, ProductLine, Scope, Set, Shown},
+    catalog::{self, Condition, Product, ProductLine, ProductOrder, Scope, Set, Shown},
     pending::{self, Place, Totals},
     queue::{self, CostRate, NotQueued, Queue, QueueInput},
     url::{self, Selection},
@@ -68,6 +68,7 @@ impl Screen {
             Scope::Set => catalog::search(products, search),
             Scope::AllSets => products,
         };
+        let products = selection.sort.unwrap_or(ProductOrder::Name).apply(products);
         let matched = products.len();
         let (products, page, pages) = catalog::page_of(
             products,

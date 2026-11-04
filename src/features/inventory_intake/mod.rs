@@ -92,5 +92,7 @@ pub mod url {
         pub condition: Option<Condition>,
         pub page: Option<usize>,
         pub rows: Option<super::catalog::PageSize>,
+        /// The products' order: by name, A to Z, when none.
+        pub sort: Option<super::catalog::ProductOrder>,
     }
 }

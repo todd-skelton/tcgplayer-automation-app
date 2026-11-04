@@ -5,7 +5,7 @@ use corten::prelude::*;
 use super::{background_batches::BackgroundBatches, queue_bar::QueueBar};
 use crate::{
     features::inventory_intake::{
-        catalog::{Condition, LANGUAGES, PageSize, Product, ProductType, Scope},
+        catalog::{Condition, LANGUAGES, PageSize, Product, ProductOrder, ProductType, Scope},
         page::{CountInput, Screen},
         queue::{self, Batches, QueueInput},
         url::{self, Selection},
@@ -22,7 +22,7 @@ use crate::{
         pagination::Pagination,
         select::Select,
         switch::Switch,
-        table::{Table, TableLayout},
+        table::{Sort, SortHeader, Table, TableLayout},
         visually_hidden::VisuallyHidden,
     },
 };
@@ -82,6 +82,7 @@ pub fn IntakeScreen<'a>(
     };
     let f = Selection::FIELDS;
     let selection = &screen.selection;
+    let order = selection.sort.unwrap_or(ProductOrder::Name);
     let searched = selection
         .search
         .as_deref()
@@ -210,6 +211,9 @@ pub fn IntakeScreen<'a>(
                         </button>
                     </span>
                 </label>
+                if let Some(sort) = selection.sort {
+                    <input type="hidden" name={f.sort} value={sort}>
+                }
                 <label>
                     "Rows per page"
                     <select class={Select {}} name={f.rows}>
@@ -241,7 +245,23 @@ pub fn IntakeScreen<'a>(
                                 <th>"Set"</th>
                                 <th>"SKU"</th>
                                 <th>"Quantity"</th>
-                                <th>"Product Name"</th>
+                                <SortHeader
+                                    label="Product Name"
+                                    sort={Some(match order {
+                                        ProductOrder::Name => Sort::Ascending,
+                                        ProductOrder::NameDown => Sort::Descending,
+                                    })}
+                                    link={&url::InventoryManager {
+                                        selection: Selection {
+                                            sort: (order == ProductOrder::Name)
+                                                .then_some(ProductOrder::NameDown),
+                                            page: None,
+                                            ..selection.clone()
+                                        },
+                                    }}
+                                    class={()}
+                                    on:sort={None::<Handler>}
+                                />
                             </tr>
                         </thead>
                         <tbody

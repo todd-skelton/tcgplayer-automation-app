@@ -55,6 +55,25 @@ impl Condition {
     }
 }
 
+/// The order the products are listed in, across every page: by name, either way. React's grid
+/// also drew a sort on Quantity, but its rows had no quantity field, so that sort kept the order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ProductOrder {
+    Name,
+    NameDown,
+}
+
+impl ProductOrder {
+    /// `products` in this order; they come by name, A to Z.
+    pub fn apply(self, mut products: Vec<Product>) -> Vec<Product> {
+        if self == ProductOrder::NameDown {
+            products.reverse();
+        }
+        products
+    }
+}
+
 /// How many products a page shows, as the React grid offered (`pageSizeOptions`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, UrlValue, Deserialize)]
 pub enum PageSize {
