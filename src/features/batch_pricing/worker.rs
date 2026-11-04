@@ -19,6 +19,9 @@ pub const LEASE: Duration = Duration::from_millis(15_000);
 pub const HEARTBEAT: Duration = Duration::from_millis(2_000);
 /// How often an empty queue is looked at again.
 pub const POLL: Duration = Duration::from_millis(1_000);
+/// How soon after progress was last saved new progress is saved, before the next renewal
+/// (`PROGRESS_FLUSH_MS`): the first progress at once, then at most once a second.
+pub const PROGRESS_FLUSH: Duration = Duration::from_millis(1_000);
 
 /// How a job ended.
 #[derive(Clone, Debug, PartialEq)]
@@ -37,8 +40,12 @@ pub trait Jobs {
     type Job;
     async fn requeue_expired(&self) -> Result<(), String>;
     async fn claim(&self) -> Result<Option<Self::Job>, String>;
-    /// Renews the claim; false when the job is no longer this worker's.
+    /// Renews the claim, saving the job's progress; false when the job is no longer this worker's.
     async fn renew(&self, job: &Self::Job) -> Result<bool, String>;
+    /// Resolves when the job has progress to save before its next renewal.
+    async fn progress_due(&self, _job: &Self::Job) {
+        std::future::pending().await
+    }
     /// Prices the job and saves what it priced: `Ok` completed, `Err` failed.
     fn work(&self, job: &Self::Job) -> impl Future<Output = Result<(), String>>;
     async fn finished(&self, job: &Self::Job, outcome: &Outcome) -> Result<(), String>;
@@ -66,6 +73,13 @@ pub async fn process<J: Jobs>(jobs: &J, job: &J::Job, signal: &Signal) -> Outcom
                 done = &mut work => break match done {
                     Ok(()) => Outcome::Completed,
                     Err(why) => Outcome::Failed(why),
+                },
+                // Saved as Node's flush saves it, without moving the next renewal.
+                _ = jobs.progress_due(job) => match timeout(HEARTBEAT, jobs.renew(job)).await {
+                    Ok(Ok(true)) => {}
+                    Ok(Ok(false)) => break Outcome::LeaseLost,
+                    Ok(Err(why)) => eprintln!("Pricing job progress failed to save: {why}"),
+                    Err(_) => eprintln!("Pricing job progress save timed out after {HEARTBEAT:?}"),
                 },
                 _ = heartbeat.tick() => {
                     // A renewal that hangs is given up after a beat, and the next one is a whole
@@ -163,6 +177,8 @@ mod tests {
         lose_lease_after: Option<u32>,
         /// How long the first renewal hangs.
         first_renewal_hangs: Duration,
+        /// When the job first has progress to save, once.
+        progress_after: Cell<Option<Duration>>,
         start: Instant,
     }
 
@@ -187,6 +203,7 @@ mod tests {
                 renewals: Cell::new(0),
                 lose_lease_after: None,
                 first_renewal_hangs: Duration::ZERO,
+                progress_after: Cell::new(None),
                 start: Instant::now(),
             }
         }
@@ -226,6 +243,12 @@ mod tests {
             Ok(self
                 .lose_lease_after
                 .is_none_or(|n| self.renewals.get() <= n))
+        }
+        async fn progress_due(&self, _: &Self::Job) {
+            match self.progress_after.take() {
+                Some(after) => sleep(after).await,
+                None => std::future::pending().await,
+            }
         }
         fn work(&self, job: &Self::Job) -> impl Future<Output = Result<(), String>> {
             let (fake, (id, takes)): (&Fake, _) = (self, *job);
@@ -275,6 +298,27 @@ mod tests {
         assert_eq!(log[0], (0, "claim 1".into()));
         assert_eq!(log[1], (10_000, "1 Completed".into()));
         assert_eq!(log[2], (13_000, "claim 2".into()));
+    }
+
+    /// Progress is saved when it comes, as Node's flush saves it, and the renewals keep their beat.
+    #[tokio::test(start_paused = true)]
+    async fn progress_is_saved_between_renewals() {
+        let fake = Fake::new(&[(1, 5)]);
+        fake.progress_after.set(Some(Duration::from_millis(500)));
+        let (signal, shutdown) = Signal::task();
+        let worker = run(&fake, Arc::new(Notify::new()), signal);
+        tokio::join!(worker, async {
+            sleep(Duration::from_secs(6)).await;
+            shutdown.begin();
+        });
+        let saves: Vec<_> = fake
+            .log
+            .borrow()
+            .iter()
+            .filter(|(_, what)| what.starts_with("renew"))
+            .map(|(at, _)| *at)
+            .collect();
+        assert_eq!(saves, [500, 2_000, 4_000]);
     }
 
     #[tokio::test(start_paused = true)]

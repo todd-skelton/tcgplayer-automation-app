@@ -11,12 +11,13 @@ use std::sync::{
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use sqlx::PgConnection;
+use tokio::{sync::Notify, time::Instant};
 
 use super::{
     job::{self, MarketData, Mode, Priced},
     queue::{self, Claimed},
     save,
-    worker::{Jobs, LEASE, Outcome},
+    worker::{Jobs, LEASE, Outcome, PROGRESS_FLUSH},
 };
 use crate::{
     database::Database,
@@ -37,6 +38,9 @@ pub struct Running {
     pub claimed: Claimed,
     /// The last progress reported, saved with each renewal.
     progress: Mutex<Option<Value>>,
+    /// When progress was last marked to be saved, and the mark the worker waits on.
+    flushed_at: Mutex<Option<Instant>>,
+    flush: Notify,
     /// Whether the run stopped because sales history was unavailable.
     sales_history_unavailable: AtomicBool,
 }
@@ -47,6 +51,8 @@ impl Running {
         Running {
             claimed,
             progress,
+            flushed_at: Mutex::new(None),
+            flush: Notify::new(),
             sales_history_unavailable: AtomicBool::new(false),
         }
     }
@@ -55,8 +61,16 @@ impl Running {
         self.progress.lock().expect("never poisoned").clone()
     }
 
+    /// Keeps `progress` for the next save, and asks for a save when none was asked for in the
+    /// last [`PROGRESS_FLUSH`].
     fn report(&self, progress: Value) {
         *self.progress.lock().expect("never poisoned") = Some(progress);
+        let mut flushed_at = self.flushed_at.lock().expect("never poisoned");
+        let now = Instant::now();
+        if flushed_at.is_none_or(|at| now.duration_since(at) >= PROGRESS_FLUSH) {
+            *flushed_at = Some(now);
+            self.flush.notify_one();
+        }
     }
 }
 
@@ -209,6 +223,10 @@ impl<E: Evidence, M: MarketData> Jobs for PricingJobs<E, M> {
         )
         .await
         .map_err(|e| e.to_string())
+    }
+
+    async fn progress_due(&self, job: &Running) {
+        job.flush.notified().await;
     }
 
     async fn work(&self, job: &Running) -> Result<(), String> {
