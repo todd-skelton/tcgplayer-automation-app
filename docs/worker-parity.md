@@ -57,3 +57,5 @@ Workers move to Rust in dev one at a time; production keeps Node's until Todd ap
 | --- | --- | --- |
 | Batch pricing | Corten app | `PRICING_WORKER=1` in `.env.development.local`; Node's `ensureInventoryBatchPricingWorker` reads it and stays off |
 | Continuous pricing scheduler, seller order history, slab evidence, inventory publication | Node | unchanged |
+
+Batch pricing's first dev jobs under the Rust worker, queued from the port's Batch Pricer: job 3702 (batch 3516, cached, 36 SKUs) in 0.6 s, and job 3703 (batch 2730, full, 16 SKUs, live TCGplayer reads) in 6 m 13 s, 16 processed, 0 errors, 2 warnings, as Node's last full job of that batch (2735) had.
