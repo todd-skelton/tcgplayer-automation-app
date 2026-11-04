@@ -103,12 +103,19 @@ pub struct ListingsPage {
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ListedAsk {
+    /// A whole number the search sometimes writes with a fraction (`794686978.0`).
+    #[serde(deserialize_with = "whole_number")]
     pub listing_id: i64,
     pub condition: String,
     pub price: f64,
     pub seller_shipping_price: f64,
     pub seller_id: String,
     pub seller_key: String,
+}
+
+/// A JSON number read as JavaScript keeps it, whether written `7` or `7.0`; null is 0.
+fn whole_number<'de, D: serde::Deserializer<'de>>(d: D) -> Result<i64, D::Error> {
+    Ok(Option::<f64>::deserialize(d)?.map_or(0, |n| n as i64))
 }
 
 impl ListedAsk {
@@ -561,6 +568,17 @@ mod tests {
                 }],
             }))
         }
+    }
+
+    /// The search wrote one listing's id as `794686978.0` (product 213155, 2026-11-03).
+    #[test]
+    fn a_listing_id_written_with_a_fraction_reads() {
+        let ask: ListedAsk = serde_json::from_value(serde_json::json!({
+            "listingId": 794686978.0, "condition": "Near Mint", "price": 1.0,
+            "sellerShippingPrice": 0.0, "sellerId": "s", "sellerKey": "k"
+        }))
+        .unwrap();
+        assert_eq!(ask.listing_id, 794_686_978);
     }
 
     #[tokio::test]
