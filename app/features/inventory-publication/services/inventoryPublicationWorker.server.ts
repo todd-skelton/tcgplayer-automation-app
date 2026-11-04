@@ -809,8 +809,9 @@ export function startInventoryPublicationWorkerProcess(): void {
   scheduleNextTick(state, 0);
 }
 
+// PUBLICATION_WORKER hands publishing to the Corten app's worker, which reads the same env files.
 export function ensureInventoryPublicationWorker(): void {
-  if (process.env.WORKERS_RUN_IN_PROCESS === "false") {
+  if (process.env.WORKERS_RUN_IN_PROCESS === "false" || process.env.PUBLICATION_WORKER?.trim()) {
     return;
   }
   startInventoryPublicationWorkerProcess();

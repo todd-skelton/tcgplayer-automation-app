@@ -83,6 +83,10 @@ Docker would restart them in a loop.
 3. Release 1: revert the merge on master and release. Migrations 053 to 055 stay; Node's code
    ignores the two tables and the index.
 
+In dev, every job now runs in the Corten app (`docs/worker-parity.md`, Dev cutover); the
+publication worker is switched there but stays off without Seller Portal writes, so release 6 is
+its first run that posts.
+
 ## Open for Todd
 
 1. Approval to merge `codex/corten-port` into master, and for release 1.
