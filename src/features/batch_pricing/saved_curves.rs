@@ -317,22 +317,25 @@ mod tests {
         );
     }
 
-    /// Every curve the strategy saved on dev (`.port-logs/curves.jsonl`), resolved at the
-    /// percentile its run used, against what Node's resolver answered for the same curves
-    /// (`.port-logs/cached-resolve.ts` writes `cached-resolve.node.json`): the same price, times,
-    /// counts and error, and the same percentiles once the calculator reads them back as days.
+    /// A sample of the curves the strategy saved on dev, each model version's and those of none,
+    /// resolved at the percentile its run used and at 30, against what Node's resolver answered
+    /// for the same curves (`scripts/parity/saved-curves.ts`, recorded in
+    /// `tests/fixtures/node/pricing/saved-curves.json`, or the recording `SAVED_CURVES` names): the
+    /// same price, times, counts and error, and the same percentiles once the calculator reads
+    /// them back as days.
     #[test]
-    #[ignore = "reads curves exported from the dev database and Node's answers for them"]
     fn saved_curves_resolve_as_node_s_resolver_does() {
-        let read = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
-        let curves: HashMap<i64, Value> = read("curves.jsonl")
-            .lines()
-            .map(|line| {
-                let row: Value = serde_json::from_str(line).unwrap();
-                (row["sku"].as_i64().unwrap(), row["details"].clone())
-            })
+        let recorded: Value = match std::env::var("SAVED_CURVES") {
+            Ok(path) => serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap(),
+            Err(_) => crate::parity_fixture::read("node/pricing/saved-curves.json"),
+        };
+        let curves: HashMap<i64, Value> = recorded["curves"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|row| (row["sku"].as_i64().unwrap(), row["details"].clone()))
             .collect();
-        let node: Vec<Value> = serde_json::from_str(&read("cached-resolve.node.json")).unwrap();
+        let node: Vec<Value> = serde_json::from_value(recorded["answers"].clone()).unwrap();
         let mut differences = Vec::new();
         for answer in &node {
             let sku = answer["sku"].as_i64().unwrap();
@@ -390,12 +393,13 @@ mod tests {
         assert!(differences.is_empty());
     }
 
-    /// Node's cached pricing of batch 3497 (`.port-logs/cached-run.ts 3497`: as of a minute after
-    /// its full run, snaps off, nothing written), priced again here from the same curves: every
-    /// SKU's price, suggestion, percentile and market reading, and the summary's totals, match.
-    /// Makes the stale SKUs due, as Node does; restore the schedule from a backup after.
+    /// Node's cached pricing of batch 3516 (`scripts/parity/cached-run.ts 3516`, recorded
+    /// 2026-11-04 with every curve fresh, so nothing was made due), or of the recording
+    /// `CACHED_RUN` names, priced again here from the same curves as of the same moment: every
+    /// SKU's price, suggestion, percentile and market reading, and the summary's totals, match. A
+    /// curve saved since the recording fails it: record again.
     #[tokio::test]
-    #[ignore = "uses the dev database and Node's run exported to .port-logs"]
+    #[ignore = "uses the dev database, and Node's run in tests/fixtures/node"]
     async fn a_cached_run_prices_as_node_s_does() {
         use crate::features::batch_pricing::{
             job::{self, Mode},
@@ -403,12 +407,13 @@ mod tests {
         };
         crate::config::load_env();
         let db = Database::connect_lazy(&crate::config::database_url());
-        let node: Value = serde_json::from_str(
-            &std::fs::read_to_string(".port-logs/cached-run-3497.node.json").unwrap(),
-        )
-        .unwrap();
+        let node: Value = match std::env::var("CACHED_RUN") {
+            Ok(path) => serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap(),
+            Err(_) => crate::parity_fixture::read("node/pricing/cached-run-3516.json"),
+        };
         let as_of: DateTime<Utc> = node["asOf"].as_str().unwrap().parse().unwrap();
-        let batch = job::batch(&db, 3497).await.unwrap();
+        let number = node["batchNumber"].as_i64().unwrap() as i32;
+        let batch = job::batch(&db, number).await.unwrap();
         let priced = job::price(
             &db,
             &batch,

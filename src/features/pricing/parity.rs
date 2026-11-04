@@ -259,11 +259,14 @@ fn aggregated(a: &Aggregated) -> Value {
 }
 
 #[tokio::test]
-#[ignore = "reads the dev database and a file the Node app wrote"]
+#[ignore = "reads the dev database, and Node's answers in tests/fixtures/node"]
 async fn prices_match_node_on_the_same_evidence() {
     crate::config::load_env();
-    let path = std::env::var("PRICING_PARITY").expect("PRICING_PARITY names Node's answers");
-    let fixture: Fixture = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    // Batch 3471's five SKUs, recorded 2026-11-04, unless `PRICING_PARITY` names another recording.
+    let fixture: Fixture = match std::env::var("PRICING_PARITY") {
+        Ok(path) => serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap(),
+        Err(_) => crate::parity_fixture::read("node/pricing/batch-3471.json"),
+    };
     let now: DateTime<Utc> = fixture.now.parse().unwrap();
     let db = Database::connect_lazy(&crate::config::database_url());
     let stored = config::load(&db).await.unwrap();

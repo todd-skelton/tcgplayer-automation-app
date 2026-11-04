@@ -7,6 +7,9 @@
 //
 //   TZ=UTC WORKERS_RUN_IN_PROCESS=false npx vite-node scripts/parity/pricing-parity.ts <batch> <out.json>
 //   PRICING_PARITY=<out.json> cargo test --lib prices_match_node_on_the_same_evidence -- --ignored
+//
+// tests/fixtures/node/pricing/batch-3471.json is one such recording, which the test reads when
+// PRICING_PARITY is unset.
 const [batchArg, outArg] = process.argv.slice(2);
 if (!batchArg || !outArg) throw new Error("usage: pricing-parity.ts <batch number> <out.json>");
 if (process.env.WORKERS_RUN_IN_PROCESS !== "false") {
