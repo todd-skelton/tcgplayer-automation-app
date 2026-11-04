@@ -490,25 +490,27 @@ mod tests {
     use super::*;
     use crate::database::Database;
 
-    /// `.port-logs/slab-cycle-seed.sql` with its recommendations calculated, then a cycle, another
-    /// with every listing due again, and one with none due, at the time Node's ran
-    /// (`.port-logs/slab-cycle-node.ts`), in one transaction rolled back: each cycle's summary and
-    /// everything saved (settings, checks, refreshes, recommendations) as Node's.
+    /// `tests/fixtures/node/slab/cycle-seed.sql` with its recommendations calculated and one
+    /// reviewed, then the cycles Node's ran at the same time (`scripts/parity/slab-cycle.ts`): the
+    /// first, one with every listing due again, one with the evidence expired and one with no
+    /// seller due, in one transaction rolled back. Each cycle's summary and everything saved
+    /// (settings, checks, refreshes, recommendations) as Node's.
     #[tokio::test]
-    #[ignore = "uses the dev database in a transaction rolled back, and Node's answers in .port-logs"]
+    #[ignore = "uses the dev database in a transaction rolled back"]
     async fn cycles_run_as_node_runs_them() {
         crate::config::load_env();
         let db = Database::connect_lazy(&crate::config::database_url());
-        let read_log = |name: &str| std::fs::read_to_string(format!(".port-logs/{name}")).unwrap();
-        let node: Vec<Value> = serde_json::from_str(&read_log("slab-cycle.node.json")).unwrap();
-        let asked: Vec<Value> =
-            serde_json::from_str(&read_log("slab-cycle-recommendations.json")).unwrap();
-        let capture = read_log("slab-cycle-capture.sql");
+        let read = |name: &str| {
+            std::fs::read_to_string(format!("tests/fixtures/node/slab/{name}")).unwrap()
+        };
+        let node: Vec<Value> = serde_json::from_str(&read("cycle.node.json")).unwrap();
+        let asked: Vec<Value> = serde_json::from_str(&read("cycle-recommendations.json")).unwrap();
+        let capture = read("cycle-capture.sql");
         let at = "2026-10-31T18:00:00.000Z";
         let now: DateTime<Utc> = at.parse().unwrap();
         let mut conn = db.0.acquire().await.unwrap();
         let mut tx = conn.begin().await.unwrap();
-        sqlx::raw_sql(&read_log("slab-cycle-seed.sql"))
+        sqlx::raw_sql(&read("cycle-seed.sql"))
             .execute(&mut *tx)
             .await
             .unwrap();
@@ -530,17 +532,14 @@ mod tests {
             };
             calculation::calculate(&mut tx, &asked, at).await.unwrap();
         }
-        sqlx::raw_sql(&read_log("slab-cycle-after-calculations.sql"))
+        sqlx::raw_sql(&read("cycle-after-calculations.sql"))
             .execute(&mut *tx)
             .await
             .unwrap();
         for theirs in node {
             let step = theirs["step"].as_str().unwrap();
-            if step == "again" {
-                sqlx::raw_sql(&read_log("slab-cycle-again.sql"))
-                    .execute(&mut *tx)
-                    .await
-                    .unwrap();
+            if let Some(before) = theirs["before"].as_str() {
+                sqlx::raw_sql(before).execute(&mut *tx).await.unwrap();
             }
             let summary = run(&mut tx, now).await.unwrap();
             assert_eq!(json!(summary), theirs["summary"], "{step}");

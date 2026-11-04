@@ -1,0 +1,5670 @@
+[
+ {
+  "step": "first",
+  "before": null,
+  "summary": {
+   "checked": 8,
+   "queued": 1,
+   "requested": 1,
+   "recalculated": 2,
+   "held": 8,
+   "waiting": 5,
+   "refreshBudget": 2
+  },
+  "saved": {
+   "settings": [
+    {
+     "seller": "maintenance-fixture",
+     "enabled": true,
+     "revision": 1,
+     "leased": false,
+     "cycled": true,
+     "error": null,
+     "summary": {
+      "held": 8,
+      "queued": 1,
+      "checked": 8,
+      "waiting": 5,
+      "requested": 1,
+      "recalculated": 2,
+      "refreshBudget": 2
+     },
+     "dueSoon": true
+    }
+   ],
+   "items": [
+    {
+     "item": "900000000000",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": "64e85eb0c14005e93e69e8f32426385ca81ca7ac09bcd128b67249e799a07777",
+     "outcome": "review-required",
+     "reason": "recommendation-needs-review",
+     "recommendationIsLatest": true,
+     "recommendation": true,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000001",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": "64e85eb0c14005e93e69e8f32426385ca81ca7ac09bcd128b67249e799a07777",
+     "outcome": "review-required",
+     "reason": "recommendation-needs-review",
+     "recommendationIsLatest": true,
+     "recommendation": true,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000002",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "reviewed-price-held",
+     "recommendationIsLatest": true,
+     "recommendation": true,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000003",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "save-seller-context-before-repricing",
+     "recommendationIsLatest": true,
+     "recommendation": false,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000004",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "pricing-currency-unresolved",
+     "recommendationIsLatest": true,
+     "recommendation": true,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000005",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "confirm-listing-identity",
+     "recommendationIsLatest": false,
+     "recommendation": false,
+     "settingsRevision": 1,
+     "checkIn": "interval"
+    },
+    {
+     "item": "900000000006",
+     "inventoryRevision": 1,
+     "identityRevision": 1,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "confirm-listing-identity",
+     "recommendationIsLatest": true,
+     "recommendation": false,
+     "settingsRevision": 1,
+     "checkIn": "interval"
+    },
+    {
+     "item": "900000000007",
+     "inventoryRevision": 1,
+     "identityRevision": null,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "confirm-listing-identity",
+     "recommendationIsLatest": true,
+     "recommendation": false,
+     "settingsRevision": 1,
+     "checkIn": "interval"
+    }
+   ],
+   "recommendations": [
+    {
+     "certificate": "MAINTENANCE-0",
+     "latest": false,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "3f2b523f-1824-43f0-9930-98ea08aebc71",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-0",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 100,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "3f2b523f-1824-43f0-9930-98ea08aebc71",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-1",
+     "latest": false,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "1e81ba3a-c6f8-4cfd-8943-4f85c637a8bb",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-1",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 100,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "1e81ba3a-c6f8-4cfd-8943-4f85c637a8bb",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-2",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "63813682-2bb1-47ce-9973-a007ecec7a03",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": true
+    },
+    {
+     "certificate": "MAINTENANCE-4",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "e3839e14-6fcc-4f2d-8b1c-5936911fefc4",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-5",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "8e7310d1-a634-4594-af83-29df419d11e4",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    }
+   ],
+   "refreshes": [
+    {
+     "key": "2ee4602e8c32f1109fd4b11ca46294fba797257d59c3481e2441a4debfde1986",
+     "spec": {
+      "kind": "ebay-sales",
+      "limit": 50,
+      "offset": 0,
+      "window": {
+       "to": "2026-10-31",
+       "from": "2025-10-31"
+      },
+      "groupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f",
+      "keywords": "2002 Pokemon Hitmonlee 13 Pokemon Legendary Collection English Unlimited Reverse Holo None PSA 1",
+      "timezone": "America/Chicago"
+     },
+     "state": "queued",
+     "priority": 0,
+     "attempts": 0,
+     "latestRevision": null,
+     "fresh": null,
+     "error": null
+    },
+    {
+     "key": "9cacab93853825f0298af97c3ab082dcdc8e6e074277c5611e2d2c810dfdc477",
+     "spec": {
+      "kind": "alt-sales",
+      "window": {
+       "to": "2026-10-31",
+       "from": "2025-10-31"
+      },
+      "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+      "limitPerGrade": 16
+     },
+     "state": "idle",
+     "priority": 100,
+     "attempts": 1,
+     "latestRevision": "f91e47be-996f-4fa7-85cd-47b22671bc51",
+     "fresh": true,
+     "error": null
+    }
+   ],
+   "retained": [
+    "f91e47be-996f-4fa7-85cd-47b22671bc51"
+   ],
+   "publications": 0
+  }
+ },
+ {
+  "step": "every listing due again",
+  "before": "UPDATE slab_maintenance_settings SET next_cycle_at=clock_timestamp(); UPDATE slab_maintenance_items SET next_check_at=clock_timestamp();",
+  "summary": {
+   "checked": 8,
+   "queued": 0,
+   "requested": 0,
+   "recalculated": 0,
+   "held": 6,
+   "waiting": 5,
+   "refreshBudget": 2
+  },
+  "saved": {
+   "settings": [
+    {
+     "seller": "maintenance-fixture",
+     "enabled": true,
+     "revision": 1,
+     "leased": false,
+     "cycled": true,
+     "error": null,
+     "summary": {
+      "held": 6,
+      "queued": 0,
+      "checked": 8,
+      "waiting": 5,
+      "requested": 0,
+      "recalculated": 0,
+      "refreshBudget": 2
+     },
+     "dueSoon": true
+    }
+   ],
+   "items": [
+    {
+     "item": "900000000000",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": "64e85eb0c14005e93e69e8f32426385ca81ca7ac09bcd128b67249e799a07777",
+     "outcome": "unchanged",
+     "reason": "fresh-inputs-unchanged",
+     "recommendationIsLatest": true,
+     "recommendation": true,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000001",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": "64e85eb0c14005e93e69e8f32426385ca81ca7ac09bcd128b67249e799a07777",
+     "outcome": "unchanged",
+     "reason": "fresh-inputs-unchanged",
+     "recommendationIsLatest": true,
+     "recommendation": true,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000002",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "reviewed-price-held",
+     "recommendationIsLatest": true,
+     "recommendation": true,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000003",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "save-seller-context-before-repricing",
+     "recommendationIsLatest": true,
+     "recommendation": false,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000004",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "pricing-currency-unresolved",
+     "recommendationIsLatest": true,
+     "recommendation": true,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000005",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "confirm-listing-identity",
+     "recommendationIsLatest": false,
+     "recommendation": false,
+     "settingsRevision": 1,
+     "checkIn": "interval"
+    },
+    {
+     "item": "900000000006",
+     "inventoryRevision": 1,
+     "identityRevision": 1,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "confirm-listing-identity",
+     "recommendationIsLatest": true,
+     "recommendation": false,
+     "settingsRevision": 1,
+     "checkIn": "interval"
+    },
+    {
+     "item": "900000000007",
+     "inventoryRevision": 1,
+     "identityRevision": null,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "confirm-listing-identity",
+     "recommendationIsLatest": true,
+     "recommendation": false,
+     "settingsRevision": 1,
+     "checkIn": "interval"
+    }
+   ],
+   "recommendations": [
+    {
+     "certificate": "MAINTENANCE-0",
+     "latest": false,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "3f2b523f-1824-43f0-9930-98ea08aebc71",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-0",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 100,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "3f2b523f-1824-43f0-9930-98ea08aebc71",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-1",
+     "latest": false,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "1e81ba3a-c6f8-4cfd-8943-4f85c637a8bb",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-1",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 100,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "1e81ba3a-c6f8-4cfd-8943-4f85c637a8bb",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-2",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "63813682-2bb1-47ce-9973-a007ecec7a03",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": true
+    },
+    {
+     "certificate": "MAINTENANCE-4",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "e3839e14-6fcc-4f2d-8b1c-5936911fefc4",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-5",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "8e7310d1-a634-4594-af83-29df419d11e4",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    }
+   ],
+   "refreshes": [
+    {
+     "key": "2ee4602e8c32f1109fd4b11ca46294fba797257d59c3481e2441a4debfde1986",
+     "spec": {
+      "kind": "ebay-sales",
+      "limit": 50,
+      "offset": 0,
+      "window": {
+       "to": "2026-10-31",
+       "from": "2025-10-31"
+      },
+      "groupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f",
+      "keywords": "2002 Pokemon Hitmonlee 13 Pokemon Legendary Collection English Unlimited Reverse Holo None PSA 1",
+      "timezone": "America/Chicago"
+     },
+     "state": "queued",
+     "priority": 0,
+     "attempts": 0,
+     "latestRevision": null,
+     "fresh": null,
+     "error": null
+    },
+    {
+     "key": "9cacab93853825f0298af97c3ab082dcdc8e6e074277c5611e2d2c810dfdc477",
+     "spec": {
+      "kind": "alt-sales",
+      "window": {
+       "to": "2026-10-31",
+       "from": "2025-10-31"
+      },
+      "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+      "limitPerGrade": 16
+     },
+     "state": "idle",
+     "priority": 100,
+     "attempts": 1,
+     "latestRevision": "f91e47be-996f-4fa7-85cd-47b22671bc51",
+     "fresh": true,
+     "error": null
+    }
+   ],
+   "retained": [
+    "f91e47be-996f-4fa7-85cd-47b22671bc51"
+   ],
+   "publications": 0
+  }
+ },
+ {
+  "step": "evidence expired",
+  "before": "UPDATE slab_maintenance_settings SET next_cycle_at=clock_timestamp(); UPDATE slab_maintenance_items SET next_check_at=clock_timestamp(); UPDATE slab_evidence_refreshes SET expires_at=clock_timestamp()-interval '1 second' WHERE state='idle';",
+  "summary": {
+   "checked": 8,
+   "queued": 1,
+   "requested": 1,
+   "recalculated": 0,
+   "held": 5,
+   "waiting": 5,
+   "refreshBudget": 2
+  },
+  "saved": {
+   "settings": [
+    {
+     "seller": "maintenance-fixture",
+     "enabled": true,
+     "revision": 1,
+     "leased": false,
+     "cycled": true,
+     "error": null,
+     "summary": {
+      "held": 5,
+      "queued": 1,
+      "checked": 8,
+      "waiting": 5,
+      "requested": 1,
+      "recalculated": 0,
+      "refreshBudget": 2
+     },
+     "dueSoon": true
+    }
+   ],
+   "items": [
+    {
+     "item": "900000000000",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "waiting",
+     "reason": "fresh-selected-evidence-required",
+     "recommendationIsLatest": true,
+     "recommendation": true,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000001",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "waiting",
+     "reason": "fresh-selected-evidence-required",
+     "recommendationIsLatest": true,
+     "recommendation": true,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000002",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "reviewed-price-held",
+     "recommendationIsLatest": true,
+     "recommendation": true,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000003",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "save-seller-context-before-repricing",
+     "recommendationIsLatest": true,
+     "recommendation": false,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000004",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "waiting",
+     "reason": "fresh-selected-evidence-required",
+     "recommendationIsLatest": true,
+     "recommendation": true,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000005",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "confirm-listing-identity",
+     "recommendationIsLatest": false,
+     "recommendation": false,
+     "settingsRevision": 1,
+     "checkIn": "interval"
+    },
+    {
+     "item": "900000000006",
+     "inventoryRevision": 1,
+     "identityRevision": 1,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "confirm-listing-identity",
+     "recommendationIsLatest": true,
+     "recommendation": false,
+     "settingsRevision": 1,
+     "checkIn": "interval"
+    },
+    {
+     "item": "900000000007",
+     "inventoryRevision": 1,
+     "identityRevision": null,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "confirm-listing-identity",
+     "recommendationIsLatest": true,
+     "recommendation": false,
+     "settingsRevision": 1,
+     "checkIn": "interval"
+    }
+   ],
+   "recommendations": [
+    {
+     "certificate": "MAINTENANCE-0",
+     "latest": false,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "3f2b523f-1824-43f0-9930-98ea08aebc71",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-0",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 100,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "3f2b523f-1824-43f0-9930-98ea08aebc71",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-1",
+     "latest": false,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "1e81ba3a-c6f8-4cfd-8943-4f85c637a8bb",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-1",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 100,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "1e81ba3a-c6f8-4cfd-8943-4f85c637a8bb",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-2",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "63813682-2bb1-47ce-9973-a007ecec7a03",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": true
+    },
+    {
+     "certificate": "MAINTENANCE-4",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "e3839e14-6fcc-4f2d-8b1c-5936911fefc4",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-5",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "8e7310d1-a634-4594-af83-29df419d11e4",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    }
+   ],
+   "refreshes": [
+    {
+     "key": "2ee4602e8c32f1109fd4b11ca46294fba797257d59c3481e2441a4debfde1986",
+     "spec": {
+      "kind": "ebay-sales",
+      "limit": 50,
+      "offset": 0,
+      "window": {
+       "to": "2026-10-31",
+       "from": "2025-10-31"
+      },
+      "groupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f",
+      "keywords": "2002 Pokemon Hitmonlee 13 Pokemon Legendary Collection English Unlimited Reverse Holo None PSA 1",
+      "timezone": "America/Chicago"
+     },
+     "state": "queued",
+     "priority": 0,
+     "attempts": 0,
+     "latestRevision": null,
+     "fresh": null,
+     "error": null
+    },
+    {
+     "key": "9cacab93853825f0298af97c3ab082dcdc8e6e074277c5611e2d2c810dfdc477",
+     "spec": {
+      "kind": "alt-sales",
+      "window": {
+       "to": "2026-10-31",
+       "from": "2025-10-31"
+      },
+      "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+      "limitPerGrade": 16
+     },
+     "state": "queued",
+     "priority": 0,
+     "attempts": 0,
+     "latestRevision": "f91e47be-996f-4fa7-85cd-47b22671bc51",
+     "fresh": false,
+     "error": null
+    }
+   ],
+   "retained": [
+    "f91e47be-996f-4fa7-85cd-47b22671bc51"
+   ],
+   "publications": 0
+  }
+ },
+ {
+  "step": "nothing due",
+  "before": null,
+  "summary": null,
+  "saved": {
+   "settings": [
+    {
+     "seller": "maintenance-fixture",
+     "enabled": true,
+     "revision": 1,
+     "leased": false,
+     "cycled": true,
+     "error": null,
+     "summary": {
+      "held": 5,
+      "queued": 1,
+      "checked": 8,
+      "waiting": 5,
+      "requested": 1,
+      "recalculated": 0,
+      "refreshBudget": 2
+     },
+     "dueSoon": true
+    }
+   ],
+   "items": [
+    {
+     "item": "900000000000",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "waiting",
+     "reason": "fresh-selected-evidence-required",
+     "recommendationIsLatest": true,
+     "recommendation": true,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000001",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "waiting",
+     "reason": "fresh-selected-evidence-required",
+     "recommendationIsLatest": true,
+     "recommendation": true,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000002",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "reviewed-price-held",
+     "recommendationIsLatest": true,
+     "recommendation": true,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000003",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "save-seller-context-before-repricing",
+     "recommendationIsLatest": true,
+     "recommendation": false,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000004",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "waiting",
+     "reason": "fresh-selected-evidence-required",
+     "recommendationIsLatest": true,
+     "recommendation": true,
+     "settingsRevision": 1,
+     "checkIn": "soon"
+    },
+    {
+     "item": "900000000005",
+     "inventoryRevision": 1,
+     "identityRevision": 2,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "confirm-listing-identity",
+     "recommendationIsLatest": false,
+     "recommendation": false,
+     "settingsRevision": 1,
+     "checkIn": "interval"
+    },
+    {
+     "item": "900000000006",
+     "inventoryRevision": 1,
+     "identityRevision": 1,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "confirm-listing-identity",
+     "recommendationIsLatest": true,
+     "recommendation": false,
+     "settingsRevision": 1,
+     "checkIn": "interval"
+    },
+    {
+     "item": "900000000007",
+     "inventoryRevision": 1,
+     "identityRevision": null,
+     "inputKey": null,
+     "outcome": "review-required",
+     "reason": "confirm-listing-identity",
+     "recommendationIsLatest": true,
+     "recommendation": false,
+     "settingsRevision": 1,
+     "checkIn": "interval"
+    }
+   ],
+   "recommendations": [
+    {
+     "certificate": "MAINTENANCE-0",
+     "latest": false,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "3f2b523f-1824-43f0-9930-98ea08aebc71",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-0",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 100,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "3f2b523f-1824-43f0-9930-98ea08aebc71",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-1",
+     "latest": false,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "1e81ba3a-c6f8-4cfd-8943-4f85c637a8bb",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-1",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 100,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "1e81ba3a-c6f8-4cfd-8943-4f85c637a8bb",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-2",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "63813682-2bb1-47ce-9973-a007ecec7a03",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": true
+    },
+    {
+     "certificate": "MAINTENANCE-4",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "e3839e14-6fcc-4f2d-8b1c-5936911fefc4",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    },
+    {
+     "certificate": "MAINTENANCE-5",
+     "latest": true,
+     "identityRevision": 2,
+     "calculation": {
+      "ask": {
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "appliedFloor": null,
+       "requiresReview": true,
+       "estimatedProfit": null,
+       "proposedItemAsk": null,
+       "estimatedProceeds": null
+      },
+      "market": {
+       "asOf": "2026-10-31T18:00:00.000Z",
+       "basis": "item-plus-shipping",
+       "comps": [],
+       "count": 0,
+       "flags": [
+        {
+         "code": "capped-source-history",
+         "review": false
+        },
+        {
+         "code": "partial-market-coverage",
+         "review": false
+        },
+        {
+         "code": "too-few-direct-comps",
+         "review": true
+        }
+       ],
+       "range": null,
+       "status": "needs-review",
+       "quality": {
+        "stale": false,
+        "capped": true,
+        "partial": true,
+        "rejected": 0,
+        "uncertain": 4,
+        "eventWarnings": []
+       },
+       "currency": "USD",
+       "excluded": [],
+       "modelVersion": "direct-sales-v1",
+       "observedSpan": null,
+       "effectiveCount": 0
+      },
+      "policy": {
+       "basis": "item-plus-shipping",
+       "currency": "USD",
+       "halfLifeDays": 90,
+       "minimumComps": 3,
+       "maximumAgeDays": 365,
+       "reviewSpreadRatio": 4,
+       "roundingIncrement": 0.01,
+       "reviewChangeFraction": 0.25,
+       "minimumEffectiveCount": 2.5
+      },
+      "seller": {
+       "fees": {
+        "rate": 0.1325,
+        "basis": "item-plus-shipping",
+        "fixed": 0.4
+       },
+       "currency": "USD",
+       "currentAsk": 99,
+       "minimumAsk": 50,
+       "shippingCost": 4.25,
+       "minimumProfit": 10,
+       "acquisitionCost": 60,
+       "shippingCharged": 4.99
+      },
+      "evidence": [
+       {
+        "spec": {
+         "kind": "alt-sales",
+         "window": {
+          "to": "2026-10-31",
+          "from": "2025-10-31"
+         },
+         "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+         "limitPerGrade": 16
+        },
+        "expiresAt": "2099-01-01T00:00:00.000Z",
+        "fetchedAt": "2026-10-31T12:00:00.000Z",
+        "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+       }
+      ],
+      "identity": {
+       "slabId": "8e7310d1-a634-4594-af83-29df419d11e4",
+       "revision": 2,
+       "valuationGroupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f"
+      },
+      "decisions": [],
+      "dispositions": [
+       {
+        "key": "[\"alt\",\"maintenance-sale-0\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-0",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-1\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-1",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-2\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-2",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       },
+       {
+        "key": "[\"alt\",\"maintenance-sale-3\",\"transaction\",null,null]",
+        "status": "needs-review",
+        "reasons": [
+         "buyer-fees-unknown"
+        ],
+        "references": [
+         {
+          "date": "2026-10-31",
+          "provider": "alt",
+          "providerId": "maintenance-sale-3",
+          "revisionId": "f91e47be-996f-4fa7-85cd-47b22671bc51"
+         }
+        ]
+       }
+      ],
+      "policyVersion": "slab-policy-v1"
+     },
+     "evidence": [
+      "f91e47be-996f-4fa7-85cd-47b22671bc51"
+     ],
+     "reviewed": false
+    }
+   ],
+   "refreshes": [
+    {
+     "key": "2ee4602e8c32f1109fd4b11ca46294fba797257d59c3481e2441a4debfde1986",
+     "spec": {
+      "kind": "ebay-sales",
+      "limit": 50,
+      "offset": 0,
+      "window": {
+       "to": "2026-10-31",
+       "from": "2025-10-31"
+      },
+      "groupKey": "8d45f00f7b9dc55c04a48292be59e10fa9664072d2ffa00fe5209a6088737a0f",
+      "keywords": "2002 Pokemon Hitmonlee 13 Pokemon Legendary Collection English Unlimited Reverse Holo None PSA 1",
+      "timezone": "America/Chicago"
+     },
+     "state": "queued",
+     "priority": 0,
+     "attempts": 0,
+     "latestRevision": null,
+     "fresh": null,
+     "error": null
+    },
+    {
+     "key": "9cacab93853825f0298af97c3ab082dcdc8e6e074277c5611e2d2c810dfdc477",
+     "spec": {
+      "kind": "alt-sales",
+      "window": {
+       "to": "2026-10-31",
+       "from": "2025-10-31"
+      },
+      "assetId": "20c46c8c-4290-4953-b76f-5892bb442f87",
+      "limitPerGrade": 16
+     },
+     "state": "queued",
+     "priority": 0,
+     "attempts": 0,
+     "latestRevision": "f91e47be-996f-4fa7-85cd-47b22671bc51",
+     "fresh": false,
+     "error": null
+    }
+   ],
+   "retained": [
+    "f91e47be-996f-4fa7-85cd-47b22671bc51"
+   ],
+   "publications": 0
+  }
+ }
+]

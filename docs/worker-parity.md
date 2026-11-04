@@ -18,7 +18,7 @@ order number, their lines and FIFO lines by SKU id, revisions by revision number
 | Batch pricing, full job | `twin-pricing-worker.mjs 3471 full` | 2026-11-03 | same tables, rows and 17 listing snapshots; numbers moved with the market only |
 | Continuous pricing scheduler | `twin-continuous-scheduler.mjs` | 2026-11-04 | one live refresh (802 listings) and one 50-SKU batch each; 56,471 values, 0 differ |
 | Seller order history (sync, FIFO replay, cost estimates) | `twin-seller-order-history.mjs` | 2026-11-04 | sync complete on both (1,640 orders, 78 details read); 13 tables, 533,113 values, 0 differ |
-| Slab evidence | no twin: the dev database holds no slab data | | see below |
+| Slab evidence and maintenance | no twin: the dev database holds no slab data | | see below |
 | Inventory publication | no twin: it posts to Seller Portal | | see below |
 
 Where a twin cannot run, Node's code is recorded instead, against the same committed provider
@@ -38,8 +38,13 @@ fixtures or dev batches the Rust tests replay:
    sign-in, failed uploads, finalizes and moves with their rollbacks, lost workers' publications,
    intake runs left for review, a direct publication, and paused publishing.
 
-Still waiting on a recording: the slab maintenance cycle.
+5. `scripts/parity/slab-cycle.mjs`: Node's slab maintenance cycle at a fixed time on a schema-only
+   database. Node's identity, inventory and evidence functions build a seller's listings (confirmed
+   slabs in USD and CAD, one listed two at a time, unconfirmed and ended ones, Alt sales evidence),
+   dumped with fixed times to `tests/fixtures/node/slab/cycle-seed.sql`. Recommendations are
+   calculated and one reviewed, then four cycles run: the first, every listing due again, the
+   evidence expired, and no seller due.
 
-The unit tests that replayed Node's answers from `.port-logs` (never committed) are being replaced
-by these runs, worker by worker. Those still waiting on theirs are marked
-`#[ignore = "... Node's run in .port-logs"]`.
+Every worker now has its Node recording committed; no test reads the uncommitted `.port-logs`.
+The recordings' Rust tests are `#[ignore]` only because they use the dev database, in a
+transaction rolled back.
