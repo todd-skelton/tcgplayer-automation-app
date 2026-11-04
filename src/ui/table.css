@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: table 33e3134bf4a19326 */
+/* corten ui 0.1.0: table 9a8ed74e51a5a45a */
 /* Positioned, so what a cell places absolutely (an icon button's hidden text) is inside the box that
    scrolls it, not past the page's edge. */
 .table { position: relative; width: 100%; overflow-x: auto; }
@@ -22,15 +22,15 @@
 [aria-sort="descending"] > .sorter > .arrow { opacity: 1; clip-path: polygon(0 0, 100% 0, 50% 100%); }
 /* Forced colors drop backgrounds: the arrow keeps the text's system color. */
 @media (forced-colors: active) { .arrow { forced-color-adjust: none; background: CanvasText; } }
-/* Stacked on a phone (the kit's 40rem): each row a block of its cells, one per line, a cell's label
-   in the first column and what follows it in the second, where text wraps and each element after
-   the label starts a line. A row header is a cell too. A cell with no label is a block. The
-   headers stay for a screen reader (the table keeps its roles in Chromium's accessibility tree),
-   drawn as a row only when they hold a link or button (a SortHeader), so a sortable table still
-   sorts by touch. A cell's label is hidden at other widths
-   and in a table that scrolls. */
+/* Stacked on a phone (below the theme's sm): each row a block of its cells, one per line, a
+   cell's label in the first column and what follows it in the second, where text wraps and each
+   element after the label starts a line. A row header is a cell too. A cell with no label is a
+   block. The headers stay for a screen reader (the table keeps its roles in Chromium's
+   accessibility tree), drawn as a row only when they hold a link or button (a SortHeader), so a
+   sortable table still sorts by touch. A cell's label is hidden at other widths and in a table
+   that scrolls. */
 .label { display: none; }
-@media (max-width: 40rem) {
+@media not (--sm) {
   .stacked > table, .stacked > table > :is(caption, thead, tbody, tfoot) { display: block; }
   .stacked > table > thead:not(:has(a, button)) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .stacked tr { display: grid; padding-block: .5rem; }

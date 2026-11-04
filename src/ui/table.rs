@@ -1,9 +1,9 @@
-// corten ui 0.1.0: table a377410de95e7427
+// corten ui 0.1.0: table 1e082b5823e47935
 //! A table's look, on the `<table>` written inside it: the rows, headers and caption stay the
 //! app's markup. `layout` is `TableLayout::Scroll` for a table that keeps its columns: the wrapper
 //! scrolls sideways when the table is wider than the page, so it is a box of its own.
 //! `TableLayout::Stack` is for a table read one row at a time (an account, an order): on a phone
-//! (40rem, as the kit's other parts), each row is a block of its cells, one per line, each led by
+//! (below the theme's `sm`), each row is a block of its cells, one per line, each led by
 //! its column's name from the `CellLabel` in it, with the rest of the cell beside it, where text
 //! wraps and each element starts a line (wrap text and an element in one `<span>` to keep them
 //! on one); a row header (`<th scope="row">`) is laid out the same, and a cell without a

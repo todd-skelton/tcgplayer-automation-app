@@ -31,7 +31,7 @@
   border-radius: var(--radius-sm);
 }
 /* On a phone two columns: the product line across both, the two numbers, then Skip and Add. */
-@media (max-width: 40rem) {
+@media not (--sm) {
   .add {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     & > :first-child {

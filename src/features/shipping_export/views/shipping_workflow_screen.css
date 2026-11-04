@@ -45,7 +45,7 @@
   min-width: 0;
 }
 /* On a phone the figures take the bar's width, a row under where the step stands. */
-@media (max-width: 40rem) {
+@media not (--sm) {
   .value {
     flex-basis: 100%;
     order: 1;

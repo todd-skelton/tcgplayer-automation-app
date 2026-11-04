@@ -9,7 +9,7 @@
     white-space: nowrap;
   }
   /* A phone is narrower than one figure with its comparisons, so a figure wraps there. */
-  @media (max-width: 40rem) {
+  @media not (--sm) {
     & > div {
       white-space: normal;
     }

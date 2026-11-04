@@ -1,4 +1,4 @@
-// corten ui 0.1.0: steps 4ae151eac68abd9a
+// corten ui 0.1.0: steps 01709c25322994df
 //! The steps of a workflow, in order: a `<nav>` named by `label` around the `<ol>` of them,
 //! which tells a screen reader which step each is (a `Timeline`, which is not for going
 //! anywhere, is the `<ol>` named by `label`, with no `<nav>`). A step is a link to its page (a GET, so it can
@@ -14,7 +14,8 @@
 //! named by the step's name alone.
 //!
 //! `layout` is `StepsLayout::Row` for the steps a user moves through (checkout): one row that
-//! wraps, where a description is a note that a narrow screen (under 40rem) reads and does not show.
+//! wraps, where a description is a note that a narrow screen (under the theme's `sm` breakpoint)
+//! reads and does not show.
 //! `StepsLayout::Timeline` is for what happened to something (a payout, an order): one step per row
 //! down the page, a line between the marks, and each description (a time, a reference, why it
 //! failed) shown beside its mark at every width.
@@ -53,8 +54,8 @@ pub enum StepState<'a> {
 /// How the steps are laid out.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StepsLayout {
-    /// One row that wraps, a description under its step's name from 40rem: a workflow the user
-    /// moves through.
+    /// One row that wraps, a description under its step's name from the theme's `sm` breakpoint:
+    /// a workflow the user moves through.
     Row,
     /// One step per row down the page, a description beside its mark at every width: what
     /// happened to something, in order.

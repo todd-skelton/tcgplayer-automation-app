@@ -98,9 +98,9 @@
     background: color-mix(in srgb, var(--primary) 10%, transparent);
   }
 }
-/* Wide only where the table keeps its columns: stacked on a phone (the kit's 40rem, written again
-   here, corten#747) the row is the page's width. */
-@media (width > 40rem) {
+/* Wide only where the table keeps its columns: stacked on a phone (below the theme's sm) the row is
+   the page's width. */
+@media (--sm) {
   .wide {
     min-width: 420px;
   }
