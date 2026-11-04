@@ -272,11 +272,14 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                                         hint="Delay between consecutive requests (auto-adjusted when adaptive is enabled)"
                                         error={e.message(r.request_delay_ms)}
                                     >
+                                        // No step: the adaptive limiter writes this delay (a floor of
+                                        // 250 is a delay of 250), and a step would keep the whole form
+                                        // from being sent until it was changed. React's form did not
+                                        // check.
                                         <input
                                             class={Input {}}
                                             type="number"
                                             min="0"
-                                            step="100"
                                             value={&row.request_delay_ms}
                                             {..e.control(r.request_delay_ms).hint()}
                                         >
@@ -349,11 +352,11 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                                             hint="Runtime-learned floor (ratchets up on rate limits, reset by setting to Min Request Delay)"
                                             error={e.message(r.learned_min_delay_ms)}
                                         >
+                                            // No step, as the request delay: the limiter writes it.
                                             <input
                                                 class={Input {}}
                                                 type="number"
                                                 min="0"
-                                                step="100"
                                                 value={&row.learned_min_delay_ms}
                                                 {..e.control(r.learned_min_delay_ms).hint()}
                                             >
