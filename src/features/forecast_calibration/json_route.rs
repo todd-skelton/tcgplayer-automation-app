@@ -68,7 +68,7 @@ mod tests {
             slab_providers: slab_connections::Transport::default(),
         })
         .router();
-        let request = corten::axum::http::Request::get("/api/pricing-config")
+        let request = corten::axum::http::Request::get("/api/validate-skus")
             .body(corten::axum::body::Body::empty())
             .unwrap();
         let answer = router.oneshot(request).await.unwrap();

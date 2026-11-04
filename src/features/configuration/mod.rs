@@ -31,6 +31,7 @@
 /// The stored pricing configuration, also read by the strategy (what changed between pricing runs).
 pub mod config;
 mod form;
+pub mod json_route;
 mod page;
 mod reports;
 mod views;
