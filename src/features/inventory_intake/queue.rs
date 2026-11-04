@@ -961,12 +961,19 @@ const RUNS: &str = r#"SELECT to_jsonb(run) FROM (SELECT r.batch_number AS "batch
       WHERE i.batch_number = r.batch_number AND i.quantity_delta > 0) p ON TRUE) run
     ORDER BY run."createdAt" DESC"#;
 
-/// The 25 newest runs as `findRecentInventoryIntakeRuns` answers them, in its JSON.
-pub async fn runs_json(db: impl sqlx::PgExecutor<'_>) -> sqlx::Result<Vec<Value>> {
-    sqlx::query_scalar(RUNS).fetch_all(db).await
+/// The 25 newest runs as `findRecentInventoryIntakeRuns` answers them, in its JSON. The screen
+/// reads them every 5 s; the planner's estimate of the per-run laterals is far over Postgres's JIT
+/// threshold, so with JIT the read took ~400 ms (all of it compiling) and without it ~1 ms on
+/// the dev database. JIT is off for this read alone.
+pub async fn runs_json(db: &sqlx::PgPool) -> sqlx::Result<Vec<Value>> {
+    let mut tx = db.begin().await?;
+    sqlx::query("SET LOCAL jit = off").execute(&mut *tx).await?;
+    let runs = sqlx::query_scalar(RUNS).fetch_all(&mut *tx).await?;
+    tx.commit().await?;
+    Ok(runs)
 }
 
-async fn runs(db: impl sqlx::PgExecutor<'_>) -> sqlx::Result<Vec<Run>> {
+async fn runs(db: &sqlx::PgPool) -> sqlx::Result<Vec<Run>> {
     runs_json(db)
         .await?
         .into_iter()
