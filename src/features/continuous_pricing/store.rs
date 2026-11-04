@@ -24,13 +24,14 @@ pub struct Settings {
     pub batch_size: i64,
 }
 
-/// Each number's range, as the Node app clamps it.
+/// Each number's allowed values, as the Node app clamps them: the input's `min`, `max` and
+/// `step`, and the check of what is sent and stored.
 pub mod range {
-    use std::ops::RangeInclusive;
-    pub const MINIMUM_INTERVAL: RangeInclusive<i64> = 15..=30 * 24 * 60;
-    pub const INVENTORY_REFRESH: RangeInclusive<i64> = 5..=7 * 24 * 60;
-    pub const SCHEDULER_POLL: RangeInclusive<i64> = 5..=60 * 60;
-    pub const BATCH_SIZE: RangeInclusive<i64> = 1..=750;
+    use corten::Bounds;
+    pub const MINIMUM_INTERVAL: Bounds<i64> = Bounds::new(15, 30 * 24 * 60);
+    pub const INVENTORY_REFRESH: Bounds<i64> = Bounds::new(5, 7 * 24 * 60);
+    pub const SCHEDULER_POLL: Bounds<i64> = Bounds::new(5, 60 * 60);
+    pub const BATCH_SIZE: Bounds<i64> = Bounds::new(1, 750);
 }
 
 impl Default for Settings {
@@ -50,11 +51,11 @@ impl Settings {
     /// The schedule in a stored `continuousPricing` document.
     pub fn of(stored: &Value) -> Settings {
         let d = Settings::default();
-        let whole = |key: &str, fallback: i64, range: std::ops::RangeInclusive<i64>| {
+        let whole = |key: &str, fallback: i64, range: corten::Bounds<i64>| {
             stored
                 .get(key)
                 .and_then(Value::as_i64)
-                .filter(|n| range.contains(n))
+                .filter(|n| range.holds(*n))
                 .unwrap_or(fallback)
         };
         Settings {

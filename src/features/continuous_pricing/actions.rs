@@ -116,14 +116,12 @@ impl ScheduleInput {
     pub fn read(&self, saved: &Settings) -> Result<Settings, Errors> {
         let f = Self::FIELDS;
         let mut errors = Errors::new();
-        let mut whole = |field, text: &str, range: std::ops::RangeInclusive<i64>| {
-            match html_number::whole(text) {
-                Some(n) if range.contains(&n) => n,
-                _ => {
-                    let (low, high) = range.into_inner();
-                    errors.add(field, format!("Enter a whole number from {low} to {high}."));
-                    low
-                }
+        let mut whole = |field, text: &str, range: Bounds<i64>| match html_number::whole(text) {
+            Some(n) if range.holds(n) => n,
+            _ => {
+                let (low, high) = (range.min(), range.max());
+                errors.add(field, format!("Enter a whole number from {low} to {high}."));
+                low
             }
         };
         let minimum_interval_minutes = whole(

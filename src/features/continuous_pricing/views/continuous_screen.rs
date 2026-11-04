@@ -143,8 +143,7 @@ pub fn ScheduleForm<'a>(
                         class={Input {}}
                         id={MinimumIntervalId}
                         type="number"
-                        min={range::MINIMUM_INTERVAL.start()}
-                        max={range::MINIMUM_INTERVAL.end()}
+                        {..range::MINIMUM_INTERVAL}
                         name={f.minimum_interval_minutes}
                         value={&input.minimum_interval_minutes}
                         {..e.aria(f.minimum_interval_minutes)}
@@ -160,8 +159,7 @@ pub fn ScheduleForm<'a>(
                         class={Input {}}
                         id={RefreshIntervalId}
                         type="number"
-                        min={range::INVENTORY_REFRESH.start()}
-                        max={range::INVENTORY_REFRESH.end()}
+                        {..range::INVENTORY_REFRESH}
                         name={f.inventory_refresh_minutes}
                         value={&input.inventory_refresh_minutes}
                         {..e.aria(f.inventory_refresh_minutes)}
@@ -172,8 +170,7 @@ pub fn ScheduleForm<'a>(
                         class={Input {}}
                         id={BatchSizeId}
                         type="number"
-                        min={range::BATCH_SIZE.start()}
-                        max={range::BATCH_SIZE.end()}
+                        {..range::BATCH_SIZE}
                         name={f.batch_size}
                         value={&input.batch_size}
                         {..e.aria(f.batch_size)}

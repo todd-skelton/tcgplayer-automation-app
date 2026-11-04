@@ -24,10 +24,10 @@ const RECENT_CHECKS: i64 = 25;
 /// What a seller's settings may be (`maintenanceSettings`): checked on save, and the panel's
 /// inputs take their bounds from them.
 pub mod range {
-    use std::ops::RangeInclusive;
-    pub const INTERVAL_MINUTES: RangeInclusive<i64> = 15..=1440;
-    pub const BATCH_SIZE: RangeInclusive<i64> = 1..=25;
-    pub const REFRESH_BUDGET: RangeInclusive<i64> = 1..=50;
+    use corten::Bounds;
+    pub const INTERVAL_MINUTES: Bounds<i64> = Bounds::new(15, 1440);
+    pub const BATCH_SIZE: Bounds<i64> = Bounds::new(1, 25);
+    pub const REFRESH_BUDGET: Bounds<i64> = Bounds::new(1, 50);
 }
 use range::{BATCH_SIZE, INTERVAL_MINUTES, REFRESH_BUDGET};
 
@@ -215,19 +215,19 @@ fn unavailable(error: sqlx::Error) -> String {
 
 /// The settings' numbers are in their ranges, or the refusal naming them.
 fn in_range(saved: &Saved<'_>) -> Result<(), String> {
-    let ok = INTERVAL_MINUTES.contains(&saved.interval_minutes)
-        && BATCH_SIZE.contains(&saved.batch_size)
-        && REFRESH_BUDGET.contains(&saved.refresh_budget)
+    let ok = INTERVAL_MINUTES.holds(saved.interval_minutes)
+        && BATCH_SIZE.holds(saved.batch_size)
+        && REFRESH_BUDGET.holds(saved.refresh_budget)
         && saved.revision >= 0;
     ok.then_some(()).ok_or_else(|| {
         format!(
             "Choose a {}–{} minute interval, {}–{} listings and {}–{} refresh jobs per cycle.",
-            INTERVAL_MINUTES.start(),
-            crate::text::Msg::default().number(*INTERVAL_MINUTES.end()),
-            BATCH_SIZE.start(),
-            BATCH_SIZE.end(),
-            REFRESH_BUDGET.start(),
-            REFRESH_BUDGET.end(),
+            INTERVAL_MINUTES.min(),
+            crate::text::Msg::default().number(INTERVAL_MINUTES.max()),
+            BATCH_SIZE.min(),
+            BATCH_SIZE.max(),
+            REFRESH_BUDGET.min(),
+            REFRESH_BUDGET.max(),
         )
     })
 }

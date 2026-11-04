@@ -72,14 +72,15 @@ impl Default for Settings {
     }
 }
 
-/// The ranges a setting must be in; the Node app reads one outside them as its default.
+/// The values a setting may have: the input's `min`, `max` and `step`, and the check of what is
+/// sent. The Node app reads a stored one outside its range as its default.
 pub mod range {
-    use std::ops::RangeInclusive;
+    use corten::Bounds;
 
-    pub const FAILURE_LIMIT: RangeInclusive<u32> = 1..=100;
-    pub const CANDIDATE_AGE_MINUTES: RangeInclusive<u32> = 1..=10_080;
-    pub const PRICE_CHANGE: RangeInclusive<f64> = 0.0..=10_000.0;
-    pub const MICRO_BATCH: RangeInclusive<u32> = 1..=750;
+    pub const FAILURE_LIMIT: Bounds<u32> = Bounds::new(1, 100);
+    pub const CANDIDATE_AGE_MINUTES: Bounds<u32> = Bounds::new(1, 10_080);
+    pub const PRICE_CHANGE: Bounds<f64> = Bounds::new(0.0, 10_000.0).step(0.01);
+    pub const MICRO_BATCH: Bounds<u32> = Bounds::new(1, 750);
 }
 
 impl Settings {
@@ -95,10 +96,10 @@ impl Settings {
                 .filter(|n| n.fract() == 0.0 && *n >= 0.0 && *n <= u64::MAX as f64)
                 .map(|n| n as u64)
         };
-        let whole = |value: &Value, range: std::ops::RangeInclusive<u32>, fallback: u32| {
+        let whole = |value: &Value, range: corten::Bounds<u32>, fallback: u32| {
             integer(value)
                 .and_then(|n| u32::try_from(n).ok())
-                .filter(|n| range.contains(n))
+                .filter(|n| range.holds(*n))
                 .unwrap_or(fallback)
         };
         let flag = |value: &Value, fallback: bool| value.as_bool().unwrap_or(fallback);
@@ -125,7 +126,8 @@ impl Settings {
             }),
             minimum_absolute_price_change: policy["minimumAbsolutePriceChange"]
                 .as_f64()
-                .filter(|n| range::PRICE_CHANGE.contains(n))
+                // Node checked only the range, not the cent step.
+                .filter(|n| (range::PRICE_CHANGE.min()..=range::PRICE_CHANGE.max()).contains(n))
                 .unwrap_or(d.minimum_absolute_price_change),
             staged_micro_batch_maximum: whole(
                 &policy["stagedMicroBatchMaximum"],

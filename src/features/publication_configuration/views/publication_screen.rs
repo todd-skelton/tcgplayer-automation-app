@@ -152,8 +152,7 @@ pub fn PublicationForm<'a>(
                                 class={Input {}}
                                 id={FailureLimitId}
                                 type="number"
-                                min={range::FAILURE_LIMIT.start()}
-                                max={range::FAILURE_LIMIT.end()}
+                                {..range::FAILURE_LIMIT}
                                 name={f.consecutive_failure_limit}
                                 value={&input.consecutive_failure_limit}
                                 {..e.aria(f.consecutive_failure_limit)}
@@ -169,9 +168,7 @@ pub fn PublicationForm<'a>(
                                 class={Input {}}
                                 id={MinimumPriceChangeId}
                                 type="number"
-                                min={range::PRICE_CHANGE.start()}
-                                max={range::PRICE_CHANGE.end()}
-                                step="0.01"
+                                {..range::PRICE_CHANGE}
                                 name={f.minimum_absolute_price_change}
                                 value={&input.minimum_absolute_price_change}
                                 {..e.aria(f.minimum_absolute_price_change)}
@@ -187,8 +184,7 @@ pub fn PublicationForm<'a>(
                                 class={Input {}}
                                 id={CandidateMaximumAgeId}
                                 type="number"
-                                min={range::CANDIDATE_AGE_MINUTES.start()}
-                                max={range::CANDIDATE_AGE_MINUTES.end()}
+                                {..range::CANDIDATE_AGE_MINUTES}
                                 name={f.maximum_candidate_age_minutes}
                                 value={&input.maximum_candidate_age_minutes}
                                 {..e.aria(f.maximum_candidate_age_minutes)}
@@ -204,8 +200,7 @@ pub fn PublicationForm<'a>(
                                 class={Input {}}
                                 id={StagedMicroBatchMaximumId}
                                 type="number"
-                                min={range::MICRO_BATCH.start()}
-                                max={range::MICRO_BATCH.end()}
+                                {..range::MICRO_BATCH}
                                 name={f.staged_micro_batch_maximum}
                                 value={&input.staged_micro_batch_maximum}
                                 {..e.aria(f.staged_micro_batch_maximum)}

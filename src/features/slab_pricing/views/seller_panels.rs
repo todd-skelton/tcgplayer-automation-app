@@ -121,9 +121,7 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                 class={Input {}}
                                 type="number"
                                 value={view.settings.interval_minutes}
-                                min={range::INTERVAL_MINUTES.start()}
-                                max={range::INTERVAL_MINUTES.end()}
-                                step="1"
+                                {..range::INTERVAL_MINUTES}
                                 required
                                 {..e.control(f.interval_minutes)}
                             >
@@ -133,9 +131,7 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                 class={Input {}}
                                 type="number"
                                 value={view.settings.batch_size}
-                                min={range::BATCH_SIZE.start()}
-                                max={range::BATCH_SIZE.end()}
-                                step="1"
+                                {..range::BATCH_SIZE}
                                 required
                                 {..e.control(f.batch_size)}
                             >
@@ -150,9 +146,7 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                                 class={Input {}}
                                 type="number"
                                 value={view.settings.refresh_budget}
-                                min={range::REFRESH_BUDGET.start()}
-                                max={range::REFRESH_BUDGET.end()}
-                                step="1"
+                                {..range::REFRESH_BUDGET}
                                 required
                                 {..e.control(f.refresh_budget)}
                             >

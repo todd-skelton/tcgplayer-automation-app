@@ -42,14 +42,14 @@ impl SettingsInput {
     pub fn read(&self) -> Result<Settings, Errors> {
         let f = Self::FIELDS;
         let mut errors = Errors::new();
-        let mut whole = |field, text: &str, range: std::ops::RangeInclusive<u32>| {
-            match html_number::whole(text).and_then(|n| u32::try_from(n).ok()) {
-                Some(n) if range.contains(&n) => n,
-                _ => {
-                    let (low, high) = range.into_inner();
-                    errors.add(field, format!("Enter a whole number from {low} to {high}."));
-                    low
-                }
+        let mut whole = |field, text: &str, range: Bounds<u32>| match html_number::whole(text)
+            .and_then(|n| u32::try_from(n).ok())
+        {
+            Some(n) if range.holds(n) => n,
+            _ => {
+                let (low, high) = (range.min(), range.max());
+                errors.add(field, format!("Enter a whole number from {low} to {high}."));
+                low
             }
         };
         let consecutive_failure_limit = whole(
@@ -69,11 +69,11 @@ impl SettingsInput {
         );
         let minimum_absolute_price_change =
             match self.minimum_absolute_price_change.trim().parse::<f64>() {
-                Ok(n) if range::PRICE_CHANGE.contains(&n) => n,
+                Ok(n) if range::PRICE_CHANGE.holds(n) => n,
                 _ => {
                     errors.add(
                         f.minimum_absolute_price_change,
-                        "Enter an amount from 0 to 10000 dollars.",
+                        "Enter an amount from 0 to 10000 dollars, in whole cents.",
                     );
                     0.0
                 }
