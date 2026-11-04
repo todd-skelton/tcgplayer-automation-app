@@ -82,7 +82,7 @@ const fourth = (await claimEvidenceJob())!;
 await failEvidenceJob(fourth, "weird-code", false);
 queue.push({ claimed: fourth.key });
 const [supplyStatus] = await evidenceStatuses(keys.slice(4));
-queue.push({ cancelled: (await cancelEvidenceRefresh(keys[4], supplyStatus.runId)).map((r: { key: string }) => r.key) });
+queue.push({ cancelled: (await cancelEvidenceRefresh(keys[4], supplyStatus.runId)).map((r) => String(r.key)) });
 queue.push(brief(await requestEvidence(specs.slice(0, 1) as never, { priority: 100 })));
 queue.push(brief(await requestEvidence(specs.slice(1, 2) as never, { priority: 100, force: true })));
 queue.push({ next: (await claimEvidenceJob())?.key ?? null });

@@ -119,8 +119,8 @@ for (const c of ebayCases) {
     release: async () => {},
   };
   const client = createEbayResearchProvider(
-    createProviderRequest(gate, async (url: string | URL) => {
-      const asked = new URL(String(url));
+    createProviderRequest(gate, async (url: string | URL | Request) => {
+      const asked = new URL(url instanceof Request ? url.url : String(url));
       path = asked.pathname + asked.search;
       return new Response(wire);
     }),

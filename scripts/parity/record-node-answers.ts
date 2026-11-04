@@ -13,7 +13,7 @@ if (process.env.WORKERS_RUN_IN_PROCESS !== "false") {
 }
 if (process.env.TZ !== "UTC") throw new Error("Set TZ=UTC, as the production containers run.");
 
-export {};
+import type { LoaderFunctionArgs } from "react-router";
 
 const { mkdirSync, writeFileSync } = await import("node:fs");
 const { query } = await import("~/core/db/database.server");
@@ -26,7 +26,7 @@ type Route = {
   module: () => Promise<{ loader?: Handler; action?: Handler }>;
   asks: () => Promise<Ask[]>;
 };
-type Handler = (args: { request: Request; params: Record<string, string> }) => Promise<unknown>;
+type Handler = (args: LoaderFunctionArgs) => Promise<unknown>;
 
 const sellerKey = (await getShippingExportConfig()).defaultSellerKey.trim();
 const sameSite = { origin: "http://localhost", "sec-fetch-site": "same-origin" };
@@ -327,7 +327,15 @@ for (const [name, route] of Object.entries(routes)) {
     });
     const handler = ask.post === undefined ? handlers.loader : handlers.action;
     if (!handler) throw new Error(`${name}: no ${ask.post === undefined ? "loader" : "action"}`);
-    const given = await answer(await handler({ request, params: params(route.pattern, ask.path) }));
+    const given = await answer(
+      await handler({
+        request,
+        params: params(route.pattern, ask.path),
+        url: new URL(request.url),
+        pattern: route.pattern,
+        context: {},
+      }),
+    );
     // A body read back through JSON, as the client read it: dates as text, undefined dropped.
     const body = scrub(JSON.parse(JSON.stringify(given.body)));
     recorded.push({
