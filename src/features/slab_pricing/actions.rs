@@ -26,6 +26,7 @@ use crate::{
         slab_connections::{DatabaseGate, Transport},
         slab_evidence::{alt::Alt, store as evidence},
     },
+    html_number,
 };
 
 #[derive(Debug, Default, Deserialize, Fields)]
@@ -549,16 +550,16 @@ pub async fn next_source_page(
     }
 }
 
-/// The seller's maintenance settings, at the revision the form was drawn from.
+/// The seller's maintenance settings as typed, at the revision the form was drawn from.
 #[derive(Debug, Default, Deserialize, Fields)]
 pub struct MaintenanceInput {
     #[serde(default)]
     pub enabled: bool,
     #[serde(default)]
     pub include_supply: bool,
-    pub interval_minutes: i64,
-    pub batch_size: i64,
-    pub refresh_budget: i64,
+    pub interval_minutes: String,
+    pub batch_size: String,
+    pub refresh_budget: String,
     pub revision: i64,
 }
 
@@ -570,13 +571,16 @@ pub async fn save_maintenance(
     Params(at): Params<url::SaveMaintenance>,
     Form(input): Form<MaintenanceInput>,
 ) -> HtmlResult {
+    // A number that does not read is below every range, so the save refuses it with the ranges,
+    // as Node refused one that was not an integer.
+    let number = |text: &str| html_number::whole(text).unwrap_or(-1);
     let settings = maintenance::Saved {
         seller: at.choice.seller.as_deref().unwrap_or(""),
         enabled: input.enabled,
         include_supply: input.include_supply,
-        interval_minutes: input.interval_minutes,
-        batch_size: input.batch_size,
-        refresh_budget: input.refresh_budget,
+        interval_minutes: number(&input.interval_minutes),
+        batch_size: number(&input.batch_size),
+        refresh_budget: number(&input.refresh_budget),
         revision: input.revision,
     };
     match maintenance::save(&db, &settings).await {
