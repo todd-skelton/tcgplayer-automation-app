@@ -50,7 +50,9 @@ use actions::{analysis, queue_analysis, refresh, save_turnaround, show};
 
 #[corten::routes(area = InventoryStrategy, state = crate::app::Shared)]
 pub mod url {
-    #[route("/inventory-strategy", get = show)]
+    /// Never prefetched: drawing it rebuilds and saves the reinvestment report, seconds of work
+    /// a hover over the nav would start (corten#798).
+    #[route("/inventory-strategy", get = show, prefetch = false)]
     pub struct InventoryStrategy {
         #[route(query)]
         pub view: View,
