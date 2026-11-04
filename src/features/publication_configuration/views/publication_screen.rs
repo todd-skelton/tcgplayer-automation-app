@@ -2,7 +2,7 @@ use corten::prelude::*;
 
 use crate::{
     features::publication_configuration::{
-        config::{Authentication, Runtime, Source},
+        config::{Authentication, Runtime, Source, range},
         form::SettingsInput,
         url,
     },
@@ -152,8 +152,8 @@ pub fn PublicationForm<'a>(
                                 class={Input {}}
                                 id={FailureLimitId}
                                 type="number"
-                                min="1"
-                                max="100"
+                                min={range::FAILURE_LIMIT.start()}
+                                max={range::FAILURE_LIMIT.end()}
                                 name={f.consecutive_failure_limit}
                                 value={&input.consecutive_failure_limit}
                                 {..e.aria(f.consecutive_failure_limit)}
@@ -169,7 +169,8 @@ pub fn PublicationForm<'a>(
                                 class={Input {}}
                                 id={MinimumPriceChangeId}
                                 type="number"
-                                min="0"
+                                min={range::PRICE_CHANGE.start()}
+                                max={range::PRICE_CHANGE.end()}
                                 step="0.01"
                                 name={f.minimum_absolute_price_change}
                                 value={&input.minimum_absolute_price_change}
@@ -186,8 +187,8 @@ pub fn PublicationForm<'a>(
                                 class={Input {}}
                                 id={CandidateMaximumAgeId}
                                 type="number"
-                                min="1"
-                                max="10080"
+                                min={range::CANDIDATE_AGE_MINUTES.start()}
+                                max={range::CANDIDATE_AGE_MINUTES.end()}
                                 name={f.maximum_candidate_age_minutes}
                                 value={&input.maximum_candidate_age_minutes}
                                 {..e.aria(f.maximum_candidate_age_minutes)}
@@ -203,8 +204,8 @@ pub fn PublicationForm<'a>(
                                 class={Input {}}
                                 id={StagedMicroBatchMaximumId}
                                 type="number"
-                                min="1"
-                                max="750"
+                                min={range::MICRO_BATCH.start()}
+                                max={range::MICRO_BATCH.end()}
                                 name={f.staged_micro_batch_maximum}
                                 value={&input.staged_micro_batch_maximum}
                                 {..e.aria(f.staged_micro_batch_maximum)}

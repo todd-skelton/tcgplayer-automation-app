@@ -6,7 +6,7 @@ use corten::{
 use crate::{
     features::continuous_pricing::{
         actions::{ScheduleInput, Screen, SkuInput},
-        store::{Item, PAGE_SIZE, RECENT_RUNS, Run, Shown},
+        store::{Item, PAGE_SIZE, RECENT_RUNS, Run, Shown, range},
         url::{self, View},
     },
     layout::SubmitsOnChange,
@@ -143,8 +143,8 @@ pub fn ScheduleForm<'a>(
                         class={Input {}}
                         id={MinimumIntervalId}
                         type="number"
-                        min="15"
-                        max="43200"
+                        min={range::MINIMUM_INTERVAL.start()}
+                        max={range::MINIMUM_INTERVAL.end()}
                         name={f.minimum_interval_minutes}
                         value={&input.minimum_interval_minutes}
                         {..e.aria(f.minimum_interval_minutes)}
@@ -160,8 +160,8 @@ pub fn ScheduleForm<'a>(
                         class={Input {}}
                         id={RefreshIntervalId}
                         type="number"
-                        min="5"
-                        max="10080"
+                        min={range::INVENTORY_REFRESH.start()}
+                        max={range::INVENTORY_REFRESH.end()}
                         name={f.inventory_refresh_minutes}
                         value={&input.inventory_refresh_minutes}
                         {..e.aria(f.inventory_refresh_minutes)}
@@ -172,8 +172,8 @@ pub fn ScheduleForm<'a>(
                         class={Input {}}
                         id={BatchSizeId}
                         type="number"
-                        min="1"
-                        max="750"
+                        min={range::BATCH_SIZE.start()}
+                        max={range::BATCH_SIZE.end()}
                         name={f.batch_size}
                         value={&input.batch_size}
                         {..e.aria(f.batch_size)}
