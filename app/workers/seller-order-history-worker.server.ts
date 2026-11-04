@@ -11,6 +11,12 @@ let stopping = false;
 let nextHistorySyncAt=0;
 
 async function run(): Promise<void> {
+  // SELLER_ORDER_HISTORY_WORKER hands the order sync, FIFO replay and cost estimates to the Corten
+  // app's worker (dev sets it in .env.development.local).
+  if (process.env.SELLER_ORDER_HISTORY_WORKER?.trim()) {
+    console.log("[seller-order-history-worker] off: SELLER_ORDER_HISTORY_WORKER is set");
+    return;
+  }
   console.log(`[seller-order-history-worker] starting pid=${process.pid}`);
   if (!inventoryHistoryWorkerEnabled()) {
     console.log("[seller-order-history-worker] synchronization and FIFO replay are paused by configuration");
