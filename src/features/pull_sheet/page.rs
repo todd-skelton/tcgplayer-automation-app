@@ -44,17 +44,30 @@ pub async fn upload(
     let f = UploadInput::FIELDS;
     upload.limit(MOST + (64 << 10));
     let mut errors = Errors::new();
-    let mut chosen = None;
-    while let Some(mut file) = upload.next_file().await? {
-        if file.is(f.file) {
-            let name = file.filename().to_string();
-            match file.bytes_up_to(MOST).await? {
-                Some(bytes) => chosen = Some((name, bytes)),
-                None => errors.add(f.file, "A pull sheet can be up to 20 MB."),
+    // A body past the limit fails whichever read meets it, so the reads are one block and a file
+    // too large is the form's message however far past the limit it is (corten#803).
+    let read = async move {
+        let (mut chosen, mut over) = (None, false);
+        while let Some(mut file) = upload.next_file().await? {
+            if file.is(f.file) {
+                let name = file.filename().to_string();
+                match file.bytes_up_to(MOST).await? {
+                    Some(bytes) => chosen = Some((name, bytes)),
+                    None => over = true,
+                }
             }
         }
-    }
-    upload.fields().await?;
+        upload.fields().await?;
+        Ok::<_, UploadError>((chosen, over))
+    };
+    let chosen = match read.await {
+        Ok((chosen, false)) => chosen,
+        Ok((_, true)) | Err(UploadError::TooLarge { .. }) => {
+            errors.add(f.file, "A pull sheet can be up to 20 MB.");
+            None
+        }
+        Err(other) => return Err(other.into()),
+    };
     let text = match &chosen {
         Some((_, bytes)) => String::from_utf8_lossy(bytes)
             .trim_start_matches('\u{feff}')

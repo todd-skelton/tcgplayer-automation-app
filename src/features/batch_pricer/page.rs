@@ -317,18 +317,31 @@ pub async fn import_csv(
     let f = CsvInput::FIELDS;
     upload.limit(MOST + (64 << 10));
     let mut errors = Errors::new();
-    let mut chosen = None;
-    while let Some(mut file) = upload.next_file().await? {
-        if file.is(f.file) {
-            let name = file.filename().to_string();
-            match file.bytes_up_to(MOST).await? {
-                Some(bytes) if !bytes.is_empty() => chosen = Some((name, bytes.to_vec())),
-                Some(_) => {}
-                None => errors.add(f.file, "A CSV export can be up to 20 MB."),
+    // A body past the limit fails whichever read meets it, so the reads are one block and a file
+    // too large is the form's message however far past the limit it is (corten#803).
+    let read = async move {
+        let (mut chosen, mut over) = (None, false);
+        while let Some(mut file) = upload.next_file().await? {
+            if file.is(f.file) {
+                let name = file.filename().to_string();
+                match file.bytes_up_to(MOST).await? {
+                    Some(bytes) if !bytes.is_empty() => chosen = Some((name, bytes.to_vec())),
+                    Some(_) => {}
+                    None => over = true,
+                }
             }
         }
-    }
-    upload.fields().await?;
+        upload.fields().await?;
+        Ok::<_, UploadError>((chosen, over))
+    };
+    let chosen = match read.await {
+        Ok((chosen, false)) => chosen,
+        Ok((_, true)) | Err(UploadError::TooLarge { .. }) => {
+            errors.add(f.file, "A CSV export can be up to 20 MB.");
+            None
+        }
+        Err(other) => return Err(other.into()),
+    };
     if let (Some((name, bytes)), true) = (chosen, errors.is_empty()) {
         match import::csv(&db, &name, &bytes).await {
             Ok(batch) => return req.redirect(&url::BatchPricer::batch(batch)),

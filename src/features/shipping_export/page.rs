@@ -627,20 +627,29 @@ pub async fn import_history(
     const MOST_HISTORY: usize = file_import::MOST_BYTES;
     let f = HistoryInput::FIELDS;
     upload.limit(MOST_HISTORY + (64 << 10));
-    let mut chosen = None;
-    let mut problem = None;
-    while let Some(mut file) = upload.next_file().await? {
-        if file.is(f.file) {
-            let name = file.filename().to_string();
-            match file.bytes_up_to(MOST_HISTORY).await? {
-                Some(bytes) if !bytes.is_empty() => chosen = Some((name, bytes)),
-                Some(_) => {}
-                None => problem = Some("Seller order CSV exceeds the 5 MB limit.".to_owned()),
+    const TOO_LARGE: &str = "Seller order CSV exceeds the 5 MB limit.";
+    // A body past the limit fails whichever read meets it, so the reads are one block and a file
+    // too large is the step's message however far past the limit it is (corten#803).
+    let read = async move {
+        let (mut chosen, mut problem) = (None, None);
+        while let Some(mut file) = upload.next_file().await? {
+            if file.is(f.file) {
+                let name = file.filename().to_string();
+                match file.bytes_up_to(MOST_HISTORY).await? {
+                    Some(bytes) if !bytes.is_empty() => chosen = Some((name, bytes)),
+                    Some(_) => {}
+                    None => problem = Some(TOO_LARGE.to_owned()),
+                }
             }
         }
-    }
-    let fields = upload.fields().await?;
-    let seller = fields.seller_key.trim().to_owned();
+        let fields = upload.fields().await?;
+        Ok::<_, UploadError>((chosen, problem, fields.seller_key.trim().to_owned()))
+    };
+    let (chosen, problem, seller) = match read.await {
+        Ok(read) => read,
+        Err(UploadError::TooLarge { .. }) => (None, Some(TOO_LARGE.to_owned()), String::new()),
+        Err(other) => return Err(other.into()),
+    };
     let done = match (problem, chosen) {
         (Some(why), _) => Err(why),
         (None, None) => Err("A seller order CSV file is required.".to_owned()),
