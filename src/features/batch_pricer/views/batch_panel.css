@@ -10,7 +10,6 @@
   flex-wrap: wrap;
   gap: var(--space-3);
   align-items: center;
-  margin-bottom: var(--space-3);
 }
 /* The timeline's line between its dates takes the color of how far the batch got. */
 .ok {

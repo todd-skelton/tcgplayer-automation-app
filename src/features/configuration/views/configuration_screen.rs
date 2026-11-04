@@ -78,9 +78,9 @@ pub fn ConfigurationScreen<'a>(
     supply: Section<'a, SupplyInput>,
 ) -> impl Render {
     html! {
-        <section>
+        <section class={ConfigurationScreen}>
             <h1>"Configuration Settings"</h1>
-            <p class={(muted(), mb_4())}>
+            <p class={muted()}>
                 "Pricing, supply analysis, and product line settings are saved to the server so background pricing jobs use the same configuration."
             </p>
             if auth_cookie_missing {
@@ -104,7 +104,7 @@ pub fn ConfigurationScreen<'a>(
                 </p>
                 <details>
                     <summary>"Reset to Defaults"</summary>
-                    <form method="post" action={url::ResetConfiguration}>
+                    <form method="post" action={url::ResetConfiguration} class={ResetForm}>
                         <Alert variant={AlertVariant::Warning}>
                             "This resets every setting on this page. It cannot be undone."
                         </Alert>

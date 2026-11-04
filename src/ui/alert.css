@@ -6,9 +6,6 @@
 .alert > :is(h2, h3, h4, h5, h6, strong) { margin: 0; font-size: inherit; font-weight: 500; line-height: 1.25rem; }
 .alert > p { margin: 0; }
 .alert > :is(ol, ul) { margin: .25rem 0 0; padding-inline-start: 1.25rem; }
-/* The app's screens flow top to bottom without a stack of their own, so an alert keeps the room
-   below it that the React app's notices had. */
-.alert:not(:last-child) { margin-block-end: var(--space-4); }
 .neutral { background: var(--card); color: var(--card-foreground); }
 .neutral > p { color: var(--muted-foreground); }
 .destructive { background: var(--card); color: var(--destructive); border-color: color-mix(in oklab, var(--destructive) 50%, var(--border)); }

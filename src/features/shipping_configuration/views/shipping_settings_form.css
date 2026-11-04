@@ -1,6 +1,12 @@
+/* The screen spaces its parts: the heading, its notices and the settings panel. */
 .screen {
+  display: grid;
+  gap: var(--space-4);
   max-width: 1000px;
   margin-inline: auto;
+  & > * {
+    margin-block: 0;
+  }
 }
 .settings {
   display: grid;

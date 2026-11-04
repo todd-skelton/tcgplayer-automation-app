@@ -19,7 +19,13 @@
   font-size: 1.25rem;
   text-decoration: none;
 }
+/* A step's parts (a notice, then its list) a gap apart, in one column no wider than the panel so a
+   wide table scrolls inside it. */
 .step-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
   min-height: 12rem;
 }
 .step-bar {

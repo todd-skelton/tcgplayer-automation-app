@@ -31,7 +31,7 @@ pub fn ShippingScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
     html! {
         <section class={Screen}>
             <h1>"Shipping Configuration"</h1>
-            <p class={(muted(), mb_4())}>
+            <p class={muted()}>
                 "Manage the saved shipping settings used by the EasyPost shipping export workflow. Save a default seller key for live TCGPlayer order loading, then build or rebuild shipments from the export page."
             </p>
             <Alert variant={AlertVariant::Info}>

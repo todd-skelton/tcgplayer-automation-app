@@ -99,7 +99,7 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
             <section class={(CardPanel {}, CardCompact {})}>
                 <SummaryCard batch={batch} t={t} />
             </section>
-            <section class={(CardPanel {}, CardCompact {})}>
+            <section class={(CardPanel {}, CardCompact {}, display_grid(), gap_3())}>
                 <h2>"Actions"</h2>
                 <div class={Actions}>
                     <form

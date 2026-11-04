@@ -12,7 +12,16 @@
   border-radius: 0;
   & header {
     justify-content: space-between;
-    margin-bottom: var(--space-2);
+  }
+}
+/* Open, the drawer spaces its parts: the heading, the note, a notice and the list. Only while open,
+   so a closed popover stays hidden. */
+.drawer:popover-open {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  & > * {
+    margin-block: 0;
   }
 }
 .runs {
