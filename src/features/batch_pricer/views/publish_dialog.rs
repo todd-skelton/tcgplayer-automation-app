@@ -6,7 +6,7 @@ use crate::{
         page::PublishInput,
         url,
     },
-    text::Msg,
+    text::{Msg, msg},
     theme::*,
     ui::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
@@ -67,7 +67,7 @@ pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> 
                     role="status"
                 >
                     <span ref={note}>
-                        {t.batch_pricer_selected(count, format!("{delta:+}"))}
+                        {t.batch_pricer_selected(msg::BatchPricerSelected { count, delta: format!("{delta:+}") })}
                     </span>
                     " Inventory changes are selected by default so the published quantity matches the batch. Price-only batches default to the 20 smallest price changes."
                 </p>

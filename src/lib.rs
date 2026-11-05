@@ -10,7 +10,6 @@ mod csv_text;
 mod database;
 mod features;
 mod glyphs;
-mod html_number;
 mod js_math;
 mod js_number;
 mod layout;

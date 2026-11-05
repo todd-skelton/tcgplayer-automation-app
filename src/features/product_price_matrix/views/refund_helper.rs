@@ -4,7 +4,7 @@ use super::matrix_table::{ConditionNotes, Usd, cents};
 use crate::{
     features::product_price_matrix::matrix::{self, Cell, Matrix, Refund},
     layout::Notice,
-    text::Msg,
+    text::{Msg, msg},
     ui::{
         alert::AlertVariant,
         control_width::{ControlWidth, Width},
@@ -261,17 +261,25 @@ pub fn RefundHelper<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
                         class={Muted}
                         hidden={by_sell_at.as_ref().is_some_and(|r| r.refund == 0.0)}
                     >
-                        {t.price_matrix_keeps(usd(t, by_sell_at.as_ref().map(|r| r.net)), received_name)}
+                        {t.price_matrix_keeps(msg::PriceMatrixKeeps {
+                            net: usd(t, by_sell_at.as_ref().map(|r| r.net)),
+                            condition: received_name,
+                        })}
                     </p>
                     <p
                         ref={no_loss}
                         class={Caution}
                         hidden={!by_sell_at.as_ref().is_some_and(|r| r.refund == 0.0)}
                     >
-                        {t.price_matrix_no_loss(received_name, usd(t, d.paid))}
+                        {t.price_matrix_no_loss(msg::PriceMatrixNoLoss { condition: received_name, paid: usd(t, d.paid) })}
                     </p>
                     <p ref={sells} class={Muted}>
-                        {t.price_matrix_sells(received_name, usd(t, received_cell.and_then(|c| c.ladder_price)), usd(t, d.sold.and_then(|c| c.ladder_price)), sold_name)}
+                        {t.price_matrix_sells(msg::PriceMatrixSells {
+                            received: received_name,
+                            received_price: usd(t, received_cell.and_then(|c| c.ladder_price)),
+                            sold_price: usd(t, d.sold.and_then(|c| c.ladder_price)),
+                            sold: sold_name,
+                        })}
                     </p>
                 </div>
                 <div>
@@ -280,13 +288,13 @@ pub fn RefundHelper<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
                         <Usd value={by_market.as_ref().map(|r| r.refund)} t={t} />
                     </strong>
                     <p ref={versus} class={Muted} hidden={by_market.is_none()}>
-                        {t.price_matrix_versus(
-                            signed(t, by_market.as_ref().map_or(0.0, |m| m.refund) - by_sell_at.as_ref().map_or(0.0, |r| r.refund)),
-                            received_name,
-                            usd(t, received_cell.and_then(|c| c.market_ladder_price)),
-                            sold_name,
-                            usd(t, d.sold.and_then(|c| c.market_ladder_price)),
-                        )}
+                        {t.price_matrix_versus(msg::PriceMatrixVersus {
+                            difference: signed(t, by_market.as_ref().map_or(0.0, |m| m.refund) - by_sell_at.as_ref().map_or(0.0, |r| r.refund)),
+                            received: received_name,
+                            received_price: usd(t, received_cell.and_then(|c| c.market_ladder_price)),
+                            sold: sold_name,
+                            sold_price: usd(t, d.sold.and_then(|c| c.market_ladder_price)),
+                        })}
                     </p>
                     <p ref={no_market} class={Muted} hidden={by_market.is_some()}>
                         "One of the conditions has no market price."
@@ -300,7 +308,7 @@ pub fn RefundHelper<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
                     <p ref={relist_note} class={Muted}>
                         match modeled_days {
                             Some(days) => {
-                                {t.price_matrix_relist_eta(received_name, matrix::days(Some(days)))}
+                                {t.price_matrix_relist_eta(msg::PriceMatrixRelistEta { condition: received_name, days: matrix::days(Some(days)) })}
                             }
                             None => { {t.price_matrix_relist(received_name)} }
                         }

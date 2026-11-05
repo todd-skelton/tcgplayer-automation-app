@@ -4,22 +4,21 @@ use corten::prelude::*;
 use serde::Deserialize;
 
 use super::config::{Settings, Source, range};
-use crate::html_number;
 
 #[derive(Clone, Debug, Default, Deserialize, Fields)]
 pub struct SettingsInput {
     #[serde(default)]
     pub global_paused: bool,
-    pub consecutive_failure_limit: String,
+    pub consecutive_failure_limit: Entry<u32>,
     #[serde(default)]
     pub automatic_publishing_enabled: bool,
     #[serde(default)]
     pub automatic_sources: Vec<Source>,
     #[serde(default)]
     pub allow_warnings: bool,
-    pub minimum_absolute_price_change: String,
-    pub maximum_candidate_age_minutes: String,
-    pub staged_micro_batch_maximum: String,
+    pub minimum_absolute_price_change: Entry<f64>,
+    pub maximum_candidate_age_minutes: Entry<u32>,
+    pub staged_micro_batch_maximum: Entry<u32>,
 }
 
 impl SettingsInput {
@@ -27,13 +26,13 @@ impl SettingsInput {
     pub fn of(settings: &Settings) -> Self {
         SettingsInput {
             global_paused: settings.global_paused,
-            consecutive_failure_limit: settings.consecutive_failure_limit.to_string(),
+            consecutive_failure_limit: settings.consecutive_failure_limit.into(),
             automatic_publishing_enabled: settings.automatic_publishing_enabled,
             automatic_sources: settings.automatic_sources.clone(),
             allow_warnings: settings.allow_warnings,
-            minimum_absolute_price_change: settings.minimum_absolute_price_change.to_string(),
-            maximum_candidate_age_minutes: settings.maximum_candidate_age_minutes.to_string(),
-            staged_micro_batch_maximum: settings.staged_micro_batch_maximum.to_string(),
+            minimum_absolute_price_change: settings.minimum_absolute_price_change.into(),
+            maximum_candidate_age_minutes: settings.maximum_candidate_age_minutes.into(),
+            staged_micro_batch_maximum: settings.staged_micro_batch_maximum.into(),
         }
     }
 
@@ -42,11 +41,9 @@ impl SettingsInput {
     pub fn read(&self) -> Result<Settings, Errors> {
         let f = Self::FIELDS;
         let mut errors = Errors::new();
-        let mut whole = |field, text: &str, range: Bounds<u32>| match html_number::whole(text)
-            .and_then(|n| u32::try_from(n).ok())
-        {
-            Some(n) if range.holds(n) => n,
-            _ => {
+        let mut whole = |field, entry: &Entry<u32>, range: Bounds<u32>| match range.read(entry) {
+            Some(n) => n,
+            None => {
                 let (low, high) = (range.min(), range.max());
                 errors.add(field, format!("Enter a whole number from {low} to {high}."));
                 low
@@ -68,9 +65,9 @@ impl SettingsInput {
             range::MICRO_BATCH,
         );
         let minimum_absolute_price_change =
-            match self.minimum_absolute_price_change.trim().parse::<f64>() {
-                Ok(n) if range::PRICE_CHANGE.holds(n) => n,
-                _ => {
+            match range::PRICE_CHANGE.read(&self.minimum_absolute_price_change) {
+                Some(n) => n,
+                None => {
                     errors.add(
                         f.minimum_absolute_price_change,
                         "Enter an amount from 0 to 10000 dollars, in whole cents.",
@@ -116,8 +113,8 @@ mod tests {
     #[test]
     fn a_number_out_of_range_is_named() {
         let input = SettingsInput {
-            staged_micro_batch_maximum: "751".into(),
-            minimum_absolute_price_change: "-1".into(),
+            staged_micro_batch_maximum: Entry::typed("751"),
+            minimum_absolute_price_change: Entry::typed("-1"),
             ..SettingsInput::of(&Settings::default())
         };
         let errors = input.read().unwrap_err();

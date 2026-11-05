@@ -7,30 +7,29 @@ use corten::prelude::*;
 use serde::Deserialize;
 
 use super::config::{Adaptive, Domain, HttpConfig, Limits};
-use crate::html_number;
 
 #[derive(Clone, Debug, Default, Deserialize, Fields)]
 pub struct SettingsInput {
     pub tcg_auth_cookie: String,
     pub user_agent: String,
-    pub increase_multiplier: String,
-    pub floor_step_ms: String,
-    pub decrease_amount_ms: String,
-    pub success_threshold: String,
+    pub increase_multiplier: Entry<f64>,
+    pub floor_step_ms: Entry<u32>,
+    pub decrease_amount_ms: Entry<u32>,
+    pub success_threshold: Entry<u32>,
     #[fields(rows)]
     #[serde(default)]
     pub domains: BTreeMap<Domain, DomainInput>,
 }
 
-/// One domain's inputs, as text: what they show.
+/// One domain's inputs, as typed: what they show.
 #[derive(Clone, Debug, Default, Deserialize, Fields)]
 pub struct DomainInput {
-    pub request_delay_ms: String,
-    pub rate_limit_cooldown_ms: String,
-    pub max_concurrent_requests: String,
-    pub min_request_delay_ms: String,
-    pub max_request_delay_ms: String,
-    pub learned_min_delay_ms: String,
+    pub request_delay_ms: Entry<u32>,
+    pub rate_limit_cooldown_ms: Entry<u32>,
+    pub max_concurrent_requests: Entry<u32>,
+    pub min_request_delay_ms: Entry<u32>,
+    pub max_request_delay_ms: Entry<u32>,
+    pub learned_min_delay_ms: Entry<u32>,
     #[serde(default)]
     pub adaptive: bool,
 }
@@ -38,12 +37,12 @@ pub struct DomainInput {
 impl DomainInput {
     fn of(limits: &Limits) -> Self {
         DomainInput {
-            request_delay_ms: limits.request_delay_ms.to_string(),
-            rate_limit_cooldown_ms: limits.rate_limit_cooldown_ms.to_string(),
-            max_concurrent_requests: limits.max_concurrent_requests.to_string(),
-            min_request_delay_ms: limits.min_request_delay_ms.to_string(),
-            max_request_delay_ms: limits.max_request_delay_ms.to_string(),
-            learned_min_delay_ms: limits.learned_min_delay_ms.to_string(),
+            request_delay_ms: limits.request_delay_ms.into(),
+            rate_limit_cooldown_ms: limits.rate_limit_cooldown_ms.into(),
+            max_concurrent_requests: limits.max_concurrent_requests.into(),
+            min_request_delay_ms: limits.min_request_delay_ms.into(),
+            max_request_delay_ms: limits.max_request_delay_ms.into(),
+            learned_min_delay_ms: limits.learned_min_delay_ms.into(),
             adaptive: limits.adaptive_enabled,
         }
     }
@@ -52,12 +51,12 @@ impl DomainInput {
 /// A whole number of at least `least`, or the field's error and 0.
 fn whole_number<P: corten::form::Place>(
     errors: &mut Errors,
-    field: FieldName<String, P>,
-    text: &str,
+    field: FieldName<Entry<u32>, P>,
+    entry: &Entry<u32>,
     what: &str,
     least: u32,
 ) -> u32 {
-    match html_number::whole(text).and_then(|n| u32::try_from(n).ok()) {
+    match entry.value() {
         Some(n) if n >= least => n,
         _ => {
             errors.add(
@@ -75,10 +74,10 @@ impl SettingsInput {
         SettingsInput {
             tcg_auth_cookie: config.tcg_auth_cookie.clone(),
             user_agent: config.user_agent.clone(),
-            increase_multiplier: config.adaptive.increase_multiplier.to_string(),
-            floor_step_ms: config.adaptive.floor_step_ms.to_string(),
-            decrease_amount_ms: config.adaptive.decrease_amount_ms.to_string(),
-            success_threshold: config.adaptive.success_threshold.to_string(),
+            increase_multiplier: config.adaptive.increase_multiplier.into(),
+            floor_step_ms: config.adaptive.floor_step_ms.into(),
+            decrease_amount_ms: config.adaptive.decrease_amount_ms.into(),
+            success_threshold: config.adaptive.success_threshold.into(),
             domains: config
                 .domains
                 .iter()
@@ -91,8 +90,8 @@ impl SettingsInput {
     pub fn read(&self) -> Result<HttpConfig, Errors> {
         let f = Self::FIELDS;
         let mut errors = Errors::new();
-        let mut whole = |field, text: &str, what: &str, least: u32| {
-            whole_number(&mut errors, field, text, what, least)
+        let mut whole = |field, entry: &Entry<u32>, what: &str, least: u32| {
+            whole_number(&mut errors, field, entry, what, least)
         };
         let adaptive = Adaptive {
             increase_multiplier: 0.0,
@@ -113,8 +112,8 @@ impl SettingsInput {
         let mut domains = Domain::ALL.map(|d| (d, d.default_limits()));
         for (domain, row) in &self.domains {
             let r = f.domains.at(domain);
-            let mut whole = |field, text: &str, what: &str, least: u32| {
-                whole_number(&mut errors, field, text, what, least)
+            let mut whole = |field, entry: &Entry<u32>, what: &str, least: u32| {
+                whole_number(&mut errors, field, entry, what, least)
             };
             let limits = Limits {
                 request_delay_ms: whole(
@@ -159,8 +158,8 @@ impl SettingsInput {
                 slot.1 = limits;
             }
         }
-        let increase_multiplier = match self.increase_multiplier.trim().parse::<f64>() {
-            Ok(x) if (1.1..=5.0).contains(&x) => x,
+        let increase_multiplier = match self.increase_multiplier.value() {
+            Some(x) if (1.1..=5.0).contains(&x) => x,
             _ => {
                 errors.add(
                     f.increase_multiplier,
@@ -222,7 +221,7 @@ mod tests {
             .domains
             .get_mut(&Domain::SellerPortal)
             .unwrap()
-            .max_concurrent_requests = "0".into();
+            .max_concurrent_requests = Entry::typed("0");
         let errors = input.read().unwrap_err();
         let rows = SettingsInput::FIELDS.domains;
         assert_eq!(
@@ -242,8 +241,8 @@ mod tests {
         let input: SettingsInput = corten::form::from_bytes(body.as_bytes()).unwrap();
         let row = &input.domains[&Domain::SellerPortal];
         assert_eq!(
-            (row.request_delay_ms.as_str(), row.adaptive),
-            ("2500", false)
+            (row.request_delay_ms.text(), row.adaptive),
+            (Some("2500"), false)
         );
         assert_eq!(input.domains.len(), 1);
     }

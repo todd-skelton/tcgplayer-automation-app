@@ -26,7 +26,6 @@ use crate::{
         slab_connections::{DatabaseGate, Transport},
         slab_evidence::{alt::Alt, store as evidence},
     },
-    html_number,
 };
 
 #[derive(Debug, Default, Deserialize, Fields)]
@@ -557,9 +556,9 @@ pub struct MaintenanceInput {
     pub enabled: bool,
     #[serde(default)]
     pub include_supply: bool,
-    pub interval_minutes: String,
-    pub batch_size: String,
-    pub refresh_budget: String,
+    pub interval_minutes: Entry<i64>,
+    pub batch_size: Entry<i64>,
+    pub refresh_budget: Entry<i64>,
     pub revision: i64,
 }
 
@@ -572,8 +571,8 @@ pub async fn save_maintenance(
     Form(input): Form<MaintenanceInput>,
 ) -> HtmlResult {
     // A number that does not read is below every range, so the save refuses it with the ranges,
-    // as Node refused one that was not an integer. Text, not i64, so it reaches here (corten#846).
-    let number = |text: &str| html_number::whole(text).unwrap_or(-1);
+    // as Node refused one that was not an integer.
+    let number = |entry: &Entry<i64>| entry.value().unwrap_or(-1);
     let settings = maintenance::Saved {
         seller: at.choice.seller.as_deref().unwrap_or(""),
         enabled: input.enabled,

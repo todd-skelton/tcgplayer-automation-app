@@ -12,8 +12,8 @@ use super::{
     views::{ContinuousScreen, Did, Problem, ScheduleForm},
 };
 use crate::{
-    database::Database, features::batch_pricing::market::TcgPlayerMarket, html_number,
-    layout::Layout, tcgplayer::TcgPlayer, text::Msg,
+    database::Database, features::batch_pricing::market::TcgPlayerMarket, layout::Layout,
+    tcgplayer::TcgPlayer, text::Msg,
 };
 
 /// Everything the page shows.
@@ -84,9 +84,9 @@ pub struct ScheduleInput {
     pub enabled: bool,
     #[serde(default)]
     pub seller_key: String,
-    pub minimum_interval_minutes: String,
-    pub inventory_refresh_minutes: String,
-    pub batch_size: String,
+    pub minimum_interval_minutes: Entry<i64>,
+    pub inventory_refresh_minutes: Entry<i64>,
+    pub batch_size: Entry<i64>,
 }
 
 impl ScheduleInput {
@@ -94,9 +94,9 @@ impl ScheduleInput {
         ScheduleInput {
             enabled: settings.enabled,
             seller_key: settings.seller_key.clone(),
-            minimum_interval_minutes: settings.minimum_interval_minutes.to_string(),
-            inventory_refresh_minutes: settings.inventory_refresh_minutes.to_string(),
-            batch_size: settings.batch_size.to_string(),
+            minimum_interval_minutes: settings.minimum_interval_minutes.into(),
+            inventory_refresh_minutes: settings.inventory_refresh_minutes.into(),
+            batch_size: settings.batch_size.into(),
         }
     }
 
@@ -105,9 +105,9 @@ impl ScheduleInput {
     pub fn read(&self, saved: &Settings) -> Result<Settings, Errors> {
         let f = Self::FIELDS;
         let mut errors = Errors::new();
-        let mut whole = |field, text: &str, range: Bounds<i64>| match html_number::whole(text) {
-            Some(n) if range.holds(n) => n,
-            _ => {
+        let mut whole = |field, entry: &Entry<i64>, range: Bounds<i64>| match range.read(entry) {
+            Some(n) => n,
+            None => {
                 let (low, high) = (range.min(), range.max());
                 errors.add(field, format!("Enter a whole number from {low} to {high}."));
                 low
@@ -351,7 +351,7 @@ mod tests {
         let input = ScheduleInput {
             enabled: true,
             seller_key: "  ".into(),
-            batch_size: "751".into(),
+            batch_size: Entry::typed("751"),
             ..ScheduleInput::of(&Settings::default())
         };
         let errors = input.read(&Settings::default()).unwrap_err();
