@@ -21,7 +21,7 @@ use crate::{
         forecast_calibration::{self, Calibration, DEFAULT_WINDOW_DAYS, WINDOW_DAYS},
         shipping_thresholds::report::{self as shipping_report, ShippingReport},
     },
-    layout::{Chrome, Layout},
+    layout::Layout,
 };
 
 /// Every product line, by name: the picker's choices and the table's names.
@@ -50,7 +50,6 @@ struct Answered {
 async fn page(req: &Req, db: &Database, answered: Answered) -> HtmlResult {
     let config = config::load(db).await?;
     let names = product_lines(db).await?;
-    let chrome = Chrome::read(req, db).await;
     let none = Errors::new();
     let pricing = answered
         .pricing
@@ -70,18 +69,22 @@ async fn page(req: &Req, db: &Database, answered: Answered) -> HtmlResult {
         evidence_days: config.snaps.evidence_window_days,
         hurdle: hurdle(&config),
     };
-    req.page(html! {
-        <Layout req={req} title="Configuration" chrome={chrome} head="">
-            <ConfigurationScreen
-                auth_cookie_missing={chrome.auth_cookie_missing}
-                pricing={Section { input: &pricing.0, errors: &pricing.1, saved: false }}
-                lines={lines(&config, &names, &default.0, &add.0, line_errors, answered.said)}
-                snaps={Section { input: &snaps.0, errors: &snaps.1, saved: false }}
-                reports={&reports}
-                supply={Section { input: &supply, errors: &none, saved: answered.supply }}
-            />
-        </Layout>
-    })
+    // The screen says so too, so it reads the cookie and gives the app bar the same answer.
+    let missing = crate::layout::auth_cookie_missing(db).await;
+    Ok(req
+        .page(html! {
+            <Layout req={req} title="Configuration" head="">
+                <ConfigurationScreen
+                    auth_cookie_missing={missing}
+                    pricing={Section { input: &pricing.0, errors: &pricing.1, saved: false }}
+                    lines={lines(&config, &names, &default.0, &add.0, line_errors, answered.said)}
+                    snaps={Section { input: &snaps.0, errors: &snaps.1, saved: false }}
+                    reports={&reports}
+                    supply={Section { input: &supply, errors: &none, saved: answered.supply }}
+                />
+            </Layout>
+        })?
+        .give::<crate::layout::AuthCookieMissing>(missing))
 }
 
 /// A report read for this request, or the stream's to send.

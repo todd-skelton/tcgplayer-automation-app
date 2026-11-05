@@ -30,7 +30,7 @@ use crate::{
         seller_order_history::file_import,
         shipping_configuration::{self, EasyPostMode, ShippingConfig},
     },
-    layout::{Chrome, Layout},
+    layout::Layout,
     text::Msg,
 };
 
@@ -320,7 +320,7 @@ pub(super) async fn page(
     problem: Option<&str>,
     draft: Option<Draft<'_>>,
 ) -> HtmlResult {
-    let (chrome, shown) = tokio::join!(Chrome::read(req, db), Shown::read(db));
+    let shown = Shown::read(db).await;
     let shown = shown?;
     let counts = shown.counts();
     let step = at.step.unwrap_or_else(|| shown.resume(counts));
@@ -427,7 +427,7 @@ pub(super) async fn page(
             None => stored.as_ref().map(|input| (reference, input, &no_errors)),
         });
     req.page(html! {
-        <Layout req={req} title="Shipping Workflow" chrome={chrome} head="">
+        <Layout req={req} title="Shipping Workflow" head="">
             <ShippingWorkflowScreen
                 step={step}
                 mode={mode}

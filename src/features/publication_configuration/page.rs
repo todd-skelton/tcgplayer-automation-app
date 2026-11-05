@@ -6,27 +6,22 @@ use super::{
     url,
     views::{PublicationForm, PublicationScreen},
 };
-use crate::{
-    database::Database,
-    layout::{Chrome, Layout},
-};
+use crate::{database::Database, layout::Layout};
 
 pub async fn show(req: Req, State(db): State<Database>) -> HtmlResult {
     let (settings, runtime) = config::load(&db).await?;
     let input = SettingsInput::of(&settings);
-    screen(&req, &db, &input, &runtime, &Errors::new()).await
+    screen(&req, &input, &runtime, &Errors::new()).await
 }
 
 async fn screen(
     req: &Req,
-    db: &Database,
     input: &SettingsInput,
     runtime: &Runtime,
     errors: &Errors,
 ) -> HtmlResult {
-    let chrome = Chrome::read(req, db).await;
     req.page(html! {
-        <Layout req={req} title="Inventory Publication" chrome={chrome} head="">
+        <Layout req={req} title="Inventory Publication" head="">
             <PublicationScreen input={input} runtime={runtime} errors={errors} />
         </Layout>
     })
@@ -51,10 +46,8 @@ pub async fn save(
                 runtime: &runtime,
                 errors: &errors,
             };
-            req.invalid(&errors, form, || {
-                screen(&req, &db, &input, &runtime, &errors)
-            })
-            .await
+            req.invalid(&errors, form, || screen(&req, &input, &runtime, &errors))
+                .await
         }
     }
 }

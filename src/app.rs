@@ -206,6 +206,8 @@ pub fn app(shared: Shared) -> App {
             let db = shared.db.clone();
             move |signal| inventory_strategy::backfill::run(db, signal)
         })
+        // The app bar's auth cookie warning, read beside each full load's handler.
+        .layout_read(layout::AuthCookieMissing(shared.db.clone()))
         .ready(move || {
             let db = ready.clone();
             async move { db.reachable().await }

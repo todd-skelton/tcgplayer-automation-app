@@ -20,7 +20,7 @@ use crate::{
     features::{
         configuration, continuous_pricing::refresh::TcgPlayerSearch, shipping_configuration,
     },
-    layout::{Chrome, Layout},
+    layout::Layout,
     tcgplayer::TcgPlayer,
     text::Msg,
 };
@@ -135,12 +135,8 @@ async fn starting_seller(db: &Database) -> sqlx::Result<String> {
 
 /// The screen with `chosen`, or the newest batch, shown.
 async fn page(req: &Req, db: &Database, chosen: Option<i32>, drawn: &Drawn<'_>) -> HtmlResult {
-    let (chrome, list, seller, rates) = tokio::join!(
-        Chrome::read(req, db),
-        batches::list(db),
-        starting_seller(db),
-        success_rates(db)
-    );
+    let (list, seller, rates) =
+        tokio::join!(batches::list(db), starting_seller(db), success_rates(db));
     let (list, rates) = (list.map_err(unavailable)?, rates?);
     let number = chosen.or_else(|| list.first().map(|b| b.batch_number));
     let shown = match number {
@@ -163,7 +159,7 @@ async fn page(req: &Req, db: &Database, chosen: Option<i32>, drawn: &Drawn<'_>) 
     };
     let none = Errors::new();
     req.page(html! {
-        <Layout req={req} title="Batch Pricer" chrome={chrome} head={again}>
+        <Layout req={req} title="Batch Pricer" head={again}>
             <PricerScreen
                 list={&list}
                 number={number}

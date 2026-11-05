@@ -9,26 +9,21 @@ use super::{
     url,
     views::{Answered, ConnectionCard, ConnectionsScreen, Outcome},
 };
-use crate::{
-    database::Database,
-    layout::{Chrome, Layout},
-};
+use crate::{database::Database, layout::Layout};
 
 /// The connections and their status, which nothing keeps (React's loader said `no-store`).
 pub async fn show(req: Req, State(db): State<Database>) -> HtmlResult {
     let connections = store::connections(&db.0).await?;
-    screen(&req, &db, &connections, None).await
+    screen(&req, &connections, None).await
 }
 
 async fn screen(
     req: &Req,
-    db: &Database,
     connections: &[Connection],
     answered: Option<&Answered<'_>>,
 ) -> HtmlResult {
-    let chrome = Chrome::read(req, db).await;
     req.page(html! {
-        <Layout req={req} title="Slab data connections" chrome={chrome} head="">
+        <Layout req={req} title="Slab data connections" head="">
             <ConnectionsScreen connections={connections} answered={answered} />
         </Layout>
     })
@@ -60,7 +55,7 @@ pub async fn save(
                 answered: Some(&answered),
             };
             req.invalid(&errors, card, || {
-                screen(&req, &db, &connections, Some(&answered))
+                screen(&req, &connections, Some(&answered))
             })
             .await
         }
@@ -114,7 +109,7 @@ async fn answer(req: &Req, db: &Database, provider: Provider, outcome: Outcome) 
         connection: of(&connections, provider),
         answered: Some(&answered),
     };
-    req.patch_or(card, || screen(req, db, &connections, Some(&answered)))
+    req.patch_or(card, || screen(req, &connections, Some(&answered)))
         .await
 }
 

@@ -13,11 +13,7 @@ use super::{
     url::{self, Choice},
     views::{EvidenceList, MaintenanceStatusPart, SlabScreen, SupplyBody},
 };
-use crate::{
-    database::Database,
-    layout::{Chrome, Layout},
-    text::Msg,
-};
+use crate::{database::Database, layout::Layout, text::Msg};
 
 /// The most evidence revisions one calculation reads, as the Node app allows.
 const MOST_REVISIONS: usize = 20;
@@ -263,7 +259,7 @@ pub async fn show(
     Params(at): Params<url::SlabPricing>,
 ) -> HtmlResult {
     let screen = Screen::read(&db, &at.choice).await?;
-    page(&req, &db, &screen).await
+    page(&req, &screen).await
 }
 
 /// The seller's maintenance status as it stands, read again while maintenance is enabled.
@@ -277,7 +273,7 @@ pub async fn maintenance_status(
     // The view at the top of `html!` owns what it uses; the fallback page reads `screen` too.
     let screen = &screen;
     let status = html! { <MaintenanceStatusPart screen={screen} t={t} /> };
-    req.patch_or(status, || async { page(&req, &db, screen).await })
+    req.patch_or(status, || async { page(&req, screen).await })
         .await
 }
 
@@ -298,19 +294,18 @@ pub async fn evidence(
             <SupplyBody screen={screen} t={t} />
         }
     };
-    req.patch_or(list, || async { page(&req, &db, screen).await })
+    req.patch_or(list, || async { page(&req, screen).await })
         .await
 }
 
-pub async fn page(req: &Req, db: &Database, screen: &Screen) -> HtmlResult {
-    let chrome = Chrome::read(req, db).await;
+pub async fn page(req: &Req, screen: &Screen) -> HtmlResult {
     let t: Msg = req.t();
     // Without JavaScript the whole page is read again; with it, only the evidence list is.
     let again = screen
         .refreshing()
         .then_some(ReadAgain { after: REFRESHING });
     req.page(html! {
-        <Layout req={req} title="Slab Pricing" chrome={chrome} head={again}>
+        <Layout req={req} title="Slab Pricing" head={again}>
             <SlabScreen screen={screen} t={t} />
         </Layout>
     })

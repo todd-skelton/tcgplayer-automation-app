@@ -1,8 +1,7 @@
 use corten::{Component, prelude::*};
 
 use crate::{
-    database::Database,
-    layout::{Chrome, Entry, Layout, PRIMARY, ScreenLink},
+    layout::{Entry, Layout, PRIMARY, ScreenLink},
     theme::*,
     ui::{
         card::{Card, CardHeader},
@@ -12,12 +11,11 @@ use crate::{
 
 pub const COMPONENTS: &[Component] = &[Dashboard];
 
-pub async fn show(req: Req, State(db): State<Database>) -> HtmlResult {
-    let chrome = Chrome::read(&req, &db).await;
+pub async fn show(req: Req) -> HtmlResult {
     // The view at the top of `html!` owns what it uses, and `page` borrows `req` too.
     let req = &req;
     req.page(html! {
-        <Layout req={req} title="Home" chrome={chrome} head="">
+        <Layout req={req} title="Home" head="">
             <Dashboard req={req} screens={&PRIMARY} />
         </Layout>
     })

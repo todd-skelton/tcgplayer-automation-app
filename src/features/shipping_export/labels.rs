@@ -22,7 +22,7 @@ use super::{
 use crate::{
     database::Database,
     features::shipping_configuration::{self, EasyPostMode, Service, ShippingConfig},
-    layout::{Chrome, Layout},
+    layout::Layout,
     text::Msg,
 };
 
@@ -171,8 +171,7 @@ async fn labels_page(
     problem: Option<&str>,
     draft: Option<Draft<'_>>,
 ) -> HtmlResult {
-    let (chrome, config) =
-        tokio::join!(Chrome::read(req, db), shipping_configuration::settings(db));
+    let config = shipping_configuration::settings(db).await;
     let config = config?;
     let number = number.map(str::trim).filter(|n| !n.is_empty());
     let found = match number {
@@ -203,7 +202,7 @@ async fn labels_page(
         (f, input, buy, errors)
     });
     req.page(html! {
-        <Layout req={req} title="Label Management" chrome={chrome} head="">
+        <Layout req={req} title="Label Management" head="">
             <LabelManagement
                 looked={&Looked { number, seller: &seller, problem, t }}
                 found={found}

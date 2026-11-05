@@ -17,7 +17,7 @@ use crate::{
     database::Database,
     features::{batch_pricing::market::TcgPlayerMarket, inventory_economics::estimate},
     js_number,
-    layout::{Chrome, Layout},
+    layout::Layout,
     tcgplayer::TcgPlayer,
 };
 
@@ -113,11 +113,7 @@ struct Drawn<'a> {
 
 /// The whole screen for `selection`.
 async fn page(req: &Req, db: &Database, selection: &Selection, drawn: &Drawn<'_>) -> HtmlResult {
-    let (screen, batches, chrome) = tokio::join!(
-        Screen::read(db, selection),
-        queue::batches(db),
-        Chrome::read(req, db)
-    );
+    let (screen, batches) = tokio::join!(Screen::read(db, selection), queue::batches(db));
     let screen = screen?;
     let (fresh, none) = (QueueInput::new(), Errors::new());
     let queuing = Queuing {
@@ -128,7 +124,7 @@ async fn page(req: &Req, db: &Database, selection: &Selection, drawn: &Drawn<'_>
     req.page_with_status(
         drawn.status,
         html! {
-            <Layout req={req} title="Inventory Manager" chrome={chrome} head="">
+            <Layout req={req} title="Inventory Manager" head="">
                 <IntakeScreen screen={&screen} error={drawn.error} queuing={&queuing} />
             </Layout>
         },

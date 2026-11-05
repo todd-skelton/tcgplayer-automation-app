@@ -886,7 +886,7 @@ async fn refused(at: Place, req: &Req, db: &Database, choice: &Choice, why: Stri
     req.invalid(&refusal, message, || async {
         let mut screen = Screen::read(db, choice).await?;
         screen.problem = Some((at, why.clone()));
-        page(req, db, &screen).await
+        page(req, &screen).await
     })
     .await
 }

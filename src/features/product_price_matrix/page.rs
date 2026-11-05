@@ -10,7 +10,7 @@ use crate::{
     database::Database,
     features::batch_pricing::market::TcgPlayerMarket,
     features::inventory_intake::catalog::{self, ProductLine, ProductType, Scope, Set},
-    layout::{Chrome, Layout},
+    layout::Layout,
     tcgplayer::TcgPlayer,
     text::Msg,
 };
@@ -164,11 +164,11 @@ pub async fn show_suggested(
 }
 
 async fn answer(req: &Req, db: &Database, choice: &url::Choice, suggested: bool) -> HtmlResult {
-    let (chrome, screen) = tokio::join!(Chrome::read(req, db), Screen::read(db, choice, suggested));
+    let screen = Screen::read(db, choice, suggested).await;
     let screen = screen?;
     let t: Msg = req.t();
     req.page(html! {
-        <Layout req={req} title="Product Price Matrix" chrome={chrome} head="">
+        <Layout req={req} title="Product Price Matrix" head="">
             <MatrixScreen screen={&screen} t={t} />
         </Layout>
     })

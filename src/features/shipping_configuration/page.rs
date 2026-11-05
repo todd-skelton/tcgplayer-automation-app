@@ -6,20 +6,16 @@ use super::{
     url,
     views::{ShippingScreen, ShippingSettingsForm},
 };
-use crate::{
-    database::Database,
-    layout::{Chrome, Layout},
-};
+use crate::{database::Database, layout::Layout};
 
 pub async fn show(req: Req, State(db): State<Database>) -> HtmlResult {
     let config = config::load(&db).await?;
-    screen(&req, &db, &SettingsInput::of(&config), &Errors::new()).await
+    screen(&req, &SettingsInput::of(&config), &Errors::new()).await
 }
 
-async fn screen(req: &Req, db: &Database, input: &SettingsInput, errors: &Errors) -> HtmlResult {
-    let chrome = Chrome::read(req, db).await;
+async fn screen(req: &Req, input: &SettingsInput, errors: &Errors) -> HtmlResult {
     req.page(html! {
-        <Layout req={req} title="Shipping Configuration" chrome={chrome} head="">
+        <Layout req={req} title="Shipping Configuration" head="">
             <ShippingScreen input={input} errors={errors} />
         </Layout>
     })
@@ -44,7 +40,7 @@ pub async fn save(
                     input: &input,
                     errors: &errors,
                 },
-                || screen(&req, &db, &input, &errors),
+                || screen(&req, &input, &errors),
             )
             .await
         }

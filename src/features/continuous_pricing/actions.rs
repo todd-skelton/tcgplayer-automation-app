@@ -12,12 +12,8 @@ use super::{
     views::{ContinuousScreen, Did, Problem, ScheduleForm},
 };
 use crate::{
-    database::Database,
-    features::batch_pricing::market::TcgPlayerMarket,
-    html_number,
-    layout::{Chrome, Layout},
-    tcgplayer::TcgPlayer,
-    text::Msg,
+    database::Database, features::batch_pricing::market::TcgPlayerMarket, html_number,
+    layout::Layout, tcgplayer::TcgPlayer, text::Msg,
 };
 
 /// Everything the page shows.
@@ -69,20 +65,13 @@ pub async fn show(
 ) -> HtmlResult {
     let screen = Screen::read(&db, &at.view).await?;
     let input = ScheduleInput::of(&screen.settings);
-    page(&req, &db, &screen, &input, &Errors::new()).await
+    page(&req, &screen, &input, &Errors::new()).await
 }
 
-async fn page(
-    req: &Req,
-    db: &Database,
-    screen: &Screen,
-    input: &ScheduleInput,
-    errors: &Errors,
-) -> HtmlResult {
-    let chrome = Chrome::read(req, db).await;
+async fn page(req: &Req, screen: &Screen, input: &ScheduleInput, errors: &Errors) -> HtmlResult {
     let t: Msg = req.t();
     req.page(html! {
-        <Layout req={req} title="Continuous Pricing" chrome={chrome} head="">
+        <Layout req={req} title="Continuous Pricing" head="">
             <ContinuousScreen screen={screen} input={input} errors={errors} t={t} />
         </Layout>
     })
@@ -172,7 +161,7 @@ pub async fn save(
                 input: &input,
                 errors: &errors,
             };
-            req.invalid(&errors, form, || page(&req, &db, &screen, &input, &errors))
+            req.invalid(&errors, form, || page(&req, &screen, &input, &errors))
                 .await
         }
     }
@@ -338,7 +327,7 @@ async fn refused(req: &Req, db: &Database, view: &View, why: String) -> HtmlResu
         let mut screen = Screen::read(db, &view.clone()).await?;
         screen.problem = Some(why.clone());
         let input = ScheduleInput::of(&screen.settings);
-        page(req, db, &screen, &input, &Errors::new()).await
+        page(req, &screen, &input, &Errors::new()).await
     })
     .await
 }

@@ -43,7 +43,7 @@ pub fn DataScreen<'a>(screen: &'a Screen) -> impl Render {
                     "Refresh the local TCGPlayer catalog: product lines, sets, products, and SKUs. Use the smallest job that fixes the problem."
                 </p>
             </header>
-            if screen.chrome.auth_cookie_missing {
+            if screen.auth_cookie_missing {
                 <Notice variant={AlertVariant::Warning}>
                     "Live TCGPlayer requests are blocked until the HTTP configuration page has a valid authentication cookie. "
                     <a href={http_configuration::url::HttpSettings}>"Fix Auth"</a>

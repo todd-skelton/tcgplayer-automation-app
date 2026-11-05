@@ -17,7 +17,7 @@ use crate::{
         batch_pricing::market::TcgPlayerMarket, continuous_pricing,
         inventory_economics::ledger::fingerprint::js_float,
     },
-    layout::{Chrome, Layout},
+    layout::Layout,
     tcgplayer::TcgPlayer,
     text::Msg,
 };
@@ -29,20 +29,13 @@ pub async fn show(
 ) -> HtmlResult {
     let screen = Screen::read(&db, &at.view).await?;
     let input = TurnaroundInput::of(&screen);
-    page(&req, &db, &screen, &input, &Errors::new()).await
+    page(&req, &screen, &input, &Errors::new()).await
 }
 
-async fn page(
-    req: &Req,
-    db: &Database,
-    screen: &Screen,
-    input: &TurnaroundInput,
-    errors: &Errors,
-) -> HtmlResult {
-    let chrome = Chrome::read(req, db).await;
+async fn page(req: &Req, screen: &Screen, input: &TurnaroundInput, errors: &Errors) -> HtmlResult {
     let t: Msg = req.t();
     req.page(html! {
-        <Layout req={req} title="Inventory Strategy" chrome={chrome} head="">
+        <Layout req={req} title="Inventory Strategy" head="">
             <StrategyScreen screen={screen} input={input} errors={errors} t={t} />
         </Layout>
     })
@@ -129,7 +122,7 @@ pub async fn save_turnaround(
     };
     req.invalid(&errors, form, || async {
         let screen = Screen::read(&db, &view).await?;
-        page(&req, &db, &screen, &input, &errors).await
+        page(&req, &screen, &input, &errors).await
     })
     .await
 }
@@ -240,7 +233,7 @@ async fn refused(req: &Req, db: &Database, view: &View, why: String) -> HtmlResu
         let mut screen = Screen::read(db, &view.clone()).await?;
         screen.problem = Some(why.clone());
         let input = TurnaroundInput::of(&screen);
-        page(req, db, &screen, &input, &Errors::new()).await
+        page(req, &screen, &input, &Errors::new()).await
     })
     .await
 }

@@ -1,6 +1,8 @@
 //! The document around every page: the app bar with the screens, the settings menu and the
 //! warning when TCGplayer's auth cookie is not set, as the React app's `root.tsx` draws them.
-use corten::prelude::*;
+use std::future::Future;
+
+use corten::{LayoutRead, axum::http::request::Parts, prelude::*};
 use corten_ui::{Toast, Toaster};
 
 use crate::{
@@ -29,35 +31,36 @@ corten::assets::embed! {
     pub struct Static = "static";
 }
 
-/// What the app bar shows that comes from the database: whether TCGplayer's auth cookie is set.
-/// Read by each page's handler and passed to the layout as a prop, as Corten's guide says a layout
-/// gets such a value (corten#209); corten#580 asks for a way that does not touch every handler.
-#[derive(Clone, Copy)]
-pub struct Chrome {
-    pub auth_cookie_missing: bool,
+/// The app bar's warning that TCGplayer's auth cookie is not set: a layout read, which Corten
+/// starts beside the handler of a full load, so no handler reads or passes it. A navigation or a
+/// `data-patch` action keeps the bar the full load drew, and a write that changes the cookie
+/// patches the warning itself (`AuthCookieWarning`). A page that reads it for its own content
+/// gives it (`.give::<AuthCookieMissing>(missing)`).
+pub struct AuthCookieMissing(pub Database);
+
+impl LayoutRead for AuthCookieMissing {
+    type Value = bool;
+
+    fn start(&self, _: &Parts) -> Option<impl Future<Output = bool> + Send + 'static> {
+        let db = self.0.clone();
+        Some(async move { auth_cookie_missing(&db).await })
+    }
+
+    fn view(missing: &bool) -> impl Render + '_ {
+        html! { <AuthCookieWarning missing={*missing} /> }
+    }
 }
 
-impl Chrome {
-    /// Reads nothing for an answer the runtime swaps into the page it has (a navigation, a
-    /// `data-patch` action), which keeps the bar the full load drew. A write that changes the
-    /// cookie redraws the warning itself (`AuthCookieWarning`).
-    pub async fn read(req: &Req, db: &Database) -> Self {
-        if req.mode.swaps() {
-            return Chrome {
-                auth_cookie_missing: false,
-            };
-        }
-        let set: Option<bool> = sqlx::query_scalar(
-            "SELECT tcg_auth_cookie IS NOT NULL AND tcg_auth_cookie <> '' FROM http_config LIMIT 1",
-        )
-        .fetch_optional(&db.0)
-        .await
-        .ok()
-        .flatten();
-        Chrome {
-            auth_cookie_missing: !set.unwrap_or(false),
-        }
-    }
+/// Whether TCGplayer's auth cookie is not set; set, when the database does not answer.
+pub async fn auth_cookie_missing(db: &Database) -> bool {
+    let set: Option<bool> = sqlx::query_scalar(
+        "SELECT tcg_auth_cookie IS NOT NULL AND tcg_auth_cookie <> '' FROM http_config LIMIT 1",
+    )
+    .fetch_optional(&db.0)
+    .await
+    .ok()
+    .flatten();
+    !set.unwrap_or(false)
 }
 
 /// A page: the app bar, the screen, and the toaster that says what an action did: the notice a
@@ -67,7 +70,6 @@ impl Chrome {
 pub fn Layout<'a>(
     req: &'a Req,
     title: &'a str,
-    chrome: Chrome,
     head: impl Render,
     children: impl Render,
 ) -> impl Document {
@@ -84,7 +86,7 @@ pub fn Layout<'a>(
                 {head}
             </head>
             <body>
-                <AppBar req={req} chrome={chrome} />
+                <AppBar req={req} />
                 <main class={(max_w_page(), mx_auto(), p_5())}>{children}</main>
                 <div class={Toasts}>
                     <Toaster close="Dismiss" seconds={10} toast={Toast { message: req.notice() }} />

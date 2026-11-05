@@ -10,17 +10,14 @@ use super::{
     jobs::{self, Job, Line, LineInput, ProductInput, Ran, SetInput},
     views::{DataScreen, JobCard},
 };
-use crate::{
-    database::Database,
-    layout::{Chrome, Layout},
-    tcgplayer::TcgPlayer,
-};
+use crate::{database::Database, layout::Layout, tcgplayer::TcgPlayer};
 
 /// Everything the page shows: the product lines, each form as it was last filled in, and the
 /// job just run, if any, with what it came to or what its form is missing.
 pub struct Screen {
     pub lines: Vec<Line>,
-    pub chrome: Chrome,
+    /// The screen warns when TCGplayer's auth cookie is not set; the app bar is given the same.
+    pub auth_cookie_missing: bool,
     pub new_products: LineInput,
     pub every_product: LineInput,
     pub product: ProductInput,
@@ -31,14 +28,14 @@ pub struct Screen {
 }
 
 impl Screen {
-    async fn read(req: &Req, db: &Database) -> corten::Result<Screen> {
+    async fn read(db: &Database) -> corten::Result<Screen> {
         let lines = jobs::lines(db).await?;
         Ok(Screen {
             new_products: LineInput::first(&lines),
             every_product: LineInput::first(&lines),
             product: ProductInput::first(&lines),
             set: SetInput::first(&lines),
-            chrome: Chrome::read(req, db).await,
+            auth_cookie_missing: crate::layout::auth_cookie_missing(db).await,
             lines,
             posted: None,
             ran: None,
@@ -58,16 +55,18 @@ impl Screen {
 }
 
 pub async fn show(req: Req, State(db): State<Database>) -> HtmlResult {
-    let screen = Screen::read(&req, &db).await?;
+    let screen = Screen::read(&db).await?;
     page(&req, &screen)
 }
 
 fn page(req: &Req, screen: &Screen) -> HtmlResult {
-    req.page(html! {
-        <Layout req={req} title="Data Management" chrome={screen.chrome} head="">
-            <DataScreen screen={screen} />
-        </Layout>
-    })
+    Ok(req
+        .page(html! {
+            <Layout req={req} title="Data Management" head="">
+                <DataScreen screen={screen} />
+            </Layout>
+        })?
+        .give::<crate::layout::AuthCookieMissing>(screen.auth_cookie_missing))
 }
 
 /// Runs `job` as its form asks, or answers what the form is missing.
@@ -130,7 +129,7 @@ async fn run(
 }
 
 pub async fn refresh_product_lines(req: Req, State(db): State<Database>) -> HtmlResult {
-    let screen = Screen::read(&req, &db).await?;
+    let screen = Screen::read(&db).await?;
     run(
         &req,
         &db,
@@ -146,7 +145,7 @@ pub async fn sync_new_products(
     State(db): State<Database>,
     Form(input): Form<LineInput>,
 ) -> HtmlResult {
-    let mut screen = Screen::read(&req, &db).await?;
+    let mut screen = Screen::read(&db).await?;
     let request = input
         .read(&screen.lines)
         .map(|line| Request::NewProducts { line });
@@ -159,7 +158,7 @@ pub async fn check_product_line(
     State(db): State<Database>,
     Form(input): Form<LineInput>,
 ) -> HtmlResult {
-    let mut screen = Screen::read(&req, &db).await?;
+    let mut screen = Screen::read(&db).await?;
     let request = input
         .read(&screen.lines)
         .map(|line| Request::EveryProduct { line });
@@ -172,7 +171,7 @@ pub async fn repair_product(
     State(db): State<Database>,
     Form(input): Form<ProductInput>,
 ) -> HtmlResult {
-    let mut screen = Screen::read(&req, &db).await?;
+    let mut screen = Screen::read(&db).await?;
     let request = input
         .read(&screen.lines)
         .map(|(line, product)| Request::Product { line, product });
@@ -185,7 +184,7 @@ pub async fn hydrate_set(
     State(db): State<Database>,
     Form(input): Form<SetInput>,
 ) -> HtmlResult {
-    let mut screen = Screen::read(&req, &db).await?;
+    let mut screen = Screen::read(&db).await?;
     let delete_existing = input.delete_existing;
     let request = input.read(&screen.lines).map(|(set, line)| Request::Set {
         set,

@@ -6,11 +6,7 @@ use super::{
     sheet, store, url,
     views::{SheetScreen, SortBy, Summary, UploadForm, UploadScreen},
 };
-use crate::{
-    database::Database,
-    layout::{Chrome, Layout},
-    text::Msg,
-};
+use crate::{database::Database, layout::Layout, text::Msg};
 
 /// The largest sheet the screen takes; TCGplayer's run to a few hundred KB.
 const MOST: usize = 20 << 20;
@@ -25,10 +21,10 @@ pub async fn upload_page(req: Req, State(db): State<Database>) -> HtmlResult {
 }
 
 async fn upload_screen(req: &Req, db: &Database, errors: &Errors) -> HtmlResult {
-    let (chrome, recent) = tokio::join!(Chrome::read(req, db), store::recent(db));
+    let recent = store::recent(db).await;
     let recent = recent?;
     req.page(html! {
-        <Layout req={req} title="Pull Sheet" chrome={chrome} head="">
+        <Layout req={req} title="Pull Sheet" head="">
             <UploadScreen recent={&recent} errors={errors} />
         </Layout>
     })
@@ -102,7 +98,7 @@ pub async fn show(
     State(db): State<Database>,
     Params(at): Params<url::PullSheet>,
 ) -> HtmlResult {
-    let (chrome, stored) = tokio::join!(Chrome::read(&req, &db), store::find(&db, at.id));
+    let stored = store::find(&db, at.id).await;
     let stored = stored?.ok_or_else(corten::Error::not_found)?;
     let parsed = sheet::parse(&stored.csv_text).map_err(|e| corten::Error::new(e.to_string()))?;
     let skus = items::find_skus(&db, &parsed.rows).await?;
@@ -112,7 +108,7 @@ pub async fn show(
     let t: Msg = req.t();
     let file_name = stored.file_name.as_str();
     req.page(html! {
-        <Layout req={&req} title={file_name} chrome={chrome} head="">
+        <Layout req={&req} title={file_name} head="">
             <SheetScreen
                 id={stored.pull_sheet_id}
                 file_name={file_name}

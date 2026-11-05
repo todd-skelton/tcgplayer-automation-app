@@ -1,6 +1,6 @@
 use corten::prelude::*;
 
-use super::{Chrome, PRIMARY, SETTINGS, ScreenLink};
+use super::{AuthCookieMissing, PRIMARY, SETTINGS, ScreenLink};
 use crate::{
     app,
     features::http_configuration,
@@ -23,7 +23,7 @@ struct AuthCookieWarningId;
 /// screens (one row that scrolls sideways on a narrow screen), the auth cookie warning and the
 /// settings menu.
 #[component(css)]
-pub fn AppBar<'a>(req: &'a Req, chrome: Chrome) -> impl Render {
+pub fn AppBar<'a>(req: &'a Req) -> impl Render {
     html! {
         <header class={(NavBar {}, Bar)}>
             <a class={NavBrand {}} href={app::url::Home}>"TCGPlayer Automation"</a>
@@ -33,7 +33,7 @@ pub fn AppBar<'a>(req: &'a Req, chrome: Chrome) -> impl Render {
                 }
             </nav>
             <div class={NavActions {}}>
-                <AuthCookieWarning missing={chrome.auth_cookie_missing} />
+                {later::<AuthCookieMissing>()}
                 <button type="button" class={Settings} popovertarget={SettingsMenuId}>
                     "Settings"
                 </button>
