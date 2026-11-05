@@ -13,7 +13,7 @@
     color: var(--primary-foreground);
     box-shadow: var(--shadow-md);
   }
-  /* A submit that got no answer (layout.js). */
+  /* A submit that got no answer (the toaster's `failed`). */
   & [role="status"] > div:has(> [data-tone="failed"]) {
     background: var(--destructive);
     color: var(--destructive-foreground);

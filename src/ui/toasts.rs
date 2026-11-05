@@ -1,10 +1,10 @@
-// corten ui 0.1.0: toasts 46bb3ad626fcb77a
+// corten ui 0.1.0: toasts 4a4d58450adb7a97
 //! The look and place of corten-ui's `Toaster` written inside it: a box at the bottom right of
 //! the window while there is a message, with its close button. The app lists
 //! `corten_ui::COMPONENTS` too, and puts it in the layout once:
 //!
 //! ```rust,ignore
-//! <Toasts><Toaster close={t.dismiss()} seconds={5} toast={Toast { message: req.notice() }} /></Toasts>
+//! <Toasts><Toaster close={t.dismiss()} seconds={5} toast={Toast { message: req.notice() }} failed={t.not_sent()} /></Toasts>
 //! ```
 use corten::prelude::*;
 

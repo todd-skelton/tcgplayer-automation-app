@@ -66,8 +66,8 @@ pub async fn auth_cookie_missing(db: &Database) -> bool {
 /// A page: the app bar, the screen, and the toaster that says what an action did: the notice a
 /// write's redirect left (`req.redirect_with_notice`), or a patch's `Toast`. `head` is what the
 /// page adds to its head (`""` for nothing), such as a `ReadAgain` while it waits on a job. The
-/// toaster also says when a `data-patch` submit got no answer to draw (`layout.js`; corten#903).
-#[component(css, js)]
+/// toaster also says when a `data-patch` submit got no answer to draw (`failed`), in red.
+#[component(css)]
 pub fn Layout<'a>(
     req: &'a Req,
     title: &'a str,
@@ -89,13 +89,22 @@ pub fn Layout<'a>(
             <body>
                 <AppBar req={req} />
                 <main class={(max_w_page(), mx_auto(), p_5())}>{children}</main>
-                <div class={Toasts} on:connect={js::connect(signal)}>
-                    <Toaster close="Dismiss" seconds={10} toast={Toast { message: req.notice() }} />
+                <div class={Toasts}>
+                    <Toaster
+                        close="Dismiss"
+                        seconds={10}
+                        toast={Toast { message: req.notice() }}
+                        failed={html! { <span data-tone="failed">{NOT_SENT}</span> }}
+                    />
                 </div>
             </body>
         </html>
     }
 }
+
+/// What the toaster says when a `data-patch` submit got no answer: the write may or may not have
+/// reached the server, and the form keeps what was typed.
+const NOT_SENT: &str = "That did not go through, and may not have been saved. Check and try again.";
 
 /// A screen in the app bar.
 pub enum Screen {
