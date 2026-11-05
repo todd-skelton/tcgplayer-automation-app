@@ -24,7 +24,7 @@ use crate::{
         field::Field,
         input::Input,
         select::Select,
-        table::{SortHeader, Table, TableLayout},
+        table::{Sort, SortHeader, Table, TableLayout},
         textarea::Textarea,
         visually_hidden::VisuallyHidden,
     },
@@ -383,13 +383,15 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
         row_order::sort(&mut listed, down, |listing| by.key(listing));
     }
     let sorted = move |column: ListingColumn| {
-        let (sort, next_down) = row_order::header(choice.listings_by.as_ref(), down, &column);
-        let next = Choice {
-            listings_by: Some(column),
-            listings_down: next_down.then_some(true),
-            ..choice.clone()
+        let at = |descending: bool| {
+            url::SlabPricing::at(&Choice {
+                listings_by: Some(column),
+                listings_down: descending.then_some(true),
+                ..choice.clone()
+            })
         };
-        (sort, url::SlabPricing::at(&next))
+        let sort = row_order::header(choice.listings_by.as_ref(), down, &column);
+        (sort, at(false), at(true))
     };
     html! {
         <p class={muted()}>
@@ -441,11 +443,13 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
                     <tr>
                         <th scope="col">"Review"</th>
                         for (column, label) in ListingColumn::ALL {
-                            let (sort, link) = sorted(column);
+                            let (sort, ascending, descending) = sorted(column);
                             <SortHeader
                                 label={label}
                                 sort={sort}
-                                link={&link}
+                                ascending={&ascending}
+                                descending={&descending}
+                                first={Sort::Ascending}
                                 class={()}
                                 on:sort={rows::sort(event, target)}
                             />

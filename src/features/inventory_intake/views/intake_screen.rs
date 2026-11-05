@@ -253,14 +253,21 @@ pub fn IntakeScreen<'a>(
                                         ProductOrder::Name => Sort::Ascending,
                                         ProductOrder::NameDown => Sort::Descending,
                                     })}
-                                    link={&url::InventoryManager {
+                                    ascending={&url::InventoryManager {
                                         selection: Selection {
-                                            sort: (order == ProductOrder::Name)
-                                                .then_some(ProductOrder::NameDown),
+                                            sort: None,
                                             page: None,
                                             ..selection.clone()
                                         },
                                     }}
+                                    descending={&url::InventoryManager {
+                                        selection: Selection {
+                                            sort: Some(ProductOrder::NameDown),
+                                            page: None,
+                                            ..selection.clone()
+                                        },
+                                    }}
+                                    first={Sort::Ascending}
                                     class={()}
                                     on:sort={None::<Handler>}
                                 />

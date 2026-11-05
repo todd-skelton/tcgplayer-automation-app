@@ -21,7 +21,7 @@ use crate::{
         field::Field,
         input::Input,
         select::Select,
-        table::{SortHeader, Table, TableLayout},
+        table::{Sort, SortHeader, Table, TableLayout},
         textarea::Textarea,
         visually_hidden::VisuallyHidden,
     },
@@ -98,14 +98,16 @@ fn Comps<'a>(review: &'a Review, choice: &'a Choice) -> impl Render {
         row_order::sort(&mut shown, down, |(row, _)| by.key(row));
     }
     let sorted = move |column: CompColumn| {
-        let (sort, next_down) = row_order::header(choice.comps_by.as_ref(), down, &column);
-        let next = Choice {
-            comps_by: Some(column),
-            comps_down: next_down.then_some(true),
-            comp: None,
-            ..choice.clone()
+        let at = |descending: bool| {
+            url::SlabPricing::at(&Choice {
+                comps_by: Some(column),
+                comps_down: descending.then_some(true),
+                comp: None,
+                ..choice.clone()
+            })
         };
-        (sort, url::SlabPricing::at(&next))
+        let sort = row_order::header(choice.comps_by.as_ref(), down, &column);
+        (sort, at(false), at(true))
     };
     let amount = |m: Option<&crate::features::slab_pricing::comps::Money>| {
         m.map_or_else(String::new, |m| m.amount.to_string())
@@ -136,11 +138,13 @@ fn Comps<'a>(review: &'a Review, choice: &'a Choice) -> impl Render {
                     <tr>
                         <th scope="col">"Details"</th>
                         for (column, label) in CompColumn::ALL {
-                            let (sort, link) = sorted(column);
+                            let (sort, ascending, descending) = sorted(column);
                             <SortHeader
                                 label={label}
                                 sort={sort}
-                                link={&link}
+                                ascending={&ascending}
+                                descending={&descending}
+                                first={Sort::Ascending}
                                 class={()}
                                 on:sort={rows::sort(event, target)}
                             />

@@ -178,7 +178,10 @@ pub fn SheetItems<'a>(
                                     <SortHeader
                                         label={label}
                                         sort={(paging.filters.sort == Some(by)).then_some(Sort::Ascending)}
-                                        link={&*(paging.link)(by)}
+                                        // Each column sorts one way, so both orders are its link.
+                                        ascending={&*(paging.link)(by)}
+                                        descending={&*(paging.link)(by)}
+                                        first={Sort::Ascending}
                                         class={(by == SortBy::Quantity).then_some(TableNumeric {})}
                                         on:sort={js::sortBy(event, target, found, by)}
                                     />

@@ -28,7 +28,7 @@ use crate::{
         card::{CardCompact, CardPanel},
         field::Field,
         select::Select,
-        table::{SortHeader, Table, TableLayout},
+        table::{Sort, SortHeader, Table, TableLayout},
         visually_hidden::VisuallyHidden,
     },
 };
@@ -258,13 +258,15 @@ fn SupplyContext<'a>(
         row_order::sort(&mut listed, down, |row| by.key(row));
     }
     let sorted = move |column: SupplyColumn| {
-        let (sort, next_down) = row_order::header(choice.supply_by.as_ref(), down, &column);
-        let next = Choice {
-            supply_by: Some(column),
-            supply_down: next_down.then_some(true),
-            ..choice.clone()
+        let at = |descending: bool| {
+            url::SlabPricing::at(&Choice {
+                supply_by: Some(column),
+                supply_down: descending.then_some(true),
+                ..choice.clone()
+            })
         };
-        (sort, url::SlabPricing::at(&next))
+        let sort = row_order::header(choice.supply_by.as_ref(), down, &column);
+        (sort, at(false), at(true))
     };
     let number = |n: Option<f64>| n.map_or_else(String::new, |n| n.to_string());
     let n = NextSourcePageInput::FIELDS;
@@ -307,11 +309,13 @@ fn SupplyContext<'a>(
                 <thead data-no-prefetch>
                     <tr>
                         for (column, label) in SupplyColumn::ALL {
-                            let (sort, link) = sorted(column);
+                            let (sort, ascending, descending) = sorted(column);
                             <SortHeader
                                 label={label}
                                 sort={sort}
-                                link={&link}
+                                ascending={&ascending}
+                                descending={&descending}
+                                first={Sort::Ascending}
                                 class={()}
                                 on:sort={rows::sort(event, target)}
                             />

@@ -1,4 +1,4 @@
-// corten ui 0.1.0: table 05a34544d9cc8c8c
+// corten ui 0.1.0: table d942da5434214b5f
 //! A table's look, on the `<table>` written inside it: the rows, headers and caption stay the
 //! app's markup. `layout` is `TableLayout::Scroll` for a table that keeps its columns: the wrapper
 //! scrolls sideways when the table is wider than the page, so it is a box of its own.
@@ -25,7 +25,9 @@
 //!                 <SortHeader
 //!                     label="Total"
 //!                     sort={None}
-//!                     link={&url::Orders { sort: Some(By::Total) }}
+//!                     ascending={&url::Orders { sort: Some(By::Total) }}
+//!                     descending={&url::Orders { sort: Some(By::TotalDown) }}
+//!                     first={Sort::Ascending}
 //!                     class={TableNumeric {}}
 //!                     on:sort={None::<Handler>}
 //!                 />
@@ -99,9 +101,13 @@ pub enum Sort {
     Descending,
 }
 
-/// A column header the table can be sorted by: a link to the page sorted by it (a typed route,
-/// with the order the app chooses for a second click), so it works without a script, and
-/// `aria-sort` on the column the table is sorted by now (`sort`, `None` for the others). The
+/// A column header the table can be sorted by: `ascending` and `descending` are the page sorted
+/// by it each way (typed routes), and its link is the one a click gives, the other way when the
+/// table is sorted by it now and else `first` (`Sort::Descending` for a column read newest or
+/// largest first), so it works without a script; and
+/// `aria-sort` on the column the table is sorted by now (`sort`, `None` for the others). With a
+/// click handler it writes both on the link (`data-ascending`, `data-descending`), so
+/// `corten_ui::rows::sort` puts the order it shows in the address and each header's link. The
 /// direction is drawn, not written, so a screen reader reads the label and the column's sort
 /// state, not an arrow's name: the arrow is drawn from the header's `aria-sort`, so it follows
 /// the one state both the server and a script write. `class` is the header's look (`TableNumeric
@@ -121,18 +127,35 @@ pub enum Sort {
 pub fn SortHeader<'a, L: Render, C: ClassList>(
     label: L,
     sort: Option<Sort>,
-    link: &'a dyn Href,
+    ascending: &'a dyn Href,
+    descending: &'a dyn Href,
+    first: Sort,
     class: C,
     on_sort: Handler<'a>,
 ) -> impl Render {
-    let aria = match sort {
-        Some(Sort::Ascending) => Some("ascending"),
-        Some(Sort::Descending) => Some("descending"),
-        None => None,
+    let (aria, link) = match sort {
+        Some(Sort::Ascending) => (Some("ascending"), descending),
+        Some(Sort::Descending) => (Some("descending"), ascending),
+        None if first == Sort::Descending => (None, descending),
+        None => (None, ascending),
     };
+    // Only a click handler reads them: a table the server sorts does without.
+    let (up, down) = if on_sort.present() {
+        (Some(ascending), Some(descending))
+    } else {
+        (None, None)
+    };
+    let starts = (on_sort.present() && first == Sort::Descending).then_some("descending");
     html! {
         <th scope="col" class={class} aria-sort={aria}>
-            <a class={Sorter} href={link} on:click={on_sort}>
+            <a
+                class={Sorter}
+                href={link}
+                data-ascending={up}
+                data-descending={down}
+                data-first={starts}
+                on:click={on_sort}
+            >
                 {label}<span class={Arrow} aria-hidden="true"></span>
             </a>
         </th>

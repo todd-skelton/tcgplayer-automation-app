@@ -35,13 +35,12 @@ pub fn sort<T>(rows: &mut [T], down: bool, key: impl Fn(&T) -> Option<Key>) {
     });
 }
 
-/// `column`'s header when the rows are sorted by `by` (`down` when descending): its
-/// `aria-sort`, and whether its link asks for descending (only when it is sorted ascending now).
-pub fn header<C: PartialEq>(by: Option<&C>, down: bool, column: &C) -> (Option<Sort>, bool) {
+/// `column`'s `aria-sort` when the rows are sorted by `by` (`down` when descending).
+pub fn header<C: PartialEq>(by: Option<&C>, down: bool, column: &C) -> Option<Sort> {
     match by {
-        Some(by) if by == column && down => (Some(Sort::Descending), false),
-        Some(by) if by == column => (Some(Sort::Ascending), true),
-        _ => (None, false),
+        Some(by) if by == column && down => Some(Sort::Descending),
+        Some(by) if by == column => Some(Sort::Ascending),
+        _ => None,
     }
 }
 
@@ -65,16 +64,16 @@ mod tests {
     }
 
     #[test]
-    fn a_header_links_to_the_other_direction_of_its_own_order() {
+    fn a_header_is_sorted_only_by_its_own_column() {
         assert_eq!(
             header(Some(&"price"), false, &"price"),
-            (Some(Sort::Ascending), true)
+            Some(Sort::Ascending)
         );
         assert_eq!(
             header(Some(&"price"), true, &"price"),
-            (Some(Sort::Descending), false)
+            Some(Sort::Descending)
         );
-        assert_eq!(header(Some(&"date"), true, &"price"), (None, false));
-        assert_eq!(header(None, false, &"price"), (None, false));
+        assert_eq!(header(Some(&"date"), true, &"price"), None);
+        assert_eq!(header(None, false, &"price"), None);
     }
 }
