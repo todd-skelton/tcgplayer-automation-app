@@ -309,11 +309,11 @@ mod tests {
             legacy: Legacy::new("http://localhost:1".into()),
             slab_providers: slab_connections::Transport::default(),
         };
-        let request = corten::axum::http::Request::get("/no-such-screen")
+        let request = corten::http::Request::get("/no-such-screen")
             .body(corten::axum::body::Body::empty())
             .unwrap();
         let answer = app(shared).router().oneshot(request).await.unwrap();
-        assert_eq!(answer.status(), corten::axum::http::StatusCode::BAD_GATEWAY);
+        assert_eq!(answer.status(), corten::http::StatusCode::BAD_GATEWAY);
         let body = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
             .await
             .unwrap();
@@ -346,7 +346,7 @@ mod tests {
             slab_connections::url::SlabConnections.href(),
         ];
         for path in paths {
-            let request = corten::axum::http::Request::get(path.as_str())
+            let request = corten::http::Request::get(path.as_str())
                 .body(corten::axum::body::Body::empty())
                 .unwrap();
             let answer = router.clone().oneshot(request).await.unwrap();
@@ -363,7 +363,7 @@ mod tests {
         use tower::ServiceExt;
         crate::config::load_env();
         let read = |path: &'static str, zone: Option<&'static str>| async move {
-            let mut request = corten::axum::http::Request::get(path);
+            let mut request = corten::http::Request::get(path);
             if let Some(zone) = zone {
                 request = request.header("cookie", format!("corten-zone={zone}"));
             }
@@ -461,9 +461,9 @@ mod tests {
         for path in screens.into_iter().chain(steps).chain(chosen) {
             let request = match path.strip_prefix(PATCH) {
                 Some(view) => {
-                    corten::axum::http::Request::get(view).header(corten::MODE_HEADER, "action")
+                    corten::http::Request::get(view).header(corten::MODE_HEADER, "action")
                 }
-                None => corten::axum::http::Request::get(&path),
+                None => corten::http::Request::get(&path),
             }
             .body(corten::axum::body::Body::empty())
             .unwrap();

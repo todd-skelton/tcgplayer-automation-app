@@ -5,8 +5,8 @@ use corten::{
     axum::{
         body::to_bytes,
         extract::{RawQuery, Request},
-        http::StatusCode,
     },
+    http::StatusCode,
     prelude::*,
 };
 use serde_json::{Value, json};

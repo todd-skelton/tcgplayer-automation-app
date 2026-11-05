@@ -6,7 +6,8 @@
 //! apply) move the order history on (`capture`, `apply`).
 use corten::{
     Api, JsonResponse, Prefix,
-    axum::{body::to_bytes, extract::Request, http::StatusCode},
+    axum::{body::to_bytes, extract::Request},
+    http::StatusCode,
     prelude::*,
 };
 use serde_json::{Value, json};

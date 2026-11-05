@@ -2,7 +2,7 @@
 //! warning when TCGplayer's auth cookie is not set, as the React app's `root.tsx` draws them.
 use std::future::Future;
 
-use corten::{LayoutRead, axum::http::request::Parts, prelude::*};
+use corten::{LayoutRead, http::request::Parts, prelude::*};
 use corten_ui::{Toast, Toaster};
 
 use crate::{

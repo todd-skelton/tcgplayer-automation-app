@@ -1,11 +1,7 @@
 //! `GET /api/shipping-thresholds?days=`: the shipping threshold report as JSON, as the Node
 //! route answered it.
 use chrono::Utc;
-use corten::{
-    Api, JsonResponse, Prefix,
-    axum::{extract::RawQuery, http::StatusCode},
-    prelude::*,
-};
+use corten::{Api, JsonResponse, Prefix, axum::extract::RawQuery, http::StatusCode, prelude::*};
 
 use super::report::load;
 use crate::{

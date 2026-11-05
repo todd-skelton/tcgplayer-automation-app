@@ -9,11 +9,8 @@
 //! same-site`), which Node took.
 use corten::{
     Api, JsonResponse, Prefix, Refusal,
-    axum::{
-        body::to_bytes,
-        extract::Request,
-        http::{StatusCode, header},
-    },
+    axum::{body::to_bytes, extract::Request},
+    http::{StatusCode, header},
     prelude::*,
 };
 use serde_json::{Map, Value, json};

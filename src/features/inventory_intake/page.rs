@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use corten::{Mode, Refusal, axum::http::StatusCode, prelude::*};
+use corten::{Mode, Refusal, http::StatusCode, prelude::*};
 use serde::Deserialize;
 
 use super::{

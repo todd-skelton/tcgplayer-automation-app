@@ -3,7 +3,7 @@
 //!
 //! They are added to the app's one API at `/api`, beside the relay to the Node app for the rest:
 //! Corten refuses an API inside another's prefix, so a feature cannot own one at its own path.
-use corten::{Api, JsonResponse, Prefix, axum::http::StatusCode, json::Raw, prelude::*};
+use corten::{Api, JsonResponse, Prefix, http::StatusCode, json::Raw, prelude::*};
 use serde::Serialize;
 use serde_json::json;
 
@@ -178,22 +178,17 @@ pub mod tests {
             // A post was sent to the action as JSON; anything else is a `GET`.
             let request = match expected["post"].as_str().map(|body| orders.real(body)) {
                 Some(body) => {
-                    let mut post = corten::axum::http::Request::post(path)
+                    let mut post = corten::http::Request::post(path)
                         .header("host", "localhost")
                         .header("content-type", "application/json");
                     for (name, value) in expected["headers"].as_object().into_iter().flatten() {
                         let headers = post.headers_mut().unwrap();
                         let value = value.as_str().unwrap().parse().unwrap();
-                        headers.insert(
-                            name.parse::<corten::axum::http::HeaderName>().unwrap(),
-                            value,
-                        );
+                        headers.insert(name.parse::<corten::http::HeaderName>().unwrap(), value);
                     }
                     post.body(corten::axum::body::Body::from(body))
                 }
-                None => {
-                    corten::axum::http::Request::get(path).body(corten::axum::body::Body::empty())
-                }
+                None => corten::http::Request::get(path).body(corten::axum::body::Body::empty()),
             }
             .unwrap();
             let answer = router.clone().oneshot(request).await.unwrap();

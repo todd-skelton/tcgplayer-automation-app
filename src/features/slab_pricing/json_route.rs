@@ -10,8 +10,8 @@ use corten::{
     axum::{
         body::to_bytes,
         extract::{RawQuery, Request},
-        http::{HeaderMap, HeaderValue, StatusCode, header},
     },
+    http::{HeaderMap, HeaderValue, StatusCode, header},
     prelude::*,
 };
 use serde_json::Value;
@@ -312,7 +312,7 @@ mod tests {
     /// message, where Node said "Submit this request from the application." The status is Node's.
     #[tokio::test]
     async fn corten_refuses_a_post_from_another_site() {
-        use corten::axum::{body::Body, http::Request};
+        use corten::{axum::body::Body, http::Request};
         use tower::ServiceExt;
 
         use crate::{database::Database, legacy::Legacy};

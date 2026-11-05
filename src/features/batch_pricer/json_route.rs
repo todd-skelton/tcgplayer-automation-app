@@ -23,8 +23,8 @@ use corten::{
     axum::{
         body::{Body, to_bytes},
         extract::{FromRequest, RawQuery, Request},
-        http::{HeaderMap, HeaderValue, StatusCode, header},
     },
+    http::{HeaderMap, HeaderValue, StatusCode, header},
     prelude::*,
 };
 use futures_util::{Stream, StreamExt};

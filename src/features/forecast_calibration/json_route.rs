@@ -1,10 +1,6 @@
 //! `GET /api/forecast-calibration?days=`: the report as JSON, as the Node route answered it.
 use chrono::Utc;
-use corten::{
-    Api, JsonResponse, Prefix,
-    axum::{extract::RawQuery, http::StatusCode},
-    prelude::*,
-};
+use corten::{Api, JsonResponse, Prefix, axum::extract::RawQuery, http::StatusCode, prelude::*};
 
 use super::{DEFAULT_WINDOW_DAYS, WINDOW_DAYS, load};
 use crate::{api, app::Shared, database::Database};
@@ -68,7 +64,7 @@ mod tests {
             slab_providers: slab_connections::Transport::default(),
         })
         .router();
-        let request = corten::axum::http::Request::get("/api/validate-skus")
+        let request = corten::http::Request::get("/api/validate-skus")
             .body(corten::axum::body::Body::empty())
             .unwrap();
         let answer = router.oneshot(request).await.unwrap();

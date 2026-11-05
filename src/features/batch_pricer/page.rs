@@ -4,7 +4,7 @@ use std::{
 };
 
 use corten::{
-    Fragment, LiveResponse, LiveSince, Media, Mode, Refusal, axum::http::StatusCode, prelude::*,
+    Fragment, LiveResponse, LiveSince, Media, Mode, Refusal, http::StatusCode, prelude::*,
 };
 use corten_ui::Toast;
 use futures_util::stream;

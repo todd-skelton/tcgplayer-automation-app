@@ -3,7 +3,8 @@
 //! them, never stored by a cache.
 use corten::{
     Api, JsonResponse, Prefix, Signal,
-    axum::{body::to_bytes, extract::Request, http::StatusCode},
+    axum::{body::to_bytes, extract::Request},
+    http::StatusCode,
     prelude::*,
 };
 use serde_json::{Value, json};

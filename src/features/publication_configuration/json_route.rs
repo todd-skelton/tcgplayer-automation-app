@@ -4,7 +4,8 @@
 //! `POST {"action":"resume"}` closes the circuit; health adds the publication queue's counts.
 use corten::{
     Api, JsonResponse, Prefix,
-    axum::{body::to_bytes, extract::Request, http::StatusCode},
+    axum::{body::to_bytes, extract::Request},
+    http::StatusCode,
     prelude::*,
 };
 use serde_json::{Value, json};
