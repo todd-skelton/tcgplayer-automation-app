@@ -128,7 +128,7 @@ fn Comps<'a>(review: &'a Review, choice: &'a Choice) -> impl Render {
             </Notice>
         }
         <Table layout={TableLayout::Scroll}>
-            <table class={Cells}>
+            <table id={super::CompsTableId} class={Cells}>
                 <caption class={VisuallyHidden {}}>
                     "Saved comps. Sorting orders the sales on this page."
                 </caption>

@@ -301,7 +301,7 @@ fn SupplyContext<'a>(
             }
         </p>
         <Table layout={TableLayout::Scroll}>
-            <table class={Cells}>
+            <table id={super::SupplyTableId} class={Cells}>
                 <caption class={VisuallyHidden {}}>
                     "Active supply. Sorting orders the listings on this page."
                 </caption>
@@ -479,5 +479,8 @@ mod tests {
         .to_html();
         assert!(drawn.contains("data-ascending"), "{drawn}");
         assert!(drawn.contains("supply_by="), "{drawn}");
+        // The forms and links that carry the order name the table by this id.
+        let id = format!(r#"id="{}""#, super::super::SupplyTableId.to_html());
+        assert!(drawn.contains(&id), "{drawn}");
     }
 }

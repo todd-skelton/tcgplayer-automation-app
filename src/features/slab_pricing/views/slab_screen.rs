@@ -433,7 +433,7 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
             </form>
         </details>
         <Table layout={TableLayout::Scroll}>
-            <table class={Cells}>
+            <table id={super::ListingsTableId} class={Cells}>
                 <caption class={VisuallyHidden {}}>
                     "Saved eBay listings. Sorting orders the listings on this page."
                 </caption>
