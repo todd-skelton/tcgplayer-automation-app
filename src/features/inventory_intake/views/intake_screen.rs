@@ -239,7 +239,8 @@ pub fn IntakeScreen<'a>(
             <section class={(CardPanel {}, CardCompact {})} aria-labelledby={TableHeadingId}>
                 <h2 id={TableHeadingId} class={VisuallyHidden {}}>"Add new inventory"</h2>
                 <Table layout={TableLayout::Scroll}>
-                    <table>
+                    // React drew no grid without rows; the table stays for the script's refs.
+                    <table hidden={screen.products.is_empty()}>
                         <thead>
                             <tr>
                                 <th>"Image"</th>
@@ -293,12 +294,27 @@ pub fn IntakeScreen<'a>(
                     </div>
                 }
                 if screen.products.is_empty() {
-                    <p class={muted()}>
-                        match screen.scope {
-                            Scope::AllSets if !searched => "Enter a card number to search every set.",
-                            _ => "No products match.",
+                    match (screen.scope, selection.search.as_deref().map(str::trim).filter(|s| !s.is_empty())) {
+                        (Scope::AllSets, None) => {
+                            <Notice variant={AlertVariant::Info}>
+                                "Enter a card number to search across all sets in the selected product line."
+                            </Notice>
                         }
-                    </p>
+                        (Scope::AllSets, Some(term)) => {
+                            <Notice variant={AlertVariant::Warning}>
+                                "No matches found for card number \""{term}
+                                "\" in the selected product line."
+                            </Notice>
+                        }
+                        (Scope::Set, None) => {
+                            <Notice variant={AlertVariant::Info}>
+                                "No SKUs available. Please select a product line and set to see available inventory options."
+                            </Notice>
+                        }
+                        (Scope::Set, Some(_)) => {
+                            <Notice variant={AlertVariant::Info}>"No products match."</Notice>
+                        }
+                    }
                 }
             </section>
             <QueueBar
