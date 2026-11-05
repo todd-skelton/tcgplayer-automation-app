@@ -24,7 +24,7 @@ mod parts;
 
 pub use app_bar::{AppBar, AuthCookieWarning};
 pub use error_page::error_page;
-pub use parts::{FormNotice, Notice, SaysFailedSubmits, SubmitsOnChange};
+pub use parts::{FormNotice, Notice, SubmitsOnChange};
 
 corten::assets::embed! {
     /// The files in `static/`, compiled into the program: `Static::STYLE_CSS` is `static/style.css`.
@@ -65,8 +65,9 @@ pub async fn auth_cookie_missing(db: &Database) -> bool {
 
 /// A page: the app bar, the screen, and the toaster that says what an action did: the notice a
 /// write's redirect left (`req.redirect_with_notice`), or a patch's `Toast`. `head` is what the
-/// page adds to its head (`""` for nothing), such as a `ReadAgain` while it waits on a job.
-#[component(css)]
+/// page adds to its head (`""` for nothing), such as a `ReadAgain` while it waits on a job. The
+/// toaster also says when a `data-patch` submit got no answer to draw (`layout.js`; corten#903).
+#[component(css, js)]
 pub fn Layout<'a>(
     req: &'a Req,
     title: &'a str,
@@ -88,15 +89,9 @@ pub fn Layout<'a>(
             <body>
                 <AppBar req={req} />
                 <main class={(max_w_page(), mx_auto(), p_5())}>{children}</main>
-                <SaysFailedSubmits>
-                    <div class={Toasts}>
-                        <Toaster
-                            close="Dismiss"
-                            seconds={10}
-                            toast={Toast { message: req.notice() }}
-                        />
-                    </div>
-                </SaysFailedSubmits>
+                <div class={Toasts} on:connect={js::connect(signal)}>
+                    <Toaster close="Dismiss" seconds={10} toast={Toast { message: req.notice() }} />
+                </div>
             </body>
         </html>
     }

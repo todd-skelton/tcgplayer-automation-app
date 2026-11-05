@@ -1,5 +1,5 @@
 // @ts-check
-// SaysFailedSubmits (parts.rs): the toaster says when a data-patch submit got no answer the runtime could
+// Layout (layout.rs): the toaster says when a data-patch submit got no answer the runtime could
 // draw. The runtime dispatches `corten:error` on the form and leaves the page as it was; the kit's
 // Toaster shows `corten:notice` but not this (corten#903). The message replaces the toast the way
 // toaster.js replaces it for a notice, so the toaster's timer and close button follow it.
