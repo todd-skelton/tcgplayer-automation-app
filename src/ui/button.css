@@ -1,8 +1,12 @@
-/* corten ui 0.1.0: button ce6602e3d67eba61 */
+/* corten ui 0.1.0: button 9c6c7d91ff312da7 */
 /* The classes of the <button> or <a> the app writes. */
 .button {
-  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
-  font: inherit; font-size: var(--control-font-size); font-weight: 500; line-height: 1.25rem; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem; box-sizing: border-box;
+  font: inherit; font-size: var(--control-font-size); font-weight: 500; line-height: 1.25rem;
+  /* A label wider than the room wraps between words and the button grows, so a narrow page does
+     not scroll sideways (WCAG reflow); a one-line label keeps the size's height. A row that shrinks
+     to its content keeps each word whole. */
+  text-align: center; text-wrap: balance; overflow-wrap: break-word;
   border: 1px solid transparent; border-radius: calc(var(--radius) - 2px);
   cursor: pointer; text-decoration: none; transition: background-color .15s, color .15s, border-color .15s;
 }
@@ -26,7 +30,9 @@
 .destructive:hover { background: color-mix(in oklab, var(--destructive) 88%, var(--foreground)); }
 .link { background: none; color: var(--primary); text-underline-offset: 4px; }
 .link:hover { text-decoration: underline; }
-.sm { height: var(--control-height-sm); padding: 0 var(--control-padding); font-size: .8125rem; }
-.md { height: var(--control-height); padding: 0 1rem; }
-.lg { height: var(--control-height-lg); padding: 0 1.5rem; }
-.icon { width: var(--control-height); height: var(--control-height); padding: 0; }
+/* The block padding is what one line leaves of the size's height, so one line is that height at any
+   size a theme or density sets, and only a label that wraps grows the button. */
+.sm { min-height: var(--control-height-sm); padding: max(0px, (var(--control-height-sm) - 1.25rem) / 2 - 1px) var(--control-padding); font-size: .8125rem; }
+.md { min-height: var(--control-height); padding: max(0px, (var(--control-height) - 1.25rem) / 2 - 1px) 1rem; }
+.lg { min-height: var(--control-height-lg); padding: max(0px, (var(--control-height-lg) - 1.25rem) / 2 - 1px) 1.5rem; }
+.icon { flex: none; width: var(--control-height); height: var(--control-height); padding: 0; }
