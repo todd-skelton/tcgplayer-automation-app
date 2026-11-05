@@ -451,8 +451,8 @@ mod tests {
         assert!(first.previous_source().is_none());
     }
 
-    /// A form's action carries the supply's sort only when the page was drawn sorted, so a
-    /// script that writes an in-place order into such keys (corten#907) leaves the rest alone.
+    /// A form's action carries the supply's sort only when the page was drawn sorted: a form
+    /// outside the supply's part keeps the order the page was drawn in (corten#930).
     #[test]
     fn an_unsorted_choice_writes_no_sort_keys() {
         let choice = Choice {
