@@ -1,9 +1,14 @@
-/* corten ui 0.1.0: badge 25b6a654cb37ad0d */
+/* corten ui 0.1.0: badge f7df34abc597ad27 */
+/* A label wider than the room wraps (between words, and inside a word only when one is wider than
+   the room, as a key or an ID is), so a badge is never wider than its box. A block of its own text,
+   not a flex row, since a flex row's text is never narrower than its longest word. */
 .badge {
-  display: inline-flex; align-items: center; gap: .25rem; width: fit-content; white-space: nowrap;
+  display: inline-block; box-sizing: border-box; width: fit-content; max-width: 100%; overflow-wrap: break-word;
   padding: .125rem .5rem; font-size: .75rem; font-weight: 500; line-height: 1rem;
   border: 1px solid transparent; border-radius: calc(var(--radius) - 2px);
 }
+/* A dot or an icon before the label (a StatusDot, an Icon): a space after it. */
+.badge > :where(svg, span:empty) { margin-inline-end: .25rem; }
 /* A tone is its color (soft and outline text), and the fill and text of a solid badge. */
 .neutral { --kit-tone: var(--foreground); --kit-tone-fill: var(--secondary); --kit-tone-text: var(--secondary-foreground); }
 .primary { --kit-tone: var(--primary); --kit-tone-fill: var(--primary); --kit-tone-text: var(--primary-foreground); }
