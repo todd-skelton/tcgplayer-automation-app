@@ -18,11 +18,12 @@ use crate::{
         url::{self, Choice},
         views::Problem,
     },
+    layout::Notice,
     row_order,
     text::Msg,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         field::Field,
@@ -68,12 +69,12 @@ pub fn SupplyPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 <SupplyControls screen={screen} />
                 <Problem at={Place::Supply} why={screen.problem_at(Place::Supply)} />
                 match &screen.supply {
-                    Some(Err(why)) => <Alert variant={AlertVariant::Warning}>{why}</Alert>,
+                    Some(Err(why)) => <Notice variant={AlertVariant::Warning}>{why}</Notice>,
                     _ => <SupplyBody screen={screen} t={t} />,
                 }
-                <Alert variant={AlertVariant::Info}>
+                <Notice variant={AlertVariant::Info}>
                     "Seller order outcomes are not connected. Sale probability and time to sell remain unavailable; listing disappearance is not a sale."
-                </Alert>
+                </Notice>
             }
         </section>
     }
@@ -170,9 +171,9 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
     html! {
         <div id={SupplyBodyId} class={Stack} aria-live="polite">
             if changed {
-                <Alert variant={AlertVariant::Warning}>
+                <Notice variant={AlertVariant::Warning}>
                     "The identity changed. Reopen the certificate before using this supply context."
-                </Alert>
+                </Notice>
             }
             if let Some(supply) = supply {
                 for status in &supply.statuses {
@@ -207,9 +208,9 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
                 match supply.context.as_ref().filter(|_| !changed) {
                     None => {
                         if !changed {
-                            <Alert variant={AlertVariant::Info}>
+                            <Notice variant={AlertVariant::Info}>
                                 "No saved active-supply response. Refresh to request one."
-                            </Alert>
+                            </Notice>
                         }
                     }
                     Some(context) => {
@@ -272,9 +273,9 @@ fn SupplyContext<'a>(
     let through = changes.and_then(|c| at(&c.observed_through));
     html! {
         if context.stale {
-            <Alert variant={AlertVariant::Warning}>
+            <Notice variant={AlertVariant::Warning}>
                 "This supply snapshot is stale or its latest refresh failed. Old asks remain visible but are excluded from competition counts."
-            </Alert>
+            </Notice>
         }
         <p>
             {context.equivalent_listings}" equivalent listings · "{context.potential_listings}

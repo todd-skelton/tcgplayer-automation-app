@@ -6,9 +6,10 @@ use crate::{
         form::{Kind, PackageInput, PackageInputGroupFields, SettingsInput},
         url,
     },
+    layout::Notice,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
@@ -34,7 +35,7 @@ pub fn ShippingScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
             <p class={muted()}>
                 "Manage the saved shipping settings used by the EasyPost shipping export workflow. Save a default seller key for live TCGPlayer order loading, then build or rebuild shipments from the export page."
             </p>
-            <Alert variant={AlertVariant::Info}>
+            <Notice variant={AlertVariant::Info}>
                 <div class={(row(Space::_3), justify_between())}>
                     <span>
                         "These settings are stored on the server and used by the shipping export tool when it loads live seller orders and generates EasyPost shipment rows."
@@ -45,12 +46,12 @@ pub fn ShippingScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
                         "Open Shipping Export"
                     </a>
                 </div>
-            </Alert>
+            </Notice>
             if !mode.has_key() {
-                <Alert variant={AlertVariant::Warning}>
+                <Notice variant={AlertVariant::Warning}>
                     {mode.key_name()}
                     " is not set. Direct postage purchasing will stay disabled until it is configured."
-                </Alert>
+                </Notice>
             }
             <section class={(CardPanel {}, CardCompact {})}>
                 <div class={(row(Space::_3), justify_between(), mb_4())}>

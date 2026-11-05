@@ -9,12 +9,13 @@ use crate::{
         turnaround_settings::MAXIMUM_MANUAL_DAYS,
         url::{self, View},
     },
+    layout::Notice,
     layout::SubmitsOnChange,
     text::Msg,
     theme::*,
     ui::badge::{Badge, BadgeEmphasis, BadgeTone},
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         field::Field,
@@ -114,15 +115,15 @@ pub fn TurnaroundPanel<'a>(
             </dl>
             <TurnaroundForm view={&screen.view} input={input} errors={errors} />
             if let Some(error) = &screen.reinvestment_error {
-                <Alert variant={AlertVariant::Warning}>{error}</Alert>
+                <Notice variant={AlertVariant::Warning}>{error}</Notice>
             }
             if let Some(error) = screen.settings_error {
-                <Alert variant={AlertVariant::Warning}>{error}</Alert>
+                <Notice variant={AlertVariant::Warning}>{error}</Notice>
             }
             if fallback {
-                <Alert variant={AlertVariant::Info}>
+                <Notice variant={AlertVariant::Info}>
                     "Manual days retained: "{selection.fallback_reasons.join(" ")}
-                </Alert>
+                </Notice>
             }
             if let Some(e) = evidence {
                 <p class={(muted(), Caption)}>

@@ -6,9 +6,10 @@ use crate::{
         form::SettingsInput,
         url,
     },
+    layout::Notice,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
         card::{Card, CardContent, CardHeader},
         checkbox::Checkbox,
@@ -86,11 +87,11 @@ pub fn PublicationForm<'a>(
                 <header class={CardHeader {}}><h2>"Runtime safety"</h2></header>
                 <div class={CardContent {}}>
                     if runtime.needs_resume() {
-                        <Alert variant={AlertVariant::Warning}><p>{state}</p></Alert>
+                        <Notice variant={AlertVariant::Warning}><p>{state}</p></Notice>
                     } else if runtime.authentication == Authentication::Healthy {
-                        <Alert variant={AlertVariant::Success}><p>{state}</p></Alert>
+                        <Notice variant={AlertVariant::Success}><p>{state}</p></Notice>
                     } else {
-                        <Alert variant={AlertVariant::Info}><p>{state}</p></Alert>
+                        <Notice variant={AlertVariant::Info}><p>{state}</p></Notice>
                     }
                     <Switch label="Global publication pause">
                         <input
@@ -223,11 +224,11 @@ pub fn PublicationForm<'a>(
                     </div>
                 </div>
             </div>
-            <Alert variant={AlertVariant::Warning}>
+            <Notice variant={AlertVariant::Warning}>
                 <p>
                     "Quantity values are additive in staged imports. CSV quantity deltas are always excluded from automatic publication. Once an inventory delta is planned, it cannot be recreated under another pricing candidate."
                 </p>
-            </Alert>
+            </Notice>
             <div>
                 <button class={Button { variant: ButtonVariant::Primary, size: ButtonSize::Md }}>
                     "Save publication settings"

@@ -17,10 +17,11 @@ use crate::{
         },
     },
     glyphs,
+    layout::Notice,
     text::Msg,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         icon::{self, Icon},
@@ -99,9 +100,9 @@ pub fn PackStep<'a>(packing: &'a Packing<'a>, t: Msg) -> impl Render {
             match (&packing.card, packing.view) {
                 (Some(card), PackView::Card) => <ShipmentToPack packing={packing} card={card} t={t} />,
                 (_, PackView::List) => <PackList packing={packing} t={t} />,
-                (None, PackView::Card) => <Alert variant={AlertVariant::Info}>
+                (None, PackView::Card) => <Notice variant={AlertVariant::Info}>
                     "No shipments to pack. Load orders first."
-                </Alert>,
+                </Notice>,
             }
         </div>
     }
@@ -283,7 +284,7 @@ pub fn ShipmentToPack<'a>(packing: &'a Packing<'a>, card: &'a PackCard<'a>, t: M
                 <ViewChoice packing={packing} />
             </header>
             if let Some((tone, notice)) = &card.notice {
-                <Alert variant={*tone}>{notice}</Alert>
+                <Notice variant={*tone}>{notice}</Notice>
             }
             for packed in &card.orders {
                 <section class={OrderBox} aria-label={format!("Order {}", packed.order.number)}>

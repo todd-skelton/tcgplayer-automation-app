@@ -15,10 +15,11 @@ use crate::{
         url::{self, Choice},
         views::Problem,
     },
+    layout::Notice,
     text::Msg,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         field::Field,
@@ -69,12 +70,12 @@ pub fn PublicationPanel<'a>(
                 />
                 <Problem at={Place::Publication} why={screen.problem_at(Place::Publication)} />
                 if let Some(Err(why)) = &screen.publication {
-                    <Alert variant={AlertVariant::Warning}>{why}</Alert>
+                    <Notice variant={AlertVariant::Warning}>{why}</Notice>
                 }
                 if stale {
-                    <Alert variant={AlertVariant::Warning}>
+                    <Notice variant={AlertVariant::Warning}>
                         "Recalculate using the current listing and evidence before preparing another price change."
-                    </Alert>
+                    </Notice>
                 }
                 if let Some(Ok(review)) = &screen.publication {
                     if let Some(preview) = &review.preview {
@@ -88,9 +89,9 @@ pub fn PublicationPanel<'a>(
                         />
                     }
                 }
-                <Alert variant={AlertVariant::Info}>
+                <Notice variant={AlertVariant::Info}>
                     "Seller OAuth and live listing readback are not connected. Publishing is unavailable; saved previews cannot write to eBay."
-                </Alert>
+                </Notice>
             </section>
         }
     }
@@ -184,15 +185,15 @@ fn SavedPreview<'a>(preview: &'a Preview, t: Msg) -> impl Render {
             <p class={muted()}>"Review reason: "{&reviewed.note}</p>
         }
         if !plan.flags.is_empty() {
-            <Alert variant={AlertVariant::Info}>
+            <Notice variant={AlertVariant::Info}>
                 {plan.flags.iter().map(|f| words(f)).collect::<Vec<_>>().join("; ")}
-            </Alert>
+            </Notice>
         }
         if !preview.conflicts.is_empty() {
-            <Alert variant={AlertVariant::Warning}>
+            <Notice variant={AlertVariant::Warning}>
                 "Preview needs replacement: "
                 {preview.conflicts.iter().map(|c| words(c)).collect::<Vec<_>>().join("; ")}"."
-            </Alert>
+            </Notice>
         }
         <small class={muted()}>
             "Preview "{&preview.id}" · "{&plan.policy_version}" · "{&plan.version}

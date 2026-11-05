@@ -9,8 +9,9 @@ use crate::{
             url::{OrderLabels, ShippingWorkflow},
         },
     },
+    layout::Notice,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
@@ -41,7 +42,7 @@ pub fn Refused<'a>(problem: Option<&'a str>) -> impl Patch {
     html! {
         <div id={RefusedId} role="alert">
             if let Some(problem) = problem {
-                <Alert variant={AlertVariant::Warning}>{problem}</Alert>
+                <Notice variant={AlertVariant::Warning}>{problem}</Notice>
             }
         </div>
     }

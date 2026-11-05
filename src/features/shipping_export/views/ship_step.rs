@@ -2,8 +2,9 @@ use corten::prelude::*;
 
 use crate::{
     features::shipping_export::ship::{Messaged, Tracked},
+    layout::Notice,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         table::{CellLabel, Table, TableLayout},
     },
@@ -116,20 +117,20 @@ pub fn ShipStep<'a>(shipping: &'a Shipping<'a>) -> impl Render {
                     </ul>
                 }
             } else {
-                <Alert variant={AlertVariant::Warning}>
+                <Notice variant={AlertVariant::Warning}>
                     "Set the seller key on Load Orders before shipping. Buyers can only be notified with it."
-                </Alert>
+                </Notice>
             }
             if failed > 0 {
-                <Alert variant={AlertVariant::Warning}>
+                <Notice variant={AlertVariant::Warning}>
                     {plural(failed, "order")}
                     " could not be completed. Shipping again retries only those orders; an order whose tracking failed is not messaged."
-                </Alert>
+                </Notice>
             }
             if complete {
-                <Alert variant={AlertVariant::Success}>
+                <Notice variant={AlertVariant::Success}>
                     "Batch complete. Every order is shipped and its buyer notified."
-                </Alert>
+                </Notice>
             }
             if !outcomes.is_empty() {
                 <div class={Scroll}>

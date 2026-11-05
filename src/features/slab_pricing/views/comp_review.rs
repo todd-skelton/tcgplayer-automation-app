@@ -10,10 +10,11 @@ use crate::{
         url::{self, Choice},
         views::Problem,
     },
+    layout::Notice,
     row_order,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         dialog::{Dialog, DialogHeader, DialogSize},
@@ -53,7 +54,7 @@ pub fn CompReview<'a>(screen: &'a Screen) -> impl Render {
             </div>
             <Problem at={Place::Comps} why={screen.problem_at(Place::Comps)} />
             match &screen.comps {
-                Some(Err(why)) => <Alert variant={AlertVariant::Warning}>{why}</Alert>,
+                Some(Err(why)) => <Notice variant={AlertVariant::Warning}>{why}</Notice>,
                 Some(Ok(review)) => {
                     <Comps review={review} choice={choice} />
                     if let Some(index) = choice.comp {
@@ -115,14 +116,14 @@ fn Comps<'a>(review: &'a Review, choice: &'a Choice) -> impl Render {
             ". Alt history covers all grades. Comp status is screened against the selected identity; the final calculation also reconciles duplicate events across sources."
         </p>
         if review.active_listings {
-            <Alert variant={AlertVariant::Warning}>
+            <Notice variant={AlertVariant::Warning}>
                 "This response contains active listings instead of sold evidence."
-            </Alert>
+            </Notice>
         }
         if review.rows.is_empty() {
-            <Alert variant={AlertVariant::Info}>
+            <Notice variant={AlertVariant::Info}>
                 "No sold observations in this saved response."
-            </Alert>
+            </Notice>
         }
         <Table layout={TableLayout::Scroll}>
             <table class={Cells}>
@@ -268,9 +269,9 @@ fn SaleDialog<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> impl 
                 if review.can_review {
                     <DecisionForm screen={screen} review={review} row={row} />
                 } else {
-                    <Alert variant={AlertVariant::Info}>
+                    <Notice variant={AlertVariant::Info}>
                         "Return to the confirmed owned grade to save comp decisions."
-                    </Alert>
+                    </Notice>
                 }
             </div>
         </dialog>

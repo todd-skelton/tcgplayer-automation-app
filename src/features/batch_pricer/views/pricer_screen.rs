@@ -7,11 +7,12 @@ use crate::{
         page::{Chosen, CsvInput, SellerInput, Shown},
         url,
     },
+    layout::Notice,
     layout::SubmitsOnChange,
     text::Msg,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         input::Input,
@@ -58,11 +59,11 @@ pub fn PricerScreen<'a>(
                 "The newest 100 manual batches are shown here. Each is a frozen snapshot from Inventory Manager, a seller snapshot, or a CSV upload. Automatic run history is kept on Continuous Pricing, and a direct batch link remains available for older manual batches."
             </p>
             if list.is_empty() && unlisted.is_none() {
-                <Alert variant={AlertVariant::Info}>
+                <Notice variant={AlertVariant::Info}>
                     "No inventory batches exist yet. Create one above or from the "
                     <a href="/inventory-manager">"Inventory Manager"</a>
                     "."
-                </Alert>
+                </Notice>
             } else {
                 <SubmitsOnChange>
                     <form method="get" action={url::BatchPricer::newest()} class={Picker}>
@@ -97,7 +98,7 @@ pub fn PricerScreen<'a>(
         match shown {
             None => {}
             Some(Err(message)) => {
-                <Alert variant={AlertVariant::Warning}>"Failed to load batch: "{message}</Alert>
+                <Notice variant={AlertVariant::Warning}>"Failed to load batch: "{message}</Notice>
             }
             Some(Ok(shown)) => {
                 <BatchFollow shown={shown} t={t} />

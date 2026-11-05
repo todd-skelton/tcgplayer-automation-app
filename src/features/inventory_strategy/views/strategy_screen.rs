@@ -20,10 +20,11 @@ use crate::{
         screen::{Analysis, Screen},
         url::{self, View},
     },
+    layout::Notice,
     text::Msg,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
     },
 };
@@ -47,7 +48,7 @@ pub fn Problem<'a>(why: Option<&'a str>) -> impl Patch {
     html! {
         <div id={StrategyProblemId} role="alert">
             if let Some(why) = why {
-                <Alert variant={AlertVariant::Warning}>{why}</Alert>
+                <Notice variant={AlertVariant::Warning}>{why}</Notice>
             }
         </div>
     }
@@ -93,9 +94,9 @@ pub fn StrategyScreen<'a>(
                 </div>
             </header>
             if !configured {
-                <Alert variant={AlertVariant::Info}>
+                <Notice variant={AlertVariant::Info}>
                     "Configure the continuous-pricing seller key before loading inventory."
-                </Alert>
+                </Notice>
             }
             <Problem why={screen.problem.as_deref()} />
             if let Some(analysis) = &screen.analysis {
@@ -135,13 +136,13 @@ pub fn AnalysisStatus<'a>(analysis: &'a Analysis, view: &'a View, t: Msg) -> imp
     });
     html! {
         <div id={AnalysisStatusId}>
-            <Alert variant={tone}>
+            <Notice variant={tone}>
                 "Latest analysis: batch "{analysis.batch_number}" is "{&analysis.status}
                 if let Some(at) = analysis.last_priced_at {
                     " \u{b7} completed "
                     {t.date_time(at, DateStyle::Short, TimeStyle::Medium)}
                 }
-            </Alert>
+            </Notice>
         </div>
         {again}
     }

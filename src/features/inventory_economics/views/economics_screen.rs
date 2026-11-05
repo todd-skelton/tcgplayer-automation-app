@@ -8,10 +8,11 @@ use crate::{
         url,
         workspace::{Order, Workspace},
     },
+    layout::Notice,
     text::Msg,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         card::{Card, CardContent, CardHeader},
         table::{Table, TableLayout, TableNumeric},
     },
@@ -25,9 +26,9 @@ pub fn EconomicsScreen<'a>(workspace: &'a Result<Workspace, String>, t: Msg) -> 
         <div class={EconomicsScreen}>
             match workspace {
                 Err(why) => {
-                    <Alert variant={AlertVariant::Warning}>
+                    <Notice variant={AlertVariant::Warning}>
                         {why}" "<a href={url::InventoryEconomics}>"Retry"</a>
-                    </Alert>
+                    </Notice>
                 }
                 Ok(w) => {
                     <header>

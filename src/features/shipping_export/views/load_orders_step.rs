@@ -7,9 +7,10 @@ use crate::{
         steps::Step,
         url,
     },
+    layout::Notice,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         field::Field,
@@ -60,10 +61,10 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
     html! {
         <div class={LoadOrdersStep}>
             if !loading.warnings.is_empty() {
-                <Alert variant={AlertVariant::Warning}>
+                <Notice variant={AlertVariant::Warning}>
                     <strong>"Order load warnings"</strong>
                     for warning in loading.warnings { <p>{warning}</p> }
-                </Alert>
+                </Notice>
             }
             <div class={Actions}>
                 <form method="post" action={url::LoadOrders} data-patch>
@@ -178,11 +179,11 @@ pub fn LoadOrdersStep<'a>(loading: &'a Loading<'a>) -> impl Render {
             }
             match &loading.coverage {
                 Some(Ok(coverage)) if coverage.error.is_some() => {
-                    <Alert variant={AlertVariant::Warning}>{coverage.describe()}</Alert>
+                    <Notice variant={AlertVariant::Warning}>{coverage.describe()}</Notice>
                 }
-                Some(Err(why)) => <Alert variant={AlertVariant::Warning}>
+                Some(Err(why)) => <Notice variant={AlertVariant::Warning}>
                     "Seller order history status is unavailable: "{why}
-                </Alert>,
+                </Notice>,
                 _ => {}
             }
         </div>

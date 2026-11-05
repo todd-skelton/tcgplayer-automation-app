@@ -13,10 +13,11 @@ use crate::{
         },
         url::{self, View},
     },
+    layout::Notice,
     layout::SubmitsOnChange,
     text::Msg,
     theme::*,
-    ui::alert::{Alert, AlertVariant},
+    ui::alert::AlertVariant,
     ui::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
@@ -70,7 +71,7 @@ pub fn SellingHistoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             match &screen.selling_history {
                 Err(why) => {
                     <h2 id="selling-history">"Selling history"</h2>
-                    <Alert variant={AlertVariant::Warning}>{*why}</Alert>
+                    <Notice variant={AlertVariant::Warning}>{*why}</Notice>
                 }
                 Ok(Report::Unavailable(report)) => {
                     <h2 id="selling-history">"Selling history"</h2>

@@ -15,9 +15,10 @@ use crate::{
         },
         shipping_thresholds::{TierBasis, outcomes::SaleGroup, report::ShippingReport},
     },
+    layout::Notice,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         select::Select,
@@ -179,10 +180,10 @@ pub fn CalibrationPanel<'a>(
                 Report::Waiting => <p class={muted()} role="status">
                     "Measuring… "<a href={&at}>"Show the report"</a>
                 </p>,
-                Report::Read(Err(error)) => <Alert variant={AlertVariant::Warning}>{error}</Alert>,
+                Report::Read(Err(error)) => <Notice variant={AlertVariant::Warning}>{error}</Notice>,
                 Report::Read(Ok(r)) => {
                     let whole = r.earlier.plus(&r.held_out);
-                    <Alert
+                    <Notice
                         variant={if r.held_out_check == HeldOutCheck::Confirmed { AlertVariant::Info } else { AlertVariant::Warning }}
                     >
                         "Listings sold at "
@@ -205,7 +206,7 @@ pub fn CalibrationPanel<'a>(
                             }
                             None => {}
                         }
-                    </Alert>
+                    </Notice>
                     <h3>
                         "Measured from "{date(&r.from)}" through "{date(&r.through)}
                         ", holding out prices listed from "{date(&r.held_out_from)}
@@ -304,7 +305,7 @@ pub fn ShippingReportPanel<'a>(days: u32, report: Report<'a, ShippingReport>) ->
                 Report::Waiting => <p class={muted()} role="status">
                     "Learning shipping costs… "<a href={&at}>"Show the report"</a>
                 </p>,
-                Report::Read(Err(error)) => <Alert variant={AlertVariant::Warning}>{error}</Alert>,
+                Report::Read(Err(error)) => <Notice variant={AlertVariant::Warning}>{error}</Notice>,
                 Report::Read(Ok(r)) => {
                     <h3>
                         "Learned from "{count(r.cost_model.order_count as f64)}" orders and "

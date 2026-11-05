@@ -9,11 +9,12 @@ use crate::{
         store::{Item, PAGE_SIZE, RECENT_RUNS, Run, Shown, range},
         url::{self, View},
     },
+    layout::Notice,
     layout::SubmitsOnChange,
     text::Msg,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
@@ -61,7 +62,7 @@ pub fn Problem<'a>(why: Option<&'a str>) -> impl Patch {
     html! {
         <div id={ScheduleProblemId} role="alert">
             if let Some(why) = why {
-                <Alert variant={AlertVariant::Warning}>{why}</Alert>
+                <Notice variant={AlertVariant::Warning}>{why}</Notice>
             }
         </div>
     }
@@ -335,7 +336,7 @@ fn Snapshot<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 }
             </p>
             if let Some(error) = refresh.and_then(|r| r.error_message.as_deref()) {
-                <Alert variant={AlertVariant::Warning}>{error}</Alert>
+                <Notice variant={AlertVariant::Warning}>{error}</Notice>
             }
         </section>
     }
@@ -403,7 +404,7 @@ fn Items<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     html! {
         <div class={Stack}>
             if page.items.is_empty() {
-                <Alert variant={AlertVariant::Info}>"No inventory matches these filters."</Alert>
+                <Notice variant={AlertVariant::Info}>"No inventory matches these filters."</Notice>
             }
             for item in &page.items {
                 <SkuRow item={item} view={&screen.view} t={t} />
@@ -489,7 +490,7 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
                 <form method="post" action={action()} class={Review}>
                     <input type="hidden" name={f.sku} value={item.sku}>
                     <input type="hidden" name={f.enabled} value="true">
-                    <Alert variant={AlertVariant::Warning}>{reason}</Alert>
+                    <Notice variant={AlertVariant::Warning}>{reason}</Notice>
                     <button
                         class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
                     >
@@ -514,7 +515,7 @@ fn Runs<'a>(runs: &'a [Run], t: Msg) -> impl Render {
                 </p>
             </div>
             if runs.is_empty() {
-                <Alert variant={AlertVariant::Info}>"No automatic pricing runs yet."</Alert>
+                <Notice variant={AlertVariant::Info}>"No automatic pricing runs yet."</Notice>
             }
             for run in runs {
                 <div class={(Spread, RunRow)}>

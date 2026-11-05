@@ -10,9 +10,9 @@ use crate::{
         provider::{Connection, Provider, Status},
         url,
     },
+    layout::Notice,
     theme::*,
     ui::{
-        alert::Alert,
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         field::Field,
@@ -151,7 +151,7 @@ pub fn ConnectionCard<'a>(
                 </div>
             </form>
             match answered.and_then(|a| a.outcome) {
-                Some(outcome) => <Alert variant={outcome.tone()}>{outcome.message()}</Alert>,
+                Some(outcome) => <Notice variant={outcome.tone()}>{outcome.message()}</Notice>,
                 None => {}
             }
         </section>

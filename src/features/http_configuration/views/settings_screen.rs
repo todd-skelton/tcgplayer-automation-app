@@ -2,10 +2,11 @@ use corten::{prelude::*, view::Id};
 
 use crate::{
     features::http_configuration::{config::Domain, form::SettingsInput, url},
+    layout::Notice,
     theme::*,
     ui::{
         accordion::Accordion,
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         card::{Card, CardContent, CardHeader},
@@ -62,11 +63,11 @@ pub fn SettingsScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
                 aria-labelledby="reset-dialog-title"
             >
                 <h2 id="reset-dialog-title">"Reset to defaults?"</h2>
-                <Alert variant={AlertVariant::Warning}>
+                <Notice variant={AlertVariant::Warning}>
                     <p>
                         "This clears the auth cookie and every rate limit. It cannot be undone."
                     </p>
-                </Alert>
+                </Notice>
                 <form method="post" action={url::ResetSettings}>
                     <div class={DialogFooter {}}>
                         <button
@@ -132,7 +133,7 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                             </button>
                         </span>
                     </Field>
-                    <Alert variant={AlertVariant::Info}>
+                    <Notice variant={AlertVariant::Info}>
                         <strong>"To get your auth cookie:"</strong>
                         <ol>
                             <li>"Log in to TCGPlayer.com"</li>
@@ -140,7 +141,7 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                             <li>"Go to Application/Storage → Cookies"</li>
                             <li>"Copy the value of TCGAuthTicket_Production"</li>
                         </ol>
-                    </Alert>
+                    </Notice>
                 </div>
             </div>
             <div class={Card {}}>

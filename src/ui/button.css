@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: button ee1d07d493f54f89 */
+/* corten ui 0.1.0: button ce6602e3d67eba61 */
 /* The classes of the <button> or <a> the app writes. */
 .button {
   display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
@@ -15,13 +15,15 @@
 .outline { background: var(--background); color: var(--foreground); border-color: var(--input); }
 .outline:hover, .ghost:hover { background: var(--accent); color: var(--accent-foreground); }
 .ghost { background: transparent; color: var(--foreground); }
-.destructive { background: var(--destructive); color: var(--destructive-foreground); }
-.destructive:hover { background: color-mix(in oklab, var(--destructive) 88%, var(--foreground)); }
-/* The app's tones: the tone filled, with its foreground. */
+/* A tone's fill, mixed toward the page's text on hover. */
+.info { background: var(--info); color: var(--info-foreground); }
+.info:hover { background: color-mix(in oklab, var(--info) 88%, var(--foreground)); }
 .success { background: var(--success); color: var(--success-foreground); }
 .success:hover { background: color-mix(in oklab, var(--success) 88%, var(--foreground)); }
 .warning { background: var(--warning); color: var(--warning-foreground); }
 .warning:hover { background: color-mix(in oklab, var(--warning) 88%, var(--foreground)); }
+.destructive { background: var(--destructive); color: var(--destructive-foreground); }
+.destructive:hover { background: color-mix(in oklab, var(--destructive) 88%, var(--foreground)); }
 .link { background: none; color: var(--primary); text-underline-offset: 4px; }
 .link:hover { text-decoration: underline; }
 .sm { height: var(--control-height-sm); padding: 0 var(--control-padding); font-size: .8125rem; }

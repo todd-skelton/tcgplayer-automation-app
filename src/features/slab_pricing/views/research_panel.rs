@@ -18,10 +18,11 @@ use crate::{
             views::Problem,
         },
     },
+    layout::Notice,
     text::Msg,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
@@ -98,13 +99,13 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
                 )}
             </form>
             if grade != "owned" {
-                <Alert variant={AlertVariant::Info}>
+                <Notice variant={AlertVariant::Info}>
                     "Exploring PSA "{grade}". Owned "{&record.grader}" "{owned}
                     " is unchanged. Research evidence cannot be used to calculate or override the owned slab price."
-                </Alert>
+                </Notice>
             }
             match &screen.research {
-                Some(Err(why)) => <Alert variant={AlertVariant::Warning}>{why}</Alert>,
+                Some(Err(why)) => <Notice variant={AlertVariant::Warning}>{why}</Notice>,
                 _ => {
                     <form
                         method="post"
@@ -127,9 +128,9 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
             <Problem at={Place::Research} why={screen.problem_at(Place::Research)} />
             <EvidenceList screen={screen} t={t} />
             if let Some(Ok(Workspace { grade_model: Some(model), .. })) = &screen.research {
-                <Alert variant={AlertVariant::Info}>
+                <Notice variant={AlertVariant::Info}>
                     "Cross-grade estimate unavailable. "{&model.reason}
-                </Alert>
+                </Notice>
             }
         </section>
     }
@@ -153,9 +154,9 @@ pub fn EvidenceList<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
     html! {
         <div id={EvidenceListId} class={Stack} aria-live="polite">
             if statuses.is_empty() && matches!(&screen.research, Some(Ok(_))) {
-                <Alert variant={AlertVariant::Info}>
+                <Notice variant={AlertVariant::Info}>
                     "No saved evidence for this grade and date window. Refresh to request it."
-                </Alert>
+                </Notice>
             }
             for status in statuses {
                 <EvidenceRow status={status} choice={choice} t={t} />

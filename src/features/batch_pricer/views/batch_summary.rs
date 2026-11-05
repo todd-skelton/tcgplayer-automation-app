@@ -9,10 +9,11 @@ use crate::{
         batches::{Summary, percent_from_market},
         page::SuccessRates,
     },
+    layout::Notice,
     text::Msg,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         card::{Card, CardContent, CardHeader},
         card::{CardCompact, CardPanel},
@@ -293,15 +294,15 @@ pub fn BatchSummary<'a>(
                 }
             </div>
             if summary.success_rate < rates.low {
-                <Alert variant={AlertVariant::Warning}>
+                <Notice variant={AlertVariant::Warning}>
                     "The batch still has a low success rate. Repricing remaining manual review rows may improve the final batch output."
-                </Alert>
+                </Notice>
             }
             if summary.success_rate >= rates.high {
-                <Alert variant={AlertVariant::Success}>
+                <Notice variant={AlertVariant::Success}>
                     "The batch is in good shape with "{format!("{:.1}", summary.success_rate)}
                     "% of rows currently priced successfully."
-                </Alert>
+                </Notice>
             }
         </section>
     }

@@ -3,9 +3,10 @@ use corten::{i18n::Currency, prelude::*};
 use super::matrix_table::{ConditionNotes, Usd, cents};
 use crate::{
     features::product_price_matrix::matrix::{self, Cell, Matrix, Refund},
+    layout::Notice,
     text::Msg,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         control_width::{ControlWidth, Width},
         field::Field,
         input::Input,
@@ -232,22 +233,22 @@ pub fn RefundHelper<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
             </div>
             // The script shows one of these at a time; each is the kit's Alert in a box it hides.
             <div ref={same} hidden={!d.same()}>
-                <Alert variant={AlertVariant::Info}>
+                <Notice variant={AlertVariant::Info}>
                     <p>"Sold and received conditions match, so there is nothing to refund."</p>
-                </Alert>
+                </Notice>
             </div>
             <div ref={enter} hidden={d.same() || d.paid.is_some()}>
-                <Alert variant={AlertVariant::Warning}>
+                <Notice variant={AlertVariant::Warning}>
                     <p>"Enter the price the buyer paid."</p>
-                </Alert>
+                </Notice>
             </div>
             <div
                 ref={unpriced}
                 hidden={d.same() || d.paid.is_none() || by_sell_at.is_some()}
             >
-                <Alert variant={AlertVariant::Warning}>
+                <Notice variant={AlertVariant::Warning}>
                     <p ref={unpriced_line}>{t.price_matrix_unpriced(received_name)}</p>
-                </Alert>
+                </Notice>
             </div>
             <div ref={results} class={Results} hidden={!shown}>
                 <div>

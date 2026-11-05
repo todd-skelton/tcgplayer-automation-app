@@ -1,20 +1,25 @@
-/* corten ui 0.1.0: alert 88d6f3d084d73adb */
+/* corten ui 0.1.0: alert 1f4055e184393511 */
 .alert {
   display: grid; gap: .25rem; padding: .75rem 1rem; font-size: .875rem;
   border: 1px solid var(--border); border-radius: var(--radius);
 }
 .alert > :is(h2, h3, h4, h5, h6, strong) { margin: 0; font-size: inherit; font-weight: 500; line-height: 1.25rem; }
-.alert > p { margin: 0; }
+.alert > p { margin: 0; color: inherit; }
+/* The app's lists in an alert (the reasons a form was refused). */
 .alert > :is(ol, ul) { margin: .25rem 0 0; padding-inline-start: 1.25rem; }
-.neutral { background: var(--card); color: var(--card-foreground); }
-.neutral > p { color: var(--muted-foreground); }
-.destructive { background: var(--card); color: var(--destructive); border-color: color-mix(in oklab, var(--destructive) 50%, var(--border)); }
-.destructive > p { color: color-mix(in oklab, var(--destructive) 85%, var(--foreground)); }
-/* The app's tones: the tone's soft surface, its border, and text that keeps its contrast. */
-.success, .warning, .info { color: var(--foreground); }
-.success { background: var(--success-soft); border-color: color-mix(in oklab, var(--success) 40%, var(--border)); }
-.warning { background: var(--warning-soft); border-color: color-mix(in oklab, var(--warning) 40%, var(--border)); }
-.info { background: var(--info-soft); border-color: color-mix(in oklab, var(--info) 40%, var(--border)); }
-.success > :is(h2, h3, h4, h5, h6, strong) { color: var(--success); }
-.warning > :is(h2, h3, h4, h5, h6, strong) { color: var(--warning); }
-.info > :is(h2, h3, h4, h5, h6, strong) { color: var(--info); }
+/* A variant is its tone (soft and outline text), and the fill and text of a solid alert. */
+.neutral { --kit-tone: var(--foreground); --kit-tone-fill: var(--secondary); --kit-tone-text: var(--secondary-foreground); }
+.info { --kit-tone: var(--info); --kit-tone-fill: var(--info); --kit-tone-text: var(--info-foreground); }
+.success { --kit-tone: var(--success); --kit-tone-fill: var(--success); --kit-tone-text: var(--success-foreground); }
+.warning { --kit-tone: var(--warning); --kit-tone-fill: var(--warning); --kit-tone-text: var(--warning-foreground); }
+.destructive { --kit-tone: var(--destructive); --kit-tone-fill: var(--destructive); --kit-tone-text: var(--destructive-foreground); }
+/* Mixed in sRGB, which the kit's contrast test computes exactly. */
+.soft { background: color-mix(in srgb, var(--kit-tone) 12%, var(--card)); color: color-mix(in srgb, var(--kit-tone) 85%, var(--foreground)); border-color: transparent; }
+.outline { background: var(--card); color: var(--kit-tone); border-color: color-mix(in oklab, var(--kit-tone) 50%, var(--border)); }
+.outline > p { color: color-mix(in srgb, var(--kit-tone) 85%, var(--foreground)); }
+.solid { background: var(--kit-tone-fill); color: var(--kit-tone-text); border-color: transparent; }
+/* A neutral solid fill is near the card's, so it keeps the card's border to show as a box. */
+.neutral.solid { border-color: var(--border); }
+/* A neutral outline is the card's: its border and muted text. */
+.neutral.outline { color: var(--card-foreground); border-color: var(--border); }
+.neutral.outline > p { color: var(--muted-foreground); }

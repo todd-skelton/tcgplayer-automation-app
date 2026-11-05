@@ -20,10 +20,11 @@ use crate::{
             url::{self, ShippingWorkflow},
         },
     },
+    layout::Notice,
     text::Msg,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         field::Field,
@@ -297,12 +298,12 @@ pub fn LabelForm<'a>(
                 "Apply Choice and Service"
             </button>
             if !mode.has_key() {
-                <Alert variant={AlertVariant::Warning}>
+                <Notice variant={AlertVariant::Warning}>
                     {mode.key_name()}" is not set. Postage purchase is disabled."
-                </Alert>
+                </Notice>
             }
             if !bought.is_empty() {
-                <Alert variant={AlertVariant::Warning}>{repurchase(bought)}</Alert>
+                <Notice variant={AlertVariant::Warning}>{repurchase(bought)}</Notice>
                 <input type="hidden" name={c.again} value="true">
             }
             <button

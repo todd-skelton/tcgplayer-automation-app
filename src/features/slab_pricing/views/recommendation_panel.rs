@@ -13,10 +13,11 @@ use crate::{
         url,
         views::{Problem, PublicationPanel},
     },
+    layout::Notice,
     text::Msg,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         field::Field,
@@ -68,16 +69,16 @@ pub fn RecommendationPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -
                 can_calculate={can_calculate}
             />
             if !can_calculate {
-                <Alert variant={AlertVariant::Info}>
+                <Notice variant={AlertVariant::Info}>
                     "Confirm the owned identity, assign it to the selected listing if needed, and return to its grade to calculate."
-                </Alert>
+                </Notice>
             }
             <Problem at={Place::Recommendation} why={screen.problem_at(Place::Recommendation)} />
             if let Some(recommendation) = recommendation {
                 if stale {
-                    <Alert variant={AlertVariant::Warning}>
+                    <Notice variant={AlertVariant::Warning}>
                         "Inputs or evidence changed. This saved recommendation needs recalculation."
-                    </Alert>
+                    </Notice>
                 }
                 <Outcome recommendation={recommendation} t={t} />
                 <ReviewedAsk
@@ -268,9 +269,9 @@ fn Outcome<'a>(recommendation: &'a Recommendation, t: Msg) -> impl Render {
             </p>
         }
         if !flags.is_empty() {
-            <Alert variant={tone}>
+            <Notice variant={tone}>
                 {flags.iter().map(|code| words(code)).collect::<Vec<_>>().join("; ")}
-            </Alert>
+            </Notice>
         }
         <p class={muted()}>
             {uncertain}" uncertain events · "{rejected}
@@ -347,11 +348,11 @@ fn ReviewedAsk<'a>(
     html! {
         let e = Within::none(ReviewAskFormId);
         if let Some(reviewed) = &recommendation.r#override {
-            <Alert variant={AlertVariant::Info}>
+            <Notice variant={AlertVariant::Info}>
                 "Reviewed item ask: "{&reviewed.currency}" "{format!("{:.2}", reviewed.item_price)}
                 " · "{&reviewed.note}
                 ". Proceeds and profit above belong to the original calculation."
-            </Alert>
+            </Notice>
         }
         <form
             id={ReviewAskFormId}

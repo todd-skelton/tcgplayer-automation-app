@@ -17,10 +17,11 @@ use crate::{
             views::Problem,
         },
     },
+    layout::Notice,
     text::Msg,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
         checkbox::Checkbox,
         field::Field,
@@ -88,7 +89,7 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 "Refresh confirmed inventory in small groups and update recommendations from fresh saved evidence. Reviewed price overrides stay in manual review. This never publishes prices."
             </p>
             if let Some(Err(why)) = &screen.maintenance {
-                <Alert variant={AlertVariant::Warning}>{why}</Alert>
+                <Notice variant={AlertVariant::Warning}>{why}</Notice>
             }
             if let Some(view) = view {
                 let e = Within::none(MaintenanceFormId);
@@ -227,11 +228,11 @@ fn MaintenanceStatusLines<'a>(view: &'a View, t: Msg) -> impl Render {
             }
             ". Turning maintenance off stops further work; already requested evidence and an in-progress calculation may finish."
         </p>
-        <Alert variant={AlertVariant::Info}>
+        <Notice variant={AlertVariant::Info}>
             "Maintenance requires the existing slab evidence worker to be running."
-        </Alert>
+        </Notice>
         if let Some(error) = &s.last_error {
-            <Alert variant={AlertVariant::Warning}>{words(error)}</Alert>
+            <Notice variant={AlertVariant::Warning}>{words(error)}</Notice>
         }
         if let Some(summary) = &s.last_summary {
             <p class={muted()}>
@@ -244,9 +245,9 @@ fn MaintenanceStatusLines<'a>(view: &'a View, t: Msg) -> impl Render {
             "Connections: "{providers}". "
             <a href={slab_connections::url::SlabConnections}>"Manage connections"</a>
         </p>
-        <Alert variant={AlertVariant::Info}>
+        <Notice variant={AlertVariant::Info}>
             "Automatic publication is unavailable. Live seller access and adopted automation cohorts are required."
-        </Alert>
+        </Notice>
         <details>
             <summary>"Recent listing checks"</summary>
             for item in &view.items {
@@ -319,7 +320,7 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
             <Problem at={Place::Outcomes} why={screen.problem_at(Place::Outcomes)} />
             match &screen.outcomes {
                 None => {}
-                Some(Err(why)) => <Alert variant={AlertVariant::Warning}>{why}</Alert>,
+                Some(Err(why)) => <Notice variant={AlertVariant::Warning}>{why}</Notice>,
                 Some(Ok(review)) => {
                     <p>
                         "Listing "{&review.item_id}": "{review.summary.sales}
@@ -328,10 +329,10 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
                         {review.summary.relists}" relist records."
                     </p>
                     if !review.summary.unresolved.is_empty() {
-                        <Alert variant={AlertVariant::Warning}>
+                        <Notice variant={AlertVariant::Warning}>
                             "Unresolved event IDs: "{review.summary.unresolved.join(", ")}
                             ". Conflicting or unlinked observations are excluded from usable sales."
-                        </Alert>
+                        </Notice>
                     }
                     <p class={muted()}>
                         "Manually reviewed observations only; seller order access is not connected. This is incomplete history, and does not establish continuous exposure, sale probability or time to sell."

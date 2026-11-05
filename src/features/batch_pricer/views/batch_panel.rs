@@ -16,10 +16,11 @@ use crate::{
         page::{PriceInput, Shown, elapsed},
         url,
     },
+    layout::Notice,
     text::Msg,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
@@ -50,7 +51,7 @@ pub fn BatchProblem<'a>(message: Option<&'a str>) -> impl Patch {
     html! {
         <div id={BatchProblemId} role="alert">
             if let Some(message) = message {
-                <Alert variant={AlertVariant::Warning}>{message}</Alert>
+                <Notice variant={AlertVariant::Warning}>{message}</Notice>
             }
         </div>
     }
@@ -167,34 +168,34 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
                     </button>
                 </div>
                 if let Some(p) = preview {
-                    <Alert
+                    <Notice
                         variant={if p.excluded_count > 0 { AlertVariant::Warning } else { AlertVariant::Info }}
                     >
                         {p.eligible_count}" SKU"{if p.eligible_count == 1 { "" } else { "s" }}
                         " ready to publish; "{p.excluded_count}" excluded by safety checks."
-                    </Alert>
+                    </Notice>
                 }
                 if let Some(run) = publications.and_then(Publications::latest_run) {
-                    <Alert variant={run_tone(run.status)}>
+                    <Notice variant={run_tone(run.status)}>
                         "Latest pricing run: "{run.status.word()}". Published "{run.published}
                         " across "{run.publications}" publication batch"
                         {if run.publications == 1 { "" } else { "es" }}
                         ", failed "{run.failed}", ambiguous "{run.ambiguous}"."
-                    </Alert>
+                    </Notice>
                 }
                 if let Err(message) = &shown.publications {
-                    <Alert variant={AlertVariant::Warning}>
+                    <Notice variant={AlertVariant::Warning}>
                         "The batch's publications could not be read: "{message}
-                    </Alert>
+                    </Notice>
                 }
             </section>
             if let Some(job) = batch.latest_job.as_ref().filter(|j| j.active()) {
                 <JobProgress job={job} batch={n} />
             }
             if let Some(job) = failed {
-                <Alert variant={AlertVariant::Warning}>
+                <Notice variant={AlertVariant::Warning}>
                     {job.error_message.clone().unwrap_or_else(|| format!("Batch {n} pricing failed"))}
-                </Alert>
+                </Notice>
             }
             if let Some(summary) = &batch.summary {
                 <p class={muted()}>"Current batch summary for the saved pricing results."</p>

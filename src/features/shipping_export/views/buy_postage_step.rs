@@ -13,10 +13,11 @@ use crate::{
             value::SaleValue,
         },
     },
+    layout::Notice,
     text::Msg,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         dialog::{Dialog, DialogFooter, DialogSize},
@@ -65,9 +66,9 @@ pub fn BuyPostageStep<'a>(rows: &'a [PostageRow<'a>], mode: EasyPostMode, t: Msg
     html! {
         <div class={BuyPostageStep}>
             if !can_buy {
-                <Alert variant={AlertVariant::Warning}>
+                <Notice variant={AlertVariant::Warning}>
                     {mode.key_name()}" is not set. Postage purchase is disabled."
-                </Alert>
+                </Notice>
             }
             <Table layout={TableLayout::Stack}>
                 <table class={Shipments}>

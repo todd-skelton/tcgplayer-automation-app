@@ -9,9 +9,10 @@ use crate::{
         },
         http_configuration,
     },
+    layout::Notice,
     theme::*,
     ui::{
-        alert::{Alert, AlertVariant},
+        alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         checkbox::Checkbox,
@@ -43,10 +44,10 @@ pub fn DataScreen<'a>(screen: &'a Screen) -> impl Render {
                 </p>
             </header>
             if screen.chrome.auth_cookie_missing {
-                <Alert variant={AlertVariant::Warning}>
+                <Notice variant={AlertVariant::Warning}>
                     "Live TCGPlayer requests are blocked until the HTTP configuration page has a valid authentication cookie. "
                     <a href={http_configuration::url::HttpSettings}>"Fix Auth"</a>
-                </Alert>
+                </Notice>
             }
             <div class={Cards}>
                 for job in [Job::ProductLines, Job::NewProducts, Job::EveryProduct, Job::Product, Job::Set] {
