@@ -14,7 +14,8 @@
   gap: var(--space-4);
   & > * {
     flex: 1;
-    min-width: 20rem;
+    /* No wider than the row, so a phone's narrowest width still fits one card. */
+    min-width: min(20rem, 100%);
   }
 }
 .figures {

@@ -134,6 +134,7 @@ pub fn CsvForm<'a>(errors: &'a Errors) -> impl Patch {
         >
             <div class={row(Space::_2)}>
                 <input
+                    class={Input {}}
                     type="file"
                     name={f.file}
                     accept=".csv,text/csv"

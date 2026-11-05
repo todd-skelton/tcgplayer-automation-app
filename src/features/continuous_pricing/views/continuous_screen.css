@@ -23,6 +23,15 @@
   align-items: end;
   gap: var(--space-2);
 }
+/* The kit's Button never wraps (corten#892), and "Reprice all inventory using saved curves" is
+   wider than a 320px phone's card: here a label wraps when it must. */
+.line button {
+  max-width: 100%;
+  height: auto;
+  min-height: var(--control-height);
+  padding-block: var(--space-1);
+  white-space: normal;
+}
 .spread {
   display: flex;
   flex-wrap: wrap;
