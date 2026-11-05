@@ -1,0 +1,91 @@
+.section {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  & h2,
+  & p {
+    margin: 0;
+  }
+}
+.row {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+/* What only one choice uses stays in the form, hidden, so it is sent as it was. */
+.horizon:not(:has(option[value="target-horizon"]:checked)) .for-horizon,
+.supply:not(:has(input[data-enables]:checked)) .for-supply {
+  display: none;
+}
+.saved {
+  color: var(--success);
+  font-size: var(--font-size-sm);
+}
+.add {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(14rem, 2fr) repeat(2, minmax(8rem, 1fr)) auto auto;
+  align-items: end;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+/* On a phone two columns: the product line across both, the two numbers, then Skip and Add. */
+@media not (--sm) {
+  .add {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    & > :first-child {
+      grid-column: 1 / -1;
+    }
+  }
+}
+.lines {
+  & :is(th, td) {
+    text-align: center;
+  }
+  & :is(th, td):first-child {
+    text-align: start;
+  }
+  & form {
+    display: inline;
+  }
+}
+/* Both report panels; each is a section patched on its own. */
+.report-section {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  & h2,
+  & h3,
+  & p {
+    margin: 0;
+  }
+}
+.window-select {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.figures {
+  & :is(th, td) {
+    text-align: end;
+  }
+  & :is(th, td):first-child {
+    text-align: start;
+  }
+}
+/* The screen spaces its parts: the heading, the notice and each panel. It comes after .section and
+   .report-section, so their own bottom margin gives way to the gap here. */
+.configuration-screen {
+  display: grid;
+  gap: var(--space-4);
+  & > * {
+    margin-block: 0;
+  }
+}
+/* The warning above its button, the button at its own width. */
+.reset-form {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}

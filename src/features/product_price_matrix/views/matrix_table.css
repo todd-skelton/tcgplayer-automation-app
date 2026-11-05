@@ -1,0 +1,117 @@
+.scroll {
+  overflow-x: auto;
+}
+.matrix-table {
+  min-width: 1250px;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--font-size-sm);
+  & th,
+  & td {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--border);
+    text-align: start;
+    vertical-align: top;
+    /* The color alone: the shorthand would reset the tints' background-image below. */
+    background-color: var(--card);
+  }
+  & thead th {
+    font-weight: 700;
+  }
+  & tbody tr {
+    --tint: var(--muted-foreground);
+  }
+  & tbody tr:hover > * {
+    background-image: linear-gradient(
+      color-mix(in srgb, var(--tint) calc(var(--tint-strength-hover) * 1%), transparent),
+      color-mix(in srgb, var(--tint) calc(var(--tint-strength-hover) * 1%), transparent)
+    );
+  }
+  & small {
+    display: block;
+    color: var(--muted-foreground);
+  }
+}
+.lp {
+  --tint: var(--info) !important;
+}
+.mp {
+  --tint: var(--success) !important;
+}
+.hp {
+  --tint: var(--warning) !important;
+}
+.dmg {
+  --tint: var(--destructive) !important;
+}
+.starts > * {
+  border-top: 2px solid var(--border);
+}
+.sticky {
+  position: sticky;
+  z-index: 1;
+}
+/* A row's label cells carry its condition's tone faintly, as React's matrix did. */
+.variant-column,
+.condition-column {
+  width: 150px;
+  min-width: 150px;
+  white-space: nowrap;
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--tint, transparent) calc(var(--tint-strength-faint) * 1%), transparent),
+    color-mix(in srgb, var(--tint, transparent) calc(var(--tint-strength-faint) * 1%), transparent)
+  );
+}
+.variant-column {
+  left: 0;
+  border-left: 4px solid var(--tint, var(--border));
+}
+.condition-column {
+  left: 150px;
+}
+.market-column {
+  left: 300px;
+  width: 110px;
+  min-width: 110px;
+  border-right: 1px solid var(--border);
+}
+.sell-at {
+  min-width: 190px;
+  border-left: 1px solid var(--tint, var(--border));
+}
+.priced {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--tint) calc(var(--tint-strength-strong) * 1%), transparent),
+    color-mix(in srgb, var(--tint) calc(var(--tint-strength-strong) * 1%), transparent)
+  );
+}
+.condition-chip {
+  display: inline-block;
+  min-width: 122px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--tint);
+  border-radius: var(--radius-pill);
+  color: var(--tint);
+  font-weight: 700;
+}
+.notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.muted {
+  color: var(--muted-foreground);
+}
+
+/* A caveat badge is a button that opens its reason. */
+.caveat-button {
+  font: inherit;
+  font-size: .75rem;
+  cursor: pointer;
+}
+.caveat-reason {
+  max-width: min(20rem, 90vw);
+  font-size: .875rem;
+  white-space: normal;
+}

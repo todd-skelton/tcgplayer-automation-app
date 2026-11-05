@@ -72,7 +72,8 @@ type Worker = {
 // One process-level loop, including dev hot reloads. Slab jobs never occupy a TCG pricing worker.
 const scope = globalThis as typeof globalThis & { slabEvidenceWorker?: Worker };
 export function ensureEvidenceWorker() {
-  if (process.env.WORKERS_RUN_IN_PROCESS === "false") return;
+  // SLAB_EVIDENCE_WORKER hands the queue to the Corten app's worker, which reads the same env files.
+  if (process.env.WORKERS_RUN_IN_PROCESS === "false" || process.env.SLAB_EVIDENCE_WORKER?.trim()) return;
   if (
     scope.slabEvidenceWorker &&
     !scope.slabEvidenceWorker.controller.signal.aborted

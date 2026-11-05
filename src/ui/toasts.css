@@ -1,0 +1,19 @@
+/* corten ui 0.1.0: toasts 5c1223ec42e5f3d0 */
+.toasts { position: fixed; inset: auto 1rem 1rem auto; z-index: 50; width: min(22rem, calc(100vw - 2rem)); }
+/* Toaster's root: a box only while it has a message. */
+.toasts > :has([role="status"] > :not([hidden])) {
+  display: flex; align-items: flex-start; gap: .75rem; box-sizing: border-box; padding: 1rem;
+  background: var(--popover); color: var(--popover-foreground); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: 0 10px 30px rgb(0 0 0 / .15);
+}
+.toasts [role="status"] { flex: 1; font-size: .875rem; }
+.toasts [role="status"] + button {
+  flex: none; padding: .125rem .5rem; font: inherit; font-size: .75rem; font-weight: 500; color: var(--muted-foreground);
+  background: transparent; border: 1px solid var(--border); border-radius: calc(var(--radius) - 4px); cursor: pointer;
+}
+.toasts [role="status"] + button:hover { color: var(--foreground); background: var(--accent); }
+.toasts [role="status"] + button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .toasts > :has([role="status"] > :not([hidden])) { animation: toasts-in .2s ease-out; }
+  @keyframes toasts-in { from { opacity: 0; transform: translateY(.5rem); } }
+}

@@ -1,0 +1,312 @@
+[
+  {
+    "input": {},
+    "output": {
+      "pricing": {
+        "policy": {
+          "method": "percentile"
+        },
+        "profitPerDay": {
+          "dailyReturnHurdle": 0.005,
+          "relativeOverhead": 0.15,
+          "staticOverheadPerUnit": 0.3
+        },
+        "shippingThresholdSnaps": {
+          "enabled": true,
+          "thresholds": [
+            5,
+            50,
+            250
+          ],
+          "snapRange": 0.1,
+          "evidenceWindowDays": 90
+        },
+        "defaultPercentile": 65,
+        "percentileStep": 5,
+        "minPercentile": 5,
+        "maxPercentile": 95,
+        "skipPrefix": "C-",
+        "minPriceMultiplier": 0.9411764705882353,
+        "minPriceConstant": 0.1,
+        "successRateThreshold": {
+          "low": 70,
+          "high": 90
+        }
+      },
+      "supplyAnalysis": {
+        "enableSupplyAnalysis": true,
+        "includeUnverifiedSellers": false
+      },
+      "productLinePricing": {
+        "productLineSettings": {},
+        "defaultPercentile": 65
+      }
+    }
+  },
+  {
+    "input": {
+      "pricing": {
+        "policy": {
+          "method": "profit-per-day"
+        },
+        "skipPrefix": "C-",
+        "profitPerDay": {
+          "relativeOverhead": 0.15,
+          "dailyReturnHurdle": 0.005,
+          "staticOverheadPerUnit": 0
+        },
+        "maxPercentile": 95,
+        "minPercentile": 5,
+        "percentileStep": 5,
+        "minPriceConstant": 0.1,
+        "defaultPercentile": 65,
+        "forecastCorrection": null,
+        "minPriceMultiplier": 0.9411764705882353,
+        "successRateThreshold": {
+          "low": 70,
+          "high": 90
+        }
+      },
+      "supplyAnalysis": {
+        "maxListingsPerSku": 200,
+        "enableSupplyAnalysis": true,
+        "includeUnverifiedSellers": false
+      },
+      "productLinePricing": {
+        "defaultPercentile": 65,
+        "productLineSettings": {
+          "3": {
+            "skip": false,
+            "percentile": 75
+          },
+          "68": {
+            "skip": false,
+            "percentile": 75
+          },
+          "85": {
+            "skip": false,
+            "percentile": 70
+          }
+        }
+      }
+    },
+    "output": {
+      "pricing": {
+        "policy": {
+          "method": "profit-per-day"
+        },
+        "profitPerDay": {
+          "dailyReturnHurdle": 0.005,
+          "relativeOverhead": 0.15,
+          "staticOverheadPerUnit": 0
+        },
+        "shippingThresholdSnaps": {
+          "enabled": true,
+          "thresholds": [
+            5,
+            50,
+            250
+          ],
+          "snapRange": 0.1,
+          "evidenceWindowDays": 90
+        },
+        "defaultPercentile": 65,
+        "percentileStep": 5,
+        "minPercentile": 5,
+        "maxPercentile": 95,
+        "skipPrefix": "C-",
+        "minPriceMultiplier": 0.9411764705882353,
+        "minPriceConstant": 0.1,
+        "successRateThreshold": {
+          "low": 70,
+          "high": 90
+        }
+      },
+      "supplyAnalysis": {
+        "enableSupplyAnalysis": true,
+        "includeUnverifiedSellers": false,
+        "maxListingsPerSku": 200
+      },
+      "productLinePricing": {
+        "productLineSettings": {
+          "3": {
+            "skip": false,
+            "percentile": 75
+          },
+          "68": {
+            "skip": false,
+            "percentile": 75
+          },
+          "85": {
+            "skip": false,
+            "percentile": 70
+          }
+        },
+        "defaultPercentile": 65
+      }
+    }
+  },
+  {
+    "input": {
+      "pricing": {
+        "policy": {
+          "method": "target-horizon",
+          "horizonDays": 12.5
+        },
+        "profitPerDay": {
+          "dailyReturnHurdle": 2,
+          "relativeOverhead": "x"
+        },
+        "shippingThresholdSnaps": {
+          "enabled": false,
+          "thresholds": [
+            250,
+            7,
+            5
+          ],
+          "snapRange": 0.05,
+          "evidenceWindowDays": 60
+        },
+        "successRateThreshold": {
+          "low": 50
+        },
+        "extra": [
+          1
+        ]
+      },
+      "supplyAnalysis": {
+        "enableSupplyAnalysis": false
+      },
+      "productLinePricing": {
+        "productLineSettings": {
+          "1": null,
+          "2": {
+            "skip": true,
+            "percentile": 60,
+            "dailyReturnHurdle": 0.01
+          },
+          "4": {
+            "skip": false,
+            "percentile": 80,
+            "dailyReturnHurdle": 0.02
+          },
+          "5": {
+            "percentile": 70,
+            "dailyReturnHurdle": 5
+          }
+        }
+      }
+    },
+    "output": {
+      "pricing": {
+        "policy": {
+          "method": "target-horizon",
+          "horizonDays": 12.5
+        },
+        "profitPerDay": {
+          "dailyReturnHurdle": 0.005,
+          "relativeOverhead": 0.15,
+          "staticOverheadPerUnit": 0.3
+        },
+        "shippingThresholdSnaps": {
+          "enabled": false,
+          "thresholds": [
+            5,
+            250
+          ],
+          "snapRange": 0.05,
+          "evidenceWindowDays": 60
+        },
+        "defaultPercentile": 65,
+        "percentileStep": 5,
+        "minPercentile": 5,
+        "maxPercentile": 95,
+        "skipPrefix": "C-",
+        "minPriceMultiplier": 0.9411764705882353,
+        "minPriceConstant": 0.1,
+        "successRateThreshold": {
+          "low": 50,
+          "high": 90
+        },
+        "extra": [
+          1
+        ]
+      },
+      "supplyAnalysis": {
+        "enableSupplyAnalysis": false,
+        "includeUnverifiedSellers": false
+      },
+      "productLinePricing": {
+        "productLineSettings": {
+          "2": {
+            "skip": true,
+            "percentile": 60
+          },
+          "4": {
+            "skip": false,
+            "percentile": 80,
+            "dailyReturnHurdle": 0.02
+          },
+          "5": {
+            "percentile": 70
+          }
+        },
+        "defaultPercentile": 65
+      }
+    }
+  },
+  {
+    "input": {
+      "pricing": {
+        "policy": {
+          "method": "target-horizon",
+          "horizonDays": -1
+        }
+      },
+      "productLinePricing": {
+        "defaultPercentile": 55
+      }
+    },
+    "output": {
+      "pricing": {
+        "policy": {
+          "method": "percentile"
+        },
+        "profitPerDay": {
+          "dailyReturnHurdle": 0.005,
+          "relativeOverhead": 0.15,
+          "staticOverheadPerUnit": 0.3
+        },
+        "shippingThresholdSnaps": {
+          "enabled": true,
+          "thresholds": [
+            5,
+            50,
+            250
+          ],
+          "snapRange": 0.1,
+          "evidenceWindowDays": 90
+        },
+        "defaultPercentile": 65,
+        "percentileStep": 5,
+        "minPercentile": 5,
+        "maxPercentile": 95,
+        "skipPrefix": "C-",
+        "minPriceMultiplier": 0.9411764705882353,
+        "minPriceConstant": 0.1,
+        "successRateThreshold": {
+          "low": 70,
+          "high": 90
+        }
+      },
+      "supplyAnalysis": {
+        "enableSupplyAnalysis": true,
+        "includeUnverifiedSellers": false
+      },
+      "productLinePricing": {
+        "productLineSettings": {},
+        "defaultPercentile": 55
+      }
+    }
+  }
+]

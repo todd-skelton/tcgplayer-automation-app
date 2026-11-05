@@ -1,0 +1,104 @@
+//! Configuration: how prices are chosen (the policy, percentiles, the price floor), product lines
+//! priced differently, shipping threshold snaps and supply analysis, which every pricing run reads.
+//! Ported from `app/features/pricing/routes/configuration.tsx`.
+//!
+//! Each section saves itself when a control in it changes, as the React screen did, and answers
+//! with itself. A browser without scripts gets a Save button per section.
+//!
+//! | Route | Answer |
+//! |---|---|
+//! | `GET /configuration` | every section; the layout's toaster says a reset happened |
+//! | `POST /configuration/pricing` | the pricing section saved |
+//! | `POST /configuration/product-lines/default` | the default percentile saved |
+//! | `POST /configuration/product-lines` | a product line's setting added |
+//! | `POST /configuration/product-lines/{id}/remove` | a product line's setting removed |
+//! | `POST /configuration/snaps` | the shipping threshold snaps saved |
+//! | `POST /configuration/supply` | supply analysis saved |
+//! | `POST /configuration/reset` | every setting back to its default |
+//! | `GET /configuration/calibration?days=` | the calibration report panel over that window |
+//! | `GET /configuration/calibration/live` | the calibration panel once read, for `<corten-live>` |
+//! | `GET /configuration/shipping-report?days=` | the shipping report panel over that window |
+//! | `GET /configuration/shipping-report/live` | the shipping panel once read, for `<corten-live>` |
+//!
+//! The two reports (`features::forecast_calibration`, `features::shipping_thresholds::report`)
+//! can be slow over a long window; the page draws them waiting and a `<corten-live>` stream sends
+//! each once read, so the settings never wait for them.
+//!
+//! Not drawn here: the React screen's File Configuration and Form Defaults, which lived in one
+//! browser's localStorage (`tcgplayer-file-config`, `tcgplayer-form-defaults`). What each did:
+//!
+//! - The default seller key, which the batch pricer's New Batch form started from and saved on
+//!   each snapshot, is the seller the newest seller batch was frozen from
+//!   (`batch_pricer::import::last_seller`), so every browser starts from it.
+//! - The accept pattern only filtered the CSV picker; the pricer's picker takes `.csv,text/csv`.
+//! - The output prefix, MIME type and form percentile were read by no form or download in the
+//!   React app.
+/// The stored pricing configuration, also read by the strategy (what changed between pricing runs).
+pub mod config;
+mod form;
+pub mod json_route;
+mod page;
+mod reports;
+mod views;
+
+pub use views::COMPONENTS;
+
+/// The success rates below which a priced batch is worth repricing and from which it is in good
+/// shape, in percent: what the batch pricer's summary says of a batch.
+pub async fn success_rate_thresholds(db: &crate::database::Database) -> sqlx::Result<(f64, f64)> {
+    let pricing = config::load(db).await?.pricing;
+    Ok((pricing.success_rate_low, pricing.success_rate_high))
+}
+
+// Handlers are named from here, where the routes module is declared.
+use page::{
+    add_line, calibration_live, calibration_report, remove_line, reset, save_default, save_pricing,
+    save_snaps, save_supply, shipping_live, shipping_report, show,
+};
+
+#[corten::routes(area = Configuration, state = crate::app::Shared)]
+pub mod url {
+    #[route("/configuration", get = show)]
+    pub struct Configuration;
+
+    #[route("/configuration/pricing", post = save_pricing)]
+    pub struct SavePricing;
+
+    #[route("/configuration/product-lines/default", post = save_default)]
+    pub struct SaveDefaultPercentile;
+
+    #[route("/configuration/product-lines", post = add_line)]
+    pub struct AddProductLine;
+
+    #[route("/configuration/product-lines/{id}/remove", post = remove_line)]
+    pub struct RemoveProductLine {
+        pub id: i32,
+    }
+
+    #[route("/configuration/snaps", post = save_snaps)]
+    pub struct SaveSnaps;
+
+    #[route("/configuration/supply", post = save_supply)]
+    pub struct SaveSupply;
+
+    #[route("/configuration/reset", post = reset)]
+    pub struct ResetConfiguration;
+
+    #[route("/configuration/calibration", get = calibration_report)]
+    pub struct CalibrationReport {
+        #[route(query)]
+        pub window: super::reports::Window,
+    }
+
+    #[route("/configuration/calibration/live", get = calibration_live)]
+    pub struct CalibrationLive;
+
+    #[route("/configuration/shipping-report", get = shipping_report)]
+    pub struct ShippingReport {
+        #[route(query)]
+        pub window: super::reports::Window,
+    }
+
+    #[route("/configuration/shipping-report/live", get = shipping_live)]
+    pub struct ShippingReportLive;
+}

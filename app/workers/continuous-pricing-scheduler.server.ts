@@ -4,6 +4,12 @@ import { runContinuousPricingSchedulerCycle } from "../features/continuous-prici
 let stopping = false;
 
 async function run(): Promise<void> {
+  // CONTINUOUS_PRICING_SCHEDULER hands the schedule to the Corten app's scheduler (dev sets it in
+  // .env.development.local); two schedulers would queue the same SKUs twice.
+  if (process.env.CONTINUOUS_PRICING_SCHEDULER?.trim()) {
+    console.log("[continuous-pricing-scheduler] off: CONTINUOUS_PRICING_SCHEDULER is set");
+    return;
+  }
   console.log(`[continuous-pricing-scheduler] starting pid=${process.pid}`);
   while (!stopping) {
     let delayMs = 30_000;

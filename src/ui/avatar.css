@@ -1,0 +1,5 @@
+/* corten ui 0.1.0: avatar ca9b062b98bf0e24 */
+.avatar { position: relative; display: inline-grid; flex: none; width: 2rem; height: 2rem; overflow: hidden; border-radius: 50%; background: var(--muted); }
+.avatar > * { grid-area: 1 / 1; }
+.initials { display: grid; place-items: center; font-size: .75rem; font-weight: 500; color: var(--muted-foreground); text-transform: uppercase; }
+.avatar > img { width: 100%; height: 100%; object-fit: cover; }

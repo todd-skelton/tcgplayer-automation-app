@@ -1,0 +1,32 @@
+/* corten ui 0.1.0: dialog 02db69b3aa90bef2 */
+.dialog {
+  --kit-dialog-inset: 1.5rem;
+  box-sizing: border-box; width: calc(100% - 2rem); max-height: calc(100% - 2rem); overflow-y: auto; padding: var(--kit-dialog-inset);
+  background: var(--background); color: var(--foreground); border: 1px solid var(--border); box-shadow: 0 10px 30px rgb(0 0 0 / .2); border-radius: var(--radius);
+}
+/* One column no wider than the dialog, so wide content in a wrapper scrolls inside it. */
+.dialog[open] { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+.dialog > :is(h2, h3) { margin: 0; font-size: 1.125rem; font-weight: 600; line-height: 1.2; }
+.dialog > p { margin: 0; font-size: .875rem; color: var(--muted-foreground); }
+.dialog::backdrop { background: rgb(0 0 0 / .5); }
+.dialog:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* Its width, the most it takes of a wide window. */
+.sm { max-width: 24rem; }
+.md { max-width: 32rem; }
+.lg { max-width: 48rem; }
+.xl { max-width: 64rem; }
+/* The heading and the controls at its end (a close button), held at the top while a long dialog
+   scrolls: it reaches up over the dialog's padding (the kit's own --kit-dialog-inset, which the
+   header's offsets follow), on the dialog's background. A control that takes focus scrolls in
+   below it, with room for a heading of two lines. */
+.header {
+  position: sticky; top: calc(-1 * var(--kit-dialog-inset)); z-index: 1; display: flex; align-items: center; gap: .5rem;
+  margin-top: calc(-1 * var(--kit-dialog-inset)); padding-top: var(--kit-dialog-inset); background: var(--background);
+}
+.dialog:has(> .header) { scroll-padding-block-start: calc(var(--kit-dialog-inset) + 3rem); }
+.header > :where(h2, h3) { flex: 1 1 auto; margin: 0; font-size: 1.125rem; font-weight: 600; line-height: 1.2; }
+.footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .dialog[open] { animation: dialog-in .15s ease-out; }
+  @keyframes dialog-in { from { opacity: 0; transform: scale(.96); } }
+}

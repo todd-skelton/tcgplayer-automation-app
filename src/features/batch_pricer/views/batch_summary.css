@@ -1,0 +1,37 @@
+.batch-summary {
+  display: grid;
+  gap: var(--space-4);
+  & > p {
+    margin: 0;
+  }
+  & > h2 {
+    margin: 0;
+  }
+}
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  & > * {
+    flex: 1;
+    /* No wider than the row, so a phone's narrowest width still fits one card. */
+    min-width: min(20rem, 100%);
+  }
+}
+.figures {
+  & :is(th, td) {
+    text-align: end;
+  }
+  & :is(th, td):first-child {
+    text-align: start;
+  }
+}
+.above {
+  color: var(--success);
+}
+.below {
+  color: var(--destructive);
+}
+.caution {
+  color: var(--warning);
+}

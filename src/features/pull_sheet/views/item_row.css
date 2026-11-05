@@ -1,0 +1,57 @@
+.row {
+  & a {
+    text-decoration: none;
+  }
+  & code {
+    font-size: var(--font-size-xs);
+  }
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: center;
+}
+.condition,
+.printed {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+  line-height: 22px;
+  white-space: nowrap;
+}
+.condition {
+  background: var(--muted);
+}
+/* MUI's filled info, success, warning and error chips: the theme's tones, light and dark. */
+.lightly-played {
+  background: var(--info);
+  color: var(--info-foreground);
+}
+.moderately-played {
+  background: var(--success);
+  color: var(--success-foreground);
+}
+.heavily-played {
+  background: var(--warning);
+  color: var(--warning-foreground);
+}
+.damaged {
+  background: var(--destructive);
+  color: var(--destructive-foreground);
+}
+.near-mint {
+  background: var(--muted);
+}
+.printed {
+  border: 1px solid var(--border);
+}
+.holo {
+  border-color: #fcd34d;
+  color: var(--holo);
+}
+.reverse-holo {
+  border-color: #c4b5fd;
+  color: var(--reverse-holo);
+  font-style: italic;
+}

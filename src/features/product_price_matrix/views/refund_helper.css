@@ -1,0 +1,53 @@
+.refund-helper {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  & h3,
+  & p {
+    margin: 0;
+  }
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  & > * {
+    min-width: 180px;
+  }
+}
+.results {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  & > div {
+    display: grid;
+    align-content: start;
+    gap: var(--space-1);
+    min-width: 220px;
+    max-width: 320px;
+  }
+  & > div + div {
+    padding-left: var(--space-5);
+    border-left: 1px solid var(--border);
+  }
+}
+.overline {
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.75rem;
+}
+.big {
+  font-size: 2rem;
+}
+.medium {
+  font-size: 1.5rem;
+}
+.muted {
+  color: var(--muted-foreground);
+}
+.caution {
+  color: var(--warning);
+}

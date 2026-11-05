@@ -1,0 +1,50 @@
+{
+  "allowedActions": [
+    "BlockBuyer"
+  ],
+  "buyerName": "Buyer",
+  "createdAt": "2026-07-30T22:40:30.143Z",
+  "estimatedDeliveryDate": "2026-08-13T22:40:30.087Z",
+  "orderChannel": "TcgMarketplace",
+  "orderFulfillment": "Normal",
+  "orderNumber": "FIXTURE-0004",
+  "pickupStatus": "",
+  "products": [
+    {
+      "extendedPrice": 97.04,
+      "name": "Pokemon - SWSH11: Lost Origin Trainer Gallery: Pikachu VMAX - #TG17/TG30 - Lightly Played Holofoil",
+      "productId": "284283",
+      "quantity": 1,
+      "skuId": "5788861",
+      "unitPrice": 97.04,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/284283"
+    }
+  ],
+  "refundStatus": "",
+  "refunds": [],
+  "sellerName": "Seller",
+  "shippingAddress": {
+    "addressOne": "1 Main St",
+    "city": "Springfield",
+    "country": "US",
+    "postalCode": "62701",
+    "recipientName": "Buyer",
+    "territory": "IL"
+  },
+  "shippingType": "Standard (7-10 days)",
+  "status": "Completed - Paid",
+  "transaction": {
+    "directFeeAmount": 0,
+    "feeAmount": 13.36,
+    "grossAmount": 97.04,
+    "netAmount": 83.68,
+    "productAmount": 97.04,
+    "shippingAmount": 0,
+    "taxes": [
+      {
+        "amount": 8.28,
+        "code": "Total"
+      }
+    ]
+  }
+}

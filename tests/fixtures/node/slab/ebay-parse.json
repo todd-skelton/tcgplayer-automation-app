@@ -1,0 +1,823 @@
+{
+ "asOf": "2026-09-05T22:00:00.000Z",
+ "results": [
+  {
+   "name": "sold",
+   "query": {
+    "keywords": "Ponyta 60 1st PSA 9",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    }
+   },
+   "tab": "sales",
+   "wire": "{\"_type\":\"PageErrorModule\",\"severity\":\"ERROR\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":true},{\"id\":\"active\",\"active\":false}],\"dateRange\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 7, 2026\"},{\"_type\":\"TextSpan\",\"text\":\"–\"},{\"_type\":\"TextSpan\",\"text\":\"Sep 5, 2026\"}]},\"autoSwitchTooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"We couldn't find any Sold results in the date range you've selected, so we've switched to Active listings.\"}]}}\r\n\r\n{\"_type\":\"ResearchAggregateModule\",\"sections\":[{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg sold price\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$168.49\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sold price range\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$18.50 - $450.00\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$10.80\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19%\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sold\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"21\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sell-through\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"40.38%\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sellers\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total item sales\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$3,538.29\"}]}}]}]}\r\n\r\n{\"_type\":\"SearchResultsModule\",\"results\":[{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"117245257846\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"117245257846\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 060/102 40 Base Set (Shadowless) Basic Common English Ken Sugimori Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$0.00\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"100% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 21, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127936723252\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127936723252\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9 060/102 40 60 Base Set (Shadowless) Basic Common English Ken Sugimori No Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$6.50 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$6.50\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 22, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127943558744\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127943558744\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$20.27 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$20.27\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jul 20, 2026\"}]}}],\"pagination\":{\"summary\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Results: 1 - 3\"}]},\"first\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":false,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"prev\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"current\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Page 1\"}]},\"next\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"itemsPerPage\":{\"options\":[{\"_type\":\"OptionValueSpan\",\"value\":\"10\",\"selected\":false,\"text\":\"10\"},{\"_type\":\"OptionValueSpan\",\"value\":\"20\",\"selected\":false,\"text\":\"20\"},{\"_type\":\"OptionValueSpan\",\"value\":\"50\",\"selected\":true,\"text\":\"50\"}],\"label\":\"Results per page\"},\"currentPageNum\":1}}",
+   "path": "/sh/research/api/search?marketplace=EBAY-US&keywords=Ponyta+60+1st+PSA+9&dayRange=90&startDate=1780808400000&endDate=1788670799999&categoryId=0&offset=0&limit=50&tabName=SOLD&tz=America%2FChicago&modules=aggregates&modules=searchResults&modules=resultsHeader",
+   "out": {
+    "status": "sold",
+    "sales": [
+     {
+      "provider": "ebayResearch",
+      "providerId": "117245257846",
+      "assetId": null,
+      "sourceItemId": "117245257846",
+      "sourceUrl": "https://www.ebay.com/itm/117245257846",
+      "sourceReference": "https://www.ebay.com/itm/117245257846",
+      "venue": "eBay",
+      "kind": "listing-average",
+      "date": "2026-06-21",
+      "format": "Fixed price",
+      "title": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9",
+      "extendedTitle": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 060/102 40 Base Set (Shadowless) Basic Common English Ken Sugimori Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850",
+      "card": null,
+      "grading": {
+       "grader": "UNKNOWN",
+       "encoding": "unknown",
+       "number": null,
+       "label": null,
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 124.99,
+       "currency": "USD"
+      },
+      "convertedPrice": null,
+      "shipping": {
+       "amount": 0,
+       "currency": "USD"
+      },
+      "fees": null,
+      "shippingIncluded": false,
+      "buyerPremiumIncluded": null,
+      "quantity": 1,
+      "subjectToChange": null,
+      "skippedReason": null
+     },
+     {
+      "provider": "ebayResearch",
+      "providerId": "127936723252",
+      "assetId": null,
+      "sourceItemId": "127936723252",
+      "sourceUrl": "https://www.ebay.com/itm/127936723252",
+      "sourceReference": "https://www.ebay.com/itm/127936723252",
+      "venue": "eBay",
+      "kind": "listing-average",
+      "date": "2026-06-22",
+      "format": "Fixed price",
+      "title": "1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9",
+      "extendedTitle": "1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9 060/102 40 60 Base Set (Shadowless) Basic Common English Ken Sugimori No Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850",
+      "card": null,
+      "grading": {
+       "grader": "UNKNOWN",
+       "encoding": "unknown",
+       "number": null,
+       "label": null,
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 130,
+       "currency": "USD"
+      },
+      "convertedPrice": null,
+      "shipping": {
+       "amount": 6.5,
+       "currency": "USD"
+      },
+      "fees": null,
+      "shippingIncluded": false,
+      "buyerPremiumIncluded": null,
+      "quantity": 1,
+      "subjectToChange": null,
+      "skippedReason": null
+     },
+     {
+      "provider": "ebayResearch",
+      "providerId": "127943558744",
+      "assetId": null,
+      "sourceItemId": "127943558744",
+      "sourceUrl": "https://www.ebay.com/itm/127943558744",
+      "sourceReference": "https://www.ebay.com/itm/127943558744",
+      "venue": "eBay",
+      "kind": "listing-average",
+      "date": "2026-07-20",
+      "format": "Fixed price",
+      "title": "1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC",
+      "extendedTitle": "1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850",
+      "card": null,
+      "grading": {
+       "grader": "UNKNOWN",
+       "encoding": "unknown",
+       "number": null,
+       "label": null,
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 160,
+       "currency": "USD"
+      },
+      "convertedPrice": null,
+      "shipping": {
+       "amount": 20.27,
+       "currency": "USD"
+      },
+      "fees": null,
+      "shippingIncluded": false,
+      "buyerPremiumIncluded": null,
+      "quantity": 1,
+      "subjectToChange": null,
+      "skippedReason": null
+     }
+    ],
+    "coverage": {
+     "requestedWindow": {
+      "from": "2026-06-07",
+      "to": "2026-09-05"
+     },
+     "observedWindow": {
+      "from": "2026-06-21",
+      "to": "2026-07-20"
+     },
+     "complete": false,
+     "reason": "paged-search",
+     "sourceCount": 3,
+     "limitPerGrade": null
+    },
+    "asOf": "2026-09-05T22:00:00.000Z",
+    "page": {
+     "offset": 0,
+     "limit": 50,
+     "nextOffset": null,
+     "partial": false
+    },
+    "summary": [
+     {
+      "label": "Avg sold price",
+      "value": "$168.49",
+      "description": null
+     },
+     {
+      "label": "Sold price range",
+      "value": "$18.50 - $450.00",
+      "description": null
+     },
+     {
+      "label": "Avg shipping",
+      "value": "$10.80",
+      "description": null
+     },
+     {
+      "label": "Free shipping",
+      "value": "19%",
+      "description": null
+     },
+     {
+      "label": "Total sold",
+      "value": "21",
+      "description": null
+     },
+     {
+      "label": "Sell-through",
+      "value": "40.38%",
+      "description": null
+     },
+     {
+      "label": "Total sellers",
+      "value": "19",
+      "description": null
+     },
+     {
+      "label": "Total item sales",
+      "value": "$3,538.29",
+      "description": null
+     }
+    ],
+    "keywords": "Ponyta 60 1st PSA 9"
+   }
+  },
+  {
+   "name": "sold, a second page",
+   "query": {
+    "keywords": "Ponyta 60 1st PSA 9",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    },
+    "offset": 50
+   },
+   "tab": "sales",
+   "wire": "{\"_type\":\"PageErrorModule\",\"severity\":\"ERROR\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":true},{\"id\":\"active\",\"active\":false}],\"dateRange\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 7, 2026\"},{\"_type\":\"TextSpan\",\"text\":\"–\"},{\"_type\":\"TextSpan\",\"text\":\"Sep 5, 2026\"}]},\"autoSwitchTooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"We couldn't find any Sold results in the date range you've selected, so we've switched to Active listings.\"}]}}\r\n\r\n{\"_type\":\"ResearchAggregateModule\",\"sections\":[{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg sold price\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$168.49\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sold price range\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$18.50 - $450.00\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$10.80\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19%\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sold\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"21\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sell-through\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"40.38%\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sellers\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total item sales\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$3,538.29\"}]}}]}]}\r\n\r\n{\"_type\":\"SearchResultsModule\",\"results\":[{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"117245257846\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"117245257846\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 060/102 40 Base Set (Shadowless) Basic Common English Ken Sugimori Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$0.00\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"100% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 21, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127936723252\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127936723252\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9 060/102 40 60 Base Set (Shadowless) Basic Common English Ken Sugimori No Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$6.50 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$6.50\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 22, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127943558744\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127943558744\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$20.27 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$20.27\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jul 20, 2026\"}]}}],\"pagination\":{\"summary\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Results: 1 - 3\"}]},\"first\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":false,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"prev\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"current\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Page 1\"}]},\"next\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"itemsPerPage\":{\"options\":[{\"_type\":\"OptionValueSpan\",\"value\":\"10\",\"selected\":false,\"text\":\"10\"},{\"_type\":\"OptionValueSpan\",\"value\":\"20\",\"selected\":false,\"text\":\"20\"},{\"_type\":\"OptionValueSpan\",\"value\":\"50\",\"selected\":true,\"text\":\"50\"}],\"label\":\"Results per page\"},\"currentPageNum\":1}}",
+   "path": "/sh/research/api/search?marketplace=EBAY-US&keywords=Ponyta+60+1st+PSA+9&dayRange=90&startDate=1780808400000&endDate=1788670799999&categoryId=0&offset=50&limit=50&tabName=SOLD&tz=America%2FChicago&modules=aggregates&modules=searchResults&modules=resultsHeader",
+   "error": "invalid-response"
+  },
+  {
+   "name": "sold, ten a page in Denver",
+   "query": {
+    "keywords": "Ponyta 60 1st PSA 9",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    },
+    "limit": 10,
+    "timezone": "America/Denver"
+   },
+   "tab": "sales",
+   "wire": "{\"_type\":\"PageErrorModule\",\"severity\":\"ERROR\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":true},{\"id\":\"active\",\"active\":false}],\"dateRange\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 7, 2026\"},{\"_type\":\"TextSpan\",\"text\":\"–\"},{\"_type\":\"TextSpan\",\"text\":\"Sep 5, 2026\"}]},\"autoSwitchTooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"We couldn't find any Sold results in the date range you've selected, so we've switched to Active listings.\"}]}}\r\n\r\n{\"_type\":\"ResearchAggregateModule\",\"sections\":[{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg sold price\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$168.49\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sold price range\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$18.50 - $450.00\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$10.80\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19%\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sold\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"21\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sell-through\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"40.38%\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sellers\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total item sales\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$3,538.29\"}]}}]}]}\r\n\r\n{\"_type\":\"SearchResultsModule\",\"results\":[{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"117245257846\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"117245257846\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 060/102 40 Base Set (Shadowless) Basic Common English Ken Sugimori Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$0.00\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"100% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 21, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127936723252\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127936723252\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9 060/102 40 60 Base Set (Shadowless) Basic Common English Ken Sugimori No Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$6.50 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$6.50\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 22, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127943558744\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127943558744\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$20.27 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$20.27\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jul 20, 2026\"}]}}],\"pagination\":{\"summary\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Results: 1 - 3\"}]},\"first\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":false,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"prev\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"current\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Page 1\"}]},\"next\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"itemsPerPage\":{\"options\":[{\"_type\":\"OptionValueSpan\",\"value\":\"10\",\"selected\":false,\"text\":\"10\"},{\"_type\":\"OptionValueSpan\",\"value\":\"20\",\"selected\":false,\"text\":\"20\"},{\"_type\":\"OptionValueSpan\",\"value\":\"50\",\"selected\":true,\"text\":\"50\"}],\"label\":\"Results per page\"},\"currentPageNum\":1}}",
+   "path": "/sh/research/api/search?marketplace=EBAY-US&keywords=Ponyta+60+1st+PSA+9&dayRange=90&startDate=1780812000000&endDate=1788674399999&categoryId=0&offset=0&limit=10&tabName=SOLD&tz=America%2FDenver&modules=aggregates&modules=searchResults&modules=resultsHeader",
+   "error": "invalid-response"
+  },
+  {
+   "name": "sold, several sold in a row",
+   "query": {
+    "keywords": "Ponyta 60 1st PSA 9",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    }
+   },
+   "tab": "sales",
+   "wire": "{\"_type\":\"PageErrorModule\",\"severity\":\"ERROR\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":true},{\"id\":\"active\",\"active\":false}],\"dateRange\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 7, 2026\"},{\"_type\":\"TextSpan\",\"text\":\"–\"},{\"_type\":\"TextSpan\",\"text\":\"Sep 5, 2026\"}]},\"autoSwitchTooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"We couldn't find any Sold results in the date range you've selected, so we've switched to Active listings.\"}]}}\r\n\r\n{\"_type\":\"ResearchAggregateModule\",\"sections\":[{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg sold price\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$168.49\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sold price range\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$18.50 - $450.00\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$10.80\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19%\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sold\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"21\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sell-through\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"40.38%\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sellers\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total item sales\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$3,538.29\"}]}}]}]}\r\n\r\n{\"_type\":\"SearchResultsModule\",\"results\":[{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"117245257846\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"117245257846\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 060/102 40 Base Set (Shadowless) Basic Common English Ken Sugimori Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$0.00\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"100% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"3\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 21, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127936723252\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127936723252\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9 060/102 40 60 Base Set (Shadowless) Basic Common English Ken Sugimori No Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$6.50 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$6.50\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 22, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127943558744\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127943558744\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$20.27 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$20.27\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jul 20, 2026\"}]}}],\"pagination\":{\"summary\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Results: 1 - 3\"}]},\"first\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":false,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"prev\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"current\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Page 1\"}]},\"next\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"itemsPerPage\":{\"options\":[{\"_type\":\"OptionValueSpan\",\"value\":\"10\",\"selected\":false,\"text\":\"10\"},{\"_type\":\"OptionValueSpan\",\"value\":\"20\",\"selected\":false,\"text\":\"20\"},{\"_type\":\"OptionValueSpan\",\"value\":\"50\",\"selected\":true,\"text\":\"50\"}],\"label\":\"Results per page\"},\"currentPageNum\":1}}",
+   "path": "/sh/research/api/search?marketplace=EBAY-US&keywords=Ponyta+60+1st+PSA+9&dayRange=90&startDate=1780808400000&endDate=1788670799999&categoryId=0&offset=0&limit=50&tabName=SOLD&tz=America%2FChicago&modules=aggregates&modules=searchResults&modules=resultsHeader",
+   "out": {
+    "status": "sold",
+    "sales": [
+     {
+      "provider": "ebayResearch",
+      "providerId": "117245257846",
+      "assetId": null,
+      "sourceItemId": "117245257846",
+      "sourceUrl": "https://www.ebay.com/itm/117245257846",
+      "sourceReference": "https://www.ebay.com/itm/117245257846",
+      "venue": "eBay",
+      "kind": "listing-average",
+      "date": "2026-06-21",
+      "format": "Fixed price",
+      "title": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9",
+      "extendedTitle": "1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 060/102 40 Base Set (Shadowless) Basic Common English Ken Sugimori Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850",
+      "card": null,
+      "grading": {
+       "grader": "UNKNOWN",
+       "encoding": "unknown",
+       "number": null,
+       "label": null,
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 124.99,
+       "currency": "USD"
+      },
+      "convertedPrice": null,
+      "shipping": {
+       "amount": 0,
+       "currency": "USD"
+      },
+      "fees": null,
+      "shippingIncluded": false,
+      "buyerPremiumIncluded": null,
+      "quantity": 3,
+      "subjectToChange": null,
+      "skippedReason": null
+     },
+     {
+      "provider": "ebayResearch",
+      "providerId": "127936723252",
+      "assetId": null,
+      "sourceItemId": "127936723252",
+      "sourceUrl": "https://www.ebay.com/itm/127936723252",
+      "sourceReference": "https://www.ebay.com/itm/127936723252",
+      "venue": "eBay",
+      "kind": "listing-average",
+      "date": "2026-06-22",
+      "format": "Fixed price",
+      "title": "1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9",
+      "extendedTitle": "1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9 060/102 40 60 Base Set (Shadowless) Basic Common English Ken Sugimori No Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850",
+      "card": null,
+      "grading": {
+       "grader": "UNKNOWN",
+       "encoding": "unknown",
+       "number": null,
+       "label": null,
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 130,
+       "currency": "USD"
+      },
+      "convertedPrice": null,
+      "shipping": {
+       "amount": 6.5,
+       "currency": "USD"
+      },
+      "fees": null,
+      "shippingIncluded": false,
+      "buyerPremiumIncluded": null,
+      "quantity": 1,
+      "subjectToChange": null,
+      "skippedReason": null
+     },
+     {
+      "provider": "ebayResearch",
+      "providerId": "127943558744",
+      "assetId": null,
+      "sourceItemId": "127943558744",
+      "sourceUrl": "https://www.ebay.com/itm/127943558744",
+      "sourceReference": "https://www.ebay.com/itm/127943558744",
+      "venue": "eBay",
+      "kind": "listing-average",
+      "date": "2026-07-20",
+      "format": "Fixed price",
+      "title": "1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC",
+      "extendedTitle": "1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850",
+      "card": null,
+      "grading": {
+       "grader": "UNKNOWN",
+       "encoding": "unknown",
+       "number": null,
+       "label": null,
+       "qualifier": null,
+       "autograph": null
+      },
+      "certificateNumber": null,
+      "price": {
+       "amount": 160,
+       "currency": "USD"
+      },
+      "convertedPrice": null,
+      "shipping": {
+       "amount": 20.27,
+       "currency": "USD"
+      },
+      "fees": null,
+      "shippingIncluded": false,
+      "buyerPremiumIncluded": null,
+      "quantity": 1,
+      "subjectToChange": null,
+      "skippedReason": null
+     }
+    ],
+    "coverage": {
+     "requestedWindow": {
+      "from": "2026-06-07",
+      "to": "2026-09-05"
+     },
+     "observedWindow": {
+      "from": "2026-06-21",
+      "to": "2026-07-20"
+     },
+     "complete": false,
+     "reason": "paged-search",
+     "sourceCount": 3,
+     "limitPerGrade": null
+    },
+    "asOf": "2026-09-05T22:00:00.000Z",
+    "page": {
+     "offset": 0,
+     "limit": 50,
+     "nextOffset": null,
+     "partial": false
+    },
+    "summary": [
+     {
+      "label": "Avg sold price",
+      "value": "$168.49",
+      "description": null
+     },
+     {
+      "label": "Sold price range",
+      "value": "$18.50 - $450.00",
+      "description": null
+     },
+     {
+      "label": "Avg shipping",
+      "value": "$10.80",
+      "description": null
+     },
+     {
+      "label": "Free shipping",
+      "value": "19%",
+      "description": null
+     },
+     {
+      "label": "Total sold",
+      "value": "21",
+      "description": null
+     },
+     {
+      "label": "Sell-through",
+      "value": "40.38%",
+      "description": null
+     },
+     {
+      "label": "Total sellers",
+      "value": "19",
+      "description": null
+     },
+     {
+      "label": "Total item sales",
+      "value": "$3,538.29",
+      "description": null
+     }
+    ],
+    "keywords": "Ponyta 60 1st PSA 9"
+   }
+  },
+  {
+   "name": "sold, a different date range shown",
+   "query": {
+    "keywords": "Ponyta 60 1st PSA 9",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    }
+   },
+   "tab": "sales",
+   "wire": "{\"_type\":\"PageErrorModule\",\"severity\":\"ERROR\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":true},{\"id\":\"active\",\"active\":false}],\"dateRange\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 8, 2026\"},{\"_type\":\"TextSpan\",\"text\":\"–\"},{\"_type\":\"TextSpan\",\"text\":\"Sep 5, 2026\"}]},\"autoSwitchTooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"We couldn't find any Sold results in the date range you've selected, so we've switched to Active listings.\"}]}}\r\n\r\n{\"_type\":\"ResearchAggregateModule\",\"sections\":[{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg sold price\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$168.49\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sold price range\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$18.50 - $450.00\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$10.80\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19%\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sold\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"21\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sell-through\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"40.38%\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sellers\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total item sales\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$3,538.29\"}]}}]}]}\r\n\r\n{\"_type\":\"SearchResultsModule\",\"results\":[{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"117245257846\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"117245257846\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 060/102 40 Base Set (Shadowless) Basic Common English Ken Sugimori Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$0.00\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"100% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 21, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127936723252\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127936723252\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9 060/102 40 60 Base Set (Shadowless) Basic Common English Ken Sugimori No Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$6.50 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$6.50\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 22, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127943558744\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127943558744\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$20.27 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$20.27\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jul 20, 2026\"}]}}],\"pagination\":{\"summary\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Results: 1 - 3\"}]},\"first\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":false,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"prev\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"current\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Page 1\"}]},\"next\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"itemsPerPage\":{\"options\":[{\"_type\":\"OptionValueSpan\",\"value\":\"10\",\"selected\":false,\"text\":\"10\"},{\"_type\":\"OptionValueSpan\",\"value\":\"20\",\"selected\":false,\"text\":\"20\"},{\"_type\":\"OptionValueSpan\",\"value\":\"50\",\"selected\":true,\"text\":\"50\"}],\"label\":\"Results per page\"},\"currentPageNum\":1}}",
+   "path": "/sh/research/api/search?marketplace=EBAY-US&keywords=Ponyta+60+1st+PSA+9&dayRange=90&startDate=1780808400000&endDate=1788670799999&categoryId=0&offset=0&limit=50&tabName=SOLD&tz=America%2FChicago&modules=aggregates&modules=searchResults&modules=resultsHeader",
+   "error": "invalid-response"
+  },
+  {
+   "name": "active answered for sales",
+   "query": {
+    "keywords": "Ponyta 60 1st PSA 9",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    }
+   },
+   "tab": "sales",
+   "wire": "{\"_type\":\"PageErrorModule\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":false},{\"id\":\"active\",\"active\":true}],\"autoSwitchTooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"We couldn't find any Sold results in the date range you've selected, so we've switched to Active listings.\"}]}}\r\n\r\n{\"_type\":\"ResearchAggregateModule\",\"sections\":[{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg listing price\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$308.96\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Listing price range\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$9.50 - $1,490.73\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$17.28\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"21%\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total active listings\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"24\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Promoted listings\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"21%\"}]}}]}]}\r\n\r\n{\"_type\":\"ActiveSearchResultsModule\",\"results\":[{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"178447981501\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"178447981501\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"PONYTA PSA 9 1999 POKEMON 1ST EDITION #60/102 BASE SET 5983\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Auction\"}]}]},\"listingPrice\":{\"listingPrice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$9.50\"}]},\"listingShipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$6.00 shipping\"}]}},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"4\"}]},\"watchers\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"15\"}]},\"promoted\":{\"_type\":\"IconAndText\",\"text\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]}},\"startDate\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sep 1, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"397802495164\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"397802495164\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon Base Set 1st Edition Shadowless Ponyta 60/102 PSA 9 Mint\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"listingPrice\":{\"listingPrice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$150.00\"}]},\"listingShipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$5.17 shipping\"}]}},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"watchers\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"13\"}]},\"promoted\":{\"_type\":\"IconAndText\",\"text\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]}},\"startDate\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Apr 4, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"267752985103\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"267752985103\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"PSA 9 MINT Ponyta 1st Edition 60/102 PokÃ©mon 1999 French Base Graded Card\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]},{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Best Offer accepted\"}]}]},\"listingPrice\":{\"listingPrice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$99.99\"}]},\"listingShipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$8.30 shipping\"}]}},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"watchers\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0\"}]},\"promoted\":{\"_type\":\"IconAndText\",\"text\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]}},\"startDate\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Aug 10, 2026\"}]}}],\"pagination\":{\"summary\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Results: 1 - 3\"}]},\"first\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":false,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"prev\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"current\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Page 1\"}]},\"next\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"itemsPerPage\":{\"options\":[{\"_type\":\"OptionValueSpan\",\"value\":\"10\",\"selected\":false,\"text\":\"10\"},{\"_type\":\"OptionValueSpan\",\"value\":\"20\",\"selected\":false,\"text\":\"20\"},{\"_type\":\"OptionValueSpan\",\"value\":\"50\",\"selected\":true,\"text\":\"50\"}],\"label\":\"Results per page\"},\"currentPageNum\":1}}",
+   "path": "/sh/research/api/search?marketplace=EBAY-US&keywords=Ponyta+60+1st+PSA+9&dayRange=90&startDate=1780808400000&endDate=1788670799999&categoryId=0&offset=0&limit=50&tabName=SOLD&tz=America%2FChicago&modules=aggregates&modules=searchResults&modules=resultsHeader",
+   "out": {
+    "status": "active-fallback",
+    "asOf": "2026-09-05T22:00:00.000Z",
+    "keywords": "Ponyta 60 1st PSA 9"
+   }
+  },
+  {
+   "name": "active",
+   "query": {
+    "keywords": "Ponyta 60 1st PSA 9",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    }
+   },
+   "tab": "supply",
+   "wire": "{\"_type\":\"PageErrorModule\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":false},{\"id\":\"active\",\"active\":true}],\"autoSwitchTooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"We couldn't find any Sold results in the date range you've selected, so we've switched to Active listings.\"}]}}\r\n\r\n{\"_type\":\"ResearchAggregateModule\",\"sections\":[{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg listing price\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$308.96\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Listing price range\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$9.50 - $1,490.73\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$17.28\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"21%\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total active listings\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"24\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Promoted listings\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"21%\"}]}}]}]}\r\n\r\n{\"_type\":\"ActiveSearchResultsModule\",\"results\":[{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"178447981501\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"178447981501\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"PONYTA PSA 9 1999 POKEMON 1ST EDITION #60/102 BASE SET 5983\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Auction\"}]}]},\"listingPrice\":{\"listingPrice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$9.50\"}]},\"listingShipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$6.00 shipping\"}]}},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"4\"}]},\"watchers\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"15\"}]},\"promoted\":{\"_type\":\"IconAndText\",\"text\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]}},\"startDate\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sep 1, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"397802495164\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"397802495164\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon Base Set 1st Edition Shadowless Ponyta 60/102 PSA 9 Mint\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"listingPrice\":{\"listingPrice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$150.00\"}]},\"listingShipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$5.17 shipping\"}]}},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"watchers\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"13\"}]},\"promoted\":{\"_type\":\"IconAndText\",\"text\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]}},\"startDate\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Apr 4, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"267752985103\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"267752985103\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"PSA 9 MINT Ponyta 1st Edition 60/102 PokÃ©mon 1999 French Base Graded Card\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]},{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Best Offer accepted\"}]}]},\"listingPrice\":{\"listingPrice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$99.99\"}]},\"listingShipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$8.30 shipping\"}]}},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"watchers\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0\"}]},\"promoted\":{\"_type\":\"IconAndText\",\"text\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]}},\"startDate\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Aug 10, 2026\"}]}}],\"pagination\":{\"summary\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Results: 1 - 3\"}]},\"first\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":false,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"prev\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"current\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Page 1\"}]},\"next\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"itemsPerPage\":{\"options\":[{\"_type\":\"OptionValueSpan\",\"value\":\"10\",\"selected\":false,\"text\":\"10\"},{\"_type\":\"OptionValueSpan\",\"value\":\"20\",\"selected\":false,\"text\":\"20\"},{\"_type\":\"OptionValueSpan\",\"value\":\"50\",\"selected\":true,\"text\":\"50\"}],\"label\":\"Results per page\"},\"currentPageNum\":1}}",
+   "path": "/sh/research/api/search?marketplace=EBAY-US&keywords=Ponyta+60+1st+PSA+9&dayRange=90&startDate=1780808400000&endDate=1788670799999&categoryId=0&offset=0&limit=50&tabName=ACTIVE&tz=America%2FChicago&modules=aggregates&modules=searchResults&modules=resultsHeader",
+   "out": {
+    "status": "active",
+    "listings": [
+     {
+      "provider": "ebayResearch",
+      "providerId": "178447981501",
+      "assetId": null,
+      "venue": "eBay",
+      "sourceUrl": "https://www.ebay.com/itm/178447981501",
+      "title": "PONYTA PSA 9 1999 POKEMON 1ST EDITION #60/102 BASE SET 5983",
+      "extendedTitle": null,
+      "format": "Auction",
+      "state": "ACTIVE",
+      "price": {
+       "amount": 9.5,
+       "currency": "USD"
+      },
+      "priceKind": "bid",
+      "shipping": {
+       "amount": 6,
+       "currency": "USD"
+      },
+      "quantity": null,
+      "startedAt": "2026-09-01",
+      "endsAt": null,
+      "items": []
+     },
+     {
+      "provider": "ebayResearch",
+      "providerId": "397802495164",
+      "assetId": null,
+      "venue": "eBay",
+      "sourceUrl": "https://www.ebay.com/itm/397802495164",
+      "title": "1999 Pokemon Base Set 1st Edition Shadowless Ponyta 60/102 PSA 9 Mint",
+      "extendedTitle": null,
+      "format": "Fixed price",
+      "state": "ACTIVE",
+      "price": {
+       "amount": 150,
+       "currency": "USD"
+      },
+      "priceKind": "ask",
+      "shipping": {
+       "amount": 5.17,
+       "currency": "USD"
+      },
+      "quantity": null,
+      "startedAt": "2026-04-04",
+      "endsAt": null,
+      "items": []
+     },
+     {
+      "provider": "ebayResearch",
+      "providerId": "267752985103",
+      "assetId": null,
+      "venue": "eBay",
+      "sourceUrl": "https://www.ebay.com/itm/267752985103",
+      "title": "PSA 9 MINT Ponyta 1st Edition 60/102 PokÃ©mon 1999 French Base Graded Card",
+      "extendedTitle": null,
+      "format": "Fixed price, Best Offer accepted",
+      "state": "ACTIVE",
+      "price": {
+       "amount": 99.99,
+       "currency": "USD"
+      },
+      "priceKind": "ask",
+      "shipping": {
+       "amount": 8.3,
+       "currency": "USD"
+      },
+      "quantity": null,
+      "startedAt": "2026-08-10",
+      "endsAt": null,
+      "items": []
+     }
+    ],
+    "asOf": "2026-09-05T22:00:00.000Z",
+    "page": {
+     "offset": 0,
+     "limit": 50,
+     "nextOffset": null,
+     "partial": false
+    },
+    "summary": [
+     {
+      "label": "Avg listing price",
+      "value": "$308.96",
+      "description": null
+     },
+     {
+      "label": "Listing price range",
+      "value": "$9.50 - $1,490.73",
+      "description": null
+     },
+     {
+      "label": "Avg shipping",
+      "value": "$17.28",
+      "description": null
+     },
+     {
+      "label": "Free shipping",
+      "value": "21%",
+      "description": null
+     },
+     {
+      "label": "Total active listings",
+      "value": "24",
+      "description": null
+     },
+     {
+      "label": "Promoted listings",
+      "value": "21%",
+      "description": null
+     }
+    ],
+    "scope": "ebay-search",
+    "complete": false,
+    "keywords": "Ponyta 60 1st PSA 9"
+   }
+  },
+  {
+   "name": "sold answered for supply",
+   "query": {
+    "keywords": "Ponyta 60 1st PSA 9",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    }
+   },
+   "tab": "supply",
+   "wire": "{\"_type\":\"PageErrorModule\",\"severity\":\"ERROR\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":true},{\"id\":\"active\",\"active\":false}],\"dateRange\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 7, 2026\"},{\"_type\":\"TextSpan\",\"text\":\"–\"},{\"_type\":\"TextSpan\",\"text\":\"Sep 5, 2026\"}]},\"autoSwitchTooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"We couldn't find any Sold results in the date range you've selected, so we've switched to Active listings.\"}]}}\r\n\r\n{\"_type\":\"ResearchAggregateModule\",\"sections\":[{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg sold price\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$168.49\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sold price range\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$18.50 - $450.00\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$10.80\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19%\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sold\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"21\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sell-through\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"40.38%\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sellers\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total item sales\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$3,538.29\"}]}}]}]}\r\n\r\n{\"_type\":\"SearchResultsModule\",\"results\":[{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"117245257846\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"117245257846\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 060/102 40 Base Set (Shadowless) Basic Common English Ken Sugimori Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$0.00\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"100% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 21, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127936723252\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127936723252\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9 060/102 40 60 Base Set (Shadowless) Basic Common English Ken Sugimori No Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$6.50 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$6.50\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 22, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127943558744\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127943558744\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$20.27 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$20.27\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jul 20, 2026\"}]}}],\"pagination\":{\"summary\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Results: 1 - 3\"}]},\"first\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":false,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"prev\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"current\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Page 1\"}]},\"next\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"itemsPerPage\":{\"options\":[{\"_type\":\"OptionValueSpan\",\"value\":\"10\",\"selected\":false,\"text\":\"10\"},{\"_type\":\"OptionValueSpan\",\"value\":\"20\",\"selected\":false,\"text\":\"20\"},{\"_type\":\"OptionValueSpan\",\"value\":\"50\",\"selected\":true,\"text\":\"50\"}],\"label\":\"Results per page\"},\"currentPageNum\":1}}",
+   "path": "/sh/research/api/search?marketplace=EBAY-US&keywords=Ponyta+60+1st+PSA+9&dayRange=90&startDate=1780808400000&endDate=1788670799999&categoryId=0&offset=0&limit=50&tabName=ACTIVE&tz=America%2FChicago&modules=aggregates&modules=searchResults&modules=resultsHeader",
+   "error": "invalid-response"
+  },
+  {
+   "name": "nothing found",
+   "query": {
+    "keywords": "Ponyta nonexistent-cert-0000000000",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    }
+   },
+   "tab": "sales",
+   "wire": "{\"_type\":\"PageErrorModule\",\"messages\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"No sold results found for \\\"Ponyta nonexistent-cert-0000000000\\\"\"}]}],\"severity\":\"WARNING\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":true},{\"id\":\"active\",\"active\":false}],\"dateRange\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 7, 2026\"},{\"_type\":\"TextSpan\",\"text\":\"–\"},{\"_type\":\"TextSpan\",\"text\":\"Sep 5, 2026\"}]}}\r\n\r\n{\"_type\":\"ResearchAggregateModule\"}\r\n\r\n{\"_type\":\"SearchResultsModule\"}",
+   "path": "/sh/research/api/search?marketplace=EBAY-US&keywords=Ponyta+nonexistent-cert-0000000000&dayRange=90&startDate=1780808400000&endDate=1788670799999&categoryId=0&offset=0&limit=50&tabName=SOLD&tz=America%2FChicago&modules=aggregates&modules=searchResults&modules=resultsHeader",
+   "out": {
+    "status": "sold",
+    "sales": [],
+    "coverage": {
+     "requestedWindow": {
+      "from": "2026-06-07",
+      "to": "2026-09-05"
+     },
+     "observedWindow": null,
+     "complete": false,
+     "reason": "paged-search",
+     "sourceCount": 0,
+     "limitPerGrade": null
+    },
+    "asOf": "2026-09-05T22:00:00.000Z",
+    "page": {
+     "offset": 0,
+     "limit": 50,
+     "nextOffset": null,
+     "partial": false
+    },
+    "summary": [],
+    "keywords": "Ponyta nonexistent-cert-0000000000"
+   }
+  },
+  {
+   "name": "nothing active",
+   "query": {
+    "keywords": "Ponyta nonexistent-cert-0000000000",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    }
+   },
+   "tab": "supply",
+   "wire": "{\"_type\":\"PageErrorModule\",\"messages\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"No active results found for \\\"Ponyta nonexistent-cert-0000000000\\\"\"}]}],\"severity\":\"ERROR\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":false},{\"id\":\"active\",\"active\":true}]}\r\n\r\n{\"_type\":\"ResearchAggregateModule\",\"sections\":[{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg listing price\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$0.00\"}]},\"tooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"The average price similar items are currently listed for. Shipping costs aren't included in the listing price.\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Listing price range\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"- - -\"}]},\"tooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"The minimum and maximum price similar items are listed for. Shipping costs aren't included in the listing prices.\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$0.00\"}]},\"tooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"The average shipping cost to be paid by the buyer. This average doesn't include listings with free shipping.\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0%\"}]},\"tooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"The percentage of active listings that offer free shipping.\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total active listings\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0\"}]},\"tooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"The total number of active listings.\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Promoted listings\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0%\"}]},\"tooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"The percentage of listings that are sponsored through Promoted Listings.\"}]}}]}]}\r\n\r\n{\"_type\":\"ActiveSearchResultsModule\"}",
+   "path": "/sh/research/api/search?marketplace=EBAY-US&keywords=Ponyta+nonexistent-cert-0000000000&dayRange=90&startDate=1780808400000&endDate=1788670799999&categoryId=0&offset=0&limit=50&tabName=ACTIVE&tz=America%2FChicago&modules=aggregates&modules=searchResults&modules=resultsHeader",
+   "out": {
+    "status": "active",
+    "listings": [],
+    "asOf": "2026-09-05T22:00:00.000Z",
+    "page": {
+     "offset": 0,
+     "limit": 50,
+     "nextOffset": null,
+     "partial": false
+    },
+    "summary": [
+     {
+      "label": "Avg listing price",
+      "value": "$0.00",
+      "description": "The average price similar items are currently listed for. Shipping costs aren't included in the listing price."
+     },
+     {
+      "label": "Listing price range",
+      "value": "- - -",
+      "description": "The minimum and maximum price similar items are listed for. Shipping costs aren't included in the listing prices."
+     },
+     {
+      "label": "Avg shipping",
+      "value": "$0.00",
+      "description": "The average shipping cost to be paid by the buyer. This average doesn't include listings with free shipping."
+     },
+     {
+      "label": "Free shipping",
+      "value": "0%",
+      "description": "The percentage of active listings that offer free shipping."
+     },
+     {
+      "label": "Total active listings",
+      "value": "0",
+      "description": "The total number of active listings."
+     },
+     {
+      "label": "Promoted listings",
+      "value": "0%",
+      "description": "The percentage of listings that are sponsored through Promoted Listings."
+     }
+    ],
+    "scope": "ebay-search",
+    "complete": false,
+    "keywords": "Ponyta nonexistent-cert-0000000000"
+   }
+  },
+  {
+   "name": "nothing found for other keywords",
+   "query": {
+    "keywords": "Ponyta 60 1st PSA 9",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    }
+   },
+   "tab": "sales",
+   "wire": "{\"_type\":\"PageErrorModule\",\"messages\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"No sold results found for \\\"Ponyta nonexistent-cert-0000000000\\\"\"}]}],\"severity\":\"WARNING\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":true},{\"id\":\"active\",\"active\":false}],\"dateRange\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 7, 2026\"},{\"_type\":\"TextSpan\",\"text\":\"–\"},{\"_type\":\"TextSpan\",\"text\":\"Sep 5, 2026\"}]}}\r\n\r\n{\"_type\":\"ResearchAggregateModule\"}\r\n\r\n{\"_type\":\"SearchResultsModule\"}",
+   "path": "/sh/research/api/search?marketplace=EBAY-US&keywords=Ponyta+60+1st+PSA+9&dayRange=90&startDate=1780808400000&endDate=1788670799999&categoryId=0&offset=0&limit=50&tabName=SOLD&tz=America%2FChicago&modules=aggregates&modules=searchResults&modules=resultsHeader",
+   "error": "unavailable"
+  },
+  {
+   "name": "a frame missing",
+   "query": {
+    "keywords": "Ponyta 60 1st PSA 9",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    }
+   },
+   "tab": "sales",
+   "wire": "{\"_type\":\"PageErrorModule\",\"severity\":\"ERROR\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":true},{\"id\":\"active\",\"active\":false}],\"dateRange\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 7, 2026\"},{\"_type\":\"TextSpan\",\"text\":\"–\"},{\"_type\":\"TextSpan\",\"text\":\"Sep 5, 2026\"}]},\"autoSwitchTooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"We couldn't find any Sold results in the date range you've selected, so we've switched to Active listings.\"}]}}\r\n\r\n{\"_type\":\"ResearchAggregateModule\",\"sections\":[{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg sold price\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$168.49\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sold price range\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$18.50 - $450.00\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$10.80\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19%\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sold\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"21\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sell-through\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"40.38%\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sellers\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total item sales\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$3,538.29\"}]}}]}]}",
+   "path": "/sh/research/api/search?marketplace=EBAY-US&keywords=Ponyta+60+1st+PSA+9&dayRange=90&startDate=1780808400000&endDate=1788670799999&categoryId=0&offset=0&limit=50&tabName=SOLD&tz=America%2FChicago&modules=aggregates&modules=searchResults&modules=resultsHeader",
+   "error": "invalid-response"
+  },
+  {
+   "name": "a sign-in page",
+   "query": {
+    "keywords": "Ponyta 60 1st PSA 9",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    }
+   },
+   "tab": "sales",
+   "wire": "<html>Sign in</html>",
+   "path": "/sh/research/api/search?marketplace=EBAY-US&keywords=Ponyta+60+1st+PSA+9&dayRange=90&startDate=1780808400000&endDate=1788670799999&categoryId=0&offset=0&limit=50&tabName=SOLD&tz=America%2FChicago&modules=aggregates&modules=searchResults&modules=resultsHeader",
+   "error": "reconnect-required"
+  },
+  {
+   "name": "no keywords",
+   "query": {
+    "keywords": "  ",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    }
+   },
+   "tab": "sales",
+   "wire": "{\"_type\":\"PageErrorModule\",\"severity\":\"ERROR\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":true},{\"id\":\"active\",\"active\":false}],\"dateRange\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 7, 2026\"},{\"_type\":\"TextSpan\",\"text\":\"–\"},{\"_type\":\"TextSpan\",\"text\":\"Sep 5, 2026\"}]},\"autoSwitchTooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"We couldn't find any Sold results in the date range you've selected, so we've switched to Active listings.\"}]}}\r\n\r\n{\"_type\":\"ResearchAggregateModule\",\"sections\":[{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg sold price\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$168.49\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sold price range\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$18.50 - $450.00\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$10.80\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19%\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sold\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"21\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sell-through\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"40.38%\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sellers\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total item sales\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$3,538.29\"}]}}]}]}\r\n\r\n{\"_type\":\"SearchResultsModule\",\"results\":[{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"117245257846\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"117245257846\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 060/102 40 Base Set (Shadowless) Basic Common English Ken Sugimori Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$0.00\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"100% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 21, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127936723252\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127936723252\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9 060/102 40 60 Base Set (Shadowless) Basic Common English Ken Sugimori No Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$6.50 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$6.50\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 22, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127943558744\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127943558744\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$20.27 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$20.27\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jul 20, 2026\"}]}}],\"pagination\":{\"summary\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Results: 1 - 3\"}]},\"first\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":false,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"prev\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"current\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Page 1\"}]},\"next\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"itemsPerPage\":{\"options\":[{\"_type\":\"OptionValueSpan\",\"value\":\"10\",\"selected\":false,\"text\":\"10\"},{\"_type\":\"OptionValueSpan\",\"value\":\"20\",\"selected\":false,\"text\":\"20\"},{\"_type\":\"OptionValueSpan\",\"value\":\"50\",\"selected\":true,\"text\":\"50\"}],\"label\":\"Results per page\"},\"currentPageNum\":1}}",
+   "path": null,
+   "error": "invalid-response"
+  },
+  {
+   "name": "a window backwards",
+   "query": {
+    "keywords": "Ponyta 60 1st PSA 9",
+    "window": {
+     "from": "2026-09-05",
+     "to": "2026-06-07"
+    }
+   },
+   "tab": "sales",
+   "wire": "{\"_type\":\"PageErrorModule\",\"severity\":\"ERROR\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":true},{\"id\":\"active\",\"active\":false}],\"dateRange\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 7, 2026\"},{\"_type\":\"TextSpan\",\"text\":\"–\"},{\"_type\":\"TextSpan\",\"text\":\"Sep 5, 2026\"}]},\"autoSwitchTooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"We couldn't find any Sold results in the date range you've selected, so we've switched to Active listings.\"}]}}\r\n\r\n{\"_type\":\"ResearchAggregateModule\",\"sections\":[{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg sold price\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$168.49\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sold price range\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$18.50 - $450.00\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$10.80\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19%\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sold\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"21\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sell-through\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"40.38%\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sellers\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total item sales\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$3,538.29\"}]}}]}]}\r\n\r\n{\"_type\":\"SearchResultsModule\",\"results\":[{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"117245257846\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"117245257846\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 060/102 40 Base Set (Shadowless) Basic Common English Ken Sugimori Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$0.00\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"100% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 21, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127936723252\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127936723252\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9 060/102 40 60 Base Set (Shadowless) Basic Common English Ken Sugimori No Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$6.50 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$6.50\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 22, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127943558744\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127943558744\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$20.27 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$20.27\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jul 20, 2026\"}]}}],\"pagination\":{\"summary\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Results: 1 - 3\"}]},\"first\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":false,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"prev\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"current\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Page 1\"}]},\"next\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"itemsPerPage\":{\"options\":[{\"_type\":\"OptionValueSpan\",\"value\":\"10\",\"selected\":false,\"text\":\"10\"},{\"_type\":\"OptionValueSpan\",\"value\":\"20\",\"selected\":false,\"text\":\"20\"},{\"_type\":\"OptionValueSpan\",\"value\":\"50\",\"selected\":true,\"text\":\"50\"}],\"label\":\"Results per page\"},\"currentPageNum\":1}}",
+   "path": null,
+   "error": "invalid-response"
+  },
+  {
+   "name": "thirty a page",
+   "query": {
+    "keywords": "Ponyta 60 1st PSA 9",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    },
+    "limit": 30
+   },
+   "tab": "sales",
+   "wire": "{\"_type\":\"PageErrorModule\",\"severity\":\"ERROR\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":true},{\"id\":\"active\",\"active\":false}],\"dateRange\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 7, 2026\"},{\"_type\":\"TextSpan\",\"text\":\"–\"},{\"_type\":\"TextSpan\",\"text\":\"Sep 5, 2026\"}]},\"autoSwitchTooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"We couldn't find any Sold results in the date range you've selected, so we've switched to Active listings.\"}]}}\r\n\r\n{\"_type\":\"ResearchAggregateModule\",\"sections\":[{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg sold price\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$168.49\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sold price range\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$18.50 - $450.00\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$10.80\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19%\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sold\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"21\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sell-through\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"40.38%\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sellers\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total item sales\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$3,538.29\"}]}}]}]}\r\n\r\n{\"_type\":\"SearchResultsModule\",\"results\":[{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"117245257846\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"117245257846\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 060/102 40 Base Set (Shadowless) Basic Common English Ken Sugimori Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$0.00\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"100% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 21, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127936723252\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127936723252\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9 060/102 40 60 Base Set (Shadowless) Basic Common English Ken Sugimori No Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$6.50 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$6.50\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 22, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127943558744\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127943558744\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$20.27 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$20.27\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jul 20, 2026\"}]}}],\"pagination\":{\"summary\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Results: 1 - 3\"}]},\"first\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":false,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"prev\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"current\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Page 1\"}]},\"next\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"itemsPerPage\":{\"options\":[{\"_type\":\"OptionValueSpan\",\"value\":\"10\",\"selected\":false,\"text\":\"10\"},{\"_type\":\"OptionValueSpan\",\"value\":\"20\",\"selected\":false,\"text\":\"20\"},{\"_type\":\"OptionValueSpan\",\"value\":\"50\",\"selected\":true,\"text\":\"50\"}],\"label\":\"Results per page\"},\"currentPageNum\":1}}",
+   "path": null,
+   "error": "invalid-response"
+  },
+  {
+   "name": "an offset off the page",
+   "query": {
+    "keywords": "Ponyta 60 1st PSA 9",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    },
+    "offset": 25
+   },
+   "tab": "sales",
+   "wire": "{\"_type\":\"PageErrorModule\",\"severity\":\"ERROR\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":true},{\"id\":\"active\",\"active\":false}],\"dateRange\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 7, 2026\"},{\"_type\":\"TextSpan\",\"text\":\"–\"},{\"_type\":\"TextSpan\",\"text\":\"Sep 5, 2026\"}]},\"autoSwitchTooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"We couldn't find any Sold results in the date range you've selected, so we've switched to Active listings.\"}]}}\r\n\r\n{\"_type\":\"ResearchAggregateModule\",\"sections\":[{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg sold price\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$168.49\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sold price range\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$18.50 - $450.00\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$10.80\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19%\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sold\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"21\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sell-through\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"40.38%\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sellers\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total item sales\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$3,538.29\"}]}}]}]}\r\n\r\n{\"_type\":\"SearchResultsModule\",\"results\":[{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"117245257846\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"117245257846\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 060/102 40 Base Set (Shadowless) Basic Common English Ken Sugimori Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$0.00\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"100% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 21, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127936723252\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127936723252\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9 060/102 40 60 Base Set (Shadowless) Basic Common English Ken Sugimori No Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$6.50 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$6.50\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 22, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127943558744\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127943558744\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$20.27 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$20.27\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jul 20, 2026\"}]}}],\"pagination\":{\"summary\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Results: 1 - 3\"}]},\"first\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":false,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"prev\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"current\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Page 1\"}]},\"next\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"itemsPerPage\":{\"options\":[{\"_type\":\"OptionValueSpan\",\"value\":\"10\",\"selected\":false,\"text\":\"10\"},{\"_type\":\"OptionValueSpan\",\"value\":\"20\",\"selected\":false,\"text\":\"20\"},{\"_type\":\"OptionValueSpan\",\"value\":\"50\",\"selected\":true,\"text\":\"50\"}],\"label\":\"Results per page\"},\"currentPageNum\":1}}",
+   "path": null,
+   "error": "invalid-response"
+  },
+  {
+   "name": "an unknown time zone",
+   "query": {
+    "keywords": "Ponyta 60 1st PSA 9",
+    "window": {
+     "from": "2026-06-07",
+     "to": "2026-09-05"
+    },
+    "timezone": "Mars/Olympus"
+   },
+   "tab": "sales",
+   "wire": "{\"_type\":\"PageErrorModule\",\"severity\":\"ERROR\"}\r\n\r\n{\"_type\":\"ResultsHeaderModule\",\"tabs\":[{\"id\":\"sold\",\"active\":true},{\"id\":\"active\",\"active\":false}],\"dateRange\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 7, 2026\"},{\"_type\":\"TextSpan\",\"text\":\"–\"},{\"_type\":\"TextSpan\",\"text\":\"Sep 5, 2026\"}]},\"autoSwitchTooltip\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"We couldn't find any Sold results in the date range you've selected, so we've switched to Active listings.\"}]}}\r\n\r\n{\"_type\":\"ResearchAggregateModule\",\"sections\":[{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg sold price\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$168.49\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sold price range\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$18.50 - $450.00\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Avg shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$10.80\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19%\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sold\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"21\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Sell-through\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"40.38%\"}]}},{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total sellers\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"19\"}]}}]},{\"dataItems\":[{\"header\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Total item sales\"}]},\"value\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$3,538.29\"}]}}]}]}\r\n\r\n{\"_type\":\"SearchResultsModule\",\"results\":[{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"117245257846\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"117245257846\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 POKEMON BASE SET 1ST EDITION #60 PONYTA PSA 9 060/102 40 Base Set (Shadowless) Basic Common English Ken Sugimori Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Free shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$0.00\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"100% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$124.99\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 21, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127936723252\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127936723252\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon Base Set PONYTA 1st Edition #60 PSA 9 060/102 40 60 Base Set (Shadowless) Basic Common English Ken Sugimori No Pokémon Pokémon TCG Professional Sports Authenticator (PSA) Regular The Pokémon Company United States Yes 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$6.50 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$6.50\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$130.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jun 22, 2026\"}]}},{\"listing\":{\"itemId\":{\"_type\":\"TextualDisplayValue\",\"value\":\"127943558744\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"127943558744\"}]},\"title\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC\"}]},\"extendedTitle\":{\"_type\":\"TextualDisplayValue\",\"value\":\"1999 Pokemon - 1st Edition Shadowless Ponyta Base Set 60/102 - PSA 9 MINT! WOTC Wizards of the Coast Basic Pokémon 060/102 United States Yes Regular Standard Near Mint or Better Pokémon TCG Base Set (Shadowless) Common English Ken Sugimori Professional Sports Authenticator (PSA) 4+ Fire Card Stock 40 The Pokémon Company 4043367850\",\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"formatList\":[{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}]},\"avgsalesprice\":{\"avgsalesprice\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"averageshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"+$20.27 shipping\"}]},\"format\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Fixed price\"}]}},\"avgshipping\":{\"avgshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$20.27\"}]},\"freeshipping\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"0% Free shipping\"}]}},\"itemssold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"1\"}]},\"totalsales\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"$160.00\"}]},\"bids\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"-\"}]},\"datelastsold\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Jul 20, 2026\"}]}}],\"pagination\":{\"summary\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Results: 1 - 3\"}]},\"first\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":false,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"prev\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"current\":{\"_type\":\"TextualDisplay\",\"textSpans\":[{\"_type\":\"TextSpan\",\"text\":\"Page 1\"}]},\"next\":{\"_type\":\"PaginationTextualDisplay\",\"disabled\":true,\"textSpans\":[{\"_type\":\"TextSpan\"}]},\"itemsPerPage\":{\"options\":[{\"_type\":\"OptionValueSpan\",\"value\":\"10\",\"selected\":false,\"text\":\"10\"},{\"_type\":\"OptionValueSpan\",\"value\":\"20\",\"selected\":false,\"text\":\"20\"},{\"_type\":\"OptionValueSpan\",\"value\":\"50\",\"selected\":true,\"text\":\"50\"}],\"label\":\"Results per page\"},\"currentPageNum\":1}}",
+   "path": null,
+   "error": "invalid-response"
+  }
+ ]
+}

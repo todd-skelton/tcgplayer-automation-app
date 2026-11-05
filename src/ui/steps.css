@@ -1,0 +1,72 @@
+/* corten ui 0.1.0: steps 6409b8020e56aa8c */
+.steps > ol {
+  display: flex; flex-wrap: wrap; align-items: start; gap: .5rem; margin: 0; padding: 0; list-style: none;
+  counter-reset: kit-step; font-size: var(--control-font-size);
+}
+/* A step, then the line to the next, which grows to share the row, and its description under its
+   name. A row that wraps can end with a line, which then leads to the next row's first step. */
+.steps li {
+  display: grid; grid-template-columns: auto minmax(1rem, 1fr); align-items: center; gap: .25rem .5rem;
+  flex: 1 1 auto; counter-increment: kit-step;
+}
+.steps li:last-child { flex-grow: 0; grid-template-columns: auto; }
+.steps li:not(:last-child)::after { content: ""; grid-area: 1 / 2; height: 1px; background: var(--border); }
+.steps li > :is(a, span) {
+  display: inline-flex; align-items: center; gap: .5rem; white-space: nowrap;
+  color: var(--muted-foreground); text-decoration: none; border-radius: calc(var(--radius) - 2px);
+}
+/* The number is drawn, not read: the list already says which step it is. */
+.steps li > :is(a, span)::before {
+  content: counter(kit-step) / ""; display: inline-grid; place-items: center; flex: none; box-sizing: border-box;
+  width: 1.75rem; height: 1.75rem; border: 1px solid var(--border); border-radius: 50%;
+  background: var(--background); color: var(--foreground); font-size: .8125rem; font-weight: 500; font-variant-numeric: tabular-nums;
+}
+.steps li > a { transition: color .15s; }
+.steps li > a:hover { color: var(--foreground); }
+.steps li > a:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.steps [aria-current="step"] { color: var(--foreground); font-weight: 500; }
+.steps [aria-current="step"]::before { border: 2px solid var(--primary); background: var(--primary); color: var(--primary-foreground); }
+/* A done step: a check mark in place of its number, with no text for a screen reader (its words
+   are the step's status), and the line after it filled. */
+.steps .done > :is(a, span) { color: var(--foreground); }
+.steps .done > :is(a, span)::before { content: "\2713" / ""; border-color: var(--success); background: var(--success); color: var(--success-foreground); }
+.steps .done:not(:last-child)::after { background: var(--success); }
+/* A blocked step: "!" in place of its number, so it is told from one not started without color. */
+.steps .blocked > :is(a, span)::before { content: "!" / ""; border-color: var(--warning); background: var(--warning); color: var(--warning-foreground); }
+/* A failed step: a cross in place of its number, told from a blocked one without color too. */
+.steps .failed > :is(a, span)::before { content: "\2715" / ""; border-color: var(--destructive); background: var(--destructive); color: var(--destructive-foreground); }
+/* Under the name, past the mark's width, across the line's column too, so it does not widen the
+   name's column; in a row, on a narrow screen it is read and not shown. */
+.description {
+  grid-row: 2; grid-column: 1 / -1; max-inline-size: 16rem; padding-inline-start: 2.25rem;
+  color: var(--muted-foreground); font-size: .8125rem; line-height: 1.35;
+}
+/* A timeline: one step per row down the page, the line from each mark down to the next, and the
+   name and its description beside the mark at every width. */
+.timeline > ol { flex-direction: column; flex-wrap: nowrap; gap: 0; }
+.timeline li { position: relative; grid-template-columns: minmax(0, 1fr); flex: none; padding-block-end: 1rem; }
+.timeline li:last-child { grid-template-columns: minmax(0, 1fr); padding-block-end: 0; }
+/* The mark centred on the name's first line (1.5 of the control's font), whichever is taller: a
+   name that wraps leaves it at the top, and the line runs from its foot to the next mark's head. */
+.timeline li:not(:last-child)::after {
+  grid-area: auto; position: absolute;
+  inset-block: max(1.75rem, (var(--control-font-size) * 1.5 + 1.75rem) / 2) min(0px, (1.75rem - var(--control-font-size) * 1.5) / 2);
+  inset-inline-start: calc(.875rem - .5px); width: 1px; height: auto;
+}
+.timeline li > :is(a, span) {
+  align-items: start; padding-block-start: max(0px, (1.75rem - var(--control-font-size) * 1.5) / 2);
+  white-space: normal; line-height: 1.5; overflow-wrap: anywhere;
+}
+.timeline li > :is(a, span)::before { margin-block-start: calc((var(--control-font-size) * 1.5 - 1.75rem) / 2); }
+/* A reference with no place to break wraps anywhere rather than widening a phone's page. */
+.timeline .description { grid-column: 1; max-inline-size: none; overflow-wrap: anywhere; }
+@media not (--wide) {
+  .steps:not(.timeline) .description { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+.status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Forced colors drop the fills: the lines keep the text's color, and the current step's mark is
+   drawn in the system's highlight. */
+@media (forced-colors: active) {
+  .steps li:not(:last-child)::after, .steps .done:not(:last-child)::after { forced-color-adjust: none; background: CanvasText; }
+  .steps [aria-current="step"]::before { forced-color-adjust: none; border-color: Highlight; background: Highlight; color: HighlightText; }
+}

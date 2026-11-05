@@ -1,0 +1,59 @@
+{
+  "allowedActions": [
+    "BlockBuyer"
+  ],
+  "buyerName": "Buyer",
+  "createdAt": "2026-07-30T20:43:36.717Z",
+  "estimatedDeliveryDate": "2026-08-13T20:43:36.68Z",
+  "orderChannel": "TcgMarketplace",
+  "orderFulfillment": "Normal",
+  "orderNumber": "FIXTURE-0001",
+  "pickupStatus": "",
+  "products": [
+    {
+      "extendedPrice": 172.57,
+      "name": "Pokemon - SWSH11: Lost Origin: Aerodactyl V (Alternate Full Art) - #180/196 - Moderately Played Holofoil",
+      "productId": "284122",
+      "quantity": 1,
+      "skuId": "5787200",
+      "unitPrice": 172.57,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/284122"
+    }
+  ],
+  "refundStatus": "Full Refund",
+  "refunds": [
+    {
+      "amount": 172.57,
+      "createdAt": "2026-08-27T19:15:29.663Z",
+      "origin": "BuyerInitiated",
+      "products": [],
+      "shippingAmount": 0,
+      "type": "Full"
+    }
+  ],
+  "sellerName": "Seller",
+  "shippingAddress": {
+    "addressOne": "1 Main St",
+    "city": "Springfield",
+    "country": "US",
+    "postalCode": "62701",
+    "recipientName": "Buyer",
+    "territory": "IL"
+  },
+  "shippingType": "Standard (7-10 days)",
+  "status": "Canceled",
+  "transaction": {
+    "directFeeAmount": 0,
+    "feeAmount": 23.16,
+    "grossAmount": 172.57,
+    "netAmount": 149.41,
+    "productAmount": 172.57,
+    "shippingAmount": 0,
+    "taxes": [
+      {
+        "amount": 0,
+        "code": "Total"
+      }
+    ]
+  }
+}

@@ -1,0 +1,83 @@
+.continuous-screen {
+  max-width: 1000px;
+  margin-inline: auto;
+  & h1,
+  & h2,
+  & p {
+    margin: 0;
+  }
+  & h2 {
+    font-size: var(--font-size-lg);
+  }
+  & form {
+    margin: 0;
+  }
+}
+.stack {
+  display: grid;
+  gap: var(--space-3);
+}
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2);
+}
+/* The kit's Button never wraps (corten#892), and "Reprice all inventory using saved curves" is
+   wider than a 320px phone's card: here a label wraps when it must. */
+.line button {
+  max-width: 100%;
+  height: auto;
+  min-height: var(--control-height);
+  padding-block: var(--space-1);
+  white-space: normal;
+}
+.spread {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+.numbers {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+.metrics {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+.metric {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  & strong {
+    font-size: var(--font-size-2xl);
+  }
+}
+.above {
+  color: var(--success);
+}
+.below {
+  color: var(--destructive, crimson);
+}
+.sku-card {
+  display: grid;
+  gap: var(--space-2);
+}
+.review {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  & > :first-child {
+    flex: 1;
+  }
+}
+.run-row {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}

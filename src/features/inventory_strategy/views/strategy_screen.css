@@ -1,0 +1,155 @@
+.strategy-screen {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 1500px;
+  margin-inline: auto;
+  & h1,
+  & h2,
+  & p {
+    margin: 0;
+  }
+  & form {
+    margin: 0;
+  }
+  & section {
+    display: grid;
+    gap: var(--space-3);
+  }
+}
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  & > div:first-child {
+    flex: 1 1 32rem;
+    display: grid;
+    gap: var(--space-2);
+  }
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.grow {
+  flex-grow: 1;
+}
+.warn {
+  color: var(--warning);
+}
+.caption {
+  font-size: var(--font-size-xs);
+}
+.lever-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  & li {
+    display: grid;
+    gap: var(--space-1);
+  }
+}
+/* What the kit's Table leaves to the page: a row's heading in the body reads as text, and a note
+   under a cell's value. */
+.cells {
+  & tbody th {
+    font-weight: 400;
+  }
+  & small {
+    display: block;
+    color: var(--muted-foreground);
+    font-size: var(--font-size-xs);
+  }
+}
+.no-wrap {
+  white-space: nowrap;
+}
+/* The whole inventory's row heading, bolder than the other rows' (`.cells tbody th`). */
+.cells .overall {
+  font-weight: 700;
+}
+.configured {
+  background: var(--muted);
+  & .value {
+    font-weight: 700;
+  }
+}
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  & text {
+    font-size: 11px;
+  }
+}
+.grid {
+  stroke: var(--border);
+}
+.zero {
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+.axis {
+  fill: var(--muted-foreground);
+}
+.change {
+  stroke: var(--warning);
+  stroke-dasharray: 4 3;
+}
+.change-label {
+  fill: var(--warning);
+}
+.week-line {
+  fill: none;
+  stroke: var(--muted-foreground);
+  stroke-width: 1;
+  opacity: 0.6;
+}
+.trailing-line {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 2.5;
+}
+.point {
+  fill: var(--muted-foreground);
+  stroke: var(--muted-foreground);
+  stroke-width: 1.5;
+}
+.hollow {
+  fill: var(--card);
+}
+.changes {
+  margin: 0;
+  padding-left: var(--space-5);
+  font-size: var(--font-size-sm);
+}
+.turnaround-form {
+  display: grid;
+  gap: var(--space-2);
+}
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+}
+.choice {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--muted-foreground);
+  & select {
+    min-width: 11rem;
+    color: var(--foreground);
+  }
+}

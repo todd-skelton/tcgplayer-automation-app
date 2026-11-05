@@ -1,0 +1,268 @@
+//! Evidence maintenance for a seller: refreshing confirmed inventory in small groups and
+//! updating recommendations from fresh saved evidence. It never publishes prices. The settings
+//! and recent listing checks are read and saved here (`slabMaintenanceStore.server.ts`); the
+//! cycles are run by a slab evidence worker when it has nothing to refresh: Node's until
+//! cutover, or this app's (`maintenance_cycle`) when `SLAB_EVIDENCE_WORKER` is set. Node woke its
+//! in-process worker when enabled settings were read or saved; a worker here finds due cycles on
+//! its poll.
+use chrono::{DateTime, Utc};
+use serde::Deserialize;
+use sqlx::{FromRow, PgConnection};
+
+use super::inventory::seller_account;
+use crate::{
+    database::Database,
+    features::slab_connections::{self, Connection},
+};
+
+/// How often the status is read again while maintenance is enabled, as the React panel did.
+pub const FOLLOWING: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// How many recent listing checks are shown.
+const RECENT_CHECKS: i64 = 25;
+
+/// What a seller's settings may be (`maintenanceSettings`): checked on save, and the panel's
+/// inputs take their bounds from them.
+pub mod range {
+    use corten::Bounds;
+    pub const INTERVAL_MINUTES: Bounds<i64> = Bounds::new(15, 1440);
+    pub const BATCH_SIZE: Bounds<i64> = Bounds::new(1, 25);
+    pub const REFRESH_BUDGET: Bounds<i64> = Bounds::new(1, 50);
+}
+use range::{BATCH_SIZE, INTERVAL_MINUTES, REFRESH_BUDGET};
+
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct View {
+    pub settings: Settings,
+    pub items: Vec<Check>,
+    pub providers: Vec<Connection>,
+}
+
+/// The seller's maintenance settings, with the last cycle's outcome; the defaults, never saved,
+/// when the seller has none.
+#[derive(Clone, Debug, PartialEq, Deserialize, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct Settings {
+    pub seller: String,
+    pub enabled: bool,
+    pub include_supply: bool,
+    pub interval_minutes: i32,
+    pub batch_size: i32,
+    pub refresh_budget: i32,
+    pub revision: i32,
+    pub next_cycle_at: Option<DateTime<Utc>>,
+    pub last_cycle_at: Option<DateTime<Utc>>,
+    pub last_error: Option<String>,
+    #[sqlx(json(nullable))]
+    pub last_summary: Option<Summary>,
+}
+
+impl Settings {
+    /// `defaultMaintenanceSettings`.
+    fn default_for(seller: String) -> Self {
+        Settings {
+            seller,
+            enabled: false,
+            include_supply: false,
+            interval_minutes: 360,
+            batch_size: 10,
+            refresh_budget: 20,
+            revision: 0,
+            next_cycle_at: None,
+            last_cycle_at: None,
+            last_error: None,
+            last_summary: None,
+        }
+    }
+}
+
+/// What the last cycle did.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+pub struct Summary {
+    #[serde(default)]
+    pub checked: u32,
+    #[serde(default)]
+    pub queued: u32,
+    #[serde(default)]
+    pub recalculated: u32,
+    #[serde(default)]
+    pub held: u32,
+}
+
+/// One listing a cycle checked, and what it did.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, FromRow)]
+pub struct Check {
+    pub id: String,
+    pub title: Option<String>,
+    pub outcome: String,
+    pub reason: String,
+}
+
+/// The settings as a person saves them, at the revision the form was drawn from.
+#[derive(Debug)]
+pub struct Saved<'a> {
+    pub seller: &'a str,
+    pub enabled: bool,
+    pub include_supply: bool,
+    pub interval_minutes: i64,
+    pub batch_size: i64,
+    pub refresh_budget: i64,
+    pub revision: i64,
+}
+
+const FIELDS: &str =
+    "seller, enabled, include_supply, interval_minutes, batch_size, refresh_budget, revision,
+    next_cycle_at, last_cycle_at, last_error, last_summary";
+
+/// The seller's maintenance as it stands (`maintenanceView`), or why the seller cannot have any.
+pub async fn read(db: &Database, seller: &str) -> Result<View, String> {
+    let mut conn = db.0.acquire().await.map_err(unavailable)?;
+    load(&mut conn, seller).await
+}
+
+async fn load(conn: &mut PgConnection, seller: &str) -> Result<View, String> {
+    let seller = seller_account(seller)?;
+    let saved: Option<Settings> = sqlx::query_as(&format!(
+        "SELECT {FIELDS} FROM slab_maintenance_settings WHERE seller = $1"
+    ))
+    .bind(&seller)
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(unavailable)?;
+    let items: Vec<Check> = sqlx::query_as(
+        "SELECT i.id::text AS id, i.snapshot->>'title' AS title, m.outcome, m.reason
+         FROM slab_maintenance_items m JOIN slab_inventory i ON i.id = m.inventory_id
+         WHERE i.seller = $1 ORDER BY m.checked_at DESC, i.id LIMIT $2",
+    )
+    .bind(&seller)
+    .bind(RECENT_CHECKS)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(unavailable)?;
+    let providers = slab_connections::connections(&mut *conn)
+        .await
+        .map_err(unavailable)?;
+    Ok(View {
+        settings: saved.unwrap_or_else(|| Settings::default_for(seller)),
+        items,
+        providers,
+    })
+}
+
+/// Saves the seller's settings (`saveMaintenanceSettings`): the first save only from revision 0,
+/// a later one only from the revision saved, which it moves on, freeing any cycle's lease and
+/// making a cycle due now. What the settings may be, and why a save is refused, are Node's.
+pub async fn save(db: &Database, saved: &Saved<'_>) -> Result<Settings, String> {
+    let mut conn = db.0.acquire().await.map_err(unavailable)?;
+    record(&mut conn, saved).await
+}
+
+async fn record(conn: &mut PgConnection, saved: &Saved<'_>) -> Result<Settings, String> {
+    in_range(saved)?;
+    let seller = seller_account(saved.seller)?;
+    let revision = i32::try_from(saved.revision).map_err(|_| CHANGED.to_owned())?;
+    let values = (
+        saved.enabled,
+        saved.include_supply,
+        saved.interval_minutes as i32,
+        saved.batch_size as i32,
+        saved.refresh_budget as i32,
+    );
+    let created: Option<Settings> = sqlx::query_as(&format!(
+        "INSERT INTO slab_maintenance_settings (seller, enabled, include_supply, interval_minutes, batch_size, refresh_budget)
+         SELECT $1, $2, $3, $4, $5, $6 WHERE $7 = 0 ON CONFLICT (seller) DO NOTHING RETURNING {FIELDS}"
+    ))
+    .bind(&seller)
+    .bind(values.0)
+    .bind(values.1)
+    .bind(values.2)
+    .bind(values.3)
+    .bind(values.4)
+    .bind(revision)
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(unavailable)?;
+    if let Some(created) = created {
+        return Ok(created);
+    }
+    let updated: Option<Settings> = sqlx::query_as(&format!(
+        "UPDATE slab_maintenance_settings SET enabled = $2, include_supply = $3, interval_minutes = $4,
+           batch_size = $5, refresh_budget = $6, revision = revision + 1, lease_id = NULL, lease_until = NULL,
+           next_cycle_at = clock_timestamp(), last_error = NULL
+         WHERE seller = $1 AND revision = $7 RETURNING {FIELDS}"
+    ))
+    .bind(&seller)
+    .bind(values.0)
+    .bind(values.1)
+    .bind(values.2)
+    .bind(values.3)
+    .bind(values.4)
+    .bind(revision)
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(unavailable)?;
+    updated.ok_or_else(|| CHANGED.to_owned())
+}
+
+const CHANGED: &str = "Maintenance settings changed. Reload before saving.";
+
+/// Node hid what went wrong with the database behind this.
+fn unavailable(error: sqlx::Error) -> String {
+    eprintln!("slab maintenance: {error}");
+    "Maintenance is unavailable.".to_owned()
+}
+
+/// The settings' numbers are in their ranges, or the refusal naming them.
+fn in_range(saved: &Saved<'_>) -> Result<(), String> {
+    let ok = INTERVAL_MINUTES.holds(saved.interval_minutes)
+        && BATCH_SIZE.holds(saved.batch_size)
+        && REFRESH_BUDGET.holds(saved.refresh_budget)
+        && saved.revision >= 0;
+    ok.then_some(()).ok_or_else(|| {
+        format!(
+            "Choose a {}–{} minute interval, {}–{} listings and {}–{} refresh jobs per cycle.",
+            INTERVAL_MINUTES.min(),
+            crate::text::Msg::default().number(INTERVAL_MINUTES.max()),
+            BATCH_SIZE.min(),
+            BATCH_SIZE.max(),
+            REFRESH_BUDGET.min(),
+            REFRESH_BUDGET.max(),
+        )
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn saved(interval_minutes: i64, batch_size: i64, refresh_budget: i64) -> Saved<'static> {
+        Saved {
+            seller: "s",
+            enabled: true,
+            include_supply: false,
+            interval_minutes,
+            batch_size,
+            refresh_budget,
+            revision: 0,
+        }
+    }
+
+    /// The ends of each range save; one past refuses with React's words.
+    #[test]
+    fn settings_are_checked_against_the_ranges_the_panel_draws() {
+        assert_eq!(in_range(&saved(15, 1, 1)), Ok(()));
+        assert_eq!(in_range(&saved(1440, 25, 50)), Ok(()));
+        for wrong in [
+            saved(14, 1, 1),
+            saved(1441, 1, 1),
+            saved(15, 26, 1),
+            saved(15, 1, 51),
+        ] {
+            assert_eq!(
+                in_range(&wrong).unwrap_err(),
+                "Choose a 15–1,440 minute interval, 1–25 listings and 1–50 refresh jobs per cycle."
+            );
+        }
+    }
+}

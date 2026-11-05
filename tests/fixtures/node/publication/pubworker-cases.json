@@ -1,0 +1,501 @@
+[
+ {
+  "name": "received inventory planned from its intake run and made live",
+  "setup": "INSERT INTO inventory_intake_runs (request_id, batch_number, pricing_job_id, workflow, request_json, seller_key, planning_status, next_attempt_at, created_at)\n  VALUES ('pubworker-990001', 990001, 990000001, 'publish', '{}', 'pubworker', 'waiting', now() - interval '1 minute', now() - interval '3 hours');",
+  "steps": 2,
+  "portal": [
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "StagedPricingUploadId": 7001
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "Success": true,
+      "SuccessfulProductCount": "$rows",
+      "Messages": []
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "success": true
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "Success": "$uploaded",
+      "Warning": [],
+      "Error": [],
+      "Update": []
+     }
+    }
+   }
+  ]
+ },
+ {
+  "name": "a continuous publication's refused row, warning, error and missing outcome",
+  "setup": "SELECT pg_temp.pubworker_publication('pubworker:outcomes', 'staged_delta', ARRAY[446147,446597,447529,447569,447673]);",
+  "steps": 1,
+  "portal": [
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "StagedPricingUploadId": 7002
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "Success": true,
+      "SuccessfulProductCount": 4,
+      "Messages": [
+       "SKU 446147 does not match product details"
+      ]
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "success": true
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "Success": [
+       {
+        "ProductConditionId": 447529,
+        "Message": null
+       }
+      ],
+      "Update": [],
+      "Warning": [
+       {
+        "ProductConditionId": 446597,
+        "Message": "Price is far from the market."
+       }
+      ],
+      "Error": [
+       {
+        "ProductConditionId": 447569,
+        "Message": "Listing is locked."
+       }
+      ]
+     }
+    }
+   }
+  ]
+ },
+ {
+  "name": "a refused sign-in stops the next turn",
+  "setup": "SELECT pg_temp.pubworker_publication('pubworker:sign-in', 'staged_delta', ARRAY[447950,448163]);SELECT pg_temp.pubworker_publication('pubworker:after-sign-in', 'staged_delta', ARRAY[448279]);",
+  "steps": 2,
+  "portal": [
+   {
+    "error": {
+     "message": "Request failed with status code 401",
+     "code": "ERR_BAD_REQUEST",
+     "response": {
+      "status": 401,
+      "contentType": "html",
+      "redirected": true,
+      "data": "<html><body><form action=\"/login\">Sign in</form></body></html>"
+     }
+    }
+   }
+  ]
+ },
+ {
+  "name": "a challenged sign-in",
+  "setup": "SELECT pg_temp.pubworker_publication('pubworker:challenge', 'staged_delta', ARRAY[448306]);",
+  "steps": 1,
+  "portal": [
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "html",
+     "redirected": false,
+     "data": "<!DOCTYPE html><html><div id=\"cf-chl-widget\">Verify you are human</div></html>"
+    }
+   }
+  ]
+ },
+ {
+  "name": "an unreadable upload id",
+  "setup": "SELECT pg_temp.pubworker_publication('pubworker:unreadable', 'staged_delta', ARRAY[448635]);",
+  "steps": 1,
+  "portal": [
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "StagedPricingUploadId": "7005"
+     }
+    }
+   }
+  ]
+ },
+ {
+  "name": "Seller Portal unreachable",
+  "setup": "SELECT pg_temp.pubworker_publication('pubworker:unreachable', 'staged_delta', ARRAY[448708]);",
+  "steps": 1,
+  "portal": [
+   {
+    "error": {
+     "message": "connect ECONNREFUSED 127.0.0.1:443",
+     "code": "ECONNREFUSED",
+     "response": null
+    }
+   }
+  ]
+ },
+ {
+  "name": "a refused upload rolled back",
+  "setup": "SELECT pg_temp.pubworker_publication('pubworker:refused-upload', 'staged_delta', ARRAY[448817,446147]);",
+  "steps": 1,
+  "portal": [
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "StagedPricingUploadId": 7006
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "Success": false,
+      "SuccessfulProductCount": 0,
+      "Messages": []
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {}
+    }
+   }
+  ]
+ },
+ {
+  "name": "a partial upload whose rollback fails",
+  "setup": "SELECT pg_temp.pubworker_publication('pubworker:partial', 'staged_delta', ARRAY[446597,447529,447569]);",
+  "steps": 1,
+  "portal": [
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "StagedPricingUploadId": 7007
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "Success": true,
+      "SuccessfulProductCount": 1,
+      "Messages": [
+       "Row 2 has an invalid price",
+       {
+        "Row": 3,
+        "Text": "Quantity is required"
+       }
+      ]
+     }
+    }
+   },
+   {
+    "error": {
+     "message": "socket hang up",
+     "code": "ECONNRESET",
+     "response": null
+    }
+   }
+  ]
+ },
+ {
+  "name": "a refused finalize rolled back",
+  "setup": "SELECT pg_temp.pubworker_publication('pubworker:finalize', 'staged_delta', ARRAY[447673]);",
+  "steps": 1,
+  "portal": [
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "StagedPricingUploadId": 7008
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "Success": true,
+      "SuccessfulProductCount": "$rows",
+      "Messages": []
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "success": false
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "Success": true
+     }
+    }
+   }
+  ]
+ },
+ {
+  "name": "a failed move to live",
+  "setup": "SELECT pg_temp.pubworker_publication('pubworker:move', 'staged_delta', ARRAY[447950,448163]);",
+  "steps": 1,
+  "portal": [
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "StagedPricingUploadId": 7009
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "Success": true,
+      "SuccessfulProductCount": "$rows",
+      "Messages": []
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "success": true
+     }
+    }
+   },
+   {
+    "error": {
+     "message": "timeout of 30000ms exceeded",
+     "code": "ECONNABORTED",
+     "response": null
+    }
+   }
+  ]
+ },
+ {
+  "name": "a move to live refused with a status",
+  "setup": "SELECT pg_temp.pubworker_publication('pubworker:move-refused', 'staged_delta', ARRAY[448279]);",
+  "steps": 1,
+  "portal": [
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "StagedPricingUploadId": 7010
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "Success": true,
+      "SuccessfulProductCount": "$rows",
+      "Messages": []
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "success": true
+     }
+    }
+   },
+   {
+    "error": {
+     "message": "Request failed with status code 500",
+     "code": "ERR_BAD_RESPONSE",
+     "response": {
+      "status": 500,
+      "contentType": "html",
+      "redirected": false,
+      "data": "<html>Server Error</html>"
+     }
+    }
+   }
+  ]
+ },
+ {
+  "name": "lost workers' publications put right",
+  "setup": "SELECT pg_temp.pubworker_publication('pubworker:lost-unopened', 'staged_delta', ARRAY[448306]);SELECT pg_temp.pubworker_publication('pubworker:lost-publishing', 'staged_delta', ARRAY[448635]);SELECT pg_temp.pubworker_publication('pubworker:lost-opened', 'staged_delta', ARRAY[448708]);SELECT pg_temp.pubworker_publication('pubworker:saved-outcomes', 'staged_delta', ARRAY[448817,446147]);\nUPDATE inventory_publications SET status = 'staging', claimed_by = 'gone', claim_expires_at = now() - interval '1 minute', attempt_count = 1,\n  created_at = now() - interval '10 minutes' WHERE planning_key = 'pubworker:lost-unopened';\nUPDATE inventory_publications SET status = 'publishing', claimed_by = 'gone', claim_expires_at = now() - interval '1 minute', attempt_count = 1,\n  staged_pricing_upload_id = 6001, staged_at = now() - interval '9 minutes', publishing_at = now() - interval '9 minutes' WHERE planning_key = 'pubworker:lost-publishing';\nUPDATE inventory_publications SET status = 'staging', claimed_by = 'gone', claim_expires_at = now() - interval '1 minute', attempt_count = 1,\n  staged_pricing_upload_id = 6002 WHERE planning_key = 'pubworker:lost-opened';\nUPDATE inventory_publications SET status = 'ambiguous', error_code = 'seller_portal_item_outcome_ambiguous', error_message = 'One or more Seller Portal item outcomes require reconciliation.',\n  staged_pricing_upload_id = 6003 WHERE planning_key = 'pubworker:saved-outcomes';\nUPDATE inventory_publication_items SET status = CASE WHEN sku = 448817 THEN 'published' ELSE 'failed' END,\n  published_at = CASE WHEN sku = 448817 THEN now() - interval '5 minutes' END\n  WHERE publication_id = (SELECT id FROM inventory_publications WHERE planning_key = 'pubworker:saved-outcomes');",
+  "steps": 2,
+  "portal": [
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "StagedPricingUploadId": 7011
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "Success": true,
+      "SuccessfulProductCount": "$rows",
+      "Messages": []
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "success": true
+     }
+    }
+   },
+   {
+    "ok": {
+     "status": 200,
+     "contentType": "json",
+     "redirected": false,
+     "data": {
+      "Success": "$uploaded",
+      "Warning": [],
+      "Error": [],
+      "Update": []
+     }
+    }
+   }
+  ]
+ },
+ {
+  "name": "an intake run whose seller changed is left for review",
+  "setup": "INSERT INTO inventory_intake_runs (request_id, batch_number, pricing_job_id, workflow, request_json, seller_key, planning_status, next_attempt_at, created_at)\n  VALUES ('pubworker-990001', 990001, 990000001, 'publish', '{}', 'pubworker', 'waiting', now() - interval '1 minute', now() - interval '3 hours');\nUPDATE inventory_intake_runs SET seller_key = 'another-seller' WHERE request_id = 'pubworker-990001';",
+  "steps": 1,
+  "portal": []
+ },
+ {
+  "name": "an intake run whose pricing failed is left for review",
+  "setup": "INSERT INTO inventory_intake_runs (request_id, batch_number, pricing_job_id, workflow, request_json, seller_key, planning_status, next_attempt_at, created_at)\n  VALUES ('pubworker-990001', 990001, 990000001, 'publish', '{}', 'pubworker', 'waiting', now() - interval '1 minute', now() - interval '3 hours');\nUPDATE inventory_batch_pricing_jobs SET status = 'failed', error_message = 'Pricing failed.' WHERE id = 990000001;",
+  "steps": 1,
+  "portal": []
+ },
+ {
+  "name": "an intake run with no fresh results is left for review",
+  "setup": "INSERT INTO inventory_intake_runs (request_id, batch_number, pricing_job_id, workflow, request_json, seller_key, planning_status, next_attempt_at, created_at)\n  VALUES ('pubworker-990001', 990001, 990000001, 'publish', '{}', 'pubworker', 'waiting', now() - interval '1 minute', now() - interval '3 hours');\nUPDATE inventory_batch_results SET priced_at = now() - interval '3 days' WHERE batch_number = 990001;",
+  "steps": 1,
+  "portal": []
+ },
+ {
+  "name": "a direct publication",
+  "setup": "SELECT pg_temp.pubworker_publication('pubworker:direct', 'direct_absolute', ARRAY[447529]);",
+  "steps": 1,
+  "portal": []
+ },
+ {
+  "name": "paused publishing",
+  "setup": "SELECT pg_temp.pubworker_publication('pubworker:paused', 'staged_delta', ARRAY[447569]);\nUPDATE inventory_publication_settings SET settings_json = jsonb_set(settings_json, '{globalPaused}', 'true') WHERE config_key = 'default';",
+  "steps": 1,
+  "portal": []
+ },
+ {
+  "name": "an open circuit",
+  "setup": "SELECT pg_temp.pubworker_publication('pubworker:circuit', 'staged_delta', ARRAY[447569]);\nUPDATE inventory_publication_settings SET circuit_open = true, pause_reason = 'Too many failures.' WHERE config_key = 'default';",
+  "steps": 1,
+  "portal": []
+ }
+]

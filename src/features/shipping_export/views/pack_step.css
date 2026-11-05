@@ -1,0 +1,100 @@
+.pack-step {
+  display: grid;
+  gap: var(--space-3);
+}
+.shipment {
+  display: grid;
+  gap: var(--space-3);
+}
+.head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  background: var(--card);
+}
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+  & a {
+    /* Holds the link's VisuallyHidden name in place. */
+    position: relative;
+    display: inline-flex;
+    padding: 0 var(--space-2);
+    font-size: 1.25rem;
+    text-decoration: none;
+  }
+  & a[aria-disabled] {
+    opacity: 0.35;
+  }
+}
+.lines {
+  white-space: pre-line;
+}
+.who {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.spacer {
+  flex: 1;
+}
+.toggle {
+  & button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    border-color: var(--success);
+    color: var(--success);
+    white-space: nowrap;
+  }
+  &[aria-busy] button::after {
+    content: " …";
+  }
+}
+.packed {
+  background: var(--success);
+  color: var(--primary-foreground);
+  .toggle & {
+    color: var(--primary-foreground);
+  }
+}
+.hint {
+  color: var(--muted-foreground);
+}
+.order-box {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+.scroll {
+  overflow-x: auto;
+}
+.listed {
+  & :is(th, td) {
+    white-space: normal;
+    vertical-align: top;
+  }
+  & tr[aria-current] {
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+  }
+}
+/* Wide only where the table keeps its columns: stacked on a phone (below the theme's sm) the row is
+   the page's width. */
+@media (--sm) {
+  .wide {
+    min-width: 420px;
+  }
+}

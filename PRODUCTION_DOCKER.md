@@ -1,6 +1,6 @@
 # Production Docker Deployment
 
-The production stack runs the app and PostgreSQL together. The app container waits for the database, applies SQL migrations during startup, and then starts serving traffic. An nginx proxy owns port `3001` and forwards requests to the app.
+The production stack runs the app and PostgreSQL together. Every screen is now the Corten (Rust) app's, but the Node app keeps its JSON routes and background workers until cutover, so it runs as two containers: the Node app, which waits for the database, applies SQL migrations during startup and answers its JSON routes (`/api/...`), and the Corten app in front of it (`web`), which serves every screen and relays every other request to the Node app. An nginx proxy owns port `3001` and forwards requests to the Corten app.
 
 ## Quick Start
 
@@ -16,11 +16,11 @@ Those `prod:*` commands now route through a cross-platform Node wrapper, so the 
 
 ## Releases Without Downtime
 
-The app runs in one of two slots, `app-blue` or `app-green`. `prod:deploy` (no-cache build) and `prod:update` (cached build) release the same way:
+The app runs in one of two slots, blue or green. A slot is the Node app (`app-blue`) and the Corten app that relays to it (`web-blue`). `prod:deploy` (no-cache build) and `prod:update` (cached build) release the same way:
 
-1. Build the image while the running slot keeps serving. A failed build changes nothing.
-2. Start the idle slot, which applies pending migrations, and wait for its health check.
-3. Point the proxy at the new slot and reload nginx. Requests already in flight finish on the old slot.
+1. Build both images while the running slot keeps serving. A failed build changes nothing.
+2. Start the idle slot's Node app, which applies pending migrations, and wait for its health check; then start its Corten app and wait for that one's.
+3. Point the proxy at the new slot's Corten app and reload nginx. Requests already in flight finish on the old slot.
 4. Replace the background workers with the new image, then stop the old slot after its in-flight requests finish.
 
 If the new slot never becomes healthy, the release stops it and the old slot keeps serving.
@@ -47,13 +47,37 @@ The production compose file uses the explicit project name `tcgplayer-automation
 
 Docker may show the built image name as `tcgplayer-automation-app-app`. That is only the generated image name. The Compose project name for the production stack is still `tcgplayer-automation-prod`.
 
+## Cutover
+
+Each background job has a Rust worker in the Corten app, off until its switch is set in `.env.production.local` (the `web` containers read it). Move one job at a time, after its Rust worker has matched the Node one: set the switch, release, and remove the Node service from `docker-compose.prod.yml` in the same release, so the job never runs twice.
+
+| Job | Node service today | Corten switch |
+|---|---|---|
+| Batch pricing | `pricing-worker` | `PRICING_WORKER=1` |
+| Publication to Seller Portal | `publication-worker` | `PUBLICATION_WORKER=1` |
+| Slab evidence refreshes and maintenance | `slab-evidence-worker` | `SLAB_EVIDENCE_WORKER=1` |
+| Continuous pricing schedule | `pricing-scheduler` | `CONTINUOUS_PRICING_SCHEDULER=1` |
+| Seller order history, FIFO replay, estimated costs | none: the Node app's container starts it (`scripts/docker-start.mjs`), and leaves it out when the switch is set | `SELLER_ORDER_HISTORY_WORKER=1` |
+| Migrations | the Node app, as it starts | `MIGRATE_ON_START=1` |
+
+The Node app runs no worker itself (`WORKERS_RUN_IN_PROCESS=false`). Migrations move last, and only with the Node app's own run removed from `scripts/docker-start.mjs` in the same release: the two runners take no common lock. Once every job has moved, the Node app answers only JSON routes no screen calls, and it and its relay can go.
+
 ## Configuration
+
+The Corten app answers only to `localhost` and IP addresses unless told the names it is served under; any other `Host` gets `421`. If the app is reached by a name (`http://automation.lan:3001`), list it in `.env.production.local`:
+
+```bash
+HOSTS=automation.lan
+```
 
 The production compose file sets:
 
 ```bash
 DATABASE_URL=postgresql://postgres:postgres@postgres:5432/tcgplayer_automation
+SELLER_PORTAL_WRITES_ENABLED=true
 ```
+
+Seller Portal posts (prices, quantities, staged pricing imports) change the live store. Both apps refuse them, and their publication workers claim nothing, unless `SELLER_PORTAL_WRITES_ENABLED=true`. Only this compose file sets it; development never does, so a local pricing run that plans a publication leaves it planned.
 
 Optional startup flags:
 

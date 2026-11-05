@@ -1,0 +1,80 @@
+.shipping-workflow-screen {
+  display: grid;
+  gap: var(--space-4);
+}
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  & h1 {
+    margin: 0;
+  }
+}
+/* The kit's Steps, given the header's spare width. */
+.steps-slot {
+  flex: 1 1 640px;
+}
+.settings {
+  font-size: 1.25rem;
+  text-decoration: none;
+}
+/* A step's parts (a notice, then its list) a gap apart, in one column no wider than the panel so a
+   wide table scrolls inside it. */
+.step-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
+  min-height: 12rem;
+}
+.step-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+.summary {
+  margin: 0;
+  color: var(--primary);
+  font-weight: 500;
+}
+.value {
+  flex: 1;
+  min-width: 0;
+}
+/* On a phone the figures take the bar's width, a row under where the step stands. */
+@media not (--sm) {
+  .value {
+    flex-basis: 100%;
+    order: 1;
+  }
+}
+.act[aria-busy] button::after {
+  content: " …";
+}
+.split {
+  display: inline-flex;
+  position: relative;
+}
+/* The split button's halves meet: the toggle is the kit's Button, opening the kit's Popover. */
+.split > button:first-child {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+.split > button + button {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  border-inline-start: 1px solid color-mix(in srgb, var(--primary-foreground) 30%, transparent);
+}
+[popover].skip {
+  width: auto;
+  white-space: nowrap;
+}

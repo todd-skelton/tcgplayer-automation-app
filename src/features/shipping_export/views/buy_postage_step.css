@@ -1,0 +1,39 @@
+.buy-postage-step {
+  display: grid;
+  gap: var(--space-4);
+}
+.shipments {
+  & :is(th, td) {
+    white-space: normal;
+    vertical-align: top;
+  }
+}
+.parcel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.postage {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  & a {
+    text-decoration: none;
+  }
+}
+.error {
+  color: var(--destructive);
+}
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  & form[aria-busy] button::after {
+    content: " …";
+  }
+}
+/* Opened from a table cell, whose alignment it would otherwise inherit. */
+.confirm {
+  text-align: start;
+}

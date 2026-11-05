@@ -15,6 +15,7 @@ import {
   type StagedPricingUpdate,
   uploadStagedPricingChunk,
 } from "~/integrations/tcgplayer/client/staged-pricing-import.server";
+import { sellerPortalWritesEnabled } from "~/core/clients/sellerPortalWrites.server";
 import type {
   InventoryPublication,
   InventoryPublicationItem,
@@ -32,6 +33,7 @@ interface WorkerState {
   running: boolean;
   timer: NodeJS.Timeout | null;
   workerId: string;
+  reportedWritesDisabled?: boolean;
 }
 
 declare global {
@@ -217,6 +219,16 @@ function getWorkerState(): WorkerState {
     };
   }
   return globalThis.__inventoryPublicationWorkerState;
+}
+
+// Without Seller Portal writes the worker claims nothing, so planned
+// publications wait for a process that may send them.
+function reportWritesDisabledOnce(state: WorkerState): void {
+  if (state.reportedWritesDisabled) return;
+  state.reportedWritesDisabled = true;
+  console.warn(
+    `Inventory publication worker ${state.workerId} is idle: Seller Portal writes are disabled (SELLER_PORTAL_WRITES_ENABLED is not true).`,
+  );
 }
 
 function scheduleNextTick(state: WorkerState, delayMs: number): void {
@@ -749,6 +761,11 @@ async function tick(state: WorkerState): Promise<void> {
     await inventoryPublicationsRepository.recoverPublicationsWithSavedOutcomes();
     await inventoryPublicationsRepository.recoverExpiredClaims();
     const configuration = await inventoryPublicationSettingsRepository.get();
+    if (!sellerPortalWritesEnabled()) {
+      reportWritesDisabledOnce(state);
+      scheduleNextTick(state, POLL_MS);
+      return;
+    }
     if (
       configuration.settings.globalPaused ||
       configuration.runtime.circuitOpen ||
@@ -792,8 +809,9 @@ export function startInventoryPublicationWorkerProcess(): void {
   scheduleNextTick(state, 0);
 }
 
+// PUBLICATION_WORKER hands publishing to the Corten app's worker, which reads the same env files.
 export function ensureInventoryPublicationWorker(): void {
-  if (process.env.WORKERS_RUN_IN_PROCESS === "false") {
+  if (process.env.WORKERS_RUN_IN_PROCESS === "false" || process.env.PUBLICATION_WORKER?.trim()) {
     return;
   }
   startInventoryPublicationWorkerProcess();

@@ -1,0 +1,32 @@
+/* corten ui 0.1.0: stats 81f7b4b982a54124 */
+/* As many figures to a row as fit, two on a phone. A figure is never broken: a card is at least
+   as wide as its figure, so a long one takes a row of its own. A card left alone on a row takes the
+   row's width. */
+.stats { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0; }
+.stats > * { flex: 1 1 11rem; }
+/* Each figure is a surface with the values card.css uses; a change to one is made to both. */
+.stat {
+  display: grid; gap: .25rem; align-content: start; padding: 1rem 1.25rem;
+  background: var(--card); color: var(--card-foreground);
+  border: 1px solid var(--border); border-radius: calc(var(--radius) + 4px);
+  box-shadow: 0 1px 2px rgb(0 0 0 / .05);
+}
+/* Its own margins and colors, so a page's defaults for dt and dd do not reach in. */
+.stat > dt { margin: 0; font-size: .875rem; font-weight: 500; color: var(--muted-foreground); }
+.stat > dd { margin: 0; color: var(--card-foreground); }
+.value { font-size: 1.5rem; font-weight: 600; line-height: 1.2; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stat > .note { font-size: .8125rem; color: var(--muted-foreground); }
+/* StatsSurface::Plain: on the card around them, the figures have no surface and start at its
+   text's edge. */
+.plain > .stat { padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; }
+.note:empty { display: none; }
+.info > .value { color: var(--info); }
+.success > .value { color: var(--success); }
+.warning > .value { color: var(--warning); }
+.destructive > .value { color: var(--destructive); }
+/* After the rules it changes, which have the same specificity. */
+@media not (--wide) {
+  .stats { gap: .75rem; }
+  .stats > * { flex-basis: calc((100% - .75rem) / 2); }
+  .value { font-size: 1.25rem; }
+}

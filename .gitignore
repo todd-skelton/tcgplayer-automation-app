@@ -12,3 +12,7 @@
 
 # Which production app slot receives traffic; written by scripts/prod.mjs
 /deploy/nginx/active/
+
+# Corten port (Rust)
+/target/
+/.port-logs/

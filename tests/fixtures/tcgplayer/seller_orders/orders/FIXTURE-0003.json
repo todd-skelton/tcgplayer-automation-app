@@ -1,0 +1,50 @@
+{
+  "allowedActions": [
+    "BlockBuyer"
+  ],
+  "buyerName": "Buyer",
+  "createdAt": "2026-07-30T22:22:50.483Z",
+  "estimatedDeliveryDate": "2026-08-13T22:22:50.473Z",
+  "orderChannel": "TcgMarketplace",
+  "orderFulfillment": "Normal",
+  "orderNumber": "FIXTURE-0003",
+  "pickupStatus": "",
+  "products": [
+    {
+      "extendedPrice": 28.7,
+      "name": "Pokemon - Miscellaneous Cards & Products: Dragonite - 119/181 (Cosmos Holo) - #119/181 - Near Mint Holofoil",
+      "productId": "218439",
+      "quantity": 5,
+      "skuId": "4503813",
+      "unitPrice": 5.74,
+      "url": "https://store.tcgplayer.com/productCatalog/product/productSearch/218439"
+    }
+  ],
+  "refundStatus": "",
+  "refunds": [],
+  "sellerName": "Seller",
+  "shippingAddress": {
+    "addressOne": "1 Main St",
+    "city": "Springfield",
+    "country": "US",
+    "postalCode": "62701",
+    "recipientName": "Buyer",
+    "territory": "IL"
+  },
+  "shippingType": "Standard (7-10 days)",
+  "status": "Completed - Paid",
+  "transaction": {
+    "directFeeAmount": 0,
+    "feeAmount": 4.48,
+    "grossAmount": 28.7,
+    "netAmount": 24.22,
+    "productAmount": 28.7,
+    "shippingAmount": 0,
+    "taxes": [
+      {
+        "amount": 2.48,
+        "code": "Total"
+      }
+    ]
+  }
+}

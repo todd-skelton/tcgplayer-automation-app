@@ -1,0 +1,28 @@
+.ship-step {
+  display: grid;
+  gap: var(--space-4);
+  & p {
+    margin: 0;
+  }
+}
+.pending {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.failed {
+  border-color: var(--destructive);
+  color: var(--destructive);
+}
+.scroll {
+  overflow-x: auto;
+}
+.outcomes {
+  & :is(th, td) {
+    white-space: normal;
+    vertical-align: top;
+  }
+}

@@ -1,0 +1,30 @@
+/* corten ui 0.1.0: card 289ce11b7545c5f1 */
+/* The surface a card and a panel share. Its spaces are the kit's own properties (--kit-), set on
+   each card from the theme's --card-padding, so a card inside a compact one is roomy again, and an
+   app's own properties neither reach a card nor are hidden inside one. */
+.card, .panel {
+  --kit-card-inset: var(--card-padding); --kit-card-gap: 1.25rem;
+  background: var(--card); color: var(--card-foreground);
+  border: 1px solid var(--border); border-radius: calc(var(--radius) + 4px);
+  box-shadow: 0 1px 2px rgb(0 0 0 / .05);
+}
+.card { display: flex; flex-direction: column; gap: var(--kit-card-inset); padding-block: var(--kit-card-inset); }
+/* A card around one block of content, on one element: the surface and its padding, no layout, so
+   the element's own class (a row of filters) or a Stack lays its children out. */
+.panel { padding: var(--kit-card-inset); }
+/* A denser card or panel, beside roomy ones on the same page. */
+:is(.card, .panel).compact { --kit-card-inset: 1rem; --kit-card-gap: .75rem; }
+/* The heading's row: the heading, then any action at its end, wrapping under it when there is no
+   room; anything else (a description) on its own line, an image or icon at its own size. The
+   heading's and description's rules weigh one class: an element default (h2 { .. }) does not
+   change them, and an app class on the heading ties, so its rule wins when it comes later. */
+.header { display: flex; flex-wrap: wrap; align-items: center; column-gap: 1rem; row-gap: .375rem; padding-inline: var(--kit-card-inset); }
+.header > :where(*) { flex: 1 0 100%; }
+.header > :where(img, svg, picture, video, canvas) { flex: none; }
+.header > :where(h1, h2, h3, h4, h5, h6) { flex: 1 1 auto; margin: 0; font-size: var(--card-heading-font-size); font-weight: 600; line-height: 1.25; }
+.header > :where(p) { margin: 0; font-size: .875rem; color: var(--muted-foreground); }
+.header > .action { flex: 0 0 auto; display: flex; align-items: center; gap: .5rem; margin-inline-start: auto; }
+/* One column no wider than the card: a part in a wrapper (corten-ui's ShownFor, an app's div)
+   shrinks with it, so a wide table in it scrolls rather than widening the page. */
+.content { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--kit-card-gap); padding-inline: var(--kit-card-inset); }
+.footer { display: flex; align-items: center; gap: .5rem; padding-inline: var(--kit-card-inset); }

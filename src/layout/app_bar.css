@@ -1,0 +1,42 @@
+/* The kit's NavBar in the app's bar colors, which it draws every part from, at the top while the
+   page scrolls. On a phone the kit gives the links a row of their own. The menu inside is a
+   popover in --popover, which the bar leaves alone. */
+.bar {
+  --card: var(--app-bar);
+  --card-foreground: var(--app-bar-foreground);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: var(--shadow-md);
+}
+/* No box of its own, so an empty one adds no gap in the bar. */
+.cookie-warning {
+  display: contents;
+}
+.warning {
+  color: var(--app-bar-warning);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+.settings {
+  background: transparent;
+  color: inherit;
+  border-color: rgb(255 255 255 / 0.5);
+}
+/* The kit's Popover, anchored under the settings button: a list of links edge to edge. */
+.menu {
+  width: 14rem;
+  padding: var(--space-2) 0;
+  &:popover-open {
+    display: grid;
+  }
+  & a {
+    padding: var(--space-2) var(--space-4);
+    color: inherit;
+    text-decoration: none;
+  }
+  & a:hover,
+  & a[aria-current="page"] {
+    background: var(--muted);
+  }
+}

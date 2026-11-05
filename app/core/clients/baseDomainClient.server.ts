@@ -316,9 +316,14 @@ export class DomainHttpClient {
   private readonly throttler: RequestThrottler;
   private readonly limiter: ConcurrencyLimiter;
 
+  /**
+   * @param guardPost runs before a POST is queued; it throws to refuse one
+   * this process must not send.
+   */
   constructor(
     private readonly domainKey: DomainKey,
     private readonly baseUrl: string,
+    private readonly guardPost: (path: string) => void = () => {},
   ) {
     this.throttler = new RequestThrottler(domainKey);
     this.limiter = new ConcurrencyLimiter();
@@ -379,6 +384,7 @@ export class DomainHttpClient {
       observeResponse?: (metadata: SafeHttpResponseMetadata) => void;
     },
   ): Promise<TResponse> {
+    this.guardPost(path);
     const { retry = true, observeResponse, ...requestOptions } = options ?? {};
     return this.executeWithRetry(
       "POST",

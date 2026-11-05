@@ -1,0 +1,31 @@
+.economics-screen {
+  display: grid;
+  gap: var(--space-4);
+  & h1 {
+    margin-bottom: var(--space-1);
+  }
+  & header p {
+    margin: 0;
+  }
+}
+.costs {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-sm);
+  & li {
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--border);
+  }
+  & small {
+    display: block;
+    color: var(--muted-foreground);
+  }
+}
+.coverage {
+  min-width: 320px;
+  white-space: normal;
+  color: var(--muted-foreground);
+}

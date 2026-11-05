@@ -1,0 +1,7 @@
+/* corten ui 0.1.0: skeleton 5cd492b1440e7d81 */
+.skeleton { display: block; background: var(--muted); border-radius: calc(var(--radius) - 2px); animation: skeleton-pulse 2s ease-in-out infinite; }
+.line { height: 1rem; width: 100%; }
+.block { height: 6rem; width: 100%; }
+.circle { width: 2.5rem; height: 2.5rem; border-radius: 50%; }
+@keyframes skeleton-pulse { 50% { opacity: .5; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }

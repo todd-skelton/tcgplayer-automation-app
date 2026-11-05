@@ -1,0 +1,853 @@
+{
+ "scans": [
+  {
+   "spec": {
+    "kind": "alt-supply",
+    "assetId": "asset-1"
+   },
+   "run": "00000000-0000-4000-8000-000000000001",
+   "payload": {
+    "kind": "alt-supply",
+    "data": {
+     "listings": [
+      {
+       "provider": "alt",
+       "providerId": "l-1",
+       "assetId": "asset-1",
+       "venue": "Alt",
+       "sourceUrl": null,
+       "format": "FIXED_PRICE",
+       "state": "ACTIVE",
+       "price": {
+        "amount": 100,
+        "currency": null
+       },
+       "priceKind": "unknown",
+       "shipping": null,
+       "quantity": null,
+       "startedAt": "2026-10-01T00:00:00Z",
+       "endsAt": null,
+       "items": [
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+         }
+        },
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "BGS",
+          "encoding": "9.5",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+         }
+        }
+       ]
+      },
+      {
+       "provider": "alt",
+       "providerId": "l-2",
+       "assetId": "asset-1",
+       "venue": "Alt",
+       "sourceUrl": null,
+       "format": "FIXED_PRICE",
+       "state": "ACTIVE",
+       "price": {
+        "amount": 80,
+        "currency": null
+       },
+       "priceKind": "unknown",
+       "shipping": null,
+       "quantity": null,
+       "startedAt": "2026-10-01T00:00:00Z",
+       "endsAt": null,
+       "items": [
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+         }
+        },
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "BGS",
+          "encoding": "9.5",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+         }
+        }
+       ]
+      },
+      {
+       "provider": "alt",
+       "providerId": "l-1",
+       "assetId": "asset-1",
+       "venue": "Alt",
+       "sourceUrl": null,
+       "format": "FIXED_PRICE",
+       "state": "ACTIVE",
+       "price": {
+        "amount": 100,
+        "currency": null
+       },
+       "priceKind": "unknown",
+       "shipping": null,
+       "quantity": null,
+       "startedAt": "2026-10-01T00:00:00Z",
+       "endsAt": null,
+       "items": [
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+         }
+        },
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "BGS",
+          "encoding": "9.5",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+         }
+        }
+       ]
+      }
+     ],
+     "asOf": "2026-10-01T00:00:00.000Z",
+     "scope": "alt-only"
+    }
+   }
+  },
+  {
+   "spec": {
+    "kind": "alt-supply",
+    "assetId": "asset-1"
+   },
+   "run": "00000000-0000-4000-8000-000000000001",
+   "payload": {
+    "kind": "alt-supply",
+    "data": {
+     "listings": [
+      {
+       "provider": "alt",
+       "providerId": "l-1",
+       "assetId": "asset-1",
+       "venue": "Alt",
+       "sourceUrl": null,
+       "format": "FIXED_PRICE",
+       "state": "ACTIVE",
+       "price": {
+        "amount": 100,
+        "currency": null
+       },
+       "priceKind": "unknown",
+       "shipping": null,
+       "quantity": null,
+       "startedAt": "2026-10-01T00:00:00Z",
+       "endsAt": null,
+       "items": [
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+         }
+        },
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "BGS",
+          "encoding": "9.5",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+         }
+        }
+       ]
+      },
+      {
+       "provider": "alt",
+       "providerId": "l-2",
+       "assetId": "asset-1",
+       "venue": "Alt",
+       "sourceUrl": null,
+       "format": "FIXED_PRICE",
+       "state": "ACTIVE",
+       "price": {
+        "amount": 80,
+        "currency": null
+       },
+       "priceKind": "unknown",
+       "shipping": null,
+       "quantity": null,
+       "startedAt": "2026-10-01T00:00:00Z",
+       "endsAt": null,
+       "items": [
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+         }
+        },
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "BGS",
+          "encoding": "9.5",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+         }
+        }
+       ]
+      },
+      {
+       "provider": "alt",
+       "providerId": "l-1",
+       "assetId": "asset-1",
+       "venue": "Alt",
+       "sourceUrl": null,
+       "format": "FIXED_PRICE",
+       "state": "ACTIVE",
+       "price": {
+        "amount": 100,
+        "currency": null
+       },
+       "priceKind": "unknown",
+       "shipping": null,
+       "quantity": null,
+       "startedAt": "2026-10-01T00:00:00Z",
+       "endsAt": null,
+       "items": [
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+         }
+        },
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "BGS",
+          "encoding": "9.5",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+         }
+        }
+       ]
+      }
+     ],
+     "asOf": "2026-10-01T00:00:00.000Z",
+     "scope": "alt-only"
+    }
+   }
+  },
+  {
+   "spec": {
+    "kind": "alt-supply",
+    "assetId": "asset-1"
+   },
+   "run": "00000000-0000-4000-8000-000000000001",
+   "payload": {
+    "kind": "alt-supply",
+    "data": {
+     "listings": [
+      {
+       "provider": "alt",
+       "providerId": "l-1",
+       "assetId": "asset-1",
+       "venue": "Alt",
+       "sourceUrl": null,
+       "format": "FIXED_PRICE",
+       "state": "ACTIVE",
+       "price": {
+        "amount": 100,
+        "currency": null
+       },
+       "priceKind": "unknown",
+       "shipping": null,
+       "quantity": null,
+       "startedAt": "2026-10-01T00:00:00Z",
+       "endsAt": null,
+       "items": [
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+         }
+        },
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "BGS",
+          "encoding": "9.5",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+         }
+        }
+       ]
+      }
+     ],
+     "asOf": "2026-10-01T00:00:00.000Z",
+     "scope": "alt-only"
+    }
+   }
+  },
+  {
+   "spec": {
+    "kind": "alt-supply",
+    "assetId": "asset-1"
+   },
+   "run": "00000000-0000-4000-8000-000000000002",
+   "payload": {
+    "kind": "alt-supply",
+    "data": {
+     "listings": [
+      {
+       "provider": "alt",
+       "providerId": "l-2",
+       "assetId": "asset-1",
+       "venue": "Alt",
+       "sourceUrl": null,
+       "format": "FIXED_PRICE",
+       "state": "ACTIVE",
+       "price": {
+        "amount": 75,
+        "currency": null
+       },
+       "priceKind": "unknown",
+       "shipping": null,
+       "quantity": null,
+       "startedAt": "2026-10-01T00:00:00Z",
+       "endsAt": null,
+       "items": [
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+         }
+        },
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "BGS",
+          "encoding": "9.5",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+         }
+        }
+       ]
+      },
+      {
+       "provider": "alt",
+       "providerId": "l-1",
+       "assetId": "asset-1",
+       "venue": "Alt",
+       "sourceUrl": null,
+       "format": "FIXED_PRICE",
+       "state": "ACTIVE",
+       "price": {
+        "amount": 100,
+        "currency": null
+       },
+       "priceKind": "unknown",
+       "shipping": null,
+       "quantity": null,
+       "startedAt": "2026-10-01T00:00:00Z",
+       "endsAt": null,
+       "items": [
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+         }
+        },
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "BGS",
+          "encoding": "9.5",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+         }
+        }
+       ]
+      }
+     ],
+     "asOf": "2026-10-02T00:00:00.000Z",
+     "scope": "alt-only"
+    }
+   }
+  },
+  {
+   "spec": {
+    "kind": "alt-supply",
+    "assetId": "asset-1"
+   },
+   "run": "00000000-0000-4000-8000-000000000003",
+   "payload": {
+    "kind": "alt-supply",
+    "data": {
+     "listings": [
+      {
+       "provider": "alt",
+       "providerId": "l-1",
+       "assetId": "asset-1",
+       "venue": "Alt",
+       "sourceUrl": null,
+       "format": "FIXED_PRICE",
+       "state": "ACTIVE",
+       "price": {
+        "amount": 100,
+        "currency": null
+       },
+       "priceKind": "unknown",
+       "shipping": null,
+       "quantity": null,
+       "startedAt": "2026-10-01T00:00:00Z",
+       "endsAt": null,
+       "items": [
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+         }
+        },
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "BGS",
+          "encoding": "9.5",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+         }
+        }
+       ]
+      },
+      {
+       "provider": "alt",
+       "providerId": "l-1",
+       "assetId": "asset-1",
+       "venue": "Alt",
+       "sourceUrl": null,
+       "format": "FIXED_PRICE",
+       "state": "ACTIVE",
+       "price": {
+        "amount": 99,
+        "currency": null
+       },
+       "priceKind": "unknown",
+       "shipping": null,
+       "quantity": null,
+       "startedAt": "2026-10-01T00:00:00Z",
+       "endsAt": null,
+       "items": [
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+         }
+        },
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "BGS",
+          "encoding": "9.5",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+         }
+        }
+       ]
+      }
+     ],
+     "asOf": "2026-10-03T00:00:00.000Z",
+     "scope": "alt-only"
+    }
+   }
+  },
+  {
+   "spec": {
+    "kind": "ebay-supply",
+    "groupKey": "abababababababababababababababababababababababababababababababab",
+    "keywords": "PSA 10 Charizard Base Set",
+    "window": {
+     "from": "2025-10-30",
+     "to": "2026-10-30"
+    },
+    "offset": 0,
+    "limit": 50,
+    "timezone": "America/Chicago"
+   },
+   "run": "00000000-0000-4000-8000-000000000004",
+   "payload": {
+    "kind": "alt-supply",
+    "data": {
+     "listings": [
+      {
+       "provider": "alt",
+       "providerId": "l-3",
+       "assetId": "asset-1",
+       "venue": "Alt",
+       "sourceUrl": null,
+       "format": "FIXED_PRICE",
+       "state": "ACTIVE",
+       "price": {
+        "amount": 50,
+        "currency": null
+       },
+       "priceKind": "unknown",
+       "shipping": null,
+       "quantity": null,
+       "startedAt": "2026-10-01T00:00:00Z",
+       "endsAt": null,
+       "items": [
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+         }
+        },
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "BGS",
+          "encoding": "9.5",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+         }
+        }
+       ]
+      }
+     ],
+     "asOf": "2026-10-03T00:00:00.000Z",
+     "scope": "alt-only"
+    }
+   }
+  },
+  {
+   "spec": {
+    "kind": "ebay-supply",
+    "groupKey": "abababababababababababababababababababababababababababababababab",
+    "keywords": "PSA 10 Charizard Base Set",
+    "window": {
+     "from": "2025-10-30",
+     "to": "2026-10-30"
+    },
+    "offset": 0,
+    "limit": 50,
+    "timezone": "America/Chicago"
+   },
+   "run": "00000000-0000-4000-8000-000000000005",
+   "payload": {
+    "kind": "ebay-supply",
+    "data": {
+     "listings": [
+      {
+       "provider": "ebayResearch",
+       "providerId": "e-1",
+       "assetId": null,
+       "venue": "eBay",
+       "sourceUrl": "https://www.ebay.com/itm/e-1",
+       "format": "FIXED_PRICE",
+       "state": "ACTIVE",
+       "price": {
+        "amount": 410,
+        "currency": "USD"
+       },
+       "priceKind": "ask",
+       "shipping": {
+        "amount": 0,
+        "currency": "USD"
+       },
+       "quantity": null,
+       "startedAt": null,
+       "endsAt": null,
+       "title": "PSA 10 Charizard e-1",
+       "extendedTitle": null,
+       "items": [
+        {
+         "assetId": null,
+         "grading": {
+          "grader": "PSA",
+          "encoding": "10",
+          "number": 10,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+         }
+        }
+       ]
+      },
+      {
+       "provider": "ebayResearch",
+       "providerId": "e-2",
+       "assetId": null,
+       "venue": "eBay",
+       "sourceUrl": "https://www.ebay.com/itm/e-2",
+       "format": "FIXED_PRICE",
+       "state": "ACTIVE",
+       "price": {
+        "amount": 395.5,
+        "currency": "USD"
+       },
+       "priceKind": "ask",
+       "shipping": {
+        "amount": 0,
+        "currency": "USD"
+       },
+       "quantity": null,
+       "startedAt": null,
+       "endsAt": null,
+       "title": "PSA 10 Charizard e-2",
+       "extendedTitle": null,
+       "items": [
+        {
+         "assetId": null,
+         "grading": {
+          "grader": "PSA",
+          "encoding": "10",
+          "number": 10,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+         }
+        }
+       ]
+      }
+     ],
+     "asOf": "2026-10-03T00:00:00.000Z"
+    }
+   }
+  },
+  {
+   "spec": {
+    "kind": "alt-supply",
+    "assetId": "asset-1"
+   },
+   "run": "00000000-0000-4000-8000-000000000006",
+   "payload": {
+    "kind": "alt-supply",
+    "data": {
+     "listings": [
+      {
+       "provider": "alt",
+       "providerId": "l-2",
+       "assetId": "asset-1",
+       "venue": "Alt",
+       "sourceUrl": null,
+       "format": "FIXED_PRICE",
+       "state": "ACTIVE",
+       "price": {
+        "amount": 75,
+        "currency": null
+       },
+       "priceKind": "unknown",
+       "shipping": null,
+       "quantity": null,
+       "startedAt": "2026-10-01T00:00:00Z",
+       "endsAt": null,
+       "items": [
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+         }
+        },
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "BGS",
+          "encoding": "9.5",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+         }
+        }
+       ]
+      },
+      {
+       "provider": "alt",
+       "providerId": "l-1",
+       "assetId": "asset-1",
+       "venue": "Alt",
+       "sourceUrl": null,
+       "format": "FIXED_PRICE",
+       "state": "ACTIVE",
+       "price": {
+        "amount": 100,
+        "currency": null
+       },
+       "priceKind": "unknown",
+       "shipping": null,
+       "quantity": null,
+       "startedAt": "2026-10-01T00:00:00Z",
+       "endsAt": null,
+       "items": [
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "PSA",
+          "encoding": "9.0",
+          "number": 9,
+          "label": "PSA 9",
+          "qualifier": null,
+          "autograph": null
+         }
+        },
+        {
+         "assetId": "asset-1",
+         "grading": {
+          "grader": "BGS",
+          "encoding": "9.5",
+          "number": null,
+          "label": null,
+          "qualifier": null,
+          "autograph": null
+         }
+        }
+       ]
+      }
+     ],
+     "asOf": "2026-10-04T00:00:00.000Z",
+     "scope": "alt-only"
+    }
+   }
+  }
+ ],
+ "completed": {
+  "spec": {
+   "kind": "alt-supply",
+   "assetId": "asset-2"
+  },
+  "payload": {
+   "kind": "alt-supply",
+   "data": {
+    "listings": [
+     {
+      "provider": "alt",
+      "providerId": "l-9",
+      "assetId": "asset-2",
+      "venue": "Alt",
+      "sourceUrl": null,
+      "format": "FIXED_PRICE",
+      "state": "ACTIVE",
+      "price": {
+       "amount": 60,
+       "currency": null
+      },
+      "priceKind": "unknown",
+      "shipping": null,
+      "quantity": null,
+      "startedAt": "2026-10-01T00:00:00Z",
+      "endsAt": null,
+      "items": [
+       {
+        "assetId": "asset-2",
+        "grading": {
+         "grader": "PSA",
+         "encoding": "8.0",
+         "number": 8,
+         "label": "PSA 8",
+         "qualifier": null,
+         "autograph": null
+        }
+       }
+      ]
+     }
+    ],
+    "asOf": "2026-10-05T00:00:00.000Z",
+    "scope": "alt-only"
+   }
+  }
+ }
+}

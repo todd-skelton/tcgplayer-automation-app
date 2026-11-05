@@ -1,0 +1,17 @@
+/* corten ui 0.1.0: badge 25b6a654cb37ad0d */
+.badge {
+  display: inline-flex; align-items: center; gap: .25rem; width: fit-content; white-space: nowrap;
+  padding: .125rem .5rem; font-size: .75rem; font-weight: 500; line-height: 1rem;
+  border: 1px solid transparent; border-radius: calc(var(--radius) - 2px);
+}
+/* A tone is its color (soft and outline text), and the fill and text of a solid badge. */
+.neutral { --kit-tone: var(--foreground); --kit-tone-fill: var(--secondary); --kit-tone-text: var(--secondary-foreground); }
+.primary { --kit-tone: var(--primary); --kit-tone-fill: var(--primary); --kit-tone-text: var(--primary-foreground); }
+.info { --kit-tone: var(--info); --kit-tone-fill: var(--info); --kit-tone-text: var(--info-foreground); }
+.success { --kit-tone: var(--success); --kit-tone-fill: var(--success); --kit-tone-text: var(--success-foreground); }
+.warning { --kit-tone: var(--warning); --kit-tone-fill: var(--warning); --kit-tone-text: var(--warning-foreground); }
+.destructive { --kit-tone: var(--destructive); --kit-tone-fill: var(--destructive); --kit-tone-text: var(--destructive-foreground); }
+/* Mixed in sRGB, which the kit's contrast test computes exactly. */
+.solid { background: var(--kit-tone-fill); color: var(--kit-tone-text); }
+.soft { background: color-mix(in srgb, var(--kit-tone) 12%, var(--card)); color: color-mix(in srgb, var(--kit-tone) 85%, var(--foreground)); }
+.outline { background: transparent; color: var(--kit-tone); border-color: color-mix(in srgb, var(--kit-tone) 50%, var(--border)); }

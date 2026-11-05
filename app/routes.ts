@@ -1,12 +1,15 @@
-import { type RouteConfig, index } from "@react-router/dev/routes";
+import type { RouteConfig } from "@react-router/dev/routes";
+
+// Every screen is served by the Corten app (`src/`), which relays these JSON routes here until the
+// Node workers and their routes move over.
 
 export default [
   { path: '/api/inventory-intake-runs', file: 'features/inventory-management/routes/api.inventory-intake-runs.ts' },
-  { path: "/inventory-economics", file: "features/inventory-economics/routes/inventory-economics.tsx" },
   { path: "/api/inventory-economics", file: "features/inventory-economics/routes/api.inventory-economics.ts" },
   { path: "/api/shipping-thresholds", file: "features/shipping-thresholds/routes/api.shipping-thresholds.ts" },
   { path: "/api/forecast-calibration", file: "features/forecast-calibration/routes/api.forecast-calibration.ts" },
   { path: "/api/inventory-reinvestment-turnaround", file: "features/inventory-strategy/routes/api.reinvestment-turnaround.ts" },
+  { path: "/api/inventory-strategy-analysis", file: "features/inventory-strategy/routes/api.inventory-strategy-analysis.ts" },
   { path: "/api/inventory-fifo", file: "features/inventory-fifo/routes/api.inventory-fifo.ts" },
   { path: "/api/shipping-export/intake-history", file: "features/shipping-export/routes/api.shipping-export-intake-history.ts" },
   { path: "/api/inventory-opening-balance", file: "features/inventory-opening-balance/routes/api.inventory-opening-balance.ts" },
@@ -35,10 +38,6 @@ export default [
     file: "features/ebay-slab-pricing/routes/api.slab-supply.ts",
   },
   {
-    path: "/slab-pricing",
-    file: "features/ebay-slab-pricing/routes/slab-pricing.tsx",
-  },
-  {
     path: "/api/slab-workspace",
     file: "features/ebay-slab-pricing/routes/api.slab-workspace.ts",
   },
@@ -49,6 +48,10 @@ export default [
   {
     path: "/api/slab-recommendations",
     file: "features/ebay-slab-pricing/routes/api.slab-recommendations.ts",
+  },
+  {
+    path: "/api/slab-comp-review",
+    file: "features/ebay-slab-pricing/routes/api.slab-comp-review.ts",
   },
   {
     path: "/api/slab-comp-decisions",
@@ -62,50 +65,13 @@ export default [
     path: "/api/slab-identities",
     file: "features/ebay-slab-pricing/routes/api.slab-identities.ts",
   },
-  index("routes/dashboard.tsx"),
   {
-    path: "/inventory-manager",
-    file: "features/inventory-management/routes/inventory-manager.tsx",
+    path: "/api/continuous-pricing",
+    file: "features/continuous-pricing/routes/api.continuous-pricing.ts",
   },
   {
-    path: "/pending-inventory-pricer",
-    file: "features/pending-inventory/routes/pending-inventory-pricer.tsx",
-  },
-  {
-    path: "/continuous-pricing",
-    file: "features/continuous-pricing/routes/continuous-pricing.tsx",
-  },
-  {
-    path: "/inventory-strategy",
-    file: "features/inventory-strategy/routes/inventory-strategy.tsx",
-  },
-  {
-    path: "/product-price-matrix",
-    file: "features/product-price-matrix/routes/product-price-matrix.tsx",
-  },
-  {
-    path: "/configuration",
-    file: "features/pricing/routes/configuration.tsx",
-  },
-  {
-    path: "/publication-configuration",
-    file: "features/inventory-publication/routes/publication-configuration.tsx",
-  },
-  {
-    path: "/http-configuration",
-    file: "routes/http-configuration.tsx",
-  },
-  {
-    path: "/slab-connections",
-    file: "features/ebay-slab-pricing/routes/slab-connections.tsx",
-  },
-  {
-    path: "/shipping-configuration",
-    file: "features/shipping-export/routes/shipping-configuration.tsx",
-  },
-  {
-    path: "/data-management",
-    file: "routes/home.tsx",
+    path: "/api/data-management",
+    file: "features/catalog-sync/routes/api.data-management.ts",
   },
   {
     path: "/api/suggested-price",
@@ -206,14 +172,6 @@ export default [
   {
     path: "/api/pending-inventory",
     file: "features/pending-inventory/routes/api.pending-inventory.ts",
-  },
-  {
-    path: "/pull-sheet",
-    file: "features/pull-sheet/routes/pull-sheet.tsx",
-  },
-  {
-    path: "/shipping-export",
-    file: "features/shipping-export/routes/shipping-export.tsx",
   },
   {
     path: "/api/shipping-export/postages",

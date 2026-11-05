@@ -1,0 +1,48 @@
+.load-orders-step {
+  display: grid;
+  gap: var(--space-4);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  & form[aria-busy] button::after {
+    content: " …";
+  }
+}
+.unset {
+  color: var(--warning);
+}
+.seller {
+  & form {
+    display: grid;
+    gap: var(--space-3);
+  }
+}
+.history {
+  margin-inline-start: auto;
+}
+/* Wider than the kit's popover: each form says what it does under its name. */
+[popover].history-forms {
+  display: grid;
+  gap: var(--space-3);
+  width: min(27.5rem, calc(100vw - 1rem));
+  & form {
+    display: grid;
+    gap: var(--space-2);
+  }
+  & form > button:first-of-type:has(strong),
+  & label {
+    display: grid;
+    gap: 2px;
+    height: auto;
+    justify-items: start;
+    text-align: start;
+    white-space: normal;
+  }
+  & small {
+    color: var(--muted-foreground);
+    font-weight: 400;
+  }
+}

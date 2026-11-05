@@ -1,0 +1,89 @@
+/* Element defaults and the page's frame. Components style themselves in their own files. The
+   defaults for controls are in :where(), so any component's class (the UI kit's Button, Input,
+   Dialog) overrides them whatever order the stylesheets load in. */
+:root {
+  color-scheme: light;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--font-size-md);
+  line-height: 1.5;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :where(:root):not([data-theme]) {
+    color-scheme: dark;
+  }
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+}
+h1 {
+  font-size: var(--font-size-2xl);
+  font-weight: 500;
+  margin: 0 0 var(--space-4);
+}
+h2 {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin: 0;
+}
+a {
+  color: var(--primary);
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+:where(button) {
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  padding: var(--space-1) var(--space-3);
+}
+:where(button[data-primary]) {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+}
+button:disabled,
+form[aria-busy="true"] button {
+  cursor: default;
+  opacity: 0.6;
+}
+form[aria-busy="true"] button {
+  pointer-events: none;
+}
+:where(
+    input[type="search"],
+    input[type="text"],
+    input[type="tel"],
+    input[type="email"],
+    input[type="number"],
+    input[type="password"],
+    select,
+    input:not([type])
+  ) {
+  border: 1px solid var(--input);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  padding: var(--space-1) var(--space-2);
+}
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+table {
+  border-collapse: collapse;
+}

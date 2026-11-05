@@ -1,0 +1,8 @@
+/* corten ui 0.1.0: icon 950287432ef3505b */
+/* An <svg> at the text's size, its lines drawn in the text's color as Lucide draws them. */
+.icon {
+  flex: none; width: 1em; height: 1em; vertical-align: -.125em;
+  fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+/* A glyph made with Glyph::filled (a rated star, a saved heart): filled in the text's color too. */
+.filled { fill: currentColor; }

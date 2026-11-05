@@ -1,0 +1,891 @@
+//! The screen's posts: certificate lookups (which ask Alt), identities, inventory, maintenance
+//! settings, evidence refreshes, comp decisions, outcomes, recommendations, reviewed asks,
+//! price-change previews and dry runs. Each then sends the browser back to the page the post
+//! came from (its address is the post's query), showing what changed; a refusal is that page with
+//! why, as a conflict.
+use corten::{Refusal, SubmitKey, prelude::*};
+use serde::Deserialize;
+use serde_json::json;
+
+use super::{
+    calculation, comps,
+    dry_run::dry_run as run_dry,
+    identity::{self, Card, Grading, Record, SlabIdentity},
+    inventory, inventory_import, maintenance, outcomes,
+    page::{Place, Screen, page},
+    publication,
+    recommendation::{self, Fees, Seller},
+    refreshes, screening,
+    url::{self, Choice},
+    valuation,
+    views::Problem,
+};
+use crate::{
+    database::Database,
+    features::{
+        slab_connections::{DatabaseGate, Transport},
+        slab_evidence::{alt::Alt, store as evidence},
+    },
+};
+
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct LookUpInput {
+    #[serde(default)]
+    pub grader: String,
+    #[serde(default)]
+    pub cert: String,
+}
+
+/// What to look up with Alt: a certificate, or the one a listing names.
+enum Resolving {
+    Certificate {
+        grader: String,
+        number: String,
+    },
+    Listing {
+        seller: String,
+        id: String,
+        revision: i64,
+    },
+}
+
+/// Looks it up on a connection of its own while the browser waits: leaving the page cancels
+/// Alt's request, and the Alt connection's lease is released either way. A listing tied to an
+/// identity by hand resolves to none; a refusal is in the words of the Node route it replaces.
+async fn resolve(
+    req: &Req,
+    db: &Database,
+    transport: Transport,
+    what: Resolving,
+) -> Result<Option<Record>, String> {
+    let db = db.clone();
+    req.signal()
+        .finish(move |signal| async move {
+            let gate = DatabaseGate(db.clone());
+            let alt = Alt {
+                transport: &transport,
+                gate: &gate,
+            };
+            let cancel = async move {
+                signal.aborted().await;
+            };
+            let conn = db.0.acquire().await;
+            match what {
+                Resolving::Certificate { grader, number } => {
+                    let mut conn = conn.map_err(|_| identity::Unresolved::Unavailable.message())?;
+                    identity::lookup(&mut conn, &alt, (&grader, &number), false, cancel)
+                        .await
+                        .map(Some)
+                        .map_err(|unresolved| unresolved.message())
+                }
+                Resolving::Listing {
+                    seller,
+                    id,
+                    revision,
+                } => {
+                    let mut conn = conn.map_err(|_| inventory::UNAVAILABLE.to_owned())?;
+                    inventory_import::resolve(&mut conn, &alt, &seller, &id, revision, cancel)
+                        .await
+                        .map(inventory_import::Resolved::record)
+                        .map_err(|refused| refused.message())
+                }
+            }
+        })
+        .await
+}
+
+/// Looks the certificate up (its saved identity, or Alt's when there is none) and shows it.
+pub async fn look_up(
+    req: Req,
+    State(db): State<Database>,
+    State(transport): State<Transport>,
+    Params(at): Params<url::LookUp>,
+    Form(input): Form<LookUpInput>,
+) -> HtmlResult {
+    let asked = Resolving::Certificate {
+        grader: input.grader.trim().to_owned(),
+        number: input.cert.trim().to_owned(),
+    };
+    match resolve(&req, &db, transport, asked).await {
+        // As saved: the grader upper-cased, both trimmed.
+        Ok(Some(r)) => req.redirect(&url::SlabPricing::at(
+            &at.choice.with_certificate(&r.grader, &r.certificate_number),
+        )),
+        Ok(None) => req.redirect(&url::SlabPricing::at(&at.choice)),
+        Err(why) => {
+            let choice = at
+                .choice
+                .with_certificate(input.grader.trim(), input.cert.trim());
+            refused(Place::LookUp, &req, &db, &choice, why).await
+        }
+    }
+}
+
+/// The physical slab's card and grade as the operator confirms them. Blank fields stay unknown.
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct ConfirmInput {
+    pub revision: i64,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub game: String,
+    #[serde(default)]
+    pub language: String,
+    #[serde(default)]
+    pub set: String,
+    #[serde(default)]
+    pub card_number: String,
+    #[serde(default)]
+    pub year: String,
+    #[serde(default)]
+    pub edition: String,
+    #[serde(default)]
+    pub finish: String,
+    #[serde(default)]
+    pub stamp: String,
+    #[serde(default)]
+    pub encoding: String,
+    /// A half-grade from 1 to 10, or empty when the grade maps to no number.
+    #[serde(default)]
+    pub number: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub qualifier: String,
+    #[serde(default)]
+    pub autograph: String,
+    #[serde(default)]
+    pub note: String,
+}
+
+fn text(value: &str) -> Option<String> {
+    let value = value.trim();
+    (!value.is_empty()).then(|| value.to_owned())
+}
+
+impl ConfirmInput {
+    /// The identity as the Node app reads it, keeping the provider asset the record matched.
+    fn identity(&self, grader: &str, kept: Option<&SlabIdentity>) -> SlabIdentity {
+        let c = self;
+        SlabIdentity {
+            card: Card {
+                name: text(&c.name),
+                game: text(&c.game),
+                language: text(&c.language),
+                set: text(&c.set),
+                card_number: text(&c.card_number),
+                year: text(&c.year),
+                edition: text(&c.edition),
+                finish: text(&c.finish),
+                stamp: text(&c.stamp),
+            },
+            grading: Grading {
+                grader: grader.to_owned(),
+                encoding: self.encoding.trim().to_owned(),
+                number: self.number.trim().parse().ok(),
+                label: text(&self.label),
+                qualifier: text(&self.qualifier),
+                autograph: text(&self.autograph),
+            },
+            provider_asset: kept.and_then(|k| k.provider_asset.clone()),
+        }
+    }
+}
+
+pub async fn confirm(
+    req: Req,
+    State(db): State<Database>,
+    Params(at): Params<url::Confirm>,
+    Form(input): Form<ConfirmInput>,
+) -> HtmlResult {
+    let Some((grader, cert)) = at.choice.certificate() else {
+        return refused(
+            Place::Identity,
+            &req,
+            &db,
+            &at.choice,
+            "Look up a certificate first.".into(),
+        )
+        .await;
+    };
+    let record = identity::find(&db, grader, cert).await?;
+    let decided = json!(input.identity(grader, record.as_ref().and_then(|r| r.shown())));
+    let confirmation = identity::Confirmation {
+        grader: &json!(grader),
+        certificate_number: &json!(cert),
+        revision: input.revision,
+        identity: &decided,
+        note: &json!(input.note.trim()),
+    };
+    let confirmed = match db.0.acquire().await {
+        Ok(mut conn) => identity::confirm(&mut conn, &confirmation).await,
+        Err(error) => Err(error.to_string()),
+    };
+    match confirmed {
+        Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
+        Err(why) => refused(Place::Identity, &req, &db, &at.choice, why).await,
+    }
+}
+
+#[derive(Debug, Deserialize, Fields)]
+pub struct OpenInput {
+    pub id: String,
+}
+
+/// Opens a listing for review: its identity's certificate, the one its listing names (resolved
+/// with Alt when it has none), or no certificate at all.
+pub async fn open(
+    req: Req,
+    State(db): State<Database>,
+    State(transport): State<Transport>,
+    Params(at): Params<url::Open>,
+    Form(input): Form<OpenInput>,
+) -> HtmlResult {
+    let seller = at.choice.seller.clone().unwrap_or_default();
+    let reviewing = Choice {
+        listing: Some(input.id.clone()),
+        ..at.choice.clone()
+    };
+    let found = inventory::page(&db, &seller, at.choice.after.as_deref().unwrap_or(""))
+        .await
+        .map(|page| page.items.into_iter().find(|l| l.id == input.id));
+    let listing = match found {
+        Ok(Some(listing)) => listing,
+        Ok(None) => {
+            return refused(
+                Place::Inventory,
+                &req,
+                &db,
+                &at.choice,
+                "Reload the listing; it is not on this page any more.".into(),
+            )
+            .await;
+        }
+        Err(why) => {
+            return refused(Place::Inventory, &req, &db, &at.choice, why).await;
+        }
+    };
+    let asked = if let Some(tied) = &listing.identity {
+        Some(Resolving::Certificate {
+            grader: tied.grader.clone(),
+            number: tied.certificate_number.clone(),
+        })
+    } else {
+        listing
+            .snapshot
+            .certificate
+            .is_some()
+            .then(|| Resolving::Listing {
+                seller: listing.seller.clone(),
+                id: listing.id.clone(),
+                revision: listing.revision,
+            })
+    };
+    let looked = match asked {
+        Some(asked) => resolve(&req, &db, transport, asked).await,
+        None => Ok(None),
+    };
+    match looked {
+        Ok(Some(r)) => req.redirect(&url::SlabPricing::at(
+            &reviewing.with_certificate(&r.grader, &r.certificate_number),
+        )),
+        // A listing whose identity was assigned by hand answers with no record: show it as it is.
+        Ok(None) => req.redirect(&url::SlabPricing::at(&reviewing)),
+        Err(why) => refused(Place::Inventory, &req, &db, &reviewing, why).await,
+    }
+}
+
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct AssignInput {
+    #[serde(default)]
+    pub note: String,
+}
+
+/// Ties the confirmed identity shown to the listing reviewed, with the reason.
+pub async fn assign(
+    req: Req,
+    State(db): State<Database>,
+    Params(at): Params<url::Assign>,
+    Form(input): Form<AssignInput>,
+) -> HtmlResult {
+    let screen = Screen::read(&db, &at.choice).await?;
+    let (Some(listing), Some(record)) = (&screen.listing, &screen.record) else {
+        return refused(
+            Place::Listing,
+            &req,
+            &db,
+            &at.choice,
+            "Open a listing and look up a confirmed certificate first.".into(),
+        )
+        .await;
+    };
+    let assigned = match db.0.acquire().await {
+        Ok(mut conn) => {
+            let (seller, id, note) = (&listing.seller, &listing.id, input.note.trim());
+            inventory_import::assign(&mut conn, seller, id, listing.revision, &record.id, note)
+                .await
+                .map_err(|refused| refused.message())
+        }
+        Err(error) => Err(error.to_string()),
+    };
+    match assigned {
+        Ok(()) => req.redirect(&url::SlabPricing::at(&at.choice)),
+        Err(why) => refused(Place::Listing, &req, &db, &at.choice, why).await,
+    }
+}
+
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct ImportInput {
+    /// The inventory's revision when the page was drawn: an import over a newer one is refused.
+    pub revision: i64,
+    #[serde(default)]
+    pub csv: String,
+}
+
+/// Imports a CSV snapshot of some of the seller's listings, then shows the first page.
+pub async fn import(
+    req: Req,
+    State(db): State<Database>,
+    Params(at): Params<url::Import>,
+    Form(input): Form<ImportInput>,
+) -> HtmlResult {
+    let seller = at.choice.seller.as_deref().unwrap_or("");
+    let imported = match db.0.acquire().await {
+        Ok(mut conn) => {
+            let now = chrono::Utc::now();
+            inventory_import::import_csv(&mut conn, seller, input.revision, &input.csv, now)
+                .await
+                .map_err(|refused| refused.message())
+        }
+        Err(error) => Err(error.to_string()),
+    };
+    match imported {
+        Ok(_) => req.redirect(&url::SlabPricing::at(&Choice {
+            after: None,
+            trail: Vec::new(),
+            listing: None,
+            ..at.choice.clone()
+        })),
+        Err(why) => refused(Place::Inventory, &req, &db, &at.choice, why).await,
+    }
+}
+
+/// The certificate researched, at the revision the page showed: a refresh for an identity
+/// changed since is refused.
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct RefreshInput {
+    pub id: String,
+    pub revision: i64,
+}
+
+/// Queues the evidence for the chosen grade and dates for refresh, fetched again even when what
+/// is saved is fresh. Node's slab evidence worker calls the providers; the page follows it.
+pub async fn refresh(
+    req: Req,
+    State(db): State<Database>,
+    Params(at): Params<url::Refresh>,
+    Form(input): Form<RefreshInput>,
+) -> HtmlResult {
+    let window = at.choice.window();
+    let queued = async {
+        let mut conn = refreshes::connection(&db).await?;
+        refreshes::research(
+            &mut conn,
+            &input.id,
+            input.revision,
+            at.choice.grade(),
+            &window,
+            true,
+        )
+        .await
+    }
+    .await;
+    match queued {
+        Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
+        Err(why) => refused(Place::Research, &req, &db, &at.choice, why).await,
+    }
+}
+
+/// A refresh to stop, by its run: one that has been run again since is left alone. Stopped here,
+/// in the refresh queue the Node app's worker claims from.
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct CancelInput {
+    pub key: String,
+    pub run: String,
+}
+
+pub async fn cancel(
+    req: Req,
+    State(db): State<Database>,
+    Params(at): Params<url::Cancel>,
+    Form(input): Form<CancelInput>,
+) -> HtmlResult {
+    match evidence::cancel(&db.0, &input.key, &input.run).await {
+        Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
+        Err(evidence::Error::Refused(why)) => {
+            refused(Place::Research, &req, &db, &at.choice, why.0).await
+        }
+        Err(why) => {
+            eprintln!("Slab evidence cancel failed: {why}");
+            refused(
+                Place::Research,
+                &req,
+                &db,
+                &at.choice,
+                "Unable to access slab evidence.".to_owned(),
+            )
+            .await
+        }
+    }
+}
+
+/// The seller's costs and the comparable price basis. A blank amount stays unknown.
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct CalculateInput {
+    #[serde(default)]
+    pub basis: String,
+    pub current_ask: Option<f64>,
+    pub shipping_charged: Option<f64>,
+    pub shipping_cost: Option<f64>,
+    pub acquisition_cost: Option<f64>,
+    pub minimum_ask: Option<f64>,
+    pub minimum_profit: Option<f64>,
+    /// A percentage: 13.25 for 13.25%.
+    pub fee_rate: Option<f64>,
+    pub fee_fixed: Option<f64>,
+    #[serde(default)]
+    pub fee_basis: String,
+}
+
+impl CalculateInput {
+    /// The costs as the Node app reads them, or why they cannot be.
+    fn seller(&self) -> Result<Seller, String> {
+        let fees = match (self.fee_rate, self.fee_fixed) {
+            (Some(rate), Some(fixed)) => Some(Fees {
+                rate: rate / 100.0,
+                fixed,
+                basis: self.fee_basis.clone(),
+            }),
+            (None, None) => None,
+            _ => {
+                return Err(
+                    "Provide both fee percentage and fixed fee, or leave both unknown.".into(),
+                );
+            }
+        };
+        Ok(Seller {
+            currency: "USD".to_owned(),
+            current_ask: self.current_ask,
+            shipping_charged: self.shipping_charged,
+            shipping_cost: self.shipping_cost,
+            acquisition_cost: self.acquisition_cost,
+            minimum_ask: self.minimum_ask,
+            minimum_profit: self.minimum_profit,
+            fees,
+        })
+    }
+}
+
+/// Queues the active supply for the grade and dates for refresh, then shows its default source
+/// from its first row.
+pub async fn refresh_supply(
+    req: Req,
+    State(db): State<Database>,
+    Params(at): Params<url::RefreshSupply>,
+    Form(input): Form<RefreshInput>,
+) -> HtmlResult {
+    let window = at.choice.window();
+    let queued = async {
+        let mut conn = refreshes::connection(&db).await?;
+        refreshes::supply(
+            &mut conn,
+            &input.id,
+            input.revision,
+            at.choice.grade(),
+            &window,
+        )
+        .await
+    }
+    .await;
+    match queued {
+        Ok(_) => req.redirect(&url::SlabPricing::at(
+            &at.choice.supply_source(None, Vec::new()),
+        )),
+        Err(why) => refused(Place::Supply, &req, &db, &at.choice, why).await,
+    }
+}
+
+/// The eBay source page shown, whose next page is fetched.
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct NextSourcePageInput {
+    pub revision: String,
+}
+
+/// Queues the next page of the eBay supply source shown, then shows it, keeping the way back.
+pub async fn next_source_page(
+    req: Req,
+    State(db): State<Database>,
+    Params(at): Params<url::NextSourcePage>,
+    Form(input): Form<NextSourcePageInput>,
+) -> HtmlResult {
+    let queued = async {
+        let mut conn = refreshes::connection(&db).await?;
+        refreshes::next_page(&mut conn, &input.revision).await
+    }
+    .await;
+    match queued {
+        Ok(queued) => {
+            let Some(next) = queued.into_iter().next() else {
+                return req.redirect(&url::SlabPricing::at(&at.choice));
+            };
+            // The default source is kept as an empty entry, as the first listing page is.
+            let mut sources = at.choice.sources.clone();
+            sources.push(at.choice.source.clone().unwrap_or_default());
+            req.redirect(&url::SlabPricing::at(
+                &at.choice.supply_source(Some(next.key), sources),
+            ))
+        }
+        Err(why) => refused(Place::Supply, &req, &db, &at.choice, why).await,
+    }
+}
+
+/// The seller's maintenance settings as typed, at the revision the form was drawn from.
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct MaintenanceInput {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub include_supply: bool,
+    pub interval_minutes: Entry<i64>,
+    pub batch_size: Entry<i64>,
+    pub refresh_budget: Entry<i64>,
+    pub revision: i64,
+}
+
+/// Saves the seller's maintenance settings. Once enabled, Node's slab evidence worker runs their
+/// cycles; they never publish.
+pub async fn save_maintenance(
+    req: Req,
+    State(db): State<Database>,
+    Params(at): Params<url::SaveMaintenance>,
+    Form(input): Form<MaintenanceInput>,
+) -> HtmlResult {
+    // A number that does not read is below every range, so the save refuses it with the ranges,
+    // as Node refused one that was not an integer.
+    let number = |entry: &Entry<i64>| entry.value().unwrap_or(-1);
+    let settings = maintenance::Saved {
+        seller: at.choice.seller.as_deref().unwrap_or(""),
+        enabled: input.enabled,
+        include_supply: input.include_supply,
+        interval_minutes: number(&input.interval_minutes),
+        batch_size: number(&input.batch_size),
+        refresh_budget: number(&input.refresh_budget),
+        revision: input.revision,
+    };
+    match maintenance::save(&db, &settings).await {
+        Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
+        Err(why) => refused(Place::Maintenance, &req, &db, &at.choice, why).await,
+    }
+}
+
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct OutcomesInput {
+    #[serde(default)]
+    pub csv: String,
+}
+
+/// Imports reviewed outcomes for the seller's listings, then shows the first listing's.
+pub async fn import_outcomes(
+    req: Req,
+    State(db): State<Database>,
+    Params(at): Params<url::ImportOutcomes>,
+    Form(input): Form<OutcomesInput>,
+) -> HtmlResult {
+    let seller = at.choice.seller.as_deref().unwrap_or("");
+    match outcomes::import(&db, &input.csv, seller).await {
+        Ok(imported) => req.redirect_with_notice(
+            &url::SlabPricing::at(&Choice {
+                item: imported
+                    .item_ids
+                    .into_iter()
+                    .next()
+                    .or(at.choice.item.clone()),
+                ..at.choice.clone()
+            }),
+            format_args!(
+                "{} new observations saved from {} rows.",
+                imported.inserted, imported.supplied
+            ),
+        ),
+        Err(why) => refused(Place::Outcomes, &req, &db, &at.choice, why).await,
+    }
+}
+
+/// Calculates the owned slab's recommendation from the evidence saved for the dates shown.
+pub async fn calculate(
+    req: Req,
+    State(db): State<Database>,
+    Params(at): Params<url::Calculate>,
+    Form(input): Form<CalculateInput>,
+) -> HtmlResult {
+    let screen = Screen::read(&db, &at.choice).await?;
+    let (Some(record), Some(revisions)) = (&screen.record, screen.calculable_revisions()) else {
+        let why = "Confirm the owned identity, assign it to the selected listing if needed, and return to its grade to calculate.";
+        return refused(Place::Recommendation, &req, &db, &at.choice, why.into()).await;
+    };
+    let seller = match input.seller() {
+        Ok(seller) => seller,
+        Err(why) => {
+            return refused(Place::Recommendation, &req, &db, &at.choice, why).await;
+        }
+    };
+    let policy = valuation::Policy::with_basis(&input.basis);
+    let revisions: Vec<String> = revisions.into_iter().collect();
+    let asked = calculation::Asked {
+        slab_id: &record.id,
+        identity_revision: record.revision,
+        revision_ids: &revisions,
+        policy: &policy,
+        seller: &seller,
+        replacing: None,
+    };
+    let as_of = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let calculated = match db.0.acquire().await {
+        Ok(mut conn) => calculation::calculate(&mut conn, &asked, &as_of).await,
+        Err(error) => Err(error.to_string()),
+    };
+    match calculated {
+        Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
+        Err(why) => refused(Place::Recommendation, &req, &db, &at.choice, why).await,
+    }
+}
+
+/// The ask the operator settled on for the latest recommendation, and why.
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct ReviewAskInput {
+    pub recommendation: String,
+    pub item_price: Option<f64>,
+    #[serde(default)]
+    pub note: String,
+}
+
+pub async fn review_ask(
+    req: Req,
+    State(db): State<Database>,
+    Params(at): Params<url::ReviewAsk>,
+    Form(input): Form<ReviewAskInput>,
+) -> HtmlResult {
+    let asked = recommendation::ReviewedAsk {
+        recommendation_id: &input.recommendation,
+        // A price left empty is refused as Node refused a missing one.
+        item_price: input.item_price.unwrap_or(f64::NAN),
+        currency: "USD",
+        note: &input.note,
+    };
+    let saved = match db.0.acquire().await {
+        Ok(mut conn) => recommendation::review_ask(&mut conn, &asked).await,
+        Err(error) => Err(error.to_string()),
+    };
+    match saved {
+        Ok(_) => req.redirect(&url::SlabPricing::at(&at.choice)),
+        Err(why) => refused(Place::Recommendation, &req, &db, &at.choice, why).await,
+    }
+}
+
+/// The price to review (`calculated` or `reviewed`) of the listing and recommendation as the
+/// page showed them: a listing revised or an ask reviewed again since is refused.
+#[derive(Debug, Deserialize, Fields)]
+pub struct PrepareInput {
+    /// Sent as the preview's intent, so a post sent again saves one preview.
+    pub submit: SubmitKey,
+    pub revision: i64,
+    pub recommendation: String,
+    #[serde(default)]
+    pub reviewed_at: String,
+    #[serde(default)]
+    pub selection: String,
+}
+
+/// Saves a price-change preview of the listing reviewed: the selected ask with the listing and
+/// its evidence. It writes nothing to eBay.
+pub async fn prepare(
+    req: Req,
+    State(db): State<Database>,
+    Params(at): Params<url::Prepare>,
+    Form(input): Form<PrepareInput>,
+) -> HtmlResult {
+    let screen = Screen::read(&db, &at.choice).await?;
+    let fresh = screen.can_calculate() && screen.recommendation().is_some() && !screen.stale();
+    let Some(listing) = screen.listing.as_ref().filter(|_| fresh) else {
+        let why = "Recalculate using the current listing and evidence before preparing another price change.";
+        return refused(Place::Publication, &req, &db, &at.choice, why.into()).await;
+    };
+    let asked = publication::Asked {
+        intent_id: input.submit.as_str().to_owned(),
+        inventory_id: listing.id.clone(),
+        inventory_revision: input.revision,
+        recommendation_id: input.recommendation,
+        override_reviewed_at: (input.selection == "reviewed").then_some(input.reviewed_at),
+        selection: input.selection,
+    };
+    let prepared = match db.0.acquire().await {
+        Ok(mut conn) => publication::prepare(&mut conn, &asked, chrono::Utc::now()).await,
+        Err(error) => Err(error.to_string()),
+    };
+    match prepared {
+        Ok(_) => req.redirect(&url::SlabPricing::at(&Choice {
+            steps: None,
+            ..at.choice.clone()
+        })),
+        Err(why) => refused(Place::Publication, &req, &db, &at.choice, why).await,
+    }
+}
+
+/// The preview whose publication runs without writing. A new run's intent is a fresh key; a
+/// stopped one is resumed with its own id.
+#[derive(Debug, Deserialize, Fields)]
+pub struct DryRunInput {
+    pub intent: SubmitKey,
+    pub preview: String,
+}
+
+/// Checks the preview's plan against the imported inventory and records the outcome, then shows
+/// its steps. It does not contact eBay or change a price.
+pub async fn dry_run(
+    req: Req,
+    State(db): State<Database>,
+    Params(at): Params<url::DryRun>,
+    Form(input): Form<DryRunInput>,
+) -> HtmlResult {
+    let ran = match db.0.acquire().await {
+        Ok(mut conn) => {
+            let intent = input.intent.as_str();
+            run_dry(&mut conn, intent, &input.preview, chrono::Utc::now()).await
+        }
+        Err(error) => Err(error.to_string()),
+    };
+    match ran {
+        Ok(ran) => req.redirect(&url::SlabPricing::at(&Choice {
+            steps: Some(ran),
+            ..at.choice.clone()
+        })),
+        Err(why) => refused(Place::DryRun, &req, &db, &at.choice, why).await,
+    }
+}
+
+/// A sale's decision, as the comp review showed it: the revision and identity revision it was
+/// screened at, the sale's reference, and the operator's call.
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct CompDecisionInput {
+    pub revision: String,
+    pub identity_revision: i64,
+    pub provider: String,
+    pub provider_id: String,
+    /// Empty when the sale's date is unknown.
+    #[serde(default)]
+    pub date: String,
+    /// `accept` or `exclude`.
+    pub decision: String,
+    /// An item amount verified from the sale; shipping and fees stay separate.
+    pub item_price: Option<f64>,
+    #[serde(default)]
+    pub note: String,
+}
+
+/// Includes or excludes a sale from the slab's comps, which marks its recommendation for
+/// recalculation, then closes the sale.
+pub async fn decide_comp(
+    req: Req,
+    State(db): State<Database>,
+    Params(at): Params<url::DecideComp>,
+    Form(input): Form<CompDecisionInput>,
+) -> HtmlResult {
+    let Some(record) = (match at.choice.certificate() {
+        Some((grader, cert)) => identity::find(&db, grader, cert).await?,
+        None => None,
+    }) else {
+        let why = "Look up a certificate first.";
+        return refused(Place::CompDecision, &req, &db, &at.choice, why.into()).await;
+    };
+    let date = input.date.trim();
+    let decided = comps::Decided {
+        slab_id: &record.id,
+        identity_revision: input.identity_revision,
+        revision_id: &input.revision,
+        provider: &input.provider,
+        provider_id: &input.provider_id,
+        date: Some(date).filter(|d| !d.is_empty()),
+        decision: &input.decision,
+        note: &input.note,
+        item_price: input.item_price.map(|amount| screening::Money {
+            amount,
+            currency: Some("USD".to_owned()),
+        }),
+    };
+    let saved = match db.0.acquire().await {
+        Ok(mut conn) => comps::decide(&mut conn, &decided)
+            .await
+            .map_err(|why| why.message().to_owned()),
+        Err(error) => Err(error.to_string()),
+    };
+    match saved {
+        Ok(_) => req.redirect(&url::SlabPricing::at(&Choice {
+            comp: None,
+            ..at.choice.clone()
+        })),
+        Err(why) => refused(Place::CompDecision, &req, &db, &at.choice, why).await,
+    }
+}
+
+/// The revision reviewed, and the Alt sale whose details to fetch (else the eBay source's next
+/// page).
+#[derive(Debug, Default, Deserialize, Fields)]
+pub struct FetchCompsInput {
+    pub revision: String,
+    pub transaction: Option<String>,
+}
+
+/// Queues a provider call for a sale's full details or an eBay source's next page, then shows
+/// its evidence beside the grade's own while the Node app's worker fetches it.
+pub async fn fetch_comps(
+    req: Req,
+    State(db): State<Database>,
+    Params(at): Params<url::FetchComps>,
+    Form(input): Form<FetchCompsInput>,
+) -> HtmlResult {
+    let place = match &input.transaction {
+        Some(_) => Place::CompDecision,
+        None => Place::Comps,
+    };
+    let queued = async {
+        let mut conn = refreshes::connection(&db).await?;
+        match &input.transaction {
+            Some(transaction) => {
+                refreshes::sale_detail(&mut conn, &input.revision, transaction).await
+            }
+            None => refreshes::next_page(&mut conn, &input.revision).await,
+        }
+    }
+    .await;
+    match queued {
+        Ok(queued) => req.redirect(&url::SlabPricing::at(
+            &at.choice.with_extra(queued.into_iter().map(|s| s.key)),
+        )),
+        Err(why) => refused(place, &req, &db, &at.choice, why).await,
+    }
+}
+
+/// Why the post was refused, as a conflict, in the part of the page that sent it: with
+/// JavaScript (a `data-patch` form) only that part's message, so what the user typed stays;
+/// otherwise the page the post came from.
+async fn refused(at: Place, req: &Req, db: &Database, choice: &Choice, why: String) -> HtmlResult {
+    let mut refusal = Errors::new();
+    refusal.refuse(Refusal::Conflict, why.as_str());
+    let message = html! { <Problem at={at} why={Some(why.as_str())} /> };
+    req.invalid(&refusal, message, || async {
+        let mut screen = Screen::read(db, choice).await?;
+        screen.problem = Some((at, why.clone()));
+        page(req, &screen).await
+    })
+    .await
+}

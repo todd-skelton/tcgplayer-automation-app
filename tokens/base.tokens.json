@@ -1,0 +1,841 @@
+{
+  "background": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9608,
+        0.9647,
+        0.9725
+      ],
+      "hex": "#f5f6f8"
+    },
+    "$description": "The page behind everything."
+  },
+  "foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1098,
+        0.1216,
+        0.149
+      ],
+      "hex": "#1c1f26"
+    },
+    "$description": "Text on the page."
+  },
+  "card": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
+    },
+    "$description": "A raised surface: a panel, a card."
+  },
+  "card-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1098,
+        0.1216,
+        0.149
+      ],
+      "hex": "#1c1f26"
+    }
+  },
+  "popover": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
+    },
+    "$description": "A surface over the page: a menu, a popover, a dialog."
+  },
+  "popover-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1098,
+        0.1216,
+        0.149
+      ],
+      "hex": "#1c1f26"
+    }
+  },
+  "primary": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.0824,
+        0.3961,
+        0.7529
+      ],
+      "hex": "#1565c0"
+    },
+    "$description": "The brand: the main action, links, the focus ring."
+  },
+  "primary-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
+    }
+  },
+  "secondary": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9412,
+        0.949,
+        0.9608
+      ],
+      "hex": "#f0f2f5"
+    },
+    "$description": "A quieter action."
+  },
+  "secondary-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1098,
+        0.1216,
+        0.149
+      ],
+      "hex": "#1c1f26"
+    }
+  },
+  "muted": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9412,
+        0.949,
+        0.9608
+      ],
+      "hex": "#f0f2f5"
+    },
+    "$description": "A subdued surface: a table header, a stripe; muted-foreground is secondary text."
+  },
+  "muted-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.3725,
+        0.4,
+        0.4471
+      ],
+      "hex": "#5f6672"
+    }
+  },
+  "accent": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9333,
+        0.949,
+        0.9686
+      ],
+      "hex": "#eef2f7"
+    },
+    "$description": "What a pointer is over: a row, a ghost button."
+  },
+  "accent-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1098,
+        0.1216,
+        0.149
+      ],
+      "hex": "#1c1f26"
+    }
+  },
+  "destructive": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.7765,
+        0.1569,
+        0.1569
+      ],
+      "hex": "#c62828"
+    },
+    "$description": "Something lost or failed."
+  },
+  "destructive-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
+    }
+  },
+  "destructive-soft": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9922,
+        0.9255,
+        0.9176
+      ],
+      "hex": "#fdecea"
+    }
+  },
+  "success": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1647,
+        0.451,
+        0.1882
+      ],
+      "hex": "#2a7330"
+    },
+    "$description": "Something done or healthy."
+  },
+  "success-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
+    }
+  },
+  "success-soft": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9294,
+        0.9686,
+        0.9333
+      ],
+      "hex": "#edf7ee"
+    }
+  },
+  "warning": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.6039,
+        0.3569,
+        0
+      ],
+      "hex": "#9a5b00"
+    },
+    "$description": "Something to look at before going on."
+  },
+  "warning-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
+    }
+  },
+  "warning-soft": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        0.9569,
+        0.898
+      ],
+      "hex": "#fff4e5"
+    }
+  },
+  "info": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.0431,
+        0.4196,
+        0.7961
+      ],
+      "hex": "#0b6bcb"
+    },
+    "$description": "Something to know."
+  },
+  "info-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
+    }
+  },
+  "info-soft": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9098,
+        0.9451,
+        0.9882
+      ],
+      "hex": "#e8f1fc"
+    }
+  },
+  "border": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.8784,
+        0.8902,
+        0.9098
+      ],
+      "hex": "#e0e3e8"
+    },
+    "$description": "A line between parts."
+  },
+  "input": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.5255,
+        0.5529,
+        0.5961
+      ],
+      "hex": "#868d98"
+    },
+    "$description": "A control's border, 3:1 on its surface."
+  },
+  "ring": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.0824,
+        0.3961,
+        0.7529
+      ],
+      "hex": "#1565c0"
+    },
+    "$description": "The keyboard focus outline."
+  },
+  "app-bar": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.098,
+        0.4627,
+        0.8235
+      ],
+      "hex": "#1976d2"
+    },
+    "$description": "The bar across the top of every page."
+  },
+  "app-bar-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
+    }
+  },
+  "tint-strength": {
+    "$type": "number",
+    "$description": "How much of a tone a tinted cell mixes in, in percent; a dark page needs more to show it.",
+    "faint": { "$value": 6, "$description": "A row's label cells." },
+    "hover": { "$value": 10, "$description": "A row under the pointer." },
+    "strong": { "$value": 10, "$description": "A cell that holds the answer, as the price matrix's sell-at price." }
+  },
+  "holo": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.6313725490196078,
+        0.3843137254901961,
+        0.027450980392156862
+      ],
+      "hex": "#a16207"
+    },
+    "$description": "A Holo variant's chip text, React's fixed gold."
+  },
+  "reverse-holo": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.42745098039215684,
+        0.1568627450980392,
+        0.8509803921568627
+      ],
+      "hex": "#6d28d9"
+    },
+    "$description": "A Reverse Holo variant's chip text, React's fixed purple."
+  },
+  "app-bar-warning": {
+    "$type": "color",
+    "$value": "{warning-soft}",
+    "$description": "The auth cookie warning on the app bar: readable on its blue."
+  },
+  "space": {
+    "0": {
+      "$value": {
+        "value": 0,
+        "unit": "px"
+      }
+    },
+    "1": {
+      "$value": {
+        "value": 4,
+        "unit": "px"
+      }
+    },
+    "2": {
+      "$value": {
+        "value": 8,
+        "unit": "px"
+      }
+    },
+    "3": {
+      "$value": {
+        "value": 12,
+        "unit": "px"
+      }
+    },
+    "4": {
+      "$value": {
+        "value": 16,
+        "unit": "px"
+      }
+    },
+    "5": {
+      "$value": {
+        "value": 24,
+        "unit": "px"
+      }
+    },
+    "6": {
+      "$value": {
+        "value": 32,
+        "unit": "px"
+      }
+    },
+    "8": {
+      "$value": {
+        "value": 48,
+        "unit": "px"
+      }
+    },
+    "$type": "dimension"
+  },
+  "radius": {
+    "$type": "dimension",
+    "$root": {
+      "$value": {
+        "value": 8,
+        "unit": "px"
+      },
+      "$description": "The kit's corner: its parts round by this, less for the small ones."
+    },
+    "sm": {
+      "$value": {
+        "value": 4,
+        "unit": "px"
+      }
+    },
+    "md": {
+      "$value": {
+        "value": 8,
+        "unit": "px"
+      }
+    },
+    "lg": {
+      "$value": {
+        "value": 12,
+        "unit": "px"
+      }
+    },
+    "pill": {
+      "$value": {
+        "value": 999,
+        "unit": "px"
+      }
+    }
+  },
+  "control-height": {
+    "$type": "dimension",
+    "$value": {
+      "value": 2.25,
+      "unit": "rem"
+    },
+    "$description": "A kit control of the default size: button, field, select, menu button, page link."
+  },
+  "control-height-sm": {
+    "$type": "dimension",
+    "$value": {
+      "value": 2,
+      "unit": "rem"
+    },
+    "$description": "A small button and a tab."
+  },
+  "control-height-lg": {
+    "$type": "dimension",
+    "$value": {
+      "value": 2.5,
+      "unit": "rem"
+    },
+    "$description": "A large button."
+  },
+  "control-padding": {
+    "$type": "dimension",
+    "$value": {
+      "value": 0.75,
+      "unit": "rem"
+    },
+    "$description": "The inline padding of a field, a small button and a tab."
+  },
+  "control-width-sm": { "$type": "dimension", "$value": { "value": 8, "unit": "rem" }, "$description": "A short control outside a field: a code, a count." },
+  "control-width-md": { "$type": "dimension", "$value": { "value": 16, "unit": "rem" }, "$description": "A control outside a field: a search box beside its button." },
+  "control-width-lg": { "$type": "dimension", "$value": { "value": 24, "unit": "rem" }, "$description": "A long control outside a field." },
+  "control-font-size": {
+    "$type": "dimension",
+    "$value": {
+      "value": 0.875,
+      "unit": "rem"
+    },
+    "$description": "The text of a field, select, combobox, textarea, tab, page link, menu button and button."
+  },
+  "card-padding": {
+    "$type": "dimension",
+    "$value": {
+      "value": 1.5,
+      "unit": "rem"
+    },
+    "$description": "A kit card's padding and the gap between its parts."
+  },
+  "card-heading-font-size": {
+    "$type": "dimension",
+    "$value": {
+      "value": 1,
+      "unit": "rem"
+    },
+    "$description": "A kit card's heading."
+  },
+  "font-size": {
+    "$type": "dimension",
+    "xs": {
+      "$value": {
+        "value": 12,
+        "unit": "px"
+      }
+    },
+    "sm": {
+      "$value": {
+        "value": 13,
+        "unit": "px"
+      }
+    },
+    "md": {
+      "$value": {
+        "value": 15,
+        "unit": "px"
+      }
+    },
+    "lg": {
+      "$value": {
+        "value": 18,
+        "unit": "px"
+      }
+    },
+    "xl": {
+      "$value": {
+        "value": 24,
+        "unit": "px"
+      }
+    },
+    "2xl": {
+      "$value": {
+        "value": 32,
+        "unit": "px"
+      }
+    }
+  },
+  "shadow": {
+    "$type": "shadow",
+    "sm": {
+      "$value": {
+        "color": {
+          "colorSpace": "srgb",
+          "components": [
+            0.0627,
+            0.0941,
+            0.1569
+          ],
+          "alpha": 0.08,
+          "hex": "#101828"
+        },
+        "offsetX": {
+          "value": 0,
+          "unit": "px"
+        },
+        "offsetY": {
+          "value": 1,
+          "unit": "px"
+        },
+        "blur": {
+          "value": 2,
+          "unit": "px"
+        },
+        "spread": {
+          "value": 0,
+          "unit": "px"
+        }
+      }
+    },
+    "md": {
+      "$value": [
+        {
+          "color": {
+            "colorSpace": "srgb",
+            "components": [
+              0.0627,
+              0.0941,
+              0.1569
+            ],
+            "alpha": 0.1,
+            "hex": "#101828"
+          },
+          "offsetX": {
+            "value": 0,
+            "unit": "px"
+          },
+          "offsetY": {
+            "value": 1,
+            "unit": "px"
+          },
+          "blur": {
+            "value": 3,
+            "unit": "px"
+          },
+          "spread": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        {
+          "color": {
+            "colorSpace": "srgb",
+            "components": [
+              0.0627,
+              0.0941,
+              0.1569
+            ],
+            "alpha": 0.08,
+            "hex": "#101828"
+          },
+          "offsetX": {
+            "value": 0,
+            "unit": "px"
+          },
+          "offsetY": {
+            "value": 6,
+            "unit": "px"
+          },
+          "blur": {
+            "value": 16,
+            "unit": "px"
+          },
+          "spread": {
+            "value": 0,
+            "unit": "px"
+          }
+        }
+      ]
+    }
+  },
+  "$extensions": {
+    "run.corten": {
+      "breakpoints": {
+        "sm": {
+          "value": 40,
+          "unit": "rem"
+        },
+        "wide": "{sm}",
+        "md": {
+          "value": 60,
+          "unit": "rem"
+        },
+        "xl": {
+          "value": 96,
+          "unit": "rem"
+        }
+      },
+      "utilities": {
+        "display": {
+          "property": "display",
+          "values": {
+            "block": "block",
+            "flex": "flex",
+            "grid": "grid",
+            "none": "none"
+          }
+        },
+        "items": {
+          "property": "align-items",
+          "values": {
+            "start": "start",
+            "center": "center",
+            "baseline": "baseline"
+          }
+        },
+        "justify": {
+          "property": "justify-content",
+          "values": {
+            "start": "start",
+            "between": "space-between",
+            "end": "end"
+          }
+        },
+        "flex": {
+          "property": "flex-wrap",
+          "values": {
+            "wrap": "wrap",
+            "nowrap": "nowrap"
+          }
+        },
+        "gap": {
+          "property": "gap",
+          "group": "space"
+        },
+        "p": {
+          "property": "padding",
+          "group": "space"
+        },
+        "px": {
+          "property": "padding-inline",
+          "group": "space"
+        },
+        "py": {
+          "property": "padding-block",
+          "group": "space"
+        },
+        "mb": {
+          "property": "margin-block-end",
+          "group": "space"
+        },
+        "mx": {
+          "property": "margin-inline",
+          "values": {
+            "0": "0",
+            "auto": "auto"
+          }
+        },
+        "max-w": {
+          "property": "max-width",
+          "values": {
+            "page": "1400px",
+            "prose": "40rem"
+          }
+        },
+        "text": {
+          "property": "font-size",
+          "group": "font-size"
+        },
+        "weight": {
+          "property": "font-weight",
+          "values": {
+            "normal": "400",
+            "medium": "500",
+            "semibold": "600",
+            "bold": "700"
+          }
+        },
+        "fg": {
+          "property": "color",
+          "values": {
+            "muted": "var(--muted-foreground)",
+            "primary": "var(--primary)",
+            "success": "var(--success)",
+            "warning": "var(--warning)",
+            "destructive": "var(--destructive)"
+          }
+        },
+        "bg": {
+          "property": "background-color",
+          "values": {
+            "card": "var(--card)",
+            "muted": "var(--muted)"
+          }
+        },
+        "rounded": {
+          "property": "border-radius",
+          "group": "radius"
+        },
+        "shadow": {
+          "property": "box-shadow",
+          "group": "shadow"
+        },
+        "numeric": {
+          "property": "font-variant-numeric",
+          "values": {
+            "tabular": "tabular-nums"
+          }
+        },
+        "grow": {
+          "property": "flex-grow",
+          "values": {
+            "1": "1"
+          }
+        }
+      }
+    }
+  }
+}

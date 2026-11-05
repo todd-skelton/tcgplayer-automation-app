@@ -1,0 +1,54 @@
+.screen {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 800px;
+  margin-inline: auto;
+  & > h1,
+  & > p {
+    margin: 0;
+  }
+}
+.form {
+  display: grid;
+  gap: var(--space-4);
+}
+/* Show reveals the cookie only through the script; without it the button would do nothing, so it
+   is not drawn (Corten's guide, scripts.md, "A control only the script makes work"). */
+@media (scripting: none) {
+  .reveal {
+    display: none;
+  }
+}
+.settings {
+  display: grid;
+  gap: var(--space-4);
+}
+.bounds {
+  display: none;
+  gap: var(--space-4);
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 0;
+  padding: var(--space-3) 0 0;
+  & legend {
+    color: var(--muted-foreground);
+    font-size: var(--font-size-sm);
+  }
+}
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.adaptive-badge {
+  display: none;
+}
+/* While the domain's adaptive switch is on: its badge in the summary, and its bounds. */
+.domain-box:has(input[role="switch"]:checked) {
+  & .adaptive-badge {
+    display: inline;
+  }
+  & .bounds {
+    display: grid;
+  }
+}

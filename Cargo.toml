@@ -1,0 +1,46 @@
+[package]
+name = "tcgplayer-automation"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "TCGPlayer Automation on Corten: every screen, beside the Node app in app/, whose JSON routes and workers the legacy relay reaches until cutover."
+
+[dependencies]
+# Pinned to one revision of main; bump it on purpose when a fix the port needs lands.
+corten = { git = "https://github.com/corten-run/corten", rev = "aaca3e05", features = ["json", "compress", "types", "zones"] }
+corten-ui = { git = "https://github.com/corten-run/corten", rev = "aaca3e05" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+serde = { version = "1", features = ["derive"] }
+# Correctly rounded float parsing, so numbers the Node app wrote read back to the same bits.
+serde_json = { version = "1", features = ["float_roundtrip"] }
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "chrono", "macros"] }
+chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
+# The zones slab evidence is searched and dated in (eBay's, the seller's).
+chrono-tz = { version = "0.10", features = ["case-insensitive"] }
+# The legacy relay to the Node app, and the slab data providers (rustls for their HTTPS). No
+# gzip/brotli features: an encoded answer goes on as it came.
+reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls"] }
+futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
+csv = "1"
+dotenvy = "0.15"
+regex = "1.13.1"
+# NFKD, to read titles as the Node app's `words` does (slab comp screening).
+unicode-normalization = "0.1"
+# Evidence fingerprints that match the ones the Node app records (inventory economics ledger).
+sha2 = "0.10"
+# fdlibm's exp, as V8's Math.exp computes it (js_math).
+libm = "0.2"
+hex = "0.4"
+# Seller Portal's forms, encoded as the browser's URLSearchParams encodes them.
+form_urlencoded = "1"
+
+[features]
+# The tests that call TCGplayer live (and one that rewrites tests/fixtures): off, so no run of the
+# database tests (`--include-ignored`) reaches them. `cargo test --features live-tcgplayer <name> -- --ignored`.
+live-tcgplayer = []
+
+[dev-dependencies]
+http-body-util = "0.1"
+# The slab providers' tests serve a stand-in provider on this machine.
+tokio = { version = "1", features = ["net", "test-util"] }
+tower = { version = "0.5", features = ["util"] }

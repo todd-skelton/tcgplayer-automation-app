@@ -173,9 +173,20 @@ const POSTGRES_CONTAINER = "tcgplayer-postgres-prod";
 // The single app container from before the proxy; removed by the first release that adds the proxy.
 const LEGACY_APP_CONTAINER = "tcgplayer-automation-prod";
 const WORKER_SERVICES = ["pricing-worker", "publication-worker", "slab-evidence-worker", "pricing-scheduler"];
+// A slot is the Node app and the Corten app in front of it (web), which the proxy sends traffic to.
 const SLOTS = {
-  blue: { service: "app-blue", container: "tcgplayer-automation-prod-blue" },
-  green: { service: "app-green", container: "tcgplayer-automation-prod-green" },
+  blue: {
+    service: "app-blue",
+    container: "tcgplayer-automation-prod-blue",
+    web: "web-blue",
+    webContainer: "tcgplayer-automation-web-prod-blue",
+  },
+  green: {
+    service: "app-green",
+    container: "tcgplayer-automation-prod-green",
+    web: "web-green",
+    webContainer: "tcgplayer-automation-web-prod-green",
+  },
 };
 const ACTIVE_SLOT_FILE = path.resolve("deploy", "nginx", "active", "active.conf");
 const HEALTH_TIMEOUT_MS = 5 * 60_000;
@@ -209,7 +220,7 @@ async function writeActiveSlot(color) {
   await fs.mkdir(path.dirname(ACTIVE_SLOT_FILE), { recursive: true });
   await fs.writeFile(
     ACTIVE_SLOT_FILE,
-    `set $app_upstream ${SLOTS[color].service}:3000;\nset $app_color ${color};\n`,
+    `set $app_upstream ${SLOTS[color].web}:3000;\nset $app_color ${color};\n`,
   );
 }
 
@@ -261,6 +272,18 @@ async function waitForHealthy(container) {
     await sleep(1_000);
   }
   throw new Error(`${container} did not become healthy within ${HEALTH_TIMEOUT_MS / 60_000} minutes.`);
+}
+
+/**
+ * Starts a slot's Node app, which applies pending migrations, then the Corten app in front of
+ * it, and waits for both health checks.
+ */
+async function startSlot(slot, { recreate }) {
+  const fresh = recreate ? ["--force-recreate"] : [];
+  await run("docker", [...composeArgs, "up", "-d", "--no-deps", ...fresh, slot.service], { stdio: "inherit" });
+  await waitForHealthy(slot.container);
+  await run("docker", [...composeArgs, "up", "-d", "--no-deps", ...fresh, slot.web], { stdio: "inherit" });
+  await waitForHealthy(slot.webContainer);
 }
 
 /** Waits until requests through the public port reach the given slot. */
@@ -316,7 +339,7 @@ async function release({ noCache }) {
 
   // Build while the current stack keeps serving; a failed build leaves production untouched.
   console.log(`Building production image for the ${target} slot...`);
-  await run("docker", [...composeArgs, "build", ...(noCache ? ["--no-cache"] : []), slot.service], { stdio: "inherit" });
+  await run("docker", [...composeArgs, "build", ...(noCache ? ["--no-cache"] : []), slot.service, slot.web], { stdio: "inherit" });
 
   await run("docker", [...composeArgs, "up", "-d", "--wait", "postgres"], { stdio: "inherit" });
   const plan = live ? planRelease(await findPendingMigrations()) : { mode: "overlap", reasons: [] };
@@ -331,12 +354,11 @@ async function release({ noCache }) {
   }
 
   console.log(`Starting the ${target} slot and applying migrations...`);
-  await run("docker", [...composeArgs, "up", "-d", "--no-deps", "--force-recreate", slot.service], { stdio: "inherit" });
   try {
-    await waitForHealthy(slot.container);
+    await startSlot(slot, { recreate: true });
   } catch (error) {
     if (live && plan.mode === "overlap") {
-      await run("docker", [...composeArgs, "rm", "-s", "-f", slot.service], { stdio: "inherit" });
+      await run("docker", [...composeArgs, "rm", "-s", "-f", slot.web, slot.service], { stdio: "inherit" });
       throw new Error(`${error.message}\nRelease stopped; the ${live} app is still serving.`, { cause: error });
     }
     throw new Error(
@@ -354,7 +376,7 @@ async function release({ noCache }) {
 
   if (live && live !== "legacy") {
     console.log(`Stopping the ${live} slot after its in-flight requests finish...`);
-    await run("docker", [...composeArgs, "rm", "-s", "-f", SLOTS[live].service], { stdio: "inherit" });
+    await run("docker", [...composeArgs, "rm", "-s", "-f", SLOTS[live].web, SLOTS[live].service], { stdio: "inherit" });
   }
 
   console.log("");
@@ -376,8 +398,7 @@ async function start() {
   console.log("Starting production...");
   const color = (await readActiveSlot()) ?? "blue";
   await run("docker", [...composeArgs, "up", "-d", "--wait", "postgres"], { stdio: "inherit" });
-  await run("docker", [...composeArgs, "up", "-d", "--no-deps", SLOTS[color].service], { stdio: "inherit" });
-  await waitForHealthy(SLOTS[color].container);
+  await startSlot(SLOTS[color], { recreate: false });
   await writeActiveSlot(color);
   await run("docker", [...composeArgs, "up", "-d"], { stdio: "inherit" });
   console.log(`Production started at ${PUBLIC_URL} on the ${color} slot`);

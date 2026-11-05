@@ -1,0 +1,29 @@
+/* The screen spaces its parts: the heading, its notices and the settings panel. */
+.screen {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 1000px;
+  margin-inline: auto;
+  & > * {
+    margin-block: 0;
+  }
+}
+.settings {
+  display: grid;
+  gap: var(--space-3);
+  & h3 {
+    margin: var(--space-3) 0 0;
+    font-size: var(--font-size-md);
+    font-weight: 600;
+  }
+  & p {
+    margin: 0;
+  }
+}
+.columns {
+  display: grid;
+  gap: var(--space-3);
+  @media (--md) {
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  }
+}

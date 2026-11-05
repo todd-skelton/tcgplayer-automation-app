@@ -1,0 +1,411 @@
+{
+  "background": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.0706,
+        0.0706,
+        0.0706
+      ],
+      "hex": "#121212"
+    }
+  },
+  "foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9098,
+        0.9176,
+        0.9294
+      ],
+      "hex": "#e8eaed"
+    }
+  },
+  "card": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1176,
+        0.1216,
+        0.1333
+      ],
+      "hex": "#1e1f22"
+    }
+  },
+  "card-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9098,
+        0.9176,
+        0.9294
+      ],
+      "hex": "#e8eaed"
+    }
+  },
+  "popover": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.149,
+        0.1569,
+        0.1725
+      ],
+      "hex": "#26282c"
+    }
+  },
+  "popover-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9098,
+        0.9176,
+        0.9294
+      ],
+      "hex": "#e8eaed"
+    }
+  },
+  "primary": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.5647,
+        0.7922,
+        0.9765
+      ],
+      "hex": "#90caf9"
+    }
+  },
+  "primary-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.051,
+        0.1059,
+        0.1647
+      ],
+      "hex": "#0d1b2a"
+    }
+  },
+  "secondary": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.149,
+        0.1569,
+        0.1725
+      ],
+      "hex": "#26282c"
+    }
+  },
+  "secondary-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9098,
+        0.9176,
+        0.9294
+      ],
+      "hex": "#e8eaed"
+    }
+  },
+  "muted": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.149,
+        0.1569,
+        0.1725
+      ],
+      "hex": "#26282c"
+    }
+  },
+  "muted-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.6275,
+        0.651,
+        0.6902
+      ],
+      "hex": "#a0a6b0"
+    }
+  },
+  "accent": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.149,
+        0.1765,
+        0.2118
+      ],
+      "hex": "#262d36"
+    }
+  },
+  "accent-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9098,
+        0.9176,
+        0.9294
+      ],
+      "hex": "#e8eaed"
+    }
+  },
+  "destructive": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9373,
+        0.6039,
+        0.6039
+      ],
+      "hex": "#ef9a9a"
+    }
+  },
+  "destructive-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.0706,
+        0.0706,
+        0.0706
+      ],
+      "hex": "#121212"
+    }
+  },
+  "destructive-soft": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1725,
+        0.0863,
+        0.0863
+      ],
+      "hex": "#2c1616"
+    }
+  },
+  "success": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.5059,
+        0.7804,
+        0.5176
+      ],
+      "hex": "#81c784"
+    }
+  },
+  "success-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.0706,
+        0.0706,
+        0.0706
+      ],
+      "hex": "#121212"
+    }
+  },
+  "success-soft": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.0863,
+        0.1451,
+        0.102
+      ],
+      "hex": "#16251a"
+    }
+  },
+  "warning": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        0.7176,
+        0.302
+      ],
+      "hex": "#ffb74d"
+    }
+  },
+  "warning-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.0706,
+        0.0706,
+        0.0706
+      ],
+      "hex": "#121212"
+    }
+  },
+  "warning-soft": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1686,
+        0.1294,
+        0.0706
+      ],
+      "hex": "#2b2112"
+    }
+  },
+  "info": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.5647,
+        0.7922,
+        0.9765
+      ],
+      "hex": "#90caf9"
+    }
+  },
+  "info-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.0706,
+        0.0706,
+        0.0706
+      ],
+      "hex": "#121212"
+    }
+  },
+  "info-soft": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.0745,
+        0.1294,
+        0.1843
+      ],
+      "hex": "#13212f"
+    }
+  },
+  "border": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1882,
+        0.2039,
+        0.2353
+      ],
+      "hex": "#30343c"
+    }
+  },
+  "input": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.4314,
+        0.4549,
+        0.502
+      ],
+      "hex": "#6e7480"
+    }
+  },
+  "ring": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.5647,
+        0.7922,
+        0.9765
+      ],
+      "hex": "#90caf9"
+    }
+  },
+  "app-bar": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.1176,
+        0.1216,
+        0.1333
+      ],
+      "hex": "#1e1f22"
+    }
+  },
+  "app-bar-foreground": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        1,
+        1,
+        1
+      ],
+      "hex": "#ffffff"
+    }
+  },
+  "tint-strength": {
+    "$type": "number",
+    "faint": { "$value": 16 },
+    "hover": { "$value": 20 },
+    "strong": { "$value": 24 }
+  },
+  "holo": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.996078431372549,
+        0.9411764705882353,
+        0.5411764705882353
+      ],
+      "hex": "#fef08a"
+    },
+    "$description": "On a dark page, the light gold React's card art uses."
+  },
+  "reverse-holo": {
+    "$type": "color",
+    "$value": {
+      "colorSpace": "srgb",
+      "components": [
+        0.9294117647058824,
+        0.9137254901960784,
+        0.996078431372549
+      ],
+      "hex": "#ede9fe"
+    },
+    "$description": "On a dark page, the lavender React's card art uses."
+  },
+  "app-bar-warning": {
+    "$type": "color",
+    "$value": "{warning}",
+    "$description": "On the dark bar the soft tone is dark too, so the warning takes the theme's light warning tone, as MUI's warning.light."
+  }
+}
