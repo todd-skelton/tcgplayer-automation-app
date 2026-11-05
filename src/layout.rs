@@ -24,7 +24,7 @@ mod parts;
 
 pub use app_bar::{AppBar, AuthCookieWarning};
 pub use error_page::error_page;
-pub use parts::{FormNotice, Notice, SubmitsOnChange};
+pub use parts::{FormNotice, Notice, SaysFailedSubmits, SubmitsOnChange};
 
 corten::assets::embed! {
     /// The files in `static/`, compiled into the program: `Static::STYLE_CSS` is `static/style.css`.
@@ -88,9 +88,15 @@ pub fn Layout<'a>(
             <body>
                 <AppBar req={req} />
                 <main class={(max_w_page(), mx_auto(), p_5())}>{children}</main>
-                <div class={Toasts}>
-                    <Toaster close="Dismiss" seconds={10} toast={Toast { message: req.notice() }} />
-                </div>
+                <SaysFailedSubmits>
+                    <div class={Toasts}>
+                        <Toaster
+                            close="Dismiss"
+                            seconds={10}
+                            toast={Toast { message: req.notice() }}
+                        />
+                    </div>
+                </SaysFailedSubmits>
             </body>
         </html>
     }

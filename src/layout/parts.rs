@@ -18,6 +18,16 @@ pub fn FormNotice<'a>(errors: &'a Errors) -> impl Render {
     html! { <FormAlert errors={errors} emphasis={AlertEmphasis::Soft} /> }
 }
 
+/// Says in the page's toaster (inside it) when a `data-patch` submit got no answer to draw: the
+/// network failed, the connection closed during an upload, or a proxy answered for the app. The
+/// React app showed its error boundary; the runtime only dispatches `corten:error` on the form,
+/// which the kit's `Toaster` does not show (corten#903). Its own component because the layout's
+/// script handlers are not in scope in a `-> impl Document` component (corten#906).
+#[component(js)]
+pub fn SaysFailedSubmits(children: impl Render) -> impl Render {
+    html! { <div on:connect={js::connect(signal)}>{children}</div> }
+}
+
 /// Sends the form around it whenever one of its controls changes: a section saves itself, a
 /// report's window or a picked batch is read again, as the React screens did. The form keeps a
 /// submit button for a browser without scripts.
