@@ -411,6 +411,8 @@ pub mod url {
 
 #[cfg(test)]
 mod tests {
+    use corten::Route;
+
     use super::url::Choice;
 
     #[test]
@@ -447,6 +449,30 @@ mod tests {
         let first = back.previous_source().unwrap();
         assert_eq!(first.source, None);
         assert!(first.previous_source().is_none());
+    }
+
+    /// A form's action carries the supply's sort only when the page was drawn sorted, so a
+    /// script that writes an in-place order into such keys (corten#907) leaves the rest alone.
+    #[test]
+    fn an_unsorted_choice_writes_no_sort_keys() {
+        let choice = Choice {
+            supply: Some(true),
+            ..Choice::default()
+        };
+        let action = super::url::RefreshSupply {
+            choice: choice.clone(),
+        }
+        .href();
+        assert!(!action.contains("supply_by"), "{action}");
+        assert!(!action.contains("supply_down"), "{action}");
+        let sorted = super::url::RefreshSupply {
+            choice: Choice {
+                supply_by: Some(super::supply::SupplyColumn::Delivered),
+                ..choice
+            },
+        }
+        .href();
+        assert!(sorted.contains("supply_by="), "{sorted}");
     }
 
     #[test]

@@ -100,6 +100,11 @@ Corten a0215cc9):
    reading ends with Docker's kill at 30 s, not a clean exit. Background tasks still get their 5 s
    grace first, and a killed catalog job leaves no lock behind and can be run again. Reported as
    [#887 Shutdown waits for every answering connection until the app's longest deadline, so one hour-long area makes a stalled page reader hold shutdown an hour and the guide's platform-wait rule unworkable](https://github.com/corten-run/corten/issues/887).
+6. The `web` containers answer only `localhost`, IP addresses and the names in `HOSTS`; any other
+   `Host` gets 421. nginx passes the browser's `Host`, so if Tailscale Serve passes the tailnet
+   name, the pages would answer 421 through it. `HOSTS` in `.env.production.local` (not committed)
+   lists the machine's tailnet name. Writes are not affected by the proxy's plain HTTP: browsers
+   send `Sec-Fetch-Site: same-origin`, which Corten accepts without comparing `Origin` to `Host`.
 
 ## Checks after each release
 
@@ -137,7 +142,10 @@ its first run that posts.
    HTTP and needs no TLS for release 1 (The proxy, point 4).
 3. Each worker runs one full day of normal use in production before the next release moves
    another one.
+4. Todd approved the merge into master and release 1 on 2026-11-05 ("release when confident").
+   A production backup was taken first:
+   `.artifacts/db-backups/2026-11-05T15-07-56Z-prod-before-release-1.dump`.
 
 ## Open for Todd
 
-1. Approval to merge `codex/corten-port` into master, and for release 1.
+1. Approval for each of releases 2 to 8, one at a time.
