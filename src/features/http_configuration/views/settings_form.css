@@ -13,7 +13,7 @@
   gap: var(--space-4);
 }
 /* Show reveals the cookie only through the script; without it the button would do nothing, so it
-   is not drawn (corten#799). */
+   is not drawn (Corten's guide, scripts.md, "A control only the script makes work"). */
 @media (scripting: none) {
   .reveal {
     display: none;
