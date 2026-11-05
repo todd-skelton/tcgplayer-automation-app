@@ -218,7 +218,6 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
                             supply={supply}
                             context={context}
                             choice={choice}
-                            refreshing={screen.refreshing()}
                             t={t}
                         />
                     }
@@ -229,15 +228,13 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
 }
 
 /// The source shown: its counts and lowest asks, a page of its listings, and what changed since
-/// the observation before it. While a refresh is on its way the list is read again from its own
-/// route, which would put back the server's order over a sort made in place (corten#885), so
-/// then a header is the sorted page's link and the server sorts.
+/// the observation before it. A header sorts the page's rows in place, and a read of the list
+/// while a refresh is on its way keeps that order.
 #[component(css = super::slab_screen::SlabScreen)]
 fn SupplyContext<'a>(
     supply: &'a Supply,
     context: &'a Context,
     choice: &'a Choice,
-    refreshing: bool,
     t: Msg,
 ) -> impl Render {
     let at = |when: &str| when.parse::<DateTime<Utc>>().ok();
@@ -314,27 +311,15 @@ fn SupplyContext<'a>(
                     <tr>
                         for (column, label) in SupplyColumn::ALL {
                             let (sort, ascending, descending) = sorted(column);
-                            if refreshing {
-                                <SortHeader
-                                    label={label}
-                                    sort={sort}
-                                    ascending={&ascending}
-                                    descending={&descending}
-                                    first={Sort::Ascending}
-                                    class={()}
-                                    on:sort={None::<Handler>}
-                                />
-                            } else {
-                                <SortHeader
-                                    label={label}
-                                    sort={sort}
-                                    ascending={&ascending}
-                                    descending={&descending}
-                                    first={Sort::Ascending}
-                                    class={()}
-                                    on:sort={rows::sort(event, target)}
-                                />
-                            }
+                            <SortHeader
+                                label={label}
+                                sort={sort}
+                                ascending={&ascending}
+                                descending={&descending}
+                                first={Sort::Ascending}
+                                class={()}
+                                on:sort={rows::sort(event, target)}
+                            />
                         }
                     </tr>
                 </thead>
@@ -480,27 +465,19 @@ mod tests {
         .unwrap()
     }
 
-    fn drawn(refreshing: bool) -> String {
+    /// The headers sort the page's rows in place, with the sorted page's link for a browser
+    /// without scripts.
+    #[test]
+    fn the_headers_sort_in_place() {
         let (supply, context, choice) = (supply(), context(), Choice::default());
-        SupplyContext {
+        let drawn = SupplyContext {
             supply: &supply,
             context: &context,
             choice: &choice,
-            refreshing,
             t: Msg::default(),
         }
-        .to_html()
-    }
-
-    /// While a refresh is on its way the list is read again from its route, so a sort is the
-    /// sorted page's link rather than an order made in place that the read would undo
-    /// (corten#885); otherwise the headers sort in place.
-    #[test]
-    fn a_refresh_on_its_way_sorts_by_link() {
-        let idle = drawn(false);
-        assert!(idle.contains("data-ascending"), "{idle}");
-        let refreshing = drawn(true);
-        assert!(!refreshing.contains("data-ascending"), "{refreshing}");
-        assert!(refreshing.contains("supply_by="), "{refreshing}");
+        .to_html();
+        assert!(drawn.contains("data-ascending"), "{drawn}");
+        assert!(drawn.contains("supply_by="), "{drawn}");
     }
 }
