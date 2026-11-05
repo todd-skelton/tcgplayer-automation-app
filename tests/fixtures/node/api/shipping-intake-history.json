@@ -1,7 +1,7 @@
 [
   {
     "path": "/api/shipping-export/intake-history",
-    "post": "{\"sellerKey\":\"8520a14f\",\"orders\":[{\"orderNumber\":\"ORDER-d4ab8bd29df4\",\"orderDate\":\"2026-10-30T20:48:20.537Z\",\"itemCount\":1,\"valueOfProducts\":8.99,\"products\":[{\"skuId\":\"3443289\",\"quantity\":1,\"unitPrice\":8.99}]},{\"orderNumber\":\"ORDER-24a7e38cddc6\",\"orderDate\":\"2026-10-30T19:19:47.543Z\",\"itemCount\":3,\"valueOfProducts\":21.249999999999996,\"products\":[{\"skuId\":\"8123299\",\"quantity\":1,\"unitPrice\":8.77},{\"skuId\":\"8134504\",\"quantity\":1,\"unitPrice\":10.49},{\"skuId\":\"8178450\",\"quantity\":1,\"unitPrice\":1.99}]},{\"orderNumber\":\"ORDER-04b6872aad68\",\"orderDate\":\"2026-10-30T17:59:49.033Z\",\"itemCount\":1,\"valueOfProducts\":97.35,\"products\":[{\"skuId\":\"5247288\",\"quantity\":1,\"unitPrice\":97.35}]},{\"orderNumber\":\"ORDER-5db2822b4486\",\"orderDate\":\"2026-10-30T15:08:23.220Z\",\"itemCount\":2,\"valueOfProducts\":37.76,\"products\":[{\"skuId\":\"8813347\",\"quantity\":1,\"unitPrice\":11.93},{\"skuId\":\"8815917\",\"quantity\":1,\"unitPrice\":25.83}]},{\"orderNumber\":\"ORDER-17ffd5dccdc3\",\"orderDate\":\"2026-10-30T14:12:44.280Z\",\"itemCount\":1,\"valueOfProducts\":4.99,\"products\":[{\"skuId\":\"463862\",\"quantity\":1,\"unitPrice\":4.99}]}]}",
+    "post": "{\"sellerKey\":\"8520a14f\",\"orders\":[{\"orderNumber\":\"ORDER-019d42220222\",\"orderDate\":\"2026-11-04T22:10:49.930Z\",\"itemCount\":1,\"valueOfProducts\":6.26,\"products\":[{\"skuId\":\"8816137\",\"quantity\":1,\"unitPrice\":6.26}]},{\"orderNumber\":\"ORDER-6459d0ecd60e\",\"orderDate\":\"2026-11-04T18:40:28.100Z\",\"itemCount\":1,\"valueOfProducts\":49.99,\"products\":[{\"skuId\":\"2961842\",\"quantity\":1,\"unitPrice\":49.99}]},{\"orderNumber\":\"ORDER-12cba21b6444\",\"orderDate\":\"2026-11-04T18:15:14.940Z\",\"itemCount\":1,\"valueOfProducts\":3.54,\"products\":[{\"skuId\":\"1195929\",\"quantity\":1,\"unitPrice\":3.54}]},{\"orderNumber\":\"ORDER-56067dd129b0\",\"orderDate\":\"2026-11-04T17:23:59.990Z\",\"itemCount\":1,\"valueOfProducts\":13.78,\"products\":[{\"skuId\":\"1233072\",\"quantity\":1,\"unitPrice\":13.78}]},{\"orderNumber\":\"ORDER-5fe2f7f9e31c\",\"orderDate\":\"2026-11-04T07:17:21.567Z\",\"itemCount\":1,\"valueOfProducts\":8.57,\"products\":[{\"skuId\":\"2898377\",\"quantity\":1,\"unitPrice\":8.57}]}]}",
     "headers": {
       "origin": "http://localhost",
       "sec-fetch-site": "same-origin"
@@ -10,79 +10,58 @@
     "body": {
       "histories": [
         {
-          "orderNumber": "ORDER-d4ab8bd29df4",
+          "orderNumber": "ORDER-019d42220222",
           "sellerKey": "8520a14f",
           "lines": [
             {
-              "skuId": "3443289",
+              "skuId": "8816137",
               "status": "current",
-              "allocationRevisionId": "11749",
+              "allocationRevisionId": "14734",
               "allocatedSourceOrderRevision": 1,
               "currentSourceOrderRevision": 1,
-              "orderTime": "2026-10-30T20:48:20.537Z",
+              "orderTime": "2026-11-04T22:10:49.930Z",
               "orderedQuantity": 1,
-              "soldTotal": 8.99,
+              "soldTotal": 6.26,
               "matchedQuantity": 1,
               "unmatchedQuantity": 0,
               "priceKnownQuantity": 1,
               "dateKnownQuantity": 1,
               "recordedPriceQuantity": 1,
               "estimatedPriceQuantity": 0,
-              "intakeMarketTotal": 8.2,
-              "weightedDaysHeld": 56.295867,
-              "minimumDaysHeld": 56.295867083333334,
-              "maximumDaysHeld": 56.295867083333334,
+              "intakeMarketTotal": 5.6,
+              "weightedDaysHeld": 31.086075,
+              "minimumDaysHeld": 31.08607528935185,
+              "maximumDaysHeld": 31.08607528935185,
               "lots": [
                 {
-                  "supplyKey": "receipt:2770",
-                  "receiptId": 2770,
+                  "supplyKey": "receipt:3358",
+                  "receiptId": 3358,
                   "quantity": 1,
-                  "availableAt": "2026-09-04T13:42:17.621Z",
+                  "availableAt": "2026-10-04T23:50:48.465Z",
                   "sourceKind": "received",
-                  "intakeAt": "2026-09-04T13:42:17.621Z",
-                  "daysHeld": 56.295867083333334,
-                  "intakeMarketValue": 8.2,
+                  "intakeAt": "2026-10-04T20:06:53.025Z",
+                  "daysHeld": 31.08607528935185,
+                  "intakeMarketValue": 5.6,
                   "priceProvenance": "recorded"
                 }
               ]
             }
           ],
-          "refreshedAt": "2026-11-04T03:05:48.009Z"
+          "refreshedAt": "2026-11-05T04:45:32.115Z"
         },
         {
-          "orderNumber": "ORDER-24a7e38cddc6",
+          "orderNumber": "ORDER-6459d0ecd60e",
           "sellerKey": "8520a14f",
           "lines": [
             {
-              "skuId": "8123299",
+              "skuId": "2961842",
               "status": "current",
-              "allocationRevisionId": "11750",
-              "allocatedSourceOrderRevision": 1,
-              "currentSourceOrderRevision": 1,
-              "orderTime": "2026-10-30T19:19:47.543Z",
+              "allocationRevisionId": "14733",
+              "allocatedSourceOrderRevision": 2,
+              "currentSourceOrderRevision": 2,
+              "orderTime": "2026-11-04T18:40:28.100Z",
               "orderedQuantity": 1,
-              "soldTotal": 8.77,
-              "matchedQuantity": 0,
-              "unmatchedQuantity": 1,
-              "priceKnownQuantity": 0,
-              "dateKnownQuantity": 0,
-              "recordedPriceQuantity": 0,
-              "estimatedPriceQuantity": 0,
-              "intakeMarketTotal": null,
-              "weightedDaysHeld": null,
-              "minimumDaysHeld": null,
-              "maximumDaysHeld": null,
-              "lots": []
-            },
-            {
-              "skuId": "8134504",
-              "status": "current",
-              "allocationRevisionId": "11751",
-              "allocatedSourceOrderRevision": 1,
-              "currentSourceOrderRevision": 1,
-              "orderTime": "2026-10-30T19:19:47.543Z",
-              "orderedQuantity": 1,
-              "soldTotal": 10.49,
+              "soldTotal": 49.99,
               "matchedQuantity": 1,
               "unmatchedQuantity": 0,
               "priceKnownQuantity": 0,
@@ -95,8 +74,8 @@
               "maximumDaysHeld": null,
               "lots": [
                 {
-                  "supplyKey": "receipt:1268",
-                  "receiptId": 1268,
+                  "supplyKey": "receipt:233",
+                  "receiptId": 233,
                   "quantity": 1,
                   "availableAt": "2026-09-08T03:34:04.106Z",
                   "sourceKind": "opening_balance",
@@ -106,142 +85,136 @@
                   "priceProvenance": "unknown"
                 }
               ]
-            },
-            {
-              "skuId": "8178450",
-              "status": "current",
-              "allocationRevisionId": "11752",
-              "allocatedSourceOrderRevision": 1,
-              "currentSourceOrderRevision": 1,
-              "orderTime": "2026-10-30T19:19:47.543Z",
-              "orderedQuantity": 1,
-              "soldTotal": 1.99,
-              "matchedQuantity": 0,
-              "unmatchedQuantity": 1,
-              "priceKnownQuantity": 0,
-              "dateKnownQuantity": 0,
-              "recordedPriceQuantity": 0,
-              "estimatedPriceQuantity": 0,
-              "intakeMarketTotal": null,
-              "weightedDaysHeld": null,
-              "minimumDaysHeld": null,
-              "maximumDaysHeld": null,
-              "lots": []
             }
           ],
-          "refreshedAt": "2026-11-04T03:05:48.009Z"
+          "refreshedAt": "2026-11-05T04:45:32.115Z"
         },
         {
-          "orderNumber": "ORDER-04b6872aad68",
+          "orderNumber": "ORDER-12cba21b6444",
           "sellerKey": "8520a14f",
           "lines": [
             {
-              "skuId": "5247288",
+              "skuId": "1195929",
               "status": "current",
-              "allocationRevisionId": "11747",
-              "allocatedSourceOrderRevision": 1,
-              "currentSourceOrderRevision": 1,
-              "orderTime": "2026-10-30T17:59:49.033Z",
+              "allocationRevisionId": "14732",
+              "allocatedSourceOrderRevision": 2,
+              "currentSourceOrderRevision": 2,
+              "orderTime": "2026-11-04T18:15:14.940Z",
               "orderedQuantity": 1,
-              "soldTotal": 97.35,
-              "matchedQuantity": 0,
-              "unmatchedQuantity": 1,
-              "priceKnownQuantity": 0,
-              "dateKnownQuantity": 0,
-              "recordedPriceQuantity": 0,
+              "soldTotal": 3.54,
+              "matchedQuantity": 1,
+              "unmatchedQuantity": 0,
+              "priceKnownQuantity": 1,
+              "dateKnownQuantity": 1,
+              "recordedPriceQuantity": 1,
               "estimatedPriceQuantity": 0,
-              "intakeMarketTotal": null,
-              "weightedDaysHeld": null,
-              "minimumDaysHeld": null,
-              "maximumDaysHeld": null,
-              "lots": []
+              "intakeMarketTotal": 1.98,
+              "weightedDaysHeld": 77.978659,
+              "minimumDaysHeld": 77.97865866898148,
+              "maximumDaysHeld": 77.97865866898148,
+              "lots": [
+                {
+                  "supplyKey": "receipt:1755",
+                  "receiptId": 1755,
+                  "quantity": 1,
+                  "availableAt": "2026-08-18T18:45:58.831Z",
+                  "sourceKind": "received",
+                  "intakeAt": "2026-08-18T18:45:58.831Z",
+                  "daysHeld": 77.97865866898148,
+                  "intakeMarketValue": 1.98,
+                  "priceProvenance": "recorded"
+                }
+              ]
             }
           ],
-          "refreshedAt": "2026-11-04T03:05:48.009Z"
+          "refreshedAt": "2026-11-05T04:45:32.115Z"
         },
         {
-          "orderNumber": "ORDER-5db2822b4486",
+          "orderNumber": "ORDER-56067dd129b0",
           "sellerKey": "8520a14f",
           "lines": [
             {
-              "skuId": "8813347",
+              "skuId": "1233072",
               "status": "current",
-              "allocationRevisionId": "11745",
-              "allocatedSourceOrderRevision": 1,
-              "currentSourceOrderRevision": 1,
-              "orderTime": "2026-10-30T15:08:23.220Z",
+              "allocationRevisionId": "14731",
+              "allocatedSourceOrderRevision": 2,
+              "currentSourceOrderRevision": 2,
+              "orderTime": "2026-11-04T17:23:59.990Z",
               "orderedQuantity": 1,
-              "soldTotal": 11.93,
-              "matchedQuantity": 0,
-              "unmatchedQuantity": 1,
-              "priceKnownQuantity": 0,
-              "dateKnownQuantity": 0,
-              "recordedPriceQuantity": 0,
+              "soldTotal": 13.78,
+              "matchedQuantity": 1,
+              "unmatchedQuantity": 0,
+              "priceKnownQuantity": 1,
+              "dateKnownQuantity": 1,
+              "recordedPriceQuantity": 1,
               "estimatedPriceQuantity": 0,
-              "intakeMarketTotal": null,
-              "weightedDaysHeld": null,
-              "minimumDaysHeld": null,
-              "maximumDaysHeld": null,
-              "lots": []
-            },
-            {
-              "skuId": "8815917",
-              "status": "current",
-              "allocationRevisionId": "11746",
-              "allocatedSourceOrderRevision": 1,
-              "currentSourceOrderRevision": 1,
-              "orderTime": "2026-10-30T15:08:23.220Z",
-              "orderedQuantity": 1,
-              "soldTotal": 25.83,
-              "matchedQuantity": 0,
-              "unmatchedQuantity": 1,
-              "priceKnownQuantity": 0,
-              "dateKnownQuantity": 0,
-              "recordedPriceQuantity": 0,
-              "estimatedPriceQuantity": 0,
-              "intakeMarketTotal": null,
-              "weightedDaysHeld": null,
-              "minimumDaysHeld": null,
-              "maximumDaysHeld": null,
-              "lots": []
+              "intakeMarketTotal": 12.2,
+              "weightedDaysHeld": 17.995708,
+              "minimumDaysHeld": 17.99570849537037,
+              "maximumDaysHeld": 17.99570849537037,
+              "lots": [
+                {
+                  "supplyKey": "receipt:3674",
+                  "receiptId": 3674,
+                  "quantity": 1,
+                  "availableAt": "2026-10-17T21:28:38.974Z",
+                  "sourceKind": "received",
+                  "intakeAt": "2026-10-17T17:30:10.776Z",
+                  "daysHeld": 17.99570849537037,
+                  "intakeMarketValue": 12.2,
+                  "priceProvenance": "recorded"
+                }
+              ]
             }
           ],
-          "refreshedAt": "2026-11-04T03:05:48.009Z"
+          "refreshedAt": "2026-11-05T04:45:32.115Z"
         },
         {
-          "orderNumber": "ORDER-17ffd5dccdc3",
+          "orderNumber": "ORDER-5fe2f7f9e31c",
           "sellerKey": "8520a14f",
           "lines": [
             {
-              "skuId": "463862",
+              "skuId": "2898377",
               "status": "current",
-              "allocationRevisionId": "11744",
-              "allocatedSourceOrderRevision": 1,
-              "currentSourceOrderRevision": 1,
-              "orderTime": "2026-10-30T14:12:44.280Z",
+              "allocationRevisionId": "14730",
+              "allocatedSourceOrderRevision": 2,
+              "currentSourceOrderRevision": 2,
+              "orderTime": "2026-11-04T07:17:21.567Z",
               "orderedQuantity": 1,
-              "soldTotal": 4.99,
-              "matchedQuantity": 0,
-              "unmatchedQuantity": 1,
-              "priceKnownQuantity": 0,
-              "dateKnownQuantity": 0,
-              "recordedPriceQuantity": 0,
+              "soldTotal": 8.57,
+              "matchedQuantity": 1,
+              "unmatchedQuantity": 0,
+              "priceKnownQuantity": 1,
+              "dateKnownQuantity": 1,
+              "recordedPriceQuantity": 1,
               "estimatedPriceQuantity": 0,
-              "intakeMarketTotal": null,
-              "weightedDaysHeld": null,
-              "minimumDaysHeld": null,
-              "maximumDaysHeld": null,
-              "lots": []
+              "intakeMarketTotal": 8.76,
+              "weightedDaysHeld": 38.594261,
+              "minimumDaysHeld": 38.59426083333334,
+              "maximumDaysHeld": 38.59426083333334,
+              "lots": [
+                {
+                  "supplyKey": "receipt:3115",
+                  "receiptId": 3115,
+                  "quantity": 1,
+                  "availableAt": "2026-09-26T18:07:35.979Z",
+                  "sourceKind": "received",
+                  "intakeAt": "2026-09-26T17:01:37.431Z",
+                  "daysHeld": 38.59426083333334,
+                  "intakeMarketValue": 8.76,
+                  "priceProvenance": "recorded"
+                }
+              ]
             }
           ],
-          "refreshedAt": "2026-11-04T03:05:48.009Z"
+          "refreshedAt": "2026-11-05T04:45:32.115Z"
         }
       ]
     }
   },
   {
     "path": "/api/shipping-export/intake-history",
-    "post": "{\"orders\":[{\"orderNumber\":\"ORDER-d4ab8bd29df4\",\"orderDate\":\"2026-10-30T20:48:20.537Z\",\"itemCount\":1,\"valueOfProducts\":8.99,\"products\":[{\"skuId\":\"3443289\",\"quantity\":1,\"unitPrice\":8.99}]}]}",
+    "post": "{\"orders\":[{\"orderNumber\":\"ORDER-019d42220222\",\"orderDate\":\"2026-11-04T22:10:49.930Z\",\"itemCount\":1,\"valueOfProducts\":6.26,\"products\":[{\"skuId\":\"8816137\",\"quantity\":1,\"unitPrice\":6.26}]}]}",
     "headers": {
       "origin": "http://localhost",
       "sec-fetch-site": "same-origin"
@@ -250,44 +223,44 @@
     "body": {
       "histories": [
         {
-          "orderNumber": "ORDER-d4ab8bd29df4",
+          "orderNumber": "ORDER-019d42220222",
           "sellerKey": "8520a14f",
           "lines": [
             {
-              "skuId": "3443289",
+              "skuId": "8816137",
               "status": "current",
-              "allocationRevisionId": "11749",
+              "allocationRevisionId": "14734",
               "allocatedSourceOrderRevision": 1,
               "currentSourceOrderRevision": 1,
-              "orderTime": "2026-10-30T20:48:20.537Z",
+              "orderTime": "2026-11-04T22:10:49.930Z",
               "orderedQuantity": 1,
-              "soldTotal": 8.99,
+              "soldTotal": 6.26,
               "matchedQuantity": 1,
               "unmatchedQuantity": 0,
               "priceKnownQuantity": 1,
               "dateKnownQuantity": 1,
               "recordedPriceQuantity": 1,
               "estimatedPriceQuantity": 0,
-              "intakeMarketTotal": 8.2,
-              "weightedDaysHeld": 56.295867,
-              "minimumDaysHeld": 56.295867083333334,
-              "maximumDaysHeld": 56.295867083333334,
+              "intakeMarketTotal": 5.6,
+              "weightedDaysHeld": 31.086075,
+              "minimumDaysHeld": 31.08607528935185,
+              "maximumDaysHeld": 31.08607528935185,
               "lots": [
                 {
-                  "supplyKey": "receipt:2770",
-                  "receiptId": 2770,
+                  "supplyKey": "receipt:3358",
+                  "receiptId": 3358,
                   "quantity": 1,
-                  "availableAt": "2026-09-04T13:42:17.621Z",
+                  "availableAt": "2026-10-04T23:50:48.465Z",
                   "sourceKind": "received",
-                  "intakeAt": "2026-09-04T13:42:17.621Z",
-                  "daysHeld": 56.295867083333334,
-                  "intakeMarketValue": 8.2,
+                  "intakeAt": "2026-10-04T20:06:53.025Z",
+                  "daysHeld": 31.08607528935185,
+                  "intakeMarketValue": 5.6,
                   "priceProvenance": "recorded"
                 }
               ]
             }
           ],
-          "refreshedAt": "2026-11-04T03:05:48.020Z"
+          "refreshedAt": "2026-11-05T04:45:32.205Z"
         }
       ]
     }
@@ -342,7 +315,7 @@
   },
   {
     "path": "/api/shipping-export/intake-history",
-    "post": "{\"orders\":[{\"orderNumber\":\"ORDER-d4ab8bd29df4\",\"orderDate\":\"2026-10-30T20:48:20.537Z\",\"itemCount\":1,\"valueOfProducts\":8.99,\"products\":[{\"quantity\":0,\"unitPrice\":1}]}]}",
+    "post": "{\"orders\":[{\"orderNumber\":\"ORDER-019d42220222\",\"orderDate\":\"2026-11-04T22:10:49.930Z\",\"itemCount\":1,\"valueOfProducts\":6.26,\"products\":[{\"quantity\":0,\"unitPrice\":1}]}]}",
     "headers": {
       "origin": "http://localhost",
       "sec-fetch-site": "same-origin"

@@ -5,7 +5,13 @@ database once per worker, runs Node's worker on one copy and the Rust worker on 
 same state, then compares every row either wrote. Neither publishes: Seller Portal writes stay off,
 and only the worker under test is started. Times, and anything named by one, are skipped. A worker
 that reads TCGplayer reads it twice, minutes apart, so in a live run a number that differs is counted
-as moved with the market; everything else must be equal.
+as moved with the market, as is a listing's in stock flag where its quantity moved; everything else
+must be equal.
+
+Every other worker is held off by a blank switch, since a missing one would be read from dev's
+env files, which turn them all on. Before 2026-11-05 the twins removed the switches instead, so the
+Rust copy also ran the other workers; the order history sync it ran beside the pricing twin showed
+in that twin's written tables, and nothing it wrote was compared.
 
 Run one with a fresh `cargo build` and no other sessions on the dev database.
 
@@ -14,11 +20,11 @@ order number, their lines and FIFO lines by SKU id, revisions by revision number
 
 | Worker | Script | Last run | Result |
 | --- | --- | --- | --- |
-| Batch pricing, cached job | `twin-pricing-worker.mjs 3516 cached` | 2026-11-04 | 20,706 values, 0 differ |
+| Batch pricing, cached job | `twin-pricing-worker.mjs 3516 cached` | 2026-11-05, production copy | 8,735 values, 0 differ (2026-11-04 on old dev data: 20,706, 0 differ) |
 | Batch pricing, full job | `twin-pricing-worker.mjs 3471 full` | 2026-11-03 | same tables, rows and 17 listing snapshots; numbers moved with the market only |
-| Continuous pricing scheduler | `twin-continuous-scheduler.mjs` | 2026-11-04 | one live refresh (802 listings) and one 50-SKU batch each; 56,471 values, 0 differ |
-| Seller order history (sync, FIFO replay, cost estimates) | `twin-seller-order-history.mjs` | 2026-11-04 | sync complete on both (1,640 orders, 78 details read); 13 tables, 533,113 values, 0 differ |
-| Slab evidence and maintenance | no twin: the dev database holds no slab data | | see below |
+| Continuous pricing scheduler | `twin-continuous-scheduler.mjs` | 2026-11-05, production copy | one live refresh (3,089 listings) and one 50-SKU batch each; 62,391 values, 0 differ; one listing's quantity, price and in stock moved with the market |
+| Seller order history (sync, FIFO replay, cost estimates) | `twin-seller-order-history.mjs` | 2026-11-05, production copy | sync complete on both (1,631 orders); 9 tables, 620,052 values, 0 differ |
+| Slab evidence and maintenance | no twin: neither dev nor production holds slab data (checked on the 2026-11-05 copy) | | see below |
 | Inventory publication | no twin: it posts to Seller Portal | | see below |
 
 Where a twin cannot run, Node's code is recorded instead, against the same committed provider

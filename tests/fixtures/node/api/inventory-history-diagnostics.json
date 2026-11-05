@@ -5,20 +5,20 @@
     "body": {
       "diagnostics": {
         "sellerKey": "8520a14f",
-        "generatedAt": "2026-11-04T03:05:47.697Z",
+        "generatedAt": "2026-11-05T04:45:31.426Z",
         "orderCoverage": {
           "sellerKey": "8520a14f",
           "source": "tcgplayer_api",
           "status": "complete",
           "searchRange": "LastThreeMonths",
-          "observedFrom": "2026-07-30T22:22:50.473Z",
-          "observedThrough": "2026-10-30T20:48:20.537Z",
-          "lastAttemptAt": "2026-10-30T21:55:28.094Z",
-          "completedAt": "2026-10-30T21:55:28.094Z",
-          "expectedTotal": 1677,
-          "ordersObserved": 1677,
-          "detailsRecorded": 620,
-          "nextOffset": 1677,
+          "observedFrom": "2026-08-05T02:48:40.367Z",
+          "observedThrough": "2026-11-04T22:10:49.827Z",
+          "lastAttemptAt": "2026-11-05T02:46:27.819Z",
+          "completedAt": "2026-11-05T02:46:27.819Z",
+          "expectedTotal": 1631,
+          "ordersObserved": 1631,
+          "detailsRecorded": 0,
+          "nextOffset": 1631,
           "gaps": []
         },
         "openingBalance": {
@@ -37,9 +37,9 @@
             "held": 0
           },
           "lines": {
-            "allocated": 2151,
-            "partial": 2,
-            "unmatched": 382,
+            "allocated": 2605,
+            "partial": 0,
+            "unmatched": 0,
             "pending": 0,
             "held": 0,
             "unsupported": 0,
@@ -51,13 +51,13 @@
             "processing": 0,
             "held": 0
           },
-          "settledOrderedQuantity": 3173,
-          "settledMatchedQuantity": 2723,
-          "settledUnmatchedQuantity": 450,
+          "settledOrderedQuantity": 3246,
+          "settledMatchedQuantity": 3246,
+          "settledUnmatchedQuantity": 0,
           "pendingOrProcessingQuantity": 0,
           "heldQuantity": 0,
-          "priceUnavailableQuantity": 468,
-          "dateUnavailableQuantity": 467
+          "priceUnavailableQuantity": 483,
+          "dateUnavailableQuantity": 481
         },
         "stockDifferences": {
           "observedCount": 0,
@@ -67,19 +67,19 @@
           "absoluteQuantity": 0
         },
         "receivedLots": {
-          "receiptCount": 1669,
-          "receivedQuantity": 2792,
-          "missingMarketSnapshotQuantity": 1,
+          "receiptCount": 2345,
+          "receivedQuantity": 3477,
+          "missingMarketSnapshotQuantity": 2,
           "missingIntakeDateQuantity": 0
         },
         "publications": {
           "planned": 0,
           "active": 0,
           "ambiguous": 0,
-          "failed": 10,
+          "failed": 13,
           "retried": 0,
           "oldestPlannedAt": null,
-          "lastPublishedAt": "2026-11-03T21:38:54.910Z"
+          "lastPublishedAt": "2026-11-05T03:18:27.273Z"
         }
       }
     }

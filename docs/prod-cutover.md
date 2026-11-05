@@ -58,9 +58,22 @@ Docker would restart them in a loop.
    changes nothing if a build fails, so this only saves time. Done on 2026-11-04 from 5bc12b1d7
    (Corten 62f3199f): the release build took 15 m 34 s in Docker, the image is 117 MB, and run
    against the dev database with no switches it started every worker off and answered 200 on all
+   16 screens and `/health/ready`. Again on 2026-11-05 from 419423c17 (Corten 03c89942): 12 m 49 s,
+   117 MB, run against the refreshed dev database below with no switches: every worker off, 200 on all
    16 screens and `/health/ready`. Repeat it from the merged commit.
-3. Optional, and it reads production: refresh the dev database from production
-   (`npm run dev:db:refresh`) and run the gate and the twin scripts against that copy.
+3. Refresh the dev database from production (`npm run dev:db:refresh`) and run the gate and the
+   twin scripts against that copy. Done on 2026-11-05: production's data restored onto migrations
+   001 to 055 with no error. On that copy:
+   1. Every twin with a script ran clean (`docs/worker-parity.md`).
+   2. The JSON routes' answers, recorded again from Node on the copy, match Corten's: 15 of 15.
+   3. Pricing on the same evidence (batch 3471) and a cached run (batch 3516), recorded again from
+      Node: 10,498 values exact, 0 different; 15 of 15 SKUs priced alike.
+   4. 11 screens, the batch pricer with batches of 150 and 263 items and the latest continuous
+      batch, and the pack step load with no axe finding and no script error.
+   The other ignored tests compare against recordings made on the earlier dev data (publication
+   cases, the shadows, the strategy) or ask a running Node app, so they were not run on the copy;
+   that data is kept in `.artifacts/db-backups/2026-11-05T03-15-59-363Z-db-before-refresh.dump`.
+   Repeat the refresh only if production changes shape before the release.
 
 ## The proxy
 
@@ -110,11 +123,15 @@ In dev, every job now runs in the Corten app (`docs/worker-parity.md`, Dev cutov
 publication worker is switched there but stays off without Seller Portal writes, so release 6 is
 its first run that posts.
 
+## Decided (2026-11-05)
+
+1. Refresh dev from production before release 1, then run the gate and the twin scripts against
+   that copy (step 3 of Before release 1).
+2. Browsers reach production through Tailscale Serve only. HTTPS ends there, so nginx stays plain
+   HTTP and needs no TLS for release 1 (The proxy, point 4).
+3. Each worker runs one full day of normal use in production before the next release moves
+   another one.
+
 ## Open for Todd
 
 1. Approval to merge `codex/corten-port` into master, and for release 1.
-2. Whether to refresh dev from production first (step 3 before release 1).
-3. Whether browsers reach production through Tailscale Serve only, or also directly on port
-   3001, where nginx would need TLS to serve HTTP/2 (see The proxy, point 4).
-4. How long each worker should run in production before the next release. The suggestion is one
-   full day of normal use, since the schedule and order history run hourly.

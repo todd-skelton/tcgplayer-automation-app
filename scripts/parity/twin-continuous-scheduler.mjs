@@ -34,7 +34,8 @@ const rustBatches = await runUntil(RUST, ...rust, { CONTINUOUS_PRICING_SCHEDULER
 
 const since = (db) => started[db];
 const batches = (db) => `SELECT batch_number FROM inventory_batches WHERE source_type = 'continuous' AND created_at >= '${since(db)}'`;
-const check = comparison({ live: true });
+// A listing whose quantity moved to or from zero between the reads is in stock on one copy only.
+const check = comparison({ live: true, follows: { in_stock: "quantity" } });
 check.tables({
   continuous_pricing_refreshes: (db) => `SELECT to_jsonb(t) FROM continuous_pricing_refreshes t WHERE started_at >= '${since(db)}' ORDER BY started_at`,
   continuous_pricing_inventory: "SELECT to_jsonb(t) FROM continuous_pricing_inventory t ORDER BY seller_key, sku",

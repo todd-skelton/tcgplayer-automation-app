@@ -31,8 +31,12 @@ export function copy(prepare = () => {}) {
 }
 
 const env = { ...process.env, TZ: "UTC", WORKERS_RUN_IN_PROCESS: "false", HOST: "127.0.0.1", PORT: "3209" };
-for (const off of ["SELLER_PORTAL_WRITES_ENABLED", "MIGRATE_ON_START", "PRICING_WORKER", "PUBLICATION_WORKER",
-  "CONTINUOUS_PRICING_SCHEDULER", "SELLER_ORDER_HISTORY_WORKER", "SLAB_EVIDENCE_WORKER", "INVENTORY_PUBLICATION_WORKER"]) delete env[off];
+delete env.SELLER_PORTAL_WRITES_ENABLED;
+// Each switch is set blank, not removed: both apps read the env files for a name the environment
+// lacks, and dev's files turn every worker on, so a removed switch would start them all. A blank
+// one is off in both, and no file overrides it.
+for (const off of ["MIGRATE_ON_START", "PRICING_WORKER", "PUBLICATION_WORKER", "CONTINUOUS_PRICING_SCHEDULER",
+  "SELLER_ORDER_HISTORY_WORKER", "SLAB_EVIDENCE_WORKER", "INVENTORY_PUBLICATION_WORKER"]) env[off] = " ";
 
 // A worker's connections are gone, so the copy's statistics include all it wrote.
 async function drained(db) {
@@ -77,11 +81,13 @@ const timed = (v) => typeof v === "string" && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d/.
 
 /// Compares rows field by field. Times differ by when each worker ran and are skipped, as are the
 /// `ignored` fields. With `live`, the workers read TCGplayer minutes apart: a number (or numeric
-/// text) that differs is counted as moved with the market rather than as a difference.
-export function comparison({ ignored = [], live = false }) {
+/// text) that differs is counted as moved with the market rather than as a difference, and so is a
+/// field `follows` names (`{ in_stock: "quantity" }`) where the field it follows moved in that row.
+export function comparison({ ignored = [], live = false, follows = {} }) {
   const skip = new Set(ignored);
   const differences = [];
   const moved = new Map();
+  const following = [];
   const counts = [];
   let compared = 0;
   const numeric = (v) => (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v)) ? Number(v) : v);
@@ -98,11 +104,14 @@ export function comparison({ ignored = [], live = false }) {
       if (Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a))) return;
       if (live) {
         const field = at.replace(/\[\d+\]/g, "[]");
-        moved.set(field, (moved.get(field) ?? 0) + 1);
+        moved.set(field, [...(moved.get(field) ?? []), at]);
         return;
       }
     }
-    if (JSON.stringify(a) !== JSON.stringify(b)) differences.push(`${at}: node ${JSON.stringify(a)} rust ${JSON.stringify(b)}`);
+    if (JSON.stringify(a) === JSON.stringify(b)) return;
+    const difference = `${at}: node ${JSON.stringify(a)} rust ${JSON.stringify(b)}`;
+    if (live && follows[key]) following.push({ leader: `${at.slice(0, at.lastIndexOf("."))}.${follows[key]}`, at, difference });
+    else differences.push(difference);
   }
   return {
     differences,
@@ -146,6 +155,16 @@ export function comparison({ ignored = [], live = false }) {
       if (JSON.stringify(n) !== JSON.stringify(r)) differences.push(`${name}: Node ${JSON.stringify(n)}, Rust ${JSON.stringify(r)}`);
     },
     report() {
+      const movedPlaces = new Set([...moved.values()].flat());
+      for (const f of following) {
+        if (!movedPlaces.has(f.leader)) {
+          differences.push(f.difference);
+          continue;
+        }
+        const field = `${f.at.replace(/\[\d+\]/g, "[]")}, with ${f.leader.slice(f.leader.lastIndexOf(".") + 1)}`;
+        moved.set(field, [...(moved.get(field) ?? []), f.at]);
+      }
+      following.length = 0;
       console.log(`Written by Node:\n${written(NODE)}\nWritten by Rust:\n${written(RUST)}`);
       console.log(`Rows (Node/Rust): ${counts.join(", ")}`);
       console.log(`${compared} values compared, ${differences.length} differ`);
@@ -153,7 +172,10 @@ export function comparison({ ignored = [], live = false }) {
       if (differences.length > 40) console.log(`  and ${differences.length - 40} more`);
       if (moved.size) {
         console.log("Numbers that moved with the market between the two reads, by field:");
-        for (const [field, count] of [...moved].sort()) console.log(`  ${count} x ${field}`);
+        // Each one's place, when there are few, so a flag that moved with it (in stock) can be matched.
+        for (const [field, places] of [...moved].sort()) {
+          console.log(`  ${places.length} x ${field}${places.length <= 10 ? `: ${places.join(", ")}` : ""}`);
+        }
       }
       return differences.length;
     },
