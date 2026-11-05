@@ -7,8 +7,8 @@ description = "TCGPlayer Automation on Corten: every screen, beside the Node app
 
 [dependencies]
 # Pinned to one revision of main; bump it on purpose when a fix the port needs lands.
-corten = { git = "https://github.com/corten-run/corten", rev = "aaca3e05", features = ["json", "compress", "types", "zones"] }
-corten-ui = { git = "https://github.com/corten-run/corten", rev = "aaca3e05" }
+corten = { git = "https://github.com/corten-run/corten", rev = "bd75e6ab", features = ["json", "compress", "types", "zones"] }
+corten-ui = { git = "https://github.com/corten-run/corten", rev = "bd75e6ab" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
 # Correctly rounded float parsing, so numbers the Node app wrote read back to the same bits.

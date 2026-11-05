@@ -95,11 +95,14 @@ Corten a0215cc9):
    before nginx; whether it speaks HTTP/2 to the browser was not checked. Serving HTTP/2 from
    nginx needs TLS there (a certificate for the name used).
 5. Stopping a `web` container (the old slot after a switch, or `prod:down`) gives it Compose's
-   `stop_grace_period: 30s`. Corten waits for a connection still answering until the app's longest
-   deadline, which is Data Management's hour, so a catalog job in flight or a client that stopped
-   reading ends with Docker's kill at 30 s, not a clean exit. Background tasks still get their 5 s
+   `stop_grace_period: 30s`. Since Corten bd75e6ab a connection still answering is held to the
+   deadline of its own request, not the app's longest, so a page whose client stopped reading
+   ends at its page's deadline. A request of an area with a longer deadline that is still in
+   progress (a catalog job in Data Management, up to an hour; a seller snapshot, up to 5 minutes)
+   still ends with Docker's kill at 30 s, not a clean exit. Background tasks still get their 5 s
    grace first, and a killed catalog job leaves no lock behind and can be run again. Reported as
-   [#887 Shutdown waits for every answering connection until the app's longest deadline, so one hour-long area makes a stalled page reader hold shutdown an hour and the guide's platform-wait rule unworkable](https://github.com/corten-run/corten/issues/887).
+   [#887 Shutdown waits for every answering connection until the app's longest deadline, so one hour-long area makes a stalled page reader hold shutdown an hour and the guide's platform-wait rule unworkable](https://github.com/corten-run/corten/issues/887),
+   fixed by [#914 Shutdown holds each connection to its own request's deadline, not the app's longest (#887)](https://github.com/corten-run/corten/pull/914).
 6. The `web` containers answer only `localhost`, IP addresses and the names in `HOSTS`; any other
    `Host` gets 421. nginx passes the browser's `Host`, so if Tailscale Serve passes the tailnet
    name, the pages would answer 421 through it. `HOSTS` in `.env.production.local` (not committed)
