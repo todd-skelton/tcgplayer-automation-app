@@ -218,6 +218,7 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
                             supply={supply}
                             context={context}
                             choice={choice}
+                            refreshing={screen.refreshing()}
                             t={t}
                         />
                     }
@@ -228,12 +229,15 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
 }
 
 /// The source shown: its counts and lowest asks, a page of its listings, and what changed since
-/// the observation before it.
+/// the observation before it. While a refresh is on its way the list is read again from its own
+/// route, which would put back the server's order over a sort made in place (corten#885), so
+/// then a header is the sorted page's link and the server sorts.
 #[component(css = super::slab_screen::SlabScreen)]
 fn SupplyContext<'a>(
     supply: &'a Supply,
     context: &'a Context,
     choice: &'a Choice,
+    refreshing: bool,
     t: Msg,
 ) -> impl Render {
     let at = |when: &str| when.parse::<DateTime<Utc>>().ok();
@@ -310,15 +314,27 @@ fn SupplyContext<'a>(
                     <tr>
                         for (column, label) in SupplyColumn::ALL {
                             let (sort, ascending, descending) = sorted(column);
-                            <SortHeader
-                                label={label}
-                                sort={sort}
-                                ascending={&ascending}
-                                descending={&descending}
-                                first={Sort::Ascending}
-                                class={()}
-                                on:sort={rows::sort(event, target)}
-                            />
+                            if refreshing {
+                                <SortHeader
+                                    label={label}
+                                    sort={sort}
+                                    ascending={&ascending}
+                                    descending={&descending}
+                                    first={Sort::Ascending}
+                                    class={()}
+                                    on:sort={None::<Handler>}
+                                />
+                            } else {
+                                <SortHeader
+                                    label={label}
+                                    sort={sort}
+                                    ascending={&ascending}
+                                    descending={&descending}
+                                    first={Sort::Ascending}
+                                    class={()}
+                                    on:sort={rows::sort(event, target)}
+                                />
+                            }
                         }
                     </tr>
                 </thead>
@@ -413,5 +429,78 @@ fn SupplyContext<'a>(
                 </p>
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn supply() -> Supply {
+        serde_json::from_value(serde_json::json!({
+            "identityRevision": 1,
+            "statuses": [],
+            "selectedKey": null,
+            "knownOwnListings": 0,
+            "context": null,
+            "changes": null,
+            "page": null,
+            "sourceHasMorePages": false
+        }))
+        .unwrap()
+    }
+
+    fn context() -> Context {
+        serde_json::from_value(serde_json::json!({
+            "capturedAt": "2026-11-05T12:00:00Z",
+            "reportedCount": 1,
+            "stale": false,
+            "rows": [{
+                "key": "ebay:1",
+                "listing": {
+                    "title": "Charizard PSA 9",
+                    "provider": "ebayResearch",
+                    "providerId": "1",
+                    "sourceUrl": null,
+                    "price": { "amount": 100.0, "currency": "USD" },
+                    "priceKind": "ask",
+                    "shipping": null
+                },
+                "status": "equivalent",
+                "reasons": [],
+                "deliveredAsk": 100.0,
+                "listingAgeDays": 2.0
+            }],
+            "equivalentListings": 1,
+            "potentialListings": 0,
+            "excludedListings": 0,
+            "lowestEquivalentDeliveredAsk": 100.0,
+            "lowestPotentialDeliveredAsk": null
+        }))
+        .unwrap()
+    }
+
+    fn drawn(refreshing: bool) -> String {
+        let (supply, context, choice) = (supply(), context(), Choice::default());
+        SupplyContext {
+            supply: &supply,
+            context: &context,
+            choice: &choice,
+            refreshing,
+            t: Msg::default(),
+        }
+        .to_html()
+    }
+
+    /// While a refresh is on its way the list is read again from its route, so a sort is the
+    /// sorted page's link rather than an order made in place that the read would undo
+    /// (corten#885); otherwise the headers sort in place.
+    #[test]
+    fn a_refresh_on_its_way_sorts_by_link() {
+        let idle = drawn(false);
+        assert!(idle.contains("data-ascending"), "{idle}");
+        let refreshing = drawn(true);
+        assert!(!refreshing.contains("data-ascending"), "{refreshing}");
+        assert!(refreshing.contains("supply_by="), "{refreshing}");
     }
 }
