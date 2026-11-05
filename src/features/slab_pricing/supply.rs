@@ -24,10 +24,59 @@ use crate::{
         spec::{EbayPage, Spec as Request},
         store,
     },
+    row_order::Key,
 };
 
 /// Supply rows a page, as the Node app pages them.
 pub const ROWS: u32 = 50;
+
+/// A column the supply rows can be sorted by. As the React grid did, a sort orders the rows
+/// shown, not every page of them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, corten::UrlValue, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SupplyColumn {
+    Listing,
+    Item,
+    Shipping,
+    Delivered,
+    Age,
+    Comparison,
+    Reasons,
+}
+
+impl SupplyColumn {
+    /// The columns in the table's order, with their headers.
+    pub const ALL: [(SupplyColumn, &'static str); 7] = [
+        (SupplyColumn::Listing, "Active listing"),
+        (SupplyColumn::Item, "Item ask / bid"),
+        (SupplyColumn::Shipping, "Shipping"),
+        (SupplyColumn::Delivered, "Delivered (USD)"),
+        (SupplyColumn::Age, "Listing age"),
+        (SupplyColumn::Comparison, "Comparison"),
+        (SupplyColumn::Reasons, "Review reasons"),
+    ];
+
+    /// What `row` sorts by in this column: the cell's `data-sort` or its text, as the table
+    /// draws it. An unknown amount or age sorts last.
+    pub(super) fn key(self, row: &Row) -> Option<Key> {
+        let text = |t: String| (!t.trim().is_empty()).then_some(Key::Text(t));
+        let listing = &row.listing;
+        match self {
+            SupplyColumn::Listing => text(
+                listing
+                    .title
+                    .clone()
+                    .unwrap_or_else(|| listing.provider_id.clone()),
+            ),
+            SupplyColumn::Item => listing.price.as_ref().map(|m| Key::Number(m.amount)),
+            SupplyColumn::Shipping => listing.shipping.as_ref().map(|m| Key::Number(m.amount)),
+            SupplyColumn::Delivered => row.delivered_ask.map(Key::Number),
+            SupplyColumn::Age => row.listing_age_days.map(Key::Number),
+            SupplyColumn::Comparison => text(super::identity::words(&row.status)),
+            SupplyColumn::Reasons => text(row.reasons()),
+        }
+    }
+}
 
 /// The seller whose own listings are left out of supply when no listing is reviewed.
 pub const DEFAULT_SELLER: &str = "pokebash";
@@ -160,6 +209,15 @@ impl Supply {
 }
 
 impl Row {
+    /// Its review reasons, as the table lists them.
+    pub fn reasons(&self) -> String {
+        self.reasons
+            .iter()
+            .map(|r| super::identity::words(r))
+            .collect::<Vec<_>>()
+            .join("; ")
+    }
+
     /// `3 days`, `<1 day`, or "Unknown", as the React grid wrote a listing's age.
     pub fn age(&self) -> String {
         match self.listing_age_days {

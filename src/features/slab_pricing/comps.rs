@@ -13,10 +13,56 @@ use super::{
     screening::{self, Reference, SaleWindow, Target},
     url::Choice,
 };
-use crate::{database::Database, features::inventory_economics::ledger::assumptions::js_to_fixed};
+use crate::{
+    database::Database, features::inventory_economics::ledger::assumptions::js_to_fixed,
+    row_order::Key,
+};
 
 /// Sales on a page of the review.
 const PAGE: usize = 50;
+
+/// A column the review's sales can be sorted by. As the React grid did, a sort orders the page
+/// shown, not the whole revision.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, corten::UrlValue, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CompColumn {
+    Date,
+    Sale,
+    Grade,
+    Price,
+    Shipping,
+    Format,
+    Status,
+}
+
+impl CompColumn {
+    /// The columns in the table's order, with their headers.
+    pub const ALL: [(CompColumn, &'static str); 7] = [
+        (CompColumn::Date, "Sold date"),
+        (CompColumn::Sale, "Sale"),
+        (CompColumn::Grade, "Grade"),
+        (CompColumn::Price, "Reported price"),
+        (CompColumn::Shipping, "Shipping"),
+        (CompColumn::Format, "Format"),
+        (CompColumn::Status, "Comp status"),
+    ];
+
+    /// What `row` sorts by in this column: the cell's `data-sort` or its text, as the table
+    /// draws it. An unknown date, amount or format sorts last.
+    pub(super) fn key(self, row: &Row) -> Option<Key> {
+        let text = |t: &str| Some(Key::Text(t.to_owned()));
+        let amount = |m: Option<&Money>| m.map(|m| Key::Number(m.amount));
+        match self {
+            CompColumn::Date => row.sale.date.as_deref().and_then(text),
+            CompColumn::Sale => text(row.sale.name()),
+            CompColumn::Grade => text(&row.sale.grade()),
+            CompColumn::Price => amount(row.sale.price.as_ref()),
+            CompColumn::Shipping => amount(row.sale.shipping.as_ref()),
+            CompColumn::Format => row.sale.format.as_deref().and_then(text),
+            CompColumn::Status => text(&super::identity::words(&row.status)),
+        }
+    }
+}
 
 /// A page of a revision's sales, screened, and what can be done with them.
 #[derive(Clone, Debug)]

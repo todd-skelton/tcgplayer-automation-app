@@ -5,6 +5,8 @@ use corten::{
     prelude::*,
 };
 
+use corten_ui::rows;
+
 use crate::{
     features::slab_pricing::{
         actions::{CancelInput, NextSourcePageInput, RefreshInput},
@@ -12,10 +14,11 @@ use crate::{
         page::{Place, Screen},
         recommendation::amount,
         research::EvidenceStatus,
-        supply::{Context, ROWS, Supply, money},
+        supply::{Context, ROWS, Supply, SupplyColumn, money},
         url::{self, Choice},
         views::Problem,
     },
+    row_order,
     text::Msg,
     theme::*,
     ui::{
@@ -24,7 +27,8 @@ use crate::{
         card::{CardCompact, CardPanel},
         field::Field,
         select::Select,
-        table::{Table, TableLayout},
+        table::{SortHeader, Table, TableLayout},
+        visually_hidden::VisuallyHidden,
     },
 };
 
@@ -244,6 +248,24 @@ fn SupplyContext<'a>(
         rows: Some(next),
         ..choice.clone()
     });
+    // The page's own rows in the order asked for, as `rows::sort` orders them with the script; a
+    // sort link keeps the page.
+    let down = choice.supply_down == Some(true);
+    let mut listed: Vec<&crate::features::slab_pricing::supply::Row> =
+        context.rows.iter().collect();
+    if let Some(by) = choice.supply_by {
+        row_order::sort(&mut listed, down, |row| by.key(row));
+    }
+    let sorted = move |column: SupplyColumn| {
+        let (sort, next_down) = row_order::header(choice.supply_by.as_ref(), down, &column);
+        let next = Choice {
+            supply_by: Some(column),
+            supply_down: next_down.then_some(true),
+            ..choice.clone()
+        };
+        (sort, url::SlabPricing::at(&next))
+    };
+    let number = |n: Option<f64>| n.map_or_else(String::new, |n| n.to_string());
     let n = NextSourcePageInput::FIELDS;
     let changes = supply.changes.as_ref();
     let from = changes.and_then(|c| at(&c.observed_from));
@@ -275,20 +297,28 @@ fn SupplyContext<'a>(
             }
         </p>
         <Table layout={TableLayout::Scroll}>
-            <table class={Cells} aria-label="Active supply">
-                <thead>
+            <table class={Cells}>
+                <caption class={VisuallyHidden {}}>
+                    "Active supply. Sorting orders the listings on this page."
+                </caption>
+                // A hover does not fetch the sorted page, which a click with the script does not
+                // use.
+                <thead data-no-prefetch>
                     <tr>
-                        <th>"Active listing"</th>
-                        <th>"Item ask / bid"</th>
-                        <th>"Shipping"</th>
-                        <th>"Delivered (USD)"</th>
-                        <th>"Listing age"</th>
-                        <th>"Comparison"</th>
-                        <th>"Review reasons"</th>
+                        for (column, label) in SupplyColumn::ALL {
+                            let (sort, link) = sorted(column);
+                            <SortHeader
+                                label={label}
+                                sort={sort}
+                                link={&link}
+                                class={()}
+                                on:sort={rows::sort(event, target)}
+                            />
+                        }
                     </tr>
                 </thead>
                 <tbody>
-                    for row in &context.rows {
+                    for row in listed {
                         <tr key={&row.key}>
                             <td>
                                 match row.listing.source_url.as_deref().filter(|u| u.starts_with("https://")) {
@@ -302,16 +332,18 @@ fn SupplyContext<'a>(
                                     }
                                 }
                             </td>
-                            <td>
+                            <td data-sort={number(row.listing.price.as_ref().map(|m| m.amount))}>
                                 {money(row.listing.price.as_ref())}" ("{&row.listing.price_kind}")"
                             </td>
-                            <td>{money(row.listing.shipping.as_ref())}</td>
-                            <td>{amount(row.delivered_ask)}</td>
-                            <td>{row.age()}</td>
-                            <td>{words(&row.status)}</td>
-                            <td>
-                                {row.reasons.iter().map(|r| words(r)).collect::<Vec<_>>().join("; ")}
+                            <td data-sort={number(row.listing.shipping.as_ref().map(|m| m.amount))}>
+                                {money(row.listing.shipping.as_ref())}
                             </td>
+                            <td data-sort={number(row.delivered_ask)}>
+                                {amount(row.delivered_ask)}
+                            </td>
+                            <td data-sort={number(row.listing_age_days)}>{row.age()}</td>
+                            <td>{words(&row.status)}</td>
+                            <td>{row.reasons()}</td>
                         </tr>
                     }
                 </tbody>

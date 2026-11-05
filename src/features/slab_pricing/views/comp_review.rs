@@ -1,15 +1,16 @@
 use corten::prelude::*;
-use corten_ui::dialog;
+use corten_ui::{dialog, rows};
 
 use crate::{
     features::slab_pricing::{
         actions::{CompDecisionInput, FetchCompsInput},
-        comps::{Review, Row, money},
+        comps::{CompColumn, Review, Row, money},
         identity::words,
         page::{Place, Screen},
         url::{self, Choice},
         views::Problem,
     },
+    row_order,
     theme::*,
     ui::{
         alert::{Alert, AlertVariant},
@@ -19,8 +20,9 @@ use crate::{
         field::Field,
         input::Input,
         select::Select,
-        table::{Table, TableLayout},
+        table::{SortHeader, Table, TableLayout},
         textarea::Textarea,
+        visually_hidden::VisuallyHidden,
     },
 };
 
@@ -76,7 +78,7 @@ fn Comps<'a>(review: &'a Review, choice: &'a Choice) -> impl Render {
     };
     let previous = (review.page.offset > 0).then(|| at(review.page.offset.saturating_sub(50)));
     let next = review.page.next_offset.map(at);
-    let rows: Vec<(&Row, Choice)> = review
+    let mut shown: Vec<(&Row, Choice)> = review
         .rows
         .iter()
         .zip(review.page.offset..)
@@ -88,6 +90,25 @@ fn Comps<'a>(review: &'a Review, choice: &'a Choice) -> impl Render {
             (row, open)
         })
         .collect();
+    // The page's own rows in the order asked for, as `rows::sort` orders them with the script; a
+    // sort link keeps the page.
+    let down = choice.comps_down == Some(true);
+    if let Some(by) = choice.comps_by {
+        row_order::sort(&mut shown, down, |(row, _)| by.key(row));
+    }
+    let sorted = move |column: CompColumn| {
+        let (sort, next_down) = row_order::header(choice.comps_by.as_ref(), down, &column);
+        let next = Choice {
+            comps_by: Some(column),
+            comps_down: next_down.then_some(true),
+            comp: None,
+            ..choice.clone()
+        };
+        (sort, url::SlabPricing::at(&next))
+    };
+    let amount = |m: Option<&crate::features::slab_pricing::comps::Money>| {
+        m.map_or_else(String::new, |m| m.amount.to_string())
+    };
     html! {
         <p class={muted()}>
             {review.summary()}
@@ -104,29 +125,45 @@ fn Comps<'a>(review: &'a Review, choice: &'a Choice) -> impl Render {
             </Alert>
         }
         <Table layout={TableLayout::Scroll}>
-            <table class={Cells} aria-label="Saved comps">
-                <thead>
+            <table class={Cells}>
+                <caption class={VisuallyHidden {}}>
+                    "Saved comps. Sorting orders the sales on this page."
+                </caption>
+                // A hover does not fetch the sorted page, which a click with the script does not
+                // use.
+                <thead data-no-prefetch>
                     <tr>
-                        <th>"Details"</th>
-                        <th>"Sold date"</th>
-                        <th>"Sale"</th>
-                        <th>"Grade"</th>
-                        <th>"Reported price"</th>
-                        <th>"Shipping"</th>
-                        <th>"Format"</th>
-                        <th>"Comp status"</th>
+                        <th scope="col">"Details"</th>
+                        for (column, label) in CompColumn::ALL {
+                            let (sort, link) = sorted(column);
+                            <SortHeader
+                                label={label}
+                                sort={sort}
+                                link={&link}
+                                class={()}
+                                on:sort={rows::sort(event, target)}
+                            />
+                        }
                     </tr>
                 </thead>
                 <tbody>
-                    for (row, open) in &rows {
+                    for (row, open) in &shown {
                         <tr aria-current={(choice.comp == open.comp).then_some("true")}>
                             <td><a href={url::SlabPricing::at(open)}>"Review"</a></td>
-                            <td>{row.sale.date.as_deref().unwrap_or("Unknown")}</td>
+                            <td data-sort={row.sale.date.as_deref().unwrap_or("")}>
+                                {row.sale.date.as_deref().unwrap_or("Unknown")}
+                            </td>
                             <td>{row.sale.name()}</td>
                             <td>{row.sale.grade()}</td>
-                            <td>{money(row.sale.price.as_ref())}</td>
-                            <td>{money(row.sale.shipping.as_ref())}</td>
-                            <td>{row.sale.format.as_deref().unwrap_or("Unknown")}</td>
+                            <td data-sort={amount(row.sale.price.as_ref())}>
+                                {money(row.sale.price.as_ref())}
+                            </td>
+                            <td data-sort={amount(row.sale.shipping.as_ref())}>
+                                {money(row.sale.shipping.as_ref())}
+                            </td>
+                            <td data-sort={row.sale.format.as_deref().unwrap_or("")}>
+                                {row.sale.format.as_deref().unwrap_or("Unknown")}
+                            </td>
                             <td>{words(&row.status)}</td>
                         </tr>
                     }

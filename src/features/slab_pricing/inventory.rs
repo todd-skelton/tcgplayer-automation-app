@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::identity::{Candidate, SlabIdentity};
-use crate::{database::Database, features::slab_connections::ConnectionStatus};
+use crate::{database::Database, features::slab_connections::ConnectionStatus, row_order::Key};
 
 /// What the route answers when the database fails.
 pub(super) const UNAVAILABLE: &str = "Unable to update slab inventory. Try again.";
@@ -43,6 +43,42 @@ impl From<String> for Refused {
 
 /// Listings a page, as the React panel read them.
 pub const PAGE_SIZE: u32 = 25;
+
+/// A column the saved listings can be sorted by. As the React grid did, a sort orders the page
+/// shown; the pages stay in the seller's keyset order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, corten::UrlValue, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ListingColumn {
+    Listing,
+    Ask,
+    Grade,
+    State,
+    Attention,
+}
+
+impl ListingColumn {
+    /// The columns in the table's order, with their headers.
+    pub const ALL: [(ListingColumn, &'static str); 5] = [
+        (ListingColumn::Listing, "Listing"),
+        (ListingColumn::Ask, "Current ask"),
+        (ListingColumn::Grade, "Owned grade"),
+        (ListingColumn::State, "State"),
+        (ListingColumn::Attention, "Needs attention"),
+    ];
+
+    /// What `listing` sorts by in this column: the cell's `data-sort` or its text, as the table
+    /// draws it.
+    pub(super) fn key(self, listing: &Listing) -> Option<Key> {
+        let text = |t: String| (!t.trim().is_empty()).then_some(Key::Text(t));
+        match self {
+            ListingColumn::Listing => text(listing.snapshot.title.clone()),
+            ListingColumn::Ask => Some(Key::Number(listing.snapshot.price.amount)),
+            ListingColumn::Grade => text(listing.owned_grade()),
+            ListingColumn::State => text(listing.state.clone()),
+            ListingColumn::Attention => text(listing.attention()),
+        }
+    }
+}
 
 #[derive(Debug, Deserialize)]
 pub struct InventoryPage {
@@ -178,6 +214,15 @@ impl Listing {
         shipping
             .amount
             .filter(|_| shipping.currency.as_deref() == Some("USD"))
+    }
+
+    /// What needs reviewing on it, as the table lists it.
+    pub fn attention(&self) -> String {
+        self.review_reasons
+            .iter()
+            .map(|r| super::identity::words(r))
+            .collect::<Vec<_>>()
+            .join("; ")
     }
 
     /// `PSA 10`, or "Unresolved" until a certificate names the grade.

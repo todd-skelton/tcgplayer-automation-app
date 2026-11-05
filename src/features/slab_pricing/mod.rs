@@ -238,6 +238,9 @@ pub mod url {
         pub after: Option<String>,
         #[serde(default)]
         pub trail: Vec<String>,
+        /// The column the page of listings is sorted by, descending when `listings_down`.
+        pub listings_by: Option<super::inventory::ListingColumn>,
+        pub listings_down: Option<bool>,
         pub listing: Option<String>,
         /// `owned`, or a PSA grade explored beside the owned one.
         pub grade: Option<String>,
@@ -249,6 +252,9 @@ pub mod url {
         pub source: Option<String>,
         /// The first supply row shown.
         pub rows: Option<u32>,
+        /// The column the supply rows shown are sorted by, descending when `supply_down`.
+        pub supply_by: Option<super::supply::SupplyColumn>,
+        pub supply_down: Option<bool>,
         /// The supply sources shown before this one, for Previous source page.
         #[serde(default)]
         pub sources: Vec<String>,
@@ -265,6 +271,9 @@ pub mod url {
         pub comps: Option<String>,
         pub comps_from: Option<u32>,
         pub comp: Option<u32>,
+        /// The column the page of comps is sorted by, descending when `comps_down`.
+        pub comps_by: Option<super::comps::CompColumn>,
+        pub comps_down: Option<bool>,
         /// Evidence fetched beyond the grade's own (a sale's details, an eBay source's next
         /// page), shown and calculated with it.
         #[serde(default)]
@@ -359,6 +368,8 @@ pub mod url {
                 comps: None,
                 comps_from: None,
                 comp: None,
+                comps_by: None,
+                comps_down: None,
                 extra: Vec::new(),
                 ..self.clone()
             }

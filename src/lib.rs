@@ -19,6 +19,7 @@ pub mod migrations;
 mod node_pg;
 #[cfg(test)]
 mod parity_fixture;
+mod row_order;
 mod tcgplayer;
 mod text;
 mod theme;

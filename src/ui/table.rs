@@ -1,4 +1,4 @@
-// corten ui 0.1.0: table 6d24ddec7635d14c
+// corten ui 0.1.0: table 05a34544d9cc8c8c
 //! A table's look, on the `<table>` written inside it: the rows, headers and caption stay the
 //! app's markup. `layout` is `TableLayout::Scroll` for a table that keeps its columns: the wrapper
 //! scrolls sideways when the table is wider than the page, so it is a box of its own.
@@ -104,16 +104,19 @@ pub enum Sort {
 /// `aria-sort` on the column the table is sorted by now (`sort`, `None` for the others). The
 /// direction is drawn, not written, so a screen reader reads the label and the column's sort
 /// state, not an arrow's name: the arrow is drawn from the header's `aria-sort`, so it follows
-/// the one state both the server and a script write. `class` is the header's look
-/// (`TableNumeric {}` over a number column, `()` for none). `on:sort` is the link's click
-/// handler: `None::<Handler>` for a table the server sorts, or, on a page that sorts its rows in
-/// place without a request, a typed call that names the column
-/// (`on:sort={js::sortBy(event, target, rows, By::Total)}`). Its script takes the click as an
-/// `Event` (a prop's handler gets that type), leaves a click with a modifier key to the link, so
-/// it still opens or saves the sorted page (`event.ctrlKey`, `metaKey`, `shiftKey` or `altKey`
-/// on a `MouseEvent`), otherwise calls `event.preventDefault()`, sorts, and sets `aria-sort` on
-/// the header it sorted by and removes it from the others. The link still sorts a page loaded
-/// without the script.
+/// the one state both the server and a script write. `class` is the header's look (`TableNumeric
+/// {}` over a number column, `()` for none). `on:sort` is the link's click handler:
+/// `None::<Handler>` for a table the server sorts, or, on a page that has every row and sorts them
+/// in place without a request (with `data-no-prefetch` on the `<thead>`, so a hover does not fetch
+/// the sorted page), `corten_ui::rows::sort(event, target)`, which sorts by the header's column,
+/// each cell by its `data-sort`, `<time datetime>`, `<data value>` or text (docs/guide/ui.md), or
+/// the page's own typed call
+/// (`on:sort={js::sortBy(event, target, rows, By::Total)}`). Such a script takes the click as an
+/// `Event` (a prop's handler gets that type), leaves a click with a modifier key to the link, so it
+/// still opens or saves the sorted page (`event.ctrlKey`, `metaKey`, `shiftKey` or `altKey` on a
+/// `MouseEvent`), otherwise calls `event.preventDefault()`, sorts, and sets `aria-sort` on the
+/// header it sorted by and removes it from the others. The link still sorts a page loaded without
+/// the script.
 #[component(css = Table)]
 pub fn SortHeader<'a, L: Render, C: ClassList>(
     label: L,

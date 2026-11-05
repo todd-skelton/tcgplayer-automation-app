@@ -1,4 +1,5 @@
 use corten::{form::keep_query, prelude::*};
+use corten_ui::rows;
 
 use crate::{
     features::{
@@ -6,12 +7,13 @@ use crate::{
         slab_pricing::{
             actions::{AssignInput, ConfirmInput, ImportInput, LookUpInput, OpenInput},
             identity::{Record, words},
-            inventory::{InventoryPage, Listing},
+            inventory::{InventoryPage, Listing, ListingColumn},
             page::{Place, Screen},
             url::{self, Choice},
             views::{CompReview, RecommendationPanel, ResearchPanel, SellerPanels, SupplyPanel},
         },
     },
+    row_order,
     text::Msg,
     theme::*,
     ui::{
@@ -21,8 +23,9 @@ use crate::{
         field::Field,
         input::Input,
         select::Select,
-        table::{Table, TableLayout},
+        table::{SortHeader, Table, TableLayout},
         textarea::Textarea,
+        visually_hidden::VisuallyHidden,
     },
 };
 
@@ -371,6 +374,22 @@ fn InventoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
 fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
     let seller = choice.seller.as_deref().unwrap_or("");
     let (fi, fo) = (ImportInput::FIELDS, OpenInput::FIELDS);
+    // The page's own listings in the order asked for, as `rows::sort` orders them with the
+    // script; a sort link keeps the page.
+    let down = choice.listings_down == Some(true);
+    let mut listed: Vec<&Listing> = page.items.iter().collect();
+    if let Some(by) = choice.listings_by {
+        row_order::sort(&mut listed, down, |listing| by.key(listing));
+    }
+    let sorted = move |column: ListingColumn| {
+        let (sort, next_down) = row_order::header(choice.listings_by.as_ref(), down, &column);
+        let next = Choice {
+            listings_by: Some(column),
+            listings_down: next_down.then_some(true),
+            ..choice.clone()
+        };
+        (sort, url::SlabPricing::at(&next))
+    };
     html! {
         <p class={muted()}>
             {seller}" · Saved inventory · Page "{choice.trail.len() + 1}
@@ -411,22 +430,32 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
             </form>
         </details>
         <Table layout={TableLayout::Scroll}>
-            <table class={Cells} aria-label="Saved eBay listings">
-                <thead>
+            <table class={Cells}>
+                <caption class={VisuallyHidden {}}>
+                    "Saved eBay listings. Sorting orders the listings on this page."
+                </caption>
+                // A hover does not fetch the sorted page, which a click with the script does not
+                // use.
+                <thead data-no-prefetch>
                     <tr>
-                        <th>"Review"</th>
-                        <th>"Listing"</th>
-                        <th>"Current ask"</th>
-                        <th>"Owned grade"</th>
-                        <th>"State"</th>
-                        <th>"Needs attention"</th>
+                        <th scope="col">"Review"</th>
+                        for (column, label) in ListingColumn::ALL {
+                            let (sort, link) = sorted(column);
+                            <SortHeader
+                                label={label}
+                                sort={sort}
+                                link={&link}
+                                class={()}
+                                on:sort={rows::sort(event, target)}
+                            />
+                        }
                     </tr>
                 </thead>
                 <tbody>
                     if page.items.is_empty() {
                         <tr><td colspan="6">"No listings are saved for this seller."</td></tr>
                     }
-                    for listing in &page.items {
+                    for listing in listed {
                         <tr
                             key={&listing.id}
                             aria-current={(choice.listing.as_deref() == Some(listing.id.as_str())).then_some("true")}
@@ -450,12 +479,10 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
                                     {&listing.snapshot.title}
                                 </a>
                             </td>
-                            <td>{ask(listing)}</td>
+                            <td data-sort={listing.snapshot.price.amount}>{ask(listing)}</td>
                             <td>{listing.owned_grade()}</td>
                             <td>{&listing.state}</td>
-                            <td>
-                                {listing.review_reasons.iter().map(|r| words(r)).collect::<Vec<_>>().join("; ")}
-                            </td>
+                            <td>{listing.attention()}</td>
                         </tr>
                     }
                 </tbody>
