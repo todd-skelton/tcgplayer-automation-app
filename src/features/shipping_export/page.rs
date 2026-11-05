@@ -628,8 +628,9 @@ pub async fn import_history(
     let f = HistoryInput::FIELDS;
     upload.limit(MOST_HISTORY + (64 << 10));
     const TOO_LARGE: &str = "Seller order CSV exceeds the 5 MB limit.";
-    // A body past the limit fails whichever read meets it, so the reads are one block and a file
-    // too large is the step's message however far past the limit it is (corten#803).
+    // A file over its size counts only that size toward the limit (Corten reads the rest past),
+    // and any read can still find the body over the limit, so the reads are one block, as the
+    // forms guide shows, and either way is the step's message.
     let read = async move {
         let (mut chosen, mut problem) = (None, None);
         while let Some(mut file) = upload.next_file().await? {

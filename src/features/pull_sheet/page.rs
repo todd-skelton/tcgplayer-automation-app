@@ -40,8 +40,9 @@ pub async fn upload(
     let f = UploadInput::FIELDS;
     upload.limit(MOST + (64 << 10));
     let mut errors = Errors::new();
-    // A body past the limit fails whichever read meets it, so the reads are one block and a file
-    // too large is the form's message however far past the limit it is (corten#803).
+    // A file over its size counts only that size toward the limit (Corten reads the rest past),
+    // and any read can still find the body over the limit, so the reads are one block, as the
+    // forms guide shows, and either way is the form's message.
     let read = async move {
         let (mut chosen, mut over) = (None, false);
         while let Some(mut file) = upload.next_file().await? {
