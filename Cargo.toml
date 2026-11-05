@@ -7,8 +7,8 @@ description = "TCGPlayer Automation on Corten: every screen, beside the Node app
 
 [dependencies]
 # Pinned to one revision of main; bump it on purpose when a fix the port needs lands.
-corten = { git = "https://github.com/corten-run/corten", rev = "772f55d9", features = ["json", "compress", "types", "zones"] }
-corten-ui = { git = "https://github.com/corten-run/corten", rev = "772f55d9" }
+corten = { git = "https://github.com/corten-run/corten", rev = "0fa6f64b", features = ["json", "compress", "types", "zones"] }
+corten-ui = { git = "https://github.com/corten-run/corten", rev = "0fa6f64b" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
 # Correctly rounded float parsing, so numbers the Node app wrote read back to the same bits.
@@ -40,7 +40,5 @@ form_urlencoded = "1"
 live-tcgplayer = []
 
 [dev-dependencies]
-http-body-util = "0.1"
 # The slab providers' tests serve a stand-in provider on this machine.
 tokio = { version = "1", features = ["net", "test-util"] }
-tower = { version = "0.5", features = ["util"] }

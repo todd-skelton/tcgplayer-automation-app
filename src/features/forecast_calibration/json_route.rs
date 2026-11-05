@@ -37,7 +37,6 @@ async fn report(State(db): State<Database>, RawQuery(query): RawQuery) -> JsonRe
 #[cfg(test)]
 mod tests {
     use serde_json::Value;
-    use tower::ServiceExt;
 
     use crate::{
         app::{Shared, app},
@@ -58,21 +57,17 @@ mod tests {
     /// whose failure to answer is said in its shape.
     #[tokio::test]
     async fn other_json_routes_still_reach_the_node_app() {
-        let router = app(Shared {
+        let answer = app(Shared {
             db: Database::connect_lazy("postgresql://localhost/unused"),
             legacy: Legacy::new("http://127.0.0.1:1".into()),
             slab_providers: slab_connections::Transport::default(),
         })
-        .router();
-        let request = corten::http::Request::get("/api/validate-skus")
-            .body(corten::axum::body::Body::empty())
-            .unwrap();
-        let answer = router.oneshot(request).await.unwrap();
+        .test()
+        // A route the port does not serve, so no route names it.
+        .get(&corten::Local::parse("/api/validate-skus").unwrap())
+        .await;
         let status = answer.status();
-        let body = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let body: Value = serde_json::from_slice(&body).unwrap();
+        let body: Value = serde_json::from_slice(answer.bytes()).unwrap();
         assert!(status.is_server_error(), "{status}");
         assert!(body["error"].is_string(), "{body}");
     }

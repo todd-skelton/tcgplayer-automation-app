@@ -134,8 +134,8 @@ pub fn js_to_number(value: &serde_json::Value) -> f64 {
 
 #[cfg(test)]
 pub mod tests {
+    use corten::{Local, http::Method};
     use serde_json::Value;
-    use tower::ServiceExt;
 
     use super::*;
     use crate::{
@@ -157,12 +157,12 @@ pub mod tests {
         crate::config::load_env();
         let node: Vec<Value> = crate::parity_fixture::read(&format!("node/api/{name}.json"));
         let orders = crate::parity_fixture::Orders::of_dev_database().await;
-        let router = app(Shared {
+        let client = app(Shared {
             db: Database::connect_lazy(&crate::config::database_url()),
             legacy: Legacy::new("http://127.0.0.1:1".into()),
             slab_providers: slab_connections::Transport::default(),
         })
-        .router();
+        .test();
         let untimed = |mut body: Value| {
             for pointer in timed {
                 if let Some(at) = body.pointer_mut(pointer) {
@@ -175,33 +175,30 @@ pub mod tests {
         for expected in &node {
             let path = expected["path"].as_str().unwrap();
             let asked = format!("{path} {}", expected["post"]);
+            // A recorded path is what Node was asked, so it is sent as written.
+            let at = Local::parse(path).unwrap_or_else(|| panic!("{path} is not a local path"));
             // A post was sent to the action as JSON; anything else is a `GET`.
-            let request = match expected["post"].as_str().map(|body| orders.real(body)) {
+            let answer = match expected["post"].as_str().map(|body| orders.real(body)) {
                 Some(body) => {
-                    let mut post = corten::http::Request::post(path)
-                        .header("host", "localhost")
-                        .header("content-type", "application/json");
+                    let mut post = client
+                        .call(Method::POST, &at)
+                        .header(corten::http::header::HOST, "localhost")
+                        .body("application/json", body);
                     for (name, value) in expected["headers"].as_object().into_iter().flatten() {
-                        let headers = post.headers_mut().unwrap();
-                        let value = value.as_str().unwrap().parse().unwrap();
-                        headers.insert(name.parse::<corten::http::HeaderName>().unwrap(), value);
+                        post = post.header(name.parse().unwrap(), value.as_str().unwrap());
                     }
-                    post.body(corten::axum::body::Body::from(body))
+                    post.await
                 }
-                None => corten::http::Request::get(path).body(corten::axum::body::Body::empty()),
-            }
-            .unwrap();
-            let answer = router.clone().oneshot(request).await.unwrap();
+                None => client.get(&at).await,
+            };
             let status = answer.status().as_u16();
             let cache = answer.headers().get("cache-control").cloned();
             let kind = answer.headers()["content-type"]
                 .to_str()
                 .unwrap()
                 .to_owned();
-            let body = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
-                .await
-                .unwrap();
-            let body = crate::parity_fixture::scrub(serde_json::from_slice(&body).unwrap());
+            let body =
+                crate::parity_fixture::scrub(serde_json::from_slice(answer.bytes()).unwrap());
             assert!(kind.starts_with("application/json"), "{asked}: {kind}");
             assert_eq!(
                 u64::from(status),
