@@ -24,7 +24,7 @@ mod parts;
 
 pub use app_bar::{AppBar, AuthCookieWarning};
 pub use error_page::error_page;
-pub use parts::{Notice, SubmitsOnChange};
+pub use parts::{FormNotice, Notice, SubmitsOnChange};
 
 corten::assets::embed! {
     /// The files in `static/`, compiled into the program: `Static::STYLE_CSS` is `static/style.css`.

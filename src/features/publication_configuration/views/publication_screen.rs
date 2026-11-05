@@ -6,7 +6,7 @@ use crate::{
         form::SettingsInput,
         url,
     },
-    layout::Notice,
+    layout::{FormNotice, Notice},
     theme::*,
     ui::{
         alert::AlertVariant,
@@ -82,7 +82,7 @@ pub fn PublicationForm<'a>(
             action={url::PublicationSettings}
             data-patch
         >
-            {errors.form_message()}
+            <FormNotice errors={errors} />
             <div class={Card {}}>
                 <header class={CardHeader {}}><h2>"Runtime safety"</h2></header>
                 <div class={CardContent {}}>

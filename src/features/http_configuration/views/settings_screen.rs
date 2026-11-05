@@ -2,7 +2,7 @@ use corten::{prelude::*, view::Id};
 
 use crate::{
     features::http_configuration::{config::Domain, form::SettingsInput, url},
-    layout::Notice,
+    layout::{FormNotice, Notice},
     theme::*,
     ui::{
         accordion::Accordion,
@@ -104,7 +104,7 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
             action={url::HttpSettings}
             data-patch
         >
-            {errors.form_message()}
+            <FormNotice errors={errors} />
             <div class={Card {}}>
                 <header class={CardHeader {}}><h2>"Authentication"</h2></header>
                 <div class={CardContent {}}>

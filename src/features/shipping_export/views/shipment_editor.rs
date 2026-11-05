@@ -11,6 +11,7 @@ use crate::{
             url::{self, ShippingWorkflow},
         },
     },
+    layout::FormNotice,
     ui::{
         button::{Button, ButtonSize, ButtonVariant},
         field::Field,
@@ -73,7 +74,7 @@ pub fn ShipmentEditorForm<'a>(
             class={Form}
             data-patch
         >
-            {errors.form_message()}
+            <FormNotice errors={errors} />
             <h3>"To Address"</h3>
             <AddressFields input={input} e={&e} />
             <h3>"Shipment Details"</h3>

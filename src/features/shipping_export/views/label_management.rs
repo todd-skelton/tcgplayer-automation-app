@@ -20,7 +20,7 @@ use crate::{
             url::{self, ShippingWorkflow},
         },
     },
-    layout::Notice,
+    layout::{FormNotice, Notice},
     text::Msg,
     theme::*,
     ui::{
@@ -240,7 +240,7 @@ pub fn LabelForm<'a>(
             data-patch
             on:change={js::changed(event, redraw)}
         >
-            {errors.form_message()}
+            <FormNotice errors={errors} />
             <fieldset class={Choices}>
                 <legend>"Labels to Buy"</legend>
                 for each in LabelsToBuy::ALL {

@@ -9,8 +9,8 @@ use crate::{
         turnaround_settings::MAXIMUM_MANUAL_DAYS,
         url::{self, View},
     },
-    layout::Notice,
     layout::SubmitsOnChange,
+    layout::{FormNotice, Notice},
     text::Msg,
     theme::*,
     ui::badge::{Badge, BadgeEmphasis, BadgeTone},
@@ -169,7 +169,7 @@ pub fn TurnaroundForm<'a>(
             data-patch
             class={TurnaroundForm}
         >
-            {errors.form_message()}
+            <FormNotice errors={errors} />
             <input type="hidden" name={f.seller_key} value={&input.seller_key}>
             <SubmitsOnChange>
                 <div class={Line}>

@@ -9,8 +9,8 @@ use crate::{
         store::{Item, PAGE_SIZE, RECENT_RUNS, Run, Shown, range},
         url::{self, View},
     },
-    layout::Notice,
     layout::SubmitsOnChange,
+    layout::{FormNotice, Notice},
     text::Msg,
     theme::*,
     ui::{
@@ -119,7 +119,7 @@ pub fn ScheduleForm<'a>(
             data-patch
             class={Stack}
         >
-            {errors.form_message()}
+            <FormNotice errors={errors} />
             <Switch label="Enable continuous pricing scheduler">
                 <input type="checkbox" role="switch" name={f.enabled} checked={input.enabled}>
             </Switch>

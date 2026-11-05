@@ -6,7 +6,7 @@ use crate::{
         form::{Kind, PackageInput, PackageInputGroupFields, SettingsInput},
         url,
     },
-    layout::Notice,
+    layout::{FormNotice, Notice},
     theme::*,
     ui::{
         alert::AlertVariant,
@@ -114,7 +114,7 @@ pub fn ShippingSettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) ->
             class={Settings}
             data-patch
         >
-            {errors.form_message()}
+            <FormNotice errors={errors} />
             <h3>"Live TCGPlayer Orders"</h3>
             <p class={muted()}>
                 "This seller key is used as the default when the shipping export page loads live seller orders directly from TCGPlayer."

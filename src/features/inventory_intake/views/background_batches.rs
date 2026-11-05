@@ -11,7 +11,7 @@ use crate::{
             url::{self, Selection},
         },
     },
-    layout::Notice,
+    layout::{FormNotice, Notice},
     theme::*,
     ui::{
         alert::AlertVariant,
@@ -165,7 +165,7 @@ fn RunItem<'a>(run: &'a Run, selection: &'a Selection, errors: Option<&'a Errors
                         <p class={muted()}>
                             "The batch is re-estimated at the new rate. The earlier estimate stays in the batch's cost history, and pricing is not affected."
                         </p>
-                        {errors.form_message()}
+                        <FormNotice errors={errors} />
                         <label>
                             "Percent of market"
                             <input
