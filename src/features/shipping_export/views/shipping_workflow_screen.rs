@@ -40,7 +40,7 @@ struct ShippingSettingsTipId;
 #[component]
 pub fn Refused<'a>(problem: Option<&'a str>) -> impl Patch {
     html! {
-        <div id={RefusedId} role="alert">
+        <div id={RefusedId}>
             if let Some(problem) = problem {
                 <Notice variant={AlertVariant::Warning}>{problem}</Notice>
             }

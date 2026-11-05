@@ -49,7 +49,7 @@ struct DeleteHeadingId;
 #[component]
 pub fn BatchProblem<'a>(message: Option<&'a str>) -> impl Patch {
     html! {
-        <div id={BatchProblemId} role="alert">
+        <div id={BatchProblemId}>
             if let Some(message) = message {
                 <Notice variant={AlertVariant::Warning}>{message}</Notice>
             }

@@ -50,7 +50,7 @@ struct ImportFormId;
 #[component]
 pub fn Problem<'a>(at: Place, why: Option<&'a str>) -> impl Patch {
     html! {
-        <div id={ProblemId(at.name())} role="alert">
+        <div id={ProblemId(at.name())}>
             if let Some(why) = why {
                 <Notice variant={AlertVariant::Warning}>{why}</Notice>
             }

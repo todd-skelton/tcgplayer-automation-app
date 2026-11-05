@@ -60,7 +60,7 @@ pub struct ScheduleFormId;
 #[component(css = ContinuousScreen)]
 pub fn Problem<'a>(why: Option<&'a str>) -> impl Patch {
     html! {
-        <div id={ScheduleProblemId} role="alert">
+        <div id={ScheduleProblemId}>
             if let Some(why) = why {
                 <Notice variant={AlertVariant::Warning}>{why}</Notice>
             }

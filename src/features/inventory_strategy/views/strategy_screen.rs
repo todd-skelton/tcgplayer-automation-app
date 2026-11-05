@@ -46,7 +46,7 @@ pub struct StrategyScreenId;
 #[component(css = StrategyScreen)]
 pub fn Problem<'a>(why: Option<&'a str>) -> impl Patch {
     html! {
-        <div id={StrategyProblemId} role="alert">
+        <div id={StrategyProblemId}>
             if let Some(why) = why {
                 <Notice variant={AlertVariant::Warning}>{why}</Notice>
             }

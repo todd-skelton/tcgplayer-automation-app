@@ -262,7 +262,7 @@ pub fn QueueForm<'a>(
                 </fieldset>
             </details>
             <div class={Problem} role="status">
-                {errors.form_message()}
+                {errors.form()}
                 if !can_queue {
                     "Waiting for batch status before queuing."
                 }

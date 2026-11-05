@@ -586,7 +586,7 @@ pub fn CountForm<'a>(
 #[component(css = IntakeScreen)]
 pub fn QueueNotice<'a>(message: Option<&'a str>) -> impl Patch {
     html! {
-        <div id={QueueNoticeId} role="status">
+        <div id={QueueNoticeId}>
             if let Some(message) = message {
                 <Notice variant={AlertVariant::Success}>{message}</Notice>
             }
