@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: slider 76e5927b0d56d80b */
+/* corten ui 0.1.0: slider 5337c0f811be3be9 */
 .slider { appearance: none; width: 100%; height: 1rem; margin: 0; background: transparent; cursor: pointer; }
 .slider::-webkit-slider-runnable-track { height: .375rem; border-radius: 999px; background: var(--border); }
 .slider::-moz-range-track { height: .375rem; border-radius: 999px; background: var(--border); }
@@ -13,3 +13,16 @@
 }
 .slider:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .slider:disabled { opacity: .5; cursor: not-allowed; }
+/* A contrast theme paints the track's background as Canvas, so the range would have no extent:
+   the track is drawn in GrayText and the thumb in ButtonText, a disabled one in GrayText; Firefox
+   also draws the part chosen in Highlight, which Chromium has no part for. */
+@media (forced-colors: active) {
+  .slider::-webkit-slider-runnable-track { forced-color-adjust: none; background: GrayText; }
+  .slider::-moz-range-track { forced-color-adjust: none; background: GrayText; }
+  .slider::-moz-range-progress { forced-color-adjust: none; background: Highlight; }
+  .slider::-webkit-slider-thumb { forced-color-adjust: none; background: ButtonText; border-color: ButtonText; box-shadow: none; }
+  .slider::-moz-range-thumb { forced-color-adjust: none; background: ButtonText; border-color: ButtonText; box-shadow: none; }
+  .slider:disabled::-webkit-slider-thumb { background: GrayText; border-color: GrayText; }
+  .slider:disabled::-moz-range-thumb { background: GrayText; border-color: GrayText; }
+  .slider:disabled::-moz-range-progress { background: GrayText; }
+}

@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: radio_group 7705da03c68f1b19 */
+/* corten ui 0.1.0: radio_group e0ddfc7ee0297826 */
 .group { display: grid; gap: .75rem; margin: 0; padding: 0; border: 0; min-width: 0; }
 .group > legend { margin-bottom: .75rem; padding: 0; font-size: .875rem; font-weight: 500; }
 .radio { display: inline-flex; align-items: center; gap: .5rem; font-size: .875rem; line-height: 1.25rem; cursor: pointer; }
@@ -12,3 +12,11 @@
 .radio > input:checked::before { transform: scale(1); }
 .radio > input:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .radio:has(> input:disabled) { opacity: .5; cursor: not-allowed; }
+/* A contrast theme paints every background as Canvas, so a chosen radio's dot would vanish: it is
+   drawn in the selection color, a disabled one in gray. */
+@media (forced-colors: active) {
+  .radio > input:checked { border-color: Highlight; }
+  .radio > input::before { forced-color-adjust: none; background: Highlight; }
+  .radio > input:disabled:checked { border-color: GrayText; }
+  .radio > input:disabled::before { background: GrayText; }
+}

@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: pagination bf67e8968bc0faa3 */
+/* corten ui 0.1.0: pagination d12ab17bbbf3a3a8 */
 .pagination > ul { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .25rem; margin: 0; padding: 0; list-style: none; }
 .page, .step {
   display: inline-flex; align-items: center; justify-content: center; gap: .25rem; height: var(--control-height); min-width: var(--control-height);
@@ -13,3 +13,8 @@
 .previous::before { transform: rotate(-135deg); }
 .next::after { transform: rotate(45deg); }
 .gap::before { content: "\2026"; display: inline-flex; width: var(--control-height); justify-content: center; color: var(--muted-foreground); }
+/* A contrast theme gives every page the same border and background, so the current one is
+   underlined, which a focus ring leaves in place. */
+@media (forced-colors: active) {
+  .page[aria-current="page"] { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+}
