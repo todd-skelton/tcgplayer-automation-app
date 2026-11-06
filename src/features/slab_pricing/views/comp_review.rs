@@ -10,7 +10,7 @@ use crate::{
         url::{self, Choice},
         views::Problem,
     },
-    layout::Notice,
+    layout::{DialogNotSent, Notice},
     row_order,
     theme::*,
     ui::{
@@ -235,7 +235,7 @@ fn SaleDialog<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> impl 
         comp: None,
         ..choice.clone()
     };
-    let close = refs();
+    let (close, said) = refs();
     let sale = &row.sale;
     let reasons = if row.reasons.is_empty() {
         "Identity and price passed screening.".to_owned()
@@ -257,6 +257,7 @@ fn SaleDialog<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> impl 
             aria-labelledby="slab-comp-sale"
             class={Dialog { size: DialogSize::Lg }}
             on:connect={dialog::modalClosedBy(target, close, signal)}
+            on:corten:error={dialog::failed(event, target, said)}
         >
             <div class={DialogHeader {}}>
                 <h3 id="slab-comp-sale">"Review sold evidence"</h3>
@@ -295,6 +296,7 @@ fn SaleDialog<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> impl 
                         </button>
                     </form>
                 }
+                <DialogNotSent said={said} />
                 <Problem
                     at={Place::CompDecision}
                     why={screen.problem_at(Place::CompDecision)}

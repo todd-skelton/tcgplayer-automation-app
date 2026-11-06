@@ -24,7 +24,7 @@ mod parts;
 
 pub use app_bar::{AppBar, AuthCookieWarning};
 pub use error_page::error_page;
-pub use parts::{FormNotice, Notice, SubmitsOnChange};
+pub use parts::{DialogNotSent, FormNotice, Notice, SubmitsOnChange};
 
 corten::assets::embed! {
     /// The files in `static/`, compiled into the program: `Static::STYLE_CSS` is `static/style.css`.
@@ -104,7 +104,8 @@ pub fn Layout<'a>(
 
 /// What the toaster says when a `data-patch` submit got no answer: the write may or may not have
 /// reached the server, and the form keeps what was typed.
-const NOT_SENT: &str = "That did not go through, and may not have been saved. Check and try again.";
+pub(crate) const NOT_SENT: &str =
+    "That did not go through, and may not have been saved. Check and try again.";
 
 /// A screen in the app bar.
 pub enum Screen {

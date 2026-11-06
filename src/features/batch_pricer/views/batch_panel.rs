@@ -1,7 +1,7 @@
 use std::time::SystemTime;
 
 use corten::{i18n::DateStyle, prelude::*};
-use corten_ui::Tooltip;
+use corten_ui::{Tooltip, dialog};
 
 use super::{
     batch_summary::BatchSummary,
@@ -16,7 +16,7 @@ use crate::{
         page::{PriceInput, Shown, elapsed},
         url,
     },
-    layout::Notice,
+    layout::{DialogNotSent, Notice},
     text::Msg,
     theme::*,
     ui::{
@@ -88,6 +88,7 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
     let priced = batch.has_results();
     let preview = publications.and_then(|p| p.preview.as_ref());
     let ready = preview.map_or(0, |p| p.eligible_count);
+    let said = refs();
     let can_publish = !busy && ready > 0 && publications.is_some_and(|p| !p.plan_exists());
     let can_delete = !batch.pricing() && publications.is_some_and(|p| p.publications.is_empty());
     let mode = PriceInput::FIELDS.mode;
@@ -214,12 +215,14 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
                     id={DeleteDialogId}
                     aria-labelledby={DeleteHeadingId}
                     class={Dialog { size: DialogSize::Sm }}
+                    on:corten:error={dialog::failed(event, target, said)}
                 >
                     <h2 id={DeleteHeadingId}>"Delete Batch "{n}"?"</h2>
                     <p>
                         "This removes the batch, its "{batch.item_count}
                         " frozen items, and all saved pricing results. This cannot be undone."
                     </p>
+                    <DialogNotSent said={said} />
                     <form
                         method="post"
                         action={url::Delete { batch: n }}

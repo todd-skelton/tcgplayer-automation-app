@@ -1,4 +1,5 @@
 use corten::prelude::*;
+use corten_ui::dialog;
 
 use crate::{
     features::batch_pricer::{
@@ -6,6 +7,7 @@ use crate::{
         page::PublishInput,
         url,
     },
+    layout::DialogNotSent,
     text::{Msg, msg},
     theme::*,
     ui::{
@@ -35,6 +37,7 @@ pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> 
         .filter(|c| recommended.contains(&c.sku))
         .fold((0, 0), |(n, d), c| (n + 1, d + c.quantity_delta));
     let (items, note, submit, tools) = refs();
+    let said = refs();
     let selection = js::Selection {
         items,
         note,
@@ -48,6 +51,7 @@ pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> 
             id={PublishDialogId}
             aria-labelledby={PublishHeadingId}
             class={(Dialog { size: DialogSize::Xl }, PublishDialog)}
+            on:corten:error={dialog::failed(event, target, said)}
         >
             <form
                 method="post"
@@ -105,6 +109,7 @@ pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> 
                         />
                     }
                 </ul>
+                <DialogNotSent said={said} />
                 <div class={DialogFooter {}}>
                     <button
                         class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}

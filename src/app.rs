@@ -193,7 +193,12 @@ pub fn app(shared: Shared) -> App {
         .assets(Static)
         .components(&[theme::TOKENS])
         .components(ui::COMPONENTS)
-        .components(&[layout::AppBar, layout::Layout, layout::SubmitsOnChange])
+        .components(&[
+            layout::AppBar,
+            layout::Layout,
+            layout::SubmitsOnChange,
+            layout::DialogNotSent,
+        ])
         .components(corten_ui::COMPONENTS)
         .components(dashboard::COMPONENTS)
         .messages::<Msg>()
