@@ -28,6 +28,8 @@ declare module "corten/views" {
    * element the markup fills with `<Row .. />` only.
    */
   export type Holds<V, E extends Element = HTMLElement> = E & { readonly [holds]: V };
+  /** Show a server-rendered branch, retaining the current root when its id matches the template. */
+  export function view<V extends { el: Element }>(host: Element, View: new (el: Element) => V, template: Holds<NoInfer<V>, HTMLTemplateElement>): V;
   /** The views of every child of a parent element, all made from one component without a key. */
   export interface RowList<V extends { el: Element }> {
     readonly length: number;
