@@ -1,5 +1,11 @@
-/* corten ui 0.1.0: toasts d210a1920672d578 */
-.toasts { position: fixed; inset: auto 1rem 1rem auto; z-index: 50; width: min(22rem, calc(100vw - 2rem)); }
+/* corten ui 0.1.0: toasts 0e938fefbf278af8 */
+/* Bottom right, and clear of a phone's home indicator on a page with viewport-fit=cover. A layout with
+   a fixed bar along the bottom lifts it where the bar shows, on body (the theme sets :root's):
+   body { --toasts-inset-bottom: calc(1rem + <the bar's height>); } inside its @media. */
+.toasts {
+  position: fixed; z-index: 50; width: min(22rem, calc(100vw - 2rem - env(safe-area-inset-right, 0px)));
+  inset: auto calc(1rem + env(safe-area-inset-right, 0px)) calc(var(--toasts-inset-bottom) + env(safe-area-inset-bottom, 0px)) auto;
+}
 /* Toaster's root: a box only while it has a message. */
 .toasts > :has([role="status"] > :not([hidden])) {
   display: flex; align-items: flex-start; gap: .75rem; box-sizing: border-box; padding: 1rem;

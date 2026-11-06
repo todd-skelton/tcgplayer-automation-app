@@ -569,6 +569,14 @@
     },
     "$description": "A kit card's heading."
   },
+  "toasts-inset-bottom": {
+    "$type": "dimension",
+    "$value": {
+      "value": 1,
+      "unit": "rem"
+    },
+    "$description": "How far the kit's toaster sits above the bottom of the window; the app has no bottom bar."
+  },
   "font-size": {
     "$type": "dimension",
     "xs": {
