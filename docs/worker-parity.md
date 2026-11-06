@@ -55,6 +55,13 @@ Every worker now has its Node recording committed; no test reads the uncommitted
 The recordings' Rust tests are `#[ignore]` only because they use the dev database, in a
 transaction rolled back.
 
+The two dev shadows, run on 2026-11-06 at Corten 94cea042: the FIFO replay matches Node's saved
+lines on all 2,971 SKUs. The batch pricing replay of jobs 7103 to 7112 (a diagnostic, not a gate;
+see `batch_pricing::shadow`) found 102 SKUs priced from competing asks, 2 Node could not reach
+TCGplayer for and 2 that differ: a warning that names a delivered listing Node read and the ledger
+does not hold (the same price), and one SKU with capped sales history priced at $21.13 from the
+ledger against Node's $20.83, no supply read. Neither is a Corten matter.
+
 ## Dev cutover
 
 Workers move to Rust in dev one at a time; production keeps Node's until Todd approves a deploy.
