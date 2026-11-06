@@ -94,7 +94,7 @@ pub fn Layout<'a>(
                         close="Dismiss"
                         seconds={10}
                         toast={Toast { message: req.notice() }}
-                        failed={html! { <span data-tone="failed">{NOT_SENT}</span> }}
+                        failed={NOT_SENT}
                     />
                 </div>
             </body>
