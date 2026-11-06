@@ -15,24 +15,24 @@
         "evidenceWindowDays": 90
       },
       "costModel": {
-        "learnedAt": "2026-11-06T00:11:59.953Z",
+        "learnedAt": "2026-11-06T04:21:05.014Z",
         "evidenceWindowDays": 90,
-        "orderCount": 1578,
+        "orderCount": 1575,
         "tiers": [
           {
             "fromOrderValue": 0,
             "buyerShipping": 1.52,
             "postage": 0.85,
-            "orderCount": 124,
-            "postageOrderCount": 124,
+            "orderCount": 123,
+            "postageOrderCount": 123,
             "basis": "observed"
           },
           {
             "fromOrderValue": 5,
             "buyerShipping": 0.04,
             "postage": 0.88,
-            "orderCount": 1056,
-            "postageOrderCount": 1055,
+            "orderCount": 1054,
+            "postageOrderCount": 1053,
             "basis": "observed"
           },
           {
@@ -52,14 +52,14 @@
             "basis": "observed"
           }
         ],
-        "basketCount": 3714
+        "basketCount": 3709
       },
       "thresholdCosts": [
         {
           "threshold": 5,
           "snapPriceShippingCost": 0.13,
-          "thresholdShippingCost": 0.37,
-          "basketCount": 1336
+          "thresholdShippingCost": 0.36,
+          "basketCount": 1334
         },
         {
           "threshold": 50,
@@ -215,24 +215,24 @@
         "evidenceWindowDays": 90
       },
       "costModel": {
-        "learnedAt": "2026-11-06T00:12:01.296Z",
+        "learnedAt": "2026-11-06T04:21:08.768Z",
         "evidenceWindowDays": 90,
-        "orderCount": 1578,
+        "orderCount": 1575,
         "tiers": [
           {
             "fromOrderValue": 0,
             "buyerShipping": 1.52,
             "postage": 0.85,
-            "orderCount": 124,
-            "postageOrderCount": 124,
+            "orderCount": 123,
+            "postageOrderCount": 123,
             "basis": "observed"
           },
           {
             "fromOrderValue": 5,
             "buyerShipping": 0.04,
             "postage": 0.88,
-            "orderCount": 1056,
-            "postageOrderCount": 1055,
+            "orderCount": 1054,
+            "postageOrderCount": 1053,
             "basis": "observed"
           },
           {
@@ -252,14 +252,14 @@
             "basis": "observed"
           }
         ],
-        "basketCount": 3714
+        "basketCount": 3709
       },
       "thresholdCosts": [
         {
           "threshold": 5,
           "snapPriceShippingCost": 0.13,
-          "thresholdShippingCost": 0.37,
-          "basketCount": 1336
+          "thresholdShippingCost": 0.36,
+          "basketCount": 1334
         },
         {
           "threshold": 50,
