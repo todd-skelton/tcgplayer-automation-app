@@ -71,13 +71,6 @@ pub fn js_string(value: &serde_json::Value) -> String {
     }
 }
 
-/// `new URL(request.url).searchParams.get(name)`: the first value sent for `name`.
-pub fn first(query: Option<&str>, name: &str) -> Option<String> {
-    form_urlencoded::parse(query?.as_bytes())
-        .find(|(key, _)| key == name)
-        .map(|(_, value)| value.into_owned())
-}
-
 /// JavaScript's `text.trim()`: white space, line ends and the byte order mark, which Rust's
 /// `trim` keeps, off both ends.
 pub fn js_trim(text: &str) -> &str {
@@ -236,16 +229,5 @@ pub mod tests {
         ] {
             assert_eq!(js_number(text), number, "{text:?}");
         }
-    }
-
-    #[test]
-    fn the_first_value_sent_is_the_one_read() {
-        assert_eq!(
-            first(Some("days=28&days=56"), "days").as_deref(),
-            Some("28")
-        );
-        assert_eq!(first(Some("a=1&da%79s=+5"), "days").as_deref(), Some(" 5"));
-        assert_eq!(first(Some("a=1"), "days"), None);
-        assert_eq!(first(None, "days"), None);
     }
 }

@@ -4,10 +4,7 @@
 //! quantity correction, each in a transaction of its own.
 use chrono::{DateTime, Utc};
 use corten::{
-    Api, JsonResponse, Prefix,
-    axum::{body::to_bytes, extract::Request},
-    http::StatusCode,
-    prelude::*,
+    Api, JsonResponse, Prefix, axum::body::to_bytes, extract::Request, http::StatusCode, prelude::*,
 };
 use serde_json::{Value, json};
 use sqlx::PgConnection;

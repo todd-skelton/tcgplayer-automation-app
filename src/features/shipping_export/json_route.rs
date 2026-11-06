@@ -7,10 +7,7 @@
 //! count past 4,294,967,295 is refused as incomplete; and a text `skuId` with spaces around it is
 //! read trimmed, where Node kept the spaces and so found no allocation for it.
 use corten::{
-    Api, JsonResponse, Prefix,
-    axum::{body::to_bytes, extract::Request},
-    http::StatusCode,
-    prelude::*,
+    Api, JsonResponse, Prefix, axum::body::to_bytes, extract::Request, http::StatusCode, prelude::*,
 };
 use serde_json::{Value, json};
 

@@ -5,10 +5,7 @@
 use std::collections::HashMap;
 
 use corten::{
-    Api, JsonResponse, Prefix,
-    axum::{body::to_bytes, extract::Request},
-    http::StatusCode,
-    prelude::*,
+    Api, JsonResponse, Prefix, axum::body::to_bytes, extract::Request, http::StatusCode, prelude::*,
 };
 use serde_json::{Map, Value, json};
 

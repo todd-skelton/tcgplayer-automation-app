@@ -5,7 +5,7 @@
 //! The form's body is read twice, once as the shipment ([`ShipmentInput`]) and once as the
 //! choice ([`Choice`]), since a form's fields cannot be flattened from a shared group (corten
 //! #363).
-use corten::{Refusal, axum::body::Bytes, form::from_bytes, prelude::*};
+use corten::{Bytes, Refusal, form::from_bytes, prelude::*};
 use serde::Deserialize;
 
 use super::{

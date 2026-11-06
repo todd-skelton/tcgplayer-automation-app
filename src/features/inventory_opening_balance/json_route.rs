@@ -5,10 +5,7 @@
 //! observation and applying a run, which read the seller's inventory from Seller Portal and (to
 //! apply) move the order history on (`capture`, `apply`).
 use corten::{
-    Api, JsonResponse, Prefix,
-    axum::{body::to_bytes, extract::Request},
-    http::StatusCode,
-    prelude::*,
+    Api, JsonResponse, Prefix, axum::body::to_bytes, extract::Request, http::StatusCode, prelude::*,
 };
 use serde_json::{Value, json};
 use sqlx::PgConnection;

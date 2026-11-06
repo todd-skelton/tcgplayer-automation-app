@@ -7,10 +7,8 @@
 use corten::json::Raw;
 use corten::{
     Api, JsonError, JsonResponse, Prefix,
-    axum::{
-        body::to_bytes,
-        extract::{RawQuery, Request},
-    },
+    axum::body::to_bytes,
+    extract::Request,
     http::{HeaderMap, HeaderValue, StatusCode, header},
     prelude::*,
 };
@@ -27,7 +25,10 @@ const UNABLE: &str = "Unable to calculate a slab recommendation.";
 
 #[derive(Route)]
 #[route("/api/slab-recommendations")]
-pub struct SlabRecommendations;
+pub struct SlabRecommendations {
+    /// Every `id` sent; Node read the first (`searchParams.get`).
+    pub id: Vec<String>,
+}
 
 /// The route, added to the app's one API at `/api` (`crate::api`).
 pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
@@ -57,8 +58,11 @@ fn failure(refused: Option<&str>, unreadable: bool) -> JsonResponse {
 }
 
 /// The recommendation `id`, whether it is current, and its reviewed ask.
-async fn show(State(db): State<Database>, RawQuery(query): RawQuery) -> JsonResponse {
-    let id = api::first(query.as_deref(), "id").unwrap_or_default();
+async fn show(
+    State(db): State<Database>,
+    Params(asked): Params<SlabRecommendations>,
+) -> JsonResponse {
+    let id = asked.id.first().cloned().unwrap_or_default();
     if !is_id(&id) {
         return failure(Some("Choose a recommendation."), false);
     }
@@ -322,7 +326,7 @@ mod tests {
             slab_providers: crate::features::slab_connections::Transport::default(),
         })
         .test()
-        .call(Method::POST, &super::SlabRecommendations)
+        .call(Method::POST, &super::SlabRecommendations { id: Vec::new() })
         .header(header::HOST, "localhost")
         .header(header::ORIGIN, "http://evil.example")
         .body("application/json", r#"{"intent":"override"}"#)

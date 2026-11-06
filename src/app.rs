@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use corten::{
     Relay,
-    axum::extract::Request,
+    extract::Request,
     prelude::*,
     security::Policy,
     upgrade::{SwitchOr, Upgrade},

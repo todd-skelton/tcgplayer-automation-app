@@ -20,10 +20,9 @@ use chrono::Utc;
 
 use corten::{
     Api, JsonResponse, Prefix, Relay,
-    axum::{
-        body::{Body, to_bytes},
-        extract::{FromRequest, RawQuery, Request},
-    },
+    answer::Body,
+    axum::body::to_bytes,
+    extract::{FromRequest, Request},
     http::{HeaderMap, HeaderValue, StatusCode, header},
     prelude::*,
 };
@@ -80,12 +79,16 @@ pub struct InventoryBatch<'a> {
 #[route("/api/inventory-batches/{batch}/items")]
 pub struct InventoryBatchItems<'a> {
     pub batch: &'a str,
+    /// Every `scope` sent; Node read the first (`searchParams.get`).
+    pub scope: Vec<String>,
 }
 
 #[derive(Route)]
 #[route("/api/inventory-batches/{batch}/results")]
 pub struct InventoryBatchResults<'a> {
     pub batch: &'a str,
+    /// Every `scope` sent; Node read the first (`searchParams.get`).
+    pub scope: Vec<String>,
 }
 
 #[derive(Route)]
@@ -568,13 +571,12 @@ async fn not_allowed(Params(at): Params<InventoryBatch<'_>>) -> JsonResponse {
 async fn items(
     State(db): State<Database>,
     Params(at): Params<InventoryBatchItems<'_>>,
-    RawQuery(query): RawQuery,
 ) -> JsonResponse {
     let batch = match batch_number(&at.batch) {
         Ok(batch) => batch,
         Err(refused) => return refused.into(),
     };
-    let errors = api::first(query.as_deref(), "scope").as_deref() == Some("errors");
+    let errors = at.scope.first().map(String::as_str) == Some("errors");
     let listed = match db.0.acquire().await {
         Ok(mut conn) => batch_json::items(&mut conn, batch, errors).await,
         Err(error) => Err(node_pg::thrown(error)),
@@ -589,13 +591,12 @@ async fn items(
 async fn results(
     State(db): State<Database>,
     Params(at): Params<InventoryBatchResults<'_>>,
-    RawQuery(query): RawQuery,
 ) -> JsonResponse {
     let batch = match batch_number(&at.batch) {
         Ok(batch) => batch,
         Err(refused) => return refused.into(),
     };
-    let manual_review = api::first(query.as_deref(), "scope").as_deref() == Some("manual-review");
+    let manual_review = at.scope.first().map(String::as_str) == Some("manual-review");
     let listed = match db.0.acquire().await {
         Ok(mut conn) => batch_json::results(&mut conn, batch, manual_review).await,
         Err(error) => Err(node_pg::thrown(error)),

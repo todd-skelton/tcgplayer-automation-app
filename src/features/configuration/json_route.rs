@@ -2,10 +2,7 @@
 //! reads it normalized (the defaults written first when there is none), and `PUT` replaces it
 //! with the body normalized (`normalizeServerPricingConfig`), answering with it read again.
 use corten::{
-    Api, JsonResponse, Prefix,
-    axum::{body::to_bytes, extract::Request},
-    http::StatusCode,
-    prelude::*,
+    Api, JsonResponse, Prefix, axum::body::to_bytes, extract::Request, http::StatusCode, prelude::*,
 };
 use serde_json::{Value, json};
 

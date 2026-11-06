@@ -358,10 +358,10 @@ mod tests {
         atomic::{AtomicUsize, Ordering},
     };
 
-    use corten::axum::{
-        Router,
+    use corten::{
+        axum::Router,
         http::{HeaderMap as Headers, StatusCode},
-        response::{IntoResponse, Response},
+        middleware::{IntoResponse, Response},
     };
 
     use super::*;

@@ -2,9 +2,7 @@
 //! is saved) and confirmed by the operator (`confirm`), by `POST`, as the Node route answered
 //! them, never stored by a cache.
 use corten::{
-    Api, JsonResponse, Prefix, Signal,
-    axum::{body::to_bytes, extract::Request},
-    http::StatusCode,
+    Api, JsonResponse, Prefix, Signal, axum::body::to_bytes, extract::Request, http::StatusCode,
     prelude::*,
 };
 use serde_json::{Value, json};
