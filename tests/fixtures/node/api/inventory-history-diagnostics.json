@@ -5,7 +5,7 @@
     "body": {
       "diagnostics": {
         "sellerKey": "8520a14f",
-        "generatedAt": "2026-11-05T04:45:31.426Z",
+        "generatedAt": "2026-11-06T15:15:57.605Z",
         "orderCoverage": {
           "sellerKey": "8520a14f",
           "source": "tcgplayer_api",
@@ -73,12 +73,12 @@
           "missingIntakeDateQuantity": 0
         },
         "publications": {
-          "planned": 0,
+          "planned": 1,
           "active": 0,
           "ambiguous": 0,
           "failed": 13,
           "retried": 0,
-          "oldestPlannedAt": null,
+          "oldestPlannedAt": "2026-11-06T13:01:46.246Z",
           "lastPublishedAt": "2026-11-05T03:18:27.273Z"
         }
       }

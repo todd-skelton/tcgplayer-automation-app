@@ -1179,7 +1179,7 @@
    },
    {
     "path": "/admin/pricing/uploadexportcsv",
-    "form": "data%5B0%5D%5BId%5D=0&data%5B0%5D%5BProductConditionId%5D=447529&data%5B0%5D%5BAddToQuantity%5D=0&data%5B0%5D%5BMyPrice%5D=2.21&data%5B1%5D%5BId%5D=1&data%5B1%5D%5BProductConditionId%5D=447569&data%5B1%5D%5BAddToQuantity%5D=0&data%5B1%5D%5BMyPrice%5D=6.75&data%5B2%5D%5BId%5D=2&data%5B2%5D%5BProductConditionId%5D=446597&data%5B2%5D%5BAddToQuantity%5D=0&data%5B2%5D%5BMyPrice%5D=4.55&data%5B3%5D%5BId%5D=3&data%5B3%5D%5BProductConditionId%5D=447673&data%5B3%5D%5BAddToQuantity%5D=0&data%5B3%5D%5BMyPrice%5D=5.18&data%5B4%5D%5BId%5D=4&data%5B4%5D%5BProductConditionId%5D=446147&data%5B4%5D%5BAddToQuantity%5D=0&data%5B4%5D%5BMyPrice%5D=4.05&stagedPricingUploadId=7002&fileName=inventory-publication-ID.csv&type=Pricing"
+    "form": "data%5B0%5D%5BId%5D=0&data%5B0%5D%5BProductConditionId%5D=446147&data%5B0%5D%5BAddToQuantity%5D=0&data%5B0%5D%5BMyPrice%5D=4.05&data%5B1%5D%5BId%5D=1&data%5B1%5D%5BProductConditionId%5D=447529&data%5B1%5D%5BAddToQuantity%5D=0&data%5B1%5D%5BMyPrice%5D=2.21&data%5B2%5D%5BId%5D=2&data%5B2%5D%5BProductConditionId%5D=447569&data%5B2%5D%5BAddToQuantity%5D=0&data%5B2%5D%5BMyPrice%5D=6.75&data%5B3%5D%5BId%5D=3&data%5B3%5D%5BProductConditionId%5D=446597&data%5B3%5D%5BAddToQuantity%5D=0&data%5B3%5D%5BMyPrice%5D=4.55&data%5B4%5D%5BId%5D=4&data%5B4%5D%5BProductConditionId%5D=447673&data%5B4%5D%5BAddToQuantity%5D=0&data%5B4%5D%5BMyPrice%5D=5.18&stagedPricingUploadId=7002&fileName=inventory-publication-ID.csv&type=Pricing"
    },
    {
     "path": "/admin/pricing/finalizeexportcsv",
@@ -3373,7 +3373,7 @@
    },
    {
     "path": "/admin/pricing/uploadexportcsv",
-    "form": "data%5B0%5D%5BId%5D=0&data%5B0%5D%5BProductConditionId%5D=448817&data%5B0%5D%5BAddToQuantity%5D=0&data%5B0%5D%5BMyPrice%5D=1.61&data%5B1%5D%5BId%5D=1&data%5B1%5D%5BProductConditionId%5D=446147&data%5B1%5D%5BAddToQuantity%5D=0&data%5B1%5D%5BMyPrice%5D=4.05&stagedPricingUploadId=7006&fileName=inventory-publication-ID.csv&type=Pricing"
+    "form": "data%5B0%5D%5BId%5D=0&data%5B0%5D%5BProductConditionId%5D=446147&data%5B0%5D%5BAddToQuantity%5D=0&data%5B0%5D%5BMyPrice%5D=4.05&data%5B1%5D%5BId%5D=1&data%5B1%5D%5BProductConditionId%5D=448817&data%5B1%5D%5BAddToQuantity%5D=0&data%5B1%5D%5BMyPrice%5D=1.61&stagedPricingUploadId=7006&fileName=inventory-publication-ID.csv&type=Pricing"
    },
    {
     "path": "/admin/pricing/rollbackexportcsv",
