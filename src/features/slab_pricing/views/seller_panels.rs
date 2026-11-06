@@ -4,6 +4,7 @@ use corten::{
     i18n::{DateStyle, TimeStyle},
     prelude::*,
 };
+use corten_ui::ordered;
 
 use crate::{
     features::{
@@ -59,10 +60,16 @@ pub fn SellerPanels<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     };
     html! {
         <div class={(Line, SellerPanels)}>
-            <a href={url::SlabPricing::at(&toggle_maintenance)}>
+            <a
+                on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                href={url::SlabPricing::at(&toggle_maintenance)}
+            >
                 if maintenance_shown { "Hide evidence maintenance" } else { "Evidence maintenance" }
             </a>
-            <a href={url::SlabPricing::at(&toggle_outcomes)}>
+            <a
+                on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                href={url::SlabPricing::at(&toggle_outcomes)}
+            >
                 if outcomes_shown { "Hide seller outcomes" } else { "Seller outcomes" }
             </a>
         </div>
@@ -94,6 +101,7 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             if let Some(view) = view {
                 let e = Within::none(MaintenanceFormId);
                 <form
+                    on:submit={ordered::send(event, target, super::sorted_tables())}
                     id={MaintenanceFormId}
                     method="post"
                     action={url::SaveMaintenance { choice: choice.clone() }}
@@ -159,7 +167,12 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                         >
                             "Save maintenance settings"
                         </button>
-                        <a href={url::SlabPricing::at(choice)}>"Reload status"</a>
+                        <a
+                            on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                            href={url::SlabPricing::at(choice)}
+                        >
+                            "Reload status"
+                        </a>
                         <button
                             class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
                             type="reset"
@@ -279,6 +292,7 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
             </p>
             let e = Within::none(OutcomeListingFormId);
             <form
+                on:submit={ordered::send(event, target, super::sorted_tables())}
                 id={OutcomeListingFormId}
                 method="get"
                 action={url::SlabPricing::at(&Choice::default())}
@@ -298,6 +312,7 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
                 <summary>"Import reviewed outcomes"</summary>
                 let o_e = Within::none(ImportOutcomesFormId);
                 <form
+                    on:submit={ordered::send(event, target, super::sorted_tables())}
                     id={ImportOutcomesFormId}
                     method="post"
                     action={url::ImportOutcomes { choice: choice.clone() }}

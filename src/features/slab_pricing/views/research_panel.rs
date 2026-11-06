@@ -5,6 +5,7 @@ use corten::{
     i18n::{DateStyle, TimeStyle},
     prelude::*,
 };
+use corten_ui::ordered;
 
 use crate::{
     features::{
@@ -58,6 +59,7 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
             <h2 id="slab-research">"Research evidence"</h2>
             let e = Within::none(ResearchFormId);
             <form
+                on:submit={ordered::send(event, target, super::sorted_tables())}
                 id={ResearchFormId}
                 method="get"
                 action={url::SlabPricing::at(&Choice::default())}
@@ -108,6 +110,7 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
                 Some(Err(why)) => <Notice variant={AlertVariant::Warning}>{why}</Notice>,
                 _ => {
                     <form
+                        on:submit={ordered::send(event, target, super::sorted_tables())}
                         method="post"
                         action={url::Refresh { choice: choice.clone() }}
                         data-patch
@@ -120,7 +123,12 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
                         >
                             "Refresh evidence"
                         </button>
-                        <a href={url::SlabPricing::at(choice)}>"Reload saved status"</a>
+                        <a
+                            on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                            href={url::SlabPricing::at(choice)}
+                        >
+                            "Reload saved status"
+                        </a>
                         <a href={slab_connections::url::SlabConnections}>"Data connections"</a>
                     </form>
                 }
@@ -200,12 +208,20 @@ fn EvidenceRow<'a>(status: &'a EvidenceStatus, choice: &'a Choice, t: Msg) -> im
                 }
             </span>
             if let Some(revision) = &status.latest_revision {
-                <a href={url::SlabPricing::at(&choice.reviewing_comps(revision))}>
+                <a
+                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                    href={url::SlabPricing::at(&choice.reviewing_comps(revision))}
+                >
                     "Review saved comps"
                 </a>
             }
             if status.pending() {
-                <form method="post" action={url::Cancel { choice: choice.clone() }} data-patch>
+                <form
+                    on:submit={ordered::send(event, target, super::sorted_tables())}
+                    method="post"
+                    action={url::Cancel { choice: choice.clone() }}
+                    data-patch
+                >
                     <input type="hidden" name={c.key} value={&status.key}>
                     <input type="hidden" name={c.run} value={&status.run_id}>
                     <button

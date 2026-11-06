@@ -5,7 +5,7 @@ use corten::{
     prelude::*,
 };
 
-use corten_ui::rows;
+use corten_ui::{ordered, rows};
 
 use crate::{
     features::slab_pricing::{
@@ -58,7 +58,10 @@ pub fn SupplyPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
         >
             <div class={(Line, Head)}>
                 <h2 id="slab-supply">"Supply context"</h2>
-                <a href={url::SlabPricing::at(&toggled)}>
+                <a
+                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                    href={url::SlabPricing::at(&toggled)}
+                >
                     if shown { "Hide supply context" } else { "Show supply context" }
                 </a>
             </div>
@@ -92,6 +95,7 @@ fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
         <div class={Line}>
             if let Some(record) = record {
                 <form
+                    on:submit={ordered::send(event, target, super::sorted_tables())}
                     method="post"
                     action={url::RefreshSupply { choice: choice.clone() }}
                     data-patch
@@ -105,10 +109,16 @@ fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
                     </button>
                 </form>
             }
-            <a href={url::SlabPricing::at(choice)}>"Reload saved supply"</a>
+            <a
+                on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                href={url::SlabPricing::at(choice)}
+            >
+                "Reload saved supply"
+            </a>
             if let Some(supply) = supply.filter(|s| !s.statuses.is_empty()) {
                 let e = Within::none(SupplySourceFormId);
                 <form
+                    on:submit={ordered::send(event, target, super::sorted_tables())}
                     id={SupplySourceFormId}
                     method="get"
                     action={url::SlabPricing::at(&Choice::default())}
@@ -186,6 +196,7 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
                         </span>
                         if status.pending() {
                             <form
+                                on:submit={ordered::send(event, target, super::sorted_tables())}
                                 method="post"
                                 action={url::Cancel { choice: choice.clone() }}
                                 data-patch
@@ -357,10 +368,16 @@ fn SupplyContext<'a>(
         </Table>
         <nav class={Line} aria-label="Supply pages">
             if let Some(back) = choice.previous_source() {
-                <a href={url::SlabPricing::at(&back)}>"Previous source page"</a>
+                <a
+                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                    href={url::SlabPricing::at(&back)}
+                >
+                    "Previous source page"
+                </a>
             }
             if let Some(revision) = supply.selected_revision().filter(|_| supply.source_has_more_pages) {
                 <form
+                    on:submit={ordered::send(event, target, super::sorted_tables())}
                     method="post"
                     action={url::NextSourcePage { choice: choice.clone() }}
                     data-patch
@@ -374,14 +391,24 @@ fn SupplyContext<'a>(
                 </form>
             }
             match &previous_rows {
-                Some(back) => <a href={url::SlabPricing::at(back)}>"Previous supply rows"</a>,
+                Some(back) => <a
+                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                    href={url::SlabPricing::at(back)}
+                >
+                    "Previous supply rows"
+                </a>,
                 None => <span class={muted()}>"Previous supply rows"</span>,
             }
             <span>
                 {first + shown.min(1)}"–"{first + shown}" of "{page.map_or(0, |p| p.total)}
             </span>
             match &next_rows {
-                Some(next) => <a href={url::SlabPricing::at(next)}>"Next supply rows"</a>,
+                Some(next) => <a
+                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                    href={url::SlabPricing::at(next)}
+                >
+                    "Next supply rows"
+                </a>,
                 None => <span class={muted()}>"Next supply rows"</span>,
             }
         </nav>
