@@ -215,7 +215,7 @@ async fn answer(req: &Req, db: &Database, batch: i32, done: Result<String, Strin
     req.patch(html! {
         <BatchFollow shown={&shown} t={t} />
         <BatchProblem message={None} />
-        <Toast message={Some(message.as_str())} />
+        <Toast message={Some(message.as_str())} failed={false} />
     })
 }
 

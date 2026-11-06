@@ -93,7 +93,7 @@ pub fn Layout<'a>(
                     <Toaster
                         close="Dismiss"
                         seconds={10}
-                        toast={Toast { message: req.notice() }}
+                        toast={Toast { message: req.notice(), failed: false }}
                         failed={NOT_SENT}
                     />
                 </div>

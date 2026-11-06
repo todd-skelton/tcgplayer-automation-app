@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: toasts 81e8d960d2da1283 */
+/* corten ui 0.1.0: toasts d210a1920672d578 */
 .toasts { position: fixed; inset: auto 1rem 1rem auto; z-index: 50; width: min(22rem, calc(100vw - 2rem)); }
 /* Toaster's root: a box only while it has a message. */
 .toasts > :has([role="status"] > :not([hidden])) {
@@ -7,8 +7,8 @@
   border-radius: var(--radius); box-shadow: 0 10px 30px rgb(0 0 0 / .15);
 }
 .toasts [role="status"] { flex: 1; font-size: .875rem; }
-/* The Toaster's failed text (a submit that got no answer): a soft destructive message, its button
-   in its color, so it is not read as a success. */
+/* A failure (the Toaster's failed text, a submit that got no answer, or an action's failed Toast):
+   a soft destructive message, its button in its color, so it is not read as a success. */
 .toasts > :has([role="status"] > [data-failed]:not([hidden])) {
   background: color-mix(in srgb, var(--destructive) 12%, var(--popover)); color: color-mix(in srgb, var(--destructive) 85%, var(--popover-foreground));
   border-color: color-mix(in srgb, var(--destructive) 50%, var(--border));

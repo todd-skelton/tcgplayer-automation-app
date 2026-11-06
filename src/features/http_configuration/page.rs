@@ -43,7 +43,7 @@ pub async fn save(
             req.patch(html! {
                 <SettingsForm input={&SettingsInput::of(&config)} errors={&Errors::new()} />
                 <AuthCookieWarning missing={config.tcg_auth_cookie.is_empty()} />
-                <Toast message={Some("Configuration saved")} />
+                <Toast message={Some("Configuration saved")} failed={false} />
             })
         }
         Err(errors) => {
