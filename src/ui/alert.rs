@@ -1,4 +1,4 @@
-// corten ui 0.1.0: alert 1e1d8b3caad1a287
+// corten ui 0.1.0: alert dd3769e4879fb594
 //! A message the page calls out. Its heading and text are yours (`<h2>` to `<h6>` or `<strong>`,
 //! then `<p>`). Its role follows its variant, so a screen reader interrupts the user only for what
 //! needs them now: `Destructive` and `Warning` are `role="alert"` (read at once when a patch
@@ -104,7 +104,9 @@ pub fn Alert<C: Render>(
 
 /// The text a script shows when a submit got no answer (`dialog::failed`'s `said`) in a
 /// destructive alert: `said` is the alert, hidden until shown, inside a live region that stays
-/// rendered and has no look, so showing it adds text to a region already there.
+/// rendered and has no look, so showing it adds text to a region already there. While the alert is
+/// hidden the region is out of the flow, so it takes no row or gap in a grid or flex parent (a
+/// dialog's), and it stays in the accessibility tree.
 #[component(css = Alert)]
 pub fn FailedAlert<C: Render>(
     said: Ref<el::HTMLDivElement>,
@@ -117,7 +119,7 @@ pub fn FailedAlert<C: Render>(
         AlertEmphasis::Solid => Solid,
     };
     html! {
-        <div role="alert">
+        <div role="alert" class={Region}>
             <div ref={said} class={(Alert, Destructive, emphasis)} hidden>{children}</div>
         </div>
     }
