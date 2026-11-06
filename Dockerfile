@@ -41,9 +41,11 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     && cp target/release/tcgplayer-automation /server
 
 FROM debian:bookworm-slim AS web
+# jemalloc gives back the memory a burst of connections took; glibc's allocator keeps it.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends wget \
+    && apt-get install -y --no-install-recommends wget libjemalloc2 \
     && rm -rf /var/lib/apt/lists/*
+ENV LD_PRELOAD=libjemalloc.so.2
 WORKDIR /app
 COPY --from=web-build /server /app/server
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
