@@ -288,15 +288,10 @@ pub fn IntakeScreen<'a>(
                 if screen.pages > 1 {
                     <div class={(row(Space::_3), Paging)}>
                         <span class={muted()}>{shown_of(screen)}</span>
-                        <Pagination
-                            label="Product pages"
-                            previous_label="Previous"
-                            next_label="Next"
-                            pages={screen.pages}
+                        <ProductPages
+                            selection={selection}
                             current={screen.page}
-                            link={&|page| Box::new(url::InventoryManager {
-                                selection: Selection { page: Some(page), ..selection.clone() },
-                            })}
+                            pages={screen.pages}
                         />
                     </div>
                 }
@@ -348,6 +343,23 @@ pub fn IntakeScreen<'a>(
                 </form>
             </dialog>
         </section>
+    }
+}
+
+/// The pages of products: each link is the screen with the same filters, on that page.
+#[component]
+fn ProductPages<'a>(selection: &'a Selection, current: usize, pages: usize) -> impl Render {
+    html! {
+        <Pagination
+            label="Product pages"
+            previous_label="Previous"
+            next_label="Next"
+            pages={pages}
+            current={current}
+            link={|page| url::InventoryManager {
+                selection: Selection { page: Some(page), ..selection.clone() },
+            }}
+        />
     }
 }
 
@@ -610,5 +622,76 @@ pub fn IntakeError<'a>(message: Option<&'a str>) -> impl Patch {
                 <Notice variant={AlertVariant::Warning}>{message}</Notice>
             }
         </div>
+    }
+}
+#[cfg(test)]
+mod tests {
+    use corten::view::Render;
+
+    use super::ProductPages;
+    use crate::features::inventory_intake::url::Selection;
+
+    /// Every page link keeps the filters and changes only the page; the current one is marked, and
+    /// Previous and Next step one page.
+    #[test]
+    fn a_page_link_keeps_the_filters() {
+        let selection = Selection {
+            line: Some(3),
+            search: Some("pika chu".into()),
+            page: Some(3),
+            ..Selection::default()
+        };
+        let html = ProductPages {
+            selection: &selection,
+            current: 3,
+            pages: 9,
+        }
+        .to_html();
+        let links: Vec<&str> = html
+            .split("href=\"")
+            .skip(1)
+            .map(|rest| rest.split_once('"').unwrap().0)
+            .collect();
+        // Previous, 1 to 5, 9, Next.
+        assert_eq!(links.len(), 8, "{html}");
+        for link in &links {
+            assert!(link.starts_with("/inventory-manager?"), "{link}");
+            assert!(
+                link.contains("line=3") && link.contains("search=pika"),
+                "{link}"
+            );
+            assert_eq!(link.matches("page=").count(), 1, "{link}");
+        }
+        let page = |n: usize| format!("page={n}");
+        assert!(
+            links[0].contains(&page(2)) && links[7].contains(&page(4)),
+            "{html}"
+        );
+        assert!(links[6].contains(&page(9)), "{html}");
+        assert!(
+            html.contains("rel=\"prev\"") && html.contains("rel=\"next\""),
+            "{html}"
+        );
+        assert_eq!(html.matches("aria-current=\"page\"").count(), 1, "{html}");
+        let current = html.split("aria-current=\"page\"").next().unwrap();
+        assert!(
+            current
+                .rsplit("href=\"")
+                .next()
+                .unwrap()
+                .starts_with("/inventory-manager?"),
+            "{html}"
+        );
+        assert!(
+            current
+                .rsplit("href=\"")
+                .next()
+                .unwrap()
+                .split('"')
+                .next()
+                .unwrap()
+                .contains(&page(3)),
+            "{html}"
+        );
     }
 }
