@@ -522,6 +522,8 @@ mod tests {
         .await
         {
             chosen.push(shipping_export::url::OrderLabels { order: Some(order) }.href());
+            // The batch's packing slips: a 404 when there is no workflow to print.
+            chosen.push(shipping_export::url::PackingSlips { open: None }.href());
         }
         if let Some((grader, cert)) =
             one("SELECT grader, certificate_number FROM slab_identities LIMIT 1").await
@@ -599,7 +601,6 @@ mod tests {
             }
             .href(),
         );
-        chosen.push(shipping_export::url::PackingSlips { open: None }.href());
         chosen
     }
 
