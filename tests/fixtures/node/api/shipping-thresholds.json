@@ -15,32 +15,32 @@
         "evidenceWindowDays": 90
       },
       "costModel": {
-        "learnedAt": "2026-11-05T04:45:24.462Z",
+        "learnedAt": "2026-11-06T00:11:59.953Z",
         "evidenceWindowDays": 90,
-        "orderCount": 1588,
+        "orderCount": 1578,
         "tiers": [
           {
             "fromOrderValue": 0,
             "buyerShipping": 1.52,
             "postage": 0.85,
-            "orderCount": 125,
-            "postageOrderCount": 125,
+            "orderCount": 124,
+            "postageOrderCount": 124,
             "basis": "observed"
           },
           {
             "fromOrderValue": 5,
             "buyerShipping": 0.04,
             "postage": 0.88,
-            "orderCount": 1064,
-            "postageOrderCount": 1063,
+            "orderCount": 1056,
+            "postageOrderCount": 1055,
             "basis": "observed"
           },
           {
             "fromOrderValue": 50,
             "buyerShipping": 0.15,
-            "postage": 5.65,
-            "orderCount": 364,
-            "postageOrderCount": 364,
+            "postage": 5.66,
+            "orderCount": 363,
+            "postageOrderCount": 363,
             "basis": "observed"
           },
           {
@@ -52,24 +52,24 @@
             "basis": "observed"
           }
         ],
-        "basketCount": 3738
+        "basketCount": 3714
       },
       "thresholdCosts": [
         {
           "threshold": 5,
           "snapPriceShippingCost": 0.13,
-          "thresholdShippingCost": 0.36,
-          "basketCount": 1348
+          "thresholdShippingCost": 0.37,
+          "basketCount": 1336
         },
         {
           "threshold": 50,
           "snapPriceShippingCost": 1.28,
           "thresholdShippingCost": 3.95,
-          "basketCount": 636
+          "basketCount": 634
         },
         {
           "threshold": 250,
-          "snapPriceShippingCost": 5.11,
+          "snapPriceShippingCost": 5.12,
           "thresholdShippingCost": 7.85,
           "basketCount": 62
         }
@@ -108,14 +108,14 @@
             "medianDaysToSell": 4.5
           },
           "justAbove": {
-            "units": 95,
-            "orders": 68,
-            "unitsPerOrder": 4.12,
-            "otherItemsValuePerOrder": 19.06,
-            "ordersWithAddOns": 0.5,
+            "units": 93,
+            "orders": 67,
+            "unitsPerOrder": 4.15,
+            "otherItemsValuePerOrder": 19.35,
+            "ordersWithAddOns": 0.507,
             "largestOrderUnits": 15,
-            "bulkOrderUnitShare": 0.295,
-            "shippingCostPerOrder": 1.55
+            "bulkOrderUnitShare": 0.301,
+            "shippingCostPerOrder": 1.56
           }
         },
         {
@@ -215,32 +215,32 @@
         "evidenceWindowDays": 90
       },
       "costModel": {
-        "learnedAt": "2026-11-05T04:45:26.276Z",
+        "learnedAt": "2026-11-06T00:12:01.296Z",
         "evidenceWindowDays": 90,
-        "orderCount": 1588,
+        "orderCount": 1578,
         "tiers": [
           {
             "fromOrderValue": 0,
             "buyerShipping": 1.52,
             "postage": 0.85,
-            "orderCount": 125,
-            "postageOrderCount": 125,
+            "orderCount": 124,
+            "postageOrderCount": 124,
             "basis": "observed"
           },
           {
             "fromOrderValue": 5,
             "buyerShipping": 0.04,
             "postage": 0.88,
-            "orderCount": 1064,
-            "postageOrderCount": 1063,
+            "orderCount": 1056,
+            "postageOrderCount": 1055,
             "basis": "observed"
           },
           {
             "fromOrderValue": 50,
             "buyerShipping": 0.15,
-            "postage": 5.65,
-            "orderCount": 364,
-            "postageOrderCount": 364,
+            "postage": 5.66,
+            "orderCount": 363,
+            "postageOrderCount": 363,
             "basis": "observed"
           },
           {
@@ -252,24 +252,24 @@
             "basis": "observed"
           }
         ],
-        "basketCount": 3738
+        "basketCount": 3714
       },
       "thresholdCosts": [
         {
           "threshold": 5,
           "snapPriceShippingCost": 0.13,
-          "thresholdShippingCost": 0.36,
-          "basketCount": 1348
+          "thresholdShippingCost": 0.37,
+          "basketCount": 1336
         },
         {
           "threshold": 50,
           "snapPriceShippingCost": 1.28,
           "thresholdShippingCost": 3.95,
-          "basketCount": 636
+          "basketCount": 634
         },
         {
           "threshold": 250,
-          "snapPriceShippingCost": 5.11,
+          "snapPriceShippingCost": 5.12,
           "thresholdShippingCost": 7.85,
           "basketCount": 62
         }
@@ -308,14 +308,14 @@
             "medianDaysToSell": 4.5
           },
           "justAbove": {
-            "units": 95,
-            "orders": 68,
-            "unitsPerOrder": 4.12,
-            "otherItemsValuePerOrder": 19.06,
-            "ordersWithAddOns": 0.5,
+            "units": 93,
+            "orders": 67,
+            "unitsPerOrder": 4.15,
+            "otherItemsValuePerOrder": 19.35,
+            "ordersWithAddOns": 0.507,
             "largestOrderUnits": 15,
-            "bulkOrderUnitShare": 0.295,
-            "shippingCostPerOrder": 1.55
+            "bulkOrderUnitShare": 0.301,
+            "shippingCostPerOrder": 1.56
           }
         },
         {
