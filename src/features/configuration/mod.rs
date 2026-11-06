@@ -58,7 +58,7 @@ use page::{
 
 #[corten::routes(area = Configuration, state = crate::app::Shared)]
 pub mod url {
-    #[route("/configuration", get = show)]
+    #[route("/configuration", get = show, gives(crate::layout::AuthCookieMissing))]
     pub struct Configuration;
 
     #[route("/configuration/pricing", post = save_pricing)]
@@ -84,7 +84,7 @@ pub mod url {
     #[route("/configuration/reset", post = reset)]
     pub struct ResetConfiguration;
 
-    #[route("/configuration/calibration", get = calibration_report)]
+    #[route("/configuration/calibration", get = calibration_report, gives(crate::layout::AuthCookieMissing))]
     pub struct CalibrationReport {
         #[route(query)]
         pub window: super::reports::Window,
@@ -93,7 +93,7 @@ pub mod url {
     #[route("/configuration/calibration/live", get = calibration_live)]
     pub struct CalibrationLive;
 
-    #[route("/configuration/shipping-report", get = shipping_report)]
+    #[route("/configuration/shipping-report", get = shipping_report, gives(crate::layout::AuthCookieMissing))]
     pub struct ShippingReport {
         #[route(query)]
         pub window: super::reports::Window,
