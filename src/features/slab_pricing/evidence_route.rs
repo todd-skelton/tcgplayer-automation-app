@@ -16,7 +16,6 @@ use std::time::Instant;
 use chrono::{DateTime, SecondsFormat, Utc};
 use corten::{
     Api, JsonResponse, Prefix,
-    axum::body::to_bytes,
     extract::Request,
     http::{StatusCode, header},
     prelude::*,
@@ -246,7 +245,7 @@ async fn act(State(db): State<Database>, request: Request) -> JsonResponse {
     if !json.is_some_and(|t| t.starts_with("application/json")) {
         return unreadable();
     }
-    let Ok(body) = to_bytes(body, MAX_BODY_BYTES).await else {
+    let Ok(body) = crate::api::body_up_to(body, MAX_BODY_BYTES).await else {
         return unreadable();
     };
     // Not JSON, or `null`, whose fields are a TypeError.

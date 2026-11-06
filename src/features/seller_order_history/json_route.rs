@@ -1,8 +1,6 @@
 //! `/api/seller-order-history`: how far the seller's order history reaches (`GET`), and a step of
 //! its scan or an order export imported (`POST`), as the Node route answered them.
-use corten::{
-    Api, JsonResponse, Prefix, axum::body::to_bytes, extract::Request, http::StatusCode, prelude::*,
-};
+use corten::{Api, JsonResponse, Prefix, extract::Request, http::StatusCode, prelude::*};
 use serde_json::{Value, json};
 
 use super::{catch_up, coverage::coverage, file_import};
@@ -69,7 +67,7 @@ async fn act(State(db): State<Database>, request: Request) -> JsonResponse {
 }
 
 async fn acted(db: &Database, request: Request) -> Result<JsonResponse, String> {
-    let body = to_bytes(request.into_body(), MAX_BODY_BYTES)
+    let body = crate::api::body_up_to(request.into_body(), MAX_BODY_BYTES)
         .await
         .map_err(|e| format!("Error: {e}"))?;
     let payload: Value = serde_json::from_slice(&body).map_err(|e| format!("SyntaxError: {e}"))?;

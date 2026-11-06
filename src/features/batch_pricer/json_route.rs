@@ -21,7 +21,6 @@ use chrono::Utc;
 use corten::{
     Api, JsonResponse, Prefix, Relay,
     answer::Body,
-    axum::body::to_bytes,
     extract::{FromRequest, Request},
     http::{HeaderMap, HeaderValue, StatusCode, header},
     prelude::*,
@@ -186,7 +185,7 @@ async fn save_results(
     Params(at): Params<InventoryBatchResults<'_>>,
     request: Request,
 ) -> JsonResponse {
-    let body = match to_bytes(request.into_body(), MAX_RESULTS_BODY_BYTES).await {
+    let body = match crate::api::body_up_to(request.into_body(), MAX_RESULTS_BODY_BYTES).await {
         Ok(body) => body,
         Err(error) => return failed(format!("Error: {error}")),
     };
@@ -299,7 +298,7 @@ async fn list_not_allowed() -> JsonResponse {
 
 /// The counts as a batch, in a transaction kept only when the batch is answered.
 async fn create(State(db): State<Database>, request: Request) -> JsonResponse {
-    let body = match to_bytes(request.into_body(), MAX_CREATE_BODY_BYTES).await {
+    let body = match crate::api::body_up_to(request.into_body(), MAX_CREATE_BODY_BYTES).await {
         Ok(body) => body,
         Err(error) => return failed(format!("Error: {error}")),
     };
@@ -442,7 +441,7 @@ async fn import_seller(State(db): State<Database>, request: Request) -> JsonResp
 /// The seller key of an import-seller body, `String(body.sellerKey ?? "").trim()`, or Node's
 /// refusal of the body.
 async fn seller_key(request: Request) -> Result<String, Box<JsonResponse>> {
-    let body = to_bytes(request.into_body(), MAX_CREATE_BODY_BYTES)
+    let body = crate::api::body_up_to(request.into_body(), MAX_CREATE_BODY_BYTES)
         .await
         .map_err(|error| Box::new(failed(format!("Error: {error}"))))?;
     seller_of(&body)
@@ -618,7 +617,7 @@ async fn price(
         Ok(batch) => batch,
         Err(refused) => return refused.into(),
     };
-    let body = match to_bytes(request.into_body(), MAX_PRICING_BODY_BYTES).await {
+    let body = match crate::api::body_up_to(request.into_body(), MAX_PRICING_BODY_BYTES).await {
         Ok(body) => body,
         Err(error) => return failed(format!("Error: {error}")),
     };
@@ -851,7 +850,7 @@ async fn publish(
         Ok(batch) => batch,
         Err(refused) => return refused.into(),
     };
-    let body = match to_bytes(request.into_body(), MAX_PUBLISH_BODY_BYTES).await {
+    let body = match crate::api::body_up_to(request.into_body(), MAX_PUBLISH_BODY_BYTES).await {
         Ok(body) => body,
         Err(error) => return failed(format!("Error: {error}")),
     };
@@ -934,7 +933,7 @@ async fn confirm(
         Ok(batch) => batch,
         Err(refused) => return refused.into(),
     };
-    let body = match to_bytes(request.into_body(), MAX_CONFIRM_BODY_BYTES).await {
+    let body = match crate::api::body_up_to(request.into_body(), MAX_CONFIRM_BODY_BYTES).await {
         Ok(body) => body,
         Err(error) => return failed(format!("Error: {error}")),
     };

@@ -11,9 +11,7 @@
 //! met it at the lots query, after); and an explicit allocation's receipt id past JavaScript's
 //! safe integers is refused as not a unique receipt selection (Node, after its other checks, as
 //! not naming the batches' receipts).
-use corten::{
-    Api, JsonResponse, Prefix, axum::body::to_bytes, extract::Request, http::StatusCode, prelude::*,
-};
+use corten::{Api, JsonResponse, Prefix, extract::Request, http::StatusCode, prelude::*};
 use serde_json::{Map, Value, json};
 use sqlx::{Connection, PgConnection};
 
@@ -107,7 +105,7 @@ impl From<NotRecorded> for Refused {
 
 /// The action's answer, or why not.
 async fn act(State(db): State<Database>, request: Request) -> JsonResponse {
-    let Ok(bytes) = to_bytes(request.into_body(), MAX_BODY_BYTES).await else {
+    let Ok(bytes) = crate::api::body_up_to(request.into_body(), MAX_BODY_BYTES).await else {
         return api::error(StatusCode::PAYLOAD_TOO_LARGE, "Request body is too large.");
     };
     let answer = match seller(&db).await {

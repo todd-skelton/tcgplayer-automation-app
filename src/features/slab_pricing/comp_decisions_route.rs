@@ -7,7 +7,6 @@
 //! here; and a reviewed item price's fields beyond its amount and currency are not kept.
 use corten::{
     Api, JsonResponse, Prefix,
-    axum::body::to_bytes,
     extract::Request,
     http::{StatusCode, header},
     prelude::*,
@@ -126,7 +125,7 @@ async fn save(State(db): State<Database>, request: Request) -> JsonResponse {
     if !json.is_some_and(|t| t.starts_with("application/json")) {
         return unreadable();
     }
-    let Ok(body) = to_bytes(body, MAX_BODY_BYTES).await else {
+    let Ok(body) = crate::api::body_up_to(body, MAX_BODY_BYTES).await else {
         return unreadable();
     };
     // Not JSON, or `null`, whose fields are a TypeError.

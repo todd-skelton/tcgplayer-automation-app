@@ -8,7 +8,6 @@
 //! field (both a 400 in the same words); and see [`super::inventory_import`] for a manual import.
 use corten::{
     Api, JsonResponse, Prefix, Signal,
-    axum::body::to_bytes,
     extract::Request,
     http::{StatusCode, header},
     prelude::*,
@@ -127,7 +126,7 @@ async fn act(
     if !json.is_some_and(|t| t.starts_with("application/json")) {
         return invalid(FIELDS);
     }
-    let Ok(body) = to_bytes(body, MAX_BODY_BYTES).await else {
+    let Ok(body) = crate::api::body_up_to(body, MAX_BODY_BYTES).await else {
         return invalid(FIELDS);
     };
     let Ok(input) = serde_json::from_slice::<Value>(&body) else {

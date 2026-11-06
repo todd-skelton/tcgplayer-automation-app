@@ -393,8 +393,8 @@ mod tests {
         assert!(differences.is_empty());
     }
 
-    /// Node's cached pricing of batch 3516 (`scripts/parity/cached-run.ts 3516`, recorded
-    /// 2026-11-04 with every curve fresh, so nothing was made due), or of the recording
+    /// Node's cached pricing of batch 7122 (`scripts/parity/cached-run.ts 7122`, recorded
+    /// 2026-11-06 with every curve fresh, so nothing was made due), or of the recording
     /// `CACHED_RUN` names, priced again here from the same curves as of the same moment: every
     /// SKU's price, suggestion, percentile and market reading, and the summary's totals, match. A
     /// curve saved since the recording fails it: record again.
@@ -409,7 +409,7 @@ mod tests {
         let db = Database::connect_lazy(&crate::config::database_url());
         let node: Value = match std::env::var("CACHED_RUN") {
             Ok(path) => serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap(),
-            Err(_) => crate::parity_fixture::read("node/pricing/cached-run-3516.json"),
+            Err(_) => crate::parity_fixture::read("node/pricing/cached-run-7122.json"),
         };
         let as_of: DateTime<Utc> = node["asOf"].as_str().unwrap().parse().unwrap();
         let number = node["batchNumber"].as_i64().unwrap() as i32;

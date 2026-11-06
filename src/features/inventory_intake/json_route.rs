@@ -9,7 +9,6 @@
 //! same-site`), which Node took.
 use corten::{
     Api, JsonResponse, Prefix, Refusal,
-    axum::body::to_bytes,
     extract::Request,
     http::{StatusCode, header},
     prelude::*,
@@ -163,7 +162,7 @@ async fn act(State(db): State<Database>, request: Request) -> JsonResponse {
         );
     }
     let too_large = || api::error(StatusCode::PAYLOAD_TOO_LARGE, "Queue request is too large.");
-    let Ok(bytes) = to_bytes(body, MAX_UNITS * 3).await else {
+    let Ok(bytes) = crate::api::body_up_to(body, MAX_UNITS * 3).await else {
         return too_large();
     };
     let text = String::from_utf8_lossy(&bytes);

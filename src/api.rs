@@ -50,6 +50,17 @@ pub fn error(status: StatusCode, message: impl std::fmt::Display) -> JsonRespons
     Json(json!({ "error": message.to_string() })).with_status(status)
 }
 
+/// A ported route's whole body, up to the route's own `max` bytes, or why not in the words its
+/// `Error: ..` answer has always carried: "length limit exceeded" for a larger body (read past,
+/// so the client reads the answer), or a body that broke on its way (whose client is gone).
+pub async fn body_up_to(body: corten::answer::Body, max: usize) -> Result<corten::Bytes, String> {
+    match corten::extract::bytes_up_to(body, max).await {
+        Ok(Some(bytes)) => Ok(bytes),
+        Ok(None) => Err("length limit exceeded".to_owned()),
+        Err(_) => Err("request body could not be read".to_owned()),
+    }
+}
+
 /// JavaScript's `String(value)` of a JSON value.
 pub fn js_string(value: &serde_json::Value) -> String {
     use serde_json::Value;

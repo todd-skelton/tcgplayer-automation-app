@@ -4,9 +4,7 @@
 //! acknowledged here, an observation is previewed as a run here, and so are capturing an
 //! observation and applying a run, which read the seller's inventory from Seller Portal and (to
 //! apply) move the order history on (`capture`, `apply`).
-use corten::{
-    Api, JsonResponse, Prefix, axum::body::to_bytes, extract::Request, http::StatusCode, prelude::*,
-};
+use corten::{Api, JsonResponse, Prefix, extract::Request, http::StatusCode, prelude::*};
 use serde_json::{Value, json};
 use sqlx::PgConnection;
 
@@ -63,7 +61,7 @@ type Refused = (StatusCode, String);
 
 /// The action's answer, or its refusal as Node's status and message.
 async fn act(State(db): State<Database>, request: Request) -> JsonResponse {
-    let body = match to_bytes(request.into_body(), MAX_BODY_BYTES).await {
+    let body = match crate::api::body_up_to(request.into_body(), MAX_BODY_BYTES).await {
         Ok(body) => body,
         Err(error) => return api::error(StatusCode::CONFLICT, format!("Error: {error}")),
     };

@@ -7,7 +7,6 @@
 use corten::json::Raw;
 use corten::{
     Api, JsonError, JsonResponse, Prefix,
-    axum::body::to_bytes,
     extract::Request,
     http::{HeaderMap, HeaderValue, StatusCode, header},
     prelude::*,
@@ -102,7 +101,7 @@ async fn act(State(db): State<Database>, request: Request) -> Result<JsonRespons
     if !json.is_some_and(|t| t.starts_with("application/json")) {
         return own(failure(None, true));
     }
-    let Ok(body) = to_bytes(body, MAX_BODY_BYTES).await else {
+    let Ok(body) = crate::api::body_up_to(body, MAX_BODY_BYTES).await else {
         return own(failure(None, true));
     };
     let Ok(input) = serde_json::from_slice::<Value>(&body) else {

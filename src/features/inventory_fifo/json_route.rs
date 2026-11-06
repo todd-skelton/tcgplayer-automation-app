@@ -3,9 +3,7 @@
 //! replay, and the corrections (`corrections`): recording a disposition, superseding one, and a
 //! quantity correction, each in a transaction of its own.
 use chrono::{DateTime, Utc};
-use corten::{
-    Api, JsonResponse, Prefix, axum::body::to_bytes, extract::Request, http::StatusCode, prelude::*,
-};
+use corten::{Api, JsonResponse, Prefix, extract::Request, http::StatusCode, prelude::*};
 use serde_json::{Value, json};
 use sqlx::PgConnection;
 
@@ -29,7 +27,7 @@ pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
 
 /// The action's answer, or Node's refusal.
 async fn act(State(db): State<Database>, request: Request) -> JsonResponse {
-    let body = match to_bytes(request.into_body(), MAX_BODY_BYTES).await {
+    let body = match crate::api::body_up_to(request.into_body(), MAX_BODY_BYTES).await {
         Ok(body) => body,
         Err(error) => return api::error(StatusCode::CONFLICT, format!("Error: {error}")),
     };
