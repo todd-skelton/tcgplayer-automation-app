@@ -638,6 +638,28 @@ pub async fn clean(conn: &mut PgConnection) -> Result<Cleaned, Error> {
     })
 }
 
+/// A test's transaction on the dev database: alone among the evidence tests, which write the same
+/// keys and would deadlock, and with the evidence tables empty, as Node's recordings start them
+/// (`scripts/parity/slab-evidence.ts`). Rolled back, it leaves what the database held.
+#[cfg(test)]
+pub(crate) async fn test_transaction(
+    conn: &mut PgConnection,
+) -> sqlx::Transaction<'_, sqlx::Postgres> {
+    let mut tx = conn.begin().await.unwrap();
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtext('slab_evidence_refreshes tests'))")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query(
+        "TRUNCATE slab_supply_observations, slab_supply_versions, slab_evidence_revisions,
+           slab_supply_scans, slab_evidence_refreshes CASCADE",
+    )
+    .execute(&mut *tx)
+    .await
+    .unwrap();
+    tx
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -727,12 +749,7 @@ mod tests {
         let keys: Vec<String> = specs.iter().map(|s| s.key().unwrap()).collect();
         let db = Database::connect_lazy(&crate::config::database_url());
         let mut conn = db.0.acquire().await.unwrap();
-        let mut tx = conn.begin().await.unwrap();
-        // The queue's tests write the same keys: one at a time, or their transactions deadlock.
-        sqlx::query("SELECT pg_advisory_xact_lock(hashtext('slab_evidence_refreshes tests'))")
-            .execute(&mut *tx)
-            .await
-            .unwrap();
+        let mut tx = test_transaction(&mut conn).await;
         let mut steps = Vec::new();
         steps.push(brief(&request(&mut tx, &specs, false, 200).await.unwrap()));
         steps.push(brief(
