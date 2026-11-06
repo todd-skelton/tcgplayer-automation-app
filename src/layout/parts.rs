@@ -5,7 +5,7 @@ use corten::prelude::*;
 
 use crate::{
     layout::NOT_SENT,
-    ui::alert::{Alert, AlertEmphasis, AlertVariant, FormAlert},
+    ui::alert::{Alert, AlertEmphasis, AlertVariant, FailedAlert, FormAlert},
 };
 
 /// A message a screen calls out: the kit's `Alert` with a tint of its tone behind its text, as
@@ -23,13 +23,13 @@ pub fn FormNotice<'a>(errors: &'a Errors) -> impl Render {
 }
 
 /// What a modal dialog says when a `data-patch` submit in it got no answer, in place of the
-/// page's toaster, which the dialog covers: the toaster's words, hidden in a live region that stays
-/// drawn until `corten_ui::dialog::failed(event, target, said)` shows them. Tinted as a
-/// destructive `Notice`, which cannot be the text itself: its box would show while hidden, and
-/// its own `role="alert"` inside this one may be read twice.
-#[component(css)]
-pub fn DialogNotSent(said: Ref<el::HTMLParagraphElement>) -> impl Render {
-    html! { <div role="alert"><p ref={said} class={NotSent} hidden>{NOT_SENT}</p></div> }
+/// page's toaster, which the dialog covers: the toaster's words in the kit's `FailedAlert`, tinted
+/// as every `Notice` is, hidden until `corten_ui::dialog::failed(event, target, said)` shows them.
+#[component]
+pub fn DialogNotSent(said: Ref<el::HTMLDivElement>) -> impl Render {
+    html! {
+        <FailedAlert said={said} emphasis={AlertEmphasis::Soft}><p>{NOT_SENT}</p></FailedAlert>
+    }
 }
 
 /// Sends the form around it whenever one of its controls changes: a section saves itself, a
