@@ -76,7 +76,6 @@ checksum = "31b698c5f9a010f6573133b09e0de5408834d0c82f8d7475a89fc1867a71cd90"
 dependencies = [
  "axum-core",
  "bytes",
- "form_urlencoded",
  "futures-util",
  "http",
  "http-body",
@@ -92,13 +91,11 @@ dependencies = [
  "serde_core",
  "serde_json",
  "serde_path_to_error",
- "serde_urlencoded",
  "sync_wrapper",
  "tokio",
  "tower",
  "tower-layer",
  "tower-service",
- "tracing",
 ]
 
 [[package]]
@@ -117,7 +114,6 @@ dependencies = [
  "sync_wrapper",
  "tower-layer",
  "tower-service",
- "tracing",
 ]
 
 [[package]]
@@ -287,12 +283,12 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 [[package]]
 name = "corten-macros"
 version = "0.1.0"
-source = "git+https://github.com/corten-run/corten?rev=d1919965#d19199657a90a55413f80df059fd910063b25bbe"
+source = "git+https://github.com/corten-run/corten?rev=d1303fb7#d1303fb7c05e1d6642077a8097078b0aa3438ace"
 
 [[package]]
 name = "corten-run"
 version = "0.1.0"
-source = "git+https://github.com/corten-run/corten?rev=d1919965#d19199657a90a55413f80df059fd910063b25bbe"
+source = "git+https://github.com/corten-run/corten?rev=d1303fb7#d1303fb7c05e1d6642077a8097078b0aa3438ace"
 dependencies = [
  "axum",
  "axum-core",
@@ -323,7 +319,7 @@ dependencies = [
 [[package]]
 name = "corten-ui"
 version = "0.1.0"
-source = "git+https://github.com/corten-run/corten?rev=d1919965#d19199657a90a55413f80df059fd910063b25bbe"
+source = "git+https://github.com/corten-run/corten?rev=d1303fb7#d1303fb7c05e1d6642077a8097078b0aa3438ace"
 dependencies = [
  "corten-run",
 ]
@@ -2356,7 +2352,6 @@ dependencies = [
  "tokio",
  "tower-layer",
  "tower-service",
- "tracing",
 ]
 
 [[package]]
