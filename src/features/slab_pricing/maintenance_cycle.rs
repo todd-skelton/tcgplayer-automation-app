@@ -485,7 +485,6 @@ impl Check<'_> {
 mod tests {
     use chrono::DateTime;
     use serde_json::{Value, json};
-    use sqlx::Connection;
 
     use super::*;
     use crate::database::Database;
@@ -509,7 +508,9 @@ mod tests {
         let at = "2026-10-31T18:00:00.000Z";
         let now: DateTime<Utc> = at.parse().unwrap();
         let mut conn = db.0.acquire().await.unwrap();
-        let mut tx = conn.begin().await.unwrap();
+        // Its seed writes the evidence tables, so it waits for the evidence tests rather than
+        // deadlocking with one that empties them.
+        let mut tx = crate::features::slab_evidence::store::alone(&mut conn).await;
         sqlx::raw_sql(&read("cycle-seed.sql"))
             .execute(&mut *tx)
             .await

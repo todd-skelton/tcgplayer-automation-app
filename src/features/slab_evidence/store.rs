@@ -638,6 +638,18 @@ pub async fn clean(conn: &mut PgConnection) -> Result<Cleaned, Error> {
     })
 }
 
+/// A test's transaction on the dev database, alone among the tests that write the evidence tables,
+/// which would deadlock with one that empties them.
+#[cfg(test)]
+pub(crate) async fn alone(conn: &mut PgConnection) -> sqlx::Transaction<'_, sqlx::Postgres> {
+    let mut tx = conn.begin().await.unwrap();
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtext('slab_evidence_refreshes tests'))")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    tx
+}
+
 /// A test's transaction on the dev database: alone among the evidence tests, which write the same
 /// keys and would deadlock, and with the evidence tables empty, as Node's recordings start them
 /// (`scripts/parity/slab-evidence.ts`). Rolled back, it leaves what the database held.
@@ -645,14 +657,18 @@ pub async fn clean(conn: &mut PgConnection) -> Result<Cleaned, Error> {
 pub(crate) async fn test_transaction(
     conn: &mut PgConnection,
 ) -> sqlx::Transaction<'_, sqlx::Postgres> {
-    let mut tx = conn.begin().await.unwrap();
-    sqlx::query("SELECT pg_advisory_xact_lock(hashtext('slab_evidence_refreshes tests'))")
-        .execute(&mut *tx)
-        .await
-        .unwrap();
+    let mut tx = alone(conn).await;
+    // Deleted rather than truncated: a truncate's table locks deadlock with the route tests that
+    // read these tables meanwhile. One statement, so the tables that refer to each other are
+    // checked once all are empty; the last two are what a truncate's cascade emptied.
     sqlx::query(
-        "TRUNCATE slab_supply_observations, slab_supply_versions, slab_evidence_revisions,
-           slab_supply_scans, slab_evidence_refreshes CASCADE",
+        "WITH observations AS (DELETE FROM slab_supply_observations),
+           versions AS (DELETE FROM slab_supply_versions),
+           revisions AS (DELETE FROM slab_evidence_revisions),
+           refreshes AS (DELETE FROM slab_evidence_refreshes),
+           decisions AS (DELETE FROM slab_comp_decisions),
+           cited AS (DELETE FROM slab_recommendation_evidence)
+         DELETE FROM slab_supply_scans",
     )
     .execute(&mut *tx)
     .await
