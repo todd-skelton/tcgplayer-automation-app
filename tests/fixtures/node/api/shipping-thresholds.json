@@ -15,9 +15,9 @@
         "evidenceWindowDays": 90
       },
       "costModel": {
-        "learnedAt": "2026-11-06T15:15:56.659Z",
+        "learnedAt": "2026-11-06T19:25:24.342Z",
         "evidenceWindowDays": 90,
-        "orderCount": 1573,
+        "orderCount": 1571,
         "tiers": [
           {
             "fromOrderValue": 0,
@@ -31,8 +31,8 @@
             "fromOrderValue": 5,
             "buyerShipping": 0.04,
             "postage": 0.88,
-            "orderCount": 1052,
-            "postageOrderCount": 1051,
+            "orderCount": 1050,
+            "postageOrderCount": 1049,
             "basis": "observed"
           },
           {
@@ -52,14 +52,14 @@
             "basis": "observed"
           }
         ],
-        "basketCount": 3701
+        "basketCount": 3699
       },
       "thresholdCosts": [
         {
           "threshold": 5,
           "snapPriceShippingCost": 0.13,
           "thresholdShippingCost": 0.36,
-          "basketCount": 1334
+          "basketCount": 1333
         },
         {
           "threshold": 50,
@@ -215,9 +215,9 @@
         "evidenceWindowDays": 90
       },
       "costModel": {
-        "learnedAt": "2026-11-06T15:15:57.117Z",
+        "learnedAt": "2026-11-06T19:25:25.147Z",
         "evidenceWindowDays": 90,
-        "orderCount": 1573,
+        "orderCount": 1571,
         "tiers": [
           {
             "fromOrderValue": 0,
@@ -231,8 +231,8 @@
             "fromOrderValue": 5,
             "buyerShipping": 0.04,
             "postage": 0.88,
-            "orderCount": 1052,
-            "postageOrderCount": 1051,
+            "orderCount": 1050,
+            "postageOrderCount": 1049,
             "basis": "observed"
           },
           {
@@ -252,14 +252,14 @@
             "basis": "observed"
           }
         ],
-        "basketCount": 3701
+        "basketCount": 3699
       },
       "thresholdCosts": [
         {
           "threshold": 5,
           "snapPriceShippingCost": 0.13,
           "thresholdShippingCost": 0.36,
-          "basketCount": 1334
+          "basketCount": 1333
         },
         {
           "threshold": 50,
