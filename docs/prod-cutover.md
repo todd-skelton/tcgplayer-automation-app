@@ -221,6 +221,12 @@ Steps when approved:
    every container is healthy and `/proxy-health` names the new slot.
 3. Rollback: remove the switch and release again; the script starts `pricing-worker` again.
 
+## Release 8 (prepared on its own branch)
+
+`codex/release-8-drop-node` removes the relay, `LEGACY_ORIGIN` and the Node services from
+production, and its release script refuses to run until every switch of releases 2 to 7 is set.
+It merges here after release 7 has run its day; its `docs/prod-cutover.md` says what it changes.
+
 ## Decided (2026-11-05)
 
 1. Refresh dev from production before release 1, then run the gate and the twin scripts against
