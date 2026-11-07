@@ -20,7 +20,7 @@ order number, their lines and FIFO lines by SKU id, revisions by revision number
 
 | Worker | Script | Last run | Result |
 | --- | --- | --- | --- |
-| Batch pricing, cached job | `twin-pricing-worker.mjs 7122 cached` | 2026-11-06, dev at Corten a8c50d41 | 50 SKUs and a 31-item planned publication; 27,729 values, 0 differ (2026-11-05 with batch 3516 on the production copy: 8,735 values, 0 differ; 2026-11-04 on old dev data: 20,706, 0 differ) |
+| Batch pricing, cached job | `twin-pricing-worker.mjs 7122 cached` | 2026-11-07, dev at Corten cdbe4392 | 50 SKUs and a 31-item planned publication; 27,729 values, 0 differ (2026-11-06 at Corten a8c50d41: 27,729 values, 0 differ; 2026-11-05 with batch 3516 on the production copy: 8,735 values, 0 differ; 2026-11-04 on old dev data: 20,706, 0 differ) |
 | Batch pricing, full job | `twin-pricing-worker.mjs 3471 full` | 2026-11-03 | same tables, rows and 17 listing snapshots; numbers moved with the market only |
 | Continuous pricing scheduler | `twin-continuous-scheduler.mjs` | 2026-11-06, dev at Corten a8c50d41 | one live refresh (3,089 listings) and one 50-SKU batch each; 62,391 values, 0 differ; four market prices, one listing's quantity and in stock, and one batch row's market price moved with the market (2026-11-05 on the production copy: 62,391 values, 0 differ) |
 | Seller order history (sync, FIFO replay, cost estimates) | `twin-seller-order-history.mjs` | 2026-11-06, dev at Corten a8c50d41 | sync complete on both (1,624 orders); 9 tables, 624,295 values, 0 differ (earlier the same day at Corten a17f1775: 624,066 values, 0 differ; 2026-11-05 on the production copy: 1,631 orders, 620,052 values, 0 differ) |
