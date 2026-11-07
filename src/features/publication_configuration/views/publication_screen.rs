@@ -1,4 +1,5 @@
 use corten::prelude::*;
+use corten_ui::{Number, NumberField};
 
 use crate::{
     features::publication_configuration::{
@@ -15,6 +16,7 @@ use crate::{
         checkbox::Checkbox,
         field::Field,
         input::Input,
+        stepper::Stepper,
         switch::Switch,
     },
 };
@@ -149,15 +151,15 @@ pub fn PublicationForm<'a>(
                             hint=""
                             error={e.message(f.consecutive_failure_limit)}
                         >
-                            <input
-                                class={Input {}}
-                                id={FailureLimitId}
-                                type="number"
-                                {..range::FAILURE_LIMIT}
-                                name={f.consecutive_failure_limit}
-                                value={&input.consecutive_failure_limit}
-                                {..e.aria(f.consecutive_failure_limit)}
-                            >
+                            <Stepper>
+                                <NumberField
+                                    field={&Number {
+                                        value: input.consecutive_failure_limit.clone(),
+                                        attrs: &e.aria(f.consecutive_failure_limit),
+                                        ..Number::new(FailureLimitId, f.consecutive_failure_limit, range::FAILURE_LIMIT, "Fewer failures", "More failures")
+                                    }}
+                                />
+                            </Stepper>
                         </Field>
                         <Field
                             id={MinimumPriceChangeId}
@@ -181,15 +183,15 @@ pub fn PublicationForm<'a>(
                             hint=""
                             error={e.message(f.maximum_candidate_age_minutes)}
                         >
-                            <input
-                                class={Input {}}
-                                id={CandidateMaximumAgeId}
-                                type="number"
-                                {..range::CANDIDATE_AGE_MINUTES}
-                                name={f.maximum_candidate_age_minutes}
-                                value={&input.maximum_candidate_age_minutes}
-                                {..e.aria(f.maximum_candidate_age_minutes)}
-                            >
+                            <Stepper>
+                                <NumberField
+                                    field={&Number {
+                                        value: input.maximum_candidate_age_minutes.clone(),
+                                        attrs: &e.aria(f.maximum_candidate_age_minutes),
+                                        ..Number::new(CandidateMaximumAgeId, f.maximum_candidate_age_minutes, range::CANDIDATE_AGE_MINUTES, "Fewer minutes", "More minutes")
+                                    }}
+                                />
+                            </Stepper>
                         </Field>
                         <Field
                             id={StagedMicroBatchMaximumId}
@@ -197,15 +199,15 @@ pub fn PublicationForm<'a>(
                             hint=""
                             error={e.message(f.staged_micro_batch_maximum)}
                         >
-                            <input
-                                class={Input {}}
-                                id={StagedMicroBatchMaximumId}
-                                type="number"
-                                {..range::MICRO_BATCH}
-                                name={f.staged_micro_batch_maximum}
-                                value={&input.staged_micro_batch_maximum}
-                                {..e.aria(f.staged_micro_batch_maximum)}
-                            >
+                            <Stepper>
+                                <NumberField
+                                    field={&Number {
+                                        value: input.staged_micro_batch_maximum.clone(),
+                                        attrs: &e.aria(f.staged_micro_batch_maximum),
+                                        ..Number::new(StagedMicroBatchMaximumId, f.staged_micro_batch_maximum, range::MICRO_BATCH, "Fewer SKUs", "More SKUs")
+                                    }}
+                                />
+                            </Stepper>
                         </Field>
                     </div>
                     <div class={Warnings}>

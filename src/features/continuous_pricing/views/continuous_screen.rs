@@ -1,7 +1,9 @@
 use corten::{
-    i18n::{Currency, DateStyle, Minor, TimeStyle},
+    i18n::{Currency, DateStyle, Minor, RelativeStyle, TimeStyle},
     prelude::*,
 };
+use corten_ui::{Number, NumberField, RelativeTime};
+use std::time::SystemTime;
 
 use crate::{
     features::continuous_pricing::{
@@ -21,6 +23,7 @@ use crate::{
         field::Field,
         input::Input,
         select::Select,
+        stepper::Stepper,
         switch::Switch,
     },
 };
@@ -140,15 +143,15 @@ pub fn ScheduleForm<'a>(
                     hint=""
                     error={e.message(f.minimum_interval_minutes)}
                 >
-                    <input
-                        class={Input {}}
-                        id={MinimumIntervalId}
-                        type="number"
-                        {..range::MINIMUM_INTERVAL}
-                        name={f.minimum_interval_minutes}
-                        value={&input.minimum_interval_minutes}
-                        {..e.aria(f.minimum_interval_minutes)}
-                    >
+                    <Stepper>
+                        <NumberField
+                            field={&Number {
+                                value: input.minimum_interval_minutes.clone(),
+                                attrs: &e.aria(f.minimum_interval_minutes),
+                                ..Number::new(MinimumIntervalId, f.minimum_interval_minutes, range::MINIMUM_INTERVAL, "Fewer minutes", "More minutes")
+                            }}
+                        />
+                    </Stepper>
                 </Field>
                 <Field
                     id={RefreshIntervalId}
@@ -156,26 +159,26 @@ pub fn ScheduleForm<'a>(
                     hint=""
                     error={e.message(f.inventory_refresh_minutes)}
                 >
-                    <input
-                        class={Input {}}
-                        id={RefreshIntervalId}
-                        type="number"
-                        {..range::INVENTORY_REFRESH}
-                        name={f.inventory_refresh_minutes}
-                        value={&input.inventory_refresh_minutes}
-                        {..e.aria(f.inventory_refresh_minutes)}
-                    >
+                    <Stepper>
+                        <NumberField
+                            field={&Number {
+                                value: input.inventory_refresh_minutes.clone(),
+                                attrs: &e.aria(f.inventory_refresh_minutes),
+                                ..Number::new(RefreshIntervalId, f.inventory_refresh_minutes, range::INVENTORY_REFRESH, "Fewer minutes", "More minutes")
+                            }}
+                        />
+                    </Stepper>
                 </Field>
                 <Field id={BatchSizeId} label="Batch size" hint="" error={e.message(f.batch_size)}>
-                    <input
-                        class={Input {}}
-                        id={BatchSizeId}
-                        type="number"
-                        {..range::BATCH_SIZE}
-                        name={f.batch_size}
-                        value={&input.batch_size}
-                        {..e.aria(f.batch_size)}
-                    >
+                    <Stepper>
+                        <NumberField
+                            field={&Number {
+                                value: input.batch_size.clone(),
+                                attrs: &e.aria(f.batch_size),
+                                ..Number::new(BatchSizeId, f.batch_size, range::BATCH_SIZE, "Fewer SKUs", "More SKUs")
+                            }}
+                        />
+                    </Stepper>
                 </Field>
             </div>
             <div>
@@ -436,6 +439,7 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
         .map_or_else(|| "unknown".to_owned(), |p| format!("${p:.2}"));
     let (priced, published) = (item.last_priced_at, item.last_published_at);
     let action = || url::SetSku { view: view.clone() };
+    let now = SystemTime::now();
     html! {
         <article class={(CardPanel {}, CardCompact {}, SkuCard)}>
             <div class={Spread}>
@@ -446,8 +450,11 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
                         {&item.condition}" · Qty "{item.quantity}" · Price "{price}
                     </p>
                     <p class={muted()}>
-                        "Next: "
-                        {t.date_time(item.next_price_at, DateStyle::Short, TimeStyle::Medium)}
+                        // A SKU past its time is due now; RelativeTime keeps either current.
+                        if SystemTime::from(item.next_price_at) <= now { "Due: " } else { "Next: " }
+                        <RelativeTime
+                            when={t.relative(item.next_price_at, now, RelativeStyle::Long)}
+                        />
                         " · Last priced: "
                         match priced {
                             Some(at) => {

@@ -1,6 +1,7 @@
 # Production cutover plan
 
-The plan for moving production to the Corten app. Release 1 ran on 2026-11-05 (Release 1 below);
+The plan for moving production to the Corten app. Release 1 ran on 2026-11-05 and release 2 on
+2026-11-07 (sections below);
 every later step that touches the `tcgplayer-automation-prod` stack, its database or
 `origin/master` waits for Todd's approval, one release at a time.
 
@@ -36,18 +37,23 @@ approval before it starts.
 | 4 | Continuous pricing schedule | `CONTINUOUS_PRICING_SCHEDULER=1` | `pricing-scheduler` service |
 | 5 | Slab evidence and maintenance | `SLAB_EVIDENCE_WORKER=1` | `slab-evidence-worker` service |
 | 6 | Publication to Seller Portal | `PUBLICATION_WORKER=1` | `publication-worker` service |
-| 7 | Migrations | `MIGRATE_ON_START=1` | the migration run in `scripts/docker-start.mjs` |
+| 7 | Migrations | `MIGRATE_ON_START=1` | the start script skips Node's migration run when the switch is set |
 | 8 | The Node app, its relay and `LEGACY_ORIGIN` | none | `app-blue`, `app-green` |
 
 Why this order: order history only reads TCGplayer and writes its own tables, and dev has run it
 in Rust since 2026-11-04. Pricing and the schedule plan publications but do not post them.
 Publication posts to the live store, so it moves after every job that feeds it has run clean.
-Migrations move last because the two runners share no lock (`src/migrations.rs`).
+Migrations move last so that every earlier release keeps the runner it was proven with. The two
+runners hold the same advisory lock (`src/migrations.rs`, `scripts/db-migrate.mjs`), so one never
+applies a migration while the other does.
 
 A Node service is removed rather than left to see the switch. Node's standalone pricing worker
 does not read `PRICING_WORKER`, so both workers would claim from the same queue. The scheduler
 and order history workers exit when they see their switch, and with `restart: unless-stopped`
-Docker would restart them in a loop.
+Docker would restart them in a loop. The release script acts on the switches in
+`.env.production.local` (`scripts/nodeWorkers.mjs`): after traffic moves it starts the Node worker
+services whose switch is unset and removes those whose switch is set. Order history has no service
+of its own; the Node app's start script leaves its worker out (`scripts/docker-start-support.mjs`).
 
 ## Before release 1
 
@@ -127,7 +133,7 @@ Corten a0215cc9):
 
 1. A release whose new slot never becomes healthy is stopped by the release script, and the old
    slot keeps serving.
-2. After a switch: unset it, restore the Node service, and release again. Claims expire on their
+2. After a switch: unset it and release again; the release script starts the Node service again. Claims expire on their
    own, so a job the Rust worker held is taken up again by Node's (seen in dev: job 3705 was
    reclaimed on its second attempt).
 3. Release 1: revert the merge on master and release. Migrations 053 to 055 stay; Node's code
@@ -161,6 +167,78 @@ second backup was taken just before: `.artifacts/db-backups/2026-11-05T15-54-48Z
 
 Release 2 can start after one full day of normal use, with Todd's approval.
 
+## Release 2 (2026-11-07)
+
+Todd approved it on 2026-11-07 after a day of shipping and inventory work on release 1 with no
+issue. Merged as [#124 Corten port release 2: seller order history on the Corten worker](https://github.com/todd-skelton/tcgplayer-automation-app/pull/124)
+(6a9f91066, 68 commits, Corten 9a1e0721) and released with `npm run prod:update` from a clean
+master, with `SELLER_ORDER_HISTORY_WORKER=1` added to `.env.production.local`. A backup was taken
+just before: `.artifacts/db-backups/2026-11-07T03-07-41Z-prod-before-release-2.dump` (`pg_restore -l`
+lists 595 entries).
+
+1. Before it, the order history twin on the release commit ran both syncs to `complete` with
+   0 of 624,613 values different across 9 tables, and the release 1 `web` log had no error over
+   the previous 6 hours.
+2. The green slot took over, blue was removed and the Node workers were recreated.
+   `/proxy-health` names green and every container is healthy with no restart.
+3. The `web` log has "Seller order history worker started", then
+   "complete offset=1624 total=1624". Its `seller_order_sync_runs` row (4182) reached
+   `complete` at 03:15:25 UTC and `inventory_fifo_replay_queue` is empty.
+4. The Node app's container runs only `docker-start.mjs` and its server; Node's order history
+   worker is gone.
+5. All 16 screens answer 200 through port 3001.
+6. The `web` log has no error, panic or warning since the release.
+
+Release 3 can start after one full day of normal use, with Todd's approval.
+
+## Release 3 (2026-11-07)
+
+Batch pricing moves to the Corten worker: `PRICING_WORKER=1` in `.env.production.local`, and the
+release script removes Node's `pricing-worker` service. Todd approved it with releases 4 to 8 on
+2026-11-07 (Decided, point 5). A backup was taken just before:
+`.artifacts/db-backups/2026-11-07T14-17Z-prod-before-release-3.dump` (`pg_restore -l` lists 595
+entries).
+
+Production prices in batches all day: 453 full jobs completed from 2026-11-04 to 07:00 UTC on
+2026-11-07 (about 155 a day, a mean of about 165 s each, the longest about 30 minutes), and one
+failed on 2026-11-05. A job running when the switch moves is taken up again once its claim
+expires.
+
+Readiness:
+
+1. The cached twin (`twin-pricing-worker.mjs 7122 cached`) at Corten f3291094: 50 SKUs and a
+   31-item planned publication, 27,729 values, 0 differ.
+2. The full twin (`twin-pricing-worker.mjs 3471 full`) at Corten f3291094, with live TCGplayer
+   reads: both completed with the same rows in every table it compares (5 results, 4 curves, 4
+   publication items, 14 listing snapshots); 2,532 values that are not market numbers, 0 differ.
+3. The release script removes `pricing-worker` when the switch is set (`scripts/nodeWorkers.mjs`,
+   its test in `npm test`).
+
+Steps when approved:
+
+1. Back up production, then merge `codex/corten-port` into master and release with
+   `npm run prod:update` from a clean master after adding `PRICING_WORKER=1`.
+2. Checks: the `web` log has "Inventory batch pricing worker ... started", the next queued job
+   completes with Node's error counts, `npm run prod:status` no longer lists `pricing-worker`,
+   every container is healthy and `/proxy-health` names the new slot.
+3. Rollback: remove the switch and release again; the script starts `pricing-worker` again.
+
+## Releases 4 and 5 (readiness so far)
+
+1. Release 4, the continuous pricing schedule: the scheduler twin at Corten f3291094 queued two
+   batches on each side; 62,651 values, 0 differ (`docs/worker-parity.md`).
+2. Release 5, slab evidence and maintenance: production holds no slab data (every `slab_` table
+   empty and no provider connection, checked 2026-11-07), as dev does not, so no twin can run and
+   the Rust worker's first day there finds nothing to do. Its proof is the recorded Node runs
+   (`docs/worker-parity.md`), and the check after the release is its start line and a clean
+   `web` log.
+
+## Release 8 (prepared on its own branch)
+
+`codex/release-8-drop-node` removes the relay, `LEGACY_ORIGIN` and the Node services from
+production, and its release script refuses to run until every switch of releases 2 to 7 is set.
+It merges here after release 7 has run its day; its `docs/prod-cutover.md` says what it changes.
+
 ## Decided (2026-11-05)
 
 1. Refresh dev from production before release 1, then run the gate and the twin scripts against
@@ -173,6 +251,6 @@ Release 2 can start after one full day of normal use, with Todd's approval.
    A production backup was taken first:
    `.artifacts/db-backups/2026-11-05T15-07-56Z-prod-before-release-1.dump`.
 
-## Open for Todd
-
-1. Approval for each of releases 2 to 8, one at a time.
+5. On 2026-11-07 Todd approved releases 3 to 8 to run back to back: each starts once the one
+   before it has been checked in production (Checks after each release), without the full day
+   between them that point 3 asked for.

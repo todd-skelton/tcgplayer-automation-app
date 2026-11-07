@@ -1,10 +1,11 @@
-// corten ui 0.1.0: alert dd3769e4879fb594
+// corten ui 0.1.0: alert 2b28dbc9d44739bc
 //! A message the page calls out. Its heading and text are yours (`<h2>` to `<h6>` or `<strong>`,
-//! then `<p>`). Its role follows its variant, so a screen reader interrupts the user only for what
-//! needs them now: `Destructive` and `Warning` are `role="alert"` (read at once when a patch
-//! brings one in, as a form's error is), `Success` is `role="status"` (read politely, though a
-//! status brought in with its text is not read by every screen reader; the result of an action is
-//! a toast, corten-ui's `Toaster`), and `Neutral` and `Info` have no role and are read in the
+//! then `<p>`, or an `<ol>` or `<ul>` for reasons or steps, spaced and colored as a paragraph
+//! is). Its role follows its variant, so a screen reader interrupts the user only for what needs
+//! them now: `Destructive` and `Warning` are `role="alert"` (read at once when a patch brings one
+//! in, as a form's error is), `Success` is `role="status"` (read politely, though a status
+//! brought in with its text is not read by every screen reader; the result of an action is a
+//! toast, corten-ui's `Toaster`), and `Neutral` and `Info` have no role and are read in the
 //! page's order. Its emphasis is separate from its variant, as a `Badge`'s is: a tint of the tone
 //! behind text in it (`Soft`), the tone's text on the card inside its border (`Outline`), or filled
 //! with the tone (`Solid`). The text of each meets WCAG AA in both themes (the kit's test).

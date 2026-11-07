@@ -3,6 +3,7 @@ use corten::{
     i18n::{DateStyle, TimeStyle},
     prelude::*,
 };
+use corten_ui::CopyButton;
 
 use super::{
     shipment_editor::{AddressFields, PackageFields},
@@ -133,6 +134,10 @@ pub fn LabelManagement<'a>(
     }
 }
 
+/// A tracking code's element, which its copy button names; an order can show two labels.
+#[derive(Id)]
+struct TrackingId<'a>(&'a str);
+
 /// A label bought for the order: how the purchase went, in which mode, at what rate, when, its
 /// tracking and the label to open.
 #[component(css = LabelManagement)]
@@ -175,7 +180,15 @@ fn PurchasedLabel<'a>(title: &'a str, bought: &'a Bought, looked: &'a Looked<'a>
                 </p>
             }
             if let Some(code) = &result.tracking_code {
-                <p>"Tracking: "{code}</p>
+                <p class={row(Space::_2)}>
+                    "Tracking: "<span id={TrackingId(code)}>{code}</span>
+                    <CopyButton
+                        text={TrackingId(code)}
+                        label="Copy"
+                        copied="Copied"
+                        class={Button { variant: ButtonVariant::Ghost, size: ButtonSize::Sm }}
+                    />
+                </p>
             }
             if let Some(href) = href {
                 <a

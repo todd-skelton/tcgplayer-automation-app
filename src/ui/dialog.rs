@@ -1,4 +1,4 @@
-// corten ui 0.1.0: dialog 923ec9fda6f15473
+// corten ui 0.1.0: dialog 1845545423d69ce2
 //! A modal dialog's look, as the classes of the `<dialog>` you write, so its id, `open`,
 //! `closedby` and `on:connect` are checked as always and a patch replaces the dialog itself. A
 //! button opens it with no script, and another closes it:
@@ -11,7 +11,7 @@
 //!         <button class={Button { variant: ButtonVariant::Ghost, size: ButtonSize::Sm }} type="button" command="close" commandfor={RenameId}>"Close"</button>
 //!     </div>
 //!     <p>"The new name shows everywhere the deck does."</p>
-//!     <div role="alert"><p ref={said} hidden>{t.not_saved()}</p></div>
+//!     <FailedAlert said={said} emphasis={AlertEmphasis::Soft}><p>{t.not_saved()}</p></FailedAlert>
 //!     <form method="post" action={url::Rename} data-patch>..</form>
 //!     <div class={DialogFooter {}}>
 //!         <button class={Button { variant: ButtonVariant::Ghost, size: ButtonSize::Md }} type="button" command="close" commandfor={RenameId}>"Cancel"</button>
@@ -22,7 +22,7 @@
 //! `corten_ui::dialog::modal` (docs/guide/ui.md) makes a dialog the server drew open, after it
 //! refused the form in it, modal. `corten_ui::dialog::failed` shows the dialog's own text (`said`)
 //! when a `data-patch` submit in it gets no answer, where the toaster behind the dialog could not
-//! be seen.
+//! be seen; the alert kit's `FailedAlert` gives that text the destructive alert's look.
 //!
 //! `size` is the most of a wide window it takes; on a narrow one it is the window's width less a
 //! margin. A dialog taller than the window scrolls, its `DialogHeader` held at the top. The

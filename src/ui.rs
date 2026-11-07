@@ -35,6 +35,7 @@ pub mod sheet;
 pub mod skeleton;
 pub mod slider;
 pub mod stats;
+pub mod stepper;
 pub mod steps;
 pub mod switch;
 pub mod table;
@@ -74,6 +75,7 @@ pub const COMPONENTS: &[Component] = &[
     skeleton::Skeleton,
     slider::Slider,
     stats::Stats,
+    stepper::Stepper,
     steps::Steps,
     switch::Switch,
     table::Table,

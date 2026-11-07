@@ -1,0 +1,30 @@
+/* corten ui 0.1.0: stepper 57175a5ce13533dc */
+/* NumberField's root is display: contents, so a unit before it sits between the decrease button
+   and the input. */
+.stepper { display: inline-flex; align-items: center; gap: .25rem; }
+.stepper > [data-scope] { display: contents; }
+.stepper input {
+  box-sizing: border-box; width: 9ch; height: var(--control-height); padding: 0 .5rem; font: inherit; font-size: var(--control-font-size); text-align: center;
+  color: var(--foreground); background: transparent; border: 1px solid var(--input); border-radius: calc(var(--radius) - 2px);
+  appearance: textfield;
+}
+.stepper input::-webkit-inner-spin-button { appearance: none; }
+.stepper input:focus-visible { outline: 2px solid transparent; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 35%, transparent); }
+.stepper input:user-invalid, .stepper input[aria-invalid="true"] { border-color: var(--destructive); }
+.stepper input:disabled { opacity: .5; cursor: not-allowed; }
+.stepper button {
+  box-sizing: border-box; width: var(--control-height); height: var(--control-height); padding: 0; font: inherit; color: var(--foreground); background: var(--background);
+  border: 1px solid var(--input); border-radius: calc(var(--radius) - 2px); cursor: pointer;
+}
+.stepper button:hover { background: var(--accent); }
+.stepper button:disabled { opacity: .5; cursor: not-allowed; }
+/* The buttons step only with the script; without it they are not drawn, and the input is the
+   control: its own spin buttons, the arrow keys, and a check when the form is sent. */
+@media (scripting: none) {
+  .stepper button { display: none; }
+  .stepper input { appearance: auto; }
+  .stepper input::-webkit-inner-spin-button { appearance: auto; }
+}
+.unit { order: 1; font-size: .875rem; color: var(--muted-foreground); }
+.unit ~ * > input { order: 2; }
+.unit ~ * > button:last-child { order: 3; }

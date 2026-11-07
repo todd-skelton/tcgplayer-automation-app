@@ -4,7 +4,7 @@ use corten::{
     i18n::{DateStyle, TimeStyle},
     prelude::*,
 };
-use corten_ui::ordered;
+use corten_ui::{Number, NumberField, ordered};
 
 use crate::{
     features::{
@@ -27,6 +27,7 @@ use crate::{
         checkbox::Checkbox,
         field::Field,
         input::Input,
+        stepper::Stepper,
         textarea::Textarea,
     },
 };
@@ -126,24 +127,28 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                             hint=""
                             error=""
                         >
-                            <input
-                                class={Input {}}
-                                type="number"
-                                value={view.settings.interval_minutes}
-                                {..range::INTERVAL_MINUTES}
-                                required
-                                {..e.control(f.interval_minutes)}
-                            >
+                            <Stepper>
+                                <NumberField
+                                    field={&Number {
+                                        value: i64::from(view.settings.interval_minutes).into(),
+                                        required: true,
+                                        attrs: &e.aria(f.interval_minutes),
+                                        ..Number::new(e.id(f.interval_minutes), f.interval_minutes, range::INTERVAL_MINUTES, "Fewer minutes", "More minutes")
+                                    }}
+                                />
+                            </Stepper>
                         </Field>
                         <Field id={e.id(f.batch_size)} label="Listings per cycle" hint="" error="">
-                            <input
-                                class={Input {}}
-                                type="number"
-                                value={view.settings.batch_size}
-                                {..range::BATCH_SIZE}
-                                required
-                                {..e.control(f.batch_size)}
-                            >
+                            <Stepper>
+                                <NumberField
+                                    field={&Number {
+                                        value: i64::from(view.settings.batch_size).into(),
+                                        required: true,
+                                        attrs: &e.aria(f.batch_size),
+                                        ..Number::new(e.id(f.batch_size), f.batch_size, range::BATCH_SIZE, "Fewer listings", "More listings")
+                                    }}
+                                />
+                            </Stepper>
                         </Field>
                         <Field
                             id={e.id(f.refresh_budget)}
@@ -151,14 +156,16 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                             hint=""
                             error=""
                         >
-                            <input
-                                class={Input {}}
-                                type="number"
-                                value={view.settings.refresh_budget}
-                                {..range::REFRESH_BUDGET}
-                                required
-                                {..e.control(f.refresh_budget)}
-                            >
+                            <Stepper>
+                                <NumberField
+                                    field={&Number {
+                                        value: i64::from(view.settings.refresh_budget).into(),
+                                        required: true,
+                                        attrs: &e.aria(f.refresh_budget),
+                                        ..Number::new(e.id(f.refresh_budget), f.refresh_budget, range::REFRESH_BUDGET, "Fewer refresh jobs", "More refresh jobs")
+                                    }}
+                                />
+                            </Stepper>
                         </Field>
                     </div>
                     <div class={Line}>
