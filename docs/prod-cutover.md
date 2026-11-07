@@ -191,6 +191,36 @@ lists 595 entries).
 
 Release 3 can start after one full day of normal use, with Todd's approval.
 
+## Release 3 (prepared, not started)
+
+Batch pricing moves to the Corten worker: `PRICING_WORKER=1` in `.env.production.local`, and the
+release script removes Node's `pricing-worker` service. It waits for one full day of release 2
+(about 03:15 UTC on 2026-11-08) and Todd's approval.
+
+Production prices in batches all day: 453 full jobs completed from 2026-11-04 to 07:00 UTC on
+2026-11-07 (about 155 a day, a mean of about 165 s each, the longest about 30 minutes), and one
+failed on 2026-11-05. A job running when the switch moves is taken up again once its claim
+expires.
+
+Readiness:
+
+1. The cached twin (`twin-pricing-worker.mjs 7122 cached`) at Corten f3291094: 50 SKUs and a
+   31-item planned publication, 27,729 values, 0 differ.
+2. The full twin (`twin-pricing-worker.mjs 3471 full`) at Corten f3291094, with live TCGplayer
+   reads: both completed with the same rows in every table it compares (5 results, 4 curves, 4
+   publication items, 14 listing snapshots); 2,532 values that are not market numbers, 0 differ.
+3. The release script removes `pricing-worker` when the switch is set (`scripts/nodeWorkers.mjs`,
+   its test in `npm test`).
+
+Steps when approved:
+
+1. Back up production, then merge `codex/corten-port` into master and release with
+   `npm run prod:update` from a clean master after adding `PRICING_WORKER=1`.
+2. Checks: the `web` log has "Inventory batch pricing worker ... started", the next queued job
+   completes with Node's error counts, `npm run prod:status` no longer lists `pricing-worker`,
+   every container is healthy and `/proxy-health` names the new slot.
+3. Rollback: remove the switch and release again; the script starts `pricing-worker` again.
+
 ## Decided (2026-11-05)
 
 1. Refresh dev from production before release 1, then run the gate and the twin scripts against
