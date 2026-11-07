@@ -191,11 +191,13 @@ lists 595 entries).
 
 Release 3 can start after one full day of normal use, with Todd's approval.
 
-## Release 3 (prepared, not started)
+## Release 3 (2026-11-07)
 
 Batch pricing moves to the Corten worker: `PRICING_WORKER=1` in `.env.production.local`, and the
-release script removes Node's `pricing-worker` service. It waits for one full day of release 2
-(about 03:15 UTC on 2026-11-08) and Todd's approval.
+release script removes Node's `pricing-worker` service. Todd approved it with releases 4 to 8 on
+2026-11-07 (Decided, point 5). A backup was taken just before:
+`.artifacts/db-backups/2026-11-07T14-17Z-prod-before-release-3.dump` (`pg_restore -l` lists 595
+entries).
 
 Production prices in batches all day: 453 full jobs completed from 2026-11-04 to 07:00 UTC on
 2026-11-07 (about 155 a day, a mean of about 165 s each, the longest about 30 minutes), and one
@@ -220,6 +222,16 @@ Steps when approved:
    completes with Node's error counts, `npm run prod:status` no longer lists `pricing-worker`,
    every container is healthy and `/proxy-health` names the new slot.
 3. Rollback: remove the switch and release again; the script starts `pricing-worker` again.
+
+## Releases 4 and 5 (readiness so far)
+
+1. Release 4, the continuous pricing schedule: the scheduler twin at Corten f3291094 queued two
+   batches on each side; 62,651 values, 0 differ (`docs/worker-parity.md`).
+2. Release 5, slab evidence and maintenance: production holds no slab data (every `slab_` table
+   empty and no provider connection, checked 2026-11-07), as dev does not, so no twin can run and
+   the Rust worker's first day there finds nothing to do. Its proof is the recorded Node runs
+   (`docs/worker-parity.md`), and the check after the release is its start line and a clean
+   `web` log.
 
 ## Release 8 (prepared on `codex/release-8-drop-node`, after release 7)
 
@@ -256,6 +268,6 @@ release 7's evidence is recorded.
    A production backup was taken first:
    `.artifacts/db-backups/2026-11-05T15-07-56Z-prod-before-release-1.dump`.
 
-## Open for Todd
-
-1. Approval for each of releases 3 to 8, one at a time.
+5. On 2026-11-07 Todd approved releases 3 to 8 to run back to back: each starts once the one
+   before it has been checked in production (Checks after each release), without the full day
+   between them that point 3 asked for.
