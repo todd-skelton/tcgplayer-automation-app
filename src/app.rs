@@ -1,7 +1,7 @@
 //! The app: its routes, its screens and JSON routes, and its workers.
 use std::time::Duration;
 
-use corten::{prelude::*, security::Policy};
+use corten::{answer::Media, prelude::*, security::Policy};
 
 use crate::{
     config,
@@ -34,12 +34,24 @@ impl Shared {
     }
 }
 
-/// The home page. Handlers are named from this module, where the routes module is declared, not
-/// from inside it.
+/// The home page, and the icon at the path a browser asks for when a document names none (a PDF
+/// or JSON opened in a tab), which the Node app served from `public/`. Handlers are named from
+/// this module, where the routes module is declared, not from inside it.
 #[corten::routes(state = Shared)]
 pub mod url {
     #[route("/", get = show_home)]
     pub struct Home;
+
+    #[route("/favicon.ico", get = favicon)]
+    pub struct Favicon;
+}
+
+/// `static/favicon.ico`, which pages link at its versioned URL (`layout`), at its fixed one.
+async fn favicon() -> Public<Media> {
+    Public::new(
+        Duration::from_secs(24 * 60 * 60),
+        Media::new("image/x-icon", &include_bytes!("../static/favicon.ico")[..]),
+    )
 }
 
 /// The JSON routes' prefix: each feature's routes are added under it (`crate::api::ported`). Some
@@ -280,6 +292,27 @@ mod tests {
             "the app bar: {page}"
         );
         assert!(page.contains("Go to the home page"), "{page}");
+    }
+
+    /// The icon answers at `/favicon.ico`, the bytes `static/` holds, kept a day by anyone.
+    #[tokio::test]
+    async fn the_icon_answers_at_its_fixed_path() {
+        let shared = Shared {
+            db: Database::connect_lazy("postgresql://localhost:1/unused"),
+            slab_providers: slab_connections::Transport::default(),
+        };
+        let answer = app(shared).test().get(&url::Favicon).await;
+        assert_eq!(answer.status(), corten::http::StatusCode::OK);
+        assert_eq!(answer.headers()["content-type"], "image/x-icon");
+        assert_eq!(&answer.bytes()[..], &include_bytes!("../static/favicon.ico")[..]);
+        assert!(
+            answer.headers()["cache-control"]
+                .to_str()
+                .unwrap()
+                .starts_with("public, max-age=86400"),
+            "{:?}",
+            answer.headers()["cache-control"]
+        );
     }
 
     /// What carries buyers' addresses or a provider's status is kept by nothing, as React's
