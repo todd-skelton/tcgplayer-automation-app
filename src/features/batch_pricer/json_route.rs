@@ -375,7 +375,12 @@ async fn exported_file(request: Request) -> Result<Option<(String, Vec<u8>)>, Bo
         .await
         .map_err(|_| Box::new(failed("TypeError: Failed to parse body as FormData.")))?;
     upload.limit(MOST_EXPORT_BYTES + (64 << 10));
-    let unread = |error: UploadError| Box::new(failed(format!("TypeError: {error}")));
+    // A body that broke is Node's `formData()` error; a client that stopped sending (Corten's idle
+    // time, a minute) is a 408, which Node, waiting on the body until its timeout, never said.
+    let unread = |error: UploadError| match error {
+        UploadError::Stalled => Box::new(api::error(StatusCode::REQUEST_TIMEOUT, error)),
+        error => Box::new(failed(format!("TypeError: {error}"))),
+    };
     while let Some(mut file) = upload.next_file().await.map_err(unread)? {
         if file.field() != "file" {
             continue;
