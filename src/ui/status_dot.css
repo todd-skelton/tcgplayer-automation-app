@@ -1,0 +1,10 @@
+/* corten ui 0.1.0: status_dot 15ab3d26677f6b37 */
+.dot { display: inline-block; flex: none; width: .5rem; height: .5rem; border-radius: 50%; background: var(--kit-tone); }
+.neutral { --kit-tone: var(--muted-foreground); }
+.info { --kit-tone: var(--info); }
+.success { --kit-tone: var(--success); }
+.warning { --kit-tone: var(--warning); }
+.destructive { --kit-tone: var(--destructive); }
+/* A contrast theme paints a background as Canvas, which would leave a gap: the dot is drawn in the
+   system's text color, and its tone is not shown, so the text beside it says the status. */
+@media (forced-colors: active) { .dot { forced-color-adjust: none; background: CanvasText; } }

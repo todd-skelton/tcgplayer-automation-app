@@ -147,7 +147,10 @@ fn ReviewedListing<'a>(screen: &'a Screen) -> impl Render {
     };
     let f = AssignInput::FIELDS;
     html! {
-        <section class={(CardPanel {}, CardCompact {}, Stack)} aria-label="Selected listing">
+        <section
+            class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
+            aria-label="Selected listing"
+        >
             match &screen.listing {
                 None => <p>"The listing is not on this page of the inventory any more."</p>,
                 Some(listing) => {
@@ -218,7 +221,10 @@ fn IdentityCard<'a>(
     let f = ConfirmInput::FIELDS;
     let grades: Vec<f64> = (2..=20).map(|half| f64::from(half) / 2.0).collect();
     html! {
-        <section class={(CardPanel {}, CardCompact {}, Stack)} aria-labelledby="slab-identity">
+        <section
+            class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
+            aria-labelledby="slab-identity"
+        >
             <h2 id="slab-identity">
                 {card.name.as_deref().unwrap_or("Card identity")}
                 " · Owned "{&record.grader}" "
@@ -245,7 +251,7 @@ fn IdentityCard<'a>(
                     method="post"
                     action={url::Confirm { choice: choice.clone() }}
                     data-patch
-                    class={Stack}
+                    class={stack(Space::_3)}
                 >
                     <p class={muted()}>
                         "Confirm the physical slab's card and grade. Blank fields remain unknown."
@@ -337,7 +343,10 @@ fn InventoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let choice = &screen.choice;
     let f = Choice::FIELDS;
     html! {
-        <section class={(CardPanel {}, CardCompact {}, Stack)} aria-labelledby="slab-inventory">
+        <section
+            class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
+            aria-labelledby="slab-inventory"
+        >
             <h2 id="slab-inventory">"eBay inventory"</h2>
             let e = Within::none(InventoryFormId);
             <form
@@ -416,7 +425,7 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
                 method="post"
                 action={url::Import { choice: choice.clone() }}
                 data-patch
-                class={Stack}
+                class={stack(Space::_3)}
             >
                 <p class={muted()}>
                     "Import a partial inventory snapshot for "{seller}

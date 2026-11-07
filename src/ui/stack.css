@@ -1,0 +1,12 @@
+/* corten ui 0.1.0: stack 879d4069c0af39ce */
+.stack { display: flex; flex-direction: column; align-items: stretch; }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; }
+/* No specificity: it drops the browser's default margins, and an app's rule that names the
+   element or a class still wins. */
+:where(.stack, .cluster) > * { margin-block: 0; }
+/* The spacing the kit's components use for their own parts, literals as theirs are (one scale). */
+.xs { gap: .25rem; }
+.sm { gap: .5rem; }
+.md { gap: 1rem; }
+.lg { gap: 1.5rem; }
+.xl { gap: 2rem; }

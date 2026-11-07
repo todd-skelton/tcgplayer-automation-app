@@ -21,6 +21,7 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
+        combobox::Combobox,
         icon::{self, Icon},
         input::Input,
         select::Select,
@@ -265,6 +266,6 @@ fn ProductPicker<'a>(screen: &'a Screen) -> impl Render {
     html! {
         let options: Vec<Option_<i32, String>> = screen.choices.iter().map(|c| Option_::new(c.id, &c.label).terms(&c.terms)).collect();
         let picker = Picker { value: screen.chosen, disabled: options.is_empty(), ..Picker::new(ProductPickId, f.product, "Choose a product", "No matching products", &options) };
-        <ComboBox field={&picker} />
+        <Combobox><ComboBox field={&picker} /></Combobox>
     }
 }

@@ -13,11 +13,6 @@
     margin: 0;
   }
 }
-.stack {
-  display: grid;
-  gap: var(--space-3);
-  align-content: start;
-}
 .cards {
   display: grid;
   gap: var(--space-4);

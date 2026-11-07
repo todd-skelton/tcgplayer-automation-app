@@ -60,7 +60,7 @@ pub fn PublicationPanel<'a>(
         </a>
         if shown {
             <section
-                class={(CardPanel {}, CardCompact {}, Stack, PublicationPanel)}
+                class={(CardPanel {}, CardCompact {}, stack(Space::_3), PublicationPanel)}
                 aria-labelledby="slab-publication"
             >
                 <h3 id="slab-publication">"Review a listing price change"</h3>
@@ -243,7 +243,7 @@ fn DryRun<'a>(
         .map(|step| (step, parsed(&step.created_at)))
         .collect();
     html! {
-        <section class={Stack} aria-labelledby="slab-dry-run">
+        <section class={stack(Space::_3)} aria-labelledby="slab-dry-run">
             <h4 id="slab-dry-run">"Publication dry run"</h4>
             <p class={muted()}>
                 "Check the saved plan against imported inventory and record the outcome. This does not contact eBay or change a price."

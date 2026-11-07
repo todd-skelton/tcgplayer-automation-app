@@ -45,7 +45,7 @@ pub fn CompReview<'a>(screen: &'a Screen) -> impl Render {
     };
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, Stack, CompReview)}
+            class={(CardPanel {}, CardCompact {}, stack(Space::_3), CompReview)}
             aria-labelledby="slab-comps"
         >
             <div class={Head}>
@@ -270,7 +270,7 @@ fn SaleDialog<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> impl 
                     "Close"
                 </a>
             </div>
-            <div class={Stack}>
+            <div class={stack(Space::_3)}>
                 <p>{sale.name()}</p>
                 if let Some(link) = sale.link() {
                     <a href={link} target="_blank" rel="noreferrer">"Open source sale"</a>
@@ -330,7 +330,7 @@ fn DecisionForm<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> imp
             method="post"
             action={url::DecideComp { choice: screen.choice.clone() }}
             data-patch
-            class={Stack}
+            class={stack(Space::_3)}
         >
             <input type="hidden" name={f.revision} value={&review.revision_id}>
             <input type="hidden" name={f.identity_revision} value={review.identity_revision}>

@@ -15,6 +15,7 @@ pub mod breadcrumb;
 pub mod button;
 pub mod card;
 pub mod checkbox;
+pub mod checkboxes;
 pub mod combobox;
 pub mod control_width;
 pub mod dialog;
@@ -34,7 +35,9 @@ pub mod separator;
 pub mod sheet;
 pub mod skeleton;
 pub mod slider;
+pub mod stack;
 pub mod stats;
+pub mod status_dot;
 pub mod stepper;
 pub mod steps;
 pub mod switch;
@@ -55,6 +58,7 @@ pub const COMPONENTS: &[Component] = &[
     button::Button,
     card::Card,
     checkbox::Checkbox,
+    checkboxes::Checkboxes,
     combobox::Combobox,
     control_width::ControlWidth,
     dialog::Dialog,
@@ -74,7 +78,9 @@ pub const COMPONENTS: &[Component] = &[
     sheet::Sheet,
     skeleton::Skeleton,
     slider::Slider,
+    stack::Stack,
     stats::Stats,
+    status_dot::StatusDot,
     stepper::Stepper,
     steps::Steps,
     switch::Switch,

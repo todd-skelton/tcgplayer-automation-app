@@ -287,6 +287,24 @@ already removed. A slot is then its Corten container alone, which applies the mi
    by name, every Node container left from before (`NODE_CONTAINERS` in `scripts/prod.mjs`).
 4. Rollback: release the previous master. Its compose file brings the Node app back in its slot.
 
+Released the same day: merged as [#126 Corten port release 8: the Node app leaves production](https://github.com/todd-skelton/tcgplayer-automation-app/pull/126)
+(0587ed02e, Corten 741b0a65) and released with `npm run prod:update` from a clean master at 16:21 UTC,
+with every switch of releases 2 to 7 set. A backup was taken just before:
+`.artifacts/db-backups/2026-11-07T16-02Z-prod-before-release-8.dump` (`pg_restore -l` lists 595
+entries).
+
+1. The green slot took over; the release removed blue's Corten container and, by name, the last Node
+   container (`tcgplayer-automation-prod-blue`). `docker ps` lists only the proxy, postgres and
+   `tcgplayer-automation-web-prod-green`, all healthy, and `/proxy-health` names green.
+2. The `web` log has every worker's start line (pricing, schedule, slab, publication, order history)
+   and no error, panic or warning.
+3. All 16 screens answer 200 through port 3001 with no script error. An unknown path is the app's
+   404 page (`Not found`), a retired route the API's 404 (`{"error":"Not Found"}`),
+   `/api/pricing-config` 200 and `/favicon.ico` 200 `image/x-icon`.
+4. The chain ran with no Node at all: the scheduler queued batch 7485 (16:29:52 UTC), the pricing worker
+   completed job 7492 (1 row, 0 errors) and the publication worker posted 6080, `published` on the
+   first attempt.
+
 Left for after release 8, since nothing in production uses them: `app/`, the Node build stages in
 `Dockerfile`, the Node dev compose service and the parity scripts that run Node's code. The twin
 and record scripts still need the Node app in dev, so they go with it.

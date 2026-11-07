@@ -47,7 +47,7 @@ pub fn RecommendationPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -
         .and_then(|l| l.observed_at.parse::<DateTime<Utc>>().ok());
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, Stack, RecommendationPanel)}
+            class={(CardPanel {}, CardCompact {}, stack(Space::_3), RecommendationPanel)}
             aria-labelledby="slab-recommendation"
         >
             <h2 id="slab-recommendation">"Owned slab recommendation · USD"</h2>
@@ -156,7 +156,7 @@ fn CostsForm<'a>(
             method="post"
             action={url::Calculate { choice: screen.choice.clone() }}
             data-patch
-            class={Stack}
+            class={stack(Space::_3)}
         >
             <div class={Line}>
                 <Field id={e.id(f.basis)} label="Comparable price basis" hint="" error="">

@@ -30,6 +30,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         field::Field,
         input::Input,
+        status_dot::{StatusDot, StatusTone},
     },
 };
 
@@ -143,10 +144,10 @@ struct TrackingId<'a>(&'a str);
 #[component(css = LabelManagement)]
 fn PurchasedLabel<'a>(title: &'a str, bought: &'a Bought, looked: &'a Looked<'a>) -> impl Render {
     let result = &bought.result;
-    let (status, tone) = match result.status {
-        Status::Purchased => ("PURCHASED", BadgeTone::Success),
-        Status::Failed => ("FAILED", BadgeTone::Destructive),
-        Status::Skipped => ("SKIPPED", BadgeTone::Warning),
+    let (status, tone, dot) = match result.status {
+        Status::Purchased => ("PURCHASED", BadgeTone::Success, StatusTone::Success),
+        Status::Failed => ("FAILED", BadgeTone::Destructive, StatusTone::Destructive),
+        Status::Skipped => ("SKIPPED", BadgeTone::Warning, StatusTone::Warning),
     };
     let at = bought
         .purchased_at
@@ -161,7 +162,10 @@ fn PurchasedLabel<'a>(title: &'a str, bought: &'a Bought, looked: &'a Looked<'a>
         <article class={Label}>
             <h3>{title}</h3>
             <div class={row(Space::_2)}>
-                <span class={Badge { tone, emphasis: BadgeEmphasis::Soft }}>{status}</span>
+                <span class={Badge { tone, emphasis: BadgeEmphasis::Soft }}>
+                    <StatusDot tone={dot} />
+                    {status}
+                </span>
                 <span class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}>
                     if bought.mode == EasyPostMode::Test { "TEST" } else { "PRODUCTION" }
                 </span>

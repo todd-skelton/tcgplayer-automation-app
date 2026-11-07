@@ -13,10 +13,6 @@
     margin: 0;
   }
 }
-.stack {
-  display: grid;
-  gap: var(--space-3);
-}
 .line {
   display: flex;
   flex-wrap: wrap;

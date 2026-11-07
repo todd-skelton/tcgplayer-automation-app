@@ -36,7 +36,7 @@ struct HydrateSetCardId;
 #[component(css)]
 pub fn DataScreen<'a>(screen: &'a Screen) -> impl Render {
     html! {
-        <section class={(Stack, DataScreen)}>
+        <section class={(stack(Space::_3), DataScreen)}>
             <header>
                 <h1>"Data Management"</h1>
                 <p class={muted()}>
@@ -69,7 +69,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                 let e = errors.within(ProductLinesCardId);
                 <section
                     id={ProductLinesCardId}
-                    class={(CardPanel {}, CardCompact {}, Stack)}
+                    class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
                     aria-labelledby="job-product-lines"
                 >
                     <h2 id="job-product-lines">"Refresh product lines"</h2>
@@ -80,7 +80,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                         method="post"
                         action={url::RefreshProductLines}
                         data-patch
-                        class={(Stack, JobForm)}
+                        class={(stack(Space::_3), JobForm)}
                     >
                         <p class={muted()}>
                             "Run this when you notice new product lines, missing category filters, or a stale list in the database."
@@ -94,7 +94,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                 let e = errors.within(NewProductsCardId);
                 <section
                     id={NewProductsCardId}
-                    class={(CardPanel {}, CardCompact {}, Stack)}
+                    class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
                     aria-labelledby="job-new-products"
                 >
                     <h2 id="job-new-products">"Sync new products"</h2>
@@ -105,7 +105,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                         method="post"
                         action={url::SyncNewProducts}
                         data-patch
-                        class={(Stack, JobForm)}
+                        class={(stack(Space::_3), JobForm)}
                     >
                         {line_choice(LineInput::FIELDS.product_line, lines, screen.new_products.product_line, &e)}
                         <p class={muted()}>
@@ -123,7 +123,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                 let e = errors.within(EveryProductCardId);
                 <section
                     id={EveryProductCardId}
-                    class={(CardPanel {}, CardCompact {}, Stack)}
+                    class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
                     aria-labelledby="job-every-product"
                 >
                     <h2 id="job-every-product">"Check every product in a product line"</h2>
@@ -134,7 +134,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                         method="post"
                         action={url::CheckProductLine}
                         data-patch
-                        class={(Stack, JobForm)}
+                        class={(stack(Space::_3), JobForm)}
                     >
                         {line_choice(LineInput::FIELDS.product_line, lines, screen.every_product.product_line, &e)}
                         <Run ready="Check Every Product" working="Checking Every Product..." />
@@ -149,7 +149,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                 let e = errors.within(RepairProductCardId);
                 <section
                     id={RepairProductCardId}
-                    class={(CardPanel {}, CardCompact {}, Stack)}
+                    class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
                     aria-labelledby="job-product"
                 >
                     <h2 id="job-product">"Repair one product"</h2>
@@ -160,7 +160,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                         method="post"
                         action={url::RepairProduct}
                         data-patch
-                        class={(Stack, JobForm)}
+                        class={(stack(Space::_3), JobForm)}
                     >
                         {line_choice(ProductInput::FIELDS.product_line, lines, screen.product.product_line, &e)}
                         <Field
@@ -191,7 +191,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                 let e = errors.within(HydrateSetCardId);
                 <section
                     id={HydrateSetCardId}
-                    class={(CardPanel {}, CardCompact {}, Stack)}
+                    class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
                     aria-labelledby="job-set"
                 >
                     <h2 id="job-set">"Hydrate one set"</h2>
@@ -202,7 +202,7 @@ pub fn JobCard<'a>(screen: &'a Screen, job: Job) -> impl Patch {
                         method="post"
                         action={url::HydrateSet}
                         data-patch
-                        class={(Stack, JobForm)}
+                        class={(stack(Space::_3), JobForm)}
                     >
                         <Field
                             id={e.id(SetInput::FIELDS.set_name)}

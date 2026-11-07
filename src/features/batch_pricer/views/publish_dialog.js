@@ -39,7 +39,6 @@ export function count(s) {
   });
   s.note.parentElement?.setAttribute("data-changes", String(delta !== 0));
   s.submit.textContent = s.publish({ count: s.number(checked) });
-  s.submit.disabled = checked === 0;
 }
 
 /**
@@ -52,12 +51,20 @@ export function start(s, tools) {
 }
 
 /**
- * Checks every ready SKU, or none.
+ * Checks every ready SKU, or none. Setting `checked` sends no `change`, so one is sent: the list's
+ * CheckboxGroup checks again whether any box is checked, and the form's handler counts.
  * @param {Selection} s @param {boolean} checked
  */
 export function checkAll(s, checked) {
-  for (const item of rows(s.items, PublishItem)) box(item).checked = checked;
-  count(s);
+  /** @type {HTMLInputElement | null} */
+  let first = null;
+  for (const item of rows(s.items, PublishItem)) {
+    const each = box(item);
+    each.checked = checked;
+    first ??= each;
+  }
+  if (first) first.dispatchEvent(new Event("change", { bubbles: true }));
+  else count(s);
 }
 
 /**

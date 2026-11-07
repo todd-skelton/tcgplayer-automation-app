@@ -1,7 +1,7 @@
 //! The app: its routes, its screens and JSON routes, and its workers.
 use std::time::Duration;
 
-use corten::{answer::Media, prelude::*, security::Policy};
+use corten::{prelude::*, security::Policy};
 
 use crate::{
     config,
@@ -41,17 +41,6 @@ impl Shared {
 pub mod url {
     #[route("/", get = show_home)]
     pub struct Home;
-
-    #[route("/favicon.ico", get = favicon)]
-    pub struct Favicon;
-}
-
-/// `static/favicon.ico`, which pages link at its versioned URL (`layout`), at its fixed one.
-async fn favicon() -> Public<Media> {
-    Public::new(
-        Duration::from_secs(24 * 60 * 60),
-        Media::new("image/x-icon", &include_bytes!("../static/favicon.ico")[..]),
-    )
 }
 
 /// The JSON routes' prefix: each feature's routes are added under it (`crate::api::ported`). Some
@@ -294,14 +283,18 @@ mod tests {
         assert!(page.contains("Go to the home page"), "{page}");
     }
 
-    /// The icon answers at `/favicon.ico`, the bytes `static/` holds, kept a day by anyone.
+    /// The icon answers at `/favicon.ico` (Corten serves `static/favicon.ico` there), the bytes
+    /// `static/` holds, kept a day by anyone.
     #[tokio::test]
     async fn the_icon_answers_at_its_fixed_path() {
         let shared = Shared {
             db: Database::connect_lazy("postgresql://localhost:1/unused"),
             slab_providers: slab_connections::Transport::default(),
         };
-        let answer = app(shared).test().get(&url::Favicon).await;
+        let answer = app(shared)
+            .test()
+            .get(&corten::Local::parse("/favicon.ico").unwrap())
+            .await;
         assert_eq!(answer.status(), corten::http::StatusCode::OK);
         assert_eq!(answer.headers()["content-type"], "image/x-icon");
         assert_eq!(
