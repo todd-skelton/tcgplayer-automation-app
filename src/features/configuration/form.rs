@@ -1,7 +1,6 @@
 //! Each section's form as the browser sends it. A section saves on every change; a value that
 //! does not read keeps what was stored and is named, and the rest of the section is saved.
 use corten::prelude::*;
-use serde::Deserialize;
 
 use super::config::{
     DEFAULT_HORIZON_DAYS, EVIDENCE_WINDOWS, LineSetting, Policy, Pricing, ProfitPerDay,
@@ -9,7 +8,7 @@ use super::config::{
 };
 
 /// The policy select's words, as the React app stores them.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum Method {
     Percentile,
@@ -40,7 +39,7 @@ fn percent(n: f64) -> bool {
     (0.0..=100.0).contains(&n)
 }
 
-#[derive(Clone, Debug, Deserialize, Fields)]
+#[derive(Clone, Debug, Fields)]
 pub struct PricingInput {
     pub policy: Method,
     pub horizon_days: String,
@@ -204,7 +203,7 @@ impl PricingInput {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Fields)]
+#[derive(Clone, Debug, Fields)]
 pub struct SnapsInput {
     #[serde(default)]
     pub enabled: bool,
@@ -254,7 +253,7 @@ impl SnapsInput {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Fields)]
+#[derive(Clone, Debug, Fields)]
 pub struct SupplyInput {
     #[serde(default)]
     pub enabled: bool,
@@ -278,7 +277,7 @@ impl SupplyInput {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Fields)]
+#[derive(Clone, Debug, Default, Fields)]
 pub struct DefaultPercentileInput {
     pub default_percentile: String,
 }
@@ -300,7 +299,7 @@ impl DefaultPercentileInput {
 }
 
 /// A product line to price differently, by its id; none when nothing was picked.
-#[derive(Clone, Debug, Default, Deserialize, Fields)]
+#[derive(Clone, Debug, Default, Fields)]
 pub struct AddLineInput {
     pub product_line: Option<i32>,
     #[serde(default)]

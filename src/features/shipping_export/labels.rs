@@ -6,7 +6,6 @@
 //! choice ([`Choice`]), since a form's fields cannot be flattened from a shared group (corten
 //! #363).
 use corten::{Bytes, Refusal, form::from_bytes, prelude::*};
-use serde::Deserialize;
 
 use super::{
     buying::cannot_buy,
@@ -27,7 +26,7 @@ use crate::{
 };
 
 /// Which labels to buy for the order.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, corten::UrlValue)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, corten::UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum LabelsToBuy {
     #[default]
@@ -64,7 +63,7 @@ impl LabelsToBuy {
 
 /// The form's other fields: the labels chosen, the service the package was drawn for (so a new
 /// service redraws it), and whether the operator was told a label is already bought.
-#[derive(Debug, Deserialize, Fields)]
+#[derive(Debug, Fields)]
 pub struct Choice {
     #[serde(default)]
     pub buy: LabelsToBuy,

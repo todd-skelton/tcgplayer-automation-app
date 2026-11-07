@@ -8,7 +8,6 @@ use corten::{
 };
 use corten_ui::Toast;
 use futures_util::stream;
-use serde::Deserialize;
 
 use super::{
     batches::{self, Batch, Mode as Pricing, Publications},
@@ -50,7 +49,7 @@ impl url::BatchPricer {
 }
 
 /// Which batch the screen shows, as its picker and links write it: none is the newest.
-#[derive(Clone, Copy, Debug, Default, Deserialize, corten::Route, corten::Fields)]
+#[derive(Clone, Copy, Debug, Default, corten::Route, corten::Fields)]
 #[route(query)]
 pub struct Chosen {
     pub batch: Option<i32>,
@@ -219,7 +218,7 @@ async fn answer(req: &Req, db: &Database, batch: i32, done: Result<String, Strin
     })
 }
 
-#[derive(Deserialize, Fields)]
+#[derive(Fields)]
 pub struct PriceInput {
     pub mode: Pricing,
 }
@@ -237,7 +236,7 @@ pub async fn price(
 }
 
 /// The SKUs checked in the publish dialog, each a `sku` field.
-#[derive(Deserialize, Fields)]
+#[derive(Fields)]
 pub struct PublishInput {
     #[serde(default)]
     pub sku: Vec<i64>,
@@ -298,7 +297,7 @@ pub async fn download(
         .attachment(&at.scope.file_name(at.batch)))
 }
 
-#[derive(Deserialize, Fields)]
+#[derive(Fields)]
 pub struct CsvInput {
     pub file: Files,
 }
@@ -357,7 +356,7 @@ pub async fn import_csv(
     .await
 }
 
-#[derive(Deserialize, Fields)]
+#[derive(Fields)]
 pub struct SellerInput {
     pub seller_key: String,
 }

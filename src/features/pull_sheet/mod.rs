@@ -48,7 +48,7 @@ pub mod url {
 
     /// What the sheet shows without JavaScript: the rows matching `q`, in `sort`'s order. With
     /// JavaScript the browser filters and sorts the rows it has, and these only start it off.
-    #[derive(Clone, Default, serde::Deserialize, corten::Route, corten::Fields)]
+    #[derive(Clone, Default, corten::Route, corten::Fields)]
     #[route(query)]
     pub struct SheetQuery {
         pub q: Option<String>,

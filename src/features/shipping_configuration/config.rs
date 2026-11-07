@@ -10,7 +10,7 @@ use crate::{config, database::Database};
 const CONFIG_KEY: &str = "default";
 
 /// Postage paper. A letter's label is the 7x3 kind that fits a #10 envelope.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, corten::UrlValue)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, corten::UrlValue)]
 pub enum LabelSize {
     #[serde(rename = "4x6")]
     FourBySix,
@@ -28,7 +28,7 @@ impl LabelSize {
     ];
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, corten::UrlValue)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, corten::UrlValue)]
 pub enum LabelFormat {
     #[serde(rename = "PDF")]
     Pdf,
@@ -42,7 +42,7 @@ impl LabelFormat {
 
 /// The USPS service an expedited order ships with. `First` is EasyPost's too, for a letter, but
 /// not a choice here.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, corten::UrlValue)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, corten::UrlValue)]
 pub enum Service {
     First,
     GroundAdvantage,

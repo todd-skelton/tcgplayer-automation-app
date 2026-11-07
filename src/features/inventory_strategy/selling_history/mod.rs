@@ -16,7 +16,7 @@ pub mod source;
 pub const SELL_THROUGH_HORIZONS: [i64; 4] = [7, 30, 60, 90];
 
 /// A window the selling history offers, written in an address as its days.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, corten::UrlValue)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, corten::UrlValue)]
 pub enum Window {
     #[serde(rename = "90")]
     Days90,

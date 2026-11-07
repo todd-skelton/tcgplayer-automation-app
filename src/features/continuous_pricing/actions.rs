@@ -2,7 +2,6 @@
 //! it did; a refusal is that page with why, as a conflict.
 use chrono::Utc;
 use corten::{Refusal, prelude::*};
-use serde::Deserialize;
 
 use super::{
     refresh::{self, TcgPlayerSearch},
@@ -78,7 +77,7 @@ async fn page(req: &Req, screen: &Screen, input: &ScheduleInput, errors: &Errors
 }
 
 /// The schedule as the form sends it. The poll interval is not on the form and keeps its value.
-#[derive(Clone, Debug, Default, Deserialize, Fields)]
+#[derive(Clone, Debug, Default, Fields)]
 pub struct ScheduleInput {
     #[serde(default)]
     pub enabled: bool,
@@ -282,7 +281,7 @@ pub async fn mark_due(
 }
 
 /// A SKU to enable or pause. An unchecked switch sends nothing, which is paused.
-#[derive(Debug, Default, Deserialize, Fields)]
+#[derive(Debug, Default, Fields)]
 pub struct SkuInput {
     pub sku: i32,
     #[serde(default)]

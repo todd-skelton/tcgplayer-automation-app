@@ -77,7 +77,7 @@ pub mod url {
     }
 
     /// The page of inventory shown (`q` searched, `state` chosen).
-    #[derive(Clone, Debug, Default, serde::Deserialize, corten::Route, corten::Fields)]
+    #[derive(Clone, Debug, Default, corten::Route, corten::Fields)]
     #[route(query)]
     pub struct View {
         pub q: Option<String>,

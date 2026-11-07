@@ -229,7 +229,7 @@ pub mod url {
     /// open, the page of them (`after` the listing that ended the last page, `trail` the pages
     /// before it, for Previous), the listing being reviewed, and the grade and sale dates the
     /// certificate is researched at.
-    #[derive(Clone, Debug, Default, serde::Deserialize, corten::Route, corten::Fields)]
+    #[derive(Clone, Debug, Default, corten::Route, corten::Fields)]
     #[route(query)]
     pub struct Choice {
         pub grader: Option<String>,

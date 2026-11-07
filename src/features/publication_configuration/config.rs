@@ -7,7 +7,6 @@
 //! with no field here). A save merges only this screen's keys into it, in one statement, so it
 //! never writes back a stale copy of the rest.
 use corten::UrlValue;
-use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::database::Database;
@@ -16,7 +15,7 @@ const CONFIG_KEY: &str = "default";
 const MINUTE_MS: u64 = 60_000;
 
 /// Where a batch of price or quantity changes comes from.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue)]
 #[serde(rename_all = "snake_case")]
 pub enum Source {
     PendingInventory,

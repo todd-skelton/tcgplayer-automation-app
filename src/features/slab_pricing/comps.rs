@@ -23,7 +23,7 @@ const PAGE: usize = 50;
 
 /// A column the review's sales can be sorted by. As the React grid did, a sort orders the page
 /// shown, not the whole revision.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, corten::UrlValue, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, corten::UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum CompColumn {
     Date,

@@ -393,7 +393,7 @@ async fn exported_file(request: Request) -> Result<Option<(String, Vec<u8>)>, Bo
 }
 
 /// The multipart body of an import: its `file`.
-#[derive(serde::Deserialize, Fields)]
+#[derive(Fields)]
 struct ExportForm {
     #[allow(dead_code)]
     file: Files,

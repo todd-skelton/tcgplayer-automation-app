@@ -1,11 +1,10 @@
 //! The publication settings as the browser sends them. Switches are checkboxes; the automatic
 //! sources share a name, so `automatic_sources` lists the ones switched on.
 use corten::prelude::*;
-use serde::Deserialize;
 
 use super::config::{Settings, Source, range};
 
-#[derive(Clone, Debug, Default, Deserialize, Fields)]
+#[derive(Clone, Debug, Default, Fields)]
 pub struct SettingsInput {
     #[serde(default)]
     pub global_paused: bool,

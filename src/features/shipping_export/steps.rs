@@ -1,8 +1,7 @@
 //! The workflow's steps, in the order the operator works through them, and where the current one
 //! stands (ported from `services/shippingStepProgress.ts`).
-use serde::Deserialize;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, corten::UrlValue)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, corten::UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum Step {
     #[default]

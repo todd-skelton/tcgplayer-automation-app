@@ -3,12 +3,12 @@
 //! net proceeds and its lot's cost. Ported from the Node app's `realizedPerformance.ts` and
 //! `marginTrend.ts`.
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use super::collate;
 
 /// A trailing window the realized figures are shown for, written in an address as its days.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, corten::UrlValue)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, corten::UrlValue)]
 pub enum RealizedWindow {
     #[default]
     #[serde(rename = "30")]

@@ -2,7 +2,6 @@ use std::{collections::HashMap, time::SystemTime};
 
 use chrono::{Duration, Utc};
 use corten::{Refusal, i18n::Zone, prelude::*};
-use serde::Deserialize;
 
 use super::{
     editing::ShipmentInput,
@@ -60,7 +59,7 @@ impl ShippingWorkflow {
 }
 
 /// The names of the page's own query fields, for the seller's GET form.
-#[derive(Deserialize, Fields)]
+#[derive(Fields)]
 #[expect(
     dead_code,
     reason = "the struct only names the GET form's fields; the route reads them"
@@ -513,7 +512,7 @@ pub(super) async fn refused(
     .await
 }
 
-#[derive(Deserialize, Fields)]
+#[derive(Fields)]
 pub struct LoadInput {
     #[serde(default)]
     pub seller_key: String,
@@ -582,7 +581,7 @@ pub async fn load_order(
     .await
 }
 
-#[derive(Deserialize, Fields)]
+#[derive(Fields)]
 pub struct HistoryInput {
     #[serde(default)]
     pub seller_key: String,
@@ -599,7 +598,7 @@ async fn history_changed(req: &Req, db: &Database, done: Result<(), String>) -> 
     req.redirect(&ShippingWorkflow::at(Step::LoadOrders))
 }
 
-#[derive(Deserialize, Fields)]
+#[derive(Fields)]
 pub struct CatchUpInput {
     #[serde(default)]
     pub seller_key: String,
