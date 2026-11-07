@@ -269,14 +269,13 @@ save) now and then, most often in the seconds after a job's final save, whose tr
 job's row. Each job still completed on its first attempt; the lease is 15 s, so one missed beat does
 not lose it.
 
-## Release 8 (prepared on `codex/release-8-drop-node`, after release 7)
+## Release 8 (2026-11-07)
 
 Release 8 removes the Node app from production: the relay (`src/legacy.rs`), `LEGACY_ORIGIN`, the
 `app-blue` and `app-green` services, and the Node worker services, which releases 3 to 6 have
 already removed. A slot is then its Corten container alone, which applies the migrations itself
-(`MIGRATE_ON_START`, release 7). It is kept on its own branch, `codex/release-8-drop-node`, merged
-into `codex/corten-port` only after release 7 has run its day, since the twin and record scripts
-need the Node app until then.
+(`MIGRATE_ON_START`, release 7). It was prepared on `codex/release-8-drop-node` and merged into
+`codex/corten-port` once release 7 had been checked in production.
 
 1. An `/api/...` path no route serves is the API's 404 in its `{"error": ..}` shape, and any other
    unknown path the app's own 404 page. The 31 Node routes nothing calls are retired
@@ -288,9 +287,9 @@ need the Node app until then.
    by name, every Node container left from before (`NODE_CONTAINERS` in `scripts/prod.mjs`).
 4. Rollback: release the previous master. Its compose file brings the Node app back in its slot.
 
-Still to do on the branch before it is offered: remove `app/`, the Node build stages in
-`Dockerfile`, the Node dev compose service and the parity scripts that run Node's code, once
-release 7's evidence is recorded.
+Left for after release 8, since nothing in production uses them: `app/`, the Node build stages in
+`Dockerfile`, the Node dev compose service and the parity scripts that run Node's code. The twin
+and record scripts still need the Node app in dev, so they go with it.
 
 ## Decided (2026-11-05)
 
