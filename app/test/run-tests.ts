@@ -53,6 +53,7 @@ import "../features/inventory-publication/services/inventoryPublicationWorker.te
 import "../features/inventory-publication/services/inventoryPublicationSettings.test";
 import "../integrations/tcgplayer/client/update-seller-inventory.server.test";
 import "../integrations/tcgplayer/client/staged-pricing-import.server.test";
+import "../../scripts/docker-start-support.test.mjs";
 import "../../scripts/nodeWorkers.test.mjs";
 import "../../scripts/releasePlan.test.mjs";
 import "../features/inventory-management/routes/api.inventory-intake-runs.test";

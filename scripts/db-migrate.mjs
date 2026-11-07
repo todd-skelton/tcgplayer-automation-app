@@ -27,6 +27,9 @@ async function run() {
   await client.connect();
 
   try {
+    // The Corten app's runner (src/migrations.rs) holds the same lock, so the two never apply one
+    // migration at once. Ending the connection releases it.
+    await client.query(`SELECT pg_advisory_lock(hashtext('schema_migrations'))`);
     await ensureMigrationsTable(client);
 
     const migrationFiles = (await fs.readdir(migrationsDir))

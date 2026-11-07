@@ -1,13 +1,13 @@
 import path from "node:path";
 
 import {
-  migrateWithRetry,
+  migrateUnlessCorten,
   sellerOrderHistoryWorker,
   spawnInheritedProcesses,
 } from "./docker-start-support.mjs";
 
 async function main() {
-  await migrateWithRetry(path.resolve("scripts/db-migrate.mjs"));
+  await migrateUnlessCorten(path.resolve("scripts/db-migrate.mjs"));
 
   spawnInheritedProcesses([
     ...sellerOrderHistoryWorker([path.resolve("build/workers/seller-order-history-worker.js")]),

@@ -76,7 +76,18 @@ export function spawnInheritedProcess(command, args) {
   return child;
 }
 
-/** Runs sibling long-lived processes as one service and never leaves an orphan. */
+/**
+ * Applies the migrations with `scriptPath` unless MIGRATE_ON_START hands them to the Corten app,
+ * which applies them before it serves (src/migrations.rs).
+ */
+export async function migrateUnlessCorten(scriptPath) {
+  if (process.env.MIGRATE_ON_START?.trim()) {
+    console.log("Database migration skipped: MIGRATE_ON_START is set, so the Corten app applies them");
+    return;
+  }
+  await migrateWithRetry(scriptPath);
+}
+
 /**
  * Node's seller order history worker, run with `args`, unless SELLER_ORDER_HISTORY_WORKER hands
  * the history to the Corten app's worker. A child that exits stops every other one, so the worker
@@ -86,6 +97,7 @@ export function sellerOrderHistoryWorker(args) {
   return process.env.SELLER_ORDER_HISTORY_WORKER?.trim() ? [] : [{ command: process.execPath, args }];
 }
 
+/** Runs sibling long-lived processes as one service and never leaves an orphan. */
 export function spawnInheritedProcesses(processes) {
   const children = [];
   const running = new Set();

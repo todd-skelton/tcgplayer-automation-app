@@ -37,13 +37,15 @@ approval before it starts.
 | 4 | Continuous pricing schedule | `CONTINUOUS_PRICING_SCHEDULER=1` | `pricing-scheduler` service |
 | 5 | Slab evidence and maintenance | `SLAB_EVIDENCE_WORKER=1` | `slab-evidence-worker` service |
 | 6 | Publication to Seller Portal | `PUBLICATION_WORKER=1` | `publication-worker` service |
-| 7 | Migrations | `MIGRATE_ON_START=1` | the migration run in `scripts/docker-start.mjs` |
+| 7 | Migrations | `MIGRATE_ON_START=1` | the start script skips Node's migration run when the switch is set |
 | 8 | The Node app, its relay and `LEGACY_ORIGIN` | none | `app-blue`, `app-green` |
 
 Why this order: order history only reads TCGplayer and writes its own tables, and dev has run it
 in Rust since 2026-11-04. Pricing and the schedule plan publications but do not post them.
 Publication posts to the live store, so it moves after every job that feeds it has run clean.
-Migrations move last because the two runners share no lock (`src/migrations.rs`).
+Migrations move last so that every earlier release keeps the runner it was proven with. The two
+runners hold the same advisory lock (`src/migrations.rs`, `scripts/db-migrate.mjs`), so one never
+applies a migration while the other does.
 
 A Node service is removed rather than left to see the switch. Node's standalone pricing worker
 does not read `PRICING_WORKER`, so both workers would claim from the same queue. The scheduler

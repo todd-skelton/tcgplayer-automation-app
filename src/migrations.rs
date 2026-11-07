@@ -3,9 +3,10 @@
 //! its own with its name recorded, the first to fail stopping the rest. The files are built into the
 //! server (`build.rs`).
 //!
-//! The server applies them before it serves when `MIGRATE_ON_START` is set. The Node app still applies
-//! them as it starts (port decision 3), so it stays unset there until cutover; a lock keeps two
-//! servers from applying them at once, but not one server and the Node app.
+//! The server applies them before it serves when `MIGRATE_ON_START` is set, and the Node app's start
+//! script then leaves them to it (`scripts/docker-start-support.mjs`). Until then the Node app applies
+//! them as it starts (port decision 3). Both runners hold the same advisory lock, so no two apply a
+//! migration at once.
 use sqlx::{Connection, PgConnection};
 
 /// Every migration, by file name, in the order applied.
