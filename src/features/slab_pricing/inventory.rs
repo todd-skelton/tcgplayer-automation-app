@@ -46,7 +46,7 @@ pub const PAGE_SIZE: u32 = 25;
 
 /// A column the saved listings can be sorted by. As the React grid did, a sort orders the page
 /// shown; the pages stay in the seller's keyset order.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, corten::UrlValue, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, corten::UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum ListingColumn {
     Listing,

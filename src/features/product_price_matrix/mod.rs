@@ -47,7 +47,7 @@ pub mod url {
     /// the product type offered, the product and its language. `shown_product` is the product
     /// the form was drawn for, so a product chosen anew opens in its own language. A missing value
     /// is the screen's default: Pokemon, its newest set, unsealed products.
-    #[derive(Clone, Debug, Default, serde::Deserialize, corten::Route, corten::Fields)]
+    #[derive(Clone, Debug, Default, corten::Route, corten::Fields)]
     #[route(query)]
     pub struct Choice {
         pub line: Option<i32>,

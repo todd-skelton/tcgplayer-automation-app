@@ -1,5 +1,11 @@
-/* corten ui 0.1.0: toasts 5c1223ec42e5f3d0 */
-.toasts { position: fixed; inset: auto 1rem 1rem auto; z-index: 50; width: min(22rem, calc(100vw - 2rem)); }
+/* corten ui 0.1.0: toasts 0e938fefbf278af8 */
+/* Bottom right, and clear of a phone's home indicator on a page with viewport-fit=cover. A layout with
+   a fixed bar along the bottom lifts it where the bar shows, on body (the theme sets :root's):
+   body { --toasts-inset-bottom: calc(1rem + <the bar's height>); } inside its @media. */
+.toasts {
+  position: fixed; z-index: 50; width: min(22rem, calc(100vw - 2rem - env(safe-area-inset-right, 0px)));
+  inset: auto calc(1rem + env(safe-area-inset-right, 0px)) calc(var(--toasts-inset-bottom) + env(safe-area-inset-bottom, 0px)) auto;
+}
 /* Toaster's root: a box only while it has a message. */
 .toasts > :has([role="status"] > :not([hidden])) {
   display: flex; align-items: flex-start; gap: .75rem; box-sizing: border-box; padding: 1rem;
@@ -7,6 +13,13 @@
   border-radius: var(--radius); box-shadow: 0 10px 30px rgb(0 0 0 / .15);
 }
 .toasts [role="status"] { flex: 1; font-size: .875rem; }
+/* A failure (the Toaster's failed text, a submit that got no answer, or an action's failed Toast):
+   a soft destructive message, its button in its color, so it is not read as a success. */
+.toasts > :has([role="status"] > [data-failed]:not([hidden])) {
+  background: color-mix(in srgb, var(--destructive) 12%, var(--popover)); color: color-mix(in srgb, var(--destructive) 85%, var(--popover-foreground));
+  border-color: color-mix(in srgb, var(--destructive) 50%, var(--border));
+}
+.toasts > :has([role="status"] > [data-failed]:not([hidden])) [role="status"] + button:not(:hover) { color: inherit; border-color: currentColor; }
 .toasts [role="status"] + button {
   flex: none; padding: .125rem .5rem; font: inherit; font-size: .75rem; font-weight: 500; color: var(--muted-foreground);
   background: transparent; border: 1px solid var(--border); border-radius: calc(var(--radius) - 4px); cursor: pointer;

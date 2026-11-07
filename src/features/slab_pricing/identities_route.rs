@@ -1,11 +1,7 @@
 //! `/api/slab-identities`: a certificate's identity looked up (`lookup`, which asks Alt unless it
 //! is saved) and confirmed by the operator (`confirm`), by `POST`, as the Node route answered
 //! them, never stored by a cache.
-use corten::{
-    Api, JsonResponse, Prefix, Signal,
-    axum::{body::to_bytes, extract::Request, http::StatusCode},
-    prelude::*,
-};
+use corten::{Api, JsonResponse, Prefix, Signal, extract::Request, http::StatusCode, prelude::*};
 use serde_json::{Value, json};
 use sqlx::PgConnection;
 
@@ -77,7 +73,7 @@ async fn act(
         let why = "Submit this request from the application.";
         return unstored(api::error(StatusCode::FORBIDDEN, why));
     }
-    let input = match to_bytes(body, MAX_BODY_BYTES).await {
+    let input = match crate::api::body_up_to(body, MAX_BODY_BYTES).await {
         Ok(body) => serde_json::from_slice::<Value>(&body).ok(),
         Err(_) => None,
     };

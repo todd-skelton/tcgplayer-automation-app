@@ -245,7 +245,6 @@ pub async fn run(db: Database, provider: impl Provider, signal: Signal) {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use sqlx::Connection;
 
     use super::*;
     use crate::features::slab_evidence::spec::{EbayPage, Window};
@@ -341,12 +340,7 @@ mod tests {
         let provider = StandIn(scenario);
         let db = Database::connect_lazy(&crate::config::database_url());
         let mut conn = db.0.acquire().await.unwrap();
-        let mut tx = conn.begin().await.unwrap();
-        // The queue's tests write the same keys: one at a time, or their transactions deadlock.
-        sqlx::query("SELECT pg_advisory_xact_lock(hashtext('slab_evidence_refreshes tests'))")
-            .execute(&mut *tx)
-            .await
-            .unwrap();
+        let mut tx = store::test_transaction(&mut conn).await;
         store::request(&mut tx, &specs, false, 200).await.unwrap();
         let mut steps = Vec::new();
         while let Some(job) = store::claim(&mut tx).await.unwrap() {

@@ -1,6 +1,5 @@
 //! The jobs, what each form sends for one, and the product lines they choose from.
 use corten::prelude::*;
-use serde::Deserialize;
 
 use crate::database::Database;
 
@@ -40,7 +39,7 @@ pub async fn lines(db: &Database) -> sqlx::Result<Vec<Line>> {
 }
 
 /// A product line for a job that reads one: its new products, or every product.
-#[derive(Clone, Debug, Default, Deserialize, Fields)]
+#[derive(Clone, Debug, Default, Fields)]
 pub struct LineInput {
     pub product_line: Option<i32>,
 }
@@ -65,7 +64,7 @@ impl LineInput {
 }
 
 /// One product to read again, by its TCGplayer id, in the product line it is stored under.
-#[derive(Clone, Debug, Default, Deserialize, Fields)]
+#[derive(Clone, Debug, Default, Fields)]
 pub struct ProductInput {
     pub product_line: Option<i32>,
     pub product: Option<i32>,
@@ -96,7 +95,7 @@ impl ProductInput {
 
 /// One set to read from TCGplayer by its name, in a product line chosen by its address name,
 /// optionally deleting what is stored for it first.
-#[derive(Clone, Debug, Default, Deserialize, Fields)]
+#[derive(Clone, Debug, Default, Fields)]
 pub struct SetInput {
     #[serde(default)]
     pub set_name: String,

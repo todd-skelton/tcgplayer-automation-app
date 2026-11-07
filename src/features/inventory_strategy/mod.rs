@@ -85,7 +85,7 @@ pub mod url {
 
     /// The selling history's scope, and what the last post did. A window the screen no longer
     /// offers (an old bookmark) reads as unset, so as the default one, as the React screen read it.
-    #[derive(Clone, Debug, Default, serde::Deserialize, corten::Route, corten::Fields)]
+    #[derive(Clone, Debug, Default, corten::Route, corten::Fields)]
     #[route(query)]
     pub struct View {
         pub history_days: Option<super::selling_history::Window>,

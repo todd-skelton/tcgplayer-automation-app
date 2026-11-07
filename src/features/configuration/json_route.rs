@@ -1,11 +1,7 @@
 //! `/api/pricing-config`: the pricing configuration as JSON, as the Node route answered it. `GET`
 //! reads it normalized (the defaults written first when there is none), and `PUT` replaces it
 //! with the body normalized (`normalizeServerPricingConfig`), answering with it read again.
-use corten::{
-    Api, JsonResponse, Prefix,
-    axum::{body::to_bytes, extract::Request, http::StatusCode},
-    prelude::*,
-};
+use corten::{Api, JsonResponse, Prefix, extract::Request, http::StatusCode, prelude::*};
 use serde_json::{Value, json};
 
 use super::config::{self, normalized};
@@ -81,7 +77,7 @@ async fn show(State(db): State<Database>) -> JsonResponse {
 /// The body normalized and saved in place of the stored documents, then read again.
 async fn replace(State(db): State<Database>, request: Request) -> JsonResponse {
     let saved = async {
-        let bytes = to_bytes(request.into_body(), MAX_BODY_BYTES)
+        let bytes = crate::api::body_up_to(request.into_body(), MAX_BODY_BYTES)
             .await
             .map_err(|e| format!("Error: {e}"))?;
         let body: Value =

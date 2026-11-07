@@ -1,6 +1,6 @@
 //! `GET /api/inventory-history-diagnostics`: the default shipping seller's inventory history
 //! diagnostics, as the Node route answered them.
-use corten::{Api, JsonResponse, Prefix, axum::http::StatusCode, prelude::*};
+use corten::{Api, JsonResponse, Prefix, http::StatusCode, prelude::*};
 use serde_json::json;
 
 use super::diagnostics::diagnostics;

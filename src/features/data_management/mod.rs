@@ -32,7 +32,7 @@ use actions::{
 
 #[corten::routes(area = DataManagement, state = crate::app::Shared)]
 pub mod url {
-    #[route("/data-management", get = show)]
+    #[route("/data-management", get = show, gives(crate::layout::AuthCookieMissing))]
     pub struct DataManagement;
 
     #[route("/data-management/product-lines", post = refresh_product_lines)]

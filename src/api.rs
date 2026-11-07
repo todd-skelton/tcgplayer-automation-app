@@ -3,7 +3,7 @@
 //!
 //! They are added to the app's one API at `/api`, beside the relay to the Node app for the rest:
 //! Corten refuses an API inside another's prefix, so a feature cannot own one at its own path.
-use corten::{Api, JsonResponse, Prefix, axum::http::StatusCode, json::Raw, prelude::*};
+use corten::{Api, JsonResponse, Prefix, http::StatusCode, json::Raw, prelude::*};
 use serde::Serialize;
 use serde_json::json;
 
@@ -50,6 +50,18 @@ pub fn error(status: StatusCode, message: impl std::fmt::Display) -> JsonRespons
     Json(json!({ "error": message.to_string() })).with_status(status)
 }
 
+/// A ported route's whole body, up to the route's own `max` bytes, or why not in the words its
+/// `Error: ..` answer has always carried: "length limit exceeded" for a larger body (read past,
+/// so the client reads the answer), or, for a body that broke on its way, what broke it, as
+/// Node's answer gave its error's message (the client is usually gone by then).
+pub async fn body_up_to(body: corten::answer::Body, max: usize) -> Result<corten::Bytes, String> {
+    match corten::extract::bytes_up_to(body, max).await {
+        Ok(Some(bytes)) => Ok(bytes),
+        Ok(None) => Err("length limit exceeded".to_owned()),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
 /// JavaScript's `String(value)` of a JSON value.
 pub fn js_string(value: &serde_json::Value) -> String {
     use serde_json::Value;
@@ -69,13 +81,6 @@ pub fn js_string(value: &serde_json::Value) -> String {
             .join(","),
         Value::Object(_) => "[object Object]".into(),
     }
-}
-
-/// `new URL(request.url).searchParams.get(name)`: the first value sent for `name`.
-pub fn first(query: Option<&str>, name: &str) -> Option<String> {
-    form_urlencoded::parse(query?.as_bytes())
-        .find(|(key, _)| key == name)
-        .map(|(_, value)| value.into_owned())
 }
 
 /// JavaScript's `text.trim()`: white space, line ends and the byte order mark, which Rust's
@@ -134,8 +139,8 @@ pub fn js_to_number(value: &serde_json::Value) -> f64 {
 
 #[cfg(test)]
 pub mod tests {
+    use corten::{Local, http::Method};
     use serde_json::Value;
-    use tower::ServiceExt;
 
     use super::*;
     use crate::{
@@ -157,12 +162,12 @@ pub mod tests {
         crate::config::load_env();
         let node: Vec<Value> = crate::parity_fixture::read(&format!("node/api/{name}.json"));
         let orders = crate::parity_fixture::Orders::of_dev_database().await;
-        let router = app(Shared {
+        let client = app(Shared {
             db: Database::connect_lazy(&crate::config::database_url()),
             legacy: Legacy::new("http://127.0.0.1:1".into()),
             slab_providers: slab_connections::Transport::default(),
         })
-        .router();
+        .test();
         let untimed = |mut body: Value| {
             for pointer in timed {
                 if let Some(at) = body.pointer_mut(pointer) {
@@ -175,38 +180,30 @@ pub mod tests {
         for expected in &node {
             let path = expected["path"].as_str().unwrap();
             let asked = format!("{path} {}", expected["post"]);
+            // A recorded path is what Node was asked, so it is sent as written.
+            let at = Local::parse(path).unwrap_or_else(|| panic!("{path} is not a local path"));
             // A post was sent to the action as JSON; anything else is a `GET`.
-            let request = match expected["post"].as_str().map(|body| orders.real(body)) {
+            let answer = match expected["post"].as_str().map(|body| orders.real(body)) {
                 Some(body) => {
-                    let mut post = corten::axum::http::Request::post(path)
-                        .header("host", "localhost")
-                        .header("content-type", "application/json");
+                    let mut post = client
+                        .call(Method::POST, &at)
+                        .header(corten::http::header::HOST, "localhost")
+                        .body("application/json", body);
                     for (name, value) in expected["headers"].as_object().into_iter().flatten() {
-                        let headers = post.headers_mut().unwrap();
-                        let value = value.as_str().unwrap().parse().unwrap();
-                        headers.insert(
-                            name.parse::<corten::axum::http::HeaderName>().unwrap(),
-                            value,
-                        );
+                        post = post.header(name.parse().unwrap(), value.as_str().unwrap());
                     }
-                    post.body(corten::axum::body::Body::from(body))
+                    post.await
                 }
-                None => {
-                    corten::axum::http::Request::get(path).body(corten::axum::body::Body::empty())
-                }
-            }
-            .unwrap();
-            let answer = router.clone().oneshot(request).await.unwrap();
+                None => client.get(&at).await,
+            };
             let status = answer.status().as_u16();
             let cache = answer.headers().get("cache-control").cloned();
             let kind = answer.headers()["content-type"]
                 .to_str()
                 .unwrap()
                 .to_owned();
-            let body = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
-                .await
-                .unwrap();
-            let body = crate::parity_fixture::scrub(serde_json::from_slice(&body).unwrap());
+            let body =
+                crate::parity_fixture::scrub(serde_json::from_slice(answer.bytes()).unwrap());
             assert!(kind.starts_with("application/json"), "{asked}: {kind}");
             assert_eq!(
                 u64::from(status),
@@ -244,16 +241,5 @@ pub mod tests {
         ] {
             assert_eq!(js_number(text), number, "{text:?}");
         }
-    }
-
-    #[test]
-    fn the_first_value_sent_is_the_one_read() {
-        assert_eq!(
-            first(Some("days=28&days=56"), "days").as_deref(),
-            Some("28")
-        );
-        assert_eq!(first(Some("a=1&da%79s=+5"), "days").as_deref(), Some(" 5"));
-        assert_eq!(first(Some("a=1"), "days"), None);
-        assert_eq!(first(None, "days"), None);
     }
 }

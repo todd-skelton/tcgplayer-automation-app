@@ -7,11 +7,8 @@
 use corten::json::Raw;
 use corten::{
     Api, JsonError, JsonResponse, Prefix,
-    axum::{
-        body::to_bytes,
-        extract::{RawQuery, Request},
-        http::{HeaderMap, HeaderValue, StatusCode, header},
-    },
+    extract::Request,
+    http::{HeaderMap, HeaderValue, StatusCode, header},
     prelude::*,
 };
 use serde_json::Value;
@@ -27,7 +24,10 @@ const UNABLE: &str = "Unable to calculate a slab recommendation.";
 
 #[derive(Route)]
 #[route("/api/slab-recommendations")]
-pub struct SlabRecommendations;
+pub struct SlabRecommendations {
+    /// Every `id` sent; Node read the first (`searchParams.get`).
+    pub id: Vec<String>,
+}
 
 /// The route, added to the app's one API at `/api` (`crate::api`).
 pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
@@ -57,8 +57,11 @@ fn failure(refused: Option<&str>, unreadable: bool) -> JsonResponse {
 }
 
 /// The recommendation `id`, whether it is current, and its reviewed ask.
-async fn show(State(db): State<Database>, RawQuery(query): RawQuery) -> JsonResponse {
-    let id = api::first(query.as_deref(), "id").unwrap_or_default();
+async fn show(
+    State(db): State<Database>,
+    Params(asked): Params<SlabRecommendations>,
+) -> JsonResponse {
+    let id = asked.id.first().cloned().unwrap_or_default();
     if !is_id(&id) {
         return failure(Some("Choose a recommendation."), false);
     }
@@ -98,7 +101,7 @@ async fn act(State(db): State<Database>, request: Request) -> Result<JsonRespons
     if !json.is_some_and(|t| t.starts_with("application/json")) {
         return own(failure(None, true));
     }
-    let Ok(body) = to_bytes(body, MAX_BODY_BYTES).await else {
+    let Ok(body) = crate::api::body_up_to(body, MAX_BODY_BYTES).await else {
         return own(failure(None, true));
     };
     let Ok(input) = serde_json::from_slice::<Value>(&body) else {
@@ -312,28 +315,22 @@ mod tests {
     /// message, where Node said "Submit this request from the application." The status is Node's.
     #[tokio::test]
     async fn corten_refuses_a_post_from_another_site() {
-        use corten::axum::{body::Body, http::Request};
-        use tower::ServiceExt;
+        use corten::http::{Method, header};
 
         use crate::{database::Database, legacy::Legacy};
 
-        let router = crate::app::app(crate::app::Shared {
+        let answer = crate::app::app(crate::app::Shared {
             db: Database::connect_lazy("postgresql://localhost/unused"),
             legacy: Legacy::new("http://localhost:1".into()),
             slab_providers: crate::features::slab_connections::Transport::default(),
         })
-        .router();
-        let post = Request::post("/api/slab-recommendations")
-            .header("host", "localhost")
-            .header("origin", "http://evil.example")
-            .header("content-type", "application/json")
-            .body(Body::from(r#"{"intent":"override"}"#))
-            .unwrap();
-        let answer = router.oneshot(post).await.unwrap();
+        .test()
+        .call(Method::POST, &super::SlabRecommendations { id: Vec::new() })
+        .header(header::HOST, "localhost")
+        .header(header::ORIGIN, "http://evil.example")
+        .body("application/json", r#"{"intent":"override"}"#)
+        .await;
         assert_eq!(answer.status(), 403);
-        let body = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        assert_eq!(&body[..], br#"{"error":"Cross-site request refused."}"#);
+        assert_eq!(answer.text(), r#"{"error":"Cross-site request refused."}"#);
     }
 }

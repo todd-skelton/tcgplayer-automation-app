@@ -1,11 +1,10 @@
 //! The window a report on the configuration screen is read over: how listings sold against their
 //! sell-time forecasts (`features::forecast_calibration`), and what shipping costs at each
 //! threshold and what snapping did (`features::shipping_thresholds::report`).
-use serde::Deserialize;
 
 /// The days a report is read over, as its window select and links write it. None is the
 /// report's default: 56 for the calibration, the snaps' evidence window for shipping.
-#[derive(Clone, Copy, Debug, Default, Deserialize, corten::Route, corten::Fields)]
+#[derive(Clone, Copy, Debug, Default, corten::Route, corten::Fields)]
 #[route(query)]
 pub struct Window {
     pub days: Option<u32>,

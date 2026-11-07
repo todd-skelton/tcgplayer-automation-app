@@ -1,5 +1,4 @@
 use corten::prelude::*;
-use serde::Deserialize;
 
 use super::{
     items::{self, Item},
@@ -11,7 +10,7 @@ use crate::{database::Database, layout::Layout, text::Msg};
 /// The largest sheet the screen takes; TCGplayer's run to a few hundred KB.
 const MOST: usize = 20 << 20;
 
-#[derive(Deserialize, Fields)]
+#[derive(Fields)]
 pub struct UploadInput {
     pub file: Files,
 }

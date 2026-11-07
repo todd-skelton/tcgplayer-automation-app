@@ -1,14 +1,6 @@
 //! `/api/seller-order-history`: how far the seller's order history reaches (`GET`), and a step of
 //! its scan or an order export imported (`POST`), as the Node route answered them.
-use corten::{
-    Api, JsonResponse, Prefix,
-    axum::{
-        body::to_bytes,
-        extract::{RawQuery, Request},
-        http::StatusCode,
-    },
-    prelude::*,
-};
+use corten::{Api, JsonResponse, Prefix, extract::Request, http::StatusCode, prelude::*};
 use serde_json::{Value, json};
 
 use super::{catch_up, coverage::coverage, file_import};
@@ -19,9 +11,13 @@ const MAX_CSV_BYTES: usize = 5 * 1024 * 1024;
 /// The largest body read: room for the largest export, escaped in JSON.
 const MAX_BODY_BYTES: usize = 4 * MAX_CSV_BYTES;
 
-#[derive(Route)]
+/// Every `sellerKey` sent; Node read the first (`searchParams.get`).
+#[derive(Route, serde::Deserialize)]
 #[route("/api/seller-order-history")]
-pub struct SellerOrderHistory;
+pub struct SellerOrderHistory {
+    #[serde(rename = "sellerKey")]
+    pub seller_key: Vec<String>,
+}
 
 /// The route, added to the app's one API at `/api` (`crate::api`).
 pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
@@ -43,8 +39,11 @@ async fn seller(db: &Database, named: &str) -> Result<String, String> {
 }
 
 /// The coverage of the seller named in `sellerKey`, else the default shipping seller's.
-async fn show(State(db): State<Database>, RawQuery(query): RawQuery) -> JsonResponse {
-    let named = api::first(query.as_deref(), "sellerKey").unwrap_or_default();
+async fn show(
+    State(db): State<Database>,
+    Params(asked): Params<SellerOrderHistory>,
+) -> JsonResponse {
+    let named = asked.seller_key.first().cloned().unwrap_or_default();
     let answer = async {
         let seller = seller(&db, &named).await?;
         coverage(&db, &seller)
@@ -68,7 +67,7 @@ async fn act(State(db): State<Database>, request: Request) -> JsonResponse {
 }
 
 async fn acted(db: &Database, request: Request) -> Result<JsonResponse, String> {
-    let body = to_bytes(request.into_body(), MAX_BODY_BYTES)
+    let body = crate::api::body_up_to(request.into_body(), MAX_BODY_BYTES)
         .await
         .map_err(|e| format!("Error: {e}"))?;
     let payload: Value = serde_json::from_slice(&body).map_err(|e| format!("SyntaxError: {e}"))?;

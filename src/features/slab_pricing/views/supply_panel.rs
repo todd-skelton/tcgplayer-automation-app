@@ -5,7 +5,7 @@ use corten::{
     prelude::*,
 };
 
-use corten_ui::rows;
+use corten_ui::{ordered, rows};
 
 use crate::{
     features::slab_pricing::{
@@ -58,7 +58,10 @@ pub fn SupplyPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
         >
             <div class={(Line, Head)}>
                 <h2 id="slab-supply">"Supply context"</h2>
-                <a href={url::SlabPricing::at(&toggled)}>
+                <a
+                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                    href={url::SlabPricing::at(&toggled)}
+                >
                     if shown { "Hide supply context" } else { "Show supply context" }
                 </a>
             </div>
@@ -92,6 +95,7 @@ fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
         <div class={Line}>
             if let Some(record) = record {
                 <form
+                    on:submit={ordered::send(event, target, super::sorted_tables())}
                     method="post"
                     action={url::RefreshSupply { choice: choice.clone() }}
                     data-patch
@@ -105,10 +109,16 @@ fn SupplyControls<'a>(screen: &'a Screen) -> impl Render {
                     </button>
                 </form>
             }
-            <a href={url::SlabPricing::at(choice)}>"Reload saved supply"</a>
+            <a
+                on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                href={url::SlabPricing::at(choice)}
+            >
+                "Reload saved supply"
+            </a>
             if let Some(supply) = supply.filter(|s| !s.statuses.is_empty()) {
                 let e = Within::none(SupplySourceFormId);
                 <form
+                    on:submit={ordered::send(event, target, super::sorted_tables())}
                     id={SupplySourceFormId}
                     method="get"
                     action={url::SlabPricing::at(&Choice::default())}
@@ -186,6 +196,7 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
                         </span>
                         if status.pending() {
                             <form
+                                on:submit={ordered::send(event, target, super::sorted_tables())}
                                 method="post"
                                 action={url::Cancel { choice: choice.clone() }}
                                 data-patch
@@ -218,7 +229,6 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
                             supply={supply}
                             context={context}
                             choice={choice}
-                            refreshing={screen.refreshing()}
                             t={t}
                         />
                     }
@@ -229,15 +239,13 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
 }
 
 /// The source shown: its counts and lowest asks, a page of its listings, and what changed since
-/// the observation before it. While a refresh is on its way the list is read again from its own
-/// route, which would put back the server's order over a sort made in place (corten#885), so
-/// then a header is the sorted page's link and the server sorts.
+/// the observation before it. A header sorts the page's rows in place, and a read of the list
+/// while a refresh is on its way keeps that order.
 #[component(css = super::slab_screen::SlabScreen)]
 fn SupplyContext<'a>(
     supply: &'a Supply,
     context: &'a Context,
     choice: &'a Choice,
-    refreshing: bool,
     t: Msg,
 ) -> impl Render {
     let at = |when: &str| when.parse::<DateTime<Utc>>().ok();
@@ -304,7 +312,7 @@ fn SupplyContext<'a>(
             }
         </p>
         <Table layout={TableLayout::Scroll}>
-            <table class={Cells}>
+            <table id={super::SupplyTableId} class={Cells}>
                 <caption class={VisuallyHidden {}}>
                     "Active supply. Sorting orders the listings on this page."
                 </caption>
@@ -314,27 +322,15 @@ fn SupplyContext<'a>(
                     <tr>
                         for (column, label) in SupplyColumn::ALL {
                             let (sort, ascending, descending) = sorted(column);
-                            if refreshing {
-                                <SortHeader
-                                    label={label}
-                                    sort={sort}
-                                    ascending={&ascending}
-                                    descending={&descending}
-                                    first={Sort::Ascending}
-                                    class={()}
-                                    on:sort={None::<Handler>}
-                                />
-                            } else {
-                                <SortHeader
-                                    label={label}
-                                    sort={sort}
-                                    ascending={&ascending}
-                                    descending={&descending}
-                                    first={Sort::Ascending}
-                                    class={()}
-                                    on:sort={rows::sort(event, target)}
-                                />
-                            }
+                            <SortHeader
+                                label={label}
+                                sort={sort}
+                                ascending={&ascending}
+                                descending={&descending}
+                                first={Sort::Ascending}
+                                class={()}
+                                on:sort={rows::sort(event, target)}
+                            />
                         }
                     </tr>
                 </thead>
@@ -372,10 +368,16 @@ fn SupplyContext<'a>(
         </Table>
         <nav class={Line} aria-label="Supply pages">
             if let Some(back) = choice.previous_source() {
-                <a href={url::SlabPricing::at(&back)}>"Previous source page"</a>
+                <a
+                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                    href={url::SlabPricing::at(&back)}
+                >
+                    "Previous source page"
+                </a>
             }
             if let Some(revision) = supply.selected_revision().filter(|_| supply.source_has_more_pages) {
                 <form
+                    on:submit={ordered::send(event, target, super::sorted_tables())}
                     method="post"
                     action={url::NextSourcePage { choice: choice.clone() }}
                     data-patch
@@ -389,14 +391,24 @@ fn SupplyContext<'a>(
                 </form>
             }
             match &previous_rows {
-                Some(back) => <a href={url::SlabPricing::at(back)}>"Previous supply rows"</a>,
+                Some(back) => <a
+                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                    href={url::SlabPricing::at(back)}
+                >
+                    "Previous supply rows"
+                </a>,
                 None => <span class={muted()}>"Previous supply rows"</span>,
             }
             <span>
                 {first + shown.min(1)}"–"{first + shown}" of "{page.map_or(0, |p| p.total)}
             </span>
             match &next_rows {
-                Some(next) => <a href={url::SlabPricing::at(next)}>"Next supply rows"</a>,
+                Some(next) => <a
+                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                    href={url::SlabPricing::at(next)}
+                >
+                    "Next supply rows"
+                </a>,
                 None => <span class={muted()}>"Next supply rows"</span>,
             }
         </nav>
@@ -480,27 +492,22 @@ mod tests {
         .unwrap()
     }
 
-    fn drawn(refreshing: bool) -> String {
+    /// The headers sort the page's rows in place, with the sorted page's link for a browser
+    /// without scripts.
+    #[test]
+    fn the_headers_sort_in_place() {
         let (supply, context, choice) = (supply(), context(), Choice::default());
-        SupplyContext {
+        let drawn = SupplyContext {
             supply: &supply,
             context: &context,
             choice: &choice,
-            refreshing,
             t: Msg::default(),
         }
-        .to_html()
-    }
-
-    /// While a refresh is on its way the list is read again from its route, so a sort is the
-    /// sorted page's link rather than an order made in place that the read would undo
-    /// (corten#885); otherwise the headers sort in place.
-    #[test]
-    fn a_refresh_on_its_way_sorts_by_link() {
-        let idle = drawn(false);
-        assert!(idle.contains("data-ascending"), "{idle}");
-        let refreshing = drawn(true);
-        assert!(!refreshing.contains("data-ascending"), "{refreshing}");
-        assert!(refreshing.contains("supply_by="), "{refreshing}");
+        .to_html();
+        assert!(drawn.contains("data-ascending"), "{drawn}");
+        assert!(drawn.contains("supply_by="), "{drawn}");
+        // The forms and links that carry the order name the table by this id.
+        let id = format!(r#"id="{}""#, super::super::SupplyTableId.to_html());
+        assert!(drawn.contains(&id), "{drawn}");
     }
 }

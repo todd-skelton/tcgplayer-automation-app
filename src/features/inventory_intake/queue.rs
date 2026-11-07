@@ -32,7 +32,7 @@ use crate::{
 };
 
 /// What queuing does with the batch: price it, or price it and publish what is ready.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Workflow {
     PriceOnly,
@@ -50,7 +50,7 @@ impl Workflow {
 }
 
 /// How the next batch is costed.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, UrlValue, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, UrlValue)]
 #[serde(rename_all = "snake_case")]
 pub enum CostMethod {
     /// The default rate.
@@ -104,7 +104,7 @@ fn at_most_a_deduction(cents: i64) -> Result<i64, String> {
 
 /// The queue bar's form: the cost of the batch, what queuing does (its button), and what the
 /// screen showed (the counts' fingerprint and the seller), so a queue that moved is refused.
-#[derive(Clone, Debug, Default, Deserialize, Fields)]
+#[derive(Clone, Debug, Default, Fields)]
 pub struct QueueInput {
     pub request: Option<SubmitKey>,
     pub workflow: Option<Workflow>,

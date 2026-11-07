@@ -8,11 +8,8 @@
 //! field (both a 400 in the same words); and see [`super::inventory_import`] for a manual import.
 use corten::{
     Api, JsonResponse, Prefix, Signal,
-    axum::{
-        body::to_bytes,
-        extract::{RawQuery, Request},
-        http::{StatusCode, header},
-    },
+    extract::Request,
+    http::{StatusCode, header},
     prelude::*,
 };
 use serde_json::{Value, json};
@@ -42,7 +39,13 @@ const MOST_SAFE: f64 = 9_007_199_254_740_991.0;
 
 #[derive(Route)]
 #[route("/api/slab-inventory")]
-pub struct SlabInventory;
+pub struct SlabInventory {
+    /// Every `limit`, `seller` and `after` sent; Node read the first of each
+    /// (`searchParams.get`).
+    pub limit: Vec<String>,
+    pub seller: Vec<String>,
+    pub after: Vec<String>,
+}
 
 pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
     api.route::<SlabInventory>(get(show).post(act).with_state(shared.clone()))
@@ -70,19 +73,19 @@ fn invalid(why: &str) -> JsonResponse {
 
 /// `{ items, next, revision }`: `limit` (100 unless asked) of the seller's listings after
 /// `after`.
-async fn show(State(db): State<Database>, RawQuery(query): RawQuery) -> JsonResponse {
-    let asked = |name| api::first(query.as_deref(), name);
+async fn show(State(db): State<Database>, Params(asked): Params<SlabInventory>) -> JsonResponse {
     // `Number(limit)`: anything but a whole number from 1 to 200 is refused as 0 is.
-    let limit = asked("limit")
-        .map_or(Some(100.0), |l| api::js_number(&l))
+    let limit = asked
+        .limit
+        .first()
+        .map_or(Some(100.0), |l| api::js_number(l))
         .filter(|l| l.fract() == 0.0 && (1.0..=200.0).contains(l))
         .map_or(0, |l| l as u32);
-    let (seller, after) = (asked("seller"), asked("after"));
     let page = match db.0.acquire().await {
         Ok(mut conn) => {
-            let (seller, after) = (seller.as_deref(), after.as_deref());
-            inventory::answered_page(&mut conn, seller.unwrap_or(""), after.unwrap_or(""), limit)
-                .await
+            let first = |sent: &Vec<String>| sent.first().cloned().unwrap_or_default();
+            let (seller, after) = (first(&asked.seller), first(&asked.after));
+            inventory::answered_page(&mut conn, &seller, &after, limit).await
         }
         Err(error) => Err(error.to_string()),
     };
@@ -123,7 +126,7 @@ async fn act(
     if !json.is_some_and(|t| t.starts_with("application/json")) {
         return invalid(FIELDS);
     }
-    let Ok(body) = to_bytes(body, MAX_BODY_BYTES).await else {
+    let Ok(body) = crate::api::body_up_to(body, MAX_BODY_BYTES).await else {
         return invalid(FIELDS);
     };
     let Ok(input) = serde_json::from_slice::<Value>(&body) else {

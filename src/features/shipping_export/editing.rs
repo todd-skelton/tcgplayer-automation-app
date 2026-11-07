@@ -1,13 +1,12 @@
 //! A shipment edited by hand before its postage is bought (`ShipmentEditDrawer`): where it goes,
 //! its reference, service, parcel and label. The edit is kept for the batch (`Workflow::edits`).
 use corten::prelude::*;
-use serde::Deserialize;
 
 use super::shipments::Shipment;
 use crate::features::shipping_configuration::{LabelFormat, LabelSize, Service, measure_text};
 
 /// The editor as the browser sends it.
-#[derive(Clone, Debug, Deserialize, Fields)]
+#[derive(Clone, Debug, Fields)]
 pub struct ShipmentInput {
     pub name: String,
     pub street1: String,

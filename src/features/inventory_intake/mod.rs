@@ -79,7 +79,7 @@ pub mod url {
     /// missing value is the screen's default: Pokemon, its newest set, Near Mint, unsealed
     /// products, the first page of 100. The filters send no page, so a new filter starts on the
     /// first.
-    #[derive(Clone, Debug, Default, serde::Deserialize, corten::Route, corten::Fields)]
+    #[derive(Clone, Debug, Default, corten::Route, corten::Fields)]
     #[route(query)]
     pub struct Selection {
         pub line: Option<i32>,

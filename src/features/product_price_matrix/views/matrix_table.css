@@ -104,11 +104,14 @@
   color: var(--muted-foreground);
 }
 
-/* A caveat badge is a button that opens its reason. */
+/* A caveat badge is a button that opens its reason. It stays on one line, so the matrix scrolls
+   rather than its rows growing (the kit's Badge wraps since corten#926). */
 .caveat-button {
   font: inherit;
   font-size: .75rem;
   cursor: pointer;
+  white-space: nowrap;
+  max-width: none;
 }
 .caveat-reason {
   max-width: min(20rem, 90vw);

@@ -76,7 +76,6 @@ checksum = "31b698c5f9a010f6573133b09e0de5408834d0c82f8d7475a89fc1867a71cd90"
 dependencies = [
  "axum-core",
  "bytes",
- "form_urlencoded",
  "futures-util",
  "http",
  "http-body",
@@ -92,13 +91,11 @@ dependencies = [
  "serde_core",
  "serde_json",
  "serde_path_to_error",
- "serde_urlencoded",
  "sync_wrapper",
  "tokio",
  "tower",
  "tower-layer",
  "tower-service",
- "tracing",
 ]
 
 [[package]]
@@ -117,7 +114,6 @@ dependencies = [
  "sync_wrapper",
  "tower-layer",
  "tower-service",
- "tracing",
 ]
 
 [[package]]
@@ -285,11 +281,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
-name = "corten"
+name = "corten-macros"
 version = "0.1.0"
-source = "git+https://github.com/corten-run/corten?rev=aaca3e05#aaca3e057889659f4696a706762cbe4d2e7c523e"
+source = "git+https://github.com/corten-run/corten?rev=9a1e0721#9a1e0721216198e5b9327c729bd2ad5dcf89a3c9"
+
+[[package]]
+name = "corten-run"
+version = "0.1.0"
+source = "git+https://github.com/corten-run/corten?rev=9a1e0721#9a1e0721216198e5b9327c729bd2ad5dcf89a3c9"
 dependencies = [
  "axum",
+ "axum-core",
  "brotli",
  "bytes",
  "corten-macros",
@@ -297,6 +299,7 @@ dependencies = [
  "form_urlencoded",
  "futures-util",
  "getrandom 0.3.4",
+ "http",
  "http-body",
  "hyper",
  "hyper-util",
@@ -308,22 +311,16 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
- "tracing-subscriber",
  "zmij",
  "zstd",
 ]
 
 [[package]]
-name = "corten-macros"
-version = "0.1.0"
-source = "git+https://github.com/corten-run/corten?rev=aaca3e05#aaca3e057889659f4696a706762cbe4d2e7c523e"
-
-[[package]]
 name = "corten-ui"
 version = "0.1.0"
-source = "git+https://github.com/corten-run/corten?rev=aaca3e05#aaca3e057889659f4696a706762cbe4d2e7c523e"
+source = "git+https://github.com/corten-run/corten?rev=9a1e0721#9a1e0721216198e5b9327c729bd2ad5dcf89a3c9"
 dependencies = [
- "corten",
+ "corten-run",
 ]
 
 [[package]]
@@ -507,7 +504,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1217,15 +1214,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nu-ansi-term"
-version = "0.50.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
-dependencies = [
- "windows-sys 0.61.2",
-]
-
-[[package]]
 name = "num-bigint-dig"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1514,7 +1502,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1864,15 +1852,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sharded-slab"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6"
-dependencies = [
- "lazy_static",
-]
-
-[[package]]
 name = "shlex"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2217,14 +2196,13 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "chrono-tz",
- "corten",
+ "corten-run",
  "corten-ui",
  "csv",
  "dotenvy",
  "form_urlencoded",
  "futures-util",
  "hex",
- "http-body-util",
  "libm",
  "regex",
  "reqwest",
@@ -2233,7 +2211,6 @@ dependencies = [
  "sha2",
  "sqlx",
  "tokio",
- "tower",
  "unicode-normalization",
 ]
 
@@ -2255,15 +2232,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.9",
-]
-
-[[package]]
-name = "thread_local"
-version = "1.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ad99c4c6d32803332c548b1af0540b357b3f5fc0be8f6c6bfe8b2e6ae784070"
-dependencies = [
- "cfg-if",
 ]
 
 [[package]]
@@ -2356,7 +2324,6 @@ dependencies = [
  "tokio",
  "tower-layer",
  "tower-service",
- "tracing",
 ]
 
 [[package]]
@@ -2419,18 +2386,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
 dependencies = [
  "once_cell",
-]
-
-[[package]]
-name = "tracing-subscriber"
-version = "0.3.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb7f578e5945fb242538965c2d0b04418d38ec25c79d160cd279bf0731c8d319"
-dependencies = [
- "nu-ansi-term",
- "sharded-slab",
- "thread_local",
- "tracing-core",
 ]
 
 [[package]]

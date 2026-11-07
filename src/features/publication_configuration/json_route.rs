@@ -2,11 +2,7 @@
 //! settings and the publisher's runtime as JSON, as the Node routes answered them. `GET` reads the
 //! configuration, `PUT` replaces the settings with the body as the Node app normalizes it, and
 //! `POST {"action":"resume"}` closes the circuit; health adds the publication queue's counts.
-use corten::{
-    Api, JsonResponse, Prefix,
-    axum::{body::to_bytes, extract::Request, http::StatusCode},
-    prelude::*,
-};
+use corten::{Api, JsonResponse, Prefix, extract::Request, http::StatusCode, prelude::*};
 use serde_json::{Value, json};
 
 use super::config::{self, Settings};
@@ -108,7 +104,7 @@ async fn show(State(db): State<Database>) -> JsonResponse {
 
 /// The request's JSON body, or what `request.json()` threw.
 async fn body(request: Request) -> Result<Value, String> {
-    let bytes = to_bytes(request.into_body(), MAX_BODY_BYTES)
+    let bytes = crate::api::body_up_to(request.into_body(), MAX_BODY_BYTES)
         .await
         .map_err(|e| format!("Error: {e}"))?;
     serde_json::from_slice(&bytes).map_err(|e| format!("SyntaxError: {e}"))

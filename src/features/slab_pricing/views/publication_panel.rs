@@ -3,6 +3,7 @@ use corten::{
     i18n::{DateStyle, TimeStyle},
     prelude::*,
 };
+use corten_ui::ordered;
 
 use crate::{
     features::slab_pricing::{
@@ -50,7 +51,11 @@ pub fn PublicationPanel<'a>(
         ..choice.clone()
     };
     html! {
-        <a href={url::SlabPricing::at(&toggle)} class={Toggle}>
+        <a
+            on:connect={ordered::link(target, super::sorted_tables(), signal)}
+            href={url::SlabPricing::at(&toggle)}
+            class={Toggle}
+        >
             if shown { "Hide price-change review" } else { "Review listing price change" }
         </a>
         if shown {
@@ -112,6 +117,7 @@ fn PrepareForm<'a>(
     html! {
         let e = Within::none(PrepareFormId);
         <form
+            on:submit={ordered::send(event, target, super::sorted_tables())}
             id={PrepareFormId}
             method="post"
             action={url::Prepare { choice: screen.choice.clone() }}
@@ -142,7 +148,12 @@ fn PrepareForm<'a>(
             >
                 "Save price-change preview"
             </button>
-            <a href={url::SlabPricing::at(&screen.choice)}>"Reload preview"</a>
+            <a
+                on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                href={url::SlabPricing::at(&screen.choice)}
+            >
+                "Reload preview"
+            </a>
         </form>
     }
 }
@@ -238,6 +249,7 @@ fn DryRun<'a>(
                 "Check the saved plan against imported inventory and record the outcome. This does not contact eBay or change a price."
             </p>
             <form
+                on:submit={ordered::send(event, target, super::sorted_tables())}
                 method="post"
                 action={url::DryRun { choice: screen.choice.clone() }}
                 data-patch
@@ -272,9 +284,15 @@ fn DryRun<'a>(
                                     " · "{words(reason)}
                                 }
                             </span>
-                            <a href={url::SlabPricing::at(shows)}>"Show steps"</a>
+                            <a
+                                on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                                href={url::SlabPricing::at(shows)}
+                            >
+                                "Show steps"
+                            </a>
                             if run.resumable() {
                                 <form
+                                    on:submit={ordered::send(event, target, super::sorted_tables())}
                                     method="post"
                                     action={url::DryRun { choice: screen.choice.clone() }}
                                     data-patch

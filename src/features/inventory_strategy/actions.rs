@@ -1,7 +1,6 @@
 //! The screen and its posts. A post sends the browser back to the screen it came from (its scope
 //! is the post's query), saying what it did; a refusal is that screen with why, as a conflict.
 use corten::{Refusal, prelude::*};
-use serde::Deserialize;
 
 use super::{
     analysis_queue,
@@ -42,7 +41,7 @@ async fn page(req: &Req, screen: &Screen, input: &TurnaroundInput, errors: &Erro
 }
 
 /// The turnaround form as it is sent: for the seller the screen showed.
-#[derive(Clone, Debug, Default, Deserialize, Fields)]
+#[derive(Clone, Debug, Default, Fields)]
 pub struct TurnaroundInput {
     #[serde(default)]
     pub seller_key: String,

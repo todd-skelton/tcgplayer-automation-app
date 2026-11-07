@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: input_group bb7a905268c657db */
+/* corten ui 0.1.0: input_group 9a2e10fc82cab8e8 */
 /* The <span> around a control and its adornments draws the box the input draws alone: its border,
    its ring while the input has focus, and its invalid and disabled states. */
 .input-group {
@@ -21,4 +21,4 @@
 .adornment:last-child { padding-inline-start: 0; }
 /* A button inside sits within the border, whatever its size (an Icon one is the control's height,
    and so is a Sm one under taller touch-target sizes). */
-.input-group > button { flex: none; max-height: calc(100% - .25rem); margin-inline: .25rem; }
+.input-group > button { flex: none; min-height: 0; max-height: calc(100% - .25rem); margin-inline: .25rem; }

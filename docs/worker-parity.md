@@ -20,10 +20,10 @@ order number, their lines and FIFO lines by SKU id, revisions by revision number
 
 | Worker | Script | Last run | Result |
 | --- | --- | --- | --- |
-| Batch pricing, cached job | `twin-pricing-worker.mjs 3516 cached` | 2026-11-05, production copy | 8,735 values, 0 differ (2026-11-04 on old dev data: 20,706, 0 differ) |
+| Batch pricing, cached job | `twin-pricing-worker.mjs 7122 cached` | 2026-11-06, dev at Corten a8c50d41 | 50 SKUs and a 31-item planned publication; 27,729 values, 0 differ (2026-11-05 with batch 3516 on the production copy: 8,735 values, 0 differ; 2026-11-04 on old dev data: 20,706, 0 differ) |
 | Batch pricing, full job | `twin-pricing-worker.mjs 3471 full` | 2026-11-03 | same tables, rows and 17 listing snapshots; numbers moved with the market only |
-| Continuous pricing scheduler | `twin-continuous-scheduler.mjs` | 2026-11-05, production copy | one live refresh (3,089 listings) and one 50-SKU batch each; 62,391 values, 0 differ; one listing's quantity, price and in stock moved with the market |
-| Seller order history (sync, FIFO replay, cost estimates) | `twin-seller-order-history.mjs` | 2026-11-05, production copy | sync complete on both (1,631 orders); 9 tables, 620,052 values, 0 differ |
+| Continuous pricing scheduler | `twin-continuous-scheduler.mjs` | 2026-11-06, dev at Corten a8c50d41 | one live refresh (3,089 listings) and one 50-SKU batch each; 62,391 values, 0 differ; four market prices, one listing's quantity and in stock, and one batch row's market price moved with the market (2026-11-05 on the production copy: 62,391 values, 0 differ) |
+| Seller order history (sync, FIFO replay, cost estimates) | `twin-seller-order-history.mjs` | 2026-11-06, dev at Corten a8c50d41 | sync complete on both (1,624 orders); 9 tables, 624,295 values, 0 differ (earlier the same day at Corten a17f1775: 624,066 values, 0 differ; 2026-11-05 on the production copy: 1,631 orders, 620,052 values, 0 differ) |
 | Slab evidence and maintenance | no twin: neither dev nor production holds slab data (checked on the 2026-11-05 copy) | | see below |
 | Inventory publication | no twin: it posts to Seller Portal | | see below |
 
@@ -54,6 +54,13 @@ fixtures or dev batches the Rust tests replay:
 Every worker now has its Node recording committed; no test reads the uncommitted `.port-logs`.
 The recordings' Rust tests are `#[ignore]` only because they use the dev database, in a
 transaction rolled back.
+
+The two dev shadows, run on 2026-11-06 at Corten 94cea042: the FIFO replay matches Node's saved
+lines on all 2,971 SKUs. The batch pricing replay of jobs 7103 to 7112 (a diagnostic, not a gate;
+see `batch_pricing::shadow`) found 102 SKUs priced from competing asks, 2 Node could not reach
+TCGplayer for and 2 that differ: a warning that names a delivered listing Node read and the ledger
+does not hold (the same price), and one SKU with capped sales history priced at $21.13 from the
+ledger against Node's $20.83, no supply read. Neither is a Corten matter.
 
 ## Dev cutover
 

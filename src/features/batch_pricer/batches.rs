@@ -46,7 +46,7 @@ impl BatchStatus {
 }
 
 /// What a pricing job prices: every SKU, or only those that need review.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Mode {
     Full,
@@ -683,7 +683,7 @@ pub async fn publications(db: &Database, batch: i32) -> Result<Publications, Str
 }
 
 /// Which saved results: those priced, or those for manual review.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum Scope {
     Successful,

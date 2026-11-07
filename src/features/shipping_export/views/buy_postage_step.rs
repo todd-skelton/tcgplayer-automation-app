@@ -1,5 +1,5 @@
 use corten::prelude::*;
-use corten_ui::{MenuButton, Tooltip};
+use corten_ui::{MenuButton, Tooltip, dialog};
 
 use super::SaleValueFigures;
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
             value::SaleValue,
         },
     },
-    layout::Notice,
+    layout::{DialogNotSent, Notice},
     text::Msg,
     theme::*,
     ui::{
@@ -345,17 +345,20 @@ fn BuyAgainDialog<'a>(
         Direction::Outbound => ("label", "Postage"),
         Direction::Return => ("return label", "A return label"),
     };
+    let said = refs();
     html! {
         <dialog
             id={BuyAgainId(key)}
             aria-label={format!("Buy another {what}?")}
             class={(Dialog { size: DialogSize::Sm }, Confirm)}
+            on:corten:error={dialog::failed(event, target, said)}
         >
             <h2>"Buy another "{what}"?"</h2>
             <p>
                 {bought}" was already bought for shipment "{reference}" in "{mode.name()}
                 " mode. Buying again charges for a new label; the first one is not refunded automatically."
             </p>
+            <DialogNotSent said={said} />
             <form
                 method="post"
                 action={url::BuyShipmentPostage { reference: reference.to_owned() }}

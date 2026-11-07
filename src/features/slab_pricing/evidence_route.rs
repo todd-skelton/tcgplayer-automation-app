@@ -16,11 +16,8 @@ use std::time::Instant;
 use chrono::{DateTime, SecondsFormat, Utc};
 use corten::{
     Api, JsonResponse, Prefix,
-    axum::{
-        body::to_bytes,
-        extract::{RawQuery, Request},
-        http::{StatusCode, header},
-    },
+    extract::Request,
+    http::{StatusCode, header},
     prelude::*,
 };
 use serde_json::{Value, json};
@@ -40,7 +37,13 @@ const PAGE: usize = 50;
 
 #[derive(Route)]
 #[route("/api/slab-evidence")]
-pub struct SlabEvidence;
+pub struct SlabEvidence {
+    /// Every `revision`, `offset` and `keys` sent; Node read the first of each
+    /// (`searchParams.get`).
+    pub revision: Vec<String>,
+    pub offset: Vec<String>,
+    pub keys: Vec<String>,
+}
 
 pub fn routes<P: Prefix>(api: Api<P>, shared: &Shared) -> Api<P> {
     api.route::<SlabEvidence>(get(show).post(act).with_state(shared.clone()))
@@ -67,18 +70,31 @@ fn answer(body: &Value) -> JsonResponse {
 }
 
 /// A revision page (`?revision=`), else `{ statuses }` of `?keys=`.
-async fn show(State(db): State<Database>, RawQuery(query): RawQuery) -> JsonResponse {
+async fn show(State(db): State<Database>, Params(asked): Params<SlabEvidence>) -> JsonResponse {
     match db.0.acquire().await {
-        Ok(mut conn) => read(&mut conn, query.as_deref()).await,
+        Ok(mut conn) => {
+            let first = |sent: &Vec<String>| sent.first().cloned();
+            let (revision, offset, keys) = (
+                first(&asked.revision),
+                first(&asked.offset),
+                first(&asked.keys),
+            );
+            read(&mut conn, revision, offset, keys).await
+        }
         Err(error) => failure(&unable(error)),
     }
 }
 
-async fn read(conn: &mut PgConnection, query: Option<&str>) -> JsonResponse {
-    let asked = |name| api::first(query, name);
-    if let Some(revision) = asked("revision").filter(|r| !r.is_empty()) {
+/// `revision`, `offset` and `keys` as Node read them, the first value sent of each.
+async fn read(
+    conn: &mut PgConnection,
+    revision: Option<String>,
+    offset: Option<String>,
+    keys: Option<String>,
+) -> JsonResponse {
+    if let Some(revision) = revision.filter(|r| !r.is_empty()) {
         // `Number(offset ?? 0)`: a whole number from 0 to 2000.
-        let offset = asked("offset")
+        let offset = offset
             .map_or(Some(0.0), |o| api::js_number(&o))
             .filter(|o| o.fract() == 0.0 && (0.0..=2000.0).contains(o));
         let Some(offset) = offset else {
@@ -94,7 +110,7 @@ async fn read(conn: &mut PgConnection, query: Option<&str>) -> JsonResponse {
             Err(Paged::Unreadable) => unreadable(),
         };
     }
-    let keys = asked("keys").unwrap_or_default();
+    let keys = keys.unwrap_or_default();
     let keys: Vec<String> = keys
         .split(',')
         .filter(|k| !k.is_empty())
@@ -229,7 +245,7 @@ async fn act(State(db): State<Database>, request: Request) -> JsonResponse {
     if !json.is_some_and(|t| t.starts_with("application/json")) {
         return unreadable();
     }
-    let Ok(body) = to_bytes(body, MAX_BODY_BYTES).await else {
+    let Ok(body) = crate::api::body_up_to(body, MAX_BODY_BYTES).await else {
         return unreadable();
     };
     // Not JSON, or `null`, whose fields are a TypeError.

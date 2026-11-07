@@ -4,11 +4,9 @@
 //! needs no change to sit behind this one.
 use corten::{
     Relay,
-    axum::{
-        body::Body,
-        extract::{Request, State},
-        http::{HeaderMap, HeaderValue, Method, StatusCode, Uri, header},
-    },
+    answer::Body,
+    extract::{Request, State},
+    http::{HeaderMap, HeaderValue, Method, StatusCode, Uri, header},
     upgrade::{Switch, SwitchOr, Upgrade},
 };
 use futures_util::TryStreamExt;

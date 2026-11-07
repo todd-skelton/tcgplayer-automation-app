@@ -1,7 +1,6 @@
 //! The Pack step: the shipment being packed, with its cards matched from the pull sheet, or
 //! every shipment in a list; and marking one packed, which moves to the next not packed.
 use corten::{Refusal, prelude::*};
-use serde::Deserialize;
 
 use super::{
     pack::{self, PackView},
@@ -142,7 +141,7 @@ async fn card<'a>(
     }
 }
 
-#[derive(Deserialize, Fields)]
+#[derive(Fields)]
 pub struct PackedInput {
     /// What the shipment is to be: the form says, so sending it twice does the same.
     #[serde(default)]

@@ -229,7 +229,7 @@ pub mod url {
     /// open, the page of them (`after` the listing that ended the last page, `trail` the pages
     /// before it, for Previous), the listing being reviewed, and the grade and sale dates the
     /// certificate is researched at.
-    #[derive(Clone, Debug, Default, serde::Deserialize, corten::Route, corten::Fields)]
+    #[derive(Clone, Debug, Default, corten::Route, corten::Fields)]
     #[route(query)]
     pub struct Choice {
         pub grader: Option<String>,
@@ -451,8 +451,8 @@ mod tests {
         assert!(first.previous_source().is_none());
     }
 
-    /// A form's action carries the supply's sort only when the page was drawn sorted, so a
-    /// script that writes an in-place order into such keys (corten#907) leaves the rest alone.
+    /// A form's action carries the supply's sort only when the page was drawn sorted: a form
+    /// outside the supply's part keeps the order the page was drawn in (corten#930).
     #[test]
     fn an_unsorted_choice_writes_no_sort_keys() {
         let choice = Choice {

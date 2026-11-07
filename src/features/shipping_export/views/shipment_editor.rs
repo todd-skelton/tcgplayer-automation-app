@@ -11,7 +11,7 @@ use crate::{
             url::{self, ShippingWorkflow},
         },
     },
-    layout::FormNotice,
+    layout::{DialogNotSent, FormNotice},
     ui::{
         button::{Button, ButtonSize, ButtonVariant},
         field::Field,
@@ -33,7 +33,7 @@ pub fn ShipmentEditor<'a>(
     input: &'a ShipmentInput,
     errors: &'a Errors,
 ) -> impl Render {
-    let close = refs();
+    let (close, said) = refs();
     html! {
         <dialog
             open
@@ -41,6 +41,7 @@ pub fn ShipmentEditor<'a>(
             aria-label="Edit Shipment"
             class={Sheet { side: Side::Right(SheetWidth::Lg) }}
             on:connect={dialog::modalClosedBy(target, close, signal)}
+            on:corten:error={dialog::failed(event, target, said)}
         >
             <div class={SheetHeader {}}>
                 <h2>"Edit Shipment"</h2>
@@ -52,6 +53,7 @@ pub fn ShipmentEditor<'a>(
                     "Close"
                 </a>
             </div>
+            <DialogNotSent said={said} />
             <ShipmentEditorForm reference={reference} input={input} errors={errors} />
         </dialog>
     }

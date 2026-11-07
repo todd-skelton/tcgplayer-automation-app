@@ -2,7 +2,6 @@
 //! edited by hand, and a shipment as EasyPost's CSV.
 use chrono::Utc;
 use corten::{Media, Refusal, prelude::*};
-use serde::Deserialize;
 
 use super::{
     editing::ShipmentInput,
@@ -79,7 +78,7 @@ pub async fn buy_all(req: Req, State(db): State<Database>) -> HtmlResult {
     req.redirect(&ShippingWorkflow::at(Step::BuyPostage))
 }
 
-#[derive(Deserialize, Fields)]
+#[derive(Fields)]
 pub struct BuyInput {
     #[serde(default)]
     pub direction: Direction,

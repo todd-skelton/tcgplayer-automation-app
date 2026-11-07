@@ -1,8 +1,12 @@
-//! Pieces screens draw the same way: a notice, a form's own message, and a form sent on change. A labeled field is the
+//! Pieces screens draw the same way: a notice, a form's own message, a dialog's word that a submit
+//! got no answer, and a form sent on change. A labeled field is the
 //! kit's `ui::field::Field`.
 use corten::prelude::*;
 
-use crate::ui::alert::{Alert, AlertEmphasis, AlertVariant, FormAlert};
+use crate::{
+    layout::NOT_SENT,
+    ui::alert::{Alert, AlertEmphasis, AlertVariant, FailedAlert, FormAlert},
+};
 
 /// A message a screen calls out: the kit's `Alert` with a tint of its tone behind its text, as
 /// MUI's standard `Alert` drew every one in the React app.
@@ -18,14 +22,14 @@ pub fn FormNotice<'a>(errors: &'a Errors) -> impl Render {
     html! { <FormAlert errors={errors} emphasis={AlertEmphasis::Soft} /> }
 }
 
-/// Says in the page's toaster (inside it) when a `data-patch` submit got no answer to draw: the
-/// network failed, the connection closed during an upload, or a proxy answered for the app. The
-/// React app showed its error boundary; the runtime only dispatches `corten:error` on the form,
-/// which the kit's `Toaster` does not show (corten#903). Its own component because the layout's
-/// script handlers are not in scope in a `-> impl Document` component (corten#906).
-#[component(js)]
-pub fn SaysFailedSubmits(children: impl Render) -> impl Render {
-    html! { <div on:connect={js::connect(signal)}>{children}</div> }
+/// What a modal dialog says when a `data-patch` submit in it got no answer, in place of the
+/// page's toaster, which the dialog covers: the toaster's words in the kit's `FailedAlert`, tinted
+/// as every `Notice` is, hidden until `corten_ui::dialog::failed(event, target, said)` shows them.
+#[component]
+pub fn DialogNotSent(said: Ref<el::HTMLDivElement>) -> impl Render {
+    html! {
+        <FailedAlert said={said} emphasis={AlertEmphasis::Soft}><p>{NOT_SENT}</p></FailedAlert>
+    }
 }
 
 /// Sends the form around it whenever one of its controls changes: a section saves itself, a

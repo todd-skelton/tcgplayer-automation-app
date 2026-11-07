@@ -4,11 +4,7 @@
 //! found.
 use std::collections::HashMap;
 
-use corten::{
-    Api, JsonResponse, Prefix,
-    axum::{body::to_bytes, extract::Request, http::StatusCode},
-    prelude::*,
-};
+use corten::{Api, JsonResponse, Prefix, extract::Request, http::StatusCode, prelude::*};
 use serde_json::{Map, Value, json};
 
 use super::sheet::catalog_product_line;
@@ -58,7 +54,7 @@ fn by_product_line(items: &[Value], lines: &HashMap<String, i32>) -> Vec<(i32, V
 
 async fn lookup(State(db): State<Database>, request: Request) -> JsonResponse {
     let found = async {
-        let bytes = to_bytes(request.into_body(), MAX_BODY_BYTES)
+        let bytes = crate::api::body_up_to(request.into_body(), MAX_BODY_BYTES)
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {e}")))?;
         let body: Value = serde_json::from_slice(&bytes).map_err(|e| {

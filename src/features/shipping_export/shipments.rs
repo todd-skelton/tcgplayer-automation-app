@@ -72,7 +72,7 @@ pub struct Shipment {
     pub options: LabelOptions,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, corten::UrlValue)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, corten::UrlValue)]
 #[serde(rename_all = "lowercase")]
 pub enum Direction {
     #[default]

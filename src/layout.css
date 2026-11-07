@@ -13,8 +13,8 @@
     color: var(--primary-foreground);
     box-shadow: var(--shadow-md);
   }
-  /* A submit that got no answer (layout.js). */
-  & [role="status"] > div:has(> [data-tone="failed"]) {
+  /* A submit that got no answer: the toaster marks its `failed` text. */
+  & [role="status"] > [data-failed]:not([hidden]) {
     background: var(--destructive);
     color: var(--destructive-foreground);
   }

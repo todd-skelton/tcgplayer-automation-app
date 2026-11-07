@@ -1,5 +1,5 @@
 use corten::{form::keep_query, prelude::*};
-use corten_ui::rows;
+use corten_ui::{ordered, rows};
 
 use crate::{
     features::{
@@ -74,6 +74,7 @@ pub fn SlabScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             </header>
             let e = Within::none(LookUpFormId);
             <form
+                on:submit={ordered::send(event, target, super::sorted_tables())}
                 id={LookUpFormId}
                 method="post"
                 action={url::LookUp { choice: choice.clone() }}
@@ -161,6 +162,7 @@ fn ReviewedListing<'a>(screen: &'a Screen) -> impl Render {
                     if let Some(record) = screen.record.as_ref().filter(|r| r.confirmed() && listing.identity_id.as_deref() != Some(r.id.as_str())) {
                         let e = Within::none(AssignFormId);
                         <form
+                            on:submit={ordered::send(event, target, super::sorted_tables())}
                             id={AssignFormId}
                             method="post"
                             action={url::Assign { choice: choice.clone() }}
@@ -193,7 +195,12 @@ fn ReviewedListing<'a>(screen: &'a Screen) -> impl Render {
                 }
             }
             <Problem at={Place::Listing} why={screen.problem_at(Place::Listing)} />
-            <a href={url::SlabPricing::at(&separately)}>"Research certificate separately"</a>
+            <a
+                on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                href={url::SlabPricing::at(&separately)}
+            >
+                "Research certificate separately"
+            </a>
         </section>
     }
 }
@@ -233,6 +240,7 @@ fn IdentityCard<'a>(
                 <summary>"Confirm or correct identity"</summary>
                 let e = Within::none(ConfirmFormId);
                 <form
+                    on:submit={ordered::send(event, target, super::sorted_tables())}
                     id={ConfirmFormId}
                     method="post"
                     action={url::Confirm { choice: choice.clone() }}
@@ -333,6 +341,7 @@ fn InventoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             <h2 id="slab-inventory">"eBay inventory"</h2>
             let e = Within::none(InventoryFormId);
             <form
+                on:submit={ordered::send(event, target, super::sorted_tables())}
                 id={InventoryFormId}
                 method="get"
                 action={url::SlabPricing::at(&Choice::default())}
@@ -402,6 +411,7 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
             <summary>"Import CSV"</summary>
             let e = Within::none(ImportFormId);
             <form
+                on:submit={ordered::send(event, target, super::sorted_tables())}
                 id={ImportFormId}
                 method="post"
                 action={url::Import { choice: choice.clone() }}
@@ -433,7 +443,7 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
             </form>
         </details>
         <Table layout={TableLayout::Scroll}>
-            <table class={Cells}>
+            <table id={super::ListingsTableId} class={Cells}>
                 <caption class={VisuallyHidden {}}>
                     "Saved eBay listings. Sorting orders the listings on this page."
                 </caption>
@@ -467,6 +477,7 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
                         >
                             <td>
                                 <form
+                                    on:submit={ordered::send(event, target, super::sorted_tables())}
                                     method="post"
                                     action={url::Open { choice: choice.clone() }}
                                     data-patch
@@ -495,11 +506,21 @@ fn Listings<'a>(page: &'a InventoryPage, choice: &'a Choice) -> impl Render {
         </Table>
         <nav class={Line} aria-label="Inventory pages">
             match choice.previous_page() {
-                Some(previous) => <a href={url::SlabPricing::at(&previous)}>"Previous page"</a>,
+                Some(previous) => <a
+                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                    href={url::SlabPricing::at(&previous)}
+                >
+                    "Previous page"
+                </a>,
                 None => <span class={muted()}>"Previous page"</span>,
             }
             match &page.next {
-                Some(next) => <a href={url::SlabPricing::at(&choice.next_page(next))}>"Next page"</a>,
+                Some(next) => <a
+                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                    href={url::SlabPricing::at(&choice.next_page(next))}
+                >
+                    "Next page"
+                </a>,
                 None => <span class={muted()}>"Next page"</span>,
             }
         </nav>

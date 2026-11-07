@@ -4,7 +4,6 @@
 use std::collections::BTreeMap;
 
 use corten::UrlValue;
-use serde::Deserialize;
 
 use crate::database::Database;
 
@@ -13,7 +12,7 @@ pub const DEFAULT_PRODUCT_LINE: i32 = 3;
 
 /// A condition a card is counted in. Sealed products have one SKU, `Unopened`, whatever is
 /// chosen.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, UrlValue, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum Condition {
     #[default]
@@ -57,7 +56,7 @@ impl Condition {
 
 /// The order the products are listed in, across every page: by name, either way. React's grid
 /// also drew a sort on Quantity, but its rows had no quantity field, so that sort kept the order.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum ProductOrder {
     Name,
@@ -75,7 +74,7 @@ impl ProductOrder {
 }
 
 /// How many products a page shows, as the React grid offered (`pageSizeOptions`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, UrlValue, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, UrlValue)]
 pub enum PageSize {
     #[serde(rename = "25")]
     Rows25,
@@ -113,7 +112,7 @@ pub fn page_of<T>(items: Vec<T>, page: usize, size: PageSize) -> (Vec<T>, usize,
 }
 
 /// Which products show: sealed, unsealed, or both.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, UrlValue, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum ProductType {
     All,
@@ -134,7 +133,7 @@ impl ProductType {
 
 /// Where the search looks: the chosen set's products by name or number, or every set of the
 /// line by card number.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, UrlValue, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum Scope {
     #[default]

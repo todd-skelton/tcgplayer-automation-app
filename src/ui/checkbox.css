@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: checkbox 84c3adcdf21f2ccb */
+/* corten ui 0.1.0: checkbox 8662c41156b16dce */
 /* A checkbox with role="switch" is a switch to a screen reader, so it is left to the browser's own
    look here: it belongs in the Switch component. */
 .checkbox { display: inline-flex; align-items: center; gap: .5rem; font-size: .875rem; line-height: 1.25rem; cursor: pointer; }
@@ -16,3 +16,12 @@
 .checkbox > input:not([role="switch"]):focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .checkbox > input:not([role="switch"]):user-invalid, .checkbox > input:not([role="switch"])[aria-invalid="true"] { border-color: var(--destructive); }
 .checkbox:has(> input:disabled) { opacity: .5; cursor: not-allowed; }
+/* A contrast theme paints every background as Canvas, so a checked box would be an empty square:
+   it is drawn in the selection colors (system colors, which the theme keeps), a disabled one in
+   gray with its mark in the page's color. */
+@media (forced-colors: active) {
+  .checkbox > input:not([role="switch"]):checked { background: Highlight; border-color: Highlight; }
+  .checkbox > input:not([role="switch"])::before { forced-color-adjust: none; background: HighlightText; }
+  .checkbox > input:not([role="switch"]):disabled:checked { background: GrayText; border-color: GrayText; }
+  .checkbox > input:not([role="switch"]):disabled:checked::before { background: Canvas; }
+}

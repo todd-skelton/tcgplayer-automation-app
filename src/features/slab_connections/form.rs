@@ -1,10 +1,9 @@
 //! A connection as the browser sends it: the pasted credential, and eBay's User-Agent.
 use corten::prelude::*;
-use serde::Deserialize;
 
 use super::provider::{Credential, Provider, Refusal};
 
-#[derive(Debug, Default, Deserialize, Fields)]
+#[derive(Debug, Default, Fields)]
 pub struct ConnectionInput {
     #[serde(default)]
     pub credential: String,

@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use corten::{
     Relay,
-    axum::extract::Request,
+    extract::Request,
     prelude::*,
     security::Policy,
     upgrade::{SwitchOr, Upgrade},
@@ -193,12 +193,7 @@ pub fn app(shared: Shared) -> App {
         .assets(Static)
         .components(&[theme::TOKENS])
         .components(ui::COMPONENTS)
-        .components(&[
-            layout::AppBar,
-            layout::Layout,
-            layout::SaysFailedSubmits,
-            layout::SubmitsOnChange,
-        ])
+        .components(&[layout::AppBar, layout::Layout, layout::SubmitsOnChange])
         .components(corten_ui::COMPONENTS)
         .components(dashboard::COMPONENTS)
         .messages::<Msg>()
@@ -308,21 +303,17 @@ mod tests {
     /// no database (the pool points nowhere).
     #[tokio::test]
     async fn a_failed_page_is_in_the_layout() {
-        use tower::ServiceExt;
         let shared = Shared {
             db: Database::connect_lazy("postgresql://localhost:1/unused"),
             legacy: Legacy::new("http://localhost:1".into()),
             slab_providers: slab_connections::Transport::default(),
         };
-        let request = corten::axum::http::Request::get("/no-such-screen")
-            .body(corten::axum::body::Body::empty())
-            .unwrap();
-        let answer = app(shared).router().oneshot(request).await.unwrap();
-        assert_eq!(answer.status(), corten::axum::http::StatusCode::BAD_GATEWAY);
-        let body = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let page = String::from_utf8_lossy(&body);
+        let answer = app(shared)
+            .test()
+            .get(&corten::Local::parse("/no-such-screen").unwrap())
+            .await;
+        assert_eq!(answer.status(), corten::http::StatusCode::BAD_GATEWAY);
+        let page = answer.text();
         assert!(
             page.contains("<title>Something went wrong | TCGPlayer Automation</title>"),
             "{page}"
@@ -339,23 +330,26 @@ mod tests {
     /// failure under it is not kept either, so the database need not answer.
     #[tokio::test]
     async fn private_answers_are_not_stored() {
-        use tower::ServiceExt;
         let shared = Shared {
             db: Database::connect_lazy("postgresql://localhost:1/unused"),
             legacy: Legacy::new("http://localhost:1".into()),
             slab_providers: slab_connections::Transport::default(),
         };
-        let router = app(shared).router();
-        let paths = [
-            shipping_export::url::PackingSlips { open: Some(true) }.href(),
-            slab_connections::url::SlabConnections.href(),
+        let client = app(shared).test();
+        let answers = [
+            (
+                "packing slips",
+                client
+                    .get(&shipping_export::url::PackingSlips { open: Some(true) })
+                    .await,
+            ),
+            (
+                "slab connections",
+                client.get(&slab_connections::url::SlabConnections).await,
+            ),
         ];
-        for path in paths {
-            let request = corten::axum::http::Request::get(path.as_str())
-                .body(corten::axum::body::Body::empty())
-                .unwrap();
-            let answer = router.clone().oneshot(request).await.unwrap();
-            assert_eq!(answer.headers()["cache-control"], "no-store", "{path}");
+        for (page, answer) in answers {
+            assert_eq!(answer.headers()["cache-control"], "no-store", "{page}");
         }
     }
 
@@ -365,27 +359,19 @@ mod tests {
     #[tokio::test]
     #[ignore = "reads the dev database"]
     async fn dates_are_written_in_the_visitors_zone() {
-        use tower::ServiceExt;
         crate::config::load_env();
         let read = |path: &'static str, zone: Option<&'static str>| async move {
-            let mut request = corten::axum::http::Request::get(path);
-            if let Some(zone) = zone {
-                request = request.header("cookie", format!("corten-zone={zone}"));
-            }
             let shared = Shared {
                 db: Database::connect_lazy(&crate::config::database_url()),
                 legacy: Legacy::new("http://localhost:1".into()),
                 slab_providers: slab_connections::Transport::default(),
             };
-            let answer = app(shared)
-                .router()
-                .oneshot(request.body(corten::axum::body::Body::empty()).unwrap())
-                .await
-                .unwrap();
-            let body = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
-                .await
-                .unwrap();
-            String::from_utf8(body.to_vec()).unwrap()
+            let client = app(shared).test();
+            let mut call = client.get(&corten::Local::parse(path).unwrap());
+            if let Some(zone) = zone {
+                call = call.cookie("corten-zone", zone);
+            }
+            call.await.text().to_owned()
         };
         let mut zoned = 0;
         for path in ["/inventory-strategy", "/pending-inventory-pricer"] {
@@ -416,7 +402,6 @@ mod tests {
     #[tokio::test]
     #[ignore = "reads the dev database"]
     async fn every_screen_links_the_stylesheets_of_what_it_renders() {
-        use tower::ServiceExt;
         crate::config::load_env();
         let db = Database::connect_lazy(&crate::config::database_url());
         let shared = Shared {
@@ -427,7 +412,7 @@ mod tests {
                 "http://127.0.0.1:1",
             ),
         };
-        let router = app(shared).router();
+        let client = app(shared).test();
         let chosen = chosen_screens(&db).await;
         let steps = [
             "load-orders",
@@ -464,21 +449,16 @@ mod tests {
         );
         let mut failed = Vec::new();
         for path in screens.into_iter().chain(steps).chain(chosen) {
-            let request = match path.strip_prefix(PATCH) {
+            let answer = match path.strip_prefix(PATCH) {
                 Some(view) => {
-                    corten::axum::http::Request::get(view).header(corten::MODE_HEADER, "action")
+                    let view = corten::Local::parse(view).unwrap();
+                    client.get(&view).mode(corten::Mode::Action).await
                 }
-                None => corten::axum::http::Request::get(&path),
-            }
-            .body(corten::axum::body::Body::empty())
-            .unwrap();
-            let answer = router.clone().oneshot(request).await.unwrap();
+                None => client.get(&corten::Local::parse(&path).unwrap()).await,
+            };
             if !answer.status().is_success() {
                 let status = answer.status();
-                let body = corten::axum::body::to_bytes(answer.into_body(), usize::MAX)
-                    .await
-                    .unwrap();
-                let body = String::from_utf8_lossy(&body);
+                let body = answer.text();
                 let said = body
                     .find("renders ")
                     .map_or("", |at| &body[at..(at + 200).min(body.len())]);
@@ -542,6 +522,8 @@ mod tests {
         .await
         {
             chosen.push(shipping_export::url::OrderLabels { order: Some(order) }.href());
+            // The batch's packing slips: a 404 when there is no workflow to print.
+            chosen.push(shipping_export::url::PackingSlips { open: None }.href());
         }
         if let Some((grader, cert)) =
             one("SELECT grader, certificate_number FROM slab_identities LIMIT 1").await
@@ -619,7 +601,6 @@ mod tests {
             }
             .href(),
         );
-        chosen.push(shipping_export::url::PackingSlips { open: None }.href());
         chosen
     }
 

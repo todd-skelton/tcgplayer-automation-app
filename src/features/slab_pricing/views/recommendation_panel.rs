@@ -3,6 +3,7 @@ use corten::{
     i18n::{DateStyle, TimeStyle},
     prelude::*,
 };
+use corten_ui::ordered;
 
 use crate::{
     features::slab_pricing::{
@@ -150,6 +151,7 @@ fn CostsForm<'a>(
     html! {
         let e = Within::none(CalculateFormId);
         <form
+            on:submit={ordered::send(event, target, super::sorted_tables())}
             id={CalculateFormId}
             method="post"
             action={url::Calculate { choice: screen.choice.clone() }}
@@ -355,6 +357,7 @@ fn ReviewedAsk<'a>(
             </Notice>
         }
         <form
+            on:submit={ordered::send(event, target, super::sorted_tables())}
             id={ReviewAskFormId}
             method="post"
             action={url::ReviewAsk { choice: screen.choice.clone() }}

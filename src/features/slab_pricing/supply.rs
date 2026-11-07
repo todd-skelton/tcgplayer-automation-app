@@ -32,7 +32,7 @@ pub const ROWS: u32 = 50;
 
 /// A column the supply rows can be sorted by. As the React grid did, a sort orders the rows
 /// shown, not every page of them.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, corten::UrlValue, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, corten::UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum SupplyColumn {
     Listing,

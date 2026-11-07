@@ -3,8 +3,6 @@
 //! (ported from `services/packPullSheet.ts` and `PackStep.tsx`).
 use std::collections::BTreeMap;
 
-use serde::Deserialize;
-
 use super::{
     orders::{Line, Order},
     value::{self, SaleValue},
@@ -12,7 +10,7 @@ use super::{
 use crate::features::pull_sheet::Item;
 
 /// How the Pack step shows the shipments: one at a time with its cards, or all in a list.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, corten::UrlValue)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, corten::UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum PackView {
     #[default]

@@ -4,11 +4,10 @@
 use std::collections::BTreeMap;
 
 use corten::prelude::*;
-use serde::Deserialize;
 
 use super::config::{Adaptive, Domain, HttpConfig, Limits};
 
-#[derive(Clone, Debug, Default, Deserialize, Fields)]
+#[derive(Clone, Debug, Default, Fields)]
 pub struct SettingsInput {
     pub tcg_auth_cookie: String,
     pub user_agent: String,
@@ -22,7 +21,7 @@ pub struct SettingsInput {
 }
 
 /// One domain's inputs, as typed: what they show.
-#[derive(Clone, Debug, Default, Deserialize, Fields)]
+#[derive(Clone, Debug, Default, Fields)]
 pub struct DomainInput {
     pub request_delay_ms: Entry<u32>,
     pub rate_limit_cooldown_ms: Entry<u32>,

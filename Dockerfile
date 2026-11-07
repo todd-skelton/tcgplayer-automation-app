@@ -30,6 +30,10 @@ COPY locales /src/locales
 COPY types /src/types
 COPY build.rs /src/build.rs
 COPY db/migrations /src/db/migrations
+# zstd (corten's `compress`) links this image's libzstd instead of compiling it from its C sources,
+# the slowest crate in a clean build; the `web` image below has libzstd.so.1. An image without it
+# (distroless, scratch) must drop this line.
+ENV ZSTD_SYS_USE_PKG_CONFIG=1
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target,sharing=locked \
     find . -name target -prune -o -type f -exec touch {} + \
@@ -37,9 +41,11 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     && cp target/release/tcgplayer-automation /server
 
 FROM debian:bookworm-slim AS web
+# jemalloc gives back the memory a burst of connections took; glibc's allocator keeps it.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends wget \
+    && apt-get install -y --no-install-recommends wget libjemalloc2 \
     && rm -rf /var/lib/apt/lists/*
+ENV LD_PRELOAD=libjemalloc.so.2
 WORKDIR /app
 COPY --from=web-build /server /app/server
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000

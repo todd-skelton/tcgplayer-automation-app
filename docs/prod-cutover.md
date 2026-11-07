@@ -1,8 +1,8 @@
 # Production cutover plan
 
-A plan for Todd's review. Nothing here has been run against production: every step that touches
-the `tcgplayer-automation-prod` stack, its database or `origin/master` waits for his approval,
-one release at a time.
+The plan for moving production to the Corten app. Release 1 ran on 2026-11-05 (Release 1 below);
+every later step that touches the `tcgplayer-automation-prod` stack, its database or
+`origin/master` waits for Todd's approval, one release at a time.
 
 ## Where production is
 
@@ -95,11 +95,14 @@ Corten a0215cc9):
    before nginx; whether it speaks HTTP/2 to the browser was not checked. Serving HTTP/2 from
    nginx needs TLS there (a certificate for the name used).
 5. Stopping a `web` container (the old slot after a switch, or `prod:down`) gives it Compose's
-   `stop_grace_period: 30s`. Corten waits for a connection still answering until the app's longest
-   deadline, which is Data Management's hour, so a catalog job in flight or a client that stopped
-   reading ends with Docker's kill at 30 s, not a clean exit. Background tasks still get their 5 s
+   `stop_grace_period: 30s`. Since Corten bd75e6ab a connection still answering is held to the
+   deadline of its own request, not the app's longest, so a page whose client stopped reading
+   ends at its page's deadline. A request of an area with a longer deadline that is still in
+   progress (a catalog job in Data Management, up to an hour; a seller snapshot, up to 5 minutes)
+   still ends with Docker's kill at 30 s, not a clean exit. Background tasks still get their 5 s
    grace first, and a killed catalog job leaves no lock behind and can be run again. Reported as
-   [#887 Shutdown waits for every answering connection until the app's longest deadline, so one hour-long area makes a stalled page reader hold shutdown an hour and the guide's platform-wait rule unworkable](https://github.com/corten-run/corten/issues/887).
+   [#887 Shutdown waits for every answering connection until the app's longest deadline, so one hour-long area makes a stalled page reader hold shutdown an hour and the guide's platform-wait rule unworkable](https://github.com/corten-run/corten/issues/887),
+   fixed by [#914 Shutdown holds each connection to its own request's deadline, not the app's longest (#887)](https://github.com/corten-run/corten/pull/914).
 6. The `web` containers answer only `localhost`, IP addresses and the names in `HOSTS`; any other
    `Host` gets 421. nginx passes the browser's `Host`, so if Tailscale Serve passes the tailnet
    name, the pages would answer 421 through it. `HOSTS` in `.env.production.local` (not committed)
@@ -133,6 +136,30 @@ Corten a0215cc9):
 In dev, every job now runs in the Corten app (`docs/worker-parity.md`, Dev cutover); the
 publication worker is switched there but stays off without Seller Portal writes, so release 6 is
 its first run that posts.
+
+## Release 1 (2026-11-05)
+
+Merged as [#123 Corten port: every screen on the Corten app behind nginx (release 1)](https://github.com/todd-skelton/tcgplayer-automation-app/pull/123)
+(0306b7879, Corten aaca3e05) and released with `npm run prod:update` from a clean master. A
+second backup was taken just before: `.artifacts/db-backups/2026-11-05T15-54-48Z-prod-at-release-1.dump`.
+
+1. Both images built, the blue slot (Node and Corten) started and migrated in overlap mode,
+   nginx moved to `web-blue`, the Node workers were recreated on the new image, and green was
+   removed. Migrations 053 to 055 are in place.
+2. `/proxy-health` names blue and `npm run prod:status` shows every container healthy, with the
+   four Node workers present. The `web` log shows every Rust worker and shadow off.
+3. All 16 screens answer 200 through port 3001 and through Tailscale Serve. Through nginx the
+   tailnet name is answered and an unlisted `Host` gets 421.
+4. `GET /api/inventory/product-lines` is relayed: its answer is byte for byte what the Node app
+   gives inside the network, and Corten has no route of its own for it.
+5. The batch pricer's live stream for the latest batch answers `text/event-stream` through the
+   proxy with its panel (`patch`) and `end`.
+6. A write through Tailscale Serve in Chrome (a file that is not a pull sheet, on `/pull-sheet`)
+   passed the same-origin check and came back 422 with the form's message; nothing was saved.
+7. The `web` log has no error or panic; it has slow-statement warnings from the first loads of
+   the strategy and economics screens on cold caches.
+
+Release 2 can start after one full day of normal use, with Todd's approval.
 
 ## Decided (2026-11-05)
 

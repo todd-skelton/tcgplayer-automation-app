@@ -6,7 +6,7 @@ use corten::UrlValue;
 use serde::Deserialize;
 
 /// A source of graded-card data reached with the user's own signed-in session.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue)]
 #[serde(rename_all = "camelCase")]
 pub enum Provider {
     Alt,
@@ -26,7 +26,7 @@ impl Provider {
 
 /// What the last save or access check left a connection in, as `slab_provider_connections.status`
 /// stores it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum Status {
     NotConfigured,

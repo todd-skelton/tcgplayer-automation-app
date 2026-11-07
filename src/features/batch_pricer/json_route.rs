@@ -20,11 +20,9 @@ use chrono::Utc;
 
 use corten::{
     Api, JsonResponse, Prefix, Relay,
-    axum::{
-        body::{Body, to_bytes},
-        extract::{FromRequest, RawQuery, Request},
-        http::{HeaderMap, HeaderValue, StatusCode, header},
-    },
+    answer::Body,
+    extract::{FromRequest, Request},
+    http::{HeaderMap, HeaderValue, StatusCode, header},
     prelude::*,
 };
 use futures_util::{Stream, StreamExt};
@@ -80,12 +78,16 @@ pub struct InventoryBatch<'a> {
 #[route("/api/inventory-batches/{batch}/items")]
 pub struct InventoryBatchItems<'a> {
     pub batch: &'a str,
+    /// Every `scope` sent; Node read the first (`searchParams.get`).
+    pub scope: Vec<String>,
 }
 
 #[derive(Route)]
 #[route("/api/inventory-batches/{batch}/results")]
 pub struct InventoryBatchResults<'a> {
     pub batch: &'a str,
+    /// Every `scope` sent; Node read the first (`searchParams.get`).
+    pub scope: Vec<String>,
 }
 
 #[derive(Route)]
@@ -183,7 +185,7 @@ async fn save_results(
     Params(at): Params<InventoryBatchResults<'_>>,
     request: Request,
 ) -> JsonResponse {
-    let body = match to_bytes(request.into_body(), MAX_RESULTS_BODY_BYTES).await {
+    let body = match crate::api::body_up_to(request.into_body(), MAX_RESULTS_BODY_BYTES).await {
         Ok(body) => body,
         Err(error) => return failed(format!("Error: {error}")),
     };
@@ -296,7 +298,7 @@ async fn list_not_allowed() -> JsonResponse {
 
 /// The counts as a batch, in a transaction kept only when the batch is answered.
 async fn create(State(db): State<Database>, request: Request) -> JsonResponse {
-    let body = match to_bytes(request.into_body(), MAX_CREATE_BODY_BYTES).await {
+    let body = match crate::api::body_up_to(request.into_body(), MAX_CREATE_BODY_BYTES).await {
         Ok(body) => body,
         Err(error) => return failed(format!("Error: {error}")),
     };
@@ -391,7 +393,7 @@ async fn exported_file(request: Request) -> Result<Option<(String, Vec<u8>)>, Bo
 }
 
 /// The multipart body of an import: its `file`.
-#[derive(serde::Deserialize, Fields)]
+#[derive(Fields)]
 struct ExportForm {
     #[allow(dead_code)]
     file: Files,
@@ -439,7 +441,7 @@ async fn import_seller(State(db): State<Database>, request: Request) -> JsonResp
 /// The seller key of an import-seller body, `String(body.sellerKey ?? "").trim()`, or Node's
 /// refusal of the body.
 async fn seller_key(request: Request) -> Result<String, Box<JsonResponse>> {
-    let body = to_bytes(request.into_body(), MAX_CREATE_BODY_BYTES)
+    let body = crate::api::body_up_to(request.into_body(), MAX_CREATE_BODY_BYTES)
         .await
         .map_err(|error| Box::new(failed(format!("Error: {error}"))))?;
     seller_of(&body)
@@ -568,13 +570,12 @@ async fn not_allowed(Params(at): Params<InventoryBatch<'_>>) -> JsonResponse {
 async fn items(
     State(db): State<Database>,
     Params(at): Params<InventoryBatchItems<'_>>,
-    RawQuery(query): RawQuery,
 ) -> JsonResponse {
     let batch = match batch_number(&at.batch) {
         Ok(batch) => batch,
         Err(refused) => return refused.into(),
     };
-    let errors = api::first(query.as_deref(), "scope").as_deref() == Some("errors");
+    let errors = at.scope.first().map(String::as_str) == Some("errors");
     let listed = match db.0.acquire().await {
         Ok(mut conn) => batch_json::items(&mut conn, batch, errors).await,
         Err(error) => Err(node_pg::thrown(error)),
@@ -589,13 +590,12 @@ async fn items(
 async fn results(
     State(db): State<Database>,
     Params(at): Params<InventoryBatchResults<'_>>,
-    RawQuery(query): RawQuery,
 ) -> JsonResponse {
     let batch = match batch_number(&at.batch) {
         Ok(batch) => batch,
         Err(refused) => return refused.into(),
     };
-    let manual_review = api::first(query.as_deref(), "scope").as_deref() == Some("manual-review");
+    let manual_review = at.scope.first().map(String::as_str) == Some("manual-review");
     let listed = match db.0.acquire().await {
         Ok(mut conn) => batch_json::results(&mut conn, batch, manual_review).await,
         Err(error) => Err(node_pg::thrown(error)),
@@ -617,7 +617,7 @@ async fn price(
         Ok(batch) => batch,
         Err(refused) => return refused.into(),
     };
-    let body = match to_bytes(request.into_body(), MAX_PRICING_BODY_BYTES).await {
+    let body = match crate::api::body_up_to(request.into_body(), MAX_PRICING_BODY_BYTES).await {
         Ok(body) => body,
         Err(error) => return failed(format!("Error: {error}")),
     };
@@ -850,7 +850,7 @@ async fn publish(
         Ok(batch) => batch,
         Err(refused) => return refused.into(),
     };
-    let body = match to_bytes(request.into_body(), MAX_PUBLISH_BODY_BYTES).await {
+    let body = match crate::api::body_up_to(request.into_body(), MAX_PUBLISH_BODY_BYTES).await {
         Ok(body) => body,
         Err(error) => return failed(format!("Error: {error}")),
     };
@@ -933,7 +933,7 @@ async fn confirm(
         Ok(batch) => batch,
         Err(refused) => return refused.into(),
     };
-    let body = match to_bytes(request.into_body(), MAX_CONFIRM_BODY_BYTES).await {
+    let body = match crate::api::body_up_to(request.into_body(), MAX_CONFIRM_BODY_BYTES).await {
         Ok(body) => body,
         Err(error) => return failed(format!("Error: {error}")),
     };

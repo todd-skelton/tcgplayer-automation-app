@@ -1,5 +1,5 @@
 use corten::prelude::*;
-use corten_ui::{dialog, rows};
+use corten_ui::{dialog, ordered, rows};
 
 use crate::{
     features::slab_pricing::{
@@ -10,7 +10,7 @@ use crate::{
         url::{self, Choice},
         views::Problem,
     },
-    layout::Notice,
+    layout::{DialogNotSent, Notice},
     row_order,
     theme::*,
     ui::{
@@ -50,7 +50,12 @@ pub fn CompReview<'a>(screen: &'a Screen) -> impl Render {
         >
             <div class={Head}>
                 <h2 id="slab-comps">"Saved comps"</h2>
-                <a href={url::SlabPricing::at(&close)}>"Close comps"</a>
+                <a
+                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                    href={url::SlabPricing::at(&close)}
+                >
+                    "Close comps"
+                </a>
             </div>
             <Problem at={Place::Comps} why={screen.problem_at(Place::Comps)} />
             match &screen.comps {
@@ -128,7 +133,7 @@ fn Comps<'a>(review: &'a Review, choice: &'a Choice) -> impl Render {
             </Notice>
         }
         <Table layout={TableLayout::Scroll}>
-            <table class={Cells}>
+            <table id={super::CompsTableId} class={Cells}>
                 <caption class={VisuallyHidden {}}>
                     "Saved comps. Sorting orders the sales on this page."
                 </caption>
@@ -154,7 +159,14 @@ fn Comps<'a>(review: &'a Review, choice: &'a Choice) -> impl Render {
                 <tbody>
                     for (row, open) in &shown {
                         <tr aria-current={(choice.comp == open.comp).then_some("true")}>
-                            <td><a href={url::SlabPricing::at(open)}>"Review"</a></td>
+                            <td>
+                                <a
+                                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                                    href={url::SlabPricing::at(open)}
+                                >
+                                    "Review"
+                                </a>
+                            </td>
                             <td data-sort={row.sale.date.as_deref().unwrap_or("")}>
                                 {row.sale.date.as_deref().unwrap_or("Unknown")}
                             </td>
@@ -177,16 +189,31 @@ fn Comps<'a>(review: &'a Review, choice: &'a Choice) -> impl Render {
         </Table>
         <nav class={Line} aria-label="Comp pages">
             match &previous {
-                Some(previous) => <a href={url::SlabPricing::at(previous)}>"Previous 50"</a>,
+                Some(previous) => <a
+                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                    href={url::SlabPricing::at(previous)}
+                >
+                    "Previous 50"
+                </a>,
                 None => <span class={muted()}>"Previous 50"</span>,
             }
             <span>{review.range()}</span>
             match &next {
-                Some(next) => <a href={url::SlabPricing::at(next)}>"Next 50"</a>,
+                Some(next) => <a
+                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                    href={url::SlabPricing::at(next)}
+                >
+                    "Next 50"
+                </a>,
                 None => <span class={muted()}>"Next 50"</span>,
             }
             if review.next_source_page {
-                <form method="post" action={url::FetchComps { choice: choice.clone() }} data-patch>
+                <form
+                    on:submit={ordered::send(event, target, super::sorted_tables())}
+                    method="post"
+                    action={url::FetchComps { choice: choice.clone() }}
+                    data-patch
+                >
                     <input type="hidden" name={f.revision} value={&review.revision_id}>
                     <button
                         class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
@@ -208,7 +235,7 @@ fn SaleDialog<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> impl 
         comp: None,
         ..choice.clone()
     };
-    let close = refs();
+    let (close, said) = refs();
     let sale = &row.sale;
     let reasons = if row.reasons.is_empty() {
         "Identity and price passed screening.".to_owned()
@@ -230,10 +257,12 @@ fn SaleDialog<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> impl 
             aria-labelledby="slab-comp-sale"
             class={Dialog { size: DialogSize::Lg }}
             on:connect={dialog::modalClosedBy(target, close, signal)}
+            on:corten:error={dialog::failed(event, target, said)}
         >
             <div class={DialogHeader {}}>
                 <h3 id="slab-comp-sale">"Review sold evidence"</h3>
                 <a
+                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
                     ref={close}
                     class={Button { variant: ButtonVariant::Ghost, size: ButtonSize::Sm }}
                     href={url::SlabPricing::at(&closed)}
@@ -253,6 +282,7 @@ fn SaleDialog<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> impl 
                 <p class={muted()}>{reasons}</p>
                 if sale.provider == "alt" && review.kind == "alt-sales" {
                     <form
+                        on:submit={ordered::send(event, target, super::sorted_tables())}
                         method="post"
                         action={url::FetchComps { choice: choice.clone() }}
                         data-patch
@@ -266,6 +296,7 @@ fn SaleDialog<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> impl 
                         </button>
                     </form>
                 }
+                <DialogNotSent said={said} />
                 <Problem
                     at={Place::CompDecision}
                     why={screen.problem_at(Place::CompDecision)}
@@ -294,6 +325,7 @@ fn DecisionForm<'a>(screen: &'a Screen, review: &'a Review, row: &'a Row) -> imp
     html! {
         let e = Within::none(CompDecisionFormId);
         <form
+            on:submit={ordered::send(event, target, super::sorted_tables())}
             id={CompDecisionFormId}
             method="post"
             action={url::DecideComp { choice: screen.choice.clone() }}

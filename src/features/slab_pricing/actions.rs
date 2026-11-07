@@ -4,7 +4,6 @@
 //! came from (its address is the post's query), showing what changed; a refusal is that page with
 //! why, as a conflict.
 use corten::{Refusal, SubmitKey, prelude::*};
-use serde::Deserialize;
 use serde_json::json;
 
 use super::{
@@ -28,7 +27,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Default, Deserialize, Fields)]
+#[derive(Debug, Default, Fields)]
 pub struct LookUpInput {
     #[serde(default)]
     pub grader: String,
@@ -122,7 +121,7 @@ pub async fn look_up(
 }
 
 /// The physical slab's card and grade as the operator confirms them. Blank fields stay unknown.
-#[derive(Debug, Default, Deserialize, Fields)]
+#[derive(Debug, Default, Fields)]
 pub struct ConfirmInput {
     pub revision: i64,
     #[serde(default)]
@@ -227,7 +226,7 @@ pub async fn confirm(
     }
 }
 
-#[derive(Debug, Deserialize, Fields)]
+#[derive(Debug, Fields)]
 pub struct OpenInput {
     pub id: String,
 }
@@ -295,7 +294,7 @@ pub async fn open(
     }
 }
 
-#[derive(Debug, Default, Deserialize, Fields)]
+#[derive(Debug, Default, Fields)]
 pub struct AssignInput {
     #[serde(default)]
     pub note: String,
@@ -334,7 +333,7 @@ pub async fn assign(
     }
 }
 
-#[derive(Debug, Default, Deserialize, Fields)]
+#[derive(Debug, Default, Fields)]
 pub struct ImportInput {
     /// The inventory's revision when the page was drawn: an import over a newer one is refused.
     pub revision: i64,
@@ -372,7 +371,7 @@ pub async fn import(
 
 /// The certificate researched, at the revision the page showed: a refresh for an identity
 /// changed since is refused.
-#[derive(Debug, Default, Deserialize, Fields)]
+#[derive(Debug, Default, Fields)]
 pub struct RefreshInput {
     pub id: String,
     pub revision: i64,
@@ -408,7 +407,7 @@ pub async fn refresh(
 
 /// A refresh to stop, by its run: one that has been run again since is left alone. Stopped here,
 /// in the refresh queue the Node app's worker claims from.
-#[derive(Debug, Default, Deserialize, Fields)]
+#[derive(Debug, Default, Fields)]
 pub struct CancelInput {
     pub key: String,
     pub run: String,
@@ -440,7 +439,7 @@ pub async fn cancel(
 }
 
 /// The seller's costs and the comparable price basis. A blank amount stays unknown.
-#[derive(Debug, Default, Deserialize, Fields)]
+#[derive(Debug, Default, Fields)]
 pub struct CalculateInput {
     #[serde(default)]
     pub basis: String,
@@ -516,7 +515,7 @@ pub async fn refresh_supply(
 }
 
 /// The eBay source page shown, whose next page is fetched.
-#[derive(Debug, Default, Deserialize, Fields)]
+#[derive(Debug, Default, Fields)]
 pub struct NextSourcePageInput {
     pub revision: String,
 }
@@ -550,7 +549,7 @@ pub async fn next_source_page(
 }
 
 /// The seller's maintenance settings as typed, at the revision the form was drawn from.
-#[derive(Debug, Default, Deserialize, Fields)]
+#[derive(Debug, Default, Fields)]
 pub struct MaintenanceInput {
     #[serde(default)]
     pub enabled: bool,
@@ -588,7 +587,7 @@ pub async fn save_maintenance(
     }
 }
 
-#[derive(Debug, Default, Deserialize, Fields)]
+#[derive(Debug, Default, Fields)]
 pub struct OutcomesInput {
     #[serde(default)]
     pub csv: String,
@@ -661,7 +660,7 @@ pub async fn calculate(
 }
 
 /// The ask the operator settled on for the latest recommendation, and why.
-#[derive(Debug, Default, Deserialize, Fields)]
+#[derive(Debug, Default, Fields)]
 pub struct ReviewAskInput {
     pub recommendation: String,
     pub item_price: Option<f64>,
@@ -694,7 +693,7 @@ pub async fn review_ask(
 
 /// The price to review (`calculated` or `reviewed`) of the listing and recommendation as the
 /// page showed them: a listing revised or an ask reviewed again since is refused.
-#[derive(Debug, Deserialize, Fields)]
+#[derive(Debug, Fields)]
 pub struct PrepareInput {
     /// Sent as the preview's intent, so a post sent again saves one preview.
     pub submit: SubmitKey,
@@ -743,7 +742,7 @@ pub async fn prepare(
 
 /// The preview whose publication runs without writing. A new run's intent is a fresh key; a
 /// stopped one is resumed with its own id.
-#[derive(Debug, Deserialize, Fields)]
+#[derive(Debug, Fields)]
 pub struct DryRunInput {
     pub intent: SubmitKey,
     pub preview: String,
@@ -775,7 +774,7 @@ pub async fn dry_run(
 
 /// A sale's decision, as the comp review showed it: the revision and identity revision it was
 /// screened at, the sale's reference, and the operator's call.
-#[derive(Debug, Default, Deserialize, Fields)]
+#[derive(Debug, Default, Fields)]
 pub struct CompDecisionInput {
     pub revision: String,
     pub identity_revision: i64,
@@ -839,7 +838,7 @@ pub async fn decide_comp(
 
 /// The revision reviewed, and the Alt sale whose details to fetch (else the eBay source's next
 /// page).
-#[derive(Debug, Default, Deserialize, Fields)]
+#[derive(Debug, Default, Fields)]
 pub struct FetchCompsInput {
     pub revision: String,
     pub transaction: Option<String>,

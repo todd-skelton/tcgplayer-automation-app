@@ -1,5 +1,4 @@
 use corten::{Href, form::keep_query, prelude::*};
-use serde::Deserialize;
 
 use super::{ItemCard, ItemRow, SortBy, picture};
 use crate::{
@@ -46,7 +45,7 @@ impl Summary {
 
 /// Which way the items show. Only CSS reads it (`:has(:checked)`), so the choice needs no script
 /// and is not sent anywhere; the struct names the radios.
-#[derive(Deserialize, Fields)]
+#[derive(Fields)]
 #[expect(
     dead_code,
     reason = "the struct only names the radios; nothing reads a submitted choice"

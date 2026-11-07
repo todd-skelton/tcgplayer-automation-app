@@ -1,39 +1,39 @@
 [
  {
   "name": "continuous batch, every SKU",
-  "batch": 3516
+  "batch": 2030
  },
  {
   "name": "continuous batch, two SKUs",
-  "batch": 3516,
+  "batch": 2030,
   "pick": 2
  },
  {
   "name": "continuous batch, planned twice",
-  "batch": 3516,
-  "pick": 3,
+  "batch": 2030,
+  "pick": 2,
   "times": 2
  },
  {
   "name": "continuous batch, split at ten",
-  "batch": 3516,
+  "batch": 2030,
   "setup": "UPDATE inventory_publication_settings SET settings_json = jsonb_set(settings_json, '{policy,stagedMicroBatchMaximum}', '10') WHERE config_key = 'default'"
  },
  {
   "name": "continuous batch, no maximum",
-  "batch": 3516,
+  "batch": 2030,
   "setup": "UPDATE inventory_publication_settings SET settings_json = jsonb_set(settings_json, '{policy,stagedMicroBatchMaximum}', '0') WHERE config_key = 'default'"
  },
  {
   "name": "continuous batch, a SKU it does not hold",
-  "batch": 3516,
+  "batch": 2030,
   "skus": [
    1
   ]
  },
  {
   "name": "continuous batch, stale candidates",
-  "batch": 3516,
+  "batch": 2030,
   "late": true
  },
  {

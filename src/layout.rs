@@ -2,7 +2,7 @@
 //! warning when TCGplayer's auth cookie is not set, as the React app's `root.tsx` draws them.
 use std::future::Future;
 
-use corten::{LayoutRead, axum::http::request::Parts, prelude::*};
+use corten::{LayoutRead, http::request::Parts, prelude::*};
 use corten_ui::{Toast, Toaster};
 
 use crate::{
@@ -24,7 +24,7 @@ mod parts;
 
 pub use app_bar::{AppBar, AuthCookieWarning};
 pub use error_page::error_page;
-pub use parts::{FormNotice, Notice, SaysFailedSubmits, SubmitsOnChange};
+pub use parts::{DialogNotSent, FormNotice, Notice, SubmitsOnChange};
 
 corten::assets::embed! {
     /// The files in `static/`, compiled into the program: `Static::STYLE_CSS` is `static/style.css`.
@@ -65,7 +65,8 @@ pub async fn auth_cookie_missing(db: &Database) -> bool {
 
 /// A page: the app bar, the screen, and the toaster that says what an action did: the notice a
 /// write's redirect left (`req.redirect_with_notice`), or a patch's `Toast`. `head` is what the
-/// page adds to its head (`""` for nothing), such as a `ReadAgain` while it waits on a job.
+/// page adds to its head (`""` for nothing), such as a `ReadAgain` while it waits on a job. The
+/// toaster also says when a `data-patch` submit got no answer to draw (`failed`), in red.
 #[component(css)]
 pub fn Layout<'a>(
     req: &'a Req,
@@ -88,19 +89,23 @@ pub fn Layout<'a>(
             <body>
                 <AppBar req={req} />
                 <main class={(max_w_page(), mx_auto(), p_5())}>{children}</main>
-                <SaysFailedSubmits>
-                    <div class={Toasts}>
-                        <Toaster
-                            close="Dismiss"
-                            seconds={10}
-                            toast={Toast { message: req.notice() }}
-                        />
-                    </div>
-                </SaysFailedSubmits>
+                <div class={Toasts}>
+                    <Toaster
+                        close="Dismiss"
+                        seconds={10}
+                        toast={Toast { message: req.notice(), failed: false }}
+                        failed={NOT_SENT}
+                    />
+                </div>
             </body>
         </html>
     }
 }
+
+/// What the toaster says when a `data-patch` submit got no answer: the write may or may not have
+/// reached the server, and the form keeps what was typed.
+pub(crate) const NOT_SENT: &str =
+    "That did not go through, and may not have been saved. Check and try again.";
 
 /// A screen in the app bar.
 pub enum Screen {

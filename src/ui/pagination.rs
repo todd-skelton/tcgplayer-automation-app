@@ -1,12 +1,17 @@
-// corten ui 0.1.0: pagination d86a71b5e535f6d2
+// corten ui 0.1.0: pagination 3f2261e9cdfaba08
 //! Links to the pages of a list. `link` builds a page's typed route (the list's route with its
 //! page), so every link is a plain link that works without JavaScript and cannot point at a page
 //! that does not exist. The labels are the app's, in its language:
 //!
 //! ```rust,ignore
 //! <Pagination label="Pages" previous_label="Previous" next_label="Next"
-//!     pages={total} current={page} link={&|page| Box::new(url::Orders { page: Some(page) })} />
+//!     pages={total} current={page} link={|page| url::Orders { page: Some(page) }} />
 //! ```
+//!
+//! `link` is any closure that gives a link (`Href`): a typed route, a `Local` or a `Box<dyn Href>`.
+//! Write it inline, or name it before the markup and pass it by value (`link={page_link}`), as the
+//! view a component returns keeps it; it may borrow the page's data. A closure that gives
+//! `Box::new(route)` gives a box of the route, which is not a link: give the route itself.
 //!
 //! Pages count from 1. A long list shows the first and last pages and two on each side of the
 //! current one, with a gap between; Previous and Next are disabled at the ends.
@@ -23,13 +28,13 @@ use corten::{Href, prelude::*};
 /// }
 /// ```
 #[component(css)]
-pub fn Pagination<'a>(
+pub fn Pagination<'a, F: Fn(usize) -> L, L: Href>(
     label: &'a str,
     previous_label: &'a str,
     next_label: &'a str,
     pages: usize,
     current: usize,
-    link: &'a dyn Fn(usize) -> Box<dyn Href + 'a>,
+    link: F,
 ) -> impl Render {
     let shown = |n: usize| n == 1 || n == pages || n.abs_diff(current) <= 2;
     html! {
@@ -37,7 +42,11 @@ pub fn Pagination<'a>(
             <ul>
                 <li>
                     if current > 1 {
-                        <a class={(Step, Previous)} href={link(current - 1)} rel="prev">
+                        <a
+                            class={(Step, Previous)}
+                            href={&link(current - 1) as &dyn Href}
+                            rel="prev"
+                        >
                             {previous_label}
                         </a>
                     } else {
@@ -48,9 +57,11 @@ pub fn Pagination<'a>(
                     if shown(n) {
                         <li>
                             if n == current {
-                                <a class={Page} href={link(n)} aria-current="page">{n}</a>
+                                <a class={Page} href={&link(n) as &dyn Href} aria-current="page">
+                                    {n}
+                                </a>
                             } else {
-                                <a class={Page} href={link(n)}>{n}</a>
+                                <a class={Page} href={&link(n) as &dyn Href}>{n}</a>
                             }
                         </li>
                     } else if shown(n - 1) {
@@ -59,7 +70,9 @@ pub fn Pagination<'a>(
                 }
                 <li>
                     if current < pages {
-                        <a class={(Step, Next)} href={link(current + 1)} rel="next">{next_label}</a>
+                        <a class={(Step, Next)} href={&link(current + 1) as &dyn Href} rel="next">
+                            {next_label}
+                        </a>
                     } else {
                         <span class={(Step, Next)} aria-disabled="true">{next_label}</span>
                     }

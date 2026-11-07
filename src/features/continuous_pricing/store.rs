@@ -239,7 +239,7 @@ pub async fn status(db: &Database, seller: &str) -> sqlx::Result<Status> {
 }
 
 /// Which of the tracked inventory a page lists.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, corten::UrlValue, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, corten::UrlValue)]
 #[serde(rename_all = "snake_case")]
 pub enum Shown {
     #[default]

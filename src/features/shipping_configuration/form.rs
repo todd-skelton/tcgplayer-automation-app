@@ -1,11 +1,10 @@
 //! The settings form as the browser sends it. The sender is a group of fields (`from.city`), and
 //! each package is one group type drawn three times (`letter.length_in`, `flat.length_in`, ..).
 use corten::prelude::*;
-use serde::Deserialize;
 
 use super::config::{Address, LabelFormat, LabelSize, Package, Service, ShippingConfig};
 
-#[derive(Clone, Debug, Deserialize, Fields)]
+#[derive(Clone, Debug, Fields)]
 pub struct SettingsInput {
     pub default_seller_key: String,
     #[fields(group)]
@@ -23,7 +22,7 @@ pub struct SettingsInput {
 }
 
 /// The sender's address, as text.
-#[derive(Clone, Debug, Deserialize, Fields)]
+#[derive(Clone, Debug, Fields)]
 pub struct AddressInput {
     pub name: String,
     pub company: String,
@@ -38,7 +37,7 @@ pub struct AddressInput {
 }
 
 /// One package's inputs, as text. A parcel has no limits, so its form sends none.
-#[derive(Clone, Debug, Deserialize, Fields)]
+#[derive(Clone, Debug, Fields)]
 pub struct PackageInput {
     pub label_size: LabelSize,
     pub base_weight_oz: String,

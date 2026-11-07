@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use corten::{Mode, Refusal, axum::http::StatusCode, prelude::*};
-use serde::Deserialize;
+use corten::{Mode, Refusal, http::StatusCode, prelude::*};
 
 use super::{
     catalog::{self, Condition, Product, ProductLine, ProductOrder, Scope, Set, Shown},
@@ -133,7 +132,7 @@ async fn page(req: &Req, db: &Database, selection: &Selection, drawn: &Drawn<'_>
 
 /// A SKU's count as its form sends it: the count as typed, the count the server last answered (so
 /// a count changed meanwhile is refused), and the key the change is applied once by.
-#[derive(Clone, Debug, Deserialize, Fields)]
+#[derive(Clone, Debug, Fields)]
 pub struct CountInput {
     pub quantity: String,
     pub seen: u32,
@@ -232,7 +231,7 @@ pub async fn count(
     }
 }
 
-#[derive(Deserialize, Fields)]
+#[derive(Fields)]
 pub struct ClearInput {
     pub submit: SubmitKey,
 }
@@ -418,7 +417,7 @@ pub async fn batches(
 }
 
 /// A queued batch's estimate rate as typed.
-#[derive(Clone, Debug, Deserialize, Fields)]
+#[derive(Clone, Debug, Fields)]
 pub struct RateInput {
     pub market_percent: String,
     pub per_card_deduction: String,
