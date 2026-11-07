@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { loadAppEnv } from "./load-local-env.mjs";
+import { NODE_WORKER_SWITCHES, nodeWorkerServices } from "./nodeWorkers.mjs";
 import { pendingMigrationNames, planRelease } from "./releasePlan.mjs";
 
 const composeArgs = ["compose", "-f", "docker-compose.prod.yml"];
@@ -172,7 +173,7 @@ const PROXY_CONTAINER = "tcgplayer-automation-proxy-prod";
 const POSTGRES_CONTAINER = "tcgplayer-postgres-prod";
 // The single app container from before the proxy; removed by the first release that adds the proxy.
 const LEGACY_APP_CONTAINER = "tcgplayer-automation-prod";
-const WORKER_SERVICES = ["pricing-worker", "publication-worker", "slab-evidence-worker", "pricing-scheduler"];
+const WORKER_SERVICES = Object.keys(NODE_WORKER_SWITCHES);
 // A slot is the Node app and the Corten app in front of it (web), which the proxy sends traffic to.
 const SLOTS = {
   blue: {
@@ -371,8 +372,7 @@ async function release({ noCache }) {
   console.log(`Routing traffic to the ${target} slot...`);
   await routeTrafficTo(target);
 
-  console.log("Replacing workers with the new image...");
-  await run("docker", [...composeArgs, "up", "-d", "--no-deps", ...WORKER_SERVICES], { stdio: "inherit" });
+  await replaceWorkers();
 
   if (live && live !== "legacy") {
     console.log(`Stopping the ${live} slot after its in-flight requests finish...`);
@@ -383,6 +383,22 @@ async function release({ noCache }) {
   console.log(`Production release successful; the ${target} slot is serving ${PUBLIC_URL}.`);
   console.log("Status: npm run prod:status");
   console.log("Logs: npm run prod:logs");
+}
+
+/**
+ * Starts the Node workers still running on the new image and removes those the Corten app has taken
+ * over (scripts/nodeWorkers.mjs), so no job is claimed by both.
+ */
+async function replaceWorkers() {
+  const { running, retired } = nodeWorkerServices(process.env);
+  if (running.length) {
+    console.log("Replacing workers with the new image...");
+    await run("docker", [...composeArgs, "up", "-d", "--no-deps", ...running], { stdio: "inherit" });
+  }
+  if (retired.length) {
+    console.log(`Removing Node workers the Corten app now runs: ${retired.join(", ")}...`);
+    await run("docker", [...composeArgs, "rm", "-s", "-f", ...retired], { stdio: "inherit" });
+  }
 }
 
 async function deploy() {
@@ -400,7 +416,8 @@ async function start() {
   await run("docker", [...composeArgs, "up", "-d", "--wait", "postgres"], { stdio: "inherit" });
   await startSlot(SLOTS[color], { recreate: false });
   await writeActiveSlot(color);
-  await run("docker", [...composeArgs, "up", "-d"], { stdio: "inherit" });
+  await run("docker", [...composeArgs, "up", "-d", "--no-deps", "proxy"], { stdio: "inherit" });
+  await replaceWorkers();
   console.log(`Production started at ${PUBLIC_URL} on the ${color} slot`);
 }
 

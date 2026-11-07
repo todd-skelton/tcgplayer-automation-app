@@ -48,7 +48,10 @@ Migrations move last because the two runners share no lock (`src/migrations.rs`)
 A Node service is removed rather than left to see the switch. Node's standalone pricing worker
 does not read `PRICING_WORKER`, so both workers would claim from the same queue. The scheduler
 and order history workers exit when they see their switch, and with `restart: unless-stopped`
-Docker would restart them in a loop.
+Docker would restart them in a loop. The release script acts on the switches in
+`.env.production.local` (`scripts/nodeWorkers.mjs`): after traffic moves it starts the Node worker
+services whose switch is unset and removes those whose switch is set. Order history has no service
+of its own; the Node app's start script leaves its worker out (`scripts/docker-start-support.mjs`).
 
 ## Before release 1
 
@@ -128,7 +131,7 @@ Corten a0215cc9):
 
 1. A release whose new slot never becomes healthy is stopped by the release script, and the old
    slot keeps serving.
-2. After a switch: unset it, restore the Node service, and release again. Claims expire on their
+2. After a switch: unset it and release again; the release script starts the Node service again. Claims expire on their
    own, so a job the Rust worker held is taken up again by Node's (seen in dev: job 3705 was
    reclaimed on its second attempt).
 3. Release 1: revert the merge on master and release. Migrations 053 to 055 stay; Node's code
