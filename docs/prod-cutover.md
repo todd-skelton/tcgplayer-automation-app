@@ -1,6 +1,7 @@
 # Production cutover plan
 
-The plan for moving production to the Corten app. Release 1 ran on 2026-11-05 (Release 1 below);
+The plan for moving production to the Corten app. Release 1 ran on 2026-11-05 and release 2 on
+2026-11-07 (sections below);
 every later step that touches the `tcgplayer-automation-prod` stack, its database or
 `origin/master` waits for Todd's approval, one release at a time.
 
@@ -161,6 +162,30 @@ second backup was taken just before: `.artifacts/db-backups/2026-11-05T15-54-48Z
 
 Release 2 can start after one full day of normal use, with Todd's approval.
 
+## Release 2 (2026-11-07)
+
+Todd approved it on 2026-11-07 after a day of shipping and inventory work on release 1 with no
+issue. Merged as [#124 Corten port release 2: seller order history on the Corten worker](https://github.com/todd-skelton/tcgplayer-automation-app/pull/124)
+(6a9f91066, 68 commits, Corten 9a1e0721) and released with `npm run prod:update` from a clean
+master, with `SELLER_ORDER_HISTORY_WORKER=1` added to `.env.production.local`. A backup was taken
+just before: `.artifacts/db-backups/2026-11-07T03-07-41Z-prod-before-release-2.dump` (`pg_restore -l`
+lists 595 entries).
+
+1. Before it, the order history twin on the release commit ran both syncs to `complete` with
+   0 of 624,613 values different across 9 tables, and the release 1 `web` log had no error over
+   the previous 6 hours.
+2. The green slot took over, blue was removed and the Node workers were recreated.
+   `/proxy-health` names green and every container is healthy with no restart.
+3. The `web` log has "Seller order history worker started", then
+   "complete offset=1624 total=1624". Its `seller_order_sync_runs` row (4182) reached
+   `complete` at 03:15:25 UTC and `inventory_fifo_replay_queue` is empty.
+4. The Node app's container runs only `docker-start.mjs` and its server; Node's order history
+   worker is gone.
+5. All 16 screens answer 200 through port 3001.
+6. The `web` log has no error, panic or warning since the release.
+
+Release 3 can start after one full day of normal use, with Todd's approval.
+
 ## Decided (2026-11-05)
 
 1. Refresh dev from production before release 1, then run the gate and the twin scripts against
@@ -175,4 +200,4 @@ Release 2 can start after one full day of normal use, with Todd's approval.
 
 ## Open for Todd
 
-1. Approval for each of releases 2 to 8, one at a time.
+1. Approval for each of releases 3 to 8, one at a time.
