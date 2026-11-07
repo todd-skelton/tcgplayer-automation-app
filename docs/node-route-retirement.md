@@ -60,5 +60,7 @@ Each one's work is done by a Corten screen's own action or loader, named here, s
 ## When
 
 The relay stays until the Node workers are retired too, since the Node app is still deployed for
-them. Then the relay, `LEGACY_ORIGIN` and `app/routes.ts` go together. Production changes wait for
-Todd's approval.
+them. Then the relay, `LEGACY_ORIGIN` and `app/routes.ts` go together, in release 8
+(`codex/release-8-drop-node`; `docs/prod-cutover.md`): each route above is then the API's 404, in
+the shape `{"error": ..}` the API answers every failure in. Production changes wait for Todd's
+approval.

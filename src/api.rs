@@ -1,8 +1,8 @@
 //! The JSON routes ported from the Node app, and what they share: its query reading and its
 //! error shape, `{"error": message}` with the status, which its callers read.
 //!
-//! They are added to the app's one API at `/api`, beside the relay to the Node app for the rest:
-//! Corten refuses an API inside another's prefix, so a feature cannot own one at its own path.
+//! They are added to the app's one API at `/api`, where an unknown path is the API's 404 in that
+//! shape; the Node routes nothing calls were retired (`docs/node-route-retirement.md`).
 use corten::{Api, JsonResponse, Prefix, http::StatusCode, json::Raw, prelude::*};
 use serde::Serialize;
 use serde_json::json;
@@ -147,7 +147,6 @@ pub mod tests {
         app::{Shared, app},
         database::Database,
         features::slab_connections,
-        legacy::Legacy,
     };
 
     /// Each request Node's route was asked (`scripts/parity/record-node-answers.ts <name>`,
@@ -164,7 +163,6 @@ pub mod tests {
         let orders = crate::parity_fixture::Orders::of_dev_database().await;
         let client = app(Shared {
             db: Database::connect_lazy(&crate::config::database_url()),
-            legacy: Legacy::new("http://127.0.0.1:1".into()),
             slab_providers: slab_connections::Transport::default(),
         })
         .test();

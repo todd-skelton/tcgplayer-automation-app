@@ -317,11 +317,10 @@ mod tests {
     async fn corten_refuses_a_post_from_another_site() {
         use corten::http::{Method, header};
 
-        use crate::{database::Database, legacy::Legacy};
+        use crate::database::Database;
 
         let answer = crate::app::app(crate::app::Shared {
             db: Database::connect_lazy("postgresql://localhost/unused"),
-            legacy: Legacy::new("http://localhost:1".into()),
             slab_providers: crate::features::slab_connections::Transport::default(),
         })
         .test()

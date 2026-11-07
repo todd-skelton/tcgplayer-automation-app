@@ -221,6 +221,29 @@ Steps when approved:
    every container is healthy and `/proxy-health` names the new slot.
 3. Rollback: remove the switch and release again; the script starts `pricing-worker` again.
 
+## Release 8 (prepared on `codex/release-8-drop-node`, after release 7)
+
+Release 8 removes the Node app from production: the relay (`src/legacy.rs`), `LEGACY_ORIGIN`, the
+`app-blue` and `app-green` services, and the Node worker services, which releases 3 to 6 have
+already removed. A slot is then its Corten container alone, which applies the migrations itself
+(`MIGRATE_ON_START`, release 7). It is kept on its own branch, `codex/release-8-drop-node`, merged
+into `codex/corten-port` only after release 7 has run its day, since the twin and record scripts
+need the Node app until then.
+
+1. An `/api/...` path no route serves is the API's 404 in its `{"error": ..}` shape, and any other
+   unknown path the app's own 404 page. The 31 Node routes nothing calls are retired
+   (`docs/node-route-retirement.md`).
+2. `npm run prod:update` and `prod:start` refuse to run unless `.env.production.local` sets every
+   switch of releases 2 to 7 (`scripts/cortenSwitches.mjs`, its test in `npm test`), so no job
+   is left with nothing to run it.
+3. After traffic moves to the new slot, the release removes the old slot's Corten container and,
+   by name, every Node container left from before (`NODE_CONTAINERS` in `scripts/prod.mjs`).
+4. Rollback: release the previous master. Its compose file brings the Node app back in its slot.
+
+Still to do on the branch before it is offered: remove `app/`, the Node build stages in
+`Dockerfile`, the Node dev compose service and the parity scripts that run Node's code, once
+release 7's evidence is recorded.
+
 ## Decided (2026-11-05)
 
 1. Refresh dev from production before release 1, then run the gate and the twin scripts against
