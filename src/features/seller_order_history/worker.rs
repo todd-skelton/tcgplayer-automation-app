@@ -3,9 +3,8 @@
 //! and estimates the purchase cost of batches still uncosted; it runs again at once while either
 //! is behind, otherwise within a minute.
 //!
-//! It runs only when `SELLER_ORDER_HISTORY_WORKER` is set, as dev sets it; production keeps
-//! Node's worker until cutover (port decisions 3 and 26). Beside Node's, the two share the sync
-//! run's claim, the replay queue's and the estimates' locks, so either may take any step.
+//! It runs only when `SELLER_ORDER_HISTORY_WORKER` is set, as dev and production set it. The sync
+//! run's claim, the replay queue's and the estimates' locks let any process take any step.
 use std::time::Duration;
 
 use corten::Signal;

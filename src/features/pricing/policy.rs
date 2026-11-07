@@ -1,7 +1,7 @@
 //! How a price is chosen from a SKU's sell-time curve: at a percentile, at a target median sell
 //! time, or at the best return on capital; and the shadow plan that matches a portfolio's current
 //! value at one horizon. Ported from `pricingPolicy.ts` and `core/types/pricingPolicy.ts`; a
-//! decision's JSON keeps the Node app's shape, since both apps store and read it.
+//! decision's JSON keeps the Node app's shape, so the decisions it stored still read.
 use crate::js_math::JsMath;
 use std::{
     collections::{HashMap, HashSet},

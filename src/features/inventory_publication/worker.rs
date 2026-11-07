@@ -3,9 +3,8 @@
 //! open or Seller Portal's sign-in refused, the next queued intake planned and the oldest planned
 //! publication claimed and published while its lease is renewed.
 //!
-//! Node's worker publishes until cutover: this one runs only when `PUBLICATION_WORKER` is set,
-//! and then writes to Seller Portal for real. The two claim from one queue under their own
-//! leases. A publication in Seller Portal's hands is not stopped at shutdown: one cut off there
+//! It runs only when `PUBLICATION_WORKER` is set, and then writes to Seller Portal for real. Each
+//! publication is claimed under a lease. A publication in Seller Portal's hands is not stopped at shutdown: one cut off there
 //! is left to its lease, and reconciled as ambiguous like a crashed worker's.
 use std::time::Duration;
 

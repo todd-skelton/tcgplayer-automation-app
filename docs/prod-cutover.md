@@ -305,9 +305,9 @@ entries).
    completed job 7492 (1 row, 0 errors) and the publication worker posted 6080, `published` on the
    first attempt.
 
-Left for after release 8, since nothing in production uses them: `app/`, the Node build stages in
-`Dockerfile`, the Node dev compose service and the parity scripts that run Node's code. The twin
-and record scripts still need the Node app in dev, so they go with it.
+After release 8 the Node source went too, since nothing in production used it: `app/`, the Node build
+stages in `Dockerfile`, the full Docker dev stack (`docker-compose.yml`) and the parity scripts
+that ran Node's code. The parity tests keep the answers they recorded (`tests/fixtures`).
 
 ## Decided (2026-11-05)
 
