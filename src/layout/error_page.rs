@@ -1,6 +1,6 @@
 //! The page for a failed request, in the layout, as the React app's `ErrorBoundary` drew it inside
 //! its theme.
-use corten::prelude::*;
+use corten::{http::StatusCode, prelude::*};
 
 use super::Layout;
 use crate::app;
@@ -19,6 +19,10 @@ pub async fn error_page(failure: Failure, req: Req) -> HtmlResult {
             "Not available",
             "The server took too long to answer. Try again in a moment.",
         ),
+        // The request did not arrive whole in time (a 408): an upload whose client stopped sending.
+        Failure::Failed { status, .. } if status == StatusCode::REQUEST_TIMEOUT => {
+            ("Not received", "Check your connection and try again.")
+        }
         Failure::WrongMethod
         | Failure::CrossSite
         | Failure::Refused { .. }

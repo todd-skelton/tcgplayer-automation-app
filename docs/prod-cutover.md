@@ -191,11 +191,13 @@ lists 595 entries).
 
 Release 3 can start after one full day of normal use, with Todd's approval.
 
-## Release 3 (prepared, not started)
+## Release 3 (2026-11-07)
 
 Batch pricing moves to the Corten worker: `PRICING_WORKER=1` in `.env.production.local`, and the
-release script removes Node's `pricing-worker` service. It waits for one full day of release 2
-(about 03:15 UTC on 2026-11-08) and Todd's approval.
+release script removes Node's `pricing-worker` service. Todd approved it with releases 4 to 8 on
+2026-11-07 (Decided, point 5). A backup was taken just before:
+`.artifacts/db-backups/2026-11-07T14-17Z-prod-before-release-3.dump` (`pg_restore -l` lists 595
+entries).
 
 Production prices in batches all day: 453 full jobs completed from 2026-11-04 to 07:00 UTC on
 2026-11-07 (about 155 a day, a mean of about 165 s each, the longest about 30 minutes), and one
@@ -249,6 +251,6 @@ It merges here after release 7 has run its day; its `docs/prod-cutover.md` says 
    A production backup was taken first:
    `.artifacts/db-backups/2026-11-05T15-07-56Z-prod-before-release-1.dump`.
 
-## Open for Todd
-
-1. Approval for each of releases 3 to 8, one at a time.
+5. On 2026-11-07 Todd approved releases 3 to 8 to run back to back: each starts once the one
+   before it has been checked in production (Checks after each release), without the full day
+   between them that point 3 asked for.
