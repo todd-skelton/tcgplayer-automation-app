@@ -221,6 +221,16 @@ Steps when approved:
    every container is healthy and `/proxy-health` names the new slot.
 3. Rollback: remove the switch and release again; the script starts `pricing-worker` again.
 
+## Releases 4 and 5 (readiness so far)
+
+1. Release 4, the continuous pricing schedule: the scheduler twin at Corten f3291094 queued two
+   batches on each side; 62,651 values, 0 differ (`docs/worker-parity.md`).
+2. Release 5, slab evidence and maintenance: production holds no slab data (every `slab_` table
+   empty and no provider connection, checked 2026-11-07), as dev does not, so no twin can run and
+   the Rust worker's first day there finds nothing to do. Its proof is the recorded Node runs
+   (`docs/worker-parity.md`), and the check after the release is its start line and a clean
+   `web` log.
+
 ## Release 8 (prepared on its own branch)
 
 `codex/release-8-drop-node` removes the relay, `LEGACY_ORIGIN` and the Node services from
