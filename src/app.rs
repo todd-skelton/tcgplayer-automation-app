@@ -304,7 +304,10 @@ mod tests {
         let answer = app(shared).test().get(&url::Favicon).await;
         assert_eq!(answer.status(), corten::http::StatusCode::OK);
         assert_eq!(answer.headers()["content-type"], "image/x-icon");
-        assert_eq!(&answer.bytes()[..], &include_bytes!("../static/favicon.ico")[..]);
+        assert_eq!(
+            &answer.bytes()[..],
+            &include_bytes!("../static/favicon.ico")[..]
+        );
         assert!(
             answer.headers()["cache-control"]
                 .to_str()

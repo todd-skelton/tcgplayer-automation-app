@@ -55,4 +55,3 @@ pub fn database_url() -> String {
         "postgresql://postgres:postgres@localhost:5433/tcgplayer_automation".into()
     })
 }
-
