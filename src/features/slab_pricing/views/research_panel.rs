@@ -54,7 +54,7 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
     let r = RefreshInput::FIELDS;
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, Stack, ResearchPanel)}
+            class={(CardPanel {}, CardCompact {}, stack(Space::_3), ResearchPanel)}
             aria-labelledby="slab-research"
         >
             <h2 id="slab-research">"Research evidence"</h2>
@@ -161,7 +161,7 @@ pub fn EvidenceList<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
     });
     let choice = &screen.choice;
     html! {
-        <div id={EvidenceListId} class={Stack} aria-live="polite">
+        <div id={EvidenceListId} class={stack(Space::_3)} aria-live="polite">
             if statuses.is_empty() && matches!(&screen.research, Some(Ok(_))) {
                 <Notice variant={AlertVariant::Info}>
                     "No saved evidence for this grade and date window. Refresh to request it."

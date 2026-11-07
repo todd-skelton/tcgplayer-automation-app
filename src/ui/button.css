@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: button 9c6c7d91ff312da7 */
+/* corten ui 0.1.0: button ee324c16a57b36eb */
 /* The classes of the <button> or <a> the app writes. */
 .button {
   display: inline-flex; align-items: center; justify-content: center; gap: .5rem; box-sizing: border-box;
@@ -12,6 +12,24 @@
 }
 .button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .button:disabled, .button[aria-disabled="true"] { opacity: .5; pointer-events: none; }
+/* The runtime marks the button that sent a form, or the link that started a navigation,
+   aria-busy until its answer is drawn: a ring after the label, in the text's color (the
+   system's under forced colors), turning unless the user asks for less motion. */
+.button[aria-busy="true"] { cursor: progress; }
+/* An icon button has room for one mark: the ring takes the icon's place (its name, an
+   aria-label or a visually hidden text, stays). */
+.icon[aria-busy="true"] > svg { display: none; }
+.button[aria-busy="true"]::after {
+  content: ""; flex: none; box-sizing: border-box; width: 1em; height: 1em;
+  border: 2px solid currentColor; border-inline-end-color: transparent; border-radius: 50%;
+}
+/* Forced colors would draw every side, a closed ring that shows no turn: the text's color is
+   already the system's. */
+@media (forced-colors: active) { .button[aria-busy="true"]::after { forced-color-adjust: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  .button[aria-busy="true"]::after { animation: button-busy .8s linear infinite; }
+  @keyframes button-busy { to { rotate: 1turn; } }
+}
 .primary { background: var(--primary); color: var(--primary-foreground); }
 .primary:hover { background: color-mix(in oklab, var(--primary) 88%, var(--foreground)); }
 .secondary { background: var(--secondary); color: var(--secondary-foreground); }

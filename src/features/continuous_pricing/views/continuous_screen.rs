@@ -79,7 +79,7 @@ pub fn ContinuousScreen<'a>(
     t: Msg,
 ) -> impl Render {
     html! {
-        <section class={(Stack, ContinuousScreen)}>
+        <section class={(stack(Space::_3), ContinuousScreen)}>
             <header>
                 <h1>"Continuous Pricing"</h1>
                 <p class={muted()}>
@@ -88,7 +88,7 @@ pub fn ContinuousScreen<'a>(
             </header>
             <Problem why={screen.problem.as_deref()} />
             <section
-                class={(CardPanel {}, CardCompact {}, Stack)}
+                class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
                 aria-labelledby="continuous-schedule"
             >
                 <h2 id="continuous-schedule">"Schedule"</h2>
@@ -120,7 +120,7 @@ pub fn ScheduleForm<'a>(
             method="post"
             action={url::SaveSchedule { view: screen.view.clone() }}
             data-patch
-            class={Stack}
+            class={stack(Space::_3)}
         >
             <FormNotice errors={errors} />
             <Switch label="Enable continuous pricing scheduler">
@@ -257,7 +257,7 @@ fn Snapshot<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let refresh = s.last_refresh.as_ref();
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, Stack)}
+            class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
             aria-labelledby="continuous-snapshot"
         >
             <div class={Spread}>
@@ -352,7 +352,7 @@ fn Controls<'a>(screen: &'a Screen) -> impl Render {
     let shown = screen.view.shown();
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, Stack)}
+            class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
             aria-labelledby="continuous-controls"
         >
             <h2 id="continuous-controls">"Inventory controls"</h2>
@@ -405,7 +405,7 @@ fn Items<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let previous = (page.page > 1).then(|| screen.view.at_page(page.page - 1));
     let next = (page.page < pages).then(|| screen.view.at_page(page.page + 1));
     html! {
-        <div class={Stack}>
+        <div class={stack(Space::_3)}>
             if page.items.is_empty() {
                 <Notice variant={AlertVariant::Info}>"No inventory matches these filters."</Notice>
             }
@@ -513,7 +513,10 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
 #[component(css = ContinuousScreen)]
 fn Runs<'a>(runs: &'a [Run], t: Msg) -> impl Render {
     html! {
-        <section class={(CardPanel {}, CardCompact {}, Stack)} aria-labelledby="continuous-runs">
+        <section
+            class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
+            aria-labelledby="continuous-runs"
+        >
             <div>
                 <h2 id="continuous-runs">"Recent automatic runs"</h2>
                 <p class={muted()}>

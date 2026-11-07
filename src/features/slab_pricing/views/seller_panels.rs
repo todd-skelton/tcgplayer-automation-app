@@ -91,7 +91,7 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let f = MaintenanceInput::FIELDS;
     let view = screen.maintenance.as_ref().and_then(|m| m.as_ref().ok());
     html! {
-        <section class={(Panel, Stack)} aria-labelledby="slab-maintenance">
+        <section class={(Panel, stack(Space::_3))} aria-labelledby="slab-maintenance">
             <h3 id="slab-maintenance">"Evidence maintenance · "{seller}</h3>
             <p class={muted()}>
                 "Refresh confirmed inventory in small groups and update recommendations from fresh saved evidence. Reviewed price overrides stay in manual review. This never publishes prices."
@@ -107,7 +107,7 @@ fn MaintenancePanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                     method="post"
                     action={url::SaveMaintenance { choice: choice.clone() }}
                     data-patch
-                    class={Stack}
+                    class={stack(Space::_3)}
                 >
                     <input type="hidden" name={f.revision} value={view.settings.revision}>
                     <div class={Line}>
@@ -205,7 +205,7 @@ pub fn MaintenanceStatusPart<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
         choice: screen.choice.clone(),
     };
     html! {
-        <div id={MaintenanceStatusId} class={Stack} aria-live="polite">
+        <div id={MaintenanceStatusId} class={stack(Space::_3)} aria-live="polite">
             if let Some(view) = view {
                 <MaintenanceStatusLines view={view} t={t} />
             }
@@ -292,7 +292,7 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
     let f = Choice::FIELDS;
     let o = OutcomesInput::FIELDS;
     html! {
-        <section class={(Panel, Stack)} aria-labelledby="slab-outcomes">
+        <section class={(Panel, stack(Space::_3))} aria-labelledby="slab-outcomes">
             <h3 id="slab-outcomes">"Seller outcomes · "{seller}</h3>
             <p class={muted()}>
                 "Record reviewed sales, cancellations and relists for imported listings. Observations keep their first recorded time and source; repeated imports do not duplicate them. Conflicting claims remain unresolved. Inventory and prices are unchanged."
@@ -324,7 +324,7 @@ fn OutcomesPanel<'a>(screen: &'a Screen) -> impl Render {
                     method="post"
                     action={url::ImportOutcomes { choice: choice.clone() }}
                     data-patch
-                    class={Stack}
+                    class={stack(Space::_3)}
                 >
                     <p class={muted()}>
                         "Paste up to 50 rows. Required columns: event_id, item_id, kind, occurred_at, quantity, note. Use sale, cancellation or relist; quantity must be 1. Use a UTC time such as 2026-09-01T12:00:00Z. Optional sale columns: price, currency (item price only). Cancellations require related_sale_id; relists require next_item_id. Use a stable event ID and a note describing the evidence. Import each original listing into this seller's inventory first."

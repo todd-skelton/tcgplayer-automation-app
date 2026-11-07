@@ -53,7 +53,7 @@ pub fn SupplyPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     };
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, Stack, SupplyPanel)}
+            class={(CardPanel {}, CardCompact {}, stack(Space::_3), SupplyPanel)}
             aria-labelledby="slab-supply"
         >
             <div class={(Line, Head)}>
@@ -179,7 +179,7 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
     let seller = screen.supply_seller().to_owned();
     let c = CancelInput::FIELDS;
     html! {
-        <div id={SupplyBodyId} class={Stack} aria-live="polite">
+        <div id={SupplyBodyId} class={stack(Space::_3)} aria-live="polite">
             if changed {
                 <Notice variant={AlertVariant::Warning}>
                     "The identity changed. Reopen the certificate before using this supply context."
