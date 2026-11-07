@@ -17,9 +17,9 @@ COPY --from=development-dependencies-env /app/node_modules /app/node_modules
 COPY . /app/
 RUN npm run build
 
-# The Corten app (Rust): the screens already ported, in front of the Node app, which serves the
-# rest through its relay. Built from its sources only, with the build cache shared one build at a
-# time and every source touched first, since cargo goes by file times.
+# The Corten app (Rust): every screen, JSON route and job. Built from its sources only, with the
+# build cache shared one build at a time and every source touched first, since cargo goes by file
+# times.
 FROM rust:1-bookworm AS web-build
 WORKDIR /src
 COPY Cargo.toml Cargo.lock /src/

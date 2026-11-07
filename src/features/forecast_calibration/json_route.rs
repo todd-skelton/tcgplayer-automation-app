@@ -48,7 +48,6 @@ mod tests {
         app::{Shared, app},
         database::Database,
         features::slab_connections,
-        legacy::Legacy,
     };
 
     /// Each query Node's loader was asked (`scripts/parity/record-node-answers.ts forecast-calibration`) gets the
@@ -66,7 +65,6 @@ mod tests {
     async fn a_malformed_query_gets_nodes_error() {
         let client = app(Shared {
             db: Database::connect_lazy("postgresql://localhost/unused"),
-            legacy: Legacy::new("http://127.0.0.1:1".into()),
             slab_providers: slab_connections::Transport::default(),
         })
         .test();
@@ -97,22 +95,20 @@ mod tests {
         }
     }
 
-    /// The ported route sits beside the relay: every other JSON route still goes to the Node app,
-    /// whose failure to answer is said in its shape.
+    /// A JSON route retired with the Node app (`docs/node-route-retirement.md`) is the API's 404,
+    /// said in the shape the API's callers read.
     #[tokio::test]
-    async fn other_json_routes_still_reach_the_node_app() {
+    async fn a_retired_json_route_is_not_found() {
         let answer = app(Shared {
             db: Database::connect_lazy("postgresql://localhost/unused"),
-            legacy: Legacy::new("http://127.0.0.1:1".into()),
             slab_providers: slab_connections::Transport::default(),
         })
         .test()
-        // A route the port does not serve, so no route names it.
         .get(&corten::Local::parse("/api/validate-skus").unwrap())
         .await;
         let status = answer.status();
         let body: Value = serde_json::from_slice(answer.bytes()).unwrap();
-        assert!(status.is_server_error(), "{status}");
+        assert_eq!(status, corten::http::StatusCode::NOT_FOUND, "{body}");
         assert!(body["error"].is_string(), "{body}");
     }
 }

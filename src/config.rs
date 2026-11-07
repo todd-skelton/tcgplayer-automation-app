@@ -55,8 +55,3 @@ pub fn database_url() -> String {
         "postgresql://postgres:postgres@localhost:5433/tcgplayer_automation".into()
     })
 }
-
-/// Where the React Router app listens: `LEGACY_ORIGIN`, or its dev server.
-pub fn legacy_origin() -> String {
-    std::env::var("LEGACY_ORIGIN").unwrap_or_else(|_| "http://localhost:5173".into())
-}

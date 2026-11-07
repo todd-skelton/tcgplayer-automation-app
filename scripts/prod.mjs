@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { loadAppEnv } from "./load-local-env.mjs";
-import { NODE_WORKER_SWITCHES, nodeWorkerServices } from "./nodeWorkers.mjs";
+import { unsetSwitches } from "./cortenSwitches.mjs";
 import { pendingMigrationNames, planRelease } from "./releasePlan.mjs";
 
 const composeArgs = ["compose", "-f", "docker-compose.prod.yml"];
@@ -171,24 +171,23 @@ const allSlotsComposeArgs = [...composeArgs, "--profile", "*"];
 const PUBLIC_URL = "http://localhost:3001";
 const PROXY_CONTAINER = "tcgplayer-automation-proxy-prod";
 const POSTGRES_CONTAINER = "tcgplayer-postgres-prod";
-// The single app container from before the proxy; removed by the first release that adds the proxy.
-const LEGACY_APP_CONTAINER = "tcgplayer-automation-prod";
-const WORKER_SERVICES = Object.keys(NODE_WORKER_SWITCHES);
-// A slot is the Node app and the Corten app in front of it (web), which the proxy sends traffic to.
+// A slot is the Corten app (web), which the proxy sends traffic to.
 const SLOTS = {
-  blue: {
-    service: "app-blue",
-    container: "tcgplayer-automation-prod-blue",
-    web: "web-blue",
-    webContainer: "tcgplayer-automation-web-prod-blue",
-  },
-  green: {
-    service: "app-green",
-    container: "tcgplayer-automation-prod-green",
-    web: "web-green",
-    webContainer: "tcgplayer-automation-web-prod-green",
-  },
+  blue: { web: "web-blue", webContainer: "tcgplayer-automation-web-prod-blue" },
+  green: { web: "web-green", webContainer: "tcgplayer-automation-web-prod-green" },
 };
+// What ran before release 8 (docs/prod-cutover.md) and is no longer in docker-compose.prod.yml:
+// each slot's Node app, and the Node workers each earlier release removed when its switch was set.
+// A release removes any still there, by name, since compose no longer knows them.
+const NODE_CONTAINERS = [
+  "tcgplayer-automation-prod",
+  "tcgplayer-automation-prod-blue",
+  "tcgplayer-automation-prod-green",
+  "tcgplayer-pricing-worker-prod",
+  "tcgplayer-publication-worker-prod",
+  "tcgplayer-pricing-scheduler-prod",
+  "tcgplayer-automation-prod-slab-evidence-worker-1",
+];
 const ACTIVE_SLOT_FILE = path.resolve("deploy", "nginx", "active", "active.conf");
 const HEALTH_TIMEOUT_MS = 5 * 60_000;
 
@@ -225,17 +224,34 @@ async function writeActiveSlot(color) {
   );
 }
 
-/** The app container serving production now: a slot color, "legacy", or null. */
-async function findLiveApp(running) {
+/** The slot serving production now: its color, or null. */
+async function findLiveSlot(running) {
   const active = await readActiveSlot();
-  if (active && running.has(SLOTS[active].container)) return active;
-  const runningSlot = Object.keys(SLOTS).find((color) => running.has(SLOTS[color].container));
-  if (runningSlot) return runningSlot;
-  return running.has(LEGACY_APP_CONTAINER) ? "legacy" : null;
+  if (active && running.has(SLOTS[active].webContainer)) return active;
+  return Object.keys(SLOTS).find((color) => running.has(SLOTS[color].webContainer)) ?? null;
 }
 
-function liveContainer(live) {
-  return live === "legacy" ? LEGACY_APP_CONTAINER : SLOTS[live].container;
+/**
+ * Release 8 removes the Node app, so it runs only once every earlier release moved its job to the
+ * Corten app: otherwise a job would stop with nothing to run it.
+ */
+function assertNodeRetired() {
+  const unset = unsetSwitches(process.env);
+  if (unset.length) {
+    throw new Error(
+      `Production release blocked: the Node app is gone from this release, but .env.production.local does not set ${unset.join(", ")}.` +
+        "\nEach is set by its own release (docs/prod-cutover.md); release those first.",
+    );
+  }
+}
+
+/** Removes the Node containers left from before release 8, once traffic has left them. */
+async function removeNodeContainers() {
+  const existing = await listContainerNames(true);
+  const present = NODE_CONTAINERS.filter((name) => existing.has(name));
+  if (!present.length) return;
+  console.log(`Removing the Node app's containers: ${present.join(", ")}...`);
+  await run("docker", ["rm", "-f", ...present], { stdio: "inherit" });
 }
 
 async function findPendingMigrations() {
@@ -275,14 +291,9 @@ async function waitForHealthy(container) {
   throw new Error(`${container} did not become healthy within ${HEALTH_TIMEOUT_MS / 60_000} minutes.`);
 }
 
-/**
- * Starts a slot's Node app, which applies pending migrations, then the Corten app in front of
- * it, and waits for both health checks.
- */
+/** Starts a slot's Corten app, which applies pending migrations, and waits for its health check. */
 async function startSlot(slot, { recreate }) {
   const fresh = recreate ? ["--force-recreate"] : [];
-  await run("docker", [...composeArgs, "up", "-d", "--no-deps", ...fresh, slot.service], { stdio: "inherit" });
-  await waitForHealthy(slot.container);
   await run("docker", [...composeArgs, "up", "-d", "--no-deps", ...fresh, slot.web], { stdio: "inherit" });
   await waitForHealthy(slot.webContainer);
 }
@@ -305,21 +316,12 @@ async function verifyTraffic(color) {
   throw new Error(`Traffic on ${PUBLIC_URL} did not reach the ${color} slot (${last}).`);
 }
 
-async function removeLegacyApp() {
-  if (!(await listContainerNames(true)).has(LEGACY_APP_CONTAINER)) return;
-  console.log("Moving port 3001 from the single app container to the proxy (one time)...");
-  await run("docker", ["stop", "-t", "30", LEGACY_APP_CONTAINER], { stdio: "inherit" });
-  await run("docker", ["rm", LEGACY_APP_CONTAINER], { stdio: "inherit" });
-}
-
 /** Points the proxy at a slot. A reload lets requests already in flight finish on the old slot. */
 async function routeTrafficTo(color) {
   await writeActiveSlot(color);
   if ((await listContainerNames()).has(PROXY_CONTAINER)) {
     await run("docker", ["exec", PROXY_CONTAINER, "nginx", "-t"], { stdio: "inherit" });
     await run("docker", ["exec", PROXY_CONTAINER, "nginx", "-s", "reload"], { stdio: "inherit" });
-  } else {
-    await removeLegacyApp();
   }
   // Starts the proxy, or recreates it if its definition changed; otherwise a no-op.
   await run("docker", [...composeArgs, "up", "-d", "--no-deps", "proxy"], { stdio: "inherit" });
@@ -332,15 +334,16 @@ async function routeTrafficTo(color) {
  * migration could break it (see scripts/releasePlan.mjs); then it stops first.
  */
 async function release({ noCache }) {
+  assertNodeRetired();
   await fs.mkdir("logs", { recursive: true });
 
-  const live = await findLiveApp(await listContainerNames());
+  const live = await findLiveSlot(await listContainerNames());
   const target = live === "blue" ? "green" : "blue";
   const slot = SLOTS[target];
 
   // Build while the current stack keeps serving; a failed build leaves production untouched.
   console.log(`Building production image for the ${target} slot...`);
-  await run("docker", [...composeArgs, "build", ...(noCache ? ["--no-cache"] : []), slot.service, slot.web], { stdio: "inherit" });
+  await run("docker", [...composeArgs, "build", ...(noCache ? ["--no-cache"] : []), slot.web], { stdio: "inherit" });
 
   await run("docker", [...composeArgs, "up", "-d", "--wait", "postgres"], { stdio: "inherit" });
   const plan = live ? planRelease(await findPendingMigrations()) : { mode: "overlap", reasons: [] };
@@ -348,8 +351,7 @@ async function release({ noCache }) {
   if (live && plan.mode === "stop_first") {
     console.log("Stopping the running app before migrating, because the previous release may break against:");
     for (const reason of plan.reasons) console.log(`  - ${reason}`);
-    await run("docker", [...composeArgs, "stop", ...WORKER_SERVICES], { stdio: "inherit" });
-    await run("docker", ["stop", "-t", "30", liveContainer(live)], { stdio: "inherit" });
+    await run("docker", ["stop", "-t", "30", SLOTS[live].webContainer], { stdio: "inherit" });
   } else if (live) {
     console.log(`Keeping the ${live} app serving while the ${target} slot starts.`);
   }
@@ -359,7 +361,7 @@ async function release({ noCache }) {
     await startSlot(slot, { recreate: true });
   } catch (error) {
     if (live && plan.mode === "overlap") {
-      await run("docker", [...composeArgs, "rm", "-s", "-f", slot.web, slot.service], { stdio: "inherit" });
+      await run("docker", [...composeArgs, "rm", "-s", "-f", slot.web], { stdio: "inherit" });
       throw new Error(`${error.message}\nRelease stopped; the ${live} app is still serving.`, { cause: error });
     }
     throw new Error(
@@ -372,33 +374,16 @@ async function release({ noCache }) {
   console.log(`Routing traffic to the ${target} slot...`);
   await routeTrafficTo(target);
 
-  await replaceWorkers();
-
-  if (live && live !== "legacy") {
+  if (live) {
     console.log(`Stopping the ${live} slot after its in-flight requests finish...`);
-    await run("docker", [...composeArgs, "rm", "-s", "-f", SLOTS[live].web, SLOTS[live].service], { stdio: "inherit" });
+    await run("docker", [...composeArgs, "rm", "-s", "-f", SLOTS[live].web], { stdio: "inherit" });
   }
+  await removeNodeContainers();
 
   console.log("");
   console.log(`Production release successful; the ${target} slot is serving ${PUBLIC_URL}.`);
   console.log("Status: npm run prod:status");
   console.log("Logs: npm run prod:logs");
-}
-
-/**
- * Starts the Node workers still running on the new image and removes those the Corten app has taken
- * over (scripts/nodeWorkers.mjs), so no job is claimed by both.
- */
-async function replaceWorkers() {
-  const { running, retired } = nodeWorkerServices(process.env);
-  if (running.length) {
-    console.log("Replacing workers with the new image...");
-    await run("docker", [...composeArgs, "up", "-d", "--no-deps", ...running], { stdio: "inherit" });
-  }
-  if (retired.length) {
-    console.log(`Removing Node workers the Corten app now runs: ${retired.join(", ")}...`);
-    await run("docker", [...composeArgs, "rm", "-s", "-f", ...retired], { stdio: "inherit" });
-  }
 }
 
 async function deploy() {
@@ -411,13 +396,13 @@ async function update() {
 }
 
 async function start() {
+  assertNodeRetired();
   console.log("Starting production...");
   const color = (await readActiveSlot()) ?? "blue";
   await run("docker", [...composeArgs, "up", "-d", "--wait", "postgres"], { stdio: "inherit" });
   await startSlot(SLOTS[color], { recreate: false });
   await writeActiveSlot(color);
   await run("docker", [...composeArgs, "up", "-d", "--no-deps", "proxy"], { stdio: "inherit" });
-  await replaceWorkers();
   console.log(`Production started at ${PUBLIC_URL} on the ${color} slot`);
 }
 
@@ -447,7 +432,7 @@ async function shell() {
   const color = await readActiveSlot();
   if (!color) throw new Error("No active production slot recorded. Run npm run prod:deploy first.");
   console.log(`Connecting to the ${color} production app container...`);
-  await run("docker", ["exec", "-it", SLOTS[color].container, "sh"], {
+  await run("docker", ["exec", "-it", SLOTS[color].webContainer, "sh"], {
     stdio: "inherit",
   });
 }

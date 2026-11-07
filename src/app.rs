@@ -1,13 +1,7 @@
-//! The app: its routes, the screens ported so far, and the relay to the React app for the rest.
+//! The app: its routes, its screens and JSON routes, and its workers.
 use std::time::Duration;
 
-use corten::{
-    Relay,
-    extract::Request,
-    prelude::*,
-    security::Policy,
-    upgrade::{SwitchOr, Upgrade},
-};
+use corten::{answer::Media, prelude::*, security::Policy};
 
 use crate::{
     config,
@@ -20,17 +14,14 @@ use crate::{
         slab_connections, slab_evidence, slab_pricing,
     },
     layout::{self, Static},
-    legacy::{Legacy, forward},
     text::Msg,
     theme, ui,
 };
 
-/// What the handlers share: the database, the React app behind this one, and the slab data
-/// providers' client.
+/// What the handlers share: the database and the slab data providers' client.
 #[derive(Clone, FromRef)]
 pub struct Shared {
     pub db: Database,
-    pub legacy: Legacy,
     pub slab_providers: slab_connections::Transport,
 }
 
@@ -38,61 +29,41 @@ impl Shared {
     pub fn from_env() -> Self {
         Shared {
             db: Database::connect_lazy(&config::database_url()),
-            legacy: Legacy::new(config::legacy_origin()),
             slab_providers: slab_connections::Transport::default(),
         }
     }
 }
 
-/// The home page, and every path no ported screen claims, which is the React app's. Handlers are
-/// named from this module, where the routes module is declared, not from inside it.
+/// The home page, and the icon at the path a browser asks for when a document names none (a PDF
+/// or JSON opened in a tab), which the Node app served from `public/`. Handlers are named from
+/// this module, where the routes module is declared, not from inside it.
 #[corten::routes(state = Shared)]
 pub mod url {
     #[route("/", get = show_home)]
     pub struct Home;
 
-    #[route("/{*rest}", get = forward_page, post = forward_page, put = forward_page, patch = forward_page, delete = forward_page)]
-    pub struct Elsewhere<'a> {
-        pub rest: &'a str,
-    }
+    #[route("/favicon.ico", get = favicon)]
+    pub struct Favicon;
 }
 
-/// The JSON routes: the ones ported so far (`crate::api::ported`), and the relay to the Node app
-/// for the rest. Some (imports, slab evidence) answer after the page deadline, and the batch
-/// pricing stream stays open for as long as the page does.
-#[corten::routes(api = LegacyApi, state = Shared)]
-pub mod api {
-    #[route("/api", get = forward, post = forward)]
-    pub struct LegacyApi;
+/// `static/favicon.ico`, which pages link at its versioned URL (`layout`), at its fixed one.
+async fn favicon() -> Public<Media> {
+    Public::new(
+        Duration::from_secs(24 * 60 * 60),
+        Media::new("image/x-icon", &include_bytes!("../static/favicon.ico")[..]),
+    )
+}
 
-    #[route("/api/{*rest}", get = forward_api, post = forward_api, put = forward_api, patch = forward_api, delete = forward_api)]
-    pub struct LegacyApiRoute<'a> {
-        pub rest: &'a str,
-    }
+/// The JSON routes' prefix: each feature's routes are added under it (`crate::api::ported`). Some
+/// (imports, slab evidence) answer after the page deadline, and the batch pricing stream stays
+/// open for as long as the page does.
+#[corten::routes(api = ApiRoot, state = Shared)]
+pub mod api {
+    #[route("/api")]
+    pub struct ApiRoot;
 }
 
 use dashboard::show as show_home;
-
-// A route with a parameter takes its `Params`, even a catch-all whose handler reads the whole
-// request, so each catch-all gets a handler of its own that passes the request on.
-
-async fn forward_page(
-    _: Params<url::Elsewhere<'_>>,
-    legacy: State<Legacy>,
-    upgrade: Option<Upgrade>,
-    req: Request,
-) -> corten::Result<SwitchOr<Relay>> {
-    forward(legacy, upgrade, req).await
-}
-
-async fn forward_api(
-    _: Params<api::LegacyApiRoute<'_>>,
-    legacy: State<Legacy>,
-    upgrade: Option<Upgrade>,
-    req: Request,
-) -> corten::Result<SwitchOr<Relay>> {
-    forward(legacy, upgrade, req).await
-}
 
 /// The API's own failures (an unknown method, the deadline, the Node app out of reach) in the Node
 /// app's shape.
@@ -292,30 +263,28 @@ mod tests {
     async fn the_app_builds() {
         let shared = Shared {
             db: Database::connect_lazy("postgresql://localhost/unused"),
-            legacy: Legacy::new("http://localhost:1".into()),
             slab_providers: slab_connections::Transport::default(),
         };
         let _ = app(shared).router();
     }
 
     /// A failed page is drawn in the app's layout, as the React app's `ErrorBoundary` was in its
-    /// theme: here a path no screen claims, relayed to a Node app that does not answer. It reads
-    /// no database (the pool points nowhere).
+    /// theme: here a path no screen claims. The database it is given is not there (the pool points
+    /// nowhere), so the app bar's read finds nothing to warn about.
     #[tokio::test]
     async fn a_failed_page_is_in_the_layout() {
         let shared = Shared {
             db: Database::connect_lazy("postgresql://localhost:1/unused"),
-            legacy: Legacy::new("http://localhost:1".into()),
             slab_providers: slab_connections::Transport::default(),
         };
         let answer = app(shared)
             .test()
             .get(&corten::Local::parse("/no-such-screen").unwrap())
             .await;
-        assert_eq!(answer.status(), corten::http::StatusCode::BAD_GATEWAY);
+        assert_eq!(answer.status(), corten::http::StatusCode::NOT_FOUND);
         let page = answer.text();
         assert!(
-            page.contains("<title>Something went wrong | TCGPlayer Automation</title>"),
+            page.contains("<title>Not found | TCGPlayer Automation</title>"),
             "{page}"
         );
         assert!(
@@ -325,6 +294,30 @@ mod tests {
         assert!(page.contains("Go to the home page"), "{page}");
     }
 
+    /// The icon answers at `/favicon.ico`, the bytes `static/` holds, kept a day by anyone.
+    #[tokio::test]
+    async fn the_icon_answers_at_its_fixed_path() {
+        let shared = Shared {
+            db: Database::connect_lazy("postgresql://localhost:1/unused"),
+            slab_providers: slab_connections::Transport::default(),
+        };
+        let answer = app(shared).test().get(&url::Favicon).await;
+        assert_eq!(answer.status(), corten::http::StatusCode::OK);
+        assert_eq!(answer.headers()["content-type"], "image/x-icon");
+        assert_eq!(
+            &answer.bytes()[..],
+            &include_bytes!("../static/favicon.ico")[..]
+        );
+        assert!(
+            answer.headers()["cache-control"]
+                .to_str()
+                .unwrap()
+                .starts_with("public, max-age=86400"),
+            "{:?}",
+            answer.headers()["cache-control"]
+        );
+    }
+
     /// What carries buyers' addresses or a provider's status is kept by nothing, as React's
     /// `Cache-Control: no-store` said: the packing slips PDF and the slab connections page. A
     /// failure under it is not kept either, so the database need not answer.
@@ -332,7 +325,6 @@ mod tests {
     async fn private_answers_are_not_stored() {
         let shared = Shared {
             db: Database::connect_lazy("postgresql://localhost:1/unused"),
-            legacy: Legacy::new("http://localhost:1".into()),
             slab_providers: slab_connections::Transport::default(),
         };
         let client = app(shared).test();
@@ -363,7 +355,6 @@ mod tests {
         let read = |path: &'static str, zone: Option<&'static str>| async move {
             let shared = Shared {
                 db: Database::connect_lazy(&crate::config::database_url()),
-                legacy: Legacy::new("http://localhost:1".into()),
                 slab_providers: slab_connections::Transport::default(),
             };
             let client = app(shared).test();
@@ -406,7 +397,6 @@ mod tests {
         let db = Database::connect_lazy(&crate::config::database_url());
         let shared = Shared {
             db: db.clone(),
-            legacy: Legacy::new("http://localhost:1".into()),
             slab_providers: slab_connections::Transport::to(
                 "http://127.0.0.1:1",
                 "http://127.0.0.1:1",

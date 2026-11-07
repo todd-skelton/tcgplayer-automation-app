@@ -214,30 +214,82 @@ Readiness:
 3. The release script removes `pricing-worker` when the switch is set (`scripts/nodeWorkers.mjs`,
    its test in `npm test`).
 
-Steps when approved:
+Merged as [#125 Corten port release 3: batch pricing on the Corten worker](https://github.com/todd-skelton/tcgplayer-automation-app/pull/125)
+(7ca435149, Corten 741b0a65) and released with `npm run prod:update` from a clean master, with
+`PRICING_WORKER=1` added to `.env.production.local`.
 
-1. Back up production, then merge `codex/corten-port` into master and release with
-   `npm run prod:update` from a clean master after adding `PRICING_WORKER=1`.
-2. Checks: the `web` log has "Inventory batch pricing worker ... started", the next queued job
-   completes with Node's error counts, `npm run prod:status` no longer lists `pricing-worker`,
-   every container is healthy and `/proxy-health` names the new slot.
-3. Rollback: remove the switch and release again; the script starts `pricing-worker` again.
+1. The blue slot took over, green was removed, and the release removed `pricing-worker`; the other
+   three Node workers were recreated. `/proxy-health` names blue and every container is healthy.
+2. The `web` log has "Inventory batch pricing worker inventory-batch-worker-rust-1 started".
+3. The next job the Node scheduler queued (7480, batch 7473, 11 SKUs, at 15:17 UTC) was claimed by
+   `inventory-batch-worker-rust-1` and completed at 15:21:58 UTC: 11 of 11 rows processed, 0 errors,
+   0 warnings, 0 skipped, as Node's jobs before it reported. Its continuous publication (6073) was
+   posted by Node's publication worker and reached `published`.
+4. All 16 screens answer 200 through port 3001 with no script error; the `web` log has no error,
+   panic or warning.
+5. Rollback: remove the switch and release again; the script starts `pricing-worker` again.
 
-## Releases 4 and 5 (readiness so far)
+## Releases 4 to 7 (2026-11-07)
 
-1. Release 4, the continuous pricing schedule: the scheduler twin at Corten f3291094 queued two
-   batches on each side; 62,651 values, 0 differ (`docs/worker-parity.md`).
-2. Release 5, slab evidence and maintenance: production holds no slab data (every `slab_` table
-   empty and no provider connection, checked 2026-11-07), as dev does not, so no twin can run and
-   the Rust worker's first day there finds nothing to do. Its proof is the recorded Node runs
-   (`docs/worker-parity.md`), and the check after the release is its start line and a clean
-   `web` log.
+Each was released from the same master as release 3 (7ca435149, Corten 741b0a65) with
+`npm run prod:update`, after adding one switch to `.env.production.local` and checking the release
+before it. The images came from the build cache, so each took about a minute. Nothing was in flight
+when releases 5, 6 and 7 started; a job a release interrupts is taken up again when its claim
+expires (job 7481, below).
 
-## Release 8 (prepared on its own branch)
+1. Release 4, the continuous pricing schedule (`CONTINUOUS_PRICING_SCHEDULER=1`, 15:24 UTC). Readiness:
+   the scheduler twin at Corten f3291094 queued two batches on each side; 62,651 values, 0 differ
+   (`docs/worker-parity.md`). The release removed `pricing-scheduler`, and the `web` log has
+   "Continuous pricing scheduler started". Job 7481, which release 4's slot change interrupted, was
+   reclaimed on its second attempt and completed (15 rows, 0 errors, 1 warning). When the next SKU
+   came due (15:40:53 UTC) the Rust scheduler queued batch 7475 (15:41:04); the Rust pricing worker
+   completed it with 0 errors and its publication (6075) was posted.
+2. Release 5, slab evidence and maintenance (`SLAB_EVIDENCE_WORKER=1`, 15:43 UTC). Production holds no
+   slab data (every `slab_` table empty and no provider connection), so the Rust worker has nothing
+   to claim. Its proof is the recorded Node runs (`docs/worker-parity.md`). The release removed
+   `slab-evidence-worker`, the `web` log has "Slab evidence worker started" and no error.
+3. Release 6, publication to Seller Portal (`PUBLICATION_WORKER=1`, 15:46 UTC). The release removed
+   `publication-worker`, the last Node worker service, and the `web` log has "Inventory publication
+   worker inventory-publication-worker-rust-1 started". The next continuous batch (7478, 15 SKUs) ran
+   the whole chain on the Corten app: queued by its scheduler, priced by its worker (15 rows,
+   0 errors), and its publication (6076) posted by its publication worker on the first attempt,
+   12 of 12 items `published` and none ambiguous.
+4. Release 7, migrations (`MIGRATE_ON_START=1`, 15:56 UTC). The Node app's log has "Database migration
+   skipped: MIGRATE_ON_START is set, so the Corten app applies them"; the Corten app, which exits
+   before it serves if a migration fails, started and became healthy. No migration was pending:
+   `schema_migrations` lists 57, the last 055. As Node's runner does, it logs only a migration it
+   applies.
 
-`codex/release-8-drop-node` removes the relay, `LEGACY_ORIGIN` and the Node services from
-production, and its release script refuses to run until every switch of releases 2 to 7 is set.
-It merges here after release 7 has run its day; its `docs/prod-cutover.md` says what it changes.
+After release 7 every job runs in the Corten app: `npm run prod:status` lists only the proxy,
+postgres and the blue slot's two containers, and `/proxy-health` names blue. The Node app still
+serves the routes the relay sends it until release 8.
+
+Observed: the Rust pricing worker logs "Pricing job heartbeat timed out after 2s" (and the progress
+save) now and then, most often in the seconds after a job's final save, whose transaction holds the
+job's row. Each job still completed on its first attempt; the lease is 15 s, so one missed beat does
+not lose it.
+
+## Release 8 (2026-11-07)
+
+Release 8 removes the Node app from production: the relay (`src/legacy.rs`), `LEGACY_ORIGIN`, the
+`app-blue` and `app-green` services, and the Node worker services, which releases 3 to 6 have
+already removed. A slot is then its Corten container alone, which applies the migrations itself
+(`MIGRATE_ON_START`, release 7). It was prepared on `codex/release-8-drop-node` and merged into
+`codex/corten-port` once release 7 had been checked in production.
+
+1. An `/api/...` path no route serves is the API's 404 in its `{"error": ..}` shape, and any other
+   unknown path the app's own 404 page. The 31 Node routes nothing calls are retired
+   (`docs/node-route-retirement.md`).
+2. `npm run prod:update` and `prod:start` refuse to run unless `.env.production.local` sets every
+   switch of releases 2 to 7 (`scripts/cortenSwitches.mjs`, its test in `npm test`), so no job
+   is left with nothing to run it.
+3. After traffic moves to the new slot, the release removes the old slot's Corten container and,
+   by name, every Node container left from before (`NODE_CONTAINERS` in `scripts/prod.mjs`).
+4. Rollback: release the previous master. Its compose file brings the Node app back in its slot.
+
+Left for after release 8, since nothing in production uses them: `app/`, the Node build stages in
+`Dockerfile`, the Node dev compose service and the parity scripts that run Node's code. The twin
+and record scripts still need the Node app in dev, so they go with it.
 
 ## Decided (2026-11-05)
 
