@@ -14,6 +14,7 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         card::{CardCompact, CardPanel},
         stats::{Stat, StatTone, Stats, StatsSurface},
+        status_dot::{StatusDot, StatusTone},
         table::{Table, TableLayout, TableNumeric},
     },
 };
@@ -142,6 +143,7 @@ pub fn VerdictPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             <div class={Title}>
                 <h2>{policy_label(screen)}</h2>
                 <span class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Soft }}>
+                    <StatusDot tone={StatusTone::Success} />
                     "Active"
                 </span>
             </div>

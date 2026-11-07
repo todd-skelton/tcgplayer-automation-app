@@ -1,0 +1,5 @@
+/* corten ui 0.1.0: checkboxes 3280d13c5999ff7a */
+/* The values radio_group.css gives its fieldset; a change to one is made to both. */
+.checkboxes { display: contents; }
+.checkboxes > fieldset { display: grid; gap: .75rem; margin: 0; padding: 0; border: 0; min-width: 0; }
+.checkboxes > fieldset > legend { margin-bottom: .75rem; padding: 0; font-size: .875rem; font-weight: 500; }

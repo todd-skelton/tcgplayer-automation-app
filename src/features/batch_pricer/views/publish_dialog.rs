@@ -1,10 +1,10 @@
 use corten::prelude::*;
-use corten_ui::dialog;
+use corten_ui::{CheckboxGroup, dialog};
 
 use crate::{
     features::batch_pricer::{
         batches::{Candidate, Publications},
-        page::PublishInput,
+        page::{NONE_SELECTED, PublishInput},
         url,
     },
     layout::DialogNotSent,
@@ -13,6 +13,7 @@ use crate::{
     ui::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
+        checkboxes::Checkboxes,
         dialog::{Dialog, DialogFooter, DialogSize},
     },
 };
@@ -27,7 +28,9 @@ struct PublishHeadingId;
 /// ones are checked: every inventory change, or the 20 smallest price changes when there is none.
 /// "Reset recommended selection" is the form's reset, so it works without a script; the script
 /// adds checking all or none, and keeps the count, the quantity change and the button's words up
-/// to date. Without it they say what is recommended.
+/// to date. Without it they say what is recommended. A submit with none checked is stopped by the
+/// browser at the list (`CheckboxGroup`), or without a script refused by the handler with the
+/// same words.
 #[component(css, js)]
 pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> impl Render {
     let ready = publications.ready();
@@ -99,16 +102,20 @@ pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> 
                         </button>
                     </span>
                 </div>
-                <ul ref={items} class={Items}>
-                    for candidate in &ready {
-                        <PublishItem
-                            key={candidate.sku}
-                            delta={candidate.quantity_delta}
-                            checked={recommended.contains(&candidate.sku)}
-                            candidate={describe(candidate)}
-                        />
-                    }
-                </ul>
+                <Checkboxes>
+                    <CheckboxGroup legend="SKUs ready to publish" missing={NONE_SELECTED}>
+                        <ul ref={items} class={Items}>
+                            for candidate in &ready {
+                                <PublishItem
+                                    key={candidate.sku}
+                                    delta={candidate.quantity_delta}
+                                    checked={recommended.contains(&candidate.sku)}
+                                    candidate={describe(candidate)}
+                                />
+                            }
+                        </ul>
+                    </CheckboxGroup>
+                </Checkboxes>
                 <DialogNotSent said={said} />
                 <div class={DialogFooter {}}>
                     <button
@@ -122,7 +129,7 @@ pub fn PublishDialog<'a>(batch: i32, publications: &'a Publications, t: Msg) -> 
                     <button
                         ref={submit}
                         class={Button { variant: ButtonVariant::Success, size: ButtonSize::Md }}
-                        disabled={count == 0}
+                        disabled={ready.is_empty()}
                     >
                         "Publish "{count}" SKUs"
                     </button>

@@ -22,6 +22,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         card::{CardCompact, CardPanel},
         checkbox::Checkbox,
+        combobox::Combobox,
         field::Field,
         input::Input,
         select::Select,
@@ -308,7 +309,7 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
             <form method="post" action={url::AddProductLine} data-patch class={Add}>
                 <div class={Section}>
                     <label for={ProductLinePickId}>"Select Product Line"</label>
-                    <ComboBox field={&picker} />
+                    <Combobox><ComboBox field={&picker} /></Combobox>
                     {e.message(a.product_line)}
                 </div>
                 <Field

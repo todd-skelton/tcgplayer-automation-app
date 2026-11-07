@@ -16,6 +16,7 @@ use crate::{
         field::Field,
         input::Input,
         select::Select,
+        status_dot::{StatusDot, StatusTone},
         switch::Switch,
     },
 };
@@ -87,6 +88,9 @@ pub fn ShippingScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
                         <span
                             class={Badge { tone: if key.has_key() { BadgeTone::Success } else { BadgeTone::Warning }, emphasis: BadgeEmphasis::Soft }}
                         >
+                            <StatusDot
+                                tone={if key.has_key() { StatusTone::Success } else { StatusTone::Warning }}
+                            />
                             match (key, key.has_key()) {
                                 (EasyPostMode::Test, true) => "Test Key Ready",
                                 (EasyPostMode::Test, false) => "Missing Test Key",
