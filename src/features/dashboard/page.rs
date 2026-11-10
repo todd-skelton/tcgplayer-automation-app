@@ -4,7 +4,7 @@ use crate::{
     layout::{Entry, Layout, PRIMARY, ScreenLink},
     theme::*,
     ui::{
-        card::{Card, CardHeader},
+        card::{Card, CardHeader, CardSize},
         icon::Icon as KitIcon,
     },
 };
@@ -32,7 +32,7 @@ fn Dashboard<'a>(req: &'a Req, screens: &'a [Entry]) -> impl Render {
                 for e in screens {
                     <li>
                         <ScreenLink req={req} screen={&e.screen}>
-                            <div class={Card {}}>
+                            <div class={Card { size: CardSize::Md }}>
                                 <div class={CardHeader {}}>
                                     <span class={Icon}><KitIcon glyph={e.icon} /></span>
                                     <h2>{e.label}</h2>

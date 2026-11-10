@@ -26,7 +26,7 @@ use crate::{
     ui::{
         alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         field::Field,
         pagination::PreviousNext,
         select::Select,
@@ -55,7 +55,7 @@ pub fn SupplyPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     };
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, stack(Space::_3), SupplyPanel)}
+            class={(CardPanel { size: CardSize::Sm }, stack(Space::_3), SupplyPanel)}
             aria-labelledby="slab-supply"
         >
             <div class={(Line, Head)}>

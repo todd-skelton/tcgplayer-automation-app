@@ -16,7 +16,7 @@ use crate::{
     ui::{
         alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         dialog::{Dialog, DialogHeader, DialogSize},
         field::Field,
         input::Input,
@@ -45,7 +45,7 @@ pub fn CompReview<'a>(screen: &'a Screen) -> impl Render {
     };
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, stack(Space::_3), CompReview)}
+            class={(CardPanel { size: CardSize::Sm }, stack(Space::_3), CompReview)}
             aria-labelledby="slab-comps"
         >
             <div class={Head}>

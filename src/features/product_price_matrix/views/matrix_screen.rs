@@ -20,7 +20,7 @@ use crate::{
         alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         combobox::Combobox,
         icon::{self, Icon},
         input::Input,
@@ -82,7 +82,7 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             <form
                 method="get"
                 action={&here}
-                class={(CardPanel {}, CardCompact {}, Choices)}
+                class={(CardPanel { size: CardSize::Sm }, Choices)}
                 aria-label="Choose a product"
                 data-keep-place
             >
@@ -171,7 +171,7 @@ pub fn MatrixScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             }
             if let Some(product) = &screen.product {
                 <section
-                    class={(CardPanel {}, CardCompact {}, Product)}
+                    class={(CardPanel { size: CardSize::Sm }, Product)}
                     aria-label={&product.product_name}
                 >
                     <header class={Head}>

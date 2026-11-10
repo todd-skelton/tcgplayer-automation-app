@@ -13,7 +13,7 @@ use crate::{
     theme::*,
     ui::{
         alert::AlertVariant,
-        card::{Card, CardContent, CardHeader},
+        card::{Card, CardContent, CardHeader, CardSize},
         table::{Table, TableLayout, TableNumeric},
     },
 };
@@ -39,7 +39,7 @@ pub fn EconomicsScreen<'a>(workspace: &'a Result<Workspace, String>, t: Msg) -> 
                             "."
                         </p>
                     </header>
-                    <div class={Card {}}>
+                    <div class={Card { size: CardSize::Md }}>
                         <header class={CardHeader {}}><h2>"Purchase costs"</h2></header>
                         <div class={CardContent {}}>
                             let current = &w.purchase_costs;
@@ -74,7 +74,7 @@ pub fn EconomicsScreen<'a>(workspace: &'a Result<Workspace, String>, t: Msg) -> 
 #[component(css = EconomicsScreen)]
 fn OrderTable<'a>(orders: &'a [Order], t: Msg) -> impl Render {
     html! {
-        <div class={Card {}}>
+        <div class={Card { size: CardSize::Md }}>
             <div class={CardContent {}}>
                 <Table layout={TableLayout::Scroll}>
                     <table aria-label="Order economics">

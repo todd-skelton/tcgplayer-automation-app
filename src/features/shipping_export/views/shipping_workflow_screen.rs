@@ -14,7 +14,7 @@ use crate::{
         alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         dialog::{Dialog, DialogFooter, DialogSize},
         icon::{self, Icon},
         popover::Popover,
@@ -110,7 +110,10 @@ pub fn ShippingWorkflowScreen<'a>(
                 </Tooltip>
             </header>
             <Refused problem={problem} />
-            <section aria-label={step.label()} class={(CardPanel {}, CardCompact {}, StepPanel)}>
+            <section
+                aria-label={step.label()}
+                class={(CardPanel { size: CardSize::Sm }, StepPanel)}
+            >
                 {children}
             </section>
             {bar}
