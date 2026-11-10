@@ -49,6 +49,19 @@
 .name {
   white-space: normal;
 }
+/* A name in its condition's color, as the React grid's `info.main`, `success.main`, ... */
+.info-text {
+  color: var(--info);
+}
+.success-text {
+  color: var(--success);
+}
+.warning-text {
+  color: var(--warning);
+}
+.destructive-text {
+  color: var(--destructive);
+}
 .holo {
   font-style: italic;
 }
