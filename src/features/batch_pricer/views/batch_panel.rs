@@ -26,7 +26,7 @@ use crate::{
         card::{CardCompact, CardPanel},
         dialog::{Dialog, DialogFooter, DialogSize},
         icon::{self, Icon},
-        progress::{Progress as ProgressLook, ProgressSize},
+        progress::{Progress as ProgressLook, ProgressSize, ProgressTone},
         tip::Tip,
     },
 };
@@ -412,7 +412,7 @@ fn JobProgress<'a>(job: &'a Job, batch: i32) -> impl Render {
             </div>
             if p.total > 0.0 {
                 <progress
-                    class={ProgressLook { size: ProgressSize::Md }}
+                    class={ProgressLook { size: ProgressSize::Md, tone: ProgressTone::Primary }}
                     max="100"
                     value={percent}
                     aria-label="Batch pricing progress"
@@ -421,7 +421,7 @@ fn JobProgress<'a>(job: &'a Job, batch: i32) -> impl Render {
                 </progress>
             } else {
                 <progress
-                    class={ProgressLook { size: ProgressSize::Md }}
+                    class={ProgressLook { size: ProgressSize::Md, tone: ProgressTone::Primary }}
                     aria-label="Batch pricing progress"
                 >
                     "Starting"
@@ -438,7 +438,7 @@ fn JobProgress<'a>(job: &'a Job, batch: i32) -> impl Render {
                         </strong>
                     </div>
                     <progress
-                        class={ProgressLook { size: ProgressSize::Sm }}
+                        class={ProgressLook { size: ProgressSize::Sm, tone: ProgressTone::Primary }}
                         max={sub.total.max(1.0)}
                         value={sub.current}
                         aria-label="Items in this step"

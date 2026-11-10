@@ -569,6 +569,50 @@
     },
     "$description": "A kit card's heading."
   },
+  "stat-label-font-size": {
+    "$type": "dimension",
+    "$value": {
+      "value": 0.875,
+      "unit": "rem"
+    },
+    "$description": "A kit stat's label."
+  },
+  "stat-label-font-weight": {
+    "$type": "fontWeight",
+    "$value": 500,
+    "$description": "A kit stat's label."
+  },
+  "stat-label-tracking": {
+    "$type": "number",
+    "$value": 0,
+    "$description": "A kit stat's label's letter spacing, in ems."
+  },
+  "stat-value-font-size": {
+    "$type": "dimension",
+    "$value": {
+      "value": 1.5,
+      "unit": "rem"
+    },
+    "$description": "A kit stat's figure."
+  },
+  "stat-value-font-size-narrow": {
+    "$type": "dimension",
+    "$value": {
+      "value": 1.25,
+      "unit": "rem"
+    },
+    "$description": "A kit stat's figure on a narrow screen."
+  },
+  "stat-value-font-weight": {
+    "$type": "fontWeight",
+    "$value": 600,
+    "$description": "A kit stat's figure."
+  },
+  "stat-value-tracking": {
+    "$type": "number",
+    "$value": -0.01,
+    "$description": "A kit stat's figure's letter spacing, in ems."
+  },
   "toasts-inset-bottom": {
     "$type": "dimension",
     "$value": {

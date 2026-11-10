@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: stats 81f7b4b982a54124 */
+/* corten ui 0.1.0: stats c0eaf8e045fff4f8 */
 /* As many figures to a row as fit, two on a phone. A figure is never broken: a card is at least
    as wide as its figure, so a long one takes a row of its own. A card left alone on a row takes the
    row's width. */
@@ -11,10 +11,21 @@
   border: 1px solid var(--border); border-radius: calc(var(--radius) + 4px);
   box-shadow: 0 1px 2px rgb(0 0 0 / .05);
 }
-/* Its own margins and colors, so a page's defaults for dt and dd do not reach in. */
-.stat > dt { margin: 0; font-size: .875rem; font-weight: 500; color: var(--muted-foreground); }
+/* Its own margins and colors, so a page's defaults for dt and dd do not reach in. Its type is the
+   theme's: sizes, weights and tracking (in ems) are tokens. The value is in the page's face
+   and the label as written unless the app declares --stat-value-font-family or
+   --stat-label-text-transform, since no token's value says "the page's". */
+.stat > dt {
+  margin: 0; font-size: var(--stat-label-font-size); font-weight: var(--stat-label-font-weight);
+  letter-spacing: calc(var(--stat-label-tracking) * 1em); text-transform: var(--stat-label-text-transform, none);
+  color: var(--muted-foreground);
+}
 .stat > dd { margin: 0; color: var(--card-foreground); }
-.value { font-size: 1.5rem; font-weight: 600; line-height: 1.2; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.value {
+  font-family: var(--stat-value-font-family, inherit); font-size: var(--stat-value-font-size);
+  font-weight: var(--stat-value-font-weight); line-height: 1.2; letter-spacing: calc(var(--stat-value-tracking) * 1em);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
 .stat > .note { font-size: .8125rem; color: var(--muted-foreground); }
 /* StatsSurface::Plain: on the card around them, the figures have no surface and start at its
    text's edge. */
@@ -28,5 +39,5 @@
 @media not (--wide) {
   .stats { gap: .75rem; }
   .stats > * { flex-basis: calc((100% - .75rem) / 2); }
-  .value { font-size: 1.25rem; }
+  .value { font-size: var(--stat-value-font-size-narrow); }
 }

@@ -25,7 +25,7 @@ use crate::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
         icon::{self, Icon},
-        segmented::SegmentedLinks,
+        segmented::{SegmentedLinks, SegmentedWidth},
         table::{CellLabel, Table, TableLayout, TableNumeric},
         tip::{Tip, TipText},
         visually_hidden::VisuallyHidden,
@@ -117,7 +117,7 @@ fn ViewChoice<'a>(packing: &'a Packing<'a>) -> impl Render {
         .and_then(|c| packing.rows.get(c.index))
         .map_or("", |r| r.planned.reference());
     html! {
-        <nav aria-label="View" class={SegmentedLinks {}}>
+        <nav aria-label="View" class={SegmentedLinks { width: SegmentedWidth::Fit }}>
             <a
                 href={at(current, PackView::Card)}
                 aria-current={(packing.view == PackView::Card).then_some("page")}

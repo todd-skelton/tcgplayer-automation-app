@@ -8,7 +8,7 @@ use std::time::SystemTime;
 use crate::{
     features::continuous_pricing::{
         actions::{ScheduleInput, Screen, SkuInput},
-        store::{Item, PAGE_SIZE, RECENT_RUNS, Run, Shown, range},
+        store::{Item, RECENT_RUNS, Run, Shown, range},
         url::{self, View},
     },
     layout::SubmitsOnChange,
@@ -22,6 +22,7 @@ use crate::{
         card::{CardCompact, CardPanel},
         field::Field,
         input::Input,
+        pagination::Pagination,
         select::Select,
         stepper::Stepper,
         switch::Switch,
@@ -402,8 +403,6 @@ fn Controls<'a>(screen: &'a Screen) -> impl Render {
 fn Items<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let page = &screen.page;
     let pages = page.pages();
-    let previous = (page.page > 1).then(|| screen.view.at_page(page.page - 1));
-    let next = (page.page < pages).then(|| screen.view.at_page(page.page + 1));
     html! {
         <div class={stack(Space::_3)}>
             if page.items.is_empty() {
@@ -413,19 +412,15 @@ fn Items<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 <SkuRow item={item} view={&screen.view} t={t} />
             }
             if pages > 1 {
-                <nav class={Line} aria-label="Inventory pages">
-                    match &previous {
-                        Some(previous) => <a href={url::ContinuousPricing { view: previous.clone() }}>
-                            "Previous page"
-                        </a>,
-                        None => <span class={muted()}>"Previous page"</span>,
-                    }
-                    <span>"Page "{page.page}" of "{pages}" · "{PAGE_SIZE}" per page"</span>
-                    match &next {
-                        Some(next) => <a href={url::ContinuousPricing { view: next.clone() }}>"Next page"</a>,
-                        None => <span class={muted()}>"Next page"</span>,
-                    }
-                </nav>
+                <Pagination
+                    label="Inventory pages"
+                    previous_label="Previous page"
+                    next_label="Next page"
+                    pages={pages as usize}
+                    current={page.page as usize}
+                    link={|n| url::ContinuousPricing { view: screen.view.at_page(n as i64) }}
+                    on:link={None::<Handler>}
+                />
             }
         </div>
     }
