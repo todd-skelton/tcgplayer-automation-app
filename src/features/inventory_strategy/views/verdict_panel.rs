@@ -143,7 +143,7 @@ pub fn VerdictPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
             <div class={Title}>
                 <h2>{policy_label(screen)}</h2>
                 <span class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Soft }}>
-                    <StatusDot tone={StatusTone::Success} />
+                    <StatusDot tone={StatusTone::Text} />
                     "Active"
                 </span>
             </div>

@@ -190,12 +190,12 @@ fn EvidenceRow<'a>(status: &'a EvidenceStatus, choice: &'a Choice, t: Msg) -> im
             </span>
             if status.stale {
                 <span class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Soft }}>
-                    <StatusDot tone={StatusTone::Warning} />
+                    <StatusDot tone={StatusTone::Text} />
                     "Stale or not fetched"
                 </span>
             } else {
                 <span class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Soft }}>
-                    <StatusDot tone={StatusTone::Success} />
+                    <StatusDot tone={StatusTone::Text} />
                     "Fresh"
                 </span>
             }
