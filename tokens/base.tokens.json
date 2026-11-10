@@ -569,6 +569,22 @@
     },
     "$description": "A kit card's heading."
   },
+  "choice-list-gap": {
+    "$type": "dimension",
+    "$value": {
+      "value": 0.75,
+      "unit": "rem"
+    },
+    "$description": "The space between a kit checkbox list's or radio group's choices."
+  },
+  "choice-list-legend-gap": {
+    "$type": "dimension",
+    "$value": {
+      "value": 0.75,
+      "unit": "rem"
+    },
+    "$description": "The space under a kit checkbox list's or radio group's legend."
+  },
   "stat-label-font-size": {
     "$type": "dimension",
     "$value": {
