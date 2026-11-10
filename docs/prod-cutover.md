@@ -360,6 +360,28 @@ fetches from GitHub as before.
    Pack Series Cards has 100 rows with red set and SKU badges and red names, and Chrome shows
    Heavily Played in orange.
 
+## Corten 1e654688 and the kit's pagers (2026-11-10)
+
+Todd asked for it to be merged and released. Corten moved from f4f37f95 to its main at
+1e654688, and the port's pagers moved onto the kit: Continuous Pricing pages with the kit's
+`Pagination`, and the Slab Pricing supply rows use the kit's `PreviousNext`, which now takes
+`on:link` so a sorted table keeps its order while paging. Segmented controls take a width (`Fit`
+where they drew at their own width before), the Batch Pricer's bars a tone, stats seven tokens
+at the values the CSS had, and a kit Stack keeps a dialog child centered. Merged as adbb559b4
+and released with `npm run prod:update` from a clean master at 20:24 UTC, building Corten from
+GitHub (no `CORTEN_SOURCE`; GitHub answers anonymous requests again). No migration and no switch
+changed. A backup was taken just before:
+`.artifacts/db-backups/2026-11-10T20-15Z-prod-before-corten-1e654688.dump` (580 objects, the
+same as the backup before condition colors).
+
+1. The blue slot took over and green was removed. `/proxy-health` names blue and `docker ps`
+   lists the proxy, postgres and `tcgplayer-automation-web-prod-blue`, all healthy.
+2. The `web` log has every worker's start line and no error, and order history reached
+   `complete` (1599 of 1599).
+3. All 16 screens answer 200 through port 3001 with no console or page error, and the favicon
+   answers 200. Continuous Pricing's pager goes to page 2 and back. Inventory Strategy's stats
+   and segmented controls and Shipping Export's "Show as" measure the same as before the release
+   at 1280 and 420 px wide.
 ## Decided (2026-11-05)
 
 1. Refresh dev from production before release 1, then run the gate and the twin scripts against
