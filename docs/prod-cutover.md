@@ -333,6 +333,33 @@ accepted connections at 22:51 UTC, and the next jobs (7563, 7564) completed and 
    second attempt by the blue slot's pricing worker and completed at 23:31 UTC: 36 rows, 0 errors,
    1 warning. Its publication (6151) was posted on the first attempt, 27 of 27 items `published`.
 
+## Condition colors (2026-11-10)
+
+Todd asked for it to be merged and released. The Inventory Manager's set, SKU and name take the
+chosen condition's color again, as the React grid's did: merged as f6bb34d10, and released with
+`npm run prod:update` from a clean master (102bee35e) at 16:39 UTC. No migration and no switch
+changed. A backup was taken just before:
+`.artifacts/db-backups/2026-11-10T16-38Z-prod-before-condition-colors.dump` (`pg_restore -l`
+lists 595 entries).
+
+Production was down from 09:05 UTC: Docker Desktop's WSL engine failed to start and its own
+recovery kept failing, with 550 GB free on D:, so not the disk. Quitting Docker Desktop, `wsl
+--shutdown` and starting it again brought every container back healthy at about 12:35 UTC.
+
+The first release attempt failed to build: GitHub answers 404 for `corten-run/corten` while the
+organization is under review, and the image fetches it without credentials. Nothing changed in
+production. The image now builds Corten from a local git repository when `CORTEN_SOURCE` names
+one (102bee35e); this release used `.artifacts/corten-source.git`, a bare repository holding
+only f4f37f95 as `main`, made from the local Corten clone. Without `CORTEN_SOURCE` the build
+fetches from GitHub as before.
+
+1. The green slot took over and blue was removed. `/proxy-health` names green and `docker ps`
+   lists the proxy, postgres and `tcgplayer-automation-web-prod-green`, all healthy.
+2. The `web` log has every worker's start line, and order history reached `complete`.
+3. All 16 screens answer 200 through port 3001. The Inventory Manager's Damaged view of Prize
+   Pack Series Cards has 100 rows with red set and SKU badges and red names, and Chrome shows
+   Heavily Played in orange.
+
 ## Decided (2026-11-05)
 
 1. Refresh dev from production before release 1, then run the gate and the twin scripts against
