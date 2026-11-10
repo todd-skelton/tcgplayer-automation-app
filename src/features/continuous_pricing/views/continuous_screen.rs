@@ -419,6 +419,7 @@ fn Items<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                     pages={pages as usize}
                     current={page.page as usize}
                     link={|n| url::ContinuousPricing { view: screen.view.at_page(n as i64) }}
+                    on:link={None::<Handler>}
                 />
             }
         </div>
