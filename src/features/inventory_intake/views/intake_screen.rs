@@ -359,6 +359,7 @@ fn ProductPages<'a>(selection: &'a Selection, current: usize, pages: usize) -> i
             link={|page| url::InventoryManager {
                 selection: Selection { page: Some(page), ..selection.clone() },
             }}
+            on:link={None::<Handler>}
         />
     }
 }

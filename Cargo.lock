@@ -283,12 +283,12 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 [[package]]
 name = "corten-macros"
 version = "0.1.0"
-source = "git+https://github.com/corten-run/corten?rev=f4f37f95#f4f37f954c25b2afe78165859aa3e0efd050cb5e"
+source = "git+https://github.com/corten-run/corten?rev=1e654688#1e6546886d319d4cb36ac5f89d2604ce43e832f6"
 
 [[package]]
 name = "corten-run"
 version = "0.1.0"
-source = "git+https://github.com/corten-run/corten?rev=f4f37f95#f4f37f954c25b2afe78165859aa3e0efd050cb5e"
+source = "git+https://github.com/corten-run/corten?rev=1e654688#1e6546886d319d4cb36ac5f89d2604ce43e832f6"
 dependencies = [
  "axum",
  "axum-core",
@@ -304,7 +304,9 @@ dependencies = [
  "hyper",
  "hyper-util",
  "jiff",
+ "matchit",
  "memchr",
+ "percent-encoding",
  "serde",
  "serde_json",
  "tokio",
@@ -318,7 +320,7 @@ dependencies = [
 [[package]]
 name = "corten-ui"
 version = "0.1.0"
-source = "git+https://github.com/corten-run/corten?rev=f4f37f95#f4f37f954c25b2afe78165859aa3e0efd050cb5e"
+source = "git+https://github.com/corten-run/corten?rev=1e654688#1e6546886d319d4cb36ac5f89d2604ce43e832f6"
 dependencies = [
  "corten-run",
 ]
@@ -504,7 +506,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1502,7 +1504,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

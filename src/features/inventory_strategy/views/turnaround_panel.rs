@@ -20,7 +20,7 @@ use crate::{
         card::{CardCompact, CardPanel},
         field::Field,
         input::Input,
-        segmented::{Legend, SegmentedRadio, SegmentedRadios},
+        segmented::{Legend, SegmentedRadio, SegmentedRadios, SegmentedWidth},
         stats::{Stat, StatTone, Stats, StatsSurface},
     },
 };
@@ -173,7 +173,10 @@ pub fn TurnaroundForm<'a>(
             <input type="hidden" name={f.seller_key} value={&input.seller_key}>
             <SubmitsOnChange>
                 <div class={Line}>
-                    <SegmentedRadios legend={Legend::Hidden("Turnaround source")}>
+                    <SegmentedRadios
+                        legend={Legend::Hidden("Turnaround source")}
+                        width={SegmentedWidth::Fit}
+                    >
                         <SegmentedRadio label="Observed">
                             <input
                                 type="radio"

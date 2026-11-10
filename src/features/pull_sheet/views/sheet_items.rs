@@ -14,7 +14,7 @@ use crate::{
         card::{CardCompact, CardPanel},
         dialog::{Dialog, DialogHeader, DialogSize},
         input::Input,
-        segmented::{Legend, SegmentedRadio, SegmentedRadios},
+        segmented::{Legend, SegmentedRadio, SegmentedRadios, SegmentedWidth},
         table::{Sort, SortHeader, Table, TableLayout, TableNumeric},
         visually_hidden::VisuallyHidden,
     },
@@ -120,7 +120,7 @@ pub fn SheetItems<'a>(
                         <button class={NoScript}>"Filter"</button>
                     })}
                 </form>
-                <SegmentedRadios legend={Legend::Hidden("Show as")}>
+                <SegmentedRadios legend={Legend::Hidden("Show as")} width={SegmentedWidth::Fit}>
                     <SegmentedRadio label="Grid">
                         <input type="radio" name={l.layout} value="grid" class={GridChoice} checked>
                     </SegmentedRadio>
