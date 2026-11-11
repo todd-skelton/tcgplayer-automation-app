@@ -18,7 +18,7 @@ use super::policy::{
     self, Basis, Constrained, Constraint, Curve, CurvePoint, Decision, ForecastStatus, Method,
     PercentileDetail, Policy, PortfolioItem, PortfolioPlan, ProfitPerDay,
 };
-use super::shrunk_sale_rate::{self, Exposure, Forecast as ShrunkRateForecast};
+use super::shrunk_sale_rate::{self, Exposure, Forecast as ShrunkRateForecast, Pools};
 pub use super::sku_price::Failure;
 use super::sku_price::Priced;
 use crate::features::{
@@ -96,6 +96,7 @@ pub fn config_of(
         supply_analysis: stored.supply.enabled,
         excluded_seller_key,
         include_unverified_sellers: stored.supply.include_unverified_sellers,
+        product_line_pools: Pools::new(),
     }
 }
 
@@ -135,6 +136,9 @@ pub struct Config {
     pub excluded_seller_key: Option<String>,
     /// Unverified sellers' asks compete too (`includeUnverifiedSellers`).
     pub include_unverified_sellers: bool,
+    /// Each product line's stored pool the shrunk forecast leans on; a line without one pools the
+    /// run's own results. Pricing does not read it.
+    pub product_line_pools: Pools,
 }
 
 impl Default for Config {
@@ -147,6 +151,7 @@ impl Default for Config {
             supply_analysis: false,
             excluded_seller_key: None,
             include_unverified_sellers: false,
+            product_line_pools: Pools::new(),
         }
     }
 }
@@ -896,12 +901,12 @@ pub async fn calculate(
         stats,
     });
 
-    // Shrunk toward the pooled rate of the run's own results in each product line.
+    // Shrunk toward each product line's stored pool, or the run's own results in the line.
     let evidence: Vec<shrunk_sale_rate::Evidence> = shrinkable.iter().map(|(_, e)| *e).collect();
-    for ((index, _), forecast) in shrinkable
-        .iter()
-        .zip(shrunk_sale_rate::forecasts(&evidence))
-    {
+    for ((index, _), forecast) in shrinkable.iter().zip(shrunk_sale_rate::forecasts(
+        &evidence,
+        &config.product_line_pools,
+    )) {
         priced_items[*index].shrunk_rate_forecast = forecast;
     }
 
@@ -1466,11 +1471,11 @@ mod tests {
         thin.condition_sale_rate = Some(rate(60.0, 2.0));
         let mut busy = curve(7.0, vec![at(5.0, 5.0, 1.0, 40.0), at(65.0, 7.0, 2.0, 20.0)]);
         busy.condition_sale_rate = Some(rate(4.0, 50.0));
-        let price = async |skus: &[PricerSku]| {
+        let price = async |skus: &[PricerSku], config: &Config| {
             let evidence = BySku(HashMap::from([(801, thin.clone()), (802, busy.clone())]));
             calculate(
                 skus,
-                &Config::default(),
+                config,
                 &HashMap::new(),
                 "pricing",
                 &evidence,
@@ -1480,8 +1485,12 @@ mod tests {
             .await
             .unwrap()
         };
-        let alone = price(&[sku(801, 1.0, 20.0)]).await;
-        let pooled = price(&[sku(801, 1.0, 20.0), sku(802, 1.0, 9.0)]).await;
+        let alone = price(&[sku(801, 1.0, 20.0)], &Config::default()).await;
+        let pooled = price(
+            &[sku(801, 1.0, 20.0), sku(802, 1.0, 9.0)],
+            &Config::default(),
+        )
+        .await;
         let (alone, beside) = (only(&alone), &pooled.priced_items[0]);
         // Pricing reads none of it.
         assert_eq!(beside.price, Some(14.0));
@@ -1510,7 +1519,43 @@ mod tests {
         assert_eq!(recorded["method"], "gamma-poisson-v1");
         assert!(recorded["medianSellDays"].is_number());
         assert!(recorded["conditionRate"]["medianSellDays"].is_number());
+        assert_eq!(recorded["poolSource"], "run");
         assert_eq!(policy::MODEL_VERSION, "pooled-supply-v1");
+
+        // A stored pool for the line gives a run of one SKU a prior, and moves no price either.
+        let with_pool = Config {
+            product_line_pools: shrunk_sale_rate::Pools::from([(
+                1,
+                shrunk_sale_rate::Pool {
+                    buyer_arrival: Exposure {
+                        sales: 300.0,
+                        days: 1500.0,
+                    },
+                    condition_rate: Exposure::default(),
+                },
+            )]),
+            ..Config::default()
+        };
+        let leaning = price(&[sku(801, 1.0, 20.0)], &with_pool).await;
+        let leaning = only(&leaning);
+        assert_eq!(
+            (leaning.price, &leaning.pricing_decision),
+            (alone.price, &alone.pricing_decision)
+        );
+        let forecast = leaning.shrunk_rate_forecast.as_ref().unwrap();
+        let arrival = &forecast.buyer_arrival;
+        assert_eq!(
+            (arrival.pool_source, arrival.pooled_interval_days),
+            (shrunk_sale_rate::PoolSource::Stored, 5.0)
+        );
+        let expected =
+            (shrunk_sale_rate::PRIOR_DAYS + 30.0) / (0.2 * shrunk_sale_rate::PRIOR_DAYS + 1.0);
+        assert!((arrival.interval_days - expected).abs() < 1e-9);
+        // The line stored no condition sales, so that rate pools the run alone.
+        assert_eq!(
+            forecast.condition_rate.as_ref().unwrap().pool_source,
+            shrunk_sale_rate::PoolSource::Run
+        );
     }
 
     #[tokio::test]

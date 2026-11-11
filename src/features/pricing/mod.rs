@@ -20,6 +20,7 @@ pub mod maximize;
 #[cfg(test)]
 mod parity;
 pub mod policy;
+pub mod product_line_pools;
 pub mod resolver;
 pub mod sale;
 pub mod shipping_threshold_snap;
