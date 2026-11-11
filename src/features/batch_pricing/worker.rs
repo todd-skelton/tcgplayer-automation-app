@@ -17,6 +17,15 @@ use tokio::{
 pub const LEASE: Duration = Duration::from_millis(15_000);
 /// How often a job in progress renews its claim.
 pub const HEARTBEAT: Duration = Duration::from_millis(2_000);
+/// How long one renewal may take before it is given up and retried at the next beat: a third of
+/// the lease, so two given up in a row still end before the lease runs out, and a commit that
+/// stalls for a few seconds is waited out rather than cut off.
+pub const RENEWAL: Duration = Duration::from_millis(LEASE.as_millis() as u64 / 3);
+const _: () = assert!(
+    RENEWAL.as_millis() > HEARTBEAT.as_millis()
+        && 2 * (HEARTBEAT.as_millis() + RENEWAL.as_millis()) < LEASE.as_millis(),
+    "a renewal outlasts a beat, and two given up in a row end inside the lease"
+);
 /// How often an empty queue is looked at again.
 pub const POLL: Duration = Duration::from_millis(1_000);
 /// How soon after progress was last saved new progress is saved, before the next renewal
@@ -75,23 +84,23 @@ pub async fn process<J: Jobs>(jobs: &J, job: &J::Job, signal: &Signal) -> Outcom
                     Err(why) => Outcome::Failed(why),
                 },
                 // Saved as Node's flush saves it, without moving the next renewal.
-                _ = jobs.progress_due(job) => match timeout(HEARTBEAT, jobs.renew(job)).await {
+                _ = jobs.progress_due(job) => match timeout(RENEWAL, jobs.renew(job)).await {
                     Ok(Ok(true)) => {}
                     Ok(Ok(false)) => break Outcome::LeaseLost,
                     Ok(Err(why)) => eprintln!("Pricing job progress failed to save: {why}"),
-                    Err(_) => eprintln!("Pricing job progress save timed out after {HEARTBEAT:?}"),
+                    Err(_) => eprintln!("Pricing job progress save timed out after {RENEWAL:?}"),
                 },
                 _ = heartbeat.tick() => {
-                    // A renewal that hangs is given up after a beat, and the next one is a whole
-                    // beat after this one ended, not owed at once.
-                    let renewed = timeout(HEARTBEAT, jobs.renew(job)).await;
+                    // A renewal that hangs is given up after its budget, and the next one is
+                    // a whole beat after this one ended, not owed at once.
+                    let renewed = timeout(RENEWAL, jobs.renew(job)).await;
                     heartbeat.reset();
                     match renewed {
                         Ok(Ok(true)) => {}
                         Ok(Ok(false)) => break Outcome::LeaseLost,
                         // Retried at the next beat; the lease outlasts several.
                         Ok(Err(why)) => eprintln!("Pricing job heartbeat failed: {why}"),
-                        Err(_) => eprintln!("Pricing job heartbeat timed out after {HEARTBEAT:?}"),
+                        Err(_) => eprintln!("Pricing job heartbeat timed out after {RENEWAL:?}"),
                     }
                 }
             }
@@ -353,8 +362,8 @@ mod tests {
             .filter(|(_, what)| what.starts_with("renew"))
             .map(|(at, _)| *at)
             .collect();
-        // Given up at 4 s; the next at 6 s, not at once at 4 s.
-        assert_eq!(renewals, [2_000, 6_000, 8_000]);
+        // Given up at 7 s; the next at 9 s, not at once at 7 s.
+        assert_eq!(renewals, [2_000, 9_000]);
         assert_eq!(
             fake.log
                 .borrow()
