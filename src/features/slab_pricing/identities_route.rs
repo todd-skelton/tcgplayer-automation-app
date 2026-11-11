@@ -1,7 +1,11 @@
 //! `/api/slab-identities`: a certificate's identity looked up (`lookup`, which asks Alt unless it
 //! is saved) and confirmed by the operator (`confirm`), by `POST`, as the Node route answered
 //! them, never stored by a cache.
-use corten::{Api, JsonResponse, Prefix, Signal, extract::Request, http::StatusCode, prelude::*};
+use corten::{
+    Api, JsonResponse, Prefix, Signal,
+    http::{Request, StatusCode},
+    prelude::*,
+};
 use serde_json::{Value, json};
 use sqlx::PgConnection;
 

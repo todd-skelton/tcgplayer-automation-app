@@ -358,10 +358,10 @@ mod tests {
         atomic::{AtomicUsize, Ordering},
     };
 
-    use corten::{
-        axum::Router,
+    use axum::{
+        Router,
         http::{HeaderMap as Headers, StatusCode},
-        middleware::{IntoResponse, Response},
+        response::{IntoResponse, Response},
     };
 
     use super::*;
@@ -431,7 +431,7 @@ mod tests {
         });
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let origin = format!("http://{}", listener.local_addr().unwrap());
-        tokio::spawn(async move { corten::axum::serve(listener, app).await });
+        tokio::spawn(async move { axum::serve(listener, app).await });
         (Transport::to(&origin, &origin), calls)
     }
 

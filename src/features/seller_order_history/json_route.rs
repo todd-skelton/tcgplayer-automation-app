@@ -1,6 +1,10 @@
 //! `/api/seller-order-history`: how far the seller's order history reaches (`GET`), and a step of
 //! its scan or an order export imported (`POST`), as the Node route answered them.
-use corten::{Api, JsonResponse, Prefix, extract::Request, http::StatusCode, prelude::*};
+use corten::{
+    Api, JsonResponse, Prefix,
+    http::{Request, StatusCode},
+    prelude::*,
+};
 use serde_json::{Value, json};
 
 use super::{catch_up, coverage::coverage, file_import};

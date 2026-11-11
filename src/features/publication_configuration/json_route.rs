@@ -2,7 +2,11 @@
 //! settings and the publisher's runtime as JSON, as the Node routes answered them. `GET` reads the
 //! configuration, `PUT` replaces the settings with the body as the Node app normalizes it, and
 //! `POST {"action":"resume"}` closes the circuit; health adds the publication queue's counts.
-use corten::{Api, JsonResponse, Prefix, extract::Request, http::StatusCode, prelude::*};
+use corten::{
+    Api, JsonResponse, Prefix,
+    http::{Request, StatusCode},
+    prelude::*,
+};
 use serde_json::{Value, json};
 
 use super::config::{self, Settings};

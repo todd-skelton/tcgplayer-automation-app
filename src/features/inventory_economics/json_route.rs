@@ -11,7 +11,11 @@
 //! met it at the lots query, after); and an explicit allocation's receipt id past JavaScript's
 //! safe integers is refused as not a unique receipt selection (Node, after its other checks, as
 //! not naming the batches' receipts).
-use corten::{Api, JsonResponse, Prefix, extract::Request, http::StatusCode, prelude::*};
+use corten::{
+    Api, JsonResponse, Prefix,
+    http::{Request, StatusCode},
+    prelude::*,
+};
 use serde_json::{Map, Value, json};
 use sqlx::{Connection, PgConnection};
 

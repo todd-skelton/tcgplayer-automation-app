@@ -3,7 +3,11 @@
 //! replay, and the corrections (`corrections`): recording a disposition, superseding one, and a
 //! quantity correction, each in a transaction of its own.
 use chrono::{DateTime, Utc};
-use corten::{Api, JsonResponse, Prefix, extract::Request, http::StatusCode, prelude::*};
+use corten::{
+    Api, JsonResponse, Prefix,
+    http::{Request, StatusCode},
+    prelude::*,
+};
 use serde_json::{Value, json};
 use sqlx::PgConnection;
 

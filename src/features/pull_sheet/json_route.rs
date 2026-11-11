@@ -4,7 +4,11 @@
 //! found.
 use std::collections::HashMap;
 
-use corten::{Api, JsonResponse, Prefix, extract::Request, http::StatusCode, prelude::*};
+use corten::{
+    Api, JsonResponse, Prefix,
+    http::{Request, StatusCode},
+    prelude::*,
+};
 use serde_json::{Map, Value, json};
 
 use super::sheet::catalog_product_line;

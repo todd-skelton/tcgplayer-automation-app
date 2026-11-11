@@ -7,7 +7,7 @@
 //! here; and a reviewed item price's fields beyond its amount and currency are not kept.
 use corten::{
     Api, JsonResponse, Prefix,
-    extract::Request,
+    http::Request,
     http::{StatusCode, header},
     prelude::*,
 };

@@ -8,7 +8,7 @@
 //! field (both a 400 in the same words); and see [`super::inventory_import`] for a manual import.
 use corten::{
     Api, JsonResponse, Prefix, Signal,
-    extract::Request,
+    http::Request,
     http::{StatusCode, header},
     prelude::*,
 };

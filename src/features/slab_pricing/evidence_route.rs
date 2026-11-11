@@ -16,7 +16,7 @@ use std::time::Instant;
 use chrono::{DateTime, SecondsFormat, Utc};
 use corten::{
     Api, JsonResponse, Prefix,
-    extract::Request,
+    http::Request,
     http::{StatusCode, header},
     prelude::*,
 };

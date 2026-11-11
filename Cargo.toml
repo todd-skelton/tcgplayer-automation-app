@@ -42,3 +42,4 @@ live-tcgplayer = []
 [dev-dependencies]
 # The slab providers' tests serve a stand-in provider on this machine.
 tokio = { version = "1", features = ["net", "test-util"] }
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio", "json"] }
