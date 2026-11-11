@@ -4,14 +4,17 @@
 //! inventory and automatic publication up to date with it. A job that fails counts as a failed
 //! pricing of each of its continuous SKUs, which are tried again soon; one that stopped because
 //! TCGplayer no longer shows full sales history only has them tried again later.
-use std::sync::{
-    Mutex,
-    atomic::{AtomicBool, Ordering},
+use std::{
+    sync::{
+        Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
+    time::Duration,
 };
 
 use chrono::{DateTime, Utc};
 use serde_json::Value;
-use sqlx::PgConnection;
+use sqlx::{PgConnection, PgPool, Postgres, pool::PoolConnection};
 use tokio::{sync::Notify, time::Instant};
 
 use super::{
@@ -44,10 +47,13 @@ pub struct Running {
     flush: Notify,
     /// Whether the run stopped because sales history was unavailable.
     sales_history_unavailable: AtomicBool,
+    /// The connection that claimed the job, kept to renew the claim so a renewal does not wait
+    /// for the pool. A renewal that fails or is given up drops it; the next one acquires another.
+    connection: Mutex<Option<PoolConnection<Postgres>>>,
 }
 
 impl Running {
-    pub fn new(claimed: Claimed) -> Self {
+    pub fn new(claimed: Claimed, connection: PoolConnection<Postgres>) -> Self {
         let progress = Mutex::new(claimed.progress_json.clone());
         Running {
             claimed,
@@ -55,7 +61,17 @@ impl Running {
             flushed_at: Mutex::new(None),
             flush: Notify::new(),
             sales_history_unavailable: AtomicBool::new(false),
+            connection: Mutex::new(Some(connection)),
         }
+    }
+
+    /// The job's own connection, taken while in use so one left mid-update is never used again.
+    fn take_connection(&self) -> Option<PoolConnection<Postgres>> {
+        self.connection.lock().expect("never poisoned").take()
+    }
+
+    fn keep_connection(&self, connection: PoolConnection<Postgres>) {
+        *self.connection.lock().expect("never poisoned") = Some(connection);
     }
 
     fn progress(&self) -> Option<Value> {
@@ -73,6 +89,81 @@ impl Running {
             self.flush.notify_one();
         }
     }
+}
+
+/// Where a renewal is: waiting for a connection, or running its update on one.
+#[derive(Clone, Copy, Debug)]
+enum Phase {
+    Acquiring,
+    /// On the job's own connection (`held`) or on one the pool gave after `waited`.
+    Updating {
+        held: bool,
+        waited: Duration,
+    },
+}
+
+/// A renewal in progress. The worker gives a renewal one beat; one given up before it ends logs
+/// what it was waiting for and how busy the pool was at that moment.
+struct Renewal<'a> {
+    pool: &'a PgPool,
+    started: Instant,
+    /// None once the renewal has ended.
+    phase: Option<Phase>,
+}
+
+impl<'a> Renewal<'a> {
+    fn start(pool: &'a PgPool) -> Self {
+        Renewal {
+            pool,
+            started: Instant::now(),
+            phase: Some(Phase::Acquiring),
+        }
+    }
+
+    /// The job's connection when it still has one, otherwise one from the pool.
+    async fn connection(
+        &mut self,
+        held: Option<PoolConnection<Postgres>>,
+    ) -> sqlx::Result<PoolConnection<Postgres>> {
+        let (connection, held) = match held {
+            Some(connection) => (connection, true),
+            None => (self.pool.acquire().await?, false),
+        };
+        self.phase = Some(Phase::Updating {
+            held,
+            waited: self.started.elapsed(),
+        });
+        Ok(connection)
+    }
+
+    fn end(mut self) {
+        self.phase = None;
+    }
+}
+
+impl Drop for Renewal<'_> {
+    fn drop(&mut self) {
+        if let Some(phase) = self.phase {
+            let (size, idle) = (self.pool.size(), self.pool.num_idle());
+            eprintln!("{}", given_up(phase, self.started.elapsed(), size, idle));
+        }
+    }
+}
+
+/// The log line for a renewal given up `after` it started, in `phase`, when the pool had `size`
+/// connections, `idle` of them idle.
+fn given_up(phase: Phase, after: Duration, size: u32, idle: usize) -> String {
+    let doing = match phase {
+        Phase::Acquiring => "waiting for a database connection".to_string(),
+        Phase::Updating { held: true, .. } => "running its update on the job's connection".into(),
+        Phase::Updating {
+            held: false,
+            waited,
+        } => format!("running its update on a connection that took {waited:?} to acquire"),
+    };
+    format!(
+        "Pricing job renewal given up after {after:?} while {doing} (pool: {size} open, {idle} idle)"
+    )
 }
 
 /// A time as Node writes `new Date()`: to the millisecond.
@@ -204,26 +295,36 @@ impl<E: Evidence, M: MarketData> Jobs for PricingJobs<E, M> {
     }
 
     async fn claim(&self) -> Result<Option<Running>, String> {
-        let mut tx = self.db.0.begin().await.map_err(|e| e.to_string())?;
+        let mut conn = self.db.0.acquire().await.map_err(|e| e.to_string())?;
+        let mut tx = sqlx::Connection::begin(&mut *conn)
+            .await
+            .map_err(|e| e.to_string())?;
         let claimed = queue::claim_next(&mut tx, &self.worker, Self::lease_ms())
             .await
             .map_err(|e| e.to_string())?;
         tx.commit().await.map_err(|e| e.to_string())?;
-        Ok(claimed.map(Running::new))
+        Ok(claimed.map(|claimed| Running::new(claimed, conn)))
     }
 
     async fn renew(&self, job: &Running) -> Result<bool, String> {
-        let mut conn = self.db.0.acquire().await.map_err(|e| e.to_string())?;
-        let progress = job.progress();
-        queue::heartbeat(
-            &mut conn,
-            job.claimed.id,
-            &self.worker,
-            Self::lease_ms(),
-            progress.as_ref(),
-        )
-        .await
-        .map_err(|e| e.to_string())
+        let mut renewal = Renewal::start(&self.db.0);
+        let renewed = async {
+            let mut conn = renewal.connection(job.take_connection()).await?;
+            let progress = job.progress();
+            let renewed = queue::heartbeat(
+                &mut conn,
+                job.claimed.id,
+                &self.worker,
+                Self::lease_ms(),
+                progress.as_ref(),
+            )
+            .await?;
+            job.keep_connection(conn);
+            Ok::<_, sqlx::Error>(renewed)
+        }
+        .await;
+        renewal.end();
+        renewed.map_err(|e| e.to_string())
     }
 
     async fn progress_due(&self, job: &Running) {
@@ -266,7 +367,10 @@ impl<E: Evidence, M: MarketData> Jobs for PricingJobs<E, M> {
 
     async fn finished(&self, job: &Running, outcome: &Outcome) -> Result<(), String> {
         let claimed = &job.claimed;
-        let mut conn = self.db.0.acquire().await.map_err(|e| e.to_string())?;
+        let mut conn = match job.take_connection() {
+            Some(conn) => conn,
+            None => self.db.0.acquire().await.map_err(|e| e.to_string())?,
+        };
         match outcome {
             Outcome::Completed => {
                 let current = pricing_config::load(&self.db)
@@ -320,6 +424,34 @@ impl<E: Evidence, M: MarketData> Jobs for PricingJobs<E, M> {
 mod tests {
     use super::*;
     use crate::features::batch_pricing::shadow::{Ledgers, SavedMarket, saved};
+
+    #[test]
+    fn a_renewal_given_up_says_what_it_waited_for_and_how_busy_the_pool_was() {
+        let beat = Duration::from_secs(2);
+        assert_eq!(
+            given_up(Phase::Acquiring, beat, 20, 0),
+            "Pricing job renewal given up after 2s while waiting for a database connection \
+             (pool: 20 open, 0 idle)"
+        );
+        let held = Phase::Updating {
+            held: true,
+            waited: Duration::ZERO,
+        };
+        assert_eq!(
+            given_up(held, beat, 4, 3),
+            "Pricing job renewal given up after 2s while running its update on the job's \
+             connection (pool: 4 open, 3 idle)"
+        );
+        let acquired = Phase::Updating {
+            held: false,
+            waited: Duration::from_millis(1_500),
+        };
+        assert_eq!(
+            given_up(acquired, beat, 5, 1),
+            "Pricing job renewal given up after 2s while running its update on a connection \
+             that took 1.5s to acquire (pool: 5 open, 1 idle)"
+        );
+    }
 
     /// Node's latest completed continuous job, priced again from the ledgers and the market data
     /// Node saved, then saved and followed up as this worker would, inside a transaction that is
