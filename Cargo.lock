@@ -283,15 +283,13 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 [[package]]
 name = "corten-macros"
 version = "0.1.0"
-source = "git+https://github.com/corten-run/corten?rev=600771f9#600771f9bccac654e36223477c3c8927f7f6093c"
+source = "git+https://github.com/corten-run/corten?rev=af0735cc#af0735cc1feaf374bd13f968fe33cedd051ef283"
 
 [[package]]
 name = "corten-run"
 version = "0.1.0"
-source = "git+https://github.com/corten-run/corten?rev=600771f9#600771f9bccac654e36223477c3c8927f7f6093c"
+source = "git+https://github.com/corten-run/corten?rev=af0735cc#af0735cc1feaf374bd13f968fe33cedd051ef283"
 dependencies = [
- "axum",
- "axum-core",
  "brotli",
  "bytes",
  "corten-macros",
@@ -307,8 +305,10 @@ dependencies = [
  "matchit",
  "memchr",
  "percent-encoding",
+ "pin-project-lite",
  "serde",
  "serde_json",
+ "serde_path_to_error",
  "tokio",
  "tower-layer",
  "tower-service",
@@ -320,7 +320,7 @@ dependencies = [
 [[package]]
 name = "corten-ui"
 version = "0.1.0"
-source = "git+https://github.com/corten-run/corten?rev=600771f9#600771f9bccac654e36223477c3c8927f7f6093c"
+source = "git+https://github.com/corten-run/corten?rev=af0735cc#af0735cc1feaf374bd13f968fe33cedd051ef283"
 dependencies = [
  "corten-run",
 ]
@@ -2196,6 +2196,7 @@ dependencies = [
 name = "tcgplayer-automation"
 version = "0.1.0"
 dependencies = [
+ "axum",
  "chrono",
  "chrono-tz",
  "corten-run",
