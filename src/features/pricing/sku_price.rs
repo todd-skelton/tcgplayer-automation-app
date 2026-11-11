@@ -8,6 +8,7 @@ use super::condition_normalization::{self, Diagnostics, Multipliers, Options as 
 use super::condition_sale_rate::{self, SaleRate, SalesBucket};
 use super::latest_sales_price::{self, Point, SuggestOptions};
 use super::marketplace_price::PriceEvidence;
+use super::policy::SupplyStatus;
 use super::sale::Sale;
 use super::supply_analysis::{self, Observation as Supply};
 
@@ -123,6 +124,8 @@ pub struct Priced {
     pub condition_normalization: Option<Diagnostics>,
     pub condition_sale_rate: Option<SaleRate>,
     pub price_evidence: Option<PriceEvidence>,
+    /// The asks the curve competed with, in the SKU's condition's terms, when they were observed.
+    pub competing_asks: Option<Vec<supply_analysis::Listing>>,
 }
 
 /// The latest market price of each condition of the SKU's product, variant and language.
@@ -308,6 +311,7 @@ pub async fn price(
         condition_normalization: normalization.map(|(_, d)| d),
         condition_sale_rate,
         price_evidence,
+        competing_asks: (supply.status == SupplyStatus::Observed).then_some(supply.listings),
     })
 }
 
@@ -381,6 +385,7 @@ mod tests {
             seller_id: seller.into(),
             seller_key: seller.into(),
             listing_id: 1,
+            ..Listing::default()
         }
     }
 
