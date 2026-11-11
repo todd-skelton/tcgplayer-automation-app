@@ -429,6 +429,33 @@ No migration and no switch changed. Backup just before:
    health, and forecast calibration 200 with `application/json`; slab inventory without a query
    400, FIFO by GET 405, a missing batch and an unknown route 404.
 
+## The Node app's source leaves, and the catalog reads fractional ids (2026-11-11)
+
+Todd approved both. #128 removes the Node app (`app/`, the Node scripts, the dev compose service,
+`public/`, the Vite and React Router configs); the production image already built only the Rust
+app, so nothing that runs changed. Merging master into it found one test still reading two slab
+fixtures under `app/`; they moved to `tests/fixtures/node/slab/`. `typescript` stays as a dev
+dependency so `corten check` can type-check the app's scripts. Merged as 7bd06ae5a. #135 fixes
+Data Management's Sync new products, which failed with `invalid type: floating point 2002.0,
+expected i64`: TCGplayer's search and product details now write counts and ids such as `2002.0`,
+and the catalog reads them through `tcgplayer::whole`. Merged as fb0d850f2. Both were released
+together with `npm run prod:update` from a clean master; green took over at 15:51 UTC. No
+migration and no switch changed. Backup just before:
+`.artifacts/db-backups/2026-11-11T15-40Z-prod-before-pr128-pr135.dump` (580 objects).
+
+1. Green took over and blue was removed; `/proxy-health` names green and the proxy, postgres and
+   `tcgplayer-automation-web-prod-green` are healthy.
+2. The `web` log has every worker's start line and no error; order history reached `complete`
+   (1590 of 1590).
+3. All 16 screens answer 200 through port 3001 with no console or page error in Chrome, the
+   favicon answers 200, Continuous Pricing's pager reaches page 2, and the JSON routes answer as
+   before.
+4. Sync new products for Pokemon, run from master against the dev database and TCGplayer's live
+   answers, completed in 107 s and verified each changed set (ME06: Delta Reign 143 new products,
+   1150 SKUs). It was not run against production.
+
+The first `prod:update` stopped before building: a `.react-router/` folder of generated types,
+last written 2026-11-07 and no longer ignored after #128, left the tree dirty. It was deleted.
 ## Decided (2026-11-05)
 
 1. Refresh dev from production before release 1, then run the gate and the twin scripts against
