@@ -20,9 +20,11 @@ pub mod maximize;
 #[cfg(test)]
 mod parity;
 pub mod policy;
+pub mod product_line_pools;
 pub mod resolver;
 pub mod sale;
 pub mod shipping_threshold_snap;
+pub mod shrunk_sale_rate;
 pub mod sku_price;
 pub mod supply_analysis;
 pub mod tcgplayer_evidence;

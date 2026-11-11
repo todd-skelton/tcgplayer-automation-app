@@ -24,7 +24,9 @@ use crate::{
                 self, Calculation, PricedItem, PricerSku, Request, Resolve, Resolved, Stats,
                 Stopped, Tick,
             },
+            product_line_pools,
             resolver::LatestSales,
+            shrunk_sale_rate::Pools,
             sku_price::{Evidence, Failure},
         },
         shipping_configuration,
@@ -338,6 +340,17 @@ async fn names(db: &Database, items: &[Item]) -> Result<HashMap<i64, Display>, S
     Ok(shown)
 }
 
+/// Each product line's stored pool for the shrunk forecast as of `now`; none when it cannot be
+/// read, so the forecast pools the run's own results and the price goes on.
+async fn stored_pools(db: &Database, now: DateTime<Utc>) -> Pools {
+    product_line_pools::load(&db.0, now)
+        .await
+        .inspect_err(|e| {
+            eprintln!("Product line pools could not be read; shrunk forecasts pool the run. {e}")
+        })
+        .unwrap_or_default()
+}
+
 /// The shipping cost model snaps are priced with, when the policy snaps; none when it cannot be
 /// learned, as Node prices without snaps then.
 pub(crate) async fn cost_model(
@@ -534,7 +547,8 @@ pub async fn price<E: Evidence, M: MarketData>(
         "seller" | "continuous" | "strategy"
     )
     .then(|| batch.source_label.clone());
-    let config = calculator::config_of(stored, excluded, cost_model(db, stored, now).await);
+    let mut config = calculator::config_of(stored, excluded, cost_model(db, stored, now).await);
+    config.product_line_pools = stored_pools(db, now).await;
     let cached = Cached::new(evidence);
     let resolver = match &saved {
         Some(curves) => Resolver::SavedCurves(SavedCurves::new(curves)),

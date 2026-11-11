@@ -5,7 +5,9 @@ use chrono::{DateTime, Utc};
 use super::{Calibration, DAY_MS, Evidence, ListedPrice, SkuSale, learn, ms};
 use crate::{
     database::Database,
-    features::pricing::policy::MODEL_VERSION,
+    features::pricing::{
+        buyer_choice_sell_time, condition_sale_rate, policy::MODEL_VERSION, shrunk_sale_rate,
+    },
     features::{continuous_pricing::store, inventory_economics::ledger::proceeds::iso},
 };
 
@@ -67,7 +69,8 @@ pub async fn load(db: &Database, days: u32, now: DateTime<Utc>) -> Result<Calibr
 }
 
 /// Prices published in the window with a modeled sell-time forecast from the current pricing
-/// model, the stock counted for them, and when the SKU's next price replaced them.
+/// model, the stock counted for them, when the SKU's next price replaced them, and the other
+/// forecasts published with them by each one's current method.
 async fn listed_prices(
     db: &Database,
     seller: &str,
@@ -83,7 +86,23 @@ async fn listed_prices(
             item.forecast_evidence->>'pricingModelVersion' AS pricing_model_version,
             item.forecast_evidence->'decision'->>'basis' AS basis,
             CASE WHEN jsonb_typeof(item.forecast_evidence->'decision'->'estimatedMedianSellDays')='number'
-              THEN (item.forecast_evidence->'decision'->>'estimatedMedianSellDays')::float8 END AS median_sell_days
+              THEN (item.forecast_evidence->'decision'->>'estimatedMedianSellDays')::float8 END AS median_sell_days,
+            CASE WHEN item.forecast_evidence->'buyerChoiceForecast'->>'calibration' = $5
+              AND jsonb_typeof(item.forecast_evidence->'buyerChoiceForecast'->'medianSellDays')='number'
+              THEN (item.forecast_evidence->'buyerChoiceForecast'->>'medianSellDays')::float8
+            END AS buyer_choice_median_sell_days,
+            CASE WHEN item.forecast_evidence->'conditionRateForecast'->>'method' = $6
+              AND jsonb_typeof(item.forecast_evidence->'conditionRateForecast'->'medianSellDays')='number'
+              THEN (item.forecast_evidence->'conditionRateForecast'->>'medianSellDays')::float8
+            END AS condition_rate_median_sell_days,
+            CASE WHEN item.forecast_evidence->'shrunkRateForecast'->>'method' = $7
+              AND jsonb_typeof(item.forecast_evidence->'shrunkRateForecast'->'medianSellDays')='number'
+              THEN (item.forecast_evidence->'shrunkRateForecast'->>'medianSellDays')::float8
+            END AS shrunk_rate_median_sell_days,
+            CASE WHEN item.forecast_evidence->'shrunkRateForecast'->>'method' = $7
+              AND jsonb_typeof(item.forecast_evidence->'shrunkRateForecast'->'conditionRate'->'medianSellDays')='number'
+              THEN (item.forecast_evidence->'shrunkRateForecast'->'conditionRate'->>'medianSellDays')::float8
+            END AS shrunk_condition_rate_median_sell_days
           FROM inventory_publication_items item
           JOIN inventory_publications publication ON publication.id = item.publication_id
           LEFT JOIN inventory_batch_items batch_item
@@ -94,7 +113,9 @@ async fn listed_prices(
         SELECT sku, date_trunc('milliseconds', listed_at) AS listed_at,
           date_trunc('milliseconds', replaced_at) AS replaced_at, quantity,
           date_trunc('milliseconds', counted_at) AS counted_at,
-          median_sell_days AS forecast_median_sell_days
+          median_sell_days AS forecast_median_sell_days, buyer_choice_median_sell_days,
+          condition_rate_median_sell_days, shrunk_rate_median_sell_days,
+          shrunk_condition_rate_median_sell_days
         FROM published
         WHERE quantity > 0 AND counted_at IS NOT NULL AND basis = 'modeled'
           AND pricing_model_version = $4 AND median_sell_days > 0
@@ -104,6 +125,9 @@ async fn listed_prices(
     .bind(at(from))
     .bind(at(through))
     .bind(MODEL_VERSION)
+    .bind(buyer_choice_sell_time::CALIBRATION.name)
+    .bind(condition_sale_rate::METHOD)
+    .bind(shrunk_sale_rate::METHOD)
     .fetch_all(&db.0)
     .await
 }

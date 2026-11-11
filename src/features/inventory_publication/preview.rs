@@ -187,6 +187,7 @@ pub fn forecast_evidence(details: Option<&Value>) -> Option<Value> {
         "decision",
         "buyerChoiceForecast",
         "conditionRateForecast",
+        "shrunkRateForecast",
     ] {
         if let Some(value) = details.get(key).filter(|v| v.is_object()) {
             evidence.insert(key.into(), value.clone());
