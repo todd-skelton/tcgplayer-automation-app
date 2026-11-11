@@ -12,7 +12,7 @@ use crate::{
     ui::{
         alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
-        card::{Card, CardContent, CardHeader},
+        card::{Card, CardContent, CardHeader, CardSize},
         checkbox::Checkbox,
         field::Field,
         input::Input,
@@ -85,7 +85,7 @@ pub fn PublicationForm<'a>(
             data-patch
         >
             <FormNotice errors={errors} />
-            <div class={Card {}}>
+            <div class={Card { size: CardSize::Md }}>
                 <header class={CardHeader {}}><h2>"Runtime safety"</h2></header>
                 <div class={CardContent {}}>
                     if runtime.needs_resume() {
@@ -115,7 +115,7 @@ pub fn PublicationForm<'a>(
                     }
                 </div>
             </div>
-            <div class={Card {}}>
+            <div class={Card { size: CardSize::Md }}>
                 <header class={CardHeader {}}><h2>"Automatic publication"</h2></header>
                 <div class={CardContent {}}>
                     <Switch label="Enable automatic publication globally">
@@ -141,7 +141,7 @@ pub fn PublicationForm<'a>(
                     </fieldset>
                 </div>
             </div>
-            <div class={Card {}}>
+            <div class={Card { size: CardSize::Md }}>
                 <header class={CardHeader {}}><h2>"Guardrails"</h2></header>
                 <div class={CardContent {}}>
                     <div class={Numbers}>

@@ -17,10 +17,10 @@ use crate::{
     ui::{
         alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         field::Field,
         input::Input,
-        segmented::{Legend, SegmentedRadio, SegmentedRadios},
+        segmented::{Legend, SegmentedRadio, SegmentedRadios, SegmentedWidth},
         stats::{Stat, StatTone, Stats, StatsSurface},
     },
 };
@@ -61,7 +61,7 @@ pub fn TurnaroundPanel<'a>(
     let fallback =
         selection.setting.mode == Mode::Observed && !selection.fallback_reasons.is_empty();
     html! {
-        <section class={(CardPanel {}, CardCompact {})} aria-labelledby="capital-turnaround">
+        <section class={CardPanel { size: CardSize::Sm }} aria-labelledby="capital-turnaround">
             <div class={Title}>
                 <h2 id="capital-turnaround">"Capital turnaround"</h2>
                 <span
@@ -173,7 +173,10 @@ pub fn TurnaroundForm<'a>(
             <input type="hidden" name={f.seller_key} value={&input.seller_key}>
             <SubmitsOnChange>
                 <div class={Line}>
-                    <SegmentedRadios legend={Legend::Hidden("Turnaround source")}>
+                    <SegmentedRadios
+                        legend={Legend::Hidden("Turnaround source")}
+                        width={SegmentedWidth::Fit}
+                    >
                         <SegmentedRadio label="Observed">
                             <input
                                 type="radio"

@@ -1,4 +1,4 @@
-/* corten ui 0.1.0: segmented 8fde7999247ac9a5 */
+/* corten ui 0.1.0: segmented 3ea102a0673ec99a */
 /* Drawn as tabs.css draws the tab list: its surface, sizes and raised choice. */
 .segmented { display: contents; }
 /* As wide as its choices, also as a grid or flex item, where inline-flex computes to flex. */
@@ -8,17 +8,31 @@
 }
 .segmented [role="radio"], .links > a, .choice {
   display: inline-flex; align-items: center; justify-content: center; gap: .5rem; height: var(--control-height-sm); padding: 0 var(--control-padding);
-  font: inherit; font-size: var(--control-font-size); font-weight: 500; white-space: nowrap; color: inherit; text-decoration: none;
+  font: inherit; font-size: var(--control-font-size); font-weight: var(--tab-font-weight); white-space: nowrap; color: inherit; text-decoration: none;
   background: transparent; border: 0; border-radius: calc(var(--radius) - 2px); cursor: pointer; transition: color .15s;
 }
-.segmented [role="radio"]:hover, .links > a:hover, .choice:not(:has(> input:disabled)):hover { color: var(--foreground); }
+.segmented [role="radio"]:hover, .links > a:hover, .choice:not(:has(> input:disabled, > input:checked)):hover { color: var(--foreground); }
 .segmented [role="radio"][aria-checked="true"], .links > a[aria-current="page"], .choice:has(> input:checked) {
-  background: var(--background); color: var(--foreground); box-shadow: 0 1px 2px rgb(0 0 0 / .08);
+  background: var(--background); color: var(--tab-selected-color); box-shadow: 0 1px 2px rgb(0 0 0 / .08);
 }
 .segmented [role="radio"]:focus-visible, .links > a:focus-visible, .choice:has(> input:focus-visible) { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* Fill: the width of its box, the choices in equal parts, each at least a control's height, a
+   label wider than its part wrapping rather than pushing the page sideways. One class more than
+   the rules above, so it wins wherever the stylesheets are linked. */
+.segmented.fill [role="radiogroup"], .links.fill, .radios.fill > .track {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); box-sizing: border-box; width: 100%;
+}
+/* A word wider than its part (a key, a long compound) breaks inside it: `anywhere` lowers the
+   choice's and its text's least width, which `break-word` does not. */
+.segmented.fill [role="radio"], .links.fill > a, .radios.fill .choice {
+  min-width: 0; height: auto; min-height: var(--control-height-sm); white-space: normal; text-align: center; overflow-wrap: anywhere;
+}
+.segmented.fill [role="radio"] > *, .links.fill > a > *, .radios.fill .choice > span { min-width: 0; }
 /* Native radios: the fieldset holds the legend over the track, which the choices sit in. Each input
    is hidden under its label, still focused and moved by the arrow keys; its label draws its state. */
 .radios { display: grid; justify-items: start; min-width: 0; margin: 0; padding: 0; border: 0; }
+/* The fieldset fills its box too, also as a flex or grid item that does not stretch it. */
+.radios.fill { box-sizing: border-box; width: 100%; justify-items: stretch; }
 .radios > legend { margin-bottom: .5rem; padding: 0; font-size: .875rem; font-weight: 500; color: var(--foreground); }
 /* A hidden legend: read, not drawn, and taking no room over the track. */
 .radios > .hidden { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

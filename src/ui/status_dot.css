@@ -1,0 +1,19 @@
+/* corten ui 0.1.0: status_dot ae21de6e3135828a */
+.dot { display: inline-block; flex: none; width: var(--status-dot-size); height: var(--status-dot-size); border-radius: 50%; background: var(--kit-tone); }
+/* The text's color, so a dot in a badge is the badge's: its words' color, which shows on a solid fill. */
+.text { --kit-tone: currentColor; }
+.neutral { --kit-tone: var(--muted-foreground); }
+.info { --kit-tone: var(--info); }
+.success { --kit-tone: var(--success); }
+.warning { --kit-tone: var(--warning); }
+.destructive { --kit-tone: var(--destructive); }
+/* LiveDot: its opacity pulses only inside a <corten-live> whose stream is live, so it is still
+   before the runtime connects, without JavaScript, and once the stream drops; never for a user who
+   asks for less motion. Under forced colors it pulses as Progress's sweep moves: in CanvasText. */
+@media (prefers-reduced-motion: no-preference) {
+  :where(corten-live[status="live"]) .live { animation: status-dot-live 2s ease-in-out infinite; }
+}
+@keyframes status-dot-live { 50% { opacity: .35; } }
+/* A contrast theme paints a background as Canvas, which would leave a gap: the dot is drawn in the
+   system's text color, and its tone is not shown, so the text beside it says the status. */
+@media (forced-colors: active) { .dot { forced-color-adjust: none; background: CanvasText; } }

@@ -20,8 +20,8 @@ use chrono::Utc;
 
 use corten::{
     Api, JsonResponse, Prefix, Relay,
-    answer::Body,
-    extract::{FromRequest, Request},
+    extract::FromRequest,
+    http::{Body, Request},
     http::{HeaderMap, HeaderValue, StatusCode, header},
     prelude::*,
 };

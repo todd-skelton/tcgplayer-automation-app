@@ -242,6 +242,10 @@ pub struct PublishInput {
     pub sku: Vec<i64>,
 }
 
+/// What a publish with no SKU checked is told: by the browser at the dialog's list, or by
+/// [`publish`] when the form came without a script.
+pub const NONE_SELECTED: &str = "Select at least one SKU to publish.";
+
 /// The checked SKUs planned for publication to Seller Portal; Node's publisher checks each again
 /// as it sends them.
 pub async fn publish(
@@ -252,7 +256,7 @@ pub async fn publish(
 ) -> HtmlResult {
     let done =
         if input.sku.is_empty() {
-            Err("Select at least one SKU to publish.".to_owned())
+            Err(NONE_SELECTED.to_owned())
         } else {
             batches::publish(&db, at.batch, &input.sku).await.map(|publications| {
             format!(

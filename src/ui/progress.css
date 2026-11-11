@@ -1,32 +1,40 @@
-/* corten ui 0.1.0: progress 050ef8df8bb5753f */
-/* The track and the fill, in the theme's border and primary colors, the meter's height and corners.
-   Each engine's parts are separate rules: a selector one engine does not know drops the whole rule
-   in it. */
+/* corten ui 0.1.0: progress 8c0506c2eedae244 */
+/* The track and the fill, in the theme's border color and the tone's (primary unless a tone says
+   otherwise), the meter's height and corners. Every tone stands out from the track by 3:1 in both
+   themes (the kit's test). Each engine's parts are separate rules: a selector one
+   engine does not know drops the whole rule in it. */
 .progress {
   appearance: none; display: block; width: 100%; height: .5rem; margin: 0;
   border: 0; border-radius: 999px; background: var(--border); overflow: hidden;
+  --kit-tone: var(--primary);
 }
 .sm { height: .25rem; }
+/* A tone is the fill's color, after .progress so it wins at the same specificity. */
+.info { --kit-tone: var(--info); }
+.success { --kit-tone: var(--success); }
+.warning { --kit-tone: var(--warning); }
+.destructive { --kit-tone: var(--destructive); }
 .progress::-webkit-progress-bar { border-radius: 999px; background: var(--border); }
-.progress::-webkit-progress-value { border-radius: 999px; background: var(--primary); }
-.progress::-moz-progress-bar { border-radius: 999px; background: var(--primary); }
+.progress::-webkit-progress-value { border-radius: 999px; background: var(--kit-tone); }
+.progress::-moz-progress-bar { border-radius: 999px; background: var(--kit-tone); }
 /* With no value (how far along is not known yet): stripes across the whole track, which no value
    draws; where motion is welcome, a band of the fill that sweeps across it instead (the other way
    on a right-to-left page). The engines' own parts are cleared, so either is the element's
    background in every engine. */
-.progress:indeterminate { background: repeating-linear-gradient(-45deg, var(--primary) 0 .25rem, var(--border) .25rem .5rem); }
+.progress:indeterminate { background: repeating-linear-gradient(-45deg, var(--kit-tone) 0 .25rem, var(--border) .25rem .5rem); }
 .progress:indeterminate::-webkit-progress-bar { background: transparent; }
 .progress:indeterminate::-moz-progress-bar { background: transparent; }
 @media (prefers-reduced-motion: no-preference) {
   .progress:indeterminate {
-    background: linear-gradient(var(--primary), var(--primary)) no-repeat 0 0 / 30% 100%, var(--border);
+    background: linear-gradient(var(--kit-tone), var(--kit-tone)) no-repeat 0 0 / 30% 100%, var(--border);
     animation: progress-sweep 1.5s ease-in-out infinite;
   }
   .progress:indeterminate:dir(rtl) { animation-direction: reverse; }
 }
 @keyframes progress-sweep { from { background-position: -50% 0, 0 0; } to { background-position: 150% 0, 0 0; } }
 /* Forced colors drops the theme's colors and the gradients, which would leave no bar: the same
-   parts in the system's colors, the track outlined. */
+   parts in the system's colors, the track outlined. No system color means done or failed, so every
+   tone is drawn alike there, as the meter's states are. */
 @media (forced-colors: active) {
   .progress { forced-color-adjust: none; outline: 1px solid CanvasText; outline-offset: -1px; background: Canvas; }
   .progress::-webkit-progress-bar { background: Canvas; }

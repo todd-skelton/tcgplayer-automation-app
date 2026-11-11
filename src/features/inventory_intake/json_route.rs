@@ -9,7 +9,7 @@
 //! same-site`), which Node took.
 use corten::{
     Api, JsonResponse, Prefix, Refusal,
-    extract::Request,
+    http::Request,
     http::{StatusCode, header},
     prelude::*,
 };

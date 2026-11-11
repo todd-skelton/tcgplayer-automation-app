@@ -54,7 +54,10 @@ pub fn error(status: StatusCode, message: impl std::fmt::Display) -> JsonRespons
 /// `Error: ..` answer has always carried: "length limit exceeded" for a larger body (read past,
 /// so the client reads the answer), or, for a body that broke on its way, what broke it, as
 /// Node's answer gave its error's message (the client is usually gone by then).
-pub async fn body_up_to(body: corten::answer::Body, max: usize) -> Result<corten::Bytes, String> {
+pub async fn body_up_to(
+    body: corten::http::Body,
+    max: usize,
+) -> Result<corten::http::Bytes, String> {
     match corten::extract::bytes_up_to(body, max).await {
         Ok(Some(bytes)) => Ok(bytes),
         Ok(None) => Err("length limit exceeded".to_owned()),

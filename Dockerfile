@@ -15,9 +15,18 @@ COPY db/migrations /src/db/migrations
 # the slowest crate in a clean build; the `web` image below has libzstd.so.1. An image without it
 # (distroless, scratch) must drop this line.
 ENV ZSTD_SYS_USE_PKG_CONFIG=1
+# Corten comes from GitHub, or from the git repository in the `corten-source` build context when
+# it holds one (CORTEN_SOURCE in docker-compose.prod.yml): a copy holding the commit Cargo.lock
+# pins, for a release while GitHub cannot serve it. Cargo.lock still names GitHub either way.
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target,sharing=locked \
-    find . -name target -prune -o -type f -exec touch {} + \
+    --mount=type=bind,from=corten-source,target=/corten-source \
+    if [ -f /corten-source/HEAD ]; then \
+        git config --global url."file:///corten-source".insteadOf https://github.com/corten-run/corten \
+        && git config --global --add safe.directory '*' \
+        && export CARGO_NET_GIT_FETCH_WITH_CLI=true; \
+    fi \
+    && find . -name target -prune -o -type f -exec touch {} + \
     && cargo build --release --locked \
     && cp target/release/tcgplayer-automation /server
 

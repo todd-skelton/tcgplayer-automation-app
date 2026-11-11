@@ -1,0 +1,24 @@
+/* corten ui 0.1.0: stack 0a8887a991116c84 */
+.stack { display: flex; flex-direction: column; align-items: stretch; }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; }
+/* StackStart, a Stack with this class too: the children keep their own width, at the column's
+   start (its end on a right-to-left page), each at most the stack's. A word wider than that breaks
+   inside it, and a picture keeps its shape as it narrows. The cap has no specificity, as the margin
+   rule below, so an app's rule on a child still sets its width. A dialog or popover child keeps
+   the browser's width (a modal one or an open popover is drawn in the top layer, not in the
+   column); its long words still break. */
+.stack.start { align-items: flex-start; }
+:where(.stack.start) > * { overflow-wrap: anywhere; }
+:where(.stack.start) > :where(:not(dialog, [popover])) { max-width: 100%; }
+:where(.stack.start) > :where(img, video, canvas) { height: auto; }
+/* No specificity: it drops the browser's default margins, and an app's rule that names the
+   element or a class still wins. A dialog or popover child keeps its `margin: auto`, which
+   centers a modal dialog or an open popover in the top layer: written beside the button that
+   opens it, it still opens in the middle of the screen. */
+:where(.stack, .cluster) > :where(:not(dialog, [popover])) { margin-block: 0; }
+/* The spacing the kit's components use for their own parts, literals as theirs are (one scale). */
+.xs { gap: .25rem; }
+.sm { gap: .5rem; }
+.md { gap: 1rem; }
+.lg { gap: 1.5rem; }
+.xl { gap: 2rem; }

@@ -22,6 +22,10 @@ x-web: &web
     context: .
     dockerfile: Dockerfile
     target: web
+    # A git repository holding the Corten commit Cargo.lock pins, built from in place of GitHub
+    # (CORTEN_SOURCE=path/to/corten.git npm run prod:update); empty by default.
+    additional_contexts:
+      corten-source: ${CORTEN_SOURCE:-deploy/corten-source}
   # Names the app answers to besides localhost and IP addresses (HOSTS=automation.lan) come
   # from here; any other Host gets 421.
   env_file:

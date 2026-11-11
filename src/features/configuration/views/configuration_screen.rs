@@ -20,8 +20,9 @@ use crate::{
     ui::{
         alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         checkbox::Checkbox,
+        combobox::Combobox,
         field::Field,
         input::Input,
         select::Select,
@@ -98,7 +99,7 @@ pub fn ConfigurationScreen<'a>(
             <SnapsForm section={snaps} />
             <ReportPanels reports={reports} />
             <SupplyForm section={supply} />
-            <section class={(CardPanel {}, CardCompact {}, Section)}>
+            <section class={(CardPanel { size: CardSize::Sm }, Section)}>
                 <h2>"Reset Configuration"</h2>
                 <p class={muted()}>
                     "Reset all configuration settings back to their original default values."
@@ -161,7 +162,7 @@ pub fn PricingForm<'a>(section: &'a Section<'a, PricingInput>) -> impl Patch {
             method="post"
             action={url::SavePricing}
             data-patch
-            class={(CardPanel {}, CardCompact {}, Section, Horizon)}
+            class={(CardPanel { size: CardSize::Sm }, Section, Horizon)}
         >
             <SubmitsOnChange>
                 <div class={Section}>
@@ -270,7 +271,7 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
         };
         let (min, max) = (lines.percentiles.0.to_string(), lines.percentiles.1.to_string());
         let hurdle = lines.default_hurdle.to_string();
-        <section id={ProductLinesId} class={(CardPanel {}, CardCompact {}, Section)}>
+        <section id={ProductLinesId} class={(CardPanel { size: CardSize::Sm }, Section)}>
             <h2>"Product Line Pricing"</h2>
             <p class={muted()}>
                 "Configure a different percentile or profit-per-day hurdle for specific product lines. You can also skip product lines entirely. Non-configured product lines use the defaults."
@@ -308,7 +309,7 @@ pub fn ProductLinesSection<'a>(lines: &'a Lines<'a>) -> impl Patch {
             <form method="post" action={url::AddProductLine} data-patch class={Add}>
                 <div class={Section}>
                     <label for={ProductLinePickId}>"Select Product Line"</label>
-                    <ComboBox field={&picker} />
+                    <Combobox><ComboBox field={&picker} /></Combobox>
                     {e.message(a.product_line)}
                 </div>
                 <Field
@@ -414,7 +415,7 @@ pub fn SnapsForm<'a>(section: &'a Section<'a, SnapsInput>) -> impl Patch {
             method="post"
             action={url::SaveSnaps}
             data-patch
-            class={(CardPanel {}, CardCompact {}, Section)}
+            class={(CardPanel { size: CardSize::Sm }, Section)}
         >
             <SubmitsOnChange>
                 <div class={Section}>
@@ -500,7 +501,7 @@ pub fn SupplyForm<'a>(section: &'a Section<'a, SupplyInput>) -> impl Patch {
             method="post"
             action={url::SaveSupply}
             data-patch
-            class={(CardPanel {}, CardCompact {}, Section, Supply)}
+            class={(CardPanel { size: CardSize::Sm }, Section, Supply)}
         >
             <SubmitsOnChange>
                 <div class={Section}>

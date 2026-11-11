@@ -8,7 +8,7 @@ use std::time::SystemTime;
 use crate::{
     features::continuous_pricing::{
         actions::{ScheduleInput, Screen, SkuInput},
-        store::{Item, PAGE_SIZE, RECENT_RUNS, Run, Shown, range},
+        store::{Item, RECENT_RUNS, Run, Shown, range},
         url::{self, View},
     },
     layout::SubmitsOnChange,
@@ -19,9 +19,10 @@ use crate::{
         alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         field::Field,
         input::Input,
+        pagination::Pagination,
         select::Select,
         stepper::Stepper,
         switch::Switch,
@@ -79,7 +80,7 @@ pub fn ContinuousScreen<'a>(
     t: Msg,
 ) -> impl Render {
     html! {
-        <section class={(Stack, ContinuousScreen)}>
+        <section class={(stack(Space::_3), ContinuousScreen)}>
             <header>
                 <h1>"Continuous Pricing"</h1>
                 <p class={muted()}>
@@ -88,7 +89,7 @@ pub fn ContinuousScreen<'a>(
             </header>
             <Problem why={screen.problem.as_deref()} />
             <section
-                class={(CardPanel {}, CardCompact {}, Stack)}
+                class={(CardPanel { size: CardSize::Sm }, stack(Space::_3))}
                 aria-labelledby="continuous-schedule"
             >
                 <h2 id="continuous-schedule">"Schedule"</h2>
@@ -120,7 +121,7 @@ pub fn ScheduleForm<'a>(
             method="post"
             action={url::SaveSchedule { view: screen.view.clone() }}
             data-patch
-            class={Stack}
+            class={stack(Space::_3)}
         >
             <FormNotice errors={errors} />
             <Switch label="Enable continuous pricing scheduler">
@@ -257,7 +258,7 @@ fn Snapshot<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let refresh = s.last_refresh.as_ref();
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, Stack)}
+            class={(CardPanel { size: CardSize::Sm }, stack(Space::_3))}
             aria-labelledby="continuous-snapshot"
         >
             <div class={Spread}>
@@ -352,7 +353,7 @@ fn Controls<'a>(screen: &'a Screen) -> impl Render {
     let shown = screen.view.shown();
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, Stack)}
+            class={(CardPanel { size: CardSize::Sm }, stack(Space::_3))}
             aria-labelledby="continuous-controls"
         >
             <h2 id="continuous-controls">"Inventory controls"</h2>
@@ -402,10 +403,8 @@ fn Controls<'a>(screen: &'a Screen) -> impl Render {
 fn Items<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let page = &screen.page;
     let pages = page.pages();
-    let previous = (page.page > 1).then(|| screen.view.at_page(page.page - 1));
-    let next = (page.page < pages).then(|| screen.view.at_page(page.page + 1));
     html! {
-        <div class={Stack}>
+        <div class={stack(Space::_3)}>
             if page.items.is_empty() {
                 <Notice variant={AlertVariant::Info}>"No inventory matches these filters."</Notice>
             }
@@ -413,19 +412,15 @@ fn Items<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 <SkuRow item={item} view={&screen.view} t={t} />
             }
             if pages > 1 {
-                <nav class={Line} aria-label="Inventory pages">
-                    match &previous {
-                        Some(previous) => <a href={url::ContinuousPricing { view: previous.clone() }}>
-                            "Previous page"
-                        </a>,
-                        None => <span class={muted()}>"Previous page"</span>,
-                    }
-                    <span>"Page "{page.page}" of "{pages}" · "{PAGE_SIZE}" per page"</span>
-                    match &next {
-                        Some(next) => <a href={url::ContinuousPricing { view: next.clone() }}>"Next page"</a>,
-                        None => <span class={muted()}>"Next page"</span>,
-                    }
-                </nav>
+                <Pagination
+                    label="Inventory pages"
+                    previous_label="Previous page"
+                    next_label="Next page"
+                    pages={pages as usize}
+                    current={page.page as usize}
+                    link={|n| url::ContinuousPricing { view: screen.view.at_page(n as i64) }}
+                    on:link={None::<Handler>}
+                />
             }
         </div>
     }
@@ -441,7 +436,7 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
     let action = || url::SetSku { view: view.clone() };
     let now = SystemTime::now();
     html! {
-        <article class={(CardPanel {}, CardCompact {}, SkuCard)}>
+        <article class={(CardPanel { size: CardSize::Sm }, SkuCard)}>
             <div class={Spread}>
                 <div>
                     <strong>{&item.product_name}</strong>
@@ -513,7 +508,10 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
 #[component(css = ContinuousScreen)]
 fn Runs<'a>(runs: &'a [Run], t: Msg) -> impl Render {
     html! {
-        <section class={(CardPanel {}, CardCompact {}, Stack)} aria-labelledby="continuous-runs">
+        <section
+            class={(CardPanel { size: CardSize::Sm }, stack(Space::_3))}
+            aria-labelledby="continuous-runs"
+        >
             <div>
                 <h2 id="continuous-runs">"Recent automatic runs"</h2>
                 <p class={muted()}>

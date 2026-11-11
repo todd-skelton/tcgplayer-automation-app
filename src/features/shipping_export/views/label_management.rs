@@ -30,6 +30,7 @@ use crate::{
         button::{Button, ButtonSize, ButtonVariant},
         field::Field,
         input::Input,
+        status_dot::{StatusDot, StatusTone},
     },
 };
 
@@ -161,7 +162,10 @@ fn PurchasedLabel<'a>(title: &'a str, bought: &'a Bought, looked: &'a Looked<'a>
         <article class={Label}>
             <h3>{title}</h3>
             <div class={row(Space::_2)}>
-                <span class={Badge { tone, emphasis: BadgeEmphasis::Soft }}>{status}</span>
+                <span class={Badge { tone, emphasis: BadgeEmphasis::Soft }}>
+                    <StatusDot tone={StatusTone::Text} />
+                    {status}
+                </span>
                 <span class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}>
                     if bought.mode == EasyPostMode::Test { "TEST" } else { "PRODUCTION" }
                 </span>

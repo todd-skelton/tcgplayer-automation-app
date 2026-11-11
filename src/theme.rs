@@ -12,9 +12,18 @@ corten::style::tokens!("tokens/tokens.resolver.json");
 
 use corten::style::ClassList;
 
-/// A row of items, vertically centered, `space` apart, wrapping on a narrow screen.
+use crate::ui::stack::{Cluster, Gap as KitGap, Stack as KitStack};
+
+/// A column of parts, `space` apart: the kit's `Stack` (its children's default margins dropped)
+/// on the app's spacing scale.
+pub fn stack(space: Space) -> impl ClassList {
+    (KitStack { gap: KitGap::App }, gap(space))
+}
+
+/// A row of items, vertically centered, `space` apart, wrapping on a narrow screen: the kit's
+/// `Cluster` on the app's spacing scale.
 pub fn row(space: Space) -> impl ClassList {
-    (display_flex(), items_center(), flex_wrap(), gap(space))
+    (Cluster { gap: KitGap::App }, gap(space))
 }
 
 /// Secondary text.

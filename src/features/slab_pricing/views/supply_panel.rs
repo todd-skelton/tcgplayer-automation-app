@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use corten::{
+    Href,
     form::keep_query,
     i18n::{DateStyle, TimeStyle},
     prelude::*,
@@ -25,8 +26,9 @@ use crate::{
     ui::{
         alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         field::Field,
+        pagination::PreviousNext,
         select::Select,
         table::{Sort, SortHeader, Table, TableLayout},
         visually_hidden::VisuallyHidden,
@@ -53,7 +55,7 @@ pub fn SupplyPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     };
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, Stack, SupplyPanel)}
+            class={(CardPanel { size: CardSize::Sm }, stack(Space::_3), SupplyPanel)}
             aria-labelledby="slab-supply"
         >
             <div class={(Line, Head)}>
@@ -179,7 +181,7 @@ pub fn SupplyBody<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
     let seller = screen.supply_seller().to_owned();
     let c = CancelInput::FIELDS;
     html! {
-        <div id={SupplyBodyId} class={Stack} aria-live="polite">
+        <div id={SupplyBodyId} class={stack(Space::_3)} aria-live="polite">
             if changed {
                 <Notice variant={AlertVariant::Warning}>
                     "The identity changed. Reopen the certificate before using this supply context."
@@ -253,13 +255,17 @@ fn SupplyContext<'a>(
     let page = supply.page.as_ref();
     let first = page.map_or(0, |p| p.offset);
     let shown = context.rows.len() as u32;
-    let previous_rows = (first > 0).then(|| Choice {
-        rows: Some(first.saturating_sub(ROWS)).filter(|r| *r > 0),
-        ..choice.clone()
+    let previous_rows = (first > 0).then(|| {
+        url::SlabPricing::at(&Choice {
+            rows: Some(first.saturating_sub(ROWS)).filter(|r| *r > 0),
+            ..choice.clone()
+        })
     });
-    let next_rows = page.and_then(|p| p.next_offset).map(|next| Choice {
-        rows: Some(next),
-        ..choice.clone()
+    let next_rows = page.and_then(|p| p.next_offset).map(|next| {
+        url::SlabPricing::at(&Choice {
+            rows: Some(next),
+            ..choice.clone()
+        })
     });
     // The page's own rows in the order asked for, as `rows::sort` orders them with the script; a
     // sort link keeps the page.
@@ -366,52 +372,46 @@ fn SupplyContext<'a>(
                 </tbody>
             </table>
         </Table>
-        <nav class={Line} aria-label="Supply pages">
-            if let Some(back) = choice.previous_source() {
-                <a
-                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
-                    href={url::SlabPricing::at(&back)}
-                >
-                    "Previous source page"
-                </a>
+        <div class={Line}>
+            if choice.previous_source().is_some() || supply.source_has_more_pages {
+                <nav class={Line} aria-label="Source pages">
+                    if let Some(back) = choice.previous_source() {
+                        <a
+                            on:connect={ordered::link(target, super::sorted_tables(), signal)}
+                            href={url::SlabPricing::at(&back)}
+                        >
+                            "Previous source page"
+                        </a>
+                    }
+                    if let Some(revision) = supply.selected_revision().filter(|_| supply.source_has_more_pages) {
+                        <form
+                            on:submit={ordered::send(event, target, super::sorted_tables())}
+                            method="post"
+                            action={url::NextSourcePage { choice: choice.clone() }}
+                            data-patch
+                        >
+                            <input type="hidden" name={n.revision} value={revision}>
+                            <button
+                                class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
+                            >
+                                "Fetch next source page"
+                            </button>
+                        </form>
+                    }
+                </nav>
             }
-            if let Some(revision) = supply.selected_revision().filter(|_| supply.source_has_more_pages) {
-                <form
-                    on:submit={ordered::send(event, target, super::sorted_tables())}
-                    method="post"
-                    action={url::NextSourcePage { choice: choice.clone() }}
-                    data-patch
-                >
-                    <input type="hidden" name={n.revision} value={revision}>
-                    <button
-                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
-                    >
-                        "Fetch next source page"
-                    </button>
-                </form>
-            }
-            match &previous_rows {
-                Some(back) => <a
-                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
-                    href={url::SlabPricing::at(back)}
-                >
-                    "Previous supply rows"
-                </a>,
-                None => <span class={muted()}>"Previous supply rows"</span>,
-            }
+            <PreviousNext
+                label="Supply rows"
+                previous_label="Previous supply rows"
+                next_label="Next supply rows"
+                previous={previous_rows.as_ref().map(|r| r as &dyn Href)}
+                next={next_rows.as_ref().map(|r| r as &dyn Href)}
+                on:link={ordered::link(target, super::sorted_tables(), signal)}
+            />
             <span>
                 {first + shown.min(1)}"–"{first + shown}" of "{page.map_or(0, |p| p.total)}
             </span>
-            match &next_rows {
-                Some(next) => <a
-                    on:connect={ordered::link(target, super::sorted_tables(), signal)}
-                    href={url::SlabPricing::at(next)}
-                >
-                    "Next supply rows"
-                </a>,
-                None => <span class={muted()}>"Next supply rows"</span>,
-            }
-        </nav>
+        </div>
         <p class={muted()}>
             "Listing age is not time at the current price. Seller identity and available quantity remain unknown when the source omits them."
         </p>

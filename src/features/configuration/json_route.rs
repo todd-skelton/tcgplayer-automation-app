@@ -1,7 +1,11 @@
 //! `/api/pricing-config`: the pricing configuration as JSON, as the Node route answered it. `GET`
 //! reads it normalized (the defaults written first when there is none), and `PUT` replaces it
 //! with the body normalized (`normalizeServerPricingConfig`), answering with it read again.
-use corten::{Api, JsonResponse, Prefix, extract::Request, http::StatusCode, prelude::*};
+use corten::{
+    Api, JsonResponse, Prefix,
+    http::{Request, StatusCode},
+    prelude::*,
+};
 use serde_json::{Value, json};
 
 use super::config::{self, normalized};

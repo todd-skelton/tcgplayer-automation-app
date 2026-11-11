@@ -16,7 +16,7 @@ use crate::{
         alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         checkbox::Checkbox,
         dialog::{Dialog, DialogFooter, DialogSize},
         input::Input,
@@ -107,7 +107,7 @@ pub fn IntakeScreen<'a>(
                 ref={filters}
                 method="get"
                 action={url::InventoryManager { selection: Selection::default() }}
-                class={(CardPanel {}, CardCompact {}, Filters)}
+                class={(CardPanel { size: CardSize::Sm }, Filters)}
                 aria-label="Filters"
                 on:change={js::filtered(event, keys)}
             >
@@ -236,7 +236,7 @@ pub fn IntakeScreen<'a>(
                     </button>
                 </noscript>
             </form>
-            <section class={(CardPanel {}, CardCompact {})} aria-labelledby={TableHeadingId}>
+            <section class={CardPanel { size: CardSize::Sm }} aria-labelledby={TableHeadingId}>
                 <h2 id={TableHeadingId} class={VisuallyHidden {}}>"Add new inventory"</h2>
                 <Table layout={TableLayout::Scroll}>
                     // React drew no grid without rows; the table stays for the script's refs.
@@ -359,6 +359,7 @@ fn ProductPages<'a>(selection: &'a Selection, current: usize, pages: usize) -> i
             link={|page| url::InventoryManager {
                 selection: Selection { page: Some(page), ..selection.clone() },
             }}
+            on:link={None::<Handler>}
         />
     }
 }
@@ -397,59 +398,127 @@ fn picture(product_id: i32) -> String {
     format!("https://tcgplayer-cdn.tcgplayer.com/product/{product_id}_in_400x400.jpg")
 }
 
-/// A product's row. The table's click handler opens its picture and steps its count.
+/// The conditions a product is counted in: a sealed product's one, `None`, or every condition.
+fn conditions(product: &Product) -> Vec<Option<Condition>> {
+    if product.sealed {
+        vec![None]
+    } else {
+        Condition::ALL.into_iter().map(Some).collect()
+    }
+}
+
+/// The color a SKU in `condition` is drawn in, as the React grid's `getConditionColor` chose it:
+/// Near Mint and a sealed product's plain.
+fn tone(condition: Option<Condition>) -> BadgeTone {
+    match condition {
+        None | Some(Condition::NearMint) => BadgeTone::Neutral,
+        Some(Condition::LightlyPlayed) => BadgeTone::Info,
+        Some(Condition::ModeratelyPlayed) => BadgeTone::Success,
+        Some(Condition::HeavilyPlayed) => BadgeTone::Warning,
+        Some(Condition::Damaged) => BadgeTone::Destructive,
+    }
+}
+
+/// Shown only while its condition is chosen; a sealed product's, with no condition, always.
+#[component(css = IntakeScreen)]
+fn WhileChosen(condition: Option<Condition>) -> impl ClassList {
+    condition.map(|c| match c {
+        Condition::NearMint => NearMint,
+        Condition::LightlyPlayed => LightlyPlayed,
+        Condition::ModeratelyPlayed => ModeratelyPlayed,
+        Condition::HeavilyPlayed => HeavilyPlayed,
+        Condition::Damaged => Damaged,
+    })
+}
+
+/// A product's row. The table's click handler opens its picture and steps its count. The set
+/// and the name take the color of the condition chosen while the product has a SKU in it, as the
+/// React grid colored them, so each is drawn once per condition and CSS shows the chosen one.
 #[component(css = IntakeScreen)]
 fn ProductRow<'a>(product: &'a Product, screen: &'a Screen) -> impl Render {
     let set = match &product.release_year {
         Some(year) => format!("{} - {year}", product.set_name),
         None => product.set_name.clone(),
     };
+    let conditions = conditions(product);
     html! {
         <tr>
             <td>
                 <a href={picture(product.product_id)} tabindex="-1">"View"</a>
             </td>
             <td>
-                <span class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}>
-                    {set}
-                </span>
-            </td>
-            <td>
-                if product.sealed {
-                    <SkuLabel product={product} condition={None} />
-                } else {
-                    for c in Condition::ALL {
-                        <SkuLabel product={product} condition={Some(c)} />
-                    }
+                for &c in &conditions {
+                    <SetLabel product={product} condition={c} set={&set} />
                 }
             </td>
             <td>
-                if product.sealed {
-                    <QuantityCell product={product} condition={None} screen={screen} />
-                } else {
-                    for c in Condition::ALL {
-                        <QuantityCell product={product} condition={Some(c)} screen={screen} />
-                    }
+                for &c in &conditions {
+                    <SkuLabel product={product} condition={c} />
                 }
             </td>
-            <td class={Name}>{&product.display_name}</td>
+            <td>
+                for &c in &conditions {
+                    <QuantityCell product={product} condition={c} screen={screen} />
+                }
+            </td>
+            <td class={Name}>
+                for &c in &conditions {
+                    <ProductName product={product} condition={c} />
+                }
+            </td>
         </tr>
     }
 }
 
-/// `Lightly Played Reverse Holofoil`, or `Lightly Played unavailable`.
+/// `Base Set - 1999`, in the condition's color when the product has a SKU in it.
+#[component(css = IntakeScreen)]
+fn SetLabel<'a>(product: &'a Product, condition: Option<Condition>, set: &'a str) -> impl Render {
+    let has = condition
+        .map_or(product.unopened, |c| product.sku(c))
+        .is_some();
+    let tone = if has {
+        tone(condition)
+    } else {
+        BadgeTone::Neutral
+    };
+    html! {
+        <span
+            class={(Badge { tone, emphasis: BadgeEmphasis::Outline }, WhileChosen { condition })}
+        >
+            {set}
+        </span>
+    }
+}
+
+/// The product's name, in the condition's color when the product has a SKU in it.
+#[component(css = IntakeScreen)]
+fn ProductName<'a>(product: &'a Product, condition: Option<Condition>) -> impl Render {
+    let has = condition
+        .map_or(product.unopened, |c| product.sku(c))
+        .is_some();
+    let color = match tone(condition) {
+        BadgeTone::Info => Some(InfoText),
+        BadgeTone::Success => Some(SuccessText),
+        BadgeTone::Warning => Some(WarningText),
+        BadgeTone::Destructive => Some(DestructiveText),
+        BadgeTone::Neutral | BadgeTone::Primary => None,
+    }
+    .filter(|_| has);
+    html! {
+        <span class={(WhileChosen { condition }, color)}>{&product.display_name}</span>
+    }
+}
+
+/// `Lightly Played Reverse Holofoil`, or `Lightly Played unavailable` in warning.
 #[component(css = IntakeScreen)]
 fn SkuLabel<'a>(product: &'a Product, condition: Option<Condition>) -> impl Render {
-    // Shown only while its condition is chosen; a sealed product's always.
-    let shown = condition.map(|c| match c {
-        Condition::NearMint => NearMint,
-        Condition::LightlyPlayed => LightlyPlayed,
-        Condition::ModeratelyPlayed => ModeratelyPlayed,
-        Condition::HeavilyPlayed => HeavilyPlayed,
-        Condition::Damaged => Damaged,
-    });
     let name = condition.map_or("Unopened", Condition::name);
     let sku = condition.map_or(product.unopened, |c| product.sku(c));
+    let tone = if sku.is_some() {
+        tone(condition)
+    } else {
+        BadgeTone::Warning
+    };
     let variant = (product.variant != "Normal").then_some(product.variant.as_str());
     let holo = variant
         .is_some_and(|v| v.to_lowercase().contains("reverse") || v.to_lowercase().contains("holo"));
@@ -457,7 +526,7 @@ fn SkuLabel<'a>(product: &'a Product, condition: Option<Condition>) -> impl Rend
         .is_some_and(|v| v.to_lowercase().contains("1st") || v.to_lowercase().contains("first"));
     html! {
         <span
-            class={(Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }, shown, holo.then_some(Holo), first.then_some(First), sku.is_none().then_some(Missing))}
+            class={(Badge { tone, emphasis: BadgeEmphasis::Outline }, WhileChosen { condition }, holo.then_some(Holo), first.then_some(First), sku.is_none().then_some(Missing))}
         >
             if sku.is_some() {
                 {name}
@@ -477,17 +546,10 @@ fn QuantityCell<'a>(
     condition: Option<Condition>,
     screen: &'a Screen,
 ) -> impl Render {
-    let shown = condition.map(|c| match c {
-        Condition::NearMint => NearMint,
-        Condition::LightlyPlayed => LightlyPlayed,
-        Condition::ModeratelyPlayed => ModeratelyPlayed,
-        Condition::HeavilyPlayed => HeavilyPlayed,
-        Condition::Damaged => Damaged,
-    });
     let sku = condition.map_or(product.unopened, |c| product.sku(c));
     let label = label(product, condition);
     html! {
-        <span class={shown}>
+        <span class={WhileChosen { condition }}>
             if let Some(sku) = sku {
                 let counted = Counted { sku, label: &label };
                 <CountForm
@@ -533,12 +595,7 @@ impl Redrawn {
 pub fn redrawn(products: &[Product], only: &HashSet<i32>) -> Vec<Redrawn> {
     let mut fields = Vec::new();
     for product in products {
-        let conditions: Vec<Option<Condition>> = if product.sealed {
-            vec![None]
-        } else {
-            Condition::ALL.into_iter().map(Some).collect()
-        };
-        for condition in conditions {
+        for condition in conditions(product) {
             let sku = condition.map_or(product.unopened, |c| product.sku(c));
             if let Some(sku) = sku.filter(|s| only.contains(s)) {
                 fields.push(Redrawn {
@@ -628,8 +685,70 @@ pub fn IntakeError<'a>(message: Option<&'a str>) -> impl Patch {
 mod tests {
     use corten::view::Render;
 
-    use super::ProductPages;
-    use crate::features::inventory_intake::url::Selection;
+    use super::{ProductName, ProductPages, SetLabel, SkuLabel};
+    use crate::features::inventory_intake::{
+        catalog::{Condition, Product},
+        url::Selection,
+    };
+
+    /// A Base Set card in Near Mint and Lightly Played only.
+    fn card() -> Product {
+        Product {
+            product_id: 1,
+            display_name: "Pikachu - 58/102 - Common".into(),
+            set_name: "Base Set".into(),
+            release_year: Some("1999".into()),
+            card_number: Some("58/102".into()),
+            variant: "Normal".into(),
+            sealed: false,
+            set_id: 1,
+            product_line_id: 3,
+            unopened: None,
+            skus: [Some(10), Some(11), None, None, None],
+        }
+    }
+
+    /// The set, the SKU and the name take the condition's color, as the React grid's
+    /// `getConditionColor`: Near Mint plain, Lightly Played info; a condition without a SKU
+    /// leaves the set and name plain and marks the SKU a warning.
+    #[test]
+    fn a_row_is_colored_by_its_condition() {
+        let product = card();
+        let set = |c| {
+            SetLabel {
+                product: &product,
+                condition: Some(c),
+                set: "Base Set - 1999",
+            }
+            .to_html()
+        };
+        let sku = |c| {
+            SkuLabel {
+                product: &product,
+                condition: Some(c),
+            }
+            .to_html()
+        };
+        let name = |c| {
+            ProductName {
+                product: &product,
+                condition: Some(c),
+            }
+            .to_html()
+        };
+        let lp = Condition::LightlyPlayed;
+        let nm = Condition::NearMint;
+        let dmg = Condition::Damaged;
+        assert!(set(lp).contains("badge__info"), "{}", set(lp));
+        assert!(sku(lp).contains("badge__info"), "{}", sku(lp));
+        assert!(name(lp).contains("info-text"), "{}", name(lp));
+        assert!(set(nm).contains("badge__neutral"), "{}", set(nm));
+        assert!(sku(nm).contains("badge__neutral"), "{}", sku(nm));
+        assert!(!name(nm).contains("-text"), "{}", name(nm));
+        assert!(set(dmg).contains("badge__neutral"), "{}", set(dmg));
+        assert!(sku(dmg).contains("badge__warning"), "{}", sku(dmg));
+        assert!(!name(dmg).contains("-text"), "{}", name(dmg));
+    }
 
     /// Every page link keeps the filters and changes only the page; the current one is marked, and
     /// Previous and Next step one page.

@@ -26,10 +26,11 @@ use crate::{
         alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         field::Field,
         input::Input,
         select::Select,
+        status_dot::{StatusDot, StatusTone},
     },
 };
 
@@ -53,7 +54,7 @@ pub fn ResearchPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -> impl
     let r = RefreshInput::FIELDS;
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, Stack, ResearchPanel)}
+            class={(CardPanel { size: CardSize::Sm }, stack(Space::_3), ResearchPanel)}
             aria-labelledby="slab-research"
         >
             <h2 id="slab-research">"Research evidence"</h2>
@@ -160,7 +161,7 @@ pub fn EvidenceList<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
     });
     let choice = &screen.choice;
     html! {
-        <div id={EvidenceListId} class={Stack} aria-live="polite">
+        <div id={EvidenceListId} class={stack(Space::_3)} aria-live="polite">
             if statuses.is_empty() && matches!(&screen.research, Some(Ok(_))) {
                 <Notice variant={AlertVariant::Info}>
                     "No saved evidence for this grade and date window. Refresh to request it."
@@ -189,10 +190,12 @@ fn EvidenceRow<'a>(status: &'a EvidenceStatus, choice: &'a Choice, t: Msg) -> im
             </span>
             if status.stale {
                 <span class={Badge { tone: BadgeTone::Warning, emphasis: BadgeEmphasis::Soft }}>
+                    <StatusDot tone={StatusTone::Text} />
                     "Stale or not fetched"
                 </span>
             } else {
                 <span class={Badge { tone: BadgeTone::Success, emphasis: BadgeEmphasis::Soft }}>
+                    <StatusDot tone={StatusTone::Text} />
                     "Fresh"
                 </span>
             }

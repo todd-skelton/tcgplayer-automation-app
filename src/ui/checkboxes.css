@@ -1,0 +1,6 @@
+/* corten ui 0.1.0: checkboxes f74f90c4510b1a62 */
+/* The fieldset radio_group.css draws: the same two tokens space both, so a theme sets them once,
+   and a change to the rest of either rule is made to both. */
+.checkboxes { display: contents; }
+.checkboxes > fieldset { display: grid; gap: var(--choice-list-gap); margin: 0; padding: 0; border: 0; min-width: 0; }
+.checkboxes > fieldset > legend { margin-bottom: var(--choice-list-legend-gap); padding: 0; font-size: .875rem; font-weight: 500; }

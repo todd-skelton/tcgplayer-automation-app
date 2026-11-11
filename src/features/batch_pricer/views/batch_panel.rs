@@ -23,10 +23,10 @@ use crate::{
         alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         dialog::{Dialog, DialogFooter, DialogSize},
         icon::{self, Icon},
-        progress::{Progress as ProgressLook, ProgressSize},
+        progress::{Progress as ProgressLook, ProgressSize, ProgressTone},
         tip::Tip,
     },
 };
@@ -98,10 +98,10 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
         .filter(|j| j.status == JobStatus::Failed);
     html! {
         <div id={BatchPanelId} class={BatchPanel}>
-            <section class={(CardPanel {}, CardCompact {})}>
+            <section class={CardPanel { size: CardSize::Sm }}>
                 <SummaryCard batch={batch} t={t} />
             </section>
-            <section class={(CardPanel {}, CardCompact {}, display_grid(), gap_3())}>
+            <section class={(CardPanel { size: CardSize::Sm }, display_grid(), gap_3())}>
                 <h2>"Actions"</h2>
                 <div class={Actions}>
                     <form
@@ -382,7 +382,7 @@ fn JobProgress<'a>(job: &'a Job, batch: i32) -> impl Render {
     let since = p.phase_start_time.map(|at| elapsed(at, SystemTime::now()));
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, JobProgress)}
+            class={(CardPanel { size: CardSize::Sm }, JobProgress)}
             aria-label="Processing progress"
         >
             <header class={row(Space::_2)}>
@@ -412,7 +412,7 @@ fn JobProgress<'a>(job: &'a Job, batch: i32) -> impl Render {
             </div>
             if p.total > 0.0 {
                 <progress
-                    class={ProgressLook { size: ProgressSize::Md }}
+                    class={ProgressLook { size: ProgressSize::Md, tone: ProgressTone::Primary }}
                     max="100"
                     value={percent}
                     aria-label="Batch pricing progress"
@@ -421,7 +421,7 @@ fn JobProgress<'a>(job: &'a Job, batch: i32) -> impl Render {
                 </progress>
             } else {
                 <progress
-                    class={ProgressLook { size: ProgressSize::Md }}
+                    class={ProgressLook { size: ProgressSize::Md, tone: ProgressTone::Primary }}
                     aria-label="Batch pricing progress"
                 >
                     "Starting"
@@ -438,7 +438,7 @@ fn JobProgress<'a>(job: &'a Job, batch: i32) -> impl Render {
                         </strong>
                     </div>
                     <progress
-                        class={ProgressLook { size: ProgressSize::Sm }}
+                        class={ProgressLook { size: ProgressSize::Sm, tone: ProgressTone::Primary }}
                         max={sub.total.max(1.0)}
                         value={sub.current}
                         aria-label="Items in this step"

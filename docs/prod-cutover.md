@@ -309,6 +309,30 @@ After release 8 the Node source went too, since nothing in production used it: `
 stages in `Dockerfile`, the full Docker dev stack (`docker-compose.yml`) and the parity scripts
 that ran Node's code. The parity tests keep the answers they recorded (`tests/fixtures`).
 
+## Kit adoption (2026-11-07)
+
+Todd approved it on 2026-11-07. Merged as [#129 Use the Corten kit's Combobox, CheckboxGroup, StatusDot, Stack and Cluster; pin Corten f4f37f95](https://github.com/todd-skelton/tcgplayer-automation-app/pull/129)
+(22fb1179d, Corten f4f37f95) and released with `npm run prod:update` from a clean master at 23:10 UTC.
+No migration and no switch changed. A backup was taken just before:
+`.artifacts/db-backups/2026-11-07T23-00Z-prod-before-kit-adoption.dump` (`pg_restore -l` lists 595
+entries).
+
+Before it, production's database had stopped: the Docker disk it shares with local build caches
+was full, postgres could not finish its checkpoint and restarted in a loop from about 22:40 UTC,
+and the `web` container was unhealthy. Pricing job 7531 (batch 7524) failed with "No space left on
+device". Removing unused build cache volumes freed space; postgres finished its crash recovery and
+accepted connections at 22:51 UTC, and the next jobs (7563, 7564) completed and published.
+
+1. The blue slot took over and green was removed. `/proxy-health` names blue and `docker ps` lists
+   the proxy, postgres and `tcgplayer-automation-web-prod-blue`, all healthy.
+2. The `web` log has every worker's start line. Order history run 4206 reached `complete`.
+3. All 16 screens answer 200 through port 3001 with no script error in Chrome, `/favicon.ico` is
+   200 `image/x-icon`. The Configuration and Price Matrix pickers render the kit's Combobox; the
+   Configuration one opens and filters in Chrome (68 product lines, 48 after typing "a").
+4. Job 7565 (batch 7558, full, 36 SKUs), which the slot change interrupted, was reclaimed on its
+   second attempt by the blue slot's pricing worker and completed at 23:31 UTC: 36 rows, 0 errors,
+   1 warning. Its publication (6151) was posted on the first attempt, 27 of 27 items `published`.
+
 ## Decided (2026-11-05)
 
 1. Refresh dev from production before release 1, then run the gate and the twin scripts against

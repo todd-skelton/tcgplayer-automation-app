@@ -11,10 +11,10 @@ use crate::{
     ui::{
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         dialog::{Dialog, DialogHeader, DialogSize},
         input::Input,
-        segmented::{Legend, SegmentedRadio, SegmentedRadios},
+        segmented::{Legend, SegmentedRadio, SegmentedRadios, SegmentedWidth},
         table::{Sort, SortHeader, Table, TableLayout, TableNumeric},
         visually_hidden::VisuallyHidden,
     },
@@ -105,7 +105,7 @@ pub fn SheetItems<'a>(
     ];
     html! {
         <div>
-            <div class={(CardPanel {}, CardCompact {}, mb_4(), Toolbar)}>
+            <div class={(CardPanel { size: CardSize::Sm }, mb_4(), Toolbar)}>
                 {lead}
                 <form method="get" action={paging.here} class={(row(Space::_2), Filter)}>
                     {keep_query(paging.here, html! {
@@ -120,7 +120,7 @@ pub fn SheetItems<'a>(
                         <button class={NoScript}>"Filter"</button>
                     })}
                 </form>
-                <SegmentedRadios legend={Legend::Hidden("Show as")}>
+                <SegmentedRadios legend={Legend::Hidden("Show as")} width={SegmentedWidth::Fit}>
                     <SegmentedRadio label="Grid">
                         <input type="radio" name={l.layout} value="grid" class={GridChoice} checked>
                     </SegmentedRadio>

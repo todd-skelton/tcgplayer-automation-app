@@ -20,10 +20,6 @@
   align-items: end;
   gap: var(--space-3);
 }
-.stack {
-  display: grid;
-  gap: var(--space-3);
-}
 /* What the kit's Table leaves to the page: the row the screen is on stands out. */
 .cells {
   & tr[aria-current] > * {

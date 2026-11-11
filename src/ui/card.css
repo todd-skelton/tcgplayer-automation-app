@@ -1,6 +1,6 @@
-/* corten ui 0.1.0: card 289ce11b7545c5f1 */
+/* corten ui 0.1.0: card 630515bc1858e9b6 */
 /* The surface a card and a panel share. Its spaces are the kit's own properties (--kit-), set on
-   each card from the theme's --card-padding, so a card inside a compact one is roomy again, and an
+   each card from the theme's --card-padding, so a card inside a dense (Sm) one is roomy again, and an
    app's own properties neither reach a card nor are hidden inside one. */
 .card, .panel {
   --kit-card-inset: var(--card-padding); --kit-card-gap: 1.25rem;
@@ -12,8 +12,10 @@
 /* A card around one block of content, on one element: the surface and its padding, no layout, so
    the element's own class (a row of filters) or a Stack lays its children out. */
 .panel { padding: var(--kit-card-inset); }
-/* A denser card or panel, beside roomy ones on the same page. */
-:is(.card, .panel).compact { --kit-card-inset: 1rem; --kit-card-gap: .75rem; }
+/* A denser card or panel (CardSize::Sm), beside roomy ones on the same page: its padding and the gap
+   between its parts two thirds of the theme's --card-padding (1rem at 1.5rem), so its padding stays
+   smaller under any theme, and its content's gap half of it (.75rem). */
+:is(.card, .panel).sm { --kit-card-inset: calc(var(--card-padding) * 2 / 3); --kit-card-gap: calc(var(--card-padding) / 2); }
 /* The heading's row: the heading, then any action at its end, wrapping under it when there is no
    room; anything else (a description) on its own line, an image or icon at its own size. The
    heading's and description's rules weigh one class: an element default (h2 { .. }) does not

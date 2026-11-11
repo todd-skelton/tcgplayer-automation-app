@@ -684,7 +684,7 @@ impl<G: Gate> Alt<'_, G> {
 mod tests {
     use std::sync::{Arc, Mutex};
 
-    use corten::axum::{Router, extract::Json};
+    use axum::{Router, extract::Json};
 
     use super::*;
     use crate::features::slab_connections::Lease;
@@ -732,15 +732,12 @@ mod tests {
                     _ => "alt-sales.json",
                 };
                 kept.lock().unwrap().push(operation);
-                std::fs::read_to_string(format!(
-                    "app/features/ebay-slab-pricing/evidence/fixtures/{fixture}"
-                ))
-                .unwrap()
+                std::fs::read_to_string(format!("tests/fixtures/node/slab/{fixture}")).unwrap()
             }
         });
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let origin = format!("http://{}", listener.local_addr().unwrap());
-        tokio::spawn(async move { corten::axum::serve(listener, app).await });
+        tokio::spawn(async move { axum::serve(listener, app).await });
         (Transport::to(&origin, &origin), asked)
     }
 

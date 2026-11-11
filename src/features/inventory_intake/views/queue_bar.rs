@@ -11,7 +11,7 @@ use crate::{
     theme::*,
     ui::{
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         input::Input,
         popover::Popover,
     },
@@ -40,7 +40,10 @@ pub fn QueueBar<'a>(
     errors: &'a Errors,
 ) -> impl Render {
     html! {
-        <section class={(CardPanel {}, CardCompact {}, QueueBar)} aria-label="Unqueued inventory">
+        <section
+            class={(CardPanel { size: CardSize::Sm }, QueueBar)}
+            aria-label="Unqueued inventory"
+        >
             <QueueTotals totals={totals} counted={counted} />
             <QueueForm selection={selection} input={input} target={target} errors={errors} />
             <ClearConfirm selection={selection} totals={totals} />
