@@ -3,7 +3,7 @@ name = "tcgplayer-automation"
 version = "0.1.0"
 edition = "2024"
 publish = false
-description = "TCGPlayer Automation on Corten: every screen, beside the Node app in app/, whose JSON routes and workers the legacy relay reaches until cutover."
+description = "TCGPlayer Automation on Corten: every screen, JSON route and background worker."
 
 [dependencies]
 # Pinned to one revision of main; bump it on purpose when a fix the port needs lands.
@@ -17,9 +17,8 @@ sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio",
 chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
 # The zones slab evidence is searched and dated in (eBay's, the seller's).
 chrono-tz = { version = "0.10", features = ["case-insensitive"] }
-# The legacy relay to the Node app, and the slab data providers (rustls for their HTTPS). No
-# gzip/brotli features: an encoded answer goes on as it came.
-reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls"] }
+# TCGplayer, EasyPost and the slab data providers (rustls for their HTTPS).
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 csv = "1"
 dotenvy = "0.15"

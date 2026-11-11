@@ -1,6 +1,6 @@
 # Production Docker Deployment
 
-The production stack runs the app and PostgreSQL together. Every screen is now the Corten (Rust) app's, but the Node app keeps its JSON routes and background workers until cutover, so it runs as two containers: the Node app, which waits for the database, applies SQL migrations during startup and answers its JSON routes (`/api/...`), and the Corten app in front of it (`web`), which serves every screen and relays every other request to the Node app. An nginx proxy owns port `3001` and forwards requests to the Corten app.
+The production stack is three containers: an nginx proxy on port `3001`, PostgreSQL, and the app, a Corten (Rust) server that serves every screen and JSON route, runs every background job and applies the SQL migrations as it starts (`MIGRATE_ON_START`). `docs/prod-cutover.md` records how it moved there from the Node app.
 
 ## Quick Start
 
@@ -10,22 +10,20 @@ Deploy the production stack:
 npm run prod:deploy
 ```
 
-The guarded `npm run prod:*` commands are the supported production entrypoints when you want source enforcement. `prod:deploy`, `prod:update`, `prod:start`, and `prod:restart` fetch `origin/master` and refuse to run unless the local checkout is clean and `HEAD` exactly matches `origin/master`.
-
-Those `prod:*` commands now route through a cross-platform Node wrapper, so the same npm commands work from Windows and Unix-like shells without separate `.bat` and `.sh` entrypoints.
+The guarded `npm run prod:*` commands are the supported production entrypoints. `prod:deploy`, `prod:update`, `prod:start` and `prod:restart` fetch `origin/master` and refuse to run unless the local checkout is clean and `HEAD` exactly matches `origin/master`. They also refuse to run unless `.env.production.local` sets every job's switch (`scripts/cortenSwitches.mjs`), so no job is left with nothing to run it.
 
 ## Releases Without Downtime
 
-The app runs in one of two slots, blue or green. A slot is the Node app (`app-blue`) and the Corten app that relays to it (`web-blue`). `prod:deploy` (no-cache build) and `prod:update` (cached build) release the same way:
+The app runs in one of two slots, blue (`web-blue`) or green (`web-green`). `prod:deploy` (no-cache build) and `prod:update` (cached build) release the same way:
 
-1. Build both images while the running slot keeps serving. A failed build changes nothing.
-2. Start the idle slot's Node app, which applies pending migrations, and wait for its health check; then start its Corten app and wait for that one's.
-3. Point the proxy at the new slot's Corten app and reload nginx. Requests already in flight finish on the old slot.
-4. Replace the background workers with the new image, then stop the old slot after its in-flight requests finish.
+1. Build the image while the running slot keeps serving. A failed build changes nothing.
+2. Start the idle slot, which applies pending migrations, and wait for its health check (`/health/ready`).
+3. Point the proxy at the new slot and reload nginx. Requests already in flight finish on the old slot.
+4. Stop the old slot after its in-flight requests finish.
 
 If the new slot never becomes healthy, the release stops it and the old slot keeps serving.
 
-`deploy/nginx/active/active.conf` records which slot receives traffic. It is written by the release and ignored by git.
+`deploy/nginx/active/active.conf` records which slot receives traffic. It is written by the release and ignored by git; `http://localhost:3001/proxy-health` names the slot.
 
 ### Migrations
 
@@ -33,42 +31,26 @@ While the new slot migrates, the old slot is still serving against the migrated 
 
 - With no pending migrations, the old slot always keeps serving.
 - Each pending migration must start with an `-- online: <why the running release keeps working>` line, and must not drop or rename a table or column, change a column type, set `NOT NULL`, or add a `NOT NULL` column without a default.
-- Otherwise the release stops the old slot and the workers before migrating, and the app is down until the new slot is healthy, about half a minute.
+- Otherwise the release stops the old slot before migrating, and the app is down until the new slot is healthy, about half a minute.
 
 Mark a migration online only when the previous release keeps working against it: adding tables, adding nullable or defaulted columns, adding indexes, and widening constraints usually qualify. Split a breaking change into an online expand migration now and the contracting migration in a later release.
 
-This starts:
-
-- The proxy on `http://localhost:3001` and the app in the active slot
-- PostgreSQL in a sidecar container
-- Persistent database storage in the `postgres-data` Docker volume
-
-The production compose file uses the explicit project name `tcgplayer-automation-prod`, so it can run beside the full dev stack `tcgplayer-automation-dev` and the standalone dev database `tcgplayer-automation-db` without sharing Docker networks.
-
-Docker may show the built image name as `tcgplayer-automation-app-app`. That is only the generated image name. The Compose project name for the production stack is still `tcgplayer-automation-prod`.
-
-## Cutover
-
-Each background job has a Rust worker in the Corten app, off until its switch is set in `.env.production.local` (the `web` containers read it). Move one job at a time, after its Rust worker has matched the Node one: set the switch, release, and remove the Node service from `docker-compose.prod.yml` in the same release, so the job never runs twice.
-
-| Job | Node service today | Corten switch |
-|---|---|---|
-| Batch pricing | `pricing-worker` | `PRICING_WORKER=1` |
-| Publication to Seller Portal | `publication-worker` | `PUBLICATION_WORKER=1` |
-| Slab evidence refreshes and maintenance | `slab-evidence-worker` | `SLAB_EVIDENCE_WORKER=1` |
-| Continuous pricing schedule | `pricing-scheduler` | `CONTINUOUS_PRICING_SCHEDULER=1` |
-| Seller order history, FIFO replay, estimated costs | none: the Node app's container starts it (`scripts/docker-start.mjs`), and leaves it out when the switch is set | `SELLER_ORDER_HISTORY_WORKER=1` |
-| Migrations | the Node app, as it starts | `MIGRATE_ON_START=1` |
-
-The Node app runs no worker itself (`WORKERS_RUN_IN_PROCESS=false`). Migrations move last, and only with the Node app's own run removed from `scripts/docker-start.mjs` in the same release: the two runners take no common lock. Once every job has moved, the Node app answers only JSON routes no screen calls, and it and its relay can go.
+The app holds an advisory lock while it migrates, so two slots never apply a migration at once. A failed migration stops the server before it serves, which the release sees as an unhealthy slot.
 
 ## Configuration
 
-The Corten app answers only to `localhost` and IP addresses unless told the names it is served under; any other `Host` gets `421`. If the app is reached by a name (`http://automation.lan:3001`), list it in `.env.production.local`:
+`.env.production.local` (read by both slots) sets each job's switch:
 
 ```bash
-HOSTS=automation.lan
+SELLER_ORDER_HISTORY_WORKER=1
+PRICING_WORKER=1
+CONTINUOUS_PRICING_SCHEDULER=1
+SLAB_EVIDENCE_WORKER=1
+PUBLICATION_WORKER=1
+MIGRATE_ON_START=1
 ```
+
+The app answers only to `localhost` and IP addresses unless told the names it is served under; any other `Host` gets `421`. If the app is reached by a name (`http://automation.lan:3001`, or a proxy that terminates HTTPS such as Tailscale Serve), list it there too (`HOSTS=automation.lan,.ts.net`; a leading dot takes every subdomain).
 
 The production compose file sets:
 
@@ -77,18 +59,9 @@ DATABASE_URL=postgresql://postgres:postgres@postgres:5432/tcgplayer_automation
 SELLER_PORTAL_WRITES_ENABLED=true
 ```
 
-Seller Portal posts (prices, quantities, staged pricing imports) change the live store. Both apps refuse them, and their publication workers claim nothing, unless `SELLER_PORTAL_WRITES_ENABLED=true`. Only this compose file sets it; development never does, so a local pricing run that plans a publication leaves it planned.
-
-Optional startup flags:
-
-```bash
-DB_STARTUP_RETRIES=30
-DB_STARTUP_DELAY_MS=2000
-```
+Seller Portal posts (prices, quantities, staged pricing imports) change the live store. The app refuses them, and its publication worker claims nothing, unless `SELLER_PORTAL_WRITES_ENABLED=true`. Only this compose file sets it; development never does, so a local pricing run that plans a publication leaves it planned.
 
 ## Commands
-
-NPM wrappers:
 
 ```bash
 npm run prod:deploy
@@ -102,73 +75,32 @@ npm run prod:shell
 npm run prod:clean
 ```
 
-Source guard behavior:
-
-- `prod:deploy`, `prod:update`, `prod:start`, and `prod:restart` are blocked unless the repo has no uncommitted changes and the checked-out commit matches `origin/master`.
-- `prod:stop`, `prod:logs`, `prod:status`, `prod:shell`, and `prod:clean` remain unguarded for operational use.
+- `prod:deploy`, `prod:update`, `prod:start` and `prod:restart` are blocked unless the repo has no uncommitted changes and the checked-out commit matches `origin/master`.
+- `prod:stop`, `prod:logs`, `prod:status`, `prod:shell` and `prod:clean` remain unguarded for operational use.
 - The guard is commit-based, not branch-name-based, so a detached `HEAD` is allowed only when it points to the same commit as `origin/master`.
 
-Direct Docker Compose commands:
+Direct Docker Compose commands bypass the source guard:
 
 ```bash
-docker compose -f docker-compose.prod.yml --profile "*" down
 docker compose -f docker-compose.prod.yml --profile "*" logs -f
 docker compose -f docker-compose.prod.yml --profile "*" ps
 ```
 
-Direct `docker compose` commands bypass the source guard. Use the `npm run prod:*` wrappers if you need the `origin/master` enforcement. The app slots sit behind compose profiles, so pass `--profile "*"` to include them, and release through `npm run prod:deploy` rather than `up --build`, which would not switch the proxy.
+The app slots sit behind compose profiles, so pass `--profile "*"` to include them, and release through `npm run prod:deploy` rather than `up --build`, which would not switch the proxy.
 
 ## Refresh Dev Data From Production
-
-If you need current production data in development, refresh a dev database from the running production PostgreSQL container:
 
 ```bash
 npm run dev:db:refresh
 ```
 
-Optional target selectors:
-
-```bash
-npm run dev:db:refresh -- --target=dev
-npm run dev:db:refresh -- --target=db
-```
-
-This workflow creates a timestamped backup in `.artifacts/db-backups/` before overwriting the selected development database. The default behavior auto-detects which dev database is running. If neither dev target is running, it starts the standalone database and refreshes that one. If both are running, the command exits and requires `--target` because the full Docker dev stack and the standalone dev database use separate Docker volumes.
-
-## One-Time Cleanup After Upgrading
-
-If Docker Desktop still shows the legacy `tcgplayer-automation-app` project, remove the stale containers and network once and then recreate the stacks:
-
-```bash
-docker compose down --remove-orphans
-docker compose -f docker-compose.db.yml down --remove-orphans
-docker compose -f docker-compose.prod.yml down --remove-orphans
-docker rm -f tcgplayer-automation-prod tcgplayer-automation-dev tcgplayer-postgres-prod tcgplayer-postgres-dev tcgplayer-postgres-db
-docker network rm tcgplayer-automation-app_default
-docker compose -f docker-compose.prod.yml up -d --build
-```
-
-If you also want a development environment available again, recreate only the one you need:
-
-- Full dev stack: `npm run dev`
-- Standalone dev database: `docker compose -f docker-compose.db.yml up -d`
-
-These commands remove containers and the old shared network only. The named PostgreSQL volumes are preserved. If the old network is already gone, Docker may print an error that you can ignore.
-
-Run migrations manually:
-
-```bash
-docker compose -f docker-compose.prod.yml run --rm --no-deps app-blue npm run db:migrate
-```
+This backs up the standalone development database (`docker-compose.db.yml`) to `.artifacts/db-backups/`, recreates it with the local migrations, and restores production's data into it.
 
 ## Persistence
 
-- PostgreSQL data is stored in the named Docker volume `postgres-data`.
-- Application logs use the persistent `app-logs` Docker volume and remain available through `npm run prod:logs`.
+PostgreSQL data is stored in the named Docker volume `postgres-data`. The app logs to its container (`npm run prod:logs`).
 
 ## Troubleshooting
-
-Check status and logs:
 
 ```bash
 npm run prod:status

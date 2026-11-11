@@ -1,7 +1,7 @@
 //! Completes the forecast evidence of published items for the configured seller, so the selling
 //! history's details show what each item was priced with. The Node app did it on every load of
 //! the screen; here a page only reads, and this task writes, every few minutes, until no item is
-//! left without it. Running beside the Node app's loads is safe: an item gets its evidence once.
+//! left without it. An item gets its evidence once.
 use std::time::Duration;
 
 use corten::Signal;

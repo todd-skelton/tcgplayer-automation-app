@@ -1,5 +1,5 @@
-//! Settings from the environment, loaded from the same `.env` files the Node app reads
-//! (`scripts/load-local-env.mjs`), so both apps see one configuration. A value already in the
+//! Settings from the environment, loaded from the same `.env` files the npm scripts read
+//! (`scripts/load-local-env.mjs`), so both see one configuration. A value already in the
 //! environment wins over the files.
 
 /// The mode, from `NODE_ENV` as the Node app reads it: `development` unless it says `production`.

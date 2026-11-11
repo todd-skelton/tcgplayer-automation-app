@@ -732,10 +732,7 @@ mod tests {
                     _ => "alt-sales.json",
                 };
                 kept.lock().unwrap().push(operation);
-                std::fs::read_to_string(format!(
-                    "app/features/ebay-slab-pricing/evidence/fixtures/{fixture}"
-                ))
-                .unwrap()
+                std::fs::read_to_string(format!("tests/fixtures/node/slab/{fixture}")).unwrap()
             }
         });
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();

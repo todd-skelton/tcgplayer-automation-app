@@ -10,8 +10,8 @@ use crate::app;
 ///
 /// It reads nothing itself. For a failure the request is at fault for (a 404, a wrong method, a
 /// refusal) Corten starts and waits for the layout's reads, so the app bar's auth cookie warning
-/// is drawn as on every page; for a failure of the server's (a timeout, a panic, a relayed Node
-/// answer) it waits for none, so a database that is down does not slow the page that says so.
+/// is drawn as on every page; for a failure of the server's (a timeout, a panic) it waits for none,
+/// so a database that is down does not slow the page that says so.
 pub async fn error_page(failure: Failure, req: Req) -> HtmlResult {
     let (title, text) = match failure {
         Failure::NotFound => ("Not found", "The requested page could not be found."),

@@ -1,12 +1,10 @@
-//! The schema's migrations (`db/migrations`), applied as the Node app's `scripts/db-migrate.mjs`
+//! The schema's migrations (`db/migrations`), applied as `npm run db:migrate`
 //! applies them: in file-name order, each not yet named in `schema_migrations` run in a transaction of
 //! its own with its name recorded, the first to fail stopping the rest. The files are built into the
 //! server (`build.rs`).
 //!
-//! The server applies them before it serves when `MIGRATE_ON_START` is set, and the Node app's start
-//! script then leaves them to it (`scripts/docker-start-support.mjs`). Until then the Node app applies
-//! them as it starts (port decision 3). Both runners hold the same advisory lock, so no two apply a
-//! migration at once.
+//! The server applies them before it serves when `MIGRATE_ON_START` is set, as production does. Both
+//! runners hold the same advisory lock, so no two apply a migration at once.
 use sqlx::{Connection, PgConnection};
 
 /// Every migration, by file name, in the order applied.
