@@ -509,7 +509,7 @@ pub trait PricePoints {
 
 impl PricePoints for TcgPlayerMarket {
     async fn price_points(&self, skus: &[i64]) -> Result<Vec<Answer>, String> {
-        self.answers(skus, Call::default()).await
+        self.answers(skus, Call::READ).await
     }
 }
 

@@ -89,6 +89,7 @@ impl MarketAtIntake for TcgPlayerMarket {
     async fn observe(&self, sku: i32) -> Result<Option<Observation>, String> {
         let call = Call {
             retry: false,
+            read: true,
             timeout: MARKET_DEADLINE,
         };
         let answers = tokio::time::timeout(MARKET_DEADLINE, self.answers(&[i64::from(sku)], call))

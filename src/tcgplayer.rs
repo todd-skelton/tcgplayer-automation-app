@@ -39,14 +39,28 @@ pub fn host(domain: Domain) -> &'static str {
 pub struct Call {
     /// Retry a rate limit or a failing gateway, up to three more times.
     pub retry: bool,
+    /// Whether the call only reads, so it may be sent again when TCGplayer could not be reached:
+    /// a retried read is retried then too. A write that may have reached TCGplayer is never sent
+    /// twice.
+    pub read: bool,
     /// The longest one attempt may take.
     pub timeout: Duration,
+}
+
+impl Call {
+    /// A read, retried on a rate limit, a failing gateway or when TCGplayer could not be reached.
+    pub const READ: Call = Call {
+        retry: true,
+        read: true,
+        timeout: Duration::from_secs(60),
+    };
 }
 
 impl Default for Call {
     fn default() -> Self {
         Call {
             retry: true,
+            read: false,
             timeout: Duration::from_secs(60),
         }
     }
@@ -74,8 +88,14 @@ impl std::fmt::Display for Failure {
 }
 
 impl Failure {
-    fn retryable(&self) -> bool {
-        matches!(self, Failure::Status(403 | 429 | 502 | 503 | 504))
+    /// Whether the call may be tried again: a rate limit or a failing gateway, or for a read, no
+    /// answer at all.
+    fn retryable(&self, read: bool) -> bool {
+        match self {
+            Failure::Status(status) => matches!(status, 403 | 429 | 502 | 503 | 504),
+            Failure::Unreachable(_) => read,
+            Failure::Unreadable(_) => false,
+        }
     }
 
     fn rate_limit(&self) -> bool {
@@ -467,7 +487,7 @@ impl TcgPlayer {
                     Err(failure) => failure,
                 }
             };
-            if !failure.retryable() || attempt >= retries {
+            if !failure.retryable(call.read) || attempt >= retries {
                 return Err(failure);
             }
             if failure.rate_limit() {
@@ -649,18 +669,30 @@ mod tests {
     }
     #[test]
     fn only_rate_limits_and_failing_gateways_retry() {
-        for status in [403, 429, 502, 503, 504] {
-            assert!(Failure::Status(status).retryable());
-        }
-        for failure in [
-            Failure::Status(400),
-            Failure::Status(401),
-            Failure::Status(500),
-            Failure::Unreachable("timed out".into()),
-        ] {
-            assert!(!failure.retryable());
+        for read in [true, false] {
+            for status in [403, 429, 502, 503, 504] {
+                assert!(Failure::Status(status).retryable(read));
+            }
+            for failure in [
+                Failure::Status(400),
+                Failure::Status(401),
+                Failure::Status(500),
+                Failure::Unreadable("expected value".into()),
+            ] {
+                assert!(!failure.retryable(read));
+            }
         }
         assert!(Failure::Status(429).rate_limit() && !Failure::Status(502).rate_limit());
+    }
+
+    /// A read TCGplayer never answered is sent again; a write that may have reached it is not.
+    #[test]
+    fn only_a_read_retries_when_tcgplayer_could_not_be_reached() {
+        let unreachable = Failure::Unreachable("error sending request".into());
+        assert!(unreachable.retryable(Call::READ.read));
+        assert!(!unreachable.retryable(Call::default().read));
+        assert!(Call::READ.retry && Call::default().retry);
+        assert_eq!(Call::READ.timeout, Call::default().timeout);
     }
 
     #[tokio::test(start_paused = true)]
