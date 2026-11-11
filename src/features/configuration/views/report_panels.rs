@@ -286,6 +286,7 @@ fn forecast_name(forecast: Forecast) -> &'static str {
         Forecast::ConditionRate => "Condition sale rate",
         Forecast::ShrunkRate => "Shrunk curve rate",
         Forecast::ShrunkConditionRate => "Shrunk condition rate",
+        Forecast::QualityShare => "Quality-aware win share",
     }
 }
 
@@ -515,6 +516,17 @@ mod tests {
             ..score
         };
         assert_eq!(brier(Forecast::BuyerChoice, &unscored), "N/A");
+    }
+
+    #[test]
+    fn every_graded_forecast_reads_by_its_own_name() {
+        let names: std::collections::HashSet<&str> =
+            Forecast::ALL.iter().map(|f| forecast_name(*f)).collect();
+        assert_eq!(names.len(), Forecast::ALL.len());
+        assert_eq!(
+            forecast_name(Forecast::QualityShare),
+            "Quality-aware win share"
+        );
     }
 
     #[test]

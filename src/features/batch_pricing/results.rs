@@ -115,6 +115,7 @@ pub fn details(
         "buyerChoiceForecast",
         "conditionRateForecast",
         "shrunkRateForecast",
+        "qualityShareForecast",
         "conditionNormalization",
         "priceEvidence",
     ] {

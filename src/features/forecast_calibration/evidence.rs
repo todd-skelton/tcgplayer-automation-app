@@ -6,7 +6,8 @@ use super::{Calibration, DAY_MS, Evidence, ListedPrice, SkuSale, learn, ms};
 use crate::{
     database::Database,
     features::pricing::{
-        buyer_choice_sell_time, condition_sale_rate, policy::MODEL_VERSION, shrunk_sale_rate,
+        buyer_choice_sell_time, condition_sale_rate, policy::MODEL_VERSION, quality_share,
+        shrunk_sale_rate,
     },
     features::{continuous_pricing::store, inventory_economics::ledger::proceeds::iso},
 };
@@ -102,7 +103,11 @@ async fn listed_prices(
             CASE WHEN item.forecast_evidence->'shrunkRateForecast'->>'method' = $7
               AND jsonb_typeof(item.forecast_evidence->'shrunkRateForecast'->'conditionRate'->'medianSellDays')='number'
               THEN (item.forecast_evidence->'shrunkRateForecast'->'conditionRate'->>'medianSellDays')::float8
-            END AS shrunk_condition_rate_median_sell_days
+            END AS shrunk_condition_rate_median_sell_days,
+            CASE WHEN item.forecast_evidence->'qualityShareForecast'->>'calibration' = $8
+              AND jsonb_typeof(item.forecast_evidence->'qualityShareForecast'->'medianSellDays')='number'
+              THEN (item.forecast_evidence->'qualityShareForecast'->>'medianSellDays')::float8
+            END AS quality_share_median_sell_days
           FROM inventory_publication_items item
           JOIN inventory_publications publication ON publication.id = item.publication_id
           LEFT JOIN inventory_batch_items batch_item
@@ -115,7 +120,7 @@ async fn listed_prices(
           date_trunc('milliseconds', counted_at) AS counted_at,
           median_sell_days AS forecast_median_sell_days, buyer_choice_median_sell_days,
           condition_rate_median_sell_days, shrunk_rate_median_sell_days,
-          shrunk_condition_rate_median_sell_days
+          shrunk_condition_rate_median_sell_days, quality_share_median_sell_days
         FROM published
         WHERE quantity > 0 AND counted_at IS NOT NULL AND basis = 'modeled'
           AND pricing_model_version = $4 AND median_sell_days > 0
@@ -128,6 +133,7 @@ async fn listed_prices(
     .bind(buyer_choice_sell_time::CALIBRATION.name)
     .bind(condition_sale_rate::METHOD)
     .bind(shrunk_sale_rate::METHOD)
+    .bind(quality_share::CALIBRATION.name)
     .fetch_all(&db.0)
     .await
 }
