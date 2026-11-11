@@ -111,12 +111,7 @@ impl SellerInventory for TcgPlayerSearch {
             });
             let answer: SearchAnswer = self
                 .0
-                .post(
-                    Domain::MpSearchApi,
-                    "/v1/search/request",
-                    &body,
-                    Call::default(),
-                )
+                .post(Domain::MpSearchApi, "/v1/search/request", &body, Call::READ)
                 .await
                 .map_err(|e| e.to_string())?;
             let page = answer

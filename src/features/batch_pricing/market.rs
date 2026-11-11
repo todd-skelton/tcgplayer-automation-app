@@ -67,7 +67,7 @@ impl TcgPlayerMarket {
 
 impl MarketData for TcgPlayerMarket {
     async fn price_points(&self, skus: &[i64]) -> Result<HashMap<i64, PricePoint>, String> {
-        Ok(by_sku(self.answers(skus, Call::default()).await?))
+        Ok(by_sku(self.answers(skus, Call::READ).await?))
     }
 }
 

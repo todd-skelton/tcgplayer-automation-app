@@ -369,40 +369,79 @@ pub async fn refresh_counts(
     Ok(())
 }
 
+/// How a continuous SKU takes a pricing, as the assignments of an update of
+/// `continuous_pricing_inventory`. `failed` and `retried` are SQL conditions on the row: a failed
+/// pricing is counted, and when retried the SKU is priced again within 15 minutes, unless it is
+/// the third failure in a row, which pauses the SKU for review; a successful one clears the count.
+/// `pause_reason` is the SKU's pause reason when no review is due.
+fn pricing_outcome(failed: &str, retried: &str, pause_reason: &str) -> String {
+    format!(
+        "consecutive_pricing_failures = CASE
+           WHEN {failed} THEN consecutive_pricing_failures + 1
+           ELSE 0
+         END,
+         pause_reason = CASE
+           WHEN {failed} AND consecutive_pricing_failures + 1 >= 3
+           THEN 'Repeated pricing failures require review.'
+           ELSE {pause_reason}
+         END,
+         next_price_at = CASE
+           WHEN {failed} AND {retried} AND consecutive_pricing_failures + 1 < 3
+           THEN LEAST(next_price_at, NOW() + INTERVAL '15 minutes')
+           ELSE next_price_at
+         END"
+    )
+}
+
 /// `recordBatchCompleted`: each continuous SKU the batch priced takes its result.
 pub async fn record_batch_completed(
     conn: &mut PgConnection,
     batch_number: i32,
 ) -> sqlx::Result<u64> {
-    let done = sqlx::query(
+    let outcome = pricing_outcome(
+        "result.result_status <> 'successful'",
+        "cardinality(result.error_messages) > 0",
+        "CASE
+           WHEN result.result_status = 'successful'
+             AND result.pricing_details_json->'decision'->>'basis' = 'current-price'
+             AND pause_reason IS NULL
+           THEN $2
+           ELSE pause_reason
+         END",
+    );
+    let done = sqlx::query(&format!(
         "UPDATE continuous_pricing_inventory inventory
          SET last_priced_at = result.priced_at,
-             consecutive_pricing_failures = CASE
-               WHEN result.result_status = 'successful' THEN 0
-               ELSE consecutive_pricing_failures + 1
-             END,
-             pause_reason = CASE
-               WHEN result.result_status <> 'successful' AND consecutive_pricing_failures + 1 >= 3
-               THEN 'Repeated pricing failures require review.'
-               WHEN result.result_status = 'successful'
-                 AND result.pricing_details_json->'decision'->>'basis' = 'current-price'
-                 AND pause_reason IS NULL
-               THEN $2
-               ELSE pause_reason
-             END,
-             next_price_at = CASE
-               WHEN result.result_status <> 'successful'
-                 AND cardinality(result.error_messages) > 0
-                 AND consecutive_pricing_failures + 1 < 3
-               THEN LEAST(next_price_at, NOW() + INTERVAL '15 minutes')
-               ELSE next_price_at
-             END,
+             {outcome},
              updated_at = NOW()
          FROM inventory_batch_results result
-         WHERE inventory.last_batch_number = $1 AND result.batch_number = $1 AND result.sku = inventory.sku",
-    )
+         WHERE inventory.last_batch_number = $1 AND result.batch_number = $1 AND result.sku = inventory.sku"
+    ))
     .bind(batch_number)
     .bind(NO_DATA_PAUSE_REASON)
+    .execute(&mut *conn)
+    .await?;
+    Ok(done.rows_affected())
+}
+
+/// The batch's pricing failed as a whole for each continuous SKU it last took, or only for
+/// `skus` of them: its job failed, or the publication of its prices was rolled back. Each counts
+/// it as a failed pricing, as [`record_batch_completed`] counts a SKU's own, and is priced again
+/// within 15 minutes unless that pauses it for review. How many.
+pub async fn record_batch_failed(
+    conn: &mut PgConnection,
+    batch_number: i32,
+    skus: Option<&[i32]>,
+) -> sqlx::Result<u64> {
+    let outcome = pricing_outcome("TRUE", "TRUE", "pause_reason");
+    let done = sqlx::query(&format!(
+        "UPDATE continuous_pricing_inventory
+         SET {outcome},
+             updated_at = NOW()
+         WHERE last_batch_number = $1 AND ($2::int[] IS NULL OR sku = ANY($2::int[]))"
+    ))
+    .bind(batch_number)
+    .bind(skus)
     .execute(&mut *conn)
     .await?;
     Ok(done.rows_affected())
@@ -622,6 +661,106 @@ mod tests {
         println!(
             "batch {batch}: {} rows saved again, {curves} curves recorded",
             rows.len()
+        );
+        tx.rollback().await.unwrap();
+    }
+
+    /// Each continuous SKU's failures, pause reason and whether it is due within 15 minutes.
+    async fn schedule(
+        conn: &mut PgConnection,
+        seller: &str,
+    ) -> Vec<(i32, i32, Option<String>, bool)> {
+        sqlx::query_as(
+            "SELECT sku, consecutive_pricing_failures, pause_reason,
+                    next_price_at <= NOW() + INTERVAL '15 minutes'
+             FROM continuous_pricing_inventory WHERE seller_key = $1 ORDER BY sku",
+        )
+        .bind(seller)
+        .fetch_all(conn)
+        .await
+        .unwrap()
+    }
+
+    /// The failed pricing rule on the dev database, inside a transaction that is rolled back. A
+    /// batch's results count a SKU's failure and, when it has errors, bring it back within 15
+    /// minutes; a third failure in a row pauses it for review, and a success clears the count. A
+    /// batch that failed as a whole counts one for each SKU it last took, or only those named, by
+    /// the same rule; a SKU of another batch is left alone.
+    #[tokio::test]
+    #[ignore = "uses the dev database, in a transaction that is rolled back"]
+    async fn a_failed_pricing_is_counted_and_tried_again_soon() {
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let mut tx = db.0.begin().await.unwrap();
+        let seller = "rust-test-failed-pricing";
+        let batch: i32 = sqlx::query_scalar(
+            "INSERT INTO inventory_batches (status, source_type, source_label)
+             VALUES ('pricing', 'continuous', $1) RETURNING batch_number",
+        )
+        .bind(seller)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO continuous_pricing_inventory (seller_key, sku, product_id, product_line_id,
+               set_id, product_line, set_name, product_name, condition, quantity, last_observed_at,
+               next_price_at, last_batch_number, consecutive_pricing_failures)
+             SELECT $1, sku, 1, 1, 1, 'Line', 'Set', 'Product', 'Near Mint', 1, NOW(),
+               NOW() + INTERVAL '1 day', batch, failures
+             FROM UNNEST($2::int[], $3::int[], $4::int[]) AS item(sku, batch, failures)",
+        )
+        .bind(seller)
+        .bind(vec![1, 2, 3, 4, 5])
+        .bind(vec![Some(batch), Some(batch), Some(batch), Some(batch), None])
+        .bind(vec![0, 2, 1, 0, 0])
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO inventory_batch_results (batch_number, sku, result_status, row_json,
+               error_messages, priced_at)
+             SELECT $1, sku, status, '{}'::jsonb, CASE WHEN errors THEN ARRAY['boom'] ELSE ARRAY[]::text[] END, NOW()
+             FROM UNNEST($2::int[], $3::text[], $4::bool[]) AS result(sku, status, errors)",
+        )
+        .bind(batch)
+        .bind(vec![1, 2, 3, 4])
+        .bind(vec!["manual_review", "manual_review", "successful", "manual_review"])
+        .bind(vec![true, true, false, false])
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+        let review = Some("Repeated pricing failures require review.".to_owned());
+
+        assert_eq!(record_batch_completed(&mut tx, batch).await.unwrap(), 4);
+        assert_eq!(
+            schedule(&mut tx, seller).await,
+            vec![
+                (1, 1, None, true),
+                (2, 3, review.clone(), false),
+                (3, 0, None, false),
+                (4, 1, None, false),
+                (5, 0, None, false),
+            ]
+        );
+
+        assert_eq!(
+            record_batch_failed(&mut tx, batch, Some(&[4]))
+                .await
+                .unwrap(),
+            1
+        );
+        assert_eq!(schedule(&mut tx, seller).await[3], (4, 2, None, true));
+
+        assert_eq!(record_batch_failed(&mut tx, batch, None).await.unwrap(), 4);
+        assert_eq!(
+            schedule(&mut tx, seller).await,
+            vec![
+                (1, 2, None, true),
+                (2, 4, review.clone(), false),
+                (3, 1, None, true),
+                (4, 3, review, true),
+                (5, 0, None, false),
+            ]
         );
         tx.rollback().await.unwrap();
     }

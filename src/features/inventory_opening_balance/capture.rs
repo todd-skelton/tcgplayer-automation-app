@@ -41,6 +41,7 @@ impl SellerPortal<'_> {
     async fn text(&self, path: &str) -> Result<String, String> {
         let call = Call {
             retry: false,
+            read: true,
             timeout: Duration::from_secs(30),
         };
         match self.0.get_bytes(Domain::SellerPortal, path, call).await {

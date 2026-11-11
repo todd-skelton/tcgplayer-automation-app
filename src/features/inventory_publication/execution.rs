@@ -3,10 +3,11 @@
 //! in chunks, the upload finalized and moved live, and each item's outcome saved from what
 //! Seller Portal answered.
 //!
-//! Before anything moves live a failure rolls the upload back, and the items fail; if the
-//! rollback fails too, or once the move to live was asked for, what Seller Portal did is unknown
-//! and the publication is left ambiguous for a person to reconcile. Rows Seller Portal refused
-//! because their product details did not match fail on their own, and the rest go on.
+//! Before anything moves live a failure rolls the upload back, and the items fail, a continuous
+//! publication's SKUs priced again soon as after a failed pricing; if the rollback fails too, or
+//! once the move to live was asked for, what Seller Portal did is unknown and the publication is
+//! left ambiguous for a person to reconcile. Rows Seller Portal refused because their product
+//! details did not match fail on their own, and the rest go on.
 use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Utc};
@@ -16,10 +17,13 @@ use sqlx::{Connection, PgConnection};
 
 use super::{
     projection::{self, PRODUCT_DETAILS_MISMATCH},
-    seller_portal::{self as portal, AUTHENTICATION_REQUIRED, CHUNK_SIZE, Failure, Poster, Update},
+    seller_portal::{
+        self as portal, AUTHENTICATION_REQUIRED, CHUNK_SIZE, Failure, Poster, Update, message_text,
+        quoted_messages,
+    },
     store::{self, Item, ItemOutcome, Moved, Outcome, Publication, Status},
 };
-use crate::features::publication_configuration::config;
+use crate::features::{batch_pricing::save, publication_configuration::config};
 
 /// Whether the failure means Seller Portal wants the seller signed in again
 /// (`isSellerPortalAuthenticationFailure`).
@@ -42,13 +46,6 @@ pub fn authentication_failure(failure: &Failure) -> bool {
     ]
     .iter()
     .any(|indicator| message.contains(indicator))
-}
-
-fn message_text(message: &Value) -> String {
-    match message {
-        Value::String(text) => text.clone(),
-        other => other.to_string(),
-    }
 }
 
 /// The SKUs Seller Portal's messages say did not match their product details, when they are
@@ -82,22 +79,6 @@ pub fn exact_product_detail_mismatches(
         }
     }
     (rejected.len() as f64 == expected_rejected).then_some(rejected)
-}
-
-/// Seller Portal's messages as the Node app quotes them (`formatSellerPortalMessages`).
-fn quoted_messages(messages: Option<&[Value]>) -> String {
-    let joined: Vec<String> = messages
-        .unwrap_or_default()
-        .iter()
-        .map(message_text)
-        .filter(|message| !message.is_empty())
-        .collect();
-    let joined = joined.join("; ");
-    if joined.is_empty() {
-        return String::new();
-    }
-    let shown: String = joined.chars().take(1_000).collect();
-    format!("Seller Portal messages: {shown}")
 }
 
 /// A value as JavaScript writes it into text.
@@ -252,6 +233,25 @@ async fn record_projection(
     }
 }
 
+/// A rolled-back continuous publication's SKUs, priced again soon as after a failed pricing of
+/// their batch, logging rather than answering a failure to save it: the rollback stands whatever
+/// its bookkeeping does.
+async fn record_rolled_back(conn: &mut PgConnection, publication: &Publication) {
+    let Some(batch) = publication
+        .batch_number
+        .filter(|_| publication.source_type == "continuous")
+    else {
+        return;
+    };
+    let skus: Vec<i32> = publication.items.iter().map(|item| item.sku).collect();
+    if let Err(why) = save::record_batch_failed(conn, batch, Some(&skus)).await {
+        eprintln!(
+            "Could not schedule rolled-back publication {}'s SKUs again: {why}",
+            publication.id
+        );
+    }
+}
+
 fn by(worker: &str) -> Moved<'_> {
     Moved {
         worker: Some(worker),
@@ -316,22 +316,24 @@ async fn fail_before_move(
             ending(worker, code, message),
         )
         .await
-        .map_err(failed_in)?;
-        Ok::<_, Failure>(())
+        .map_err(failed_in)
     }
     .await;
-    if let Err(rollback) = rolled_back {
-        let ambiguous = format!("{message} Rollback also failed: {}", rollback.message);
-        let code = "staged_rollback_ambiguous";
-        store::mark_planned(conn, id, Outcome::Ambiguous, code, &ambiguous).await?;
-        store::transition(
-            conn,
-            id,
-            current,
-            Status::Ambiguous,
-            ending(worker, code, &ambiguous),
-        )
-        .await?;
+    match rolled_back {
+        Ok(publication) => record_rolled_back(conn, &publication).await,
+        Err(rollback) => {
+            let ambiguous = format!("{message} Rollback also failed: {}", rollback.message);
+            let code = "staged_rollback_ambiguous";
+            store::mark_planned(conn, id, Outcome::Ambiguous, code, &ambiguous).await?;
+            store::transition(
+                conn,
+                id,
+                current,
+                Status::Ambiguous,
+                ending(worker, code, &ambiguous),
+            )
+            .await?;
+        }
     }
     Ok(())
 }
@@ -545,7 +547,139 @@ pub async fn run_claimed(
 
 #[cfg(test)]
 mod tests {
+    use std::future::Future;
+
     use super::*;
+    use crate::{
+        database::Database,
+        features::inventory_publication::seller_portal::{Answer, ROLLBACK, Unsuccessful},
+    };
+
+    /// Seller Portal answering only a rollback, with success.
+    struct RollsBack;
+
+    impl Poster for RollsBack {
+        fn post(
+            &self,
+            path: &str,
+            _form: &str,
+        ) -> impl Future<Output = Result<Answer, Unsuccessful>> + Send {
+            assert_eq!(path, ROLLBACK, "only the rollback is posted");
+            async {
+                Ok(Answer {
+                    status: 200,
+                    content_type: Some("json".into()),
+                    redirected: Some(false),
+                    data: json!({}),
+                })
+            }
+        }
+    }
+
+    /// A continuous publication rolled back on the dev database, inside a transaction that is
+    /// rolled back: its items fail, and its SKUs, still on its batch, are counted a failed pricing
+    /// and due again within 15 minutes; a SKU of the batch it did not carry is left alone.
+    #[tokio::test]
+    #[ignore = "uses the dev database, in a transaction that is rolled back"]
+    async fn a_rolled_back_continuous_publication_is_priced_again_soon() {
+        crate::config::load_env();
+        let db = Database::connect_lazy(&crate::config::database_url());
+        let mut tx = db.0.begin().await.unwrap();
+        let seller = "rust-test-rolled-back";
+        let worker = "rust-test";
+        let batch: i32 = sqlx::query_scalar(
+            "INSERT INTO inventory_batches (status, source_type, source_label)
+             VALUES ('priced', 'continuous', $1) RETURNING batch_number",
+        )
+        .bind(seller)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO continuous_pricing_inventory (seller_key, sku, product_id, product_line_id,
+               set_id, product_line, set_name, product_name, condition, quantity, last_observed_at,
+               next_price_at, last_batch_number)
+             SELECT $1, sku, 1, 1, 1, 'Line', 'Set', 'Product', 'Near Mint', 1, NOW(),
+               NOW() + INTERVAL '1 day', $2
+             FROM UNNEST(ARRAY[1, 2, 3]) AS sku",
+        )
+        .bind(seller)
+        .bind(batch)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+        let id: i64 = sqlx::query_scalar(
+            "INSERT INTO inventory_publications (planning_key, batch_number, method, source_type,
+               seller_key, status, staged_pricing_upload_id, claimed_by)
+             VALUES ($1, $2, 'staged_delta', 'continuous', $1, 'staging', 7001, $3) RETURNING id",
+        )
+        .bind(seller)
+        .bind(batch)
+        .bind(worker)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO inventory_publication_items (publication_id, candidate_key, batch_number,
+               sku, product_id, product_line, set_name, product_name, condition, desired_price,
+               priced_at)
+             SELECT $1, $3 || ':' || sku, $2, sku, 1, 'Line', 'Set', 'Product', 'Near Mint', 1.5, NOW()
+             FROM UNNEST(ARRAY[1, 2]) AS sku",
+        )
+        .bind(id)
+        .bind(batch)
+        .bind(seller)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+
+        let refused = Failure::new("TCGplayer did not accept staged pricing upload 7001.");
+        fail_before_move(
+            &mut tx,
+            &RollsBack,
+            id,
+            worker,
+            Status::Staging,
+            Some(7001),
+            &refused,
+            false,
+        )
+        .await
+        .unwrap();
+
+        let (status, code): (String, Option<String>) =
+            sqlx::query_as("SELECT status, error_code FROM inventory_publications WHERE id = $1")
+                .bind(id)
+                .fetch_one(&mut *tx)
+                .await
+                .unwrap();
+        assert_eq!(
+            (status.as_str(), code.as_deref()),
+            ("rolled_back", Some("staged_publication_rolled_back"))
+        );
+        let items: Vec<String> = sqlx::query_scalar(
+            "SELECT status FROM inventory_publication_items WHERE publication_id = $1 ORDER BY sku",
+        )
+        .bind(id)
+        .fetch_all(&mut *tx)
+        .await
+        .unwrap();
+        assert_eq!(items, ["failed", "failed"]);
+        let inventory: Vec<(i32, i32, Option<String>, bool)> = sqlx::query_as(
+            "SELECT sku, consecutive_pricing_failures, pause_reason,
+                    next_price_at <= NOW() + INTERVAL '15 minutes'
+             FROM continuous_pricing_inventory WHERE seller_key = $1 ORDER BY sku",
+        )
+        .bind(seller)
+        .fetch_all(&mut *tx)
+        .await
+        .unwrap();
+        assert_eq!(
+            inventory,
+            vec![(1, 1, None, true), (2, 1, None, true), (3, 0, None, false)]
+        );
+        tx.rollback().await.unwrap();
+    }
 
     #[test]
     fn only_messages_naming_exactly_the_refused_skus_fail_them() {

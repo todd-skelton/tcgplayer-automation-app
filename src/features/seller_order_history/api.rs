@@ -16,6 +16,7 @@ const SEARCH: &str = "/orders/search?api-version=2.0";
 /// Each read is one attempt of at most ten seconds; a failed one is a gap the next run retries.
 const ONCE: Call = Call {
     retry: false,
+    read: true,
     timeout: Duration::from_secs(10),
 };
 
