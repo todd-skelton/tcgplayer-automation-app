@@ -471,6 +471,19 @@ Open issues were read against the Rust code; the ones still relevant were fixed,
 Releases: blue went live at 18:38 UTC with #136 to #139 (backup 2026-11-11T18-29Z-prod-before-pr136-139.dump, 580 objects); green at 19:44 UTC with #141 (backup 2026-11-11T19-31Z-prod-before-pr141.dump, 580 objects). Both swaps: containers healthy, proxy-health 200, 16 screens 200 with no console errors, JSON routes as before, order history complete. Job 8091 (50 SKUs) completed after the first swap with 49 shrunk forecasts recorded, all from the stored pool; job 8092 was released on the second swap and requeued as designed.
 
 The first renewal cut off after #138 logged `running its update on the job's connection (pool: 11 open, 10 idle)`: the wait in #127 is the UPDATE itself, not connection acquisition. The lease is 15 s, so one cut-off renewal costs only the log line.
+## Issue triage: renewal budget, quality-aware win share, client-side set search, Corten 0.2.0 (2026-11-11)
+
+The blockers were skipped as Todd asked (#18 needs a band decision; the slab epic #19, #24 and #29 to #33 waits on eBay seller access). The rest were fixed or closed.
+
+1. #143 pins Corten b7c8143b: the runtime does less work at startup on a long page (corten-run/corten#1246). Only corten.js changed since 3699bd64.
+2. #142 gives a pricing job renewal and a progress save a third of the lease (5 s) before giving up, instead of one 2 s heartbeat; a compile-time check keeps two given-up renewals in a row inside the 15 s lease (#127, which stays open until the log stays quiet).
+3. #144 records a sixth forecast, a quality-aware win share (quality-share-provisional-v1): each competing ask weighted by copies, seller quality and price against the curve's median, graded beside the other five. Pricing does not read it. The constants are provisional until seller quality is stored and a cohort fit can run (#17).
+4. #145 brings a set's products to the Inventory Manager once and searches, sorts and pages them in the browser by the server's rule (card numbers, then names); All sets still searches on the server. Page Up and Page Down start a fresh search in the next set with focus in the search box (#140). Corten gaps filed: corten-run/corten#1253, #1254, #1255, #1256.
+5. #146 pins Corten 74d15fea, the 0.2.0 release plus corten-run/corten#1247 (CONNECT tunnels and the header timeout); Cargo.lock moves only the Corten packages.
+6. #147 pins Corten 1124e130, which sets TCP_NODELAY on every connection Corten accepts (corten-run/corten#1250), so back-to-back live answers behind nginx keepalive do not wait for a delayed ACK. Only listener.rs changed.
+7. #16 closed as delivered by #137; adopting the shrunk forecast waits for weeks of graded cohorts.
+
+Releases: blue went live at 22:20 UTC with #142 to #144 (backup 2026-11-11T21-58Z-prod-before-pr142-144.dump, 580 objects); green at 23:14 UTC with #145 and #146 (backup 2026-11-11T22-59Z-prod-before-pr145-146.dump, 580 objects); blue at 23:51 UTC with #147 (backup 2026-11-11T23-40Z-prod-before-pr147.dump, 580 objects). All three swaps: containers healthy, proxy-health 200, 16 screens 200 with no console errors, JSON routes as before, order history complete. Every publication item written after the first swap carries qualityShareForecast. On the Inventory Manager in production, typing a search in a set sent no request and matched the no-JavaScript answer; Enter focused the first quantity field; Page Down loaded the next set with an empty search, focus in the search box; All sets still asked the server.
 ## Decided (2026-11-05)
 
 1. Refresh dev from production before release 1, then run the gate and the twin scripts against
