@@ -144,10 +144,10 @@ struct TrackingId<'a>(&'a str);
 #[component(css = LabelManagement)]
 fn PurchasedLabel<'a>(title: &'a str, bought: &'a Bought, looked: &'a Looked<'a>) -> impl Render {
     let result = &bought.result;
-    let (status, tone, dot) = match result.status {
-        Status::Purchased => ("PURCHASED", BadgeTone::Success, StatusTone::Success),
-        Status::Failed => ("FAILED", BadgeTone::Destructive, StatusTone::Destructive),
-        Status::Skipped => ("SKIPPED", BadgeTone::Warning, StatusTone::Warning),
+    let (status, tone) = match result.status {
+        Status::Purchased => ("PURCHASED", BadgeTone::Success),
+        Status::Failed => ("FAILED", BadgeTone::Destructive),
+        Status::Skipped => ("SKIPPED", BadgeTone::Warning),
     };
     let at = bought
         .purchased_at
@@ -163,7 +163,7 @@ fn PurchasedLabel<'a>(title: &'a str, bought: &'a Bought, looked: &'a Looked<'a>
             <h3>{title}</h3>
             <div class={row(Space::_2)}>
                 <span class={Badge { tone, emphasis: BadgeEmphasis::Soft }}>
-                    <StatusDot tone={dot} />
+                    <StatusDot tone={StatusTone::Text} />
                     {status}
                 </span>
                 <span class={Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }}>

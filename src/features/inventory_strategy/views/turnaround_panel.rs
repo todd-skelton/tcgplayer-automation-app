@@ -17,7 +17,7 @@ use crate::{
     ui::{
         alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         field::Field,
         input::Input,
         segmented::{Legend, SegmentedRadio, SegmentedRadios, SegmentedWidth},
@@ -61,7 +61,7 @@ pub fn TurnaroundPanel<'a>(
     let fallback =
         selection.setting.mode == Mode::Observed && !selection.fallback_reasons.is_empty();
     html! {
-        <section class={(CardPanel {}, CardCompact {})} aria-labelledby="capital-turnaround">
+        <section class={CardPanel { size: CardSize::Sm }} aria-labelledby="capital-turnaround">
             <div class={Title}>
                 <h2 id="capital-turnaround">"Capital turnaround"</h2>
                 <span

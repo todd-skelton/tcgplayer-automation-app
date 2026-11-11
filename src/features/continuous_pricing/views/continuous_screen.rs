@@ -19,7 +19,7 @@ use crate::{
         alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         field::Field,
         input::Input,
         pagination::Pagination,
@@ -89,7 +89,7 @@ pub fn ContinuousScreen<'a>(
             </header>
             <Problem why={screen.problem.as_deref()} />
             <section
-                class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
+                class={(CardPanel { size: CardSize::Sm }, stack(Space::_3))}
                 aria-labelledby="continuous-schedule"
             >
                 <h2 id="continuous-schedule">"Schedule"</h2>
@@ -258,7 +258,7 @@ fn Snapshot<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let refresh = s.last_refresh.as_ref();
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
+            class={(CardPanel { size: CardSize::Sm }, stack(Space::_3))}
             aria-labelledby="continuous-snapshot"
         >
             <div class={Spread}>
@@ -353,7 +353,7 @@ fn Controls<'a>(screen: &'a Screen) -> impl Render {
     let shown = screen.view.shown();
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
+            class={(CardPanel { size: CardSize::Sm }, stack(Space::_3))}
             aria-labelledby="continuous-controls"
         >
             <h2 id="continuous-controls">"Inventory controls"</h2>
@@ -436,7 +436,7 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
     let action = || url::SetSku { view: view.clone() };
     let now = SystemTime::now();
     html! {
-        <article class={(CardPanel {}, CardCompact {}, SkuCard)}>
+        <article class={(CardPanel { size: CardSize::Sm }, SkuCard)}>
             <div class={Spread}>
                 <div>
                     <strong>{&item.product_name}</strong>
@@ -509,7 +509,7 @@ fn SkuRow<'a>(item: &'a Item, view: &'a View, t: Msg) -> impl Render {
 fn Runs<'a>(runs: &'a [Run], t: Msg) -> impl Render {
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
+            class={(CardPanel { size: CardSize::Sm }, stack(Space::_3))}
             aria-labelledby="continuous-runs"
         >
             <div>

@@ -20,7 +20,7 @@ use crate::{
     ui::{
         alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         field::Field,
         input::Input,
         select::Select,
@@ -79,7 +79,7 @@ pub fn SlabScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                 method="post"
                 action={url::LookUp { choice: choice.clone() }}
                 data-patch
-                class={(CardPanel {}, CardCompact {}, Line)}
+                class={(CardPanel { size: CardSize::Sm }, Line)}
             >
                 <Field id={e.id(f.grader)} label="Grader" hint="" error="">
                     <input
@@ -126,7 +126,7 @@ pub fn SlabScreen<'a>(screen: &'a Screen, t: Msg) -> impl Render {
                     }
                 }
                 (Some((grader, cert)), None) => {
-                    <p class={(CardPanel {}, CardCompact {})}>
+                    <p class={CardPanel { size: CardSize::Sm }}>
                         {grader}" certificate "{cert}" has not been looked up yet."
                     </p>
                 }
@@ -148,7 +148,7 @@ fn ReviewedListing<'a>(screen: &'a Screen) -> impl Render {
     let f = AssignInput::FIELDS;
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
+            class={(CardPanel { size: CardSize::Sm }, stack(Space::_3))}
             aria-label="Selected listing"
         >
             match &screen.listing {
@@ -222,7 +222,7 @@ fn IdentityCard<'a>(
     let grades: Vec<f64> = (2..=20).map(|half| f64::from(half) / 2.0).collect();
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
+            class={(CardPanel { size: CardSize::Sm }, stack(Space::_3))}
             aria-labelledby="slab-identity"
         >
             <h2 id="slab-identity">
@@ -344,7 +344,7 @@ fn InventoryPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
     let f = Choice::FIELDS;
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, stack(Space::_3))}
+            class={(CardPanel { size: CardSize::Sm }, stack(Space::_3))}
             aria-labelledby="slab-inventory"
         >
             <h2 id="slab-inventory">"eBay inventory"</h2>

@@ -20,7 +20,7 @@ use crate::{
     ui::{
         alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         field::Field,
         input::Input,
         select::Select,
@@ -47,7 +47,7 @@ pub fn RecommendationPanel<'a>(screen: &'a Screen, record: &'a Record, t: Msg) -
         .and_then(|l| l.observed_at.parse::<DateTime<Utc>>().ok());
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, stack(Space::_3), RecommendationPanel)}
+            class={(CardPanel { size: CardSize::Sm }, stack(Space::_3), RecommendationPanel)}
             aria-labelledby="slab-recommendation"
         >
             <h2 id="slab-recommendation">"Owned slab recommendation · USD"</h2>

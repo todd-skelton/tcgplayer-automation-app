@@ -569,6 +569,40 @@
     },
     "$description": "A kit card's heading."
   },
+  "choice-list-gap": {
+    "$type": "dimension",
+    "$value": {
+      "value": 0.75,
+      "unit": "rem"
+    },
+    "$description": "The space between a kit checkbox list's or radio group's choices."
+  },
+  "choice-list-legend-gap": {
+    "$type": "dimension",
+    "$value": {
+      "value": 0.75,
+      "unit": "rem"
+    },
+    "$description": "The space under a kit checkbox list's or radio group's legend."
+  },
+  "status-dot-size": {
+    "$type": "dimension",
+    "$value": {
+      "value": 0.5,
+      "unit": "rem"
+    },
+    "$description": "A kit status dot's width and height."
+  },
+  "tab-font-weight": {
+    "$type": "fontWeight",
+    "$value": 500,
+    "$description": "A kit tab's or segmented choice's words."
+  },
+  "tab-selected-color": {
+    "$type": "color",
+    "$value": "{foreground}",
+    "$description": "The chosen tab's or segmented choice's words."
+  },
   "stat-label-font-size": {
     "$type": "dimension",
     "$value": {

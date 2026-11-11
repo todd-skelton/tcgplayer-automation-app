@@ -23,7 +23,7 @@ use crate::{
         alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         dialog::{Dialog, DialogFooter, DialogSize},
         icon::{self, Icon},
         progress::{Progress as ProgressLook, ProgressSize, ProgressTone},
@@ -98,10 +98,10 @@ pub fn BatchPanel<'a>(shown: &'a Shown, t: Msg) -> impl Patch {
         .filter(|j| j.status == JobStatus::Failed);
     html! {
         <div id={BatchPanelId} class={BatchPanel}>
-            <section class={(CardPanel {}, CardCompact {})}>
+            <section class={CardPanel { size: CardSize::Sm }}>
                 <SummaryCard batch={batch} t={t} />
             </section>
-            <section class={(CardPanel {}, CardCompact {}, display_grid(), gap_3())}>
+            <section class={(CardPanel { size: CardSize::Sm }, display_grid(), gap_3())}>
                 <h2>"Actions"</h2>
                 <div class={Actions}>
                     <form
@@ -382,7 +382,7 @@ fn JobProgress<'a>(job: &'a Job, batch: i32) -> impl Render {
     let since = p.phase_start_time.map(|at| elapsed(at, SystemTime::now()));
     html! {
         <section
-            class={(CardPanel {}, CardCompact {}, JobProgress)}
+            class={(CardPanel { size: CardSize::Sm }, JobProgress)}
             aria-label="Processing progress"
         >
             <header class={row(Space::_2)}>

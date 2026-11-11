@@ -1,7 +1,7 @@
 use corten::{prelude::*, view::Id};
 
 use crate::{
-    features::http_configuration::{config::Domain, form::SettingsInput, url},
+    features::http_configuration::{form::SettingsInput, url},
     layout::{FormNotice, Notice},
     theme::*,
     ui::{
@@ -9,7 +9,7 @@ use crate::{
         alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{Card, CardContent, CardHeader},
+        card::{Card, CardContent, CardHeader, CardSize},
         dialog::{Dialog, DialogFooter, DialogSize},
         field::Field,
         input::Input,
@@ -36,7 +36,7 @@ pub fn SettingsScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
                 "Configure HTTP client settings for TCGPlayer API requests. Changes are saved to the database."
             </p>
             <SettingsForm input={input} errors={errors} />
-            <div class={Card {}}>
+            <div class={Card { size: CardSize::Md }}>
                 <header class={CardHeader {}}>
                     <h2>"Reset Configuration"</h2>
                     <p>
@@ -105,7 +105,7 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
             data-patch
         >
             <FormNotice errors={errors} />
-            <div class={Card {}}>
+            <div class={Card { size: CardSize::Md }}>
                 <header class={CardHeader {}}><h2>"Authentication"</h2></header>
                 <div class={CardContent {}}>
                     <Field
@@ -144,7 +144,7 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                     </Notice>
                 </div>
             </div>
-            <div class={Card {}}>
+            <div class={Card { size: CardSize::Md }}>
                 <header class={CardHeader {}}><h2>"Request Settings"</h2></header>
                 <div class={CardContent {}}>
                     <Field
@@ -161,7 +161,7 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                     </Field>
                 </div>
             </div>
-            <div class={Card {}}>
+            <div class={Card { size: CardSize::Md }}>
                 <header class={CardHeader {}}>
                     <h2>"Adaptive Algorithm Settings"</h2>
                     <p>
@@ -232,7 +232,7 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                     </Field>
                 </div>
             </div>
-            <div class={Card {}}>
+            <div class={Card { size: CardSize::Md }}>
                 <header class={CardHeader {}}>
                     <h2>"Domain Rate Limits"</h2>
                     <p>
@@ -378,16 +378,10 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
     }
 }
 
-impl corten::view::AttrValue for Domain {
-    fn write_attr(&self, name: &str, out: &mut String) {
-        self.key().write_attr(name, out)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::features::http_configuration::config::HttpConfig;
+    use crate::features::http_configuration::config::{Domain, HttpConfig};
 
     /// The screen is drawn with the design system's parts: a kit field's label names each
     /// control, a domain's fields have ids of their own, and the reset waits in a dialog.

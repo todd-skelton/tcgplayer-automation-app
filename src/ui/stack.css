@@ -1,7 +1,7 @@
-/* corten ui 0.1.0: stack 1c1b6d667f324ed4 */
+/* corten ui 0.1.0: stack 0a8887a991116c84 */
 .stack { display: flex; flex-direction: column; align-items: stretch; }
 .cluster { display: flex; flex-wrap: wrap; align-items: center; }
-/* StackStart, beside a Stack (and only there): the children keep their own width, at the column's
+/* StackStart, a Stack with this class too: the children keep their own width, at the column's
    start (its end on a right-to-left page), each at most the stack's. A word wider than that breaks
    inside it, and a picture keeps its shape as it narrows. The cap has no specificity, as the margin
    rule below, so an app's rule on a child still sets its width. A dialog or popover child keeps

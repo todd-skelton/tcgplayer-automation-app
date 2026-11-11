@@ -16,7 +16,7 @@ use crate::{
         alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         checkbox::Checkbox,
         dialog::{Dialog, DialogFooter, DialogSize},
         input::Input,
@@ -107,7 +107,7 @@ pub fn IntakeScreen<'a>(
                 ref={filters}
                 method="get"
                 action={url::InventoryManager { selection: Selection::default() }}
-                class={(CardPanel {}, CardCompact {}, Filters)}
+                class={(CardPanel { size: CardSize::Sm }, Filters)}
                 aria-label="Filters"
                 on:change={js::filtered(event, keys)}
             >
@@ -236,7 +236,7 @@ pub fn IntakeScreen<'a>(
                     </button>
                 </noscript>
             </form>
-            <section class={(CardPanel {}, CardCompact {})} aria-labelledby={TableHeadingId}>
+            <section class={CardPanel { size: CardSize::Sm }} aria-labelledby={TableHeadingId}>
                 <h2 id={TableHeadingId} class={VisuallyHidden {}}>"Add new inventory"</h2>
                 <Table layout={TableLayout::Scroll}>
                     // React drew no grid without rows; the table stays for the script's refs.

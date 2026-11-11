@@ -12,7 +12,7 @@ use crate::{
         alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         field::Field,
         input::Input,
         select::Select,
@@ -54,7 +54,7 @@ pub fn ShippingScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
                     " is not set. Direct postage purchasing will stay disabled until it is configured."
                 </Notice>
             }
-            <section class={(CardPanel {}, CardCompact {})}>
+            <section class={CardPanel { size: CardSize::Sm }}>
                 <div class={(row(Space::_3), justify_between(), mb_4())}>
                     <div>
                         <h2>"Shipping Configuration"</h2>
@@ -88,9 +88,7 @@ pub fn ShippingScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
                         <span
                             class={Badge { tone: if key.has_key() { BadgeTone::Success } else { BadgeTone::Warning }, emphasis: BadgeEmphasis::Soft }}
                         >
-                            <StatusDot
-                                tone={if key.has_key() { StatusTone::Success } else { StatusTone::Warning }}
-                            />
+                            <StatusDot tone={StatusTone::Text} />
                             match (key, key.has_key()) {
                                 (EasyPostMode::Test, true) => "Test Key Ready",
                                 (EasyPostMode::Test, false) => "Missing Test Key",

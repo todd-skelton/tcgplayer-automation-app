@@ -15,8 +15,7 @@ use crate::{
     ui::{
         alert::AlertVariant,
         badge::{Badge, BadgeEmphasis, BadgeTone},
-        card::{Card, CardContent, CardHeader},
-        card::{CardCompact, CardPanel},
+        card::{Card, CardContent, CardHeader, CardPanel, CardSize},
         table::{Table, TableLayout},
     },
 };
@@ -75,7 +74,10 @@ pub fn BatchSummary<'a>(
         .as_ref()
         .filter(|l| !l.is_empty());
     html! {
-        <section class={(CardPanel {}, CardCompact {}, BatchSummary)} aria-label="Batch summary">
+        <section
+            class={(CardPanel { size: CardSize::Sm }, BatchSummary)}
+            aria-label="Batch summary"
+        >
             <h2>"Batch Summary"</h2>
             <p><strong>"Batch: "</strong>{&summary.file_name}</p>
             <p class={muted()}>"Current aggregate for the saved batch pricing results."</p>
@@ -89,7 +91,7 @@ pub fn BatchSummary<'a>(
                 }
             </p>
             <div class={Cards}>
-                <div class={Card {}}>
+                <div class={Card { size: CardSize::Md }}>
                     <header class={CardHeader {}}><h3>"Record Statistics"</h3></header>
                     <div class={CardContent {}}>
                         <Table layout={TableLayout::Scroll}>
@@ -130,7 +132,7 @@ pub fn BatchSummary<'a>(
                         </Table>
                     </div>
                 </div>
-                <div class={Card {}}>
+                <div class={Card { size: CardSize::Md }}>
                     <header class={CardHeader {}}><h3>"Quantity Summary"</h3></header>
                     <div class={CardContent {}}>
                         <Table layout={TableLayout::Scroll}>
@@ -155,7 +157,7 @@ pub fn BatchSummary<'a>(
                 </div>
             </div>
             if let Some(lines) = lines {
-                <div class={Card {}}>
+                <div class={Card { size: CardSize::Md }}>
                     <header class={CardHeader {}}>
                         <h3>"Product Line Breakdown"</h3>
                         <p>"Current successful rows grouped by product line."</p>
@@ -186,7 +188,7 @@ pub fn BatchSummary<'a>(
                     </div>
                 </div>
             }
-            <div class={Card {}}>
+            <div class={Card { size: CardSize::Md }}>
                 <header class={CardHeader {}}>
                     <h3>"Price Totals (Weighted by Quantity)"</h3>
                 </header>
@@ -244,7 +246,7 @@ pub fn BatchSummary<'a>(
                 </div>
             </div>
             if !keys.is_empty() {
-                <div class={Card {}}>
+                <div class={Card { size: CardSize::Md }}>
                     <header class={CardHeader {}}>
                         <h3>"Percentile Analysis"</h3>
                         <p>

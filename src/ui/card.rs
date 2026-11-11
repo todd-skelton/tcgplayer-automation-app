@@ -1,11 +1,11 @@
-// corten ui 0.1.0: card 1d594a58a40129bc
+// corten ui 0.1.0: card 24ef90ff3e9a180d
 //! A surface that groups related content, as the classes of the element you write: a `<section>`
 //! with a label, an `<article>`, an `<li>`, a `<form>`, an element a patch replaces by its id. The
 //! heading inside the header is yours, so the page keeps its outline (`<h2>` or `<h3>` as the page
 //! needs), and a `<p>` after it is the description:
 //!
 //! ```rust,ignore
-//! <section class={Card {}} aria-labelledby={PayoutsTitle}>
+//! <section class={Card { size: CardSize::Md }} aria-labelledby={PayoutsTitle}>
 //!     <header class={CardHeader {}}>
 //!         <h2 id={PayoutsTitle}>"Payouts"</h2>
 //!         <div class={CardAction {}}><a href={url::Payouts}>"All payouts"</a></div>
@@ -18,12 +18,24 @@
 //!
 //! A card around one block of content, with no header or footer, is one element, a `CardPanel`
 //! (not `Card` and `CardContent` together, whose rules are for two elements):
-//! `<section class={CardPanel {}} aria-labelledby={RatesTitle}>..</section>`. A panel is the
-//! surface and its padding only, so the element's own class lays it out (a row of filters,
-//! `class={(CardPanel {}, Filters)}`), or a `Stack` does. `CardCompact` beside either makes it
-//! denser, for a page with dense and roomy cards: `class={(Card {}, CardCompact {})}`; a theme
-//! sets every card's padding with `--card-padding`.
+//! `<section class={CardPanel { size: CardSize::Md }} aria-labelledby={RatesTitle}>..</section>`. A
+//! panel is the surface and its padding only, so the element's own class lays it out (a row of
+//! filters, `class={(CardPanel { size: CardSize::Md }, Filters)}`), or a `Stack` does.
+//! `CardSize::Sm` makes either denser, for a page with dense and roomy cards:
+//! `class={Card { size: CardSize::Sm }}`; a theme sets every card's padding with `--card-padding`,
+//! a dense one's following it.
 use corten::prelude::*;
+
+/// A card's or a panel's padding and the gap between its parts. `Md` writes no class; `Sm` is a class
+/// in `card.css`, so a size without a rule does not compile.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CardSize {
+    /// The theme's `--card-padding`.
+    Md,
+    /// Padding and a gap between its parts two thirds of the theme's `--card-padding`, and a gap in
+    /// its content half of it, for a dense card on a page with roomy ones.
+    Sm,
+}
 
 /// A part without a rule in `card.css` does not compile:
 ///
@@ -36,8 +48,12 @@ use corten::prelude::*;
 /// }
 /// ```
 #[component(css)]
-pub fn Card() -> impl ClassList {
-    Card
+pub fn Card(size: CardSize) -> impl ClassList {
+    let size = match size {
+        CardSize::Md => None,
+        CardSize::Sm => Some(Sm),
+    };
+    (Card, size)
 }
 
 #[component(css = Card)]
@@ -55,14 +71,12 @@ pub fn CardAction() -> impl ClassList {
 /// A card around one block of content, on one element: the card's surface and its padding on every
 /// side, and no layout, so the element's own class or a `Stack` lays its children out.
 #[component(css = Card)]
-pub fn CardPanel() -> impl ClassList {
-    Panel
-}
-
-/// Beside `Card {}` or `CardPanel {}`: less padding and a smaller gap, for one card on a page.
-#[component(css = Card)]
-pub fn CardCompact() -> impl ClassList {
-    Compact
+pub fn CardPanel(size: CardSize) -> impl ClassList {
+    let size = match size {
+        CardSize::Md => None,
+        CardSize::Sm => Some(Sm),
+    };
+    (Panel, size)
 }
 
 #[component(css = Card)]

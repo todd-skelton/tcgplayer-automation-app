@@ -22,7 +22,7 @@ use crate::{
     ui::{
         alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         field::Field,
         select::Select,
     },
@@ -60,7 +60,7 @@ pub fn PublicationPanel<'a>(
         </a>
         if shown {
             <section
-                class={(CardPanel {}, CardCompact {}, stack(Space::_3), PublicationPanel)}
+                class={(CardPanel { size: CardSize::Sm }, stack(Space::_3), PublicationPanel)}
                 aria-labelledby="slab-publication"
             >
                 <h3 id="slab-publication">"Review a listing price change"</h3>

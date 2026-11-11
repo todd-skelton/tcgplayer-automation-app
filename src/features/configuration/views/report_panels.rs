@@ -20,7 +20,7 @@ use crate::{
     ui::{
         alert::AlertVariant,
         button::{Button, ButtonSize, ButtonVariant},
-        card::{CardCompact, CardPanel},
+        card::{CardPanel, CardSize},
         select::Select,
         table::{Table, TableLayout},
     },
@@ -162,7 +162,7 @@ pub fn CalibrationPanel<'a>(
     html! {
         <section
             id={CalibrationId}
-            class={(CardPanel {}, CardCompact {}, ReportSection)}
+            class={(CardPanel { size: CardSize::Sm }, ReportSection)}
             aria-labelledby={CalibrationHeadingId}
         >
             <h2 id={CalibrationHeadingId}>"Sell-Time Forecast Calibration"</h2>
@@ -283,7 +283,7 @@ pub fn ShippingReportPanel<'a>(days: u32, report: Report<'a, ShippingReport>) ->
     html! {
         <section
             id={ShippingReportId}
-            class={(CardPanel {}, CardCompact {}, ReportSection)}
+            class={(CardPanel { size: CardSize::Sm }, ReportSection)}
             aria-labelledby={ShippingHeadingId}
         >
             <h2 id={ShippingHeadingId}>"Shipping costs and snap outcomes"</h2>
