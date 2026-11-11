@@ -592,7 +592,10 @@ mod tests {
     fn script_types_match_the_server() {
         corten::types::Types::new()
             .add::<pull_sheet::SortBy>()
+            .add::<inventory_intake::IntakeListing>()
+            .add::<inventory_intake::IntakeCounts>()
             .components(pull_sheet::COMPONENTS)
+            .components(inventory_intake::COMPONENTS)
             .components(batch_pricer::COMPONENTS)
             .components(shipping_export::COMPONENTS)
             .components(product_price_matrix::COMPONENTS)

@@ -6,14 +6,6 @@
     margin: 0;
   }
 }
-/* Only the chosen condition's labels and counts show; a sealed product's always do. */
-.intake-screen:not(:has(.condition-select option[value="near-mint"]:checked)) .near-mint,
-.intake-screen:not(:has(.condition-select option[value="lightly-played"]:checked)) .lightly-played,
-.intake-screen:not(:has(.condition-select option[value="moderately-played"]:checked)) .moderately-played,
-.intake-screen:not(:has(.condition-select option[value="heavily-played"]:checked)) .heavily-played,
-.intake-screen:not(:has(.condition-select option[value="damaged"]:checked)) .damaged {
-  display: none;
-}
 .filters {
   display: flex;
   flex-wrap: wrap;
@@ -49,28 +41,47 @@
 .name {
   white-space: normal;
 }
-/* A name in its condition's color, as the React grid's `info.main`, `success.main`, ... */
-.info-text {
-  color: var(--info);
+/* A row in its condition's color while the product has a SKU in it, as the React grid's
+   getConditionColor (`info.main`, `success.main`, ...): Near Mint and a sealed product's plain.
+   The set and SKU badges take it as their tone, and the name as its color. */
+.product-row {
+  --row-tone: var(--foreground);
 }
-.success-text {
-  color: var(--success);
+.product-row[data-condition="lightly-played"] {
+  --row-tone: var(--info);
 }
-.warning-text {
-  color: var(--warning);
+.product-row[data-condition="moderately-played"] {
+  --row-tone: var(--success);
 }
-.destructive-text {
-  color: var(--destructive);
+.product-row[data-condition="heavily-played"] {
+  --row-tone: var(--warning);
 }
-.holo {
-  font-style: italic;
+.product-row[data-condition="damaged"] {
+  --row-tone: var(--destructive);
 }
-.first {
-  font-weight: 700;
+.product-row[data-missing] {
+  --row-tone: var(--foreground);
 }
-.missing {
+.product-row .set-name,
+.product-row .sku-name {
+  --kit-tone: var(--row-tone);
+}
+.product-row:not([data-missing], [data-condition="near-mint"], [data-condition=""]) .product-name {
+  color: var(--row-tone);
+}
+/* No SKU in the condition chosen: the SKU's label is a warning, and the row has no count. */
+.product-row[data-missing] .sku-name {
+  --kit-tone: var(--warning);
   opacity: 0.75;
   border-style: dashed;
+}
+.sku-name[data-printing*="reverse" i],
+.sku-name[data-printing*="holo" i] {
+  font-style: italic;
+}
+.sku-name[data-printing*="1st" i],
+.sku-name[data-printing*="first" i] {
+  font-weight: 700;
 }
 .count {
   display: inline-flex;
@@ -100,4 +111,16 @@
   justify-content: space-between;
   flex-wrap: wrap;
   margin-top: var(--space-3);
+}
+/* The pager the script pages with, or the server's links without it (Corten's guide, scripts.md,
+   "A control only the script makes work"). */
+.paging > .with-script {
+  @media (scripting: none) {
+    display: none;
+  }
+}
+.paging > .no-script {
+  @media (scripting: enabled) {
+    display: none;
+  }
 }
