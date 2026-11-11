@@ -456,6 +456,21 @@ migration and no switch changed. Backup just before:
 
 The first `prod:update` stopped before building: a `.react-router/` folder of generated types,
 last written 2026-11-07 and no longer ignored after #128, left the tree dirty. It was deleted.
+## Issue triage: retries, rescheduling, a shrunk forecast, Corten 3699bd64 (2026-11-11)
+
+Open issues were read against the Rust code; the ones still relevant were fixed, and the rest were closed or left open with a reason.
+
+1. #136 pins Corten 3699bd64. Nothing under crates/ changed since 3fb4b1ac (examples, bench and docs only).
+2. #138 renews a pricing job's claim on the connection that claimed it, and logs where a renewal cut off by the 2 s timeout was waiting and the pool's state (#127).
+3. #139 retries TCGplayer reads (never Seller Portal writes) when TCGplayer cannot be reached; a failed pricing job or a rolled-back continuous publication counts as a failed pricing of its SKUs and brings them back within 15 minutes (third in a row pauses for review); a refused staged upload keeps Seller Portal's messages and accepted count (#133, #134).
+4. #137 records a Gamma-Poisson shrunk sale-rate forecast (gamma-poisson-v1, a 7-day prior pooled per product line from each SKU's latest modeled result in the last 30 days) beside the other forecasts, and grades all five with Brier scores at 14, 21 and 28 days on the configuration page. Pricing does not read it (#16).
+5. #141 shows N/A for a forecast no published price has carried yet, instead of its prior's 1.00.
+6. #80 closed: migration 045 (845670665) already backfilled those publications as receipt lots with listing history coverage; a Rust port of the draft estimate passed the gate but would have reported nothing, so it was dropped. Draft PRs #38, #53 and #81 closed: they change the removed Node app.
+7. Left open: #127 (see below), #17 (needs the grading from #137 and a cohort fit), #18 (needs a band decision), the slab epic #19 and #24, #29 to #33 (blocked on eBay seller access).
+
+Releases: blue went live at 18:38 UTC with #136 to #139 (backup 2026-11-11T18-29Z-prod-before-pr136-139.dump, 580 objects); green at 19:44 UTC with #141 (backup 2026-11-11T19-31Z-prod-before-pr141.dump, 580 objects). Both swaps: containers healthy, proxy-health 200, 16 screens 200 with no console errors, JSON routes as before, order history complete. Job 8091 (50 SKUs) completed after the first swap with 49 shrunk forecasts recorded, all from the stored pool; job 8092 was released on the second swap and requeued as designed.
+
+The first renewal cut off after #138 logged `running its update on the job's connection (pool: 11 open, 10 idle)`: the wait in #127 is the UPDATE itself, not connection acquisition. The lease is 15 s, so one cut-off renewal costs only the log line.
 ## Decided (2026-11-05)
 
 1. Refresh dev from production before release 1, then run the gate and the twin scripts against
