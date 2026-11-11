@@ -585,6 +585,14 @@
     },
     "$description": "The space under a kit checkbox list's or radio group's legend."
   },
+  "status-dot-size": {
+    "$type": "dimension",
+    "$value": {
+      "value": 0.5,
+      "unit": "rem"
+    },
+    "$description": "A kit status dot's width and height."
+  },
   "tab-font-weight": {
     "$type": "fontWeight",
     "$value": 500,
