@@ -4,7 +4,7 @@
 //! delivered first, from verified sellers unless the configuration includes unverified ones). All
 //! are reads, though the sales and listings searches are POSTs. What is read is kept in the sales,
 //! weekly sales and listing ledgers beside the price ([`ledger`](super::ledger)).
-use std::{future::Future, time::Duration};
+use std::future::Future;
 
 use serde::{Deserialize, Serialize};
 
@@ -279,12 +279,6 @@ impl From<&HistorySku> for History {
     }
 }
 
-/// One attempt of a read, retried on a rate limit as Node's clients retry.
-const READ: Call = Call {
-    retry: true,
-    timeout: Duration::from_secs(60),
-};
-
 /// Latest sales and price history from TCGplayer; the product line's language and variant ids
 /// from the catalog's category filters.
 #[derive(Clone)]
@@ -327,7 +321,7 @@ impl TcgPlayerEvidence {
                 Domain::MpApi,
                 &format!("/v2/product/{product_id}/latestsales"),
                 &query,
-                READ,
+                Call::READ,
             )
             .await
     }
@@ -404,7 +398,7 @@ impl Evidence for TcgPlayerEvidence {
         let path = format!("/price/history/{product_id}/detailed?range=annual");
         let answer: HistoryAnswer = self
             .tcg
-            .get(Domain::InfiniteApi, &path, READ)
+            .get(Domain::InfiniteApi, &path, Call::READ)
             .await
             .inspect_err(|e| {
                 eprintln!("Failed to fetch price history for product {product_id}: {e}")
@@ -423,7 +417,11 @@ impl Evidence for TcgPlayerEvidence {
         let path = format!("/v1/product/{}/listings", sku.product_id);
         match all_listings(query, ceiling, |q| {
             let path = path.clone();
-            async move { self.tcg.post(Domain::MpSearchApi, &path, &q, READ).await }
+            async move {
+                self.tcg
+                    .post(Domain::MpSearchApi, &path, &q, Call::READ)
+                    .await
+            }
         })
         .await
         {
@@ -470,7 +468,7 @@ impl Evidence for TcgPlayerEvidence {
         let path = format!("/v1/product/{}/listings", sku.product_id);
         let answer: ListingsAnswer = self
             .tcg
-            .post(Domain::MpSearchApi, &path, &query, READ)
+            .post(Domain::MpSearchApi, &path, &query, Call::READ)
             .await
             .inspect_err(|e| eprintln!("Failed to fetch lowest listing for SKU {}: {e}", sku.sku))
             .ok()?;

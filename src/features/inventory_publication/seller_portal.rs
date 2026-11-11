@@ -456,6 +456,52 @@ pub async fn initialize(portal: &impl Poster, file_name: &str) -> Result<i64, Fa
     }
 }
 
+/// A message Seller Portal answered, as text.
+pub fn message_text(message: &Value) -> String {
+    match message {
+        Value::String(text) => text.clone(),
+        other => other.to_string(),
+    }
+}
+
+/// Seller Portal's messages as the Node app quotes them (`formatSellerPortalMessages`).
+pub fn quoted_messages(messages: Option<&[Value]>) -> String {
+    let joined: Vec<String> = messages
+        .unwrap_or_default()
+        .iter()
+        .map(message_text)
+        .filter(|message| !message.is_empty())
+        .collect();
+    let joined = joined.join("; ");
+    if joined.is_empty() {
+        return String::new();
+    }
+    let shown: String = joined.chars().take(1_000).collect();
+    format!("Seller Portal messages: {shown}")
+}
+
+/// Why Seller Portal refused an upload of `rows` rows: the rows it still counted as accepted, if
+/// any, and its messages, so the failure keeps its reason.
+fn refused_upload(upload_id: i64, rows: usize, data: &Value) -> Failure {
+    let mut message = format!("TCGplayer did not accept staged pricing upload {upload_id}.");
+    let accepted = data
+        .get("SuccessfulProductCount")
+        .and_then(Value::as_f64)
+        .filter(|accepted| *accepted > 0.0);
+    if let Some(accepted) = accepted {
+        message = format!("{message} TCGplayer accepted {accepted} of {rows} staged pricing rows.");
+    }
+    let quoted = quoted_messages(
+        data.get("Messages")
+            .and_then(Value::as_array)
+            .map(Vec::as_slice),
+    );
+    if !quoted.is_empty() {
+        message = format!("{message} {quoted}");
+    }
+    Failure::new(message)
+}
+
 /// What an upload post accepted.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Uploaded {
@@ -475,9 +521,7 @@ pub async fn upload(
         .post(UPLOAD, &upload_form(file_name, upload_id, updates)?)
         .await?;
     if !truthy(answer.data.get("Success")) {
-        return Err(Failure::new(format!(
-            "TCGplayer did not accept staged pricing upload {upload_id}."
-        )));
+        return Err(refused_upload(upload_id, updates.len(), &answer.data));
     }
     Ok(Uploaded {
         successful: answer.data.get("SuccessfulProductCount").cloned(),
@@ -603,6 +647,40 @@ mod tests {
         assert_eq!(content_kind("Text/HTML"), "html");
         assert_eq!(content_kind("text/plain"), "text");
         assert_eq!(content_kind("image/png"), "other");
+    }
+
+    /// A refused upload keeps what Seller Portal said: its messages and the rows it still
+    /// accepted; with neither, the message is the one Node saved.
+    #[test]
+    fn a_refused_upload_keeps_seller_portals_reason() {
+        let refused = |data: Value| refused_upload(19149437, 32, &data).message;
+        assert_eq!(
+            refused(serde_json::json!({
+                "Success": false,
+                "SuccessfulProductCount": 31,
+                "Messages": ["Row 12: price is below the minimum", { "Row": 20 }, ""],
+            })),
+            "TCGplayer did not accept staged pricing upload 19149437. TCGplayer accepted 31 of 32 \
+             staged pricing rows. Seller Portal messages: Row 12: price is below the minimum; \
+             {\"Row\":20}"
+        );
+        assert_eq!(
+            refused(serde_json::json!({ "Success": false, "Messages": ["Invalid upload."] })),
+            "TCGplayer did not accept staged pricing upload 19149437. Seller Portal messages: \
+             Invalid upload."
+        );
+        assert_eq!(
+            refused(serde_json::json!({
+                "Success": false,
+                "SuccessfulProductCount": 0,
+                "Messages": [],
+            })),
+            "TCGplayer did not accept staged pricing upload 19149437."
+        );
+        assert_eq!(
+            refused(Value::String("<html>Sign in</html>".into())),
+            "TCGplayer did not accept staged pricing upload 19149437."
+        );
     }
 
     #[test]

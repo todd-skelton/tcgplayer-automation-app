@@ -1,8 +1,9 @@
 //! The pricing worker's jobs on Postgres (`processJob`): claim the most urgent queued job, price
 //! its batch while its progress rides on each renewal, save the results and complete the job in
 //! one transaction fenced on the claim, then bring the strategy's curves, the continuous
-//! inventory and automatic publication up to date with it. A job that stopped because TCGplayer
-//! no longer shows full sales history fails, and its continuous SKUs are tried again later.
+//! inventory and automatic publication up to date with it. A job that fails counts as a failed
+//! pricing of each of its continuous SKUs, which are tried again soon; one that stopped because
+//! TCGplayer no longer shows full sales history only has them tried again later.
 use std::{
     sync::{
         Mutex,
@@ -393,12 +394,16 @@ impl<E: Evidence, M: MarketData> Jobs for PricingJobs<E, M> {
                     .await
                     .map_err(|e| e.to_string())?;
                 let progress = job.progress();
-                queue::fail(&mut tx, claimed.id, &self.worker, why, progress.as_ref())
+                let failed = queue::fail(&mut tx, claimed.id, &self.worker, why, progress.as_ref())
                     .await
                     .map_err(|e| e.to_string())?;
                 if job.sales_history_unavailable.load(Ordering::Relaxed) {
                     // The session, not the SKUs, failed: try them again once it is renewed.
                     save::retry_after(&mut tx, claimed.batch_number, SALES_HISTORY_RETRY_MINUTES)
+                        .await
+                        .map_err(|e| e.to_string())?;
+                } else if failed {
+                    save::record_batch_failed(&mut tx, claimed.batch_number, None)
                         .await
                         .map_err(|e| e.to_string())?;
                 }
