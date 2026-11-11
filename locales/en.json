@@ -2,6 +2,11 @@
   "pull_sheet": {
     "showing": "Showing {shown} of {total}"
   },
+  "intake": {
+    "shown": "{first}\u2013{last} of {total}",
+    "quantity": "{product} {condition} quantity",
+    "unavailable": "{condition} unavailable"
+  },
   "batch_pricer": {
     "selected_one": "Selected {count} SKU; total quantity delta {delta}.",
     "selected_other": "Selected {count} SKUs; total quantity delta {delta}.",

@@ -65,7 +65,7 @@ pub enum ProductOrder {
 
 impl ProductOrder {
     /// `products` in this order; they come by name, A to Z.
-    pub fn apply(self, mut products: Vec<Product>) -> Vec<Product> {
+    pub fn apply<T>(self, mut products: Vec<T>) -> Vec<T> {
         if self == ProductOrder::NameDown {
             products.reverse();
         }
@@ -454,26 +454,23 @@ pub fn products(skus: Vec<Sku>, shown: &Shown) -> Vec<Product> {
 }
 
 /// A set's products narrowed to a search: those whose card number matches when any does,
-/// otherwise those whose name has the text.
-pub fn search(products: Vec<Product>, query: &str) -> Vec<Product> {
+/// otherwise those whose name has the text. The screen's script searches a set the same way
+/// (`views/set_search.js`), and a test runs the same cases through both.
+pub fn search<'a>(products: &'a [Product], query: &str) -> Vec<&'a Product> {
     let query = query.trim();
     if query.is_empty() {
-        return products;
+        return products.iter().collect();
     }
-    let by_number: Vec<bool> = products
+    let by_number: Vec<&Product> = products
         .iter()
-        .map(|p| matches_number(query, p.card_number.as_deref()))
+        .filter(|p| matches_number(query, p.card_number.as_deref()))
         .collect();
-    if by_number.contains(&true) {
-        return products
-            .into_iter()
-            .zip(by_number)
-            .filter_map(|(p, hit)| hit.then_some(p))
-            .collect();
+    if !by_number.is_empty() {
+        return by_number;
     }
     let query = query.to_lowercase();
     products
-        .into_iter()
+        .iter()
         .filter(|p| p.display_name.to_lowercase().contains(&query))
         .collect()
 }
@@ -679,11 +676,124 @@ mod tests {
                 languages: &[],
             },
         );
-        let found = search(rows.clone(), "25");
+        let found = search(&rows, "25");
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].product_id, 10);
-        assert_eq!(search(rows.clone(), "raichu").len(), 1);
-        assert_eq!(search(rows, "  ").len(), 2);
+        assert_eq!(search(&rows, "raichu").len(), 1);
+        assert_eq!(search(&rows, "  ").len(), 2);
+    }
+
+    /// A set's products, and searches of it with the products each finds, in order: the server's
+    /// `search` and the script's (`views/set_search.js`) find the same ones.
+    const SET: &[(i32, &str, Option<&str>)] = &[
+        (1, "Pikachu - 025/165 - Common", Some("025/165")),
+        (2, "Raichu - 026/165 - Rare", Some("026/165")),
+        (
+            3,
+            "Pikachu ex - 247/165 - Special Illustration Rare",
+            Some("247/165"),
+        ),
+        (4, "Basic Lightning Energy", None),
+        (5, "Charizard - SWSH050 - Promo", Some("SWSH050")),
+        (6, "Mew - 151/165 - Rare", Some("151/165")),
+        (7, "Piplup - TG25/TG30 - Trainer Gallery", Some("TG25/TG30")),
+        (8, "Cosmog - 000/165 - Common", Some("000/165")),
+        (9, "Caf\u{c9} Crew - 10/12 - Promo", Some("10/12")),
+    ];
+    const SEARCHES: &[(&str, &[i32])] = &[
+        ("25", &[1]),
+        ("025/165", &[1]),
+        ("25/165", &[1]),
+        (" 026 ", &[2]),
+        ("+25", &[1]),
+        ("0", &[8]),
+        ("151", &[6]),
+        ("10/12", &[9]),
+        ("SWSH050", &[5]),
+        ("TG25/TG30", &[7]),
+        // No card number matches: the names that have the text, whatever its case.
+        ("3/12", &[]),
+        ("swsh050", &[5]),
+        ("pika", &[1, 3]),
+        ("PIKACHU EX", &[3]),
+        ("  raichu  ", &[2]),
+        ("energy", &[4]),
+        ("caf\u{e9}", &[9]),
+        ("1", &[1, 2, 3, 6, 8, 9]),
+        ("/", &[1, 2, 3, 6, 7, 8, 9]),
+        ("", &[1, 2, 3, 4, 5, 6, 7, 8, 9]),
+        ("   ", &[1, 2, 3, 4, 5, 6, 7, 8, 9]),
+    ];
+
+    fn set() -> Vec<Product> {
+        SET.iter()
+            .map(|&(id, name, number)| Product {
+                product_id: id,
+                display_name: name.into(),
+                set_name: "Set".into(),
+                release_year: None,
+                card_number: number.map(Into::into),
+                variant: "Normal".into(),
+                sealed: false,
+                set_id: 1,
+                product_line_id: 3,
+                unopened: None,
+                skus: [Some(id), None, None, None, None],
+            })
+            .collect()
+    }
+
+    #[test]
+    fn the_script_searches_a_set_as_the_server_does() {
+        let products = set();
+        for (query, found) in SEARCHES {
+            let ids: Vec<i32> = search(&products, query)
+                .iter()
+                .map(|p| p.product_id)
+                .collect();
+            assert_eq!(ids, *found, "{query:?}");
+        }
+        // The same searches through the script's export, over the products as the page sends
+        // them (a card number without one is empty). The test runs in the crate's directory.
+        let listed: Vec<serde_json::Value> = SET
+            .iter()
+            .map(|&(id, name, number)| {
+                serde_json::json!({ "id": id, "name": name, "number": number.unwrap_or("") })
+            })
+            .collect();
+        let queries: Vec<&str> = SEARCHES.iter().map(|(query, _)| *query).collect();
+        let script = format!(
+            "import {{ search }} from './src/features/inventory_intake/views/set_search.js';
+             const products = {};
+             for (const query of {}) console.log(search(products, query).map((p) => p.id).join(','));",
+            serde_json::Value::from(listed),
+            serde_json::json!(queries),
+        );
+        let out = std::process::Command::new("node")
+            .args(["--input-type=module", "-e", &script])
+            .output()
+            .expect("node runs");
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let lines: Vec<String> = String::from_utf8(out.stdout)
+            .unwrap()
+            .lines()
+            .map(str::to_owned)
+            .collect();
+        let expected: Vec<String> = SEARCHES
+            .iter()
+            .map(|(_, found)| {
+                found
+                    .iter()
+                    .map(i32::to_string)
+                    .collect::<Vec<_>>()
+                    .join(",")
+            })
+            .collect();
+        assert_eq!(lines, expected);
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use corten::{Mode, Refusal, http::StatusCode, prelude::*};
 
@@ -9,7 +9,7 @@ use super::{
     url::{self, Selection},
     views::{
         BATCHES_EVERY, BackgroundBatches, ClearConfirm, CountForm, Counted, IntakeError,
-        IntakeScreen, QueueForm, QueueNotice, QueueTotals, Queuing, label, redrawn,
+        IntakeScreen, QueueForm, QueueNotice, QueueTotals, Queuing, UnqueuedCounts, label,
     },
 };
 use crate::{
@@ -29,6 +29,9 @@ pub struct Screen {
     pub set: Option<i32>,
     pub scope: Scope,
     pub condition: Condition,
+    /// Every product the filters keep, by name, A to Z, before the search: the set's, or those
+    /// found by card number across sets. The page brings them all for its script.
+    pub listed: Vec<Product>,
     /// The page of products shown.
     pub products: Vec<Product>,
     /// Which page that is, of how many, and how many products match in all.
@@ -62,18 +65,19 @@ impl Screen {
             product_type: selection.product_type.unwrap_or_default(),
             languages: &selection.language,
         };
-        let products = catalog::products(skus, &shown);
-        let products = match scope {
-            Scope::Set => catalog::search(products, search),
-            Scope::AllSets => products,
+        let listed = catalog::products(skus, &shown);
+        let found = match scope {
+            Scope::Set => catalog::search(&listed, search),
+            Scope::AllSets => listed.iter().collect(),
         };
-        let products = selection.sort.unwrap_or(ProductOrder::Name).apply(products);
-        let matched = products.len();
+        let found = selection.sort.unwrap_or(ProductOrder::Name).apply(found);
+        let matched = found.len();
         let (products, page, pages) = catalog::page_of(
-            products,
+            found,
             selection.page.unwrap_or(1),
             selection.rows.unwrap_or_default(),
         );
+        let products = products.into_iter().cloned().collect();
         Ok(Screen {
             selection: selection.clone(),
             lines,
@@ -82,6 +86,7 @@ impl Screen {
             set,
             scope,
             condition: selection.condition.unwrap_or_default(),
+            listed,
             products,
             page,
             pages,
@@ -130,10 +135,11 @@ async fn page(req: &Req, db: &Database, selection: &Selection, drawn: &Drawn<'_>
     )
 }
 
-/// A SKU's count as its form sends it: the count as typed, the count the server last answered (so
-/// a count changed meanwhile is refused), and the key the change is applied once by.
+/// A SKU's count as its form sends it: the SKU, the count as typed, the count the server last
+/// answered (so a count changed meanwhile is refused), and the key the change is applied once by.
 #[derive(Clone, Debug, Fields)]
 pub struct CountInput {
+    pub sku: i32,
     pub quantity: String,
     pub seen: u32,
     pub submit: SubmitKey,
@@ -164,7 +170,7 @@ pub async fn count(
     Params(at): Params<url::Count>,
     Form(input): Form<CountInput>,
 ) -> HtmlResult {
-    let (product, condition) = catalog::counted(&db, at.sku)
+    let (product, condition) = catalog::counted(&db, input.sku)
         .await?
         .ok_or_else(corten::Error::not_found)?;
     let place = Place {
@@ -179,7 +185,7 @@ pub async fn count(
                 &db,
                 &market,
                 input.submit.as_str(),
-                at.sku,
+                input.sku,
                 place,
                 quantity,
                 input.seen,
@@ -204,17 +210,18 @@ pub async fn count(
         };
     }
     let quantities = pending::quantities(&db).await?;
-    let stored = quantities.get(&at.sku).copied().unwrap_or(0);
+    let stored = quantities.get(&input.sku).copied().unwrap_or(0);
     let totals = Totals::of(&quantities);
     let label = label(&product, condition);
     let counted = Counted {
-        sku: at.sku,
+        sku: input.sku,
         label: &label,
     };
     let field = html! {
         <CountForm counted={&counted} quantity={stored} selection={&at.selection} />
         <QueueTotals totals={totals} counted={&queue::fingerprint(&quantities)} />
         <ClearConfirm selection={&at.selection} totals={totals} />
+        <UnqueuedCounts quantities={&quantities} />
     };
     match applied {
         Ok(_) => req.patch(html! {
@@ -311,10 +318,10 @@ pub async fn queue_batch(
     if req.mode != Mode::Action {
         return req.redirect_with_notice(&url::InventoryManager { selection }, notice);
     }
-    let (screen, batches) = tokio::join!(Screen::read(&db, &selection), queue::batches(&db));
-    let screen = screen?;
-    let handed_off: HashSet<i32> = quantities.keys().copied().collect();
-    let redrawn = redrawn(&screen.products, &handed_off);
+    // What is left to count after the hand-off; the script writes it into the rows on the page.
+    let (left, batches) = tokio::join!(pending::quantities(&db), queue::batches(&db));
+    let left = left?;
+    let totals = Totals::of(&left);
     let next = input.after_queue();
     let none = Errors::new();
     let batches = batches.as_ref().map_err(String::as_str);
@@ -323,8 +330,8 @@ pub async fn queue_batch(
     };
     req.patch(html! {
         <QueueNotice message={Some(&notice)} />
-        <QueueTotals totals={screen.totals} counted={&queue::fingerprint(&screen.quantities)} />
-        <ClearConfirm selection={&selection} totals={screen.totals} />
+        <QueueTotals totals={totals} counted={&queue::fingerprint(&left)} />
+        <ClearConfirm selection={&selection} totals={totals} />
         <QueueForm
             selection={&selection}
             input={&next}
@@ -333,14 +340,7 @@ pub async fn queue_batch(
         />
         <BackgroundBatches selection={&selection} batches={batches} refused={None} />
         {ReadAgain { after: BATCHES_EVERY }.from(&again)}
-        for field in &redrawn {
-            let counted = field.counted();
-            <CountForm
-                counted={&counted}
-                quantity={screen.quantities.get(&counted.sku).copied().unwrap_or(0)}
-                selection={&selection}
-            />
-        }
+        <UnqueuedCounts quantities={&left} />
     })
 }
 

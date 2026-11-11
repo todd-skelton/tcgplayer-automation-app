@@ -1,6 +1,6 @@
-use std::{collections::HashSet, time::Duration};
+use std::{collections::HashMap, time::Duration};
 
-use corten::prelude::*;
+use corten::{ToJson, prelude::*, script::ElementId};
 
 use super::{background_batches::BackgroundBatches, queue_bar::QueueBar};
 use crate::{
@@ -11,6 +11,7 @@ use crate::{
         url::{self, Selection},
     },
     layout::Notice,
+    text::{Msg, msg},
     theme::*,
     ui::{
         alert::AlertVariant,
@@ -27,6 +28,9 @@ use crate::{
         visually_hidden::VisuallyHidden,
     },
 };
+
+// The set search as the script runs it, by the rule `catalog::search` follows.
+corten::script::script!(pub mod set_search = "set_search.js");
 
 #[derive(Id)]
 struct FiltersId;
@@ -47,6 +51,9 @@ struct PictureId;
 /// A SKU's count form, `count-{sku}`: a count's answer replaces it.
 #[derive(Id)]
 struct CountId(i32);
+/// The counts not yet queued, as the script reads them: a count's or a queue's answer replaces it.
+#[derive(Id)]
+pub struct UnqueuedId;
 
 /// A SKU's count field: which SKU, where it belongs, and what it is called.
 pub struct Counted<'a> {
@@ -65,21 +72,148 @@ pub struct Queuing<'a> {
     pub errors: &'a Errors,
 }
 
-/// The screen: the filters, every product of the set with a count per condition, and the bar
-/// that queues what is counted. CSS shows the counts of the condition chosen.
+/// Every product the filters keep, as the screen's script gets them once with the page, as the
+/// React screen read a set's SKUs once. It searches a set's in the browser with no request, and
+/// sorts, pages and draws any of them in another condition; a card number across sets is searched
+/// by the server, which sends what it found.
+#[derive(ToJson)]
+pub struct IntakeListing {
+    /// Whether the script searches them: a set's products.
+    pub searches: bool,
+    /// The page the server drew, counting from 1.
+    pub page: u32,
+    /// Whether they are shown by name, Z to A.
+    pub descending: bool,
+    /// The query parameter of the page shown, which the script keeps in the address.
+    pub page_field: String,
+    /// A product's picture is its id between these two.
+    pub picture: [String; 2],
+    /// A count form's id is its SKU after this.
+    pub count_form: String,
+    /// Each condition's name, in [`Condition::ALL`]'s order, as the condition select lists them.
+    pub conditions: Vec<String>,
+    /// What a sealed product's one SKU is called.
+    pub unopened: String,
+    /// The sets the products are in, which each names by its place here.
+    pub sets: Vec<String>,
+    /// By name, A to Z.
+    pub products: Vec<ListedProduct>,
+}
+
+/// A product as the script searches and draws it.
+#[derive(ToJson)]
+pub struct ListedProduct {
+    pub product: i32,
+    /// `Pikachu - 025/165 - Common`, which a search matches when no card number does.
+    pub name: String,
+    /// Its card number, which a search matches first; empty when it has none.
+    pub number: String,
+    /// Its printing, empty when Normal.
+    pub printing: String,
+    /// Its set's place in [`IntakeListing::sets`].
+    pub set: u32,
+    /// Its SKU in each condition, in [`Condition::ALL`]'s order, 0 where it has none; a sealed
+    /// product's one SKU alone.
+    pub skus: Vec<i32>,
+}
+
+impl IntakeListing {
+    fn of(screen: &Screen) -> IntakeListing {
+        let mut sets: Vec<String> = Vec::new();
+        let products = screen
+            .listed
+            .iter()
+            .map(|product| {
+                let label = set_label(product);
+                let set = match sets.iter().position(|s| *s == label) {
+                    Some(at) => at,
+                    None => {
+                        sets.push(label);
+                        sets.len() - 1
+                    }
+                };
+                ListedProduct {
+                    product: product.product_id,
+                    name: product.display_name.clone(),
+                    number: product.card_number.clone().unwrap_or_default(),
+                    printing: printing(product).to_owned(),
+                    set: set as u32,
+                    skus: skus_of(product),
+                }
+            })
+            .collect();
+        IntakeListing {
+            searches: screen.scope == Scope::Set,
+            page: screen.page as u32,
+            descending: screen.selection.sort == Some(ProductOrder::NameDown),
+            page_field: Selection::FIELDS.page.to_string(),
+            picture: [PICTURE.0.to_owned(), PICTURE.1.to_owned()],
+            count_form: count_form_prefix(),
+            conditions: Condition::ALL.iter().map(|c| c.name().to_owned()).collect(),
+            unopened: UNOPENED.to_owned(),
+            sets,
+            products,
+        }
+    }
+}
+
+/// The counts not yet queued, by SKU: the rows the script makes show them.
+#[derive(ToJson)]
+pub struct IntakeCounts {
+    pub counts: Vec<PendingCount>,
+}
+
+#[derive(ToJson)]
+pub struct PendingCount {
+    pub sku: i32,
+    pub quantity: i32,
+}
+
+impl IntakeCounts {
+    fn of(quantities: &HashMap<i32, i32>) -> IntakeCounts {
+        let mut counts: Vec<PendingCount> = quantities
+            .iter()
+            .map(|(&sku, &quantity)| PendingCount { sku, quantity })
+            .collect();
+        counts.sort_by_key(|c| c.sku);
+        IntakeCounts { counts }
+    }
+}
+
+/// The screen: the filters, a page of products with a count in the condition chosen, and the bar
+/// that queues what is counted. The page brings every product the filters keep
+/// ([`IntakeListing`]), and the script searches a set, sorts, pages and draws another condition
+/// from it with no request; without JavaScript the GET form and the links do it on the server.
 #[component(css, js)]
 pub fn IntakeScreen<'a>(
     screen: &'a Screen,
     error: Option<&'a str>,
     queuing: &'a Queuing<'a>,
 ) -> impl Render {
-    let (filters, conditions, sets, search, rows, dialog, image) = refs();
+    let (filters, conditions, sets, search, go, size, sort) = refs();
+    let (rows, template, table, paging, range, previous, next) = refs();
+    let (none, dialog, image) = refs();
+    let t = Msg::default();
     let keys = js::Keys {
         filters,
         conditions,
         sets,
         search,
+        go,
+        size,
+        sort,
         rows,
+        template,
+        table,
+        paging,
+        range,
+        previous,
+        next,
+        none,
+        shown: t.js().intake_shown(),
+        quantity: t.js().intake_quantity(),
+        unavailable: t.js().intake_unavailable(),
+        number: t.js().number(),
     };
     let f = Selection::FIELDS;
     let selection = &screen.selection;
@@ -88,12 +222,19 @@ pub fn IntakeScreen<'a>(
         .search
         .as_deref()
         .is_some_and(|s| !s.trim().is_empty());
+    let listing = IntakeListing::of(screen);
+    let drawn: Vec<RowOf> = screen
+        .products
+        .iter()
+        .map(|p| RowOf::new(p, screen.condition, &screen.quantities, &t))
+        .collect();
+    let blank = RowOf::default();
     html! {
         <section
             class={IntakeScreen}
             on:document:keydown={js::keys(event, target, keys)}
             on:focusin={js::focused(event)}
-            on:input={js::typed(event)}
+            on:input={js::typed(event, keys)}
         >
             <header class={row(Space::_3)}>
                 <h1>"Inventory Manager"</h1>
@@ -102,6 +243,8 @@ pub fn IntakeScreen<'a>(
             </header>
             <QueueNotice message={None} />
             <IntakeError message={error} />
+            // A filter applied, or a set stepped with Page Up or Page Down, leaves focus on the
+            // control the user is on (`data-keep-place`).
             <form
                 id={FiltersId}
                 ref={filters}
@@ -109,7 +252,9 @@ pub fn IntakeScreen<'a>(
                 action={url::InventoryManager { selection: Selection::default() }}
                 class={(CardPanel { size: CardSize::Sm }, Filters)}
                 aria-label="Filters"
+                data-keep-place
                 on:change={js::filtered(event, keys)}
+                on:submit={js::submitted(event, keys)}
             >
                 <label>
                     "Product Line"
@@ -206,18 +351,25 @@ pub fn IntakeScreen<'a>(
                             autocomplete="off"
                         >
                         <button
+                            ref={go}
                             class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Md }}
                         >
                             "Search"
                         </button>
                     </span>
                 </label>
-                if let Some(sort) = selection.sort {
-                    <input type="hidden" name={f.sort} value={sort}>
-                }
+                // Sent while the products are shown Z to A: the script sorts in place and turns it
+                // on or off, so a filter applied next keeps the order.
+                <input
+                    ref={sort}
+                    type="hidden"
+                    name={f.sort}
+                    value={ProductOrder::NameDown}
+                    disabled={order != ProductOrder::NameDown}
+                >
                 <label>
                     "Rows per page"
-                    <select class={Select {}} name={f.rows}>
+                    <select ref={size} class={Select {}} name={f.rows}>
                         for size in PageSize::ALL {
                             <option
                                 value={size}
@@ -240,8 +392,9 @@ pub fn IntakeScreen<'a>(
                 <h2 id={TableHeadingId} class={VisuallyHidden {}}>"Add new inventory"</h2>
                 <Table layout={TableLayout::Scroll}>
                     // React drew no grid without rows; the table stays for the script's refs.
-                    <table hidden={screen.products.is_empty()}>
-                        <thead>
+                    <table ref={table} hidden={screen.products.is_empty()}>
+                        // The script sorts in place: a hover on the sort link fetches nothing.
+                        <thead data-no-prefetch>
                             <tr>
                                 <th>"Image"</th>
                                 <th>"Set"</th>
@@ -269,7 +422,7 @@ pub fn IntakeScreen<'a>(
                                     }}
                                     first={Sort::Ascending}
                                     class={()}
-                                    on:sort={None::<Handler>}
+                                    on:sort={js::sorted(event, target, keys)}
                                 />
                             </tr>
                         </thead>
@@ -277,24 +430,87 @@ pub fn IntakeScreen<'a>(
                             ref={rows}
                             on:click={js::clicked(event, js::Picture { dialog, image, search })}
                             on:change={js::committed(event)}
-                            on:connect={js::start(rows, searched)}
+                            on:connect={js::start(keys, searched)}
                         >
-                            for p in &screen.products {
-                                <ProductRow product={p} screen={screen} />
+                            for r in &drawn {
+                                <IntakeRow
+                                    key={r.key}
+                                    condition={&r.condition}
+                                    missing={r.missing}
+                                    picture={&r.picture}
+                                    set={&r.set}
+                                    sku_name={&r.sku_name}
+                                    printing={&r.printing}
+                                    form={&r.form}
+                                    sku={r.sku}
+                                    count={r.count}
+                                    label={&r.label}
+                                    submit={&r.submit}
+                                    name={&r.name}
+                                    selection={selection}
+                                />
                             }
                         </tbody>
                     </table>
                 </Table>
-                if screen.pages > 1 {
-                    <div class={(row(Space::_3), Paging)}>
-                        <span class={muted()}>{shown_of(screen)}</span>
+                // The row the script copies for each product it draws.
+                <template ref={template}>
+                    <IntakeRow
+                        key={blank.key}
+                        condition={&blank.condition}
+                        missing={blank.missing}
+                        picture={&blank.picture}
+                        set={&blank.set}
+                        sku_name={&blank.sku_name}
+                        printing={&blank.printing}
+                        form={&blank.form}
+                        sku={blank.sku}
+                        count={blank.count}
+                        label={&blank.label}
+                        submit={&blank.submit}
+                        name={&blank.name}
+                        selection={selection}
+                    />
+                </template>
+                <span hidden on:connect={js::listed(&listing)}></span>
+                <UnqueuedCounts quantities={&screen.quantities} />
+                <div ref={paging} class={(row(Space::_3), Paging)} hidden={screen.pages <= 1}>
+                    <span ref={range} class={muted()}>{shown_of(screen, &t)}</span>
+                    <span class={NoScript}>
                         <ProductPages
                             selection={selection}
                             current={screen.page}
                             pages={screen.pages}
                         />
-                    </div>
-                }
+                    </span>
+                    <span class={(row(Space::_2), WithScript)}>
+                        <button
+                            ref={previous}
+                            type="button"
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Sm }}
+                            disabled={screen.page <= 1}
+                            on:click={js::turned(keys, -1)}
+                        >
+                            "Previous"
+                        </button>
+                        <button
+                            ref={next}
+                            type="button"
+                            class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Sm }}
+                            disabled={screen.page >= screen.pages}
+                            on:click={js::turned(keys, 1)}
+                        >
+                            "Next"
+                        </button>
+                    </span>
+                </div>
+                // A search of the set that finds nothing, shown by the script as by the server.
+                <div
+                    ref={none}
+                    hidden={!(screen.scope == Scope::Set && searched && screen.products.is_empty())}
+                >
+                    <Notice variant={AlertVariant::Info}>"No products match."</Notice>
+                </div>
                 if screen.products.is_empty() {
                     match (screen.scope, selection.search.as_deref().map(str::trim).filter(|s| !s.is_empty())) {
                         (Scope::AllSets, None) => {
@@ -313,9 +529,7 @@ pub fn IntakeScreen<'a>(
                                 "No SKUs available. Please select a product line and set to see available inventory options."
                             </Notice>
                         }
-                        (Scope::Set, Some(_)) => {
-                            <Notice variant={AlertVariant::Info}>"No products match."</Notice>
-                        }
+                        (Scope::Set, Some(_)) => {}
                     }
                 }
             </section>
@@ -346,7 +560,19 @@ pub fn IntakeScreen<'a>(
     }
 }
 
-/// The pages of products: each link is the screen with the same filters, on that page.
+/// The counts not yet queued, for the script: the rows it makes show them, and when a count's or
+/// a queue's answer brings them again, the rows of SKUs no longer counted show none (a queue hands
+/// them off, so its answer draws no count form of its own).
+#[component(js = IntakeScreen)]
+pub fn UnqueuedCounts<'a>(quantities: &'a HashMap<i32, i32>) -> impl Patch {
+    let counts = IntakeCounts::of(quantities);
+    html! {
+        <span id={UnqueuedId} hidden on:connect={js::recounted(&counts)}></span>
+    }
+}
+
+/// The pages of products: each link is the screen with the same filters, on that page. Without
+/// JavaScript; the script pages with Previous and Next instead.
 #[component]
 fn ProductPages<'a>(selection: &'a Selection, current: usize, pages: usize) -> impl Render {
     html! {
@@ -364,16 +590,21 @@ fn ProductPages<'a>(selection: &'a Selection, current: usize, pages: usize) -> i
     }
 }
 
-/// "More filters: Unsealed only, English": the summary says what the hidden filters do.
-/// "101–200 of 1,390", as the React grid's footer counted them.
-fn shown_of(screen: &Screen) -> String {
+/// "101-200 of 1,390", as the React grid's footer counted them (`intake.shown`, which the
+/// script writes too).
+fn shown_of(screen: &Screen, t: &Msg) -> String {
     let size = screen.selection.rows.unwrap_or_default().count();
     let first = (screen.page - 1) * size + 1;
     let last = first + screen.products.len() - 1;
-    let t = crate::text::Msg::default();
-    format!("{first}–{last} of {}", t.number(screen.matched as i64))
+    t.intake_shown(msg::IntakeShown {
+        first: first.to_string(),
+        last: last.to_string(),
+        total: t.number(screen.matched as i64),
+    })
+    .to_string()
 }
 
+/// "More filters: Unsealed only, English": the summary says what the hidden filters do.
 fn more_filters(selection: &Selection) -> String {
     let sealed = match selection.product_type.unwrap_or_default() {
         ProductType::All => None,
@@ -393,224 +624,248 @@ fn more_filters(selection: &Selection) -> String {
     }
 }
 
-/// TCGplayer's picture of a product.
+/// TCGplayer's picture of a product is its id between these two.
+const PICTURE: (&str, &str) = (
+    "https://tcgplayer-cdn.tcgplayer.com/product/",
+    "_in_400x400.jpg",
+);
+
+/// What a sealed product's one SKU is called.
+const UNOPENED: &str = "Unopened";
+
 fn picture(product_id: i32) -> String {
-    format!("https://tcgplayer-cdn.tcgplayer.com/product/{product_id}_in_400x400.jpg")
+    format!("{}{product_id}{}", PICTURE.0, PICTURE.1)
 }
 
-/// The conditions a product is counted in: a sealed product's one, `None`, or every condition.
-fn conditions(product: &Product) -> Vec<Option<Condition>> {
-    if product.sealed {
-        vec![None]
-    } else {
-        Condition::ALL.into_iter().map(Some).collect()
-    }
-}
-
-/// The color a SKU in `condition` is drawn in, as the React grid's `getConditionColor` chose it:
-/// Near Mint and a sealed product's plain.
-fn tone(condition: Option<Condition>) -> BadgeTone {
-    match condition {
-        None | Some(Condition::NearMint) => BadgeTone::Neutral,
-        Some(Condition::LightlyPlayed) => BadgeTone::Info,
-        Some(Condition::ModeratelyPlayed) => BadgeTone::Success,
-        Some(Condition::HeavilyPlayed) => BadgeTone::Warning,
-        Some(Condition::Damaged) => BadgeTone::Destructive,
-    }
-}
-
-/// Shown only while its condition is chosen; a sealed product's, with no condition, always.
-#[component(css = IntakeScreen)]
-fn WhileChosen(condition: Option<Condition>) -> impl ClassList {
-    condition.map(|c| match c {
-        Condition::NearMint => NearMint,
-        Condition::LightlyPlayed => LightlyPlayed,
-        Condition::ModeratelyPlayed => ModeratelyPlayed,
-        Condition::HeavilyPlayed => HeavilyPlayed,
-        Condition::Damaged => Damaged,
-    })
-}
-
-/// A product's row. The table's click handler opens its picture and steps its count. The set
-/// and the name take the color of the condition chosen while the product has a SKU in it, as the
-/// React grid colored them, so each is drawn once per condition and CSS shows the chosen one.
-#[component(css = IntakeScreen)]
-fn ProductRow<'a>(product: &'a Product, screen: &'a Screen) -> impl Render {
-    let set = match &product.release_year {
+/// `Base Set - 1999`.
+fn set_label(product: &Product) -> String {
+    match &product.release_year {
         Some(year) => format!("{} - {year}", product.set_name),
         None => product.set_name.clone(),
-    };
-    let conditions = conditions(product);
+    }
+}
+
+/// The product's printing, or nothing for a Normal one.
+fn printing(product: &Product) -> &str {
+    match product.variant.as_str() {
+        "Normal" => "",
+        variant => variant,
+    }
+}
+
+/// Its SKU in each condition, in [`Condition::ALL`]'s order, 0 where it has none; a sealed
+/// product's one SKU alone. The script reads the same list ([`ListedProduct::skus`]).
+fn skus_of(product: &Product) -> Vec<i32> {
+    if product.sealed {
+        vec![product.unopened.unwrap_or(0)]
+    } else {
+        product.skus.iter().map(|s| s.unwrap_or(0)).collect()
+    }
+}
+
+/// A row's key: the SKU it shows, or without one the product's first SKU, negated, so a row
+/// drawn in another condition is another row and no two rows share a key.
+fn key_of(skus: &[i32], sku: i32) -> i32 {
+    if sku != 0 {
+        return sku;
+    }
+    -skus.iter().copied().find(|&s| s != 0).unwrap_or(0)
+}
+
+/// The id of a SKU's count form, as [`CountForm`] writes it.
+fn count_form(sku: i32) -> String {
+    ElementId::of(&CountId(sku)).into()
+}
+
+/// What a count form's id has before its SKU, for the script to name the forms it makes.
+fn count_form_prefix() -> String {
+    let id = count_form(0);
+    id.strip_suffix('0').unwrap_or(&id).to_owned()
+}
+
+/// A new submit key for a row's count form, as `SubmitKey::field` draws one: the script gives
+/// each row it makes a key of its own the same way, since a key a copied row shared with another
+/// would apply only the first SKU's count.
+fn fresh_key() -> String {
+    let field = SubmitKey::field(CountInput::FIELDS.submit).to_html();
+    field
+        .split_once("value=\"")
+        .and_then(|(_, rest)| rest.get(..36))
+        .unwrap_or_default()
+        .to_owned()
+}
+
+/// A product's row in one condition: the holes of [`IntakeRow`], as the server fills them for
+/// the page it draws, and the script (`rowOf` in `intake_screen.js`) for the rows it makes.
+#[derive(Default)]
+struct RowOf {
+    key: i32,
+    condition: String,
+    missing: bool,
+    picture: String,
+    set: String,
+    sku_name: String,
+    printing: String,
+    form: String,
+    sku: i32,
+    count: i32,
+    label: String,
+    submit: String,
+    name: String,
+}
+
+impl RowOf {
+    fn new(
+        product: &Product,
+        condition: Condition,
+        quantities: &HashMap<i32, i32>,
+        t: &Msg,
+    ) -> RowOf {
+        let skus = skus_of(product);
+        let shown = (!product.sealed).then_some(condition);
+        let sku = product.sku(condition).unwrap_or(0);
+        let named = shown.map_or(UNOPENED, Condition::name);
+        let printing = printing(product);
+        let sku_name = match (sku, printing) {
+            (0, _) => t.intake_unavailable(named).to_string(),
+            (_, "") => named.to_owned(),
+            (_, printing) => format!("{named} {printing}"),
+        };
+        RowOf {
+            key: key_of(&skus, sku),
+            condition: shown.map(|c| c.to_string()).unwrap_or_default(),
+            missing: sku == 0,
+            picture: picture(product.product_id),
+            set: set_label(product),
+            sku_name,
+            printing: printing.to_owned(),
+            form: if sku == 0 {
+                String::new()
+            } else {
+                count_form(sku)
+            },
+            sku,
+            count: quantities.get(&sku).copied().unwrap_or(0),
+            label: label(product, shown),
+            submit: fresh_key(),
+            name: product.display_name.clone(),
+        }
+    }
+}
+
+/// A product's row, in the condition chosen. `view` makes `IntakeRow` in `corten/views`: the
+/// server draws a page of them and the script makes the rest from the screen's `<template>`, so
+/// every part that changes from row to row is a hole. The table's click handler opens its picture
+/// and steps its count. The set, the SKU and the name take the condition's color while the
+/// product has a SKU in it (`data-condition`), as the React grid colored them; a row without one
+/// has its count form hidden (`data-missing`), which the keys skip.
+///
+/// The count form is [`CountForm`]'s markup, which a count's answer replaces it with (a test
+/// holds them the same), with the SKU and the submit key as holes so a copied row is its own.
+#[component(view, css = IntakeScreen)]
+pub fn IntakeRow<'a>(
+    key: i32,
+    condition: &'a str,
+    missing: bool,
+    picture: &'a str,
+    set: &'a str,
+    sku_name: &'a str,
+    printing: &'a str,
+    form: &'a str,
+    sku: i32,
+    count: i32,
+    label: &'a str,
+    submit: &'a str,
+    name: &'a str,
+    selection: &'a Selection,
+) -> impl Render {
+    let c = CountInput::FIELDS;
     html! {
-        <tr>
+        <tr key={key} class={ProductRow} data-condition={condition} data-missing={missing}>
             <td>
-                <a href={picture(product.product_id)} tabindex="-1">"View"</a>
+                <a href={picture} tabindex="-1">"View"</a>
             </td>
             <td>
-                for &c in &conditions {
-                    <SetLabel product={product} condition={c} set={&set} />
-                }
+                <span
+                    class={(Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }, SetName)}
+                >
+                    {set}
+                </span>
             </td>
             <td>
-                for &c in &conditions {
-                    <SkuLabel product={product} condition={c} />
-                }
+                <span
+                    class={(Badge { tone: BadgeTone::Neutral, emphasis: BadgeEmphasis::Outline }, SkuName)}
+                    data-printing={printing}
+                >
+                    {sku_name}
+                </span>
             </td>
             <td>
-                for &c in &conditions {
-                    <QuantityCell product={product} condition={c} screen={screen} />
-                }
+                <form
+                    id={form}
+                    class={Count}
+                    method="post"
+                    action={url::Count { selection: selection.clone() }}
+                    hidden={missing}
+                    data-patch
+                >
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Icon }}
+                        type="button"
+                        tabindex="-1"
+                        data-step="-1"
+                        aria-label="One fewer"
+                    >
+                        "\u{2212}"
+                    </button>
+                    <input
+                        class={Quantity}
+                        name={c.quantity}
+                        value={count}
+                        inputmode="numeric"
+                        autocomplete="off"
+                        aria-label={label}
+                        data-sku={sku}
+                    >
+                    <button
+                        class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Icon }}
+                        type="button"
+                        data-step="1"
+                        aria-label="One more"
+                    >
+                        "+"
+                    </button>
+                    <input type="hidden" name={c.sku} value={sku}>
+                    <input type="hidden" name={c.seen} value={count}>
+                    <input type="hidden" name={c.submit} data-submit value={submit}>
+                </form>
             </td>
             <td class={Name}>
-                for &c in &conditions {
-                    <ProductName product={product} condition={c} />
-                }
+                <span class={ProductName}>{name}</span>
             </td>
         </tr>
     }
 }
 
-/// `Base Set - 1999`, in the condition's color when the product has a SKU in it.
-#[component(css = IntakeScreen)]
-fn SetLabel<'a>(product: &'a Product, condition: Option<Condition>, set: &'a str) -> impl Render {
-    let has = condition
-        .map_or(product.unopened, |c| product.sku(c))
-        .is_some();
-    let tone = if has {
-        tone(condition)
-    } else {
-        BadgeTone::Neutral
-    };
-    html! {
-        <span
-            class={(Badge { tone, emphasis: BadgeEmphasis::Outline }, WhileChosen { condition })}
-        >
-            {set}
-        </span>
-    }
-}
-
-/// The product's name, in the condition's color when the product has a SKU in it.
-#[component(css = IntakeScreen)]
-fn ProductName<'a>(product: &'a Product, condition: Option<Condition>) -> impl Render {
-    let has = condition
-        .map_or(product.unopened, |c| product.sku(c))
-        .is_some();
-    let color = match tone(condition) {
-        BadgeTone::Info => Some(InfoText),
-        BadgeTone::Success => Some(SuccessText),
-        BadgeTone::Warning => Some(WarningText),
-        BadgeTone::Destructive => Some(DestructiveText),
-        BadgeTone::Neutral | BadgeTone::Primary => None,
-    }
-    .filter(|_| has);
-    html! {
-        <span class={(WhileChosen { condition }, color)}>{&product.display_name}</span>
-    }
-}
-
-/// `Lightly Played Reverse Holofoil`, or `Lightly Played unavailable` in warning.
-#[component(css = IntakeScreen)]
-fn SkuLabel<'a>(product: &'a Product, condition: Option<Condition>) -> impl Render {
-    let name = condition.map_or("Unopened", Condition::name);
-    let sku = condition.map_or(product.unopened, |c| product.sku(c));
-    let tone = if sku.is_some() {
-        tone(condition)
-    } else {
-        BadgeTone::Warning
-    };
-    let variant = (product.variant != "Normal").then_some(product.variant.as_str());
-    let holo = variant
-        .is_some_and(|v| v.to_lowercase().contains("reverse") || v.to_lowercase().contains("holo"));
-    let first = variant
-        .is_some_and(|v| v.to_lowercase().contains("1st") || v.to_lowercase().contains("first"));
-    html! {
-        <span
-            class={(Badge { tone, emphasis: BadgeEmphasis::Outline }, WhileChosen { condition }, holo.then_some(Holo), first.then_some(First), sku.is_none().then_some(Missing))}
-        >
-            if sku.is_some() {
-                {name}
-                if let Some(v) = variant {
-                    " "{v}
-                }
-            } else {
-                {name}" unavailable"
-            }
-        </span>
-    }
-}
-
-#[component(css = IntakeScreen)]
-fn QuantityCell<'a>(
-    product: &'a Product,
-    condition: Option<Condition>,
-    screen: &'a Screen,
-) -> impl Render {
-    let sku = condition.map_or(product.unopened, |c| product.sku(c));
-    let label = label(product, condition);
-    html! {
-        <span class={WhileChosen { condition }}>
-            if let Some(sku) = sku {
-                let counted = Counted { sku, label: &label };
-                <CountForm
-                    counted={&counted}
-                    quantity={screen.quantities.get(&sku).copied().unwrap_or(0)}
-                    selection={&screen.selection}
-                />
-            }
-        </span>
-    }
-}
-
 /// `Pikachu - 025/165 - Common Reverse Holofoil Near Mint quantity`: printings of a product share
-/// its name, so the label names the printing too.
+/// its name, so the label names the printing too (`intake.quantity`, which the script writes too).
 pub fn label(product: &Product, condition: Option<Condition>) -> String {
-    let printing = match product.variant.as_str() {
-        "Normal" | "" => String::new(),
-        variant => format!(" {variant}"),
+    let named = match printing(product) {
+        "" => product.display_name.clone(),
+        printing => format!("{} {printing}", product.display_name),
     };
-    format!(
-        "{}{printing} {} quantity",
-        product.display_name,
-        condition.map_or("Unopened", Condition::name)
-    )
-}
-
-/// A count to draw again: its SKU and its label.
-pub struct Redrawn {
-    sku: i32,
-    label: String,
-}
-
-impl Redrawn {
-    pub fn counted(&self) -> Counted<'_> {
-        Counted {
-            sku: self.sku,
-            label: &self.label,
-        }
-    }
-}
-
-/// The count fields on the screen of the SKUs in `only`: after a queue, those it handed off.
-pub fn redrawn(products: &[Product], only: &HashSet<i32>) -> Vec<Redrawn> {
-    let mut fields = Vec::new();
-    for product in products {
-        for condition in conditions(product) {
-            let sku = condition.map_or(product.unopened, |c| product.sku(c));
-            if let Some(sku) = sku.filter(|s| only.contains(s)) {
-                fields.push(Redrawn {
-                    sku,
-                    label: label(product, condition),
-                });
-            }
-        }
-    }
-    fields
+    Msg::default()
+        .intake_quantity(msg::IntakeQuantity {
+            product: named,
+            condition: condition.map_or(UNOPENED, Condition::name),
+        })
+        .to_string()
 }
 
 /// A SKU's count, a form of its own: the script writes the new count into the field and submits
 /// it with `seen`, the count the server last answered, so a count changed meanwhile is refused.
 /// The answer is this form with the count stored. Without JavaScript, Enter in the field sends it.
+/// [`IntakeRow`] draws the same form for the page's rows.
 #[component(css = IntakeScreen)]
 pub fn CountForm<'a>(
     counted: &'a Counted<'a>,
@@ -623,7 +878,7 @@ pub fn CountForm<'a>(
             id={CountId(counted.sku)}
             class={Count}
             method="post"
-            action={url::Count { sku: counted.sku, selection: selection.clone() }}
+            action={url::Count { selection: selection.clone() }}
             data-patch
         >
             <button
@@ -633,7 +888,7 @@ pub fn CountForm<'a>(
                 data-step="-1"
                 aria-label="One fewer"
             >
-                "−"
+                "\u{2212}"
             </button>
             <input
                 class={Quantity}
@@ -652,6 +907,7 @@ pub fn CountForm<'a>(
             >
                 "+"
             </button>
+            <input type="hidden" name={c.sku} value={counted.sku}>
             <input type="hidden" name={c.seen} value={quantity}>
             {SubmitKey::field(c.submit)}
         </form>
@@ -683,12 +939,20 @@ pub fn IntakeError<'a>(message: Option<&'a str>) -> impl Patch {
 }
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use corten::view::Render;
 
-    use super::{ProductName, ProductPages, SetLabel, SkuLabel};
-    use crate::features::inventory_intake::{
-        catalog::{Condition, Product},
-        url::Selection,
+    use super::{
+        CountForm, Counted, IntakeRow, ProductPages, RowOf, count_form, count_form_prefix, key_of,
+        skus_of,
+    };
+    use crate::{
+        features::inventory_intake::{
+            catalog::{Condition, Product},
+            url::Selection,
+        },
+        text::Msg,
     };
 
     /// A Base Set card in Near Mint and Lightly Played only.
@@ -699,7 +963,7 @@ mod tests {
             set_name: "Base Set".into(),
             release_year: Some("1999".into()),
             card_number: Some("58/102".into()),
-            variant: "Normal".into(),
+            variant: "Reverse Holofoil".into(),
             sealed: false,
             set_id: 1,
             product_line_id: 3,
@@ -708,46 +972,200 @@ mod tests {
         }
     }
 
-    /// The set, the SKU and the name take the condition's color, as the React grid's
-    /// `getConditionColor`: Near Mint plain, Lightly Played info; a condition without a SKU
-    /// leaves the set and name plain and marks the SKU a warning.
+    fn drawn(row: &RowOf, selection: &Selection) -> String {
+        IntakeRow {
+            key: row.key,
+            condition: &row.condition,
+            missing: row.missing,
+            picture: &row.picture,
+            set: &row.set,
+            sku_name: &row.sku_name,
+            printing: &row.printing,
+            form: &row.form,
+            sku: row.sku,
+            count: row.count,
+            label: &row.label,
+            submit: &row.submit,
+            name: &row.name,
+            selection,
+        }
+        .to_html()
+    }
+
+    /// A row shows the condition chosen: its SKU, count and label, and the condition the
+    /// stylesheet colors it by, as the React grid's `getConditionColor`. Without a SKU in that
+    /// condition its count form is hidden and the SKU is marked unavailable; its key is another
+    /// row's than the product's rows with a SKU.
     #[test]
-    fn a_row_is_colored_by_its_condition() {
+    fn a_row_shows_the_condition_chosen() {
         let product = card();
-        let set = |c| {
-            SetLabel {
-                product: &product,
-                condition: Some(c),
-                set: "Base Set - 1999",
-            }
-            .to_html()
+        let t = Msg::default();
+        let counts = HashMap::from([(11, 4)]);
+        let selection = Selection::default();
+        let lp = RowOf::new(&product, Condition::LightlyPlayed, &counts, &t);
+        let html = drawn(&lp, &selection);
+        assert_eq!((lp.key, lp.sku, lp.count), (11, 11, 4));
+        assert!(html.contains("data-condition=\"lightly-played\""), "{html}");
+        assert!(!html.contains("data-missing"), "{html}");
+        assert!(html.contains(">Lightly Played Reverse Holofoil<"), "{html}");
+        assert!(
+            html.contains(
+                "aria-label=\"Pikachu - 58/102 - Common Reverse Holofoil Lightly Played quantity\""
+            ),
+            "{html}"
+        );
+        assert!(
+            html.contains(&format!("id=\"{}\"", count_form(11))),
+            "{html}"
+        );
+        let dmg = RowOf::new(&product, Condition::Damaged, &counts, &t);
+        let html = drawn(&dmg, &selection);
+        assert_eq!((dmg.key, dmg.sku, dmg.missing), (-10, 0, true));
+        assert!(html.contains("data-missing"), "{html}");
+        assert!(html.contains(" hidden data-patch"), "{html}");
+        assert!(html.contains(">Damaged unavailable<"), "{html}");
+        assert_eq!(key_of(&skus_of(&product), 0), -10);
+    }
+
+    /// A count's answer replaces a row's count form with `CountForm`, so the row draws the same
+    /// markup (all but the submit key, which each form draws new), and the script's holes stay
+    /// where it finds them.
+    #[test]
+    fn a_row_draws_the_count_form_a_count_answers_with() {
+        let product = card();
+        let selection = Selection {
+            line: Some(3),
+            search: Some("58".into()),
+            ..Selection::default()
         };
-        let sku = |c| {
-            SkuLabel {
-                product: &product,
-                condition: Some(c),
-            }
-            .to_html()
+        let row = RowOf::new(
+            &product,
+            Condition::NearMint,
+            &HashMap::from([(10, 2)]),
+            &Msg::default(),
+        );
+        let html = drawn(&row, &selection);
+        let form = |html: &str| {
+            let start = html.find("<form").expect("a form");
+            let end = html.find("</form>").expect("its end") + "</form>".len();
+            let form = &html[start..end];
+            let key = form.find("data-submit value=\"").expect("a submit key") + 19;
+            format!("{}KEY{}", &form[..key], &form[key + 36..])
         };
-        let name = |c| {
-            ProductName {
-                product: &product,
-                condition: Some(c),
+        let answered = CountForm {
+            counted: &Counted {
+                sku: 10,
+                label: &row.label,
+            },
+            quantity: 2,
+            selection: &selection,
+        }
+        .to_html();
+        assert_eq!(form(&html), form(&answered));
+        assert_ne!(
+            row.submit,
+            RowOf::new(
+                &product,
+                Condition::NearMint,
+                &HashMap::new(),
+                &Msg::default()
+            )
+            .submit
+        );
+    }
+
+    /// The script names a count form as `CountForm` does: the prefix, then the SKU.
+    #[test]
+    fn the_script_names_count_forms_as_the_server_does() {
+        assert_eq!(count_form(1234), format!("{}1234", count_form_prefix()));
+    }
+
+    /// Page Up and Page Down step the set, empty the search, leave focus in it with its text
+    /// selected and send the filters (whose `data-keep-place` keeps that focus through the
+    /// navigation), from the search or a count field alike: never the old search, never a count
+    /// field. With every set searched there is no set to step. The handler runs in node with
+    /// stand-ins for the page and the runtime (the test runs in the crate's directory).
+    #[test]
+    fn page_up_and_down_start_a_new_search_in_the_next_set() {
+        let script = r#"
+            import { registerHooks } from "node:module";
+            // The runtime's modules, as far as the handler reaches them.
+            const stubs = {
+                corten: "export const keep = (init) => (globalThis.kept ??= init());",
+                "corten/views": "export class IntakeRow {} export const rows = () => { throw new Error('no rows'); };",
+            };
+            registerHooks({
+                resolve(specifier, context, next) {
+                    const code = stubs[specifier];
+                    if (code === undefined) return next(specifier, context);
+                    return { url: "data:text/javascript," + encodeURIComponent(code), shortCircuit: true };
+                },
+            });
+            class Node {
+                contains(other) { return other === this || (this.kids ?? []).includes(other); }
             }
-            .to_html()
-        };
-        let lp = Condition::LightlyPlayed;
-        let nm = Condition::NearMint;
-        let dmg = Condition::Damaged;
-        assert!(set(lp).contains("badge__info"), "{}", set(lp));
-        assert!(sku(lp).contains("badge__info"), "{}", sku(lp));
-        assert!(name(lp).contains("info-text"), "{}", name(lp));
-        assert!(set(nm).contains("badge__neutral"), "{}", set(nm));
-        assert!(sku(nm).contains("badge__neutral"), "{}", sku(nm));
-        assert!(!name(nm).contains("-text"), "{}", name(nm));
-        assert!(set(dmg).contains("badge__neutral"), "{}", set(dmg));
-        assert!(sku(dmg).contains("badge__warning"), "{}", sku(dmg));
-        assert!(!name(dmg).contains("-text"), "{}", name(dmg));
+            class Element extends Node {
+                closest() { return null; }
+            }
+            class HTMLInputElement extends Element {
+                constructor(dataset) { super(); this.dataset = dataset; this.value = "58"; this.selected = false; }
+                focus() { document.activeElement = this; }
+                select() { this.selected = true; }
+            }
+            Object.assign(globalThis, { Node, Element, HTMLInputElement, document: { body: new Node(), activeElement: null } });
+            const { keys } = await import("./src/features/inventory_intake/views/intake_screen.js");
+            const screen = new Node();
+            const search = new HTMLInputElement({});
+            const quantity = new HTMLInputElement({ sku: "10" });
+            screen.kids = [search, quantity];
+            const sent = [];
+            const k = {
+                search,
+                sets: { disabled: false, options: { length: 3 }, selectedIndex: 0 },
+                filters: { requestSubmit: (...by) => sent.push(by) },
+            };
+            const press = (key, target) => {
+                const event = { key, target, defaultPrevented: false, isComposing: false, ctrlKey: false, metaKey: false, altKey: false, preventDefault() { this.defaultPrevented = true; } };
+                search.value = "58";
+                search.selected = false;
+                document.activeElement = target;
+                keys(event, screen, k);
+                return [event.defaultPrevented, k.sets.selectedIndex, search.value, document.activeElement === search, search.selected, sent.length, sent.at(-1)?.length].join(" ");
+            };
+            console.log(press("PageDown", search));
+            console.log(press("PageDown", quantity));
+            console.log(press("PageUp", quantity));
+            console.log(press("PageUp", search));
+            k.sets.disabled = true;
+            console.log(press("PageDown", search));
+        "#;
+        let out = std::process::Command::new("node")
+            .args(["--input-type=module", "-e", script])
+            .output()
+            .expect("node runs");
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let lines: Vec<String> = String::from_utf8(out.stdout)
+            .unwrap()
+            .lines()
+            .map(str::to_owned)
+            .collect();
+        assert_eq!(
+            lines,
+            [
+                // Prevented, the set chosen, the search, focus in it, its text selected, the
+                // filters sent so far, and with no submitter.
+                "true 1  true true 1 0",
+                "true 2  true true 2 0",
+                "true 1  true true 3 0",
+                "true 0  true true 4 0",
+                // Every set searched: Page Down is the browser's, and the search is left as it is.
+                "false 0 58 true false 4 0",
+            ]
+        );
     }
 
     /// Every page link keeps the filters and changes only the page; the current one is marked, and

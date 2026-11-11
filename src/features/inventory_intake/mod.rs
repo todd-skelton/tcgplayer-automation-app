@@ -1,17 +1,19 @@
 //! Inventory Manager: count cards into inventory, set by set, a condition at a time, from the
 //! keyboard. Ported from `app/features/inventory-management/routes/inventory-manager.tsx`.
 //!
-//! The filters are a GET form, so a set, a search or a product line is a link. Every product of
-//! the set is drawn with a count for each condition, and the condition shown is chosen in the
-//! browser (CSS reads the condition select), so stepping through conditions needs no request.
-//! Each count is its own form: the script writes the new count into its field and submits it, and
-//! a change made while one is on its way waits for that answer, then goes with the latest count
-//! (the runtime's order for a `data-patch` write). Without JavaScript, Enter in a field sends it.
+//! The filters are a GET form, so a set, a search or a product line is a link, and the server
+//! searches and pages a set without JavaScript. With it, the page brings the whole set once and
+//! the script searches, sorts and pages it, and draws another condition's counts, with no
+//! request, as the React screen did; only a card number searched across every set goes to the
+//! server. Each count is its own form: the script writes the new count into its field and submits
+//! it, and a change made while one is on its way waits for that answer, then goes with the latest
+//! count (the runtime's order for a `data-patch` write). Without JavaScript, Enter in a field
+//! sends it.
 //!
 //! | Route | Answer |
 //! |---|---|
 //! | `GET /inventory-manager` | the screen for the filters in the query |
-//! | `POST /inventory-manager/count/{sku}` | one SKU's count set: its form and the totals |
+//! | `POST /inventory-manager/count` | one SKU's count set: its form and the totals |
 //! | `POST /inventory-manager/clear` | every count not yet queued removed |
 //! | `POST /inventory-manager/queue` | the counts queued as a pricing batch |
 //! | `GET /inventory-manager/batches` | the background batches again, read every 5 seconds |
@@ -28,6 +30,8 @@ pub mod queue;
 mod views;
 
 pub use views::COMPONENTS;
+#[cfg(test)]
+pub use views::{IntakeCounts, IntakeListing};
 
 // Handlers are named from here, where the routes module is declared.
 use page::{batches, change_rate, clear, count, queue_batch, show};
@@ -42,9 +46,10 @@ pub mod url {
         pub selection: Selection,
     }
 
-    #[route("/inventory-manager/count/{sku}", post = count)]
+    /// The SKU is in the form, so every count form on the screen posts to the same address and
+    /// the script makes one for any SKU from the same template.
+    #[route("/inventory-manager/count", post = count)]
     pub struct Count {
-        pub sku: i32,
         #[route(query)]
         pub selection: Selection,
     }
