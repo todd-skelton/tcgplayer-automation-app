@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 use super::store::{CategorySet, ProductLine, SetProduct};
 use crate::{
     features::http_configuration::config::Domain,
-    tcgplayer::{Call, TcgPlayer},
+    tcgplayer::{Call, TcgPlayer, whole, whole_or_none},
 };
 
 /// Where the catalog is read: a GET on a TCGplayer domain, or a search request, answered as JSON.
@@ -50,6 +50,7 @@ fn read<T: serde::de::DeserializeOwned>(answer: Value) -> Result<T, String> {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Line {
+    #[serde(deserialize_with = "whole")]
     product_line_id: i32,
     product_line_name: String,
     product_line_url_name: String,
@@ -89,7 +90,9 @@ pub async fn filters(catalog: &impl Catalog, category_id: i32) -> Result<Value, 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SetName {
+    #[serde(deserialize_with = "whole")]
     set_name_id: i32,
+    #[serde(deserialize_with = "whole")]
     category_id: i32,
     name: String,
     clean_set_name: String,
@@ -147,11 +150,15 @@ pub struct Details {
     pub rarity_name: Option<String>,
     pub sealed: Option<bool>,
     pub product_name: Option<String>,
+    #[serde(deserialize_with = "whole")]
     pub set_id: i32,
     pub set_code: Option<String>,
+    #[serde(deserialize_with = "whole")]
     pub product_id: i32,
     pub set_name: Option<String>,
+    #[serde(deserialize_with = "whole")]
     pub product_line_id: i32,
+    #[serde(default, deserialize_with = "whole_or_none")]
     pub product_status_id: Option<i32>,
     pub product_line_name: Option<String>,
     #[serde(default)]
@@ -173,6 +180,7 @@ pub async fn details(catalog: &impl Catalog, product_id: i32) -> Result<Details,
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Found {
+    #[serde(deserialize_with = "whole")]
     pub product_id: i32,
     pub product_name: Option<String>,
     pub rarity_name: Option<String>,
@@ -228,7 +236,7 @@ pub fn filed(found: &[Found], set_name_id: i32, game: &str) -> Vec<SetProduct> {
 struct Page {
     #[serde(default)]
     results: Vec<Found>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "whole")]
     total_results: usize,
     #[serde(default)]
     aggregations: Option<Aggregations>,
@@ -246,6 +254,7 @@ struct Aggregations {
 struct Bucket {
     url_value: String,
     value: String,
+    #[serde(deserialize_with = "whole")]
     count: i64,
 }
 
@@ -333,4 +342,65 @@ pub async fn set_counts(
         })
         .collect();
     Ok((page.total_results as i64, sets))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// TCGplayer's answers as it sent them on 2026-11-11, ids and counts written `2002.0`.
+    struct Answered;
+
+    impl Catalog for Answered {
+        async fn get(&self, _: Domain, path: &str) -> Result<Value, String> {
+            assert_eq!(path, "/v2/product/684332/details");
+            Ok(json!({
+                "productName": "Pikachu", "setId": 24587.0, "productId": 684332.0,
+                "productLineId": 3.0, "productStatusId": 1.0, "skus": [{ "sku": 9190214 }],
+            }))
+        }
+
+        async fn search(&self, body: &Value) -> Result<Value, String> {
+            let found = if body["size"] == 0 || body["from"] != 0 {
+                vec![]
+            } else {
+                vec![json!({ "productId": 684332.0, "productName": "Pikachu" })]
+            };
+            Ok(json!({ "results": [{
+                "totalResults": 33095,
+                "results": found,
+                "aggregations": { "setName": [
+                    { "urlValue": "world-championship-decks", "isActive": false,
+                      "value": "World Championship Decks", "count": 2002.0 },
+                ] },
+            }] }))
+        }
+    }
+
+    #[tokio::test]
+    async fn ids_and_counts_written_with_a_fraction_are_read() {
+        let (total, sets) = set_counts(&Answered, "pokemon").await.unwrap();
+        assert_eq!(total, 33095);
+        assert_eq!(
+            sets,
+            vec![Listed {
+                url_name: "world-championship-decks".into(),
+                name: "World Championship Decks".into(),
+                product_count: 2002,
+            }]
+        );
+        let details = details(&Answered, 684332).await.unwrap();
+        assert_eq!(
+            (details.set_id, details.product_id, details.product_line_id),
+            (24587, 684332, 3)
+        );
+        assert_eq!(details.product_status_id, Some(1));
+        let found = set_products(&Answered, "pokemon", "base-set", 50)
+            .await
+            .unwrap();
+        assert_eq!(
+            found.iter().map(|f| f.product_id).collect::<Vec<_>>(),
+            [684332]
+        );
+    }
 }

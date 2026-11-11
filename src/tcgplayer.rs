@@ -12,7 +12,7 @@ use std::{
 };
 
 use reqwest::{Method, header};
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use tokio::{sync::Notify, time::Instant};
 
 use crate::{
@@ -85,6 +85,46 @@ impl Failure {
     }
 }
 
+/// A whole number as TCGplayer writes it: `7`, or `7.0` as its search and product details
+/// answer ids and counts. A fraction, or a number out of `T`'s range, is refused, not cut.
+pub fn whole<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: TryFrom<i64>,
+{
+    let number = serde_json::Number::deserialize(deserializer)?;
+    whole_of(&number)
+        .and_then(|n| T::try_from(n).ok())
+        .ok_or_else(|| serde::de::Error::custom(format!("expected a whole number, found {number}")))
+}
+
+/// [`whole`] for a field that may be null or missing; give the field `#[serde(default)]`.
+pub fn whole_or_none<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: TryFrom<i64>,
+{
+    #[derive(serde::Deserialize)]
+    struct Whole<T: TryFrom<i64>>(#[serde(deserialize_with = "whole")] T);
+    Ok(Option::<Whole<T>>::deserialize(deserializer)?.map(|Whole(n)| n))
+}
+
+/// [`whole`] for a value read field by field; none when it is not a whole number.
+pub fn whole_value(value: &serde_json::Value) -> Option<i64> {
+    match value {
+        serde_json::Value::Number(number) => whole_of(number),
+        _ => None,
+    }
+}
+
+fn whole_of(number: &serde_json::Number) -> Option<i64> {
+    number.as_i64().or_else(|| {
+        number
+            .as_f64()
+            .filter(|n| n.fract() == 0.0 && (i64::MIN as f64..i64::MAX as f64).contains(n))
+            .map(|n| n as i64)
+    })
+}
 /// The delay and floor after a run of successes, when the delay comes down: by the decrease,
 /// never below the larger of the minimum and the learned floor.
 pub fn after_successes(limits: &Limits, adaptive: &Adaptive) -> Option<(u32, u32)> {
@@ -583,6 +623,32 @@ mod tests {
         assert_eq!(after_successes(&limits, &Adaptive::default()), None);
     }
 
+    /// TCGplayer writes some ids and counts with a fraction (`2002.0`); both forms read the same,
+    /// and a real fraction or a number too large for the field is refused.
+    #[test]
+    fn whole_numbers_read_with_or_without_a_fraction() {
+        #[derive(Deserialize)]
+        struct Row {
+            #[serde(deserialize_with = "whole")]
+            count: i64,
+            #[serde(default, deserialize_with = "whole_or_none")]
+            status: Option<i32>,
+        }
+        let read = |json: &str| serde_json::from_str::<Row>(json).map(|r| (r.count, r.status));
+        assert_eq!(read(r#"{"count":2002}"#).unwrap(), (2002, None));
+        assert_eq!(
+            read(r#"{"count":2002.0,"status":1.0}"#).unwrap(),
+            (2002, Some(1))
+        );
+        assert_eq!(read(r#"{"count":7,"status":null}"#).unwrap(), (7, None));
+        assert!(read(r#"{"count":2002.5}"#).is_err());
+        assert!(read(r#"{"count":"2002"}"#).is_err());
+        assert!(read(r#"{"count":1,"status":3000000000.0}"#).is_err());
+        assert_eq!(whole_value(&serde_json::json!(9190214.0)), Some(9190214));
+        assert_eq!(whole_value(&serde_json::json!(9190214)), Some(9190214));
+        assert_eq!(whole_value(&serde_json::json!(0.5)), None);
+        assert_eq!(whole_value(&serde_json::json!("9190214")), None);
+    }
     #[test]
     fn only_rate_limits_and_failing_gateways_retry() {
         for status in [403, 429, 502, 503, 504] {

@@ -250,7 +250,7 @@ pub async fn products_and_skus(
                 .filter_map(|sku| {
                     let text = |key: &str| sku[key].as_str().map(str::to_owned);
                     Some(Sku {
-                        sku: i32::try_from(sku["sku"].as_i64()?).ok()?,
+                        sku: i32::try_from(crate::tcgplayer::whole_value(&sku["sku"])?).ok()?,
                         condition: text("condition"),
                         variant: text("variant"),
                         language: text("language"),
