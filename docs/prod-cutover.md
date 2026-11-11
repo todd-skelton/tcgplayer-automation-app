@@ -382,6 +382,53 @@ same as the backup before condition colors).
    answers 200. Continuous Pricing's pager goes to page 2 and back. Inventory Strategy's stats
    and segmented controls and Shipping Export's "Show as" measure the same as before the release
    at 1280 and 420 px wide.
+
+## Corten 600771f9 and the kit's tokens (2026-11-11)
+
+Todd approved the merge and release. Corten moved from 1e654688 to 600771f9: badges draw their
+dots in the badge's text color (`StatusTone::Text`), cards take a `CardSize` (51 small, 16
+medium), `Domain` gets its `AttrValue` from Corten instead of a hand-written impl, and five kit
+tokens (choice-list gaps, tab weight and selected color, status dot size) carry the values the
+CSS had. Merged as 801d9efd3 and released with `npm run prod:update` from a clean master; green
+took over at 13:48 UTC. No migration and no switch changed. Backup just before:
+`.artifacts/db-backups/2026-11-11T13-38Z-prod-before-pr131.dump` (580 objects).
+
+1. Green took over and blue was removed; `/proxy-health` names green and the proxy, postgres and
+   web containers are healthy.
+2. The `web` log has every worker's start line and no error; order history reached `complete`
+   (1591 of 1591).
+3. All 16 screens answer 200 with no console or page error, and the favicon answers 200.
+   Continuous Pricing's pager reaches page 2, the product line combobox finds "magic", segmented
+   controls draw at weight 500, small cards keep 15px padding and a 12px gap, and dots measure
+   7.5px in the badge's text color.
+4. The JSON routes answer as before: pricing config, batches, publication health and forecast
+   calibration 200, slab inventory without a query 400, FIFO by GET 405, a missing batch and an
+   unknown route 404.
+
+Before the release, the newest pricing job was from 07:01 UTC while 2268 SKUs had `next_price_at`
+in the past. That was not a stall: every one of them is out of stock, paused or disabled, so none
+is schedulable, and the hourly inventory refresh kept completing.
+
+## Corten 3fb4b1ac: axum leaves Corten (2026-11-11)
+
+Todd approved the merge and release. Corten no longer re-exports axum: the JSON routes, `api.rs`
+and the label export take `Request`, `Body` and `Bytes` from `corten::http`, and the two test
+stand-in servers depend on axum directly as a dev-dependency. Merged as a584b356d (its tree is the
+gated branch head; master had only #131, which the branch contained) and released with
+`npm run prod:update` from a clean master; the build took 9m 06s and blue took over at 14:07 UTC.
+No migration and no switch changed. Backup just before:
+`.artifacts/db-backups/2026-11-11T13-57Z-prod-before-pr132.dump` (580 objects).
+
+1. Blue took over and green was removed; `/proxy-health` names blue and the proxy, postgres and
+   `tcgplayer-automation-web-prod-blue` are healthy.
+2. The `web` log has every worker's start line and no error; order history reached `complete`
+   (1591 of 1591).
+3. All 16 screens answer 200 through port 3001 with no console or page error in Chrome, and the
+   favicon answers 200. Continuous Pricing's pager reaches page 2.
+4. The JSON routes answer as after #131: pricing config, batches, publication settings and
+   health, and forecast calibration 200 with `application/json`; slab inventory without a query
+   400, FIFO by GET 405, a missing batch and an unknown route 404.
+
 ## Decided (2026-11-05)
 
 1. Refresh dev from production before release 1, then run the gate and the twin scripts against
