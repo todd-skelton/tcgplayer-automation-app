@@ -7,7 +7,7 @@
 use corten::json::Raw;
 use corten::{
     Api, JsonError, JsonResponse, Prefix,
-    extract::Request,
+    http::Request,
     http::{HeaderMap, HeaderValue, StatusCode, header},
     prelude::*,
 };

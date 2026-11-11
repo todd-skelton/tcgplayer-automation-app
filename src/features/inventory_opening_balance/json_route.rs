@@ -4,7 +4,11 @@
 //! acknowledged here, an observation is previewed as a run here, and so are capturing an
 //! observation and applying a run, which read the seller's inventory from Seller Portal and (to
 //! apply) move the order history on (`capture`, `apply`).
-use corten::{Api, JsonResponse, Prefix, extract::Request, http::StatusCode, prelude::*};
+use corten::{
+    Api, JsonResponse, Prefix,
+    http::{Request, StatusCode},
+    prelude::*,
+};
 use serde_json::{Value, json};
 use sqlx::PgConnection;
 
