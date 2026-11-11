@@ -517,6 +517,7 @@ UPDATE inventory_publication_items item SET
     'decision',supported.pricing_details_json->'decision',
     'buyerChoiceForecast',supported.pricing_details_json->'buyerChoiceForecast',
     'conditionRateForecast',supported.pricing_details_json->'conditionRateForecast',
+    'shrunkRateForecast',supported.pricing_details_json->'shrunkRateForecast',
     'estimatedTimeToSellDays',supported.pricing_details_json->'estimatedTimeToSellDays')),
   forecast_evidence_provenance='recorded',updated_at=NOW()
 FROM supported WHERE item.id=supported.id RETURNING item.id"##;

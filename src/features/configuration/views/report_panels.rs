@@ -11,7 +11,8 @@ use crate::{
     features::{
         configuration::{config::EVIDENCE_WINDOWS, reports::Window, url},
         forecast_calibration::{
-            Calibration, DEFAULT_WINDOW_DAYS, HeldOutCheck, TimeInStock, WINDOW_DAYS,
+            Calibration, DEFAULT_WINDOW_DAYS, Forecast, ForecastGrade, HORIZON_DAYS, HeldOutCheck,
+            HorizonScore, TimeInStock, WINDOW_DAYS,
         },
         shipping_thresholds::{TierBasis, outcomes::SaleGroup, report::ShippingReport},
     },
@@ -230,6 +231,29 @@ pub fn CalibrationPanel<'a>(
                             </tbody>
                         </table>
                     </Table>
+                    <h3>"Each forecast over the whole window"</h3>
+                    <p class={muted()}>
+                        "Every forecast a price was published with, graded on the prices that carry it. The Brier score is the mean squared difference between the chance a forecast gave a listing of selling within the horizon and whether it did: lower is better. A listing counts once the window covers its horizon, and the pricing curve's score on the same listings follows each other forecast's, since older prices lack the newer forecasts."
+                    </p>
+                    <Table layout={TableLayout::Scroll}>
+                        <table class={Figures}>
+                            <thead>
+                                <tr>
+                                    <th>"Forecast"</th>
+                                    <th>"Prices"</th>
+                                    <th>"Actual days per forecast day"</th>
+                                    for days in HORIZON_DAYS {
+                                        <th>"Brier score at "{days}" days"</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                for grade in &r.grades {
+                                    <GradeRow grade={grade} />
+                                }
+                            </tbody>
+                        </table>
+                    </Table>
                 }
             }
         </section>
@@ -251,6 +275,45 @@ fn TimeRow<'a>(label: &'a str, time: &'a TimeInStock) -> impl Render {
             <td>{count(time.sales)}</td>
             <td>{format!("{:.1}", time.forecast_sales)}</td>
             <td>{format!("{:.2}", time.actual_days_per_forecast_day())}</td>
+        </tr>
+    }
+}
+
+fn forecast_name(forecast: Forecast) -> &'static str {
+    match forecast {
+        Forecast::Curve => "Pricing curve",
+        Forecast::BuyerChoice => "Buyer choice",
+        Forecast::ConditionRate => "Condition sale rate",
+        Forecast::ShrunkRate => "Shrunk curve rate",
+        Forecast::ShrunkConditionRate => "Shrunk condition rate",
+    }
+}
+
+/// A forecast's Brier score on the listings it was scored on, then the curve's on the same ones.
+fn brier(forecast: Forecast, score: &HorizonScore) -> String {
+    let Some(own) = score.brier_score else {
+        return "N/A".into();
+    };
+    let on = count(score.listings);
+    match score
+        .curve_brier_score
+        .filter(|_| forecast != Forecast::Curve)
+    {
+        Some(curve) => format!("{own:.3} vs curve {curve:.3} on {on}"),
+        None => format!("{own:.3} on {on}"),
+    }
+}
+
+#[component]
+fn GradeRow<'a>(grade: &'a ForecastGrade) -> impl Render {
+    html! {
+        <tr>
+            <td>{forecast_name(grade.forecast)}</td>
+            <td>{count(grade.time_in_stock.listings)}</td>
+            <td>{format!("{:.2}", grade.actual_days_per_forecast_day)}</td>
+            for score in &grade.horizons {
+                <td>{brier(grade.forecast, score)}</td>
+            }
         </tr>
     }
 }
@@ -420,5 +483,27 @@ mod tests {
         assert_eq!(count(2.0 / 3.0), "0.667");
         assert_eq!(date("2026-10-04T15:27:37.440Z"), "10/4/2026");
         assert_eq!(share(Some(0.507)), "51%");
+    }
+
+    #[test]
+    fn a_brier_score_reads_beside_the_curves_on_the_same_listings() {
+        let score = HorizonScore {
+            horizon_days: 14,
+            listings: 1220.0,
+            sold_share: Some(0.4),
+            forecast_sold_share: Some(0.5),
+            brier_score: Some(0.2),
+            curve_brier_score: Some(0.25),
+        };
+        assert_eq!(
+            brier(Forecast::ShrunkRate, &score),
+            "0.200 vs curve 0.250 on 1,220"
+        );
+        assert_eq!(brier(Forecast::Curve, &score), "0.200 on 1,220");
+        let unscored = HorizonScore {
+            brier_score: None,
+            ..score
+        };
+        assert_eq!(brier(Forecast::BuyerChoice, &unscored), "N/A");
     }
 }

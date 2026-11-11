@@ -334,9 +334,16 @@ async fn prices_match_node_on_the_same_evidence() {
         .await
         .unwrap();
         let name = &run.name;
+        // Node never recorded the shrunk-rate forecast, a later addition graded beside the others.
+        let mut priced_items = serde_json::to_value(&result.priced_items).unwrap();
+        for item in priced_items.as_array_mut().into_iter().flatten() {
+            if let Some(item) = item.as_object_mut() {
+                item.remove("shrunkRateForecast");
+            }
+        }
         diff.compare(
             &format!("{name}.pricedItems"),
-            &serde_json::to_value(&result.priced_items).unwrap(),
+            &priced_items,
             &run.result["pricedItems"],
         );
         diff.compare(

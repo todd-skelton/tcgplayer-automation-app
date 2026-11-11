@@ -114,6 +114,7 @@ pub fn details(
         "percentiles",
         "buyerChoiceForecast",
         "conditionRateForecast",
+        "shrunkRateForecast",
         "conditionNormalization",
         "priceEvidence",
     ] {

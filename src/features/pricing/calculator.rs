@@ -18,6 +18,7 @@ use super::policy::{
     self, Basis, Constrained, Constraint, Curve, CurvePoint, Decision, ForecastStatus, Method,
     PercentileDetail, Policy, PortfolioItem, PortfolioPlan, ProfitPerDay,
 };
+use super::shrunk_sale_rate::{self, Exposure, Forecast as ShrunkRateForecast};
 pub use super::sku_price::Failure;
 use super::sku_price::Priced;
 use crate::features::{
@@ -270,6 +271,9 @@ pub struct PricedItem {
     pub buyer_choice_forecast: Option<BuyerChoiceForecast>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub condition_rate_forecast: Option<RateForecast>,
+    /// Recorded to be graded beside the other forecasts; pricing does not read it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shrunk_rate_forecast: Option<ShrunkRateForecast>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub condition_normalization: Option<Diagnostics>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -615,6 +619,8 @@ pub async fn calculate(
     let mut stats = Stats::default();
     let mut priced_items: Vec<PricedItem> = Vec::new();
     let mut samples: Vec<PercentileSample> = Vec::new();
+    // Each modeled result's index and what its shrunk forecast is shrunk from.
+    let mut shrinkable: Vec<(usize, shrunk_sale_rate::Evidence)> = Vec::new();
     let batch = batch_percentiles(config);
     let total = skus.len();
     tick(Tick {
@@ -814,6 +820,20 @@ pub async fn calculate(
                     result.condition_sale_rate.as_ref(),
                     decision.store_win_share,
                 );
+                shrinkable.push((
+                    priced_items.len(),
+                    shrunk_sale_rate::Evidence {
+                        product_line_id: sku.product_line_id,
+                        store_win_share: decision.store_win_share,
+                        buyer_arrival: Exposure::of_interval(
+                            decision.qualifying_sales_count,
+                            decision.buyer_interval_days,
+                        ),
+                        condition_rate: result.condition_sale_rate.as_ref().and_then(|rate| {
+                            Exposure::of_interval(Some(rate.transactions), Some(rate.interval_days))
+                        }),
+                    },
+                ));
             }
             Some(decision) if non_percentile => item.pricing_decision = Some(decision.clone()),
             _ => match item.pricing_decision.take() {
@@ -875,6 +895,15 @@ pub async fn calculate(
         sku: None,
         stats,
     });
+
+    // Shrunk toward the pooled rate of the run's own results in each product line.
+    let evidence: Vec<shrunk_sale_rate::Evidence> = shrinkable.iter().map(|(_, e)| *e).collect();
+    for ((index, _), forecast) in shrinkable
+        .iter()
+        .zip(shrunk_sale_rate::forecasts(&evidence))
+    {
+        priced_items[*index].shrunk_rate_forecast = forecast;
+    }
 
     stats.processing_time = started.elapsed().as_millis();
     let aggregated_percentiles = aggregate(&samples);
@@ -966,6 +995,15 @@ mod tests {
     impl Resolve for Fixed {
         async fn resolve(&self, _: &Request<'_>) -> Result<Resolved, Failure> {
             Ok(self.0.clone())
+        }
+    }
+
+    /// Each SKU's own evidence.
+    struct BySku(HashMap<i64, Resolved>);
+
+    impl Resolve for BySku {
+        async fn resolve(&self, request: &Request<'_>) -> Result<Resolved, Failure> {
+            Ok(self.0[&request.sku].clone())
         }
     }
 
@@ -1403,6 +1441,76 @@ mod tests {
         let rate = only(&result).condition_rate_forecast.as_ref().unwrap();
         assert_eq!(rate.transactions, 30.0);
         assert!((rate.median_sell_days - std::f64::consts::LN_2 * 12.0 / 0.25).abs() < 1e-9);
+    }
+
+    #[tokio::test]
+    async fn a_shrunk_rate_forecast_is_recorded_without_moving_the_price() {
+        let at = |percentile, price, interval, sales| PercentileDetail {
+            historical_sales_velocity_days: Some(interval),
+            sales_count: Some(sales),
+            listings_count: Some(1.0),
+            store_win_share: Some(0.5),
+            supply_status: Some(SupplyStatus::Observed),
+            ..point(percentile, price)
+        };
+        let rate = |interval_days, transactions| SaleRate {
+            interval_days,
+            transactions,
+            method: condition_sale_rate::METHOD.into(),
+        };
+        // One sale in thirty days at the listed price, beside a SKU of the same line selling often.
+        let mut thin = curve(
+            14.0,
+            vec![at(5.0, 10.0, 20.0, 2.0), at(65.0, 14.0, 30.0, 1.0)],
+        );
+        thin.condition_sale_rate = Some(rate(60.0, 2.0));
+        let mut busy = curve(7.0, vec![at(5.0, 5.0, 1.0, 40.0), at(65.0, 7.0, 2.0, 20.0)]);
+        busy.condition_sale_rate = Some(rate(4.0, 50.0));
+        let price = async |skus: &[PricerSku]| {
+            let evidence = BySku(HashMap::from([(801, thin.clone()), (802, busy.clone())]));
+            calculate(
+                skus,
+                &Config::default(),
+                &HashMap::new(),
+                "pricing",
+                &evidence,
+                now(),
+                &mut |_| {},
+            )
+            .await
+            .unwrap()
+        };
+        let alone = price(&[sku(801, 1.0, 20.0)]).await;
+        let pooled = price(&[sku(801, 1.0, 20.0), sku(802, 1.0, 9.0)]).await;
+        let (alone, beside) = (only(&alone), &pooled.priced_items[0]);
+        // Pricing reads none of it.
+        assert_eq!(beside.price, Some(14.0));
+        assert_eq!(beside.price, alone.price);
+        assert_eq!(beside.pricing_decision, alone.pricing_decision);
+        // Alone, a SKU is its whole line, so its rate stays its own.
+        let own = alone.shrunk_rate_forecast.as_ref().unwrap();
+        assert!((own.buyer_arrival.interval_days - 30.0).abs() < 1e-9);
+        // Beside the busy SKU, its one sale is pulled toward the line's pooled rate.
+        let shrunk = beside.shrunk_rate_forecast.as_ref().unwrap();
+        assert_eq!(shrunk.method, shrunk_sale_rate::METHOD);
+        assert_eq!(shrunk.buyer_arrival.sales, 1.0);
+        let pooled_rate = 21.0 / 70.0;
+        let expected = (shrunk_sale_rate::PRIOR_DAYS + 30.0)
+            / (pooled_rate * shrunk_sale_rate::PRIOR_DAYS + 1.0);
+        assert!((shrunk.buyer_arrival.interval_days - expected).abs() < 1e-9);
+        assert!(
+            (shrunk.buyer_arrival.median_sell_days
+                - std::f64::consts::LN_2 * shrunk.buyer_arrival.interval_days / 0.5)
+                .abs()
+                < 1e-9
+        );
+        assert!(shrunk.condition_rate.as_ref().unwrap().interval_days < 60.0);
+        let recorded = serde_json::to_value(beside).unwrap();
+        let recorded = &recorded["shrunkRateForecast"];
+        assert_eq!(recorded["method"], "gamma-poisson-v1");
+        assert!(recorded["medianSellDays"].is_number());
+        assert!(recorded["conditionRate"]["medianSellDays"].is_number());
+        assert_eq!(policy::MODEL_VERSION, "pooled-supply-v1");
     }
 
     #[tokio::test]
