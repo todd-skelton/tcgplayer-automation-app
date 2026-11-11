@@ -304,13 +304,23 @@ fn brier(forecast: Forecast, score: &HorizonScore) -> String {
     }
 }
 
+/// A forecast's actual days per forecast day, or N/A before any price carried it: with no listings
+/// the measure is its prior alone, which reads as a perfect forecast.
+fn days_per_forecast_day(grade: &ForecastGrade) -> String {
+    if grade.time_in_stock.listings > 0.0 {
+        format!("{:.2}", grade.actual_days_per_forecast_day)
+    } else {
+        "N/A".into()
+    }
+}
+
 #[component]
 fn GradeRow<'a>(grade: &'a ForecastGrade) -> impl Render {
     html! {
         <tr>
             <td>{forecast_name(grade.forecast)}</td>
             <td>{count(grade.time_in_stock.listings)}</td>
-            <td>{format!("{:.2}", grade.actual_days_per_forecast_day)}</td>
+            <td>{days_per_forecast_day(grade)}</td>
             for score in &grade.horizons {
                 <td>{brier(grade.forecast, score)}</td>
             }
@@ -505,5 +515,20 @@ mod tests {
             ..score
         };
         assert_eq!(brier(Forecast::BuyerChoice, &unscored), "N/A");
+    }
+
+    #[test]
+    fn a_forecast_no_price_carried_yet_has_no_ratio() {
+        let grade = |listings| ForecastGrade {
+            forecast: Forecast::ShrunkRate,
+            time_in_stock: TimeInStock {
+                listings,
+                ..TimeInStock::default()
+            },
+            actual_days_per_forecast_day: 1.0,
+            horizons: Vec::new(),
+        };
+        assert_eq!(days_per_forecast_day(&grade(0.0)), "N/A");
+        assert_eq!(days_per_forecast_day(&grade(12.0)), "1.00");
     }
 }
