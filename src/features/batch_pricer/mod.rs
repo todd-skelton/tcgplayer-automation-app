@@ -4,8 +4,8 @@
 //!
 //! The batches are read, made from a CSV export or a seller's live inventory (read from
 //! TCGplayer's search), queued for pricing, planned for publication and deleted here, in the
-//! tables the Node app keeps; its workers price and publish them until cutover (port decision 3),
-//! and the Rust workers when `PRICING_WORKER` and `PUBLICATION_WORKER` are set. While a batch prices
+//! database; the workers price and publish them when `PRICING_WORKER` and `PUBLICATION_WORKER`
+//! are set. While a batch prices
 //! or publishes, a `<corten-live>` stream follows it and sends the batch's panel each time it
 //! changes, as the React screen's event stream did; a browser without scripts reads the page
 //! again instead.

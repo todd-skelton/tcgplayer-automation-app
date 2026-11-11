@@ -3,9 +3,8 @@
 //! seconds that it still holds the lease, and saves what was read or the failure's code. A busy,
 //! rate-limited or unavailable provider is tried again later; anything else fails the refresh.
 //!
-//! Node's worker refreshes the evidence until cutover: this one runs only when
-//! `SLAB_EVIDENCE_WORKER` is set, beside Node's, the two sharing the queue's claims and each
-//! provider's connection lease. When nothing is due it runs a slab maintenance cycle
+//! It runs only when `SLAB_EVIDENCE_WORKER` is set, under the queue's claims and each provider's
+//! connection lease. When nothing is due it runs a slab maintenance cycle
 //! (`slab_pricing::maintenance_cycle`), as Node's does. Node wakes its worker when a refresh is
 //! requested; this one looks again within 30 seconds.
 use std::{future::Future, time::Duration};

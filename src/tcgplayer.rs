@@ -3,9 +3,7 @@
 //! in flight, a cooldown after a rate limit and, for adaptive domains, a delay that rises on a rate
 //! limit and falls after a run of successes. Ported from `app/core/clients/baseDomainClient.server.ts`.
 //!
-//! Each app throttles its own requests: while Node and this run side by side, TCGplayer sees both.
-//! The delays this client learns stay in this process (`http_config` is Node's until the workers
-//! move here), so a shadow run changes nothing the Node workers read.
+//! The delays this client learns stay in this process.
 use std::{
     sync::{Arc, Mutex},
     time::Duration,

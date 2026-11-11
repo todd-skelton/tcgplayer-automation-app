@@ -1,6 +1,5 @@
-//! The Postgres database both apps share. Its schema is `db/migrations`, applied by the Node app
-//! as it starts (`npm run db:migrate`), or by this server when `MIGRATE_ON_START` is set
-//! (`crate::migrations`).
+//! The Postgres database. Its schema is `db/migrations`, applied by this server as it starts when
+//! `MIGRATE_ON_START` is set (`crate::migrations`), or by `npm run db:migrate`.
 use std::time::Duration;
 
 use sqlx::{PgPool, postgres::PgPoolOptions};
@@ -15,8 +14,8 @@ pub struct Database(pub PgPool);
 
 impl Database {
     /// A pool that connects on first use, so the app starts while the database is still coming up
-    /// and says so through its readiness check. Its size and timeouts are Node's
-    /// (`app/core/db/database.server.ts`).
+    /// and says so through its readiness check. Its size and timeouts are the ones the
+    /// Node app's pool had.
     pub fn connect_lazy(url: &str) -> Self {
         let pool = PgPoolOptions::new()
             .max_connections(20)

@@ -1,6 +1,6 @@
 //! An order as TCGplayer's order management API describes it, made into the evidence the order
 //! history records: ported from `domain/sellerOrderObservation.ts`. Its fingerprints are the Node
-//! app's byte for byte, since both apps compare them against the rows the other wrote.
+//! app's byte for byte, since they are compared against the rows Node wrote.
 use chrono::{DateTime, SecondsFormat};
 use serde_json::{Map, Value};
 

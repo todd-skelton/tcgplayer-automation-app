@@ -134,10 +134,7 @@ pub async fn run<J: Jobs>(jobs: J, queued: Arc<Notify>, signal: Signal) {
     }
 }
 
-/// Whether `PRICING_WORKER` turns the worker on. Set in dev, it is this worker's alone: Node's
-/// in-process worker reads the same switch and stays off (`ensureInventoryBatchPricingWorker`).
-/// In production Node's worker owns the jobs until cutover; turned on beside a Node worker that
-/// does not read it, the two claim from one queue under their own leases.
+/// Whether `PRICING_WORKER` turns the worker on, as dev and production set it.
 pub fn on() -> bool {
     crate::config::is_set("PRICING_WORKER")
 }
@@ -155,7 +152,7 @@ pub async fn start(db: crate::database::Database, signal: Signal) {
         db,
     };
     println!("Inventory batch pricing worker {} started", jobs.worker);
-    // Jobs are queued by the Node app, which cannot wake this process: the poll finds them.
+    // Nothing wakes this worker when a job is queued: the poll finds it.
     run(jobs, Arc::new(Notify::new()), signal).await;
 }
 

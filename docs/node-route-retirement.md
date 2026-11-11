@@ -1,5 +1,7 @@
 # Retiring the Node JSON routes
 
+The Node app was removed after release 8 (`docs/prod-cutover.md`); it is in the history at 0587ed02e, the master that release 8 shipped. This page records how its routes were retired.
+
 The Corten app serves every screen, and relays each `/api/...` path it has not ported to the Node
 app (`src/app.rs`, `LegacyApiRoute`). Decision (2026-11-03): port only the routes a Corten screen,
 a Rust worker or another caller needs, and retire the rest with the Node app.

@@ -172,25 +172,25 @@ pub fn app(shared: Shared) -> App {
             let db = ready.clone();
             async move { db.reachable().await }
         });
-    // Node's worker prices the batches until cutover.
+    // `PRICING_WORKER` prices the batches.
     let app = switched(app, "inventory batch pricing worker", {
         let db = db.clone();
         batch_pricing::worker::on()
             .then_some(move |signal| batch_pricing::worker::start(db, signal))
     });
-    // Node's scheduler queues the batches until cutover.
+    // `CONTINUOUS_PRICING_SCHEDULER` queues the batches.
     let app = switched(app, "continuous pricing scheduler", {
         let db = db.clone();
         continuous_pricing::scheduler::on()
             .then_some(move |signal| continuous_pricing::scheduler::run(db, signal))
     });
-    // Node's worker records the order history, replays FIFO and estimates costs until cutover.
+    // `SELLER_ORDER_HISTORY_WORKER` records the order history, replays FIFO and estimates costs.
     let app = switched(app, "seller order history worker", {
         let db = db.clone();
         seller_order_history::worker::on()
             .then_some(move |signal| seller_order_history::worker::run(db, signal))
     });
-    // Node's worker refreshes the slab evidence until cutover; both read Alt and eBay.
+    // `SLAB_EVIDENCE_WORKER` refreshes the slab evidence from Alt and eBay.
     let app = switched(app, "slab evidence worker", {
         let db = db.clone();
         let providers = slab_evidence::worker::Providers {
@@ -200,7 +200,7 @@ pub fn app(shared: Shared) -> App {
         slab_evidence::worker::on()
             .then_some(move |signal| slab_evidence::worker::run(db, providers, signal))
     });
-    // Node's worker publishes to Seller Portal until cutover; this one writes there too when on.
+    // `PUBLICATION_WORKER` publishes to Seller Portal.
     let app = switched(app, "inventory publication worker", {
         let db = db.clone();
         inventory_publication::worker::on()

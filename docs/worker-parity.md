@@ -1,5 +1,7 @@
 # Worker parity
 
+The Node app and the scripts named here (`scripts/parity`) were removed after release 8 (`docs/prod-cutover.md`); they are in the history at 0587ed02e, the master that release 8 shipped. This page records the evidence they produced.
+
 Each Rust worker is proven against Node's by a twin run: `scripts/parity/twin.mjs` copies the dev
 database once per worker, runs Node's worker on one copy and the Rust worker on the other from the
 same state, then compares every row either wrote. Neither publishes: Seller Portal writes stay off,

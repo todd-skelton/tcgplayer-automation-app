@@ -17,23 +17,13 @@ const prodDatabase = {
   label: "production",
 };
 
-const targets = {
-  dev: {
-    key: "dev",
-    label: "full Docker dev stack",
-    dbContainerName: "tcgplayer-postgres-dev",
-    appContainerName: "tcgplayer-automation-dev",
-    ensureArgs: ["compose", "-f", "docker-compose.yml", "up", "-d", "postgres"],
-    migrateArgs: ["compose", "-f", "docker-compose.yml", "run", "--rm", "app", "node", "scripts/db-migrate.mjs"],
-    startArgs: ["compose", "-f", "docker-compose.yml", "up", "-d", "app"],
-  },
-  db: {
-    key: "db",
-    label: "standalone development database",
-    dbContainerName: "tcgplayer-postgres-db",
-    databaseUrl: `postgresql://${DATABASE_USER}:${DATABASE_PASSWORD}@localhost:5433/${DATABASE_NAME}`,
-    ensureArgs: ["compose", "-f", "docker-compose.db.yml", "up", "-d"],
-  },
+// The standalone development database (docker-compose.db.yml), on localhost:5433.
+const target = {
+  key: "db",
+  label: "standalone development database",
+  dbContainerName: "tcgplayer-postgres-db",
+  databaseUrl: `postgresql://${DATABASE_USER}:${DATABASE_PASSWORD}@localhost:5433/${DATABASE_NAME}`,
+  ensureArgs: ["compose", "-f", "docker-compose.db.yml", "up", "-d"],
 };
 
 function sleep(ms) {
@@ -358,40 +348,15 @@ async function assertHealthyContainer(name, description) {
 }
 
 function parseArgs(argv) {
-  const parsed = {
-    help: false,
-    target: null,
-  };
+  const parsed = { help: false };
 
-  for (let index = 0; index < argv.length; index += 1) {
-    const value = argv[index];
-
+  for (const value of argv) {
     if (value === "--help" || value === "-h") {
       parsed.help = true;
       continue;
     }
 
-    if (value === "--target") {
-      const nextValue = argv[index + 1];
-      if (!nextValue || nextValue.startsWith("--")) {
-        throw new Error("Missing value for --target. Use --target=dev or --target=db.");
-      }
-
-      parsed.target = nextValue;
-      index += 1;
-      continue;
-    }
-
-    if (value.startsWith("--target=")) {
-      parsed.target = value.slice("--target=".length);
-      continue;
-    }
-
     throw new Error(`Unknown argument: ${value}`);
-  }
-
-  if (parsed.target && !targets[parsed.target]) {
-    throw new Error(`Unsupported target "${parsed.target}". Use --target=dev or --target=db.`);
   }
 
   return parsed;
@@ -402,49 +367,9 @@ function printHelp() {
   console.log("");
   console.log("Usage:");
   console.log("  npm run dev:db:refresh");
-  console.log("  npm run dev:db:refresh -- --target=dev");
-  console.log("  npm run dev:db:refresh -- --target=db");
   console.log("");
-  console.log("Targets:");
-  console.log("  dev   Refresh the full Docker dev stack database (tcgplayer-postgres-dev)");
-  console.log("  db    Refresh the standalone dev database used by docker-compose.db.yml");
-  console.log("");
-  console.log("Default behavior:");
-  console.log("  - If exactly one dev database is running, refresh that target.");
-  console.log("  - If neither is running, start the standalone dev database and refresh it.");
-  console.log("  - If both are running, require --target because they use separate volumes.");
-}
-
-async function resolveTarget(explicitTargetKey) {
-  if (explicitTargetKey) {
-    return targets[explicitTargetKey];
-  }
-
-  const runningContainers = await listRunningContainerNames();
-  const devRunning = runningContainers.includes(targets.dev.dbContainerName);
-  const dbRunning = runningContainers.includes(targets.db.dbContainerName);
-
-  if (devRunning && dbRunning) {
-    throw new Error(
-      [
-        "Both development database targets are running.",
-        "They use separate Docker volumes, so the refresh target is ambiguous.",
-        "Run the command again with --target=dev or --target=db.",
-      ].join("\n"),
-    );
-  }
-
-  if (devRunning) {
-    return targets.dev;
-  }
-
-  if (dbRunning) {
-    return targets.db;
-  }
-
-  console.log("No development database container is running. Starting the standalone development database...");
-  await run("docker", targets.db.ensureArgs, { stdio: "inherit" });
-  return targets.db;
+  console.log("Refreshes the standalone dev database (docker-compose.db.yml, localhost:5433),");
+  console.log("starting it first if it is not running.");
 }
 
 async function ensureTargetReady(target) {
@@ -534,11 +459,6 @@ async function recreateDatabase(containerName) {
 }
 
 async function runMigrations(target) {
-  if (target.migrateArgs) {
-    await run("docker", target.migrateArgs, { stdio: "inherit" });
-    return;
-  }
-
   await runNodeScript(path.resolve("scripts/db-migrate.mjs"), {
     env: {
       ...process.env,
@@ -586,16 +506,8 @@ async function restoreDatabaseFromFile(containerName, dumpPath, restoreListPath)
   );
 }
 
-async function restartDevApp(target) {
-  if (!target.startArgs) {
-    return;
-  }
-
-  await run("docker", target.startArgs, { stdio: "inherit" });
-}
-
 async function main() {
-  const { help, target: explicitTargetKey } = parseArgs(process.argv.slice(2));
+  const { help } = parseArgs(process.argv.slice(2));
 
   if (help) {
     printHelp();
@@ -605,7 +517,6 @@ async function main() {
   await ensureDockerReady();
   await assertHealthyContainer(prodDatabase.containerName, "Production database");
 
-  const target = await resolveTarget(explicitTargetKey);
   await ensureTargetReady(target);
 
   console.log(`Source container: ${prodDatabase.containerName}`);
@@ -619,23 +530,10 @@ async function main() {
   const prodDumpPath = path.join(BACKUP_DIR, `${timestamp}-prod-refresh-source.dump`);
   const restoreListPath = path.join(BACKUP_DIR, `${timestamp}-prod-refresh-data.list`);
 
-  let appWasRunning = false;
-  let destructiveStepStarted = false;
   let prodDumpCreated = false;
   let refreshSucceeded = false;
 
   try {
-    if (target.appContainerName) {
-      appWasRunning = await isContainerRunning(target.appContainerName);
-
-      if (appWasRunning) {
-        console.log(`Stopping ${target.appContainerName} so it does not reconnect during the refresh...`);
-        await run("docker", ["stop", target.appContainerName], { stdio: "inherit" });
-      } else {
-        console.log(`${target.appContainerName} is not running. The refresh will still target its database volume.`);
-      }
-    }
-
     console.log(`Backing up current target database to ${currentDevBackupPath}...`);
     await dumpDatabaseToFile(target.dbContainerName, currentDevBackupPath);
 
@@ -644,7 +542,6 @@ async function main() {
     prodDumpCreated = true;
 
     console.log(`Recreating ${DATABASE_NAME} in ${target.dbContainerName}...`);
-    destructiveStepStarted = true;
     await recreateDatabase(target.dbContainerName);
 
     console.log("Applying local schema migrations to the fresh target database...");
@@ -658,13 +555,7 @@ async function main() {
     console.log("Restoring production data into the target database...");
     await restoreDatabaseFromFile(target.dbContainerName, prodDumpPath, restoreListPath);
 
-    if (target.key === "dev") {
-      console.log("Starting the development app container again...");
-      await restartDevApp(target);
-      console.log("The development app container is back up with the refreshed schema and production data.");
-    } else {
-      console.log("Standalone development database is ready on localhost:5433.");
-    }
+    console.log("Standalone development database is ready on localhost:5433.");
 
     refreshSucceeded = true;
   } catch (error) {
@@ -678,23 +569,6 @@ async function main() {
 
     if (await fsPromises.stat(restoreListPath).then(() => true).catch(() => false)) {
       console.error(`Filtered restore list preserved at: ${restoreListPath}`);
-    }
-
-    if (target.key === "dev") {
-      if (appWasRunning && !destructiveStepStarted) {
-        try {
-          console.error("Restarting the dev app because the refresh failed before the database was replaced...");
-          await restartDevApp(target);
-        } catch (restartError) {
-          console.error(
-            "Automatic dev app restart also failed:",
-            restartError instanceof Error ? restartError.message : restartError,
-          );
-        }
-      } else {
-        console.error("The full dev app container may still be stopped. After recovery, restart it with:");
-        console.error("  docker compose -f docker-compose.yml up -d app");
-      }
     }
 
     console.error("Use the preserved backup dump if you need to restore the previous dev database state.");

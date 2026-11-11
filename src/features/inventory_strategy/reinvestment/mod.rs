@@ -2,8 +2,8 @@
 //! inventory, pooled by currency. Proceeds, purchase costs, funding and publications are matched
 //! in time order, outside cash first, and each match is a sample with its days. Ported from
 //! `allocateReinvestmentTurnaround.ts`, `purchaseCapital.ts` and
-//! `reinvestmentTurnaround.server.ts`; the report keeps the Node app's JSON shape, since both apps
-//! read and write the saved rebuilds while both run.
+//! `reinvestmentTurnaround.server.ts`; the report keeps the Node app's JSON shape, so the saved
+//! rebuilds it wrote still read.
 use serde::{Deserialize, Serialize};
 
 mod allocate;

@@ -1,6 +1,6 @@
 # TCGPlayer Automation App
 
-The screens are a [Corten](https://github.com/corten-run/corten) app in Rust (`src/`). The Node app in `app/` no longer draws any screen: until cutover it answers its JSON routes (`/api/...`), runs the background workers and applies the migrations, and the Corten app relays every path it does not serve to it, so one origin serves both. Both share one PostgreSQL database; the repo includes checked-in SQL migrations (`db/migrations`) and Docker Compose workflows for development databases and production.
+The app is a [Corten](https://github.com/corten-run/corten) server in Rust (`src/`): every screen, JSON route (`/api/...`) and background job, over one PostgreSQL database. The repo includes checked-in SQL migrations (`db/migrations`), which the server applies as it starts when `MIGRATE_ON_START` is set, and Docker Compose files for the development database and production. The Node scripts in `scripts/` are tooling only: releases, migrations and the dev database refresh.
 
 Inventory Manager supports background pricing and per-batch publication while entering new stock. See [Inventory intake queue](docs/inventory-intake-queue.md) for handoff, recovery, and rollout safeguards.
 
@@ -9,7 +9,7 @@ Data Management can sync only the products TCGplayer added since the last sync, 
 ## Requirements
 
 - Rust (stable) and the `corten` command at the version `Cargo.lock` pins (`corten --version` says which; `cargo install corten-cli`)
-- Node.js 20
+- Node.js 20 (for the `npm run` tooling)
 - npm
 - Docker Desktop or another Docker runtime for the PostgreSQL dev database and production containers
 
@@ -47,8 +47,8 @@ the live EasyPost key for deploys in `.env.production.local`. These files are
 gitignored; use `.env.local.example`, `.env.development.local.example`, and
 `.env.production.local.example` as the templates.
 
-Node-based commands load environment files by mode without overriding values
-that are already present in the shell:
+The server and the npm scripts load environment files by mode (`NODE_ENV`)
+without overriding values that are already present in the shell:
 
 ```bash
 development: .env.development.local, .env.local, .env.development, .env
@@ -57,50 +57,23 @@ production: .env.production.local, .env.production, .env
 
 ## Local Development
 
-Run the app directly on your host for normal hot reload:
-
 ```bash
 npm run dev
 ```
 
-That starts the Node app on `http://localhost:5173` in the terminal process instead of inside a container. It also starts the standalone PostgreSQL development container from `docker-compose.db.yml` and applies local migrations before launching the dev server.
+That starts the standalone PostgreSQL development container from `docker-compose.db.yml` (host port `5433`), applies the local migrations, and runs `corten dev --port 3000`. Open `http://localhost:3000`; it rebuilds and reloads on every change and reads the same `.env` files. With the database already up, `corten dev --port 3000` alone is enough.
 
-Then run the screens in another terminal:
-
-```bash
-corten dev --port 3000
-```
-
-and open `http://localhost:3000`. It rebuilds and reloads on every change, reads the same `.env` files, and relays the JSON routes to the Node app at `LEGACY_ORIGIN` (default `http://localhost:5173`). `corten check` runs the formatter, clippy and the tests; tests that need the dev database or the Node app's recorded answers are ignored and run with `cargo test -- --ignored`.
-
-If you are using the standalone database container from `docker-compose.db.yml`, the app defaults to `localhost:5433` automatically. That standalone database flow is the host-accessible PostgreSQL option for development. The compose file uses the explicit project name `tcgplayer-automation-db`, so it can run beside both the optional Docker app stack and the production stack without sharing Docker networks.
+`corten check` runs the formatter, clippy and the tests. Tests that need the dev database are ignored and run with `cargo test -- --ignored`; the parity tests among them compare with the Node app's answers recorded in `tests/fixtures` before it was retired.
 
 Useful commands around local development:
 
 ```bash
-npm run dev:host
-npm run dev:app
-npm run dev:docker
-npm run dev:logs
-npm run dev:down
+npm run dev:db:up
 npm run dev:db
+npm test
 ```
 
-`npm run dev:host` is an explicit alias for the same host-run development flow as `npm run dev`. `npm run dev:app` starts only the host app process and assumes the standalone database is already running. `npm run dev:docker` still starts the full Docker app stack when you want the app itself inside a container.
-
-`npm run dev:db` opens `psql` inside the running `postgres` container for the full Docker dev stack.
-
-### Optional Docker App Stack
-
-If you want to run the app in Docker too, use the explicit Docker script:
-
-```bash
-npm run dev:docker
-```
-
-That starts the app on `http://localhost:5173` through `docker-compose.yml` with the explicit project name `tcgplayer-automation-dev`. The PostgreSQL container stays internal to that Docker network, so the full Docker app stack does not depend on host port `5432` being free.
-The Docker dev stack also loads `.env.development.local`, so EasyPost stays on
-the test API there.
+`npm run dev:db:up` starts only the database, `npm run dev:db` opens `psql` in it, and `npm test` runs the tests of the release scripts. The compose file uses the explicit project name `tcgplayer-automation-db`, so it can run beside the production stack without sharing Docker networks.
 
 ## Database Commands
 
@@ -110,22 +83,15 @@ Apply migrations:
 npm run db:migrate
 ```
 
-The Corten server applies the same files the same way before it listens when `MIGRATE_ON_START` is set. It stays unset while the Node app applies them as it starts.
+It applies the same files the server applies under `MIGRATE_ON_START`, holding the same advisory lock.
 
-Refresh a development database from the running production PostgreSQL container:
+Refresh the development database from the running production PostgreSQL container:
 
 ```bash
 npm run dev:db:refresh
 ```
 
-Optional target selectors:
-
-```bash
-npm run dev:db:refresh -- --target=dev
-npm run dev:db:refresh -- --target=db
-```
-
-The refresh command creates a timestamped backup in `.artifacts/db-backups/` before replacing the target database. By default it auto-detects which dev database to refresh. If neither dev target is running, it starts the standalone database from `docker-compose.db.yml`. If both are running, it exits and asks for an explicit `--target` because the full Docker dev stack and the standalone dev database use separate Docker volumes.
+The refresh command creates a timestamped backup in `.artifacts/db-backups/` before replacing the development database, and starts the standalone database from `docker-compose.db.yml` if it is not running.
 
 ## Production Docker
 
@@ -139,35 +105,8 @@ The production app is exposed at `http://localhost:3001`.
 The production Docker stack reads `.env.production.local`, so production uses
 the live EasyPost API on deploy.
 
-The Corten app answers only to `localhost`, IP addresses and the names listed in `HOSTS`; any other `Host` gets 421. When the app is reached by a name (`automation.lan`, or a reverse proxy that terminates HTTPS such as Tailscale Serve at `https://<machine>.<tailnet>.ts.net` proxying to `http://localhost:3001`), list it in `.env.production.local` (`HOSTS=automation.lan,.ts.net`; a leading dot takes every subdomain) and restart. The Node app's JSON routes still check a post's origin against `allowedActionOrigins` in `react-router.config.ts`.
+The app answers only to `localhost`, IP addresses and the names listed in `HOSTS`; any other `Host` gets 421. When the app is reached by a name (`automation.lan`, or a reverse proxy that terminates HTTPS such as Tailscale Serve at `https://<machine>.<tailnet>.ts.net` proxying to `http://localhost:3001`), list it in `.env.production.local` (`HOSTS=automation.lan,.ts.net`; a leading dot takes every subdomain) and restart.
 
-Docker may label the built image as `tcgplayer-automation-app-app`. That image name comes from the repository directory and service name, not the Compose project name. The actual project names are `tcgplayer-automation-prod`, `tcgplayer-automation-dev`, and `tcgplayer-automation-db`.
-
-When you deploy through `npm run prod:deploy`, `npm run prod:update`, `npm run prod:start`, or `npm run prod:restart`, the repo now fetches `origin/master` and refuses to run unless the working tree is clean and local `HEAD` exactly matches `origin/master`. This keeps production aligned with the remote `master` branch instead of whichever local branch happens to be checked out.
-
-The `prod:*` commands are implemented through a cross-platform Node wrapper now, so the same npm entrypoints work on both Windows and Unix-like shells.
-
-Direct `docker compose -f docker-compose.prod.yml ...` commands still work, but they bypass that protection. Use the `npm run prod:*` wrappers whenever you want enforced production source control.
+When you deploy through `npm run prod:deploy`, `npm run prod:update`, `npm run prod:start`, or `npm run prod:restart`, the repo fetches `origin/master` and refuses to run unless the working tree is clean and local `HEAD` exactly matches `origin/master`. This keeps production aligned with the remote `master` branch instead of whichever local branch happens to be checked out. Direct `docker compose -f docker-compose.prod.yml ...` commands still work, but they bypass that protection.
 
 Additional production workflow details are documented in `PRODUCTION_DOCKER.md`.
-
-## One-Time Docker Cleanup
-
-If Docker Desktop still shows a legacy `tcgplayer-automation-app` stack, remove the stale containers and network once before recreating the environments:
-
-```bash
-docker compose down --remove-orphans
-docker compose -f docker-compose.db.yml down --remove-orphans
-docker compose -f docker-compose.prod.yml down --remove-orphans
-docker rm -f tcgplayer-automation-prod tcgplayer-automation-dev tcgplayer-postgres-prod tcgplayer-postgres-dev tcgplayer-postgres-db
-docker network rm tcgplayer-automation-app_default
-```
-
-Then recreate only the environments you need:
-
-- Host app server: `npm run dev`, then `corten dev --port 3000` for the screens
-- Full Docker dev stack: `npm run dev:docker`
-- Production stack: `npm run prod:deploy`
-- Standalone dev database: `docker compose -f docker-compose.db.yml up -d`
-
-The cleanup removes containers and the old shared network only. Your named Docker volumes, including the PostgreSQL data volumes, are preserved. If the old network is already gone, Docker may print an error that you can ignore.
