@@ -407,5 +407,10 @@
     "$type": "color",
     "$value": "{warning}",
     "$description": "On the dark bar the soft tone is dark too, so the warning takes the theme's light warning tone, as MUI's warning.light."
+  },
+  "tab-selected-color": {
+    "$type": "color",
+    "$value": "{foreground}",
+    "$description": "The chosen tab's or segmented choice's words, in the dark theme's foreground."
   }
 }

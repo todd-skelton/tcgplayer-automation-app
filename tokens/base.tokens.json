@@ -585,6 +585,16 @@
     },
     "$description": "The space under a kit checkbox list's or radio group's legend."
   },
+  "tab-font-weight": {
+    "$type": "fontWeight",
+    "$value": 500,
+    "$description": "A kit tab's or segmented choice's words."
+  },
+  "tab-selected-color": {
+    "$type": "color",
+    "$value": "{foreground}",
+    "$description": "The chosen tab's or segmented choice's words."
+  },
   "stat-label-font-size": {
     "$type": "dimension",
     "$value": {
