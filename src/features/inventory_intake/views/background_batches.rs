@@ -96,7 +96,9 @@ pub fn BackgroundBatches<'a>(
                         if b.target.publication_paused {
                             <Notice variant={AlertVariant::Warning}>
                                 "Publication is paused or needs attention. Pricing can continue. "
-                                <a href="/publication-configuration">
+                                <a
+                                    href={crate::features::publication_configuration::url::PublicationSettings}
+                                >
                                     "Review publication controls"
                                 </a>
                                 "."
