@@ -292,7 +292,7 @@ pub fn QueueForm<'a>(
             <p id={PublishNoteId} class={(muted(), PublishNote)}>
                 {publish_note(target)}
                 if target.is_some_and(|t| !t.can_publish) {
-                    " "<a href="/publication-configuration">"Publication settings"</a>"."
+                    " "<a href={crate::features::publication_configuration::url::PublicationSettings}>"Publication settings"</a>"."
                 }
             </p>
         </form>
