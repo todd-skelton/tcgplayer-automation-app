@@ -81,13 +81,12 @@ declare module "corten/views" {
     sku: number;
     count: number;
     label: string;
-    submit: string;
     name: string;
     /** Writes every hole of `el` (a IntakeRow's root) from `data`. */
-    static fill(el: Element, data: { key: number; condition: string; missing: boolean; picture: string; set: string; sku_name: string; printing: string; form: string; sku: number; count: number; label: string; submit: string; name: string }): void;
+    static fill(el: Element, data: { key: number; condition: string; missing: boolean; picture: string; set: string; sku_name: string; printing: string; form: string; sku: number; count: number; label: string; name: string }): void;
     /** The key of a IntakeRow's root (its key={key}). */
     static key(el: Element): string;
-    static keyOf(data: { key: number; condition: string; missing: boolean; picture: string; set: string; sku_name: string; printing: string; form: string; sku: number; count: number; label: string; submit: string; name: string }): string;
+    static keyOf(data: { key: number; condition: string; missing: boolean; picture: string; set: string; sku_name: string; printing: string; form: string; sku: number; count: number; label: string; name: string }): string;
   }
   /** The view of #[component(view)] ItemCard: its holes, read from and written to the page. */
   export class ItemCard {
