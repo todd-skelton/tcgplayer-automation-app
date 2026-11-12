@@ -61,7 +61,11 @@ pub fn PricerScreen<'a>(
             if list.is_empty() && unlisted.is_none() {
                 <Notice variant={AlertVariant::Info}>
                     "No inventory batches exist yet. Create one above or from the "
-                    <a href={crate::features::inventory_intake::url::InventoryManager { selection: Default::default() }}>"Inventory Manager"</a>
+                    <a
+                        href={crate::features::inventory_intake::url::InventoryManager { selection: Default::default() }}
+                    >
+                        "Inventory Manager"
+                    </a>
                     "."
                 </Notice>
             } else {
