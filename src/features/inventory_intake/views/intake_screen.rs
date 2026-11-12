@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use corten::{ToJson, prelude::*, script::ElementId};
+use corten::{ToJson, form::SubmitField, prelude::*, script::ElementId};
 
 use super::{background_batches::BackgroundBatches, queue_bar::QueueBar};
 use crate::{
@@ -445,7 +445,7 @@ pub fn IntakeScreen<'a>(
                                     sku={r.sku}
                                     count={r.count}
                                     label={&r.label}
-                                    submit={&r.submit}
+                                    submit={SubmitKey::field(CountInput::FIELDS.submit)}
                                     name={&r.name}
                                     selection={selection}
                                 />
@@ -467,7 +467,7 @@ pub fn IntakeScreen<'a>(
                         sku={blank.sku}
                         count={blank.count}
                         label={&blank.label}
-                        submit={&blank.submit}
+                        submit={SubmitKey::template_field(CountInput::FIELDS.submit)}
                         name={&blank.name}
                         selection={selection}
                     />
@@ -683,18 +683,6 @@ fn count_form_prefix() -> String {
     id.strip_suffix('0').unwrap_or(&id).to_owned()
 }
 
-/// A new submit key for a row's count form, as `SubmitKey::field` draws one: the script gives
-/// each row it makes a key of its own the same way, since a key a copied row shared with another
-/// would apply only the first SKU's count.
-fn fresh_key() -> String {
-    let field = SubmitKey::field(CountInput::FIELDS.submit).to_html();
-    field
-        .split_once("value=\"")
-        .and_then(|(_, rest)| rest.get(..36))
-        .unwrap_or_default()
-        .to_owned()
-}
-
 /// A product's row in one condition: the holes of [`IntakeRow`], as the server fills them for
 /// the page it draws, and the script (`rowOf` in `intake_screen.js`) for the rows it makes.
 #[derive(Default)]
@@ -710,7 +698,6 @@ struct RowOf {
     sku: i32,
     count: i32,
     label: String,
-    submit: String,
     name: String,
 }
 
@@ -747,7 +734,6 @@ impl RowOf {
             sku,
             count: quantities.get(&sku).copied().unwrap_or(0),
             label: label(product, shown),
-            submit: fresh_key(),
             name: product.display_name.clone(),
         }
     }
@@ -761,7 +747,10 @@ impl RowOf {
 /// has its count form hidden (`data-missing`), which the keys skip.
 ///
 /// The count form is [`CountForm`]'s markup, which a count's answer replaces it with (a test
-/// holds them the same), with the SKU and the submit key as holes so a copied row is its own.
+/// holds them the same), with the SKU as a hole. Its submit key is not one: the page's rows draw
+/// theirs with `SubmitKey::field` and the `<template>` its keyless with `SubmitKey::template_field`,
+/// so a row the script keeps keeps its form's key and the runtime gives a copied row one of its own
+/// when its count is first sent.
 #[component(view, css = IntakeScreen)]
 pub fn IntakeRow<'a>(
     key: i32,
@@ -775,8 +764,8 @@ pub fn IntakeRow<'a>(
     sku: i32,
     count: i32,
     label: &'a str,
-    submit: &'a str,
     name: &'a str,
+    submit: SubmitField,
     selection: &'a Selection,
 ) -> impl Render {
     let c = CountInput::FIELDS;
@@ -837,7 +826,7 @@ pub fn IntakeRow<'a>(
                     </button>
                     <input type="hidden" name={c.sku} value={sku}>
                     <input type="hidden" name={c.seen} value={count}>
-                    <input type="hidden" name={c.submit} data-submit value={submit}>
+                    {submit}
                 </form>
             </td>
             <td class={Name}>
@@ -941,7 +930,7 @@ pub fn IntakeError<'a>(message: Option<&'a str>) -> impl Patch {
 mod tests {
     use std::collections::HashMap;
 
-    use corten::view::Render;
+    use corten::{SubmitKey, form::SubmitField, view::Render};
 
     use super::{
         CountForm, Counted, IntakeRow, ProductPages, RowOf, count_form, count_form_prefix, key_of,
@@ -950,6 +939,7 @@ mod tests {
     use crate::{
         features::inventory_intake::{
             catalog::{Condition, Product},
+            page::CountInput,
             url::Selection,
         },
         text::Msg,
@@ -972,7 +962,8 @@ mod tests {
         }
     }
 
-    fn drawn(row: &RowOf, selection: &Selection) -> String {
+    /// A row as the page draws it, with a key of its own (`submit`), or as the `<template>` does.
+    fn drawn_with(row: &RowOf, selection: &Selection, submit: SubmitField) -> String {
         IntakeRow {
             key: row.key,
             condition: &row.condition,
@@ -985,11 +976,15 @@ mod tests {
             sku: row.sku,
             count: row.count,
             label: &row.label,
-            submit: &row.submit,
             name: &row.name,
+            submit,
             selection,
         }
         .to_html()
+    }
+
+    fn drawn(row: &RowOf, selection: &Selection) -> String {
+        drawn_with(row, selection, SubmitKey::field(CountInput::FIELDS.submit))
     }
 
     /// A row shows the condition chosen: its SKU, count and label, and the condition the
@@ -1062,16 +1057,20 @@ mod tests {
         }
         .to_html();
         assert_eq!(form(&html), form(&answered));
-        assert_ne!(
-            row.submit,
-            RowOf::new(
-                &product,
-                Condition::NearMint,
-                &HashMap::new(),
-                &Msg::default()
-            )
-            .submit
+    }
+
+    /// The row the script copies holds no submit key, so the runtime gives each copy's count
+    /// form one of its own when it is first sent: a key copies shared would apply only the first
+    /// SKU's count.
+    #[test]
+    fn a_copied_row_has_no_submit_key_of_its_own_yet() {
+        let row = RowOf::default();
+        let html = drawn_with(
+            &row,
+            &Selection::default(),
+            SubmitKey::template_field(CountInput::FIELDS.submit),
         );
+        assert!(html.contains(r#"name="submit" data-submit>"#), "{html}");
     }
 
     /// The script names a count form as `CountForm` does: the prefix, then the SKU.

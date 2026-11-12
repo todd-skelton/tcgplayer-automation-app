@@ -103,19 +103,12 @@ function focusFirst(k) {
   }
 }
 
-/** A new submit key, a random UUID v4, as the server draws one (`SubmitKey::field`). */
-function uuid() {
-  const b = crypto.getRandomValues(new Uint8Array(16));
-  b[6] = ((b[6] ?? 0) & 0x0f) | 0x40;
-  b[8] = ((b[8] ?? 0) & 0x3f) | 0x80;
-  const hex = Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
-  return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join("-");
-}
 
 /**
  * A product's row in the condition chosen, as the server fills one (`RowOf::new`). A row already
- * drawn for the same SKU keeps its count and its submit key, so a count on its way stays its own;
- * a new one gets a key of its own, since a key two forms shared would apply only the first's count.
+ * drawn for the same SKU keeps its element, so its count and its form's submit key stay its own;
+ * a new one is copied from the template, whose form holds no key, and the runtime gives it one
+ * when its count is first sent, since a key two forms shared would apply only the first's count.
  * @param {Keys} k @param {IntakeListing} listing @param {ListedProduct} product @param {Map<number, IntakeRow>} drawn
  */
 function rowOf(k, listing, product, drawn) {
@@ -142,7 +135,6 @@ function rowOf(k, listing, product, drawn) {
     sku,
     count,
     label: k.quantity({ product: printed, condition: named }),
-    submit: kept?.submit ?? uuid(),
     name: product.name,
   };
 }
