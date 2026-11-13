@@ -1,14 +1,16 @@
 //! The replay queue, ported from `inventoryFifoRepository.processNextReplay`: the next queued
 //! seller SKU is claimed, replayed ([`replay`]), and either held for a person to reconcile or its
-//! changed lines saved as new revisions and the SKU taken off the queue. Node's worker and this
-//! one claim from the same queue: a SKU's claim and Node's advisory lock keep one replay at a time.
+//! changed lines saved as new revisions and the SKU taken off the queue. Every worker claims from
+//! the same queue: a SKU's claim and the replay's advisory lock keep one replay at a time.
 use serde::Serialize;
-use serde_json::json;
 use sqlx::{Connection, PgConnection};
 
 use chrono::{DateTime, Utc};
 
-use super::replay::{self, Replay, SavedLine, iso};
+use super::{
+    allocate::Allocation,
+    replay::{self, Replay, SavedLine, iso},
+};
 
 /// What became of the SKU a replay claimed.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -134,7 +136,7 @@ pub async fn enqueue_order_revision(conn: &mut PgConnection, order_id: &str) -> 
     let Some((seller, order_time, source_revision)) = order else {
         return Err("Seller order was not found for FIFO.".into());
     };
-    // Node reads the order time into a Date, which keeps milliseconds.
+    // The order time is kept to the millisecond, as the saved revisions hold it.
     let order_time = DateTime::parse_from_rfc3339(&iso(order_time))
         .map_err(|e| e.to_string())?
         .with_timezone(&Utc);
@@ -345,6 +347,57 @@ async fn hold(conn: &mut PgConnection, seller: &str, sku: i32, reason: &str) -> 
     .map(|_| ())
 }
 
+/// A sold line's identity, as its line is looked up by.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LineIdentity<'a> {
+    order_id: &'a str,
+    sku_id: &'a str,
+}
+
+/// A changed line's next revision: the revision row, and the line brought up to it.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Revision<'a> {
+    line_id: &'a str,
+    revision_number: i32,
+    sku: i32,
+    source_order_revision: i32,
+    order_time: String,
+    state: &'a str,
+    hold_reason: Option<&'a str>,
+    ordered_quantity: i64,
+    matched_quantity: i64,
+    unmatched_quantity: i64,
+    price_known_quantity: i64,
+    date_known_quantity: i64,
+    intake_market_total: Option<&'a str>,
+    weighted_days_held: Option<&'a str>,
+    fingerprint: String,
+    /// The revision's id, once it is written.
+    revision_id: Option<String>,
+    #[serde(skip)]
+    allocations: &'a [Allocation],
+}
+
+/// One of a revision's allocations, as its row is written.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RevisionAllocation<'a> {
+    revision_id: Option<&'a str>,
+    supply_key: &'a str,
+    receipt_id: i64,
+    disposition_id: Option<&'a str>,
+    quantity_correction_id: Option<&'a str>,
+    quantity: i64,
+    available_at: String,
+}
+
+/// `rows` as the JSON array `jsonb_to_recordset` reads.
+fn recordset<T: Serialize>(rows: &[T]) -> String {
+    serde_json::to_string(rows).expect("records of text and numbers serialize")
+}
+
 /// `saveLines`: a new revision for each line whose fingerprint differs from its current one,
 /// and the line brought up to it. Lines are materialized when their order is recorded, so one
 /// missing here is an error. Answers how many lines changed.
@@ -360,7 +413,10 @@ pub async fn save_lines(
     }
     let identities: Vec<_> = lines
         .iter()
-        .map(|line| json!({ "orderId": line.order_id, "skuId": line.sku_id }))
+        .map(|line| LineIdentity {
+            order_id: &line.order_id,
+            sku_id: &line.sku_id,
+        })
         .collect();
     let current: Vec<(String, String, String, i32, Option<String>)> = sqlx::query_as(
         r#"SELECT line.id::text,line.order_id::text,line.order_line_sku_id,
@@ -370,7 +426,7 @@ pub async fn save_lines(
              ON line.order_id=x."orderId"::bigint AND line.order_line_sku_id=x."skuId"
            FOR UPDATE OF line"#,
     )
-    .bind(serde_json::Value::Array(identities).to_string())
+    .bind(recordset(&identities))
     .fetch_all(&mut *conn)
     .await
     .map_err(failed)?;
@@ -386,31 +442,25 @@ pub async fn save_lines(
         if saved.as_deref() == Some(fingerprint.as_str()) {
             continue;
         }
-        changed.push(json!({
-            "lineId": line_id,
-            "revisionNumber": revision_number + 1,
-            "sku": sku,
-            "sourceOrderRevision": line.source_order_revision,
-            "orderTime": iso(line.order_time),
-            "state": line.state,
-            "holdReason": line.hold_reason,
-            "orderedQuantity": line.ordered_quantity,
-            "matchedQuantity": line.matched_quantity,
-            "unmatchedQuantity": line.unmatched_quantity,
-            "priceKnownQuantity": line.price_known_quantity,
-            "dateKnownQuantity": line.date_known_quantity,
-            "intakeMarketTotal": line.intake_market_total,
-            "weightedDaysHeld": line.weighted_days_held,
-            "fingerprint": fingerprint,
-            "allocations": line.allocations.iter().map(|a| json!({
-                "supplyKey": a.supply_key,
-                "receiptId": a.receipt_id,
-                "dispositionId": a.disposition_id,
-                "quantityCorrectionId": a.quantity_correction_id,
-                "quantity": a.quantity,
-                "availableAt": iso(a.available_at),
-            })).collect::<Vec<_>>(),
-        }));
+        changed.push(Revision {
+            line_id,
+            revision_number: revision_number + 1,
+            sku,
+            source_order_revision: line.source_order_revision,
+            order_time: iso(line.order_time),
+            state: line.state,
+            hold_reason: line.hold_reason.as_deref(),
+            ordered_quantity: line.ordered_quantity,
+            matched_quantity: line.matched_quantity,
+            unmatched_quantity: line.unmatched_quantity,
+            price_known_quantity: line.price_known_quantity,
+            date_known_quantity: line.date_known_quantity,
+            intake_market_total: line.intake_market_total.as_deref(),
+            weighted_days_held: line.weighted_days_held.as_deref(),
+            fingerprint,
+            revision_id: None,
+            allocations: &line.allocations,
+        });
     }
     if changed.is_empty() {
         return Ok(0);
@@ -429,30 +479,29 @@ pub async fn save_lines(
              "intakeMarketTotal" text,"weightedDaysHeld" text,fingerprint text)
            RETURNING id::text,line_id::text"#,
     )
-    .bind(serde_json::Value::Array(changed.clone()).to_string())
+    .bind(recordset(&changed))
     .bind(trigger_reason)
     .fetch_all(&mut *conn)
     .await
     .map_err(failed)?;
-    for line in &mut changed {
-        let revision = revisions
+    for revision in &mut changed {
+        revision.revision_id = revisions
             .iter()
-            .find(|(_, line_id)| line["lineId"] == line_id.as_str())
+            .find(|(_, line_id)| line_id == revision.line_id)
             .map(|(id, _)| id.clone());
-        line["revisionId"] = json!(revision);
     }
     let allocations: Vec<_> = changed
         .iter()
-        .flat_map(|line| {
-            line["allocations"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .map(|allocation| {
-                    let mut allocation = allocation.clone();
-                    allocation["revisionId"] = line["revisionId"].clone();
-                    allocation
-                })
+        .flat_map(|revision| {
+            revision.allocations.iter().map(|a| RevisionAllocation {
+                revision_id: revision.revision_id.as_deref(),
+                supply_key: &a.supply_key,
+                receipt_id: a.receipt_id,
+                disposition_id: a.disposition_id.as_deref(),
+                quantity_correction_id: a.quantity_correction_id.as_deref(),
+                quantity: a.quantity,
+                available_at: iso(a.available_at),
+            })
         })
         .collect();
     if !allocations.is_empty() {
@@ -464,7 +513,7 @@ pub async fn save_lines(
                FROM jsonb_to_recordset($1::jsonb) AS x("revisionId" text,"supplyKey" text,"receiptId" integer,
                  "dispositionId" text,"quantityCorrectionId" text,quantity integer,"availableAt" text)"#,
         )
-        .bind(serde_json::Value::Array(allocations).to_string())
+        .bind(recordset(&allocations))
         .execute(&mut *conn)
         .await
         .map_err(failed)?;
@@ -481,7 +530,7 @@ pub async fn save_lines(
              "priceKnownQuantity" integer,"dateKnownQuantity" integer,"intakeMarketTotal" text,"weightedDaysHeld" text,"revisionId" text)
            WHERE line.id=x."lineId"::bigint"#,
     )
-    .bind(serde_json::Value::Array(changed.clone()).to_string())
+    .bind(recordset(&changed))
     .execute(&mut *conn)
     .await
     .map_err(failed)?;
