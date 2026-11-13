@@ -1,7 +1,7 @@
 //! The evidence the selling history is built from: listing episodes in the window, their sales
 //! and removals from the FIFO allocations, and what is still unsettled. Ported from
 //! `inventorySellingHistory.server.ts`, `loadInventorySellingHistory` and the order coverage of
-//! `sellerOrderHistory.server.ts`; the SQL is the Node app's.
+//! `sellerOrderHistory.server.ts`.
 use chrono::{DateTime, Duration, Utc};
 use serde_json::Value;
 use sqlx::types::Json;
@@ -12,7 +12,7 @@ use crate::{database::Database, features::inventory_economics::ledger::proceeds:
 pub const EPISODE_LIMIT: i64 = 20_000;
 pub const OUTCOME_LIMIT: i64 = 40_000;
 /// Publications the selling history may complete with their pricing result per page load.
-/// The most items one backfill records, as the Node app's page load asked for.
+/// The most items one backfill records.
 pub const BACKFILL_LIMIT: i64 = 500;
 
 const OBSERVATION_SQL: &str = r##"SELECT cutoff_at AS "cutoffAt"
@@ -251,11 +251,12 @@ type OutcomeRow = (
     i64,
 );
 
-/// Postgres sums to int here, as the Node app reads them.
+/// Postgres sums, cast to int.
 type ProjectionRow = (i32, i32, Vec<i32>, i32, i32, i32, i32, i32);
 
 fn parse<T: serde::de::DeserializeOwned>(value: &str) -> sqlx::Result<T> {
-    serde_json::from_value(Value::String(value.to_string()))
+    use serde::de::{IntoDeserializer, value::Error};
+    T::deserialize(IntoDeserializer::<Error>::into_deserializer(value))
         .map_err(|e| sqlx::Error::Decode(Box::new(e)))
 }
 
@@ -524,8 +525,7 @@ UPDATE inventory_publication_items item SET
 FROM supported WHERE item.id=supported.id RETURNING item.id"##;
 
 /// The report for one page of details. Only reads: the forecast evidence the details show is
-/// completed by the backfill task (`super::super::backfill`), where the Node app completed it on
-/// every load.
+/// completed by the backfill task (`super::super::backfill`).
 pub async fn load(
     db: &Database,
     seller: &str,
