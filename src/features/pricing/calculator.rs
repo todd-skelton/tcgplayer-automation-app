@@ -272,7 +272,7 @@ pub struct PricedItem {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub product_line_id: Option<i64>,
     pub errors: Vec<String>,
-    /// None on a SKU whose resolver failed, as the Node app writes it.
+    /// None on a SKU whose resolver failed, and then left out of the JSON.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub warnings: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -315,7 +315,7 @@ pub struct Stats {
     pub processing_time: u128,
 }
 
-/// Per percentile, keyed `65th` in the Node app's key order.
+/// Per percentile, keyed `65th`, in the key order the saved results have.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Aggregated {
     /// Quantity-weighted value of the batch at the percentile.

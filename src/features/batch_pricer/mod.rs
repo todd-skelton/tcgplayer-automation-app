@@ -7,7 +7,7 @@
 //! database; the workers price and publish them when `PRICING_WORKER` and `PUBLICATION_WORKER`
 //! are set. While a batch prices
 //! or publishes, a `<corten-live>` stream follows it and sends the batch's panel each time it
-//! changes, as the React screen's event stream did; a browser without scripts reads the page
+//! changes; a browser without scripts reads the page
 //! again instead.
 //!
 //! | Route | Answer |
@@ -21,8 +21,8 @@
 //! | `POST /pending-inventory-pricer/batches/{batch}/publish` | the selected SKUs planned for publication |
 //! | `POST /pending-inventory-pricer/batches/{batch}/delete` | the batch deleted |
 //!
-//! The React screen remembered the seller key typed last in the browser; this one starts from
-//! the shipping settings' default seller. Dates are written in the visitor's time zone, which the
+//! The seller key starts from the shipping settings' default seller, not one the browser
+//! remembers. Dates are written in the visitor's time zone, which the
 //! browser names after its first page (`App::zoned_dates`); until then they are in UTC.
 mod batches;
 pub mod import;

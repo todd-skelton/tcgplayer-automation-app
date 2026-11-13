@@ -83,7 +83,7 @@ pub async fn process<J: Jobs>(jobs: &J, job: &J::Job, signal: &Signal) -> Outcom
                     Ok(()) => Outcome::Completed,
                     Err(why) => Outcome::Failed(why),
                 },
-                // Saved as Node's flush saves it, without moving the next renewal.
+                // Saved as soon as it is due, without moving the next renewal.
                 _ = jobs.progress_due(job) => match timeout(RENEWAL, jobs.renew(job)).await {
                     Ok(Ok(true)) => {}
                     Ok(Ok(false)) => break Outcome::LeaseLost,
@@ -127,7 +127,7 @@ pub async fn run<J: Jobs>(jobs: J, queued: Arc<Notify>, signal: Signal) {
                 if process(&jobs, &job, &signal).await == Outcome::Released {
                     return;
                 }
-                // Straight on to the next job, as Node's tick schedules itself at 0.
+                // Straight on to the next job, without waiting for the poll.
                 continue;
             }
             Ok(None) => {}
@@ -307,7 +307,7 @@ mod tests {
         assert_eq!(log[2], (13_000, "claim 2".into()));
     }
 
-    /// Progress is saved when it comes, as Node's flush saves it, and the renewals keep their beat.
+    /// Progress is saved when it comes, and the renewals keep their beat.
     #[tokio::test(start_paused = true)]
     async fn progress_is_saved_between_renewals() {
         let fake = Fake::new(&[(1, 5)]);

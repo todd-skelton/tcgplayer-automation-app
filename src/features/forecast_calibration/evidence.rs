@@ -1,5 +1,5 @@
 //! The evidence a calibration is learned from (`forecastCalibrationEvidenceRepository`), read
-//! to the millisecond as the Node app's dates hold it.
+//! to the millisecond, the precision it was recorded at.
 use chrono::{DateTime, Utc};
 
 use super::{Calibration, DAY_MS, Evidence, ListedPrice, SkuSale, learn, ms};

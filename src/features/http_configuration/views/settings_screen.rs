@@ -91,7 +91,7 @@ pub fn SettingsScreen<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl 
 }
 
 /// The settings, one card per group. A domain's adaptive bounds show while its switch is on (CSS,
-/// no script); they are sent either way, as the React app sent them.
+/// no script); they are sent either way.
 #[component(css, js)]
 pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Patch {
     let (f, e) = (SettingsInput::FIELDS, errors.within(SettingsFormId));
@@ -275,8 +275,7 @@ pub fn SettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) -> impl Pa
                                     >
                                         // No step: the adaptive limiter writes this delay (a floor of
                                         // 250 is a delay of 250), and a step would keep the whole form
-                                        // from being sent until it was changed. React's form did not
-                                        // check (corten#850).
+                                        // from being sent until it was changed (corten#850).
                                         <input
                                             class={Input {}}
                                             type="number"

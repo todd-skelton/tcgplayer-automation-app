@@ -26,8 +26,8 @@ struct SkuRow {
     product_line_id: i32,
 }
 
-/// `new Date(text).getTime()` for a set's release date, read as the Node app reads it with its
-/// clock in UTC: a date alone, a time without a zone, or a time with one.
+/// `new Date(text).getTime()` for a set's release date, read with the clock in UTC: a date alone,
+/// a time without a zone, or a time with one.
 pub fn release_ms(text: &str) -> Option<f64> {
     let text = text.trim();
     if text.is_empty() {

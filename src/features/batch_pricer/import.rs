@@ -1,8 +1,8 @@
-//! A batch made from a CSV export (`api.inventory-batches-import-csv`): the export read as the
-//! Node app reads it (Papa Parse), each row whose SKU the catalog knows in its product line kept
+//! A batch made from a CSV export (`api.inventory-batches-import-csv`): the export read as Papa
+//! Parse reads it, each row whose SKU the catalog knows in its product line kept
 //! (`convertCsvListingsToBatchItems`), saved as a batch with its items (`createImportedBatch`)
-//! and queued for pricing in full. The Node app saved the batch and queued it in two transactions;
-//! here both are one, so a failed queue leaves no batch behind.
+//! and queued for pricing in full, both in one transaction, so a failed queue leaves no batch
+//! behind.
 //!
 //! A batch made from a seller's live inventory (`api.inventory-batches-import-seller`) is the
 //! same: the seller's listings read from TCGplayer's search (`fetchSellerInventorySnapshot`),
@@ -52,7 +52,7 @@ fn decimal(text: Option<&str>) -> Option<f64> {
         .filter(|n| n.is_finite())
 }
 
-/// A product line's URL name as the Node app guessed it: lower case, each run of space a dash.
+/// A product line's URL name, guessed from its name: lower case, each run of space a dash.
 fn url_name(name: &str) -> String {
     let mut url = String::new();
     let mut in_space = false;
@@ -140,8 +140,8 @@ pub async fn items(
 /// The largest CSV export the screen takes.
 pub const MOST_EXPORT_BYTES: usize = 20 << 20;
 
-/// Why no batch was made, in the Node app's words: nothing in the import it could keep (its
-/// 400), or anything else failing (its 500).
+/// Why no batch was made: nothing in the import could be kept (the person's to fix), or anything
+/// else failing.
 #[derive(Debug, PartialEq)]
 pub enum NotImported {
     Nothing(String),
@@ -283,7 +283,7 @@ pub fn listing_rows(products: &[Product]) -> Vec<Map<String, Value>> {
 }
 
 /// The seller whose live inventory made the newest batch, if one did: what the New Batch form
-/// starts from, as the React screen remembered the last seller key it sent.
+/// starts from, the last seller key sent.
 pub async fn last_seller(conn: impl sqlx::PgExecutor<'_>) -> sqlx::Result<Option<String>> {
     sqlx::query_scalar(
         "SELECT source_label FROM inventory_batches WHERE source_type = 'seller'
@@ -398,8 +398,8 @@ mod tests {
     type Saved = (i32, i32, i32, Option<String>, i32, Value, DateTime<Utc>);
 
     /// An import on the dev database, inside a transaction rolled back: the batch is saved
-    /// pending with its items as read, then queued in full; a repeated SKU is refused as Node's
-    /// insert refused it.
+    /// pending with its items as read, then queued in full; a repeated SKU is refused by the
+    /// items' primary key.
     #[tokio::test]
     #[ignore = "uses the dev database, in a transaction that is rolled back"]
     async fn an_export_is_saved_and_queued() {

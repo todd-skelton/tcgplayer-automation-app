@@ -72,7 +72,7 @@ impl Default for Settings {
 }
 
 /// The values a setting may have: the input's `min`, `max` and `step`, and the check of what is
-/// sent. The Node app reads a stored one outside its range as its default.
+/// sent. A stored one outside its range reads as its default.
 pub mod range {
     use corten::Bounds;
 
@@ -125,7 +125,7 @@ impl Settings {
             }),
             minimum_absolute_price_change: policy["minimumAbsolutePriceChange"]
                 .as_f64()
-                // Node checked only the range, not the cent step.
+                // A stored amount is checked against the range only, not the cent step.
                 .filter(|n| (range::PRICE_CHANGE.min()..=range::PRICE_CHANGE.max()).contains(n))
                 .unwrap_or(d.minimum_absolute_price_change),
             staged_micro_batch_maximum: whole(
@@ -208,7 +208,7 @@ impl Runtime {
 }
 
 /// The stored settings and runtime, the row made first if there is none. An empty document reads
-/// as every default, here and in the Node app.
+/// as every default.
 pub async fn load(db: &Database) -> sqlx::Result<(Settings, Runtime)> {
     sqlx::query(
         "INSERT INTO inventory_publication_settings (config_key, settings_json)
@@ -275,7 +275,7 @@ pub async fn resume(db: &Database) -> sqlx::Result<()> {
     Ok(())
 }
 
-/// Makes the settings row when there is none, as every write of the Node app's repository does.
+/// Makes the settings row when there is none, as every write does.
 async fn ensure(conn: &mut sqlx::PgConnection) -> sqlx::Result<()> {
     sqlx::query(
         "INSERT INTO inventory_publication_settings (config_key, settings_json)

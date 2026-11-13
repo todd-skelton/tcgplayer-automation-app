@@ -390,7 +390,7 @@ pub async fn job_config_on<'e>(executor: impl sqlx::PgExecutor<'e>) -> sqlx::Res
 }
 
 /// The pricing configuration with when it was saved, as `pricingConfigRepository.get` answers
-/// it: the Node app queues intake and strategy jobs with the whole answer, `updatedAt` included.
+/// it: intake and strategy jobs are queued with the whole answer, `updatedAt` included.
 pub async fn saved_config(db: &Database) -> sqlx::Result<Value> {
     let mut config = job_config(db).await?;
     let saved: Option<DateTime<Utc>> =

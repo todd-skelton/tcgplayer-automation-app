@@ -1,12 +1,12 @@
-//! A replay of Node's finished pricing jobs from the ledgers, compared with the results Node saved,
-//! as JSON lines. It writes nothing to the database and does not call TCGplayer.
+//! A replay of finished pricing jobs from the ledgers, compared with the results they saved, as
+//! JSON lines. It writes nothing to the database and does not call TCGplayer.
 //!
 //! This is a diagnostic, not the parity gate. The ledgers do not hold what a job read: listings
 //! are kept only as each condition's two cheapest asks, and the sales ledger keeps sales that
-//! TCGplayer later drops. Measured on 2026-10-30, Node's own pricer replayed on the ledgers for 20
-//! jobs disagreed with its saved prices on 124 of 135 SKUs, while Rust and Node agree on every
-//! value when given the same evidence (`pricing::parity`). Parity is proven on identical inputs;
-//! this shows how far the ledgers are from a job's real inputs.
+//! TCGplayer later drops. Measured on 2026-10-30, the pricer that saved 20 jobs, replayed on the
+//! ledgers, disagreed with its own saved prices on 124 of 135 SKUs, while this pricer agrees with
+//! it on every value given the same evidence (`pricing::parity`). Parity is proven on identical
+//! inputs; this shows how far the ledgers are from a job's real inputs.
 //!
 //! [`run`] is the background form, off unless `BATCH_PRICING_SHADOW_LOG` names the log; it is not
 //! registered while the replay cannot be a gate.
@@ -48,7 +48,7 @@ fn log_path() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-/// A job Node's worker finished.
+/// A finished pricing job.
 #[derive(Clone, Debug, sqlx::FromRow)]
 pub struct Finished {
     pub id: i64,
@@ -175,7 +175,7 @@ impl Evidence for Ledgers<'_> {
     }
 }
 
-/// What Node saved for a SKU.
+/// What a finished job saved for a SKU.
 #[derive(Clone, Debug, sqlx::FromRow)]
 pub struct Saved {
     pub sku: i32,
@@ -195,7 +195,7 @@ pub async fn saved(db: &Database, batch_number: i32) -> Result<Vec<Saved>, Strin
     .map_err(|e| e.to_string())
 }
 
-/// Node's market data, read back from the results it saved.
+/// A finished job's market data, read back from the results it saved.
 pub struct SavedMarket<'a>(pub &'a [Saved]);
 
 impl MarketData for SavedMarket<'_> {
@@ -225,7 +225,7 @@ impl MarketData for SavedMarket<'_> {
     }
 }
 
-/// Whether Node's price for the SKU read competing asks.
+/// Whether the saved price for the SKU read competing asks.
 pub fn leaned_on_supply(details: &Value) -> bool {
     let observed = |v: &Value| v.get("supplyStatus").and_then(Value::as_str) == Some("observed");
     observed(&details["decision"])
@@ -239,19 +239,19 @@ pub fn leaned_on_supply(details: &Value) -> bool {
 #[serde(tag = "verdict", rename_all = "snake_case")]
 pub enum Verdict {
     Same,
-    /// Node's price read competing asks, which the shadow cannot read; only the curve the sales
+    /// The saved price read competing asks, which the shadow cannot read; only the curve the sales
     /// alone draw is compared, and `curve` holds where it differs.
     SupplyDependent {
         curve: Vec<Field>,
     },
-    /// Node could not reach TCGplayer for the SKU, so it has no price to compare.
+    /// The job could not reach TCGplayer for the SKU, so it saved no price to compare.
     NodeUnreachable {
         error: String,
     },
     Different {
         fields: Vec<Field>,
     },
-    /// Node saved a result the shadow did not produce, or the other way round.
+    /// The job saved a result the shadow did not produce, or the other way round.
     Missing {
         side: &'static str,
     },
@@ -410,7 +410,7 @@ pub fn compare(rust: &PricedSku, node: &Saved) -> Verdict {
 pub struct Tally {
     pub same: usize,
     pub supply_dependent: usize,
-    /// Of the supply-dependent, those whose curve from sales matches Node's.
+    /// Of the supply-dependent, those whose curve from sales matches the saved one.
     pub same_curve: usize,
     pub node_unreachable: usize,
     pub different: usize,
@@ -439,7 +439,7 @@ enum Line<'a> {
     },
 }
 
-/// Prices `job`'s batch again and compares each SKU with Node's result.
+/// Prices `job`'s batch again and compares each SKU with the result it saved.
 pub async fn replay(db: &Database, job: &Finished) -> Result<(Tally, Vec<(i32, Verdict)>), String> {
     let mode = Mode::of(&job.mode).ok_or_else(|| format!("unknown mode {}", job.mode))?;
     let batch: Batch = job::batch(db, job.batch_number).await?;
@@ -568,7 +568,7 @@ pub async fn log_replay(db: &Database, job: &Finished, log: &PathBuf) -> Result<
     replayed.map(|(tally, _)| tally)
 }
 
-/// The task: when `BATCH_PRICING_SHADOW_LOG` names a log, each job Node finishes from now on is
+/// The task: when `BATCH_PRICING_SHADOW_LOG` names a log, each job finished from now on is
 /// replayed and compared, until shutdown.
 pub async fn run(db: Database, signal: Signal) {
     let Some(log) = log_path() else {
@@ -663,7 +663,7 @@ mod tests {
         );
     }
 
-    /// Replays Node's finished jobs from `BATCH_PRICING_SHADOW_FROM` (a job id; the job after
+    /// Replays the finished jobs from `BATCH_PRICING_SHADOW_FROM` (a job id; the job after
     /// it is the first) for `BATCH_PRICING_SHADOW_JOBS` jobs (default 10), logged to
     /// `BATCH_PRICING_SHADOW_LOG`. Reads the dev database only.
     #[tokio::test]

@@ -1,6 +1,6 @@
-//! Parity with the Node pricer on identical evidence: `scripts/parity/pricing-parity.ts` prices a
-//! batch's SKUs through Node's resolver and calculator and writes the evidence it served with its
-//! answers; this prices the same SKUs from the same evidence and compares every value.
+//! Parity with a recorded pricing on identical evidence: a recording holds a batch's SKUs, the
+//! evidence they were priced from and the answers; this prices the same SKUs from the same
+//! evidence and compares every value.
 use std::{cell::RefCell, collections::HashMap};
 
 use chrono::{DateTime, Utc};
@@ -79,7 +79,7 @@ struct Fixture {
     runs: Vec<Run>,
 }
 
-/// The evidence Node was served, and the listing ceilings asked for.
+/// The evidence the recording was priced from, and the listing ceilings asked for.
 struct Recorded<'a> {
     fixture: &'a Fixture,
     ceilings: RefCell<HashMap<String, Option<f64>>>,
@@ -335,7 +335,7 @@ async fn prices_match_node_on_the_same_evidence() {
         .await
         .unwrap();
         let name = &run.name;
-        // Node never recorded the shrunk-rate or quality-aware share forecasts, later additions
+        // The recordings have no shrunk-rate or quality-aware share forecasts, later additions
         // graded beside the others.
         let mut priced_items = serde_json::to_value(&result.priced_items).unwrap();
         for item in priced_items.as_array_mut().into_iter().flatten() {

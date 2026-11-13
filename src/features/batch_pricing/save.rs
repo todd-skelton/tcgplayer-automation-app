@@ -506,8 +506,8 @@ mod tests {
     use super::*;
     use crate::database::Database;
 
-    /// Equal but for the last bits of sums: Node sums the results in the order Postgres returns
-    /// them (its query has no order), so the same rows can sum a last bit apart.
+    /// Equal but for the last bits of sums: a stored summary summed its results in the order
+    /// Postgres returned them (the query had no order), so the same rows can sum a last bit apart.
     fn close(a: &Value, b: &Value) -> bool {
         match (a, b) {
             (Value::Number(x), Value::Number(y)) => {
@@ -524,8 +524,8 @@ mod tests {
         }
     }
 
-    /// Every batch Node saved since September, its summary rebuilt from its results, against the
-    /// summary Node stored (all but `generatedAt`). Reads the dev database only.
+    /// Every batch saved since September, its summary rebuilt from its results, against the
+    /// summary stored with it (all but `generatedAt`). Reads the dev database only.
     #[tokio::test]
     #[ignore = "reads the dev database's batches"]
     async fn summaries_match_the_ones_node_stored() {

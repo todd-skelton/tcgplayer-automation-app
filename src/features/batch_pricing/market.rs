@@ -1,5 +1,5 @@
 //! TCGplayer's market data for a batch's SKUs (`getPricePoints`): one POST to the gateway's price
-//! point search for every SKU at once, as the Node worker asks. Not approved for dev runs yet
+//! point search for every SKU at once. Not approved for dev runs yet
 //! (port decision 38), so it is read only by the pricing worker, which is off unless
 //! `PRICING_WORKER` turns it on.
 use std::collections::HashMap;

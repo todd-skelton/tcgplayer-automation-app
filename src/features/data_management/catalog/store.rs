@@ -1,4 +1,4 @@
-//! The local catalog's tables, as the Node app's repositories read and write them
+//! The local catalog's tables, read and written here
 //! (`productLinesRepository`, `categoryFiltersRepository`, `categorySetsRepository`,
 //! `categorySetSyncsRepository`, `setProductsRepository`, `productsRepository`, `skusRepository`),
 //! each on the connection it is given.

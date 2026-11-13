@@ -3,7 +3,7 @@
 //! at a time; and the recent automatic runs. Ported from
 //! `app/features/continuous-pricing/routes/continuous-pricing.tsx`.
 //!
-//! Everything is read and written here, with the Node app's queries: the schedule, the inventory,
+//! Everything is read and written here: the schedule, the inventory,
 //! pausing or enabling a SKU, refreshing the inventory from TCGplayer ([`refresh`]), a scheduler
 //! cycle and repricing from saved curves ([`scheduler`]). The scheduler's own task runs when
 //! `CONTINUOUS_PRICING_SCHEDULER` is set, as dev and production set it.
@@ -18,7 +18,7 @@
 //! | `POST /continuous-pricing/mark-due` | every eligible SKU made due, then a scheduler cycle |
 //! | `POST /continuous-pricing/sku` | one SKU enabled or paused: with JavaScript its card and a toast, without it the page |
 //!
-//! A post the Node app refuses answers 409 with the page and why.
+//! A refused post answers 409 with the page and why.
 mod actions;
 pub mod refresh;
 pub mod scheduler;

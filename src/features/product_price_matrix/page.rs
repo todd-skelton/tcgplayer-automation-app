@@ -67,7 +67,7 @@ impl Screen {
             .ok()
             .and_then(|all| all.iter().find(|p| Some(p.product_id) == choice.product))
             .cloned();
-        // A product chosen anew opens in its own language, as the React screen opened it.
+        // A product chosen anew opens in its own language.
         let kept = choice
             .language
             .as_deref()

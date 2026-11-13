@@ -28,7 +28,7 @@ const DAY_MS: f64 = 24.0 * 60.0 * 60.0 * 1000.0;
 /// current model, a modeled decision with a forecast, the same supply settings as the job that
 /// priced it, market data no older than the schedule's interval, and at least one percentile.
 /// `$2` is the model version, `$3` the interval in minutes, `$4` the supply settings, `$6` the
-/// time it is read as of: Node's `NOW()`, bound so a run priced as of a past time reads as then.
+/// time it is read as of, in place of `NOW()`, so a run priced as of a past time reads as then.
 pub const REUSABLE: &str = "
   curve.pricing_details_json->>'pricingModelVersion' = $2
   AND curve.pricing_details_json->'decision'->>'basis' = 'modeled'
@@ -200,7 +200,7 @@ fn resolve(details: Option<&Value>, percentile: f64) -> Resolved {
         return unavailable();
     };
     let ms = |days: Option<f64>| days.map(|d| d * DAY_MS);
-    // The calculator reads days back from milliseconds, as Node's does from its resolver's.
+    // The calculator reads days back from milliseconds, as a resolver hands them on.
     let again = |d: Option<f64>| days(ms(d));
     Resolved {
         error: None,
@@ -214,7 +214,7 @@ fn resolve(details: Option<&Value>, percentile: f64) -> Resolved {
         estimated_time_to_sell_ms: ms(decision.estimated_median_sell_days),
         sales_count: decision.qualifying_sales_count,
         listings_count: decision.listings_count,
-        // Node hands the saved forecast on as the rate; the calculator forecasts again from it.
+        // The saved forecast is handed on as the rate; the calculator forecasts again from it.
         condition_sale_rate: field(details, "conditionRateForecast"),
         condition_normalization: field(details, "conditionNormalization"),
         price_evidence: field(details, "priceEvidence"),
@@ -320,9 +320,9 @@ mod tests {
     }
 
     /// A sample of the curves the strategy saved on dev, each model version's and those of none,
-    /// resolved at the percentile its run used and at 30, against what Node's resolver answered
-    /// for the same curves (`scripts/parity/saved-curves.ts`, recorded in
-    /// `tests/fixtures/node/pricing/saved-curves.json`, or the recording `SAVED_CURVES` names): the
+    /// resolved at the percentile its run used and at 30, against the answers recorded for the
+    /// same curves (`tests/fixtures/node/pricing/saved-curves.json`, or the recording
+    /// `SAVED_CURVES` names): the
     /// same price, times, counts and error, and the same percentiles once the calculator reads
     /// them back as days.
     #[test]
@@ -395,8 +395,8 @@ mod tests {
         assert!(differences.is_empty());
     }
 
-    /// Node's cached pricing of batch 7122 (`scripts/parity/cached-run.ts 7122`, recorded
-    /// 2026-11-06 with every curve fresh, so nothing was made due), or of the recording
+    /// The recorded cached pricing of batch 7122 (recorded 2026-11-06 with every curve fresh, so
+    /// nothing was made due), or of the recording
     /// `CACHED_RUN` names, priced again here from the same curves as of the same moment: every
     /// SKU's price, suggestion, percentile and market reading, and the summary's totals, match. A
     /// curve saved since the recording fails it: record again.

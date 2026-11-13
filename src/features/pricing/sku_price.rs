@@ -233,7 +233,7 @@ pub async fn price(
                 .map(Sale::effective_price)
                 .reduce(f64::max)
         } else {
-            // Node passes no as-of here, so the ceiling anchors to the newest sale.
+            // No as-of here, so the ceiling anchors to the newest sale.
             condition_normalization::competing_ask_ceiling(
                 &to_process,
                 &Normalization {

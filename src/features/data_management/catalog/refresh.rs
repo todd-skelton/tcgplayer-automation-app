@@ -117,7 +117,7 @@ pub struct Fetched {
     pub pending_inventory_updated: u64,
 }
 
-/// Products' details read at once, as Node's worker pool reads them.
+/// How many products' details are read at once.
 const AT_ONCE: usize = 5;
 
 /// The product `details` describe, stored; when they move it to another set than `existing`

@@ -1,7 +1,7 @@
 //! What the screen reads and the writes simple enough to make here: the schedule settings (in the
 //! publication settings document, under `continuousPricing`), the seller's tracked inventory, its
-//! status, the recent automatic runs, and pausing or enabling a SKU. The same queries as the Node
-//! app's `continuousPricingRepository`, which the scheduler and the pricing worker share.
+//! status, the recent automatic runs, and pausing or enabling a SKU
+//! (`continuousPricingRepository`); the scheduler and the pricing worker share these queries.
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use serde_json::Value;
