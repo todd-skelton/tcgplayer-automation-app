@@ -1,6 +1,6 @@
 //! Buying postage from EasyPost and recording it (`/api/shipping-export/postages`,
 //! `purchaseShippingPostages`), and one PDF of labels already bought (`batch-labels`,
-//! `generateBatchLabelForPurchasedShipments`), as the Node app's `easyPostPostage` did.
+//! `generateBatchLabelForPurchasedShipments`, `easyPostPostage`).
 use std::time::Duration;
 
 use serde_json::{Value, json};
@@ -32,7 +32,7 @@ fn whole(a: &Address) -> bool {
         .any(|t| blank(t))
 }
 
-/// A shipment the Node route would take for `label_size` (`isValidShipment`).
+/// A shipment that can be bought for `label_size` (`isValidShipment`).
 fn valid(s: &Shipment, label_size: LabelSize) -> bool {
     let p = &s.parcel;
     !blank(&s.reference)
@@ -257,13 +257,11 @@ async fn bought(
 
 /// Buys postage for shipments of one label size in `mode` and records each result: an outbound
 /// order bought before in bulk, or a shipment abroad, is skipped; a bulk outbound purchase makes
-/// one PDF of its labels. Shipments the Node route would refuse are refused whole.
+/// one PDF of its labels. Shipments that cannot be bought are refused whole.
 ///
 /// A result that cannot be recorded stops the run with that error, before any more postage is
-/// bought: the duplicate check reads those records, so buying on could buy an order twice. Node
-/// caught a failed record of a bought label and recorded it again as failed (keeping on when that
-/// second insert worked, so a bought label was reported failed), and failed the whole request
-/// when it did not, as a database that is down does.
+/// bought: the duplicate check reads those records, so buying on could buy an order twice. A
+/// bought label whose record fails is not recorded again as failed.
 pub async fn buy(
     conn: &mut PgConnection,
     api: &impl Api,

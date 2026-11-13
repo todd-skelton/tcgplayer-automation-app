@@ -1,7 +1,7 @@
 //! What a card, order, shipment or batch sold for, against the current market and the market when
 //! its cards came into inventory, and how long they were held (ported from `services/saleValue.ts`,
-//! `orderMarketComparison.ts` and `orderIntakeComparison.ts`). Amounts are dollars, as the Node app
-//! sends them; a view writes them as money.
+//! `orderMarketComparison.ts` and `orderIntakeComparison.ts`). Amounts are dollars, as the order
+//! data holds them; a view writes them as money.
 use std::collections::{BTreeSet, HashMap};
 
 use super::orders::{Line, Order};

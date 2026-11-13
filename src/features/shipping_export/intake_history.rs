@@ -10,7 +10,7 @@ use sqlx::types::Json;
 use super::orders::{IntakeHistory, IntakeLine, IntakeLot, Order};
 use crate::database::Database;
 
-/// The most orders read at once, as the Node route takes.
+/// The most orders read at once.
 pub const MOST_ORDERS: usize = 500;
 
 const DAY_MILLIS: f64 = 86_400_000.0;
@@ -95,7 +95,7 @@ struct Allocation {
     lots: Json<Vec<Lot>>,
 }
 
-/// Times to the millisecond, as the Node app reads them.
+/// Times to the millisecond, the precision they are compared at.
 async fn allocations(
     db: impl sqlx::PgExecutor<'_>,
     seller_key: &str,

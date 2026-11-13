@@ -33,8 +33,7 @@ use crate::{
     text::Msg,
 };
 
-/// How long the orders' intake history is used before it is read again, as the React screen
-/// read it every five minutes.
+/// How long the orders' intake history is used before it is read again.
 const INTAKE_FOR: Duration = Duration::minutes(5);
 
 impl ShippingWorkflow {
@@ -217,8 +216,7 @@ impl Shown {
 }
 
 /// Reads the orders' intake history again once it is older than [`INTAKE_FOR`], and keeps it.
-/// It is only for the configured seller (the Node app refuses another); one that cannot be read
-/// is dropped with a warning, as the React screen dropped it.
+/// It is only for the configured seller; one that cannot be read is dropped with a warning.
 async fn refresh_intake(
     db: &Database,
     config: &ShippingConfig,
@@ -529,7 +527,7 @@ async fn start(
 ) -> HtmlResult {
     let loaded = match loaded {
         Ok(loaded) => loaded,
-        // Node, or TCGplayer behind it, failed to give the orders.
+        // TCGplayer, or the order history, failed to give the orders.
         Err(why) => {
             return refused(req, db, Step::LoadOrders, Refusal::Upstream, &why).await;
         }
@@ -541,7 +539,7 @@ async fn start(
         loaded.warnings,
         loaded.orders,
     );
-    // The Node app attaches the intake history when the seller is the configured one.
+    // The intake history is attached only when the seller is the configured one.
     if !configured.trim().is_empty() && fresh.seller_key.trim() == configured.trim() {
         fresh.intake_read_at = Some(Utc::now());
     }
@@ -653,8 +651,8 @@ pub async fn import_history(
     let done = match (problem, chosen) {
         (Some(why), _) => Err(why),
         (None, None) => Err("A seller order CSV file is required.".to_owned()),
-        // Read as the React screen's `File.text()` read it, so the file's fingerprint is the one
-        // Node recorded for the same file.
+        // Read as a browser's `File.text()` reads it, so the file's fingerprint is the one
+        // recorded for the same file before.
         (None, Some((name, bytes))) => {
             let text = csv_text::decode(&bytes);
             source::import_history(&db, &seller, &name, &text)

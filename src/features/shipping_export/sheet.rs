@@ -1,8 +1,7 @@
 //! The batch's pull sheet and packing slips, as TCGplayer's order management API exports them for
 //! the orders (`exportPullSheet`, `exportPackingSlips`). The Pull Sheet and Pack steps both read
 //! the pull sheet, and Pack draws a page for every shipment packed, so the export is kept a few
-//! minutes for the same orders rather than asked for on each page, as the React screen loaded it
-//! once.
+//! minutes for the same orders rather than asked for on each page.
 use std::{
     sync::{Arc, Mutex},
     time::{Duration, Instant},
@@ -39,7 +38,7 @@ fn offset(hours_ahead: f64) -> Value {
     }
 }
 
-/// The orders once each, as the Node route sends them.
+/// The orders once each.
 fn distinct(orders: &[String]) -> Vec<&str> {
     let mut seen = Vec::new();
     for order in orders.iter().map(|o| o.trim()).filter(|o| !o.is_empty()) {

@@ -8,8 +8,8 @@
 //! ([`source`]). Orders are marked shipped and their buyers told here ([`ship`]), and the postage
 //! already bought is read from its record ([`postage`]); postage and its batch PDFs are bought from
 //! EasyPost and recorded here too ([`purchase`]). The batch in progress
-//! is kept in the database (`workflow`), where the React screen kept it in each browser's
-//! localStorage: a reload, a second tab or another computer continues the same batch. The step is
+//! is kept in the database (`workflow`), not in one browser: a reload, a second tab or another
+//! computer continues the same batch. The step is
 //! the page's address; with none, the screen opens at the first step not done.
 //!
 //! | Route | Answer |

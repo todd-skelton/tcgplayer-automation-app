@@ -1,7 +1,7 @@
 // @ts-check
 // LabelForm (label_management.rs): choosing other labels shows what buying them says, and
 // choosing another service fills in the package it gives the order (`LabelFormFill`), with no
-// request, as the React panel did as it changed. Without a script, the Apply button draws the
+// request. Without a script, the Apply button draws the
 // form again on the server for them.
 
 /** @typedef {import("../../../../types/app").LabelFormFill} LabelFormFill */

@@ -1,6 +1,6 @@
 //! The Ship step's post: the orders with production postage marked shipped on TCGplayer with
-//! their tracking, then their buyers told, as the React screen's Mark Shipped & Notify Buyers
-//! did. Each part's results are kept as they come back, so a failure part way keeps what went
+//! their tracking, then their buyers told (Mark Shipped & Notify Buyers). Each part's results are
+//! kept as they come back, so a failure part way keeps what went
 //! and shipping again reaches only what did not.
 use std::collections::HashSet;
 

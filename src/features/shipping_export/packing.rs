@@ -151,7 +151,7 @@ pub struct PackedInput {
 }
 
 /// The shipment marked packed, or not. Packed, the step moves to the next shipment not packed
-/// after it, else the first before it, as the React screen did; unmarked, it stays.
+/// after it, else the first before it; unmarked, it stays.
 pub async fn set_packed(
     req: Req,
     State(db): State<Database>,

@@ -1,4 +1,4 @@
-//! EasyPost's API (`api.easypost.com/v2`), as the Node app's `@easypost/api` client calls it: the
+//! EasyPost's API (`api.easypost.com/v2`), called as the `@easypost/api` client calls it: the
 //! mode's API key as the basic auth user, JSON both ways, and a failure read from the answer's
 //! `error`.
 use std::time::Duration;
@@ -8,7 +8,7 @@ use serde_json::Value;
 use crate::features::shipping_configuration::EasyPostMode;
 
 const ORIGIN: &str = "https://api.easypost.com";
-/// The client's default, as the Node client's.
+/// The `@easypost/api` client's default.
 const TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Why EasyPost gave no answer: what its error said, or the transport's failure.
@@ -59,7 +59,7 @@ impl Failure {
         }
     }
 
-    /// As the Node app writes it on a purchase (`formatEasyPostError`).
+    /// As a purchase's result records it (`formatEasyPostError`).
     pub fn formatted(&self) -> String {
         let nested: Vec<String> = self
             .errors

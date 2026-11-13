@@ -1,6 +1,6 @@
 // @ts-check
-// ShipmentToPack (pack_step.rs): packing from the keyboard, as the React screen did
-// (`services/packShortcut.ts`). Space marks the shipment packed, or unmarks a packed one; Left
+// ShipmentToPack (pack_step.rs): packing from the keyboard (`services/packShortcut.ts`). Space
+// marks the shipment packed, or unmarks a packed one; Left
 // and Right move to the shipment before or after. `shortcut` leaves a key to a field, to the
 // control it presses, to a dialog, and to the browser when a modifier is held.
 

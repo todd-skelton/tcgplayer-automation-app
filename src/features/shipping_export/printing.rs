@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// The batch's packing slips as one PDF, in the order the shipments go: shown in the browser's
-/// viewer (`?open=true`) or saved. When the Node app cannot make them, the Print step saying why.
+/// viewer (`?open=true`) or saved. When they cannot be made, the Print step saying why.
 /// Nothing keeps it, the browser's disk cache included: it carries the buyers' names and addresses.
 pub async fn packing_slips(
     req: Req,

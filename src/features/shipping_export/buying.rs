@@ -31,8 +31,8 @@ pub(super) fn cannot_buy(mode: EasyPostMode) -> Option<String> {
 
 const BUYING: &str = "Postage is already being bought. Try again when that purchase finishes.";
 
-/// Postage for every shipment, a label size at a time, as the React screen's Buy All Postage
-/// bought it: each size in one purchase, with one PDF of its labels for the Print step. A
+/// Postage for every shipment, a label size at a time (Buy All Postage): each size in one
+/// purchase, with one PDF of its labels for the Print step. A
 /// shipment that already has postage is skipped. A purchase that fails stops the
 /// rest.
 pub async fn buy_all(req: Req, State(db): State<Database>) -> HtmlResult {
