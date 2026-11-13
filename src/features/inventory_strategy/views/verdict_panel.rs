@@ -5,7 +5,7 @@ use crate::{
     features::inventory_strategy::{
         dashboard::{ProductLine, Role},
         pricing_changes::{describe_policy, format_hurdle},
-        screen::Screen,
+        screen::{Screen, Turnaround},
         verdict::HurdleReturn,
     },
     text::Msg,
@@ -115,14 +115,14 @@ fn curve_age(overall: &ProductLine, screen: &Screen) -> String {
 /// The active policy, what it is expected to produce, and the best hurdle the sweep offers
 /// instead.
 #[component(css = super::strategy_screen::StrategyScreen)]
-pub fn VerdictPanel<'a>(screen: &'a Screen, t: Msg) -> impl Render {
+pub fn VerdictPanel<'a>(screen: &'a Screen, turnaround: &'a Turnaround, t: Msg) -> impl Render {
     let overall = &screen.dashboard.overall;
     let active = overall
         .policy_comparisons
         .iter()
         .find(|c| c.role == Role::Active);
     let modeled = active.map_or(overall.current_policy_value, |a| a.summary.physical_value);
-    let returns = screen.hurdle_returns();
+    let returns = screen.hurdle_returns(turnaround);
     let (best, best_detail) = alternative(
         returns.first(),
         returns.iter().find(|r| r.scenario.configured),

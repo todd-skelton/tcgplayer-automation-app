@@ -1,14 +1,17 @@
 //! The screen and its posts. A post sends the browser back to the screen it came from (its scope
 //! is the post's query), saying what it did; a refusal is that screen with why, as a conflict.
-use corten::{Refusal, prelude::*};
+use corten::{Mode, Refusal, prelude::*};
 
 use super::{
     analysis_queue,
     screen::{self, Screen},
-    turnaround::Mode,
+    turnaround::{self, Selection},
     turnaround_settings::{self, Change, MAXIMUM_MANUAL_DAYS},
     url::{self, View},
-    views::{AnalysisStatus, BatchState, Did, Problem, StrategyScreen, TurnaroundForm},
+    views::{
+        AnalysisStatus, BatchState, Did, Problem, SellingHistoryPart, StrategyScreen,
+        TurnaroundForm,
+    },
 };
 use crate::{
     database::Database,
@@ -21,21 +24,32 @@ use crate::{
     text::Msg,
 };
 
+/// The screen; a scope chosen with JavaScript (the selling history's `data-patch` form) is the
+/// selling history for it alone.
 pub async fn show(
     req: Req,
     State(db): State<Database>,
     Params(at): Params<url::InventoryStrategy>,
 ) -> HtmlResult {
+    if req.mode == Mode::Action {
+        let t: Msg = req.t();
+        let seller = continuous_pricing::store::settings(&db).await?.seller_key;
+        let history = screen::load_selling_history(&db, &seller, &at.view.scope()).await;
+        return req.patch(SellingHistoryPart {
+            history: Some(&history),
+            view: &at.view,
+            t,
+        });
+    }
     let screen = Screen::read(&db, &at.view).await?;
-    let input = TurnaroundInput::of(&screen);
-    page(&req, &screen, &input, &Errors::new()).await
+    page(&req, &screen).await
 }
 
-async fn page(req: &Req, screen: &Screen, input: &TurnaroundInput, errors: &Errors) -> HtmlResult {
+async fn page(req: &Req, screen: &Screen) -> HtmlResult {
     let t: Msg = req.t();
     req.page(html! {
         <Layout req={req} title="Inventory Strategy" head="">
-            <StrategyScreen screen={screen} input={input} errors={errors} t={t} />
+            <StrategyScreen screen={screen} t={t} />
         </Layout>
     })
 }
@@ -52,10 +66,10 @@ pub struct TurnaroundInput {
 }
 
 impl TurnaroundInput {
-    pub fn of(screen: &Screen) -> Self {
-        let setting = &screen.turnaround.setting;
+    pub fn of(seller_key: &str, selection: &Selection) -> Self {
+        let setting = &selection.setting;
         TurnaroundInput {
-            seller_key: screen.dashboard.seller_key.clone(),
+            seller_key: seller_key.to_owned(),
             mode: setting.mode.as_str().to_owned(),
             manual_turnaround_days: js_float(setting.manual_turnaround_days),
         }
@@ -65,9 +79,9 @@ impl TurnaroundInput {
     pub fn read(&self) -> Result<Change, Errors> {
         let f = Self::FIELDS;
         let mut errors = Errors::new();
-        let mode = Mode::parse(&self.mode).unwrap_or_else(|| {
+        let mode = turnaround::Mode::parse(&self.mode).unwrap_or_else(|| {
             errors.add(f.mode, "Choose observed or manual.");
-            Mode::Observed
+            turnaround::Mode::Observed
         });
         let days = match self.manual_turnaround_days.trim().parse::<f64>() {
             Ok(d) if (0.0..=MAXIMUM_MANUAL_DAYS).contains(&d) => d,
@@ -119,9 +133,11 @@ pub async fn save_turnaround(
         input: &input,
         errors: &errors,
     };
+    // Without JavaScript the page shows the refused form, so its turnaround is read in.
     req.invalid(&errors, form, || async {
-        let screen = Screen::read(&db, &view).await?;
-        page(&req, &screen, &input, &errors).await
+        let mut screen = Screen::read(&db, &view.whole()).await?;
+        screen.refused_turnaround = Some((input.clone(), errors.clone()));
+        page(&req, &screen).await
     })
     .await
 }
@@ -190,7 +206,8 @@ pub async fn queue_analysis(
 }
 
 /// The latest analysis while it runs, read again by the screen; once it ends, the whole screen
-/// as it is with its results, as the React screen revalidated.
+/// as it is with its results, as the React screen revalidated (its slow parts sent again by its
+/// streams).
 pub async fn analysis(
     req: Req,
     State(db): State<Database>,
@@ -211,13 +228,7 @@ pub async fn analysis(
         _ if req.mode != corten::Mode::Action => back().await,
         _ => {
             let screen = Screen::read(&db, &view).await?;
-            let input = TurnaroundInput::of(&screen);
-            req.patch(StrategyScreen {
-                screen: &screen,
-                input: &input,
-                errors: &Errors::new(),
-                t,
-            })
+            req.patch(StrategyScreen { screen: &screen, t })
         }
     }
 }
@@ -231,8 +242,7 @@ async fn refused(req: &Req, db: &Database, view: &View, why: String) -> HtmlResu
     req.invalid(&refusal, message, || async {
         let mut screen = Screen::read(db, &view.clone()).await?;
         screen.problem = Some(why.clone());
-        let input = TurnaroundInput::of(&screen);
-        page(req, &screen, &input, &Errors::new()).await
+        page(req, &screen).await
     })
     .await
 }
@@ -258,8 +268,131 @@ mod tests {
                 change.manual_turnaround_days,
                 change.product_line_id
             ),
-            (Mode::Manual, 21.5, None)
+            (turnaround::Mode::Manual, 21.5, None)
         );
+    }
+
+    #[test]
+    fn the_address_names_the_slow_parts_the_page_reads_in() {
+        let plain = View::default();
+        assert!(!plain.reads_returns() && !plain.reads_selling_history());
+        let scoped = View {
+            history_days: Some(
+                crate::features::inventory_strategy::selling_history::Window::Days365,
+            ),
+            ..View::default()
+        };
+        assert!(scoped.reads_selling_history() && !scoped.reads_returns());
+        let whole = scoped.whole();
+        assert!(whole.reads_returns() && whole.reads_selling_history());
+        assert_eq!(whole.scope(), scoped.scope());
+    }
+
+    /// The screen's answer for `path` from the dev database (`.env`), with JavaScript (a
+    /// `data-patch` submit) or as a page. Reads only, as `app`'s screen checks do.
+    async fn answer(
+        path: &str,
+        mode: Option<corten::Mode>,
+    ) -> (corten::http::StatusCode, bool, String) {
+        crate::config::load_env();
+        let shared = crate::app::Shared {
+            db: Database::connect_lazy(&crate::config::database_url()),
+            slab_providers: crate::features::slab_connections::Transport::default(),
+        };
+        let client = crate::app::app(shared).test();
+        let mut call = client.get(&corten::Local::parse(path).unwrap());
+        if let Some(mode) = mode {
+            call = call.mode(mode);
+        }
+        let answer = call.await;
+        let patched = answer.headers().contains_key("corten-patch");
+        (answer.status(), patched, answer.text().to_owned())
+    }
+
+    /// A scope chosen with JavaScript answers the selling history for it alone: no layout, no
+    /// other part, no stream.
+    #[tokio::test]
+    #[ignore = "reads the dev database"]
+    async fn a_scope_change_with_javascript_is_the_selling_history_alone() {
+        let (status, patched, body) = answer(
+            "/inventory-strategy?history_days=365&history_product_line=",
+            Some(corten::Mode::Action),
+        )
+        .await;
+        assert!(status.is_success() && patched, "{status}: {body}");
+        assert!(
+            body.starts_with(r#"<div id="selling-history-part""#),
+            "{body}"
+        );
+        assert!(body.contains(r#"<option value="365" selected>"#), "{body}");
+        for other in [
+            "<main",
+            "<corten-live",
+            "Realized performance",
+            "Capital turnaround",
+        ] {
+            assert!(!body.contains(other), "{other}: {body}");
+        }
+    }
+
+    /// The page waits for its slow parts' streams, each with a link to the page that reads them
+    /// in; that page (`?whole=true`) has every part and no stream, and a scope's own address
+    /// reads the selling history in and leaves the rest to their stream.
+    #[tokio::test]
+    #[ignore = "reads the dev database"]
+    async fn the_query_field_reads_the_slow_parts_in() {
+        let panels = [
+            ">Realized performance<",
+            ">Capital turnaround<",
+            ">Selling history<",
+            ">Hurdle sweep<",
+        ];
+        let (status, _, first) = answer("/inventory-strategy", None).await;
+        assert!(status.is_success(), "{status}: {first}");
+        for src in [
+            "/inventory-strategy/returns/live",
+            "/inventory-strategy/selling-history/live",
+        ] {
+            assert!(
+                first.contains(&format!(r#"<corten-live src="{src}">"#)),
+                "{src}: {first}"
+            );
+        }
+        assert_eq!(
+            first
+                .matches(r#"href="/inventory-strategy?whole=true""#)
+                .count(),
+            4
+        );
+        assert!(!first.contains(r#"name="history_days""#), "{first}");
+
+        let (status, _, whole) = answer("/inventory-strategy?whole=true", None).await;
+        assert!(status.is_success(), "{status}: {whole}");
+        assert!(
+            !whole.contains("<corten-live") && !whole.contains("strategy-screen__reading"),
+            "{whole}"
+        );
+        for panel in panels {
+            assert!(whole.contains(panel), "{panel}: {whole}");
+        }
+
+        let (status, _, scoped) = answer(
+            "/inventory-strategy?history_days=90&history_product_line=",
+            None,
+        )
+        .await;
+        assert!(status.is_success(), "{status}: {scoped}");
+        assert!(
+            scoped.contains(r#"<option value="90" selected>"#),
+            "{scoped}"
+        );
+        assert!(
+            scoped.contains(
+                r#"<corten-live src="/inventory-strategy/returns/live?history_days=90">"#
+            ),
+            "{scoped}"
+        );
+        assert!(!scoped.contains("/selling-history/live"), "{scoped}");
     }
 
     #[test]
