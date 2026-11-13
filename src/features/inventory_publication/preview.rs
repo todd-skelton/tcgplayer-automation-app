@@ -8,7 +8,6 @@ use serde_json::{Map, Value};
 use sqlx::PgConnection;
 
 use super::policy::{self, Basis, Candidate, Policy, Reason, Source};
-use crate::features::inventory_economics::ledger::proceeds::iso;
 
 /// The batch a preview reads.
 #[derive(Clone, Debug, sqlx::FromRow)]
@@ -82,50 +81,6 @@ pub struct Preview {
     /// The batch's results held for manual review, which the preview leaves out.
     pub manual_review_count: i32,
     pub items: Vec<PreviewItem>,
-}
-
-impl Preview {
-    /// The preview as Node's routes answer it (`InventoryBatchPublicationPreview`).
-    pub fn json(&self) -> Value {
-        let items: Vec<Value> = self
-            .items
-            .iter()
-            .map(|item| {
-                serde_json::json!({
-                    "sku": item.sku,
-                    "productId": item.product_id,
-                    "productLine": item.product_line,
-                    "setName": item.set_name,
-                    "productName": item.product_name,
-                    "condition": item.condition,
-                    "previousPrice": item.previous_price,
-                    "desiredPrice": item.desired_price,
-                    "originalQuantityDelta": item.original_quantity_delta,
-                    "quantityDelta": item.quantity_delta,
-                    "inventoryDeltaAlreadyPlanned": item.inventory_delta_already_planned,
-                    "pricedAt": iso(item.priced_at),
-                    "eligible": item.eligible,
-                    "reasons": item.reasons,
-                    "candidateKey": item.candidate_key,
-                    "inventoryDeltaKey": item.inventory_delta_key,
-                    "forecastEvidence": item.forecast_evidence,
-                })
-            })
-            .collect();
-        serde_json::json!({
-            "batchNumber": self.batch_number,
-            // node-pg hands the job's `int8` id over as text, which the preview keeps.
-            "pricingJobId": self.pricing_job_id.to_string(),
-            "planningKey": format!("inventory-batch-pricing-job:{}", self.pricing_job_id),
-            "sourceType": self.source.as_str(),
-            "sourceLabel": self.source_label,
-            "successfulResultCount": self.items.len(),
-            "existingManualReviewCount": self.manual_review_count,
-            "eligibleCount": self.eligible_count,
-            "excludedCount": self.excluded_count,
-            "items": items,
-        })
-    }
 }
 
 /// `parsePrice`: a finite number, or a string's leading number; none otherwise.

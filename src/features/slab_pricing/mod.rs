@@ -68,17 +68,12 @@
 //! A post refused answers 409 with the page and why.
 mod actions;
 mod calculation;
-mod comp_decisions_route;
 mod comp_events;
 mod comps;
 mod dry_run;
-mod evidence_route;
-mod identities_route;
 pub(crate) mod identity;
 mod inventory;
 mod inventory_import;
-mod inventory_route;
-pub mod json_route;
 mod maintenance;
 pub mod maintenance_cycle;
 mod outcomes;

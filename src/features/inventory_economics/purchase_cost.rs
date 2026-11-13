@@ -1,19 +1,16 @@
 //! Recording a purchase cost, ported from `inventoryEconomicsRepository.recordPurchaseCost`, by
 //! each of its rules: explicit, where each receipt lot of the batches is given its amount (the rule
 //! estimates use); quantity, an entered total split across the lots by their units; and frozen
-//! market, split by each lot's market value at intake times its units. And the lots a purchase
-//! of some batches would split across (`findPurchaseAllocationTargets`), for the screen to ask
-//! amounts of.
+//! market, split by each lot's market value at intake times its units.
 //!
 //! A request is recorded once. Its fingerprint is the one Node computes, so a request either app
 //! repeats is answered with the entry already saved, and one reused for other evidence is refused.
 //! Entries are immutable: a change is a correction that names the series' current entry.
-use serde_json::{Value, json};
+use serde_json::json;
 use sqlx::PgConnection;
 
 pub use super::series::{NotRecorded, Saved};
 use super::{
-    details::{distinct, postgres_integer, required_text},
     estimate::{ExplicitAllocation, PurchaseCost},
     ledger::{
         fingerprint::{js_float, sha256_hex, stable_json},
@@ -21,7 +18,6 @@ use super::{
     },
     series::{self, Ledger, failed},
 };
-use crate::node_pg;
 
 fn batch_numbers(cost: &PurchaseCost) -> Vec<i32> {
     let mut numbers = cost.batch_numbers.clone();
@@ -313,53 +309,6 @@ fn by_weight(
         })
         .collect();
     Ok((amounts, weights.into_iter().map(js_float).collect()))
-}
-
-/// `findPurchaseAllocationTargets`, as written.
-const ALLOCATION_TARGETS: &str = r#"SELECT receipt.receipt_id AS "receiptId",receipt.sku,receipt.original_quantity AS "originalQuantity",
-        COALESCE(sku.product_name || CASE WHEN sku.condition<>'' THEN ' · '||sku.condition ELSE '' END,
-          'SKU '||receipt.sku::text) AS "itemLabel",
-        ARRAY_AGG(link.batch_number ORDER BY link.batch_number) AS "batchNumbers",
-        receipt.intake_at AS "intakeAt"
-      FROM inventory_receipts receipt
-      JOIN inventory_receipt_batch_links link ON link.receipt_id=receipt.receipt_id
-      LEFT JOIN skus sku ON sku.sku=receipt.sku
-      WHERE link.batch_number=ANY($1::int[]) AND (receipt.seller_key IS NULL OR receipt.seller_key=$2)
-      GROUP BY receipt.receipt_id,receipt.sku,receipt.original_quantity,sku.product_name,sku.condition,receipt.intake_at
-      ORDER BY receipt.intake_at NULLS LAST,receipt.receipt_id LIMIT 10001"#;
-
-/// The most lots the screen is given to ask amounts of.
-const MOST_TARGETS: usize = 10_000;
-
-/// `findPurchaseAllocationTargets`: the seller's lots (and lots of no seller yet) in the batches,
-/// first received first, as node-pg reads them; and whether that is all of them. `batch_numbers`
-/// are whole and positive, as `parseBatchNumbers` leaves them.
-pub async fn allocation_targets(
-    conn: &mut PgConnection,
-    seller_key: &str,
-    batch_numbers: &[f64],
-) -> Result<(Vec<Value>, bool), String> {
-    let seller = required_text(seller_key, "Seller key")?;
-    let batches = distinct(batch_numbers);
-    if batches.is_empty() || batches.len() > 100 {
-        return Err("Purchase allocations require 1 to 100 positive batch numbers.".to_owned());
-    }
-    let batches: Vec<i32> = batches
-        .into_iter()
-        .map(postgres_integer)
-        .collect::<Result<_, _>>()?;
-    let rows = sqlx::query(ALLOCATION_TARGETS)
-        .bind(&batches)
-        .bind(&seller)
-        .fetch_all(&mut *conn)
-        .await
-        .map_err(|e| String::from(failed(e)))?;
-    let Value::Array(mut targets) = node_pg::rows(&rows)? else {
-        unreachable!("rows are a list");
-    };
-    let complete = targets.len() <= MOST_TARGETS;
-    targets.truncate(MOST_TARGETS);
-    Ok((targets, complete))
 }
 
 #[cfg(test)]

@@ -2,6 +2,8 @@
 
 The opening-balance workflow establishes the forward FIFO boundary for one configured seller. It does not reconstruct purchase dates or costs that the application cannot prove.
 
+This workflow was a JSON route, `POST /api/inventory-opening-balance`, retired with the rest of `/api` ([Retiring the Node JSON routes](node-route-retirement.md)), and its code was removed: the app no longer captures, previews or applies an opening balance. What it recorded stays in the database, and FIFO replay still starts from an applied balance's cutoff. The rest of this page records how the workflow behaved.
+
 ## Evidence and cutoff
 
 `capture` reads the authenticated Seller Portal pricing context, downloads the complete **Export From Live** CSV twice, and then reads the pricing context again. Both context reads must identify the configured seller. Both exports must contain the same normalized `(SKU, Total Quantity)` set. Raw content hashes are retained as provenance, while price-only changes do not make the quantity observation unstable.
@@ -22,7 +24,7 @@ This workflow deliberately does not restore canceled or refunded stock, estimate
 
 ## Operator workflow
 
-The endpoint is `POST /api/inventory-opening-balance`. The seller may be omitted and then defaults to the configured shipping seller. Keep each request ID stable when retrying the same operation.
+The endpoint was `POST /api/inventory-opening-balance` (retired). The seller could be omitted and then defaulted to the configured shipping seller. Each request ID was kept stable when retrying the same operation.
 
 1. Capture a stable observation:
 

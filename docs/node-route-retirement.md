@@ -2,6 +2,12 @@
 
 The Node app was removed after release 8 (`docs/prod-cutover.md`); it is in the history at 0587ed02e, the master that release 8 shipped. This page records how its routes were retired.
 
+The app no longer serves `/api` at all. The JSON routes that were ported from Node were retired
+too ([#156 Retire the /api JSON routes: nothing calls them](https://github.com/todd-skelton/tcgplayer-automation-app/issues/156)):
+every screen is a Corten page, the workers run in process, and nothing outside the app calls
+`/api`. A request to `/api/...` now gets the app's 404 page. The sections below are the record of
+how the layer was retired, not a description of the running app.
+
 The Corten app serves every screen, and relays each `/api/...` path it has not ported to the Node
 app (`src/app.rs`, `LegacyApiRoute`). Decision (2026-11-03): port only the routes a Corten screen,
 a Rust worker or another caller needs, and retire the rest with the Node app.
@@ -21,7 +27,9 @@ Checked on `codex/corten-port` at a59d7e712:
 
 So each route below answers only a caller outside the app (a script or a bookmark), if any.
 
-## Ported (served by Corten)
+## Ported, then retired
+
+These were ported to Corten, then retired with the rest of `/api` once nothing called them.
 
 `batch_pricer`: `/api/inventory-batches` and its `import-seller`, `import-csv`, `/:batchNumber`,
 `items`, `results`, `publications`, `pricing-jobs` and `pricing-stream`.
@@ -33,8 +41,12 @@ So each route below answers only a caller outside the app (a script or a bookmar
 `/api/slab-comp-decisions`, `/api/slab-evidence`, `/api/slab-identities`, `/api/slab-inventory`
 and `/api/slab-recommendations`.
 
-Their answers are checked against Node's (`crate::api::tests::answers_as_node`) from recordings
-in `tests/fixtures/node/api`, made by `scripts/parity/record-node-answers.ts`.
+Their Node parity tests and the recordings they read (`tests/fixtures/node/api`) went with them.
+So did the code only they reached: the JSON shapes of batches, publications and the economics
+workspace, the node-pg row reader, the inventory history diagnostics, and the operator actions
+that had no screen (the opening balance capture, preview and apply; FIFO dispositions,
+corrections and hold listings; recorded expenses, funding adjustments and purchase cost CSV
+imports). They are in the history before the retirement if one is needed again.
 
 ## To retire with the Node app (31)
 
@@ -61,8 +73,6 @@ Each one's work is done by a Corten screen's own action or loader, named here, s
 
 ## When
 
-The relay stays until the Node workers are retired too, since the Node app is still deployed for
-them. Then the relay, `LEGACY_ORIGIN` and `app/routes.ts` go together, in release 8
-(`codex/release-8-drop-node`; `docs/prod-cutover.md`): each route above is then the API's 404, in
-the shape `{"error": ..}` the API answers every failure in. Production changes wait for Todd's
-approval.
+The relay, `LEGACY_ORIGIN` and `app/routes.ts` went together in release 8
+(`codex/release-8-drop-node`; `docs/prod-cutover.md`), after the Node workers were retired. The
+ported routes followed later, when the whole `/api` layer was removed.

@@ -1,6 +1,5 @@
-//! TCGPlayer Automation on Corten: every screen, JSON route and worker. The app is this library,
-//! so tests and examples reach it; `main.rs` only serves it.
-mod api;
+//! TCGPlayer Automation on Corten: every screen and worker. The app is this library, so tests
+//! and examples reach it; `main.rs` only serves it.
 mod app;
 mod config;
 mod csv_text;
@@ -9,9 +8,9 @@ mod features;
 mod glyphs;
 mod js_math;
 mod js_number;
+mod js_text;
 mod layout;
 pub mod migrations;
-mod node_pg;
 #[cfg(test)]
 mod parity_fixture;
 mod row_order;

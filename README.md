@@ -1,6 +1,6 @@
 # TCGPlayer Automation App
 
-The app is a [Corten](https://github.com/corten-run/corten) server in Rust (`src/`): every screen, JSON route (`/api/...`) and background job, over one PostgreSQL database. The repo includes checked-in SQL migrations (`db/migrations`), which the server applies as it starts when `MIGRATE_ON_START` is set, and Docker Compose files for the development database and production. The Node scripts in `scripts/` are tooling only: releases, migrations and the dev database refresh.
+The app is a [Corten](https://github.com/corten-run/corten) server in Rust (`src/`): every screen and background job, over one PostgreSQL database. It serves no JSON API; the `/api` routes were retired ([Retiring the Node JSON routes](docs/node-route-retirement.md)). The repo includes checked-in SQL migrations (`db/migrations`), which the server applies as it starts when `MIGRATE_ON_START` is set, and Docker Compose files for the development database and production. The Node scripts in `scripts/` are tooling only: releases, migrations and the dev database refresh.
 
 Inventory Manager supports background pricing and per-batch publication while entering new stock. See [Inventory intake queue](docs/inventory-intake-queue.md) for handoff, recovery, and rollout safeguards.
 

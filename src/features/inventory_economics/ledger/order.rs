@@ -101,52 +101,6 @@ pub struct OrderEconomics {
     pub cost_known_quantity: i64,
 }
 
-impl OrderEconomics {
-    /// As the Node app's `OrderEconomicsSummary` writes it: a figure not known is left out.
-    pub fn summary(&self) -> serde_json::Value {
-        let mut fields = serde_json::Map::new();
-        let mut put = |key: &str, value: serde_json::Value| {
-            fields.insert(key.to_owned(), value);
-        };
-        put("orderNumber", self.order_number.clone().into());
-        put("currency", self.currency.clone().into());
-        put("grossItemCents", self.gross_item_cents.into());
-        for (key, value) in [
-            ("grossShippingCents", self.gross_shipping_cents),
-            ("grossOrderCents", self.gross_order_cents),
-            ("platformFeeCents", self.platform_fee_cents),
-            ("providerNetCents", self.provider_net_cents),
-            ("refundGrossCents", self.refund_gross_cents),
-            ("postageCents", self.postage_cents),
-        ] {
-            if let Some(cents) = value {
-                put(key, cents.into());
-            }
-        }
-        put("otherExpenseCents", self.other_expense_cents.into());
-        for (key, value) in [
-            ("acquisitionCostCents", self.acquisition_cost_cents),
-            ("reusableCashCents", self.reusable_cash_cents),
-            ("realizedProfitCents", self.realized_profit_cents),
-        ] {
-            if let Some(cents) = value {
-                put(key, cents.into());
-            }
-        }
-        put(
-            "proceedsCoverage",
-            self.proceeds_coverage.to_string().into(),
-        );
-        put("expenseCoverage", self.expense_coverage.to_string().into());
-        put("costCoverage", self.cost_coverage.to_string().into());
-        put("missing", self.missing.clone().into());
-        put("orderedQuantity", self.ordered_quantity.into());
-        put("settledQuantity", self.settled_quantity.into());
-        put("costKnownQuantity", self.cost_known_quantity.into());
-        serde_json::Value::Object(fields)
-    }
-}
-
 pub fn calculate(e: &Evidence) -> OrderEconomics {
     let mut missing = Vec::new();
     let transaction_known = match (
