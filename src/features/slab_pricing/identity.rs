@@ -169,8 +169,8 @@ fn unavailable(error: sqlx::Error) -> Unresolved {
 /// while unconfirmed) Alt's proposal for it saved for review, with why it needs one. The
 /// connection is held while Alt answers; `cancel` resolving stops Alt's request.
 ///
-/// Node also answers where the identity disagrees with what was expected of it; the screen reads
-/// that from the listing (`inventory`), so it is not returned here.
+/// Where the identity disagrees with what was expected of it is read by the screen from the
+/// listing (`inventory`), so it is not returned here.
 pub async fn lookup<G: Gate>(
     conn: &mut PgConnection,
     alt: &Alt<'_, G>,
@@ -460,7 +460,7 @@ pub const CHANGED: &str = "The identity changed. Reload it before confirming.";
 pub const UNABLE: &str = "Unable to resolve the identity. Try again.";
 
 /// `confirm`: the identity saved as confirmed by the operator, with why, in its valuation group,
-/// while the record is still at the revision they saw: its id. Refused in Node's words.
+/// while the record is still at the revision they saw: its id. Refused in the screen's words.
 pub async fn confirm(
     conn: &mut sqlx::PgConnection,
     c: &Confirmation<'_>,
@@ -500,7 +500,7 @@ pub async fn confirm(
     saved.ok_or_else(|| CHANGED.to_owned())
 }
 
-/// `grade-label-unresolved` as "grade label unresolved", as the React screen wrote codes.
+/// A code in words: `grade-label-unresolved` as "grade label unresolved".
 pub fn words(code: &str) -> String {
     code.replace(['-', '_'], " ")
 }

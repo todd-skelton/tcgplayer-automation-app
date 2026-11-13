@@ -11,7 +11,7 @@ use super::{
 };
 use crate::{database::Database, layout::Layout};
 
-/// The connections and their status, which nothing keeps (React's loader said `no-store`).
+/// The connections and their status, which nothing keeps (`no-store`).
 pub async fn show(req: Req, State(db): State<Database>) -> HtmlResult {
     let connections = store::connections(&db.0).await?;
     screen(&req, &connections, None).await

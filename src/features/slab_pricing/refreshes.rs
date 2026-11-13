@@ -1,9 +1,8 @@
-//! Queuing evidence refreshes for Node's slab evidence worker, which calls eBay and Alt: the
+//! Queuing evidence refreshes for the slab evidence worker, which calls eBay and Alt: the
 //! research for a grade and dates, its active supply, an eBay source's next page and an Alt
 //! sale's details. Ported from the actions of `api.slab-evidence.server.ts` and
-//! `api.slab-supply.server.ts` (`requestSlabSupply`). Nothing is fetched here; Node woke its
-//! in-process worker after queuing, which this process cannot, so the worker must be running on
-//! its own and finds the queue on its poll.
+//! `api.slab-supply.server.ts` (`requestSlabSupply`). Nothing is fetched here and no worker is
+//! woken; the worker must be running on its own and finds the queue on its poll.
 use serde_json::Value;
 use sqlx::{PgConnection, Postgres, pool::PoolConnection};
 
@@ -16,10 +15,10 @@ use crate::{
     },
 };
 
-/// What Node answered when the database failed, a 500 where every refusal is a 400.
+/// The answer when the database fails, a 500 where every refusal is a 400.
 pub(super) const UNABLE: &str = "Unable to access slab evidence.";
 
-/// The database failing, logged and answered as Node answered it.
+/// The database failing, logged, with only [`UNABLE`] answered.
 pub(super) fn unable(error: impl std::fmt::Display) -> String {
     tracing::error!("slab evidence: {error}");
     UNABLE.to_owned()

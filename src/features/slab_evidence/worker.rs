@@ -5,8 +5,8 @@
 //!
 //! It runs only when `SLAB_EVIDENCE_WORKER` is set, under the queue's claims and each provider's
 //! connection lease. When nothing is due it runs a slab maintenance cycle
-//! (`slab_pricing::maintenance_cycle`), as Node's does. Node wakes its worker when a refresh is
-//! requested; this one looks again within 30 seconds.
+//! (`slab_pricing::maintenance_cycle`). A requested refresh wakes no worker; this one looks again
+//! within 30 seconds.
 use std::{future::Future, time::Duration};
 
 use futures_util::FutureExt;
@@ -145,7 +145,7 @@ pub async fn run_job(
             }
         }
     };
-    // The provider is told to stop, so it releases its claim on the connection as Node's abort does.
+    // The provider is told to stop, so it releases its claim on the connection.
     let cancel = async {
         tokio::select! {
             _ = stop => {}
@@ -168,7 +168,7 @@ pub async fn run_job(
         // A provider that does not stop when told is left behind.
         _ = async { cancel.clone().await; sleep(Duration::from_secs(5)).await } => Err(Status::Unavailable),
     };
-    // Whatever a read answers after it was told to stop, it stopped: unavailable, as in Node.
+    // Whatever a read answers after it was told to stop, it stopped: unavailable.
     let stopped = cancel.clone().now_or_never().is_some();
     drop(cancel);
     let read = if stopped {
@@ -297,7 +297,7 @@ mod tests {
 
     /// Six refreshes (two saved, one refused for the wrong asset, a rate limit, a cancelled read
     /// and one that never answers) run on the dev database in a transaction rolled back, compared
-    /// with what Node's `runEvidenceJob` answered and wrote. How long each read took differs.
+    /// with what the recorded `runEvidenceJob` answered and wrote. How long each read took differs.
     #[tokio::test]
     #[ignore = "writes the dev database in a transaction it rolls back"]
     async fn refreshes_run_as_node_runs_them() {

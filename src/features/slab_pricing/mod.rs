@@ -11,17 +11,16 @@
 //! is its address, so each post carries it and sends the browser back to it.
 //!
 //! Research reads the evidence saved for the owned grade, or a PSA grade explored beside it, over
-//! a window of sale dates. Refreshing it queues work here (`refreshes`) for the Node app's slab
-//! evidence worker, which calls eBay and Alt and must be running on its own; while a refresh is
+//! a window of sale dates. Refreshing it queues work here (`refreshes`) for the slab evidence
+//! worker, which calls eBay and Alt and must be running on its own; while a refresh is
 //! queued or running the evidence list reads itself again every two seconds (`ReadAgain` from
 //! `GET /slab-pricing/evidence`, the whole page without JavaScript).
 //!
 //! The recommendation is calculated here from the saved evidence only (`calculation`, with
-//! `comp_events` and `valuation`), as the Node app calculated it, down to the hash it is saved
+//! `comp_events` and `valuation`), matching saved recommendations down to the hash each is saved
 //! by. A saved one is marked for recalculation when it is no longer current, or when newer
-//! evidence is saved than it read. The React panel also marked it while its inputs were being
-//! edited; this one does not, so its reviewed ask can be saved over inputs changed but not
-//! calculated.
+//! evidence is saved than it read. It is not marked while its inputs are being edited, so its
+//! reviewed ask can be saved over inputs changed but not calculated.
 //!
 //! The supply context (asks on unsold listings, screened against the identity) is shown on
 //! request (`supply=true`) and read again with the evidence while its refresh runs.

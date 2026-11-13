@@ -15,7 +15,7 @@ use super::{
 };
 use crate::{database::Database, layout::Layout, text::Msg};
 
-/// The most evidence revisions one calculation reads, as the Node app allows.
+/// The most evidence revisions one calculation reads.
 const MOST_REVISIONS: usize = 20;
 
 /// How long the evidence list waits to read a queued or running refresh again.

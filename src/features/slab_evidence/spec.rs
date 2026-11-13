@@ -1,5 +1,5 @@
 //! An evidence request, ported from `evidenceRefresh.ts` and `evidenceKey`: checked and written
-//! the one way Node writes it, so the key it is kept under is the one Node computes.
+//! one way, so the key it is kept under is the one already saved for the same request.
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -63,7 +63,7 @@ pub struct EbayPage {
     pub timezone: String,
 }
 
-/// What to read: field order is Node's, which the key hashes.
+/// What to read: field order is the saved keys', which the key hashes.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind")]
 pub enum Spec {
@@ -317,7 +317,7 @@ mod tests {
         }
     }
 
-    /// Node's `evidenceKey` of the same requests.
+    /// The recorded `evidenceKey` of the same requests.
     #[test]
     fn keys_are_the_ones_node_computes() {
         let specs = [

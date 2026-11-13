@@ -429,7 +429,7 @@ impl Check<'_> {
                     .collect();
                 revision_ids.sort();
                 revision_ids.dedup();
-                // Values read from JSONB are written in JSONB's key order, as Node writes what it read.
+                // Values read from JSONB are written back in JSONB's key order, which the key hashes.
                 let key = sha256_hex(&format!(
                     "[{},{},{},{},{}]",
                     listing.revision,
@@ -490,10 +490,10 @@ mod tests {
     use crate::database::Database;
 
     /// `tests/fixtures/node/slab/cycle-seed.sql` with its recommendations calculated and one
-    /// reviewed, then the cycles Node's ran at the same time (`scripts/parity/slab-cycle.ts`): the
+    /// reviewed, then the cycles recorded at the same time (`scripts/parity/slab-cycle.ts`): the
     /// first, one with every listing due again, one with the evidence expired and one with no
     /// seller due, in one transaction rolled back. Each cycle's summary and everything saved
-    /// (settings, checks, refreshes, recommendations) as Node's.
+    /// (settings, checks, refreshes, recommendations) as recorded.
     #[tokio::test]
     #[ignore = "uses the dev database in a transaction rolled back"]
     async fn cycles_run_as_node_runs_them() {

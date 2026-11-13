@@ -1,16 +1,16 @@
 //! The slab valuation (`slabValuation.ts`): a descriptive range of the direct sales, each
 //! weighted by its age, and the seller's ask proposed from its middle, held at or above what
-//! the seller's costs and floors allow. Every figure is computed as Node computes it and written
-//! in the order Node writes it, so the saved calculation, and the hash a recommendation is
-//! deduplicated by, are Node's. `Math.pow` is the platform's `pow` in V8, not fdlibm's, so a
-//! weight can differ in its last bit where the two C libraries do (3 in 20,000 ages measured on
-//! Windows); such a calculation is saved again rather than matched.
+//! the seller's costs and floors allow. Every figure is computed with JavaScript's arithmetic and
+//! written in the key order saved calculations use, so the saved calculation, and the hash a
+//! recommendation is deduplicated by, match those already saved. `Math.pow` is the platform's
+//! `pow` in V8, not fdlibm's, so a weight can differ in its last bit where the two C libraries do
+//! (3 in 20,000 ages measured on Windows); such a calculation is saved again rather than matched.
 use serde::{Deserialize, Serialize};
 
 pub use super::recommendation::Seller;
 use crate::features::inventory_strategy::collate;
 
-/// A slab pricing policy (`ValuationPolicy`), written in Node's key order.
+/// A slab pricing policy (`ValuationPolicy`), written in the key order saved calculations use.
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Policy {
@@ -74,7 +74,8 @@ pub struct Weighted {
     pub weight: f64,
 }
 
-/// How far the evidence can be relied on (`EvidenceQuality`), in the order Node spreads it.
+/// How far the evidence can be relied on (`EvidenceQuality`), in the key order saved
+/// calculations use.
 #[derive(Clone, Debug, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Quality {
@@ -157,7 +158,7 @@ const SELLER: &str =
 const BASES: [&str; 2] = ["item-only", "item-plus-shipping"];
 const DAY_MS: f64 = 86_400_000.0;
 
-/// An amount Node accepts: none, or at least 0 and under a billion.
+/// An amount accepted: none, or at least 0 and under a billion.
 fn money(value: Option<f64>) -> bool {
     value.is_none_or(|v| v.is_finite() && (0.0..1e9).contains(&v))
 }

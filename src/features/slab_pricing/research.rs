@@ -1,8 +1,8 @@
 //! Research for the certificate shown: the evidence saved for a grade (the owned one, or a PSA
 //! grade explored beside it) over a window of sale dates, and whether a refresh is on its way,
 //! ported from `loadSlabWorkspace`, and where refreshes on their way stand. Refreshing stays the
-//! Node app's (`/api/slab-evidence`), whose worker calls eBay and Alt; Node's status read also
-//! woke its in-process worker, which this process cannot, so the worker must be running on its own.
+//! slab evidence worker's, which calls eBay and Alt; a status read wakes no worker, so the worker
+//! must be running on its own.
 use std::collections::BTreeSet;
 
 use chrono::{Days, NaiveDate, SecondsFormat, Utc};
@@ -38,7 +38,7 @@ pub struct Window {
 }
 
 impl Window {
-    /// The year up to today in Chicago, where the seller works, as the React screen chose it.
+    /// The year up to today in Chicago, where the seller works.
     pub fn last_year() -> Window {
         Window::year_to(Utc::now().with_timezone(&Chicago).date_naive())
     }
@@ -559,7 +559,7 @@ pub async fn read(
     })
 }
 
-/// Where the refreshes of `keys` stand (`evidenceStatuses`), as the React screen's poll read them.
+/// Where the refreshes of `keys` stand (`evidenceStatuses`), as the evidence list's poll reads them.
 pub async fn statuses(db: &Database, keys: &[String]) -> Result<Vec<EvidenceStatus>, String> {
     store::statuses(&db.0, keys)
         .await
