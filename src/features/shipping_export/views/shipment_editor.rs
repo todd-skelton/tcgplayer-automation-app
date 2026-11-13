@@ -134,8 +134,8 @@ pub fn PackageFields<'a, I: Id>(input: &'a ShipmentInput, e: &'a Within<'a, I>) 
     let f = ShipmentInput::FIELDS;
     html! {
         <Field id={e.id(f.service)} label="Service" hint="" error="">
-            <select class={Select {}} data-redraws {..e.control(f.service)}>
-                for service in [Service::First, Service::GroundAdvantage, Service::Priority, Service::Express] {
+            <select class={Select {}} {..e.control(f.service)}>
+                for service in Service::ALL {
                     <option value={service} selected={service == input.service}>
                         {service.label()}
                     </option>

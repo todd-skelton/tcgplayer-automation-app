@@ -51,6 +51,13 @@ pub enum Service {
 }
 
 impl Service {
+    pub const ALL: [Service; 4] = [
+        Service::First,
+        Service::GroundAdvantage,
+        Service::Priority,
+        Service::Express,
+    ];
+
     pub const EXPEDITED: [Service; 3] = [
         Service::GroundAdvantage,
         Service::Priority,

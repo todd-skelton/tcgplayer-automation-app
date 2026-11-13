@@ -14,6 +14,8 @@ mod shipment_editor;
 mod shipping_workflow_screen;
 
 pub use buy_postage_step::{BuyPostageStep, PostageRow};
+#[cfg(test)]
+pub use label_management::LabelFormFill;
 pub use label_management::{LabelForm, LabelManagement, Looked};
 pub use load_orders_step::{LoadOrdersStep, Loading};
 pub use pack_step::{PackCard, PackRow, PackStep, PackedOrder, Packing, ShipmentToPack};
