@@ -1,6 +1,6 @@
 //! What a priced batch writes: each SKU's result status, its row as the CSV export lays it out
 //! (`PricedSkuToTcgPlayerListingConverter`), its pricing details (`buildPricingDetails`), and the
-//! batch's summary (`buildSummary`), as the Node app writes them.
+//! batch's summary (`buildSummary`), in the shape the saved results and summaries have.
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
@@ -147,7 +147,7 @@ fn policy(sku: &PricedSku, stored: &StoredConfig) -> Option<Value> {
             .target_horizon_days
             .map(|days| json!({ "method": "target-horizon", "horizonDays": days })),
         Method::ProfitPerDay => decision.daily_return_hurdle.map(|hurdle| {
-            let mut policy = stored.pricing.profit_per_day_document();
+            let mut policy = stored.pricing.profit_per_day.document();
             let object = policy.as_object_mut().expect("an object");
             object.insert("method".into(), json!("profit-per-day"));
             object.insert("dailyReturnHurdle".into(), json!(hurdle));
@@ -253,7 +253,7 @@ pub fn summary(
         if skipped == 0 {
             continue;
         }
-        // As Node names it: the first source SKU's product line with a name, of any line.
+        // The first source SKU's product line with a name, of any line.
         let name = sources
             .iter()
             .filter_map(|s| names.get(&s.sku).map(|d| d.product_line.clone()))

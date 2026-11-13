@@ -883,8 +883,8 @@ pub fn build(
     Dashboard {
         seller_key: seller_key.to_string(),
         generated_at: iso(generated_at),
-        policy: config.pricing.policy_document(),
-        profit_per_day: config.pricing.profit_per_day_document(),
+        policy: config.pricing.policy,
+        profit_per_day: config.pricing.profit_per_day.clone(),
         overall,
         product_lines,
     }
