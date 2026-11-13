@@ -1,6 +1,6 @@
 # The app (Rust, Corten): every screen, JSON route, job and migration. Built from its sources
-# only, with the build cache shared one build at a time and every source touched first, since cargo
-# goes by file times.
+# only, into a target cache of its own (so other apps' builds on the host never hold its lock),
+# one build at a time, with every source touched first, since cargo goes by file times.
 FROM rust:1-bookworm AS web-build
 WORKDIR /src
 COPY Cargo.toml Cargo.lock /src/
@@ -19,7 +19,7 @@ ENV ZSTD_SYS_USE_PKG_CONFIG=1
 # it holds one (CORTEN_SOURCE in docker-compose.prod.yml): a copy holding the commit Cargo.lock
 # pins, for a release while GitHub cannot serve it. Cargo.lock still names GitHub either way.
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/src/target,sharing=locked \
+    --mount=type=cache,id=tcgplayer-automation-target,target=/src/target,sharing=locked \
     --mount=type=bind,from=corten-source,target=/corten-source \
     if [ -f /corten-source/HEAD ]; then \
         git config --global url."file:///corten-source".insteadOf https://github.com/corten-run/corten \
