@@ -570,16 +570,22 @@ pub async fn save_maintenance(
     Params(at): Params<url::SaveMaintenance>,
     Form(input): Form<MaintenanceInput>,
 ) -> HtmlResult {
-    // A number that does not read is below every range, so the save refuses it with the ranges'
-    // message, as it refuses one out of range.
-    let number = |entry: &Entry<i64>| entry.value().unwrap_or(-1);
+    use maintenance::range::{BATCH_SIZE, INTERVAL_MINUTES, REFRESH_BUDGET};
+    let (Some(interval_minutes), Some(batch_size), Some(refresh_budget)) = (
+        INTERVAL_MINUTES.read(&input.interval_minutes),
+        BATCH_SIZE.read(&input.batch_size),
+        REFRESH_BUDGET.read(&input.refresh_budget),
+    ) else {
+        let why = maintenance::out_of_range();
+        return refused(Place::Maintenance, &req, &db, &at.choice, why).await;
+    };
     let settings = maintenance::Saved {
         seller: at.choice.seller.as_deref().unwrap_or(""),
         enabled: input.enabled,
         include_supply: input.include_supply,
-        interval_minutes: number(&input.interval_minutes),
-        batch_size: number(&input.batch_size),
-        refresh_budget: number(&input.refresh_budget),
+        interval_minutes,
+        batch_size,
+        refresh_budget,
         revision: input.revision,
     };
     match maintenance::save(&db, &settings).await {

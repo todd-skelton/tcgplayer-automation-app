@@ -1,10 +1,9 @@
 //! Evidence maintenance for a seller: refreshing confirmed inventory in small groups and
 //! updating recommendations from fresh saved evidence. It never publishes prices. The settings
 //! and recent listing checks are read and saved here (`slabMaintenanceStore.server.ts`); the
-//! cycles are run by a slab evidence worker when it has nothing to refresh: Node's until
-//! cutover, or this app's (`maintenance_cycle`) when `SLAB_EVIDENCE_WORKER` is set. Node woke its
-//! in-process worker when enabled settings were read or saved; a worker here finds due cycles on
-//! its poll.
+//! cycles are run by the slab evidence worker (`maintenance_cycle`, when `SLAB_EVIDENCE_WORKER`
+//! is set) when it has nothing to refresh. Reading or saving settings wakes no worker; the worker
+//! finds due cycles on its poll.
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use sqlx::{FromRow, PgConnection};
@@ -15,7 +14,7 @@ use crate::{
     features::slab_connections::{self, Connection},
 };
 
-/// How often the status is read again while maintenance is enabled, as the React panel did.
+/// How often the status is read again while maintenance is enabled.
 pub const FOLLOWING: std::time::Duration = std::time::Duration::from_secs(5);
 
 /// How many recent listing checks are shown.
@@ -152,7 +151,7 @@ async fn load(conn: &mut PgConnection, seller: &str) -> Result<View, String> {
 
 /// Saves the seller's settings (`saveMaintenanceSettings`): the first save only from revision 0,
 /// a later one only from the revision saved, which it moves on, freeing any cycle's lease and
-/// making a cycle due now. What the settings may be, and why a save is refused, are Node's.
+/// making a cycle due now. Settings outside the ranges the panel draws are refused.
 pub async fn save(db: &Database, saved: &Saved<'_>) -> Result<Settings, String> {
     let mut conn = db.0.acquire().await.map_err(unavailable)?;
     record(&mut conn, saved).await
@@ -207,29 +206,32 @@ async fn record(conn: &mut PgConnection, saved: &Saved<'_>) -> Result<Settings, 
 
 const CHANGED: &str = "Maintenance settings changed. Reload before saving.";
 
-/// Node hid what went wrong with the database behind this.
+/// What went wrong with the database is logged, not shown.
 fn unavailable(error: sqlx::Error) -> String {
     tracing::error!("slab maintenance: {error}");
     "Maintenance is unavailable.".to_owned()
 }
 
-/// The settings' numbers are in their ranges, or the refusal naming them.
+/// The settings' numbers are in their ranges, or the refusal naming them ([`out_of_range`]).
 fn in_range(saved: &Saved<'_>) -> Result<(), String> {
     let ok = INTERVAL_MINUTES.holds(saved.interval_minutes)
         && BATCH_SIZE.holds(saved.batch_size)
         && REFRESH_BUDGET.holds(saved.refresh_budget)
         && saved.revision >= 0;
-    ok.then_some(()).ok_or_else(|| {
-        format!(
-            "Choose a {}–{} minute interval, {}–{} listings and {}–{} refresh jobs per cycle.",
-            INTERVAL_MINUTES.min(),
-            crate::text::Msg::default().number(INTERVAL_MINUTES.max()),
-            BATCH_SIZE.min(),
-            BATCH_SIZE.max(),
-            REFRESH_BUDGET.min(),
-            REFRESH_BUDGET.max(),
-        )
-    })
+    ok.then_some(()).ok_or_else(out_of_range)
+}
+
+/// Why settings are refused when a number is missing or out of its range: the ranges.
+pub fn out_of_range() -> String {
+    format!(
+        "Choose a {}–{} minute interval, {}–{} listings and {}–{} refresh jobs per cycle.",
+        INTERVAL_MINUTES.min(),
+        crate::text::Msg::default().number(INTERVAL_MINUTES.max()),
+        BATCH_SIZE.min(),
+        BATCH_SIZE.max(),
+        REFRESH_BUDGET.min(),
+        REFRESH_BUDGET.max(),
+    )
 }
 
 #[cfg(test)]
@@ -248,7 +250,7 @@ mod tests {
         }
     }
 
-    /// The ends of each range save; one past refuses with React's words.
+    /// The ends of each range save; one past is refused with the panel's words.
     #[test]
     fn settings_are_checked_against_the_ranges_the_panel_draws() {
         assert_eq!(in_range(&saved(15, 1, 1)), Ok(()));
