@@ -297,7 +297,7 @@ fn the_recordings_hold_nothing_the_scrubber_drops() {
 }
 
 /// Reads TCGplayer live (decisions 19 and 23 in the port plan): the oldest page of six orders
-/// from the last three months, and the newest partly refunded and canceled ones Node recorded,
+/// from the last three months, and the newest partly refunded and canceled ones recorded,
 /// with each one's detail; scrubbed, then written over the fixtures.
 #[cfg(feature = "live-tcgplayer")]
 #[tokio::test]

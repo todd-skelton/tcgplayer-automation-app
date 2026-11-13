@@ -1,6 +1,6 @@
 //! What the screen shows: what it draws first, and its slow parts, read in with it or later by
 //! its streams. Each part that can fail on its own (selling history, turnaround evidence and
-//! settings, realized performance) says why and leaves the rest, as the React route's loader did.
+//! settings, realized performance) says why and leaves the rest.
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
@@ -120,7 +120,7 @@ pub fn is_active(status: &str) -> bool {
     matches!(status, "queued" | "pricing")
 }
 
-/// The seller's latest analysis among the ten most recent, as the React route found it.
+/// The seller's latest analysis among the ten most recent.
 pub async fn latest_analysis(db: &Database, seller: &str) -> sqlx::Result<Option<Analysis>> {
     if seller.is_empty() {
         return Ok(None);

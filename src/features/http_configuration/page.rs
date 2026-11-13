@@ -27,8 +27,7 @@ async fn screen(req: &Req, input: &SettingsInput, errors: &Errors) -> HtmlResult
 
 /// Saves the settings and loads the page again, saying so; a setting that does not read gets
 /// the form back with why. With JavaScript the answer is a patch, since a navigation would keep
-/// the app bar's auth cookie warning as the full load drew it, where the React app's root loader
-/// read it again after every action.
+/// the app bar's auth cookie warning as the full load drew it, and the patch draws it again.
 pub async fn save(
     req: Req,
     State(db): State<Database>,

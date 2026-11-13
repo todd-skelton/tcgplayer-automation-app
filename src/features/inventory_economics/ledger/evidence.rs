@@ -1,7 +1,7 @@
 //! What the ledger reads about a seller's orders: the most recent orders with their transaction
 //! and refund records, the postage bought for them, the FIFO allocations of every receipt those
-//! orders drew from, and the order expenses that name them. The same queries as the Node app's
-//! `inventoryEconomicsRepository.findWorkspaceEvidence`; each reads one row past its fence so
+//! orders drew from, and the order expenses that name them
+//! (`inventoryEconomicsRepository.findWorkspaceEvidence`); each reads one row past its fence so
 //! the ledger knows when it has not seen everything.
 use chrono::{DateTime, Utc};
 use serde_json::Value;

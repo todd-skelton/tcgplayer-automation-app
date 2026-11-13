@@ -5,7 +5,9 @@
 //! Each call takes a connection, so a caller can run it inside a transaction of its own.
 use chrono::{DateTime, Utc};
 use serde_json::Value;
-use sqlx::PgConnection;
+use sqlx::{PgConnection, types::Json};
+
+use super::job::Step;
 
 /// A claimed job.
 #[derive(Clone, Debug, sqlx::FromRow)]
@@ -14,6 +16,8 @@ pub struct Claimed {
     pub batch_number: i32,
     pub mode: String,
     pub config_json: Value,
+    /// The progress saved when the job was claimed; the queue's tests read it.
+    #[allow(dead_code, reason = "read by the queue's tests")]
     pub progress_json: Option<Value>,
     /// How many times the job has been claimed, this one included; the queue's tests read it.
     #[allow(dead_code, reason = "read by the queue's tests")]
@@ -165,7 +169,7 @@ pub async fn heartbeat(
     job: i64,
     worker: &str,
     lease_ms: i64,
-    progress: Option<&Value>,
+    progress: Option<&Step>,
 ) -> sqlx::Result<bool> {
     let renewed = sqlx::query(
         "UPDATE inventory_batch_pricing_jobs
@@ -177,7 +181,7 @@ pub async fn heartbeat(
     .bind(job)
     .bind(worker)
     .bind(lease_ms as f64)
-    .bind(progress)
+    .bind(progress.map(Json))
     .execute(&mut *conn)
     .await?;
     Ok(renewed.rows_affected() == 1)
@@ -212,7 +216,7 @@ pub async fn complete(
     job: i64,
     worker: &str,
     summary: &Value,
-    progress: Option<&Value>,
+    progress: Option<&Step>,
 ) -> sqlx::Result<bool> {
     let completed = sqlx::query(
         "UPDATE inventory_batch_pricing_jobs
@@ -224,7 +228,7 @@ pub async fn complete(
     .bind(job)
     .bind(worker)
     .bind(summary)
-    .bind(progress)
+    .bind(progress.map(Json))
     .execute(&mut *conn)
     .await?;
     Ok(completed.rows_affected() == 1)
@@ -237,7 +241,7 @@ pub async fn fail(
     job: i64,
     worker: &str,
     error: &str,
-    progress: Option<&Value>,
+    progress: Option<&Step>,
 ) -> sqlx::Result<bool> {
     let batch: Option<i32> = sqlx::query_scalar(
         "UPDATE inventory_batch_pricing_jobs
@@ -250,7 +254,7 @@ pub async fn fail(
     .bind(job)
     .bind(worker)
     .bind(error)
-    .bind(progress)
+    .bind(progress.map(Json))
     .fetch_optional(&mut *conn)
     .await?;
     if let Some(batch) = batch {
@@ -416,7 +420,15 @@ mod tests {
         );
         assert_eq!(batch_status(&mut tx, batch).await, "pricing");
 
-        let progress = serde_json::json!({ "current": 4, "total": 6 });
+        let counts = crate::features::pricing::calculator::Stats::default();
+        let progress = super::super::job::step(
+            4,
+            "Calculating pricing...",
+            "Calculating Prices",
+            None,
+            counts,
+            None,
+        );
         assert!(
             heartbeat(&mut tx, urgent, "rust-test", 15_000, Some(&progress))
                 .await
@@ -452,7 +464,7 @@ mod tests {
         assert_eq!((again.id, again.attempt_count), (urgent, 3));
         assert_eq!(
             again.progress_json,
-            Some(progress.clone()),
+            Some(serde_json::to_value(&progress).unwrap()),
             "progress kept through the requeue"
         );
         let summary = serde_json::json!({ "totalRows": 1 });

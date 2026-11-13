@@ -32,7 +32,7 @@ use crate::{
     tcgplayer::{Call, TcgPlayer},
 };
 
-/// The matrix's answer. Read from the Node app's JSON in the parity test.
+/// The matrix's answer. Read from the recorded JSON in the parity test.
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Matrix {

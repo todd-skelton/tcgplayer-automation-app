@@ -39,7 +39,7 @@ struct Dispute<'a> {
 
 impl<'a> Dispute<'a> {
     /// The first variant, its best condition sold and the next worse received, at the price the
-    /// buyer most likely paid, as the React helper opened.
+    /// buyer most likely paid.
     fn opening(matrix: &'a Matrix) -> Self {
         let variant = matrix
             .variants

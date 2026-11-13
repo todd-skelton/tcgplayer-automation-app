@@ -1,7 +1,7 @@
 //! Each order's economics from the evidence about it: shared expenses split over the orders they
 //! name, each receipt's cost split over the orders that drew from it by units sold, postage from
-//! bought labels or assumed, and refunds settled as recorded or assumed. The Node app's
-//! `calculateInventoryEconomicsOrders`.
+//! bought labels or assumed, and refunds settled as recorded or assumed
+//! (`calculateInventoryEconomicsOrders`).
 use std::collections::HashMap;
 
 use super::{
@@ -18,7 +18,7 @@ use super::{
 /// The share of a receipt's cost no order has drawn yet.
 const REMAINING_INVENTORY: &str = "__remaining_inventory__";
 
-/// Why a split could not be made, as the Node app refuses it.
+/// Why a split could not be made.
 const NO_TARGETS: &str = "At least one allocation target is required.";
 
 /// An order expense's share for one order.

@@ -13,7 +13,7 @@ pub enum Job {
     Set,
 }
 
-/// What a job came to: what it did, or why it did not, in the words the React screen showed.
+/// What a job came to: what it did, or why it did not, in the screen's words.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Ran {
     Done(String),

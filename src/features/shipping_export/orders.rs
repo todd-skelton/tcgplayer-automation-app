@@ -1,6 +1,6 @@
-//! The seller's orders as the Node app loads them from TCGplayer (`TcgPlayerShippingOrder` in
-//! `types/shippingExport.ts`). The field names are the order CSV's, as the Node app sends them,
-//! so a workflow saved here reads the same JSON its routes answer with.
+//! The seller's orders as they are loaded from TCGplayer (`TcgPlayerShippingOrder` in
+//! `types/shippingExport.ts`). The field names are the order CSV's, so a saved workflow keeps
+//! reading the JSON it was saved with.
 use chrono::{DateTime, NaiveDate};
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -69,7 +69,7 @@ impl Order {
         self.products.as_deref().unwrap_or_default()
     }
 
-    /// When it was placed, for putting the oldest first; an order date the Node app sends is
+    /// When it was placed, for putting the oldest first; an order date loaded from TCGplayer is
     /// ISO 8601, a CSV's may be a plain date.
     pub fn placed_at(&self) -> Option<i64> {
         let date = self.order_date.trim();
@@ -120,7 +120,7 @@ impl Line {
 }
 
 /// What the order's cards cost when they came into inventory and how long they were held, as the
-/// Node app's intake history answers it (`ShippingOrderIntakeHistory`).
+/// intake history answers it (`ShippingOrderIntakeHistory`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IntakeHistory {
@@ -197,7 +197,7 @@ fn text_or_number<'de, D: Deserializer<'de>>(d: D) -> Result<String, D::Error> {
 pub mod tests {
     use super::*;
 
-    /// An order as the React tests make one (`createOrder`).
+    /// An order for a test (`createOrder`).
     pub fn order(number: &str) -> Order {
         Order {
             number: number.into(),

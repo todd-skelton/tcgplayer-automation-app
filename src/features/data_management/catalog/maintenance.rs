@@ -1,5 +1,5 @@
-//! The Data Management screen's jobs (`runCatalogMaintenance`), each answered as Node answers it:
-//! what it did, or why not, with the status to send.
+//! The Data Management screen's jobs (`runCatalogMaintenance`), each answered with what it did,
+//! or why not, and the status to send.
 use sqlx::PgConnection;
 
 use super::{
@@ -49,7 +49,7 @@ fn refused(status: u16, error: impl Into<String>) -> Answer {
     }
 }
 
-/// A job that failed as Node writes a thrown error (`String(error)`).
+/// A job that failed, its error written as `String(error)` writes a thrown one.
 fn thrown(error: String) -> Answer {
     refused(500, format!("Error: {error}"))
 }

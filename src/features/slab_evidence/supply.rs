@@ -278,8 +278,8 @@ mod tests {
     /// The scans of `tests/fixtures/node/slab/supply-scan-scenario.json` (a copy collapsed, the same scan again,
     /// changed content under one run, reordered and changed listings, contradictory copies, the
     /// wrong source, an eBay scan, an unchanged scan copied) and a supply refresh completed, on the
-    /// dev database in a transaction rolled back, compared with what Node's
-    /// `scripts/parity/slab-evidence.ts` answered and wrote.
+    /// dev database in a transaction rolled back, compared with the answers and writes
+    /// `scripts/parity/slab-evidence.ts` recorded.
     #[tokio::test]
     #[ignore = "writes the dev database in a transaction it rolls back"]
     async fn scans_are_recorded_as_node_records_them() {

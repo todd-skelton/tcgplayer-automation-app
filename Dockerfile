@@ -18,7 +18,9 @@ ENV ZSTD_SYS_USE_PKG_CONFIG=1
 # Corten comes from GitHub, or from the git repository in the `corten-source` build context when
 # it holds one (CORTEN_SOURCE in docker-compose.prod.yml): a copy holding the commit Cargo.lock
 # pins, for a release while GitHub cannot serve it. Cargo.lock still names GitHub either way.
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
+# Downloaded crates and git checkouts live in a cargo home every build on the host shares, so its
+# lock is cargo's own and two builds fetching at once do not collide; it holds no tokens.
+RUN --mount=type=cache,target=/var/cache/cargo \
     --mount=type=cache,id=tcgplayer-automation-target,target=/src/target,sharing=locked \
     --mount=type=bind,from=corten-source,target=/corten-source \
     if [ -f /corten-source/HEAD ]; then \
@@ -27,7 +29,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
         && export CARGO_NET_GIT_FETCH_WITH_CLI=true; \
     fi \
     && find . -name target -prune -o -type f -exec touch {} + \
-    && cargo build --release --locked \
+    && CARGO_HOME=/var/cache/cargo cargo build --release --locked \
     && cp target/release/tcgplayer-automation /server
 
 FROM debian:bookworm-slim AS web

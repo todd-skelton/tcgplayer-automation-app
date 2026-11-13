@@ -1,10 +1,11 @@
-//! Inventory batches as the Node app keeps them: frozen sets of SKUs (from the Inventory Manager,
+//! Inventory batches: frozen sets of SKUs (from the Inventory Manager,
 //! a seller's live inventory or a CSV) that its pricing worker prices and its publisher publishes.
 //! The batches, their latest jobs, saved results and publications (with what publishing would
 //! send) are read here, a batch deleted here, its pricing queued here and its publication
 //! planned here, as `inventoryBatches.server.ts`, `inventoryBatchPricingJobs.server.ts` and
-//! `planInventoryBatchPublications` do; Node's publisher sends what is planned, with its safety
-//! checks. A batch is made from a CSV export or a seller's live inventory in [`super::import`].
+//! `planInventoryBatchPublications` do; the publication worker sends what is planned, with its
+//! safety checks. A batch is made from a CSV export or a seller's live inventory in
+//! [`super::import`].
 use std::collections::{BTreeMap, HashSet};
 
 use chrono::{DateTime, Utc};
@@ -112,7 +113,7 @@ pub struct SubProgress {
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Job {
-    /// A Postgres `bigint`, which the Node app sends as text.
+    /// A Postgres `bigint`, read from text or a number.
     #[serde(deserialize_with = "integer")]
     pub id: i64,
     pub mode: Mode,
@@ -511,7 +512,7 @@ struct BatchRow {
     item_count: i32,
 }
 
-// Times are cut to milliseconds, as Node's `Date` reads them.
+// Times are cut to milliseconds, the precision every saved time is compared at.
 const BATCH_SELECT: &str = "SELECT b.batch_number, b.status, b.source_type, b.source_label,
   date_trunc('milliseconds', b.created_at) AS created_at, date_trunc('milliseconds', b.updated_at) AS updated_at,
   date_trunc('milliseconds', b.last_priced_at) AS last_priced_at, b.summary_json::text AS summary, b.successful_count,
@@ -534,7 +535,8 @@ struct JobRow {
 }
 
 fn word<T: serde::de::DeserializeOwned>(text: &str) -> Result<T, String> {
-    serde_json::from_value(serde_json::Value::String(text.to_owned())).map_err(|e| e.to_string())
+    use serde::de::{IntoDeserializer, value::Error};
+    T::deserialize(IntoDeserializer::<Error>::into_deserializer(text)).map_err(|e| e.to_string())
 }
 
 fn parsed<T: serde::de::DeserializeOwned>(json: Option<&str>) -> Result<Option<T>, String> {
@@ -755,8 +757,7 @@ pub async fn results(db: &Database, batch: i32, scope: Scope) -> Result<Vec<Row>
         .collect()
 }
 
-/// The rows as CSV the way the React screen wrote them (Papa Parse): the first row's columns as
-/// the header.
+/// The rows as CSV, written as Papa Parse writes them: the first row's columns as the header.
 pub fn csv(rows: &[Row]) -> String {
     let Some(first) = rows.first() else {
         return String::new();
@@ -812,8 +813,8 @@ pub async fn delete(db: &Database, batch: i32) -> Result<(), String> {
     Ok(())
 }
 
-/// Plans the selected SKUs' publication to Seller Portal; how many publications it made. Node's
-/// publisher sends them (its worker finds planned publications on its poll).
+/// Plans the selected SKUs' publication to Seller Portal; how many publications it made. The
+/// publication worker sends them (it finds planned publications on its poll).
 pub async fn publish(db: &Database, batch: i32, skus: &[i64]) -> Result<usize, String> {
     let mut conn = db.0.acquire().await.map_err(|e| e.to_string())?;
     plan::plan_manual(&mut conn, batch, Some(skus), Utc::now())

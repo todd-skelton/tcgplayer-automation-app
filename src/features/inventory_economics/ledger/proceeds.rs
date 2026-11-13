@@ -1,7 +1,7 @@
 //! Every order's reusable proceeds, for pooling into reinvestment: the whole history, not the
 //! screen's most recent hundred, and refused when any part of the evidence was cut off at its
 //! fence. Each sale carries an identity of the evidence behind it, so a plan built from it knows
-//! when that evidence changed. The Node app's `loadCompleteReusableProceeds`.
+//! when that evidence changed (`loadCompleteReusableProceeds`).
 use serde::Serialize;
 use serde_json::{Value, json};
 
@@ -154,9 +154,8 @@ pub async fn load_in(
 mod tests {
     use super::*;
 
-    /// Matches what the Node app's `loadCompleteReusableProceeds` wrote to `NODE_PROCEEDS` for the
-    /// dev seller (`npx vite-node scripts/ledger-proceeds-snapshot.ts`, then
-    /// `NODE_PROCEEDS=target/node-proceeds.json cargo test complete_proceeds_match_node -- --ignored`).
+    /// Matches the proceeds recorded for the dev seller in the file `NODE_PROCEEDS` names
+    /// (`NODE_PROCEEDS=target/node-proceeds.json cargo test complete_proceeds_match_node -- --ignored`).
     #[tokio::test]
     #[ignore = "reads the dev database and a file the Node app wrote"]
     async fn complete_proceeds_match_node() {

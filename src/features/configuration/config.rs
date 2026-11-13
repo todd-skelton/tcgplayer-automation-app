@@ -23,6 +23,19 @@ pub enum Policy {
 
 pub const DEFAULT_HORIZON_DAYS: f64 = 33.5;
 
+impl Policy {
+    /// The policy as `pricing_json.policy` stores it.
+    pub fn document(&self) -> Value {
+        match *self {
+            Policy::Percentile => json!({ "method": "percentile" }),
+            Policy::TargetHorizon(days) => {
+                json!({ "method": "target-horizon", "horizonDays": number(days) })
+            }
+            Policy::ProfitPerDay => json!({ "method": "profit-per-day" }),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProfitPerDay {
     pub daily_return_hurdle: f64,
@@ -41,6 +54,15 @@ impl ProfitPerDay {
 
     pub fn static_overhead_is_valid(value: f64) -> bool {
         value >= 0.0
+    }
+
+    /// The settings as `pricing_json.profitPerDay` stores them.
+    pub fn document(&self) -> Value {
+        json!({
+            "dailyReturnHurdle": number(self.daily_return_hurdle),
+            "relativeOverhead": number(self.relative_overhead),
+            "staticOverheadPerUnit": number(self.static_overhead_per_unit),
+        })
     }
 }
 
@@ -288,31 +310,10 @@ impl Config {
 
 impl Pricing {
     /// This section's keys of `pricing_json`. The snaps share the document but not the section.
-    /// `pricing_json.policy`.
-    pub fn policy_document(&self) -> Value {
-        match self.policy {
-            Policy::Percentile => json!({ "method": "percentile" }),
-            Policy::TargetHorizon(days) => {
-                json!({ "method": "target-horizon", "horizonDays": number(days) })
-            }
-            Policy::ProfitPerDay => json!({ "method": "profit-per-day" }),
-        }
-    }
-
-    /// `pricing_json.profitPerDay`.
-    pub fn profit_per_day_document(&self) -> Value {
-        let ppd = &self.profit_per_day;
-        json!({
-            "dailyReturnHurdle": number(ppd.daily_return_hurdle),
-            "relativeOverhead": number(ppd.relative_overhead),
-            "staticOverheadPerUnit": number(ppd.static_overhead_per_unit),
-        })
-    }
-
     fn document(&self) -> Value {
         json!({
-            "policy": self.policy_document(),
-            "profitPerDay": self.profit_per_day_document(),
+            "policy": self.policy.document(),
+            "profitPerDay": self.profit_per_day.document(),
             "defaultPercentile": number(self.default_percentile),
             "percentileStep": number(self.percentile_step),
             "minPercentile": number(self.min_percentile),
@@ -393,10 +394,10 @@ pub fn normalized(pricing: &Value, supply: &Value, product_lines: &Value) -> Val
     let mut stored_pricing = pricing.as_object().cloned().unwrap_or_default();
     stored_pricing.remove("forecastCorrection");
     let mut pricing_section = spread(defaults.pricing.document(), &Value::Object(stored_pricing));
-    pricing_section.insert("policy".into(), read.pricing.policy_document());
+    pricing_section.insert("policy".into(), read.pricing.policy.document());
     pricing_section.insert(
         "profitPerDay".into(),
-        read.pricing.profit_per_day_document(),
+        read.pricing.profit_per_day.document(),
     );
     pricing_section.extend(
         read.snaps

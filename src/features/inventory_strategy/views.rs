@@ -17,7 +17,7 @@ pub use turnaround_panel::TurnaroundForm;
 
 pub const COMPONENTS: &[Component] = &[StrategyScreen];
 
-/// An analysis batch still at work, as the Node app names its state.
+/// An analysis batch still at work, by its stored state.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BatchState {
     Queued,
@@ -59,7 +59,7 @@ pub enum Did {
 }
 
 impl Did {
-    /// What it did, as the React screen wrote it, counts in the visitor's locale.
+    /// What it did, counts in the visitor's locale.
     pub fn said(self, t: crate::text::Msg) -> String {
         match self {
             Did::Saved => "Saved the turnaround source and manual days.".into(),

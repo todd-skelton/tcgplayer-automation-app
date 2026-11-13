@@ -1,7 +1,9 @@
 //! What the strategy dashboard shows for the inventory and each product line: listed value under
 //! each policy and hurdle, and how long it is expected to take to sell. Ported from
-//! `types/inventoryStrategy.ts`; the JSON keeps the Node app's shape.
-use serde::{Deserialize, Serialize};
+//! `types/inventoryStrategy.ts`; its JSON has that type's shape.
+use serde::{Deserialize, Serialize, Serializer};
+
+use crate::features::configuration::config::{Policy, ProfitPerDay};
 
 /// Daily return hurdles the profit-per-day policy is evaluated at.
 pub const HURDLES: [f64; 6] = [0.0025, 0.005, 0.0075, 0.01, 0.015, 0.02];
@@ -153,14 +155,25 @@ pub struct ProductLine {
     pub horizon_model: Option<HorizonModel>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Dashboard {
     pub seller_key: String,
     pub generated_at: String,
-    /// The stored policy and profit-per-day settings, as the pricing configuration writes them.
-    pub policy: serde_json::Value,
-    pub profit_per_day: serde_json::Value,
+    /// The policy and profit-per-day settings the dashboard was built under, written as the
+    /// pricing configuration stores them.
+    #[serde(serialize_with = "stored_policy")]
+    pub policy: Policy,
+    #[serde(serialize_with = "stored_profit_per_day")]
+    pub profit_per_day: ProfitPerDay,
     pub overall: ProductLine,
     pub product_lines: Vec<ProductLine>,
+}
+
+fn stored_policy<S: Serializer>(policy: &Policy, s: S) -> Result<S::Ok, S::Error> {
+    policy.document().serialize(s)
+}
+
+fn stored_profit_per_day<S: Serializer>(settings: &ProfitPerDay, s: S) -> Result<S::Ok, S::Error> {
+    settings.document().serialize(s)
 }

@@ -40,7 +40,7 @@ const SUPPLY: &str = "query AssetDetails($id: ID!) { asset(id: $id) { id activeL
   items { id attributes { gradeNumber gradingCompany autograph qualifier } asset { id } }
 } } }";
 /// The most rows one answer may hold.
-// Node's `CERT_QUERY`, as it sends it.
+// `CERT_QUERY`, as it is sent.
 const CERT: &str = "query Cert($certNumber: String!) {
   cert(certNumber: $certNumber) {
     certNumber gradeNumber gradingCompany autograph qualifier
@@ -366,7 +366,7 @@ fn sale(value: &Value, asset_id: &str, detail: bool) -> Read<Value> {
     }
     let currency = currency.as_deref();
     let (source_url, source_item_id) = source(&attribute("url"))?;
-    // Node reads these fields only for a detail, so a list row's are never refused.
+    // These fields are read only for a detail, so a list row's are never refused.
     let only_detail = |read: &dyn Fn() -> Read<Value>| {
         if detail { read() } else { Ok(Value::Null) }
     };
@@ -627,8 +627,8 @@ impl<G: Gate> Alt<'_, G> {
         .await
     }
 
-    /// `getSaleDetail`: one sale's listing, or null when Alt has none. Node keeps a run's
-    /// details (at most 32) to read each once; the worker reads one per refresh, so this does not.
+    /// `getSaleDetail`: one sale's listing, or null when Alt has none. Nothing is kept between
+    /// reads; the worker reads one detail per refresh.
     pub async fn sale_detail(
         &self,
         transaction_id: &str,
@@ -786,9 +786,9 @@ mod tests {
         assert_eq!(asked.lock().unwrap().len(), 3);
     }
 
-    /// Node's parsers over the provider fixtures and edge cases built from them
+    /// The recorded parsers' answers over the provider fixtures and edge cases built from them
     /// (`tests/fixtures/node/slab/alt-parse.json`, by `scripts/parity/slab-parsers.ts`): each
-    /// answer, or the status it refused with, is Node's.
+    /// answer, or the status it refused with, is the one recorded.
     #[test]
     fn answers_are_read_as_node_reads_them() {
         let node: Value = serde_json::from_str(

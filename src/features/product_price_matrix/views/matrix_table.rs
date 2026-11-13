@@ -60,7 +60,7 @@ pub fn MatrixTable<'a>(matrix: &'a Matrix, t: Msg) -> impl Render {
                 </thead>
                 <tbody>
                     for (i, cell) in cells.iter().enumerate() {
-                        // The tint the condition's row carries, as the React table colored it: none for Near Mint.
+                        // The tint the condition's row carries: none for Near Mint.
                         let tint = match cell.condition.as_str() { "Lightly Played" => Some(Lp), "Moderately Played" => Some(Mp), "Heavily Played" => Some(Hp), "Damaged" => Some(Dmg), _ => None };
                         <tr
                             class={(tint, (i == 0 || cells[i - 1].variant != cell.variant).then_some(Starts))}

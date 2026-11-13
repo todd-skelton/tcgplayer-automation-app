@@ -10,7 +10,7 @@ use sqlx::{PgConnection, QueryBuilder};
 use super::{sale::Sale, sku_price::Sku, supply_analysis::Listing};
 use crate::database::Database;
 
-/// The most rows one insert carries, as Node's `MAX_ROWS_PER_INSERT`.
+/// The most rows one insert carries (`MAX_ROWS_PER_INSERT`).
 const ROWS_PER_INSERT: usize = 1000;
 
 /// A week of the annual price history, with the figures the weekly ledger keeps.
@@ -422,7 +422,7 @@ mod tests {
         assert_eq!(recordable(&sales).len(), 1);
     }
 
-    /// The three writes as Node's repositories make them: a sale seen again is ignored, a week
+    /// The three writes: a sale seen again is ignored, a week
     /// rewritten only when its figures change, a later snapshot the same day replaces the first.
     #[tokio::test]
     #[ignore = "writes the dev database in a transaction it rolls back"]

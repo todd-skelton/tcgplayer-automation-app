@@ -22,12 +22,12 @@ use crate::{
 
 const USD: Currency = Currency::new("USD");
 
-/// An amount the Node app sends as dollars, in cents.
+/// An amount the summary stores as dollars, in cents.
 fn cents(dollars: f64) -> Minor<i64> {
     Minor((dollars * 100.0).round() as i64)
 }
 
-/// A count the Node app sends as a JSON number.
+/// A count the summary stores as a JSON number.
 fn whole(count: f64) -> i64 {
     count.round() as i64
 }
@@ -38,7 +38,7 @@ fn ratio(percent: f64) -> Decimal {
 }
 
 /// What a batch's saved pricing results come to: its rows, quantities, product lines, price
-/// totals against the market, and the percentiles, as the React screen's summary showed them.
+/// totals against the market, and the percentiles.
 #[component(css)]
 pub fn BatchSummary<'a>(
     summary: &'a Summary,

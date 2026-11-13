@@ -13,8 +13,8 @@ export interface IntakeCounts {
 }
 
 /**
- * Every product the filters keep, as the screen's script gets them once with the page, as the
- * React screen read a set's SKUs once. It searches a set's in the browser with no request, and
+ * Every product the filters keep, as the screen's script gets them once with the page. It
+ * searches a set's in the browser with no request, and
  * sorts, pages and draws any of them in another condition; a card number across sets is searched
  * by the server, which sends what it found.
  */

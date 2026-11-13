@@ -1,7 +1,7 @@
 //! How a price is chosen from a SKU's sell-time curve: at a percentile, at a target median sell
 //! time, or at the best return on capital; and the shadow plan that matches a portfolio's current
 //! value at one horizon. Ported from `pricingPolicy.ts` and `core/types/pricingPolicy.ts`; a
-//! decision's JSON keeps the Node app's shape, so the decisions it stored still read.
+//! decision's JSON keeps its stored shape, so the decisions already stored still read.
 use crate::js_math::JsMath;
 use std::{
     collections::{HashMap, HashSet},
@@ -43,7 +43,7 @@ pub enum SupplyStatus {
 }
 
 /// One point of a SKU's curve: a price, the percentile of recent sales it sits at, and how long
-/// it is expected to wait for a buyer there. Fields are in the Node app's order, since a plan's
+/// it is expected to wait for a buyer there. Fields are in their stored order, since a plan's
 /// inventory snapshot hashes the curve as written.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -703,7 +703,7 @@ pub struct PersistedDecision {
 
 impl PersistedDecision {
     /// The details as stored, keeping every field that reads and leaving out one that does not,
-    /// as the Node app reads what it can of an older run's JSON.
+    /// so an older run's JSON reads as far as it can.
     pub fn from_json(details: &serde_json::Value) -> Self {
         fn field<T: serde::de::DeserializeOwned>(
             details: &serde_json::Value,
@@ -1574,7 +1574,7 @@ mod tests {
         );
     }
 
-    /// Node: resolveValueMatchedPortfolioPlan on these items, cohort-7, at noon on 2026-08-31.
+    /// Recorded: resolveValueMatchedPortfolioPlan on these items, cohort-7, at noon on 2026-08-31.
     #[test]
     fn a_plan_and_its_decisions_match_the_node_app_to_the_hash() {
         let mut detailed = point(10.0, 10.0, 10.0);

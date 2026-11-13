@@ -72,7 +72,7 @@ pub struct Imported {
 }
 
 impl Observation {
-    /// One line, as the React panel wrote an observation.
+    /// The observation in one line.
     pub fn line(&self) -> String {
         let words = |code: &str| code.replace(['-', '_'], " ");
         let price = self.price.as_ref().map_or_else(
@@ -314,7 +314,7 @@ const MOST_ROWS: usize = 50;
 const COLUMNS_MESSAGE: &str =
     "Provide 1–50 outcomes with event_id, item_id, kind, occurred_at, quantity and note columns.";
 
-/// One reviewed outcome as Node saves it; its fields in Node's order, which its hash reads.
+/// One reviewed outcome as saved; its fields in the saved order, which its hash reads.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Reviewed {
@@ -337,7 +337,7 @@ struct Amount {
     currency: String,
 }
 
-/// `parseSellerOutcomeCsv`: each row checked, with the row Node names when one is wrong.
+/// `parseSellerOutcomeCsv`: each row checked, naming the row when one is wrong.
 fn parse(csv: &str, seller: &str) -> Result<Vec<Reviewed>, String> {
     let seller = seller_account(seller)?;
     if csv.len() > MOST_BYTES {

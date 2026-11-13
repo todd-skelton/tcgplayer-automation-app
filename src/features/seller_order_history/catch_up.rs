@@ -1,6 +1,6 @@
 //! Moving the seller's order history scan on when asked, these orders first (`/api/seller-order-history`'s
 //! `catch_up`): one step of the sync within the default budget, sharing the run's claim with the
-//! workers, as the Node route takes it.
+//! workers.
 use sqlx::PgConnection;
 
 use super::sync::{self, Budget, Orders, Synced};
@@ -29,7 +29,7 @@ pub fn asked(
     ))
 }
 
-/// A catch-up asked for `named` (else the default shipping seller, as the Node route resolves it),
+/// A catch-up asked for `named` (else the default shipping seller),
 /// `orders` read from TCGplayer first: the seller it was for and what it did.
 pub async fn requested(
     db: &Database,

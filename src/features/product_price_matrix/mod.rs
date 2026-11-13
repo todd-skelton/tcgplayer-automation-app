@@ -2,8 +2,7 @@
 //! a condition dispute calls for. Ported from
 //! `app/features/product-price-matrix/routes/product-price-matrix.tsx`.
 //!
-//! The products and their prices are read here (`/api/product-price-matrix/products` and
-//! `/api/product-price-matrix` in the Node app): TCGplayer's price points, the store's listings,
+//! The products and their prices are read here: TCGplayer's price points, the store's listings,
 //! and, for suggested pricing, the pricing calculator over TCGplayer's latest sales. The choices
 //! are a GET form, so a product, its language and whether it was priced by the policy are the
 //! page's address: Refresh Market and Suggested Pricing are links, and a reload shows the same

@@ -24,7 +24,7 @@ use crate::{
     text::Msg,
 };
 
-/// How often a batch that prices or publishes is read again, as the React screen's stream read it.
+/// How often a batch that prices or publishes is read again.
 const FOLLOW_EVERY: Duration = Duration::from_secs(1);
 /// How often a browser without JavaScript reads the page again while the batch prices or
 /// publishes.
@@ -110,7 +110,7 @@ struct Drawn<'a> {
     seller: Option<&'a str>,
 }
 
-/// The Node app could not list or read the batches: the screen has nothing to draw.
+/// The batches could not be listed or read: the screen has nothing to draw.
 fn unavailable(message: String) -> corten::Error {
     corten::Error::new(message).with_status(StatusCode::BAD_GATEWAY)
 }
@@ -246,8 +246,8 @@ pub struct PublishInput {
 /// [`publish`] when the form came without a script.
 pub const NONE_SELECTED: &str = "Select at least one SKU to publish.";
 
-/// The checked SKUs planned for publication to Seller Portal; Node's publisher checks each again
-/// as it sends them.
+/// The checked SKUs planned for publication to Seller Portal; the publication worker checks each
+/// again as it sends them.
 pub async fn publish(
     req: Req,
     State(db): State<Database>,
@@ -286,7 +286,7 @@ pub async fn delete(
     }
 }
 
-/// The batch's successful or manual-review rows, as the CSV the React screen saved.
+/// The batch's successful or manual-review rows, as a CSV file.
 pub async fn download(
     State(db): State<Database>,
     Params(at): Params<url::Results>,
@@ -500,7 +500,7 @@ impl Follow {
     }
 }
 
-/// How long a pricing phase has run, as the React screen's progress wrote it: `42s`, `3m 5s`.
+/// How long a pricing phase has run: `42s`, `3m 5s`.
 pub fn elapsed(started_ms: f64, now: SystemTime) -> String {
     let now_ms = now
         .duration_since(SystemTime::UNIX_EPOCH)

@@ -1,6 +1,6 @@
 //! Completes the forecast evidence of published items for the configured seller, so the selling
-//! history's details show what each item was priced with. The Node app did it on every load of
-//! the screen; here a page only reads, and this task writes, every few minutes, until no item is
+//! history's details show what each item was priced with. A page only reads; this task writes,
+//! every few minutes, until no item is
 //! left without it. An item gets its evidence once.
 use std::time::Duration;
 

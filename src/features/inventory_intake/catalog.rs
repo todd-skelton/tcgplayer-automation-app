@@ -1,13 +1,13 @@
 //! What the intake screen offers to count: the product lines, a line's sets, and the products of
 //! a set (or of every set, by card number), each with a SKU per condition. Read from the catalog
-//! tables the Node sync fills (`product_lines`, `category_sets`, `products`, `set_products`).
+//! tables the catalog sync fills (`product_lines`, `category_sets`, `products`, `set_products`).
 use std::collections::BTreeMap;
 
 use corten::UrlValue;
 
 use crate::database::Database;
 
-/// The product line the screen starts on, as the React screen did: Pokemon.
+/// The product line the screen starts on: Pokemon.
 pub const DEFAULT_PRODUCT_LINE: i32 = 3;
 
 /// A condition a card is counted in. Sealed products have one SKU, `Unopened`, whatever is
@@ -54,8 +54,8 @@ impl Condition {
     }
 }
 
-/// The order the products are listed in, across every page: by name, either way. React's grid
-/// also drew a sort on Quantity, but its rows had no quantity field, so that sort kept the order.
+/// The order the products are listed in, across every page: by name, either way. There is no
+/// sort on Quantity: the products carry no quantity of their own.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum ProductOrder {
@@ -73,7 +73,7 @@ impl ProductOrder {
     }
 }
 
-/// How many products a page shows, as the React grid offered (`pageSizeOptions`).
+/// How many products a page shows (`pageSizeOptions`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, UrlValue)]
 pub enum PageSize {
     #[serde(rename = "25")]
@@ -141,7 +141,7 @@ pub enum Scope {
     AllSets,
 }
 
-/// The languages the language filter offers, as the React screen listed them.
+/// The languages the language filter offers.
 pub const LANGUAGES: [&str; 11] = [
     "English",
     "Japanese",

@@ -1,12 +1,11 @@
-//! The page for a failed request, in the layout, as the React app's `ErrorBoundary` drew it inside
-//! its theme.
+//! The page for a failed request, drawn inside the layout.
 use corten::{http::StatusCode, prelude::*};
 
 use super::Layout;
 use crate::app;
 
 /// What a failure says: a missing page, a server that could not answer in time, or anything else.
-/// Under `corten dev` it shows the error too, as the React screen showed it in development.
+/// Under `corten dev` it shows the error too.
 ///
 /// It reads nothing itself. For a failure the request is at fault for (a 404, a wrong method, a
 /// refusal) Corten starts and waits for the layout's reads, so the app bar's auth cookie warning

@@ -116,7 +116,7 @@ pub fn ClearConfirm<'a>(selection: &'a Selection, totals: Totals) -> impl Patch 
     }
 }
 
-/// What publishing queues for, in the words of the React screen's menu.
+/// What publishing queues for, in the words of the screen's menu.
 fn publish_note(target: Option<&Target>) -> String {
     match target {
         None => "Publishing is not available right now.".to_owned(),
@@ -135,8 +135,8 @@ fn publish_note(target: Option<&Target>) -> String {
     }
 }
 
-/// The cost of the next batch and the two ways to queue it. Without the seller (the Node app did
-/// not answer) nothing can be queued; without a seller that publishes, only pricing can.
+/// The cost of the next batch and the two ways to queue it. Without the seller (it could not be
+/// read) nothing can be queued; without a seller that publishes, only pricing can.
 #[component(css = QueueBar)]
 pub fn QueueForm<'a>(
     selection: &'a Selection,

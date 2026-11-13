@@ -1,6 +1,6 @@
 //! Postage: what was bought for each shipment, read from its record (`postage-lookups`), and
 //! what a purchase did. Buying it from EasyPost is [`super::purchase`]'s. The mode (test or
-//! production) follows the deployment, as it did on the Node app.
+//! production) follows the deployment.
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
@@ -86,8 +86,8 @@ impl Bought {
 /// Postage by shipment reference.
 pub type Postage = HashMap<String, Bought>;
 
-/// Postage is bought one purchase at a time, across tabs, computers and app instances, as the
-/// React screen bought it one at a time in a tab, so two clicks cannot pay twice.
+/// Postage is bought one purchase at a time, across tabs, computers and app instances, so two
+/// clicks cannot pay twice.
 pub static BUYING: OneAtATime = OneAtATime::new("shipping export postage");
 
 /// Adds new results over old ones; a skip does not hide a purchase made before it.
@@ -272,8 +272,8 @@ pub async fn bought(
             label_pdf_url: record.label_pdf_url.clone(),
             error: None,
         };
-        // A later shipment with the same reference replaces an earlier one, as the React screen
-        // keyed its results.
+        // A later shipment with the same reference replaces an earlier one: results are keyed by
+        // reference.
         postage.insert(
             reference.to_owned(),
             Bought {

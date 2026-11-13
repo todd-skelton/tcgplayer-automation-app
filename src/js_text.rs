@@ -1,4 +1,4 @@
-//! JavaScript's `String(value)` of a JSON value and its `trim`, for text the Node app wrote or
+//! JavaScript's `String(value)` of a JSON value and its `trim`, for stored text first written or
 //! read so.
 use crate::features::inventory_economics::ledger::fingerprint::js_float;
 

@@ -30,7 +30,7 @@ use crate::{
     },
 };
 
-/// How often a running analysis is read again, as the React screen polled it.
+/// How often a running analysis is read again.
 pub const ANALYSIS_EVERY: Duration = Duration::from_secs(5);
 
 #[derive(Id)]
@@ -65,7 +65,7 @@ pub fn Problem<'a>(why: Option<&'a str>) -> impl Patch {
     }
 }
 
-/// How the pricing strategy is doing and what to change, top to bottom as the React screen.
+/// How the pricing strategy is doing and what to change, top to bottom.
 #[component(css)]
 pub fn StrategyScreen<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
     let quiet = screen.view.clone();
@@ -128,7 +128,7 @@ pub fn StrategyScreen<'a>(screen: &'a Screen, t: Msg) -> impl Patch {
 }
 
 /// What the selling earned, what to change and the policy's verdict, the hurdle sweep and the
-/// capital turnaround, top to bottom as the React screen; the parts not read in wait for the
+/// capital turnaround, top to bottom; the parts not read in wait for the
 /// stream.
 #[component(css = StrategyScreen)]
 fn Returns<'a>(screen: &'a Screen, t: Msg) -> impl Render {

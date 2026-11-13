@@ -40,7 +40,7 @@ pub struct Coverage {
 }
 
 impl Coverage {
-    /// What the React screen wrote: "API history complete: 120 of 120 orders observed, ...".
+    /// "API history complete: 120 of 120 orders observed, ...".
     pub fn describe(&self) -> String {
         let total = self
             .expected_total
@@ -308,7 +308,7 @@ async fn ready(
         let empty = page.orders.is_empty();
         summaries.extend(page.orders);
         from += PAGE;
-        // An empty page ends it too, where Node would ask again for ever.
+        // An empty page ends it too, so a total that never fills does not ask again for ever.
         if summaries.len() >= page.total_orders || empty {
             break;
         }
@@ -483,7 +483,7 @@ pub async fn coverage(db: impl sqlx::PgExecutor<'_>, seller_key: &str) -> Result
 }
 
 /// Moves the seller's order history scan on a step, reading these orders from TCGplayer first:
-/// the seller named, else the default shipping seller (as the Node route resolves it).
+/// the seller named, else the default shipping seller.
 pub async fn catch_up(db: &Database, seller_key: &str, orders: &[String]) -> Result<(), String> {
     history::catch_up::requested(db, seller_key, orders)
         .await
@@ -491,7 +491,7 @@ pub async fn catch_up(db: &Database, seller_key: &str, orders: &[String]) -> Res
 }
 
 /// Adds an order export older than the API's three months to the seller's order history: the
-/// seller named, else the default shipping seller (as the Node route resolves it).
+/// seller named, else the default shipping seller.
 pub async fn import_history(
     db: &Database,
     seller_key: &str,

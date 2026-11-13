@@ -1,5 +1,5 @@
-//! The FIFO replay in shadow: every seller SKU Node has replayed and not queued again is
-//! replayed here and each line's fingerprint compared with the revision Node saved. It writes
+//! The FIFO replay in shadow: every seller SKU replayed and not queued again is replayed here
+//! and each line's fingerprint compared with the revision saved. It writes
 //! nothing; a difference means one of the two would save another revision.
 use std::{
     collections::BTreeMap, collections::HashMap, io::Write, path::Path, path::PathBuf,
@@ -13,7 +13,7 @@ use tokio::time::{MissedTickBehavior, interval};
 use super::replay::{self, Replay};
 use crate::{database::Database, features::shipping_configuration};
 
-/// How often every settled SKU is compared. Node replays a SKU when an order or stock changes;
+/// How often every settled SKU is compared. A SKU is replayed when an order or stock changes;
 /// an hour leaves its queue time to settle between passes.
 pub const EVERY: Duration = Duration::from_secs(60 * 60);
 
@@ -29,15 +29,15 @@ pub fn log_path() -> Option<PathBuf> {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "verdict", rename_all = "snake_case")]
 pub enum Verdict {
-    /// Every line's fingerprint is the one Node saved, and the SKU is held for the same reason.
+    /// Every line's fingerprint is the one saved, and the SKU is held for the same reason.
     Same { lines: usize },
-    /// Lines whose fingerprint differs from Node's, or that Node has not saved.
+    /// Lines whose fingerprint differs from the saved one, or that have none saved.
     Differs {
         lines: Vec<LineDiff>,
         held: Option<String>,
         node_held: Option<String>,
     },
-    /// The SKU is held before any line is saved; Node's queue says why it holds it, if it does.
+    /// The SKU is held before any line is saved; the queue says why it holds it, if it does.
     Held {
         reason: String,
         node_held: Option<String>,
@@ -130,7 +130,7 @@ pub async fn compare(db: &Database, seller: &str, sku: i32) -> sqlx::Result<Comp
     Ok(Compared { sku, verdict })
 }
 
-/// The SKUs Node has replayed and not queued again since.
+/// The SKUs replayed and not queued again since.
 pub async fn settled_skus(db: &Database, seller: &str) -> sqlx::Result<Vec<i32>> {
     sqlx::query_scalar(
         "SELECT DISTINCT line.sku FROM inventory_fifo_lines line

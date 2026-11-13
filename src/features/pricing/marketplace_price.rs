@@ -35,7 +35,7 @@ pub enum Outcome {
 }
 
 impl Outcome {
-    /// The warning the pricer records, in the Node app's words.
+    /// The warning the pricer records, in the words saved results have.
     pub fn warning(self) -> &'static str {
         match self {
             Outcome::Suggested => "",

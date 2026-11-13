@@ -2,8 +2,9 @@
 //! `compareCompIdentity` and `normalizeSalePrice`): accepted, needing review or rejected, and
 //! why. Ported from `app/features/ebay-slab-pricing/screening`.
 //!
-//! The Node app's patterns are JavaScript's without the `u` flag: `\b` and `\d` are ASCII, `\s` is
-//! JavaScript's white space and `i` folds ASCII letters only. [`js`] writes them so.
+//! The patterns are JavaScript's without the `u` flag, which the screened words already saved
+//! depend on: `\b` and `\d` are ASCII, `\s` is JavaScript's white space and `i` folds ASCII
+//! letters only. [`js`] writes them so.
 use std::{collections::HashSet, sync::LazyLock};
 
 use chrono::{DateTime, NaiveDate, NaiveDateTime};
@@ -897,7 +898,7 @@ pub fn screen(
         })
         .map(|p| p.amount);
     let item_only = reviewed_price.or(price.item_only);
-    // Node adds the shipping to a reviewed price unrounded.
+    // The shipping is added to a reviewed price unrounded.
     let item_and_shipping = match reviewed_price {
         Some(reviewed) => price.shipping.map(|s| reviewed + s),
         None => price.item_and_shipping,

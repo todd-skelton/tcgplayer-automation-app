@@ -1,7 +1,7 @@
 //! How the units the seller listed have sold: each listing episode (a publication, opening
 //! balance, restock or correction) followed to its sales and removals, summarized by product line
 //! with the days to sale and sell-through at fixed horizons. Units still listed are censored, not
-//! dropped. Ported from `inventorySellingHistory.ts` and its types; the JSON keeps the Node app's
+//! dropped. Ported from `inventorySellingHistory.ts` and its types; the JSON has those types'
 //! shape.
 use std::collections::{HashMap, HashSet};
 

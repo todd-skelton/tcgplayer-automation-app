@@ -13,12 +13,11 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
-use serde_json::Value;
 use sqlx::{PgConnection, PgPool, Postgres, pool::PoolConnection};
 use tokio::{sync::Notify, time::Instant};
 
 use super::{
-    job::{self, MarketData, Mode, Priced},
+    job::{self, MarketData, Mode, Priced, Step},
     queue::{self, Claimed},
     save,
     worker::{Jobs, LEASE, Outcome, PROGRESS_FLUSH},
@@ -40,8 +39,8 @@ const SALES_HISTORY_RETRY_MINUTES: i32 = 15;
 #[derive(Debug)]
 pub struct Running {
     pub claimed: Claimed,
-    /// The last progress reported, saved with each renewal.
-    progress: Mutex<Option<Value>>,
+    /// The last progress reported, saved with each renewal; until then the job keeps what it had.
+    progress: Mutex<Option<Step>>,
     /// When progress was last marked to be saved, and the mark the worker waits on.
     flushed_at: Mutex<Option<Instant>>,
     flush: Notify,
@@ -54,10 +53,9 @@ pub struct Running {
 
 impl Running {
     pub fn new(claimed: Claimed, connection: PoolConnection<Postgres>) -> Self {
-        let progress = Mutex::new(claimed.progress_json.clone());
         Running {
             claimed,
-            progress,
+            progress: Mutex::new(None),
             flushed_at: Mutex::new(None),
             flush: Notify::new(),
             sales_history_unavailable: AtomicBool::new(false),
@@ -74,13 +72,13 @@ impl Running {
         *self.connection.lock().expect("never poisoned") = Some(connection);
     }
 
-    fn progress(&self) -> Option<Value> {
+    fn progress(&self) -> Option<Step> {
         self.progress.lock().expect("never poisoned").clone()
     }
 
     /// Keeps `progress` for the next save, and asks for a save when none was asked for in the
     /// last [`PROGRESS_FLUSH`].
-    fn report(&self, progress: Value) {
+    fn report(&self, progress: Step) {
         *self.progress.lock().expect("never poisoned") = Some(progress);
         let mut flushed_at = self.flushed_at.lock().expect("never poisoned");
         let now = Instant::now();
@@ -166,7 +164,7 @@ fn given_up(phase: Phase, after: Duration, size: u32, idle: usize) -> String {
     )
 }
 
-/// A time as Node writes `new Date()`: to the millisecond.
+/// A time to the millisecond, the precision saved times are compared at.
 fn to_millis(at: DateTime<Utc>) -> DateTime<Utc> {
     DateTime::from_timestamp_millis(at.timestamp_millis()).expect("a time already in range")
 }
@@ -226,8 +224,8 @@ pub struct FollowedUp {
     pub planned: Option<plan::Automatic>,
 }
 
-/// What a completed batch changes elsewhere, each failure logged and the rest still done, as
-/// Node's worker does: the strategy's curves, the continuous inventory's last pricing, and the
+/// What a completed batch changes elsewhere, each failure logged and the rest still done: the
+/// strategy's curves, the continuous inventory's last pricing, and the
 /// publication the batch plans by itself.
 pub async fn follow_up(
     conn: &mut PgConnection,
@@ -277,8 +275,7 @@ pub struct PricingJobs<E, M> {
     pub market: M,
 }
 
-/// This process's name on the jobs it claims. Node's worker is `inventory-batch-worker-{pid}`;
-/// this one says it is the port's.
+/// This process's name on the jobs it claims, with its process id.
 pub fn worker_id() -> String {
     format!("inventory-batch-worker-rust-{}", std::process::id())
 }
@@ -459,8 +456,8 @@ mod tests {
         );
     }
 
-    /// Node's latest completed continuous job, priced again from the ledgers and the market data
-    /// Node saved, then saved and followed up as this worker would, inside a transaction that is
+    /// The latest completed continuous job, priced again from the ledgers and the market data
+    /// it saved, then saved and followed up as this worker would, inside a transaction that is
     /// rolled back: a worker without the claim writes nothing, the claim's holder replaces the
     /// batch's results, completes the job with its last progress, and plans what the batch plans.
     #[tokio::test]
@@ -495,10 +492,7 @@ mod tests {
         )
         .await
         .unwrap();
-        let phases: Vec<u64> = steps
-            .iter()
-            .map(|s| s["current"].as_u64().unwrap())
-            .collect();
+        let phases: Vec<u32> = steps.iter().map(|s: &Step| s.current).collect();
         assert_eq!(phases.first(), Some(&1));
         assert_eq!(phases.last(), Some(&6));
         assert!(
@@ -506,9 +500,10 @@ mod tests {
             "steps only go forward: {phases:?}"
         );
         assert!(
-            steps.iter().any(|s| s["subProgress"]["status"]
-                .as_str()
-                .is_some_and(|t| t.starts_with("Processing 1/"))),
+            steps.iter().any(|s| s
+                .sub_progress
+                .as_ref()
+                .is_some_and(|within| within.status.starts_with("Processing 1/"))),
             "each SKU is reported"
         );
 
@@ -555,7 +550,7 @@ mod tests {
                 .await
                 .unwrap()
         );
-        let (status, progress, results, batch_status, priced_at): (String, Value, i64, String, DateTime<Utc>) =
+        let (status, progress, results, batch_status, priced_at): (String, serde_json::Value, i64, String, DateTime<Utc>) =
             sqlx::query_as(
                 "SELECT j.status, j.progress_json,
                         (SELECT COUNT(*) FROM inventory_batch_results WHERE batch_number = j.batch_number),

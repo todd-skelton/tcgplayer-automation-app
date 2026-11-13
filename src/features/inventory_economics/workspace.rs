@@ -6,7 +6,7 @@ use super::ledger::{
 };
 use crate::{database::Database, features::shipping_configuration};
 
-/// The screen's most recent orders and purchases, as the Node app's workspace limits them.
+/// How many of the most recent orders and purchases the screen shows.
 const RECENT: i64 = 100;
 
 pub type PurchaseCost = PurchaseCostRow;
@@ -21,7 +21,7 @@ pub struct Workspace {
 
 impl PurchaseCostRow {
     /// Where the cost came from and how it was spread: `intake; estimated; explicit; batches
-    /// 2730; 2026-09-26`, as the React list wrote it.
+    /// 2730; 2026-09-26`.
     pub fn details(&self) -> String {
         let batches = self
             .batch_numbers
@@ -43,7 +43,7 @@ impl PurchaseCostRow {
 }
 
 impl OrderEconomics {
-    /// How much of the order is known, as the React table's Coverage column wrote it.
+    /// How much of the order is known, for the table's Coverage column.
     pub fn coverage(&self) -> String {
         let missing = if self.missing.is_empty() {
             String::new()

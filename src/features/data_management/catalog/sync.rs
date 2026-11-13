@@ -54,9 +54,9 @@ fn lock_key(category_id: i32) -> String {
     format!("catalog-sync:{category_id}")
 }
 
-/// Takes the product line's sync lock on `conn`, or refuses as Node's in-process set did. The lock
+/// Takes the product line's sync lock on `conn`, or refuses when another sync holds it. The lock
 /// is the session's, so it holds across every process (this app's instances, a release's two
-/// sides), where Node's set held within one. A session lock outlives a dropped future, so the
+/// sides). A session lock outlives a dropped future, so the
 /// caller's connection must close when it is dropped (`close_on_drop`), ending the lock with the
 /// session if the sync is cut off (corten#607).
 async fn start(conn: &mut PgConnection, category_id: i32) -> Result<(), String> {

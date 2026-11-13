@@ -1,6 +1,6 @@
 //! A batch saved with its items (`createImportedBatch`), as a CSV export or the strategy's
-//! snapshot makes one. Numbers go to the database as the text node-postgres sends, so a SKU or
-//! quantity the database refuses is refused with the same message.
+//! snapshot makes one. Numbers go to the database as their shortest text, so a SKU or quantity
+//! the database refuses is refused with the database's own message.
 use chrono::{DateTime, Utc};
 use serde_json::{Map, Value};
 use sqlx::{PgConnection, types::Json};
@@ -21,7 +21,7 @@ pub struct Item {
     pub original_row: Map<String, Value>,
 }
 
-/// A database refusal as the Node app reported it (`String(error)`).
+/// A database refusal as `error: ` and the database's message (`String(error)`).
 pub fn refused(e: sqlx::Error) -> String {
     match e.as_database_error() {
         Some(db) => format!("error: {}", db.message()),

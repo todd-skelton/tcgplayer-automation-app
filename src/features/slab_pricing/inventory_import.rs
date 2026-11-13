@@ -5,9 +5,9 @@
 //! leaves out; only a complete read of the seller's active listings from eBay could, and neither
 //! app has one yet.
 //!
-//! Where a manual import can still differ from Node, on a request the Node app's own client never
-//! sends: two item specifics whose names differ only in surrounding white space keep the value of
-//! the one later in name order here, where Node kept the one later in the request.
+//! Two item specifics whose names differ only in surrounding white space keep the value of the
+//! one later in name order, not the one later in the request. The import screen never sends such
+//! a pair.
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde_json::{Map, Value, json};
 use sqlx::{Connection, PgConnection};
@@ -21,7 +21,7 @@ use crate::{
     features::{slab_connections::Gate, slab_evidence::alt::Alt},
 };
 
-/// Refused in Node's words.
+/// Refused with the words the import screen shows.
 const LISTING: &str =
     "Each listing needs an eBay item ID, title, valid price/currency, quantity, state and format.";
 /// Any identity field refused (`SlabIdentityError`), as the route words it.
@@ -113,7 +113,7 @@ fn expected(row: &Map<String, Value>) -> Result<Value, String> {
 }
 
 /// `parseListingSnapshot` of a CSV row: the listing as saved, with what it needs reviewed, or
-/// why it is refused, in the order Node checks.
+/// why it is refused, its fields checked in the order written here.
 fn snapshot(row: &Map<String, Value>) -> Result<Value, String> {
     let at = |key: &str| row.get(key).cloned().unwrap_or(Value::Null);
     let text = |key: &str| row.get(key).and_then(Value::as_str);

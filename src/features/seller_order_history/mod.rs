@@ -1,8 +1,7 @@
-//! The seller's order history from TCGplayer's order management API, ported from the Node app's
-//! `seller-order-history` feature and its worker. Node still records the API's history; this
-//! reads the same orders beside it and says where it would record something else, until the two
-//! agree. An order export a user imports is recorded here (`file_import`), and so is a step of the
-//! scan the shipping workflow asks for (`catch_up`).
+//! The seller's order history from TCGplayer's order management API (`seller-order-history`),
+//! recorded by its worker; the shadow reads the same orders beside the history and says where it
+//! would record something else. An order export a user imports is recorded here
+//! (`file_import`), and so is a step of the scan the shipping workflow asks for (`catch_up`).
 pub mod api;
 pub mod catch_up;
 pub mod file_import;

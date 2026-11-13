@@ -68,8 +68,8 @@ impl Item {
     }
 }
 
-/// The SKUs on the sheet that the catalog has, each under a product line the sheet names (the
-/// React app looked them up per product line by name; a SKU under another line is not found).
+/// The SKUs on the sheet that the catalog has, each under a product line the sheet names (looked
+/// up per product line by name; a SKU under another line is not found).
 pub async fn find_skus(db: &Database, rows: &[SheetRow]) -> sqlx::Result<HashMap<i32, CatalogSku>> {
     let ids: Vec<i32> = rows
         .iter()
@@ -121,7 +121,7 @@ pub fn items(rows: Vec<SheetRow>, skus: &HashMap<i32, CatalogSku>) -> Vec<Item> 
         .collect()
 }
 
-/// How a condition looks: a color per grade, as the React app's chips and borders.
+/// How a condition looks: a color per grade, for its chips and borders.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Grade {
     NearMint,
@@ -164,7 +164,7 @@ pub enum Finish {
 }
 
 impl Printing {
-    /// `getVariantVisuals` in the React app: the finish, the edition and the short label.
+    /// `getVariantVisuals`: the finish, the edition and the short label.
     pub fn of(variant: &str) -> Printing {
         let v = variant.trim().to_lowercase();
         let foil = v.contains("holo") || v.contains("foil");

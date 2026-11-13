@@ -4,7 +4,7 @@
 //! The filters are a GET form, so a set, a search or a product line is a link, and the server
 //! searches and pages a set without JavaScript. With it, the page brings the whole set once and
 //! the script searches, sorts and pages it, and draws another condition's counts, with no
-//! request, as the React screen did; only a card number searched across every set goes to the
+//! request; only a card number searched across every set goes to the
 //! server. The GET form is `data-patch` too: another set, product line or filter is answered with
 //! the parts that change with it and the products it keeps, read without the counts or the
 //! batches, which the browser keeps a few minutes, so a set seen again comes with no request. The
@@ -23,9 +23,9 @@
 //! | `GET /inventory-manager/batches` | the background batches again, read every 5 seconds |
 //! | `POST /inventory-manager/batches/{batch}/rate` | a queued batch estimated at another rate |
 //!
-//! The React screen kept an unconfirmed queue request in session storage to send again after a
-//! reload. Here the form's submit key is the request id, and a reload shows what happened: the
-//! batch in the background batches and the counts gone, or the counts still there.
+//! An unconfirmed queue request is not kept in the browser to send again after a reload: the
+//! form's submit key is the request id, and a reload shows what happened: the batch in the
+//! background batches and the counts gone, or the counts still there.
 pub(crate) mod catalog;
 mod page;
 mod pending;

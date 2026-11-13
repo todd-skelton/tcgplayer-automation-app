@@ -98,8 +98,8 @@ pub struct Basis {
     pub basis: String,
 }
 
-/// The seller's costs and floors the ask is proposed from (`SellerPriceContext`), in Node's key
-/// order. Missing ones were unknown.
+/// The seller's costs and floors the ask is proposed from (`SellerPriceContext`), in the key
+/// order saved calculations use. Missing ones were unknown.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Seller {
@@ -266,7 +266,7 @@ impl Recommendation {
     }
 }
 
-/// `USD 12.30` as the React screen wrote an amount, or "Unknown".
+/// An amount as `USD 12.30`, or "Unknown".
 pub fn amount(value: Option<f64>) -> String {
     value.map_or_else(|| "Unknown".into(), |v| format!("USD {v:.2}"))
 }

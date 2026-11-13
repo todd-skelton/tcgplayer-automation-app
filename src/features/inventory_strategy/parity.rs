@@ -1,5 +1,5 @@
-//! The Rust strategy against the Node app's, on the dev seller. Run
-//! `npx vite-node scripts/strategy-snapshot.ts` with the Node app's environment, then
+//! The strategy against a recorded one, on the dev seller: with the recording in
+//! `target/node-strategy.json`, run
 //! `NODE_STRATEGY=target/node-strategy.json cargo test strategy_matches_node -- --ignored`.
 use chrono::{DateTime, Utc};
 use serde_json::Value;

@@ -74,7 +74,7 @@ pub struct Counted<'a> {
     pub label: &'a str,
 }
 
-/// How often the background batches are read again, as the React screen polled them.
+/// How often the background batches are read again.
 pub const BATCHES_EVERY: Duration = Duration::from_secs(5);
 
 /// What the screen shows of queuing: the background batches (or why they could not be read),
@@ -85,8 +85,8 @@ pub struct Queuing<'a> {
     pub errors: &'a Errors,
 }
 
-/// Every product the filters keep, as the screen's script gets them once with the page, as the
-/// React screen read a set's SKUs once. It searches a set's in the browser with no request, and
+/// Every product the filters keep, as the screen's script gets them once with the page. It
+/// searches a set's in the browser with no request, and
 /// sorts, pages and draws any of them in another condition; a card number across sets is searched
 /// by the server, which sends what it found.
 #[derive(ToJson)]
@@ -396,7 +396,7 @@ pub fn IntakeScreen<'a>(
             <section class={CardPanel { size: CardSize::Sm }} aria-labelledby={TableHeadingId}>
                 <h2 id={TableHeadingId} class={VisuallyHidden {}}>"Add new inventory"</h2>
                 <Table layout={TableLayout::Scroll}>
-                    // React drew no grid without rows; the table stays for the script's refs.
+                    // No grid is shown without rows; the table stays for the script's refs.
                     <table ref={table} hidden={listing.products.is_empty()}>
                         // The script sorts in place: a hover on the sort link fetches nothing.
                         // Its link is the screen sorted the other way, which the script keeps in
@@ -690,7 +690,7 @@ fn ProductPages<'a>(selection: &'a Selection, current: usize, pages: usize) -> i
     }
 }
 
-/// "101-200 of 1,390", as the React grid's footer counted them (`intake.shown`, which the
+/// "101-200 of 1,390", the grid's footer (`intake.shown`, which the
 /// script writes too).
 fn shown_of(listing: &Listing, t: &Msg) -> String {
     let size = listing.selection.rows.unwrap_or_default().count();
@@ -843,7 +843,7 @@ impl RowOf {
 /// server draws a page of them and the script makes the rest from the screen's `<template>`, so
 /// every part that changes from row to row is a hole. The table's click handler opens its picture
 /// and steps its count. The set, the SKU and the name take the condition's color while the
-/// product has a SKU in it (`data-condition`), as the React grid colored them; a row without one
+/// product has a SKU in it (`data-condition`); a row without one
 /// has its count form hidden (`data-missing`), which the keys skip.
 ///
 /// The count form is [`CountForm`]'s markup, which a count's answer replaces it with (a test
@@ -1089,7 +1089,7 @@ mod tests {
     }
 
     /// A row shows the condition chosen: its SKU, count and label, and the condition the
-    /// stylesheet colors it by, as the React grid's `getConditionColor`. Without a SKU in that
+    /// stylesheet colors it by (`getConditionColor`). Without a SKU in that
     /// condition its count form is hidden and the SKU is marked unavailable; its key is another
     /// row's than the product's rows with a SKU.
     #[test]

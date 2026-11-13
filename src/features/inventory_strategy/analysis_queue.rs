@@ -1,7 +1,6 @@
 //! A strategy analysis queued (`queueInventoryStrategyAnalysis`): the seller's in-stock snapshot
 //! frozen as a strategy batch and queued for pricing in full, unless one of the seller's is
-//! already queued or pricing. The Node app saved the batch and queued it in two transactions;
-//! here both are one.
+//! already queued or pricing. The batch is saved and queued in one transaction.
 use chrono::{DateTime, DurationRound, TimeDelta, Utc};
 use serde_json::{Map, Value, json};
 use sqlx::PgConnection;

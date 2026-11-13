@@ -38,7 +38,7 @@ pub fn realized_choice(screen: &Screen) -> Chosen<RealizedWindowId, RealizedWind
     }
 }
 
-/// Which realized window the screen shows, as the React screen's toggle chose it. Each option
+/// Which realized window the screen shows, chosen with a toggle. Each option
 /// is the page with that window, so it works without JavaScript too.
 #[component]
 fn WindowChoice<'a>(

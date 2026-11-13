@@ -41,11 +41,11 @@ impl From<String> for Refused {
     }
 }
 
-/// Listings a page, as the React panel read them.
+/// Listings a page.
 pub const PAGE_SIZE: u32 = 25;
 
-/// A column the saved listings can be sorted by. As the React grid did, a sort orders the page
-/// shown; the pages stay in the seller's keyset order.
+/// A column the saved listings can be sorted by. A sort orders the page shown; the pages stay in
+/// the seller's keyset order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, corten::UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum ListingColumn {

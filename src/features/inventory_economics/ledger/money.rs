@@ -14,7 +14,7 @@ pub struct Share {
 /// The shares come back sorted by id. `None` when there is no target, an id repeats or is blank,
 /// or every weight is zero.
 ///
-/// Most callers in the Node app weigh by whole numbers (units, cents, or 1 each); a frozen market
+/// Most callers weigh by whole numbers (units, cents, or 1 each); a frozen market
 /// weighs by market value, which [`allocate_weighted`] splits by. The arithmetic is exact in
 /// `i128`.
 pub fn allocate(total_cents: i64, targets: &[(&str, u64)]) -> Option<Vec<Share>> {
@@ -27,9 +27,9 @@ pub fn allocate(total_cents: i64, targets: &[(&str, u64)]) -> Option<Vec<Share>>
 
 /// `allocateAmountCents` by JavaScript numbers, each read as exactly the decimal it prints as
 /// (`decimalNumberAsInteger`) and all brought to one scale, so `0.1 * 3` weighs
-/// `0.30000000000000004`. Refused in Node's words when a weight is negative or not a number, or
-/// none is positive; refused too when the scaled weights pass what `i128` holds, where Node's
-/// `BigInt` would go on (no market value the app stores comes near).
+/// `0.30000000000000004`. Refused when a weight is negative or not a number, or none is positive;
+/// refused too when the scaled weights pass what `i128` holds (no market value the app stores
+/// comes near).
 pub fn allocate_weighted(total_cents: i64, targets: &[(&str, f64)]) -> Result<Vec<Share>, String> {
     let mut exact = Vec::with_capacity(targets.len());
     for (id, weight) in targets {
@@ -165,7 +165,7 @@ mod tests {
         );
     }
 
-    /// Node: `allocateAmountCents(1000, [{id:"1",weight:1.25*2},{id:"2",weight:0.1*3},{id:"3",weight:1.5}])`
+    /// Recorded: `allocateAmountCents(1000, [{id:"1",weight:1.25*2},{id:"2",weight:0.1*3},{id:"3",weight:1.5}])`
     /// is `[{id:"1",amountCents:581},{id:"2",amountCents:70},{id:"3",amountCents:349}]`.
     #[test]
     fn decimal_weights_split_as_node_splits_them() {

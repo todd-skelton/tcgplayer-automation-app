@@ -2,8 +2,7 @@
 //! against the identity (equivalent, potential match, excluded), with the lowest delivered asks
 //! and what changed since the scan before. Context only: it never changes the recommendation.
 //! Read here (`loadSlabSupply`, `describeSupply`, `compareSupplyScans`); refreshing stays the
-//! Node app's (`/api/slab-supply`), whose worker calls eBay and Alt. Node's read also woke its
-//! in-process evidence worker while a refresh was queued; this process cannot, so the worker must
+//! slab evidence worker's, which calls eBay and Alt. A read wakes no worker, so the worker must
 //! be running on its own.
 use std::collections::{BTreeSet, HashSet};
 
@@ -27,11 +26,11 @@ use crate::{
     row_order::Key,
 };
 
-/// Supply rows a page, as the Node app pages them.
+/// Supply rows a page.
 pub const ROWS: u32 = 50;
 
-/// A column the supply rows can be sorted by. As the React grid did, a sort orders the rows
-/// shown, not every page of them.
+/// A column the supply rows can be sorted by. A sort orders the rows shown, not every page of
+/// them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, corten::UrlValue)]
 #[serde(rename_all = "kebab-case")]
 pub enum SupplyColumn {
@@ -218,7 +217,7 @@ impl Row {
             .join("; ")
     }
 
-    /// `3 days`, `<1 day`, or "Unknown", as the React grid wrote a listing's age.
+    /// A listing's age: `3 days`, `<1 day`, or "Unknown".
     pub fn age(&self) -> String {
         match self.listing_age_days {
             None => "Unknown".into(),
@@ -257,7 +256,7 @@ impl Listing {
     }
 }
 
-/// `USD 12.30`, `Unknown currency 12.30`, or "Unknown", as the React panel wrote a price.
+/// A price: `USD 12.30`, `Unknown currency 12.30`, or "Unknown".
 pub fn money(value: Option<&Money>) -> String {
     match value {
         None => "Unknown".into(),
@@ -280,13 +279,13 @@ pub struct Asked<'a> {
     pub offset: u32,
 }
 
-/// The saved supply for the slab, screened as the Node app screens it.
+/// The saved supply for the slab, screened against its identity.
 pub async fn read(db: &Database, asked: &Asked<'_>) -> Result<Supply, String> {
     let mut conn = db.0.acquire().await.map_err(unavailable)?;
     load(&mut conn, asked, Utc::now()).await
 }
 
-/// Node hid what went wrong with the database behind this.
+/// What went wrong with the database is logged, not shown.
 fn unavailable(error: impl std::fmt::Display) -> String {
     tracing::error!("slab supply: {error}");
     "Unable to load slab supply context.".to_owned()
@@ -699,7 +698,7 @@ fn compare(previous: &Scan, current: &Scan) -> Result<Changes, String> {
     let keyed = |scan: &Scan| -> Vec<(String, Listing)> {
         scan.listings.iter().map(|l| (l.key(), l.clone())).collect()
     };
-    // Node's Map keeps the last listing for a key.
+    // The last listing for a key is the one kept.
     let find = |listings: &[(String, Listing)], key: &str| {
         listings
             .iter()

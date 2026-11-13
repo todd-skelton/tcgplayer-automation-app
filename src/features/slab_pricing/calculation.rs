@@ -1,8 +1,8 @@
 //! Calculating the owned slab's recommendation (`calculateSlabRecommendation`) from the evidence
 //! saved for it, never a provider: its confirmed identity held while the evidence is checked
 //! to be its own and not newer than the calculation, its sales made events and comps, the market
-//! and ask worked out, and the calculation saved once by the hash of its JSON, written as Node
-//! writes it, with the evidence it used kept.
+//! and ask worked out, and the calculation saved once by the hash of its JSON, written as saved
+//! calculations are written, with the evidence it used kept.
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::Serialize;
 use serde_json::Value;
@@ -38,7 +38,7 @@ pub struct Calculated {
     pub requires_review: bool,
 }
 
-/// Node's answer to anything but a refusal it words.
+/// The answer to anything but a worded refusal.
 const UNABLE: &str = "Unable to calculate a slab recommendation.";
 const LIMIT: &str = "Evidence expired or the selection exceeds the calculation limit.";
 const FIVE_MIB: i64 = 5 * 1024 * 1024;
@@ -309,7 +309,7 @@ pub async fn calculate(
     };
     let market = valuation::estimate(&direct.comps, quality, as_of, &policy)?;
     let ask = valuation::propose(&market, &seller, &policy)?;
-    // Values read from JSONB are written in JSONB's key order, as Node writes what it read.
+    // Values read from JSONB are written back in JSONB's key order, which the hash reads.
     let decisions = decided.iter().map(jsonb_json).collect::<Vec<_>>().join(",");
     let used = evidence
         .iter()

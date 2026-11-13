@@ -1,7 +1,6 @@
 //! The shipping export's saved settings (`shipping_export_config`, one row keyed `default`,
 //! `settings_json`): the sender, how each kind of package is sized and labeled, and the label
-//! defaults. The Node shipping export reads the same JSON, so it keeps the React app's camelCase
-//! shape, and a key a row lacks takes its default, as the React app's merge did.
+//! defaults. The JSON keeps its stored camelCase shape, and a key a row lacks takes its default.
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -257,7 +256,7 @@ impl Default for ShippingConfig {
 }
 
 /// `stored`'s keys over `defaults`', and an object's keys over the default object's one level
-/// down: what the React app's `mergeShippingExportConfigWithDefaults` gives.
+/// down (`mergeShippingExportConfigWithDefaults`).
 fn merged(stored: &Value) -> ShippingConfig {
     let fallback = ShippingConfig::default();
     let Value::Object(mut base) = serde_json::to_value(&fallback).expect("the defaults serialize")

@@ -7,6 +7,7 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
+use serde::Serialize;
 use serde_json::Value;
 
 use super::{
@@ -160,38 +161,63 @@ impl<E: Evidence> Resolve for Resolver<'_, E> {
 #[derive(Debug)]
 pub struct Priced {
     pub skus: Vec<PricedSku>,
-    pub summary: serde_json::Value,
-    pub progress: serde_json::Value,
+    pub summary: Value,
+    pub progress: Step,
 }
 
 /// A step of a job as the Batch Pricer's progress panel reads it (`ProcessingProgress`): one of
 /// six, its phase and when it began, the counts so far, and how far within the step.
-fn step(
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Step {
+    pub current: u32,
+    pub total: u32,
+    pub status: String,
+    pub processed: usize,
+    pub skipped: usize,
+    pub errors: usize,
+    pub warnings: usize,
+    pub phase: String,
+    /// When the phase began, in milliseconds since the epoch.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phase_start_time: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sub_progress: Option<Within>,
+}
+
+/// How far a step is: `current` of its `total` items, and what it is doing.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct Within {
+    pub current: usize,
+    pub total: usize,
+    pub status: String,
+}
+
+/// Step `current` of six, in `phase` since `phase_start`, with the counts so far.
+pub(super) fn step(
     current: u32,
     status: &str,
     phase: &str,
     phase_start: Option<i64>,
     counts: Stats,
     within: Option<(usize, usize, &str)>,
-) -> serde_json::Value {
-    let mut step = serde_json::json!({
-        "current": current,
-        "total": 6,
-        "status": status,
-        "processed": counts.processed,
-        "skipped": counts.skipped,
-        "errors": counts.errors,
-        "warnings": counts.warnings,
-        "phase": phase,
-    });
-    if let Some(at) = phase_start {
-        step["phaseStartTime"] = at.into();
+) -> Step {
+    Step {
+        current,
+        total: 6,
+        status: status.to_owned(),
+        processed: counts.processed,
+        skipped: counts.skipped,
+        errors: counts.errors,
+        warnings: counts.warnings,
+        phase: phase.to_owned(),
+        phase_start_time: phase_start,
+        sub_progress: within.map(|(current, total, status)| Within {
+            current,
+            total,
+            status: status.to_owned(),
+        }),
     }
-    if let Some((current, total, status)) = within {
-        step["subProgress"] =
-            serde_json::json!({ "current": current, "total": total, "status": status });
-    }
-    step
 }
 
 /// Wall-clock milliseconds, as `Date.now()` stamps a phase.
@@ -310,7 +336,7 @@ async fn names(db: &Database, items: &[Item]) -> Result<HashMap<i64, Display>, S
             .map_err(failed)?
             .into_iter()
             .collect();
-    // Node looks each SKU up within its item's product line and numbers it by its item's product.
+    // Each SKU is looked up within its item's product line and numbered by its item's product.
     let item_of: HashMap<i32, &Item> = items.iter().map(|i| (i.sku, i)).collect();
     let mut shown = HashMap::new();
     for row in rows {
@@ -354,7 +380,7 @@ async fn stored_pools(db: &Database, now: DateTime<Utc>) -> Pools {
 }
 
 /// The shipping cost model snaps are priced with, when the policy snaps; none when it cannot be
-/// learned, as Node prices without snaps then.
+/// learned, so the batch is priced without snaps.
 pub(crate) async fn cost_model(
     db: &Database,
     stored: &StoredConfig,
@@ -410,8 +436,8 @@ async fn reusable_curves(
 
 /// Prices `batch`'s items under `config`, the configuration its job was queued with, as of `now`:
 /// from sales read through `evidence` and market data through `market`, or in `cached` mode from
-/// the SKUs' saved curves and the inventory's market prices. Each step is told to `report` as
-/// Node's worker reports it.
+/// the SKUs' saved curves and the inventory's market prices. Each step is told to `report`, for
+/// the job's progress.
 #[allow(
     clippy::too_many_arguments,
     reason = "executeInventoryBatchPricingJob's inputs"
@@ -424,7 +450,7 @@ pub async fn price<E: Evidence, M: MarketData>(
     evidence: &E,
     market: &M,
     now: DateTime<Utc>,
-    report: &mut impl FnMut(serde_json::Value),
+    report: &mut impl FnMut(Step),
 ) -> Result<Priced, Stopped> {
     let started = Instant::now();
     let stored = &stored(config);

@@ -5,8 +5,8 @@
 //! was published with is graded side by side, by its actual days per forecast day and by its
 //! Brier score on whether the listing sold within each of [`HORIZON_DAYS`].
 //!
-//! Times are whole milliseconds, as the Node app's dates hold them, so the report reads to the
-//! same figures.
+//! Times are whole milliseconds, the precision the evidence was recorded at, so the report reads
+//! to the same figures.
 mod evidence;
 
 use chrono::{DateTime, Utc};

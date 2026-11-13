@@ -1,7 +1,7 @@
 //! Shipping thresholds: the order values where shipping economics step, what shipping costs the
 //! seller in each band, and the snap that lists a card just under a threshold when that returns
 //! more. Ported from `app/features/shipping-thresholds` and `core/types/shippingThresholds.ts`;
-//! the JSON keeps the Node app's shape, since pricing decisions store it.
+//! the JSON keeps its stored shape, since pricing decisions store it.
 #![allow(dead_code, reason = "the engine lands before the pricers that call it")]
 use serde::{Deserialize, Serialize};
 

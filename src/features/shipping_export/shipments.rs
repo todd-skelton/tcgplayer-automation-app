@@ -1,6 +1,6 @@
 //! The packages a batch of orders ships as, built from the orders and the shipping settings
-//! (ported from `services/shippingExportUtils.ts`). Each is an EasyPost shipment in the shape the
-//! Node app's postage routes take, so a purchase sends it as it is.
+//! (ported from `services/shippingExportUtils.ts`). Each is an EasyPost shipment in the shape a
+//! purchase takes, so a purchase sends it as it is.
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
@@ -231,8 +231,7 @@ pub fn csv(shipments: &[Shipment]) -> String {
 }
 
 /// What a shipment's CSV is saved as: `EasyPost_Shipments_4x6_2026.10.29.17.05.00.csv`, or
-/// `EasyPost_Returns_..` for the way back. The React screen meant this stamp, but its pattern cut
-/// it to the year.
+/// `EasyPost_Returns_..` for the way back.
 pub fn csv_file_name(shipment: &Shipment, direction: Direction, at: DateTime<Utc>) -> String {
     let what = match direction {
         Direction::Outbound => "Shipments",

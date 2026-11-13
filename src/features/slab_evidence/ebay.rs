@@ -3,8 +3,8 @@
 //! [`Transport`]. Ported from `evidence/ebayResearchProvider.server.ts` and
 //! `evidence/ebayResearchStream.server.ts`.
 //!
-//! eBay answers a stream of JSON modules separated by blank lines. It is read strictly, as Node
-//! reads it: anything unexpected is `invalid-response`, an error eBay reports is `unavailable`,
+//! eBay answers a stream of JSON modules separated by blank lines. It is read strictly: anything
+//! unexpected is `invalid-response`, an error eBay reports is `unavailable`,
 //! and an empty search is accepted only when eBay says so for these keywords.
 use std::{future::Future, sync::LazyLock};
 
@@ -163,7 +163,7 @@ fn source_date(value: &Value) -> Read<Value> {
     Ok(human_date(display(value)?.as_deref())?.map_or(Value::Null, Value::String))
 }
 
-/// `researchMidnight`: when `date` begins in `zone`, in milliseconds, found as Node finds it.
+/// `researchMidnight`: when `date` begins in `zone`, in milliseconds.
 pub fn midnight(date: NaiveDate, zone: Tz) -> Read<i64> {
     let target = date
         .and_hms_opt(0, 0, 0)
@@ -188,7 +188,7 @@ pub fn midnight(date: NaiveDate, zone: Tz) -> Read<i64> {
     invalid()
 }
 
-/// A query checked as Node checks it: its keywords trimmed.
+/// A query checked: its keywords trimmed.
 struct Checked {
     keywords: String,
     from: NaiveDate,
@@ -252,7 +252,7 @@ pub fn search_path(query: &Query, tab: Tab) -> Read<String> {
     ))
 }
 
-/// The JSON frames of eBay's answer, split at blank lines as Node's stream splits them.
+/// The JSON frames of eBay's answer, split at blank lines.
 fn frames(body: &str) -> Vec<&str> {
     let mut frames = Vec::new();
     let (mut start, mut pending, mut previous_cr) = (0, None, false);
@@ -690,7 +690,7 @@ pub fn read_page(body: &str, tab: Tab, query: &Query, as_of: &str) -> Read<Value
             }))
         }
         (Tab::Sold, Tab::Active) => {
-            // Node reads the rows before it sees the tab: a row it cannot read still fails.
+            // The rows are read before the tab is checked: a row that cannot be read still fails.
             rows.iter().map(supply).collect::<Read<Vec<Value>>>()?;
             Ok(json!({ "status": "active-fallback", "asOf": as_of, "keywords": q.keywords }))
         }
@@ -715,8 +715,8 @@ pub fn read_page(body: &str, tab: Tab, query: &Query, as_of: &str) -> Read<Value
 }
 
 /// eBay Research through one connection: each read claims the connection, as every process's
-/// reads do, and stops when `cancel` resolves. Node allows a run three reads; the worker makes
-/// one per refresh, so this does not count them.
+/// reads do, and stops when `cancel` resolves. Reads are not counted; the worker makes one per
+/// refresh.
 pub struct Ebay<'a, G> {
     pub transport: &'a Transport,
     pub gate: &'a G,
@@ -755,9 +755,9 @@ mod tests {
         assert_eq!(frames("a\nb"), ["a\nb"]);
     }
 
-    /// Node's reader over the provider fixtures and edge cases built from them
+    /// The recorded reader's answers over the provider fixtures and edge cases built from them
     /// (`tests/fixtures/node/slab/ebay-parse.json`, by `scripts/parity/slab-parsers.ts`): the
-    /// search asked, and each answer or the status it refused with, are Node's.
+    /// search asked, and each answer or the status it refused with, are the ones recorded.
     #[test]
     fn answers_are_read_as_node_reads_them() {
         let node: Value = serde_json::from_str(

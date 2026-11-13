@@ -1,8 +1,7 @@
 //! The shipping workflow in progress (`shipping_workflows`, migration 054): what cannot be worked
 //! out again. Shipments are planned again from the orders under the current settings, and
-//! outbound postage is read again from the Node app's record, so neither is kept; the React
-//! screen's localStorage kept the same, and shipment edits, which it lost on a reload, are kept
-//! here.
+//! outbound postage is read again from its record, so neither is kept; shipment edits are kept
+//! here, so a reload keeps them.
 use std::collections::BTreeMap;
 
 use chrono::{DateTime, Utc};
@@ -33,7 +32,7 @@ pub struct Workflow {
     pub warnings: Vec<String>,
     pub orders: Vec<Order>,
     /// Outbound purchases that bought no label (failed, or skipped as not domestic), by shipment,
-    /// until one does: the Node app's lookups only find labels bought.
+    /// until one does: the postage record's lookups only find labels bought.
     pub attempts: Postage,
     /// Return labels bought, by shipment.
     pub returns: Postage,
@@ -112,15 +111,21 @@ impl Workflow {
     }
 }
 
-/// The workflow in progress, if any. One this version cannot read is none, as the React screen
-/// dropped one it could not restore rather than half restore it.
+/// The workflow in progress, if any. One this version cannot read is none, so a saved workflow
+/// is restored whole or not at all.
 pub async fn current(db: &Database) -> sqlx::Result<Option<Workflow>> {
-    let row: Option<(serde_json::Value,)> =
-        sqlx::query_as("SELECT workflow_json FROM shipping_workflows WHERE workflow_key = $1")
-            .bind(KEY)
-            .fetch_optional(&db.0)
-            .await?;
-    Ok(row.and_then(|(json,)| serde_json::from_value(json).ok()))
+    let saved: Option<String> = sqlx::query_scalar(
+        "SELECT workflow_json::text FROM shipping_workflows WHERE workflow_key = $1",
+    )
+    .bind(KEY)
+    .fetch_optional(&db.0)
+    .await?;
+    Ok(saved.as_deref().and_then(readable))
+}
+
+/// A saved workflow, when this version can read it.
+fn readable(saved: &str) -> Option<Workflow> {
+    serde_json::from_str(saved).ok()
 }
 
 /// Starts over with `workflow`; one without orders clears it.
@@ -150,14 +155,13 @@ pub async fn change<R>(
     change: impl FnOnce(&mut Workflow) -> R,
 ) -> sqlx::Result<Option<R>> {
     let mut tx = db.0.begin().await?;
-    let row: Option<(serde_json::Value,)> = sqlx::query_as(
-        "SELECT workflow_json FROM shipping_workflows WHERE workflow_key = $1 FOR UPDATE",
+    let saved: Option<String> = sqlx::query_scalar(
+        "SELECT workflow_json::text FROM shipping_workflows WHERE workflow_key = $1 FOR UPDATE",
     )
     .bind(KEY)
     .fetch_optional(&mut *tx)
     .await?;
-    let Some(mut workflow) = row.and_then(|(json,)| serde_json::from_value::<Workflow>(json).ok())
-    else {
+    let Some(mut workflow) = saved.as_deref().and_then(readable) else {
         return Ok(None);
     };
     let out = change(&mut workflow);

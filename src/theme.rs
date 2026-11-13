@@ -1,5 +1,5 @@
-//! The design tokens (`tokens/`, W3C Design Tokens), in place of the React app's MUI theme: its
-//! blue, a light and a dark theme that follows the system, and the utility classes made from them.
+//! The design tokens (`tokens/`, W3C Design Tokens): the app's blue, a light and a dark theme
+//! that follows the system, and the utility classes made from them.
 //!
 //! Colors are roles, named as the Corten UI kit names them (`--background`, `--card`,
 //! `--primary`, `--muted-foreground`, `--border`, `--input`, `--ring`, ...), with the tones an

@@ -629,7 +629,7 @@ pub(crate) async fn alone(conn: &mut PgConnection) -> sqlx::Transaction<'_, sqlx
 }
 
 /// A test's transaction on the dev database: alone among the evidence tests, which write the same
-/// keys and would deadlock, and with the evidence tables empty, as Node's recordings start them
+/// keys and would deadlock, and with the evidence tables empty, as the recordings start them
 /// (`scripts/parity/slab-evidence.ts`). Rolled back, it leaves what the database held.
 #[cfg(test)]
 pub(crate) async fn test_transaction(
@@ -698,7 +698,7 @@ mod tests {
 
     /// The queue scenario of `scripts/parity/slab-evidence.ts` (requests, claims, two saved, a
     /// retry, a failure, a cancel, a forced request) on the dev database in a transaction rolled
-    /// back, compared with what Node answered and wrote (`tests/fixtures/node/slab/evidence-queue.json`, read back
+    /// back, compared with the answers and writes recorded (`tests/fixtures/node/slab/evidence-queue.json`, read back
     /// with `tests/fixtures/node/slab/capture.sql`).
     #[tokio::test]
     #[ignore = "writes the dev database in a transaction it rolls back"]

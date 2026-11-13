@@ -1,4 +1,4 @@
-//! TCGplayer's APIs, called as the Node app's `DomainHttpClient` calls them: the auth cookie and
+//! TCGplayer's APIs (`DomainHttpClient`): the auth cookie and
 //! user agent from `http_config`, and per domain a delay between request starts, a cap on requests
 //! in flight, a cooldown after a rate limit and, for adaptive domains, a delay that rises on a rate
 //! limit and falls after a run of successes. Ported from `app/core/clients/baseDomainClient.server.ts`.
@@ -21,7 +21,7 @@ use crate::{
 /// Attempts after the first, when a request retries.
 const MAX_RETRIES: u32 = 3;
 
-/// The host each domain's requests go to (`TCGPLAYER_DOMAINS` in the Node app).
+/// The host each domain's requests go to (`TCGPLAYER_DOMAINS`).
 pub fn host(domain: Domain) -> &'static str {
     match domain {
         Domain::MpSearchApi => "mp-search-api.tcgplayer.com",
@@ -169,8 +169,8 @@ pub fn after_rate_limit(limits: &Limits, adaptive: &Adaptive) -> Option<(u32, u3
             .request_delay_ms
             .saturating_add(adaptive.floor_step_ms),
     );
-    // Node multiplies in floating point; a whole multiplier (the default 2.0) gives the same
-    // whole number, and a fractional one is rounded where Node would store the fraction.
+    // Multiplied in floating point and rounded: a whole multiplier (the default 2.0) gives a
+    // whole number as it is, and a fractional one is rounded to a whole millisecond.
     let raised = (f64::from(floor) * adaptive.increase_multiplier).round();
     let delay = f64::from(limits.max_request_delay_ms).min(raised) as u32;
     Some((delay, floor))

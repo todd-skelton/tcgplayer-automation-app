@@ -731,7 +731,7 @@ async fn check(
 
 /// `dryRunSlabPublication`: the preview's publication prepared under `intent` (or the one
 /// already prepared under it), approved and run against the imported inventory. Returns where
-/// it stands, by its id; a refusal is Node's message.
+/// it stands, by its id; a refusal is its message.
 pub async fn dry_run(
     conn: &mut PgConnection,
     intent: &str,

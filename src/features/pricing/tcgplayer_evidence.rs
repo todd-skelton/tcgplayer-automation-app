@@ -132,24 +132,37 @@ fn whole_number<'de, D: serde::Deserializer<'de>>(d: D) -> Result<i64, D::Error>
     Ok(Option::<f64>::deserialize(d)?.map_or(0, |n| n as i64))
 }
 
+/// A field read loosely: a number, text, a flag, or anything else, which reads as none.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum Loose {
+    Number(f64),
+    Text(String),
+    Flag(bool),
+    Other(serde::de::IgnoredAny),
+}
+
 /// A number, or text holding one (`"10000+"`, `"1,234"`); none for anything else.
 fn loose_number<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<f64>, D::Error> {
-    let number = match serde_json::Value::deserialize(d)? {
-        serde_json::Value::Number(n) => n.as_f64(),
-        serde_json::Value::String(text) => text
+    let number = match Loose::deserialize(d)? {
+        Loose::Number(n) => Some(n),
+        Loose::Text(text) => text
             .trim()
             .trim_end_matches('+')
             .replace(',', "")
             .parse()
             .ok(),
-        _ => None,
+        Loose::Flag(_) | Loose::Other(_) => None,
     };
     Ok(number.filter(|n| n.is_finite()))
 }
 
 /// A flag; none for anything else.
 fn loose_flag<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<bool>, D::Error> {
-    Ok(serde_json::Value::deserialize(d)?.as_bool())
+    Ok(match Loose::deserialize(d)? {
+        Loose::Flag(flag) => Some(flag),
+        Loose::Number(_) | Loose::Text(_) | Loose::Other(_) => None,
+    })
 }
 
 impl ListedAsk {
@@ -800,7 +813,7 @@ mod tests {
     }
 
     /// One approved live read (decision 32): the dev ledger's busiest product's latest sales and
-    /// price history, checked against what the Node app recorded. Writes nothing to the database;
+    /// price history, checked against what the ledger recorded. Writes nothing to the database;
     /// with `LATEST_SALES_FIXTURE` set, saves the sales there with titles and listing ids cleared.
     #[cfg(feature = "live-tcgplayer")]
     #[tokio::test]

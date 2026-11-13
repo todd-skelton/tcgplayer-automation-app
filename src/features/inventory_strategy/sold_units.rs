@@ -1,5 +1,5 @@
 //! Every sold unit under a current FIFO allocation, at its share of its order's net proceeds and
-//! its lot's current cost: the Node app's `findSoldUnits` and `loadSoldUnitLines`.
+//! its lot's current cost (`findSoldUnits`, `loadSoldUnitLines`).
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};

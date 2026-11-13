@@ -208,7 +208,7 @@ pub trait TrackingApi {
     async fn post(&self, path: &str, body: &Value) -> Result<(), String>;
 }
 
-/// What axios asks for by default, as the Node app asked.
+/// The Accept header sent to TCGplayer's order routes: axios's default.
 const AXIOS_ACCEPT: &str = "application/json, text/plain, */*";
 
 /// The API, through the app's TCGplayer client and its rate limits; the answer is not read.
@@ -232,7 +232,7 @@ impl TrackingApi for TcgPlayerTracking {
 
 /// Each order's tracking applied on TCGplayer, the first update of an order only
 /// (`applyTrackingToSellerOrders`); an update without an order number, carrier or tracking number
-/// is refused as the Node route refuses it.
+/// is refused.
 pub async fn apply_tracking(
     api: &impl TrackingApi,
     updates: &[Tracking],
@@ -340,7 +340,7 @@ fn shipped_message(tracking_url: &str) -> String {
 /// Each order's buyer told their order shipped, with its production shipment's public tracking
 /// page, the first message of an order only, each shipment's page read once
 /// (`sendShippedMessagesToSellerOrders`); a message without an order number, seller or shipment
-/// is refused as the Node route refuses it.
+/// is refused.
 pub async fn send_messages(
     api: &impl MessagesApi,
     easypost: &impl Api,

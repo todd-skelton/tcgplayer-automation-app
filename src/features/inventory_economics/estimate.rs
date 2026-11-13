@@ -127,7 +127,7 @@ pub struct ExplicitAllocation {
     pub amount_cents: i64,
 }
 
-/// The purchase cost Node's `recordPurchaseCost` is given, in its JSON shape.
+/// The purchase cost `recordPurchaseCost` is given, in its JSON shape.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PurchaseCost {
@@ -422,7 +422,7 @@ pub async fn uncosted(db: impl sqlx::PgExecutor<'_>, seller: &str) -> sqlx::Resu
     .await
 }
 
-/// How often the shadow looks for batches Node's worker would estimate. Node looks every cycle.
+/// How often the shadow looks for batches the worker would estimate.
 pub const EVERY: Duration = Duration::from_secs(60 * 60);
 
 /// What the worker's run would record now: the uncosted batches' estimates, or none.

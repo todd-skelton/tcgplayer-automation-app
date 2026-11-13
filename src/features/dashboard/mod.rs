@@ -2,8 +2,7 @@
 //! `app/routes/dashboard.tsx`, which drew `primaryNavigationItems`; here the same list as the
 //! app bar's, [`crate::layout::PRIMARY`].
 //!
-//! `GET /` is the app's own route (`crate::app::url::Home`): an area cannot sit at the root,
-//! and every other path there is the React app's.
+//! `GET /` is the app's own route (`crate::app::url::Home`): an area cannot sit at the root.
 mod page;
 
 pub use page::{COMPONENTS, show};

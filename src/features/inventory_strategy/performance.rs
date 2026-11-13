@@ -1,7 +1,6 @@
 //! What the seller's selling actually earned: margin, profit per day and return on the capital
 //! tied up, over trailing windows and week by week, from each sold unit's share of its order's
-//! net proceeds and its lot's cost. Ported from the Node app's `realizedPerformance.ts` and
-//! `marginTrend.ts`.
+//! net proceeds and its lot's cost (`realizedPerformance.ts`, `marginTrend.ts`).
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use serde::Serialize;
 
@@ -123,7 +122,7 @@ fn percent(part: f64, whole: f64) -> Option<f64> {
 }
 
 /// Days between two instants, with the fraction, each instant to the millisecond as JavaScript
-/// holds it (`(b - a) / DAY_MS` in the Node app).
+/// holds it (`(b - a) / DAY_MS`).
 pub fn days_between(from: DateTime<Utc>, to: DateTime<Utc>) -> f64 {
     (to.timestamp_millis() - from.timestamp_millis()) as f64 / DAY_MS
 }

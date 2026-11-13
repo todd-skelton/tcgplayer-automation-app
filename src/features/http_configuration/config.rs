@@ -1,6 +1,6 @@
 //! The HTTP client's settings (`http_config`, one row keyed `default`): TCGplayer's auth cookie,
-//! the user agent, each API domain's rate limits and the adaptive algorithm's tuning. The Node
-//! workers read the same row, so the JSON columns keep the React app's camelCase shape.
+//! the user agent, each API domain's rate limits and the adaptive algorithm's tuning. The JSON
+//! columns keep their stored camelCase shape, so rows already saved read the same.
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
@@ -145,7 +145,7 @@ impl HttpConfig {
     }
 }
 
-/// `stored`'s keys over `defaults`', one level deep: what the React app's object spread gives.
+/// `stored`'s keys over `defaults`', one level deep, as an object spread gives.
 fn over(defaults: Value, stored: Option<&Value>) -> Value {
     match (defaults, stored) {
         (Value::Object(mut base), Some(Value::Object(top))) => {

@@ -2,7 +2,7 @@
 //! line's new products or every product, one product, one set), each a form whose result shows
 //! under it. Ported from `app/routes/home.tsx` (served at `/data-management`).
 //!
-//! The jobs run here (`catalog`, ported from the Node app's `runCatalogMaintenance`): they read
+//! The jobs run here (`catalog`, `runCatalogMaintenance`): they read
 //! TCGplayer and write the catalog. This screen checks what each form says, runs the job, and
 //! draws what it did. With JavaScript a form's answer replaces its card only, so the other forms
 //! keep what was typed; without, it is the page with that card's result.

@@ -1,7 +1,7 @@
-//! CSV as the React screens read and wrote it with Papa Parse. Written (`unparse`) so a file saved
-//! from a ported screen opens as the one saved before: a field quoted when it holds a comma, a
+//! CSV as Papa Parse reads and writes it. Written (`unparse`) so a file saved from a screen opens
+//! as the ones saved before: a field quoted when it holds a comma, a
 //! quote, a line break, or space at either end, lines ended by CRLF and none after the last. Read
-//! (`parse`) so an upload reads to the rows the Node app read from it: the line break and the
+//! (`parse`) so an upload reads to the same rows as before: the line break and the
 //! delimiter guessed as Papa Parse 5.7 guesses them, and a malformed quote read as it reads it.
 use serde_json::{Map, Value};
 
@@ -462,7 +462,7 @@ mod tests {
         Value::Array(parse(text).into_iter().map(Value::Object).collect())
     }
 
-    /// Readings Papa Parse 5.7 gave in the Node app.
+    /// Readings Papa Parse 5.7 gave.
     #[test]
     fn exports_read_as_papa_parse_reads_them() {
         assert_eq!(
