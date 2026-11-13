@@ -594,6 +594,7 @@ mod tests {
             .add::<pull_sheet::SortBy>()
             .add::<inventory_intake::IntakeListing>()
             .add::<inventory_intake::IntakeCounts>()
+            .add::<shipping_export::LabelFormFill>()
             .components(pull_sheet::COMPONENTS)
             .components(inventory_intake::COMPONENTS)
             .components(batch_pricer::COMPONENTS)

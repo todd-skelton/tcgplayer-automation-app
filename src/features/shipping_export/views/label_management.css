@@ -71,6 +71,19 @@
     display: grid;
   }
 }
+/* A choice's note about labels already bought, with its confirmation. */
+.repurchase {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+/* The script answers a new choice or service itself, so only a page without it applies them. */
+@media (scripting: enabled) {
+  .apply {
+    display: none;
+  }
+}
 .between {
   display: flex;
   align-items: baseline;
