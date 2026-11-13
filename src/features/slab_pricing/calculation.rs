@@ -47,7 +47,7 @@ const FIVE_MIB: i64 = 5 * 1024 * 1024;
 const DAY_MS: f64 = 86_400_000.0;
 
 fn unable(error: impl std::fmt::Display) -> String {
-    eprintln!("slab recommendation: {error}");
+    tracing::error!("slab recommendation: {error}");
     UNABLE.to_owned()
 }
 

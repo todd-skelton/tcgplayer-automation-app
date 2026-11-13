@@ -289,7 +289,7 @@ pub async fn review_ask(conn: &mut sqlx::PgConnection, o: &ReviewedAsk<'_>) -> R
         return Err("Provide an explicit item price, currency and review reason.".to_owned());
     }
     let failed = |error: sqlx::Error| {
-        eprintln!("slab reviewed ask: {error}");
+        tracing::error!("slab reviewed ask: {error}");
         "Unable to calculate a slab recommendation.".to_owned()
     };
     let mut tx = conn.begin().await.map_err(failed)?;

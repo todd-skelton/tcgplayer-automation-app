@@ -346,7 +346,9 @@ async fn stored_pools(db: &Database, now: DateTime<Utc>) -> Pools {
     product_line_pools::load(&db.0, now)
         .await
         .inspect_err(|e| {
-            eprintln!("Product line pools could not be read; shrunk forecasts pool the run. {e}")
+            tracing::warn!(
+                "Product line pools could not be read; shrunk forecasts pool the run. {e}"
+            )
         })
         .unwrap_or_default()
 }
@@ -373,7 +375,7 @@ pub(crate) async fn cost_model(
     learn_recent(db, seller, snaps.evidence_window_days.into(), now)
         .await
         .inspect_err(|e| {
-            eprintln!(
+            tracing::warn!(
                 "Shipping cost model could not be learned; pricing without threshold snaps. {e}"
             )
         })

@@ -32,7 +32,7 @@ pub async fn run(db: Database, signal: Signal) {
         match backfilled {
             Ok(0) => {}
             Ok(recorded) => println!("Forecast evidence recorded on {recorded} published items."),
-            Err(why) => eprintln!("Forecast evidence backfill failed: {why}"),
+            Err(why) => tracing::error!("Forecast evidence backfill failed: {why}"),
         }
     }
 }

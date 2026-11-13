@@ -2199,6 +2199,7 @@ dependencies = [
  "sha2",
  "sqlx",
  "tokio",
+ "tracing",
  "unicode-normalization",
 ]
 

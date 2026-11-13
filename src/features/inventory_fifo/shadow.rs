@@ -216,7 +216,7 @@ pub async fn run(db: Database, log: PathBuf, signal: Signal) {
             Ok(seller) if !seller.trim().is_empty() => seller,
             Ok(_) => continue,
             Err(why) => {
-                eprintln!("FIFO shadow: seller configuration failed: {why}");
+                tracing::error!("FIFO shadow: seller configuration failed: {why}");
                 continue;
             }
         };
@@ -232,7 +232,7 @@ pub async fn run(db: Database, log: PathBuf, signal: Signal) {
                 if tally.clean() { "clean" } else { "differs" },
                 tally.skus
             ),
-            Err(why) => eprintln!("FIFO shadow pass failed: {why}"),
+            Err(why) => tracing::error!("FIFO shadow pass failed: {why}"),
         }
     }
 }

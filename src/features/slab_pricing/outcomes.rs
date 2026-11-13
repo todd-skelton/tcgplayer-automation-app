@@ -499,7 +499,7 @@ pub async fn import(db: &Database, csv: &str, seller: &str) -> Result<Imported, 
 }
 
 fn unavailable(error: sqlx::Error) -> String {
-    eprintln!("slab outcomes: {error}");
+    tracing::error!("slab outcomes: {error}");
     "Seller outcomes are unavailable.".to_owned()
 }
 

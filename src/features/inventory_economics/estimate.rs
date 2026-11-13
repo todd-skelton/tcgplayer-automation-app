@@ -685,7 +685,7 @@ pub async fn run(db: Database, log: PathBuf, signal: Signal) {
             logged = logged => logged,
         };
         if let Err(why) = logged {
-            eprintln!("Estimated purchase cost shadow failed: {why}");
+            tracing::error!("Estimated purchase cost shadow failed: {why}");
         }
     }
 }

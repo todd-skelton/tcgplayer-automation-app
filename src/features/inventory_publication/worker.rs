@@ -33,7 +33,7 @@ const POLL: Duration = Duration::from_millis(1_000);
 pub fn on() -> bool {
     let wanted = crate::config::is_set("PUBLICATION_WORKER");
     if wanted && !crate::config::seller_portal_writes() {
-        eprintln!(
+        tracing::warn!(
             "Inventory publication worker is off: PUBLICATION_WORKER is set but {} is not true",
             crate::config::SELLER_PORTAL_WRITES
         );
@@ -78,7 +78,7 @@ pub async fn claim(
         return Ok(Err(Idle::Stopped));
     }
     if let Err(why) = queued_intake::plan_next(conn, now).await {
-        eprintln!(
+        tracing::error!(
             "Queued intake publication planning failed; existing publications can continue: {why}"
         );
     }
@@ -106,7 +106,7 @@ async fn process(
                 store::heartbeat(&mut conn, publication.id, worker, lease_ms()).await
             };
             if let Err(why) = renewed.await {
-                eprintln!("Inventory publication heartbeat failed: {why}");
+                tracing::error!("Inventory publication heartbeat failed: {why}");
             }
         }
     };
@@ -132,7 +132,7 @@ pub async fn tick(db: &Database, portal: &impl Poster, worker: &str) -> Duration
         Ok(wait) => wait,
         Err(why) => {
             let why: store::Error = why;
-            eprintln!("Inventory publication worker failed: {why}");
+            tracing::error!("Inventory publication worker failed: {why}");
             POLL
         }
     }

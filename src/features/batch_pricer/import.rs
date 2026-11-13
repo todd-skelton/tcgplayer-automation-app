@@ -233,7 +233,7 @@ pub fn listing_rows(products: &[Product]) -> Vec<Map<String, Value>> {
         for listing in product.listings.iter().filter(|l| !l.is_custom()) {
             let id = js_float(listing.product_condition_id);
             if !seen.insert(id.clone()) {
-                eprintln!("Duplicate SKU ID found: {id}. Skipping duplicate listing.");
+                tracing::warn!("Duplicate SKU ID found: {id}. Skipping duplicate listing.");
                 continue;
             }
             let market = product

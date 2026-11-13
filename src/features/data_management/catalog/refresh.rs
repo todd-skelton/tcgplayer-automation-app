@@ -40,7 +40,7 @@ pub async fn product_lines(
             Err(e) => Err(e),
         };
         if let Err(e) = saved {
-            eprintln!(
+            tracing::error!(
                 "Failed to fetch category filters for product line {}: {e}",
                 line.product_line_id
             );
@@ -145,7 +145,7 @@ async fn save(
     };
     if let Some(existing) = existing.filter(|e| e.set_id != product.set_id) {
         fetched.set_changes += 1;
-        eprintln!(
+        tracing::info!(
             "[fetchAndUpsertProductsAndSkus] SET CHANGE DETECTED for product {}: {:?} ({}) -> {:?} ({})",
             product.product_id,
             existing.set_name,
@@ -232,7 +232,7 @@ pub async fn products_and_skus(
                     match saved {
                         Ok(product) => Some(product),
                         Err(e) => {
-                            eprintln!(
+                            tracing::error!(
                                 "[fetchAndUpsertProductsAndSkus] Failed to fetch product {id}: {e}"
                             );
                             continue;

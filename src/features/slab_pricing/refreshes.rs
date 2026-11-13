@@ -21,7 +21,7 @@ pub(super) const UNABLE: &str = "Unable to access slab evidence.";
 
 /// The database failing, logged and answered as Node answered it.
 pub(super) fn unable(error: impl std::fmt::Display) -> String {
-    eprintln!("slab evidence: {error}");
+    tracing::error!("slab evidence: {error}");
     UNABLE.to_owned()
 }
 

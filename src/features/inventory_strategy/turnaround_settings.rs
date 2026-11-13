@@ -74,7 +74,7 @@ pub async fn save_for_configured_seller(db: &Database, change: &Change) -> Resul
         return Err("Manual turnaround must be between 0 and 3,650 days.".into());
     }
     let failed = |e: sqlx::Error| {
-        eprintln!("Turnaround setting save failed: {e}");
+        tracing::error!("Turnaround setting save failed: {e}");
         "Turnaround setting could not be saved.".to_string()
     };
     let mut tx = db.0.begin().await.map_err(failed)?;

@@ -108,13 +108,13 @@ impl Screen {
         );
         let dashboard = dashboard.map_err(corten::Error::new)?;
         let selling_history = history.map_err(|why| {
-            eprintln!("Inventory selling history load failed: {why}");
+            tracing::error!("Inventory selling history load failed: {why}");
             "Selling history could not be loaded. Existing strategy analysis is still available."
         });
         let (saved, settings_error) = match saved {
             Ok(saved) => (saved, None),
             Err(why) => {
-                eprintln!("Inventory Strategy turnaround settings load failed: {why}");
+                tracing::error!("Inventory Strategy turnaround settings load failed: {why}");
                 (
                     Vec::new(),
                     Some(

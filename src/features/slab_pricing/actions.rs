@@ -425,7 +425,7 @@ pub async fn cancel(
             refused(Place::Research, &req, &db, &at.choice, why.0).await
         }
         Err(why) => {
-            eprintln!("Slab evidence cancel failed: {why}");
+            tracing::error!("Slab evidence cancel failed: {why}");
             refused(
                 Place::Research,
                 &req,

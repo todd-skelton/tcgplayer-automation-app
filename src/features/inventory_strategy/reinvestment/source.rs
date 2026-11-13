@@ -706,7 +706,7 @@ pub async fn load_with_recovery(db: &Database, seller: &str) -> (Option<Report>,
     match load(db, seller, hour_of(Utc::now())).await {
         Ok(report) => (Some(report), None),
         Err(why) => {
-            eprintln!("Reinvestment turnaround rebuild failed: {why}");
+            tracing::error!("Reinvestment turnaround rebuild failed: {why}");
             match current(db, seller).await {
                 Ok(Some(prior)) => {
                     let note = format!(
