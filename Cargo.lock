@@ -283,12 +283,12 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 [[package]]
 name = "corten-macros"
 version = "0.2.0"
-source = "git+https://github.com/corten-run/corten?rev=921cd842#921cd8422d4293863981546ced30da5c2e256cf6"
+source = "git+https://github.com/corten-run/corten?rev=87344049#87344049369997780660eb149d182bbb7d72359f"
 
 [[package]]
 name = "corten-run"
 version = "0.2.0"
-source = "git+https://github.com/corten-run/corten?rev=921cd842#921cd8422d4293863981546ced30da5c2e256cf6"
+source = "git+https://github.com/corten-run/corten?rev=87344049#87344049369997780660eb149d182bbb7d72359f"
 dependencies = [
  "brotli",
  "bytes",
@@ -320,7 +320,7 @@ dependencies = [
 [[package]]
 name = "corten-ui"
 version = "0.2.0"
-source = "git+https://github.com/corten-run/corten?rev=921cd842#921cd8422d4293863981546ced30da5c2e256cf6"
+source = "git+https://github.com/corten-run/corten?rev=87344049#87344049369997780660eb149d182bbb7d72359f"
 dependencies = [
  "corten-run",
 ]
