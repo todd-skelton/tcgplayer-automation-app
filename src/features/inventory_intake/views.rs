@@ -7,8 +7,8 @@ mod queue_bar;
 
 pub use background_batches::BackgroundBatches;
 pub use intake_screen::{
-    BATCHES_EVERY, CountForm, Counted, IntakeError, IntakeRow, IntakeScreen, QueueNotice, Queuing,
-    UnqueuedCounts, label, set_search,
+    BATCHES_EVERY, CountForm, Counted, IntakeError, IntakeRow, IntakeScreen, ListingParts,
+    QueueNotice, Queuing, UnqueuedCounts, label, set_search,
 };
 /// What the screen hands its script, which the types test declares for it.
 #[cfg(test)]

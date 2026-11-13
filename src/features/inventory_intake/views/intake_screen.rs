@@ -1,12 +1,12 @@
 use std::{collections::HashMap, time::Duration};
 
-use corten::{ToJson, form::SubmitField, prelude::*, script::ElementId};
+use corten::{Route, ToJson, form::SubmitField, prelude::*, script::ElementId};
 
 use super::{background_batches::BackgroundBatches, queue_bar::QueueBar};
 use crate::{
     features::inventory_intake::{
         catalog::{Condition, LANGUAGES, PageSize, Product, ProductOrder, ProductType, Scope},
-        page::{CountInput, Screen},
+        page::{CountInput, Listing, Screen},
         queue::{self, Batches, QueueInput},
         url::{self, Selection},
     },
@@ -40,6 +40,19 @@ struct ConditionSelectId;
 struct SetSelectId;
 #[derive(Id)]
 struct SearchId;
+/// What the search looks in: this set, or every set's card numbers.
+#[derive(Id)]
+struct SearchLabelId;
+/// The summary of the filters folded away.
+#[derive(Id)]
+struct MoreFiltersId;
+
+/// Why nothing is listed, when nothing is.
+#[derive(Id)]
+struct NothingListedId;
+/// The products the filters keep, handed to the script.
+#[derive(Id)]
+struct ListedProductsId;
 #[derive(Id)]
 struct TableHeadingId;
 #[derive(Id)]
@@ -78,6 +91,8 @@ pub struct Queuing<'a> {
 /// by the server, which sends what it found.
 #[derive(ToJson)]
 pub struct IntakeListing {
+    /// The address of the screen that lists them, which a set's answer puts in the address bar.
+    pub address: String,
     /// Whether the script searches them: a set's products.
     pub searches: bool,
     /// The page the server drew, counting from 1.
@@ -118,9 +133,9 @@ pub struct ListedProduct {
 }
 
 impl IntakeListing {
-    fn of(screen: &Screen) -> IntakeListing {
+    fn of(listing: &Listing) -> IntakeListing {
         let mut sets: Vec<String> = Vec::new();
-        let products = screen
+        let products = listing
             .listed
             .iter()
             .map(|product| {
@@ -143,9 +158,13 @@ impl IntakeListing {
             })
             .collect();
         IntakeListing {
-            searches: screen.scope == Scope::Set,
-            page: screen.page as u32,
-            descending: screen.selection.sort == Some(ProductOrder::NameDown),
+            address: url::InventoryManager {
+                selection: listing.selection.clone(),
+            }
+            .href(),
+            searches: listing.scope == Scope::Set,
+            page: listing.page as u32,
+            descending: listing.selection.sort == Some(ProductOrder::NameDown),
             page_field: Selection::FIELDS.page.to_string(),
             picture: [PICTURE.0.to_owned(), PICTURE.1.to_owned()],
             count_form: count_form_prefix(),
@@ -184,20 +203,23 @@ impl IntakeCounts {
 /// that queues what is counted. The page brings every product the filters keep
 /// ([`IntakeListing`]), and the script searches a set, sorts, pages and draws another condition
 /// from it with no request; without JavaScript the GET form and the links do it on the server.
+/// The filters are a GET `data-patch` form: with JavaScript another set, product line or filter
+/// is answered with the parts that change with it ([`ListingParts`]), the script draws the rows
+/// from its products and puts its address in the address bar.
 #[component(css, js)]
 pub fn IntakeScreen<'a>(
     screen: &'a Screen,
     error: Option<&'a str>,
     queuing: &'a Queuing<'a>,
 ) -> impl Render {
-    let (filters, conditions, sets, search, go, size, sort) = refs();
+    let (filters, conditions, set, search, go, size, sort) = refs();
     let (rows, template, table, paging, range, previous, next) = refs();
     let (none, dialog, image) = refs();
     let t = Msg::default();
     let keys = js::Keys {
         filters,
         conditions,
-        sets,
+        set,
         search,
         go,
         size,
@@ -216,17 +238,13 @@ pub fn IntakeScreen<'a>(
         number: t.js().number(),
     };
     let f = Selection::FIELDS;
-    let selection = &screen.selection;
+    let listing = &screen.listing;
+    let selection = &listing.selection;
     let order = selection.sort.unwrap_or(ProductOrder::Name);
-    let searched = selection
-        .search
-        .as_deref()
-        .is_some_and(|s| !s.trim().is_empty());
-    let listing = IntakeListing::of(screen);
-    let drawn: Vec<RowOf> = screen
+    let drawn: Vec<RowOf> = listing
         .products
         .iter()
-        .map(|p| RowOf::new(p, screen.condition, &screen.quantities, &t))
+        .map(|p| RowOf::new(p, listing.condition, &screen.quantities, &t))
         .collect();
     let blank = RowOf::default();
     html! {
@@ -253,6 +271,7 @@ pub fn IntakeScreen<'a>(
                 class={(CardPanel { size: CardSize::Sm }, Filters)}
                 aria-label="Filters"
                 data-keep-place
+                data-patch
                 on:change={js::filtered(event, keys)}
                 on:submit={js::submitted(event, keys)}
             >
@@ -260,27 +279,16 @@ pub fn IntakeScreen<'a>(
                     "Product Line"
                     <select class={Select {}} name={f.line}>
                         for l in &screen.lines {
-                            <option value={l.id} selected={l.id == screen.line}>
+                            <option value={l.id} selected={l.id == listing.line}>
                                 {&l.name}
                             </option>
                         }
                     </select>
                 </label>
-                <label>
+                // The ref is the label's: a set's answer replaces the select inside it.
+                <label ref={set}>
                     "Set"
-                    <select
-                        class={Select {}}
-                        id={SetSelectId}
-                        ref={sets}
-                        name={f.set}
-                        disabled={screen.scope == Scope::AllSets}
-                    >
-                        for s in &screen.sets {
-                            <option value={s.id} selected={Some(s.id) == screen.set}>
-                                {s.label()}
-                            </option>
-                        }
-                    </select>
+                    <SetSelect listing={listing} />
                 </label>
                 <Switch label="All sets">
                     <input
@@ -288,7 +296,7 @@ pub fn IntakeScreen<'a>(
                         role="switch"
                         name={f.scope}
                         value={Scope::AllSets}
-                        checked={screen.scope == Scope::AllSets}
+                        checked={listing.scope == Scope::AllSets}
                     >
                 </Switch>
                 <label>
@@ -300,14 +308,14 @@ pub fn IntakeScreen<'a>(
                         class={(Select {}, ConditionSelect)}
                     >
                         for c in Condition::ALL {
-                            <option value={c} selected={c == screen.condition}>
+                            <option value={c} selected={c == listing.condition}>
                                 {c.name()}
                             </option>
                         }
                     </select>
                 </label>
                 <details class={More}>
-                    <summary>{more_filters(selection)}</summary>
+                    <MoreFilters selection={selection} />
                     <label>
                         "Product Type"
                         <select class={Select {}} name={f.product_type}>
@@ -336,10 +344,7 @@ pub fn IntakeScreen<'a>(
                     </fieldset>
                 </details>
                 <label class={SearchField}>
-                    match screen.scope {
-                        Scope::Set => "Search this set by name or number",
-                        Scope::AllSets => "Card number, in every set",
-                    }
+                    <SearchLabel scope={listing.scope} />
                     <span class={row(Space::_2)}>
                         <input
                             class={Input {}}
@@ -392,8 +397,11 @@ pub fn IntakeScreen<'a>(
                 <h2 id={TableHeadingId} class={VisuallyHidden {}}>"Add new inventory"</h2>
                 <Table layout={TableLayout::Scroll}>
                     // React drew no grid without rows; the table stays for the script's refs.
-                    <table ref={table} hidden={screen.products.is_empty()}>
+                    <table ref={table} hidden={listing.products.is_empty()}>
                         // The script sorts in place: a hover on the sort link fetches nothing.
+                        // Its link is the screen sorted the other way, which the script keeps in
+                        // step with the set shown: a header row cannot be part of a set's answer,
+                        // as markup parsed outside a table drops a row's tags.
                         <thead data-no-prefetch>
                             <tr>
                                 <th>"Image"</th>
@@ -430,7 +438,7 @@ pub fn IntakeScreen<'a>(
                             ref={rows}
                             on:click={js::clicked(event, js::Picture { dialog, image, search })}
                             on:change={js::committed(event)}
-                            on:connect={js::start(keys, searched)}
+                            on:connect={js::start(keys, searched(selection))}
                         >
                             for r in &drawn {
                                 <IntakeRow
@@ -472,15 +480,15 @@ pub fn IntakeScreen<'a>(
                         selection={selection}
                     />
                 </template>
-                <span hidden on:connect={js::listed(&listing)}></span>
+                <ListedProducts listing={listing} />
                 <UnqueuedCounts quantities={&screen.quantities} />
-                <div ref={paging} class={(row(Space::_3), Paging)} hidden={screen.pages <= 1}>
-                    <span ref={range} class={muted()}>{shown_of(screen, &t)}</span>
+                <div ref={paging} class={(row(Space::_3), Paging)} hidden={listing.pages <= 1}>
+                    <span ref={range} class={muted()}>{shown_of(listing, &t)}</span>
                     <span class={NoScript}>
                         <ProductPages
                             selection={selection}
-                            current={screen.page}
-                            pages={screen.pages}
+                            current={listing.page}
+                            pages={listing.pages}
                         />
                     </span>
                     <span class={(row(Space::_2), WithScript)}>
@@ -488,7 +496,7 @@ pub fn IntakeScreen<'a>(
                             ref={previous}
                             type="button"
                             class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Sm }}
-                            disabled={screen.page <= 1}
+                            disabled={listing.page <= 1}
                             on:click={js::turned(keys, -1)}
                         >
                             "Previous"
@@ -497,7 +505,7 @@ pub fn IntakeScreen<'a>(
                             ref={next}
                             type="button"
                             class={Button { variant: ButtonVariant::Outline, size: ButtonSize::Sm }}
-                            disabled={screen.page >= screen.pages}
+                            disabled={listing.page >= listing.pages}
                             on:click={js::turned(keys, 1)}
                         >
                             "Next"
@@ -507,31 +515,11 @@ pub fn IntakeScreen<'a>(
                 // A search of the set that finds nothing, shown by the script as by the server.
                 <div
                     ref={none}
-                    hidden={!(screen.scope == Scope::Set && searched && screen.products.is_empty())}
+                    hidden={!(listing.scope == Scope::Set && searched(selection) && listing.products.is_empty())}
                 >
                     <Notice variant={AlertVariant::Info}>"No products match."</Notice>
                 </div>
-                if screen.products.is_empty() {
-                    match (screen.scope, selection.search.as_deref().map(str::trim).filter(|s| !s.is_empty())) {
-                        (Scope::AllSets, None) => {
-                            <Notice variant={AlertVariant::Info}>
-                                "Enter a card number to search across all sets in the selected product line."
-                            </Notice>
-                        }
-                        (Scope::AllSets, Some(term)) => {
-                            <Notice variant={AlertVariant::Warning}>
-                                "No matches found for card number \""{term}
-                                "\" in the selected product line."
-                            </Notice>
-                        }
-                        (Scope::Set, None) => {
-                            <Notice variant={AlertVariant::Info}>
-                                "No SKUs available. Please select a product line and set to see available inventory options."
-                            </Notice>
-                        }
-                        (Scope::Set, Some(_)) => {}
-                    }
-                }
+                <NothingListed listing={listing} />
             </section>
             <QueueBar
                 selection={selection}
@@ -557,6 +545,118 @@ pub fn IntakeScreen<'a>(
                 </form>
             </dialog>
         </section>
+    }
+}
+
+/// Whether the filters search for something.
+fn searched(selection: &Selection) -> bool {
+    selection
+        .search
+        .as_deref()
+        .is_some_and(|s| !s.trim().is_empty())
+}
+
+/// What changes on the screen with the filters, the answer to them with JavaScript: the sets to
+/// choose from, what the search looks in, the summary of the filters folded away, why nothing is
+/// listed, and the products, which the script draws the rows from with the counts it holds (and
+/// the sort link from the address). The page draws each part in its place, so the two cannot
+/// drift. None holds the screen's refs, which only the screen's own markup can put on an element.
+#[component]
+pub fn ListingParts<'a>(listing: &'a Listing) -> impl Patch {
+    html! {
+        <SetSelect listing={listing} />
+        <SearchLabel scope={listing.scope} />
+        <MoreFilters selection={&listing.selection} />
+
+        <NothingListed listing={listing} />
+        <ListedProducts listing={listing} />
+    }
+}
+
+/// The product line's sets, the one listed chosen; none to choose while every set is searched.
+#[component]
+fn SetSelect<'a>(listing: &'a Listing) -> impl Patch {
+    html! {
+        <select
+            class={Select {}}
+            id={SetSelectId}
+            name={Selection::FIELDS.set}
+            disabled={listing.scope == Scope::AllSets}
+        >
+            for s in &listing.sets {
+                <option value={s.id} selected={Some(s.id) == listing.set}>
+                    {s.label()}
+                </option>
+            }
+        </select>
+    }
+}
+
+/// What the search looks in: this set, or every set's card numbers.
+#[component]
+fn SearchLabel(scope: Scope) -> impl Patch {
+    html! {
+        <span id={SearchLabelId}>
+            match scope {
+                Scope::Set => "Search this set by name or number",
+                Scope::AllSets => "Card number, in every set",
+            }
+        </span>
+    }
+}
+
+/// The summary of the filters folded away, which says what they do.
+#[component]
+fn MoreFilters<'a>(selection: &'a Selection) -> impl Patch {
+    html! {
+        <summary id={MoreFiltersId}>{more_filters(selection)}</summary>
+    }
+}
+
+/// Why nothing is listed, when nothing is: every set searched without a card number or with one
+/// found nowhere, or a set with no SKUs. A set's search that finds nothing is the script's.
+#[component]
+fn NothingListed<'a>(listing: &'a Listing) -> impl Patch {
+    let term = listing
+        .selection
+        .search
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    html! {
+        <div id={NothingListedId}>
+            if listing.products.is_empty() {
+                match (listing.scope, term) {
+                    (Scope::AllSets, None) => {
+                        <Notice variant={AlertVariant::Info}>
+                            "Enter a card number to search across all sets in the selected product line."
+                        </Notice>
+                    }
+                    (Scope::AllSets, Some(term)) => {
+                        <Notice variant={AlertVariant::Warning}>
+                            "No matches found for card number \""{term}
+                            "\" in the selected product line."
+                        </Notice>
+                    }
+                    (Scope::Set, None) => {
+                        <Notice variant={AlertVariant::Info}>
+                            "No SKUs available. Please select a product line and set to see available inventory options."
+                        </Notice>
+                    }
+                    (Scope::Set, Some(_)) => {}
+                }
+            }
+        </div>
+    }
+}
+
+/// The products the filters keep, handed to the script when this joins the page: the page's
+/// first, and each set's answer's after.
+#[component(js = IntakeScreen)]
+fn ListedProducts<'a>(listing: &'a Listing) -> impl Patch {
+    let listed = IntakeListing::of(listing);
+    html! {
+        <span id={ListedProductsId} hidden on:connect={js::listed(&listed)}></span>
     }
 }
 
@@ -592,14 +692,14 @@ fn ProductPages<'a>(selection: &'a Selection, current: usize, pages: usize) -> i
 
 /// "101-200 of 1,390", as the React grid's footer counted them (`intake.shown`, which the
 /// script writes too).
-fn shown_of(screen: &Screen, t: &Msg) -> String {
-    let size = screen.selection.rows.unwrap_or_default().count();
-    let first = (screen.page - 1) * size + 1;
-    let last = first + screen.products.len() - 1;
+fn shown_of(listing: &Listing, t: &Msg) -> String {
+    let size = listing.selection.rows.unwrap_or_default().count();
+    let first = (listing.page - 1) * size + 1;
+    let last = first + listing.products.len() - 1;
     t.intake_shown(msg::IntakeShown {
         first: first.to_string(),
         last: last.to_string(),
-        total: t.number(screen.matched as i64),
+        total: t.number(listing.matched as i64),
     })
     .to_string()
 }
@@ -930,16 +1030,17 @@ pub fn IntakeError<'a>(message: Option<&'a str>) -> impl Patch {
 mod tests {
     use std::collections::HashMap;
 
-    use corten::{SubmitKey, form::SubmitField, view::Render};
+    use corten::{SubmitKey, form::SubmitField, script::ElementId, view::Render};
 
     use super::{
-        CountForm, Counted, IntakeRow, ProductPages, RowOf, count_form, count_form_prefix, key_of,
-        skus_of,
+        CountForm, Counted, IntakeListing, IntakeRow, ListedProductsId, ListingParts,
+        MoreFiltersId, NothingListedId, ProductPages, RowOf, SearchLabelId, SetSelectId,
+        count_form, count_form_prefix, key_of, skus_of,
     };
     use crate::{
         features::inventory_intake::{
-            catalog::{Condition, Product},
-            page::CountInput,
+            catalog::{Condition, Product, Scope, Set},
+            page::{CountInput, Listing},
             url::Selection,
         },
         text::Msg,
@@ -1120,7 +1221,7 @@ mod tests {
             const sent = [];
             const k = {
                 search,
-                sets: { disabled: false, options: { length: 3 }, selectedIndex: 0 },
+                set: { control: { disabled: false, options: { length: 3 }, selectedIndex: 0 } },
                 filters: { requestSubmit: (...by) => sent.push(by) },
             };
             const press = (key, target) => {
@@ -1129,13 +1230,13 @@ mod tests {
                 search.selected = false;
                 document.activeElement = target;
                 keys(event, screen, k);
-                return [event.defaultPrevented, k.sets.selectedIndex, search.value, document.activeElement === search, search.selected, sent.length, sent.at(-1)?.length].join(" ");
+                return [event.defaultPrevented, k.set.control.selectedIndex, search.value, document.activeElement === search, search.selected, sent.length, sent.at(-1)?.length].join(" ");
             };
             console.log(press("PageDown", search));
             console.log(press("PageDown", quantity));
             console.log(press("PageUp", quantity));
             console.log(press("PageUp", search));
-            k.sets.disabled = true;
+            k.set.control.disabled = true;
             console.log(press("PageDown", search));
         "#;
         let out = std::process::Command::new("node")
@@ -1163,6 +1264,141 @@ mod tests {
                 "true 0  true true 4 0",
                 // Every set searched: Page Down is the browser's, and the search is left as it is.
                 "false 0 58 true false 4 0",
+            ]
+        );
+    }
+
+    /// A set's answer is the parts of the screen that change with the filters, each with the id the
+    /// page draws it with, so each replaces its own: the set chosen among the line's, and its
+    /// products for the script, with the address that lists them. It holds none of the screen's
+    /// refs, which a part drawn outside the screen cannot name, and no table row, which the
+    /// browser would parse apart outside a table.
+    #[test]
+    fn a_sets_answer_draws_the_parts_that_change_with_it() {
+        let selection = Selection {
+            line: Some(3),
+            set: Some(2),
+            ..Selection::default()
+        };
+        let set = |id: i32, name: &str| Set {
+            id,
+            name: name.into(),
+            abbreviation: None,
+            release_date: None,
+        };
+        let listing = Listing {
+            selection: selection.clone(),
+            line: 3,
+            sets: vec![set(1, "Base Set"), set(2, "Jungle")],
+            set: Some(2),
+            scope: Scope::Set,
+            condition: Condition::NearMint,
+            listed: vec![card()],
+            products: vec![card()],
+            page: 1,
+            pages: 1,
+            matched: 1,
+        };
+        let html = ListingParts { listing: &listing }.to_html();
+        let ids: [ElementId; 5] = [
+            ElementId::of(&SetSelectId),
+            ElementId::of(&SearchLabelId),
+            ElementId::of(&MoreFiltersId),
+            ElementId::of(&NothingListedId),
+            ElementId::of(&ListedProductsId),
+        ];
+        for id in ids {
+            let id: String = id.into();
+            assert_eq!(
+                html.matches(&format!("id=\"{id}\"")).count(),
+                1,
+                "{id}: {html}"
+            );
+        }
+        assert!(
+            !html.contains("data-ref") && !html.contains("<tr"),
+            "{html}"
+        );
+        assert!(html.contains(r#"<option value="2" selected>"#), "{html}");
+        assert!(!html.contains(r#"<option value="1" selected>"#), "{html}");
+
+        let listed = IntakeListing::of(&listing);
+        assert_eq!(listed.address, "/inventory-manager?line=3&set=2");
+        assert_eq!(listed.products.len(), 1);
+    }
+
+    /// The products the page brings are the screen's to draw from, with nothing drawn again and
+    /// the address left as it is. A set's answer brings its own: its rows are drawn at once and
+    /// its address becomes a new history entry, so Back returns to the set before; an answer at
+    /// the address already shown adds no entry. In node, with stand-ins for the page and the
+    /// runtime, as above.
+    #[test]
+    fn a_sets_answer_draws_its_rows_and_puts_its_address_in_the_history() {
+        let script = r#"
+            import { registerHooks } from "node:module";
+            const stubs = {
+                corten: "export const keep = (init) => (globalThis.kept ??= init());",
+                "corten/views": "export class IntakeRow {} export const rows = () => Object.assign([], { replace(next) { globalThis.drawn = next.map((r) => r.sku); } });",
+            };
+            registerHooks({
+                resolve(specifier, context, next) {
+                    const code = stubs[specifier];
+                    if (code === undefined) return next(specifier, context);
+                    return { url: "data:text/javascript," + encodeURIComponent(code), shortCircuit: true };
+                },
+            });
+            const at = (query) => "http://localhost/inventory-manager?" + query + "&condition=near-mint&rows=100";
+            const pushed = [];
+            globalThis.HTMLAnchorElement = class {};
+            globalThis.location = { href: at("line=3&set=1") };
+            globalThis.history = {
+                state: null,
+                pushState(_, __, url) { pushed.push(String(url)); location.href = String(url); },
+                replaceState(_, __, url) { location.href = String(url); },
+            };
+            const { listed, start } = await import("./src/features/inventory_intake/views/intake_screen.js");
+            const k = {
+                conditions: { selectedIndex: 0, value: "near-mint", name: "condition" },
+                size: { value: "100", name: "rows" },
+                sort: { value: "name-down", name: "sort", disabled: true },
+                search: { value: "", name: "search" },
+                rows: {}, template: {}, table: {}, none: {}, paging: {}, range: {}, previous: {}, next: {},
+                shown: () => "", number: String, quantity: () => "", unavailable: () => "",
+            };
+            const listing = (query, skus) => ({
+                address: at(query).slice("http://localhost".length),
+                searches: true, page: 1, descending: false, page_field: "page", picture: ["", ""],
+                count_form: "count-", conditions: ["Near Mint"], unopened: "Unopened", sets: ["Base Set"],
+                products: skus.map((sku, i) => ({ product: i, name: "P" + i, number: "", printing: "", set: 0, skus: [sku, 0] })),
+            });
+            start(k, false);
+            listed(listing("line=3&set=1", [10]));
+            console.log(pushed.length, globalThis.drawn ?? "none");
+            listed(listing("line=3&set=2", [20, 21]));
+            console.log(pushed.length, globalThis.drawn.join(","), new URL(location.href).search);
+            listed(listing("line=3&set=2", [20, 21]));
+            console.log(pushed.length);
+        "#;
+        let out = std::process::Command::new("node")
+            .args(["--input-type=module", "-e", script])
+            .output()
+            .expect("node runs");
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let lines: Vec<String> = String::from_utf8(out.stdout)
+            .unwrap()
+            .lines()
+            .map(str::to_owned)
+            .collect();
+        assert_eq!(
+            lines,
+            [
+                "0 none",
+                "1 20,21 ?line=3&set=2&condition=near-mint&rows=100",
+                "1",
             ]
         );
     }

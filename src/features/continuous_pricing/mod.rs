@@ -16,7 +16,7 @@
 //! | `POST /continuous-pricing/run` | a scheduler cycle run now |
 //! | `POST /continuous-pricing/apply-policy` | the inventory repriced from saved curves where it can be |
 //! | `POST /continuous-pricing/mark-due` | every eligible SKU made due, then a scheduler cycle |
-//! | `POST /continuous-pricing/sku` | one SKU enabled or paused |
+//! | `POST /continuous-pricing/sku` | one SKU enabled or paused: with JavaScript its card and a toast, without it the page |
 //!
 //! A post the Node app refuses answers 409 with the page and why.
 mod actions;
