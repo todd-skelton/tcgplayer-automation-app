@@ -225,6 +225,7 @@ pub fn ShippingSettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) ->
                 <h3>{kind.title()}</h3>
                 <PackageFields
                     f={kind.fields()}
+                    limited={kind.limited()}
                     package={input.package(kind)}
                     errors={errors}
                 />
@@ -279,11 +280,12 @@ pub fn ShippingSettingsForm<'a>(input: &'a SettingsInput, errors: &'a Errors) ->
     }
 }
 
-/// One package's inputs, given the package's names in the form (`f={FIELDS.letter}`). A parcel's
-/// form has no limits.
+/// One package's inputs, given the package's names in the form (`f={FIELDS.letter}`). Only a
+/// `limited` package has an item count and value limit.
 #[component(css = ShippingSettingsForm)]
 pub fn PackageFields<'a>(
     f: PackageInputGroupFields,
+    limited: bool,
     package: &'a PackageInput,
     errors: &'a Errors,
 ) -> impl Render {
@@ -334,7 +336,7 @@ pub fn PackageFields<'a>(
                     {..e.control(f.per_item_weight_oz)}
                 >
             </Field>
-            if let (Some(count), Some(value)) = (&package.max_item_count, &package.max_value_usd) {
+            if limited {
                 <Field
                     id={e.id(f.max_item_count)}
                     label="Max Item Count"
@@ -346,7 +348,7 @@ pub fn PackageFields<'a>(
                         type="number"
                         step="any"
                         min="0"
-                        value={count}
+                        value={&package.max_item_count}
                         {..e.control(f.max_item_count)}
                     >
                 </Field>
@@ -361,7 +363,7 @@ pub fn PackageFields<'a>(
                         type="number"
                         step="any"
                         min="0"
-                        value={value}
+                        value={&package.max_value_usd}
                         {..e.control(f.max_value_usd)}
                     >
                 </Field>

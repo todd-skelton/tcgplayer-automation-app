@@ -3,7 +3,7 @@
 use corten::prelude::*;
 
 use super::shipments::Shipment;
-use crate::features::shipping_configuration::{LabelFormat, LabelSize, Service, measure_text};
+use crate::features::shipping_configuration::{LabelFormat, LabelSize, Service, measure};
 
 /// The editor as the browser sends it.
 #[derive(Clone, Debug, Fields)]
@@ -16,10 +16,10 @@ pub struct ShipmentInput {
     pub zip: String,
     pub reference: String,
     pub service: Service,
-    pub length: String,
-    pub width: String,
-    pub height: String,
-    pub weight: String,
+    pub length: Entry<f64>,
+    pub width: Entry<f64>,
+    pub height: Entry<f64>,
+    pub weight: Entry<f64>,
     pub label_format: LabelFormat,
     pub label_size: LabelSize,
 }
@@ -37,10 +37,10 @@ impl ShipmentInput {
             zip: a.zip.clone(),
             reference: shipment.reference.clone(),
             service: shipment.service,
-            length: measure_text(p.length),
-            width: measure_text(p.width),
-            height: measure_text(p.height),
-            weight: measure_text(p.weight),
+            length: measure(p.length),
+            width: measure(p.width),
+            height: measure(p.height),
+            weight: measure(p.weight),
             label_format: shipment.options.label_format,
             label_size: shipment.options.label_size,
         }
@@ -48,7 +48,7 @@ impl ShipmentInput {
 
     /// `shipment` as the editor says, or why it cannot be. The reference names the shipment in
     /// the batch and on EasyPost, so it is needed and no other shipment's (`taken`); each measure
-    /// is a number of at least zero. The React drawer took whatever `Number()` made of them.
+    /// is a number of at least zero.
     pub fn read(
         &self,
         shipment: &Shipment,
@@ -65,9 +65,9 @@ impl ShipmentInput {
                 format!("Shipment {reference} is already in this batch."),
             );
         }
-        let mut number = |field: FieldName<String>, text: &str, what: &str| -> f64 {
-            match text.trim().parse::<f64>() {
-                Ok(n) if n.is_finite() && n >= 0.0 => n,
+        let mut number = |field: FieldName<Entry<f64>>, entry: &Entry<f64>, what: &str| -> f64 {
+            match entry.value() {
+                Some(n) if n >= 0.0 => n,
                 _ => {
                     errors.add(field, format!("The {what} must be a number of at least 0."));
                     0.0
@@ -136,7 +136,7 @@ mod tests {
         let shipment = shipment();
         let mut input = ShipmentInput::of(&shipment);
         input.street2 = " Apt 4 ".into();
-        input.weight = "3.5".into();
+        input.weight = Entry::typed("3.5");
         input.service = Service::Priority;
         let read = input.read(&shipment, |_| false).unwrap();
         assert_eq!(read.to_address.street2.as_deref(), Some("Apt 4"));
@@ -150,7 +150,7 @@ mod tests {
         let f = ShipmentInput::FIELDS;
         let mut input = ShipmentInput::of(&shipment);
         input.reference = "B".into();
-        input.weight = "heavy".into();
+        input.weight = Entry::typed("heavy");
         let errors = input.read(&shipment, |r| r == "B").unwrap_err();
         assert_eq!(
             errors.get(f.reference),
