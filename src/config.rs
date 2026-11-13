@@ -41,11 +41,12 @@ fn env_files(mode: &str) -> &'static [&'static str] {
     }
 }
 
-/// Loads the mode's files in order; the first file to set a name wins, and none overrides the
-/// environment.
+/// Loads the mode's files from the working directory, in order; the first file to set a name wins,
+/// and none overrides the environment. `from_filename` would also search the parent directories,
+/// so a checkout inside another (a worktree) would load the outer checkout's settings.
 pub fn load_env() {
     for file in env_files(mode()) {
-        let _ = dotenvy::from_filename(file);
+        let _ = dotenvy::from_path(file);
     }
 }
 
