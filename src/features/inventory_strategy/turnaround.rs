@@ -35,7 +35,8 @@ pub const EVIDENCE_POLICY: EvidencePolicy = EvidencePolicy {
 const DAY: f64 = 86_400_000.0;
 const HOUR: f64 = 3_600_000.0;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// Where the turnaround comes from, as the form's radios and the saved setting spell it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, corten::UrlValue)]
 #[serde(rename_all = "lowercase")]
 pub enum Mode {
     Manual,
