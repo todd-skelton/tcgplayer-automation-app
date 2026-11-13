@@ -451,6 +451,53 @@ mod tests {
         assert!(failed.is_empty(), "{failed:#?}");
     }
 
+    /// A set chosen in the Inventory Manager with JavaScript is answered with the parts that change
+    /// with it, which the browser keeps a few minutes, so a set seen again comes with no request;
+    /// the page at the same address, as a browser without JavaScript asks for it, is the whole
+    /// screen, read again each time. Reads only, as above.
+    #[tokio::test]
+    #[ignore = "reads the dev database"]
+    async fn a_sets_answer_is_its_parts_kept_by_the_browser() {
+        crate::config::load_env();
+        let shared = Shared {
+            db: Database::connect_lazy(&crate::config::database_url()),
+            slab_providers: slab_connections::Transport::default(),
+        };
+        let client = app(shared).test();
+        let at = inventory_intake::url::InventoryManager {
+            selection: Default::default(),
+        };
+        let parts = client.get(&at).mode(corten::Mode::Action).await;
+        let page = client.get(&at).await;
+        assert_eq!(
+            parts.status(),
+            corten::http::StatusCode::OK,
+            "{}",
+            parts.text()
+        );
+        assert_eq!(page.status(), corten::http::StatusCode::OK);
+        assert_eq!(parts.headers()["cache-control"], "private, max-age=300");
+        assert!(
+            !page.headers()["cache-control"]
+                .to_str()
+                .unwrap()
+                .contains("max-age=300"),
+            "{:?}",
+            page.headers()["cache-control"]
+        );
+        let (parts, page) = (parts.text(), page.text());
+        assert!(parts.contains("intake_screen.listed("), "{parts}");
+        assert!(
+            !parts.contains("<main") && page.contains("<main"),
+            "{parts}"
+        );
+        // Neither the rows, the counts nor the batches: the screen has them already.
+        for whole in ["<tbody", "intake_screen.recounted(", "Background"] {
+            assert!(!parts.contains(whole) && page.contains(whole), "{whole}");
+        }
+        println!("parts {} bytes, page {} bytes", parts.len(), page.len());
+    }
+
     /// A view only the runtime asks for (it patches it into the page), marked so the test asks
     /// as the runtime does; without the header it redirects to its screen.
     fn patch(path: String) -> String {
@@ -568,6 +615,12 @@ mod tests {
         }
         chosen.push(patch(
             inventory_intake::url::Batches {
+                selection: Default::default(),
+            }
+            .href(),
+        ));
+        chosen.push(patch(
+            inventory_intake::url::InventoryManager {
                 selection: Default::default(),
             }
             .href(),

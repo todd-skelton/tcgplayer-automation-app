@@ -13,6 +13,8 @@ export interface IntakeCounts {
  * by the server, which sends what it found.
  */
 export interface IntakeListing {
+  /** The address of the screen that lists them, which a set's answer puts in the address bar. */
+  address: string;
   /** Each condition's name, in [`Condition::ALL`]'s order, as the condition select lists them. */
   conditions: string[];
   /** A count form's id is its SKU after this. */
