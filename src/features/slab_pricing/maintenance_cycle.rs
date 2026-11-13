@@ -187,7 +187,7 @@ pub async fn run(
     let error = match cycle(conn, &job, now, &mut summary).await {
         Ok(()) => None,
         Err(why) => {
-            eprintln!("Slab maintenance for {} unavailable: {why}", job.seller);
+            tracing::error!("Slab maintenance for {} unavailable: {why}", job.seller);
             Some("maintenance-unavailable")
         }
     };
@@ -243,7 +243,7 @@ async fn cycle(
             now,
         };
         if let Err(why) = check.run(conn, summary, &mut checked).await {
-            eprintln!("Slab maintenance of listing {}: {why}", listing.id);
+            tracing::error!("Slab maintenance of listing {}: {why}", listing.id);
             checked.outcome = "review-required";
             checked.reason = "recalculation-unavailable";
         }

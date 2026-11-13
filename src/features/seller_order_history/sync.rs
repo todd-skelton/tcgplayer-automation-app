@@ -386,7 +386,7 @@ impl<O: Orders, S: Store> Step<'_, O, S> {
                     }
                 }
                 Err(why) => {
-                    eprintln!(
+                    tracing::error!(
                         "Seller order {} detail was not recorded: Error: {why}",
                         number_of(&summary)
                     );

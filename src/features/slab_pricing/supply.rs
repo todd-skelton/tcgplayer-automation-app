@@ -288,7 +288,7 @@ pub async fn read(db: &Database, asked: &Asked<'_>) -> Result<Supply, String> {
 
 /// Node hid what went wrong with the database behind this.
 fn unavailable(error: impl std::fmt::Display) -> String {
-    eprintln!("slab supply: {error}");
+    tracing::error!("slab supply: {error}");
     "Unable to load slab supply context.".to_owned()
 }
 

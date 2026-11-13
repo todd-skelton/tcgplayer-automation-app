@@ -280,7 +280,7 @@ pub async fn run(db: Database, log: PathBuf, signal: Signal) {
             stepped = step(&db, &tcg, &run, &log, BUDGET) => stepped,
         };
         if let Err(why) = stepped {
-            eprintln!("Seller order shadow step failed: {why}");
+            tracing::error!("Seller order shadow step failed: {why}");
         }
     }
 }

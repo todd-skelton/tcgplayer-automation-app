@@ -50,7 +50,7 @@ pub async fn load(
     );
     let lines = lines?;
     let history = history.unwrap_or_else(|e| {
-        eprintln!("Pricing change history load failed: {e}");
+        tracing::error!("Pricing change history load failed: {e}");
         Vec::new()
     });
     let weeks = performance::summarize_trend(&lines, now, MARGIN_TREND_WEEKS);
@@ -76,7 +76,7 @@ pub async fn load_with_recovery(db: &Database, seller: &str) -> Realized {
             error: None,
         },
         Err(why) => {
-            eprintln!("Realized performance load failed: {why}");
+            tracing::error!("Realized performance load failed: {why}");
             Realized {
                 report: None,
                 margin_trend: None,

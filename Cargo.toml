@@ -32,6 +32,8 @@ libm = "0.2"
 hex = "0.4"
 # Seller Portal's forms, encoded as the browser's URLSearchParams encodes them.
 form_urlencoded = "1"
+# Log events, printed by Corten's subscriber with their level and time.
+tracing = { version = "0.1", default-features = false, features = ["std"] }
 
 [features]
 # The tests that call TCGplayer live (and one that rewrites tests/fixtures): off, so no run of the

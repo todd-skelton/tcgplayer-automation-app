@@ -156,7 +156,7 @@ fn rows(products: &[Product]) -> Vec<Row> {
         for listing in product.listings.iter().filter(|l| !l.is_custom()) {
             let id = js_float(listing.product_condition_id);
             if !seen.insert(id) {
-                eprintln!(
+                tracing::warn!(
                     "Duplicate SKU ID found: {}. Skipping duplicate listing.",
                     js_float(listing.product_condition_id)
                 );

@@ -143,13 +143,15 @@ fn report(cycle: &Cycle) {
             c.expected_total
                 .map_or_else(|| "unknown".to_owned(), |t| t.to_string()),
         ),
-        Some(Err(why)) => eprintln!("Seller order history worker history cycle failed: {why}"),
+        Some(Err(why)) => {
+            tracing::error!("Seller order history worker history cycle failed: {why}")
+        }
         None => {}
     }
     match &cycle.replays {
         Ok(0) => {}
         Ok(replays) => println!("Seller order history worker fifo replays={replays}"),
-        Err(why) => eprintln!("Seller order history worker FIFO cycle failed: {why}"),
+        Err(why) => tracing::error!("Seller order history worker FIFO cycle failed: {why}"),
     }
     match &cycle.estimated {
         Ok(batches) if batches.is_empty() => {}
@@ -162,7 +164,9 @@ fn report(cycle: &Cycle) {
                 .join(","),
         ),
         Err(why) => {
-            eprintln!("Seller order history worker estimated purchase cost cycle failed: {why}")
+            tracing::error!(
+                "Seller order history worker estimated purchase cost cycle failed: {why}"
+            )
         }
     }
 }
@@ -193,7 +197,7 @@ pub async fn run(db: Database, signal: Signal) {
         let seller = match shipping_configuration::default_seller_key(&db).await {
             Ok(seller) => seller.trim().to_owned(),
             Err(why) => {
-                eprintln!("Seller order history worker seller configuration failed: {why}");
+                tracing::error!("Seller order history worker seller configuration failed: {why}");
                 String::new()
             }
         };
@@ -215,7 +219,7 @@ pub async fn run(db: Database, signal: Signal) {
                     pause(&cycle, Instant::now(), due)
                 }
                 Err(why) => {
-                    eprintln!("Seller order history worker cycle failed: {why}");
+                    tracing::error!("Seller order history worker cycle failed: {why}");
                     IDLE
                 }
             }

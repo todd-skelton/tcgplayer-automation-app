@@ -161,7 +161,7 @@ impl Unresolved {
 }
 
 fn unavailable(error: sqlx::Error) -> Unresolved {
-    eprintln!("slab identity lookup: {error}");
+    tracing::error!("slab identity lookup: {error}");
     Unresolved::Unavailable
 }
 
@@ -494,7 +494,7 @@ pub async fn confirm(
     .fetch_optional(&mut *conn)
     .await
     .map_err(|error| {
-        eprintln!("slab identity confirm: {error}");
+        tracing::error!("slab identity confirm: {error}");
         UNABLE.to_owned()
     })?;
     saved.ok_or_else(|| CHANGED.to_owned())

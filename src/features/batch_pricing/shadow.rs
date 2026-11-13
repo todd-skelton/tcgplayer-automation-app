@@ -137,7 +137,7 @@ impl Evidence for Ledgers<'_> {
         .bind(self.as_of)
         .fetch_all(&self.db.0)
         .await
-        .inspect_err(|e| eprintln!("Batch pricing shadow: weekly sales of {product_id} failed: {e}"))
+        .inspect_err(|e| tracing::error!("Batch pricing shadow: weekly sales of {product_id} failed: {e}"))
         .ok()?;
         let mut skus: Vec<History> = Vec::new();
         for week in weeks {
@@ -578,7 +578,7 @@ pub async fn run(db: Database, signal: Signal) {
     let mut after = match latest_id(&db).await {
         Ok(id) => id,
         Err(why) => {
-            eprintln!("Batch pricing shadow could not start: {why}");
+            tracing::error!("Batch pricing shadow could not start: {why}");
             return;
         }
     };
@@ -593,14 +593,14 @@ pub async fn run(db: Database, signal: Signal) {
         let jobs = match finished_after(&db, after).await {
             Ok(jobs) => jobs,
             Err(why) => {
-                eprintln!("Batch pricing shadow: finished jobs could not be read: {why}");
+                tracing::error!("Batch pricing shadow: finished jobs could not be read: {why}");
                 continue;
             }
         };
         for job in jobs {
             after = job.id;
             if let Err(why) = log_replay(&db, &job, &log).await {
-                eprintln!("Batch pricing shadow: job {} failed: {why}", job.id);
+                tracing::error!("Batch pricing shadow: job {} failed: {why}", job.id);
             }
         }
     }

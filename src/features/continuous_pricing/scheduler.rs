@@ -531,7 +531,7 @@ pub async fn run(db: Database, signal: corten::Signal) {
                     pause(&cycle, &settings)
                 }
                 Err(why) => {
-                    eprintln!("Continuous pricing scheduler cycle failed: {why}");
+                    tracing::error!("Continuous pricing scheduler cycle failed: {why}");
                     std::time::Duration::from_secs(30)
                 }
             },
