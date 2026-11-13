@@ -5,7 +5,7 @@ use std::collections::{BinaryHeap, HashMap};
 
 use chrono::{DateTime, DurationRound, TimeDelta, Utc};
 
-/// The largest integer JavaScript counts exactly, the bound Node checks its sums against.
+/// The largest integer JavaScript counts exactly, the bound sums are checked against.
 const SAFE_INTEGER: i64 = (1 << 53) - 1;
 const MILLISECONDS_PER_DAY: f64 = 24.0 * 60.0 * 60.0 * 1_000.0;
 
@@ -81,7 +81,8 @@ impl std::fmt::Display for Refused {
 
 impl std::error::Error for Refused {}
 
-/// Node compares times as millisecond ISO text, so finer precision would order ties differently.
+/// Times compare as millisecond ISO text, as the saved revisions were ordered, so finer precision
+/// would order ties differently.
 fn to_millisecond(time: DateTime<Utc>) -> DateTime<Utc> {
     time.duration_trunc(TimeDelta::milliseconds(1))
         .unwrap_or(time)

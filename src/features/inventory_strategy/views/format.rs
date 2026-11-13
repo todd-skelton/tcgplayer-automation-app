@@ -1,5 +1,5 @@
-//! How the screen writes its numbers, as the React components did (`format.ts` and the helpers
-//! each component kept): fixed digits as JavaScript's `toFixed` rounds them, money in dollars.
+//! How the screen writes its numbers (`format.ts` and its helpers): fixed digits as JavaScript's
+//! `toFixed` rounds them, money in dollars.
 use chrono::{DateTime, NaiveDate, Utc};
 use corten::i18n::{Currency, DayStyle, Minor};
 
@@ -60,7 +60,7 @@ pub fn days(value: Option<f64>, none: &str) -> String {
     value.map_or_else(|| none.to_owned(), |v| format!("{} days", fixed(v, 1)))
 }
 
-/// "+1.2 days", "−0.5 days", with the minus sign the React screen used.
+/// "+1.2 days", "−0.5 days", with a minus sign.
 pub fn days_delta(days: f64) -> String {
     let sign = if days >= 0.0 { "+" } else { "\u{2212}" };
     format!("{sign}{} days", fixed(days.abs(), 1))
@@ -103,7 +103,7 @@ pub fn month_day(t: Msg, day: &str) -> String {
     }
 }
 
-/// An instant written as the Node app writes one (ISO 8601), as a time to format.
+/// An instant written in ISO 8601, as the saved reports hold it, as a time to format.
 pub fn instant(at: &str) -> Option<DateTime<Utc>> {
     at.parse().ok()
 }

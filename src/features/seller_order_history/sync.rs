@@ -3,8 +3,8 @@
 //! first, retries the details it missed, then reads pages of the last three months oldest first,
 //! a few orders of the page before again so one that moved is not missed, and records each order
 //! whose search result changed. Called again, it resumes where the run stopped, until every page
-//! and every detail is read. A store that holds the run decides where its records go: Node's
-//! tables, or (in shadow) a log of what would be recorded.
+//! and every detail is read. A store that holds the run decides where its records go: the
+//! history's tables, or (in shadow) a log of what would be recorded.
 use std::collections::HashSet;
 
 use futures_util::{StreamExt, stream};
@@ -825,7 +825,7 @@ mod tests {
         }
     }
 
-    /// The run in memory, as the Node test's fake repository keeps it.
+    /// The run in memory, as a fake repository keeps it.
     struct Memory {
         run: MemoryRun,
         acquired: bool,

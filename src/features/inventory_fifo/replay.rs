@@ -1,8 +1,8 @@
 //! One seller SKU's replay, ported from `inventoryFifoRepository.processNextReplay`: the checks
 //! that hold a SKU for a person to reconcile, then every sold line matched again from the start of
-//! the SKU's history, each with the fingerprint Node saves to tell a changed line from the same one.
+//! the SKU's history, each with the fingerprint saved to tell a changed line from the same one.
 //!
-//! [`load`] reads what Node reads, in a read-only transaction; [`plan`] is the rest, kept pure.
+//! [`load`] reads the replay's inputs, in a read-only transaction; [`plan`] is the rest, kept pure.
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use chrono::{DateTime, Utc};
@@ -21,7 +21,7 @@ const SUPPORTED_LIFECYCLES: [&str; 5] = [
     "completed_paid",
 ];
 
-/// A sold line as Node saves it, a revision of `inventory_fifo_lines`.
+/// A sold line as it is saved, a revision of `inventory_fifo_lines`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SavedLine {
     pub order_id: String,
@@ -48,7 +48,8 @@ pub fn iso(time: DateTime<Utc>) -> String {
 /// An allocation as the fingerprint lists it: supply, receipt, disposition, correction, quantity, available.
 type FingerprintedAllocation<'a> = (&'a str, i64, Option<&'a str>, Option<&'a str>, i64, String);
 
-/// `lineFingerprint`: sha256 of JSON.stringify over the saved fields, in Node's key order.
+/// `lineFingerprint`: sha256 of JSON.stringify over the saved fields, in the key order the saved
+/// fingerprints were taken in.
 pub fn fingerprint(line: &SavedLine) -> String {
     #[derive(Serialize)]
     #[serde(rename_all = "camelCase")]
@@ -208,7 +209,7 @@ pub enum Replay {
     },
 }
 
-/// Node's `Math.round(Number(text) * 10_000)` for a nonnegative market value.
+/// `Math.round(Number(text) * 10_000)` for a nonnegative market value.
 fn ten_thousandths(text: &str) -> Option<i64> {
     text.parse::<f64>()
         .ok()
@@ -475,8 +476,8 @@ async fn first(
     Ok(query.fetch_optional(&mut *conn).await?.flatten())
 }
 
-/// Reads one SKU's replay inputs as Node does, or the hold Node's checks put it in. Run it in a
-/// read-only transaction: it never claims the queue or takes Node's advisory lock.
+/// Reads one SKU's replay inputs, or the hold its checks put it in. Run it in a read-only
+/// transaction: it never claims the queue or takes the replay's advisory lock.
 pub async fn load(
     conn: &mut PgConnection,
     seller: &str,
@@ -854,7 +855,7 @@ mod tests {
         }
     }
 
-    /// The expected value is Node's `lineFingerprint` run on the same line.
+    /// The expected value is the recorded `lineFingerprint` of the same line.
     #[test]
     fn fingerprints_as_node_does() {
         let line = SavedLine {

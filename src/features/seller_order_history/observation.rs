@@ -1,6 +1,6 @@
 //! An order as TCGplayer's order management API describes it, made into the evidence the order
-//! history records: ported from `domain/sellerOrderObservation.ts`. Its fingerprints are the Node
-//! app's byte for byte, since they are compared against the rows Node wrote.
+//! history records: ported from `domain/sellerOrderObservation.ts`. Its fingerprints match the
+//! recorded ones byte for byte, since they are compared against the rows already recorded.
 use chrono::{DateTime, SecondsFormat};
 use serde_json::{Map, Value};
 
@@ -10,7 +10,7 @@ use crate::features::{
 };
 
 /// An object's fields as the API sent them. A field it left out is JavaScript's `undefined`,
-/// which the Node app's `stableJson` writes as the bare word.
+/// which `stableJson` writes as the bare word.
 pub type Fields = Map<String, Value>;
 
 /// Where an order is, from its provider status.
@@ -66,7 +66,7 @@ pub struct Line {
 }
 
 impl Line {
-    /// The line as Node keeps it in a revision's evidence.
+    /// The line as a revision's evidence keeps it.
     pub fn json(&self) -> Value {
         serde_json::json!({
             "name": self.name,
@@ -525,7 +525,7 @@ mod tests {
 
     const AT: &str = "2026-09-07T00:00:00Z";
 
-    // The expected fingerprints are the Node app's (`observeSellerOrder`,
+    // The expected fingerprints are the recorded ones (`observeSellerOrder`,
     // `fingerprintSellerOrderSummary`) for the same input.
     #[test]
     fn fingerprints_match_the_node_app() {
@@ -654,8 +654,8 @@ mod tests {
         );
     }
 
-    /// Every revision the Node app recorded, made into an observation again from what it stored,
-    /// has the fingerprint Node stored. Reads the dev database; writes nothing.
+    /// Every recorded revision, made into an observation again from what it stored, has the
+    /// fingerprint stored with it. Reads the dev database; writes nothing.
     #[tokio::test]
     #[ignore = "reads the dev database's seller order revisions"]
     #[allow(

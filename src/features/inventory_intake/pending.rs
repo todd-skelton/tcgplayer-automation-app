@@ -1,7 +1,8 @@
 //! The inventory counted and not yet queued (`pending_inventory`), and its changes, ported from
 //! `pendingInventoryRepository.mutate`: each change is applied once by its request id, under the
-//! lock Node takes too, and a set is refused when the count moved meanwhile. A set that raises a
-//! count records a receipt of the units added with the card's market price as they were counted
+//! pending inventory's advisory lock, and a set is refused when the count moved meanwhile. A set
+//! that raises a count records a receipt of the units added with the card's market price as they
+//! were counted
 //! (`/api/pending-inventory`'s `observeMarket`), read from TCGplayer's price points.
 use std::{collections::HashMap, time::Duration};
 
@@ -84,7 +85,7 @@ pub trait MarketAtIntake {
 /// How long a count waits for its market price before going without.
 const MARKET_DEADLINE: Duration = Duration::from_secs(3);
 
-/// The price points, asked once with no retry and given up after three seconds, as Node asks.
+/// The price points, asked once with no retry and given up after three seconds.
 impl MarketAtIntake for TcgPlayerMarket {
     async fn observe(&self, sku: i32) -> Result<Option<Observation>, String> {
         let call = Call {

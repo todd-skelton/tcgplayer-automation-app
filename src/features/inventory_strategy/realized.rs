@@ -37,7 +37,7 @@ impl Realized {
 }
 
 /// The seller's realized performance and margin trend as of `now`. A pricing history that cannot
-/// be read leaves the changes out, as the Node app does.
+/// be read leaves the changes out.
 pub async fn load(
     db: &Database,
     seller: &str,

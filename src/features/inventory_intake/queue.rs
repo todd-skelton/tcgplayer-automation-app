@@ -1,14 +1,12 @@
-//! Handing what was counted off as a pricing batch, and the batches handed off, ported from the
-//! Node app's `/api/inventory-intake-runs` (`queueInventoryIntake`,
+//! Handing what was counted off as a pricing batch, and the batches handed off
+//! (`queueInventoryIntake`,
 //! `findRecentInventoryIntakeRuns`): a batch is queued once per request id, refused when the
 //! counts or the seller moved since the screen showed them, costed (an entered total split by
 //! units, or an estimate at its rate) and queued for pricing in full; the latest 25 are listed.
 //!
-//! Node's route also starts its pricing and publication workers in its own process, unless
-//! `WORKERS_RUN_IN_PROCESS=false`. This process cannot. In production the workers are processes
-//! of their own that poll every second, so they find the job. In development Node's in-process
-//! worker prices it once any Node route has started it, as for the jobs a CSV import or a
-//! strategy analysis queues here.
+//! Queuing starts no worker: the pricing and publication workers poll for queued jobs wherever
+//! they run, so they find the job, as they find the jobs a CSV import or a strategy analysis
+//! queues.
 use std::collections::HashMap;
 
 use corten::{Refusal, UrlValue, prelude::*};
@@ -40,7 +38,7 @@ pub enum Workflow {
 }
 
 impl Workflow {
-    /// As the Node app stores it.
+    /// As it is stored.
     pub fn word(self) -> &'static str {
         match self {
             Workflow::PriceOnly => "price_only",
@@ -78,8 +76,7 @@ fn cents(text: &str) -> Option<i64> {
     dollars_to_cents(text, "Amount").ok()
 }
 
-/// The percent of market as typed (0 to 100, at most two decimals), or why not, in the Node
-/// app's words.
+/// The percent of market as typed (0 to 100, at most two decimals), or why not.
 pub fn read_market_percent(text: &str) -> Result<f64, &'static str> {
     match cents(text) {
         Some(hundredths) if hundredths <= 10_000 => Ok(hundredths as f64 / 10_000.0),
@@ -247,7 +244,7 @@ pub struct IntakeQuantity {
     pub quantity: i64,
 }
 
-/// The counts in SKU order, as the Node app compares them.
+/// The counts in SKU order, as a saved request's are compared.
 pub fn snapshot(quantities: &HashMap<i32, i32>) -> Vec<IntakeQuantity> {
     let mut items: Vec<IntakeQuantity> = quantities
         .iter()
@@ -282,11 +279,10 @@ pub struct Queued {
 /// Why a batch was not queued.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NotQueued {
-    /// Refused, in the Node app's words: input it would not take (its 400), or counts, a seller
-    /// or a request that moved on (its 409).
+    /// Refused: input that cannot be taken, or counts, a seller or a request that moved on.
     Refused(Refusal, String),
     /// Its cost could not be recorded for a reason other than a conflict with what is recorded
-    /// (no receipt lots, say): Node's 500, whose message its screen showed.
+    /// (no receipt lots, say), with the message the screen shows.
     Unrecorded(String),
     /// The database failed.
     Failed(String),
@@ -306,8 +302,8 @@ fn conflict(message: impl Into<String>) -> NotQueued {
     NotQueued::Refused(Refusal::Conflict, message.into())
 }
 
-/// A cost not recorded: a conflict with what is recorded (Node's `InventoryEconomicsConflictError`,
-/// its 409), or anything else (its 500).
+/// A cost not recorded: a conflict with what is recorded (`InventoryEconomicsConflictError`), or
+/// anything else.
 fn unrecorded(not: NotRecorded) -> NotQueued {
     match not {
         NotRecorded::Conflict(message) => conflict(message),
@@ -316,7 +312,7 @@ fn unrecorded(not: NotRecorded) -> NotQueued {
 }
 
 /// `parseIntakePurchaseCost`: the entered total as the purchase cost the batch records, split
-/// across its lots by their units, or why not, each field checked in Node's order. It names no
+/// across its lots by their units, or why not, each field checked in turn. It names no
 /// batch until the batch exists.
 fn purchase_cost(
     request_id: &str,
@@ -385,7 +381,7 @@ pub fn cost_rate(fields: &Map<String, Value>) -> Result<CostRate, String> {
 }
 
 /// What a queue request carries besides its id: what queuing does, the cost's fields as sent
-/// (an entered purchase total, or a rate; Node's `purchaseCost` and `estimatedCostRate`, read
+/// (an entered purchase total, or a rate; `purchaseCost` and `estimatedCostRate`, read
 /// only once the queue is checked), and the counts and seller the screen showed.
 pub struct Queue<'a> {
     pub workflow: Workflow,
@@ -396,7 +392,7 @@ pub struct Queue<'a> {
 }
 
 impl<'a> Queue<'a> {
-    /// The request the queue bar's form makes for `cost`, as the React screen sent it.
+    /// The request the queue bar's form makes for `cost`.
     pub fn entered(
         workflow: Workflow,
         cost: &Cost,
@@ -449,7 +445,7 @@ impl<'a> Queue<'a> {
     }
 }
 
-/// What a request asked for, as the Node app saves it (`request_json`) and compares a repeat
+/// What a request asked for, as it is saved (`request_json`) and compared with a repeat
 /// of it: what queuing does, the cost as sent, the rate only when one was, and the counts in SKU
 /// order with the seller the screen showed.
 fn details(queue: &Queue<'_>) -> Value {
@@ -467,7 +463,7 @@ fn details(queue: &Queue<'_>) -> Value {
     details
 }
 
-/// What the Node route refuses before it looks at the queue: a request id that is blank or
+/// What is refused before the queue is looked at: a request id that is blank or
 /// longer than 180, counts that are not 1 to 5,000 distinct SKUs each with a positive count, or
 /// a seller key longer than 200.
 fn well_formed(request_id: &str, queue: &Queue<'_>) -> bool {
@@ -481,7 +477,7 @@ fn well_formed(request_id: &str, queue: &Queue<'_>) -> bool {
         && js_length(queue.seller_key) <= 200
 }
 
-/// Why the target refuses what the request asks, in the Node app's words: publishing for a
+/// Why the target refuses what the request asks: publishing for a
 /// seller it may not publish for, or a cost or publication with no seller to record it for.
 fn refusal(target: &Target, queue: &Queue<'_>) -> Option<String> {
     if queue.workflow == Workflow::Publish && !target.can_publish {
@@ -858,7 +854,7 @@ pub struct Batches {
 /// The 25 newest runs, newest first, each as `findRecentInventoryIntakeRuns` answers it. A run's
 /// review count is its batch's failed or manual-review items once priced, or what is neither
 /// published nor publishing when it publishes.
-/// `createdAt` is written as Node's `toISOString` writes it.
+/// `createdAt` is written as `toISOString` writes it.
 const RUNS: &str = r#"SELECT to_jsonb(run) FROM (SELECT r.batch_number AS "batchNumber", r.workflow,
     r.planning_status AS "planningStatus", r.planning_error AS "planningError",
     j.status AS "pricingStatus", j.error_message AS "pricingError",

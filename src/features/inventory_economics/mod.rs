@@ -2,8 +2,8 @@
 //! what it left to reinvest, with the purchase costs that price the inventory. Ported from
 //! `app/features/inventory-economics/routes/inventory-economics.tsx`.
 //!
-//! The ledger is computed here (`ledger`, ported from the Node app's domain and service with
-//! its rounding kept exactly) for the default shipping seller's most recent hundred orders.
+//! The ledger is computed here (`ledger`, with the rounding its recorded figures were made with)
+//! for the default shipping seller's most recent hundred orders.
 //!
 //! | Route | Answer |
 //! |---|---|

@@ -1,7 +1,7 @@
-//! Text in the order JavaScript's `localeCompare` puts it (the ICU root collation the Node app
-//! sorts with), for the characters references and names use: punctuation before digits before
-//! letters, letters without regard to case first, then lowercase before uppercase. Ties the
-//! Node app breaks this way must break the same way here.
+//! Text in the order JavaScript's `localeCompare` puts it (the ICU root collation), for the
+//! characters references and names use: punctuation before digits before letters, letters
+//! without regard to case first, then lowercase before uppercase. Saved orders and keys were
+//! sorted this way, so ties must break the same way here.
 use std::cmp::Ordering;
 
 /// ICU's root order for ASCII punctuation and symbols, before digits and letters.
@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn orders_as_locale_compare_does() {
-        // Each pair as `"a".localeCompare("b") < 0` in Node.
+        // Each pair as `"a".localeCompare("b") < 0` orders it.
         for (a, b) in [
             ("a", "B"),
             ("a", "A"),

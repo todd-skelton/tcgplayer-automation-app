@@ -176,8 +176,8 @@ pub fn parse(text: &str) -> Result<Sheet, SheetError> {
 }
 
 /// The year a set came out, as the sheet writes its date (`01/16/2026 00:00:00` or
-/// `2024-01-01`). The React app read it through `Date` in the browser's zone, which put an ISO
-/// date's January 1 in the year before west of UTC; this reads the year as written.
+/// `2024-01-01`), read as written: read through `Date` in a browser's zone, an ISO date's
+/// January 1 would fall in the year before west of UTC.
 pub fn release_year(date: &str) -> Option<String> {
     let date = date.split_whitespace().next()?;
     let year = if let Some((year, _)) = date.split_once('-') {

@@ -3,8 +3,9 @@
 //! estimates use); quantity, an entered total split across the lots by their units; and frozen
 //! market, split by each lot's market value at intake times its units.
 //!
-//! A request is recorded once. Its fingerprint is the one Node computes, so a request either app
-//! repeats is answered with the entry already saved, and one reused for other evidence is refused.
+//! A request is recorded once. Its fingerprint is the one recorded with the entries already saved,
+//! so a repeated request is answered with the entry already saved, and one reused for other
+//! evidence is refused.
 //! Entries are immutable: a change is a correction that names the series' current entry.
 use serde_json::json;
 use sqlx::PgConnection;
@@ -32,7 +33,8 @@ fn allocations(cost: &PurchaseCost) -> Vec<ExplicitAllocation> {
     allocations
 }
 
-/// What a request says, as Node fingerprints it to tell a repeat from a reuse of its id.
+/// What a request says, fingerprinted as the saved entries are, to tell a repeat from a reuse of
+/// its id.
 pub fn request_fingerprint(cost: &PurchaseCost) -> String {
     sha256_hex(&stable_json(&json!({
         "sellerKey": cost.seller_key,
@@ -236,7 +238,7 @@ struct Lot {
     receipt_id: i32,
     seller_key: Option<String>,
     original_quantity: i32,
-    /// Its unit market value at intake, as node-pg reads `numeric::float8`.
+    /// Its unit market value at intake, read as `numeric::float8`.
     market_value: Option<f64>,
 }
 
@@ -267,8 +269,8 @@ fn explicit_amounts(
 /// Each lot's amount and weight under the quantity rule (its units) or the frozen market rule
 /// (its unit market value times its units, as JavaScript multiplies them): the total split by
 /// weight to the cent, the cents left over going to the largest remainders and then by receipt
-/// id as text (`allocateAmountCents`). The weight is kept as JavaScript prints it, which is what
-/// Node saved.
+/// id as text (`allocateAmountCents`). The weight is kept as JavaScript prints it, as the saved
+/// allocations have it.
 fn by_weight(
     receipts: &[Lot],
     rule: &str,
@@ -343,7 +345,7 @@ mod tests {
         }
     }
 
-    /// Node: `fingerprint({sellerKey:"seller",purchaseReference:"estimated:batch-7",currency:"USD",
+    /// Recorded as `fingerprint({sellerKey:"seller",purchaseReference:"estimated:batch-7",currency:"USD",
     /// totalAmountCents:690,provenance:"estimated",source:"intake",allocationRule:"explicit",
     /// batchNumbers:[7],purchasedAt:"2026-01-02",marketObservedAt:null,correctsEntryId:null,
     /// correctionReason:null,explicitAllocations:[{receiptId:3,amountCents:-30},{receiptId:12,amountCents:720}]})`.

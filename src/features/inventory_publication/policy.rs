@@ -126,7 +126,7 @@ impl Policy {
 }
 
 impl Policy {
-    /// The policy as Node stores it in a publication's `config_json`, every source named and whole
+    /// The policy as a publication's `config_json` stores it, every source named and whole
     /// numbers written without a fraction.
     pub fn document(&self) -> Value {
         let sources: serde_json::Map<String, Value> = Source::ALL

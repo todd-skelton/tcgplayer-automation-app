@@ -136,7 +136,7 @@ pub async fn record(
                 )
                 .bind(seller)
                 .bind(item.sku)
-                // As node-postgres sends a number: its shortest text.
+                // The number as its shortest text, which the column reads exactly.
                 .bind(item.desired_price.to_string())
                 .execute(&mut *conn)
                 .await?;

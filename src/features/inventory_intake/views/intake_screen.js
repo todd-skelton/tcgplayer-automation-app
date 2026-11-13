@@ -1,6 +1,6 @@
 // @ts-check
 // IntakeScreen (intake_screen.rs): a set searched, sorted and paged in the browser, and counting
-// from the keyboard, as the React screen did.
+// from the keyboard.
 //
 // The page brings every product the filters keep (`listed`). Typing in the search narrows a
 // set's at once (`set_search.js`, the server's rule), and the sort, the pages, the rows per page
@@ -394,7 +394,7 @@ export function committed(event) {
 
 /**
  * A product's picture opens in the dialog rather than a new tab; the - and + buttons step its
- * count, and + goes back to the search, as the React screen did.
+ * count, and + goes back to the search.
  * @param {MouseEvent} event @param {Picture} to
  */
 export function clicked(event, to) {

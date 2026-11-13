@@ -88,7 +88,7 @@ pub fn assume_postage_cents(known: impl IntoIterator<Item = i64>) -> i64 {
     }
 }
 
-/// `Math.round`: halves round up, toward positive infinity, as the Node app rounds.
+/// `Math.round`: halves round up, toward positive infinity, as the recorded figures were rounded.
 pub fn js_round(value: f64) -> i64 {
     (value + 0.5).floor() as i64
 }

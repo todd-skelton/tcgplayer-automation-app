@@ -1,7 +1,7 @@
 //! Inventory Strategy: what the selling earned and how capital should turn over. Ported from
 //! `app/features/inventory-strategy`: realized performance and margin over time, what to change,
 //! the active policy's verdict and the hurdle sweep, the capital turnaround, and the selling
-//! history, all computed here with the Node app's queries and rounding.
+//! history, all computed here, rounded as the saved reports were.
 //!
 //! Refreshing the seller's inventory reads TCGplayer here, as Continuous Pricing's refresh does. The forecast evidence the selling history shows is completed by a
 //! task (`backfill`), not by the page, which only reads.
@@ -16,7 +16,7 @@
 //! | `POST /inventory-strategy/analysis` | a strategy analysis batch queued, or the one already running |
 //! | `GET /inventory-strategy/analysis/{batch}` | the latest analysis's status, read again while it runs; the screen once it ends |
 //!
-//! A post the Node app refuses answers 409 with the page and why.
+//! A refused post answers 409 with the page and why.
 //!
 //! The screen draws first what the dashboard alone gives (its heading, the analysis and the hurdle
 //! sweep, from a dashboard kept between pricing runs). Realized performance, the policy's verdict
@@ -111,7 +111,7 @@ pub mod url {
 
     /// The selling history's scope, the realized window shown, and whether the slow parts are read
     /// in. A window the screen no longer offers (an old bookmark) reads as unset, so as the default
-    /// one, as the React screen read it.
+    /// one.
     #[derive(Clone, Debug, Default, corten::Route, corten::Fields)]
     #[route(query)]
     pub struct View {

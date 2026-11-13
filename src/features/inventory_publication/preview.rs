@@ -418,9 +418,10 @@ mod tests {
         assert_eq!(condition(&row(" Near Mint ", "")), "Near Mint");
     }
 
-    /// Every automatic publication Node planned since its rules last changed, its batch previewed again as it stood (only the
+    /// Every automatic publication saved since its rules last changed, its batch previewed again
+    /// as it stood (only the
     /// publications before it counted, `now` its creation): the eligible SKUs must be the items
-    /// Node planned, with the same prices, names, keys and evidence. Reads the dev database only.
+    /// saved, with the same prices, names, keys and evidence. Reads the dev database only.
     #[tokio::test]
     #[ignore = "reads the dev database's publications"]
     async fn previews_plan_what_node_planned() {

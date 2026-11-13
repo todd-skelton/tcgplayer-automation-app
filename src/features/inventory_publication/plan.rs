@@ -22,7 +22,7 @@ pub const METHOD: &str = "staged_delta";
 
 #[derive(Debug)]
 pub enum Error {
-    /// The plan cannot be made as asked; the message says why, as Node's does.
+    /// The plan cannot be made as asked; the message says why.
     Rejected(String),
     Database(sqlx::Error),
 }
@@ -142,7 +142,7 @@ pub struct NewItem {
     pub previous_price: Option<f64>,
     pub desired_price: f64,
     pub quantity_delta: i32,
-    /// To the millisecond, as Node reads and writes it.
+    /// To the millisecond, as the saved publications hold it.
     pub priced_at: DateTime<Utc>,
     pub forecast_evidence: Option<Value>,
 }
@@ -221,7 +221,8 @@ pub fn new_publication(
     })
 }
 
-/// What the database would refuse, refused first with Node's words (`validateCreateParams`).
+/// What the database would refuse, refused first with a message that says why
+/// (`validateCreateParams`).
 pub fn validate(publication: &NewPublication) -> Result<(), Error> {
     if publication.planning_key.trim().is_empty() {
         return rejected("planningKey must not be empty.");
@@ -469,7 +470,7 @@ pub async fn create_or_find(
             .push_bind(&item.set_name)
             .push_bind(&item.product_name)
             .push_bind(&item.condition)
-            // As node-postgres sends a number: its shortest text, rounded by the column.
+            // The number as its shortest text, rounded by the column.
             .push_bind(item.previous_price.map(|price| price.to_string()))
             .push_unseparated("::numeric")
             .push_bind(item.desired_price.to_string())
@@ -641,7 +642,7 @@ pub struct Planned {
 
 /// Plans the batch's selected SKUs (every eligible one when none are given) for publication to
 /// the publication settings' seller, under their policy, as the Batch Pricer's Publish does.
-/// Each publication is saved in a transaction of its own, as Node saves them.
+/// Each publication is saved in a transaction of its own.
 pub async fn plan_manual(
     conn: &mut PgConnection,
     batch_number: i32,
@@ -790,7 +791,7 @@ mod tests {
     use super::*;
     use crate::database::Database;
 
-    /// A publication Node planned: its id, batch, config, seller and when.
+    /// A saved publication: its id, batch, config, seller and when.
     type NodePlan = (i64, i32, Value, Option<String>, DateTime<Utc>);
 
     #[test]
@@ -820,9 +821,9 @@ mod tests {
         assert!(!same_json(&json!({"a": 1}), &json!({"a": 1, "b": null})));
     }
 
-    /// Plans again every automatic publication Node planned under the rules ported here, as it
-    /// stood when Node planned it, inside a transaction that is rolled back: each must find
-    /// Node's publication under its key and match it item for item.
+    /// Plans again every saved automatic publication planned under the current rules, as it
+    /// stood when it was planned, inside a transaction that is rolled back: each must find the
+    /// saved publication under its key and match it item for item.
     #[tokio::test]
     #[ignore = "reads the dev database; writes only in a transaction that is rolled back"]
     async fn plans_find_what_node_planned() {
@@ -889,13 +890,13 @@ mod tests {
         assert!(different.is_empty());
     }
 
-    /// Node's publish route's planning recorded over dev batches (`tests/fixtures/node/publication/publish.json`, by
-    /// `scripts/parity/publish-selections.mjs`, each case on a fresh copy of the dev database):
+    /// The publish route's planning recorded over dev batches
+    /// (`tests/fixtures/node/publication/publish.json`, each case on a fresh copy of the dev database):
     /// received, csv, continuous and strategy batches, selections, a selection planned twice, a
     /// split at a smaller maximum, no seller, no maximum, stale candidates and a missing batch.
     /// Each case is planned here on the dev database as it stood, inside a transaction that is
-    /// rolled back, and must answer as Node answered (its refusals are 500s whose message carries
-    /// an `Error: ` prefix) and save what Node saved. Recorded again when the dev batches change.
+    /// rolled back, and must answer as recorded (refusals are 500s whose message carries an
+    /// `Error: ` prefix) and save what was recorded. Recorded again when the dev batches change.
     #[tokio::test]
     #[ignore = "reads the dev database; writes only in a transaction that is rolled back"]
     async fn selections_plan_as_node_plans() {
@@ -1020,7 +1021,7 @@ mod tests {
         );
     }
 
-    /// Each reason a batch plans nothing by itself, and Node's latest automatic publication
+    /// Each reason a batch plans nothing by itself, and the latest saved automatic publication
     /// planned again by `plan_automatic` as things stood then, inside a transaction that is rolled
     /// back.
     #[tokio::test]
@@ -1177,9 +1178,9 @@ mod tests {
         .unwrap()
     }
 
-    /// Node's publications taken away inside a transaction that is rolled back, and planned
+    /// The saved publications taken away inside a transaction that is rolled back, and planned
     /// again: the received inventory one (its receipt links too) and the latest continuous ones
-    /// write what Node wrote, but for times Node never wrote finer than the millisecond.
+    /// write what was saved, but for times, which were saved no finer than the millisecond.
     #[tokio::test]
     #[ignore = "uses the dev database, in a transaction that is rolled back"]
     async fn a_plan_made_again_writes_what_node_wrote() {

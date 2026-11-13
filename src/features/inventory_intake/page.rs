@@ -399,7 +399,7 @@ pub async fn queue_batch(
 
 /// A queue refused, with the refusal's status: the form with why, and, when the counts are read
 /// again, the totals they come to now. Without JavaScript, the whole screen. The form reads the
-/// Node app's batches only for the patch; the whole screen reads them for itself.
+/// batches only for the patch; the whole screen reads them for itself.
 async fn refuse(
     req: &Req,
     db: &Database,

@@ -42,7 +42,7 @@ fn day(iso: &str) -> Option<NaiveDate> {
     NaiveDate::parse_from_str(iso, "%Y-%m-%d").ok()
 }
 
-/// The chart's geometry, as the React chart laid it out.
+/// The chart's geometry.
 struct Plot {
     low: f64,
     high: f64,

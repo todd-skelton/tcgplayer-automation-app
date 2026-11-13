@@ -1,5 +1,5 @@
-//! The checks the Node app's inventory economics put entered evidence through before recording it
-//! (`domain/money`, `domain/purchaseCostDetails` and the repository's own), in its words: amounts
+//! The checks entered evidence goes through before it is recorded (`domain/money`,
+//! `domain/purchaseCostDetails` and the repository's own), with their messages: amounts
 //! in dollars, references and dates as JavaScript reads them. Intake's purchase cost uses them.
 use serde_json::Value;
 

@@ -238,7 +238,7 @@ mod tests {
 
     const WORKER: &str = "port-worker";
 
-    /// A turn of Node's tick as the recorder writes it.
+    /// A turn of the worker's tick as the recording writes it.
     async fn turn(conn: &mut PgConnection, portal: &StandIn) -> String {
         let claimed = match claim(conn, WORKER, Utc::now()).await {
             Ok(Ok(publication)) => publication,
@@ -262,8 +262,8 @@ mod tests {
 
     /// The cases in `tests/fixtures/node/publication/pubworker-cases.json` on the dev database,
     /// a turn at a time against Seller Portal stood in, in one transaction rolled back (a
-    /// savepoint each): the turns, the forms posted and everything written as Node's worker did
-    /// (`scripts/parity/pubworker.ts`, a fresh copy of dev for each case). Received inventory
+    /// savepoint each): the turns, the forms posted and everything written as recorded (a fresh
+    /// copy of dev for each case). Received inventory
     /// planned from its intake run and made live; a continuous publication's refused row,
     /// warning, error and missing outcome; a refused, challenged or unreachable sign-in, an
     /// unreadable upload id, a refused upload, a partial one whose rollback fails, a refused

@@ -1,6 +1,6 @@
 //! The turnaround a capital cycle assumes: the seller's manual days, or the days observed in the
 //! saved reinvestment report when that evidence is fresh, seller-scoped and broad enough. Ported
-//! from `turnaroundStrategy.ts` and its types; the JSON keeps the Node app's shape.
+//! from `turnaroundStrategy.ts` and its types; the JSON has those types' shape.
 use std::collections::HashSet;
 
 use chrono::DateTime;

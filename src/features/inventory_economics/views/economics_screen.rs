@@ -19,7 +19,7 @@ use crate::{
 };
 
 /// The seller's current purchase costs, then each captured order's economics. Without a
-/// workspace (no seller configured, the Node app down), why, and a way to read it again.
+/// workspace (no seller configured, the database down), why, and a way to read it again.
 #[component(css)]
 pub fn EconomicsScreen<'a>(workspace: &'a Result<Workspace, String>, t: Msg) -> impl Render {
     html! {

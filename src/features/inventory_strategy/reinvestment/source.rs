@@ -1,6 +1,6 @@
 //! The evidence the turnaround is rebuilt from (current purchase costs with their publications,
-//! funding, receipts with no cost, the latest order sync) and the saved rebuilds: the Node app's
-//! `inventoryReinvestmentRepository` and `reinvestmentTurnaround.server.ts`.
+//! funding, receipts with no cost, the latest order sync) and the saved rebuilds
+//! (`inventoryReinvestmentRepository`, `reinvestmentTurnaround.server.ts`).
 use std::collections::HashMap;
 
 use chrono::{DateTime, Timelike, Utc};
@@ -42,7 +42,7 @@ pub struct PurchaseRow {
 }
 
 impl PurchaseRow {
-    /// The row as the Node app holds it, for its identity.
+    /// The row in its stored JSON shape, for its identity.
     fn json(&self) -> Value {
         json!({
             "purchaseReference": self.purchase_reference,
@@ -551,7 +551,7 @@ pub async fn rebuild_report(
 }
 
 /// Saves the rebuild unless one from the same evidence is saved already, and makes it current.
-/// The saved report is the one returned, as the Node app returns it.
+/// The saved report is the one returned.
 async fn save(conn: &mut PgConnection, report: &Report) -> Result<Report, String> {
     let e = |e: sqlx::Error| e.to_string();
     let found: Option<(String, Json<Report>)> = sqlx::query_as(
@@ -628,7 +628,7 @@ pub fn hour_of(now: DateTime<Utc>) -> DateTime<Utc> {
 }
 
 /// Rebuilds the seller's turnaround as of `as_of` from one snapshot of the evidence, one rebuild
-/// at a time per seller (the same advisory lock the Node app takes), and makes it current.
+/// at a time per seller (a session advisory lock), and makes it current.
 pub async fn load(db: &Database, seller: &str, as_of: DateTime<Utc>) -> Result<Report, String> {
     let seller = seller.trim();
     let as_of = iso(as_of);
@@ -664,7 +664,7 @@ pub async fn load(db: &Database, seller: &str, as_of: DateTime<Utc>) -> Result<R
         Ok(saved)
     }
     .await;
-    // Closing the connection would release it too; unlocking first lets Node's waiter go at once.
+    // Closing the connection would release it too; unlocking first lets a waiter go at once.
     let _ = sqlx::query("SELECT pg_advisory_unlock(hashtext($1))")
         .bind(&lock)
         .execute(&mut *conn)
@@ -672,8 +672,8 @@ pub async fn load(db: &Database, seller: &str, as_of: DateTime<Utc>) -> Result<R
     result
 }
 
-/// A connection holding Postgres's session advisory lock `key`, the lock the Node app takes for
-/// the same work. A session lock outlives a dropped future: a page whose client left, or that
+/// A connection holding Postgres's session advisory lock `key`, which every rebuild takes. A
+/// session lock outlives a dropped future: a page whose client left, or that
 /// passed its deadline, between the lock and the unlock would put the connection back in the pool
 /// still holding it, and every later rebuild would wait on it. So the connection closes when it
 /// is dropped, which ends the session and the lock with it, and never goes back to the pool.
@@ -843,7 +843,7 @@ mod tests {
     }
 
     /// A rebuild is saved once per hour and evidence, with its allocations, and made current; the
-    /// saved report has the keys the Node app's saved reports have. Restores the tables after.
+    /// saved report has the keys the reports saved before it have. Restores the tables after.
     #[tokio::test]
     #[ignore = "writes the dev database's rebuild tables, and restores them"]
     async fn a_rebuild_is_saved_once_and_made_current_in_the_node_apps_shape() {

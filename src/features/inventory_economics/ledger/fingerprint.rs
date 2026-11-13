@@ -1,5 +1,5 @@
-//! Fingerprints of evidence: a SHA-256 of its JSON with keys sorted, written as the Node app's
-//! `stableJson` writes it, so a fingerprint recorded there matches one computed here.
+//! Fingerprints of evidence: a SHA-256 of its JSON with keys sorted, written as `stableJson`
+//! writes it, so a fingerprint already recorded matches one computed here.
 use serde::Serialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -16,7 +16,7 @@ pub fn stable_json(value: &Value) -> String {
     out
 }
 
-/// `value` as JSON with every object's keys in `localeCompare` order, as the Node app's
+/// `value` as JSON with every object's keys in `localeCompare` order, as
 /// `JSON.stringify(canonical(value))` writes it, and numbers written as JavaScript writes them.
 pub fn locale_json(value: &Value) -> String {
     let mut out = String::new();
@@ -24,7 +24,7 @@ pub fn locale_json(value: &Value) -> String {
     out
 }
 
-/// `value` as Postgres hands a JSONB value to Node and `JSON.stringify` writes it back: every
+/// `value` as a JSONB value read from Postgres and written back by `JSON.stringify`: every
 /// object's keys in JSONB's order (shorter first, then by their bytes) and numbers written as
 /// JavaScript writes them. Keys that are whole numbers, which JavaScript would put first, are
 /// not expected.
@@ -146,7 +146,7 @@ pub fn financial(transaction: &Value, refunds: &Value) -> String {
 }
 
 /// A JSON value with every whole number written as JavaScript writes it (`2`, not `2.0`), so
-/// evidence stored as JSONB, or measured in bytes, is what Node's is.
+/// evidence stored as JSONB, or measured in bytes, is what the stored evidence is.
 pub fn js_numbers(value: &Value) -> Value {
     match value {
         Value::Number(n) => match n.as_f64() {
@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn the_financial_fingerprint_matches_the_node_app() {
-        // Node: createHash("sha256").update(stableJson({transaction:{net:8.64,lines:[{q:2,p:10.0}]},
+        // Recorded: createHash("sha256").update(stableJson({transaction:{net:8.64,lines:[{q:2,p:10.0}]},
         // refunds:[{amount:1.5}]})).digest("hex")
         assert_eq!(
             financial(

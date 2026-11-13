@@ -53,7 +53,7 @@ pub trait Poster: Sync {
     ) -> impl Future<Output = Result<Answer, Unsuccessful>> + Send;
 }
 
-/// Why a step failed. The message is the one the Node app saves.
+/// Why a step failed. The message is the one saved with the publication.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Failure {
     pub message: String,
@@ -464,7 +464,7 @@ pub fn message_text(message: &Value) -> String {
     }
 }
 
-/// Seller Portal's messages as the Node app quotes them (`formatSellerPortalMessages`).
+/// Seller Portal's messages, quoted (`formatSellerPortalMessages`).
 pub fn quoted_messages(messages: Option<&[Value]>) -> String {
     let joined: Vec<String> = messages
         .unwrap_or_default()
@@ -568,7 +568,7 @@ pub async fn move_to_live(portal: &impl Poster, upload_id: i64) -> Result<Value,
     Ok(answer.data)
 }
 
-/// The kind of content a content type names, as the Node client classifies it.
+/// The kind of content a content type names.
 fn content_kind(content_type: &str) -> &'static str {
     let media = content_type
         .split(';')
@@ -587,8 +587,8 @@ fn content_kind(content_type: &str) -> &'static str {
     }
 }
 
-/// How long one post may take. The Node client sets none; a post that never answers would hold
-/// the publication's lease forever, so this one is given up and the publication reconciled.
+/// How long one post may take: a post that never answers would hold the publication's lease
+/// forever, so it is given up and the publication reconciled.
 const TIMEOUT: Duration = Duration::from_secs(120);
 
 /// Seller Portal itself, with the auth cookie saved in the HTTP settings.
@@ -650,7 +650,7 @@ mod tests {
     }
 
     /// A refused upload keeps what Seller Portal said: its messages and the rows it still
-    /// accepted; with neither, the message is the one Node saved.
+    /// accepted; with neither, the message says only that the upload was not accepted.
     #[test]
     fn a_refused_upload_keeps_seller_portals_reason() {
         let refused = |data: Value| refused_upload(19149437, 32, &data).message;

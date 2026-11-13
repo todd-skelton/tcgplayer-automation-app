@@ -323,8 +323,8 @@ pub struct Imported {
     pub duplicate_file: bool,
 }
 
-/// An export imported for `named` (else the default shipping seller, as the Node route resolves
-/// it), observed now: the seller it was for and what it did.
+/// An export imported for `named` (else the default shipping seller), observed now: the seller it
+/// was for and what it did.
 pub async fn requested(
     db: &crate::database::Database,
     named: &str,

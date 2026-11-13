@@ -1,6 +1,6 @@
-//! The seller order history worker in shadow (port decision 24): the ported sync runs as the Node
-//! worker does, but its run is kept in this process and each order it would record is compared
-//! with the row Node holds and written to a log as one JSON line. It writes nothing to the
+//! The seller order history worker in shadow (port decision 24): the sync runs as the worker's
+//! does, but its run is kept in this process and each order it would record is compared with the
+//! row the history holds and written to a log as one JSON line. It writes nothing to the
 //! database.
 //!
 //! It runs when `SELLER_ORDER_SHADOW_LOG` names the log file. A step reads one page of the last
@@ -24,10 +24,10 @@ use super::{
 };
 use crate::{database::Database, features::shipping_configuration, tcgplayer::TcgPlayer};
 
-/// How often a step runs. Node steps every two seconds while a scan is behind and hourly once it
-/// is complete; the shadow reads a smaller page, more slowly, beside it.
+/// How often a step runs. The worker steps every two seconds while a scan is behind and hourly
+/// once it is complete; the shadow reads a smaller page, more slowly, beside it.
 pub const EVERY: Duration = Duration::from_secs(10 * 60);
-/// A step's reads: Node's, but pages of 100 rather than 500.
+/// A step's reads: the worker's, but pages of 100 rather than 500.
 pub const BUDGET: Budget = Budget {
     max_pages: 1,
     max_details: 25,
@@ -43,22 +43,23 @@ pub fn log_path() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-/// What Node holds of an order.
+/// What the history holds of an order.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Stored {
     pub source_fingerprint: String,
     pub source_revision: i32,
 }
 
-/// What recording an order would do to Node's history.
+/// What recording an order would do to the history.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "verdict", rename_all = "snake_case")]
 pub enum Verdict {
-    /// Node has not recorded the order: it would record its revision 1.
+    /// The order is not recorded: recording it would make its revision 1.
     New,
-    /// The order changed: Node would record its next revision.
+    /// The order changed: recording it would make its next revision.
     Revised { revision: i32 },
-    /// Only its search result changed: Node would note the new result, keeping the revision.
+    /// Only its search result changed: recording it would note the new result, keeping the
+    /// revision.
     SummaryOnly { revision: i32 },
 }
 
@@ -103,7 +104,7 @@ enum Line<'a> {
     },
 }
 
-/// Node's history read, the run kept here, and the orders it would record logged.
+/// The history read, the run kept here, and the orders it would record logged.
 struct Shadow<'a> {
     db: &'a Database,
     run: &'a MemoryRun,

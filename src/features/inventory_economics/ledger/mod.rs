@@ -1,7 +1,6 @@
 //! The inventory-economics ledger: each order's proceeds, expenses and cost from the evidence
-//! recorded about it, to the cent and with how much of it is known. Ported from the Node app's
-//! `app/features/inventory-economics/domain` and `services/inventoryEconomics.server.ts`, whose
-//! rounding it keeps exactly.
+//! recorded about it, to the cent and with how much of it is known, rounded exactly as the
+//! recorded figures were (`inventory-economics/domain`, `inventoryEconomics.server.ts`).
 pub mod assumptions;
 pub mod evidence;
 pub mod fingerprint;

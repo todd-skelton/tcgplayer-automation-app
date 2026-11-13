@@ -1,5 +1,5 @@
-//! The publications the worker claims and the outcomes it saves, as the Node app's
-//! `inventoryPublicationsRepository` writes them: the oldest planned publication claimed under a
+//! The publications the worker claims and the outcomes it saves
+//! (`inventoryPublicationsRepository`): the oldest planned publication claimed under a
 //! lease, its status moved only along `ALLOWED_TRANSITIONS`, each item's outcome saved with the
 //! receipt lots a received SKU makes live, and the publications a lost worker left behind put
 //! right.
@@ -14,7 +14,7 @@ use crate::features::inventory_fifo::queue;
 /// Why a write was refused or failed.
 #[derive(Debug)]
 pub enum Error {
-    /// Refused as Node refuses it; the message is Node's.
+    /// Refused; the message says why.
     Refused(String),
     Database(sqlx::Error),
 }

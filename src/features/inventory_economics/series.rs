@@ -1,4 +1,4 @@
-//! An economics ledger's series, ported from the Node repository's `findRepeatedRequest`,
+//! An economics ledger's series, as the repository's `findRepeatedRequest`,
 //! `lockSeries` and `nextCorrection`. The app records only purchase costs; the funding and order
 //! expense ledgers it reads were written by the retired `/api` route.
 //!
@@ -14,8 +14,8 @@ use super::details::required_text;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NotRecorded {
     /// It conflicts with what is recorded: a request id reused for other evidence, a correction
-    /// of an entry that is not the current one, or a lot another purchase owns. Node's
-    /// `InventoryEconomicsConflictError`.
+    /// of an entry that is not the current one, or a lot another purchase owns
+    /// (`InventoryEconomicsConflictError`).
     Conflict(String),
     /// Anything else: input it does not take, lots it cannot find, the database failing.
     Failed(String),
@@ -41,7 +41,7 @@ impl From<NotRecorded> for String {
     }
 }
 
-/// The database's failure as Node's route answered it: the error's `message`.
+/// The database's failure, answered with the error's `message`.
 pub fn failed(e: sqlx::Error) -> NotRecorded {
     NotRecorded::Failed(match e.as_database_error() {
         Some(database) => database.message().to_owned(),
