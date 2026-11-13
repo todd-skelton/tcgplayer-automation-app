@@ -29,6 +29,13 @@ pub struct Realized {
     pub error: Option<&'static str>,
 }
 
+impl Realized {
+    /// The realized windows the screen offers, or none before anything sold.
+    pub fn windows(&self) -> &[super::performance::PerformanceWindow] {
+        self.report.as_ref().map_or(&[], |p| &p.windows)
+    }
+}
+
 /// The seller's realized performance and margin trend as of `now`. A pricing history that cannot
 /// be read leaves the changes out, as the Node app does.
 pub async fn load(

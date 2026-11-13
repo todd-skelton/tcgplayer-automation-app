@@ -55,6 +55,8 @@ mod views;
 mod workflow;
 
 pub use views::COMPONENTS;
+#[cfg(test)]
+pub use views::LabelFormFill;
 
 // Handlers are named from here, where the routes module is declared.
 use buying::{buy_all, buy_shipment, edit_shipment, shipment_csv};

@@ -1,15 +1,17 @@
-//! Everything the screen shows, read at once as the React route's loader read it: each part that
-//! can fail on its own (selling history, turnaround evidence and settings, realized performance)
-//! says why and leaves the rest.
+//! What the screen shows: what it draws first, and its slow parts, read in with it or later by
+//! its streams. Each part that can fail on its own (selling history, turnaround evidence and
+//! settings, realized performance) says why and leaves the rest, as the React route's loader did.
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
+use corten::prelude::Errors;
 
 use super::{
+    actions::TurnaroundInput,
     dashboard::Dashboard,
     levers::{self, Lever, LeverInput, Modeled},
-    performance::{PerformanceWindow, RealizedPerformance},
-    realized::{self, MarginTrend, Realized},
+    performance::PerformanceWindow,
+    realized::{self, Realized},
     reinvestment, selling_history, strategy,
     turnaround::{self, Selection},
     turnaround_settings,
@@ -24,6 +26,79 @@ use crate::{
         pricing::capital_cycle::{Economics, Portfolio},
     },
 };
+
+/// The selling history over a scope, or the sentence the screen shows when it could not be read.
+pub type SellingHistory = Result<selling_history::Report, &'static str>;
+
+/// The seller's selling history over `scope`.
+pub async fn load_selling_history(
+    db: &Database,
+    seller: &str,
+    scope: &selling_history::Scope,
+) -> SellingHistory {
+    selling_history::source::load(db, seller, scope, 1)
+        .await
+        .map_err(|why| {
+            eprintln!("Inventory selling history load failed: {why}");
+            "Selling history could not be loaded. Existing strategy analysis is still available."
+        })
+}
+
+/// The capital turnaround the model uses for the seller, from the reinvestment evidence (rebuilt
+/// and saved now) and the saved settings, and the economics it gives the verdict and the levers.
+pub struct Turnaround {
+    pub selection: Selection,
+    pub economics: Economics,
+    /// Why the turnaround evidence is not current, when it is not.
+    pub reinvestment_error: Option<String>,
+    pub settings_error: Option<&'static str>,
+}
+
+impl Turnaround {
+    pub async fn read(db: &Database, seller: &str, config: &Config) -> Turnaround {
+        let ((report, reinvestment_error), saved) = tokio::join!(
+            reinvestment::source::load_with_recovery(db, seller),
+            turnaround_settings::find_for_seller(db, seller),
+        );
+        let (saved, settings_error) = match saved {
+            Ok(saved) => (saved, None),
+            Err(why) => {
+                eprintln!("Inventory Strategy turnaround settings load failed: {why}");
+                (
+                    Vec::new(),
+                    Some(
+                        "Saved turnaround settings could not be loaded; using the 28-day manual fallback.",
+                    ),
+                )
+            }
+        };
+        let selection = turnaround::select(
+            seller,
+            None,
+            &saved,
+            report.as_ref(),
+            reinvestment_error.as_deref(),
+            Utc::now().timestamp_millis() as f64,
+        );
+        let ppd = &config.pricing.profit_per_day;
+        let economics = verdict::strategy_economics(
+            ppd.relative_overhead,
+            ppd.static_overhead_per_unit,
+            selection.effective_days,
+        );
+        Turnaround {
+            selection,
+            economics,
+            reinvestment_error,
+            settings_error,
+        }
+    }
+}
+
+/// `read` when `wanted`; nothing is read otherwise.
+async fn read_if<T>(wanted: bool, read: impl Future<Output = T>) -> Option<T> {
+    if wanted { Some(read.await) } else { None }
+}
 
 /// The latest strategy analysis batch for the seller.
 #[derive(Clone, Debug, PartialEq, sqlx::FromRow)]
@@ -72,93 +147,68 @@ pub async fn analysis(db: &Database, batch: i32) -> sqlx::Result<Option<Analysis
     .await
 }
 
+/// What the screen draws first, and each slow part read in with it (`None`: its stream sends it).
 pub struct Screen {
     pub view: View,
     pub seller_key: String,
     pub config: Config,
     pub dashboard: Arc<Dashboard>,
     pub analysis: Option<Analysis>,
-    pub selling_history: Result<selling_history::Report, &'static str>,
-    /// Why the turnaround evidence is not current, when it is not.
-    pub reinvestment_error: Option<String>,
-    pub settings_error: Option<&'static str>,
-    pub turnaround: Selection,
-    pub economics: Economics,
-    pub performance: Option<RealizedPerformance>,
-    pub margin_trend: Option<MarginTrend>,
-    pub performance_error: Option<&'static str>,
+    pub realized: Option<Realized>,
+    pub turnaround: Option<Turnaround>,
+    pub selling_history: Option<SellingHistory>,
     pub now: DateTime<Utc>,
     /// Why the last post was refused.
     pub problem: Option<String>,
+    /// The turnaround form as it was sent, with what is wrong with it, when it was refused.
+    pub refused_turnaround: Option<(TurnaroundInput, Errors)>,
 }
 
 impl Screen {
+    /// The screen with the slow parts its address reads in (`View::reads_returns`,
+    /// `View::reads_selling_history`); its streams send the others.
     pub async fn read(db: &Database, view: &View) -> corten::Result<Screen> {
+        Self::read_parts(db, view, view.reads_returns(), view.reads_selling_history()).await
+    }
+
+    /// The screen as it is drawn first, without its slow parts.
+    pub async fn first(db: &Database, view: &View) -> corten::Result<Screen> {
+        Self::read_parts(db, view, false, false).await
+    }
+
+    async fn read_parts(
+        db: &Database,
+        view: &View,
+        returns: bool,
+        history: bool,
+    ) -> corten::Result<Screen> {
         let (settings, config) = tokio::join!(store::settings(db), config::load(db));
         let seller = settings?.seller_key;
         let config = config?;
         let scope = view.scope();
-        let (dashboard, analysis, history, (report, reinvestment_error), saved, realized) = tokio::join!(
+        let (dashboard, analysis, (realized, turnaround), selling_history) = tokio::join!(
             strategy::load(db, &seller, &config),
             latest_analysis(db, &seller),
-            selling_history::source::load(db, &seller, &scope, 1),
-            reinvestment::source::load_with_recovery(db, &seller),
-            turnaround_settings::find_for_seller(db, &seller),
-            realized::load_with_recovery(db, &seller),
-        );
-        let dashboard = dashboard.map_err(corten::Error::new)?;
-        let selling_history = history.map_err(|why| {
-            eprintln!("Inventory selling history load failed: {why}");
-            "Selling history could not be loaded. Existing strategy analysis is still available."
-        });
-        let (saved, settings_error) = match saved {
-            Ok(saved) => (saved, None),
-            Err(why) => {
-                eprintln!("Inventory Strategy turnaround settings load failed: {why}");
-                (
-                    Vec::new(),
-                    Some(
-                        "Saved turnaround settings could not be loaded; using the 28-day manual fallback.",
-                    ),
+            async {
+                tokio::join!(
+                    read_if(returns, realized::load_with_recovery(db, &seller)),
+                    read_if(returns, Turnaround::read(db, &seller, &config)),
                 )
-            }
-        };
-        let now = Utc::now();
-        let turnaround = turnaround::select(
-            &dashboard.seller_key,
-            None,
-            &saved,
-            report.as_ref(),
-            reinvestment_error.as_deref(),
-            now.timestamp_millis() as f64,
+            },
+            read_if(history, load_selling_history(db, &seller, &scope)),
         );
-        let ppd = &config.pricing.profit_per_day;
-        let economics = verdict::strategy_economics(
-            ppd.relative_overhead,
-            ppd.static_overhead_per_unit,
-            turnaround.effective_days,
-        );
-        let Realized {
-            report: performance,
-            margin_trend,
-            error: performance_error,
-        } = realized;
         Ok(Screen {
             view: view.clone(),
             seller_key: seller,
             config,
-            dashboard,
+            dashboard: dashboard.map_err(corten::Error::new)?,
             analysis: analysis?,
-            selling_history,
-            reinvestment_error,
-            settings_error,
+            realized,
             turnaround,
-            economics,
-            performance,
-            margin_trend,
-            performance_error,
-            now,
+            selling_history,
+            now: Utc::now(),
             problem: None,
+            refused_turnaround: None,
         })
     }
 
@@ -171,8 +221,8 @@ impl Screen {
         matches!(self.config.pricing.policy, Policy::ProfitPerDay)
     }
 
-    /// Each hurdle on the sweep that grows capital, best first.
-    pub fn hurdle_returns(&self) -> Vec<HurdleReturn<'_>> {
+    /// Each hurdle on the sweep that grows capital under the turnaround's economics, best first.
+    pub fn hurdle_returns(&self, turnaround: &Turnaround) -> Vec<HurdleReturn<'_>> {
         let overall = &self.dashboard.overall;
         verdict::hurdle_returns(
             &overall.hurdle_sweep,
@@ -180,25 +230,24 @@ impl Screen {
                 market_value: overall.estimated_market_value,
                 unit_count: overall.unit_count as f64,
             },
-            self.economics,
+            turnaround.economics,
         )
     }
 
-    /// The realized windows the screen offers, or none before anything sold.
-    pub fn windows(&self) -> &[PerformanceWindow] {
-        self.performance.as_ref().map_or(&[], |p| &p.windows)
-    }
-
     /// What to change, with realized performance over `window` (none: before anything sold).
-    pub fn levers(&self, window: Option<&PerformanceWindow>) -> Vec<Lever> {
-        let returns = self.hurdle_returns();
+    pub fn levers(
+        &self,
+        turnaround: &Turnaround,
+        window: Option<&PerformanceWindow>,
+    ) -> Vec<Lever> {
+        let returns = self.hurdle_returns(turnaround);
         fn modeled<'a>(r: &HurdleReturn<'a>) -> Modeled<'a> {
             Modeled {
                 scenario: r.scenario,
                 daily_return: r.daily_return,
             }
         }
-        let evidence = self.turnaround.evidence.as_ref();
+        let evidence = turnaround.selection.evidence.as_ref();
         levers::improvement_levers(&LeverInput {
             configured_hurdle: self.hurdle(),
             best: returns.first().map(modeled),
@@ -210,5 +259,13 @@ impl Screen {
             modeled_units: self.dashboard.overall.modeled_unit_count,
             total_units: self.dashboard.overall.unit_count,
         })
+    }
+
+    /// The turnaround form as drawn: as it was sent when refused, else the turnaround as saved.
+    pub fn turnaround_input(&self, turnaround: &Turnaround) -> TurnaroundInput {
+        match &self.refused_turnaround {
+            Some((input, _)) => input.clone(),
+            None => TurnaroundInput::of(&self.seller_key, &turnaround.selection),
+        }
     }
 }

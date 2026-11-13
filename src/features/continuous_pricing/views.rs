@@ -5,7 +5,7 @@ use super::scheduler::Cycle;
 
 mod continuous_screen;
 
-pub use continuous_screen::{ContinuousScreen, Problem, ScheduleForm};
+pub use continuous_screen::{ContinuousScreen, Problem, ScheduleForm, SkuRow};
 
 pub const COMPONENTS: &[Component] = &[ContinuousScreen];
 

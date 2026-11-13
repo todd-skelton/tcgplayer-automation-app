@@ -380,10 +380,7 @@ pub async fn page(
     let last = ((total + PAGE_SIZE - 1) / PAGE_SIZE).max(1);
     let page = page.clamp(1, last);
     let items = sqlx::query_as(&format!(
-        "SELECT sku, product_line, set_name, product_name, condition, quantity,
-            current_price::FLOAT8 AS current_price, pricing_eligible, enabled, pause_reason,
-            last_priced_at, last_published_at, next_price_at
-        FROM continuous_pricing_inventory
+        "SELECT {ITEM} FROM continuous_pricing_inventory
         WHERE {filter}
         ORDER BY enabled DESC, in_stock DESC, next_price_at, sku
         LIMIT $3 OFFSET $4"
@@ -428,29 +425,34 @@ pub async fn recent_runs(db: &Database) -> sqlx::Result<Vec<Run>> {
     .await
 }
 
+/// What an [`Item`] reads of a tracked SKU.
+const ITEM: &str = "sku, product_line, set_name, product_name, condition, quantity,
+    current_price::FLOAT8 AS current_price, pricing_eligible, enabled, pause_reason,
+    last_priced_at, last_published_at, next_price_at";
+
 /// Enables a SKU (clearing its review and failures, and making it due now) or pauses it. Whether
-/// the seller tracks it.
+/// the seller tracks it: the SKU as it is now, or none.
 pub async fn set_enabled(
     db: &Database,
     seller: &str,
     sku: i32,
     enabled: bool,
-) -> sqlx::Result<bool> {
-    let changed = sqlx::query(
+) -> sqlx::Result<Option<Item>> {
+    sqlx::query_as(&format!(
         "UPDATE continuous_pricing_inventory
         SET enabled = $3,
             pause_reason = CASE WHEN $3 THEN NULL ELSE pause_reason END,
             consecutive_pricing_failures = CASE WHEN $3 THEN 0 ELSE consecutive_pricing_failures END,
             next_price_at = CASE WHEN $3 THEN LEAST(next_price_at, NOW()) ELSE next_price_at END,
             updated_at = NOW()
-        WHERE seller_key = $1 AND sku = $2",
-    )
+        WHERE seller_key = $1 AND sku = $2
+        RETURNING {ITEM}"
+    ))
     .bind(seller)
     .bind(sku)
     .bind(enabled)
-    .execute(&db.0)
-    .await?;
-    Ok(changed.rows_affected() > 0)
+    .fetch_optional(&db.0)
+    .await
 }
 
 #[cfg(test)]

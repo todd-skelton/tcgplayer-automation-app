@@ -5,8 +5,10 @@
 // The page brings every product the filters keep (`listed`). Typing in the search narrows a
 // set's at once (`set_search.js`, the server's rule), and the sort, the pages, the rows per page
 // and the condition are drawn here too, with no request: the rows are `IntakeRow` views copied
-// from the screen's template. A card number in every set is searched by the server, and the
-// other filters load the screen again.
+// from the screen's template. A card number in every set is searched by the server, and another
+// set, product line or filter is answered with the parts that change with it and the products
+// it keeps (the filters are a GET `data-patch` form): the rows are drawn from them here, and the
+// address says which set is shown, a new entry in the history, as a page would be.
 //
 // In a count field: + and - step it, typing sets it (sent when the field is left or Enter is
 // pressed), Enter on a field not yet changed adds one, and either way goes back to the search;
@@ -30,7 +32,7 @@ import { search as searchSet } from "./set_search.js";
  * @typedef {object} Keys
  * @property {HTMLFormElement} filters
  * @property {HTMLSelectElement} conditions
- * @property {HTMLSelectElement} sets
+ * @property {HTMLLabelElement} set The Set field, whose select a set's answer replaces.
  * @property {HTMLInputElement} search
  * @property {HTMLButtonElement} go The Search button, which sends a search.
  * @property {HTMLSelectElement} size
@@ -76,6 +78,9 @@ const state = () =>
     descending: false,
     keys: null,
   }));
+
+/** The set select, the one in the page now. @param {Keys} k */
+const setsOf = (k) => /** @type {HTMLSelectElement} */ (k.set.control);
 
 /** @param {unknown} el @returns {el is HTMLInputElement} */
 const isCount = (el) => el instanceof HTMLInputElement && el.dataset.sku !== undefined;
@@ -176,14 +181,38 @@ function draw(k) {
   put(listing.page_field, s.page > 1 ? String(s.page) : "");
   if (listing.searches) put(k.search.name, query.trim() === "" ? "" : query);
   history.replaceState(history.state, "", url);
+  // The sort link, for a click that opens it elsewhere: this screen sorted the other way, from
+  // its first page.
+  const sorter = k.table.tHead?.querySelector("a[href]");
+  if (sorter instanceof HTMLAnchorElement) {
+    const other = new URL(url);
+    other.searchParams.delete(listing.page_field);
+    if (s.descending) other.searchParams.delete(k.sort.name);
+    else other.searchParams.set(k.sort.name, k.sort.value);
+    sorter.href = other.pathname + other.search;
+  }
 }
 
-/** The products the page brought, which the screen draws from from now on. @param {IntakeListing} listing */
+/**
+ * The products the page brought, which the screen draws from from now on. Those a set's answer
+ * brings are drawn at once with the counts the screen holds, and the address says which set it
+ * is: a new history entry, so Back returns to the set before. A card number found in every set
+ * puts focus on the first product's field, as after a search of the set.
+ * @param {IntakeListing} listing
+ */
 export function listed(listing) {
   const s = state();
+  const answered = s.listing !== null;
   s.listing = listing;
   s.page = listing.page;
   s.descending = listing.descending;
+  const k = s.keys;
+  if (!answered || !k) return;
+  const to = new URL(listing.address, location.href);
+  if (to.href !== location.href) history.pushState(null, "", to);
+  k.sort.disabled = !s.descending;
+  draw(k);
+  if (!listing.searches && k.search.value.trim() !== "") focusFirst(k);
 }
 
 /**
@@ -302,13 +331,14 @@ export function keys(event, screen, k) {
       return step(target, -1);
     }
   }
-  if ((event.key === "PageUp" || event.key === "PageDown") && !k.sets.disabled) {
+  const sets = setsOf(k);
+  if ((event.key === "PageUp" || event.key === "PageDown") && !sets.disabled) {
     // The next set, to search afresh: the search is emptied and keeps focus, and the filters go
-    // with no submitter, so they load the set (`submitted` keeps a search to the page), and
-    // their `data-keep-place` leaves focus in the search once it has loaded.
+    // with no submitter, so the set's answer comes (`submitted` keeps a search to the page), and
+    // focus stays in the search, which the answer leaves as it is.
     event.preventDefault();
-    const n = k.sets.options.length;
-    k.sets.selectedIndex = (k.sets.selectedIndex + (event.key === "PageUp" ? -1 : 1) + n) % n;
+    const n = sets.options.length;
+    sets.selectedIndex = (sets.selectedIndex + (event.key === "PageUp" ? -1 : 1) + n) % n;
     k.search.value = "";
     focusField(k.search);
     k.filters.requestSubmit();
@@ -386,7 +416,7 @@ export function clicked(event, to) {
 
 /**
  * A filter changed: the condition and the rows per page are drawn at once, the search as it is
- * typed, and anything else loads the screen again.
+ * typed, and anything else is sent for the products it keeps.
  * @param {Event} event @param {Keys} k
  */
 export function filtered(event, k) {
@@ -403,7 +433,7 @@ export function filtered(event, k) {
 /**
  * The filters sent. A search of the set sent from the search (Enter, or the Search button) is
  * drawn here with no request, and the first product's field takes focus, as after any search;
- * a card number in every set, and the other filters, load the screen.
+ * a card number in every set, and the other filters, are sent for the products they keep.
  * @param {SubmitEvent} event @param {Keys} k
  */
 export function submitted(event, k) {

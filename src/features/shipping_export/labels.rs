@@ -5,6 +5,8 @@
 //! The form's body is read twice, once as the shipment ([`ShipmentInput`]) and once as the
 //! choice ([`Choice`]), since a form's fields cannot be flattened from a shared group (corten
 //! #363).
+use std::future::Future;
+
 use corten::{Refusal, form::from_bytes, http::Bytes, prelude::*};
 
 use super::{
@@ -16,7 +18,7 @@ use super::{
     shipments::{Direction, Planned, Shipment, shipment_for},
     source, url,
     views::{LabelForm, LabelManagement, Looked, Refused},
-    workflow,
+    workflow::{self, Workflow},
 };
 use crate::{
     database::Database,
@@ -80,21 +82,26 @@ pub struct Found {
     pub returned: Option<Bought>,
 }
 
-/// The labels bought for the order in each direction, as `directions` asks.
-fn bought_of(found: &Found, directions: &[Direction]) -> Vec<Direction> {
-    directions
-        .iter()
-        .copied()
-        .filter(|d| {
-            match d {
-                Direction::Outbound => &found.outbound,
-                Direction::Return => &found.returned,
-            }
-            .as_ref()
-            .is_some_and(Bought::purchased)
-        })
-        .collect()
+impl Found {
+    /// The labels bought for the order in each direction, as `directions` asks.
+    pub fn bought(&self, directions: &[Direction]) -> Vec<Direction> {
+        directions
+            .iter()
+            .copied()
+            .filter(|d| {
+                match d {
+                    Direction::Outbound => &self.outbound,
+                    Direction::Return => &self.returned,
+                }
+                .as_ref()
+                .is_some_and(Bought::purchased)
+            })
+            .collect()
+    }
 }
+
+/// What was read, or why it could not be: the refusal to answer with and what to say.
+type Read<T> = corten::Result<Result<T, (Refusal, String)>>;
 
 /// The seller the batch was loaded for, or the configured one.
 async fn seller(db: &Database, config: &ShippingConfig) -> corten::Result<String> {
@@ -107,12 +114,34 @@ async fn seller(db: &Database, config: &ShippingConfig) -> corten::Result<String
         .to_owned())
 }
 
-/// The order and the labels already bought for it, or why it could not be read.
-async fn look_up(
-    db: &Database,
-    config: &ShippingConfig,
+/// The order and the labels already bought for it, or why it could not be read: the order as
+/// TCGplayer has it now, which a purchase is bought from.
+async fn look_up(db: &Database, config: &ShippingConfig, number: &str) -> Read<Found> {
+    match from_tcgplayer(db, config, number).await? {
+        Ok(order) => with_postage(db, config, order).await,
+        Err(why) => Ok(Err(why)),
+    }
+}
+
+/// The order a redraw is drawn for: the batch in progress's copy when it has the order, so
+/// choosing another service or other labels reads nothing from TCGplayer, and `from_tcgplayer`
+/// only when it does not. A purchase reads TCGplayer again ([`look_up`]).
+async fn kept_or<F>(
+    saved: Option<Workflow>,
     number: &str,
-) -> corten::Result<Result<Found, (Refusal, String)>> {
+    from_tcgplayer: impl FnOnce() -> F,
+) -> Read<Order>
+where
+    F: Future<Output = Read<Order>>,
+{
+    match saved.and_then(|w| w.orders.into_iter().find(|o| o.number == number)) {
+        Some(order) => Ok(Ok(order)),
+        None => from_tcgplayer().await,
+    }
+}
+
+/// The order as TCGplayer has it now, or why it could not be read.
+async fn from_tcgplayer(db: &Database, config: &ShippingConfig, number: &str) -> Read<Order> {
     let seller = seller(db, config).await?;
     let order = match source::from_tcgplayer(db, &seller, Some(number)).await {
         Ok(loaded) => loaded.orders.into_iter().next(),
@@ -123,12 +152,18 @@ async fn look_up(
             )));
         }
     };
-    let Some(order) = order else {
-        return Ok(Err((
+    match order {
+        Some(order) => Ok(Ok(order)),
+        None => Ok(Err((
             Refusal::Invalid,
             format!("Order {number} was not found."),
-        )));
-    };
+        ))),
+    }
+}
+
+/// The order with the shipment it goes out as and the labels already bought for it, or why the
+/// postage record could not be read.
+async fn with_postage(db: &Database, config: &ShippingConfig, order: Order) -> Read<Found> {
     let shipment = shipment_for(&order, config);
     let one = [Planned {
         shipment: shipment.clone(),
@@ -208,10 +243,10 @@ async fn labels_page(
             >
                 if let Some((found, input, buy, errors)) = form {
                     <LabelForm
-                        number={&found.order.number}
+                        found={found}
+                        config={&config}
                         input={input}
                         buy={buy}
-                        bought={&bought_of(found, buy.directions())}
                         mode={mode}
                         errors={errors}
                     />
@@ -229,8 +264,11 @@ pub async fn show_labels(
     labels_page(&req, &db, at.order.as_deref(), None, None).await
 }
 
-/// The form drawn again for what was chosen: a new service redraws the package for it (a
-/// letter, weighed for the order, when it is First), keeping the address as edited.
+/// The form drawn again for what was chosen, as its script draws it without a request: a new
+/// service redraws the package for it (a letter, weighed for the order, when it is First),
+/// keeping the address as edited. It is drawn from the batch in progress's copy of the order when
+/// it has one ([`kept_or`]), so only a page without JavaScript posts here and TCGplayer is read
+/// only for an order not in the batch.
 pub async fn redraw_labels(
     req: Req,
     State(db): State<Database>,
@@ -245,7 +283,12 @@ pub async fn redraw_labels(
         return labels_page(&req, &db, Some(&number), None, None).await;
     };
     let config = shipping_configuration::settings(&db).await?;
-    let found = match look_up(&db, &config, &number).await? {
+    let saved = workflow::current(&db).await?;
+    let found = match kept_or(saved, &number, || from_tcgplayer(&db, &config, &number)).await? {
+        Ok(order) => with_postage(&db, &config, order).await?,
+        Err(why) => Err(why),
+    };
+    let found = match found {
         Ok(found) => found,
         Err((refusal, why)) => {
             return refused(&req, &db, &number, (refusal, &why), kept(&input, &choice)).await;
@@ -259,10 +302,10 @@ pub async fn redraw_labels(
     };
     let errors = Errors::new();
     req.patch(LabelForm {
-        number: &found.order.number,
+        found: &found,
+        config: &config,
         input: &input,
         buy: choice.buy,
-        bought: &bought_of(&found, choice.buy.directions()),
         mode: EasyPostMode::of_deployment(),
         errors: &errors,
     })
@@ -329,15 +372,14 @@ pub async fn buy_labels(
             shipment
         }
         Err(errors) => {
-            let bought = bought_of(&found, choice.buy.directions());
             return req
                 .invalid(
                     &errors,
                     LabelForm {
-                        number: &found.order.number,
+                        found: &found,
+                        config: &config,
                         input: &input,
                         buy: choice.buy,
-                        bought: &bought,
                         mode,
                         errors: &errors,
                     },
@@ -353,7 +395,7 @@ pub async fn buy_labels(
                 .await;
         }
     };
-    if !bought_of(&found, choice.buy.directions()).is_empty() && !choice.again {
+    if !found.bought(choice.buy.directions()).is_empty() && !choice.again {
         let why = "A label was already bought for this order. Confirm to buy another.";
         return refused(
             &req,
@@ -437,7 +479,54 @@ async fn refused(
 
 #[cfg(test)]
 mod tests {
+    use std::cell::Cell;
+
     use super::*;
+    use crate::features::shipping_export::orders::tests::order;
+
+    fn batch(numbers: &[&str]) -> Workflow {
+        let orders = numbers.iter().map(|n| order(n)).collect();
+        Workflow::loaded("seller".into(), String::new(), Vec::new(), orders)
+    }
+
+    /// TCGplayer, as `kept_or` reads it: it notes it was asked, and answers `number`.
+    fn tcgplayer<'a>(
+        asked: &'a Cell<bool>,
+        number: &'a str,
+    ) -> impl FnOnce() -> std::future::Ready<Read<Order>> + 'a {
+        move || {
+            asked.set(true);
+            std::future::ready(Ok(Ok(order(number))))
+        }
+    }
+
+    #[tokio::test]
+    async fn a_redraw_reads_an_order_in_the_batch_without_tcgplayer() {
+        let asked = Cell::new(false);
+        let mut kept = order("B");
+        kept.item_count = 40;
+        let mut saved = batch(&["A"]);
+        saved.orders.push(kept);
+        let read = kept_or(Some(saved), "B", tcgplayer(&asked, "B"))
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(!asked.get(), "TCGplayer was read for an order in the batch");
+        assert_eq!((read.number.as_str(), read.item_count), ("B", 40));
+    }
+
+    #[tokio::test]
+    async fn a_redraw_reads_tcgplayer_for_an_order_not_in_the_batch() {
+        for saved in [None, Some(batch(&["A", "B"]))] {
+            let asked = Cell::new(false);
+            let read = kept_or(saved, "C", tcgplayer(&asked, "C"))
+                .await
+                .unwrap()
+                .unwrap();
+            assert!(asked.get());
+            assert_eq!(read.number, "C");
+        }
+    }
 
     #[test]
     fn a_return_is_bought_after_its_outbound_label() {

@@ -5,16 +5,20 @@
 //! searches and pages a set without JavaScript. With it, the page brings the whole set once and
 //! the script searches, sorts and pages it, and draws another condition's counts, with no
 //! request, as the React screen did; only a card number searched across every set goes to the
-//! server. Each count is its own form: the script writes the new count into its field and submits
+//! server. The GET form is `data-patch` too: another set, product line or filter is answered with
+//! the parts that change with it and the products it keeps, read without the counts or the
+//! batches, which the browser keeps a few minutes, so a set seen again comes with no request. The
+//! script draws the rows from them with the counts it holds and puts the set's address in the
+//! history. Each count is its own form: the script writes the new count into its field and submits
 //! it, and a change made while one is on its way waits for that answer, then goes with the latest
 //! count (the runtime's order for a `data-patch` write). Without JavaScript, Enter in a field
 //! sends it.
 //!
 //! | Route | Answer |
 //! |---|---|
-//! | `GET /inventory-manager` | the screen for the filters in the query |
+//! | `GET /inventory-manager` | the screen for the filters in the query; with JavaScript, what changes with them |
 //! | `POST /inventory-manager/count` | one SKU's count set: its form and the totals |
-//! | `POST /inventory-manager/clear` | every count not yet queued removed |
+//! | `POST /inventory-manager/clear` | every count not yet queued removed: the totals and the counts |
 //! | `POST /inventory-manager/queue` | the counts queued as a pricing batch |
 //! | `GET /inventory-manager/batches` | the background batches again, read every 5 seconds |
 //! | `POST /inventory-manager/batches/{batch}/rate` | a queued batch estimated at another rate |
