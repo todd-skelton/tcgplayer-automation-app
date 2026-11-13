@@ -36,7 +36,8 @@ pub struct Plan {
     pub identity: PlanIdentity,
     pub created_at: String,
     pub expires_at: String,
-    pub evidence: Vec<serde_json::Value>,
+    /// The evidence revisions it rests on, which are only counted here.
+    pub evidence: Vec<serde::de::IgnoredAny>,
     pub r#override: Option<PlanOverride>,
     pub flags: Vec<String>,
     pub policy_version: String,
